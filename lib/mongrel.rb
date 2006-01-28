@@ -1,12 +1,52 @@
 require 'socket'
 require 'http11'
 require 'thread'
-
+require 'stringio'
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
 # functionality to service web application requests fast as possible.
 module Mongrel
+
+  HTTP_STATUS_CODES = {  
+    100  => 'Continue', 
+    101  => 'Switching Protocols', 
+    200  => 'OK', 
+    201  => 'Created', 
+    202  => 'Accepted', 
+    203  => 'Non-Authoritative Information', 
+    204  => 'No Content', 
+    205  => 'Reset Content', 
+    206  => 'Partial Content', 
+    300  => 'Multiple Choices', 
+    301  => 'Moved Permanently', 
+    302  => 'Moved Temporarily', 
+    303  => 'See Other', 
+    304  => 'Not Modified', 
+    305  => 'Use Proxy', 
+    400  => 'Bad Request', 
+    401  => 'Unauthorized', 
+    402  => 'Payment Required', 
+    403  => 'Forbidden', 
+    404  => 'Not Found', 
+    405  => 'Method Not Allowed', 
+    406  => 'Not Acceptable', 
+    407  => 'Proxy Authentication Required', 
+    408  => 'Request Time-out', 
+    409  => 'Conflict', 
+    410  => 'Gone', 
+    411  => 'Length Required', 
+    412  => 'Precondition Failed', 
+    413  => 'Request Entity Too Large', 
+    414  => 'Request-URI Too Large', 
+    415  => 'Unsupported Media Type', 
+    500  => 'Internal Server Error', 
+    501  => 'Not Implemented', 
+    502  => 'Bad Gateway', 
+    503  => 'Service Unavailable', 
+    504  => 'Gateway Time-out', 
+    505  => 'HTTP Version not supported'
+  }
 
   # When a handler is found for a registered URI then this class is constructed
   # and passed to your HttpHandler::process method.  You should assume that 
@@ -41,19 +81,55 @@ module Mongrel
     end
   end
 
-  # Very very simple response object.  You basically write your stuff raw 
-  # to the HttpResponse.socket variable.  This will be made *much* easier
-  # in future releases allowing you to set status and request headers prior
-  # to sending the response.
+
+  class HeaderOut
+    attr_reader :out
+
+    def initialize(out)
+      @out = out
+    end
+
+    def[]=(key,value)
+      @out.write(key)
+      @out.write(": ")
+      @out.write(value)
+      @out.write("\r\n")
+    end
+  end
+
+
   class HttpResponse
     attr_reader :socket
-     
+    attr_reader :out
+    attr_reader :header
+    attr_reader :status
+    attr_writer :status
+    
     def initialize(socket)
       @socket = socket
+      @out = StringIO.new
+      @status = 404
+      @header = HeaderOut.new(StringIO.new)
     end
-   
+
+    def start(status=200)
+      @status = status
+      yield @header, @out
+      finished
+    end
+    
+    def finished
+      @header.out.rewind
+      @out.rewind
+
+      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@out.length}\r\n")
+      @socket.write(@header.out.read)
+      @socket.write("\r\n")
+      @socket.write(@out.read)
+    end
   end
   
+
   # You implement your application handler with this.  It's very light giving
   # just the minimum necessary for you to handle a request and shoot back 
   # a response.  Look at the HttpRequest and HttpResponse objects for how
@@ -64,6 +140,7 @@ module Mongrel
     def process(request, response)
     end
   end
+
 
   # The server normally returns a 404 response if a URI is requested, but it
   # also returns a lame empty message.  This lets you do a 404 response
@@ -107,7 +184,7 @@ module Mongrel
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Type: text/plain\r\nServer: Mongrel/0.1\r\n\r\n"
 
     # For now we just read 2k chunks.  Not optimal at all.
-    CHUNK_SIZE=2048 
+    CHUNK_SIZE=2048
     
     # Creates a working server on host:port (strange things happen if port isn't a Number).
     # Use HttpServer::run to start the server.
