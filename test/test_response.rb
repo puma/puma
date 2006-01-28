@@ -11,11 +11,10 @@ class ResponseTest < Test::Unit::TestCase
     resp.status = 200
     resp.header["Accept"] = "text/plain"
     resp.header["X-Whatever"] = "stuff"
-    resp.out.write("test")
+    resp.body.write("test")
     resp.finished
 
-    out.rewind
-    puts out.read
+    assert out.length > 0, "output didn't have data"
   end
 
   def test_response_200
@@ -26,9 +25,7 @@ class ResponseTest < Test::Unit::TestCase
       out.write("tested")
       out.write("hello!")
     end
-
-    io.rewind
-    puts io.read
+    assert io.length > 0, "output didn't have data"
   end
 
   def test_response_404
@@ -40,8 +37,7 @@ class ResponseTest < Test::Unit::TestCase
       out.write("NOT FOUND")
     end
 
-    io.rewind
-    puts io.read
+    assert io.length > 0, "output didn't have data"
   end
 
 end

@@ -100,32 +100,32 @@ module Mongrel
 
   class HttpResponse
     attr_reader :socket
-    attr_reader :out
+    attr_reader :body
     attr_reader :header
     attr_reader :status
     attr_writer :status
     
     def initialize(socket)
       @socket = socket
-      @out = StringIO.new
+      @body = StringIO.new
       @status = 404
       @header = HeaderOut.new(StringIO.new)
     end
 
     def start(status=200)
       @status = status
-      yield @header, @out
+      yield @header, @body
       finished
     end
     
     def finished
       @header.out.rewind
-      @out.rewind
+      @body.rewind
 
-      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@out.length}\r\n")
+      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\n")
       @socket.write(@header.out.read)
       @socket.write("\r\n")
-      @socket.write(@out.read)
+      @socket.write(@body.read)
     end
   end
   
