@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html>
+<head>
+  <title>new (Mongrel::URIClassifier)</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+  <link rel="stylesheet" href="../../.././rdoc-style.css" type="text/css" media="screen" />
+</head>
+<body class="standalone-code">
+  <pre>/**
+ * call-seq:
+ *    URIClassifier.new -&gt; URIClassifier
+ *
+ * Initializes a new URIClassifier object that you can use to associate URI sequences
+ * with objects.  You can actually use it with any string sequence and any objects,
+ * but it's mostly used with URIs.
+ *
+ * It uses TST from http://www.octavian.org/cs/software.html to build an ternary search
+ * trie to hold all of the URIs.  It uses this to do an initial search for the a URI
+ * prefix, and then to break the URI into SCRIPT_NAME and PATH_INFO portions.  It actually
+ * will do two searches most of the time in order to find the right handler for the
+ * registered prefix portion.
+ *
+ * Here's how it all works.  Let's say you register &quot;/blog&quot; with a BlogHandler.  Great.
+ * Now, someone goes to &quot;/blog/zedsucks/ass&quot;.  You want SCRIPT_NAME to be &quot;/blog&quot; and
+ * PATH_INFO to be &quot;/zedsucks/ass&quot;.  URIClassifier first does a TST search and comes
+ * up with a failure, but knows that the failure ended at the &quot;/blog&quot; part.  So, that's
+ * the SCRIPT_NAME.  It then tries a second search for just &quot;/blog&quot;.  If that comes back
+ * good then it sets the rest (&quot;/zedsucks/ass&quot;) to the PATH_INFO and returns the BlogHandler.
+ *
+ * The optimal approach would be to not do the search twice, but the TST lib doesn't
+ * really support returning prefixes.  Might not be hard to add later.
+ *
+ * The key though is that it will try to match the *longest* match it can.  If you 
+ * also register &quot;/blog/zed&quot; then the above URI will give SCRIPT_NAME=&quot;/blog/zed&quot;, 
+ * PATH_INFO=&quot;sucks/ass&quot;.  Probably not what you want, so your handler will need to
+ * do the 404 thing.
+ *
+ * Take a look at the postamble of example/tepee.rb to see how this is handled for
+ * Camping. 
+ */
+VALUE URIClassifier_init(VALUE self)
+{
+  VALUE hash;
+
+  // we create an internal hash to protect stuff from the GC
+  hash = rb_hash_new();
+  rb_iv_set(self, &quot;handler_map&quot;, hash);
+}</pre>
+</body>
+</html>

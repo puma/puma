@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>Class: Mongrel::HttpServer</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+  <meta http-equiv="Content-Script-Type" content="text/javascript" />
+  <link rel="stylesheet" href="../.././rdoc-style.css" type="text/css" media="screen" />
+  <script type="text/javascript">
+  // <![CDATA[
+
+  function popupCode( url ) {
+    window.open(url, "Code", "resizable=yes,scrollbars=yes,toolbar=no,status=no,height=150,width=400")
+  }
+
+  function toggleCode( id ) {
+    if ( document.getElementById )
+      elem = document.getElementById( id );
+    else if ( document.all )
+      elem = eval( "document.all." + id );
+    else
+      return false;
+
+    elemStyle = elem.style;
+    
+    if ( elemStyle.display != "block" ) {
+      elemStyle.display = "block"
+    } else {
+      elemStyle.display = "none"
+    }
+
+    return true;
+  }
+  
+  // Make codeblocks hidden by default
+  document.writeln( "<style type=\"text/css\">div.method-source-code { display: none }</style>" )
+  
+  // ]]>
+  </script>
+
+</head>
+<body>
+
+
+
+    <div id="classHeader">
+        <table class="header-table">
+        <tr class="top-aligned-row">
+          <td><strong>Class</strong></td>
+          <td class="class-name-in-header">Mongrel::HttpServer</td>
+        </tr>
+        <tr class="top-aligned-row">
+            <td><strong>In:</strong></td>
+            <td>
+                <a href="../../files/lib/mongrel_rb.html">
+                lib/mongrel.rb
+                </a>
+        <br />
+            </td>
+        </tr>
+
+        <tr class="top-aligned-row">
+            <td><strong>Parent:</strong></td>
+            <td>
+                Object
+            </td>
+        </tr>
+        </table>
+    </div>
+  <!-- banner header -->
+
+  <div id="bodyContent">
+
+
+
+  <div id="contextContent">
+
+    <div id="description">
+      <p>
+This is the main driver of <a href="../Mongrel.html">Mongrel</a>, while the
+Mognrel::HttpParser and <a
+href="URIClassifier.html">Mongrel::URIClassifier</a> make up the majority
+of how the server functions. It&#8217;s a very simple class that just has a
+thread accepting connections and a simple <a
+href="HttpServer.html#M000009">HttpServer.process_client</a> function to do
+the heavy lifting with the IO and Ruby.
+</p>
+<p>
+*NOTE:* The <a href="HttpServer.html#M000009">process_client</a> function
+used threads at one time but that proved to have stability issues on Mac
+OSX. Actually, Ruby in general has stability issues on Mac OSX.
+</p>
+<p>
+You use it by doing the following:
+</p>
+<pre>
+  server = HttpServer.new(&quot;0.0.0.0&quot;, 3000)
+  server.register(&quot;/stuff&quot;, MyNifterHandler.new)
+  server.run.join
+</pre>
+<p>
+The last line can be just server.run if you don&#8217;t want to join the
+thread used. If you don&#8217;t though Ruby will mysteriously just exit on
+you.
+</p>
+
+    </div>
+
+
+   </div>
+
+    <div id="method-list">
+      <h3 class="section-bar">Methods</h3>
+
+      <div class="name-list">
+      <a href="#M000008">new</a>&nbsp;&nbsp;
+      <a href="#M000009">process_client</a>&nbsp;&nbsp;
+      <a href="#M000011">register</a>&nbsp;&nbsp;
+      <a href="#M000010">run</a>&nbsp;&nbsp;
+      <a href="#M000012">unregister</a>&nbsp;&nbsp;
+      </div>
+    </div>
+
+  </div>
+
+
+    <!-- if includes -->
+
+    <div id="section">
+
+
+    <div id="constants-list">
+      <h3 class="section-bar">Constants</h3>
+
+      <div class="name-list">
+        <table summary="Constants">
+        <tr class="top-aligned-row context-row">
+          <td class="context-item-name">ERROR_404_RESPONSE</td>
+          <td>=</td>
+          <td class="context-item-value">&quot;HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Type: text/plain\r\nServer: Mongrel/0.1\r\n\r\n&quot;</td>
+          <td width="3em">&nbsp;</td>
+          <td class="context-item-desc">
+The standard empty 404 response for bad requests. Use Error4040Handler for
+custom stuff.
+
+</td>
+        </tr>
+        <tr class="top-aligned-row context-row">
+          <td class="context-item-name">CHUNK_SIZE</td>
+          <td>=</td>
+          <td class="context-item-value">2048</td>
+          <td width="3em">&nbsp;</td>
+          <td class="context-item-desc">
+For now we just read 2k chunks. Not optimal at all.
+
+</td>
+        </tr>
+        </table>
+      </div>
+    </div>
+
+
+
+    <div id="attribute-list">
+      <h3 class="section-bar">Attributes</h3>
+
+      <div class="name-list">
+        <table>
+        <tr class="top-aligned-row context-row">
+          <td class="context-item-name">acceptor</td>
+          <td class="context-item-value">&nbsp;[R]&nbsp;</td>
+          <td class="context-item-desc"></td>
+        </tr>
+        </table>
+      </div>
+    </div>
+      
+
+
+    <!-- if method_list -->
+    <div id="methods">
+      <h3 class="section-bar">Public Class methods</h3>
+
+      <div id="method-M000008" class="method-detail">
+        <a name="M000008"></a>
+
+        <div class="method-heading">
+          <a href="HttpServer.src/M000008.html" target="Code" class="method-signature"
+            onclick="popupCode('HttpServer.src/M000008.html');return false;">
+          <span class="method-name">new</span><span class="method-args">(host, port)</span>
+          </a>
+        </div>
+      
+        <div class="method-description">
+          <p>
+Creates a working server on host:port (strange things happen if port
+isn&#8217;t a Number). Use HttpServer::run to start the server.
+</p>
+        </div>
+      </div>
+
+      <h3 class="section-bar">Public Instance methods</h3>
+
+      <div id="method-M000009" class="method-detail">
+        <a name="M000009"></a>
+
+        <div class="method-heading">
+          <a href="HttpServer.src/M000009.html" target="Code" class="method-signature"
+            onclick="popupCode('HttpServer.src/M000009.html');return false;">
+          <span class="method-name">process_client</span><span class="method-args">(client)</span>
+          </a>
+        </div>
+      
+        <div class="method-description">
+          <p>
+Used internally to process an accepted client. It uses <a
+href="HttpParser.html">HttpParser</a> and <a
+href="URIClassifier.html">URIClassifier</a> (in ext/http11/http11.c) to do
+the heavy work, and mostly just does a hack job at some simple IO. Future
+releases will target this area mostly.
+</p>
+        </div>
+      </div>
+
+      <div id="method-M000011" class="method-detail">
+        <a name="M000011"></a>
+
+        <div class="method-heading">
+          <a href="HttpServer.src/M000011.html" target="Code" class="method-signature"
+            onclick="popupCode('HttpServer.src/M000011.html');return false;">
+          <span class="method-name">register</span><span class="method-args">(uri, handler)</span>
+          </a>
+        </div>
+      
+        <div class="method-description">
+          <p>
+Simply registers a handler with the internal <a
+href="URIClassifier.html">URIClassifier</a>. When the URI is found in the
+prefix of a request then your handler&#8217;s HttpHandler::process method
+is called. See <a
+href="URIClassifier.html#M000014">Mongrel::URIClassifier#register</a> for
+more information.
+</p>
+        </div>
+      </div>
+
+      <div id="method-M000010" class="method-detail">
+        <a name="M000010"></a>
+
+        <div class="method-heading">
+          <a href="HttpServer.src/M000010.html" target="Code" class="method-signature"
+            onclick="popupCode('HttpServer.src/M000010.html');return false;">
+          <span class="method-name">run</span><span class="method-args">()</span>
+          </a>
+        </div>
+      
+        <div class="method-description">
+          <p>
+Runs the thing. It returns the thread used so you can &quot;join&quot; it.
+You can also access the HttpServer::acceptor attribute to get the thread
+later.
+</p>
+        </div>
+      </div>
+
+      <div id="method-M000012" class="method-detail">
+        <a name="M000012"></a>
+
+        <div class="method-heading">
+          <a href="HttpServer.src/M000012.html" target="Code" class="method-signature"
+            onclick="popupCode('HttpServer.src/M000012.html');return false;">
+          <span class="method-name">unregister</span><span class="method-args">(uri)</span>
+          </a>
+        </div>
+      
+        <div class="method-description">
+          <p>
+Removes any handler registered at the given URI. See <a
+href="URIClassifier.html#M000015">Mongrel::URIClassifier#unregister</a> for
+more information.
+</p>
+        </div>
+      </div>
+
+
+    </div>
+
+
+  </div>
+
+
+<div id="validator-badges">
+  <p><small><a href="http://validator.w3.org/check/referer">[Validate]</a></small></p>
+</div>
+
+</body>
+</html>

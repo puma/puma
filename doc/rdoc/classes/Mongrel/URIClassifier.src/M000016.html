@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html>
+<head>
+  <title>resolve (Mongrel::URIClassifier)</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+  <link rel="stylesheet" href="../../.././rdoc-style.css" type="text/css" media="screen" />
+</head>
+<body class="standalone-code">
+  <pre>/**
+ * call-seq:
+ *    uc.resolve(&quot;/someuri&quot;) -&gt; &quot;/someuri&quot;, &quot;&quot;, handler
+ *    uc.resolve(&quot;/someuri/pathinfo&quot;) -&gt; &quot;/someuri&quot;, &quot;/pathinfo&quot;, handler
+ *    uc.resolve(&quot;/notfound/orhere&quot;) -&gt; nil, nil, nil
+ *
+ * Attempts to resolve either the whole URI or at the longest prefix, returning
+ * the prefix (as script_info), path (as path_info), and registered handler
+ * (usually an HttpHandler).
+ *
+ * It expects strings.  Don't try other string-line stuff yet.
+ */
+VALUE URIClassifier_resolve(VALUE self, VALUE uri)
+{
+  void *handler = NULL;
+  int pref_len = 0;
+  struct tst *tst = NULL;
+  VALUE result;
+  VALUE script_name;
+  VALUE path_info;
+  unsigned char *uri_str = NULL;
+  unsigned char *script_name_str = NULL;
+
+  DATA_GET(self, struct tst, tst);
+  uri_str = (unsigned char *)StringValueCStr(uri);
+
+  handler = tst_search(uri_str, tst, &amp;pref_len);
+
+  // setup for multiple return values
+  result = rb_ary_new();
+
+
+  if(handler == NULL) {
+    script_name = rb_str_substr (uri, 0, pref_len);
+    script_name_str = (unsigned char *)StringValueCStr(script_name);
+
+    handler = tst_search(script_name_str, tst, NULL);
+
+    if(handler == NULL) {
+      // didn't find the script name at all
+      rb_ary_push(result, Qnil);
+      rb_ary_push(result, Qnil);
+      rb_ary_push(result, Qnil);
+      return result;
+    } else {
+      // found a handler, setup the path info and we're good
+      path_info = rb_str_substr(uri, pref_len, RSTRING(uri)-&gt;len);
+    }
+  } else {
+    // whole thing was found, so uri is the script name, path info empty
+    script_name = uri;
+    path_info = rb_str_new2(&quot;&quot;);
+  }
+
+  rb_ary_push(result, script_name);
+  rb_ary_push(result, path_info);
+  rb_ary_push(result, (VALUE)handler);
+  return result;
+}</pre>
+</body>
+</html>

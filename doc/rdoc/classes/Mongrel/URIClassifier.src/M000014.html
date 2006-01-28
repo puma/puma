@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html>
+<head>
+  <title>register (Mongrel::URIClassifier)</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+  <link rel="stylesheet" href="../../.././rdoc-style.css" type="text/css" media="screen" />
+</head>
+<body class="standalone-code">
+  <pre>/**
+ * call-seq:
+ *    uc.register(&quot;/someuri&quot;, SampleHandler.new) -&gt; nil
+ *
+ * Registers the SampleHandler (one for all requests) with the &quot;/someuri&quot;.
+ * When URIClassifier::resolve is called with &quot;/someuri&quot; it'll return
+ * SampleHandler immediately.  When &quot;/someuri/pathhere&quot; is called it'll
+ * find SomeHandler after a second search, and setup PATH_INFO=&quot;/pathhere&quot;.
+ *
+ * You actually can reuse this class to register nearly anything and 
+ * quickly resolve it.  This could be used for caching, fast mapping, etc.
+ * The downside is it uses much more memory than a Hash, but it can be
+ * a lot faster.  It's main advantage is that it works on prefixes, which
+ * is damn hard to get right with a Hash.
+ */
+VALUE URIClassifier_register(VALUE self, VALUE uri, VALUE handler)
+{
+  int rc = 0;
+  void *ptr = NULL;
+  struct tst *tst = NULL;
+  DATA_GET(self, struct tst, tst);
+
+  rc = tst_insert((unsigned char *)StringValueCStr(uri), (void *)handler , tst, 0, &amp;ptr);
+
+  if(rc == TST_DUPLICATE_KEY) {
+    rb_raise(rb_eStandardError, &quot;Handler already registered with that name&quot;);
+  } else if(rc == TST_ERROR) {
+    rb_raise(rb_eStandardError, &quot;Memory error registering handler&quot;);
+  } else if(rc == TST_NULL_KEY) {
+    rb_raise(rb_eStandardError, &quot;URI was empty&quot;);
+  }
+  
+  rb_hash_aset(rb_iv_get(self, &quot;handler_map&quot;), uri, handler);
+
+  return Qnil;
+}</pre>
+</body>
+</html>

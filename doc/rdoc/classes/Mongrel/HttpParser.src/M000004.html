@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html>
+<head>
+  <title>execute (Mongrel::HttpParser)</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+  <link rel="stylesheet" href="../../.././rdoc-style.css" type="text/css" media="screen" />
+</head>
+<body class="standalone-code">
+  <pre>/**
+ * call-seq:
+ *    parser.execute(req_hash, data) -&gt; Integer
+ *
+ * Takes a Hash and a String of data, parses the String of data filling in the Hash
+ * returning an Integer to indicate how much of the data has been read.  No matter
+ * what the return value, you should call HttpParser#finished? and HttpParser#error?
+ * to figure out if it's done parsing or there was an error.
+ */
+VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data)
+{
+  http_parser *http = NULL;
+  DATA_GET(self, http_parser, http);
+
+  http-&gt;data = (void *)req_hash;
+  http_parser_execute(http, RSTRING(data)-&gt;ptr, RSTRING(data)-&gt;len);
+  
+  return INT2FIX(http_parser_nread(http));
+}</pre>
+</body>
+</html>

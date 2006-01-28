@@ -1,0 +1,52 @@
+== Mongrel:  Simple Fast Mostly Ruby Web Server
+
+Mongrel is a small library that provides a very fast HTTP 1.1 server for Ruby
+web applications.  It is not particular to any framework, and is intended to
+be just enough to get a web application running behind a more complete and robust
+web server.
+
+What makes Mongrel so fast is the careful use of a C extension to provide fast
+HTTP 1.1 protocol parsing and fast URI lookup.  This combination makes the server
+very fast without too many portability issues.
+
+== Status
+
+Mongrel is still very ALPHA work, but you can see how it's used with the
+Camping framework (version 1.2) and take a look at how you might use it.
+Right now it handles HTTP requests well and process the responses fast, but
+you have to "roll your own" response code.
+
+The next release of Mongrel will have improved IO handling, much more stability,
+and should have a better Mongrel::HttpResponse object with more useful features.
+
+== Install
+
+You can install it via source from http://www.zedshaw.com/downloads/mongrel/
+or you can gram a RubyGem at http://www.zedshaw.com/downloads/mongrel/
+and install that manually.  I'm working on setting up a RubyForge project.
+
+It doesn't explicitly require Camping, but if you want to run the examples/tepee.rb 
+example then you'll need to install Camping 1.2 at least (and redcloth I think).  
+These are all available from RubyGems.
+
+The library consists of a C extension so you'll need a C compiler or at least a friend
+who can build it for you.
+
+
+Finally, the source include a setup.rb for those who hate RubyGems.
+
+== Usage
+
+Best place to look for usage examples right now is the examples/ directory.
+
+== Speed
+
+This 0.1.2 release will not be as fast as the 0.1.1 release since I've temporarily
+removed threads as a test.  There were many stability issues related to handling
+each request in a thread, especially on OSX.  I've taken them out for now to 
+make things stable.  Even with this removed Mongrel is still pretty fast compared
+to WEBrick.
+
+== Contact
+
+E-mail zedshaw at zedshaw.com and I'll help.  Comments about the API are welcome.
