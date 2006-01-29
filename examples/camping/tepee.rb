@@ -19,7 +19,7 @@ module Tepee::Models
 end
 
 Tepee::Models.schema do
-  create_table :pages, :force => true do |t|
+  create_table :tepee_pages, :force => true do |t|
     t.column :title, :string, :limit => 255
     t.column :body, :text
   end
@@ -118,61 +118,49 @@ module Tepee::Views
       page = title = $1.underscore
       title = $2 unless $2.empty?
       if Tepee::Models::Page.find(:all, :select => 'title').collect { |p| p.title }.include?(page)
-        %Q{<a href="#{$docroot}#{R Show, page}">#{title}</a>}
+        %Q{<a href="#{R Show, page}">#{title}</a>}
       else
-        %Q{<span>#{title}<a href="#{$docroot}#{R Edit, page, 1}">?</a></span>}
+        %Q{<span>#{title}<a href="#{R Edit, page, 1}">?</a></span>}
       end
     end
     RedCloth.new(body, [ :hard_breaks ]).to_html
   end
 end
 
-
-module Tepee
-  class << self
-    def mongrel_run(request, response)
-      req = StringIO.new(request.body)
-      status = 500
-      
-      resp = ""
-      begin
-        klass, path = Controllers.D request.params["PATH_INFO"]
-        method = request.params['REQUEST_METHOD']||"GET"
-        klass.class_eval { include C; include Controllers::Base; include Models }
-        controller = klass.new
-        resp = controller.service(req, request.params, method, path)
-        status = controller.status
-      rescue => e
-        req.rewind
-        resp = Controllers::ServerError.new.service(req, request.params, "GET", [klass,method,e])
-      end
-      
-      response.socket.write("HTTP/1.1 #{status} OK\r\n")
-      response.socket.write(resp)
-    end
-  end
-end
-
-require 'thread'
-
-class CampingHandler < Mongrel::HttpHandler
-  def process(request, response)
-    Tepee.mongrel_run(request, response)
+def Tepee.create
+  unless Tepee::Models::Page.table_exists?
+    ActiveRecord::Schema.define(&Tepee::Models.schema)
+    Tepee::Models::Page.reset_column_information
   end
 end
 
 if __FILE__ == $0
-  $docroot = "/blog"
+  require 'thread'
   
-  db_exists = File.exists?('tepee.db')
+  class CampingHandler < Mongrel::HttpHandler
+    def initialize(klass)
+      @klass = klass
+    end
+    def process(request, response)
+      controller = @klass.run(request, request.params)
+      response.start(controller.status) do |head,out|
+        controller.headers.each do |k, v|
+          [*v].each do |vi|
+            head[k] = vi
+          end
+        end
+        out << controller.body
+      end
+    end
+  end
+
   Tepee::Models::Base.establish_connection :adapter => 'sqlite3', :database => 'tepee.db'
   Tepee::Models::Base.logger = Logger.new('camping.log')
   Tepee::Models::Base.threaded_connections=false
-  ActiveRecord::Schema.define(&Tepee::Models.schema) unless db_exists
+  Tepee.create
   
   h = Mongrel::HttpServer.new("0.0.0.0", "3000")
-  h.register("/blog", CampingHandler.new)
+  h.register("/tepee", CampingHandler.new(Tepee))
   h.register("/favicon.ico", Mongrel::Error404Handler.new(""))
   h.run.join
-  
 end
