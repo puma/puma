@@ -142,7 +142,8 @@ if __FILE__ == $0
       @klass = klass
     end
     def process(request, response)
-      controller = @klass.run(request, request.params)
+      req = StringIO.new(request.body)
+      controller = @klass.run(req, request.params)
       response.start(controller.status) do |head,out|
         controller.headers.each do |k, v|
           [*v].each do |vi|
