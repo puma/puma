@@ -161,6 +161,7 @@ if __FILE__ == $0
   Tepee.create
   
   h = Mongrel::HttpServer.new("0.0.0.0", "3000")
+  puts "** Tepee example is running at http://localhost:3000/tepee"
   h.register("/tepee", CampingHandler.new(Tepee))
   h.register("/favicon.ico", Mongrel::Error404Handler.new(""))
   h.run.join
