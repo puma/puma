@@ -121,8 +121,9 @@ module Mongrel
     def finished
       @header.out.rewind
       @body.rewind
-
-      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\n")
+      
+      # connection: close is also added to ensure that the client does not pipeline.
+      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n")
       @socket.write(@header.out.read)
       @socket.write("\r\n")
       @socket.write(@body.read)
@@ -159,16 +160,13 @@ module Mongrel
     end
 
   end
-  
+
 
   # This is the main driver of Mongrel, while the Mognrel::HttpParser and Mongrel::URIClassifier
   # make up the majority of how the server functions.  It's a very simple class that just
   # has a thread accepting connections and a simple HttpServer.process_client function
   # to do the heavy lifting with the IO and Ruby.  
   #
-  # *NOTE:* The process_client function used threads at one time but that proved to have
-  # stability issues on Mac OSX.  Actually, Ruby in general has stability issues on Mac OSX.
-  # 
   # You use it by doing the following:
   #
   #   server = HttpServer.new("0.0.0.0", 3000)
@@ -177,64 +175,93 @@ module Mongrel
   #
   # The last line can be just server.run if you don't want to join the thread used.
   # If you don't though Ruby will mysteriously just exit on you.
+  #
+  # Ruby's thread implementation is "interesting" to say the least.  Experiments with
+  # *many* different types of IO processing simply cannot make a dent in it.  Future
+  # releases of Mongrel will find other creative ways to make threads faster, but don't
+  # hold your breath until Ruby 1.9 is actually finally useful.
   class HttpServer
     attr_reader :acceptor
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Type: text/plain\r\nServer: Mongrel/0.1\r\n\r\n"
+    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Mongrel/0.2\r\n\r\nNOT FOUND"
+    ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY"
 
-    # For now we just read 2k chunks.  Not optimal at all.
-    CHUNK_SIZE=2048
+    # The basic max request size we'll try to read.
+    CHUNK_SIZE=(16 * 1024)
     
     # Creates a working server on host:port (strange things happen if port isn't a Number).
     # Use HttpServer::run to start the server.
-    def initialize(host, port)
+    #
+    # The num_processors variable has varying affects on how requests are processed.  You'd
+    # think adding more processing threads (processors) would make the server faster, but
+    # that's just not true.  There's actually an effect of how Ruby does threads such that
+    # the more processors waiting on the request queue, the slower the system is to handle
+    # each request.  But, the lower the number of processors the fewer concurrent responses
+    # the server can make.
+    #
+    # 20 is the default number of processors and is based on experimentation on a few
+    # systems.  If you find that you overload Mongrel too much
+    # try changing it higher.  If you find that responses are way too slow
+    # try lowering it (after you've tuned your stuff of course).
+    # Future versions of Mongrel will make this more dynamic (hopefully).
+    def initialize(host, port, num_processors=20)
       @socket = TCPServer.new(host, port)
       @classifier = URIClassifier.new
+      @req_queue = Queue.new
+      num_processors.times {|i| Thread.new do
+          while client = @req_queue.deq
+            process_client(client)
+          end
+        end
+      }
     end
     
-    # Used internally to process an accepted client.  It uses HttpParser and URIClassifier
-    # (in ext/http11/http11.c) to do the heavy work, and mostly just does a hack job
-    # at some simple IO.  Future releases will target this area mostly.
+
+    # Does the majority of the IO processing.  It has been written in Ruby using
+    # about 7 different IO processing strategies and no matter how it's done 
+    # the performance just does not improve.  Ruby's use of select to implement
+    # threads means that it will most likely never improve, so the only remaining
+    # approach is to write all or some of this function in C.  That will be the
+    # focus of future releases.
     def process_client(client)
       begin
         parser = HttpParser.new
         params = {}
-        data = ""
-        
+        data = client.readpartial(CHUNK_SIZE)
+
         while true
-          data << client.readpartial(CHUNK_SIZE)
-          
           nread = parser.execute(params, data)
-          
-          if parser.error?
-            STDERR.puts "parser error:"
-            STDERR.puts data
-            break
-          elsif parser.finished?
+          if parser.finished?
             script_name, path_info, handler = @classifier.resolve(params["PATH_INFO"])
-            
+
             if handler
               params['PATH_INFO'] = path_info
               params['SCRIPT_NAME'] = script_name
-              
+
               request = HttpRequest.new(params, data[nread ... data.length], client)
               response = HttpResponse.new(client)
-              
               handler.process(request, response)
             else
               client.write(ERROR_404_RESPONSE)
             end
-            
+
             break
           else
             # gotta stream and read again until we can get the parser to be character safe
             # TODO: make this more efficient since this means we're parsing a lot repeatedly
             parser.reset
+            data << client.readpartial(CHUNK_SIZE)
           end
         end
+      rescue EOFError
+        # ignored
+      rescue Errno::ECONNRESET
+        # ignored
+      rescue Errno::EPIPE
+        # ignored
       rescue => details
-        STDERR.puts "ERROR: #{details}"
+        STDERR.puts "ERROR(#{details.class}): #{details}"
         STDERR.puts details.backtrace.join("\n")
       ensure
         client.close
@@ -246,7 +273,7 @@ module Mongrel
     def run
       @acceptor = Thread.new do
         while true
-          process_client(@socket.accept)
+          @req_queue << @socket.accept
         end
       end
     end

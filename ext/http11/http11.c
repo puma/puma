@@ -152,6 +152,10 @@ VALUE HttpParser_finish(VALUE self)
  * returning an Integer to indicate how much of the data has been read.  No matter
  * what the return value, you should call HttpParser#finished? and HttpParser#error?
  * to figure out if it's done parsing or there was an error.
+ * 
+ * This function now throws an exception when there is a parsing error.  This makes 
+ * the logic for working with the parser much easier.  You can still test for an 
+ * error, but now you need to wrap the parser with an exception handling block.
  */
 VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data)
 {
@@ -160,8 +164,12 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data)
 
   http->data = (void *)req_hash;
   http_parser_execute(http, RSTRING(data)->ptr, RSTRING(data)->len);
-  
-  return INT2FIX(http_parser_nread(http));
+
+  if(http_parser_has_error(http)) {
+    rb_raise(rb_eStandardError, "HTTP Parsing failure");
+  } else {
+    return INT2FIX(http_parser_nread(http));
+  }
 }
 
 
