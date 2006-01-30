@@ -79,9 +79,9 @@ void HttpParser_free(void *data) {
 
 VALUE HttpParser_alloc(VALUE klass)
 {
-    TRACE();
     VALUE obj;
     http_parser *hp = calloc(1, sizeof(http_parser));
+    TRACE();
     hp->http_field = http_field;
     hp->request_method = request_method;
     hp->path_info = path_info;
@@ -233,9 +233,9 @@ void URIClassifier_free(void *data)
 
 VALUE URIClassifier_alloc(VALUE klass)
 {
-    TRACE();
     VALUE obj;
     struct tst *tst = tst_init(TRIE_INCREASE);
+    TRACE();
     assert(tst && "failed to initialize trie structure");
 
     obj = Data_Wrap_Struct(klass, NULL, URIClassifier_free, tst);
