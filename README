@@ -1,4 +1,4 @@
-== Mongrel:  Simple Fast Mostly Ruby Web Server
+= Mongrel:  Simple Fast Mostly Ruby Web Server
 
 Mongrel is a small library that provides a very fast HTTP 1.1 server for Ruby
 web applications.  It is not particular to any framework, and is intended to
@@ -7,45 +7,110 @@ web server.
 
 What makes Mongrel so fast is the careful use of a C extension to provide fast
 HTTP 1.1 protocol parsing and fast URI lookup.  This combination makes the server
-very fast without too many portability issues.
+scream without too many portability issues.
 
 == Status
 
-Mongrel is still very ALPHA work, but you can see how it's used with the
-Camping framework (version 1.2) and take a look at how you might use it.
-Right now it handles HTTP requests well and process the responses fast, but
-you have to "roll your own" response code.
+The 0.2.0 release of Mongrel features an HTTP core server that is the fastest possible
+thing I could get without using something other than Ruby.  It features a few bug fixes,
+but mostly just a change to the Mongrel::HttpResponse class to make it more feature 
+complete.  The remaining development will be spent getting Mongrel to work with 
+other frameworks, adding additional needed features, and improving the concurrency
+and speed.
 
-The next release of Mongrel will have improved IO handling, much more stability,
-and should have a better Mongrel::HttpResponse object with more useful features.
+The current release has samples from "why the lucky stiff" for his Camping
+framework in the examples directory.  Camping is a small micro framework 
+(http://rubyforge.org/projects/camping) which should work with Mongrel if
+you use the subversion source for Camping.
+
+This is also the first release onto the new Mongrel RubyForge project
+page found at http://rubyforge.org/projects/mongrel/ thanks to Tom Copland.
+I'll be looking to automate management of this, but feel free to use
+rubyforge to post feature requests, bugs, and join the mailing list.
+
 
 == Install
 
-You can install it via source from http://www.zedshaw.com/downloads/mongrel/
-or you can gram a RubyGem at http://www.zedshaw.com/downloads/mongrel/
-and install that manually.  I'm working on setting up a RubyForge project.
-
-It doesn't explicitly require Camping, but if you want to run the examples/tepee.rb 
-example then you'll need to install Camping 1.2 at least (and redcloth I think).  
+It doesn't explicitly require Camping, but if you want to run the examples/camping/
+examples then you'll need to install Camping 1.2 at least (and redcloth I think).  
 These are all available from RubyGems.
 
 The library consists of a C extension so you'll need a C compiler or at least a friend
 who can build it for you.
 
+Finally, the source includes a setup.rb for those who hate RubyGems.
 
-Finally, the source include a setup.rb for those who hate RubyGems.
 
 == Usage
 
-Best place to look for usage examples right now is the examples/ directory.
+The examples/simpletest.rb file has the following code as the simplest
+example:
+
+ require 'mongrel'
+
+ class SimpleHandler < Mongrel::HttpHandler
+    def process(request, response)
+      response.start(200) do |head,out|
+        head["Content-Type"] = "text/plain"
+        out.write("hello!\n")
+      end
+    end
+ end
+
+ h = Mongrel::HttpServer.new("0.0.0.0", "3000")
+ h.register("/test", SimpleHandler.new)
+ h.run.join
+
+If you run this and access port 3000 with a browser it will say
+"hello!".  If you access it with any url other than "/test" it will
+give a simple 404.  Check out the Mongrel::Error404Handler for a 
+basic way to give a more complex 404 message.
 
 == Speed
 
-This 0.1.2 release will not be as fast as the 0.1.1 release since I've temporarily
-removed threads as a test.  There were many stability issues related to handling
-each request in a thread, especially on OSX.  I've taken them out for now to 
-make things stable.  Even with this removed Mongrel is still pretty fast compared
-to WEBrick.
+The 0.2.0 release probably consists of the most effort I've ever put into 
+tuning a Ruby library for speed.  It consists of nearly everything I could think
+of to make Mongrel the fastest Ruby HTTP library possible.  I've tried about 
+seven different architectures and IO processing methods and none of them 
+make it any faster.  In short:  Mongrel is amazingly fast considering Ruby's speed
+limitations.
+
+This release also brings in controllable threads that you can scale to meet your
+needs to do your processing.  Simple pass in the HttpServer.new third optional
+parameter:
+
+ h = Mongrel::HttpServer.new("0.0.0.0", "3000", 40)
+
+Which will make 40 thread processors.  Right now the optimal setting is up in
+the air, but 20 seemed to be about the sweet spot on my systems.  The 
+limited processors also means that you can use ActiveRecord as-is and it will
+create a matching database connection for each processor thread.  More on 
+this in future releases.
+
+With this release I'm hoping that I've created a nice solid fast as hell core
+upon which I can build the remaining features I want in Mongrel.
+
+== The Future
+
+With the core of Mongrel completed I'm now turning to the next set of features
+to make Mongrel useful for hosting web applications in a heavily utilized
+production environment.  Right now I'm looking at:
+
+* Fast static file handling with directory listings.
+* More testing on more platforms.
+* An idea I've had for an insane caching handler which could speed up quite a
+few deployments.
+* General little things most web servers need.
+* A nice management system or interface for controlling mongrel servers.
+
+Overall though the goal of Mongrel is to be just enough HTTP to serve a Ruby
+web application that sits behind a more complete web server.  Everything 
+in the next will focus on actually hosting the major web frameworks for Ruby:
+
+* Camping -- because it's already done (thanks Why).
+* Ruby on Rails -- that's where my bread is buttered right now.
+* Nitro -- George is a nice guy, and Nitro is thread safe.  Might be fun.
+* ????? -- Others people might be interested in.
 
 == Contact
 
