@@ -9,6 +9,7 @@
 static VALUE mMongrel;
 static VALUE cHttpParser;
 static VALUE cURIClassifier;
+static int id_handler_map;
 
 
 void http_field(void *data, const char *field, size_t flen, const char *value, size_t vlen)
@@ -80,7 +81,7 @@ void HttpParser_free(void *data) {
 VALUE HttpParser_alloc(VALUE klass)
 {
     VALUE obj;
-    http_parser *hp = calloc(1, sizeof(http_parser));
+    http_parser *hp = ALLOC_N(http_parser, 1);
     TRACE();
     hp->http_field = http_field;
     hp->request_method = request_method;
@@ -281,7 +282,7 @@ VALUE URIClassifier_init(VALUE self)
 
   // we create an internal hash to protect stuff from the GC
   hash = rb_hash_new();
-  rb_iv_set(self, "handler_map", hash);
+  rb_ivar_set(self, id_handler_map, hash);
 }
 
 
@@ -317,7 +318,7 @@ VALUE URIClassifier_register(VALUE self, VALUE uri, VALUE handler)
     rb_raise(rb_eStandardError, "URI was empty");
   }
   
-  rb_hash_aset(rb_iv_get(self, "handler_map"), uri, handler);
+  rb_hash_aset(rb_ivar_get(self, id_handler_map), uri, handler);
 
   return Qnil;
 }
@@ -338,7 +339,7 @@ VALUE URIClassifier_unregister(VALUE self, VALUE uri)
   handler = tst_delete((unsigned char *)StringValueCStr(uri), tst);
 
   if(handler) {
-    rb_hash_delete(rb_iv_get(self, "handler_map"), uri);
+    rb_hash_delete(rb_ivar_get(self, id_handler_map), uri);
 
     return (VALUE)handler;
   } else {
@@ -408,13 +409,11 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
 }
 
 
-
 void Init_http11()
 {
-    
-  TRACE();
-  
+
   mMongrel = rb_define_module("Mongrel");
+  id_handler_map = rb_intern("@handler_map");
   
   cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);

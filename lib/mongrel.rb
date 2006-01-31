@@ -189,6 +189,9 @@ module Mongrel
 
     # The basic max request size we'll try to read.
     CHUNK_SIZE=(16 * 1024)
+
+    PATH_INFO="PATH_INFO"
+    SCRIPT_NAME="SCRIPT_NAME"
     
     # Creates a working server on host:port (strange things happen if port isn't a Number).
     # Use HttpServer::run to start the server.
@@ -233,11 +236,11 @@ module Mongrel
         while true
           nread = parser.execute(params, data)
           if parser.finished?
-            script_name, path_info, handler = @classifier.resolve(params["PATH_INFO"])
+            script_name, path_info, handler = @classifier.resolve(params[PATH_INFO])
 
             if handler
-              params['PATH_INFO'] = path_info
-              params['SCRIPT_NAME'] = script_name
+              params[PATH_INFO] = path_info
+              params[SCRIPT_NAME] = script_name
 
               request = HttpRequest.new(params, data[nread ... data.length], client)
               response = HttpResponse.new(client)
