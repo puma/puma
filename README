@@ -11,7 +11,7 @@ scream without too many portability issues.
 
 == Status
 
-The 0.2.0 release of Mongrel features an HTTP core server that is the fastest possible
+The 0.2.1 release of Mongrel features an HTTP core server that is the fastest possible
 thing I could get without using something other than Ruby.  It features a few bug fixes,
 but mostly just a change to the Mongrel::HttpResponse class to make it more feature 
 complete.  The remaining development will be spent getting Mongrel to work with 
@@ -68,7 +68,7 @@ basic way to give a more complex 404 message.
 
 == Speed
 
-The 0.2.0 release probably consists of the most effort I've ever put into 
+The 0.2.1 release probably consists of the most effort I've ever put into 
 tuning a Ruby library for speed.  It consists of nearly everything I could think
 of to make Mongrel the fastest Ruby HTTP library possible.  I've tried about 
 seven different architectures and IO processing methods and none of them 

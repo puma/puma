@@ -25,10 +25,12 @@ class URIClassifierTest < Test::Unit::TestCase
     u = URIClassifier.new
     u.register(prefix,1)
 
+    sn,pi,val = u.resolve(prefix)
     sn,pi,val = u.resolve(test)
     assert val != nil, "didn't resolve"
     assert_equal prefix,sn, "wrong script name"
     assert_equal test[sn.length .. -1],pi, "wrong path info"
+    
   end
 
   def test_not_finding
@@ -99,6 +101,55 @@ class URIClassifierTest < Test::Unit::TestCase
     puts "\nRESOLVE(#{count}): #{res}"
     puts "REG_UNREG(#{count}): #{reg_unreg}"
   end
-      
+
+
+  def test_uri_branching
+    u = URIClassifier.new
+    u.register("/test", 1)
+    u.register("/test/this",2)
+  
+    sn,pi,h = u.resolve("/test")
+    sn,pi,h = u.resolve("/test/that")
+    assert_equal "/test", sn, "failed to properly find script off branch portion of uri"
+    assert_equal "/that", pi, "didn't get the right patch info"
+    assert_equal 1, h, "wrong result for branching uri"
+  end
+
+
+  def test_all_prefixing
+    tests = ["/test","/test/that","/test/this"]
+    uri = "/test/this/that"
+    u = URIClassifier.new
+    
+    cur = ""
+    uri.each_byte do |c|
+      cur << c.chr
+      u.register(cur, c)
+    end
+
+    # try to resolve everything with no asserts as a fuzzing
+    tests.each do |prefix|
+      cur = ""
+      prefix.each_byte do |c|
+        cur << c.chr
+        sn, pi, h = u.resolve(cur)
+        assert sn != nil, "didn't get a script name"
+        assert pi != nil, "didn't get path info"
+        assert h != nil, "didn't find the handler"
+      end
+    end
+
+    # assert that we find stuff
+    tests.each do |t|
+      sn, pi, h = u.resolve(t)
+      assert h != nil, "didn't find handler"
+    end
+
+    # assert we don't find stuff
+    sn, pi, h = u.resolve("chicken")
+    assert_nil h, "shoulnd't find anything"
+    assert_nil sn, "shoulnd't find anything"
+    assert_nil pi, "shoulnd't find anything"
+  end
 end
 

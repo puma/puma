@@ -11,15 +11,21 @@ static VALUE cHttpParser;
 static VALUE cURIClassifier;
 static int id_handler_map;
 
+static VALUE global_http_prefix;
+static VALUE global_request_method;
+static VALUE global_path_info;
+static VALUE global_query_string;
+static VALUE global_http_version;
+
 
 void http_field(void *data, const char *field, size_t flen, const char *value, size_t vlen)
 {
   char *ch, *end;
   VALUE req = (VALUE)data;
-  VALUE f = rb_str_new2("HTTP_");
   VALUE v = rb_str_new(value, vlen);
-  
-  rb_str_buf_cat(f, field, flen); 
+  VALUE f = rb_str_dup(global_http_prefix);
+
+  f = rb_str_buf_cat(f, field, flen); 
   
   for(ch = RSTRING(f)->ptr, end = ch + RSTRING(f)->len; ch < end; ch++) {
     if(*ch == '-') {
@@ -36,16 +42,14 @@ void request_method(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
   VALUE val = rb_str_new(at, length);
-  VALUE id = rb_str_new2("REQUEST_METHOD");
-  rb_hash_aset(req, id, val);
+  rb_hash_aset(req, global_request_method, val);
 }
 
 void path_info(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
   VALUE val = rb_str_new(at, length);
-  VALUE id = rb_str_new2("PATH_INFO");
-  rb_hash_aset(req, id, val);
+  rb_hash_aset(req, global_path_info, val);
 }
 
 
@@ -53,16 +57,14 @@ void query_string(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
   VALUE val = rb_str_new(at, length);
-  VALUE id = rb_str_new2("QUERY_STRING");
-  rb_hash_aset(req, id, val);
+  rb_hash_aset(req, global_query_string, val);
 }
 
 void http_version(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
   VALUE val = rb_str_new(at, length);
-  VALUE id = rb_str_new2("HTTP_VERSION");
-  rb_hash_aset(req, id, val);
+  rb_hash_aset(req, global_http_version, val);
 }
 
 
@@ -258,23 +260,6 @@ VALUE URIClassifier_alloc(VALUE klass)
  * will do two searches most of the time in order to find the right handler for the
  * registered prefix portion.
  *
- * Here's how it all works.  Let's say you register "/blog" with a BlogHandler.  Great.
- * Now, someone goes to "/blog/zedsucks/ass".  You want SCRIPT_NAME to be "/blog" and
- * PATH_INFO to be "/zedsucks/ass".  URIClassifier first does a TST search and comes
- * up with a failure, but knows that the failure ended at the "/blog" part.  So, that's
- * the SCRIPT_NAME.  It then tries a second search for just "/blog".  If that comes back
- * good then it sets the rest ("/zedsucks/ass") to the PATH_INFO and returns the BlogHandler.
- *
- * The optimal approach would be to not do the search twice, but the TST lib doesn't
- * really support returning prefixes.  Might not be hard to add later.
- *
- * The key though is that it will try to match the *longest* match it can.  If you 
- * also register "/blog/zed" then the above URI will give SCRIPT_NAME="/blog/zed", 
- * PATH_INFO="sucks/ass".  Probably not what you want, so your handler will need to
- * do the 404 thing.
- *
- * Take a look at the postamble of example/tepee.rb to see how this is handled for
- * Camping. 
  */
 VALUE URIClassifier_init(VALUE self)
 {
@@ -283,6 +268,8 @@ VALUE URIClassifier_init(VALUE self)
   // we create an internal hash to protect stuff from the GC
   hash = rb_hash_new();
   rb_ivar_set(self, id_handler_map, hash);
+
+  return self;
 }
 
 
@@ -356,7 +343,19 @@ VALUE URIClassifier_unregister(VALUE self, VALUE uri)
  *
  * Attempts to resolve either the whole URI or at the longest prefix, returning
  * the prefix (as script_info), path (as path_info), and registered handler
- * (usually an HttpHandler).
+ * (usually an HttpHandler).  If it doesn't find a handler registered at the longest
+ * match then it returns nil,nil,nil.
+ *
+ * Because the resolver uses a trie you are able to register a handler at *any* character
+ * in the URI and it will be handled as long as it's the longest prefix.  So, if you 
+ * registered handler #1 at "/something/lik", and #2 at "/something/like/that", then a
+ * a search for "/something/like" would give you #1.  A search for "/something/like/that/too"
+ * would give you #2.
+ * 
+ * This is very powerful since it means you can also attach handlers to parts of the ; 
+ * (semi-colon) separated path params, any part of the path, use off chars, anything really.
+ * It also means that it's very efficient to do this only taking as long as the URI has
+ * characters.
  *
  * It expects strings.  Don't try other string-line stuff yet.
  */
@@ -366,8 +365,6 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
   int pref_len = 0;
   struct tst *tst = NULL;
   VALUE result;
-  VALUE script_name;
-  VALUE path_info;
   unsigned char *uri_str = NULL;
   unsigned char *script_name_str = NULL;
 
@@ -379,32 +376,17 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
   // setup for multiple return values
   result = rb_ary_new();
 
-
-  if(handler == NULL) {
-    script_name = rb_str_substr (uri, 0, pref_len);
-    script_name_str = (unsigned char *)StringValueCStr(script_name);
-
-    handler = tst_search(script_name_str, tst, NULL);
-
-    if(handler == NULL) {
-      // didn't find the script name at all
-      rb_ary_push(result, Qnil);
-      rb_ary_push(result, Qnil);
-      rb_ary_push(result, Qnil);
-      return result;
-    } else {
-      // found a handler, setup the path info and we're good
-      path_info = rb_str_substr(uri, pref_len, RSTRING(uri)->len);
-    }
+  if(handler) {
+    rb_ary_push(result, rb_str_substr (uri, 0, pref_len));
+    rb_ary_push(result, rb_str_substr(uri, pref_len, RSTRING(uri)->len));
+    rb_ary_push(result, (VALUE)handler);
   } else {
-    // whole thing was found, so uri is the script name, path info empty
-    script_name = uri;
-    path_info = rb_str_new2("");
+    // not found so push back nothing
+    rb_ary_push(result, Qnil);
+    rb_ary_push(result, Qnil);
+    rb_ary_push(result, Qnil);
   }
 
-  rb_ary_push(result, script_name);
-  rb_ary_push(result, path_info);
-  rb_ary_push(result, (VALUE)handler);
   return result;
 }
 
@@ -414,6 +396,17 @@ void Init_http11()
 
   mMongrel = rb_define_module("Mongrel");
   id_handler_map = rb_intern("@handler_map");
+
+  global_http_prefix = rb_str_new2("HTTP_");
+  rb_global_variable(&global_http_prefix);
+  global_request_method = rb_str_new2("REQUEST_METHOD");
+  rb_global_variable(&global_request_method);
+  global_path_info = rb_str_new2("PATH_INFO");
+  rb_global_variable(&global_path_info);
+  global_query_string = rb_str_new2("QUERY_STRING");
+  rb_global_variable(&global_query_string);
+  global_http_version = rb_str_new2("HTTP_VERSION");
+  rb_global_variable(&global_http_version);
   
   cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);

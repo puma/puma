@@ -27,4 +27,4 @@ setup_extension("http11", "http11")
 
 summary = "An experimental fast simple web server for Ruby."
 test_file = "test/test_ws.rb"
-setup_gem("mongrel", "0.2.0",  "Zed A. Shaw", summary, [], test_file)
+setup_gem("mongrel", "0.2.1",  "Zed A. Shaw", summary, [], test_file)
