@@ -13,7 +13,7 @@ static int id_handler_map;
 
 static VALUE global_http_prefix;
 static VALUE global_request_method;
-static VALUE global_path_info;
+static VALUE global_request_uri;
 static VALUE global_query_string;
 static VALUE global_http_version;
 
@@ -45,11 +45,11 @@ void request_method(void *data, const char *at, size_t length)
   rb_hash_aset(req, global_request_method, val);
 }
 
-void path_info(void *data, const char *at, size_t length)
+void request_uri(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
   VALUE val = rb_str_new(at, length);
-  rb_hash_aset(req, global_path_info, val);
+  rb_hash_aset(req, global_request_uri, val);
 }
 
 
@@ -87,7 +87,7 @@ VALUE HttpParser_alloc(VALUE klass)
     TRACE();
     hp->http_field = http_field;
     hp->request_method = request_method;
-    hp->path_info = path_info;
+    hp->request_uri = request_uri;
     hp->query_string = query_string;
     hp->http_version = http_version;
     
@@ -279,8 +279,9 @@ VALUE URIClassifier_init(VALUE self)
  *
  * Registers the SampleHandler (one for all requests) with the "/someuri".
  * When URIClassifier::resolve is called with "/someuri" it'll return
- * SampleHandler immediately.  When "/someuri/pathhere" is called it'll
- * find SomeHandler after a second search, and setup PATH_INFO="/pathhere".
+ * SampleHandler immediately.  When called with "/someuri/iwant" it'll also
+ * return SomeHandler immediatly, with no additional searches, but it will
+ * return path info with "/iwant".
  *
  * You actually can reuse this class to register nearly anything and 
  * quickly resolve it.  This could be used for caching, fast mapping, etc.
@@ -357,7 +358,7 @@ VALUE URIClassifier_unregister(VALUE self, VALUE uri)
  * It also means that it's very efficient to do this only taking as long as the URI has
  * characters.
  *
- * It expects strings.  Don't try other string-line stuff yet.
+ * It expects strings with no embedded '\0' characters.  Don't try other string-line stuff yet.
  */
 VALUE URIClassifier_resolve(VALUE self, VALUE uri)
 {
@@ -401,8 +402,8 @@ void Init_http11()
   rb_global_variable(&global_http_prefix);
   global_request_method = rb_str_new2("REQUEST_METHOD");
   rb_global_variable(&global_request_method);
-  global_path_info = rb_str_new2("PATH_INFO");
-  rb_global_variable(&global_path_info);
+  global_request_uri = rb_str_new2("REQUEST_URI");
+  rb_global_variable(&global_request_uri);
   global_query_string = rb_str_new2("QUERY_STRING");
   rb_global_variable(&global_query_string);
   global_http_version = rb_str_new2("HTTP_VERSION");

@@ -12,5 +12,6 @@ end
 
 h = Mongrel::HttpServer.new("0.0.0.0", "3000")
 h.register("/test", SimpleHandler.new)
+h.register("/files", Mongrel::DirHandler.new("."))
 h.run.join
 

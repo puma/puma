@@ -30,9 +30,9 @@
 	       if(parser->request_method != NULL)
 	       	       parser->request_method(parser->data, parser->mark, p - parser->mark);
 	}
-	action path_info { 
-	       if(parser->path_info != NULL)
-	       	       parser->path_info(parser->data, parser->mark, p - parser->mark);
+	action request_uri { 
+	       if(parser->request_uri != NULL)
+	       	       parser->request_uri(parser->data, parser->mark, p - parser->mark);
 	}
 	action query_string { 
 	       if(parser->query_string != NULL)
@@ -70,23 +70,21 @@
 
         # URI schemes and absolute paths
         scheme = ( alpha | digit | "+" | "-" | "." )* ;
-        absolute_uri = (scheme ":" (uchar | reserved )*) >mark %path_info;
+        absolute_uri = (scheme ":" (uchar | reserved )*) >mark %request_uri;
 
         path = (pchar+ ( "/" pchar* )*) ;
         query = ( uchar | reserved )* >mark %query_string ;
         param = ( pchar | "/" )* ;
         params = (param ( ";" param )*) ;
-        rel_path = (path? (";" params)?) %path_info  ("?" query)? ;
+        rel_path = (path? (";" params)?) %request_uri  ("?" query)? ;
         absolute_path = ("/" rel_path) >mark ;
         
-        Request_URI = ("*" >mark %path_info | absolute_uri | absolute_path) ;
+        Request_URI = ("*" >mark %request_uri | absolute_uri | absolute_path) ;
         Method = ("OPTIONS"| "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "TRACE") >mark %request_method;
         
         http_number = (digit+ "." digit+) ;
         HTTP_Version = ("HTTP/" http_number) >mark %http_version ;
         Request_Line = (Method " " Request_URI " " HTTP_Version CRLF) ;
-
-       
 	
 	field_name = (token - ":")+ >start_field %write_field;
 
@@ -96,7 +94,7 @@
 	
         Request = Request_Line (message_header)* $0 ( CRLF $1 @done );
 
-		main := Request;
+	main := Request;
 }%%
 
 /** Data **/

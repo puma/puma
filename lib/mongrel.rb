@@ -8,6 +8,9 @@ require 'stringio'
 # functionality to service web application requests fast as possible.
 module Mongrel
 
+  # Every standard HTTP code mapped to the appropriate message.  These are
+  # used so frequently that they are placed directly in Mongrel for easy
+  # access rather than Mongrel::Const.
   HTTP_STATUS_CODES = {  
     100  => 'Continue', 
     101  => 'Switching Protocols', 
@@ -48,19 +51,89 @@ module Mongrel
     505  => 'HTTP Version not supported'
   }
 
+  # Frequently used constants when constructing requests or responses.  Many times
+  # the constant just refers to a string with the same contents.  Using these constants
+  # gave about a 3% to 10% performance improvement over using the strings directly.
+  # Symbols did not really improve things much compared to constants.
+  #
+  # While Mongrel does try to emulate the CGI/1.2 protocol, it does not use the REMOTE_IDENT,
+  # REMOTE_USER, or REMOTE_HOST parameters since those are either a security problem or 
+  # too taxing on performance.
+  module Const
+    # This is the part of the path after the SCRIPT_NAME.  URIClassifier will determine this.
+    PATH_INFO="PATH_INFO"
+    # This is the intial part that your handler is identified as by URIClassifier.
+    SCRIPT_NAME="SCRIPT_NAME"
+    # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
+    REQUEST_URI='REQUEST_URI'
+
+    # Content length (also available as HTTP_CONTENT_LENGTH).
+    CONTENT_LENGTH='CONTENT_LENGTH'
+
+    # Content length (also available as CONTENT_LENGTH).
+    HTTP_CONTENT_LENGTH='HTTP_CONTENT_LENGTH'
+
+    # Content type (also available as HTTP_CONTENT_TYPE).
+    CONTENT_TYPE='CONTENT_TYPE'
+
+    # Content type (also available as CONTENT_TYPE).
+    HTTP_CONTENT_TYPE='HTTP_CONTENT_TYPE'
+
+    # Gateway interface key in the HttpRequest parameters.
+    GATEWAY_INTERFACE='GATEWAY_INTERFACE'
+    # We claim to support CGI/1.2.
+    GATEWAY_INTERFACE_VALUE='CGI/1.2'
+
+    # Hosts remote IP address.  Mongrel does not do DNS resolves since that slows 
+    # processing down considerably.
+    REMOTE_ADDR='REMOTE_ADDR'
+
+    # This is not given since Mongrel does not do DNS resolves.  It is only here for
+    # completeness for the CGI standard.
+    REMOTE_HOST='REMOTE_HOST'
+
+    # The name/host of our server as given by the HttpServer.new(host,port) call.
+    SERVER_NAME='SERVER_NAME'
+
+    # The port of our server as given by the HttpServer.new(host,port) call.
+    SERVER_PORT='SERVER_PORT'
+
+    # Official server protocol key in the HttpRequest parameters.
+    SERVER_PROTOCOL='SERVER_PROTOCOL'
+    # Mongrel claims to support HTTP/1.1.
+    SERVER_PROTOCOL_VALUE='HTTP/1.1'
+
+    # The actual server software being used (it's Mongrel man).
+    SERVER_SOFTWARE='SERVER_SOFTWARE'
+    
+    # Current Mongrel version (used for SERVER_SOFTWARE and other response headers).
+    MONGREL_VERSION='Mongrel 0.2.2'
+
+    # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
+    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND"
+
+    # A common header for indicating the server is too busy.  Not used yet.
+    ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY"
+
+    # The basic max request size we'll try to read.
+    CHUNK_SIZE=(16 * 1024)
+
+  end
+
+
   # When a handler is found for a registered URI then this class is constructed
   # and passed to your HttpHandler::process method.  You should assume that 
   # *one* handler processes all requests.  Included in the HttpReqeust is a
   # HttpRequest.params Hash that matches common CGI params, and a HttpRequest.body
   # which is a string containing the request body (raw for now).
   #
-  # Mongrel really only support small-ish request bodies right now since really
+  # Mongrel really only supports small-ish request bodies right now since really
   # huge ones have to be completely read off the wire and put into a string.
   # Later there will be several options for efficiently handling large file
   # uploads.
   class HttpRequest
     attr_reader :body, :params
-    
+
     # You don't really call this.  It's made for you.
     # Main thing it does is hook up the params, and store any remaining
     # body data into the HttpRequest.body attribute.
@@ -68,13 +141,14 @@ module Mongrel
       @body = initial_body || ""
       @params = params
       @socket = socket
-
+      
       # fix up the CGI requirements
-      params['CONTENT_LENGTH'] = params['HTTP_CONTENT_LENGTH'] || 0
+      params[Const::CONTENT_LENGTH] = params[Const::HTTP_CONTENT_LENGTH] || 0
+      params[Const::CONTENT_TYPE] ||= params[Const::HTTP_CONTENT_TYPE]
 
       # now, if the initial_body isn't long enough for the content length we have to fill it
       # TODO: adapt for big ass stuff by writing to a temp file
-      clen = params['HTTP_CONTENT_LENGTH'].to_i
+      clen = params[Const::HTTP_CONTENT_LENGTH].to_i
       if @body.length < clen
         @body << @socket.read(clen - @body.length)
       end
@@ -82,6 +156,13 @@ module Mongrel
   end
 
 
+  # This class implements a simple way of constructing the HTTP headers dynamically
+  # via a Hash syntax.  Think of it as a write-only Hash.  Refer to HttpResponse for
+  # information on how this is used.
+  #
+  # One consequence of this write-only nature is that you can write multiple headers
+  # by just doing them twice (which is sometimes needed in HTTP), but that the normal
+  # semantics for Hash (where doing an insert replaces) is not there.
   class HeaderOut
     attr_reader :out
 
@@ -89,6 +170,7 @@ module Mongrel
       @out = out
     end
 
+    # Simply writes "#{key}: #{value}" to an output buffer.
     def[]=(key,value)
       @out.write(key)
       @out.write(": ")
@@ -97,7 +179,35 @@ module Mongrel
     end
   end
 
-
+  # Writes and controls your response to the client using the HTTP/1.1 specification.
+  # You use it by simply doing:
+  #
+  #  response.start(200) do |head,out|
+  #    head['Content-Type'] = 'text/plain'
+  #    out.write("hello\n")
+  #  end
+  #
+  # The parameter to start is the response code--which Mongrel will translate for you
+  # based on HTTP_STATUS_CODES.  The head parameter is how you write custom headers.
+  # The out parameter is where you write your body.  The default status code for 
+  # HttpResponse.start is 200 so the above example is redundant.
+  # 
+  # As you can see, it's just like using a Hash and as you do this it writes the proper
+  # header to the output on the fly.  You can even intermix specifying headers and 
+  # writing content.  The HttpResponse class with write the things in the proper order
+  # once the HttpResponse.block is ended.
+  #
+  # You may also work the HttpResponse object directly using the various attributes available
+  # for the raw socket, body, header, and status codes.  If you do this you're on your own.
+  # A design decision was made to force the client to not pipeline requests.  HTTP/1.1 
+  # pipelining really kills the performance due to how it has to be handled and how 
+  # unclear the standard is.  To fix this the HttpResponse gives a "Connection: close"
+  # header which forces the client to close right away.  The bonus for this is that it
+  # gives a pretty nice speed boost to most clients since they can close their connection
+  # immediately.
+  #
+  # One additional caveat is that you don't have to specify the Content-length header
+  # as the HttpResponse will write this for you based on the out length.
   class HttpResponse
     attr_reader :socket
     attr_reader :body
@@ -112,12 +222,25 @@ module Mongrel
       @header = HeaderOut.new(StringIO.new)
     end
 
+    # Receives a block passing it the header and body for you to work with.
+    # When the block is finished it writes everything you've done to 
+    # the socket in the proper order.  This lets you intermix header and
+    # body content as needed.
     def start(status=200)
       @status = status
       yield @header, @body
       finished
     end
-    
+
+    # Primarily used in exception handling to reset the response output in order to write
+    # an alternative response.
+    def reset
+      @header.out.rewind
+      @body.rewind
+    end
+
+    # This takes whatever has been done to header and body and then writes it in the
+    # proper format to make an HTTP/1.1 response.
     def finished
       @header.out.rewind
       @body.rewind
@@ -136,29 +259,8 @@ module Mongrel
   # a response.  Look at the HttpRequest and HttpResponse objects for how
   # to use them.
   class HttpHandler
-    attr_accessor :script_name
-
     def process(request, response)
     end
-  end
-
-
-  # The server normally returns a 404 response if a URI is requested, but it
-  # also returns a lame empty message.  This lets you do a 404 response
-  # with a custom message for special URIs.
-  class Error404Handler < HttpHandler
-
-    # Sets the message to return.  This is constructed once for the handler
-    # so it's pretty efficient.
-    def initialize(msg)
-      @response = HttpServer::ERROR_404_RESPONSE + msg
-    end
-    
-    # Just kicks back the standard 404 response with your special message.
-    def process(request, response)
-      response.socket.write(@response)
-    end
-
   end
 
 
@@ -183,16 +285,6 @@ module Mongrel
   class HttpServer
     attr_reader :acceptor
 
-    # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Mongrel/0.2\r\n\r\nNOT FOUND"
-    ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY"
-
-    # The basic max request size we'll try to read.
-    CHUNK_SIZE=(16 * 1024)
-
-    PATH_INFO="PATH_INFO"
-    SCRIPT_NAME="SCRIPT_NAME"
-    
     # Creates a working server on host:port (strange things happen if port isn't a Number).
     # Use HttpServer::run to start the server.
     #
@@ -210,8 +302,13 @@ module Mongrel
     # Future versions of Mongrel will make this more dynamic (hopefully).
     def initialize(host, port, num_processors=20)
       @socket = TCPServer.new(host, port)
+
       @classifier = URIClassifier.new
       @req_queue = Queue.new
+      @host = host
+      @port = port
+      @num_procesors = num_processors
+
       num_processors.times {|i| Thread.new do
           while client = @req_queue.deq
             process_client(client)
@@ -223,30 +320,35 @@ module Mongrel
 
     # Does the majority of the IO processing.  It has been written in Ruby using
     # about 7 different IO processing strategies and no matter how it's done 
-    # the performance just does not improve.  Ruby's use of select to implement
-    # threads means that it will most likely never improve, so the only remaining
-    # approach is to write all or some of this function in C.  That will be the
-    # focus of future releases.
+    # the performance just does not improve.  It is currently carefully constructed
+    # to make sure that it gets the best possible performance, but anyone who
+    # thinks they can make it faster is more than welcome to take a crack at it.
     def process_client(client)
       begin
         parser = HttpParser.new
         params = {}
-        data = client.readpartial(CHUNK_SIZE)
+        data = client.readpartial(Const::CHUNK_SIZE)
 
         while true
           nread = parser.execute(params, data)
           if parser.finished?
-            script_name, path_info, handler = @classifier.resolve(params[PATH_INFO])
+            script_name, path_info, handler = @classifier.resolve(params[Const::REQUEST_URI])
 
             if handler
-              params[PATH_INFO] = path_info
-              params[SCRIPT_NAME] = script_name
+              params[Const::PATH_INFO] = path_info
+              params[Const::SCRIPT_NAME] = script_name
+              params[Const::GATEWAY_INTERFACE]=Const::GATEWAY_INTERFACE_VALUE
+              params[Const::REMOTE_ADDR]=client.peeraddr
+              params[Const::SERVER_NAME]=@host
+              params[Const::SERVER_PORT]=@port
+              params[Const::SERVER_PROTOCOL]=Const::SERVER_PROTOCOL_VALUE
+              params[Const::SERVER_SOFTWARE]=Const::MONGREL_VERSION
 
               request = HttpRequest.new(params, data[nread ... data.length], client)
               response = HttpResponse.new(client)
               handler.process(request, response)
             else
-              client.write(ERROR_404_RESPONSE)
+              client.write(Const::ERROR_404_RESPONSE)
             end
 
             break
@@ -254,7 +356,7 @@ module Mongrel
             # gotta stream and read again until we can get the parser to be character safe
             # TODO: make this more efficient since this means we're parsing a lot repeatedly
             parser.reset
-            data << client.readpartial(CHUNK_SIZE)
+            data << client.readpartial(Const::CHUNK_SIZE)
           end
         end
       rescue EOFError
@@ -274,6 +376,7 @@ module Mongrel
     # Runs the thing.  It returns the thread used so you can "join" it.  You can also
     # access the HttpServer::acceptor attribute to get the thread later.
     def run
+      BasicSocket.do_not_reverse_lookup=true
       @acceptor = Thread.new do
         while true
           @req_queue << @socket.accept
@@ -295,4 +398,95 @@ module Mongrel
       @classifier.unregister(uri)
     end
   end
+
+
+  # The server normally returns a 404 response if a URI is requested, but it
+  # also returns a lame empty message.  This lets you do a 404 response
+  # with a custom message for special URIs.
+  class Error404Handler < HttpHandler
+
+    # Sets the message to return.  This is constructed once for the handler
+    # so it's pretty efficient.
+    def initialize(msg)
+      @response = HttpServer::ERROR_404_RESPONSE + msg
+    end
+    
+    # Just kicks back the standard 404 response with your special message.
+    def process(request, response)
+      response.socket.write(@response)
+    end
+
+  end
+
+
+  # Serves the contents of a directory.  You give it the path to the root
+  # where the files are located, and it tries to find the files based on 
+  # the PATH_INFO inside the directory.  If the requested path is a
+  # directory then it returns a simple directory listing.
+  #
+  # It does a simple protection against going outside it's root path by
+  # converting all paths to an absolute expanded path, and then making sure
+  # that the final expanded path includes the root path.  If it doesn't
+  # than it simply gives a 404.
+  class DirHandler < HttpHandler
+
+    def initialize(path, listing_allowed=true)
+      @path = File.expand_path(path)
+      @listing_allowed=listing_allowed
+      puts "DIR: #@path"
+    end
+
+    def send_dir_listing(base, dir, response)
+      if @listing_allowed
+        response.start(200) do |head,out|
+          head['Content-Type'] = "text/html"
+          out << "<html><head><title>Directory Listing</title></head><body>"
+          Dir.entries(dir).each do |child|
+            out << "<a href=\"#{base}/#{child}\">#{child}</a><br/>"
+          end
+          out << "</body></html>"
+        end
+      else
+        response.start(403) do |head,out|
+          out.write("Directory listings not allowed")
+        end
+      end
+    end
+
+
+    def send_file(req, response)
+      response.start(200) do |head,out|
+        open(req, "r") do |f|
+          out.write(f.read)
+        end
+      end
+    end
+
+
+    def process(request, response)
+      req = File.expand_path("." + request.params['PATH_INFO'], @path)
+      puts "FIND: #{req}"
+      if req.index(@path) != 0 or !File.exist? req
+        # not found, return a 404
+        response.start(404) do |head,out|
+          out << "File not found"
+        end
+      else
+        begin
+          if File.directory? req
+            send_dir_listing(request.params["REQUEST_URI"],req, response)
+          else
+            send_file(req, response)
+          end
+        rescue => details
+          response.reset
+          response.start(403) do |head,out|
+            out << "Error accessing file"
+          end
+          STDERR.puts "ERROR: #{details}"
+        end
+      end
+    end
+  end
+
 end

@@ -3,6 +3,10 @@
 
 #include <sys/types.h>
 
+#if defined(_WIN32)
+#include <stddef.h>
+#endif
+
 typedef void (*element_cb)(void *data, const char *at, size_t length);
 typedef void (*field_cb)(void *data, const char *field, size_t flen, const char *value, size_t vlen);
 
@@ -19,7 +23,7 @@ typedef struct http_parser {
 
   field_cb http_field;
   element_cb request_method;
-  element_cb path_info;
+  element_cb request_uri;
   element_cb query_string;
   element_cb http_version;
 
