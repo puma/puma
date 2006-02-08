@@ -239,17 +239,29 @@ module Mongrel
       @body.rewind
     end
 
-    # This takes whatever has been done to header and body and then writes it in the
-    # proper format to make an HTTP/1.1 response.
-    def finished
+    def send_status
+      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n")
+    end
+
+    def send_header
       @header.out.rewind
+      @socket.write(@header.out.read)
+      @socket.write("\r\n")
+    end
+
+    def send_body
       @body.rewind
       
       # connection: close is also added to ensure that the client does not pipeline.
-      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n")
-      @socket.write(@header.out.read)
-      @socket.write("\r\n")
       @socket.write(@body.read)
+    end      
+
+    # This takes whatever has been done to header and body and then writes it in the
+    # proper format to make an HTTP/1.1 response.
+    def finished
+      send_status
+      send_header
+      send_body
     end
   end
   
@@ -408,7 +420,7 @@ module Mongrel
     # Sets the message to return.  This is constructed once for the handler
     # so it's pretty efficient.
     def initialize(msg)
-      @response = HttpServer::ERROR_404_RESPONSE + msg
+      @response = Const::ERROR_404_RESPONSE + msg
     end
     
     # Just kicks back the standard 404 response with your special message.
@@ -429,20 +441,39 @@ module Mongrel
   # that the final expanded path includes the root path.  If it doesn't
   # than it simply gives a 404.
   class DirHandler < HttpHandler
+    attr_reader :path
 
+    # You give it the path to the directory root and an (optional) 
     def initialize(path, listing_allowed=true)
       @path = File.expand_path(path)
       @listing_allowed=listing_allowed
-      puts "DIR: #@path"
+    end
+
+    # Checks if the given path can be served and returns the full path (or nil if not).
+    def can_serve(path_info)
+      req = File.expand_path(path_info, @path)
+      if req.index(@path) != 0 or !File.exist? req
+        return nil
+      else
+        return req
+      end
     end
 
     def send_dir_listing(base, dir, response)
+      base.chop! if base[-1] == "/"[-1]
+
       if @listing_allowed
         response.start(200) do |head,out|
           head['Content-Type'] = "text/html"
           out << "<html><head><title>Directory Listing</title></head><body>"
           Dir.entries(dir).each do |child|
-            out << "<a href=\"#{base}/#{child}\">#{child}</a><br/>"
+            next if child == "."
+
+            if child == ".."
+              out << "<a href=\"#{base}/#{child}\">Up to parent..</a><br/>"
+            else
+              out << "<a href=\"#{base}/#{child}\">#{child}</a><br/>"
+            end
           end
           out << "</body></html>"
         end
@@ -464,9 +495,9 @@ module Mongrel
 
 
     def process(request, response)
-      req = File.expand_path("." + request.params['PATH_INFO'], @path)
-      puts "FIND: #{req}"
-      if req.index(@path) != 0 or !File.exist? req
+      path_info = request.params['PATH_INFO']
+      req = can_serve path_info
+      if not req
         # not found, return a 404
         response.start(404) do |head,out|
           out << "File not found"
@@ -481,9 +512,8 @@ module Mongrel
         rescue => details
           response.reset
           response.start(403) do |head,out|
-            out << "Error accessing file"
+            out << "Error accessing file: #{details}"
           end
-          STDERR.puts "ERROR: #{details}"
         end
       end
     end

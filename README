@@ -11,7 +11,7 @@ scream without too many portability issues.
 
 == Status
 
-The 0.2.1 release of Mongrel features an HTTP core server that is the fastest possible
+The 0.2.2 release of Mongrel features an HTTP core server that is the fastest possible
 thing I could get without using something other than Ruby.  It features a few bug fixes,
 but mostly just a change to the Mongrel::HttpResponse class to make it more feature 
 complete.  The remaining development will be spent getting Mongrel to work with 
@@ -28,6 +28,9 @@ page found at http://rubyforge.org/projects/mongrel/ thanks to Tom Copland.
 I'll be looking to automate management of this, but feel free to use
 rubyforge to post feature requests, bugs, and join the mailing list.
 
+Finally, it now supports all CGI parameters that don't cause a performance hit,
+and it has a Mongrel::DirHandler which can serve files out of a directory and
+do (optional) directory listings.
 
 == Install
 
@@ -39,7 +42,6 @@ The library consists of a C extension so you'll need a C compiler or at least a 
 who can build it for you.
 
 Finally, the source includes a setup.rb for those who hate RubyGems.
-
 
 == Usage
 
@@ -59,12 +61,18 @@ example:
 
  h = Mongrel::HttpServer.new("0.0.0.0", "3000")
  h.register("/test", SimpleHandler.new)
+ h.register("/files", DirHandler.new("."))
  h.run.join
 
 If you run this and access port 3000 with a browser it will say
 "hello!".  If you access it with any url other than "/test" it will
 give a simple 404.  Check out the Mongrel::Error404Handler for a 
 basic way to give a more complex 404 message.
+
+This also shows the DirHandler with directory listings.  This is still
+rough but it should work for basic hosting.  *File extension to mime
+type mapping is missing though.*
+
 
 == Speed
 
