@@ -1,6 +1,14 @@
+require 'config/environment'
 require 'mongrel'
 require 'cgi'
-require 'config/environment'
+
+begin
+  require 'daemons/deamonize'
+  HAVE_DAEMONS=true
+rescue
+  HAVE_DAEMONS=false
+end
+
 
 class CGIFixed < ::CGI
   public :env_table
@@ -58,8 +66,8 @@ class RailsHandler < Mongrel::HttpHandler
   end
 end
 
-if ARGV.length != 3
-  STDERR.puts "usage:  mongrel_rails.rb <host> <port> <docroot>"
+if ARGV.length != 2
+  STDERR.puts "usage:  mongrel_rails <host> <port>"
   exit(1)
 end
 
@@ -68,6 +76,10 @@ h.register("/", Mongrel::DirHandler.new(ARGV[2]))
 h.register("/app", RailsHandler.new)
 h.run
 
-puts "Mongrel running on #{ARGV[0]}:#{ARGV[1]} with docroot #{ARGV[2]}"
-
 h.acceptor.join
+cwd = Dir.pwd
+
+Deamonize.daemonize(log_file=File.join(cwd,"log","mongrel.log")
+open("#{cwd}/log/mongrel-#{Process.pid}.pid","w") {|f| f.write(Process.pid) }
+
+g
