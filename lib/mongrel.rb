@@ -452,9 +452,9 @@ module Mongrel
     # Checks if the given path can be served and returns the full path (or nil if not).
     def can_serve(path_info)
       req = File.expand_path(path_info, @path)
-      if req.index(@path) != 0 or !File.exist? req
+      if req.index(@path) != 0 or !File.exist? req or (File.directory?(req) and not @listing_allowed)
         return nil
-      else
+       else
         return req
       end
     end
