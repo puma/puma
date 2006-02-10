@@ -3,7 +3,7 @@ require 'mongrel'
 require 'cgi'
 begin
   require 'daemons/daemonize'
-  HAVE_DAEMONS=false
+  HAVE_DAEMONS=true
 rescue
   HAVE_DAEMONS=false
 end
