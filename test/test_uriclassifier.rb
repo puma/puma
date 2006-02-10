@@ -115,7 +115,6 @@ class URIClassifierTest < Test::Unit::TestCase
     assert_equal 1, h, "wrong result for branching uri"
   end
 
-
   def test_all_prefixing
     tests = ["/test","/test/that","/test/this"]
     uri = "/test/this/that"
@@ -150,6 +149,28 @@ class URIClassifierTest < Test::Unit::TestCase
     assert_nil h, "shoulnd't find anything"
     assert_nil sn, "shoulnd't find anything"
     assert_nil pi, "shoulnd't find anything"
+  end
+
+
+  # Verifies that a root mounted ("/") handler resolves
+  # such that path info matches the original URI.
+  # This is needed to accomodate real usage of handlers.
+  def test_root_mounted
+    u = URIClassifier.new
+    root = "/"
+    path = "/this/is/a/test"
+
+    u.register(root, 1)
+
+    sn, pi, h = u.resolve(root)
+    assert_equal 1,h, "didn't find handler"
+    assert_equal root,pi, "didn't get right path info"
+    assert_equal root,sn, "didn't get right script name"
+
+    sn, pi, h = u.resolve(path)
+    assert_equal path,pi, "didn't get right path info"
+    assert_equal root,sn, "didn't get right script name"
+    assert_equal 1,h, "didn't find handler"
   end
 end
 

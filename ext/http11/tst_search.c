@@ -32,7 +32,6 @@ void *tst_search(unsigned char *key, struct tst *tst, int *prefix_len)
 	    if(prefix_len) *prefix_len = key_index;
 	    return current_node->middle;
 	  } else {
-
 	    current_node = current_node->middle;
 	    if(current_node && current_node->value == 0) {
 	      if(prefix_len) *prefix_len = key_index+1;
@@ -47,7 +46,7 @@ void *tst_search(unsigned char *key, struct tst *tst, int *prefix_len)
 	       ((current_node->value != 0) && (key[key_index] <
 					       current_node->value)) )
 	{
-	  if(current_node->left && current_node->value == 0) {
+	  if(current_node->value == 0) {
 	    if(prefix_len) *prefix_len = key_index;
 	    longest_match = current_node->middle;
 	  }
@@ -56,7 +55,7 @@ void *tst_search(unsigned char *key, struct tst *tst, int *prefix_len)
 	}
       else
 	{
-	  if(current_node->right && current_node->value == 0) {
+	  if(current_node->value == 0) {
 	    if(prefix_len) *prefix_len = key_index;
 	    longest_match = current_node->middle;
 	  }

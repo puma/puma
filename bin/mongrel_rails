@@ -1,4 +1,4 @@
-require 'config/environment'
+require 'rubygems'
 require 'mongrel'
 require 'cgi'
 begin
@@ -78,12 +78,13 @@ end
 
 cwd = Dir.pwd
 
-#Daemonize.daemonize(log_file=File.join(cwd,"log","mongrel.log"))
-#Dir.chdir(cwd)
-
-open(File.join(cwd,"log/mongrel-#{ARGV[1]}.pid"),"w") {|f| f.write(Process.pid) }
-h = Mongrel::HttpServer.new(ARGV[0], ARGV[1])
-h.register("/", RailsHandler.new(File.join(cwd,"public")))
-h.run
-
-h.acceptor.join
+Daemonize.daemonize(log_file=File.join(cwd,"log","mongrel.log"))
+Dir.chdir(cwd) do
+  require 'config/environment'
+  open(File.join(cwd,"log/mongrel-#{ARGV[1]}.pid"),"w") {|f| f.write(Process.pid) }
+  h = Mongrel::HttpServer.new(ARGV[0], ARGV[1])
+  h.register("/", RailsHandler.new(File.join(cwd,"public")))
+  h.run
+  
+  h.acceptor.join
+end

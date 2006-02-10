@@ -51,6 +51,8 @@ module Mongrel
     505  => 'HTTP Version not supported'
   }
 
+  
+
   # Frequently used constants when constructing requests or responses.  Many times
   # the constant just refers to a string with the same contents.  Using these constants
   # gave about a 3% to 10% performance improvement over using the strings directly.
@@ -350,7 +352,7 @@ module Mongrel
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               params[Const::GATEWAY_INTERFACE]=Const::GATEWAY_INTERFACE_VALUE
-              params[Const::REMOTE_ADDR]=client.peeraddr
+              params[Const::REMOTE_ADDR]=client.peeraddr[3]
               params[Const::SERVER_NAME]=@host
               params[Const::SERVER_PORT]=@port
               params[Const::SERVER_PROTOCOL]=Const::SERVER_PROTOCOL_VALUE
@@ -444,22 +446,45 @@ module Mongrel
     attr_reader :path
 
     # You give it the path to the directory root and an (optional) 
-    def initialize(path, listing_allowed=true)
+    def initialize(path, listing_allowed=true, index_html="index.html")
       @path = File.expand_path(path)
       @listing_allowed=listing_allowed
+      @index_html = index_html
     end
 
     # Checks if the given path can be served and returns the full path (or nil if not).
     def can_serve(path_info)
-      req = File.expand_path(path_info, @path)
-      if req.index(@path) != 0 or !File.exist? req or (File.directory?(req) and not @listing_allowed)
-        return nil
-       else
-        return req
+      req = File.expand_path(File.join(@path,path_info), @path)
+
+      if req.index(@path) == 0 and File.exist? req
+        # it exists and it's in the right location
+        if File.directory? req
+          # the request is for a directory
+          index = File.join(req, @index_html)
+          if File.exist? index
+            # serve the index
+            return index
+          elsif @listing_allows
+            # serve the directory
+            req
+          else
+            # do not serve anything
+            return nil
+          end
+        else
+          # it's a file and it's there
+          return req
+        end
       end
     end
 
+
+    # Returns a simplistic directory listing if they're enabled, otherwise a 403.
+    # Base is the base URI from the REQUEST_URI, dir is the directory to serve 
+    # on the file system (comes from can_serve()), and response is the HttpResponse
+    # object to send the results on.
     def send_dir_listing(base, dir, response)
+      # take off any trailing / so the links come out right
       base.chop! if base[-1] == "/"[-1]
 
       if @listing_allowed
@@ -484,7 +509,9 @@ module Mongrel
       end
     end
 
-
+    
+    # Sends the contents of a file back to the user. Not terribly efficient since it's
+    # opening and closing the file for each read.
     def send_file(req, response)
       response.start(200) do |head,out|
         open(req, "r") do |f|
@@ -494,9 +521,10 @@ module Mongrel
     end
 
 
+    # Process the request to either serve a file or a directory listing
+    # if allowed (based on the listing_allowed paramter to the constructor).
     def process(request, response)
-      path_info = request.params['PATH_INFO']
-      req = can_serve path_info
+      req = can_serve request.params['PATH_INFO']
       if not req
         # not found, return a 404
         response.start(404) do |head,out|

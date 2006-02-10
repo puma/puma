@@ -341,7 +341,9 @@ VALUE URIClassifier_unregister(VALUE self, VALUE uri)
  *    uc.resolve("/someuri") -> "/someuri", "", handler
  *    uc.resolve("/someuri/pathinfo") -> "/someuri", "/pathinfo", handler
  *    uc.resolve("/notfound/orhere") -> nil, nil, nil
- *
+ *    uc.resolve("/") -> "/", "/", handler  # if uc.register("/", handler)
+ *    uc.resolve("/path/from/root") -> "/", "/path/from/root", handler  # if uc.register("/", handler) 
+ * 
  * Attempts to resolve either the whole URI or at the longest prefix, returning
  * the prefix (as script_info), path (as path_info), and registered handler
  * (usually an HttpHandler).  If it doesn't find a handler registered at the longest
@@ -358,7 +360,13 @@ VALUE URIClassifier_unregister(VALUE self, VALUE uri)
  * It also means that it's very efficient to do this only taking as long as the URI has
  * characters.
  *
- * It expects strings with no embedded '\0' characters.  Don't try other string-line stuff yet.
+ * A slight modification to the CGI 1.2 standard is given for handlers registered to "/".
+ * CGI expects all CGI scripts to be at some script path, so it doesn't really say anything
+ * about a script that handles the root.  To make this work, the resolver will detect that
+ * the requested handler is at "/", and return that for script_name, and then simply return
+ * the full URI back as path_info.
+ *
+ * It expects strings with no embedded '\0' characters.  Don't try other string-like stuff yet.
  */
 VALUE URIClassifier_resolve(VALUE self, VALUE uri)
 {
@@ -379,7 +387,15 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
 
   if(handler) {
     rb_ary_push(result, rb_str_substr (uri, 0, pref_len));
-    rb_ary_push(result, rb_str_substr(uri, pref_len, RSTRING(uri)->len));
+    // compensate for a script_name="/" where we need to add the "/" to path_info to keep it consistent
+    if(pref_len == 1 && uri_str[0] == '/') {
+      // matches the root URI so we have to use the whole URI as the path_info
+      rb_ary_push(result, uri);
+    } else {
+      // matches a script so process like normal
+      rb_ary_push(result, rb_str_substr(uri, pref_len, RSTRING(uri)->len));
+    }
+      
     rb_ary_push(result, (VALUE)handler);
   } else {
     // not found so push back nothing
