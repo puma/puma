@@ -323,7 +323,7 @@ module Mongrel
       @port = port
       @num_procesors = num_processors
 
-      num_processors.times {|i| Thread.new do
+      @num_processors.times {|i| Thread.new do
           while client = @req_queue.deq
             process_client(client)
           end
