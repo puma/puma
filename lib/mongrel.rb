@@ -321,7 +321,7 @@ module Mongrel
       @req_queue = Queue.new
       @host = host
       @port = port
-      @num_procesors = num_processors
+      @num_processors = num_processors
 
       @num_processors.times {|i| Thread.new do
           while client = @req_queue.deq
@@ -443,6 +443,20 @@ module Mongrel
   # that the final expanded path includes the root path.  If it doesn't
   # than it simply gives a 404.
   class DirHandler < HttpHandler
+    MIME_TYPES = {
+      ".css"        =>  "text/css",
+      ".gif"        =>  "image/gif",
+      ".htm"        =>  "text/html",
+      ".html"       =>  "text/html",
+      ".jpeg"       =>  "image/jpeg",
+      ".jpg"        =>  "image/jpeg",
+      ".js"         =>  "text/javascript",
+      ".png"        =>  "image/png",
+      ".swf"        =>  "application/x-shockwave-flash",
+      ".txt"        =>  "text/plain"
+    }
+
+
     attr_reader :path
 
     # You give it the path to the directory root and an (optional) 
@@ -514,6 +528,15 @@ module Mongrel
     # opening and closing the file for each read.
     def send_file(req, response)
       response.start(200) do |head,out|
+        # set the mime type from our map based on the ending
+        dot_at = req.rindex(".")
+        if dot_at
+          ext = req[dot_at .. -1]
+          if MIME_TYPES[ext]
+            head['Content-Type'] = MIME_TYPES[ext]
+          end
+        end
+
         open(req, "r") do |f|
           out.write(f.read)
         end
@@ -541,10 +564,17 @@ module Mongrel
           response.reset
           response.start(403) do |head,out|
             out << "Error accessing file: #{details}"
+            out << details.backtrace.join("\n")
           end
         end
       end
     end
   end
 
+
+  # There is a small number of default mime types for extensions, but
+  # this lets you add any others you'll need when serving content.
+  def add_mime_type(extension, type)
+    MIME_TYPES[extension] = type
+  end
 end
