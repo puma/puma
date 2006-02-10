@@ -3,7 +3,7 @@ require 'mongrel'
 require 'cgi'
 begin
   require 'daemons/daemonize'
-  HAVE_DAEMONS=true
+  HAVE_DAEMONS=false
 rescue
   HAVE_DAEMONS=false
 end
@@ -11,15 +11,31 @@ end
 
 class CGIFixed < ::CGI
   public :env_table
+  attr_reader :options
   
   def initialize(params, data, out, *args)
     @env_table = params
     @args = *args
     @input = StringIO.new(data)
     @out = out
+    @options = {}
     super(*args)
   end
   
+  def header(options = "text/html")
+    if options.class == Hash
+      # passing in a header so need to keep the status around and other options
+      @options = options
+    end
+
+    super(options)
+  end
+
+  def status
+    s = @options["Status"] || @options["status"]
+    s[0 .. s.index(' ')] || "200"
+  end
+
   def args
     @args
   end
@@ -58,13 +74,13 @@ class RailsHandler < Mongrel::HttpHandler
           # Rails is not thread safe so must be run entirely within synchronize 
           Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
         end
-        
+    
+        response.status = cgi.status
         response.send_status
         response.send_body
-      rescue IOError
-        @log.error("received IOError #$! when handling client.  Your web server doesn't like me.")
       rescue Object => rails_error
-        @log.error("calling Dispatcher.dispatch", rails_error)
+        STDERR.puts "calling Dispatcher.dispatch #{rails_error}"
+        STDERR.puts rails_error.backtrace.join("\n")
       end
     end
   end
@@ -76,9 +92,17 @@ if ARGV.length != 2
   exit(1)
 end
 
+# store this for later since Daemonize insists on going to the / root
 cwd = Dir.pwd
 
-Daemonize.daemonize(log_file=File.join(cwd,"log","mongrel.log"))
+if HAVE_DAEMONS
+  STDERR.puts "Running Mongrel in the background.  See log/mongrel.log for errors."
+  Daemonize.daemonize(log_file=File.join(cwd,"log","mongrel.log"))
+else
+  STDERR.puts "Unable to daemonize.  Running in foreground.  Use CTRL-C to stop."
+end
+
+# and go back
 Dir.chdir(cwd) do
   require 'config/environment'
   open(File.join(cwd,"log/mongrel-#{ARGV[1]}.pid"),"w") {|f| f.write(Process.pid) }
