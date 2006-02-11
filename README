@@ -11,26 +11,31 @@ scream without too many portability issues.
 
 == Status
 
-The 0.2.2 release of Mongrel features an HTTP core server that is the fastest possible
-thing I could get without using something other than Ruby.  It features a few bug fixes,
-but mostly just a change to the Mongrel::HttpResponse class to make it more feature 
-complete.  The remaining development will be spent getting Mongrel to work with 
-other frameworks, adding additional needed features, and improving the concurrency
-and speed.
+The 0.3 release is the first official release to start supporting Ruby on Rails
+and to have a more complete DirHandler for serving directories of files.   This release
+is actually closer to a full functioning web server than the previous releases.
 
-The current release has samples from "why the lucky stiff" for his Camping
-framework in the examples directory.  Camping is a small micro framework 
-(http://rubyforge.org/projects/camping) which should work with Mongrel if
-you use the subversion source for Camping.
+The Rails support is pretty rough right now, but check out the bin/mongrel_rails file,
+which should be installed into your PATH if you use a gem.  You should be able to
+do the following to run your Rails applications:
 
-This is also the first release onto the new Mongrel RubyForge project
-page found at http://rubyforge.org/projects/mongrel/ thanks to Tom Copland.
-I'll be looking to automate management of this, but feel free to use
-rubyforge to post feature requests, bugs, and join the mailing list.
+  > cd myrailsapp
+  > mongrel_rails 0.0.0.0 3000
 
-Finally, it now supports all CGI parameters that don't cause a performance hit,
-and it has a Mongrel::DirHandler which can serve files out of a directory and
-do (optional) directory listings.
+And then hit http://localhost:3000/ to see your app.  One thing is that if you have
+a public/index.html file then you'll get that served instead of your Rails application.
+
+People with the daemons gem installed will see that mongrel_rails will go into the
+background.  You can kill it with:
+
+  > kill -TERM `cat log/mongrel-3000.pid`
+
+Where "3000" is whatever port you told it to listen on when you ran it.
+
+The file serving is still a little rough and the redirects might not work well, but
+try it out and tell me about any weird errors.  File uploads will definitely have some
+problems.
+
 
 == Install
 
@@ -42,6 +47,7 @@ The library consists of a C extension so you'll need a C compiler or at least a 
 who can build it for you.
 
 Finally, the source includes a setup.rb for those who hate RubyGems.
+
 
 == Usage
 
@@ -104,12 +110,8 @@ With the core of Mongrel completed I'm now turning to the next set of features
 to make Mongrel useful for hosting web applications in a heavily utilized
 production environment.  Right now I'm looking at:
 
-* Fast static file handling with directory listings.
-* More testing on more platforms.
 * An idea I've had for an insane caching handler which could speed up quite a
 few deployments.
-* General little things most web servers need.
-* A nice management system or interface for controlling mongrel servers.
 
 Overall though the goal of Mongrel is to be just enough HTTP to serve a Ruby
 web application that sits behind a more complete web server.  Everything 
@@ -117,7 +119,7 @@ in the next will focus on actually hosting the major web frameworks for Ruby:
 
 * Camping -- because it's already done (thanks Why).
 * Ruby on Rails -- that's where my bread is buttered right now.
-* Nitro -- George is a nice guy, and Nitro is thread safe.  Might be fun.
+* Nitro -- Nitro folks have already hooked this up and started using it.  Nice.
 * ????? -- Others people might be interested in.
 
 == Contact

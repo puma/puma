@@ -9,8 +9,7 @@ include FileUtils
 
 setup_tests
 setup_clean ["ext/http11/Makefile", "pkg", "lib/*.bundle", "ext/http11/*.bundle"]
-setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/*.rb',
-            'doc/**/*.rdoc', 'ext/http11/http11.c']
+setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
 
 desc "Does a full compile, test run"
 task :default => [:compile, :test]
@@ -27,4 +26,4 @@ setup_extension("http11", "http11")
 
 summary = "An experimental fast simple web server for Ruby."
 test_file = "test/test_ws.rb"
-setup_gem("mongrel", "0.2.2",  "Zed A. Shaw", summary, [], test_file)
+setup_gem("mongrel", "0.3",  "Zed A. Shaw", summary, ['mongrel_rails'], test_file)

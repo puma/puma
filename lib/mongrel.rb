@@ -489,6 +489,9 @@ module Mongrel
           # it's a file and it's there
           return req
         end
+      else
+        # does not exist or isn't in the right spot
+        return nil
       end
     end
 
