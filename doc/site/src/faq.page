@@ -1,0 +1,39 @@
+---
+title: FAQ
+inMenu: true
+directoryName: FAQ
+ordering: 5
+---
+
+h1. FAQ
+
+
+h2. Design
+
+h3. Q: How is Mongrel designed?
+
+The design of Mongrel most closely matches "Simple":http://simpleweb.sourceforge.net/ 
+which is very nicely designed web server framework for Java.  Despite being written
+in Java it is very clean and simple, thus the name (clever eh?).  The main difference
+between Mongrel and Simple is that Simple monitors returned output from handlers so that
+it can modify the results.  Mongrel instead uses Ruby's blocks to get the same effect.
+
+As for the internals of Mongrel there are a few key technologies being used:
+
+* A custom HTTP 1.1 parser written based on the "RFC":http://www.w3.org/Protocols/rfc2616/rfc2616.html
+  standard and using "an ABNF dump":http://www.cs.columbia.edu/sip/syntax/rfc2068.html thankfully
+  put online by someone.  The parser is written using "Ragel":http://www.elude.ca/ragel/ and 
+  is written C as a Ruby extension.
+* A URIClassifier that uses a "Ternary Search Trie":http://www.octavian.org/cs/software.html
+  written by Peter A. Friend and modified to quickly look up handlers for a URI based on
+  a prefix.  This makes finding any handler from any URI quick and painless and is much
+  faster than the alternative of parsing the path and using nested Hash structures.
+* A simple server that uses the parser and URIClassifier to process requests, find the 
+  right handlers, and then pass the results on to the handler for processing.
+* Handlers are responsible for using HttpRequest and HttpResponse objects to do their
+  thing and then return results.
+
+Other than this there's not much more to it.
+
+
+

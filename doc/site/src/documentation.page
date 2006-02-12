@@ -1,0 +1,24 @@
+---
+title: Documentation
+inMenu: true
+directoryName: Documentation
+ordering: 3
+---
+
+h1. Available Documentation
+
+
+h2. RDoc API Documentation
+
+Check out the "RDoc":/rdoc/index.html documentation to get a look at the
+API and dig into the source.  Since Mongrel is currently being used by
+other frameworks it's documentation is aimed at developers.  Real manuals
+will be written when there's something for "regular" folks to use.
+
+
+h2. Frequently Asked Questions
+
+When people ask questions really frequently the results end up in the
+"FAQ":faq.html or if they're funny they end up in the "FASQ":fasq.html
+so everyone can have a laugh.
+

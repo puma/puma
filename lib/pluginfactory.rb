@@ -75,8 +75,7 @@
 # * Martin Chase <stillflame@FaerieMUD.org>
 # * Michael Granger <ged@FaerieMUD.org>
 # 
-#:include: COPYRIGHT
-#
+# modified temporarily by Zed A. Shaw until license attribution can be given.
 #---
 #
 # Please see the file docs/COPYRIGHT for licensing details.

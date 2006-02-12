@@ -1,0 +1,52 @@
+---
+title: Home
+inMenu: false
+directoryName: Home
+odering: 1
+---
+h1. What is Mongrel?
+
+Mongrel is a fast HTTP library and server for Ruby that is intended for
+hosting Ruby web applications of any kind using plain HTTP rather than
+FastCGI or SCGI.  It is framework agnostic and already supports 
+Ruby On Rails, Og+Nitro, and Camping frameworks.  By using 
+
+
+h2. Getting Started
+
+The easiest way to get started with Mongrel is to install it via RubyGems
+and then run a Ruby on Rails application.  You can do this easily:
+
+ $ sudo gem install mongrel
+ $ cd myrailsapp
+ $ mongrel_rails start -d
+
+Which runs Mongrel in the background.  You can stop it with:
+
+ $ mongrel_rails stop
+
+And you're all set.
+
+
+h2. Performance
+
+Mongrel's main competitor is WEBrick and "Tomcat":http://tomcat.apache.org/ but not 
+a full webserver like "Apache":http://httpd.apache.org/ or "lighttpd":http://www.lighttpd.net/
+for serving static content.  Mongrel is designed to run a web application with minimal
+static content capabilities with the idea that you'll put it behind a webserver that's
+faster for the static stuff.
+
+So far Mongrel seems competitive with Tomcat and typically blows the doors off WEBrick.
+Comparing Mongrel with Tomcat right now is not too fair since Tomcat does a whole lot
+more, but for serving basic content mongrel does pretty good.
+
+There will be a more formal performance analysis when Mongrel is more stable.
+
+
+h2. Documentation
+
+Check out the "RDoc":/rdoc/index.html documentation to get a look at the
+API and dig into the source.  Since Mongrel is currently being used by
+other frameworks it's documentation is aimed at developers.  Real manuals
+will be written when there's something for "regular" folks to use.
+

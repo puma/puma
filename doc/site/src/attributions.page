@@ -1,0 +1,54 @@
+---
+title: Attributions
+inMenu: true
+directoryName: Attributions
+ordering: 100
+---
+h1. The People Who Made It Possible
+
+There's quite a few people who either directly or indirectly helped to
+make Mongrel.  If I missed anyone then just e-mail me and I'll put your
+name here.
+
+h2. Site Template
+
+The site's look and template is blatantly stolen from "OWD":http://openwebdesign.org
+and is specifically Copyright &copy; 2006 "Evgeni Dinev":http://www.evgenidinev.com/
+under the "Creative Commons":http://creativecommons.org license.
+
+h2. Photos
+
+The photos were found on "Flickr":http://flickr.com and are all licensed under the
+"Creative Commons":http://creativecommons.org license.  The following images are
+attributed to the people based on their Flickr accounts:
+
+* "Bantay meets the world":http://www.flickr.com/photos/colloidfarl/39744440/in/set-625842/
+* "Caution: Beetlejam":http://www.flickr.com/photos/gyuvallos/90208926/
+* "Resting":http://flickr.com/photos/ashey/95638805/
+* "Allen Wrench Mess":http://www.flickr.com/photos/eklektikos/79968762/
+* "Tools":http://www.flickr.com/photos/book_slut/87022458/
+* "Big Wrench":http://flickr.com/photos/actionatadistance/63325054/in/set-1367823/
+* "bolt":http://www-us.flickr.com/photos/lwr/6267035/in/set-775375/
+* "Book Collage":http://www.flickr.com/photos/muybridge/85895062/
+* "squared circle megaphone":http://www.ruby-lang.org/en/20020104.html
+
+Thanks to those people who publish their photos with the "Creative Commons":http://creativecommons.org
+license so others can see their photography (and look at their dogs).
+
+h2. Coding
+
+* "Rick Olson (aka technoweenie)":http://techno-weenie.net/ was the first to grab Mongrel
+  and cram "Camping":http://redhanded.hobix.com/bits/campingAMicroframework.html into it.
+* "Why the lucky stiff":http://whytheluckystiff.net/ did work on getting the "Camping Framework":http://redhanded.hobix.com/bits/campingAMicroframework.html working with Mongrel more completely.
+
+h2. Tools
+
+* "RubyForge":http://rubyforge.org/ for providing space and hooking it all up.
+* "Webgen":http://webgen.rubyforge.org/
+
+h2. Testing
+
+Lots of people from the 
+"Ruby on Rails mailing list":http://lists.rubyonrails.org/mailman/listinfo/rails 
+and "ruby-lang mailing list":http://www.ruby-lang.org/en/20020104.html found bugs
+reported them.

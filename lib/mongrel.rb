@@ -229,7 +229,7 @@ module Mongrel
     # the socket in the proper order.  This lets you intermix header and
     # body content as needed.
     def start(status=200)
-      @status = status
+      @status = status.to_i
       yield @header, @body
       finished
     end
@@ -242,7 +242,7 @@ module Mongrel
     end
 
     def send_status
-      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n")
+      @socket.write("HTTP/1.1 #{@status.to_i} #{HTTP_STATUS_CODES[@status.to_i]}\r\nContent-Length:#{body.length}\r\nConnection: close\r\n")
     end
 
     def send_header
@@ -256,7 +256,7 @@ module Mongrel
       
       # connection: close is also added to ensure that the client does not pipeline.
       @socket.write(@body.read)
-    end      
+    end 
 
     # This takes whatever has been done to header and body and then writes it in the
     # proper format to make an HTTP/1.1 response.

@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>Mongrel: {title: }</title>
+  <link rel="stylesheet" href="{relocatable: default.css}" type="text/css" media=
+  "screen" />
+  <meta http-equiv="Content-Type" content=
+  "text/html; charset=us-ascii" />
+</head>
+
+<body>
+  <div id="wrapper">
+    <div id="head">
+      <div id="logo">
+        <a href="{relocatable: index.html}" title="Mongrel"><span>Mongrel</span></a>
+      </div>
+
+      <div id="slogan">
+        <span>Faster Is Possible</span>
+      </div>
+
+      <div id="toplinks">
+        <ul>
+          <li id="tl_home"><a href="/" title=
+          "Home"><span>Home</span></a></li>
+
+          <li id="tl_contact"><a href="http://rubyforge.org/project/memberlist.php?group_id=1306" title=
+          "Contact"><span>Contact</span></a></li>
+
+          <li id="tl_sitemap"><a href="{relocatable: sitemap.html}" title=
+          "Site map"><span>Site map</span></a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="body">
+      <div id="visual"></div>
+
+      <div id="content">
+      {content: }
+      </div>
+
+      <div id="news">
+        <h4>NEWS</h4>
+
+        <dl>
+          <dt>2006-03-24</dt>
+
+          <dd>
+            <h5><a href="{relocatable: news.html}">Site now up!</a></h5>
+
+            <p>The new website is up and now running. <a href=
+            "{relocatable: news.html}"><img src="images/li4.gif" alt="more" /><br /></a></p>
+          </dd>
+        </dl>
+      </div>
+      <hr noshade="noshade" size="1" />
+
+      <div id="threecells">
+      </div>
+    </div>
+
+    <div id="side">
+      <div id="menu">
+	{menu: }
+      </div>
+
+      <dl id="ads">
+        <dt><a href="http://rubyforge.org/forum/?group_id=1306"><img src="images/side_p1.gif" alt=
+        "Sad Dog" /><br /></a></dt>
+
+        <dd>
+          <p>Mongrel making you sad? Why not say something?</p>
+        </dd>
+
+        <dt><a href="http://rubyforge.org/tracker/?atid=5145&group_id=1306&func=browse"><img src="images/side_p2.gif" alt="Bugs" /><br /></a></dt>
+
+        <dd>
+          <p>Found a bug? Well then report it already?!</p>
+        </dd>
+
+        <dt><a href="http://rubyforge.org/projects/mongrel/"><img src="images/side_p3.gif" alt=
+        "Tools" /><br /></a></dt>
+
+        <dd>
+          <p>Hit the project page for all sorts of other
+          goodies.</p>
+        </dd>
+
+        <dt>
+<a href="http://rubyforge.org/project/memberlist.php?group_id=1306" title="Contact"><img src="images/3colls_p1.jpg" /></a><br /></a></dt>
+
+        <dd>
+          <p>Contact project people.</p>
+        </dd>
+
+        <dt><a href="{relocatable: documentation.html}" title="Documentation"><img src="images/3colls_p2.jpg" /></a><br /></a></dt>
+
+        <dd>
+          <p>Documentation galore.</p>
+        </dd>
+
+        <dt><a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads"><img src="images/3colls_p3.jpg" /></a><br /></a></dt>
+        <dd>
+          <p>Grab new gear.</p>
+        </dd>
+      </dl>
+    </div>
+
+    <div id="foot">
+      Copyright &copy; 2006 <a href="http://www.zedshaw.com/">Zed A. Shaw</a><br />
+      <a href="{relocatable: attributions.html}">Additional contibutions and openly licensed
+      materials used.</a>
+    </div>
+  </div>
+</body>
+</html>
