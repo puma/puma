@@ -1,12 +1,8 @@
 require 'rubygems'
 require 'mongrel'
 require 'cgi'
-begin
-  require 'daemons/daemonize'
-  HAVE_DAEMONS=true
-rescue
-  HAVE_DAEMONS=false
-end
+require 'daemons/daemonize'
+require 'mongrel/command'
 
 
 class CGIFixed < ::CGI
@@ -87,28 +83,56 @@ class RailsHandler < Mongrel::HttpHandler
 end
 
 
-if ARGV.length != 2
-  STDERR.puts "usage:  mongrel_rails <host> <port>"
-  exit(1)
-end
+class StartCommand < Mongrel::Command::Command
 
-# store this for later since Daemonize insists on going to the / root
-cwd = Dir.pwd
-
-if HAVE_DAEMONS
-  STDERR.puts "Running Mongrel in the background.  See log/mongrel.log for errors."
-  Daemonize.daemonize(log_file=File.join(cwd,"log","mongrel.log"))
-else
-  STDERR.puts "Unable to daemonize.  Running in foreground.  Use CTRL-C to stop."
-end
-
-# and go back
-Dir.chdir(cwd) do
-  require 'config/environment'
-  open(File.join(cwd,"log/mongrel-#{ARGV[1]}.pid"),"w") {|f| f.write(Process.pid) }
-  h = Mongrel::HttpServer.new(ARGV[0], ARGV[1])
-  h.register("/", RailsHandler.new(File.join(cwd,"public")))
-  h.run
+  def configure
+    options [
+      ["-e", "--environment ENV", "Rails environment to run as", :@environment, "production"],
+      ["-d", "--daemonize", "Whether to run in the background or not", :@daemon, false],
+      ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
+      ['-a', '--address ADDR', "Address to bind to", :@address, "0.0.0.0"],
+      ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
+      ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"]
+    ]
+  end
   
-  h.acceptor.join
+  def validate
+    valid? ["production","development"].include?(@environment), "Only valid environments are 'production' or 'development'"
+    valid_dir? File.dirname(@log_file), "Path to log file not valid: #@log_file"
+    valid_dir? File.dirname(@pid_file), "Path to pid file not valid: #@pid_file"
+    
+    return @valid
+  end
+
+  
+  def run
+    cwd = Dir.pwd
+
+    if @daemon
+      STDERR.puts "Running as Daemon at #@address:#@port"
+      Daemonize.daemonize(log_file=@log_file)
+      open(File.join(cwd,@pid_file),"w") {|f| f.write(Process.pid) }
+      # change back to the original starting directory
+      Dir.chdir(cwd)
+    else
+      STDERR.puts "Running at #@address:#@port"
+    end
+
+
+    require 'config/environment'
+    h = Mongrel::HttpServer.new(@address, @port)
+    h.register("/", RailsHandler.new(File.join(cwd,"public")))
+    h.run
+    
+    begin
+      h.acceptor.join
+    rescue Interrupt
+      STDERR.puts "Interrupted."
+    end
+  end
 end
+
+
+
+
+Mongrel::Command::Registry.instance.run ARGV

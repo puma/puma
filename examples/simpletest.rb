@@ -1,13 +1,20 @@
 require 'mongrel'
 require 'yaml'
+require 'zlib'
 
 class SimpleHandler < Mongrel::HttpHandler
     def process(request, response)
       response.start do |head,out|
         head["Content-Type"] = "text/html"
-        out << "<html><body>Your request:<br />"
-        out << "<pre>#{request.params.to_yaml}</pre>"
-        out << "<a href=\"/files\">View the files.</a></body></html>"
+        results = "<html><body>Your request:<br /><pre>#{request.params.to_yaml}</pre><a href=\"/files\">View the files.</a></body></html>"
+        if not request.params["HTTP_ACCEPT_ENCODING"] == "gzip,deflate"
+          head["Content-Encoding"] = "deflate"
+          # send it back deflated
+          out << Zlib::Deflate.deflate(results)
+        else
+          # no gzip supported, send it back normal
+          out << results
+        end
       end
     end
 end
