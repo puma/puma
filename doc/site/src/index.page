@@ -9,7 +9,7 @@ h1. What is Mongrel?
 Mongrel is a fast HTTP library and server for Ruby that is intended for
 hosting Ruby web applications of any kind using plain HTTP rather than
 FastCGI or SCGI.  It is framework agnostic and already supports 
-Ruby On Rails, Og+Nitro, and Camping frameworks.  By using 
+Ruby On Rails, Og+Nitro, and Camping frameworks.
 
 
 h2. Getting Started
@@ -26,6 +26,14 @@ Which runs Mongrel in the background.  You can stop it with:
  $ mongrel_rails stop
 
 And you're all set.
+
+
+h3. Win32 Folks
+
+The only thing you people need to do right now is avoid the -d
+option to start.  Win32 doesn't support POSIX fork so it won't
+go into the background.  I'll be adding support for making
+Mongrel a service in a few releases.
 
 
 h2. Performance

@@ -8,7 +8,7 @@ require 'fileutils'
 include FileUtils
 
 setup_tests
-setup_clean ["ext/http11/Makefile", "pkg", "lib/*.bundle", "ext/http11/*.bundle"]
+setup_clean ["ext/http11/Makefile", "pkg", "lib/*.bundle", "ext/http11/*.bundle", "doc/site/output"]
 setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
 
 desc "Does a full compile, test run"
@@ -19,7 +19,12 @@ task :compile => [:http11]
 task :package => [:clean]
 
 task :ragel do
-	sh %{/usr/local/bin/ragel ext/http11/http11_parser.rl | /usr/local/bin/rlcodegen -G2 -o ext/http11/http11_parser.c}
+  sh %{/usr/local/bin/ragel ext/http11/http11_parser.rl | /usr/local/bin/rlcodegen -G2 -o ext/http11/http11_parser.c}
+end
+
+task :site do
+  sh %{pushd doc/site; webgen; scp -r output/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
+  sh %{ scp -r doc/rdoc/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
 end
 
 setup_extension("http11", "http11")

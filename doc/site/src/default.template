@@ -46,7 +46,19 @@
         <h4>NEWS</h4>
 
         <dl>
-          <dt>2006-03-24</dt>
+          <dt>Feb-12-2006</dt>
+
+          <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.1 Released</a></h5>
+
+            <p><a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">
+		Download</a> the 0.3.1 release featuring better Rails support and a 
+		major bug fix.<a href="{relocatable: news.html}"><img src="images/li4.gif" alt="more" /><br /></a></p>
+          </dd>
+        </dl>
+
+        <dl>
+          <dt>Feb-12-2006</dt>
 
           <dd>
             <h5><a href="{relocatable: news.html}">Site now up!</a></h5>

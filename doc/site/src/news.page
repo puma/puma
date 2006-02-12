@@ -7,6 +7,16 @@ ordering: 2
 
 h1. Latest News
 
+h2. Feb-12: Mongrel 0.3.1 Released
+
+This release improves the support for Ruby On Rails, creates a new
+Command/Plugin functionality, and fixes a huge nasty bug in how content
+was served with Rails.  If you saw weird file serving such as broken
+images and other bad downloads then this is the fix for you.
+
+"Download 0.3.1":http://rubyforge.org/frs/?group_id=1306
+
+
 h2. Feb-12: New site created.
 
 This is kind of an experiment in seeing what type of site is possible
