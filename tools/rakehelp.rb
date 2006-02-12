@@ -65,35 +65,39 @@ end
 
 
 def setup_gem(pkg_name, pkg_version, author, summary, executables, test_file)
-    pkg_version = pkg_version
-    pkg_name    = pkg_name
-    pkg_file_name = "#{pkg_name}-#{pkg_version}"
-
-    spec = Gem::Specification.new do |s|
-        s.name = pkg_name
-        s.version = pkg_version
-        s.platform = Gem::Platform::RUBY
-        s.author = author
-        s.summary = summary
-        s.test_file = test_file
-        s.has_rdoc = true
-        s.extra_rdoc_files = [ "README" ]
-
-        s.files = %w(COPYING LICENSE ext/http11/MANIFEST README Rakefile setup.rb) +
-        Dir.glob("{bin,doc,test,lib}/**/*") + 
-        Dir.glob("ext/**/*.{h,c,rb}") +
-        Dir.glob("examples/**/*.rb") +
-        Dir.glob("tools/*.rb")
+  pkg_version = pkg_version
+  pkg_name    = pkg_name
+  pkg_file_name = "#{pkg_name}-#{pkg_version}"
+  
+  spec = Gem::Specification.new do |s|
+    s.name = pkg_name
+    s.version = pkg_version
+    s.platform = Gem::Platform::RUBY
+    s.author = author
+    s.summary = summary
+    s.test_file = test_file
+    s.has_rdoc = true
+    s.extra_rdoc_files = [ "README" ]
     
-        s.require_path = "lib"
-        s.extensions = FileList["ext/**/extconf.rb"].to_a
-
-        s.executables = executables
-        s.bindir = "bin"
+    s.files = %w(COPYING LICENSE ext/http11/MANIFEST README Rakefile setup.rb) +
+      Dir.glob("{bin,doc,test,lib}/**/*") + 
+      Dir.glob("ext/**/*.{h,c,rb}") +
+      Dir.glob("examples/**/*.rb") +
+      Dir.glob("tools/*.rb")
+    
+    s.require_path = "lib"
+    s.extensions = FileList["ext/**/extconf.rb"].to_a
+    
+    s.executables = executables
+    s.bindir = "bin"
+    
+    if block_given?
+      yield s
     end
-
-    Rake::GemPackageTask.new(spec) do |p|
-        p.gem_spec = spec
-        p.need_tar = true
-    end
+  end
+  
+  Rake::GemPackageTask.new(spec) do |p|
+    p.gem_spec = spec
+    p.need_tar = true
+  end
 end

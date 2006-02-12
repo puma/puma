@@ -83,6 +83,7 @@ class RailsHandler < Mongrel::HttpHandler
 end
 
 
+
 class StartCommand < Mongrel::Command::Command
 
   def configure
@@ -109,15 +110,16 @@ class StartCommand < Mongrel::Command::Command
     cwd = Dir.pwd
 
     if @daemon
-      STDERR.puts "Running as Daemon at #@address:#@port"
+      puts "Running as Daemon at #@address:#@port"
       Daemonize.daemonize(log_file=@log_file)
       open(File.join(cwd,@pid_file),"w") {|f| f.write(Process.pid) }
       # change back to the original starting directory
       Dir.chdir(cwd)
     else
-      STDERR.puts "Running at #@address:#@port"
+      puts "Running at #@address:#@port"
     end
 
+    ENV['RAILS_ENV'] = @environment
 
     require 'config/environment'
     h = Mongrel::HttpServer.new(@address, @port)
@@ -127,8 +129,39 @@ class StartCommand < Mongrel::Command::Command
     begin
       h.acceptor.join
     rescue Interrupt
-      STDERR.puts "Interrupted."
+      puts "Interrupted."
     end
+  end
+end
+
+
+
+class StopCommand < Mongrel::Command::Command
+
+  def configure 
+    options [
+      ["-d", "--daemonize", "Whether to run in the background or not", :@daemon, false],
+      ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"]
+    ]
+  end
+  
+  def validate
+    valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
+    return @valid
+  end
+
+  
+  def run
+    pid = open(@pid_file).read.to_i
+    print "Stopping Mongrel at PID #{pid}..."
+    begin
+      Process.kill("INT", pid)
+    rescue Errno::ESRCH
+      puts "Process does not exist.  Not running."
+    end
+
+    File.unlink(@pid_file)
+    puts "Done."
   end
 end
 

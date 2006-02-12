@@ -11,30 +11,31 @@ scream without too many portability issues.
 
 == Status
 
-The 0.3 release is the first official release to start supporting Ruby on Rails
-and to have a more complete DirHandler for serving directories of files.   This release
-is actually closer to a full functioning web server than the previous releases.
+The 0.3.1 release support Ruby On Rails much better than previously, and also
+sports the beginning of a command and plugin infrastructure.  This last part
+isn't documented yet.
 
-The Rails support is pretty rough right now, but check out the bin/mongrel_rails file,
-which should be installed into your PATH if you use a gem.  You should be able to
-do the following to run your Rails applications:
+After you've installed (either with gem install mongrel or via source) you should
+have the mongrel_rails command available in your PATH.  Then you just do the following:
 
-  > cd myrailsapp
-  > mongrel_rails 0.0.0.0 3000
+ > cd myrailsapp
+ > mongrel_rails start
 
-And then hit http://localhost:3000/ to see your app.  One thing is that if you have
-a public/index.html file then you'll get that served instead of your Rails application.
+This will start it in the foreground so you can play with it.  It runs your application
+in production mode.  To get help do:
 
-People with the daemons gem installed will see that mongrel_rails will go into the
-background.  You can kill it with:
+ > mongrel_rails start -h 
 
-  > kill -TERM `cat log/mongrel-3000.pid`
+Finally, you can then start in background mode (probably won't work in win32):
 
-Where "3000" is whatever port you told it to listen on when you ran it.
+ > mongrel_rails start -d
 
-The file serving is still a little rough and the redirects might not work well, but
-try it out and tell me about any weird errors.  File uploads will definitely have some
-problems.
+And you can stop it whenever you like with:
+
+ > mongrel_rails stop
+
+All of which should be done from your application's directory.  It writes the
+PID of the process you ran into log/mongrel.pid.
 
 
 == Install
@@ -82,16 +83,13 @@ type mapping is missing though.*
 
 == Speed
 
-The 0.2.1 release probably consists of the most effort I've ever put into 
-tuning a Ruby library for speed.  It consists of nearly everything I could think
-of to make Mongrel the fastest Ruby HTTP library possible.  I've tried about 
-seven different architectures and IO processing methods and none of them 
-make it any faster.  In short:  Mongrel is amazingly fast considering Ruby's speed
-limitations.
+Like previous releases 0.3.1 continues the trend of making things
+as fast as possible.  It currently might be a little slower than
+other releases but should hold up pretty good against at least 
+WEBrick (especially when running Rails).
 
-This release also brings in controllable threads that you can scale to meet your
-needs to do your processing.  Simple pass in the HttpServer.new third optional
-parameter:
+As before you can control the number of processor threads (and thus
+ActiveRecord database connections) with:
 
  h = Mongrel::HttpServer.new("0.0.0.0", "3000", 40)
 
@@ -101,8 +99,6 @@ limited processors also means that you can use ActiveRecord as-is and it will
 create a matching database connection for each processor thread.  More on 
 this in future releases.
 
-With this release I'm hoping that I've created a nice solid fast as hell core
-upon which I can build the remaining features I want in Mongrel.
 
 == The Future
 

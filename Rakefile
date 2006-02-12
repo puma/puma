@@ -24,6 +24,8 @@ end
 
 setup_extension("http11", "http11")
 
-summary = "An experimental fast simple web server for Ruby."
+summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."
 test_file = "test/test_ws.rb"
-setup_gem("mongrel", "0.3",  "Zed A. Shaw", summary, ['mongrel_rails'], test_file)
+setup_gem("mongrel", "0.3.1",  "Zed A. Shaw", summary, ['mongrel_rails'], test_file) do |spec|
+  spec.add_dependency('daemons', '>= 0.4.2')
+end

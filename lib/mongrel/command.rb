@@ -4,13 +4,21 @@ require 'pluginfactory'
 
 
 module Mongrel
+
+  # Contains all of the various commands that are used with 
+  # Mongrel servers.
+
   module Command
+
+
     # A Command pattern implementation used to create the set of command available to the user
     # from Mongrel.  The script uses objects which implement this interface to do the
     # user's bidding.
     #
-    # Implementing a command is fairly easy.  Refer to some of the stock commands in the 
-    # lib/mongrel/command directory for examples.
+    # Creating a new command is very easy, and you can do it without modifying the source
+    # of Mongrel thanks to PluginFactory.  What you do is the following:
+    #
+    # 1.  
     class Command
       include PluginFactory
       
@@ -48,16 +56,18 @@ module Mongrel
         # I need to add my own -v definition to prevent the -h from exiting by default as well.
         @opt.on_tail("--version", "Show version") do
           @done_validating = true
-          puts "No version yet."
+          if VERSION
+            puts "Version #{VERSION}"
+          end
         end
         
         @opt.parse! argv
       end
       
       # Tells the PluginFactory where to look for additional commands.  By default
-      # it's just a "mongrel" directory wherever we are located.
+      # it's just a "plugins" directory wherever we are located.
       def self.derivativeDirs
-        return ["mongrel"]
+        return ["plugins"]
       end
       
       # Returns true/false depending on whether the command is configured properly.
@@ -80,7 +90,7 @@ module Mongrel
       # Validates the given expression is true and prints the message if not, exiting.
       def valid?(exp, message)
         if not @done_validating and (not exp)
-          STDERR.puts message
+          failure message
           @valid = false
           @done_validating = true
         end
@@ -101,6 +111,11 @@ module Mongrel
       def valid_dir?(file, message)
         valid?(file != nil && File.directory?(file), message)
       end
+
+      # Just a simple method to display failure until something better is developed.
+      def failure(message)
+        STDERR.puts "!!! #{message}"
+      end
     end
     
     
@@ -117,7 +132,7 @@ module Mongrel
         
         results = []
         list.keys.each do |key|
-          results << key unless match.match(key.to_s)
+          results << key.to_s unless match.match(key.to_s)
         end
         
         return results.sort
@@ -125,13 +140,13 @@ module Mongrel
 
       # Prints a list of available commands.
       def print_command_list
-        puts "Available commands are:\n"
+        puts "Available commands are:\n\n"
         
         self.commands.each do |name|
           puts " - #{name}\n"
         end
         
-        puts "Each command takes -h as an option to get help."
+        puts "\nEach command takes -h as an option to get help."
         
       end
       
@@ -152,7 +167,7 @@ module Mongrel
         begin
           command = Command.create(cmd_name, args)
         rescue FactoryError
-          STDERR.puts :command, "INVALID COMMAND."
+          STDERR.puts "INVALID COMMAND: #$!"
           print_command_list
           return
         end
@@ -162,7 +177,7 @@ module Mongrel
         # needed so the command is already valid so we can skip it.
         if not command.done_validating
           if not command.validate
-            STDERR.puts :command, "#{cmd_name} reported an error. Use -h to get help."
+            STDERR.puts "#{cmd_name} reported an error. Use -h to get help."
             return false
           else
             command.run
@@ -171,30 +186,6 @@ module Mongrel
         return true
       end
       
-      # Runs the command like normal, but redirects $stdout and $stderr to the
-      # requested log file (which should be a file like object opened by you).
-      # It also marks the start and end times in the log file.
-      def run_redirect(log, args)
-        res = false
-        
-        begin
-          oldstdout = $stdout
-          oldstderr = $stderr
-          
-          log.write ">>>>>> #{Time.now}\n"
-          $stdout = log
-          $stderr = log
-          
-          res = run(args)
-          
-          log.write "<<<<<< #{Time.now}\n"
-          
-        ensure
-          $stdout = oldstdout
-          $stderr = oldstderr
-          return res
-        end
-      end
     end
   end
 end
