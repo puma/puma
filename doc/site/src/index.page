@@ -25,7 +25,8 @@ Which runs Mongrel in the background.  You can stop it with:
 
  $ mongrel_rails stop
 
-And you're all set.
+And you're all set.  There's quite a few options you can set for the
+start command.  Use the *mongrel_rails start -h* to see them all.
 
 
 h3. Win32 Folks

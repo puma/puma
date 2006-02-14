@@ -35,5 +35,59 @@ As for the internals of Mongrel there are a few key technologies being used:
 
 Other than this there's not much more to it.
 
+h3. Q: Is it multi-threaded or can it handle concurrent requests?
+
+Mongrel is uses a pool of thread workers to do it's processing.  This means that
+it is able to handle concurrent access and should be thread safe.  This also
+means that you have to be more careful about how you use Mongrel.  You can't
+just write your application assuming that there are no threads involved.
+
+Camping and Og+Nitro are supposed to be thread safe and work with Mongrel directly.
+This hasn't been heavily tested so people should let me know if they get weird
+explosions under heavy load.
+
+Ruby on Rails is not thread safe so there is a synchronized block around the calls
+to Dispatcher.dispatch.  This means that everything is threaded right before and
+right after Rails runs.  While Rails is running there is only one controller
+in operation at a time.
+
+
+h2. Deployment
+
+h3. Q: What's the best way to deploy my application with Mongrel?
+
+Right now Mongrel is still in heavy development, so I wouldn't recommend
+running anything production level with it.  For the future I'm envisioning
+three main ways people will use Mongrel with their application:
+
+# Developing their application by running Mongrel the same way they run WEBrick.
+# Putting Mongrel behind a web server that supports proxying (like mod_proxy in lighttpd and apache)
+   so that the web server handles the static content and Mongrel handles the dynamic.
+# Using a load balancer to run a cluster of Mongrel and web servers directly rather
+   than through proxying.
+
+Since Mongrel uses plain HTTP there's no reason you can't use it directly for small
+installs or development and testing.  For production deployments it'll be easier
+to deal with than SCGI or FastCGI since there's already a huge amount of machinery 
+available for running HTTP based clusters.
+
+
+h2. Web Site
+
+h3. Q: How did you make this site?
+
+The site was actually incredibly easy to create.  I simply went to "OSWD":http://openwebdesign.org/
+and found a design that fit what I wanted for the site.  I then went to "Flickr":http://flickr.com/
+and found pictures of various animals that were licensed under the 
+"Creative Commons":http://openwebdesign.org/ license.  Once I chopped the images up, worked them
+into the design structure, and wrote an initial set of content I was done.
+
+The tool I use to generate the site is called "webgen":http://webgen.rubyforge.org/ which
+is a static site generator written in Ruby.  I write all of the content using redcloth
+mark-up and leave the generation to webgen.  Finally I hooked into the Mongrel Rakefile
+so that it's auto-generated and deployed to the site for me.
+
+Refer to the "attributions":/attributions.html page for information on the resources used.
+
 
 

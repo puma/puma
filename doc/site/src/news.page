@@ -7,6 +7,27 @@ ordering: 2
 
 h1. Latest News
 
+h2.  Feb-13: Mongrel 0.3.2 Released
+
+Lots of little things people asked for in 0.3.1 release.  Changes are:
+
+* FAQ questions answered on threading and deployment scenarios.
+* Added some additional text to make the side icons a little clearer.
+* Created a "dogs":/dogs.html page with some people's favorite pets.
+* Write out a better message for *mongrel_rails start* giving the environment and other stuff.
+* Default to using ENV['RAILS_ENV'] or "default" as environment.
+* Removed the restriction on the environments so people can have custom ones.
+* Added options for:
+** _-n_ Number of processor threads.
+** _-t_ Timeout for each processor before it kills a request.
+** _-m_ Specify additional MIME type mappings in YAML format.
+** _-c_ Change to directory before starting (both for start and stop commands)
+** _-r_ Use a different document root from "public"
+* Use "rb" as open mode on all platforms (for windows binary files)
+* Fixed bug in DirHandler which prevented people from altering MIME mapping.
+
+"Download 0.3.2":http://rubyforge.org/frs/?group_id=1306
+
 h2. Feb-12: Mongrel 0.3.1 Released
 
 This release improves the support for Ruby On Rails, creates a new
