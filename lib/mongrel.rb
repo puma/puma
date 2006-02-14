@@ -2,6 +2,7 @@ require 'socket'
 require 'http11'
 require 'thread'
 require 'stringio'
+require 'timeout'
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough

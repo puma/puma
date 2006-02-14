@@ -7,6 +7,15 @@ ordering: 2
 
 h1. Latest News
 
+h2.  Feb-14: Mongrel 0.3.3 Released
+
+This is a very small release that does nothing but add a one line fix
+for a major bug.  Basically, the 0.3.2 release works great with Rails,
+but other runners will have problems since I didn't require the timeout
+library needed.  Everyone should upgrade.
+
+"Download 0.3.3":http://rubyforge.org/frs/?group_id=1306
+
 h2.  Feb-13: Mongrel 0.3.2 Released
 
 Lots of little things people asked for in 0.3.1 release.  Changes are:
