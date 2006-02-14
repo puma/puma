@@ -314,7 +314,7 @@ module Mongrel
     # try changing it higher.  If you find that responses are way too slow
     # try lowering it (after you've tuned your stuff of course).
     # Future versions of Mongrel will make this more dynamic (hopefully).
-    def initialize(host, port, num_processors=20)
+    def initialize(host, port, num_processors=20, timeout=120)
       @socket = TCPServer.new(host, port)
 
       @classifier = URIClassifier.new
@@ -322,10 +322,17 @@ module Mongrel
       @host = host
       @port = port
       @num_processors = num_processors
+      @timeout = timeout
 
       @num_processors.times {|i| Thread.new do
           while client = @req_queue.deq
-            process_client(client)
+            begin
+              Timeout.timeout(@timeout) do
+                process_client(client)
+              end
+            rescue Timeout::Error
+              STDERR.puts "WARNING: Request took longer than #@timeout second timeout"
+            end
           end
         end
       }
@@ -540,7 +547,7 @@ module Mongrel
           end
         end
 
-        open(req, "r") do |f|
+        open(req, "rb") do |f|
           out.write(f.read)
         end
       end
@@ -572,12 +579,14 @@ module Mongrel
         end
       end
     end
+
+    # There is a small number of default mime types for extensions, but
+    # this lets you add any others you'll need when serving content.
+    def DirHandler::add_mime_type(extension, type)
+      MIME_TYPES[extension] = type
+    end
+
   end
 
 
-  # There is a small number of default mime types for extensions, but
-  # this lets you add any others you'll need when serving content.
-  def add_mime_type(extension, type)
-    MIME_TYPES[extension] = type
-  end
 end

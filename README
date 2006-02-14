@@ -11,7 +11,7 @@ scream without too many portability issues.
 
 == Status
 
-The 0.3.1 release support Ruby On Rails much better than previously, and also
+The 0.3.2 release supports Ruby On Rails much better than previously, and also
 sports the beginning of a command and plugin infrastructure.  This last part
 isn't documented yet.
 
@@ -37,6 +37,9 @@ And you can stop it whenever you like with:
 All of which should be done from your application's directory.  It writes the
 PID of the process you ran into log/mongrel.pid.
 
+There are also many more new options for configuring the rails runner including
+changing to a different directory, adding more MIME types, and setting processor
+threads and timeouts.
 
 == Install
 
