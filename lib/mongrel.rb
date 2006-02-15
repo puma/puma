@@ -110,7 +110,7 @@ module Mongrel
     SERVER_SOFTWARE='SERVER_SOFTWARE'
     
     # Current Mongrel version (used for SERVER_SOFTWARE and other response headers).
-    MONGREL_VERSION='Mongrel 0.2.2'
+    MONGREL_VERSION='Mongrel 0.3.4'
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND"
@@ -243,7 +243,7 @@ module Mongrel
     end
 
     def send_status
-      @socket.write("HTTP/1.1 #{@status.to_i} #{HTTP_STATUS_CODES[@status.to_i]}\r\nContent-Length:#{body.length}\r\nConnection: close\r\n")
+      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n")
     end
 
     def send_header

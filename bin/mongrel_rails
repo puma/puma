@@ -8,44 +8,58 @@ require 'mongrel/command'
 class CGIFixed < ::CGI
   public :env_table
   attr_reader :options
-  
-  def initialize(params, data, out, *args)
-    @env_table = params
+
+  def initialize(request, response, *args)
+    @request = request
+    @response = response
     @args = *args
-    @input = StringIO.new(data)
-    @out = out
+    @input = StringIO.new(request.body)
     @options = {}
     super(*args)
   end
-  
+
   def header(options = "text/html")
     if options.class == Hash
       # passing in a header so need to keep the status around and other options
-      @options = options
+      @options = @options.merge(options)
+    else
+      @options["Content-Type"] = options
     end
 
-    super(options)
+    # doing this fakes out the cgi library to think the headers are empty
+    # we then do the real headers in the out function call later
+    ""
   end
 
-  def status
-    s = @options["Status"] || @options["status"]
-    s[0 .. s.index(' ')] || "200"
+
+  def out(options = "text/html")
+    header(options)
+    @response.start status do |head, out|
+      @options.each {|k,v| head[k.capitalize] = v}
+      out.write(yield || "")
+    end
   end
+
+  # computes the status once, but lazily so that people who call header twice
+  # don't get penalized
+  def status
+    if not @status
+      @status = @options["Status"] || @options["status"]
+      
+      if @status
+        @status[0 ... @status.index(' ')] || "200"
+      else
+        @status = "200"
+      end
+    end
+  end    
 
   def args
     @args
   end
   
   def env_table
-    @env_table
-  end
-  
-  def stdinput
-    @input
-  end
-  
-  def stdoutput
-    @out
+    @request.params
   end
 end
 
@@ -63,26 +77,26 @@ class RailsHandler < Mongrel::HttpHandler
   def process(request, response)
     # not static, need to talk to rails
     return if response.socket.closed?
-    
+
     if @files.can_serve(request.params["PATH_INFO"])
       @files.process(request,response)
     else
-      cgi = CGIFixed.new(request.params, request.body, response.socket)
+      cgi = CGIFixed.new(request, response)
+
       begin
-        
         @guard.synchronize do
           # Rails is not thread safe so must be run entirely within synchronize 
           Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
         end
-    
-        response.status = cgi.status
-        response.send_status
-        response.send_body
+
+        # This finalizes the output using the proper HttpResponse way
+        cgi.out {""}
       rescue Object => rails_error
         STDERR.puts "calling Dispatcher.dispatch #{rails_error}"
         STDERR.puts rails_error.backtrace.join("\n")
       end
     end
+
   end
 end
 
