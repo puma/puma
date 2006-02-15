@@ -1,7 +1,7 @@
 
 def make(makedir)
     Dir.chdir(makedir) do
-        sh 'make'
+        sh(PLATFORM =~ /win32/ ? 'nmake' : 'make')
     end
 end
 
@@ -64,14 +64,14 @@ def setup_extension(dir, extension)
 end
 
 
-def setup_gem(pkg_name, pkg_version, author, summary, executables, test_file)
+def base_gem_spec(pkg_name, pkg_version, author, summary, executables, test_file)
   pkg_version = pkg_version
   pkg_name    = pkg_name
   pkg_file_name = "#{pkg_name}-#{pkg_version}"
-  
-  spec = Gem::Specification.new do |s|
+  Gem::Specification.new do |s|
     s.name = pkg_name
     s.version = pkg_version
+    s.required_ruby_version = '>= 1.8.3'
     s.platform = Gem::Platform::RUBY
     s.author = author
     s.summary = summary
@@ -90,14 +90,22 @@ def setup_gem(pkg_name, pkg_version, author, summary, executables, test_file)
     
     s.executables = executables
     s.bindir = "bin"
-    
-    if block_given?
-      yield s
-    end
   end
-  
+end
+
+def setup_gem(pkg_name, pkg_version, author, summary, executables, test_file)
+  spec = base_gem_spec(pkg_name, pkg_version, author, summary, executables, test_file)
+  yield spec if block_given?
+    
   Rake::GemPackageTask.new(spec) do |p|
     p.gem_spec = spec
     p.need_tar = true
   end
+end
+
+def setup_win32_gem(pkg_name, pkg_version, author, summary, executables, test_file)
+  spec = base_gem_spec(pkg_name, pkg_version, author, summary, executables, test_file)
+  yield spec if block_given?
+
+  Gem::Builder.new(spec).build
 end

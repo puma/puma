@@ -8,7 +8,8 @@ require 'fileutils'
 include FileUtils
 
 setup_tests
-setup_clean ["ext/http11/Makefile", "pkg", "lib/*.bundle", "ext/http11/*.bundle", "doc/site/output"]
+setup_clean ["ext/http11/*.{bundle,so,obj,pdb,lib,def,exp}", "ext/http11/Makefile", "pkg", "lib/*.bundle", "*.gem", "doc/site/output", ".config"]
+
 setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
 
 desc "Does a full compile, test run"
@@ -34,3 +35,17 @@ test_file = "test/test_ws.rb"
 setup_gem("mongrel", "0.3.3",  "Zed A. Shaw", summary, ['mongrel_rails'], test_file) do |spec|
   spec.add_dependency('daemons', '>= 0.4.2')
 end
+
+desc "Build a binary gem for Win32"
+task :win32_gem => [:clean, :compile, :test, :package_win32]
+
+task :package_win32 do
+  setup_win32_gem("mongrel", "0.3.3",  "Zed A. Shaw", summary, 
+                  ['mongrel_rails'], test_file) do |spec|
+    spec.add_dependency('daemons', '>= 0.4.2')
+    spec.files << 'ext/http11/http11.so'
+    spec.extensions = []
+    spec.platform = Gem::Platform::WIN32
+  end
+end
+
