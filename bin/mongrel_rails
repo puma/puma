@@ -1,67 +1,7 @@
 require 'rubygems'
 require 'mongrel'
-require 'cgi'
 require 'daemons/daemonize'
 require 'mongrel/command'
-
-
-class CGIFixed < ::CGI
-  public :env_table
-  attr_reader :options
-
-  def initialize(request, response, *args)
-    @request = request
-    @response = response
-    @args = *args
-    @input = StringIO.new(request.body)
-    @options = {}
-    super(*args)
-  end
-
-  def header(options = "text/html")
-    if options.class == Hash
-      # passing in a header so need to keep the status around and other options
-      @options = @options.merge(options)
-    else
-      @options["Content-Type"] = options
-    end
-
-    # doing this fakes out the cgi library to think the headers are empty
-    # we then do the real headers in the out function call later
-    ""
-  end
-
-
-  def out(options = "text/html")
-    header(options)
-    @response.start status do |head, out|
-      @options.each {|k,v| head[k.capitalize] = v}
-      out.write(yield || "")
-    end
-  end
-
-  # computes the status once, but lazily so that people who call header twice
-  # don't get penalized
-  def status
-    if not @status
-      @status = @options["Status"] || @options["status"]
-      
-      if @status
-        @status[0 ... @status.index(' ')] || "200"
-      else
-        @status = "200"
-      end
-    end
-  end    
-
-  def args
-    @args
-  end
-  
-  def env_table
-    @request.params
-  end
-end
 
 
 class RailsHandler < Mongrel::HttpHandler
@@ -81,7 +21,7 @@ class RailsHandler < Mongrel::HttpHandler
     if @files.can_serve(request.params["PATH_INFO"])
       @files.process(request,response)
     else
-      cgi = CGIFixed.new(request, response)
+      cgi = Mongrel::CGIWrapper.new(request, response)
 
       begin
         @guard.synchronize do

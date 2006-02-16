@@ -3,6 +3,8 @@ require 'http11'
 require 'thread'
 require 'stringio'
 require 'timeout'
+require 'cgi'
+
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
@@ -243,7 +245,8 @@ module Mongrel
     end
 
     def send_status
-      @socket.write("HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n")
+      status = "HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n"
+      @socket.write(status)
     end
 
     def send_header
@@ -254,7 +257,6 @@ module Mongrel
 
     def send_body
       @body.rewind
-      
       # connection: close is also added to ensure that the client does not pipeline.
       @socket.write(@body.read)
     end 
@@ -589,5 +591,89 @@ module Mongrel
 
   end
 
+
+  # The beginning of a complete wrapper around Mongrel's internal HTTP processing
+  # system but maintaining the original Ruby CGI module.  Use this only as a crutch
+  # to get existing CGI based systems working.  It should handle everything, but please
+  # notify me if you see special warnings.  This work is still very alpha so I need 
+  # testers to help work out the various corner cases.
+
+  class CGIWrapper < ::CGI
+    public :env_table
+    attr_reader :options
+    
+    def initialize(request, response, *args)
+      @request = request
+      @response = response
+      @args = *args
+      @input = StringIO.new(request.body)
+      @options = {}
+      super(*args)
+    end
+    
+    # The header is typically called to send back the header.  In our case we
+    # collect it into a hash for later usage.  Options passed to this function
+    # are capitalized properly (unlike CGI), sanitized and then just stored.
+    def header(options = "text/html")
+      if options.class == Hash
+        # passing in a header so need to keep the status around and other options
+        @options = @options.merge(options)
+      else
+        @options["Content-Type"] = options
+      end
+      
+      # doing this fakes out the cgi library to think the headers are empty
+      # we then do the real headers in the out function call later
+      ""
+    end
+    
+    # The dumb thing is people can call header or this or both and in any order.
+    # So, we just reuse header and then finalize the HttpResponse the right way.
+    # Status is taken from the various options and converted to what Mongrel needs
+    # via the CGIWrapper.status function.
+    def out(options = "text/html")
+      header(options)
+      @response.start status do |head, out|
+        @options.each {|k,v| head[k.capitalize] = v}
+        out.write(yield || "")
+      end
+    end
+    
+    # Computes the status once, but lazily so that people who call header twice
+    # don't get penalized.  Because CGI insists on including the options status 
+    # message in the status we have to do a bit of parsing.
+    def status
+      if not @status
+        @status = @options["Status"] || @options["status"]
+        
+        if @status
+          @status[0 ... @status.index(' ')] || "200"
+        else
+          @status = "200"
+        end
+      end
+    end    
+    
+    # Used to wrap the normal args variable used inside CGI.
+    def args
+      @args
+    end
+    
+    # Used to wrap the normal env_table variable used inside CGI.
+    def env_table
+      @request.params
+    end
+    
+    # Used to wrap the normal stdinput variable used inside CGI.
+    def stdinput
+      @input
+    end
+    
+    # The stdoutput should be completely bypassed but we'll drop a warning just in case
+    def stdoutput
+      STDERR.puts "WARNING: Your program is doing something not expected.  Please tell Zed that stdoutput was used and what software you are running.  Thanks."
+      @response.body
+    end    
+  end
 
 end

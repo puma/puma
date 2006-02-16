@@ -158,7 +158,7 @@ module Mongrel
         cmd_name = args.shift
         $0 = "#{cmd_name}"
         
-        if cmd_name == "?" or cmd_name == "help"
+        if !cmd_name or cmd_name == "?" or cmd_name == "help"
           print_command_list
           return true
         end
