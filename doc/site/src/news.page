@@ -7,6 +7,26 @@ ordering: 2
 
 h1. Latest News
 
+h2.  Feb-16: Mongrel 0.3.4 -- Win32 Pre-built Gems
+
+This release has pre-built win32 gems thanks to Wilson Bilkovich attacking the
+Rakefile and hooking up some build instructions for me.  You should now be able
+to install on win32 without a build system just like with other projects.
+
+I've also managed to clean up the CGIWrapper so that it works better with Mongrel
+to Rails integration.  It should be much more stable and serve files correctly, and
+it's been tested with eXPlain PMT as well as Typo.  The next release will involve
+automated tests against as many Rails applications as I can find.
+
+Finally, there is a fix for the command subsystem for a nil error when you didn't
+give mongrel_rails a command.  It now lists the commands.
+
+There is a small warning message I threw in that I want people to report if they
+see.  You'll know it if you see it in the log/mongrel.log file or on the console.
+
+"Download 0.3.3":http://rubyforge.org/frs/?group_id=1306
+
+
 h2.  Feb-14: Mongrel 0.3.3 Released
 
 This is a very small release that does nothing but add a one line fix

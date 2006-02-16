@@ -30,9 +30,13 @@ end
 
 setup_extension("http11", "http11")
 
+version="0.3.4"
 summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."
 test_file = "test/test_ws.rb"
-setup_gem("mongrel", "0.3.3",  "Zed A. Shaw", summary, ['mongrel_rails'], test_file) do |spec|
+author="Zed A. Shaw"
+name="mongrel"
+
+setup_gem(name, version,  author, summary, ['mongrel_rails'], test_file) do |spec|
   spec.add_dependency('daemons', '>= 0.4.2')
 end
 
@@ -40,8 +44,7 @@ desc "Build a binary gem for Win32"
 task :win32_gem => [:clean, :compile, :test, :package_win32]
 
 task :package_win32 do
-  setup_win32_gem("mongrel", "0.3.3",  "Zed A. Shaw", summary, 
-                  ['mongrel_rails'], test_file) do |spec|
+  setup_win32_gem(name, version,  version, summary, ['mongrel_rails'], test_file) do |spec|
     spec.add_dependency('daemons', '>= 0.4.2')
     spec.files << 'ext/http11/http11.so'
     spec.extensions = []
