@@ -30,7 +30,7 @@ end
 
 setup_extension("http11", "http11")
 
-version="0.3.4"
+version="0.3.5"
 summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."
 test_file = "test/test_ws.rb"
 author="Zed A. Shaw"
