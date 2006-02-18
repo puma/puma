@@ -488,7 +488,7 @@ module Mongrel
           if File.exist? index
             # serve the index
             return index
-          elsif @listing_allows
+          elsif @listing_allowed
             # serve the directory
             req
           else

@@ -35,6 +35,7 @@ summary = "A small fast HTTP library and server that runs Rails, Camping, and Ni
 test_file = "test/test_ws.rb"
 author="Zed A. Shaw"
 name="mongrel"
+scripts=['mongrel_rails']
 
 setup_gem(name, version,  author, summary, ['mongrel_rails'], test_file) do |spec|
   spec.add_dependency('daemons', '>= 0.4.2')
@@ -44,7 +45,7 @@ desc "Build a binary gem for Win32"
 task :win32_gem => [:clean, :compile, :test, :package_win32]
 
 task :package_win32 do
-  setup_win32_gem(name, version,  version, summary, ['mongrel_rails'], test_file) do |spec|
+  setup_win32_gem(name, version,  version, summary, scripts, test_file) do |spec|
     spec.add_dependency('daemons', '>= 0.4.2')
     spec.files << 'ext/http11/http11.so'
     spec.extensions = []

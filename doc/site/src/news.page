@@ -7,6 +7,17 @@ ordering: 2
 
 h1. Latest News
 
+h2.  Feb-18: Mongrel 0.3.5 -- CGI Actually Works
+
+The CGIWrapper code I had written was complete and utter crap, so 
+I rewrote it and now it should be very correct.  After looking at
+more CGI code I think I'll set my sights on the CGI::process, CGI::Cookie::process,
+and read_multipart functions as the next place to put my efforts.  These 
+three functions are so full of hand coded parsing that rewriting them with
+a Ragel processor would be a huge gain.
+
+"Download 0.3.3":http://rubyforge.org/frs/?group_id=1306
+
 h2.  Feb-16: Mongrel 0.3.4 -- Win32 Pre-built Gems
 
 This release has pre-built win32 gems thanks to Wilson Bilkovich attacking the

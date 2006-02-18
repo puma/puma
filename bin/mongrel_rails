@@ -173,6 +173,4 @@ class StopCommand < Mongrel::Command::Command
 end
 
 
-
-
 Mongrel::Command::Registry.instance.run ARGV

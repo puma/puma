@@ -46,6 +46,15 @@
         <h4>NEWS</h4>
 
         <dl>
+          <dt>Feb-18-2006</dt>
+          <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.5 -- CGI Fixed</a></h5>
+
+            <p>A complete rewrite of the CGIWrapper that actually works.</p>
+	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+	      <a href="{relocatable: news.html}"><img src="images/li4.gif" alt="more" /><br /></a></p>
+          </dd>
+
           <dt>Feb-16-2006</dt>
           <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.4 -- Win32 Baby</a></h5>
