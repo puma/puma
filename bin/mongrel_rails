@@ -126,6 +126,7 @@ class StartCommand < Mongrel::Command::Command
       server.acceptor.join
     rescue Interrupt
       puts "Interrupted."
+      raise
     end
   end
 

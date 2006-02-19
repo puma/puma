@@ -623,10 +623,9 @@ module Mongrel
     # length -- Ignored since Mongrel figures this out from what you write to output.
     # 
     def header(options = "text/html")
-      
       # if they pass in a string then just write the Content-Type
       if options.class == String
-        @head['Content-Type'] = options
+        @head['Content-Type'] = options unless @head['Content-Type']
       else
         # convert the given options into what Mongrel wants
         @head['Content-Type'] = options['type'] || "text/html"
