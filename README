@@ -11,9 +11,10 @@ scream without too many portability issues.
 
 == Status
 
-The 0.3.2 release supports Ruby On Rails much better than previously, and also
-sports the beginning of a command and plugin infrastructure.  This last part
-isn't documented yet.
+The 0.3.6 release supports Ruby On Rails much better than previously, and also
+sports the beginning of a command and plugin infrastructure.  There is now a more
+complete CGIWrapper that handles most of the CGI usage, but still doesn't do the
+MIME decoding or file upload/send (it leaves that to CGI).
 
 After you've installed (either with gem install mongrel or via source) you should
 have the mongrel_rails command available in your PATH.  Then you just do the following:

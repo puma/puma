@@ -103,6 +103,9 @@ module Mongrel
     # The port of our server as given by the HttpServer.new(host,port) call.
     SERVER_PORT='SERVER_PORT'
 
+    # SERVER_NAME and SERVER_PORT come from this.
+    HTTP_HOST='HTTP_HOST'
+
     # Official server protocol key in the HttpRequest parameters.
     SERVER_PROTOCOL='SERVER_PROTOCOL'
     # Mongrel claims to support HTTP/1.1.
@@ -112,7 +115,7 @@ module Mongrel
     SERVER_SOFTWARE='SERVER_SOFTWARE'
     
     # Current Mongrel version (used for SERVER_SOFTWARE and other response headers).
-    MONGREL_VERSION='Mongrel 0.3.5'
+    MONGREL_VERSION='Mongrel 0.3.6'
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND"
@@ -149,7 +152,7 @@ module Mongrel
       
       # fix up the CGI requirements
       params[Const::CONTENT_LENGTH] = params[Const::HTTP_CONTENT_LENGTH] || 0
-      params[Const::CONTENT_TYPE] ||= params[Const::HTTP_CONTENT_TYPE]
+      params[Const::CONTENT_TYPE] = params[Const::HTTP_CONTENT_TYPE] if params[Const::HTTP_CONTENT_TYPE]
 
       # now, if the initial_body isn't long enough for the content length we have to fill it
       # TODO: adapt for big ass stuff by writing to a temp file
@@ -363,8 +366,9 @@ module Mongrel
               params[Const::SCRIPT_NAME] = script_name
               params[Const::GATEWAY_INTERFACE]=Const::GATEWAY_INTERFACE_VALUE
               params[Const::REMOTE_ADDR]=client.peeraddr[3]
-              params[Const::SERVER_NAME]=@host
-              params[Const::SERVER_PORT]=@port
+              host,port = params[Const::HTTP_HOST].split(":")
+              params[Const::SERVER_NAME]=host
+              params[Const::SERVER_PORT]=port if port
               params[Const::SERVER_PROTOCOL]=Const::SERVER_PROTOCOL_VALUE
               params[Const::SERVER_SOFTWARE]=Const::MONGREL_VERSION
 
@@ -374,8 +378,8 @@ module Mongrel
             else
               client.write(Const::ERROR_404_RESPONSE)
             end
-
-            break
+            
+            break #done
           else
             # gotta stream and read again until we can get the parser to be character safe
             # TODO: make this more efficient since this means we're parsing a lot repeatedly
@@ -702,16 +706,15 @@ module Mongrel
     # message in the status we have to do a bit of parsing.
     def status
       if not @status
-        @status = @head["Status"] || @head["status"]
-        
-        if @status
-          @status[0 ... @status.index(' ')] || "200"
-        else
-          @status = "200"
-        end
+        stat = @head["Status"]
+        stat = stat.split(' ')[0] if stat
+
+        @status = stat || "200"
       end
+
+      @status
     end
-    
+
     # Used to wrap the normal args variable used inside CGI.
     def args
       @args
