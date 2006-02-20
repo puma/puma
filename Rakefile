@@ -46,7 +46,6 @@ task :win32_gem => [:clean, :compile, :test, :package_win32]
 
 task :package_win32 do
   setup_win32_gem(name, version,  version, summary, scripts, test_file) do |spec|
-    spec.add_dependency('daemons', '>= 0.4.2')
     spec.files << 'ext/http11/http11.so'
     spec.extensions = []
     spec.platform = Gem::Platform::WIN32

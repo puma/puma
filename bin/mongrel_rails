@@ -1,6 +1,5 @@
 require 'rubygems'
 require 'mongrel'
-require 'daemons/daemonize'
 require 'mongrel/command'
 
 
@@ -77,7 +76,9 @@ class StartCommand < Mongrel::Command::Command
 
   def daemonize 
     # save this for later since daemonize will hose it
-    if @daemon
+    if @daemon and RUBY_PLATFORM !~ /mswin/
+      require 'daemons/daemonize'
+
       puts "Started Mongrel server in #@environment mode at #@address:#@port"
       Daemonize.daemonize(log_file=File.join(@cwd, @log_file))
 
