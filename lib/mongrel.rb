@@ -2,7 +2,6 @@ require 'socket'
 require 'http11'
 require 'thread'
 require 'stringio'
-require 'timeout'
 require 'cgi'
 
 
@@ -10,6 +9,10 @@ require 'cgi'
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
 # functionality to service web application requests fast as possible.
 module Mongrel
+
+  # Used to stop the HttpServer via Thread.raise.
+  class StopServer < Exception
+  end
 
   # Every standard HTTP code mapped to the appropriate message.  These are
   # used so frequently that they are placed directly in Mongrel for easy
@@ -327,18 +330,13 @@ module Mongrel
       @req_queue = Queue.new
       @host = host
       @port = port
-      @num_processors = num_processors
+      @processors = []
       @timeout = timeout
 
-      @num_processors.times {|i| Thread.new do
+      num_processors.times {|i| 
+        @processors << Thread.new do
           while client = @req_queue.deq
-            begin
-              Timeout.timeout(@timeout) do
-                process_client(client)
-              end
-            rescue Timeout::Error
-              STDERR.puts "WARNING: Request took longer than #@timeout second timeout"
-            end
+            process_client(client)
           end
         end
       }
@@ -406,10 +404,33 @@ module Mongrel
     def run
       BasicSocket.do_not_reverse_lookup=true
       @acceptor = Thread.new do
-        while true
-          @req_queue << @socket.accept
+        Thread.current[:stopped] = false
+
+        while not Thread.current[:stopped]
+          begin
+            @req_queue << @socket.accept
+          rescue StopServer
+            STDERR.puts "Server stopped.  Exiting."
+            @socket.close if not @socket.closed?
+            break
+          rescue Errno::EMFILE
+            STDERR.puts "Too many open files.  Try increasing ulimits."
+            sleep 0.5
+          end
+        end
+
+        # now that processing is done we feed enough false onto the request queue to get
+        # each processor to exit and stop processing.
+        @processors.length.times { @req_queue << false }
+
+        # finally we wait until the queue is empty
+        while @req_queue.length > 0
+          STDERR.puts "Shutdown waiting for #{@req_queue.length} requests" if @req_queue.length > 0
+          sleep 1
         end
       end
+
+      @acceptor.priority = 1
     end
 
     
@@ -425,6 +446,14 @@ module Mongrel
     def unregister(uri)
       @classifier.unregister(uri)
     end
+
+    # Stops the acceptor thread and then causes the worker threads to finish
+    # off the request queue before finally exiting.
+    def stop
+      @acceptor[:stopped] = true
+      @acceptor.raise(StopServer.new)
+    end
+
   end
 
 

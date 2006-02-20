@@ -29,6 +29,8 @@ h.register("/", SimpleHandler.new)
 h.register("/files", Mongrel::DirHandler.new(ARGV[2]))
 h.run
 
+trap("INT") { h.stop }
+
 puts "Mongrel running on #{ARGV[0]}:#{ARGV[1]} with docroot #{ARGV[2]}"
 
 h.acceptor.join
