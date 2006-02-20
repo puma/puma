@@ -609,6 +609,9 @@ module Mongrel
     REMOVED_KEYS = [ "nph","status","server","connection","type",
                      "charset","length","language","expires"]
 
+    # Takes an HttpRequest and HttpResponse object, plus any additional arguments
+    # normally passed to CGI.  These are used internally to create a wrapper around
+    # the real CGI while maintaining Mongrel's view of the world.
     def initialize(request, response, *args)
       @request = request
       @response = response
