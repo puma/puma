@@ -51,7 +51,7 @@ class MongrelDaemon < Win32::Daemon
       f.puts "stop signal received: " + Time.now.to_s
       f.puts "sending stop to mongrel threads: " + Time.now.to_s
     }
-    @http_server.stop
+    #@http_server.stop
   end
 
   def service_pause
