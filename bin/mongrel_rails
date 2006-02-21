@@ -121,6 +121,7 @@ class StartCommand < Mongrel::Command::Command
     server = Mongrel::HttpServer.new(@address, @port, @num_procs.to_i, @timeout.to_i)
     server.register("/", rails)
     server.run
+    trap("INT") { server.stop }
     
     begin
       puts "Server ready."

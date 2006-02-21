@@ -24,7 +24,7 @@ if ARGV.length != 3
   exit(1)
 end
 
-h = Mongrel::HttpServer.new(ARGV[0], ARGV[1])
+h = Mongrel::HttpServer.new(ARGV[0], ARGV[1].to_i)
 h.register("/", SimpleHandler.new)
 h.register("/files", Mongrel::DirHandler.new(ARGV[2]))
 h.run
