@@ -1,5 +1,5 @@
 ###############################################
-# mongrel_rails_service.rb
+# mongrel_rails_service
 #
 # Control script for Rails powered by Mongrel
 #
@@ -123,7 +123,7 @@ class InstallCommand < Mongrel::Command::Command
     binary_path << '"' << Config::CONFIG['bindir'] << '/ruby.exe' << '" '
     
     # add service_script
-    service_script = File.expand_path(File.dirname(__FILE__) + '/mongrel_rails_svc.rb')
+    service_script = File.expand_path(File.dirname(__FILE__) + '/mongrel_rails_svc')
     binary_path << '"' << service_script << '" '
     
     # now add the parameters to it.

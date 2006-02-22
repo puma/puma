@@ -37,15 +37,17 @@ author="Zed A. Shaw"
 name="mongrel"
 scripts=['mongrel_rails']
 
-setup_gem(name, version,  author, summary, ['mongrel_rails'], test_file) do |spec|
+setup_gem(name, version,  author, summary, scripts, test_file) do |spec|
   spec.add_dependency('daemons', '>= 0.4.2')
 end
 
 desc "Build a binary gem for Win32"
-task :win32_gem => [:clean, :compile, :test, :package_win32]
+task :win32_gem => [:clean, :compile, :test, :rerdoc, :package_win32]
 
+scripts_win32 = scripts + ['mongrel_rails_service','mongrel_rails_svc']
 task :package_win32 do
-  setup_win32_gem(name, version,  version, summary, scripts, test_file) do |spec|
+  setup_win32_gem(name, version,  version, summary, scripts_win32, test_file) do |spec|
+    spec.add_dependency('win32-service', '>= 0.5.0')
     spec.files << 'ext/http11/http11.so'
     spec.extensions = []
     spec.platform = Gem::Platform::WIN32

@@ -1,5 +1,5 @@
 ###############################################
-# mongrel_rails_svc.rb
+# mongrel_rails_svc
 #
 # This is where Win32::Daemon resides.
 ###############################################
