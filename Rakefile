@@ -44,7 +44,7 @@ end
 desc "Build a binary gem for Win32"
 task :win32_gem => [:clean, :compile, :test, :rerdoc, :package_win32]
 
-scripts_win32 = scripts + ['mongrel_rails_service','mongrel_rails_svc']
+scripts_win32 = scripts + ['mongrel_rails_service']
 task :package_win32 do
   setup_win32_gem(name, version,  version, summary, scripts_win32, test_file) do |spec|
     spec.add_dependency('win32-service', '>= 0.5.0')
