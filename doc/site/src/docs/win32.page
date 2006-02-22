@@ -1,0 +1,93 @@
+---
+title: Win32 HOWTO
+inMenu: true
+directoryName: Documentation
+---
+
+h1. Mongrel Win32 HOWTO
+
+Mongrel now supports Win32 much better than previous releases thanks to 
+some "great people":../attributions.html and their hard work.  You can
+now run Mongrel with Ruby on Rails as a windows service, ang there are
+pre-compiled gems available for people to use.
+
+*Before reading this document you need to read "Getting Started.":started.html and make sure it works.*
+
+h2. Stopping The mongrel_rails Script
+
+When you run the mongrel_rails script from the command line you'll have to use CTRL-Pause/Break
+to get it to exit rather than CTRL-C.
+
+
+h2. Running The Service
+
+After you do the gem install, find a Rails application you want to run
+and do:
+
+ $ mongrel_rails_service install -n myapp \ 
+     -r c:\my\path\to\myapp -p 4000 -e production
+ $ mongrel_rails_service start -n myapp
+
+Now hit the port and poof, works (or should).
+
+*Stopping the service is a little problematic right now.*  We're working on graceful
+shutdown, so be patient.  The application will stop if you use:
+
+ $ mongrel_rails_service stop -n myapp
+
+But will complain about an error during shutdown.  If you try to stop using the
+Services control panel then it will seem to hang.  Just wait a little while then
+hit stop once the service actually stop.
+
+
+h2. Development Work
+
+I recommend that you keep the service runner for doing a production run setup, 
+and then use a regular console with the plain Mongrel runner until we get
+service stop working right.
+
+Also, if you run into an app that's not running right, my suggestion is to run it with
+the regular mongrel_rails runner:
+
+ $ cd c:\my\path\to\myapp
+ $ mongrel_rails start -p 4500
+
+Since that will spit out error messages and stuff to the console.  *Use CTRL-Pause/Break to stop.*
+
+
+h2. Other Service Commands
+
+There is a full set of service control commands in the mongrel_rails_service script.
+This lets you use either the Services control panel or a command line script to 
+manage your Rails applications.  What's also nice is that you can register as many
+applications as you want, and even the same one with different names.
+
+
+h3. install
+
+If you want to run the same app in different modes then use the *-n* option to the *install*
+command:
+
+ $ mongrel_rails_service install -n myapp_dev \ 
+     -r c:\my\path\to\myapp -p 4000 -e development
+ $ mongrel_rails_service start -n myapp
+
+You can also use the *-d* option to give the service a different display name in the
+Services console.
+
+h3. start
+
+Pretty much just takes a service name to start up.  It will run and print a message
+until the service finally starts, which sometimes can take 10-60 seconds.
+
+h3. stop
+
+Sort of works right now and also only takes a -n parameter.  It has a few errors
+when it tries to stop a service so we're working on making it cleaner.
+
+h3. delete
+
+Takes the name (-n) of the service to delete and then removes it from the list.
+*This would be how you'd remove a service so you can change it's start-up options.*
+
+

@@ -2,7 +2,6 @@
 title: Home
 inMenu: false
 directoryName: Home
-odering: 1
 ---
 h1. What is Mongrel?
 
@@ -29,12 +28,29 @@ And you're all set.  There's quite a few options you can set for the
 start command.  Use the *mongrel_rails start -h* to see them all.
 
 
-h3. Win32 Folks
+h3. Win32 Support
 
-The only thing you people need to do right now is avoid the -d
-option to start.  Win32 doesn't support POSIX fork so it won't
-go into the background.  I'll be adding support for making
-Mongrel a service in a few releases.
+Mongrel now has support for running as a Win32 service right out of the
+box.  The support is still rough but works well enough that we decided
+to release it.  You can thank Luis Lavena for working on this and making
+it so nice.
+
+After you do the gem install, find a Rails application you want to run
+and do:
+
+ $ mongrel_rails_service install -n myapp \ 
+     -r c:\my\path\to\myapp -p 4000 -e production
+ $ mongrel_rails_service start -n myapp
+
+Now hit the port and poof, works.  *Stopping the service is a little problematic right now.*
+
+If you run into an app that's not running right, my suggestion is to run it with
+the regular mongrel_rails runner:
+
+ $ cd c:\my\path\to\myapp
+ $ mongrel_rails start -p 4500
+
+Since that will spit out error messages and stuff to the console.  *Use CTRL-Pause/Break to stop.*
 
 
 h2. Performance
@@ -59,3 +75,14 @@ API and dig into the source.  Since Mongrel is currently being used by
 other frameworks it's documentation is aimed at developers.  Real manuals
 will be written when there's something for "regular" folks to use.
 
+
+h2. Mailing Lists
+
+There's a "mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users that
+you should subscribe to if you're looking for help or are interested in tracking
+Mongrel.  We post announcements of pre-release gems you can play with to this
+mailing list and also discuss development of Mongrel there.
+
+Before you start asking for features you should read about 
+"bikeshedding":http://www.catb.org/jargon/html/B/bikeshedding.html and 
+understand that we're really nice, but sometimes code speaks better than rhetoric.

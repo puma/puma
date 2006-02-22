@@ -10,6 +10,12 @@ There's quite a few people who either directly or indirectly helped to
 make Mongrel.  If I missed anyone then just e-mail me and I'll put your
 name here.
 
+* Mongrel was started by "Zed A. Shaw":http://www.zedshaw.com/
+* Win32 support for services was done by Luis Lavena.
+* Specialized Win32 gems were setup by Wilson Bilkovich.
+
+Also with lots of testing from tons of people who are really appreciated.
+
 h2. Site Template
 
 The site's look and template is blatantly stolen from "OWD":http://openwebdesign.org

@@ -7,6 +7,17 @@ ordering: 2
 
 h1. Latest News
 
+h2.  Feb-22:  Mongrel 0.3.6 -- Win32 Services Galore
+
+Thanks to Luis Lavena we have an almost complete win32 service
+runner and management script that lets you setup services in windows for
+all the different rails apps you have.  This means you can control the
+services from the command line or from the Services console.
+"Check the Win32 HOWTO":docs/win32.html for more information on using it.
+It still has some problems with stopping, but otherwise it's great.
+
+"Download 0.3.6":http://rubyforge.org/frs/?group_id=1306
+
 h2.  Feb-18: Mongrel 0.3.5 -- CGI Actually Works
 
 The CGIWrapper code I had written was complete and utter crap, so 
@@ -16,7 +27,7 @@ and read_multipart functions as the next place to put my efforts.  These
 three functions are so full of hand coded parsing that rewriting them with
 a Ragel processor would be a huge gain.
 
-"Download 0.3.3":http://rubyforge.org/frs/?group_id=1306
+"Download 0.3.5":http://rubyforge.org/frs/?group_id=1306
 
 h2.  Feb-16: Mongrel 0.3.4 -- Win32 Pre-built Gems
 
@@ -35,7 +46,7 @@ give mongrel_rails a command.  It now lists the commands.
 There is a small warning message I threw in that I want people to report if they
 see.  You'll know it if you see it in the log/mongrel.log file or on the console.
 
-"Download 0.3.3":http://rubyforge.org/frs/?group_id=1306
+"Download 0.3.4":http://rubyforge.org/frs/?group_id=1306
 
 
 h2.  Feb-14: Mongrel 0.3.3 Released

@@ -2,11 +2,20 @@
 title: Documentation
 inMenu: true
 directoryName: Documentation
-ordering: 3
 ---
 
 h1. Available Documentation
 
+We've got a small set of documentation to get people going.  Most of it is 
+geared toward Ruby on Rails but other projects using Mongrel should have their own
+docs that you can refer to based on these.
+
+* "Getting Started":started.html -- Installing and Other things
+* "HOWTO":howto.html -- Doing advanced stuff with Mongrel.
+* "Win32 HOWTO":win32.html -- Specific instructions for running on windows.
+
+If there's documentation you'd like then feel free to e-mail the list or post
+to the tracker.
 
 h2. RDoc API Documentation
 
