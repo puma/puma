@@ -44,6 +44,7 @@ module Mongrel
         @valid = true
         # this is retarded, but it has to be done this way because -h and -v exit
         @done_validating = false
+        @original_args = argv.dup
 
         configure
 
@@ -154,9 +155,8 @@ module Mongrel
       # Runs the args against the first argument as the command name.
       # If it has any errors it returns a false, otherwise it return true.
       def run(args)
-        # find the command and change the program's name to reflect it
+        # find the command
         cmd_name = args.shift
-        $0 = "#{cmd_name}"
         
         if !cmd_name or cmd_name == "?" or cmd_name == "help"
           print_command_list

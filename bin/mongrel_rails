@@ -117,19 +117,40 @@ class StartCommand < Mongrel::Command::Command
   end
 
   def start_mongrel(rails)
+    @restart = false
+
     # start up mongrel with the right configurations
     server = Mongrel::HttpServer.new(@address, @port, @num_procs.to_i, @timeout.to_i)
     server.register("/", rails)
     server.run
-    trap("INT") { server.stop }
+
+    # graceful shutdown
+    trap("TERM") { 
+      server.stop 
+    }
     
+    # rails reload
+    trap("HUP") { 
+      server.stop 
+      @restart = true
+    }
+    
+    # restart
+    trap("USR2") { 
+      server.stop
+      @restart = true
+    }
+
     begin
-      puts "Server ready."
+      STDERR.puts "Server ready."
       server.acceptor.join
     rescue Interrupt
-      puts "Interrupted."
+      STDERR.puts "Interrupted."
       raise
     end
+    
+    # daemonize makes restart easy
+    run if @restart
   end
 
   def run
@@ -140,12 +161,24 @@ class StartCommand < Mongrel::Command::Command
 end
 
 
+def send_signal(signal, pid_file)
+  pid = open(pid_file).read.to_i
+  print "Sending #{signal} to Mongrel at PID #{pid}..."
+  begin
+    Process.kill(signal, pid)
+  rescue Errno::ESRCH
+    puts "Process does not exist.  Not running."
+  end
+  
+  puts "Done."
+end
 
 class StopCommand < Mongrel::Command::Command
 
   def configure 
-    options [
+    options [ 
              ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
+             ['-f', '--force', "Force the shutdown.", :@force, false],
              ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"]
     ]
   end
@@ -162,16 +195,47 @@ class StopCommand < Mongrel::Command::Command
 
   
   def run
-    pid = open(@pid_file).read.to_i
-    print "Stopping Mongrel at PID #{pid}..."
-    begin
-      Process.kill("INT", pid)
-    rescue Errno::ESRCH
-      puts "Process does not exist.  Not running."
+    if @force
+      send_signal("KILL", @pid_file)
+    else
+      send_signal("TERM", @pid_file)
     end
 
     File.unlink(@pid_file)
-    puts "Done."
+  end
+end
+
+
+
+class RestartCommand < Mongrel::Command::Command
+
+  def configure 
+    options [ 
+             ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
+             ['-s', '--soft', "Do a soft restart rather than a process exit restart", :@soft, false],
+             ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"]
+    ]
+  end
+  
+  def validate
+    @cwd = File.expand_path(@cwd)
+    valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+
+    @pid_file = File.join(@cwd,@pid_file)
+    valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
+
+    return @valid
+  end
+
+
+  def run
+    if @soft
+      send_signal("HUP", @pid_file)
+    else
+      send_signal("USR2", @pid_file)
+    end
+
+    File.unlink(@pid_file)
   end
 end
 
