@@ -1,0 +1,144 @@
+---
+title: Lighttpd
+inMenu: true
+directoryName: Documentation
+---
+
+h1.  Using Lighttpd With Mongrel
+
+It is possible host an application with just Mongrel since it is
+able to serve files like a normal web server.  Still, no matter
+how fast Mongrel gets it probably can't compete with something
+like lighttpd for serving static files.  Because of this I've
+devised a simple way to setup a lighttpd+Mongrel setup that
+demonstrates clustering four Mongrel servers running the same
+application as backends.
+
+This is very similar to a FastCGI or SCGI setup except that 
+you're just using regular HTTP.  Read through the "HOWTO":howto.html
+for information on other possible deployment scenarios.
+
+
+h2.  The Goal
+
+What we want to do is put a lighttpd on the internet and then
+have it proxy back to one of four Mongrel servers.
+
+!SimpleLighttpdMongrelSetup.jpg!
+
+This is actually really trivial and probably doesn't need a diagram
+but I got bored just writing it up.
+
+How it all works is pretty simple:
+
+# Requests come to the lighttpd server.
+# Lighttpd takes each request, and sends it to a backend depending
+  on how you configure it:
+  * hash -- Hashes the request URI and makes sure that it goes to the same backend.
+  * round-robin -- Just chooses another host for each request.
+  * fair -- "Load based, passive balancing."  No idea what that means, but if it's like
+    the rest of lighttpd it probably means it will overload the first one and if that one's
+    busy then it starts using the next ones.
+# Each backend doesn't really care about any of this since it's just a web server.
+
+
+h2. Lighttpd Configuration
+
+For lighttpd you need to have *mod_proxy* in your server.modules setting:
+
+ server.modules = ( "mod_rewrite", "mod_redirect", 
+   "mod_access", "mod_accesslog", "mod_compress", 
+   "mod_proxy")
+
+Then you need to tell lighttpd where the other backends are located:
+
+ proxy.balance = "fair"
+ proxy.server  = ( "/" => ( ( "host" => "127.0.0.1", "port" => 8001 ),
+                          ( "host" => "127.0.0.1", "port" => 8002 ),
+                          ( "host" => "127.0.0.1", "port" => 8003 ),
+                          ( "host" => "127.0.0.1", "port" => 8004 ) ) )
+
+When I used lighttpd 1.4.9 and set proxy.balance="round-robin" I had an excessive number of
+500 errors for no real reason.  The "fair" setting seems to be the best, but if you
+have a large number of fairly random URIs you should try "hash" too.
+
+*For the rest of this tutorial we'll assume you're running lighttpd on port 80.*
+
+
+h2. Mongrel Configuration
+
+Mongrel is pretty easy to setup with this configuration on either Win32 or Unix, but
+since lighttpd doesn't compile so easily on Win32 I'll just show the Unix method
+for starting it:
+
+ $ mongrel_rails start -d -p 8001 -e production -P log/mongrel-1.pid
+ $ mongrel_rails start -d -p 8002 -e production -P log/mongrel-2.pid
+ $ mongrel_rails start -d -p 8003 -e production -P log/mongrel-3.pid
+ $ mongrel_rails start -d -p 8004 -e production -P log/mongrel-4.pid
+
+Now you should be able to hit your web server at port 80 and it'll run against
+one of your four Mongrels.
+
+
+h2.  Testing Stability and Performance
+
+As I mentioned before proxy.balance="round-robin" had many stability issues
+in lighttpd 1.4.9 but how did I figure this out?  Here's how you can do it.
+
+You use "httperf":http://www.hpl.hp.com/research/linux/httperf/ to first hit each 
+Mongrel backend with a large request set.  
+
+ $ httperf --port 8001 --server 127.0.0.1 --num-conns 300 --uri /test
+ $ httperf --port 8002 --server 127.0.0.1 --num-conns 300 --uri /test
+ $ httperf --port 8003 --server 127.0.0.1 --num-conns 300 --uri /test
+ $ httperf --port 8004 --server 127.0.0.1 --num-conns 300 --uri /test
+
+After each of these you're looking for the *Connection rate*, *Request rate*,
+*Reply rate*, and *Reply status*.  You first look at the *Reply status* to make
+sure that you got all 2xx messages.  Then look at the other three and make
+sure they are about the same.
+
+Then you hit lighttpd with a similar request set to confirm that it handles the base case.
+
+ $ httperf --port 80 --server 127.0.0.1 --num-conns 300 --uri /test
+
+You should get no 5xx errors.  In the case of round-robin there were about 60%
+5xx errors even though the Mongrels were functioning just fine.  The "hash" method
+didn't improve this test's performance since there's only on URI in the test.  It 
+seems the "fair" method is the best you can do right now.
+
+Finally you hit lighttpd with a 4x rate to see if it could handle the theoretical limit.
+
+ $ httperf --port 80 --server 127.0.0.1 --num-conns 10000 --uri /test --rate 600
+
+It will most likely fail miserably and you'll probably see a few 5xx counts in the
+*Reply status* line but that's normal.  What you're looking to do is keep moving 
+--rate and --num-conns up/down until you get where the server is just barely 
+able to accept the requests without slowing down (i.e. your *Request rate* matches
+your --rate setting).   There will be a point where adding literally one more 
+to your --rate setting causes the Request rate to tank. That's your setup's breaking
+point and is the actual requests/second you can handle.
+
+
+h2. Other Configuration Tips
+
+The only other thing that's missing from this setup is the page caching with 
+mod_rewrite so that lighttpd is serving the static files.  Right now your
+Mongrels are the ones serving the static files through lighttpd.  What you
+want is to have lighttpd serve the static files from page caching and if
+it doesn't find it talk to Rails.
+
+Well there's one problem with this configuration:  I don't know how to
+do it with lighttpd.  Normally you'd do this with SCGI or FastCGI:
+
+ server.error-handler-404 = "/dispatch.scgi"
+ url.rewrite = ("^/$" => "index.html", "^([^.]+)$" => "$1.html")
+
+Problem with this is that setting the requests are being sent back
+directly to each Mongrel unlike with /dispatch.scgi which modifies
+the request to work with SCGI.
+
+A better tactic might be to delve into the CML (Cache Meta Language)
+that lighttpd supports to see if it offers better caching.  A future
+version of these instructions will try to solve this problem.
+

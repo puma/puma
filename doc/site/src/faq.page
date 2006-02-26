@@ -52,26 +52,6 @@ right after Rails runs.  While Rails is running there is only one controller
 in operation at a time.
 
 
-h2. Deployment
-
-h3. Q: What's the best way to deploy my application with Mongrel?
-
-Right now Mongrel is still in heavy development, so I wouldn't recommend
-running anything production level with it.  For the future I'm envisioning
-three main ways people will use Mongrel with their application:
-
-# Developing their application by running Mongrel the same way they run WEBrick.
-# Putting Mongrel behind a web server that supports proxying (like mod_proxy in lighttpd and apache)
-   so that the web server handles the static content and Mongrel handles the dynamic.
-# Using a load balancer to run a cluster of Mongrel and web servers directly rather
-   than through proxying.
-
-Since Mongrel uses plain HTTP there's no reason you can't use it directly for small
-installs or development and testing.  For production deployments it'll be easier
-to deal with than SCGI or FastCGI since there's already a huge amount of machinery 
-available for running HTTP based clusters.
-
-
 h2. Web Site
 
 h3. Q: How did you make this site?
@@ -90,4 +70,10 @@ so that it's auto-generated and deployed to the site for me.
 Refer to the "attributions":/attributions.html page for information on the resources used.
 
 
+h2. Deployment
+
+h3. Q: How do I deploy Mongrel in production?
+
+Take a look at the "HOWTO":docs/howto.html and the "Lighttpd":docs/lighttpd.page
+instructions for more information on this.
 

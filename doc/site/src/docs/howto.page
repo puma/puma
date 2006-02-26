@@ -6,7 +6,45 @@ directoryName: Documentation
 
 h1.  Mongrel HOWTO
 
-Coming soon...
+This is a collection of small tidbits of advice which don't fit into
+larger documentation just yet.
+
+
+h1. Alternative Deployment Scenarios
+
+Since Mongrel uses plain HTTP there's a huge number of deployment 
+scenarios you can use.  Take a look at the "Lighttpd instructions":lighttpd.html
+for a more complete example.
+
+
+h2. Pound+lighttpd+Mongrel
+
+"Pound":http://www.apsis.ch/pound/ is a decent software only HTTP proxy that
+also handles the SSL for you.  This means you can configure Pound with your
+SSL certificates and it'll handle the virtual hosts and proxying.  The
+interesting thing is that since Pound uses native threads it actually can't
+keep up with lighttpd.
+
+
+h2. Hardware Load Balancers
+
+Another approach is to put a hardware load balancer in front of lighttpd 
+and a bunch of Mongrel backends.  The attraction of this is that you
+can just route requests directly to lighttpd without proxying through.
+
+
+h3. URI Prefixes
+
+One problem with many of these setups where you route requests for static
+files to lighttpd, but dynamic requests to Mongrel is that the load balancer
+needs a way of determining what is "dynamic" and what is "static".  Since
+rails uses sane URIs it's difficult to figure this out without some kind
+of prefix.
+
+The easiest way I've found is to prefix your Rails routes.rb with "/app"
+and then configure the load balancer to route anything starting with "/app"
+to the Mongrel servers.
+
 
 
 
