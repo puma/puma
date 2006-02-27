@@ -41,12 +41,13 @@ class InstallCommand < Mongrel::Command::Command
       ['-n', '--name SVC_NAME', "Required name for the service to be registered/installed.", :@svc_name, nil],
       ['-d', '--display SVC_DISPLAY', "Adjust the display name of the service.", :@svc_display, nil],
       ['-r', '--root PATH', "Set the root path where your rails app resides.", :@rails_root, Dir.pwd],
-      ['-e', '--environment ENV', "Rails environment to run as", :@environment, 'production'],
+      ['-e', '--environment ENV', "Rails environment to run as. (default: production)", :@environment, 'production'],
       ['-b', '--binding ADDR', "Address to bind to", :@ip, nil],
       ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
       ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
       ['-P', '--num-procs INT', "Number of processor threads to use", :@num_procs, nil],
       ['-t', '--timeout SECONDS', "Timeout all requests after SECONDS time", :@timeout, nil],
+      ['-c', '--cpu CPU', "Bind the process to specific cpu, starting from 1.", :@cpu, nil]
     ]
   end
 
@@ -69,6 +70,9 @@ class InstallCommand < Mongrel::Command::Command
     valid? @svc_name != nil, "You must specify a valid service name to install."
     valid? app_exist == true, "The root of rails app isn't valid, please verify."
     valid_exists? @mime_map, "MIME mapping file does not exist: #@mime_map" if @mime_map
+    
+    # Validate the number of cpu to bind to.
+    valid? @cpu.to_i > 0, "You must specify a numeric value for cpu. (1..8)" if @cpu
     
     # We should validate service existance here, right Zed?
     begin
@@ -112,6 +116,9 @@ class InstallCommand < Mongrel::Command::Command
 
     # timeout
     @params << "-t #{@timeout.to_i} " if @timeout
+    
+    # cpu
+    @params << "-c #{@cpu.to_i} " if @cpu
   end
   
   def install_service

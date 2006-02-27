@@ -10,6 +10,36 @@ require 'optparse'
 
 require 'win32/service'
 
+# We need to use OpenProcess and SetProcessAffinityMask on WinNT/2K/XP for
+# binding the process to each cpu.
+# Kernel32 Module Just for Win32 :D
+require 'dl/win32'
+
+module Kernel32
+  [
+    %w/OpenProcess            LLL    L/,
+    %w/SetProcessAffinityMask LL     L/,
+  ].each do |fn|
+    const_set fn[0].intern, Win32API.new('kernel32.dll', *fn)
+  end
+  
+  PROCESS_ALL_ACCESS = 0x1f0fff
+  
+  module_function
+
+  def set_affinity(pid, cpu)
+    handle = OpenProcess.call(PROCESS_ALL_ACCESS, 0, pid)
+  
+    # CPU mask is a bit weird, hehehe :)
+    # default mask for CPU 1
+    mask = 1
+    mask = %w{1 2 4 8 16 32 64 128}[cpu.to_i - 1] if cpu.to_i.between?(1, 8)
+    
+    SetProcessAffinityMask.call(handle, mask.to_i)
+  end
+end
+# End Kernel32 Module
+
 DEBUG_LOG_FILE = File.expand_path(File.dirname(__FILE__) + '/debug.log') 
 DEBUG_THREAD_LOG_FILE = File.expand_path(File.dirname(__FILE__) + '/debug_thread.log') 
 
@@ -67,8 +97,8 @@ class MongrelRails
     File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - mongrelrails_initialize left") }
   end
   
-  def configure
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - mongrelrails_configure entered") }
+  def delayed_initialize
+    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - delayed_initialize entered") }
 
     @rails = configure_rails
     #@rails = SimpleHandler.new
@@ -77,7 +107,7 @@ class MongrelRails
     @server = Mongrel::HttpServer.new(@ip, @port, @num_procs.to_i, @timeout.to_i)
     @server.register("/", @rails)
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - mongrelrails_configure left") }
+    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - delayed_initialize left") }
   end
   
   def load_mime_map
@@ -162,7 +192,7 @@ class RailsDaemon < Win32::Daemon
   def service_init
     File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - service_init entered") }
     
-    @rails.configure
+    @rails.delayed_initialize
     
     File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - service_init left") }    
   end
@@ -204,23 +234,33 @@ if ARGV[0] == 'service'
     :port         => 3000,
     :mime_map     => nil,
     :num_procs    => 20,
-    :timeout      => 120
+    :timeout      => 120,
+    :cpu          => nil
   }
   
   ARGV.options do |opts|
     opts.on('-r', '--root PATH', "Set the root path where your rails app resides.") { |OPTIONS[:rails_root]| }
-    opts.on('-e', '--environment ENV', "Rails environment to run as.") { |OPTIONS[:environment]| }
+    opts.on('-e', '--environment ENV', "Rails environment to run as. (default: production)") { |OPTIONS[:environment]| }
     opts.on('-b', '--binding ADDR', "Address to bind to") { |OPTIONS[:ip]| }
     opts.on('-p', '--port PORT', "Which port to bind to") { |OPTIONS[:port]| }
     opts.on('-m', '--mime PATH', "A YAML file that lists additional MIME types") { |OPTIONS[:mime_map]| }
     opts.on('-P', '--num-procs INT', "Number of processor threads to use") { |OPTIONS[:num_procs]| }
     opts.on('-t', '--timeout SECONDS', "Timeout all requests after SECONDS time") { |OPTIONS[:timeout]| }
-    
+    opts.on('-c', '--cpu CPU', "Bind the process to specific cpu") { |OPTIONS[:cpu]| }
+
     opts.parse!
   end
 
+  #expand RAILS_ROOT
+  OPTIONS[:rails_root] = File.expand_path(OPTIONS[:rails_root])
+  
   OPTIONS[:docroot] = File.expand_path(OPTIONS[:rails_root] + '/public')
 
+  # We must bind to a specific cpu?
+  if OPTIONS[:cpu]
+    Kernel32.set_affinity(Process.pid, OPTIONS[:cpu])
+  end
+  
   rails = MongrelRails.new(OPTIONS[:ip], OPTIONS[:port], OPTIONS[:rails_root], OPTIONS[:docroot], OPTIONS[:environment], OPTIONS[:mime_map], OPTIONS[:num_procs].to_i, OPTIONS[:timeout].to_i)
   rails_svc = RailsDaemon.new(rails)
   rails_svc.mainloop
@@ -236,7 +276,8 @@ elsif ARGV[0] == 'debug'
     :port         => 3000,
     :mime_map     => nil,
     :num_procs    => 20,
-    :timeout      => 120
+    :timeout      => 120,
+    :cpu          => nil
   }
   
   ARGV.options do |opts|
@@ -247,7 +288,8 @@ elsif ARGV[0] == 'debug'
     opts.on('-m', '--mime PATH', "A YAML file that lists additional MIME types") { |OPTIONS[:mime_map]| }
     opts.on('-P', '--num-procs INT', "Number of processor threads to use") { |OPTIONS[:num_procs]| }
     opts.on('-t', '--timeout SECONDS', "Timeout all requests after SECONDS time") { |OPTIONS[:timeout]| }
-    
+    opts.on('-c', '--cpu CPU', "Bind the process to specific cpu") { |OPTIONS[:cpu]| }
+
     opts.parse!
   end
 
@@ -256,9 +298,15 @@ elsif ARGV[0] == 'debug'
   
   OPTIONS[:docroot] = File.expand_path(OPTIONS[:rails_root] + '/public')
 
+  # We must bind to a specific cpu?
+  if OPTIONS[:cpu]
+    Kernel32.set_affinity(Process.pid, OPTIONS[:cpu])
+  end
+
   rails = MongrelRails.new(OPTIONS[:ip], OPTIONS[:port], OPTIONS[:rails_root], OPTIONS[:docroot], OPTIONS[:environment], OPTIONS[:mime_map], OPTIONS[:num_procs].to_i, OPTIONS[:timeout].to_i)
-  rails.configure
+  rails.delayed_initialize
   rails.start_serve
+  
   begin
     sleep
   rescue Interrupt
