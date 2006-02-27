@@ -124,23 +124,27 @@ class StartCommand < Mongrel::Command::Command
     server.register("/", rails)
     server.run
 
-    # graceful shutdown
-    trap("TERM") { 
-      server.stop 
-    }
-    
-    # rails reload
-    trap("HUP") { 
-      server.stop 
-      @restart = true
-    }
-    
-    # restart
-    trap("USR2") { 
-      server.stop
-      @restart = true
-    }
+    # signal trapping just applies to posix systems
+    # TERM is a valid signal, but still doesn't gracefuly shutdown on win32.
+    if RUBY_PLATFORM !~ /mswin/
+      # graceful shutdown
+      trap("TERM") { 
+        server.stop 
+      }
 
+      # rails reload
+      trap("HUP") { 
+        server.stop 
+        @restart = true
+      }
+
+      # restart
+      trap("USR2") { 
+        server.stop
+        @restart = true
+      }
+    end
+    
     begin
       STDERR.puts "Server ready."
       server.acceptor.join
