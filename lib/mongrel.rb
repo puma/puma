@@ -4,11 +4,28 @@ require 'thread'
 require 'stringio'
 require 'mongrel/cgi'
 require 'mongrel/handlers'
+require 'mongrel/plugins'
+
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
 # functionality to service web application requests fast as possible.
 module Mongrel
+
+  class URIClassifier
+    # Returns the URIs that have been registered with this classifier so far.
+    # The URIs returned should not be modified as this will cause a memory leak.
+    # You can use this to inspect the contents of the URIClassifier.
+    def uris
+      @handler_map.keys
+    end
+
+    # Simply does an inspect that looks like a Hash inspect.
+    def inspect
+      @handler_map.inspect
+    end
+  end
+
 
   # Used to stop the HttpServer via Thread.raise.
   class StopServer < Exception
@@ -441,7 +458,8 @@ module Mongrel
     # off the request queue before finally exiting.
     def stop
       @acceptor[:stopped] = true
-      @acceptor.raise(StopServer.new)
+      exc = StopServer.new
+      @acceptor.raise(exc)
     end
 
   end

@@ -30,7 +30,9 @@ class URIClassifierTest < Test::Unit::TestCase
     assert val != nil, "didn't resolve"
     assert_equal prefix,sn, "wrong script name"
     assert_equal test[sn.length .. -1],pi, "wrong path info"
-    
+
+    assert u.inspect != nil, "No inspect for classifier"
+    assert u.uris[0] == prefix, "URI list didn't match"
   end
 
   def test_not_finding
@@ -172,5 +174,7 @@ class URIClassifierTest < Test::Unit::TestCase
     assert_equal root,sn, "didn't get right script name"
     assert_equal 1,h, "didn't find handler"
   end
+
+
 end
 
