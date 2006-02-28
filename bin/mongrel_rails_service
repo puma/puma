@@ -7,8 +7,6 @@
 ###############################################
 require 'rubygems'
 require 'mongrel'
-require 'mongrel/command'
-
 require 'win32/service'
 include Win32
 
@@ -32,7 +30,8 @@ module GenericCommand
   end
 end
 
-class InstallCommand < Mongrel::Command::Command
+class InstallCommand < Mongrel::Plugin "/commands"
+  include Mongrel::Command::Command
 
   # Default every option to nil so only the defined ones get passed to service
   # (which will override ServiceCommand defaults).
@@ -175,7 +174,8 @@ class InstallCommand < Mongrel::Command::Command
   end
 end
 
-class DeleteCommand < Mongrel::Command::Command
+class Delete < Mongrel::Plugin "/commands" 
+  include Mongrel::Command::Command
   include GenericCommand
 
   def run
@@ -193,7 +193,8 @@ class DeleteCommand < Mongrel::Command::Command
   end
 end
 
-class StartCommand < Mongrel::Command::Command
+class Start < Mongrel::Plugin "/commands"
+  include Mongrel::Command::Command
   include GenericCommand
   
   def run
@@ -217,7 +218,8 @@ class StartCommand < Mongrel::Command::Command
   end
 end
 
-class StopCommand < Mongrel::Command::Command
+class Stop < Mongrel::Plugin "/commands"
+  include Mongrel::Command::Command
   include GenericCommand
   
   def run

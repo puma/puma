@@ -1,7 +1,6 @@
 require 'singleton'
 require 'optparse'
-require 'pluginfactory'
-
+require 'mongrel/plugins'
 
 module Mongrel
 
@@ -10,17 +9,10 @@ module Mongrel
 
   module Command
 
-
     # A Command pattern implementation used to create the set of command available to the user
     # from Mongrel.  The script uses objects which implement this interface to do the
     # user's bidding.
-    #
-    # Creating a new command is very easy, and you can do it without modifying the source
-    # of Mongrel thanks to PluginFactory.  What you do is the following:
-    #
-    # 1.  
-    class Command
-      include PluginFactory
+    module Command
       
       attr_reader :valid, :done_validating
 
@@ -63,12 +55,6 @@ module Mongrel
         end
         
         @opt.parse! argv
-      end
-      
-      # Tells the PluginFactory where to look for additional commands.  By default
-      # it's just a "plugins" directory wherever we are located.
-      def self.derivativeDirs
-        return ["plugins"]
       end
       
       # Returns true/false depending on whether the command is configured properly.
@@ -119,8 +105,6 @@ module Mongrel
       end
     end
     
-    
-    
     # A Singleton class that manages all of the available commands
     # and handles running them.
     class Registry
@@ -128,15 +112,9 @@ module Mongrel
       
       # Builds a list of possible commands from the Command derivates list
       def commands
-        list = Command.derivatives()
-        match = Regexp.new("(.*::.*)|(.*command.*)", Regexp::IGNORECASE)
-        
-        results = []
-        list.keys.each do |key|
-          results << key.to_s unless match.match(key.to_s)
-        end
-        
-        return results.sort
+        pmgr = PluginManager.instance
+        list = pmgr.available["/commands"]
+        return list.sort
       end
 
       # Prints a list of available commands.
@@ -144,7 +122,7 @@ module Mongrel
         puts "Available commands are:\n\n"
         
         self.commands.each do |name|
-          puts " - #{name}\n"
+          puts " - #{name[1 .. -1]}\n"
         end
         
         puts "\nEach command takes -h as an option to get help."
@@ -165,8 +143,8 @@ module Mongrel
         
         # command exists, set it up and validate it
         begin
-          command = Command.create(cmd_name, args)
-        rescue FactoryError
+          command = PluginManager.instance.create("/commands/#{cmd_name}", args)
+        rescue
           STDERR.puts "INVALID COMMAND: #$!"
           print_command_list
           return

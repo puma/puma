@@ -1,47 +1,9 @@
 require 'rubygems'
-require 'mongrel'
-require 'mongrel/command'
+require 'mongrel/rails'
 
 
-class RailsHandler < Mongrel::HttpHandler
-
-  def initialize(dir, mime_map = {})
-    @files = Mongrel::DirHandler.new(dir,false)
-    @guard = Mutex.new
-    
-    # register the requested mime types
-    mime_map.each {|k,v| Mongrel::DirHandler::add_mime_type(k,v) }
-  end
-  
-  def process(request, response)
-    # not static, need to talk to rails
-    return if response.socket.closed?
-
-    if @files.can_serve(request.params["PATH_INFO"])
-      @files.process(request,response)
-    else
-      cgi = Mongrel::CGIWrapper.new(request, response)
-
-      begin
-        @guard.synchronize do
-          # Rails is not thread safe so must be run entirely within synchronize 
-          Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
-        end
-
-        # This finalizes the output using the proper HttpResponse way
-        cgi.out {""}
-      rescue Object => rails_error
-        STDERR.puts "calling Dispatcher.dispatch #{rails_error}"
-        STDERR.puts rails_error.backtrace.join("\n")
-      end
-    end
-
-  end
-end
-
-
-
-class StartCommand < Mongrel::Command::Command
+class Start < Mongrel::Plugin "/commands"
+  include Mongrel::Command::Command
 
   def configure
     options [
@@ -177,7 +139,9 @@ def send_signal(signal, pid_file)
   puts "Done."
 end
 
-class StopCommand < Mongrel::Command::Command
+
+class Stop < Mongrel::Plugin "/commands"
+  include Mongrel::Command::Command
 
   def configure 
     options [ 
@@ -211,7 +175,8 @@ end
 
 
 
-class RestartCommand < Mongrel::Command::Command
+class Restart < Mongrel::Plugin "/commands"
+    include Mongrel::Command::Command
 
   def configure 
     options [ 

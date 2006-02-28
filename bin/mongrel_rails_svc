@@ -4,10 +4,8 @@
 # This is where Win32::Daemon resides.
 ###############################################
 require 'rubygems'
-require 'mongrel'
-
+require 'mongrel/rails'
 require 'optparse'
-
 require 'win32/service'
 
 # We need to use OpenProcess and SetProcessAffinityMask on WinNT/2K/XP for
@@ -43,39 +41,12 @@ end
 DEBUG_LOG_FILE = File.expand_path(File.dirname(__FILE__) + '/debug.log') 
 DEBUG_THREAD_LOG_FILE = File.expand_path(File.dirname(__FILE__) + '/debug_thread.log') 
 
-class RailsHandler < Mongrel::HttpHandler
-  def initialize(dir, mime_map = {})
-    @files = Mongrel::DirHandler.new(dir,false)
-    @guard = Mutex.new
-    
-    # register the requested mime types
-    mime_map.each {|k,v| Mongrel::DirHandler::add_mime_type(k,v) }
-  end
+def dbg(msg)
+  File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - #{msg}") }
+end
   
-  def process(request, response)
-    # not static, need to talk to rails
-    return if response.socket.closed?
-
-    if @files.can_serve(request.params["PATH_INFO"])
-      @files.process(request,response)
-    else
-      cgi = Mongrel::CGIWrapper.new(request, response)
-
-      begin
-        @guard.synchronize do
-          # Rails is not thread safe so must be run entirely within synchronize 
-          Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
-        end
-
-        # This finalizes the output using the proper HttpResponse way
-        cgi.out {""}
-      rescue Object => rails_error
-        STDERR.puts "calling Dispatcher.dispatch #{rails_error}"
-        STDERR.puts rails_error.backtrace.join("\n")
-      end
-    end
-  end
-
+def dbg_th(msg)
+  File.open(DEBUG_THREAD_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - #{msg}") }  
 end
 
 # This class encapsulate the handler registering, http_server and working thread
@@ -83,7 +54,7 @@ end
 # (in case you don't want use mongrel_rails script)
 class MongrelRails
   def initialize(ip, port, rails_root, docroot, environment, mime_map, num_procs, timeout)
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - mongrelrails_initialize entered") }
+    dbg "mongrelrails_initialize entered"
 
     @ip = ip
     @port = port
@@ -94,24 +65,23 @@ class MongrelRails
     @num_procs = num_procs
     @timeout = timeout
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - mongrelrails_initialize left") }
+    dbg "mongrelrails_initialize left"
   end
   
   def delayed_initialize
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - delayed_initialize entered") }
+    dbg "delayed_initialize entered"
 
     @rails = configure_rails
-    #@rails = SimpleHandler.new
     
     # start up mongrel with the right configurations
     @server = Mongrel::HttpServer.new(@ip, @port, @num_procs.to_i, @timeout.to_i)
     @server.register("/", @rails)
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - delayed_initialize left") }
+    dbg "delayed_initialize left"
   end
   
   def load_mime_map
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - load_mime_map entered") }
+    dbg "load_mime_map entered"
 
     mime = {}
 
@@ -124,13 +94,13 @@ class MongrelRails
       mime.each {|k,v| puts "WARNING: MIME type #{k} must start with '.'" if k.index(".") != 0 }
     end
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - load_mime_map left") }
+    dbg "load_mime_map left"
     
     return mime
   end
 
   def configure_rails
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - configure_rails entered") }
+    dbg "configure_rails entered"
 
     Dir.chdir(@rails_root)
 
@@ -140,85 +110,85 @@ class MongrelRails
     # configure the rails handler
     rails = RailsHandler.new(@docroot, load_mime_map)
     
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - configure_rails left") }
+    dbg "configure_rails left"
 
     return rails
   end
 
   def start_serve
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - start_serve entered") }
+    dbg "start_serve entered"
     
     @runner = Thread.new do 
-      File.open(DEBUG_THREAD_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - runner_thread suspended") }
+      dbg_th "runner_thread suspended"
       Thread.stop
       
-      File.open(DEBUG_THREAD_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - runner_thread resumed") }
-      File.open(DEBUG_THREAD_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - runner_thread acceptor.join") }
+      dbg_th "runner_thread resumed"
+      dbg_th "runner_thread acceptor.join"
       @server.acceptor.join
     end
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - server.run") }
+    dbg "server.run"
     @server.run
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - runner.run") }
+    dbg "runner.run"
     @runner.run
     
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - start_serve left") }    
+    dbg "start_serve left"    
   end
   
   def stop_serve
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - stop_serve entered") }
+    dbg "stop_serve entered"
 
     if @runner.alive?
-      File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - killing thread") }
+      dbg "killing thread"
       @runner.kill
     end
     
     @server.stop
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - stop_serve left") }
+    dbg "stop_serve left"
   end
 end
 
 class RailsDaemon < Win32::Daemon
   def initialize(rails)
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - daemon_initialize entered") }
+    dbg "daemon_initialize entered"
 
     @rails = rails
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - daemon_initialize left") }
+    dbg "daemon_initialize left"
   end
 
   def service_init
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - service_init entered") }
+    dbg "service_init entered"
     
     @rails.delayed_initialize
     
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - service_init left") }    
+    dbg "service_init left"    
   end
   
   def service_main
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - service_main entered") }
+    dbg "service_main entered"
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - rails.start_serve") }
+    dbg "rails.start_serve"
     @rails.start_serve
     
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - while RUNNING") }
+    dbg "while RUNNING"
     while state == RUNNING
       sleep 1
     end
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - state !RUNNING") }
+    dbg "state !RUNNING"
 
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - rails.stop_serve") }
+    dbg "rails.stop_serve"
     @rails.stop_serve
     
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - service_main left") }
+    dbg "service_main left"
   end
 
   def service_stop
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - service_stop entered") }
+    dbg "service_stop entered"
     
-    File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - service_stop left") }
+    dbg "service_stop left"
   end
 end
 

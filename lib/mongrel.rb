@@ -4,8 +4,9 @@ require 'thread'
 require 'stringio'
 require 'mongrel/cgi'
 require 'mongrel/handlers'
+require 'mongrel/command'
 require 'mongrel/plugins'
-
+require 'timeout'
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
@@ -29,6 +30,10 @@ module Mongrel
 
   # Used to stop the HttpServer via Thread.raise.
   class StopServer < Exception
+  end
+
+  # Used to timeout worker threads that have taken too long
+  class TimeoutWorker < Exception
   end
 
   # Every standard HTTP code mapped to the appropriate message.  These are
@@ -346,15 +351,18 @@ module Mongrel
       @host = host
       @port = port
       @processors = []
-      @timeout = timeout
 
-      num_processors.times {|i| 
+      # create the worker threads
+      num_processors.times do |i| 
         @processors << Thread.new do
           while client = @req_queue.deq
-            process_client(client)
+            Timeout::timeout(timeout) do
+              process_client(client)
+            end
           end
         end
-      }
+      end
+
     end
     
 
