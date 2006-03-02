@@ -83,7 +83,7 @@ module Mongrel
     # is fast.
     def create(name, options = {})
       category, plugin, map = @plugins.resolve(name)
-      STDERR.puts "found: #{category} #{plugin} #{map.inspect} #{map[plugin].inspect}"
+
       if category and plugin and plugin.length > 0
         map[plugin].new(options)
       else

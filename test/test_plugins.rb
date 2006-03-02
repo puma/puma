@@ -12,7 +12,7 @@ class PluginTest < Test::Unit::TestCase
   def setup
     @pmgr = PluginManager.instance
     @categories = ["/commands"]
-    @names = ["/first","/second","/last"]
+    @names = ["/first","/second","/last", "/atestplugin"]
   end
 
   def test_load_plugins
