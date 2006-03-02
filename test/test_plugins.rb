@@ -1,6 +1,9 @@
 require 'test/unit'
 require 'mongrel'
 
+class ATestPlugin < Mongrel::Plugin "/stuff"
+end
+
 
 include Mongrel
 
@@ -29,5 +32,14 @@ class PluginTest < Test::Unit::TestCase
       end
     end
   end
-  
+
+  def test_similar_uris
+
+    @pmgr.register("/test", "/testme", ATestPlugin)
+    @pmgr.register("/test2", "/testme", ATestPlugin)
+
+    assert_equal @pmgr.create("/test/testme").class, ATestPlugin
+    assert_equal @pmgr.create("/test2/testme").class, ATestPlugin
+
+  end
 end

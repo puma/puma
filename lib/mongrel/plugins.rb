@@ -55,6 +55,7 @@ module Mongrel
     def load(path)
       Dir.chdir(path) do
         Dir["**/*.rb"].each do |rbfile|
+          STDERR.puts "Loading plugins from #{rbfile}"
           require rbfile
         end
       end
@@ -65,9 +66,12 @@ module Mongrel
     # plugin to a category.
     def register(category, name, klass)
       cat, ignored, map = @plugins.resolve(category)
-      if not cat
+      
+      if not cat or ignored.length > 0
         map = {name => klass}
         @plugins.register(category, map)
+      elsif not map
+        raise "Unknown category #{category}"
       else
         map[name] = klass
       end
@@ -79,6 +83,7 @@ module Mongrel
     # is fast.
     def create(name, options = {})
       category, plugin, map = @plugins.resolve(name)
+      STDERR.puts "found: #{category} #{plugin} #{map.inspect} #{map[plugin].inspect}"
       if category and plugin and plugin.length > 0
         map[plugin].new(options)
       else
@@ -106,16 +111,25 @@ module Mongrel
   # It is not thread-safe yet but will be soon.
   class PluginBase
     
+    attr_reader :options
+
+
     # See Mongrel::Plugin for an explanation.
     def PluginBase.inherited(klass)
       name = "/" + klass.to_s.downcase
       PluginManager.instance.register(@@category, name, klass)
+      @@category = nil
     end
     
     # See Mongrel::Plugin for an explanation.
     def PluginBase.category=(category)
       @@category = category
     end
+
+    def initialize(options = {})
+      @options = options
+    end
+
   end
   
   # This nifty function works with the PluginBase to give you

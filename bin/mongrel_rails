@@ -3,21 +3,22 @@ require 'mongrel/rails'
 
 
 class Start < Mongrel::Plugin "/commands"
-  include Mongrel::Command::Command
+  include Mongrel::Command::Base
 
   def configure
     options [
-             ["-e", "--environment ENV", "Rails environment to run as", :@environment, ENV['RAILS_ENV'] || "development"],
-             ["-d", "--daemonize", "Whether to run in the background or not", :@daemon, false],
-             ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
-             ['-a', '--address ADDR', "Address to bind to", :@address, "0.0.0.0"],
-             ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
-             ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"],
-             ['-n', '--num-procs INT', "Number of processor threads to use", :@num_procs, 20],
-             ['-t', '--timeout SECONDS', "Timeout all requests after SECONDS time", :@timeout, 120],
-             ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
-             ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
-             ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, "public"],
+      ["-e", "--environment ENV", "Rails environment to run as", :@environment, ENV['RAILS_ENV'] || "development"],
+      ["-d", "--daemonize", "Whether to run in the background or not", :@daemon, false],
+      ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
+      ['-a', '--address ADDR', "Address to bind to", :@address, "0.0.0.0"],
+      ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
+      ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"],
+      ['-n', '--num-procs INT', "Number of processor threads to use", :@num_procs, 20],
+      ['-t', '--timeout SECONDS', "Timeout all requests after SECONDS time", :@timeout, 120],
+      ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
+      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
+      ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, "public"],
+      ['-L', '--load PATH', "Loads plugins from the given directory", :@load_from, nil]
     ]
   end
   
@@ -33,8 +34,11 @@ class Start < Mongrel::Plugin "/commands"
     valid_dir? @docroot, "Path to docroot not valid: #@docroot"
     valid_exists? @mime_map, "MIME mapping file does not exist: #@mime_map" if @mime_map
 
+    valid_dir? @load_from, "Plugin directory path does not exist" if @load_from
+
     return @valid
   end
+
 
   def daemonize 
     # save this for later since daemonize will hose it
@@ -120,6 +124,7 @@ class Start < Mongrel::Plugin "/commands"
   end
 
   def run
+    Mongrel::PluginManager.instance.load(@load_from) if @load_from
     daemonize
     rails = configure_rails
     start_mongrel(rails)
@@ -141,7 +146,7 @@ end
 
 
 class Stop < Mongrel::Plugin "/commands"
-  include Mongrel::Command::Command
+  include Mongrel::Command::Base
 
   def configure 
     options [ 
@@ -176,7 +181,7 @@ end
 
 
 class Restart < Mongrel::Plugin "/commands"
-    include Mongrel::Command::Command
+  include Mongrel::Command::Base
 
   def configure 
     options [ 

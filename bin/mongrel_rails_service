@@ -31,7 +31,7 @@ module GenericCommand
 end
 
 class Install < Mongrel::Plugin "/commands"
-  include Mongrel::Command::Command
+  include Mongrel::Command::Base
 
   # Default every option to nil so only the defined ones get passed to service
   # (which will override ServiceCommand defaults).
@@ -175,7 +175,7 @@ class Install < Mongrel::Plugin "/commands"
 end
 
 class Delete < Mongrel::Plugin "/commands" 
-  include Mongrel::Command::Command
+  include Mongrel::Command::Base
   include GenericCommand
 
   def run
@@ -194,7 +194,7 @@ class Delete < Mongrel::Plugin "/commands"
 end
 
 class Start < Mongrel::Plugin "/commands"
-  include Mongrel::Command::Command
+  include Mongrel::Command::Base
   include GenericCommand
   
   def run
@@ -219,7 +219,7 @@ class Start < Mongrel::Plugin "/commands"
 end
 
 class Stop < Mongrel::Plugin "/commands"
-  include Mongrel::Command::Command
+  include Mongrel::Command::Base
   include GenericCommand
   
   def run

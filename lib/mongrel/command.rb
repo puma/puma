@@ -12,7 +12,7 @@ module Mongrel
     # A Command pattern implementation used to create the set of command available to the user
     # from Mongrel.  The script uses objects which implement this interface to do the
     # user's bidding.
-    module Command
+    module Base
       
       attr_reader :valid, :done_validating
 
@@ -31,7 +31,8 @@ module Mongrel
 
       # Called by the subclass to setup the command and parse the argv arguments.
       # The call is destructive on argv since it uses the OptionParser#parse! function.
-      def initialize(argv)
+      def initialize(options={})
+        argv = options[:argv]
         @opt = OptionParser.new
         @valid = true
         # this is retarded, but it has to be done this way because -h and -v exit
@@ -54,7 +55,7 @@ module Mongrel
           end
         end
         
-        @opt.parse! argv
+        @opt.parse! options[:argv]
       end
       
       # Returns true/false depending on whether the command is configured properly.
@@ -143,7 +144,7 @@ module Mongrel
         
         # command exists, set it up and validate it
         begin
-          command = PluginManager.instance.create("/commands/#{cmd_name}", args)
+          command = PluginManager.instance.create("/commands/#{cmd_name}", :argv => args)
         rescue
           STDERR.puts "INVALID COMMAND: #$!"
           print_command_list
