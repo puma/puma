@@ -58,8 +58,10 @@ class RailsHandler < Mongrel::HttpHandler
 
         # This finalizes the output using the proper HttpResponse way
         cgi.out {""}
+      rescue Errno::EPIPE
+        # ignored
       rescue Object => rails_error
-        STDERR.puts "calling Dispatcher.dispatch #{rails_error}"
+        STDERR.puts "Error calling Dispatcher.dispatch #{rails_error.inspect}"
         STDERR.puts rails_error.backtrace.join("\n")
       end
     end
