@@ -15,7 +15,7 @@ pre-compiled gems available for people to use.
 
 h2. Stopping The mongrel_rails Script
 
-When you run the mongrel_rails script from the command line you'll have to use CTRL-Pause/Break
+When you run the mongrel_rails script from the command line you'll have to use *CTRL-Pause/Break*
 to get it to exit rather than CTRL-C.
 
 
@@ -30,29 +30,21 @@ and do:
 
 Now hit the port and poof, works (or should).
 
-*Stopping the service is a little problematic right now.*  We're working on graceful
-shutdown, so be patient.  The application will stop if you use:
+The application will stop if you use:
 
  $ mongrel_rails_service stop -n myapp
 
-But will complain about an error during shutdown.  If you try to stop using the
-Services control panel then it will seem to hang.  Just wait a little while then
-hit stop once the service actually stop.
+Now the really great thing is that you can just do all this from
+the Services control panel like your Rails application is a regular
+Windows service.
 
-
-h2. Development Work
-
-I recommend that you keep the service runner for doing a production run setup, 
-and then use a regular console with the plain Mongrel runner until we get
-service stop working right.
-
-Also, if you run into an app that's not running right, my suggestion is to run it with
-the regular mongrel_rails runner:
-
- $ cd c:\my\path\to\myapp
- $ mongrel_rails start -p 4500
-
-Since that will spit out error messages and stuff to the console.  *Use CTRL-Pause/Break to stop.*
+Even works in development mode, which is pretty nice.  I use win32
+at work now and what I have setup is three services:  myapp_dev, 
+myapp_stage, myapp_prod.  I point dev and stage at the same 
+directory but run dev in *development* mode and stage in *production*
+mode.  Then I have myapp_prod in a separate directory and when I'm
+about to claim I've got something to release I'll go simulate a
+subversion check-out and run my tests again.
 
 
 h2. Other Service Commands
@@ -89,5 +81,22 @@ h3. delete
 
 Takes the name (-n) of the service to delete and then removes it from the list.
 *This would be how you'd remove a service so you can change it's start-up options.*
+
+
+h2. CPU Affinity
+
+Mongrel's win32 support actually is able to set the CPU affinity of a running
+Mongrel service.  This is pretty neat since it means if you're running a 
+fancy SMP machine or a dual core that pretends to be SMP, then you can
+force Mongrel onto one of them and get a nice little boost.
+
+It's pretty easy to use, just pass the *-c or --cpu* option to the *install*
+command and give a CPU of 1-X.  That means if you have 4 CPUs and you want 
+Mongrel on #4 then do:
+
+ $ mongrel_rails_service install -n myapp \ 
+     -r c:\my\path\to\myapp -p 4000 -e production -c 4
+
+Pretty much the same command, just one more option and you're done.
 
 

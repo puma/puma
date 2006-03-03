@@ -46,6 +46,18 @@
         <h4>NEWS</h4>
 
         <dl>
+          <dt>Mar-02-2006</dt>
+          <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.7 -- Solid Rails, Win32, SwitchTower, Docs</a></h5>
+
+            <p>A slightly longer time between releases but this is packed with lots of good 
+	      things for people who want to run Mongrel. Highlights:  SwitchTower,
+	      Best Practices, Page Caching Support, Win32 CPU Affinity, Solid Stability.
+	    </p>
+	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+          </dd>
+
           <dt>Feb-22-2006</dt>
           <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.6 -- Win32 Service!</a></h5>
@@ -96,25 +108,6 @@
 	      <a href="{relocatable: news.html}"><img src="{relocatable:images/li4.gif}" alt="more" /><br /></a></p>
           </dd>
 
-          <dt>Feb-12-2006</dt>
-
-          <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.1 Released</a></h5>
-
-            <p><a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">
-		Download</a> the 0.3.1 release featuring better Rails support and a 
-		major bug fix.
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
-
-          <dt>Feb-12-2006</dt>
-
-          <dd>
-            <h5><a href="{relocatable: news.html}">Site now up!</a></h5>
-
-            <p>The new website is up and now running. 
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
         </dl>
       </div>
       <hr noshade="noshade" size="1" />

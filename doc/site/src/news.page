@@ -7,6 +7,29 @@ ordering: 2
 
 h1. Latest News
 
+h2.  Mar-03:  Mongrel 0.3.7 -- Solid Rails, Win32, SwitchTower, Docs
+
+A slightly longer time between releases but this is packed with lots of good 
+things for people who want to run Mongrel.  We're talking Win32 CPU affinity,
+better service, POSIX signal control for SwitchTower, more tested platforms,
+little bug fixes, and documentation on deployment best practices.
+
+This release has also been tested on tons of platforms:  Linux, NetBSD, FreeBSD,
+Windows, and Mac OSX.  Under FreeBSD Mongrel seems to ignore signals unless
+you do one more network connection, but the other platforms work great.
+
+* Initial beginning of the plugin support that will let people write 
+  their own handlers and other things for Mongrel. 
+* Timeout now works again but couldn't find an alternative to the buggy Timeout class. 
+* SwitchTower friendly signal handling for mongrel_rails. 
+* Win32: New option that lets you set a mongrel service's CPU affinity. 
+* Win32: Indicates default environment used for the services. 
+* Win32: Avoids touching signals when on windows. 
+* Tested on: Linux, Win32, FreeBSD, NetBSD, OSX.
+
+"Download 0.3.7":http://rubyforge.org/frs/?group_id=1306
+
+
 h2.  Feb-22:  Mongrel 0.3.6 -- Win32 Services Galore
 
 Thanks to Luis Lavena we have an almost complete win32 service

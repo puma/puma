@@ -53,10 +53,11 @@ For lighttpd you need to have *mod_proxy* in your server.modules setting:
 Then you need to tell lighttpd where the other backends are located:
 
  proxy.balance = "fair"
- proxy.server  = ( "/" => ( ( "host" => "127.0.0.1", "port" => 8001 ),
-                          ( "host" => "127.0.0.1", "port" => 8002 ),
-                          ( "host" => "127.0.0.1", "port" => 8003 ),
-                          ( "host" => "127.0.0.1", "port" => 8004 ) ) )
+ proxy.server  = ( "/" => 
+      ( ( "host" => "127.0.0.1", "port" => 8001 ),
+      ( "host" => "127.0.0.1", "port" => 8002 ),
+      ( "host" => "127.0.0.1", "port" => 8003 ),
+      ( "host" => "127.0.0.1", "port" => 8004 ) ) )
 
 When I used lighttpd 1.4.9 and set proxy.balance="round-robin" I had an excessive number of
 500 errors for no real reason.  The "fair" setting seems to be the best, but if you
@@ -71,10 +72,14 @@ Mongrel is pretty easy to setup with this configuration on either Win32 or Unix,
 since lighttpd doesn't compile so easily on Win32 I'll just show the Unix method
 for starting it:
 
- $ mongrel_rails start -d -p 8001 -e production -P log/mongrel-1.pid
- $ mongrel_rails start -d -p 8002 -e production -P log/mongrel-2.pid
- $ mongrel_rails start -d -p 8003 -e production -P log/mongrel-3.pid
- $ mongrel_rails start -d -p 8004 -e production -P log/mongrel-4.pid
+ $ mongrel_rails start -d -p 8001 \
+    -e production -P log/mongrel-1.pid
+ $ mongrel_rails start -d -p 8002 \
+    -e production -P log/mongrel-2.pid
+ $ mongrel_rails start -d -p 8003 \
+    -e production -P log/mongrel-3.pid
+ $ mongrel_rails start -d -p 8004 \
+    -e production -P log/mongrel-4.pid
 
 Now you should be able to hit your web server at port 80 and it'll run against
 one of your four Mongrels.
@@ -88,10 +93,14 @@ in lighttpd 1.4.9 but how did I figure this out?  Here's how you can do it.
 You use "httperf":http://www.hpl.hp.com/research/linux/httperf/ to first hit each 
 Mongrel backend with a large request set.  
 
- $ httperf --port 8001 --server 127.0.0.1 --num-conns 300 --uri /test
- $ httperf --port 8002 --server 127.0.0.1 --num-conns 300 --uri /test
- $ httperf --port 8003 --server 127.0.0.1 --num-conns 300 --uri /test
- $ httperf --port 8004 --server 127.0.0.1 --num-conns 300 --uri /test
+ $ httperf --port 8001 --server 127.0.0.1 \
+     --num-conns 300 --uri /test
+ $ httperf --port 8002 --server 127.0.0.1 \
+     --num-conns 300 --uri /test
+ $ httperf --port 8003 --server 127.0.0.1 \
+     --num-conns 300 --uri /test
+ $ httperf --port 8004 --server 127.0.0.1 \
+     --num-conns 300 --uri /test
 
 After each of these you're looking for the *Connection rate*, *Request rate*,
 *Reply rate*, and *Reply status*.  You first look at the *Reply status* to make
@@ -100,7 +109,8 @@ sure they are about the same.
 
 Then you hit lighttpd with a similar request set to confirm that it handles the base case.
 
- $ httperf --port 80 --server 127.0.0.1 --num-conns 300 --uri /test
+ $ httperf --port 80 --server 127.0.0.1 \
+     --num-conns 300 --uri /test
 
 You should get no 5xx errors.  In the case of round-robin there were about 60%
 5xx errors even though the Mongrels were functioning just fine.  The "hash" method
@@ -109,7 +119,8 @@ seems the "fair" method is the best you can do right now.
 
 Finally you hit lighttpd with a 4x rate to see if it could handle the theoretical limit.
 
- $ httperf --port 80 --server 127.0.0.1 --num-conns 10000 --uri /test --rate 600
+ $ httperf --port 80 --server 127.0.0.1 \
+     --num-conns 10000 --uri /test --rate 600
 
 It will most likely fail miserably and you'll probably see a few 5xx counts in the
 *Reply status* line but that's normal.  What you're looking to do is keep moving 
@@ -120,25 +131,107 @@ to your --rate setting causes the Request rate to tank. That's your setup's brea
 point and is the actual requests/second you can handle.
 
 
-h2. Other Configuration Tips
+h1. Insane Caching Power Magnet
 
-The only other thing that's missing from this setup is the page caching with 
-mod_rewrite so that lighttpd is serving the static files.  Right now your
-Mongrels are the ones serving the static files through lighttpd.  What you
-want is to have lighttpd serve the static files from page caching and if
-it doesn't find it talk to Rails.
+Mongrel (as of 0.3.7) by default supports Rails style page caching
+in the RailsHandler it uses to serve your applications.  What this
+means is that if you do a page cached action (which writes a 
+.html file as well as respond) then Mongrel will just serve up
+the cached page instead of bug Rails.
 
-Well there's one problem with this configuration:  I don't know how to
-do it with lighttpd.  Normally you'd do this with SCGI or FastCGI:
+This does give you a large boost in performance, but still not nearly
+as much as if you had lighttpd doing the caching for you.  The optimal
+configuration would be where lighttpd checks for cached pages and then
+served it directly as it already does with FastCGI.
 
- server.error-handler-404 = "/dispatch.scgi"
- url.rewrite = ("^/$" => "index.html", "^([^.]+)$" => "$1.html")
+There are some technical problems with this and the lighttpd mod_proxy,
+but thankfully I don't have to go into them because lighttpd now supports
+the "power magnet" and Cache Meta Language (CML).  CML is a small bit
+of the Lua programming language that lets you script lighttpd and tell
+it when to cache or not.  The power magnet feature of CML lets you put
+all requests through one CML script so that you can determine whether
+to cache or not.
 
-Problem with this is that setting the requests are being sent back
-directly to each Mongrel unlike with /dispatch.scgi which modifies
-the request to work with SCGI.
+h2. Configuration
 
-A better tactic might be to delve into the CML (Cache Meta Language)
-that lighttpd supports to see if it offers better caching.  A future
-version of these instructions will try to solve this problem.
+In order to get everything to work right you'll need a few pieces 
+of equipment and make sure they are enabled in your lighttpd build.
+The sample build was done on Debian so that everything would work
+including mod_rewrite, mod_memcache, mod_cml, and mod_redirect.
+
+* lua50, liblua50-dev
+* libpcre3-dev
+* memcached
+* Finally make sure you configure with ./configure --with-lua --with-memcache
+
+This is especially important on Debian since even though they
+have the latest lighttpd they don't compile it with these options.
+On Debian I had to also modify the src/Makefile to remove some
+invalid library settings for Lua.   I'll let you figure those out.
+
+
+h3. lighttpd.conf
+
+If it all builds right then you'll be able to use this nifty
+CML script that Bradley K. Taylor (from railsmachine.net) came 
+up with.  First you need to tweak your lighttpd.conf at the 
+place where you have the mod_proxy setup from previous:
+
+ $HTTP["host"] == "www.myhost.come" {
+   server.document-root = "/my/path/to/app/public"
+   cml.power-magnet  = "/my/path/to/app/config/power-magnet.cml"
+   proxy.balance = "fair"
+   proxy.server  = ( "/" => ( ( "host" => "127.0.0.1", "port" => 8001 ),
+                          ( "host" => "127.0.0.1", "port" => 8002 ) ) )
+ }
+
+This one just has two for simplicity.  The big thing is the
+document root setting and the power-magnet.cml setting.  I wouldn't
+put the power-magnet.cml in your public directory.
+
+h3. power-magnet.cml
+
+Now for the magic bit of Lua code that tells lighttpd what to do:
+
+ dr = request["DOCUMENT_ROOT"]
+
+ if file_isreg(dr .. "maintainance.html") then
+   output_include = { dr .. "maintainance.html" }
+   return CACHE_HIT
+ end
+
+ f = request["REQUEST_URI"]
+
+ if f == "/" or f == "" then
+   file = dr .. "index.html"
+ elseif not string.find(f, "%.") then  -- rewrite for cached pages
+   file = dr .. f .. ".html"
+ else
+   file = dr .. f
+ end
+
+ if file_isreg(file) then
+   output_include = { file }
+   return CACHE_HIT
+ end
+
+ return 1     -- should be CACHE_MISS, but there's a bug in 1.4.10
+
+Place this in the /my/path/to/app/config/power-magnet.cml like you
+configured above.
+
+Now if you restart lighttpd and everything worked right you should
+be able to see the headers and tell if Mongrel or lighttpd is serving
+them.
+
+
+h2. Memcached
+
+
+
+h2. CML Tricks
+
+Since Lua is a full blown and fast little language
+you can get pretty creative with it.
+
 

@@ -8,7 +8,8 @@ h1. What is Mongrel?
 Mongrel is a fast HTTP library and server for Ruby that is intended for
 hosting Ruby web applications of any kind using plain HTTP rather than
 FastCGI or SCGI.  It is framework agnostic and already supports 
-Ruby On Rails, Og+Nitro, and Camping frameworks.
+"Ruby On Rails":http://www.rubyonrails.org, "Og+Nitro":http://www.nitrohq.com/, 
+and "Camping":http://camping.rubyforge.org/files/README.html frameworks.
 
 
 h2. Getting Started
@@ -42,7 +43,13 @@ and do:
      -r c:\my\path\to\myapp -p 4000 -e production
  $ mongrel_rails_service start -n myapp
 
-Now hit the port and poof, works.  *Stopping the service is a little problematic right now.*
+Now hit the port and poof, works.  Stopping the app is just done with:
+
+ $ mongrel_rails_service stop -n myapp
+
+And, you can *even* set the CPU processor affinity for the service when
+yourun the install command.  Can't even do that on POSIX yet.  Now
+that's hot.
 
 If you run into an app that's not running right, my suggestion is to run it with
 the regular mongrel_rails runner:
@@ -66,6 +73,10 @@ Comparing Mongrel with Tomcat right now is not too fair since Tomcat does a whol
 more, but for serving basic content mongrel does pretty good.
 
 There will be a more formal performance analysis when Mongrel is more stable.
+
+*NOTE: On FreeBSD and Mac OSX I've found Mongrel performs really poorly.*  Compared
+to Linux, Win32, or NetBSD these two OS seem to be doing something very "different".
+We'll be tuning these two platforms better, but it may just be a Ruby problem.
 
 
 h2. Documentation
