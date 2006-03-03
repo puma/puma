@@ -108,7 +108,7 @@ class Install < Mongrel::Plugin "/commands"
     @params << "-p #{@port.to_i} " if @port
 
     # mime
-    @params << "-m #{@mime_map} " if @mime_map
+    @params << "-m \"#{@mime_map}\" " if @mime_map
 
     # num_procs
     @params << "-P #{@num_procs.to_i} " if @num_procs
