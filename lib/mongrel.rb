@@ -342,9 +342,8 @@ module Mongrel
     # systems.  If you find that you overload Mongrel too much
     # try changing it higher.  If you find that responses are way too slow
     # try lowering it (after you've tuned your stuff of course).
-    # Future versions of Mongrel will make this more dynamic (hopefully).
     def initialize(host, port, num_processors=20, timeout=120)
-      @socket = TCPServer.new(host, port)
+      @socket = TCPServer.new(host, port) 
 
       @classifier = URIClassifier.new
       @req_queue = Queue.new
@@ -465,9 +464,12 @@ module Mongrel
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.
     def stop
-      @acceptor[:stopped] = true
-      exc = StopServer.new
-      @acceptor.raise(exc)
+      stopper = Thread.new do 
+        @acceptor[:stopped] = true
+        exc = StopServer.new
+        @acceptor.raise(exc)
+      end
+      stopper.priority = 10
     end
 
   end

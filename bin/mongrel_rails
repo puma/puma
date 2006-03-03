@@ -18,7 +18,7 @@ class Start < Mongrel::Plugin "/commands"
       ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
       ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
       ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, "public"],
-      ['-L', '--load PATH', "Loads plugins from the given directory", :@load_from, nil]
+      ['-L', '--load PATH', "Loads plugins from the given directory", :@load_from, nil],
     ]
   end
   
@@ -85,7 +85,6 @@ class Start < Mongrel::Plugin "/commands"
   def start_mongrel(rails)
     @restart = false
 
-    # start up mongrel with the right configurations
     server = Mongrel::HttpServer.new(@address, @port, @num_procs.to_i, @timeout.to_i)
     server.register("/", rails)
     server.run
