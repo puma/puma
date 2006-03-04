@@ -375,7 +375,6 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
   struct tst *tst = NULL;
   VALUE result;
   unsigned char *uri_str = NULL;
-  unsigned char *script_name_str = NULL;
 
   DATA_GET(self, struct tst, tst);
   uri_str = (unsigned char *)StringValueCStr(uri);
