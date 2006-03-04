@@ -7,8 +7,32 @@ ordering: 5
 
 h1. FAQ
 
-
 h2. Design
+
+h3. Q: How does Mongrel relate to SCGI?
+
+Mongrel and SCGI are *completely unrelated* except for the fact that I wrote 
+the SCGI Rails Runner and Mongrel.
+
+There has been some confusion by people as to how Mongrel and SCGI are related.  
+Some folks actually think that Mongrel uses SCGI to run Ruby on Rails or other 
+web applications.  Their confusion can be summarized in this diagram:
+
+!images/mongrel_not_scgi.jpg!
+
+As you can see on the *right*, Ruby on Rails (and other web apps) 
+run *inside* Mongrel as just straight Ruby code and are served
+using *regular HTTP*.  There are no:
+
+# Additional network protocols other than HTTP.
+# Started processes for each request.
+# External connectors or libraries required.
+# Additional server software.
+# Need for SCGI at all ever no way.
+
+In fact *you could drop lighttpd completely* from both diagrams and just serve
+your Mongrel server straight to the network.
+
 
 h3. Q: How is Mongrel designed?
 

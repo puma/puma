@@ -7,7 +7,7 @@ ordering: 2
 
 h1. Latest News
 
-h2.  Mar-03:  Mongrel 0.3.7 -- Solid Rails, Win32, SwitchTower, Docs
+h2.  Mar-03:  Mongrel 0.3.7.1 -- Solid Rails, Win32, SwitchTower, Docs
 
 A slightly longer time between releases but this is packed with lots of good 
 things for people who want to run Mongrel.  We're talking Win32 CPU affinity,
@@ -25,6 +25,7 @@ you do one more network connection, but the other platforms work great.
 * Win32: New option that lets you set a mongrel service's CPU affinity. 
 * Win32: Indicates default environment used for the services. 
 * Win32: Avoids touching signals when on windows. 
+* A fix for CGI encoding redirects wrong when SERVER_PORT isn't specified.
 * Tested on: Linux, Win32, FreeBSD, NetBSD, OSX.
 
 "Download 0.3.7":http://rubyforge.org/frs/?group_id=1306

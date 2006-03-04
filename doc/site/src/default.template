@@ -48,7 +48,7 @@
         <dl>
           <dt>Mar-02-2006</dt>
           <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.7 -- Solid Rails, Win32, SwitchTower, Docs</a></h5>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.7.1 -- Solid Rails, Win32, SwitchTower, Docs</a></h5>
 
             <p>A slightly longer time between releases but this is packed with lots of good 
 	      things for people who want to run Mongrel. Highlights:  SwitchTower,

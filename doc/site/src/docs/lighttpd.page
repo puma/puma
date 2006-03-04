@@ -164,11 +164,29 @@ including mod_rewrite, mod_memcache, mod_cml, and mod_redirect.
 * memcached
 * Finally make sure you configure with ./configure --with-lua --with-memcache
 
-This is especially important on Debian since even though they
-have the latest lighttpd they don't compile it with these options.
-On Debian I had to also modify the src/Makefile to remove some
-invalid library settings for Lua.   I'll let you figure those out.
+Debian people will need to follow these instructions from
+"www.debian-administration.org":http://www.debian-administration.org/articles/20
+for installing from source, and will also need to add these lines to your
+/etc/apt/sources.list:
 
+ deb-src http://http.us.debian.org/debian stable main contrib non-free
+ deb-src http://http.us.debian.org/debian unstable main contrib non-free
+ deb-src http://non-us.debian.org/debian-non-US stable/non-US main contrib non-free
+
+And then do the following:
+
+# Make sure you don't have the source extracted in your current directory.
+# apt-get install devscripts debhelper build-essential fakeroot
+# apt-get update
+# apt-get source lighttpd
+# nano -w lighttpd-1.4.10/debian/rules
+## DEB_CONFIGURE_EXTRA_FLAGS need have at the end:  --with-lua --with-memcache
+# nano -w lighttpd-1.4.10/debian/lighttpd.install
+## debian/tmp/usr/lib/lighttpd/mod_cml.so needs to be added here.
+
+Then you're supposed to be able to follow the debian-administration
+docs but I haven't got it all working yet.  Please clue me in
+if you get this compiled on Debian.
 
 h3. lighttpd.conf
 
@@ -222,16 +240,32 @@ configured above.
 
 Now if you restart lighttpd and everything worked right you should
 be able to see the headers and tell if Mongrel or lighttpd is serving
-them.
+them.  Use curl like this:
+
+curl -I http://zedapp.railsmachine.net/
+curl -I http://zedapp.railsmachine.net/admin
+
+The second one should redirect and show a Mongrel header while the 
+first one should show a lighttpd header.
 
 
 h2. Memcached
 
-
+The next installment of this document will tell you how to setup a 
+memcached so that you can run the lighttpd on a different server
+from the Mongrel cluster.  Right now they all have to reside
+on one machine.
 
 h2. CML Tricks
 
 Since Lua is a full blown and fast little language
-you can get pretty creative with it.
+you can get pretty creative with it.  For example you could
+have it check dates and times of files, look for processes 
+that should be running, run commands, check the contents of 
+a file, etc.
+
+Take a look at the "Lua Reference Manual":http://www.lua.org/manual/5.0/
+to see what it can do.  Ruby people will probably like Lua.
+
 
 
