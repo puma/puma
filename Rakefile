@@ -17,7 +17,7 @@ task :default => [:compile, :test]
 
 desc "Compiles all extensions"
 task :compile => [:http11]
-task :package => [:clean]
+task :package => [:clean,:compile]
 
 task :ragel do
   sh %{/usr/local/bin/ragel ext/http11/http11_parser.rl | /usr/local/bin/rlcodegen -G2 -o ext/http11/http11_parser.c}
