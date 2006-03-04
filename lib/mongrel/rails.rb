@@ -19,7 +19,11 @@ require 'mongrel'
 #
 # This means that if you are using page caching it will actually work with Mongrel
 # and you should see a decent speed boost (but not as fast as if you use lighttpd).
+#
+# An additional feature you can use is 
 class RailsHandler < Mongrel::HttpHandler
+  attr_reader :files
+
   def initialize(dir, mime_map = {})
     @files = Mongrel::DirHandler.new(dir,false)
     @guard = Mutex.new
@@ -37,19 +41,19 @@ class RailsHandler < Mongrel::HttpHandler
   def process(request, response)
     return if response.socket.closed?
 
-    path_info = request.params["PATH_INFO"]
-    page_cached = request.params["PATH_INFO"] + ".html"
+    path_info = request.params[Mongrel::Const::PATH_INFO]
+    page_cached = request.params[Mongrel::Const::PATH_INFO] + ".html"
 
     if @files.can_serve(path_info)
       # File exists as-is so serve it up
       @files.process(request,response)
     elsif @files.can_serve(page_cached)
       # possible cached page, serve it up      
-      request.params["PATH_INFO"] = page_cached
+      request.params[Mongrel::Const::PATH_INFO] = page_cached
       @files.process(request,response)
     else
       cgi = Mongrel::CGIWrapper.new(request, response)
-
+      cgi.handler = self
       begin
         @guard.synchronize do
           # Rails is not thread safe so must be run entirely within synchronize 

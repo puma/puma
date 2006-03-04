@@ -20,7 +20,7 @@ module GenericCommand
   def validate
     valid? @svc_name != nil, "You must specify the service name to be uninstalled."
     
-    # We should validate service existance here, right Zed?
+    # Validate that the service exists
     begin
       valid? Service.exists?(@svc_name), "There is no service with that name, cannot proceed."
     rescue

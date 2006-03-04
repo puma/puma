@@ -1,14 +1,28 @@
 require 'cgi'
 
 module Mongrel
-    # The beginning of a complete wrapper around Mongrel's internal HTTP processing
+  # The beginning of a complete wrapper around Mongrel's internal HTTP processing
   # system but maintaining the original Ruby CGI module.  Use this only as a crutch
   # to get existing CGI based systems working.  It should handle everything, but please
   # notify me if you see special warnings.  This work is still very alpha so I need 
   # testers to help work out the various corner cases.
+  #
+  # The CGIWrapper.handler attribute is normally not set and is available for 
+  # frameworks that need to get back to the handler.  Rails uses this to give
+  # people access to the RailsHandler#files (DirHandler really) so they can
+  # look-up paths and do other things withthe files managed there.
+  #
+  # In Rails you can get the real file for a request with:
+  #
+  #  path = @request.cgi.handler.files.can_serve(@request['PATH_INFO'])
+  #
+  # Which is ugly but does the job.  Feel free to write a Rails helper for that.
+  # Refer to DirHandler#can_serve for more information on this.
   class CGIWrapper < ::CGI
     public :env_table
     attr_reader :options
+    attr_reader :handler
+    attr_writer :handler
 
     # these are stripped out of any keys passed to CGIWrapper.header function
     REMOVED_KEYS = [ "nph","status","server","connection","type",
@@ -143,5 +157,6 @@ module Mongrel
       STDERR.puts "WARNING: Your program is doing something not expected.  Please tell Zed that stdoutput was used and what software you are running.  Thanks."
       @response.body
     end    
+
   end
 end
