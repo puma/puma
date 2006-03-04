@@ -54,6 +54,7 @@ class RailsHandler < Mongrel::HttpHandler
     else
       cgi = Mongrel::CGIWrapper.new(request, response)
       cgi.handler = self
+
       begin
         @guard.synchronize do
           # Rails is not thread safe so must be run entirely within synchronize 
