@@ -7,6 +7,28 @@ ordering: 2
 
 h1. Latest News
 
+h2.  Mar-04:  Mongrel 0.3.8 -- Bug Fix Release
+
+A small release that fixes a few bugs reported to the tracker and adds
+one enhancement that was requested.  Rails applications can now access
+the RailsHandler that is being used and then work with the DirHandler
+that is responsible for serving files.  For example:
+
+   render_text @request.cgi.handler.files.can_serve(@request['PATH_INFO'])
+
+Will return the physical location of the given URI.  This will be the basis
+of an improved send_file and possibly file-upload system.
+
+* Fix for mongrel_rails_service -n parameter name clash.
+* Fix for giving mongrel_rails_service paths with spaces in the name.
+* Fix for a compiler warning in the C extension on Debian.
+* Improvement to the Rakefile for cleanly building win32 and regular gems.
+* Access to RailsHandler from within Rails applications.
+* Tested Platforms:  Linux, Win32, FreeBSD, OSX
+
+"Download 0.3.8":http://rubyforge.org/frs/?group_id=1306
+
+
 h2.  Mar-03:  Mongrel 0.3.7.1 -- Solid Rails, Win32, SwitchTower, Docs
 
 A slightly longer time between releases but this is packed with lots of good 
