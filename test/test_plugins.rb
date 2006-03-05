@@ -4,6 +4,24 @@ require 'mongrel'
 class ATestPlugin < Mongrel::Plugin "/stuff"
 end
 
+class First < Mongrel::Plugin "/commands"
+  def initialize(options = {})
+    puts "First with options: #{options.inspect}"
+  end
+end
+
+class Second < Mongrel::Plugin "/commands"
+  def initialize(options = {})
+    puts "Second with options: #{options.inspect}"
+  end
+end
+
+class Last < Mongrel::Plugin "/commands"
+  def initialize(options = {})
+    puts "Last with options: #{options.inspect}"
+  end
+end
+
 
 include Mongrel
 
@@ -12,11 +30,12 @@ class PluginTest < Test::Unit::TestCase
   def setup
     @pmgr = PluginManager.instance
     @categories = ["/commands"]
-    @names = ["/first","/second","/last", "/atestplugin"]
+    @names = ["/first", "/second", "/last", "/atestplugin"]
   end
 
   def test_load_plugins
-    @pmgr.load(File.join(File.dirname(__FILE__),"plugins"))
+    @pmgr.load
+
     puts "#{@pmgr.available.inspect}"
     @pmgr.available.each {|cat,plugins|
       plugins.each do |p|
