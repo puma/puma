@@ -1,4 +1,5 @@
 require 'singleton'
+require 'rubygems'
 
 module Mongrel
 
@@ -47,20 +48,54 @@ module Mongrel
     
     def initialize
       @plugins = URIClassifier.new
+      @loaded_gems = []
     end
-    
-    # Tell the PluginManager to scan the given path (recursively)
-    # and load the *.rb files found there.  This is how you'd 
-    # setup your own plugin directory.
-    def load(path)
-      Dir.chdir(path) do
-        Dir["**/*.rb"].each do |rbfile|
-          STDERR.puts "Loading plugins from #{rbfile}"
-          require rbfile
+
+    # Loads all the rubygems that depend on Mongrel so that they
+    # can be configured into the plugins system.  This works by
+    # checking if the gem depends on Mongrel, and then doing require_gem.
+    # Since only plugins will configure themselves as plugins then 
+    # everything is safe.
+    #
+    # You can also specify an alternative load path from the official
+    # system gems location.  For example you can do the following:
+    #
+    #  mkdir mygems
+    #  gem install -i mygems fancy_plugin
+    #  mongrel_rails -L mygems start
+    #
+    # Which installs the fancy_plugin to your mygems directory and then 
+    # tells mongrel_rails to load from mygems instead.
+    #
+    # The excludes list is used to prevent mongrel from loading gem plugins
+    # that aren't ready yet.  In the mongrel_rails script this is used to
+    # load gems that might need rails configured after rails is ready.
+    def load(load_path = nil, excludes=[])
+      sdir = File.join(load_path || Gem.dir, "specifications")
+      gems = Gem::SourceIndex.from_installed_gems(sdir)
+      
+      gems.each do |path, gem|
+        found_one = false
+        gem.dependencies.each do |dep|
+          # don't load excluded or already loaded gems
+          if excludes.include? dep.name or @loaded_gems.include? gem.name
+            found_one = false
+            break
+          elsif dep.name == "mongrel"
+            found_one = true
+          end
         end
+
+        if found_one
+          STDERR.puts "loading #{gem.name}"
+          require_gem gem.name
+          @loaded_gems << gem.name
+        end
+
       end
     end
-    
+
+
     # Not necessary for you to call directly, but this is
     # how Mongrel::PluginBase.inherited actually adds a 
     # plugin to a category.
@@ -84,7 +119,7 @@ module Mongrel
     def create(name, options = {})
       category, plugin, map = @plugins.resolve(name)
 
-      if category and plugin and plugin.length > 0
+      if category and plugin and plugin.length > 0 and map[plugin]
         map[plugin].new(options)
       else
         raise "Plugin #{name} does not exist"
