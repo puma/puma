@@ -32,7 +32,7 @@ module Mongrel
       # Called by the subclass to setup the command and parse the argv arguments.
       # The call is destructive on argv since it uses the OptionParser#parse! function.
       def initialize(options={})
-        argv = options[:argv]
+        argv = options[:argv] || []
         @opt = OptionParser.new
         @valid = true
         # this is retarded, but it has to be done this way because -h and -v exit
@@ -55,7 +55,7 @@ module Mongrel
           end
         end
         
-        @opt.parse! options[:argv]
+        @opt.parse! argv
       end
       
       # Returns true/false depending on whether the command is configured properly.

@@ -57,21 +57,11 @@ module Mongrel
     # Since only plugins will configure themselves as plugins then 
     # everything is safe.
     #
-    # You can also specify an alternative load path from the official
-    # system gems location.  For example you can do the following:
-    #
-    #  mkdir mygems
-    #  gem install -i mygems fancy_plugin
-    #  mongrel_rails -L mygems start
-    #
-    # Which installs the fancy_plugin to your mygems directory and then 
-    # tells mongrel_rails to load from mygems instead.
-    #
     # The excludes list is used to prevent mongrel from loading gem plugins
     # that aren't ready yet.  In the mongrel_rails script this is used to
     # load gems that might need rails configured after rails is ready.
-    def load(load_path = nil, excludes=[])
-      sdir = File.join(load_path || Gem.dir, "specifications")
+    def load(excludes=[])
+      sdir = File.join(Gem.dir, "specifications")
       gems = Gem::SourceIndex.from_installed_gems(sdir)
       
       gems.each do |path, gem|
@@ -87,7 +77,6 @@ module Mongrel
         end
 
         if found_one
-          STDERR.puts "loading #{gem.name}"
           require_gem gem.name
           @loaded_gems << gem.name
         end

@@ -111,7 +111,7 @@ class Start < Mongrel::Plugin "/commands"
     end
 
     # hook up any rails specific plugins
-    Mongrel::PluginManager.instance.load(MONGREL_PLUGINS_DIR)
+    Mongrel::PluginManager.instance.load
 
     begin
       STDERR.puts "Server ready."
@@ -214,13 +214,5 @@ class Restart < Mongrel::Plugin "/commands"
   end
 end
 
-if ARGV[0] == "-L" || ARGV[0] == "--load"
-  ARGV.shift # drop the -L
-  MONGREL_PLUGINS_DIR=ARGV.shift
-else
-  MONGREL_PLUGINS_DIR=nil
-end
-
-
-Mongrel::PluginManager.instance.load(MONGREL_PLUGINS_DIR, ["rails"])
+Mongrel::PluginManager.instance.load ["rails"]
 Mongrel::Command::Registry.instance.run ARGV

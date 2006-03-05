@@ -34,8 +34,6 @@ class PluginTest < Test::Unit::TestCase
   end
 
   def test_load_plugins
-    @pmgr.load
-
     puts "#{@pmgr.available.inspect}"
     @pmgr.available.each {|cat,plugins|
       plugins.each do |p|
@@ -44,6 +42,7 @@ class PluginTest < Test::Unit::TestCase
       end
     }
 
+    @pmgr.load
     @pmgr.available.each do |cat,plugins|
       plugins.each do |p|
         STDERR.puts "#{cat}#{p}"
