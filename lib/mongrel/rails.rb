@@ -1,5 +1,5 @@
 require 'mongrel'
-
+require_gem 'rails'
 
 # Implements a handler that can run Rails and serve files out of the
 # Rails application's public directory.  This lets you run your Rails

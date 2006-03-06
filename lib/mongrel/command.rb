@@ -113,8 +113,8 @@ module Mongrel
       
       # Builds a list of possible commands from the Command derivates list
       def commands
-        pmgr = PluginManager.instance
-        list = pmgr.available["/commands"]
+        pmgr = GemPlugin::Manager.instance
+        list = pmgr.available["/commands"].keys
         return list.sort
       end
 
@@ -144,7 +144,7 @@ module Mongrel
         
         # command exists, set it up and validate it
         begin
-          command = PluginManager.instance.create("/commands/#{cmd_name}", :argv => args)
+          command = GemPlugin::Manager.instance.create("/commands/#{cmd_name}", :argv => args)
         rescue
           STDERR.puts "INVALID COMMAND: #$!"
           print_command_list

@@ -11,11 +11,27 @@ scream without too many portability issues.
 
 == Status
 
-The 0.3.6 release supports Ruby On Rails much better than previously, and also
-sports the beginning of a command and plugin infrastructure.  There is now a more
-complete CGIWrapper that handles most of the CGI usage, but still doesn't do the
-MIME decoding or file upload/send (it leaves that to CGI).  Finally, there's a
-great mongrel_rails_service script for running under Win32 as a service.
+Mongrel 0.3.9 now supports a fancy RubyGems based plugin system called GemPlugin.
+It uses the basic machinery of RubyGems to implement dynamically loaded plugins
+based on dependencies.  Writing a plugin is pretty easy, but right now it's
+not as well documented as it should be.  There is a simple example plugin 
+for adding a status command to your mongrel.  Just do:
+
+ > gem install mongrel_status
+
+And you'll then get a new status command.  Then just do:
+
+ > cd myrailsapp
+ > mongrel_rails start -d
+ > mongrel_rails status
+
+And it'll print out the PID your Rails app is running under.
+
+The GemPlugin project is a sub-project of Mongrel, but it's licensed under
+the Ruby license and is usable outside Mongrel
+
+
+== Quick Start
 
 After you've installed (either with gem install mongrel or via source) you should
 have the mongrel_rails command available in your PATH.  Then you just do the following:
@@ -58,7 +74,11 @@ and do:
      -r c:\my\path\to\myapp -p 4000 -e production
  $ mongrel_rails_service start -n myapp
 
-Now hit the port and poof, works.  *Stopping the service is a little problematic right now.*
+Now hit the port and poof, works.  
+
+Stopping a service is simple:
+
+ $ mongrel_rails_service stop -n myapp
 
 If you run into an app that's not running right, my suggestion is to run it with
 the regular mongrel_rails runner:
@@ -68,6 +88,10 @@ the regular mongrel_rails runner:
 
 Since that will spit out error messages and stuff to the console.  *Use CTRL-Pause/Break to stop.*
 
+Best thing about the win32 support is that you can simply use the Windows Services
+in Control Panel->Admin Tools to work with it.  You can also install the same
+Rails app as different installs.  For example I've got myapp_dev, and myapp_prod and
+just start/stop which one I want to work with.
 
 == Install
 
@@ -130,24 +154,6 @@ limited processors also means that you can use ActiveRecord as-is and it will
 create a matching database connection for each processor thread.  More on 
 this in future releases.
 
-
-== The Future
-
-With the core of Mongrel completed I'm now turning to the next set of features
-to make Mongrel useful for hosting web applications in a heavily utilized
-production environment.  Right now I'm looking at:
-
-* An idea I've had for an insane caching handler which could speed up quite a
-few deployments.
-
-Overall though the goal of Mongrel is to be just enough HTTP to serve a Ruby
-web application that sits behind a more complete web server.  Everything 
-in the next will focus on actually hosting the major web frameworks for Ruby:
-
-* Camping -- because it's already done (thanks Why).
-* Ruby on Rails -- that's where my bread is buttered right now.
-* Nitro -- Nitro folks have already hooked this up and started using it.  Nice.
-* ????? -- Others people might be interested in.
 
 == Contact
 

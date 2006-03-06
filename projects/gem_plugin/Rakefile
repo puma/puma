@@ -1,0 +1,35 @@
+require 'rake'
+require 'rake/testtask'
+require 'rake/clean'
+require 'rake/gempackagetask'
+require 'rake/rdoctask'
+require 'tools/rakehelp'
+require 'fileutils'
+include FileUtils
+
+setup_tests
+setup_clean ["pkg", "lib/*.bundle", "*.gem", ".config"]
+
+setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
+
+desc "Does a full compile, test run"
+task :default => [:test, :package]
+
+version="0.1"
+summary = "A plugin system based only on rubygems"
+test_file = "test/test_plugins.rb"
+author="Zed A. Shaw"
+name="gem_plugin"
+scripts=[]
+
+setup_gem(name, version,  author, summary, scripts, test_file) do |spec|
+  spec.autorequire = "gem_plugin"
+end
+
+task :gem_test => [:package] do
+  sh %{sudo gem install pkg/gem_plugin-#{version}}
+end
+
+task :site => [:rerdoc] do
+  sh %{ scp -r doc/rdoc/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin_rdoc/ }
+end

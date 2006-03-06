@@ -7,6 +7,38 @@ ordering: 2
 
 h1. Latest News
 
+h2.  Mar-06:  Mongrel 0.3.9 -- Gem Based Plugins
+
+This release features the beginning of a plugin system based
+on RubyGems to dynamically load installed plugins for Mongrel.
+The gist of it is that plugin authors create gems that users
+install via *gem install snazzy_plugin*.  Users then automagically
+get that plugin for Mongrel.
+
+What I've done with this release is break out this functionality
+into a new sub-project called "GemPlugin":gem_plugin_rdoc and
+released it with a Ruby license (rather than LGPL like Mongrel).
+This will let anyone else who needs a similar plugin system to
+*steal* this blind and use it.
+
+A sample plugin is available that you can install after this update.
+Just do:
+
+ $ gem install mongrel_status
+
+If you run mongrel_rails now you'll see a new command "status".
+Change to a Rails appliction directory where you have a daemon
+running and it'll print out the PID.
+
+There will be tons of documentation coming out, and the ability
+to write Handlers and Filters this way as well.  Feel free
+to write any Mongrel commands you want.
+
+A final note:  This isn't hooked into win32 yet.  That should
+come tomorrow.
+
+"Download 0.3.9":http://rubyforge.org/frs/?group_id=1306
+
 h2.  Mar-04:  Mongrel 0.3.8 -- Bug Fix Release
 
 A small release that fixes a few bugs reported to the tracker and adds

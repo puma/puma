@@ -1,34 +1,35 @@
 require 'test/unit'
-require 'mongrel'
+require 'gem_plugin'
 
-class ATestPlugin < Mongrel::Plugin "/stuff"
+include GemPlugin
+
+class ATestPlugin < GemPlugin::Plugin "/stuff"
 end
 
-class First < Mongrel::Plugin "/commands"
+class First < GemPlugin::Plugin "/commands"
   def initialize(options = {})
     puts "First with options: #{options.inspect}"
   end
 end
 
-class Second < Mongrel::Plugin "/commands"
+class Second < GemPlugin::Plugin "/commands"
   def initialize(options = {})
     puts "Second with options: #{options.inspect}"
   end
 end
 
-class Last < Mongrel::Plugin "/commands"
+class Last < GemPlugin::Plugin "/commands"
   def initialize(options = {})
     puts "Last with options: #{options.inspect}"
   end
 end
 
 
-include Mongrel
-
 class PluginTest < Test::Unit::TestCase
 
   def setup
-    @pmgr = PluginManager.instance
+    @pmgr = Manager.instance
+    @pmgr.load({"rails" => EXCLUDE})
     @categories = ["/commands"]
     @names = ["/first", "/second", "/last", "/atestplugin"]
   end
@@ -36,17 +37,17 @@ class PluginTest < Test::Unit::TestCase
   def test_load_plugins
     puts "#{@pmgr.available.inspect}"
     @pmgr.available.each {|cat,plugins|
-      plugins.each do |p|
-        puts "TEST: #{cat}#{p}"
-        assert @names.include?(p)
+      plugins.each do |n,p|
+        puts "TEST: #{cat}#{n}"
+        assert @names.include?(n)
       end
     }
 
     @pmgr.load
     @pmgr.available.each do |cat,plugins|
-      plugins.each do |p|
-        STDERR.puts "#{cat}#{p}"
-        plugin = @pmgr.create("#{cat}#{p}", options={"name" => p})
+      plugins.each do |n,p|
+        STDERR.puts "#{cat}#{n}"
+        plugin = @pmgr.create("#{cat}#{n}", options={"name" => p})
       end
     end
   end
@@ -60,4 +61,13 @@ class PluginTest < Test::Unit::TestCase
     assert_equal @pmgr.create("/test2/testme").class, ATestPlugin
 
   end
+
+
+  def test_create
+    last = @pmgr.create("/commands/last", "test" => "stuff")
+    assert last != nil, "Didn't make the right plugin"
+    first = @pmgr.create("/commands/last")
+    assert first != nil, "Didn't make the right plugin"
+  end
+
 end

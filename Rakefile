@@ -26,11 +26,12 @@ end
 task :site do
   sh %{pushd doc/site; webgen; scp -r output/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
   sh %{ scp -r doc/rdoc/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
+  sh %{ cd projects/gem_plugin; rake site }
 end
 
 setup_extension("http11", "http11")
 
-version="0.3.8"
+version="0.3.9"
 summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."
 test_file = "test/test_ws.rb"
 author="Zed A. Shaw"
@@ -39,6 +40,7 @@ scripts=['mongrel_rails']
 
 setup_gem(name, version,  author, summary, scripts, test_file) do |spec|
   spec.add_dependency('daemons', '>= 0.4.2')
+  spec.add_dependency('gem_plugin', ">= 0.1")
 end
 
 desc "Build a binary gem for Win32"
@@ -48,9 +50,17 @@ scripts_win32 = scripts + ['mongrel_rails_service']
 task :package_win32 do
   setup_win32_gem(name, version,  version, summary, scripts_win32, test_file) do |spec|
     spec.add_dependency('win32-service', '>= 0.5.0')
+    spec.add_dependency('gem_plugin', ">= 0.1")
     spec.files << 'ext/http11/http11.so'
     spec.extensions = []
     spec.platform = Gem::Platform::WIN32
   end
 end
 
+task :gem_plugin_project do 
+  sh %{cd projects/gem_plugin; rake gem_test; }
+end
+
+task :gem_test => [:gem_plugin_project, :package] do
+  sh %{sudo gem install pkg/mongrel-#{version}}
+end  

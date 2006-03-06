@@ -3,7 +3,8 @@ require 'mongrel/rails'
 require 'yaml'
 
 
-class Start < Mongrel::Plugin "/commands"
+
+class Start < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
 
   def configure
@@ -111,7 +112,7 @@ class Start < Mongrel::Plugin "/commands"
     end
 
     # hook up any rails specific plugins
-    Mongrel::PluginManager.instance.load
+    GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE
 
     begin
       STDERR.puts "Server ready."
@@ -146,7 +147,7 @@ def send_signal(signal, pid_file)
 end
 
 
-class Stop < Mongrel::Plugin "/commands"
+class Stop < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
 
   def configure 
@@ -181,7 +182,7 @@ end
 
 
 
-class Restart < Mongrel::Plugin "/commands"
+class Restart < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
 
   def configure 
@@ -214,5 +215,6 @@ class Restart < Mongrel::Plugin "/commands"
   end
 end
 
-Mongrel::PluginManager.instance.load ["rails"]
+GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
+
 Mongrel::Command::Registry.instance.run ARGV
