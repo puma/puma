@@ -2,9 +2,14 @@
 
 $:.unshift File.dirname(__FILE__) + "/../../lib"
 require 'rubygems'
-require 'camping'
+require_gem 'camping', '>=1.4'
+require 'camping/session'
   
 Camping.goes :Blog
+
+module Blog
+    include Camping::Session
+end
 
 module Blog::Models
     def self.schema(&block)
@@ -48,15 +53,15 @@ module Blog::Controllers
      
     class Add
         def get
-            unless cookies.user_id.blank?
-                @session = User.find cookies.user_id
+            unless @state.user_id.blank?
+                @user = User.find @state.user_id
                 @post = Post.new
             end
             render :add
         end
         def post
             post = Post.create :title => input.post_title, :body => input.post_body,
-                               :user_id => @cookies.user_id
+                               :user_id => @state.user_id
             redirect View, post
         end
     end
@@ -81,8 +86,8 @@ module Blog::Controllers
      
     class Edit < R '/edit/(\d+)', '/edit'
         def get post_id 
-            unless cookies.user_id.blank?
-                @session = User.find cookies.user_id
+            unless @state.user_id.blank?
+                @user = User.find @state.user_id
             end
             @post = Post.find post_id
             render :edit
@@ -109,7 +114,7 @@ module Blog::Controllers
      
             if @user
                 @login = 'login success !'
-                cookies.user_id = @user.id
+                @state.user_id = @user.id
             else
                 @login = 'wrong user name or password'
             end
@@ -119,7 +124,7 @@ module Blog::Controllers
      
     class Logout
         def get
-            cookies.user_id = nil
+            @state.user_id = nil
             render :logout
         end
     end
@@ -183,7 +188,7 @@ module Blog::Views
     end
 
     def add
-      if @session
+      if @user
         _form(post, :action => R(Add))
       else
         _login
@@ -191,7 +196,7 @@ module Blog::Views
     end
 
     def edit
-      if @session
+      if @user
         _form(post, :action => R(Edit))
       else
         _login
@@ -241,7 +246,7 @@ module Blog::Views
 
     def _form(post, opts)
       p do
-        text "You are logged in as #{@session.username} | "
+        text "You are logged in as #{@user.username} | "
         a 'Logout', :href => R(Logout)
       end
       form({:method => 'post'}.merge(opts)) do
@@ -259,10 +264,9 @@ module Blog::Views
 end
  
 def Blog.create
+    Camping::Models::Session.create_schema
     unless Blog::Models::Post.table_exists?
         ActiveRecord::Schema.define(&Blog::Models.schema)
-        puts "** The blog.db file has been created."
-        puts "** When adding/editing posts -- username: admin, password: camping"
     end
 end
 
@@ -276,5 +280,6 @@ if __FILE__ == $0
 
   server = Mongrel::Camping::start("0.0.0.0",3002,"/blog",Blog)
   puts "** Blog example is running at http://localhost:3002/blog"
+  puts "** Default username is `admin', password is `camping'"
   server.join
 end
