@@ -135,34 +135,14 @@ def Tepee.create
 end
 
 if __FILE__ == $0
-  require 'thread'
-  
-  class CampingHandler < Mongrel::HttpHandler
-    def initialize(klass)
-      @klass = klass
-    end
-    def process(request, response)
-      req = StringIO.new(request.body)
-      controller = @klass.run(req, request.params)
-      response.start(controller.status) do |head,out|
-        controller.headers.each do |k, v|
-          [*v].each do |vi|
-            head[k] = vi
-          end
-        end
-        out << controller.body
-      end
-    end
-  end
+  require 'mongrel/camping'
 
   Tepee::Models::Base.establish_connection :adapter => 'sqlite3', :database => 'tepee.db'
   Tepee::Models::Base.logger = Logger.new('camping.log')
   Tepee::Models::Base.threaded_connections=false
   Tepee.create
   
-  h = Mongrel::HttpServer.new("0.0.0.0", "3000")
+  server = Mongrel::Camping::start("0.0.0.0",3001,"/tepee",Tepee)
   puts "** Tepee example is running at http://localhost:3000/tepee"
-  h.register("/tepee", CampingHandler.new(Tepee))
-  h.register("/favicon.ico", Mongrel::Error404Handler.new(""))
-  h.run.join
+  server.join
 end

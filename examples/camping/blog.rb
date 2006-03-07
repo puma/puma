@@ -267,34 +267,14 @@ def Blog.create
 end
 
 if __FILE__ == $0
-  require 'thread'
-  
-  class CampingHandler < Mongrel::HttpHandler
-    def initialize(klass)
-      @klass = klass
-    end
-    def process(request, response)
-      req = StringIO.new(request.body)
-      controller = @klass.run(req, request.params)
-      response.start(controller.status) do |head,out|
-        controller.headers.each do |k, v|
-          [*v].each do |vi|
-            head[k] = vi
-          end
-        end
-        out << controller.body
-      end
-    end
-  end
+  require 'mongrel/camping'
 
   Blog::Models::Base.establish_connection :adapter => 'sqlite3', :database => 'blog.db'
   Blog::Models::Base.logger = Logger.new('camping.log')
   Blog::Models::Base.threaded_connections=false
   Blog.create
 
-  h = Mongrel::HttpServer.new("0.0.0.0", "3000")
-  puts "** Blog example is running at http://localhost:3000/blog"
-  h.register("/blog", CampingHandler.new(Blog))
-  h.register("/favicon.ico", Mongrel::Error404Handler.new(""))
-  h.run.join
+  server = Mongrel::Camping::start("0.0.0.0",3002,"/blog",Blog)
+  puts "** Blog example is running at http://localhost:3002/blog"
+  server.join
 end
