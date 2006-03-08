@@ -140,7 +140,7 @@ module Mongrel
     SERVER_SOFTWARE='SERVER_SOFTWARE'
     
     # Current Mongrel version (used for SERVER_SOFTWARE and other response headers).
-    MONGREL_VERSION='Mongrel 0.3.8'
+    MONGREL_VERSION='Mongrel 0.3.10'
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND"

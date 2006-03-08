@@ -1,5 +1,6 @@
 require 'mongrel'
-require_gem 'rails'
+require 'cgi'
+
 
 # Implements a handler that can run Rails and serve files out of the
 # Rails application's public directory.  This lets you run your Rails
@@ -23,7 +24,8 @@ require_gem 'rails'
 # An additional feature you can use is 
 class RailsHandler < Mongrel::HttpHandler
   attr_reader :files
-
+  attr_reader :guard
+  
   def initialize(dir, mime_map = {})
     @files = Mongrel::DirHandler.new(dir,false)
     @guard = Mutex.new
@@ -52,10 +54,10 @@ class RailsHandler < Mongrel::HttpHandler
       request.params[Mongrel::Const::PATH_INFO] = page_cached
       @files.process(request,response)
     else
-      cgi = Mongrel::CGIWrapper.new(request, response)
-      cgi.handler = self
-
       begin
+        cgi = Mongrel::CGIWrapper.new(request, response)
+        cgi.handler = self
+
         @guard.synchronize do
           # Rails is not thread safe so must be run entirely within synchronize 
           Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
@@ -72,4 +74,13 @@ class RailsHandler < Mongrel::HttpHandler
     end
   end
 
+
+  def reload!
+    @guard.synchronize do
+      $".replace @orig_dollar_quote
+      GC.start
+      Dispatcher.reset_application!
+      ActionController::Routing::Routes.reload
+    end
+  end
 end

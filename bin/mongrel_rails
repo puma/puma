@@ -72,8 +72,13 @@ class Start < GemPlugin::Plugin "/commands"
   end
 
   def configure_rails
+    # need this later for safe reloading
+    @orig_dollar_quote = $".clone
+
     ENV['RAILS_ENV'] = @environment
     require 'config/environment'
+    require 'dispatcher'
+    require 'cgi'
 
     # configure the rails handler
     rails = RailsHandler.new(@docroot, load_mime_map)
@@ -87,9 +92,6 @@ class Start < GemPlugin::Plugin "/commands"
     server = Mongrel::HttpServer.new(@address, @port, @num_procs.to_i, @timeout.to_i)
     server.register("/", rails)
 
-    # start mongrel processing thread
-    server.run
-
     # signal trapping just applies to posix systems
     # TERM is a valid signal, but still doesn't gracefuly shutdown on win32.
     if RUBY_PLATFORM !~ /mswin/
@@ -100,8 +102,9 @@ class Start < GemPlugin::Plugin "/commands"
 
       # rails reload
       trap("HUP") { 
-        server.stop 
-        @restart = true
+        STDERR.puts "Reloading rails..."
+        rails.reload!
+        STDERR.puts "Done reloading rails."
       }
 
       # restart
@@ -115,6 +118,8 @@ class Start < GemPlugin::Plugin "/commands"
     GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE
 
     begin
+      # start mongrel processing thread
+      server.run
       STDERR.puts "Server ready."
       server.acceptor.join
     rescue Interrupt
