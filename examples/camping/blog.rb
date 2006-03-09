@@ -281,5 +281,5 @@ if __FILE__ == $0
   server = Mongrel::Camping::start("0.0.0.0",3002,"/blog",Blog)
   puts "** Blog example is running at http://localhost:3002/blog"
   puts "** Default username is `admin', password is `camping'"
-  server.join
+  server.acceptor.join
 end

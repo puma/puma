@@ -142,7 +142,7 @@ if __FILE__ == $0
   Tepee::Models::Base.threaded_connections=false
   Tepee.create
   
-  server = Mongrel::Camping::start("0.0.0.0",3001,"/tepee",Tepee)
+  server = Mongrel::Camping::start("0.0.0.0",3000,"/tepee",Tepee)
   puts "** Tepee example is running at http://localhost:3000/tepee"
-  server.join
+  server.acceptor.join
 end

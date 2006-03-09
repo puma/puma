@@ -478,5 +478,3 @@ module Mongrel
   end
 
 end
-
-

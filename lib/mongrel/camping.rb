@@ -49,14 +49,16 @@ module Mongrel
     # for your application on a given port and uri.  It's pretty
     # much all you need for a camping application to work right.
     #
-    # It returns the server thread which you should either
+    # It returns the Mongrel::HttpServer which you should either
     # join or somehow manage.  The thread is running when 
     # returned.
+
     def Camping.start(server, port, uri, klass)
       h = Mongrel::HttpServer.new(server, port)
       h.register(uri, CampingHandler.new(klass))
       h.register("/favicon.ico", Mongrel::Error404Handler.new(""))
-      return h.run
+      h.run
+      return h
     end
   end
 end
