@@ -1,6 +1,7 @@
+require 'rubygems'
 require 'singleton'
 require 'optparse'
-require 'mongrel/plugins'
+require 'gem_plugin'
 
 module Mongrel
 

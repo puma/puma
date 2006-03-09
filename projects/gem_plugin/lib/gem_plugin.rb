@@ -110,7 +110,7 @@ module GemPlugin
         # makes them false so we'll skip this gem if any excludes are found
         if (check.select {|name,test| !test}).length == 0
           # looks like no needs were set to false, so it's good
-          require_gem gem.name
+          require "#{gem.name}/init"
           @loaded_gems << gem.name
         end
 

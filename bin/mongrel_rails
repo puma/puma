@@ -1,7 +1,6 @@
 require 'rubygems'
-require 'mongrel/rails'
 require 'yaml'
-
+require 'mongrel'
 
 
 class Start < GemPlugin::Plugin "/commands"
@@ -78,7 +77,7 @@ class Start < GemPlugin::Plugin "/commands"
     ENV['RAILS_ENV'] = @environment
     require 'config/environment'
     require 'dispatcher'
-    require 'cgi'
+    require 'mongrel/rails'
 
     # configure the rails handler
     rails = RailsHandler.new(@docroot, load_mime_map)

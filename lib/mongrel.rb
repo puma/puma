@@ -5,7 +5,6 @@ require 'stringio'
 require 'mongrel/cgi'
 require 'mongrel/handlers'
 require 'mongrel/command'
-require 'mongrel/plugins'
 require 'timeout'
 
 # Mongrel module containing all of the classes (include C extensions) for running
