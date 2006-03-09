@@ -6,6 +6,8 @@ require 'mongrel/cgi'
 require 'mongrel/handlers'
 require 'mongrel/command'
 require 'timeout'
+require 'mongrel/tcphack'
+
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
