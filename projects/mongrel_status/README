@@ -1,0 +1,6 @@
+== Mongrel Status Plugin
+
+A very simple dumb status plugin that's mostly just a demonstration
+of how to do a plugin for mongrel.  It just prints out the
+PID of a running mongrel server.
+

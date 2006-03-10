@@ -1,0 +1,7 @@
+= Mongrel Config Plugin
+
+This plugin uses the Camping micro-framework to implement a 
+simple config tool for any Mongrel Rails application.
+Doesn't do too much right now but will be a littl more
+advanced later.
+
