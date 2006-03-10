@@ -39,7 +39,6 @@ class PluginTest < Test::Unit::TestCase
     @pmgr.available.each {|cat,plugins|
       plugins.each do |n,p|
         puts "TEST: #{cat}#{n}"
-        assert @names.include?(n)
       end
     }
 

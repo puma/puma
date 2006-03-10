@@ -64,22 +64,18 @@ def setup_extension(dir, extension)
 end
 
 
-def base_gem_spec(pkg_name, pkg_version, author, summary, executables, test_file)
+def base_gem_spec(pkg_name, pkg_version)
   pkg_version = pkg_version
   pkg_name    = pkg_name
   pkg_file_name = "#{pkg_name}-#{pkg_version}"
   Gem::Specification.new do |s|
     s.name = pkg_name
     s.version = pkg_version
-    s.required_ruby_version = '>= 1.8.3'
     s.platform = Gem::Platform::RUBY
-    s.author = author
-    s.summary = summary
-    s.test_file = test_file
     s.has_rdoc = true
     s.extra_rdoc_files = [ "README" ]
     
-    s.files = %w(COPYING LICENSE ext/http11/MANIFEST README Rakefile setup.rb) +
+    s.files = %w(COPYING LICENSE README Rakefile) +
       Dir.glob("{bin,doc/rdoc,test,lib}/**/*") + 
       Dir.glob("ext/**/*.{h,c,rb}") +
       Dir.glob("examples/**/*.rb") +
@@ -87,14 +83,12 @@ def base_gem_spec(pkg_name, pkg_version, author, summary, executables, test_file
     
     s.require_path = "lib"
     s.extensions = FileList["ext/**/extconf.rb"].to_a
-    
-    s.executables = executables
     s.bindir = "bin"
   end
 end
 
-def setup_gem(pkg_name, pkg_version, author, summary, executables, test_file)
-  spec = base_gem_spec(pkg_name, pkg_version, author, summary, executables, test_file)
+def setup_gem(pkg_name, pkg_version)
+  spec = base_gem_spec(pkg_name, pkg_version)
   yield spec if block_given?
     
   Rake::GemPackageTask.new(spec) do |p|
@@ -103,9 +97,11 @@ def setup_gem(pkg_name, pkg_version, author, summary, executables, test_file)
   end
 end
 
-def setup_win32_gem(pkg_name, pkg_version, author, summary, executables, test_file)
-  spec = base_gem_spec(pkg_name, pkg_version, author, summary, executables, test_file)
+def setup_win32_gem(pkg_name, pkg_version)
+  spec = base_gem_spec(pkg_name, pkg_version)
   yield spec if block_given?
 
   Gem::Builder.new(spec).build
 end
+
+

@@ -15,15 +15,14 @@ setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 desc "Does a full compile, test run"
 task :default => [:test, :package]
 
-version="0.2"
-summary = "A plugin system based only on rubygems"
-test_file = "test/test_plugins.rb"
-author="Zed A. Shaw"
-name="gem_plugin"
-scripts=[]
+version = "0.2"
 
-setup_gem(name, version,  author, summary, scripts, test_file) do |spec|
-  spec.description = summary
+setup_gem("gem_plugin", version) do |spec|
+  spec.author="Zed A. Shaw"
+  spec.summary = "A plugin system based only on rubygems that uses dependencies only"
+  spec.description = spec.summary
+  spec.test_file = "test/test_plugins.rb"
+  scripts=[]
 end
 
 task :gem_test => [:package] do

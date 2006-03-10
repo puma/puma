@@ -16,14 +16,17 @@ desc "Does a full compile, test run"
 task :default => [:test, :package]
 
 version="0.1"
-summary = "A sample plugin that reports the status of mongrel."
-test_file = "test/test_empty.rb"
-author="Zed A. Shaw"
 name="mongrel_status"
-scripts=[]
 
-setup_gem(name, version,  author, summary, scripts, test_file) do |spec|
+setup_gem(name, version) do |spec|
+  spec.summary = "A sample plugin that reports the status of mongrel."
+  spec.description = spec.summary
+  spec.test_file = "test/test_empty.rb"
+  spec.author="Zed A. Shaw"
   spec.add_dependency('mongrel', '>= 0.3.9')
   spec.add_dependency('gem_plugin', '>= 0.2')
 end
 
+task :gem_test do
+  sh %{sudo gem install pkg/#{name}-#{version}.gem}
+end
