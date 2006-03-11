@@ -15,27 +15,23 @@ setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 desc "Does a full compile, test run"
 task :default => [:test, :package]
 
-version = "0.2"
-name="gem_plugin"
+version="0.1"
+name="<%= project %>"
 
 setup_gem(name, version) do |spec|
-  spec.author="Zed A. Shaw"
-  spec.summary = "A plugin system based only on rubygems that uses dependencies only"
+  spec.summary = "The <%= project %> GemPlugin"
   spec.description = spec.summary
-  spec.test_file = "test/test_plugins.rb"
+  spec.author="Nobody"
+  spec.add_dependency('gem_plugin', '>= <%= gem_plugin_version %>')
   spec.files += Dir.glob("resources/**/*")
-  spec.executables=["gpgen"]
-  spec.add_dependency("rake", ">= 0.7")
 end
 
+
 task :install => [:test, :package] do
-  sh %{sudo gem install pkg/#{name}-#{version}}
+  sh %{sudo gem install pkg/#{name}-#{version}.gem}
 end
 
 task :uninstall => [:clean] do
   sh %{sudo gem uninstall #{name}}
 end
 
-task :site => [:rerdoc] do
-  sh %{ scp -r doc/rdoc/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin_rdoc/ }
-end
