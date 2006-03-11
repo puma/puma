@@ -16,8 +16,9 @@ desc "Does a full compile, test run"
 task :default => [:test, :package]
 
 version = "0.2"
+name="gem_plugin"
 
-setup_gem("gem_plugin", version) do |spec|
+setup_gem(name, version) do |spec|
   spec.author="Zed A. Shaw"
   spec.summary = "A plugin system based only on rubygems that uses dependencies only"
   spec.description = spec.summary
@@ -26,7 +27,7 @@ setup_gem("gem_plugin", version) do |spec|
 end
 
 task :gem_test => [:package] do
-  sh %{sudo gem install pkg/gem_plugin-#{version}}
+  sh %{sudo gem install pkg/#{name}-#{version}}
 end
 
 task :site => [:rerdoc] do

@@ -35,15 +35,15 @@ class PluginTest < Test::Unit::TestCase
   end
 
   def test_load_plugins
-    puts "#{@pmgr.available.inspect}"
-    @pmgr.available.each {|cat,plugins|
+    puts "#{@pmgr.plugins.inspect}"
+    @pmgr.plugins.each {|cat,plugins|
       plugins.each do |n,p|
         puts "TEST: #{cat}#{n}"
       end
     }
 
     @pmgr.load
-    @pmgr.available.each do |cat,plugins|
+    @pmgr.plugins.each do |cat,plugins|
       plugins.each do |n,p|
         STDERR.puts "#{cat}#{n}"
         plugin = @pmgr.create("#{cat}#{n}", options={"name" => p})

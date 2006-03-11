@@ -20,9 +20,9 @@ require 'rubygems'
 # gems based on what they also depend on, thus letting you load these gems when appropriate.
 #
 # Since this system was written originally for the Mongrel project that'll be the
-# best examle of using it.
+# best example of using it.
 #
-# Imagine you have a neat plugin for Mongrel called snazzy_command that give the
+# Imagine you have a neat plugin for Mongrel called snazzy_command that gives the
 # mongrel_rails a new command snazzy (like:  mongrel_rails snazzy).  You'd like
 # people to be able to grab this plugin if they want and use it, because it's snazzy.
 #
@@ -51,6 +51,9 @@ module GemPlugin
 
   EXCLUDE = true
   INCLUDE = false
+
+  class PluginNotLoaded < StandardError; end
+
   
   # This class is used by people who use gem plugins (but don't necessarily make them)
   # to add plugins to their own systems.  It provides a way to load plugins, list them,
@@ -59,10 +62,17 @@ module GemPlugin
   # It is a singleton so you use like this:  GemPlugins::Manager.instance.load
   class Manager
     include Singleton
+    attr_reader :plugins
+    attr_reader :gems
+    
 
     def initialize
+      # plugins that have been loaded
       @plugins = {}
-      @loaded_gems = []
+
+      # keeps track of gems which have been loaded already by the manager *and*
+      # where they came from so that they can be referenced later
+      @gems = {}
     end
 
 
@@ -95,7 +105,7 @@ module GemPlugin
 
       gems.each do |path, gem|
         # don't load gems more than once
-        next if @loaded_gems.include? gem.name        
+        next if @gems.has_key? gem.name        
         check = needs.dup
 
         # rolls through the depends and inverts anything it finds
@@ -111,10 +121,11 @@ module GemPlugin
         if (check.select {|name,test| !test}).length == 0
           # looks like no needs were set to false, so it's good
           require "#{gem.name}/init"
-          @loaded_gems << gem.name
+          @gems[gem.name] = File.join(Gem.dir, "gems", "#{gem.name}-#{gem.version}")
         end
-
       end
+
+      return nil
     end
 
 
@@ -125,7 +136,8 @@ module GemPlugin
       @plugins[category] ||= {}
       @plugins[category][name.downcase] = klass
     end
-    
+   
+ 
     # Resolves the given name (should include /category/name) to
     # find the plugin class and create an instance.  You can
     # pass a second hash option that is then given to the Plugin 
@@ -146,15 +158,80 @@ module GemPlugin
     end
     
 
-    # Returns a map of URIs->{"name" => Plugin} that you can
-    # use to investigate available handlers.
-    def available
-      return @plugins
+    # Simply says whether the given gem has been loaded yet or not.
+    def loaded?(gem_name)
+      @gems.has_key? gem_name
     end
+
+
+    # GemPlugins can have a 'resources' directory which is packaged with them
+    # and can hold any data resources the plugin may need.  The main problem
+    # is that it's difficult to figure out where these resources are 
+    # actually located on the file system.  The resource method tries to 
+    # locate the real path for a given resource path.
+    #
+    # Let's say you have a 'resources/stylesheets/default.css' file in your
+    # gem distribution, then finding where this file really is involves:
+    #
+    #   Manager.instance.resource("mygem", "/stylesheets/default.css")
+    #
+    # You either get back the full path to the resource or you get a nil
+    # if it doesn't exist.
+    #
+    # If you request a path for a GemPlugin that hasn't been loaded yet
+    # then it will throw an PluginNotLoaded exception.  The gem may be
+    # present on your system in this case, but you just haven't loaded
+    # it with Manager.instance.load properly.
+    def resource(gem_name, path)
+      if not loaded? gem_name
+        raise PluginNotLoaded.new("Plugin #{gem_name} not loaded when getting resource #{path}")
+      end
+      
+      file = File.join(@gems[gem_name], "resources", path)
+
+      puts "Looking for: #{file}"
+      if File.exist? file
+        return file
+      else
+        return nil
+      end
+    end
+
     
+    # While Manager.resource will find arbitrary resources, a special
+    # case is when you need to load a set of configuration defaults.
+    # GemPlugin normalizes this to be if you have a file "resources/defaults.yaml"
+    # then you'll be able to load them via Manager.config.
+    #
+    # How you use the method is you get the options the user wants set, pass
+    # them to Manager.instance.config, and what you get back is a new Hash
+    # with the user's settings overriding the defaults.
+    #
+    #   opts = Manager.instance.config "mygem", :age => 12, :max_load => .9
+    #
+    # In the above case, if defaults had {:age => 14} then it would be 
+    # changed to 12.
+    #
+    # This loads the .yaml file on the fly every time, so doing it a 
+    # whole lot is very stupid.  If you need to make frequent calls to
+    # this, call it once with no options (Manager.instance.config) then
+    # use the returned defaults directly from then on.
+    def config(gem_name, options={})
+      config_file = Manager.instance.resource(gem_name, "/defaults.yaml")
+      if config_file
+        begin
+          defaults = YAML.load_file(config_file)
+          return defaults.merge(options)
+        rescue
+          raise "Error loading config #{config_file} for gem #{gem_name}"
+        end
+      else
+        return options
+      end
+    end
   end
 
-  # This base class for plugins reallys does nothing
+  # This base class for plugins really does nothing
   # more than wire up the new class into the right category.
   # It is not thread-safe yet but will be soon.
   class Base
