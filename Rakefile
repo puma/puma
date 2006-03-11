@@ -17,7 +17,7 @@ task :default => [:compile, :test]
 
 desc "Compiles all extensions"
 task :compile => [:http11]
-task :package => [:clean,:compile]
+task :package => [:clean,:compile,:test]
 
 task :ragel do
   sh %{/usr/local/bin/ragel ext/http11/http11_parser.rl | /usr/local/bin/rlcodegen -G2 -o ext/http11/http11_parser.c}
@@ -72,10 +72,18 @@ task :package_win32 do
   end
 end
 
-task :gem_plugin_project do 
-  sh %{cd projects/gem_plugin; rake gem_test; }
+
+task :install do
+  sub_project("gem_plugin", :install)
+  sh %{rake package}
+  sh %{sudo gem install pkg/mongrel-#{version}}
+  sub_project("mongrel_status", :install)
+  sub_project("mongrel_config", :install)
 end
 
-task :gem_test => [:gem_plugin_project, :package] do
-  sh %{sudo gem install pkg/mongrel-#{version}}
-end  
+task :uninstall => [:clean] do
+  sub_project("mongrel_status", :uninstall)
+  sub_project("mongrel_config", :uninstall)
+  sh %{sudo gem uninstall mongrel}
+  sub_project("gem_plugin", :uninstall)
+end

@@ -16,8 +16,9 @@ desc "Does a full compile, test run"
 task :default => [:test, :package, :gem_test]
 
 version="0.1"
+name="mongrel_config"
 
-setup_gem("mongrel_config", version) do |spec|
+setup_gem(name, version) do |spec|
   spec.summary = "Mongrel plugin that gives you web based config tool using Camping"
   spec.description = spec.summary
   spec.test_file = "test/test_config.rb"
@@ -29,7 +30,11 @@ setup_gem("mongrel_config", version) do |spec|
 end
 
 
-task :gem_test do
-  sh %{sudo gem install pkg/mongrel_config-#{version}.gem}
+task :install => [:test, :package] do
+  sh %{sudo gem install pkg/#{name}-#{version}.gem}
+end
+
+task :uninstall => [:clean] do
+  sh %{sudo gem uninstall #{name}}
 end
 

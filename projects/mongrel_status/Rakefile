@@ -27,6 +27,10 @@ setup_gem(name, version) do |spec|
   spec.add_dependency('gem_plugin', '>= 0.2')
 end
 
-task :gem_test do
+task :install => [:test, :package] do
   sh %{sudo gem install pkg/#{name}-#{version}.gem}
+end
+
+task :uninstall => [:clean] do
+  sh %{sudo gem uninstall #{name}}
 end

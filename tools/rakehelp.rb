@@ -104,4 +104,6 @@ def setup_win32_gem(pkg_name, pkg_version)
   Gem::Builder.new(spec).build
 end
 
-
+def sub_project(project, target="")
+  sh %{cd projects/#{project}; rake #{target.to_s}; }
+end
