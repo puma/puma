@@ -13,7 +13,7 @@ setup_clean ["pkg", "lib/*.bundle", "*.gem", ".config"]
 setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 
 desc "Does a full compile, test run"
-task :default => [:test, :package, :gem_test]
+task :default => [:test, :package, :install]
 
 version="0.1"
 name="mongrel_config"
