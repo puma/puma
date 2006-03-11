@@ -1,0 +1,287 @@
+---
+title: Writing Plugins
+inMenu: true
+directoryName: Documentation
+---
+
+
+h1. Writing Mongrel Plugins with GemPlugin
+
+Mongrel uses a system called "GemPlugin":http://mongrel.rubyforge.org/gem_plugin_rdoc
+to let people create simple "RubyGems":http://rubyforge.org/projects/rubygems/ 
+extensions that get loaded dynamically when Mongrel starts.  This help document
+is more for experienced Ruby developers interested in extending Mongrel with
+new commands.
+
+*NOTE:* You can currently only write new commands 
+such as "mongrel_rails dostuff".  Handlers and 
+Filters are on their way.
+
+
+h2.  Your First Plugin
+
+Make sure that you have rubygems, mongrel, gem_plugins, and
+rake all installed and working right.
+
+Yes, this means that you are forced to use RubyGems.   
+People who really don't like RubyGems are free to take the 
+core of the Mongrel Server API and re-use it as they wish, 
+but keep in mind that Mongrel is LGPL so any changes you
+make need to come back to me or you have to release your 
+whole project under LGPL too.  Just using Mongrel doesn't
+require this return so feel free to use it like crazy 
+in your commercial software or other licensed project.
+
+Once you have all that installed you need to simply find a nice quiet
+place to generate your initial plugin directory with the *gpgen* 
+command:
+
+ $ gpgen myplugin
+
+Let's say we're going to reimplement the existing mongrel_status example
+command which just prints out the PID of a running Mongrel server
+on any POSIX system.  (Win32 folks will have to play along).  
+
+Just do the following:
+
+ $ gpgen mongrel_status
+ Creating directory mongrel_status
+ Creating file mongrel_status/COPYING
+ Creating directory mongrel_status/lib
+ Creating file mongrel_status/LICENSE
+ Creating file mongrel_status/Rakefile
+ Creating file mongrel_status/README
+ Creating directory mongrel_status/resources
+ Creating directory mongrel_status/tools
+ Creating directory mongrel_status/lib/project
+ Creating file mongrel_status/lib/project/init.rb
+ Creating file mongrel_status/resources/defaults.yaml
+ Creating file mongrel_status/tools/rakehelp.rb
+ Creating proper 'mongrel_status/lib/mongrel_status/init.rb' file
+
+This creates the skeleton of your plugin project.  There's not too many
+files in here, but let's cover what each one does:
+
+* *mongrel_status/COPYING* -- Your license or copying restrictions.
+* mongrel_status/lib -- Where you store your source for the plugin to use.
+* *mongrel_status/LICENSE* -- Your license again.
+* *mongrel_status/Rakefile*  -- Builds your stuff.
+* *mongrel_status/README* -- Instructions for using your plugin.
+* mongrel_status/resources -- A place to put files your plugin might need.
+* mongrel_status/tools -- Tools used by rake.
+* mongrel_status/lib/mongrel_status -- Your init.rb goes here.
+* *mongrel_status/lib/mongrel_status/init.rb* -- Required to initialize your plugin.
+* mongrel_status/resources/defaults.yaml -- Default configuration options.
+* mongrel_status/tools/rakehelp.rb -- Used by the Rakefile.
+
+The files in bold are the ones you're going to have to edit to create your 
+plugin.
+
+
+h2.  COPYING, LICENSE, and README
+
+At first you can probably just skip these, but when you go to
+distribute your plugin you'll need to make sure that you have
+some kind of license on it and some basic instructions for
+people to read.
+
+Check "OSI":http://www.opensource.org/ for a list of some available licenses.
+
+
+h2. Rakefile
+
+This is the first place you need to go in order to setup your Mongrel command
+correctly as a Mongrel plugin.  The file is pretty small, but if you're
+not familiar with Rake syntax you can "read the Rake docs":http://rake.rubyforge.org/
+for more advanced help.
+
+To get you started though, here's what you have to change:
+
+Change the version from 'version="0.1"' to whatever you want.
+
+Go the setup_gem block and add mongrel as a dependency, set yourself as the author, and change the summary:
+
+ setup_gem(name, version) do |spec|
+   spec.summary = "The mongrel_status GemPlugin"  ## change this
+   spec.description = spec.summary
+   spec.author="Nobody"  ## change this
+   spec.add_dependency('gem_plugin', '>= 0.2')
+   spec.add_dependency('mongrel', '>= 0.3.10')  ## add this
+   spec.files += Dir.glob("resources/**/*")
+ end
+
+That's it for the Rakefile.  It won't do much since you still have to setup the actual command
+in the mongrel_status/lib/mongrel_status/init.rb file, but you could build this right now
+and install it:
+
+  $ rake
+  $ gem install pkg/mongrel_status-0.1.gem
+  
+Not so glamorous yet you'll get there soon.  
+
+*You might need to do 'gem uninstall mongrel_status' if you installed that already.*
+
+
+h2. lib/mongrel_status/init.rb
+
+This is where the magic really start to happen.  In this file is just a
+little nothing class you need to edit in order to get everything working
+right.  Here's the contents that you should have:
+
+ require 'gem_plugin'
+ class ChangeME < GemPlugin::Plugin "/somecategory"
+ end
+
+You'll want to change this file to be the following:
+
+ require 'gem_plugin'
+ require 'mongrel'
+ class Status < GemPlugin::Plugin "/commands"
+    include Mongrel::Command::Base
+ end
+
+This doesn't quite do anything useful as a command yet, but now if we
+remove the gem and rebuild we'll be able to see *mongrel_rails* list
+the command as being available:
+
+ $ gem uninstall mongrel_status
+ $ rake
+ $ gem install pkg/mongrel_status-0.1.gem
+ $ mongrel_rails
+ Available commands are:
+   
+   - restart
+   - start
+   - status
+   - stop
+   
+  Each command takes -h as an option to get help.
+  $
+
+See how your list of available commands now has "status" listed?
+Try doing 'gem uninstall mongrel_status' and run *mongrel_rails*
+again to see the command go away.  Keep doing this until the
+magic wears off.
+
+
+h2.  Explaining the PFM
+
+How the hell does GemPlugin do that?  I mean, you just tweaked a
+Rakefile and made a class and *somehow* mongrel_rails gets
+a brand new command without you ever touching Mongrel.  Magic
+right?  No, PFM.
+
+Here's how all of this works (for the engineers who can't use
+something until they've analysed it's complete chemical composition):
+
+# Your gem has two dependencies:  gem_plugin and mongrel.
+# Your gem also has a file lib/mongrel_status/init.rb
+# This init.rb file has 'class Status < GemPlugin::Plugin "/commands"'
+   which registers it as a Plugin at the "/commands" category.
+# When *mongrel_rails* starts it tells GemPlugin to load all the plugins (gems)
+   that depend on both gem_plugin and mongrel (but not rails).
+# The GemPlugin system then goes through all the installed gems and simply
+   does a require on the init.rb when it finds a gem with the right dependencies.
+# Since your gem depends on the right stuff, and has a lib/mongrel_status/init.rb
+   it gets loaded properly and *mongrel_rails* can list it.
+# The only remaining magic is the Status class is loaded by init.rb and that
+   puts it into the /commands category of plugins.  Mongrel rails considers
+   and plugin in this category to be a valid Mongrel command.
+
+What happens in someone else puts a Plugin in the /commands category?  Well,
+since *mongrel_rails* is only loading gems which depend on *both* gem_plugin
+and *mongrel* then there's no problems.  You Snafu project can be safe knowing
+it's /commands won't get loaded.
+
+An additional piece of magic is that *mongrel_rails* holds off on loading 
+and GemPlugin that depends on gem_plugin, mongrel, *and* rails.  These
+plugins are intended to be rails specific extensions or other things
+that you want Mongrel to have, but only *after* Rails is loaded and configured.
+
+What the above paragraph means is that, yes, you can actually distribute plugins
+for Rails using the Mongrel GemPlugins without having to go through the usual
+Rails plugin system.  This isn't tested yet, but feel free to try it out.
+
+
+h2.  The Final Touches
+
+The only thing that would be left is to actually implement the full 
+mongrel_status command.  Rather than put the code into this document,
+you can just read what's in the 
+"Subversion repository":http://rubyforge.org/plugins/scmsvn/viewcvs.php/*checkout*/trunk/projects/mongrel_status/lib/mongrel_status/init.rb?root=mongrel&rev=91
+and put that into your own init.rb.
+
+What the code there does is first sets up the command line options available,
+then validates them, and finally just runs the command in order to do it.  
+The code should be easy to follow but let me know.
+
+h3. A Note On Modules
+
+If you want you can put your plugin into a module and then it will be registered
+under "/commands/modname::cmdname".  So you did this:
+
+ require 'gem_plugin'
+ require 'mongrel'
+ module Examples
+   class Status < GemPlugin::Plugin "/commands"
+      include Mongrel::Command::Base
+   end
+ end
+
+Then the command would show up from mongrel_rails as "examples::status" and
+would be known as "/commands/examples::status".
+
+
+h2.  Big Tricks With GemPlugin
+
+"GemPlugin":http://mongrel.rubyforge.org/gem_plugin_rdoc/ has a couple of other
+methods that will really help you when writing a plugin that needs to have 
+some default configurations or possibly have external data resources.  
+
+The first is the GemPlugin::Manager.instance.resource method.  What this method
+does is when given a gem and a path, it find the actual path to that resource
+in the installed gem directory.  These resources are packaged up out of your resources/ 
+directory in your plugin source.
+
+Using the current example if I wanted to get to the mongrel_status/resources/defaults.yaml
+file I'd do:
+
+ defaults = GemPlugin::Manager.instance.resource "mongrel_status" "/defaults.yaml"
+
+And then try to load that as a YAML file.  The *resource* method returns nil if
+no such file exists for the given plugin, and the plugin has to be loaded first.
+
+The problem with doing this for something like default configuration options is
+that you'll end up writing a ton of the same code for all your plugins.  To help
+with this, GemPlugin also has a *config* method which takes a set of options, and
+then tries to load the *resources/defaults.yaml* file as a set of defaults (modified
+by the options).
+
+Let's say you want to default to having debug off, but allow the user to pass in some
+options to turn it on.  This is how you'd do it:
+
+ options = GemPlugin::Manager.instance.resource "mongrel_status", user_ops
+
+What this does is simply use the *resource* method to locate and load the resources/defaults.yaml
+file, and then merge the *user_ops* hash into them so *user_ops* override the defaults.
+
+The point of these two pieces of functionality is that now you can completely package
+all the external resources your plugin needs and access it without much user 
+intervention.  It would be a good idea to let the user override these paths.
+
+
+h2.  Rails Plugins Without Rails Plugins
+
+Ruby on Rails already has "an extensive set of plugins":http://wiki.rubyonrails.org/rails/pages/Plugins
+that you can choose from to make your application.  One thing you can do though is 
+instead of using the normal Rails plugin system you could just make a GemPlugin
+that depends on gem_plugin, mongrel, and *rails* gems.  When you do this it will be loaded
+after Mongrel configures Ruby on Rails.  If you put your code in to the init.rb and
+use the resources and configuration features of GemPlugin then you could package a
+very nice little plugin without having people go through the normal plugin method.
+
+I'm not sure if this has any advantages or disadvantages over the current system, but
+other Mongrel supported frameworks (like Camping and Nitro) can use this same technique
+to load plugins that are specific to how Mongrel works.
+
+

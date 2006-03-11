@@ -242,8 +242,8 @@ Now if you restart lighttpd and everything worked right you should
 be able to see the headers and tell if Mongrel or lighttpd is serving
 them.  Use curl like this:
 
-curl -I http://zedapp.railsmachine.net/
-curl -I http://zedapp.railsmachine.net/admin
+ curl -I http://zedapp.railsmachine.net/
+ curl -I http://zedapp.railsmachine.net/admin
 
 The second one should redirect and show a Mongrel header while the 
 first one should show a lighttpd header.

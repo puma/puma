@@ -115,7 +115,7 @@ module Mongrel
       # Builds a list of possible commands from the Command derivates list
       def commands
         pmgr = GemPlugin::Manager.instance
-        list = pmgr.available["/commands"].keys
+        list = pmgr.plugins["/commands"].keys
         return list.sort
       end
 

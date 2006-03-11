@@ -14,6 +14,7 @@ docs that you can refer to based on these.
 * "HOWTO":howto.html -- Doing advanced stuff with Mongrel.
 * "Win32 HOWTO":win32.html -- Specific instructions for running on windows.
 * "Lighttpd":lighttpd.html -- Using mod_proxy to do a cluster.
+* "Writing Mongrel Plugins":gem_plugin.html -- Writing a GemPlugin for Mongrel.
 
 If there's documentation you'd like then feel free to e-mail the list or post
 to the tracker.
