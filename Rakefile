@@ -87,3 +87,19 @@ task :uninstall => [:clean] do
   sh %{sudo gem uninstall mongrel}
   sub_project("gem_plugin", :uninstall)
 end
+
+
+task :gem_source => [:clean, :package] do
+  sub_project "gem_plugin", :clean, :test, :package
+  sub_project "mongrel_config", :clean, :test, :package
+  sub_project "mongrel_status", :clean, :test, :package
+
+  mkdir_p "pkg/gems"
+
+  FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
+  FileList["pkg/*.tgz"].each {|tgz| rm tgz }
+  rm_rf "pkg/#{name}-#{version}"
+
+  sh %{ generate_yaml_index.rb -d pkg }
+  sh %{ scp -r pkg/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
+end
