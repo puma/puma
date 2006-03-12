@@ -17,6 +17,57 @@ new commands.
 such as "mongrel_rails dostuff".  Handlers and 
 Filters are on their way.
 
+h2.  Why Plugins for Mongrel?
+
+If you've ever used other systems that have plugins you'll find there are
+several painful parts to writing your own plugin:
+
+* You don't have their developer tools so it takes forever to get started.
+* You don't know how to structure the project or even where to start.
+* Once you get it built you have to figure out how to register and install it.
+* When you want to update it you have to somehow get the update out to users.
+* You have to manage dependencies between your plugin and other plugins.
+* Including and using your own resources (images, html files, etc.) or config files
+  is really painful.  Not sure why this is but it's really annoying.
+
+Most people solve many of the problems by the "sourdough method".  They
+take a plugin that currently works, copy it, and base their plugin
+on the prototype.  This works great until you want to do something 
+original or until you find out the original author did something wrong.
+
+GemPlugin solves this problem by relying on the regular RubyGems
+package management system to give you:
+
+* A simple way to package, distribute, manage, and update your Mongrel plugins.
+* Dynamic loading based on the gem dependencies and not on specific configurations.
+* Segregated extensions for Mongrel in case you want a different license than LGPL.
+* All the capabilities of RubyGems.  GemPlugin doesn't mess with them at all.
+* A little generator that starts your project off right similar to how Rails generators work.
+* The ability to package resources (images, configs, etc.) with your gem and then load them
+  dynamically no matter where the gem eventually gets installed.
+
+In the end GemPlugins are just RubyGems that get loaded a special way 
+so they are activated right away.  The only extra thing is a bit of
+"magic" that puts plugins into a nice little namespace outside of
+the usual Ruby module and class hierarchy.
+
+The advantage for Mongrel is that people can write their own
+plugins and distribute them easily without anything more complex
+than what all Ruby developers already have:  RubyGems.
+
+h2.  How They Work
+
+Mongrel plugins (a.k.a. GemPlugins) are really very simple.  Basically
+when you use the GemPlugin API you tell it what kind of dependencies
+will trigger a gem to be loaded.  GemPlugin then goes through all of 
+the installed gems and loads any that meet the dependency description.
+Then your plugin just registers itself in the right "plugin category"
+and everything starts working.  The user of your plugin won't have to
+do too much unless you want to give them additional configuration.
+
+The best way to understand this is to actually build a plugin 
+and watch it work.
+
 
 h2.  Your First Plugin
 

@@ -189,7 +189,6 @@ module GemPlugin
       
       file = File.join(@gems[gem_name], "resources", path)
 
-      puts "Looking for: #{file}"
       if File.exist? file
         return file
       else

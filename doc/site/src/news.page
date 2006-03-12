@@ -7,6 +7,57 @@ ordering: 2
 
 h1. Latest News
 
+h2. Mar-12:   Mongrel 0.3.10 -- Big Release Day
+
+This release is a bigger release than those in the
+past but it was necessary as it touched many little
+parts of the code base and includes a more complete
+GemPlugin functionality.  This release features the 
+following changes:
+
+* GemPlugin now supports including and easily finding resources and config files
+  you package with your gems.
+* GemPlugin loading doesn't use any deprecated RubyGems APIs.
+* GemPlugin comes with a generator called *gpgen* that will make it easy to start off 
+  a plugin project.
+* A complete document on "Writing A Mongrel Plugin":/docs/gem_plugin.html that
+  also explains how they work.
+* The "Mongrel Config Tool":/images/config_tool_snap.png that demonstrates
+  building a useful command for controlling a Mongrel server.
+** It uses a "Camping":http://camping.rubyforge.org/ to present an interface.
+** Demonstrates combining Camping handlers with Mongrel handlers.
+** Shows how to use the new GemPlugin resources API to include ERB templates, images,
+   and CSS stylesheets which are loaded out of the gem (no external install needed).
+* Restructuring of the project source a bit to support testing all the 
+  default plugins and to make building much easier.
+* Properly loads any gems that depend on Rails (including GemPlugins) until the
+  very last minute after Rails is loaded and configured.
+* A slight hack courtesy of Sean Treadway which jacks up the default server
+  listen queue from 5 to 1024.  This should work on all platforms where 
+  available and should improve concurrency for everyone.
+* A more complete and useful Camping postamble that makes it the same size
+  as the WEBrick one.  Also makes sure that Camping handlers and Mongrel
+  handlers can live in peace together.
+
+There's also a bunch of bug fixes:
+
+* Should work well with edge rails now and tries to be very nice.
+* It holds of Rails configuration until the absolute latest time to
+  avoid having the daemonize call from closing log files Rails opens.
+* Tweaks to the API docs in various places and cleaned out dead code.
+* Lots of fixes to the build.  If you get the source and are on Unix
+  you can just do "rake install" to install the whole thing via gems.
+
+This release has been tested on Linux, OSX, and FreeBSD with only
+light testing on Win32.  I'll be making the 0.3.11 release Win32
+specific so that the config tool can be useful for those folks too.
+
+Otherwise this is a large release so please grab it and test like
+mad.
+
+"Download 0.3.10":http://rubyforge.org/frs/?group_id=1306
+
+
 h2.  Mar-06:  Mongrel 0.3.9 -- Gem Based Plugins
 
 This release features the beginning of a plugin system based

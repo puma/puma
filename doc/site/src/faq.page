@@ -83,7 +83,7 @@ h3. Q: How did you make this site?
 The site was actually incredibly easy to create.  I simply went to "OSWD":http://openwebdesign.org/
 and found a design that fit what I wanted for the site.  I then went to "Flickr":http://flickr.com/
 and found pictures of various animals that were licensed under the 
-"Creative Commons":http://openwebdesign.org/ license.  Once I chopped the images up, worked them
+"Creative Commons":http://creativecommons.org/ license.  Once I chopped the images up, worked them
 into the design structure, and wrote an initial set of content I was done.
 
 The tool I use to generate the site is called "webgen":http://webgen.rubyforge.org/ which

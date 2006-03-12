@@ -72,7 +72,7 @@ class Start < GemPlugin::Plugin "/commands"
 
   def configure_rails
     # need this later for safe reloading
-    @orig_dollar_quote = $".clone
+    $orig_dollar_quote = $".clone
 
     ENV['RAILS_ENV'] = @environment
     require 'config/environment'
@@ -97,6 +97,7 @@ class Start < GemPlugin::Plugin "/commands"
       # graceful shutdown
       trap("TERM") { 
         server.stop 
+        File.unlink @pid_file if File.exist?(@pid_file)
       }
 
       # rails reload
@@ -109,6 +110,7 @@ class Start < GemPlugin::Plugin "/commands"
       # restart
       trap("USR2") { 
         server.stop
+        File.unlink @pid_file if File.exist?(@pid_file)
         @restart = true
       }
     end
@@ -179,8 +181,6 @@ class Stop < GemPlugin::Plugin "/commands"
     else
       send_signal("TERM", @pid_file)
     end
-
-    File.unlink(@pid_file)
   end
 end
 
@@ -214,8 +214,6 @@ class Restart < GemPlugin::Plugin "/commands"
     else
       send_signal("USR2", @pid_file)
     end
-
-    File.unlink(@pid_file)
   end
 end
 

@@ -46,6 +46,20 @@
         <h4>NEWS</h4>
 
         <dl>
+          <dt>Mar-12-2006</dt>
+          <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.10 -- Big Release Day</a></h5>
+
+	    <p>I normally do lots of little releases rather than large big ones, but this
+	      release involved lots of little touches all over the entire code base.  It
+	      now has a ton of features and should have the best Rails support yet.  It's
+	      even got <b>GemPlugins</b> to a leve that anyone can use it.  Read the 
+	      news for the full scoop.
+	    </p>
+	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+          </dd>
+
           <dt>Mar-06-2006</dt>
           <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.9 -- Gem Based Plugins</a></h5>

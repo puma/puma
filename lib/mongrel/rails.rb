@@ -28,7 +28,7 @@ class RailsHandler < Mongrel::HttpHandler
   def initialize(dir, mime_map = {})
     @files = Mongrel::DirHandler.new(dir,false)
     @guard = Mutex.new
-    
+
     # register the requested mime types
     mime_map.each {|k,v| Mongrel::DirHandler::add_mime_type(k,v) }
   end
@@ -76,7 +76,7 @@ class RailsHandler < Mongrel::HttpHandler
 
   def reload!
     @guard.synchronize do
-      $".replace @orig_dollar_quote
+      $".replace $orig_dollar_quote
       GC.start
       Dispatcher.reset_application!
       ActionController::Routing::Routes.reload
