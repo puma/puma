@@ -48,7 +48,7 @@
         <dl>
           <dt>Mar-12-2006</dt>
           <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.10 -- Big Release Day</a></h5>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.10.1 -- Big Release Day</a></h5>
 
 	    <p>I normally do frequent little releases, but this
 	      release involved lots of little touches all over the entire code base.  It
