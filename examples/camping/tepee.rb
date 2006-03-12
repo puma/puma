@@ -18,7 +18,7 @@ module Tepee::Models
   end
 end
 
-Tepee::Models.schema do
+Tepee::Models.schema do 
   create_table :tepee_pages, :force => true do |t|
     t.column :title, :string, :limit => 255
     t.column :body, :text

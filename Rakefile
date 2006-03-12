@@ -43,7 +43,7 @@ setup_gem(name, version) do |spec|
   spec.files += %w(ext/http11/MANIFEST README Rakefile setup.rb)
 
   spec.add_dependency('daemons', '>= 0.4.2')
-  spec.add_dependency('gem_plugin', ">= 0.1")
+  spec.add_dependency('gem_plugin', '>= 0.2')
   spec.required_ruby_version = '>= 1.8.4'
 end
 
@@ -65,7 +65,7 @@ task :package_win32 do
     spec.required_ruby_version = '>= 1.8.4'
 
     spec.add_dependency('win32-service', '>= 0.5.0')
-    spec.add_dependency('gem_plugin', ">= 0.1")
+    spec.add_dependency('gem_plugin', ">= 0.2")
 
     spec.extensions = []
     spec.platform = Gem::Platform::WIN32
