@@ -93,7 +93,8 @@ def setup_gem(pkg_name, pkg_version)
     
   Rake::GemPackageTask.new(spec) do |p|
     p.gem_spec = spec
-    p.need_tar = true
+    # win32 chokes on this
+    p.need_tar = true if RUBY_PLATFORM !~ /mswin/
   end
 end
 

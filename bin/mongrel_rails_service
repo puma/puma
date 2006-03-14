@@ -30,7 +30,7 @@ module GenericCommand
   end
 end
 
-class Install < Mongrel::Plugin "/commands"
+class Install < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
 
   # Default every option to nil so only the defined ones get passed to service
@@ -174,7 +174,7 @@ class Install < Mongrel::Plugin "/commands"
   end
 end
 
-class Delete < Mongrel::Plugin "/commands" 
+class Delete < GemPlugin::Plugin "/commands" 
   include Mongrel::Command::Base
   include GenericCommand
 
@@ -193,7 +193,7 @@ class Delete < Mongrel::Plugin "/commands"
   end
 end
 
-class Start < Mongrel::Plugin "/commands"
+class Start < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
   include GenericCommand
   
@@ -218,7 +218,7 @@ class Start < Mongrel::Plugin "/commands"
   end
 end
 
-class Stop < Mongrel::Plugin "/commands"
+class Stop < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
   include GenericCommand
   

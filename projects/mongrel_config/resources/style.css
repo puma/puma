@@ -6,7 +6,6 @@ body {
 	background-position: top;
 	font-family: "Lucida Grande", Verdana, Halvetica, sans-serif;
 	text-align: center;
-
 }
 a:hover {
 	color: #990000;
@@ -146,6 +145,12 @@ a {
 }
 #footertext a:hover {
 	text-decoration: underline;
+}
+
+b { font-size: 10pt;  }
+
+#viewport { 
+  overflow: auto; width: 400px; height: 320px;
 }
 
 table { 

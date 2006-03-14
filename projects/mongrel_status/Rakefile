@@ -15,7 +15,7 @@ setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 desc "Does a full compile, test run"
 task :default => [:test, :package]
 
-version="0.2.1"
+version="0.2.2"
 name="mongrel_status"
 
 setup_gem(name, version) do |spec|
@@ -23,8 +23,8 @@ setup_gem(name, version) do |spec|
   spec.description = spec.summary
   spec.test_file = "test/test_empty.rb"
   spec.author="Zed A. Shaw"
-  spec.add_dependency('mongrel', '>= 0.3.10.1')
-  spec.add_dependency('gem_plugin', '>= 0.2')
+  spec.add_dependency('mongrel', '>= 0.3.11')
+  spec.add_dependency('gem_plugin', '>= 0.2.1')
 end
 
 task :install => [:test, :package] do

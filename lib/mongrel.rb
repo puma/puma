@@ -178,9 +178,11 @@ module Mongrel
       params[Const::CONTENT_TYPE] = params[Const::HTTP_CONTENT_TYPE] if params[Const::HTTP_CONTENT_TYPE]
       params[Const::GATEWAY_INTERFACE]=Const::GATEWAY_INTERFACE_VALUE
       params[Const::REMOTE_ADDR]=socket.peeraddr[3]
-      host,port = params[Const::HTTP_HOST].split(":")
-      params[Const::SERVER_NAME]=host
-      params[Const::SERVER_PORT]=port || 80
+      if params.has_key? Const::HTTP_HOST
+        host,port = params[Const::HTTP_HOST].split(":")
+        params[Const::SERVER_NAME]=host
+        params[Const::SERVER_PORT]=port || 80
+      end
       params[Const::SERVER_PROTOCOL]=Const::SERVER_PROTOCOL_VALUE
       params[Const::SERVER_SOFTWARE]=Const::MONGREL_VERSION
 

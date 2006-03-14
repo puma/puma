@@ -121,7 +121,13 @@ class Start < GemPlugin::Plugin "/commands"
     begin
       # start mongrel processing thread
       server.run
-      STDERR.puts "Server ready."
+
+      if RUBY_PLATFORM !~ /mswin/
+        puts "Server Ready.  Use CTRL-C to quit."
+      else
+        puts "Server Ready.  Use CTRL-Pause/Break to quit."
+      end
+
       server.acceptor.join
     rescue Interrupt
       STDERR.puts "Interrupted."

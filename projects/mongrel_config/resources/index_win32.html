@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+<title>Mongrel Config Tool</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<link href="/config/resources/style.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="container">
+  <div id="top">
+    <div id="title">Mongrel Config Tool</div>
+  </div>
+  <div id="middle">
+	  <div id="nav">
+        <ul>
+	      <% links.each do |uri,text| %>
+   	      <li><a href="<%= uri %>"><%= text %></a></li>
+		<%end%>
+        </ul>
+      </div>
+	  <div id="content">
+	  <div id="side">
+	    <% if currently_running.length > 0 %>
+	    <strong>Running Services</strong> <br />
+	    <br />
+		<%= currently_running.join(",") %>
+	    <% else %>
+	    <strong>No services running.</strong><br />
+	    <% end %>
+		<br /><br />
+		<br />
+	  <strong>Documentation</strong><br />
+        <br />
+        <a href="http://mongrel.rubyforge.org">Mongrel Home</a> <br />
+	<br />
+
+        <a href="http://mongrel.rubyforge.org/news.html">News</a><br />
+        <br />
+
+        <a href="http://mongrel.rubyforge.org/docs/started.html">Getting Started</a> <br />
+	<br />
+
+        <a href="http://mongrel.rubyforge.org/docs/win32.html">Win32 Guide</a><br />
+        <br />
+
+        <a href="http://mongrel.rubyforge.org/docs/lighttpd.html">Lighttpd Guide</a><br />
+        <br />
+
+        <a href="http://mongrel.rubyforge.org/rdoc/index.html">Mongrel API</a><br />
+        <br />
+
+        <a href="http://api.rubyonrails.org/">Ruby On Rails API</a><br />
+        <br />
+
+        <br /><br />
+      </div>
+
+      <%= body_content %>
+
+      </div>
+	</div>
+	  </div>
+	  
+  <div id="bottom">&nbsp;</div>
+  
+<div id="footertext">Copyright 2006 &copy; Zed A. Shaw &nbsp; | &nbsp; Design by Kenneth Barbour.</div>
+</body>
+</html>

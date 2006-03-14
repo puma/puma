@@ -32,7 +32,7 @@ end
 setup_extension("http11", "http11")
 
 name="mongrel"
-version="0.3.10.1"
+version="0.3.11"
 
 setup_gem(name, version) do |spec|
   spec.summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."
@@ -43,7 +43,7 @@ setup_gem(name, version) do |spec|
   spec.files += %w(ext/http11/MANIFEST README Rakefile setup.rb)
 
   spec.add_dependency('daemons', '>= 0.4.2')
-  spec.add_dependency('gem_plugin', '>= 0.2')
+  spec.add_dependency('gem_plugin', '>= 0.2.1')
   spec.required_ruby_version = '>= 1.8.4'
 end
 
