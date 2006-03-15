@@ -75,7 +75,7 @@ class Start < GemPlugin::Plugin "/commands"
     $orig_dollar_quote = $".clone
 
     ENV['RAILS_ENV'] = @environment
-    require 'config/environment'
+    require 'config/boot'
     require 'dispatcher'
     require 'mongrel/rails'
 

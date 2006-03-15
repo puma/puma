@@ -93,16 +93,22 @@ module GemPlugin
     # extra thing we do is we delay loading Rails Mongrel plugins until after rails
     # is configured.  Do do this the mongrel_rails script has:
     #
-    #  GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
+    # GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
     # The only thing to remember is that this is saying "include a plugin if it
     # depends on gem_plugin, mongrel, but NOT rails".  If a plugin also depends on other
     # stuff then it's loaded just fine.  Only gem_plugin, mongrel, and rails are
     # ever used to determine if it should be included.
+    #
+    # NOTE: Currently RubyGems will run autorequire on gems that get required AND
+    # on their dependencies.  This really messes with people running edge rails
+    # since activerecord or other stuff gets loaded for just touching a gem plugin.
+    # To prevent this load requires the full path to the "init.rb" file, which
+    # avoids the RubyGems autorequire magic.
     def load(needs = {})
       sdir = File.join(Gem.dir, "specifications")
       gems = Gem::SourceIndex.from_installed_gems(sdir)
       needs = needs.merge({"gem_plugin" => INCLUDE})
-
+      
       gems.each do |path, gem|
         # don't load gems more than once
         next if @gems.has_key? gem.name        
@@ -120,8 +126,9 @@ module GemPlugin
         # makes them false so we'll skip this gem if any excludes are found
         if (check.select {|name,test| !test}).length == 0
           # looks like no needs were set to false, so it's good
-          require "#{gem.name}/init"
-          @gems[gem.name] = File.join(Gem.dir, "gems", "#{gem.name}-#{gem.version}")
+          gem_dir = File.join(Gem.dir, "gems", "#{gem.name}-#{gem.version}")
+          require File.join(gem_dir, "lib", gem.name, "init.rb")
+          @gems[gem.name] = gem_dir
         end
       end
 
