@@ -89,11 +89,7 @@ task :uninstall => [:clean] do
 end
 
 
-task :gem_source => [:clean, :package] do
-  sub_project "gem_plugin", :clean, :test, :package
-  sub_project "mongrel_config", :clean, :test, :package
-  sub_project "mongrel_status", :clean, :test, :package
-
+task :gem_source => [:package] do
   mkdir_p "pkg/gems"
 
   FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
