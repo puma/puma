@@ -89,7 +89,7 @@ task :uninstall => [:clean] do
 end
 
 
-task :gem_source => [:package] do
+task :gem_source do
   mkdir_p "pkg/gems"
 
   FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
