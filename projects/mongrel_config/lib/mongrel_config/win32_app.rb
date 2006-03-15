@@ -198,7 +198,7 @@ module Configure
 
       div :id=>"viewport" do
         pre :style=>"font-size: 10pt;" do
-          selv << $service_logs
+          self << $service_logs
         end
       end
     end
