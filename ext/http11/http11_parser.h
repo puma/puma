@@ -26,7 +26,8 @@ typedef struct http_parser {
   element_cb request_uri;
   element_cb query_string;
   element_cb http_version;
-
+  element_cb header_done;
+  
 } http_parser;
 
 int http_parser_init(http_parser *parser);

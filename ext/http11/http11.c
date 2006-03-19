@@ -16,6 +16,21 @@ static VALUE global_request_method;
 static VALUE global_request_uri;
 static VALUE global_query_string;
 static VALUE global_http_version;
+static VALUE global_content_length;
+static VALUE global_http_content_length;
+static VALUE global_content_type;
+static VALUE global_http_content_type;
+static VALUE global_gateway_interface;
+static VALUE global_gateway_interface_value;
+static VALUE global_interface_value;
+static VALUE global_remote_address;
+static VALUE global_server_name;
+static VALUE global_server_port;
+static VALUE global_server_protocol;
+static VALUE global_server_protocol_value;
+static VALUE global_http_host;
+static VALUE global_mongrel_version;
+static VALUE global_server_software;
 
 
 void http_field(void *data, const char *field, size_t flen, const char *value, size_t vlen)
@@ -67,8 +82,34 @@ void http_version(void *data, const char *at, size_t length)
   rb_hash_aset(req, global_http_version, val);
 }
 
+/** Finalizes the request header to have a bunch of stuff that's
+    needed. */
 
+void header_done(void *data, const char *at, size_t length)
+{
+  VALUE req = (VALUE)data;
+  VALUE temp = Qnil;
+  VALUE host = Qnil;
+  VALUE port = Qnil;
+  char *colon = NULL;
 
+  rb_hash_aset(req, global_content_length, rb_hash_aref(req, global_http_content_length));
+  rb_hash_aset(req, global_content_type, rb_hash_aref(req, global_http_content_type));
+  rb_hash_aset(req, global_gateway_interface, global_gateway_interface_value);
+  if((temp = rb_hash_aref(req, global_http_host)) != Qnil) {
+    // ruby better close strings off with a '\0' dammit
+    colon = strchr(RSTRING(temp)->ptr, ':');
+    if(colon != NULL) {
+      rb_hash_aset(req, global_server_name, rb_str_substr(temp, 0, colon - RSTRING(temp)->ptr));
+      rb_hash_aset(req, global_server_port, 
+		   rb_str_substr(temp, colon - RSTRING(temp)->ptr+1, 
+				 RSTRING(temp)->len));
+    }
+  }
+
+  rb_hash_aset(req, global_server_protocol, global_server_protocol_value);
+  rb_hash_aset(req, global_server_software, global_mongrel_version);
+}
 
 
 void HttpParser_free(void *data) {
@@ -90,7 +131,8 @@ VALUE HttpParser_alloc(VALUE klass)
     hp->request_uri = request_uri;
     hp->query_string = query_string;
     hp->http_version = http_version;
-    
+    hp->header_done = header_done;
+
     obj = Data_Wrap_Struct(klass, NULL, HttpParser_free, hp);
 
     return obj;
@@ -406,6 +448,8 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
   return result;
 }
 
+#define DEF_GLOBAL(name, val)   global_##name = rb_str_new2(val); rb_global_variable(&global_##name)
+
 
 void Init_http11()
 {
@@ -413,17 +457,27 @@ void Init_http11()
   mMongrel = rb_define_module("Mongrel");
   id_handler_map = rb_intern("@handler_map");
 
-  global_http_prefix = rb_str_new2("HTTP_");
-  rb_global_variable(&global_http_prefix);
-  global_request_method = rb_str_new2("REQUEST_METHOD");
-  rb_global_variable(&global_request_method);
-  global_request_uri = rb_str_new2("REQUEST_URI");
-  rb_global_variable(&global_request_uri);
-  global_query_string = rb_str_new2("QUERY_STRING");
-  rb_global_variable(&global_query_string);
-  global_http_version = rb_str_new2("HTTP_VERSION");
-  rb_global_variable(&global_http_version);
-  
+  DEF_GLOBAL(http_prefix, "HTTP_");
+  DEF_GLOBAL(request_method, "REQUEST_METHOD");
+  DEF_GLOBAL(request_uri, "REQUEST_URI");
+  DEF_GLOBAL(query_string, "QUERY_STRING");
+  DEF_GLOBAL(http_version, "HTTP_VERSION");
+  DEF_GLOBAL(content_length, "CONTENT_LENGTH");
+  DEF_GLOBAL(http_content_length, "HTTP_CONTENT_LENGTH");
+  DEF_GLOBAL(content_type, "CONTENT_TYPE");
+  DEF_GLOBAL(http_content_type, "HTTP_CONTENT_TYPE");
+  DEF_GLOBAL(gateway_interface, "GATEWAY_INTERFACE");
+  DEF_GLOBAL(gateway_interface_value, "CGI/1.2");
+  DEF_GLOBAL(remote_address, "REMOTE_ADDR");
+  DEF_GLOBAL(server_name, "SERVER_NAME");
+  DEF_GLOBAL(server_port, "SERVER_PORT");
+  DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
+  DEF_GLOBAL(server_protocol_value, "HTTP/1.1");
+  DEF_GLOBAL(http_host, "HTTP_HOST");
+  DEF_GLOBAL(mongrel_version, "Mongrel 0.3.12");
+  DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
+
+
   cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
   rb_define_method(cHttpParser, "initialize", HttpParser_init,0);

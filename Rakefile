@@ -65,7 +65,7 @@ task :package_win32 do
     spec.required_ruby_version = '>= 1.8.4'
 
     spec.add_dependency('win32-service', '>= 0.5.0')
-    spec.add_dependency('gem_plugin', ">= 0.2")
+    spec.add_dependency('gem_plugin', ">= 0.2.1")
 
     spec.extensions = []
     spec.platform = Gem::Platform::WIN32
@@ -79,11 +79,13 @@ task :install do
   sh %{sudo gem install pkg/mongrel-#{version}}
   sub_project("mongrel_status", :install)
   sub_project("mongrel_config", :install)
+  sub_project("mongrel_console", :install)
 end
 
 task :uninstall => [:clean] do
   sub_project("mongrel_status", :uninstall)
   sub_project("mongrel_config", :uninstall)
+  sub_project("mongrel_console", :uninstall)
   sh %{sudo gem uninstall mongrel}
   sub_project("gem_plugin", :uninstall)
 end

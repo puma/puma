@@ -90,58 +90,19 @@ module Mongrel
   module Const
     # This is the part of the path after the SCRIPT_NAME.  URIClassifier will determine this.
     PATH_INFO="PATH_INFO"
+
     # This is the intial part that your handler is identified as by URIClassifier.
     SCRIPT_NAME="SCRIPT_NAME"
+
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'
 
-    # Content length (also available as HTTP_CONTENT_LENGTH).
-    CONTENT_LENGTH='CONTENT_LENGTH'
-
-    # Content length (also available as CONTENT_LENGTH).
-    HTTP_CONTENT_LENGTH='HTTP_CONTENT_LENGTH'
-
-    # Content type (also available as HTTP_CONTENT_TYPE).
-    CONTENT_TYPE='CONTENT_TYPE'
-
-    # Content type (also available as CONTENT_TYPE).
-    HTTP_CONTENT_TYPE='HTTP_CONTENT_TYPE'
-
-    # Gateway interface key in the HttpRequest parameters.
-    GATEWAY_INTERFACE='GATEWAY_INTERFACE'
-    # We claim to support CGI/1.2.
-    GATEWAY_INTERFACE_VALUE='CGI/1.2'
-
-    # Hosts remote IP address.  Mongrel does not do DNS resolves since that slows 
-    # processing down considerably.
-    REMOTE_ADDR='REMOTE_ADDR'
-
-    # This is not given since Mongrel does not do DNS resolves.  It is only here for
-    # completeness for the CGI standard.
-    REMOTE_HOST='REMOTE_HOST'
-
-    # The name/host of our server as given by the HttpServer.new(host,port) call.
-    SERVER_NAME='SERVER_NAME'
-
-    # The port of our server as given by the HttpServer.new(host,port) call.
-    SERVER_PORT='SERVER_PORT'
-
-    # SERVER_NAME and SERVER_PORT come from this.
-    HTTP_HOST='HTTP_HOST'
-
-    # Official server protocol key in the HttpRequest parameters.
-    SERVER_PROTOCOL='SERVER_PROTOCOL'
-    # Mongrel claims to support HTTP/1.1.
-    SERVER_PROTOCOL_VALUE='HTTP/1.1'
-
-    # The actual server software being used (it's Mongrel man).
-    SERVER_SOFTWARE='SERVER_SOFTWARE'
-    
-    # Current Mongrel version (used for SERVER_SOFTWARE and other response headers).
-    MONGREL_VERSION='Mongrel 0.3.10'
+    MONGREL_VERSION="0.3.12"
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND"
+
+    CONTENT_LENGTH="CONTENT_LENGTH"
 
     # A common header for indicating the server is too busy.  Not used yet.
     ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY"
@@ -172,27 +133,14 @@ module Mongrel
       @body = initial_body || ""
       @params = params
       @socket = socket
-      
-      # fix up the CGI requirements
-      params[Const::CONTENT_LENGTH] = params[Const::HTTP_CONTENT_LENGTH] || 0
-      params[Const::CONTENT_TYPE] = params[Const::HTTP_CONTENT_TYPE] if params[Const::HTTP_CONTENT_TYPE]
-      params[Const::GATEWAY_INTERFACE]=Const::GATEWAY_INTERFACE_VALUE
-      params[Const::REMOTE_ADDR]=socket.peeraddr[3]
-      if params.has_key? Const::HTTP_HOST
-        host,port = params[Const::HTTP_HOST].split(":")
-        params[Const::SERVER_NAME]=host
-        params[Const::SERVER_PORT]=port || 80
-      end
-      params[Const::SERVER_PROTOCOL]=Const::SERVER_PROTOCOL_VALUE
-      params[Const::SERVER_SOFTWARE]=Const::MONGREL_VERSION
-
 
       # now, if the initial_body isn't long enough for the content length we have to fill it
       # TODO: adapt for big ass stuff by writing to a temp file
-      clen = params[Const::HTTP_CONTENT_LENGTH].to_i
+      clen = params[Const::CONTENT_LENGTH].to_i
       if @body.length < clen
         @body << @socket.read(clen - @body.length)
       end
+
     end
   end
 
@@ -354,9 +302,11 @@ module Mongrel
       # create the worker threads
       num_processors.times do |i| 
         @processors << Thread.new do
+          parser = HttpParser.new
           while client = @req_queue.deq
             Timeout::timeout(timeout) do
-              process_client(client)
+              process_client(client, parser)
+              parser.reset
             end
           end
         end
@@ -370,14 +320,15 @@ module Mongrel
     # the performance just does not improve.  It is currently carefully constructed
     # to make sure that it gets the best possible performance, but anyone who
     # thinks they can make it faster is more than welcome to take a crack at it.
-    def process_client(client)
+    def process_client(client, parser)
       begin
-        parser = HttpParser.new
         params = {}
+
         data = client.readpartial(Const::CHUNK_SIZE)
 
         while true
           nread = parser.execute(params, data)
+
           if parser.finished?
             script_name, path_info, handler = @classifier.resolve(params[Const::REQUEST_URI])
 
@@ -385,6 +336,7 @@ module Mongrel
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               request = HttpRequest.new(params, data[nread ... data.length], client)
+
               response = HttpResponse.new(client)
               handler.process(request, response)
             else

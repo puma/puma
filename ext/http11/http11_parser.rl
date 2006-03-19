@@ -44,7 +44,10 @@
 	       	       parser->http_version(parser->data, parser->mark, p - parser->mark);
 	}
     	action done { 
-	       parser->body_start = p+1; fbreak;
+	       parser->body_start = p+1; 
+	       if(parser->header_done != NULL)
+	       	       parser->header_done(parser->data, p, 0);
+	       fbreak;
 	}
 
 
@@ -92,7 +95,7 @@
 
         message_header = field_name ":" field_value $0 CRLF >1;
 	
-        Request = Request_Line (message_header)* ( CRLF @done );
+        Request = Request_Line (message_header)* ( CRLF @done);
 
 	main := Request;
 }%%
