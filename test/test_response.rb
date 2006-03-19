@@ -1,5 +1,6 @@
 require 'test/unit'
 require 'mongrel'
+require 'benchmark'
 
 include Mongrel
 
@@ -39,6 +40,7 @@ class ResponseTest < Test::Unit::TestCase
 
     assert io.length > 0, "output didn't have data"
   end
+
 
 end
 

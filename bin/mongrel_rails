@@ -113,6 +113,12 @@ class Start < GemPlugin::Plugin "/commands"
         File.unlink @pid_file if File.exist?(@pid_file)
         @restart = true
       }
+
+      trap("INT") {
+        server.stop
+        File.unlink @pid_file if File.exist?(@pid_file)
+        @restart = false
+      }
     end
 
     # hook up any rails specific plugins

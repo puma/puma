@@ -1,6 +1,9 @@
 require 'test/unit'
 require 'http11'
+require 'mongrel'
+require 'benchmark'
 
+include Mongrel
 
 class HttpParserTest < Test::Unit::TestCase
     
@@ -34,5 +37,18 @@ class HttpParserTest < Test::Unit::TestCase
     assert !parser.finished?, "Parser shouldn't be finished"
     assert parser.error?, "Parser SHOULD have error"
   end
+
+  def test_query_parse
+    puts HttpRequest.query_parse("zed=1&frank=2").inspect
+    puts HttpRequest.query_parse("zed=1&zed=2&zed=3&frank=11;zed=45").inspect
+
+    puts Benchmark.measure {
+      10000.times do |i|
+        g = HttpRequest.query_parse("zed=1&zed=2&zed=3&frank=11").inspect
+      end
+    }        
+  end
+
+
 end
 

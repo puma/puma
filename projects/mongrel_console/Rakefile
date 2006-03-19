@@ -23,7 +23,7 @@ setup_gem(name, version) do |spec|
   spec.description = spec.summary
   spec.author="Zed A. Shaw"
   spec.add_dependency('gem_plugin', '>= 0.2.1')
-  spec.add_dependency('mongrel', '>= 0.2.1')
+  spec.add_dependency('mongrel', '>= 0.3.11')
   spec.files += Dir.glob("resources/**/*")
 end
 

@@ -142,6 +142,40 @@ module Mongrel
       end
 
     end
+
+    def self.escape(s)
+      s.to_s.gsub(/([^ a-zA-Z0-9_.-]+)/n) {
+        '%'+$1.unpack('H2'*$1.size).join('%').upcase
+      }.tr(' ', '+') 
+    end
+
+
+    def self.unescape(s)
+      s.tr('+', ' ').gsub(/((?:%[0-9a-fA-F]{2})+)/n){
+        [$1.delete('%')].pack('H*')
+      } 
+    end
+
+
+    def self.query_parse(qs, d = '&;')
+      params = {}
+      (qs||'').split(/[#{d}] */n).inject(params) { |h,p|
+        k, v=unescape(p).split('=',2)
+        if cur = params[k]
+          if cur.class == Array
+            params[k] << v
+          else
+            params[k] = [cur, v]
+          end
+        else
+          params[k] = v
+        end
+      }
+
+      return params
+    end
+
+    
   end
 
 
@@ -292,25 +326,11 @@ module Mongrel
     # try lowering it (after you've tuned your stuff of course).
     def initialize(host, port, num_processors=20, timeout=120)
       @socket = TCPServer.new(host, port) 
-
       @classifier = URIClassifier.new
-      @req_queue = Queue.new
       @host = host
       @port = port
-      @processors = []
-
-      # create the worker threads
-      num_processors.times do |i| 
-        @processors << Thread.new do
-          parser = HttpParser.new
-          while client = @req_queue.deq
-            Timeout::timeout(timeout) do
-              process_client(client, parser)
-              parser.reset
-            end
-          end
-        end
-      end
+      @worker_group = ThreadGroup.new
+      @timeout = timeout
 
     end
     
@@ -320,8 +340,9 @@ module Mongrel
     # the performance just does not improve.  It is currently carefully constructed
     # to make sure that it gets the best possible performance, but anyone who
     # thinks they can make it faster is more than welcome to take a crack at it.
-    def process_client(client, parser)
+    def process_client(client)
       begin
+        parser = HttpParser.new
         params = {}
 
         data = client.readpartial(Const::CHUNK_SIZE)
@@ -368,13 +389,22 @@ module Mongrel
     # Runs the thing.  It returns the thread used so you can "join" it.  You can also
     # access the HttpServer::acceptor attribute to get the thread later.
     def run
+      
       BasicSocket.do_not_reverse_lookup=true
+      
       @acceptor = Thread.new do
         Thread.current[:stopped] = false
-
+        
         while not Thread.current[:stopped]
           begin
-            @req_queue << @socket.accept
+            client = @socket.accept
+
+            thread = Thread.new do
+              process_client(client)
+            end
+           
+            thread.priority=1
+            @worker_group.add(thread)
           rescue StopServer
             STDERR.puts "Server stopped.  Exiting."
             @socket.close if not @socket.closed?
@@ -387,16 +417,13 @@ module Mongrel
 
         # now that processing is done we feed enough false onto the request queue to get
         # each processor to exit and stop processing.
-        @processors.length.times { @req_queue << false }
 
         # finally we wait until the queue is empty
-        while @req_queue.length > 0
-          STDERR.puts "Shutdown waiting for #{@req_queue.length} requests" if @req_queue.length > 0
+        while @worker_group.list.length > 0
+          STDERR.puts "Shutdown waiting for #{@worker_group.list.length} requests" if @worker_group.list.length > 0
           sleep 1
         end
       end
-
-      @acceptor.priority = 1
 
       return @acceptor
     end
