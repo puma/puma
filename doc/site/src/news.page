@@ -7,6 +7,23 @@ ordering: 2
 
 h1. Latest News
 
+h2. Mar-15:   Mongrel 0.3.11 -- Edge Rails Compliant
+
+The main thing with this release is that it works with edge Rails
+and has all the right dependencies.  There was a nasty bug with
+how RubyGems loads autorequired gems when any dependency is loaded.
+In order to avoid this GemPlugins will now require the init.rb for
+the plugin directly rather than through RubyGems.  There are also
+other little tweaks to clean up how Rails runs.
+
+The second thing for this release is full Win32 support for all tweaks
+including the nice TCP hack from Sean Treadway, the new GemPlugins system,
+and a *nice* mongrel_config setup. The new mongrel_config lets you manage
+all of your Mongrel Rails services from one web page and doesn't require
+any Rails to run.
+
+"Download 0.3.11":http://rubyforge.org/frs/?group_id=1306
+
 h2. Mar-12:   Mongrel 0.3.10.1 -- Big Release Day
 
 This release is a bigger release than those in the
