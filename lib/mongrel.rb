@@ -310,29 +310,26 @@ module Mongrel
   # hold your breath until Ruby 1.9 is actually finally useful.
   class HttpServer
     attr_reader :acceptor
+    attr_reader :workers
 
     # Creates a working server on host:port (strange things happen if port isn't a Number).
-    # Use HttpServer::run to start the server.
+    # Use HttpServer::run to start the server and HttpServer.acceptor.join to 
+    # join the thread that's processing incoming requests on the socket.
     #
-    # The num_processors variable has varying affects on how requests are processed.  You'd
-    # think adding more processing threads (processors) would make the server faster, but
-    # that's just not true.  There's actually an effect of how Ruby does threads such that
-    # the more processors waiting on the request queue, the slower the system is to handle
-    # each request.  But, the lower the number of processors the fewer concurrent responses
-    # the server can make.
-    #
-    # 20 is the default number of processors and is based on experimentation on a few
-    # systems.  If you find that you overload Mongrel too much
-    # try changing it higher.  If you find that responses are way too slow
-    # try lowering it (after you've tuned your stuff of course).
-    def initialize(host, port, num_processors=20, timeout=120)
+    # The num_processors optional argument is the maximum number of concurrent
+    # processors to accept.  The server will return a "503 Service Unavailable"
+    # message when this happens so that they know to come back.  The timeout
+    # parameter is a sleep timeout that is placed between socket.accept calls 
+    # in order to give the server a cheap throttle time.  It defaults to 0 and
+    # actually if it is 0 then the sleep is not done at all.
+    def initialize(host, port, num_processors=(2**30-1), timeout=0)
       @socket = TCPServer.new(host, port) 
       @classifier = URIClassifier.new
       @host = host
       @port = port
-      @worker_group = ThreadGroup.new
+      @workers = ThreadGroup.new
       @timeout = timeout
-
+      @num_processors = num_processors
     end
     
 
@@ -394,18 +391,24 @@ module Mongrel
       BasicSocket.do_not_reverse_lookup=true
       
       @acceptor = Thread.new do
-        Thread.current[:stopped] = false
-        
-        while not Thread.current[:stopped]
+        while true
           begin
             client = @socket.accept
-
-            thread = Thread.new do
-              process_client(client)
+         
+            if @workers.list.length >= @num_processors
+              STDERR.puts "Server overloaded with #{@workers.list.length} active processors."
+              client.write(Const::ERROR_503_RESPONSE)
+              client.close
+            else
+              thread = Thread.new do
+                process_client(client)
+              end
+              
+              thread.priority=1
+              @workers.add(thread)
+              
+              sleep @timeout if @timeout > 0
             end
-           
-            thread.priority=1
-            @worker_group.add(thread)
           rescue StopServer
             STDERR.puts "Server stopped.  Exiting."
             @socket.close if not @socket.closed?
@@ -420,8 +423,8 @@ module Mongrel
         # each processor to exit and stop processing.
 
         # finally we wait until the queue is empty
-        while @worker_group.list.length > 0
-          STDERR.puts "Shutdown waiting for #{@worker_group.list.length} requests" if @worker_group.list.length > 0
+        while @workers.list.length > 0
+          STDERR.puts "Shutdown waiting for #{@workers.list.length} requests" if @workers.list.length > 0
           sleep 1
         end
       end
@@ -447,7 +450,6 @@ module Mongrel
     # off the request queue before finally exiting.
     def stop
       stopper = Thread.new do 
-        @acceptor[:stopped] = true
         exc = StopServer.new
         @acceptor.raise(exc)
       end

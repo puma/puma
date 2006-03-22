@@ -203,8 +203,8 @@ if ARGV[0] == 'service'
     :ip           => '0.0.0.0',
     :port         => 3000,
     :mime_map     => nil,
-    :num_procs    => 20,
-    :timeout      => 120,
+    :num_procs    => 1024,
+    :timeout      => 0,
     :cpu          => nil
   }
   
