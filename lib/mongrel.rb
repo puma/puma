@@ -7,6 +7,7 @@ require 'mongrel/handlers'
 require 'mongrel/command'
 require 'timeout'
 require 'mongrel/tcphack'
+require 'yaml'
 
 
 # Mongrel module containing all of the classes (include C extensions) for running
@@ -453,6 +454,217 @@ module Mongrel
       stopper.priority = 10
     end
 
+  end
+
+
+  # Implements a simple DSL for configuring a Mongrel server for your 
+  # purposes.  More used by framework implementers to setup Mongrel
+  # how they like, but could be used by regular folks to add more things
+  # to an existing mongrel configuration.
+  #
+  # It is used like this:
+  #
+  #   require 'mongrel'
+  #   config = Mongrel::Configurator.new :host => "127.0.0.1" do
+  #     listener :port => 3000 do
+  #       uri "/app", :handler => Mongrel::DirHandler.new(".", load_mime_map("mime.yaml"))
+  #     end
+  #     run
+  #   end
+  # 
+  # This will setup a simple DirHandler at the current directory and load additional
+  # mime types from mimy.yaml.  The :host => "127.0.0.1" is actually not 
+  # specific to the servers but just a hash of default parameters that all 
+  # server or uri calls receive.
+  #
+  # When you are inside the block after Mongrel::Configurator.new you can simply
+  # call functions that are part of Configurator (like server, uri, daemonize, etc)
+  # without having to refer to anything else.  You can also call these functions on 
+  # the resulting object directly for additional configuration.
+  #
+  # A major thing about Configurator is that it actually lets you configure 
+  # multiple listeners for any hosts and ports you want.  These are kept in a
+  # map config.listeners so you can get to them.
+  class Configurator
+    attr_reader :listeners
+    attr_reader :defaults
+
+    # You pass in initial defaults and then a block to continue configuring.
+    def initialize(defaults={}, &blk)
+      @listeners = {}
+      @defaults = defaults
+      
+      if blk
+        cloaker(&blk).bind(self).call
+      end
+    end
+    
+    # Do not call this.  You were warned.
+    def cloaker &blk
+      (class << self; self; end).class_eval do
+        define_method :cloaker_, &blk
+        meth = instance_method( :cloaker_ )
+        remove_method :cloaker_
+        meth
+      end
+    end
+    
+    # This will resolve the given options against the defaults.
+    # Normally just used internally.
+    def resolve_defaults(options)
+      options.merge(@defaults)
+    end
+    
+    # Starts a listener block.  This is the only one that actually takes
+    # a block and then you make Configurator.uri calls in order to setup
+    # your URIs and handlers.  If you write your Handlers as GemPlugins
+    # then you can use load_plugins and plugin to load them.
+    # 
+    # It expects the following options (or defaults):
+    # 
+    # * :host => Host name to bind.
+    # * :port => Port to bind.
+    #
+    def listener(options={},&blk)
+      ops = resolve_defaults(options)
+      
+      @listener = Mongrel::HttpServer.new(ops[:host], ops[:port].to_i)
+      @listener_name = "#{ops[:host]}:#{ops[:port]}"
+      @listeners[@listener_name] = @listener
+      
+      if blk
+        cloaker(&blk).bind(self).call
+      end
+      
+      # all done processing this listener setup
+      @listener = nil
+      @listener_name = nil
+    end
+    
+    
+    # Called inside a Configurator.listener block in order to 
+    # add URI->handler mappings for that listener.  Use this as
+    # many times as you like.  It expects the following options
+    # or defaults:
+    #
+    # * :handler => Handler to use for this location.
+    def uri(location, options={})
+      ops = resolve_defaults(options)
+      @listener.register(location, ops[:handler])
+    end
+    
+    
+    # Daemonizes the current Ruby script turning all the
+    # listeners into an actual "server" or detached process.
+    # You must call this *before* frameworks that open files
+    # as otherwise the files will be closed by this function.
+    #
+    # Does not work for Win32 systems (the call is silently ignored).
+    #
+    # Requires the following options or defaults:
+    #
+    # * :cwd => Directory to change to.
+    # * :log_file => Where to write STDOUT and STDERR.
+    # * :pid_file => Where to write the process ID.
+    # 
+    def daemonize(options={})
+      # save this for later since daemonize will hose it
+      if RUBY_PLATFORM !~ /mswin/
+        require 'daemons/daemonize'
+        
+        Daemonize.daemonize(log_file=File.join(options[:cwd], options[:log_file]))
+        
+        # change back to the original starting directory
+        Dir.chdir(options[:cwd])
+        
+        open(options[:pid_file],"w") {|f| f.write(Process.pid) }
+      end
+    end
+    
+    
+    # Uses the GemPlugin system to easily load plugins based on their
+    # gem dependencies.  You pass in either an :includes => [] or 
+    # :excludes => [] setting listing the names of plugins to include
+    # or exclude from the loading.
+    def load_plugins(options={})
+      
+      load_settings = {}
+      if options[:includes]
+        options[:includes].each do |plugin|
+          load_settings[plugin] = GemPlugin::INCLUDE
+        end
+      end
+
+      if options[:excludes]
+        options[:excludes].each do |plugin|
+          load_settings[plugin] = GemPlugin::EXCLUDE
+        end
+      end
+
+      GemPlugin::Manager.instance.load(load_settings)
+    end
+    
+    
+    # Easy way to load a YAML file and apply default settings.
+    def load_yaml(file, default={})
+      default.merge(YAML.load_file(file))
+    end
+    
+    
+    # Loads the MIME map file and checks that it is correct
+    # on loading.  This is commonly passed to Mongrel::DirHandler
+    # or any framework handler that uses DirHandler to serve files.
+    # You can also include a set of default MIME types as additional
+    # settings.  See Mongrel::DirHandler for how the MIME types map
+    # is organized.
+    def load_mime_map(file, mime={})
+      # configure any requested mime map
+      STDERR.puts "Loading additional MIME types from #{file}"
+      mime = load_yaml(file, mime)
+      
+      # check all the mime types to make sure they are the right format
+      mime.each {|k,v| STDERR.puts "WARNING: MIME type #{k} must start with '.'" if k.index(".") != 0 }
+      
+      return mime
+    end
+    
+    
+    # Loads and creates a plugin for you based on the given
+    # name and configured with the selected options.  The options
+    # are merged with the defaults prior to passing them in.
+    def plugin(name, options={})
+      ops = resolve_defaults(options)
+      GemPlugin::Manager.instance.create(plugin, ops)
+    end
+    
+    
+    # Works like a meta run method which goes through all the 
+    # configured listeners.  Use the Configurator.join method
+    # to prevent Ruby from exiting until each one is done.
+    def run
+      @listeners.each {|name,s| 
+        STDERR.puts "Running #{name} listener." 
+        s.run 
+      }
+      
+    end
+    
+    # Calls .stop on all the configured listeners so they
+    # stop processing requests (gracefully).
+    def stop
+      @listeners.each {|name,s| 
+        STDERR.puts "Stopping #{name} listener." 
+        s.stop 
+      }
+    end
+
+
+    # This method should actually be called *outside* of the
+    # Configurator block so that you can control it.  In otherwords
+    # do it like:  config.join.
+    def join
+      @listeners.values.each {|s| s.acceptor.join }
+    end
   end
 
 end
