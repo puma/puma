@@ -34,14 +34,16 @@ if ARGV.length != 3
   exit(1)
 end
 
-h = Mongrel::HttpServer.new(ARGV[0], ARGV[1].to_i)
-h.register("/", SimpleHandler.new)
-h.register("/dumb", DumbHandler.new)
-h.register("/files", Mongrel::DirHandler.new(ARGV[2]))
-h.run
+config = Mongrel::Configurator.new :host => ARGV[0], :port => ARGV[1] do
+  listener do
+    uri "/", :handler => SimpleHandler.new
+    uri "/dumb", :handler => DumbHandler.new
+    uri "/files", :handler => Mongrel::DirHandler.new(ARGV[2])
+  end
 
-trap("INT") { h.stop }
+  trap("INT") { stop }
+  run
+end
 
 puts "Mongrel running on #{ARGV[0]}:#{ARGV[1]} with docroot #{ARGV[2]}"
-
-h.acceptor.join
+config.join

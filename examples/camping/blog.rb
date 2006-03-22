@@ -277,9 +277,18 @@ if __FILE__ == $0
   Blog::Models::Base.logger = Logger.new('camping.log')
   Blog::Models::Base.threaded_connections=false
   Blog.create
+  
+  # Use the Configurator as an example rather than Mongrel::Camping.start
+  config = Mongrel::Configurator.new :host => "0.0.0.0" do
+    listener :port => 3002 do
+      uri "/blog", :handler => CampingHandler.new(Blog)
+      uri "/favicon", :handler => Mongrel::Error404Handler.new("")
+      trap("INT") { stop }
+      run
+    end
+  end
 
-  server = Mongrel::Camping::start("0.0.0.0",3002,"/blog",Blog)
   puts "** Blog example is running at http://localhost:3002/blog"
   puts "** Default username is `admin', password is `camping'"
-  server.acceptor.join
+  config.join
 end
