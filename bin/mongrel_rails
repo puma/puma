@@ -2,7 +2,6 @@ require 'rubygems'
 require 'yaml'
 require 'mongrel'
 
-
 class Start < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
 
@@ -229,6 +228,16 @@ class Restart < GemPlugin::Plugin "/commands"
   end
 end
 
+
 GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
 
+
+require 'mongrel/debug'
+ObjectTracker.configure
+MongrelDbg.configure
+
 Mongrel::Command::Registry.instance.run ARGV
+
+END {
+Class.report_object_creations
+}

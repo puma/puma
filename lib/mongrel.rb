@@ -238,12 +238,19 @@ module Mongrel
     attr_reader :header
     attr_reader :status
     attr_writer :status
+    attr_reader :body_sent
+    attr_reader :header_sent
+    attr_reader :status_sent
     
-    def initialize(socket)
+    def initialize(socket, filter = nil)
       @socket = socket
       @body = StringIO.new
       @status = 404
       @header = HeaderOut.new(StringIO.new)
+      @filter = filter
+      @body_sent = false
+      @header_sent = false
+      @status_sent = false
     end
 
     # Receives a block passing it the header and body for you to work with.
@@ -257,27 +264,37 @@ module Mongrel
     end
 
     # Primarily used in exception handling to reset the response output in order to write
-    # an alternative response.
+    # an alternative response.  It will abort with an exception if you have already
+    # sent the header or the body.  This is pretty catastrophic actually.
     def reset
-      @header.out.rewind
-      @body.rewind
+      if @body_sent
+        raise "You ahve already sent the request body."
+      elsif @header_sent
+        raise "You have already sent the request headers."
+      else
+        @header.out.rewind
+        @body.rewind
+      end
     end
 
     def send_status
       status = "HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n"
       @socket.write(status)
+      @status_sent = true
     end
 
     def send_header
       @header.out.rewind
       @socket.write(@header.out.read)
       @socket.write("\r\n")
+      @header_sent = true
     end
 
     def send_body
       @body.rewind
       # connection: close is also added to ensure that the client does not pipeline.
       @socket.write(@body.read)
+      @body_sent = true
     end 
 
     # This takes whatever has been done to header and body and then writes it in the
@@ -286,6 +303,10 @@ module Mongrel
       send_status
       send_header
       send_body
+    end
+
+    def done
+      @status_sent && @header_sent && @body_sent
     end
   end
   
@@ -317,10 +338,13 @@ module Mongrel
     # join the thread that's processing incoming requests on the socket.
     #
     # The num_processors optional argument is the maximum number of concurrent
-    # processors to accept.  The server will return a "503 Service Unavailable"
-    # message when this happens so that they know to come back.  The timeout
-    # parameter is a sleep timeout that is placed between socket.accept calls 
-    # in order to give the server a cheap throttle time.  It defaults to 0 and
+    # processors to accept, anything over this is closed immediately to maintain
+    # server processing performance.  This may seem mean but it is the most efficient
+    # way to deal with overload.  Other schemes involve still parsing the client's request
+    # which defeats the point of an overload handling system.
+    # 
+    # The timeout parameter is a sleep timeout (in hundredths of a second) that is placed between 
+    # socket.accept calls in order to give the server a cheap throttle time.  It defaults to 0 and
     # actually if it is 0 then the sleep is not done at all.
     def initialize(host, port, num_processors=(2**30-1), timeout=0)
       @socket = TCPServer.new(host, port) 
@@ -349,15 +373,20 @@ module Mongrel
           nread = parser.execute(params, data)
 
           if parser.finished?
-            script_name, path_info, handler = @classifier.resolve(params[Const::REQUEST_URI])
+            script_name, path_info, handlers = @classifier.resolve(params[Const::REQUEST_URI])
 
-            if handler
+            if handlers
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
-              request = HttpRequest.new(params, data[nread ... data.length], client)
 
+              request = HttpRequest.new(params, data[nread ... data.length], client)
               response = HttpResponse.new(client)
-              handler.process(request, response)
+              
+              handlers.each do |handler|
+                handler.process(request, response)
+                break if response.done
+              end
+
             else
               client.write(Const::ERROR_404_RESPONSE)
             end
@@ -384,30 +413,44 @@ module Mongrel
       end
     end
 
+    # Used internally to kill off any worker threads that have taken too long
+    # to complete processing.  Only called if there are too many processors
+    # currently servicing.
+    def reap_dead_workers(worker_list)
+      mark = Time.now
+      worker_list.each do |w|
+        if mark - w[:started_on] > 10 * @timeout
+          STDERR.puts "Thread #{w.inspect} is too old, killing."
+          w.raise(StopServer.new("Timed out thread."))
+        end
+      end
+    end
+      
+
     # Runs the thing.  It returns the thread used so you can "join" it.  You can also
     # access the HttpServer::acceptor attribute to get the thread later.
     def run
-      
       BasicSocket.do_not_reverse_lookup=true
-      
+
       @acceptor = Thread.new do
         while true
           begin
             client = @socket.accept
-         
-            if @workers.list.length >= @num_processors
-              STDERR.puts "Server overloaded with #{@workers.list.length} active processors."
-              client.write(Const::ERROR_503_RESPONSE)
+            worker_list = @workers.list
+            if worker_list.length >= @num_processors
+              STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max)."
               client.close
+              reap_dead_workers(worker_list)
             else
               thread = Thread.new do
                 process_client(client)
               end
               
+              thread[:started_on] = Time.now
               thread.priority=1
               @workers.add(thread)
               
-              sleep @timeout if @timeout > 0
+              sleep @timeout/100 if @timeout > 0
             end
           rescue StopServer
             STDERR.puts "Server stopped.  Exiting."
@@ -437,11 +480,19 @@ module Mongrel
     # found in the prefix of a request then your handler's HttpHandler::process method
     # is called.  See Mongrel::URIClassifier#register for more information.
     def register(uri, handler)
-      @classifier.register(uri, handler)
+      script_name, path_info, handlers = @classifier.resolve(uri)
+
+      if not handlers or (path_info and path_info != "/" and path_info.length == 0)
+        # new uri that is just longer
+        @classifier.register(uri, [handler])
+      else
+        handlers << handler
+      end
     end
 
-    # Removes any handler registered at the given URI.  See Mongrel::URIClassifier#unregister
-    # for more information.
+    # Removes any handlers registered at the given URI.  See Mongrel::URIClassifier#unregister
+    # for more information.  Remember this removes them *all* so the entire
+    # processing chain goes away.
     def unregister(uri)
       @classifier.unregister(uri)
     end
@@ -636,7 +687,7 @@ module Mongrel
     # are merged with the defaults prior to passing them in.
     def plugin(name, options={})
       ops = resolve_defaults(options)
-      GemPlugin::Manager.instance.create(plugin, ops)
+      GemPlugin::Manager.instance.create(name, ops)
     end
     
     

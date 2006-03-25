@@ -5,9 +5,32 @@ module Mongrel
   # just the minimum necessary for you to handle a request and shoot back 
   # a response.  Look at the HttpRequest and HttpResponse objects for how
   # to use them.
+  #
+  # This is used for very simple handlers that don't require much to operate.
+  # More extensive plugins or those you intend to distribute as GemPlugins 
+  # should be implemented using the HttpHandlerPlugin mixin.
+  #
   class HttpHandler
+
     def process(request, response)
     end
+  end
+
+
+  # This is used when your handler is implemented as a GemPlugin.
+  # The plugin always takes an options hash which you can modify
+  # and then access later.  They are stored by default for 
+  # the process method later.
+  module HttpHandlerPlugin
+    attr_reader :options
+
+    def initialize(options={})
+      @options = options
+    end
+
+    def process(request, response)
+    end
+
   end
 
 

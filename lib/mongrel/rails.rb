@@ -1,6 +1,62 @@
 require 'mongrel'
 require 'cgi'
 
+# Creates Rails specific configuration options for people to use 
+# instead of the base Configurator.
+class RailsConfigurator < Mongrel::Configurator
+
+  # Used instead of Mongrel::Configurator.uri to setup
+  # a rails application at a particular URI.  Requires
+  # the following options:
+  #
+  # * :docroot => The public dir to serve from.
+  # * :environment => Rails environment to use.
+  #
+  # And understands the following optional settings:
+  #
+  # * :mime => A map of mime types.
+  #
+  # Because of how Rails is designed you can only have
+  # one installed per Ruby interpreter (talk to them 
+  # about thread safety).  This function will abort
+  # with an exception if called more than once.
+  def rails(location, options={})
+    ops = resolve_defaults(options)
+    
+    # fix up some defaults
+    ops[:environment] ||= "development"
+    ops[:docroot] ||= "public"
+    ops[:mime] ||= {}
+
+    if @rails_handler
+      raise "You can only register one RailsHandler for the whole Ruby interpreter.  Complain to the ordained Rails core about thread safety."
+    end
+
+    $orig_dollar_quote = $".clone
+    ENV['RAILS_ENV'] = ops[:environment]
+    require 'config/environment'
+    require 'dispatcher'
+    require 'mongrel/rails'
+    
+    @rails_handler = RailsHandler.new(ops[:docroot], ops[:mime])
+  end
+
+
+  # Reloads rails.  This isn't too reliable really, but
+  # should work for most minimal reload purposes.  Only reliable
+  # way it so stop then start the process.
+  def reload!
+    if not @rails_handler
+      raise "Rails was not configured.  Read the docs for RailsConfigurator."
+    end
+
+    STDERR.puts "Reloading rails..."
+    @rails_handler.reload!
+    STDERR.puts "Done reloading rails."
+    
+  end
+end
+
 # Implements a handler that can run Rails and serve files out of the
 # Rails application's public directory.  This lets you run your Rails
 # application with Mongrel during development and testing, then use it
@@ -82,4 +138,22 @@ class RailsHandler < Mongrel::HttpHandler
       ActionController::Routing::Routes.reload
     end
   end
+end
+
+
+if $mongrel_debugging
+
+  # Tweak the rails handler to allow for tracing
+  class RailsHandler
+    alias :real_process :process
+    
+    def process(request, response)
+      MongrelDbg::trace(:rails, "REQUEST #{Time.now}\n" + request.params.to_yaml)
+      
+      real_process(request, response)
+      
+      MongrelDbg::trace(:rails, "REQUEST #{Time.now}\n" + request.params.to_yaml)
+    end
+  end
+  
 end
