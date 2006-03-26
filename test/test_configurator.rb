@@ -21,7 +21,7 @@ class Sentinel < GemPlugin::Plugin "/handlers"
 end
 
 
-class MongrelDbgTest < Test::Unit::TestCase
+class ConfiguratorTest < Test::Unit::TestCase
 
   def test_base_handler_config
     config = Mongrel::Configurator.new :host => "localhost" do
@@ -30,24 +30,32 @@ class MongrelDbgTest < Test::Unit::TestCase
         uri "/", :handler => plugin("/handlers/testplugin")
         uri "/", :handler => plugin("/handlers/testplugin")
         uri "/", :handler => Mongrel::DirHandler.new(".", load_mime_map("examples/mime.yaml"))
-        uri "/", :handler => plugin("/handlers/sentinel")
+        uri "/", :handler => plugin("/handlers/testplugin")
 
         uri "/test", :handler => plugin("/handlers/testplugin")
         uri "/test", :handler => plugin("/handlers/testplugin")
         uri "/test", :handler => Mongrel::DirHandler.new(".", load_mime_map("examples/mime.yaml"))
-        uri "/test", :handler => plugin("/handlers/sentinel")
+        uri "/test", :handler => plugin("/handlers/testplugin")
         run
       end
     end
 
+
+    config.listeners.each do |host,listener| 
+      puts "Registered URIs: #{listener.classifier.uris.inspect}"
+      assert listener.classifier.uris.length == 2, "Wrong number of registered URIs"
+      assert listener.classifier.uris.include?("/"),  "/ not registered"
+      assert listener.classifier.uris.include?("/test"), "/test not registered"
+    end
+
     res = Net::HTTP.get(URI.parse('http://localhost:3111/test'))
     assert res != nil, "Didn't get a response"
-    assert $test_plugin_fired == 2, "Test filter plugin didn't run twice."
+    assert $test_plugin_fired == 3, "Test filter plugin didn't run 3 times."
 
 
     res = Net::HTTP.get(URI.parse('http://localhost:3111/'))
     assert res != nil, "Didn't get a response"
-    assert $test_plugin_fired == 4, "Test filter plugin didn't run 4 times."
+    assert $test_plugin_fired == 6, "Test filter plugin didn't run 6 times."
 
     config.stop
     

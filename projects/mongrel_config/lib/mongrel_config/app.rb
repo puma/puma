@@ -89,7 +89,6 @@ module Configure::Views
         p { span { "Port:" }; input :name => "port", :value => "4000" }
         p { span { "Environment:" }; input :name => "env", :value => "development" }
         p { span { "Address:" }; input :name => "address", :value => "0.0.0.0" }
-        p { span { "Number Processors:" }; input :name => "num_procs", :value => "20" }
         input :type => "submit", :value => "START"
       end
     end

@@ -5,7 +5,6 @@ require 'stringio'
 require 'mongrel/cgi'
 require 'mongrel/handlers'
 require 'mongrel/command'
-require 'timeout'
 require 'mongrel/tcphack'
 require 'yaml'
 
@@ -256,11 +255,15 @@ module Mongrel
     # Receives a block passing it the header and body for you to work with.
     # When the block is finished it writes everything you've done to 
     # the socket in the proper order.  This lets you intermix header and
-    # body content as needed.
-    def start(status=200)
+    # body content as needed.  Handlers are able to modify pretty much
+    # any part of the request in the chain, and can stop further processing
+    # by simple passing "finalize=true" to the start method.  By default
+    # all handlers run and then mongrel finalizes the request when they're
+    # all done.
+    def start(status=200, finalize=false)
       @status = status.to_i
       yield @header, @body
-      finished
+      finished if finalize
     end
 
     # Primarily used in exception handling to reset the response output in order to write
@@ -268,7 +271,7 @@ module Mongrel
     # sent the header or the body.  This is pretty catastrophic actually.
     def reset
       if @body_sent
-        raise "You ahve already sent the request body."
+        raise "You have already sent the request body."
       elsif @header_sent
         raise "You have already sent the request headers."
       else
@@ -278,23 +281,29 @@ module Mongrel
     end
 
     def send_status
-      status = "HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n"
-      @socket.write(status)
-      @status_sent = true
+      if not @status_sent
+        status = "HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n"
+        @socket.write(status)
+        @status_sent = true
+      end
     end
 
     def send_header
-      @header.out.rewind
-      @socket.write(@header.out.read)
-      @socket.write("\r\n")
-      @header_sent = true
+      if not @header_sent
+        @header.out.rewind
+        @socket.write(@header.out.read)
+        @socket.write("\r\n")
+        @header_sent = true
+      end
     end
 
     def send_body
-      @body.rewind
-      # connection: close is also added to ensure that the client does not pipeline.
-      @socket.write(@body.read)
-      @body_sent = true
+      if not @body_sent
+        @body.rewind
+        # connection: close is also added to ensure that the client does not pipeline.
+        @socket.write(@body.read)
+        @body_sent = true
+      end
     end 
 
     # This takes whatever has been done to header and body and then writes it in the
@@ -306,7 +315,7 @@ module Mongrel
     end
 
     def done
-      @status_sent && @header_sent && @body_sent
+      (@status_sent and @header_sent and @body_sent)
     end
   end
   
@@ -332,6 +341,7 @@ module Mongrel
   class HttpServer
     attr_reader :acceptor
     attr_reader :workers
+    attr_reader :classifier
 
     # Creates a working server on host:port (strange things happen if port isn't a Number).
     # Use HttpServer::run to start the server and HttpServer.acceptor.join to 
@@ -385,6 +395,10 @@ module Mongrel
               handlers.each do |handler|
                 handler.process(request, response)
                 break if response.done
+              end
+
+              if not response.done
+                response.finished
               end
 
             else
@@ -482,11 +496,14 @@ module Mongrel
     def register(uri, handler)
       script_name, path_info, handlers = @classifier.resolve(uri)
 
-      if not handlers or (path_info and path_info != "/" and path_info.length == 0)
-        # new uri that is just longer
+      if not handlers
         @classifier.register(uri, [handler])
       else
-        handlers << handler
+        if path_info.length == 0 or (script_name == "/" and path_info == "/")
+          handlers << handler
+        else
+          @classifier.register(uri, [handler])
+        end
       end
     end
 
@@ -745,9 +762,9 @@ module Mongrel
       MongrelDbg.begin_trace :rails
       MongrelDbg.begin_trace :files
       
-      uri "/", :handler => plugin("/handlers/requestlog::files")
-      uri "/", :handler => plugin("/handlers/requestlog::objects")
-      uri "/", :handler => plugin("/handlers/requestlog::params")
+      uri location, :handler => plugin("/handlers/requestlog::files")
+      uri location, :handler => plugin("/handlers/requestlog::objects")
+      uri location, :handler => plugin("/handlers/requestlog::params")
     end
 
 

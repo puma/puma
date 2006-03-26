@@ -26,6 +26,8 @@ class ResponseTest < Test::Unit::TestCase
       out.write("tested")
       out.write("hello!")
     end
+
+    resp.finished
     assert io.length > 0, "output didn't have data"
   end
 
@@ -38,6 +40,7 @@ class ResponseTest < Test::Unit::TestCase
       out.write("NOT FOUND")
     end
 
+    resp.finished
     assert io.length > 0, "output didn't have data"
   end
 
