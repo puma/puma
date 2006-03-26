@@ -438,7 +438,7 @@ module Mongrel
             client = @socket.accept
             worker_list = @workers.list
             if worker_list.length >= @num_processors
-              STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max)."
+              STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max). Dropping connection."
               client.close
               reap_dead_workers(worker_list)
             else
@@ -541,11 +541,13 @@ module Mongrel
   class Configurator
     attr_reader :listeners
     attr_reader :defaults
+    attr_reader :needs_restart
 
     # You pass in initial defaults and then a block to continue configuring.
     def initialize(defaults={}, &blk)
       @listeners = {}
       @defaults = defaults
+      @needs_restart = false
       
       if blk
         cloaker(&blk).bind(self).call
@@ -577,11 +579,15 @@ module Mongrel
     # 
     # * :host => Host name to bind.
     # * :port => Port to bind.
+    # * :num_processors => The maximum number of concurrent threads allowed.  (950 default)
+    # * :timeout => 1/100th of a second timeout between requests. (10 is 1/10th, 0 is not timeout)
     #
     def listener(options={},&blk)
       ops = resolve_defaults(options)
-      
-      @listener = Mongrel::HttpServer.new(ops[:host], ops[:port].to_i)
+      ops[:num_processors] ||= 950
+      ops[:timeout] ||= 0
+
+      @listener = Mongrel::HttpServer.new(ops[:host], ops[:port].to_i, ops[:num_processors].to_i, ops[:timeout].to_i)
       @listener_name = "#{ops[:host]}:#{ops[:port]}"
       @listeners[@listener_name] = @listener
       
@@ -620,17 +626,22 @@ module Mongrel
     # * :log_file => Where to write STDOUT and STDERR.
     # * :pid_file => Where to write the process ID.
     # 
+    # It is safe to call this on win32 as it will only require daemons
+    # if NOT win32.
     def daemonize(options={})
+      ops = resolve_defaults(options)
       # save this for later since daemonize will hose it
       if RUBY_PLATFORM !~ /mswin/
         require 'daemons/daemonize'
         
-        Daemonize.daemonize(log_file=File.join(options[:cwd], options[:log_file]))
+        Daemonize.daemonize(log_file=File.join(ops[:cwd], ops[:log_file]))
         
         # change back to the original starting directory
-        Dir.chdir(options[:cwd])
+        Dir.chdir(ops[:cwd])
         
-        open(options[:pid_file],"w") {|f| f.write(Process.pid) }
+        open(ops[:pid_file],"w") {|f| f.write(Process.pid) }
+      else
+        log "WARNING: Win32 does not support daemon mode."
       end
     end
     
@@ -640,16 +651,17 @@ module Mongrel
     # :excludes => [] setting listing the names of plugins to include
     # or exclude from the loading.
     def load_plugins(options={})
+      ops = resolve_defaults(options)
       
       load_settings = {}
-      if options[:includes]
-        options[:includes].each do |plugin|
+      if ops[:includes]
+        ops[:includes].each do |plugin|
           load_settings[plugin] = GemPlugin::INCLUDE
         end
       end
 
-      if options[:excludes]
-        options[:excludes].each do |plugin|
+      if ops[:excludes]
+        ops[:excludes].each do |plugin|
           load_settings[plugin] = GemPlugin::EXCLUDE
         end
       end
@@ -672,11 +684,11 @@ module Mongrel
     # is organized.
     def load_mime_map(file, mime={})
       # configure any requested mime map
-      STDERR.puts "Loading additional MIME types from #{file}"
+      log "Loading additional MIME types from #{file}"
       mime = load_yaml(file, mime)
       
       # check all the mime types to make sure they are the right format
-      mime.each {|k,v| STDERR.puts "WARNING: MIME type #{k} must start with '.'" if k.index(".") != 0 }
+      mime.each {|k,v| log "WARNING: MIME type #{k} must start with '.'" if k.index(".") != 0 }
       
       return mime
     end
@@ -696,7 +708,7 @@ module Mongrel
     # to prevent Ruby from exiting until each one is done.
     def run
       @listeners.each {|name,s| 
-        STDERR.puts "Running #{name} listener." 
+        log "Running #{name} listener." 
         s.run 
       }
       
@@ -706,7 +718,7 @@ module Mongrel
     # stop processing requests (gracefully).
     def stop
       @listeners.each {|name,s| 
-        STDERR.puts "Stopping #{name} listener." 
+        log "Stopping #{name} listener." 
         s.stop 
       }
     end
@@ -718,6 +730,74 @@ module Mongrel
     def join
       @listeners.values.each {|s| s.acceptor.join }
     end
+
+
+    # Calling this before you register your URIs to the given location
+    # will setup a set of handlers that log open files, objects, and the
+    # parameters for each request.  This helps you track common problems
+    # found in Rails applications that are either slow or become unresponsive
+    # after a little while.
+    def debug(location)
+      require 'mongrel/debug'
+      ObjectTracker.configure
+      MongrelDbg.configure
+      MongrelDbg.begin_trace :objects
+      MongrelDbg.begin_trace :rails
+      MongrelDbg.begin_trace :files
+      
+      uri "/", :handler => plugin("/handlers/requestlog::files")
+      uri "/", :handler => plugin("/handlers/requestlog::objects")
+      uri "/", :handler => plugin("/handlers/requestlog::params")
+    end
+
+
+    # Sets up the standard signal handlers that are used on most Ruby
+    # It only configures if the platform is not win32 and doesn't do
+    # a HUP signal since this is typically framework specific.
+    #
+    # Requires a :pid_file option to indicate a file to delete.  
+    # It sets the MongrelConfig.needs_restart attribute if 
+    # the start command should reload.  It's up to you to detect this
+    # and do whatever is needed for a "restart".
+    #
+    # This command is safely ignored if the platform is win32 (with a warning)
+    def setup_signals(options={})
+      ops = resolve_defaults(options)
+      
+      if RUBY_PLATFORM !~ /mswin/
+        # graceful shutdown
+        trap("TERM") { 
+          log "TERM signal received."
+          stop 
+          File.unlink ops[:pid_file] if File.exist?(ops[:pid_file])
+        }
+        
+        # restart
+        trap("USR2") { 
+          log "USR2 signal received."
+          stop
+          File.unlink ops[:pid_file] if File.exist?(ops[:pid_file])
+          @needs_restart = true
+        }
+        
+        trap("INT") {
+          log "INT signal received."
+          stop
+          File.unlink ops[:pid_file] if File.exist?(ops[:pid_file])
+          @needs_restart = false
+        }
+        
+        log "Signals ready.  TERM => stop.  USR2 => restart.  INT => stop (no restart)."
+      else
+        log "WARNING: Win32 does not have signals support."
+      end
+    end
+
+    # Logs a simple message to STDERR (or the mongrel log if in daemon mode).
+    def log(msg)
+      STDERR.print "** ", msg, "\n"
+    end
+    
   end
 
 end

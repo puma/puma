@@ -15,7 +15,7 @@ module Mongrel
     # user's bidding.
     module Base
       
-      attr_reader :valid, :done_validating
+      attr_reader :valid, :done_validating, :original_args
 
       # Called by the implemented command to set the options for that command.
       # Every option has a short and long version, a description, a variable to

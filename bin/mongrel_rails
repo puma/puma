@@ -1,6 +1,9 @@
+
 require 'rubygems'
 require 'yaml'
-require 'mongrel'
+require 'mongrel/rails'
+
+
 
 class Start < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
@@ -18,6 +21,7 @@ class Start < GemPlugin::Plugin "/commands"
       ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
       ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
       ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, "public"],
+      ['-B', '--debug', "Enable debugging mode", :@debug, false],
     ]
   end
   
@@ -36,120 +40,61 @@ class Start < GemPlugin::Plugin "/commands"
     return @valid
   end
 
-
-  def daemonize 
-    # save this for later since daemonize will hose it
-    if @daemon and RUBY_PLATFORM !~ /mswin/
-      require 'daemons/daemonize'
-
-      puts "Started Mongrel server in #@environment mode at #@address:#@port"
-      Daemonize.daemonize(log_file=File.join(@cwd, @log_file))
-
-      # change back to the original starting directory
-      Dir.chdir(@cwd)
-
-      open(@pid_file,"w") {|f| f.write(Process.pid) }
-    else
-      puts "Running Mongrel server in #@environment mode at #@address:#@port"
-    end
-  end   
-
-  def load_mime_map
-    mime = {}
-
-    # configure any requested mime map
-    if @mime_map
-      puts "Loading additional MIME types from #@mime_map"
-      mime.merge!(YAML.load_file(@mime_map))
-
-      # check all the mime types to make sure they are the right format
-      mime.each {|k,v| puts "WARNING: MIME type #{k} must start with '.'" if k.index(".") != 0 }
-    end
-    
-    return mime
-  end
-
-  def configure_rails
-    # need this later for safe reloading
-    $orig_dollar_quote = $".clone
-
-    ENV['RAILS_ENV'] = @environment
-    require 'config/environment'
-    require 'dispatcher'
-    require 'mongrel/rails'
-
-    # configure the rails handler
-    rails = RailsHandler.new(@docroot, load_mime_map)
-    
-    return rails
-  end
-
-  def start_mongrel(rails)
-    @restart = false
-
-    server = Mongrel::HttpServer.new(@address, @port, @num_procs.to_i, @timeout.to_i)
-    server.register("/", rails)
-
-    # signal trapping just applies to posix systems
-    # TERM is a valid signal, but still doesn't gracefuly shutdown on win32.
-    if RUBY_PLATFORM !~ /mswin/
-      # graceful shutdown
-      trap("TERM") { 
-        server.stop 
-        File.unlink @pid_file if File.exist?(@pid_file)
-      }
-
-      # rails reload
-      trap("HUP") { 
-        STDERR.puts "Reloading rails..."
-        rails.reload!
-        STDERR.puts "Done reloading rails."
-      }
-
-      # restart
-      trap("USR2") { 
-        server.stop
-        File.unlink @pid_file if File.exist?(@pid_file)
-        @restart = true
-      }
-
-      trap("INT") {
-        server.stop
-        File.unlink @pid_file if File.exist?(@pid_file)
-        @restart = false
-      }
-    end
-
-    # hook up any rails specific plugins
-    GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE
-
-    begin
-      # start mongrel processing thread
-      server.run
-
-      if RUBY_PLATFORM !~ /mswin/
-        puts "Server Ready.  Use CTRL-C to quit."
-      else
-        puts "Server Ready.  Use CTRL-Pause/Break to quit."
-      end
-
-      server.acceptor.join
-    rescue Interrupt
-      STDERR.puts "Interrupted."
-      raise
-    end
-    
-    # daemonize makes restart easy
-    run if @restart
-  end
-
   def run
-    daemonize
-    rails = configure_rails
-    start_mongrel(rails)
+
+    settings = { :host => @address,  :port => @port, :cwd => @cwd,
+      :log_file => @log_file, :pid_file => @pid_file, :environment => @environment,
+      :docroot => @docroot, :mime_map => @mime_map, :daemon => @daemon,
+      :debug => @debug, :includes => ["mongrel"]
+    }
+
+    
+    config = Mongrel::Rails::RailsConfigurator.new(settings) do
+      log "Starting Mongrel in #{settings[:environment]} mode at #{settings[:host]}:#{settings[:port]}"
+      
+      if defaults[:daemon]
+        log "Daemonizing, any open files are closed.  Look at #{settings[:pid_file]} and #{settings[:log_file]} for info."
+        daemonize
+      end
+      
+      listener do
+        mime = {}
+        if defaults[:mime_map]
+          log "Loading additional MIME types from #{settings[:mime_map]}"
+          mime = load_mime_map(defaults[:mime_map], mime)
+        end
+        
+        if defaults[:debug]
+          log "Installing debugging prefixed filters.  Look in log/mongrel_debug for the files."
+          debug "/"
+        end
+
+        log "Starting Rails in environment #{settings[:environment]} ..."
+        uri "/", :handler => rails
+        log "Rails loaded."
+
+        log "Loading any Rails specific GemPlugins"
+        load_plugins
+
+        setup_rails_signals
+      end
+    end
+
+    config.run
+    config.log "Mongrel available at #{settings[:host]}:#{settings[:port]}"
+    config.join
+
+    if config.needs_restart
+      if RUBY_PLATFORM !~ /mswin/
+        cmd = "ruby #{__FILE__} start #{original_args.join(' ')}"
+        config.log "Restarting with arguments:  #{cmd}"
+        exec cmd
+      else
+        config.log "Win32 does not support restarts. Exiting."
+      end
+    end
   end
 end
-
 
 def send_signal(signal, pid_file)
   pid = open(pid_file).read.to_i
@@ -232,12 +177,7 @@ end
 GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
 
 
-require 'mongrel/debug'
-ObjectTracker.configure
-MongrelDbg.configure
-
 Mongrel::Command::Registry.instance.run ARGV
 
-END {
-Class.report_object_creations
-}
+
+
