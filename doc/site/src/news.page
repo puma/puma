@@ -7,6 +7,44 @@ ordering: 2
 
 h1. Latest News
 
+h2. Mar-27:   Mongrel 0.3.12 -- Pre-Release
+
+This release is a little different as it's larger than previous releases and
+therefore needs to have more testing before I put it on the regular gem
+servers.  People interested in testing will install using:
+
+ $ gem uninstall mongrel
+ $ gem uninstall gem_plugin
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases/
+
+Windows people may need to uninstall their services and re-install them.  Please let me 
+know if this happens to you.  Otherwise test this with your apps and tell me how it works.
+
+Adventurous people on FreeBSD or Linux (maybe Solaris) might want to do "gem install sendfile"
+as well to see if they get faster static file serving.  Worked for me on FreeBSD no problems.
+
+This release features an insane number of changes, too frequent to mention
+in just this little new snippet, but here's the big ones:
+
+* A more complete "Mongrel::Configurator":http://mongrel.rubyforge.org/rdoc/classes/Mongrel/Configurator.html and "Mongrel::Rails::RailsConfigurator":http://mongrel.rubyforge.org/rdoc/classes/Mongrel/Rails/RailsConfigurator.html
+* The mongrel_rails script is implemented using the new Configurator scheme and works much better.
+* Win32 start-up scripts are adapted to the new setup but not using the Configurator.
+* You can pass a config file to mongrel_rails start and it will load that (command line options override).
+* Graceful restart works more reliably (not in Win32 since it uses services).
+* Reload works better and doesn't break the restart.
+* More logging of the start-up process.
+* There is a wicked nice debugging framework that logs object counts, open files, and request params.  Try mongrel_rails start -B and look in log/mongrel_debug.
+* The Rails specific components are now in Mongrel::Rails modules.
+* More examples using the Mongrel::Configurator.
+* Dramatic speed improvements on FreeBSD, especially if you install the ruby18-nopthreads version.
+* Slight speed improvements on Mac OSX.
+* Platforms that can install "ruby-sendfile":http://rubyforge.org/projects/ruby-sendfile will get an estimated 20% speed boost in static file serving.  This is currently FreeBSD, Linux, and Solaris.
+* Lots of little bug fixes and minor speed tweaks.
+
+I'm holding the official 0.3.12 release until after Rails 1.1 is officially released so I can test it.
+
+Please do the install process and try out your applications for me.  I'll be posting some hand
+
 h2. Mar-15:   Mongrel 0.3.11 -- Edge Rails Compliant
 
 The main thing with this release is that it works with edge Rails

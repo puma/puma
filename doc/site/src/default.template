@@ -46,6 +46,16 @@
         <h4>NEWS</h4>
 
         <dl>
+
+          <dt>Mar-27-2006</dt>
+          <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.12 -- Pre-Release</a></h5>
+
+            <p>A pre-release of the 0.3.12 Mongrel which suppot tons of functionality, so it 
+	    needs more testing than normal.  Read the news for changes and install instructions.</p>
+	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+          </dd>
+
           <dt>Mar-15-2006</dt>
           <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.11 -- Edge Rails Compliant</a></h5>
@@ -126,18 +136,6 @@
 	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
 	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
           </dd>
-
-
-          <dt>Feb-16-2006</dt>
-          <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.4 -- Win32 Baby</a></h5>
-
-            <p>CGI cleanups getting closer to full Rails support.  Win32 pre-built gems
-	    available.</p>
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
-
 
         </dl>
       </div>
