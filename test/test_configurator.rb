@@ -59,7 +59,7 @@ class ConfiguratorTest < Test::Unit::TestCase
 
     config.stop
     
-    assert_raise Errno::ECONNREFUSED do
+    assert_raise Errno::EBADF, Errno::ECONNREFUSED do
       res = Net::HTTP.get(URI.parse("http://localhost:3111/"))
     end
   end
