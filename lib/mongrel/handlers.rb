@@ -1,3 +1,11 @@
+require 'rubygems'
+begin
+  require 'sendfile'
+  $mongrel_has_sendfile = true
+  STDERR.puts "** You have sendfile installed, will use that to serve files."
+rescue Object
+  $mongrel_has_sendfile = false
+end
 
 module Mongrel
 
@@ -150,19 +158,28 @@ module Mongrel
     # Sends the contents of a file back to the user. Not terribly efficient since it's
     # opening and closing the file for each read.
     def send_file(req, response)
-      response.start(200) do |head,out|
-        # set the mime type from our map based on the ending
-        dot_at = req.rindex(".")
-        if dot_at
-          ext = req[dot_at .. -1]
-          if MIME_TYPES[ext]
-            head['Content-Type'] = MIME_TYPES[ext]
-          end
-        end
 
-        open(req, "rb") do |f|
-          out.write(f.read)
+      # first we setup the headers and status then we do a very fast send on the socket directly
+      response.status = 200
+      
+      # set the mime type from our map based on the ending
+      dot_at = req.rindex(".")
+      if dot_at
+        ext = req[dot_at .. -1]
+        if MIME_TYPES[ext]
+          response.header['Content-Type'] = MIME_TYPES[ext]
         end
+      end
+
+      response.header['Content-Length'] = File.size(req)
+
+      response.send_status
+      response.send_header
+
+      if $mongrel_has_sendfile
+        File.open(req, "rb") { |f| response.socket.sendfile(f) }
+      else
+        File.open(req, "rb") { |f| response.socket.write(f.read) }
       end
     end
 
@@ -184,11 +201,8 @@ module Mongrel
             send_file(req, response)
           end
         rescue => details
-          response.reset
-          response.start(403) do |head,out|
-            out << "Error accessing file: #{details}"
-            out << details.backtrace.join("\n")
-          end
+          STDERR.puts "Error accessing file: #{details}"
+          STDERR.puts details.backtrace.join("\n")
         end
       end
     end

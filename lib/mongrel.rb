@@ -200,6 +200,7 @@ module Mongrel
       @out.write(value)
       @out.write("\r\n")
     end
+    
   end
 
   # Writes and controls your response to the client using the HTTP/1.1 specification.
@@ -306,6 +307,10 @@ module Mongrel
       end
     end 
 
+    def write(data)
+      @socket.write(data)
+    end
+
     # This takes whatever has been done to header and body and then writes it in the
     # proper format to make an HTTP/1.1 response.
     def finished
@@ -317,6 +322,7 @@ module Mongrel
     def done
       (@status_sent and @header_sent and @body_sent)
     end
+
   end
   
 
