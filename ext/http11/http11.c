@@ -31,7 +31,7 @@ static VALUE global_server_protocol_value;
 static VALUE global_http_host;
 static VALUE global_mongrel_version;
 static VALUE global_server_software;
-
+static VALUE global_port_80;
 
 void http_field(void *data, const char *field, size_t flen, const char *value, size_t vlen)
 {
@@ -104,9 +104,12 @@ void header_done(void *data, const char *at, size_t length)
       rb_hash_aset(req, global_server_port, 
 		   rb_str_substr(temp, colon - RSTRING(temp)->ptr+1, 
 				 RSTRING(temp)->len));
+    } else {
+      rb_hash_aset(req, global_server_name, temp);
+      rb_hash_aset(req, global_server_port, global_port_80);
     }
   }
-
+  
   rb_hash_aset(req, global_server_protocol, global_server_protocol_value);
   rb_hash_aset(req, global_server_software, global_mongrel_version);
 }
@@ -476,7 +479,7 @@ void Init_http11()
   DEF_GLOBAL(http_host, "HTTP_HOST");
   DEF_GLOBAL(mongrel_version, "Mongrel 0.3.12");
   DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
-
+  DEF_GLOBAL(port_80, "80");
 
   cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
