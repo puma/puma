@@ -420,11 +420,7 @@ module Mongrel
             data << client.readpartial(Const::CHUNK_SIZE)
           end
         end
-      rescue EOFError
-        # ignored
-      rescue Errno::ECONNRESET
-        # ignored
-      rescue Errno::EPIPE
+      rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL
         # ignored
       rescue => details
         STDERR.puts "ERROR(#{details.class}): #{details}"

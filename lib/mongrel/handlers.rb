@@ -181,9 +181,11 @@ module Mongrel
 	  else
 	    File.open(req, "rb") { |f| response.socket.write(f.read) }
 	  end
-	rescue Errno::EINVAL
-	  # ignore these since it means the client closed off early on win32
+	rescue EOFError,Errno::ECONNRESET,Errno::EPIPE
+	  # ignore these since it means the client closed off early
 	end
+      else
+        response.send_body # should send nothing
       end
     end
 
@@ -210,7 +212,7 @@ module Mongrel
 	    response.start(403) {|head,out| out.write("Only HEAD and GET allowed.") }
           end
         rescue => details
-          STDERR.puts "Error accessing file: #{details}"
+          STDERR.puts "Error accessing file #{req}: #{details}"
           STDERR.puts details.backtrace.join("\n")
         end
       end
