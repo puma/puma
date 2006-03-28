@@ -184,7 +184,9 @@ end
 GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
 
 
-Mongrel::Command::Registry.instance.run ARGV
+if not Mongrel::Command::Registry.instance.run ARGV
+   exit 1
+end
 
 
 
