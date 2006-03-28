@@ -103,6 +103,7 @@ module Mongrel
       #
       # * :docroot => The public dir to serve from.
       # * :environment => Rails environment to use.
+      # * :cwd => The change to working directory
       #
       # And understands the following optional settings:
       #
@@ -131,7 +132,7 @@ module Mongrel
         
         $orig_dollar_quote = $".clone
         ENV['RAILS_ENV'] = ops[:environment]
-        require '#{ops[:docroot]}/config/environment'
+        require "#{ops[:cwd]}/config/environment"
         require 'dispatcher'
         require 'mongrel/rails'
         
