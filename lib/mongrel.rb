@@ -281,9 +281,10 @@ module Mongrel
       end
     end
 
-    def send_status
+    def send_status(content_length=nil)
       if not @status_sent
-        status = "HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{@body.length}\r\nConnection: close\r\n"
+	content_length ||= @body.length
+        status = "HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{content_length}\r\nConnection: close\r\n"
         @socket.write(status)
         @status_sent = true
       end

@@ -157,7 +157,7 @@ module Mongrel
     
     # Sends the contents of a file back to the user. Not terribly efficient since it's
     # opening and closing the file for each read.
-    def send_file(req, response)
+    def send_file(req, response, header_only=false)
 
       # first we setup the headers and status then we do a very fast send on the socket directly
       response.status = 200
@@ -171,15 +171,19 @@ module Mongrel
         end
       end
 
-      response.header['Content-Length'] = File.size(req)
-
-      response.send_status
+      response.send_status(File.size(req))
       response.send_header
 
-      if $mongrel_has_sendfile
-        File.open(req, "rb") { |f| response.socket.sendfile(f) }
-      else
-        File.open(req, "rb") { |f| response.socket.write(f.read) }
+      if not header_only
+	begin
+	  if $mongrel_has_sendfile
+	    File.open(req, "rb") { |f| response.socket.sendfile(f) }
+	  else
+	    File.open(req, "rb") { |f| response.socket.write(f.read) }
+	  end
+	rescue Errno::EINVAL
+	  # ignore these since it means the client closed off early on win32
+	end
       end
     end
 
@@ -187,6 +191,7 @@ module Mongrel
     # Process the request to either serve a file or a directory listing
     # if allowed (based on the listing_allowed paramter to the constructor).
     def process(request, response)
+      req_method = request.params['REQUEST_METHOD'] || "GET"
       req = can_serve request.params['PATH_INFO']
       if not req
         # not found, return a 404
@@ -197,8 +202,12 @@ module Mongrel
         begin
           if File.directory? req
             send_dir_listing(request.params["REQUEST_URI"],req, response)
-          else
-            send_file(req, response)
+          elsif req_method == "HEAD"
+            send_file(req, response, true)
+	  elsif req_method == "GET"
+            send_file(req, response, false)
+	  else
+	    response.start(403) {|head,out| out.write("Only HEAD and GET allowed.") }
           end
         rescue => details
           STDERR.puts "Error accessing file: #{details}"

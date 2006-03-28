@@ -131,7 +131,7 @@ module Mongrel
         
         $orig_dollar_quote = $".clone
         ENV['RAILS_ENV'] = ops[:environment]
-        require 'config/environment'
+        require '#{ops[:docroot]}/config/environment'
         require 'dispatcher'
         require 'mongrel/rails'
         
