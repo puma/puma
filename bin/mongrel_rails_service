@@ -80,7 +80,7 @@ class Install < GemPlugin::Plugin "/commands"
     end
     
     # Expand to get full path for mime-types file
-    @mime_map = File.Expand_path(@mime_map) if @mime_map
+    @mime_map = File.expand_path(@mime_map) if @mime_map
     
     # default service display to service name
     @svc_display = @svc_name if !@svc_display
