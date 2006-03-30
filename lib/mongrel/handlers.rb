@@ -84,6 +84,7 @@ module Mongrel
       ".txt"        =>  "text/plain"
     }
 
+    ONLY_HEAD_GET="Only HEAD and GET allowed.".freeze
 
     attr_reader :path
 
@@ -134,7 +135,7 @@ module Mongrel
 
       if @listing_allowed
         response.start(200) do |head,out|
-          head['Content-Type'] = "text/html"
+          head[Const::CONTENT_TYPE] = "text/html"
           out << "<html><head><title>Directory Listing</title></head><body>"
           Dir.entries(dir).each do |child|
             next if child == "."
@@ -167,7 +168,12 @@ module Mongrel
       if dot_at
         ext = req[dot_at .. -1]
         if MIME_TYPES[ext]
-          response.header['Content-Type'] = MIME_TYPES[ext]
+          stat = File.stat(req)
+          response.header[Const::CONTENT_TYPE] = MIME_TYPES[ext]
+          # TODO: Confirm this works for rfc 1123
+          response.header[Const::LAST_MODIFIED] = HttpServer.httpdate(stat.mtime)
+          # TODO that this is a valid way to calculate an etag
+          response.header[Const::ETAG] = Const::ETAG_FORMAT % [stat.mtime.to_i, stat.size, stat.ino]
         end
       end
 
@@ -193,8 +199,8 @@ module Mongrel
     # Process the request to either serve a file or a directory listing
     # if allowed (based on the listing_allowed paramter to the constructor).
     def process(request, response)
-      req_method = request.params['REQUEST_METHOD'] || "GET"
-      req = can_serve request.params['PATH_INFO']
+      req_method = request.params[Const::REQUEST_METHOD] || Const::GET
+      req = can_serve request.params[Const::PATH_INFO]
       if not req
         # not found, return a 404
         response.start(404) do |head,out|
@@ -203,13 +209,13 @@ module Mongrel
       else
         begin
           if File.directory? req
-            send_dir_listing(request.params["REQUEST_URI"],req, response)
-          elsif req_method == "HEAD"
+            send_dir_listing(request.params[Const::REQUEST_URI],req, response)
+          elsif req_method == Const::HEAD
             send_file(req, response, true)
-	  elsif req_method == "GET"
+	  elsif req_method == Const::GET
             send_file(req, response, false)
 	  else
-	    response.start(403) {|head,out| out.write("Only HEAD and GET allowed.") }
+	    response.start(403) {|head,out| out.write(ONLY_HEAD_GET) }
           end
         rescue => details
           STDERR.puts "Error accessing file #{req}: #{details}"

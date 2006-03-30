@@ -33,6 +33,8 @@ static VALUE global_mongrel_version;
 static VALUE global_server_software;
 static VALUE global_port_80;
 
+#define DEF_GLOBAL(name, val)   global_##name = rb_obj_freeze(rb_str_new2(val)); rb_global_variable(&global_##name);
+
 void http_field(void *data, const char *field, size_t flen, const char *value, size_t vlen)
 {
   char *ch, *end;
@@ -450,8 +452,6 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
 
   return result;
 }
-
-#define DEF_GLOBAL(name, val)   global_##name = rb_str_new2(val); rb_global_variable(&global_##name)
 
 
 void Init_http11()

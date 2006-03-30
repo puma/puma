@@ -88,34 +88,52 @@ module Mongrel
   # REMOTE_USER, or REMOTE_HOST parameters since those are either a security problem or 
   # too taxing on performance.
   module Const
+    DATE = "Date".freeze
+
     # This is the part of the path after the SCRIPT_NAME.  URIClassifier will determine this.
-    PATH_INFO="PATH_INFO"
+    PATH_INFO="PATH_INFO".freeze
 
     # This is the intial part that your handler is identified as by URIClassifier.
-    SCRIPT_NAME="SCRIPT_NAME"
+    SCRIPT_NAME="SCRIPT_NAME".freeze
 
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
-    REQUEST_URI='REQUEST_URI'
+    REQUEST_URI='REQUEST_URI'.freeze
 
-    MONGREL_VERSION="0.3.12"
+    MONGREL_VERSION="0.3.12".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND"
+    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
 
-    CONTENT_LENGTH="CONTENT_LENGTH"
+    CONTENT_LENGTH="CONTENT_LENGTH".freeze
 
     # A common header for indicating the server is too busy.  Not used yet.
-    ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY"
+    ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
 
     # The basic max request size we'll try to read.
     CHUNK_SIZE=(16 * 1024)
 
+    # Format to generate a correct RFC 1123 date.  rdoc for Time is wrong, there is no httpdate function.
+    RFC_1123_DATE_FORMAT="%a, %d %B %Y %H:%M:%S GMT".freeze
+
+    # A frozen format for this is about 15% faster
+    STATUS_FORMAT = "HTTP/1.1 %d %s\r\nContent-Length: %d\r\nConnection: close\r\n".freeze
+    CONTENT_TYPE = "Content-Type".freeze
+    LAST_MODIFIED = "Last-Modified".freeze
+    ETAG = "ETag".freeze
+    SLASH = "/".freeze
+    REQUEST_METHOD="REQUEST_METHOD".freeze
+    GET="GET".freeze
+    HEAD="HEAD".freeze
+    # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
+    ETAG_FORMAT="\"%x-%x-%x\"".freeze
+    HEADER_FORMAT="%s: %s\r\n".freeze
+    LINE_END="\r\n".freeze
   end
 
 
   # When a handler is found for a registered URI then this class is constructed
   # and passed to your HttpHandler::process method.  You should assume that 
-  # *one* handler processes all requests.  Included in the HttpReqeust is a
+  # *one* handler processes all requests.  Included in the HttpRequest is a
   # HttpRequest.params Hash that matches common CGI params, and a HttpRequest.body
   # which is a string containing the request body (raw for now).
   #
@@ -195,10 +213,7 @@ module Mongrel
 
     # Simply writes "#{key}: #{value}" to an output buffer.
     def[]=(key,value)
-      @out.write(key)
-      @out.write(": ")
-      @out.write(value)
-      @out.write("\r\n")
+      @out.write(Const::HEADER_FORMAT % [key, value])
     end
     
   end
@@ -247,6 +262,7 @@ module Mongrel
       @body = StringIO.new
       @status = 404
       @header = HeaderOut.new(StringIO.new)
+      @header[Const::DATE] = HttpServer.httpdate(Time.now)
       @filter = filter
       @body_sent = false
       @header_sent = false
@@ -284,8 +300,7 @@ module Mongrel
     def send_status(content_length=nil)
       if not @status_sent
 	content_length ||= @body.length
-        status = "HTTP/1.1 #{@status} #{HTTP_STATUS_CODES[@status]}\r\nContent-Length: #{content_length}\r\nConnection: close\r\n"
-        @socket.write(status)
+        @socket.write(Const::STATUS_FORMAT % [status, HTTP_STATUS_CODES[@status], content_length])
         @status_sent = true
       end
     end
@@ -293,8 +308,7 @@ module Mongrel
     def send_header
       if not @header_sent
         @header.out.rewind
-        @socket.write(@header.out.read)
-        @socket.write("\r\n")
+        @socket.write(@header.out.read + Const::LINE_END)
         @header_sent = true
       end
     end
@@ -502,7 +516,7 @@ module Mongrel
       if not handlers
         @classifier.register(uri, [handler])
       else
-        if path_info.length == 0 or (script_name == "/" and path_info == "/")
+        if path_info.length == 0 or (script_name == Const::SLASH and path_info == Const::SLASH)
           handlers << handler
         else
           @classifier.register(uri, [handler])
@@ -525,6 +539,11 @@ module Mongrel
         @acceptor.raise(exc)
       end
       stopper.priority = 10
+    end
+
+    # Given the a time object it converts it to GMT and applies the RFC1123 format to it.
+    def HttpServer.httpdate(date)
+      date.gmtime.strftime(Const::RFC_1123_DATE_FORMAT)
     end
 
   end
