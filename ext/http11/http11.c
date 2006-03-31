@@ -23,7 +23,6 @@ static VALUE global_http_content_type;
 static VALUE global_gateway_interface;
 static VALUE global_gateway_interface_value;
 static VALUE global_interface_value;
-static VALUE global_remote_address;
 static VALUE global_server_name;
 static VALUE global_server_port;
 static VALUE global_server_protocol;
@@ -471,13 +470,12 @@ void Init_http11()
   DEF_GLOBAL(http_content_type, "HTTP_CONTENT_TYPE");
   DEF_GLOBAL(gateway_interface, "GATEWAY_INTERFACE");
   DEF_GLOBAL(gateway_interface_value, "CGI/1.2");
-  DEF_GLOBAL(remote_address, "REMOTE_ADDR");
   DEF_GLOBAL(server_name, "SERVER_NAME");
   DEF_GLOBAL(server_port, "SERVER_PORT");
   DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
   DEF_GLOBAL(server_protocol_value, "HTTP/1.1");
   DEF_GLOBAL(http_host, "HTTP_HOST");
-  DEF_GLOBAL(mongrel_version, "Mongrel 0.3.12");
+  DEF_GLOBAL(mongrel_version, "Mongrel 0.3.12.1");
   DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
   DEF_GLOBAL(port_80, "80");
 

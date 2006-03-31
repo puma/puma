@@ -99,7 +99,7 @@ module Mongrel
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'.freeze
 
-    MONGREL_VERSION="0.3.12".freeze
+    MONGREL_VERSION="0.3.12.1".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
@@ -128,6 +128,8 @@ module Mongrel
     ETAG_FORMAT="\"%x-%x-%x\"".freeze
     HEADER_FORMAT="%s: %s\r\n".freeze
     LINE_END="\r\n".freeze
+    REMOTE_ADDR="REMOTE_ADDR".freeze
+    HTTP_X_FORWARDED_FOR="HTTP_X_FORWARDED_FOR".freeze
   end
 
 
@@ -409,7 +411,7 @@ module Mongrel
             if handlers
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
-
+              params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
               request = HttpRequest.new(params, data[nread ... data.length], client)
               response = HttpResponse.new(client)
               

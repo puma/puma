@@ -47,6 +47,16 @@
 
         <dl>
 
+          <dt>Mar-30-2006</dt>
+          <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.12 -- Pre-Release</a></h5>
+
+            <p>The official 0.3.12 release of Mongrel is here.  This release is hot, but test test test.
+	      Should support Rails 1.1 and has lots of debugging and tweaks.</p>
+
+	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+          </dd>
+
           <dt>Mar-27-2006</dt>
           <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.12 -- Pre-Release</a></h5>

@@ -7,6 +7,37 @@ ordering: 2
 
 h1. Latest News
 
+h2. Mar-30:   Mongrel 0.3.12 -- OFFICIAL Release
+
+This is the long awaited (like 2 weeks) 0.3.12 release of Mongrel.  This release
+has received heavier testing than previous releases and supports a whole raft of 
+improvements to existing functionality plus some new stuff.  The big points of this
+release are:
+
+* The Mongrel::Configurator and Mongrel::Rails::Configurator for simple configuration (mostly for frameworks to use).
+* Dynamically loadable handlers from the GemPlugins system.  Next release will let you write and add your own handlers.
+* Chained handlers.  That's right, you can stack a series of handlers on any URIs and they'll be processed in order.  This gives you an advanced and fast pipe-lined processing system and is already used to implement the extensive debugging support Mongrel has.
+* Debugging, Debugging, Debugging.  Try the -B option and then look in the log/mongrel_debug logs.  I'll be beefing this up to insane usefulness for the 0.3.13 release.
+* Support for sendfile on FreeBSD, Linux, and Solaris if you install the "ruby-sendfile":http://rubyforge.org/projects/ruby-sendfile gem.  This is experimental but already gives a 20% boost on static files.
+* Additional proper headers for static files from the DirHandler in order to allow browsers to cache the content.  People using Mongrel for development or small sites will love this combined with the sendfile support.
+* Lots and lots of little tweaks to improve speed.  Mongrel is starting to hit a wall again with performance so I'll be looking for new hot-spots to move to C in the near future.
+* Initial support for Rails 1.1.  Remember *if you use Typo it is broken not Mongrel*.  Typo is being frantically fixed so be patient.
+* Fix for a bad typo on Win32 that prevented people from using additional mime types files (stupid Emacs and it's damn capitalize command being exactly the same as Copy in every other editor).
+* Ability to specify a timeout throttling setting and a max number of concurrent connections with additional attempts at cleaning dead threads out.  Future debugging will help people spot these.
+* Lots of new Camping support and integration (thanks to Trotter Cashion for using Mongrel with Camping like crazy).
+* A handy -C option for the mongrel_rails script that lets you specify the options you'd normally do on the command line as a YAML hash.  More on this later.
+
+Everyone can go "download 0.3.12":http://rubyforge.org/frs/?group_id=1306 like normal or do the usual
+"gem install mongrel" or "gem update" to get the latest and greatest.
+
+ If you followed pre-release please uninstall first.
+
+Enjoy and report those bugs!
+
+h3. Next Stop, Funded
+
+The next steps with Mongrel will be to add the capability for users of Mongrel to write their own Configurator scripts and to test the living daylights out of it.  If you missed my last announcement, Mongrel is getting *commercial sponsorship* from EastMedia (http://www.eastmedia.com/) in partnership with VeriSign (http://www.verisign.com/) for use in a potentially large scale project.  My role in this is to make sure Mongrel can handle the required role and will not ever crash.  I'll be spending the next few weeks putting out less features and doing more stability and speed tweaks.  Stay tuned.  Should be fun.
+
 h2. Mar-27:   Mongrel 0.3.12 -- Pre-Release
 
 This release is a little different as it's larger than previous releases and
