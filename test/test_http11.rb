@@ -39,14 +39,17 @@ class HttpParserTest < Test::Unit::TestCase
   end
 
   def test_query_parse
-    puts HttpRequest.query_parse("zed=1&frank=2").inspect
-    puts HttpRequest.query_parse("zed=1&zed=2&zed=3&frank=11;zed=45").inspect
+    res = HttpRequest.query_parse("zed=1&frank=2")
+    assert res["zed"], "didn't get the request right"
+    assert res["frank"], "no frank"
+    assert_equal "1", res["zed"], "wrong result"
+    assert_equal "2", res["frank"], "wrong result"
 
-    puts Benchmark.measure {
-      10000.times do |i|
-        g = HttpRequest.query_parse("zed=1&zed=2&zed=3&frank=11").inspect
-      end
-    }        
+    res = HttpRequest.query_parse("zed=1&zed=2&zed=3&frank=11;zed=45")
+    assert res["zed"], "didn't get the request right"
+    assert res["frank"], "no frank"
+    assert_equal 4,res["zed"].length, "wrong number for zed"
+    assert_equal "11",res["frank"], "wrong number for frank"
   end
 
 

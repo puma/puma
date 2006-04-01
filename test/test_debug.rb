@@ -15,6 +15,8 @@ class MongrelDbgTest < Test::Unit::TestCase
 
 
   def test_tracing_to_log
+    out = StringIO.new
+
     MongrelDbg::begin_trace(:rails)
     MongrelDbg::trace(:rails, "Good stuff")
     MongrelDbg::end_trace(:rails)
@@ -23,9 +25,9 @@ class MongrelDbgTest < Test::Unit::TestCase
     assert File.exist?("log/mongrel_debug/rails.log"), "Didn't make the rails.log file"
     assert File.size("log/mongrel_debug/rails.log") > 0, "Didn't write anything to the log."
 
-    Class.report_object_creations
+    Class.report_object_creations(out)
     Class.reset_object_creations
-    Class.report_object_creations
+    Class.report_object_creations(out)
   end
 
 end

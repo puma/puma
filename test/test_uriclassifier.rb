@@ -91,20 +91,6 @@ class URIClassifierTest < Test::Unit::TestCase
   end
 
 
-  def test_performance
-    count = 8500
-    u = URIClassifier.new
-    u.register("stuff",1)
-
-    res = Benchmark.measure {   count.times { u.resolve("stuff") } }
-    
-    reg_unreg = Benchmark.measure { count.times { u.register("other",1); u.unregister("other"); } }
-
-    puts "\nRESOLVE(#{count}): #{res}"
-    puts "REG_UNREG(#{count}): #{reg_unreg}"
-  end
-
-
   def test_uri_branching
     u = URIClassifier.new
     u.register("/test", 1)
