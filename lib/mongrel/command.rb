@@ -52,7 +52,7 @@ module Mongrel
         @opt.on_tail("--version", "Show version") do
           @done_validating = true
           if VERSION
-            puts "Version #{VERSION}"
+            puts "Version #{MONGREL_VERSION}"
           end
         end
         

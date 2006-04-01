@@ -725,7 +725,6 @@ module Mongrel
     # is organized.
     def load_mime_map(file, mime={})
       # configure any requested mime map
-      log "Loading additional MIME types from #{file}"
       mime = load_yaml(file, mime)
       
       # check all the mime types to make sure they are the right format
@@ -786,11 +785,19 @@ module Mongrel
       MongrelDbg.begin_trace :rails
       MongrelDbg.begin_trace :files
       
+      uri location, :handler => plugin("/handlers/requestlog::access")
       uri location, :handler => plugin("/handlers/requestlog::files")
       uri location, :handler => plugin("/handlers/requestlog::objects")
       uri location, :handler => plugin("/handlers/requestlog::params")
     end
 
+    # Used to allow you to let users specify their own configurations
+    # inside your Configurator setup.  You pass it a script name and
+    # reads it in and does an eval on the contents passing in the right
+    # binding so they can put their own Configurator statements.
+    def run_config(script)
+      open(script) {|f| eval(f.read, proc {self}) }
+    end
 
     # Sets up the standard signal handlers that are used on most Ruby
     # It only configures if the platform is not win32 and doesn't do

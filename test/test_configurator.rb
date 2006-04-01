@@ -29,12 +29,12 @@ class ConfiguratorTest < Test::Unit::TestCase
         # 2 in front should run, but the sentinel shouldn't since dirhandler processes the request
         uri "/", :handler => plugin("/handlers/testplugin")
         uri "/", :handler => plugin("/handlers/testplugin")
-        uri "/", :handler => Mongrel::DirHandler.new(".", load_mime_map("examples/mime.yaml"))
+        uri "/", :handler => Mongrel::DirHandler.new(".")
         uri "/", :handler => plugin("/handlers/testplugin")
 
         uri "/test", :handler => plugin("/handlers/testplugin")
         uri "/test", :handler => plugin("/handlers/testplugin")
-        uri "/test", :handler => Mongrel::DirHandler.new(".", load_mime_map("examples/mime.yaml"))
+        uri "/test", :handler => Mongrel::DirHandler.new(".")
         uri "/test", :handler => plugin("/handlers/testplugin")
         run
       end

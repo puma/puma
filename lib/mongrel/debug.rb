@@ -219,6 +219,19 @@ end
 
 
 module RequestLog
+
+  # Just logs whatever requests it gets to STDERR (which ends up in the mongrel
+  # log when daemonized).
+  class Access < GemPlugin::Plugin "/handlers"
+    include Mongrel::HttpHandlerPlugin
+    
+    def process(request,response)
+      p = request.params
+      STDERR.puts "#{p['REMOTE_ADDR']} - [#{HttpServer.httpdate(Time.now)}] \"#{p['REQUEST_METHOD']} #{p["REQUEST_URI"]} HTTP/1.1\""
+    end
+  end
+  
+
   class Files < GemPlugin::Plugin "/handlers"
     include Mongrel::HttpHandlerPlugin
     
