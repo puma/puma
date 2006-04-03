@@ -169,7 +169,7 @@ module Mongrel
         ext = req[dot_at .. -1]
         if MIME_TYPES[ext]
           stat = File.stat(req)
-          response.header[Const::CONTENT_TYPE] = MIME_TYPES[ext]
+          response.header[Const::CONTENT_TYPE] = MIME_TYPES[ext] || "text"
           # TODO: Confirm this works for rfc 1123
           response.header[Const::LAST_MODIFIED] = HttpServer.httpdate(stat.mtime)
           # TODO that this is a valid way to calculate an etag
@@ -187,7 +187,7 @@ module Mongrel
 	  else
 	    File.open(req, "rb") { |f| response.socket.write(f.read) }
 	  end
-	rescue EOFError,Errno::ECONNRESET,Errno::EPIPE
+        rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL
 	  # ignore these since it means the client closed off early
 	end
       else

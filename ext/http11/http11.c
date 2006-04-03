@@ -124,10 +124,20 @@ void header_done(void *data, const char *at, size_t length)
   VALUE temp = Qnil;
   VALUE host = Qnil;
   VALUE port = Qnil;
+  VALUE ctype = Qnil;
+  VALUE clen = Qnil;
   char *colon = NULL;
 
-  rb_hash_aset(req, global_content_length, rb_hash_aref(req, global_http_content_length));
-  rb_hash_aset(req, global_content_type, rb_hash_aref(req, global_http_content_type));
+  clen = rb_hash_aref(req, global_http_content_length);
+  if(clen != Qnil) {
+    rb_hash_aset(req, global_content_length, clen);
+  }
+
+  ctype = rb_hash_aref(req, global_http_content_type);
+  if(ctype != Qnil) {
+    rb_hash_aset(req, global_content_type, Qnil);
+  }
+
   rb_hash_aset(req, global_gateway_interface, global_gateway_interface_value);
   if((temp = rb_hash_aref(req, global_http_host)) != Qnil) {
     // ruby better close strings off with a '\0' dammit
