@@ -86,7 +86,7 @@ class Start < GemPlugin::Plugin "/commands"
 
         if settings[:config_script]
           log "Loading #{settings[:config_script]} external config script"
-          run_config("config/mongrel.rb")
+          run_config(settings[:config_script])
         end
 
         setup_rails_signals
