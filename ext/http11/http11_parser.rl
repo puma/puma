@@ -5,13 +5,13 @@
 #include <ctype.h>
 #include <string.h>
 
-#define MARK(S,F) assert((F) - (S)->mark >= 0); (S)->mark = (F);
+#define MARK(S,F) (S)->mark = (F);
 
 /** machine **/
 %%{
 	machine http_parser;
 
-    	action mark { MARK(parser, fpc); }
+    	action mark {MARK(parser, fpc); }
 
 	action start_field { parser->field_start = fpc; }	
 	action write_field { 
@@ -20,6 +20,7 @@
 
 	action start_value { MARK(parser, fpc); }
 	action write_value { 
+      	       assert(p - (parser->mark - 1) >= 0 && "buffer overflow"); 
 	       if(parser->http_field != NULL) {
 	       	       parser->http_field(parser->data, 
 		       		parser->field_start, parser->field_len, 
@@ -27,22 +28,27 @@
 		}
 	}
 	action request_method { 
-	       if(parser->request_method != NULL)
+      	       assert(p - parser->mark >= 0 && "buffer overflow"); 
+	       if(parser->request_method != NULL) 
 	       	       parser->request_method(parser->data, parser->mark, p - parser->mark);
 	}
 	action request_uri { 
+       	       assert(p - parser->mark >= 0 && "buffer overflow"); 
 	       if(parser->request_uri != NULL)
 	       	       parser->request_uri(parser->data, parser->mark, p - parser->mark);
 	}
 	action query_string { 
+       	       assert(p - parser->mark >= 0 && "buffer overflow"); 
 	       if(parser->query_string != NULL)
 	       	       parser->query_string(parser->data, parser->mark, p - parser->mark);
 	}
 
 	action http_version {	
+       	       assert(p - parser->mark >= 0 && "buffer overflow"); 
 	       if(parser->http_version != NULL)
 	       	       parser->http_version(parser->data, parser->mark, p - parser->mark);
 	}
+
     	action done { 
 	       parser->body_start = p+1; 
 	       if(parser->header_done != NULL)
@@ -61,7 +67,7 @@
         extra = ("!" | "*" | "'" | "(" | ")" | ",");
         reserved = (";" | "/" | "?" | ":" | "@" | "&" | "=" | "+");
         unsafe = (CTL | " " | "\"" | "#" | "%" | "<" | ">");
-        national = any - (alpha | digit | reserved | extra | safe | unsafe);
+        national = any -- (alpha | digit | reserved | extra | safe | unsafe);
         unreserved = (alpha | digit | safe | extra | national);
         escape = ("%" xdigit xdigit);
         uchar = (unreserved | escape);
@@ -69,7 +75,7 @@
         tspecials = ("(" | ")" | "<" | ">" | "@" | "," | ";" | ":" | "\\" | "\"" | "/" | "[" | "]" | "?" | "=" | "{" | "}" | " " | "\t");
 
         # elements
-        token = (ascii - (CTL | tspecials));
+        token = (ascii -- (CTL | tspecials));
 
         # URI schemes and absolute paths
         scheme = ( alpha | digit | "+" | "-" | "." )* ;
@@ -89,11 +95,11 @@
         HTTP_Version = ("HTTP/" http_number) >mark %http_version ;
         Request_Line = (Method " " Request_URI " " HTTP_Version CRLF) ;
 	
-	field_name = (token - ":")+ >start_field %write_field;
+	field_name = (token -- ":")+ >start_field %write_field;
 
         field_value = any* >start_value %write_value;
 
-        message_header = field_name ":" field_value $0 CRLF >1;
+        message_header = field_name ":" field_value :> CRLF;
 	
         Request = Request_Line (message_header)* ( CRLF @done);
 

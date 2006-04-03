@@ -70,11 +70,9 @@ module ObjectTracker
       # Strings can't be tracked easily and are so numerous that they drown out all else
       # so we just ignore them in the counts.
       ObjectSpace.each_object do |obj|
-        if not obj.kind_of? String
-          ospace << obj.object_id
-          counts[obj.class] ||= 0
-          counts[obj.class] += 1
-        end
+        ospace << obj.object_id
+        counts[obj.class] ||= 0
+        counts[obj.class] += 1
       end
       
       dead_objects = @active_objects - ospace

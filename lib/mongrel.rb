@@ -110,7 +110,11 @@ module Mongrel
     ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
 
     # The basic max request size we'll try to read.
-    CHUNK_SIZE=(16 * 1024)
+    CHUNK_SIZE=(4 * 1024)
+
+    # This is the maximum header that is allowed before a client is booted.  The parser detects
+    # this, but we'd also like to do this as well.
+    MAX_HEADER=1024 * (80 + 32)
 
     # Format to generate a correct RFC 1123 date.  rdoc for Time is wrong, there is no httpdate function.
     RFC_1123_DATE_FORMAT="%a, %d %B %Y %H:%M:%S GMT".freeze
@@ -259,13 +263,12 @@ module Mongrel
     attr_reader :header_sent
     attr_reader :status_sent
     
-    def initialize(socket, filter = nil)
+    def initialize(socket)
       @socket = socket
       @body = StringIO.new
       @status = 404
       @header = HeaderOut.new(StringIO.new)
       @header[Const::DATE] = HttpServer.httpdate(Time.now)
-      @filter = filter
       @body_sent = false
       @header_sent = false
       @status_sent = false
@@ -342,6 +345,8 @@ module Mongrel
 
   end
   
+
+
 
   # This is the main driver of Mongrel, while the Mognrel::HttpParser and Mongrel::URIClassifier
   # make up the majority of how the server functions.  It's a very simple class that just
@@ -432,14 +437,20 @@ module Mongrel
           else
             # gotta stream and read again until we can get the parser to be character safe
             # TODO: make this more efficient since this means we're parsing a lot repeatedly
+            if data.length >= Const::MAX_HEADER
+              raise HttpParserError.new("HEADER is longer than allowed, aborting client early.")
+            end
+
             parser.reset
             data << client.readpartial(Const::CHUNK_SIZE)
           end
         end
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL
         # ignored
+      rescue HttpParserError
+        STDERR.puts "BAD CLIENT: #$!"        
       rescue => details
-        STDERR.puts "ERROR(#{details.class}): #{details}"
+        STDERR.puts "ERROR: #$!"
         STDERR.puts details.backtrace.join("\n")
       ensure
         client.close

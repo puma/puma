@@ -9,6 +9,7 @@
 static VALUE mMongrel;
 static VALUE cHttpParser;
 static VALUE cURIClassifier;
+static VALUE eHttpParserError;
 static int id_handler_map;
 
 static VALUE global_http_prefix;
@@ -32,15 +33,36 @@ static VALUE global_mongrel_version;
 static VALUE global_server_software;
 static VALUE global_port_80;
 
-#define DEF_GLOBAL(name, val)   global_##name = rb_obj_freeze(rb_str_new2(val)); rb_global_variable(&global_##name);
+/** Defines common length and error messages for input length validation. */
+#define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " # length " allowed length.";
+
+/** Validates the max length of given input and throws an HttpParserError exception if over. */
+#define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, MAX_##N##_LENGTH_ERR); }
+
+/** Defines global strings in the init method. */
+#define DEF_GLOBAL(N, val)   global_##N = rb_obj_freeze(rb_str_new2(val)); rb_global_variable(&global_##N);
+
+
+/* Defines the maximum allowed lengths for various input elements.*/
+DEF_MAX_LENGTH(FIELD_NAME, 256);
+DEF_MAX_LENGTH(FIELD_VALUE, 80 * 1024);
+DEF_MAX_LENGTH(REQUEST_URI, 512);
+DEF_MAX_LENGTH(QUERY_STRING, (1024 * 10));
+DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
+
 
 void http_field(void *data, const char *field, size_t flen, const char *value, size_t vlen)
 {
   char *ch, *end;
   VALUE req = (VALUE)data;
-  VALUE v = rb_str_new(value, vlen);
-  VALUE f = rb_str_dup(global_http_prefix);
+  VALUE v = Qnil;
+  VALUE f = Qnil;
 
+  VALIDATE_MAX_LENGTH(flen, FIELD_NAME);
+  VALIDATE_MAX_LENGTH(vlen, FIELD_VALUE);
+
+  v = rb_str_new(value, vlen);
+  f = rb_str_dup(global_http_prefix);
   f = rb_str_buf_cat(f, field, flen); 
   
   for(ch = RSTRING(f)->ptr, end = ch + RSTRING(f)->len; ch < end; ch++) {
@@ -57,14 +79,20 @@ void http_field(void *data, const char *field, size_t flen, const char *value, s
 void request_method(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
-  VALUE val = rb_str_new(at, length);
+  VALUE val = Qnil;
+
+  val = rb_str_new(at, length);
   rb_hash_aset(req, global_request_method, val);
 }
 
 void request_uri(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
-  VALUE val = rb_str_new(at, length);
+  VALUE val = Qnil;
+
+  VALIDATE_MAX_LENGTH(length, REQUEST_URI);
+
+  val = rb_str_new(at, length);
   rb_hash_aset(req, global_request_uri, val);
 }
 
@@ -72,7 +100,11 @@ void request_uri(void *data, const char *at, size_t length)
 void query_string(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
-  VALUE val = rb_str_new(at, length);
+  VALUE val = Qnil;
+  
+  VALIDATE_MAX_LENGTH(length, QUERY_STRING);
+
+  val = rb_str_new(at, length);
   rb_hash_aset(req, global_query_string, val);
 }
 
@@ -136,6 +168,7 @@ VALUE HttpParser_alloc(VALUE klass)
     hp->query_string = query_string;
     hp->http_version = http_version;
     hp->header_done = header_done;
+    http_parser_init(hp);
 
     obj = Data_Wrap_Struct(klass, NULL, HttpParser_free, hp);
 
@@ -214,8 +247,10 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data)
   http->data = (void *)req_hash;
   http_parser_execute(http, RSTRING(data)->ptr, RSTRING(data)->len);
 
+  VALIDATE_MAX_LENGTH(http_parser_nread(http), HEADER);
+
   if(http_parser_has_error(http)) {
-    rb_raise(rb_eStandardError, "HTTP Parsing failure");
+    rb_raise(eHttpParserError, "Invalid HTTP format, parsing fails.");
   } else {
     return INT2FIX(http_parser_nread(http));
   }
@@ -478,6 +513,8 @@ void Init_http11()
   DEF_GLOBAL(mongrel_version, "Mongrel 0.3.12.1");
   DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
   DEF_GLOBAL(port_80, "80");
+
+  eHttpParserError = rb_define_class_under(mMongrel, "HttpParserError", rb_eIOError);
 
   cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
