@@ -524,14 +524,20 @@ module Mongrel
     # Simply registers a handler with the internal URIClassifier.  When the URI is
     # found in the prefix of a request then your handler's HttpHandler::process method
     # is called.  See Mongrel::URIClassifier#register for more information.
-    def register(uri, handler)
+    #
+    # If you set in_front=true then the passed in handler will be put in front in the list.
+    def register(uri, handler, in_front=false)
       script_name, path_info, handlers = @classifier.resolve(uri)
 
       if not handlers
         @classifier.register(uri, [handler])
       else
         if path_info.length == 0 or (script_name == Const::SLASH and path_info == Const::SLASH)
-          handlers << handler
+          if in_front
+            handlers.unshift(handler)
+          else
+            handlers << handler
+          end
         else
           @classifier.register(uri, [handler])
         end
@@ -662,7 +668,7 @@ module Mongrel
     # * :handler => Handler to use for this location.
     def uri(location, options={})
       ops = resolve_defaults(options)
-      @listener.register(location, ops[:handler])
+      @listener.register(location, ops[:handler], in_front=ops[:in_front])
     end
     
     

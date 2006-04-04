@@ -47,6 +47,19 @@
 
         <dl>
 
+          <dt>Apr-3-2006</dt>
+          <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.12.1 -- Iron Mongrel</a></h5>
+
+            <p>This release is the result of pounding the crap out of Mongrel since the
+	    last release to make it more robust in the face of really bad traffic.  It is
+	    pretty ruthless so people should test and report if it's too ruthless.</p>
+
+	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+          </dd>
+
+
           <dt>Mar-30-2006</dt>
           <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.12 -- Pre-Release</a></h5>
@@ -54,6 +67,7 @@
             <p>The official 0.3.12 release of Mongrel is here.  This release is hot, but test test test.
 	      Should support Rails 1.1 and has lots of debugging and tweaks.</p>
 
+	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
 	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
           </dd>
 
@@ -134,15 +148,6 @@
             <p>This release is gonna make the win32 folks scream.  Runs Rails great, can
 	    host the whole Rails app, and <b>has a full win32 service runner.</b>
 	    </p>
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
-
-          <dt>Feb-18-2006</dt>
-          <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.5 -- CGI Fixed</a></h5>
-
-            <p>A complete rewrite of the CGIWrapper that actually works.</p>
 	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
 	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
           </dd>

@@ -7,6 +7,54 @@ ordering: 2
 
 h1. Latest News
 
+h2. Apr-3:  Mongrel 0.3.12.1 -- Iron Mongrel
+
+!/images/iron_mongrel.jpg!
+
+This is the Iron Mongrel release.  It is the result of trying to trash Mongrel
+until it can't move and then fixing anything that comes up.  The testing
+methods used are:
+
+# Increased the number of unit tests against the main C parts.
+# Write several tests against Mongrel's parser which throw it tons of random data.
+# Use "Peach Fuzz":http://peachfuzz.sourceforge.net/ to thrash several live apps with randomness.
+# Wrote several extensive little scripts to explore the edges of death for Mongrel.
+# Heavy code audits covering as much code as possible to find any possible loose ends.
+
+The end result is a lot of little fixes which make Mongrel more robust against 
+badly behaving clients and possibly against many potential security risks in 
+the future.  In general Mongrel 0.3.12.1 behaves more consistently compared
+to past releases when given random data or maliciously formatted data.
+
+The main changes are related to how IO is processed and how the HTTP parser rejects
+"bad" input.  What the parser now blocks is:
+
+* Any header over 112k.
+* Any query string over 10k.
+* Any header field value over 80k.
+* Any header field name over 256 bytes.
+* Any request URI greater than 512 bytes.
+
+As soon as these conditions are detected the client is disconnected immediately and a
+log message is printed out listing the IP address, the exact cause, and the data that caused it. I'll 
+remove the data dump later, but I want people to shoot me valid requests that cause parser
+errors.
+
+That's not all though.  I've started a "security":security.html page where I'll publish
+the results of security threats, tests, and improvements as well as any advice for
+folks.
+
+This release also features a few little features here and there:
+
+* Initial support for a "config script".  I'll be documenting this more, but it basically lets you use the Mongrel::RailsConfigurator to augment your application's config via a small script.  Just pass "-S config/mongrel.rb" and put any Mongrel::RailsConfigurator statements that are reasonable.
+* Mongrel will report the correct REMOTE_ADDR variable, but it does a little trick where if there
+is an X-FORWARDED-FOR header then it sets REMOTE_ADDR to that.
+* Fixes for little bugs like double log messages, but not a lot of changes to the overall core.
+
+Go ahead and install the usual way:  gem install mongrel *or* gem upgrade
+
+The logo is courtesy court3nay from irc.freenode.org.
+
 h2. Mar-30:   Mongrel 0.3.12 -- OFFICIAL Release
 
 This is the long awaited (like 2 weeks) 0.3.12 release of Mongrel.  This release

@@ -1,0 +1,95 @@
+---
+title: News
+inMenu: true
+directoryName: News
+ordering: 2
+---
+
+!/images/iron_mongrel.jpg!
+
+h1. Iron Mongrel Security
+
+This is where I'll be putting security tests, alerts, and advice for people 
+running Mongrel.  I test Mongrel fairly heavily using the following techniques:
+
+# Unit testing what I can.  Mongrel is a server so many tests have to be done "live".
+# Thrashing Mongrel's HTTP parser internally with random or near-random data (called fuzzing).
+# Using "Peach Fuzz":http://peachfuzz.sourceforge.net/ to thrash several live apps with randomness.
+# Running several extensive little scripts to explore the edges of death for Mongrel.
+# Heavy code audits covering as much code as possible to find any possible loose ends.
+
+The end result is a lot of little fixes which make Mongrel more robust against 
+badly behaving clients and possibly against many potential security risks in 
+the future.
+
+
+h2. Mongrels HTTP Restrictions
+
+Many of the exploits out there currently for web servers tend to expoit
+either ambiguous areas of the HTTP grammar, or the lack of size specifications
+in the protocol.  To protect against this Mongrel uses a fairly strict parser,
+but since many browser authors don't read specifications (and hell, who'd want
+to read the mountain of HTTP specifications out there), it can't be too 
+strict.  What it does enforce--apart from well formed headers and request lines--is 
+the following size restrictions on each part:
+
+* Any header over 112k.
+* Any query string over 10k.
+* Any header field value over 80k.
+* Any header field name over 256 bytes.
+* Any request URI greater than 512 bytes.
+
+The large header size and field value is due to cookies being allowed to be so massive.
+It's not too clear whether a browser is allowed to cram all 20 of the 4k cookies
+into one cookie header, or if it should use multiple, but the end result is that
+a web server has to parser at least 112k of garbage before it can declare a client
+malicious.
+
+Now, when I say Mongrel is strict, I don't mean that it will abort on any
+minor little error according to the HTTP 1.1 RFC.  Mongrel's parser is
+pretty forgiving on formats.  Where Mongrel is exact is--as mentioned 
+before--in it's treatment of sizes and boundary characters.  Clients that
+can't even get that right aren't following the most basic safety elements
+of HTTP and you probably shouldn't deal with them.
+
+
+h2. Quiet Things Happens To Bad People
+
+Rather than wasting any more time--and in order to not give out any 
+information to potentially malicious attackers--Mongrel just closes
+the socket immediately.  This may confuse good people, but it's the
+best way to deal with bad requests.
+
+The assumption is that either the requesting client is not functioning
+correctly or it's attempting an attack.  If it's not functioning correctly
+then what's the point of sending back any results?  It probably can't
+parse them anyway.  If it's an attacker then why give them any more
+information?
+
+Caught in the middle are people who are using a poorly written client.
+I'd suggest in those cases that they report the problem to the client's
+authors or contact me to see if it's an error on Mongrel's part.
+
+
+h2. Protocol Error Reporting
+
+The 0.3.12.1 release was the first Iron Mongrel release, but it isn't perfect
+for sure.  To make sure that it doesn't prevent people from making tons of 
+money the 0.3.12.1 release will report what data caused the parser to fail.
+If you see a legit request that causes the parser to choke then send it to
+me and I'll take a look.
+
+In general though, if you are getting bad requests they are probably intentionally
+malicious.  The nice thing about Mongrel's parser is that the detection of
+bad requests isn't based on pattern detection, but rather on just making the
+HTTP protocol more strict to where bad requests get kicked out early.
+
+
+h2. Reporting Security Problems
+
+If you think you've found a security problem with Mongrel, please
+report it to me right away at *zedshaw at zedshaw do com*.  I'm usually
+very responsive and will probably help even if the security problem is
+outside of Mongrel or if you need help securing your system.
+
+
