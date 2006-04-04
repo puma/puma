@@ -57,7 +57,7 @@ class Start < GemPlugin::Plugin "/commands"
       settings = conf.merge(settings)
     end
     
-    config = Mongrel::Rails::RailsConfigurator.new(defaults) do
+    config = Mongrel::Rails::RailsConfigurator.new(settings) do
       log "Starting Mongrel in #{defaults[:environment]} mode at #{defaults[:host]}:#{defaults[:port]}"
       
       if defaults[:daemon]
