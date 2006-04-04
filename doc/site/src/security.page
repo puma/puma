@@ -1,7 +1,7 @@
 ---
-title: News
+title: Security
 inMenu: true
-directoryName: News
+directoryName: Security
 ordering: 2
 ---
 
@@ -92,4 +92,8 @@ report it to me right away at *zedshaw at zedshaw do com*.  I'm usually
 very responsive and will probably help even if the security problem is
 outside of Mongrel or if you need help securing your system.
 
+
+h2. Logo
+
+The logo is courtesy court3nay from "caboose":http://caboo.se/
 

@@ -53,7 +53,7 @@ is an X-FORWARDED-FOR header then it sets REMOTE_ADDR to that.
 
 Go ahead and install the usual way:  gem install mongrel *or* gem upgrade
 
-The logo is courtesy court3nay from irc.freenode.org.
+The logo is courtesy court3nay from "caboose":http://caboo.se/
 
 h2. Mar-30:   Mongrel 0.3.12 -- OFFICIAL Release
 
