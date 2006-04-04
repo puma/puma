@@ -448,7 +448,7 @@ module Mongrel
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL
         # ignored
       rescue HttpParserError
-        STDERR.puts "BAD CLIENT (#{params["REMOTE_ADDR"]}): #$!"
+        STDERR.puts "BAD CLIENT (#{client.peeraddr.last}): #$!"
         STDERR.puts "REQUEST DATA: #{data}"
       rescue => details
         STDERR.puts "ERROR: #$!"
