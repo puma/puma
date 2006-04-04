@@ -98,6 +98,6 @@ h2. Deployment
 
 h3. Q: How do I deploy Mongrel in production?
 
-Take a look at the "HOWTO":docs/howto.html and the "Lighttpd":docs/lighttpd.page
+Take a look at the "HOWTO":docs/howto.html and the "Lighttpd":docs/lighttpd.html
 instructions for more information on this.
 

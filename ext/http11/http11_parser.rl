@@ -99,7 +99,7 @@
 
         field_value = any* >start_value %write_value;
 
-        message_header = field_name ":" field_value :> CRLF;
+        message_header = field_name ":" field_value $0 CRLF >1;
 	
         Request = Request_Line (message_header)* ( CRLF @done);
 
