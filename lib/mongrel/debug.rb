@@ -43,7 +43,6 @@ end
 
 module ObjectTracker
   @active_objects = nil
-  @live_object_tracking = true
 
   def ObjectTracker.configure
     @active_objects = Set.new
@@ -53,43 +52,32 @@ module ObjectTracker
     end
   end
 
-
-  def ObjectTracker.start
-    @live_object_tracking = true
-  end
-
-  def ObjectTracker.stop
-    @live_object_tracking = false
-  end
-
   def ObjectTracker.sample
-    Class.stopit do
-      ospace = Set.new
-      counts = {}
-      
-      # Strings can't be tracked easily and are so numerous that they drown out all else
-      # so we just ignore them in the counts.
-      ObjectSpace.each_object do |obj|
-        ospace << obj.object_id
-        counts[obj.class] ||= 0
-        counts[obj.class] += 1
-      end
-      
-      dead_objects = @active_objects - ospace
-      new_objects = ospace - @active_objects
-      live_objects = ospace & @active_objects
-      
-      MongrelDbg::trace(:objects, "COUNTS: #{dead_objects.length},#{new_objects.length},#{live_objects.length}")
-      
-      if MongrelDbg::tracing? :objects
-        top_20 = counts.sort{|a,b| b[1] <=> a[1]}[0..20]
-        MongrelDbg::trace(:objects,"TOP 20: #{top_20.inspect}")
-      end
-      
-      @active_objects = live_objects + new_objects
-
-      [@active_objects, top_20]
+    ospace = Set.new
+    counts = {}
+    
+    # Strings can't be tracked easily and are so numerous that they drown out all else
+    # so we just ignore them in the counts.
+    ObjectSpace.each_object do |obj|
+      ospace << obj.object_id
+      counts[obj.class] ||= 0
+      counts[obj.class] += 1
     end
+    
+    dead_objects = @active_objects - ospace
+    new_objects = ospace - @active_objects
+    live_objects = ospace & @active_objects
+    
+    MongrelDbg::trace(:objects, "COUNTS: #{dead_objects.length},#{new_objects.length},#{live_objects.length}")
+    
+    if MongrelDbg::tracing? :objects
+      top_20 = counts.sort{|a,b| b[1] <=> a[1]}[0..20]
+      MongrelDbg::trace(:objects,"TOP 20: #{top_20.inspect}")
+    end
+    
+    @active_objects = live_objects + new_objects
+    
+    [@active_objects, top_20]
   end
 
 end
@@ -121,99 +109,15 @@ module Kernel
   end
 
   def log_open_files
-    Class.stopit do
-      open_counts = {}
-      $open_files.each do |f,args|
-        open_counts[args] ||= 0
-        open_counts[args] += 1
-      end
-      MongrelDbg::trace(:files, open_counts.to_yaml)
+    open_counts = {}
+    $open_files.each do |f,args|
+      open_counts[args] ||= 0
+      open_counts[args] += 1
     end
+    MongrelDbg::trace(:files, open_counts.to_yaml)
   end
 end  
 
-
-
-class Class
-  alias_method :orig_new, :new
-  
-  @@count = 0
-  @@stopit = false
-  @@class_caller_count = Hash.new{|hash,key| hash[key] = Hash.new(0)}
-  
-  def new(*arg,&blk)
-    unless @@stopit
-      @@stopit = true
-      @@count += 1
-      @@class_caller_count[self][caller.join("\n\t")] += 1
-      @@stopit = false
-    end
-    orig_new(*arg,&blk)
-  end
-
-
-  def Class.report_object_creations(out=$stderr, more_than=20)
-    Class.stopit do
-      out.puts "Number of objects created = #{@@count}"
-      
-      total = Hash.new(0)
-      
-      @@class_caller_count.each_key do |klass|
-        caller_count = @@class_caller_count[klass]
-        caller_count.each_value do |count|
-          total[klass] += count
-        end
-      end
-      
-      klass_list = total.keys.sort{|klass_a, klass_b| 
-        a = total[klass_a]
-        b = total[klass_b]
-        if a != b
-          -1* (a <=> b)
-        else
-          klass_a.to_s <=> klass_b.to_s
-        end
-      }
-
-      below_count = 0
-
-      klass_list.each do |klass|
-        below_calls = 0
-        if total[klass] > more_than
-          out.puts "#{total[klass]}\t#{klass} objects created."
-          caller_count = @@class_caller_count[ klass]
-          caller_count.keys.sort_by{|call| -1*caller_count[call]}.each do |call|
-            if caller_count[call] > more_than
-              out.puts "\t** #{caller_count[call]} #{klass} objects AT:"
-              out.puts "\t#{call}\n\n"
-            else
-              below_calls += 1
-            end
-          end
-          out.puts "\t#{below_calls} more objects had calls less that #{more_than} limit.\n\n" if below_calls > 0
-        else
-          below_count += 1
-        end
-      end
-
-      out.puts "\t** #{below_count} More objects were created but the count was below the #{more_than} limit." if below_count > 0
-    end
-  end
-
-  def Class.reset_object_creations
-    Class.stopit do
-      @@count = 0
-      @@class_caller_count = Hash.new{|hash,key| hash[key] = Hash.new(0)} 
-    end
-  end
-
-  def Class.stopit
-    @@stopit = true
-    yield
-    @@stopit = false
-  end
-
-end
 
 
 module RequestLog
@@ -264,7 +168,6 @@ end
 
 
 END {
-open("log/mongrel_debug/object_tracking.log", "w") {|f| Class.report_object_creations(f) }
 MongrelDbg::trace(:files, "FILES OPEN AT EXIT")
 log_open_files
 }

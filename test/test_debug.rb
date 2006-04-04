@@ -24,10 +24,6 @@ class MongrelDbgTest < Test::Unit::TestCase
     assert File.exist?("log/mongrel_debug"), "Didn't make logging directory"
     assert File.exist?("log/mongrel_debug/rails.log"), "Didn't make the rails.log file"
     assert File.size("log/mongrel_debug/rails.log") > 0, "Didn't write anything to the log."
-
-    Class.report_object_creations(out)
-    Class.reset_object_creations
-    Class.report_object_creations(out)
   end
 
 end

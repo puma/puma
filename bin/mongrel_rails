@@ -57,18 +57,18 @@ class Start < GemPlugin::Plugin "/commands"
       settings = conf.merge(settings)
     end
     
-    config = Mongrel::Rails::RailsConfigurator.new(settings) do
-      log "Starting Mongrel in #{settings[:environment]} mode at #{settings[:host]}:#{settings[:port]}"
+    config = Mongrel::Rails::RailsConfigurator.new(defaults) do
+      log "Starting Mongrel in #{defaults[:environment]} mode at #{defaults[:host]}:#{defaults[:port]}"
       
       if defaults[:daemon]
-        log "Daemonizing, any open files are closed.  Look at #{settings[:pid_file]} and #{settings[:log_file]} for info."
+        log "Daemonizing, any open files are closed.  Look at #{defaults[:pid_file]} and #{defaults[:log_file]} for info."
         daemonize
       end
       
       listener do
         mime = {}
         if defaults[:mime_map]
-          log "Loading additional MIME types from #{settings[:mime_map]}"
+          log "Loading additional MIME types from #{defaults[:mime_map]}"
           mime = load_mime_map(defaults[:mime_map], mime)
         end
         
@@ -77,16 +77,16 @@ class Start < GemPlugin::Plugin "/commands"
           debug "/"
         end
 
-        log "Starting Rails in environment #{settings[:environment]} ..."
+        log "Starting Rails in environment #{defaults[:environment]} ..."
         uri "/", :handler => rails
         log "Rails loaded."
 
         log "Loading any Rails specific GemPlugins"
         load_plugins
 
-        if settings[:config_script]
-          log "Loading #{settings[:config_script]} external config script"
-          run_config(settings[:config_script])
+        if defaults[:config_script]
+          log "Loading #{defaults[:config_script]} external config script"
+          run_config(defaults[:config_script])
         end
 
         setup_rails_signals
