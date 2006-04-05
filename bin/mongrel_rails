@@ -1,6 +1,7 @@
 
 require 'rubygems'
 require 'yaml'
+require 'mongrel'
 require 'mongrel/rails'
 
 

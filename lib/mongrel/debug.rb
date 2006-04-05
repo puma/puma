@@ -148,7 +148,7 @@ module RequestLog
     include Mongrel::HttpHandlerPlugin
     
     def process(request, response)
-      MongrelDbg::trace(:objects, "#{Time.now} OBJECT STATS BEFORE REQUEST #{request.params['PATH_INFO']}")
+      MongrelDbg::trace(:objects, "#{'-' * 10}\n#{Time.now} OBJECT STATS BEFORE REQUEST #{request.params['PATH_INFO']}")
       ObjectTracker.sample
     end
     
@@ -164,10 +164,30 @@ module RequestLog
     end
 
   end
+
+  class Threads < GemPlugin::Plugin "/handlers"
+    include Mongrel::HttpHandlerPlugin
+    
+    def process(request, response)
+      MongrelDbg::trace(:threads, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
+      ObjectSpace.each_object do |obj|
+        if obj.class == Mongrel::HttpServer
+          worker_list = obj.workers.list
+
+          if worker_list.length > 0
+            keys = "-----\n\tKEYS:"
+            worker_list.each {|t| keys << "\n\t\t-- #{t}: #{t.keys.inspect}" }
+          end
+
+          MongrelDbg::trace(:threads, "#{obj.host}:#{obj.port} -- THREADS: #{worker_list.length} #{keys}")
+        end
+      end
+    end
+  end
 end
 
 
 END {
-MongrelDbg::trace(:files, "FILES OPEN AT EXIT")
-log_open_files
+  MongrelDbg::trace(:files, "FILES OPEN AT EXIT")
+  log_open_files
 }

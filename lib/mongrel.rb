@@ -370,6 +370,8 @@ module Mongrel
     attr_reader :acceptor
     attr_reader :workers
     attr_reader :classifier
+    attr_reader :host
+    attr_reader :port
 
     # Creates a working server on host:port (strange things happen if port isn't a Number).
     # Use HttpServer::run to start the server and HttpServer.acceptor.join to 
@@ -392,6 +394,7 @@ module Mongrel
       @workers = ThreadGroup.new
       @timeout = timeout
       @num_processors = num_processors
+      @death_time = 60
     end
     
 
@@ -464,7 +467,9 @@ module Mongrel
     def reap_dead_workers(worker_list)
       mark = Time.now
       worker_list.each do |w|
-        if mark - w[:started_on] > 10 * @timeout
+        w[:started_on] = Time.now if not w[:started_on]
+
+        if mark - w[:started_on] > @death_time + @timeout
           STDERR.puts "Thread #{w.inspect} is too old, killing."
           w.raise(StopServer.new("Timed out thread."))
         end
@@ -482,6 +487,7 @@ module Mongrel
           begin
             client = @socket.accept
             worker_list = @workers.list
+
             if worker_list.length >= @num_processors
               STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max). Dropping connection."
               client.close
@@ -510,10 +516,15 @@ module Mongrel
         # now that processing is done we feed enough false onto the request queue to get
         # each processor to exit and stop processing.
 
-        # finally we wait until the queue is empty
+        # finally we wait until the queue is empty (but only about 10 seconds)
+        @death_time = 10
+        shutdown_start = Time.now
+        
         while @workers.list.length > 0
-          STDERR.puts "Shutdown waiting for #{@workers.list.length} requests" if @workers.list.length > 0
+          waited_for = (Time.now - shutdown_start).ceil
+          STDERR.print "Shutdown waited #{waited_for} for #{@workers.list.length} requests, could take #{@death_time + @timeout} seconds.\r" if @workers.list.length > 0
           sleep 1
+          reap_dead_workers(@workers.list)
         end
       end
 
@@ -802,11 +813,13 @@ module Mongrel
       MongrelDbg.begin_trace :objects
       MongrelDbg.begin_trace :rails
       MongrelDbg.begin_trace :files
+      MongrelDbg.begin_trace :threads
       
       uri location, :handler => plugin("/handlers/requestlog::access")
       uri location, :handler => plugin("/handlers/requestlog::files")
       uri location, :handler => plugin("/handlers/requestlog::objects")
       uri location, :handler => plugin("/handlers/requestlog::params")
+      uri location, :handler => plugin("/handlers/requestlog::threads")
     end
 
     # Used to allow you to let users specify their own configurations
