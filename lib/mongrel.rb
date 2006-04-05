@@ -420,6 +420,7 @@ module Mongrel
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
+
               request = HttpRequest.new(params, data[nread ... data.length], client)
               response = HttpResponse.new(client)
               

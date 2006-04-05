@@ -49,7 +49,7 @@
 
           <dt>Apr-3-2006</dt>
           <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.12.1 -- Iron Mongrel</a></h5>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.12.2 -- Iron Mongrel</a></h5>
 
             <p>This release is the result of pounding the crap out of Mongrel since the
 	    last release to make it more robust in the face of really bad traffic.  It is

@@ -135,7 +135,7 @@ void header_done(void *data, const char *at, size_t length)
 
   ctype = rb_hash_aref(req, global_http_content_type);
   if(ctype != Qnil) {
-    rb_hash_aset(req, global_content_type, Qnil);
+    rb_hash_aset(req, global_content_type, ctype);
   }
 
   rb_hash_aset(req, global_gateway_interface, global_gateway_interface_value);

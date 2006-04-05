@@ -73,9 +73,9 @@ authors or contact me to see if it's an error on Mongrel's part.
 
 h2. Protocol Error Reporting
 
-The 0.3.12.1 release was the first Iron Mongrel release, but it isn't perfect
+The 0.3.12.2 release was the first Iron Mongrel release, but it isn't perfect
 for sure.  To make sure that it doesn't prevent people from making tons of 
-money the 0.3.12.1 release will report what data caused the parser to fail.
+money the 0.3.12.2 release will report what data caused the parser to fail.
 If you see a legit request that causes the parser to choke then send it to
 me and I'll take a look.
 

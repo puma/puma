@@ -7,7 +7,7 @@ ordering: 2
 
 h1. Latest News
 
-h2. Apr-3:  Mongrel 0.3.12.1 -- Iron Mongrel
+h2. Apr-3:  Mongrel 0.3.12.2 -- Iron Mongrel
 
 !/images/iron_mongrel.jpg!
 
@@ -23,7 +23,7 @@ methods used are:
 
 The end result is a lot of little fixes which make Mongrel more robust against 
 badly behaving clients and possibly against many potential security risks in 
-the future.  In general Mongrel 0.3.12.1 behaves more consistently compared
+the future.  In general Mongrel 0.3.12.2 behaves more consistently compared
 to past releases when given random data or maliciously formatted data.
 
 The main changes are related to how IO is processed and how the HTTP parser rejects
