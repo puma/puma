@@ -7,6 +7,52 @@ ordering: 2
 
 h1. Latest News
 
+h2. Apr-3:  Mongrel 0.3.12.2 -- Thread Debugging
+
+This release has a small fix for a big problem where people uploading 
+files or using multipart forms would not receive the CONTENT_TYPE and
+get garbage in their request parameters.
+
+It also adds a few things to help people debug their use of threads 
+within their Ruby on Rails applications.  When you run mongrel_rails
+with the -B (debugging) option Mongrel will report all active threads
+between each request to log/mongrel_debug/thread.log.  If you see
+reports of Mongrel being overloaded, threads getting killed, or having
+to wait for Mongrel to shutdown then turn on debugging and look in this
+log. You most likely are doing something that keeps the thread from
+exiting.
+
+Mongrel also deals with dead threads much better.  First the graceful shutdown
+will wait 10 seconds for a request to finish before aborting it
+during the shutdown process.  Second it will find processing threads which have
+taken longer than 60+timeout seconds and kill them.  Finally, you
+can put a value into your own Thread.current and when you use the thread.log
+you can figure out which controller's and actions are creating the
+bad threads.
+
+For example, lets say you see a thread leak.  Many times this is caused
+by trying to make a connection to a remote resource that isn't there,
+but you're not sure.  What you do is put this into the suspected
+controller's action:
+
+ Thread.current[:bad_controller_action] = true
+
+Or some of other tag to differentiate it with the other threads.  Then
+run Mongrel with -B and if you see this in the KEYS list then you know
+that this is the controller.
+
+Finally, there seems to be a bug in Rails where it is constantly dropping
+the connection to MySQL.  I've found this error on nearly everything and
+it's worse when you run WEBrick.  It seems to get a little better when
+you set *ActionController::Base.allow_concurrency* in your config/environments
+the problem is lessened especially if you run Mongrel.
+
+I'm still trying to determine the cause of this, but if you see this problem
+please report it to me with what system you are running and how often
+you see it.  *Remember, this is a Rails problem not a Mongrel problem
+since I see it with WEBrick, FastCGI, SCGI, and on Win32, FreeBSD, OSX, and Linux.*
+
+
 h2. Apr-3:  Mongrel 0.3.12.2 -- Iron Mongrel
 
 !/images/iron_mongrel.jpg!
