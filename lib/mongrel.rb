@@ -7,7 +7,7 @@ require 'mongrel/handlers'
 require 'mongrel/command'
 require 'mongrel/tcphack'
 require 'yaml'
-
+require 'time'
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
@@ -99,7 +99,7 @@ module Mongrel
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'.freeze
 
-    MONGREL_VERSION="0.3.12.3".freeze
+    MONGREL_VERSION="0.3.12.4".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
@@ -115,9 +115,6 @@ module Mongrel
     # This is the maximum header that is allowed before a client is booted.  The parser detects
     # this, but we'd also like to do this as well.
     MAX_HEADER=1024 * (80 + 32)
-
-    # Format to generate a correct RFC 1123 date.  rdoc for Time is wrong, there is no httpdate function.
-    RFC_1123_DATE_FORMAT="%a, %d %B %Y %H:%M:%S GMT".freeze
 
     # A frozen format for this is about 15% faster
     STATUS_FORMAT = "HTTP/1.1 %d %s\r\nContent-Length: %d\r\nConnection: close\r\n".freeze
@@ -268,7 +265,7 @@ module Mongrel
       @body = StringIO.new
       @status = 404
       @header = HeaderOut.new(StringIO.new)
-      @header[Const::DATE] = HttpServer.httpdate(Time.now)
+      @header[Const::DATE] = Time.now.httpdate
       @body_sent = false
       @header_sent = false
       @status_sent = false
@@ -571,11 +568,6 @@ module Mongrel
         @acceptor.raise(exc)
       end
       stopper.priority = 10
-    end
-
-    # Given the a time object it converts it to GMT and applies the RFC1123 format to it.
-    def HttpServer.httpdate(date)
-      date.gmtime.strftime(Const::RFC_1123_DATE_FORMAT)
     end
 
   end

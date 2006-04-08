@@ -129,7 +129,7 @@ module RequestLog
     
     def process(request,response)
       p = request.params
-      STDERR.puts "#{p['REMOTE_ADDR']} - [#{Mongrel::HttpServer.httpdate(Time.now)}] \"#{p['REQUEST_METHOD']} #{p["REQUEST_URI"]} HTTP/1.1\""
+      STDERR.puts "#{p['REMOTE_ADDR']} - [#{Time.now.httpdate}] \"#{p['REQUEST_METHOD']} #{p["REQUEST_URI"]} HTTP/1.1\""
     end
   end
   

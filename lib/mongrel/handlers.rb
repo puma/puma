@@ -70,7 +70,15 @@ module Mongrel
   # converting all paths to an absolute expanded path, and then making sure
   # that the final expanded path includes the root path.  If it doesn't
   # than it simply gives a 404.
+  #
+  # The default content type is "text/plain; charset=ISO-8859-1" but you
+  # can change it anything you want using the DirHandler.default_content_type
+  # attribute.
   class DirHandler < HttpHandler
+    attr_reader :default_content_type
+    attr_writer :default_content_type
+    attr_reader :path
+
     MIME_TYPES = {
       ".css"        =>  "text/css",
       ".gif"        =>  "image/gif",
@@ -86,13 +94,12 @@ module Mongrel
 
     ONLY_HEAD_GET="Only HEAD and GET allowed.".freeze
 
-    attr_reader :path
-
     # You give it the path to the directory root and an (optional) 
     def initialize(path, listing_allowed=true, index_html="index.html")
       @path = File.expand_path(path)
       @listing_allowed=listing_allowed
       @index_html = index_html
+      @default_content_type = "text/plain; charset=ISO-8859-1".freeze
     end
 
     # Checks if the given path can be served and returns the full path (or nil if not).
@@ -162,22 +169,26 @@ module Mongrel
 
       # first we setup the headers and status then we do a very fast send on the socket directly
       response.status = 200
+      stat = File.stat(req)
+      header = response.header
+
+      # Set the last modified times as well and etag for all files
+      header[Const::LAST_MODIFIED] = stat.mtime.httpdate
+      # Calculated the same as apache, not sure how well the works on win32
+      header[Const::ETAG] = Const::ETAG_FORMAT % [stat.mtime.to_i, stat.size, stat.ino]
       
       # set the mime type from our map based on the ending
       dot_at = req.rindex(".")
-      if dot_at
-        ext = req[dot_at .. -1]
-        if MIME_TYPES[ext]
-          stat = File.stat(req)
-          response.header[Const::CONTENT_TYPE] = MIME_TYPES[ext] || "text"
-          # TODO: Confirm this works for rfc 1123
-          response.header[Const::LAST_MODIFIED] = HttpServer.httpdate(stat.mtime)
-          # TODO that this is a valid way to calculate an etag
-          response.header[Const::ETAG] = Const::ETAG_FORMAT % [stat.mtime.to_i, stat.size, stat.ino]
-        end
+      if dot_at and MIME_TYPES.has_key? req[dot_at .. -1]
+        header[Const::CONTENT_TYPE] = MIME_TYPES[ext] || @default_content_type
+        # TODO: Confirm this works for rfc 1123
+      else
+        header[Const::CONTENT_TYPE] = @default_content_type
       end
 
-      response.send_status(File.size(req))
+
+      # send a status with out content length
+      response.send_status(stat.size)
       response.send_header
 
       if not header_only
@@ -187,8 +198,9 @@ module Mongrel
 	  else
 	    File.open(req, "rb") { |f| response.socket.write(f.read) }
 	  end
-        rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL
+        rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
 	  # ignore these since it means the client closed off early
+          STDERR.puts "Client closed socket requesting file #{req}: #$!"
 	end
       else
         response.send_body # should send nothing

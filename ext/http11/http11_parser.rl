@@ -89,7 +89,7 @@
         absolute_path = ("/" rel_path) >mark ;
         
         Request_URI = ("*" >mark %request_uri | absolute_uri | absolute_path) ;
-        Method = ("OPTIONS"| "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "TRACE") >mark %request_method;
+        Method = (upper | digit | safe){1,20} >mark %request_method;
         
         http_number = (digit+ "." digit+) ;
         HTTP_Version = ("HTTP/" http_number) >mark %http_version ;
