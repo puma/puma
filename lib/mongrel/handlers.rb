@@ -178,14 +178,10 @@ module Mongrel
       header[Const::ETAG] = Const::ETAG_FORMAT % [stat.mtime.to_i, stat.size, stat.ino]
       
       # set the mime type from our map based on the ending
-      dot_at = req.rindex(".")
-      if dot_at and MIME_TYPES.has_key? req[dot_at .. -1]
-        header[Const::CONTENT_TYPE] = MIME_TYPES[ext] || @default_content_type
-        # TODO: Confirm this works for rfc 1123
-      else
-        header[Const::CONTENT_TYPE] = @default_content_type
+      dot_at = req.rindex(".")      
+      if dot_at
+        header[Const::CONTENT_TYPE] = MIME_TYPES[req[dot_at .. -1]] || @default_content_type
       end
-
 
       # send a status with out content length
       response.send_status(stat.size)
