@@ -115,12 +115,13 @@ module Tepee::Views
   def _markup body
     return '' if body.blank?
     body.gsub!(Tepee::Models::Page::PAGE_LINK) do
-      page = title = $1.underscore
+      page = title = $1
       title = $2 unless $2.empty?
+      page = page.gsub /\W/, '_'
       if Tepee::Models::Page.find(:all, :select => 'title').collect { |p| p.title }.include?(page)
-        %Q{<a href="#{R Show, page}">#{title}</a>}
+        %Q{<a href="#{self/R(Show, page)}">#{title}</a>}
       else
-        %Q{<span>#{title}<a href="#{R Edit, page, 1}">?</a></span>}
+        %Q{<span>#{title}<a href="#{self/R(Edit, page, 1)}">?</a></span>}
       end
     end
     RedCloth.new(body, [ :hard_breaks ]).to_html

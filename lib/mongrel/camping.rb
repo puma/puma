@@ -40,7 +40,16 @@ module Mongrel
               head[k] = vi
             end
           end
-          out << controller.body
+          if controller.body.respond_to? :read
+            while chunk = controller.body.read(16384)
+              out << chunk
+            end
+            if controller.body.respond_to? :close
+              controller.body.close
+            end
+          else
+            out << controller.body
+          end
         end
       end
     end
