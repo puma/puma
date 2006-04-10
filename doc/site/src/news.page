@@ -7,6 +7,29 @@ ordering: 2
 
 h1. Latest News
 
+h2. Apr-10:  Mongrel 0.3.12.4 -- Relaxed Parser, Date Fix
+
+This release is a small change over the previous one.  It mostly is for
+people who want to use Mongrel for webdav which needs its own set of
+request types (what people like to annoyingly call "verbs").  It also
+fixes a date formatting error where the month wasn't three characters long.
+
+* Corrects the date format returned so that months are three chars only.
+* Fixes a problem where DirHandler wasn't returning Last-Modified and Etag
+headers for unknown MIME types.
+* Implements a default mime type for anything it doesn't know about, and
+lets you set it via an attribute in DirHandler if you want different.
+* Cleans up the file serving code in DirHandler a bit.
+* Relaxes the parser to that it will accept any request methods as long as
+they are upper case, digits, safe chars ($ - _ .) and with length from 1-20
+characters.  Anything outside this restriction is still rejected with a
+close.
+
+You can get it from the gem repository like normal.  People who are on
+win32 should have no problems but there will be another small release
+that cleans up the win32 code in the near future.
+
+
 h2. Apr-3:  Mongrel 0.3.12.2 -- Thread Debugging
 
 This release has a small fix for a big problem where people uploading 
