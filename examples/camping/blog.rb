@@ -281,7 +281,7 @@ if __FILE__ == $0
   # Use the Configurator as an example rather than Mongrel::Camping.start
   config = Mongrel::Configurator.new :host => "0.0.0.0" do
     listener :port => 3002 do
-      uri "/blog", :handler => CampingHandler.new(Blog)
+      uri "/blog", :handler => Mongrel::Camping::CampingHandler.new(Blog)
       uri "/favicon", :handler => Mongrel::Error404Handler.new("")
       trap("INT") { stop }
       run

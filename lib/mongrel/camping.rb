@@ -32,8 +32,7 @@ module Mongrel
       end
 
       def process(request, response)
-        req = StringIO.new(request.body)
-        controller = @klass.run(req, request.params)
+        controller = @klass.run(request.body, request.params)
         sendfile, clength = nil
         response.status = controller.status
         controller.headers.each do |k, v|

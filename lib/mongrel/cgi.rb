@@ -35,7 +35,7 @@ module Mongrel
       @request = request
       @response = response
       @args = *args
-      @input = StringIO.new(request.body)
+      @input = request.body
       @head = {}
       @out_called = false
       super(*args)

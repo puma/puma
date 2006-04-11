@@ -1,5 +1,6 @@
 require 'socket'
 require 'http11'
+require 'tempfile'
 require 'thread'
 require 'stringio'
 require 'mongrel/cgi'
@@ -125,6 +126,9 @@ module Mongrel
     # this, but we'd also like to do this as well.
     MAX_HEADER=1024 * (80 + 32)
 
+    # Maximum request body size before it is moved out of memory and into a tempfile for reading.
+    MAX_BODY=MAX_HEADER
+
     # A frozen format for this is about 15% faster
     STATUS_FORMAT = "HTTP/1.1 %d %s\r\nContent-Length: %d\r\nConnection: close\r\n".freeze
     CONTENT_TYPE = "Content-Type".freeze
@@ -164,13 +168,26 @@ module Mongrel
       @params = params
       @socket = socket
 
-      # now, if the initial_body isn't long enough for the content length we have to fill it
-      # TODO: adapt for big ass stuff by writing to a temp file
+      # if the body size is too large, move into a tempfile
       clen = params[Const::CONTENT_LENGTH].to_i
-      if @body.length < clen
-        @body << @socket.read(clen - @body.length)
+      if clen > Const::MAX_BODY
+        tmpf = Tempfile.new(self.class.name)
+        tmpf.binmode
+        tmpf.write(@body)
+        # TODO: throw an error if content-length doesn't match??
+        while clen > 0
+          readlen = clen < Const::CHUNK_SIZE ? clen : Const::CHUNK_SIZE
+          tmpf.write(@socket.read(readlen))
+          clen -= readlen
+        end
+        tmpf.rewind
+        @body = tmpf
+      else
+        if @body.length < clen
+          @body << @socket.read(clen - @body.length)
+        end
+        @body = StringIO.new(@body)
       end
-
     end
 
     def self.escape(s)
@@ -205,7 +222,6 @@ module Mongrel
       return params
     end
 
-    
   end
 
 
