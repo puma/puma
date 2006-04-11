@@ -34,31 +34,33 @@ module Mongrel
       def process(request, response)
         req = StringIO.new(request.body)
         controller = @klass.run(req, request.params)
-        sendfile = nil
-        response.start(controller.status) do |head,out|
-          controller.headers.each do |k, v|
-            if k =~ /^X-SENDFILE$/i
-              sendfile = v
-            else
-              [*v].each do |vi|
-                head[k] = vi
-              end
-            end
-          end
-          response.send_header
-
-          if sendfile
-            response.send_file(sendfile)
-          elsif controller.body.respond_to? :read
-            while chunk = controller.body.read(16384)
-              @response.write(chunk)
-            end
-            if controller.body.respond_to? :close
-              controller.body.close
-            end
+        sendfile, clength = nil
+        response.status = controller.status
+        controller.headers.each do |k, v|
+          if k =~ /^X-SENDFILE$/i
+            sendfile = v
+          elsif k =~ /^CONTENT-LENGTH$/i
+            clength = v.to_i
           else
-            @response.write(controller.body)
+            [*v].each do |vi|
+              response.header[k] = vi
+            end
           end
+        end
+        response.send_status((sendfile and File.size(sendfile) or clength))
+        response.send_header
+
+        if sendfile
+          response.send_file(sendfile)
+        elsif controller.body.respond_to? :read
+          while chunk = controller.body.read(16384)
+            response.write(chunk)
+          end
+          if controller.body.respond_to? :close
+            controller.body.close
+          end
+        else
+          response.write(controller.body)
         end
       end
     end
