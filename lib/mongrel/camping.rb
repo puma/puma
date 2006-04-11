@@ -46,12 +46,14 @@ module Mongrel
             end
           end
         end
-        response.send_status((sendfile and File.size(sendfile) or clength))
-        response.send_header
 
         if sendfile
+          response.send_status(File.size(sendfile))
+          response.send_header
           response.send_file(sendfile)
         elsif controller.body.respond_to? :read
+          response.send_status(clength)
+          response.send_header
           while chunk = controller.body.read(16384)
             response.write(chunk)
           end
@@ -59,7 +61,9 @@ module Mongrel
             controller.body.close
           end
         else
-          response.write(controller.body)
+          response.send_status(controller.body.length)
+          response.send_header
+          response.write(controller.body.to_s)
         end
       end
     end
