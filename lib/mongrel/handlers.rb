@@ -1,12 +1,3 @@
-require 'rubygems'
-begin
-  require 'sendfile'
-  $mongrel_has_sendfile = true
-  STDERR.puts "** You have sendfile installed, will use that to serve files."
-rescue Object
-  $mongrel_has_sendfile = false
-end
-
 module Mongrel
 
   # You implement your application handler with this.  It's very light giving
@@ -188,21 +179,9 @@ module Mongrel
       response.send_header
 
       if not header_only
-	begin
-	  if $mongrel_has_sendfile
-	    File.open(req, "rb") { |f| response.socket.sendfile(f) }
-	  else
-	    File.open(req, "rb") { |f| response.socket.write(f.read) }
-	  end
-        rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
-	  # ignore these since it means the client closed off early
-          STDERR.puts "Client closed socket requesting file #{req}: #$!"
-	end
-      else
-        response.send_body # should send nothing
+        response.send_file(req)
       end
     end
-
 
     # Process the request to either serve a file or a directory listing
     # if allowed (based on the listing_allowed paramter to the constructor).

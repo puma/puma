@@ -9,6 +9,15 @@ require 'mongrel/tcphack'
 require 'yaml'
 require 'time'
 
+begin
+  require 'rubygems' 
+  require 'sendfile'
+  $mongrel_has_sendfile = true
+  STDERR.puts "** You have sendfile installed, will use that to serve files."
+rescue Object
+  $mongrel_has_sendfile = false
+end
+
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
 # functionality to service web application requests fast as possible.
@@ -323,6 +332,25 @@ module Mongrel
         @body_sent = true
       end
     end 
+
+    # Appends the contents of +path+ to the response stream.  The file is opened for binary
+    # reading and written in chunks to the socket.  If the 
+    # <a href="http://rubyforge.org/projects/ruby-sendfile">sendfile</a> library is found,
+    # it is used to send the file, often with greater speed and less memory/cpu usage.
+    def send_file(path)
+      File.open(path, "rb") do |f|
+        if @socket.respond_to? :sendfile
+          @socket.sendfile(f)
+        else
+          while chunk = f.read(Const::CHUNK_SIZE)
+            @socket.write(chunk)
+          end
+        end
+	  end
+    rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
+	  # ignore these since it means the client closed off early
+        STDERR.puts "Client closed socket requesting file #{req}: #$!"
+    end
 
     def write(data)
       @socket.write(data)
