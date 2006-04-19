@@ -174,6 +174,7 @@ module Mongrel
         tmpf = Tempfile.new(self.class.name)
         tmpf.binmode
         tmpf.write(@body)
+        clen -= @body.length
         # TODO: throw an error if content-length doesn't match??
         while clen > 0
           readlen = clen < Const::CHUNK_SIZE ? clen : Const::CHUNK_SIZE
