@@ -32,7 +32,7 @@ end
 setup_extension("http11", "http11")
 
 name="mongrel"
-version="0.3.12.4"
+version="0.3.12.5"
 
 setup_gem(name, version) do |spec|
   spec.summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."

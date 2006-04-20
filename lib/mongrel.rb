@@ -9,14 +9,14 @@ require 'mongrel/command'
 require 'mongrel/tcphack'
 require 'yaml'
 require 'time'
+require 'rubygems' 
+
 
 begin
-  require 'rubygems' 
   require 'sendfile'
-  $mongrel_has_sendfile = true
   STDERR.puts "** You have sendfile installed, will use that to serve files."
 rescue Object
-  $mongrel_has_sendfile = false
+  # do nothing
 end
 
 # Mongrel module containing all of the classes (include C extensions) for running
@@ -109,7 +109,7 @@ module Mongrel
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'.freeze
 
-    MONGREL_VERSION="0.3.12.4".freeze
+    MONGREL_VERSION="0.3.12.5".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
@@ -153,10 +153,9 @@ module Mongrel
   # HttpRequest.params Hash that matches common CGI params, and a HttpRequest.body
   # which is a string containing the request body (raw for now).
   #
-  # Mongrel really only supports small-ish request bodies right now since really
-  # huge ones have to be completely read off the wire and put into a string.
-  # Later there will be several options for efficiently handling large file
-  # uploads.
+  # The HttpeRequest.initialize method will convert any request that is larger than
+  # Const::MAX_BODY into a Tempfile and use that as the body.  Otherwise it uses 
+  # a StringIO object.  To be safe, you should assume it works like a file.  
   class HttpRequest
     attr_reader :body, :params
 
@@ -164,30 +163,39 @@ module Mongrel
     # Main thing it does is hook up the params, and store any remaining
     # body data into the HttpRequest.body attribute.
     def initialize(params, initial_body, socket)
-      @body = initial_body || ""
       @params = params
       @socket = socket
 
-      # if the body size is too large, move into a tempfile
-      clen = params[Const::CONTENT_LENGTH].to_i
+      clen = params[Const::CONTENT_LENGTH].to_i - initial_body.length
+      
       if clen > Const::MAX_BODY
-        tmpf = Tempfile.new(self.class.name)
-        tmpf.binmode
-        tmpf.write(@body)
-        clen -= @body.length
-        # TODO: throw an error if content-length doesn't match??
-        while clen > 0
-          readlen = clen < Const::CHUNK_SIZE ? clen : Const::CHUNK_SIZE
-          tmpf.write(@socket.read(readlen))
-          clen -= readlen
-        end
-        tmpf.rewind
-        @body = tmpf
+        @body = Tempfile.new(self.class.name)
+        @body.binmode
       else
-        if @body.length < clen
-          @body << @socket.read(clen - @body.length)
+        @body = StringIO.new
+      end
+
+      begin
+        @body.write(initial_body)
+
+        # write the odd sized chunk first
+        clen -= @body.write(@socket.read(clen % Const::CHUNK_SIZE))
+        
+        # then stream out nothing but perfectly sized chunks
+        while clen > 0
+          data = @socket.read(Const::CHUNK_SIZE)
+          # have to do it this way since @socket.eof? causes it to block
+          raise "Socket closed or read failure" if not data or data.length != Const::CHUNK_SIZE
+          clen -= @body.write(data)
         end
-        @body = StringIO.new(@body)
+
+        # rewind to keep the world happy
+        @body.rewind
+      rescue Object
+        # any errors means we should delete the file, including if the file is dumped
+        STDERR.puts "Error reading request: #$!"
+        @body.delete if @body.class == Tempfile
+        @body = nil # signals that there was a problem
       end
     end
 
@@ -365,8 +373,8 @@ module Mongrel
         end
 	  end
     rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
-	  # ignore these since it means the client closed off early
-        STDERR.puts "Client closed socket requesting file #{path}: #$!"
+      # ignore these since it means the client closed off early
+      STDERR.puts "Client closed socket requesting file #{req}: #$!"
     end
 
     def write(data)
@@ -462,23 +470,27 @@ module Mongrel
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
+              
+              request = HttpRequest.new(params, data[nread ... data.length] || "", client)
+              
+              # in the case of large file uploads the user could close the socket, so skip those requests
+              break if request.body == nil
 
-              request = HttpRequest.new(params, data[nread ... data.length], client)
+              # request is good so far, continue processing the response
               response = HttpResponse.new(client)
               
               handlers.each do |handler|
                 handler.process(request, response)
                 break if response.done
               end
-
+              
               if not response.done
                 response.finished
               end
-
             else
               client.write(Const::ERROR_404_RESPONSE)
             end
-            
+          
             break #done
           else
             # gotta stream and read again until we can get the parser to be character safe
@@ -486,7 +498,7 @@ module Mongrel
             if data.length >= Const::MAX_HEADER
               raise HttpParserError.new("HEADER is longer than allowed, aborting client early.")
             end
-
+            
             parser.reset
             data << client.readpartial(Const::CHUNK_SIZE)
           end
@@ -494,10 +506,10 @@ module Mongrel
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL
         # ignored
       rescue HttpParserError
-        STDERR.puts "BAD CLIENT (#{client.peeraddr.last}): #$!"
+        STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
         STDERR.puts "REQUEST DATA: #{data}"
       rescue => details
-        STDERR.puts "ERROR: #$!"
+        STDERR.puts "#{Time.now}: ERROR: #$!"
         STDERR.puts details.backtrace.join("\n")
       ensure
         client.close
@@ -556,10 +568,7 @@ module Mongrel
           end
         end
 
-        # now that processing is done we feed enough false onto the request queue to get
-        # each processor to exit and stop processing.
-
-        # finally we wait until the queue is empty (but only about 10 seconds)
+        # troll through the threads that are waiting and kill any that take too long
         @death_time = 10
         shutdown_start = Time.now
         
