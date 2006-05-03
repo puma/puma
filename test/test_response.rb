@@ -62,7 +62,7 @@ class ResponseTest < Test::Unit::TestCase
     tmpf.close
 
     assert io.length > 0, "output didn't have data"
-    assert io.read =~ /#{contents}\Z/, "output doesn't end with file payload"
+    assert io.read[-contents.length..-1] == contents, "output doesn't end with file payload"
   end
 end
 
