@@ -58,7 +58,11 @@ module Mongrel
         
         @opt.parse! argv
       end
-      
+
+      def configure
+        options []
+      end
+
       # Returns true/false depending on whether the command is configured properly.
       def validate
         return @valid

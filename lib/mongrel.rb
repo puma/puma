@@ -144,6 +144,8 @@ module Mongrel
     LINE_END="\r\n".freeze
     REMOTE_ADDR="REMOTE_ADDR".freeze
     HTTP_X_FORWARDED_FOR="HTTP_X_FORWARDED_FOR".freeze
+    HTTP_IF_UNMODIFIED_SINCE="HTTP_IF_UNMODIFIED_SINCE".freeze
+    HTTP_IF_NONE_MATCH="HTTP_IF_NONE_MATCH".freeze
   end
 
 
@@ -371,7 +373,7 @@ module Mongrel
             @socket.write(chunk)
           end
         end
-	  end
+      end
     rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
       # ignore these since it means the client closed off early
       STDERR.puts "Client closed socket requesting file #{req}: #$!"
@@ -724,6 +726,7 @@ module Mongrel
     # or defaults:
     #
     # * :handler => Handler to use for this location.
+    # * :in_front => Rather than appending, it prepends this handler.
     def uri(location, options={})
       ops = resolve_defaults(options)
       @listener.register(location, ops[:handler], in_front=ops[:in_front])
