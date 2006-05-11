@@ -47,6 +47,19 @@
 
         <dl>
 
+          <dt>May-11-2006</dt>
+          <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.13 Pre-Release -- Out of Hibernation</a></h5>
+
+            <p>This Pre-Release fixes lots of reported bugs, adds some requested features,
+		  and stars a lot of documentation.  Non-Win32 folks should grab
+		  and test.
+	    </p>
+	      <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
+	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+          </dd>
+
+
           <dt>Apr-10-2006</dt>
           <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.12.4 -- Relaxed Parser, Date Fix</a></h5>
