@@ -16,7 +16,15 @@ desc "Does a full compile, test run"
 task :default => [:compile, :test]
 
 desc "Compiles all extensions"
-task :compile => [:http11]
+task :compile => [:http11] do
+  if Dir.glob(File.join("lib","http11.*")).length == 0
+    STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    STDERR.puts "Gem actually failed to build.  Your system is"
+    STDERR.puts "NOT configured properly to build RubyGems."
+    STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    exit(1)
+  end
+end
 task :package => [:clean,:compile,:test]
 
 task :ragel do
@@ -32,7 +40,7 @@ end
 setup_extension("http11", "http11")
 
 name="mongrel"
-version="0.3.12.5"
+version="0.3.13"
 
 setup_gem(name, version) do |spec|
   spec.summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."

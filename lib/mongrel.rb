@@ -10,7 +10,7 @@ require 'mongrel/tcphack'
 require 'yaml'
 require 'time'
 require 'rubygems' 
-
+require 'resolv-replace'
 
 begin
   require 'sendfile'
@@ -18,6 +18,7 @@ begin
 rescue Object
   # do nothing
 end
+
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
@@ -201,6 +202,9 @@ module Mongrel
       end
     end
 
+    # Performs URI escaping so that you can construct proper
+    # query strings faster.  Use this rather than the cgi.rb
+    # version since it's faster.  (Stolen from Camping).
     def self.escape(s)
       s.to_s.gsub(/([^ a-zA-Z0-9_.-]+)/n) {
         '%'+$1.unpack('H2'*$1.size).join('%').upcase
@@ -208,13 +212,17 @@ module Mongrel
     end
 
 
+    # Unescapes a URI escaped string. (Stolen from Camping).
     def self.unescape(s)
       s.tr('+', ' ').gsub(/((?:%[0-9a-fA-F]{2})+)/n){
         [$1.delete('%')].pack('H*')
       } 
     end
 
-
+    # Parses a query string by breaking it up at the '&' 
+    # and ';' characters.  You can also use this to parse
+    # cookies by changing the characters used in the second
+    # parameter (which defaults to '&;'.
     def self.query_parse(qs, d = '&;')
       params = {}
       (qs||'').split(/[#{d}] */n).inject(params) { |h,p|
@@ -505,11 +513,10 @@ module Mongrel
             data << client.readpartial(Const::CHUNK_SIZE)
           end
         end
-      rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL
+      rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
         # ignored
       rescue HttpParserError
         STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
-        STDERR.puts "REQUEST DATA: #{data}"
       rescue => details
         STDERR.puts "#{Time.now}: ERROR: #$!"
         STDERR.puts details.backtrace.join("\n")

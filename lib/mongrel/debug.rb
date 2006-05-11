@@ -48,7 +48,12 @@ module ObjectTracker
     @active_objects = Set.new
 
     ObjectSpace.each_object do |obj|
-      @active_objects << obj.object_id
+      begin
+        # believe it or not, some idiots actually alter the object_id method
+        @active_objects << obj.object_id
+      rescue Object
+        # skip this one, he's an idiot
+      end
     end
   end
 

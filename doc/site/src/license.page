@@ -1,0 +1,73 @@
+---
+title: Licensing
+inMenu: true
+directoryName: Licensing
+---
+
+h1. Mongrel Licensing
+
+Mongrel is licensed under the "LGPL":http://www.gnu.org/licenses/lgpl.html and is copyright Zed A. Shaw
+as of 2005.  If you use Mongrel and are worried about the 
+licensing status, then you should talk with your legal team
+and follow their advice.  If you use Mongrel and
+are concerned about how that impacts your software, then contact 
+me about a commercial license or how you can donate to a charity to get a commercial license.
+
+I don't use "LGPL":http://www.gnu.org/licenses/lgpl.html to force people to also "LGPL":http://www.gnu.org/licenses/lgpl.html license their software,
+but rather to make sure that people who modify *Mongrel* give back to
+the community.  The general rule is that if you treat the 
+Mongrel RubyGem directory like it's a got an evil firewall
+around it then you're good.  You can link to it, run your
+applications under it, and even write GemPlugins to change
+Mongrel without touching the source.
+
+If you dip into the Mongrel RubyGem directory and change
+even one line of source, or copy a portion of the source
+into your project, then you have to do the following:
+
+* E-mail me what you changed and find out if I would include it in Mongrel.  Usually I will.
+* If I can't or won't include it, then consider taking it out and writing a GemPlugin.
+* If you have to have this change in Mongrel and I can't take the patch (since it's specific to your application),
+  *and* you can't make a GemPlugin, then you'll have to either:
+** License your software under the "LGPL":http://www.gnu.org/licenses/lgpl.html and release it.
+** Include the changed files in your release and allow the customer to access them, giving proper attribution.
+** Contact me for a commercial license.
+** Contact me about donating to a charity in exchange for a commercial license.
+
+I'm not interested in hunting people down who use Mongrel in
+commercial products nor am I a GPL zealot.  I understand that 
+folks just want to run their software under Mongrel and might
+need to make a few changes.  As long as you share those changes
+when you make them then I'll be happy and you'll be safe.
+
+
+h2. Non-profit Organizations
+
+If you're a registered non-profit organization that is using 
+Mongrel then you don't have to worry about any of the above.
+You are free to use Mongrel however you want and I'll even
+be willing to help you out in exchange for tax credit or 
+just to be a good guy.
+
+I'd appreciate your changes or stories about how you're using
+it, but otherwise feel free to use Mongrel however you want.
+
+
+h2. GemPlugins
+
+The GemPlugins system is both freely available *and* 
+licensed under the Ruby License.  Feel free to use it just
+like you would Ruby and work it into your projects as you
+need.  This is done so people can write their own GemPlugins
+for Mongrel without having to re-license them under the
+"LGPL":http://www.gnu.org/licenses/lgpl.html.
+
+
+h2. Some Charities To Consider
+
+Any charity that helps children is a good one.  My personal
+favorite is "The Train Platform Schools":http://www.globalfundforchildren.org/project_profiles/train_schools.htm
+in India.  They help children who are extremely poor get food,
+medical attention, and education by holding small school sessions
+on the train platforms in Bhubaneswar, India.
+

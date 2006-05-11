@@ -1,0 +1,22 @@
+---
+title: Plugins
+inMenu: true
+directoryName: Plugins
+---
+
+h1. Available Mongrel Plugins
+
+Mongrel is designed to be *very* easy to extend with the
+"GemPlugin":/gem_plugin_rdoc/index.html system.  With
+GemPlugin anyone can extend Mongrel's commands or handlers
+then distribute them as regular RubyGems for people to install.
+
+* mongrel_cluster -- Very sweet plugin that lets you manage a
+  pack of Mongrels easily as well as dealing with Capistrano issues.
+
+
+h2. Licensing
+
+People interested in extending Mongrel and avoiding licensing
+problems (Mongrel is LGPL) can use GemPlugins without any
+problems since the GemPlugin system is Ruby Licensed.

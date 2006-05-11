@@ -37,8 +37,8 @@ your Mongrel server straight to the network.
 h3. Q: How is Mongrel designed?
 
 The design of Mongrel most closely matches "Simple":http://simpleweb.sourceforge.net/ 
-which is very nicely designed web server framework for Java.  Despite being written
-in Java it is very clean and simple, thus the name (clever eh?).  The main difference
+which is a very nicely designed web server framework for Java.  Despite being written
+in Java Simple is very clean and simple, thus the name (clever eh?).  The main difference
 between Mongrel and Simple is that Simple monitors returned output from handlers so that
 it can modify the results.  Mongrel instead uses Ruby's blocks to get the same effect.
 
@@ -98,6 +98,81 @@ h2. Deployment
 
 h3. Q: How do I deploy Mongrel in production?
 
-Take a look at the "HOWTO":docs/howto.html and the "Lighttpd":docs/lighttpd.html
-instructions for more information on this.
+Take a look at the "documentation pages":/docs/index.html for
+information on deploying and enhancing Mongrel.  Feel free to
+suggest documentation that you think is needed.
+
+
+h3. Q: What does num-procs do?
+
+There's two options that impact how your deployment performs
+and what kind of resources it eats.
+
+* num-procs -- Determines how many active requests are allowed
+before clients are denied and old requests are killed off.
+* timeout -- Determines a short sleep time between each client 
+that is accepted.  This acts as a kind of throttle.
+
+With num-procs you should think of it as the option that protects
+your server from overload.  Let's say you set it to 100 and you
+get 100 requests coming in that are all being worked on.  If 
+request 101 comes in then that request gets closed immediately,
+and Mongrel goes through the original 100 looking for requests to
+kill off.  Right now it uses the timeout to come up with a reasonable
+way to determine how long something is taking and will kill old
+processors with an exception.
+
+The timeout option is what you use if you want to make sure that
+a Mongrel server can't take on too much work (i.e. you need to
+throttle it).  What it does is sleep for N 100th/second after
+each accept.  This means that it will slow down the number of 
+incoming clients.  Very handy if you have a shared hosting system
+and don't want people to eat your servers.
+
+
+h3. Q: Mongrel stops working if it's left alone for a long time.
+
+If you find that Mongrel stops working after a long idle time
+and you're using MySQL then you're hitting a bug in the MySQL
+driver that doesn't properly timeout connections.  What happens
+is the MySQL *server* side of the connection times out and closes,
+but the MySQL *client* doesn't detect this and just sits there.
+
+What you have to do is set:
+
+  ActiveRecord::Base.verification_timeout = 14400
+
+Or to any value that is lower than the MySQL server's *interactive_timeout*
+setting.  This will make sure that ActiveRecord checks the connection
+often enough to reset the connection.
+
+
+h3. Q: Why is the first request to Mongrel really slow?
+
+The first request to *any* system will be slower than 
+the others, you are just noticing it with Mongrel because
+the difference is so much larger.
+
+The cause of this depends on many factors, but typically it
+is either Rails start-up, slow machine, no memory, or eager loading 
+the world.  If you are on a slow box, or if you are trying to
+load a huge amount of data when Rails starts, then the
+first request will be nasty slow.
+
+This shouldn't really bug you though unless it happens periodically
+rather than from a cold start.  If it happens from a cold start or
+after a long idle period then point your service monitor at your
+application to keep it fresh.
+
+If you run a long performance test and you see periodic pauses
+then you may have a memory leak or not enough ram.  Re-run your
+test while you monitor your ram with something like *top*.  If
+you see the ram of Mongrel increase and then drop, or just increase,
+or you see the swap grow and shrink, then you've got a memory leak
+or just simply need more ram.
+
+Debugging a leak is possible with the mongrel_rails start -B option.
+It will log objects that get created to log/mongrel_debug and you can
+look in there to find out what object is causing the problems.
+
 

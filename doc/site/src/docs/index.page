@@ -10,26 +10,101 @@ We've got a small set of documentation to get people going.  Most of it is
 geared toward Ruby on Rails but other projects using Mongrel should have their own
 docs that you can refer to based on these.
 
+
+h2. Getting Started
+
+Start here to get a good grounding in getting Mongrel up and running.
+These documents are targetted at developers who will be starting off
+using Mongrel and might want to throw in a few little tricks. 
+Serious deployments should check out *Deployment Best Practices*.
+
 * "Getting Started":started.html -- Installing and Other things
-* "HOWTO":howto.html -- Doing advanced stuff with Mongrel.
 * "Win32 HOWTO":win32.html -- Specific instructions for running on windows.
+* "HOWTO":howto.html -- Doing advanced stuff with Mongrel.
+* "Using mongrel_cluster":mongrel_cluster.html -- Nifty plugin for managing your clusters.
+* "Choosing A Deployment":choosing_deployment.html -- How to pick a best practice.
+* "Security":security.html -- Security issues to look at (for any web application).
+
+
+h2. Frameworks
+
+Specific problems and things to know when you run different
+frameworks.
+
+* "Ruby on Rails Issues":ruby_on_rails.html
+* "Camping Issues":camping.html
+* "Nitro Issues":nitro.html
+
+
+h2. Deployment Best Practices
+
+These documents are continually changing as deploying Mongrel
+becomes more solid and certain options and configurations
+start to work the best.  Each one is a *best practice* which
+means that if you do something different then you'll have to
+do your own research.  Best way to work it is to do the 
+*best practice* exactly as described, then try to do something
+weird from there.
+
+* "Apache":apache.html -- Currently the best way to deploy Mongrel.
+* "Litespeed":litespeed.html -- Another good option, but not open source.
 * "Lighttpd":lighttpd.html -- Using mod_proxy to do a cluster.
+* "Pound":pound.html -- Small scale and dead simple with SSL.
+* "Pen or Balance":pen_balance.html -- Smaller scale without SSL.
+
+
+h2. Advanced
+
+You are a grand master and have answered a few questions on the
+Mongrel mailing list so now it's time to get fancy.
+
 * "Writing Mongrel Plugins":gem_plugin.html -- Writing a GemPlugin for Mongrel.
+* "From Rails To Handlers":rails_to_handler.html -- Writing a Handler plugin for something that's slow in Rails.
+* "Distributed Worker":distributed_worker.html -- A common pattern for actions that take forever and block Rails.
+* "Upload Progress Without Rails":upload_progress.html -- Uploading without blocking Rails and giving the user progress.
+* "Performance Tuning":performance.html -- Measuring, tuning, tweaking (in that order).
+
+
+
+h2. Ruby API Documentation
+
+People writing plugins will want these.
+
+* "Mongrel RDoc":/rdoc/index.html
+* "GemPlugin RDoc":/gem_plugin_rdoc/index.html
+
 
 If there's documentation you'd like then feel free to e-mail the list or post
 to the tracker.
 
-h2. RDoc API Documentation
+h1. Other People's Documentation
 
-Check out the "RDoc":/rdoc/index.html documentation to get a look at the
-API and dig into the source.  Since Mongrel is currently being used by
-other frameworks it's documentation is aimed at developers.  Real manuals
-will be written when there's something for "regular" folks to use.
+Many other folks have written documentation that they post to their
+blogs for people to use.  I've based a lot of the documentation
+here on their writings, so you should go check out their blogs
+and shoot them a thanks when you can.
+
+* "What About Apache to Mongrel for Rails Applications":http://weblog.textdrive.com/article/219/what-about-apache-to-mongrel-for-rails-applications
+* "Apache 2.2 worker on solaris to a remote mongrel":http://weblog.textdrive.com/article/223/apache-22-worker-on-solaris-to-a-remote-mongrel 
+* "Apache 2.2, mod_proxy_balancer and Mongrel":http://weblog.textdrive.com/article/224/apache-22-mod_proxy_balancer-and-mongrel
+* "Scaling Rails with Apache 2.2, mod_proxy_balancer and Mongrel":http://blog.innerewut.de/articles/2006/04/21/scaling-rails-with-apache-2-2-mod_proxy_balancer-and-mongrel
+* "Dead Simple Deployment":http://brainspl.at/articles/2006/04/26/dead-simple-deployment
 
 
-h2. Frequently Asked Questions
+h1. Frequently Asked Questions
 
 When people ask questions really frequently the results end up in the
-"FAQ":faq.html or if they're funny they end up in the "FASQ":../fasq.html
-so everyone can have a laugh.
+"FAQ":faq.html.
+
+
+h1. Mailing Lists
+
+There's a "mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users that
+you should subscribe to if you're looking for help or are interested in tracking
+Mongrel.  We post announcements of pre-release gems you can play with to this
+mailing list and also discuss development of Mongrel there.
+
+Before you start asking for features you should read about 
+"bikeshedding":http://www.catb.org/jargon/html/B/bikeshedding.html and 
+understand that we're really nice, but sometimes code speaks better than rhetoric.
 

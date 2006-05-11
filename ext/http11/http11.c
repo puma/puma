@@ -23,7 +23,6 @@ static VALUE global_content_type;
 static VALUE global_http_content_type;
 static VALUE global_gateway_interface;
 static VALUE global_gateway_interface_value;
-static VALUE global_interface_value;
 static VALUE global_server_name;
 static VALUE global_server_port;
 static VALUE global_server_protocol;
@@ -122,8 +121,6 @@ void header_done(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
   VALUE temp = Qnil;
-  VALUE host = Qnil;
-  VALUE port = Qnil;
   VALUE ctype = Qnil;
   VALUE clen = Qnil;
   char *colon = NULL;

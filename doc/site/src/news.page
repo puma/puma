@@ -7,6 +7,35 @@ ordering: 2
 
 h1. Latest News
 
+h2. May 11:  Mongrel 0.3.13 Pre-Release -- Out of Hibernation
+
+This release is the long awaited 0.3.13 with the fancy
+file upload and conditional response code.  It's also
+the start to the big push toward 0.4 Mongrel Enterprisey Edition 1.2.
+
+The big fixes and features in 0.3.13 are:
+
+* Lots of documentation being written or already written.
+* Large file uploads are streamed to a temp file rather than ram. (Thanks Why!)
+* Conditional HTTP responses for static files. (Thanks Dan Kubb!)
+* A fix to the start command's --help so that --num-procs and --timeout are more clear.
+* A fix to the -B option since some idiot decided that they can change the object_id of an object to take a parameter.
+* No longer spews tons of junk to mongrel.log related to invalid parsing or closed client sockets.
+* Documented HttpRequest's escape, unescape, and query_parse (which were stolen from Camping).
+* Removed some compiler warnings for unused variables in the C extension.
+* Rake now aborts with an obvious message if the http11 extension doesn't build. 
+* Requires 'resolv-replace' by default to prevent DNS queries from blocking Mongrel.
+
+This release is right now in pre-release state while I work on the 
+documentation.  Please grab it and test it with the following:
+
+  gem install daemons
+  gem install --source=http://mongrel.rubyforge.org/releases/
+
+As usual, win32 folks will have to wait while I test out this build
+on Windows.
+
+
 h2. Apr-10:  Mongrel 0.3.12.4 -- Relaxed Parser, Date Fix
 
 This release is a small change over the previous one.  It mostly is for

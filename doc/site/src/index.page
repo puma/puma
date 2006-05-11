@@ -8,7 +8,7 @@ h1. What is Mongrel?
 Mongrel is a fast HTTP library and server for Ruby that is intended for
 hosting Ruby web applications of any kind using plain HTTP rather than
 FastCGI or SCGI.  It is framework agnostic and already supports 
-"Ruby On Rails":http://www.rubyonrails.org, "Og+Nitro":http://www.nitrohq.com/, 
+"Ruby On Rails":http://www.rubyonrails.org, "Og+Nitro":http://www.nitroproject.org/, 
 and "Camping":http://camping.rubyforge.org/files/README.html frameworks.
 
 
@@ -28,72 +28,32 @@ Which runs Mongrel in the background.  You can stop it with:
 And you're all set.  There's quite a few options you can set for the
 start command.  Use the *mongrel_rails start -h* to see them all.
 
+h2. Win32 Support
 
-h3. Win32 Support
+Wind32 is fully supported by Mongrel with services and CPU
+affinity support.  You should ready the "Win32 HOWTO":docs/win32.html
+for information on getting started.
 
-Mongrel now has support for running as a Win32 service right out of the
-box.  The support is still rough but works well enough that we decided
-to release it.  You can thank Luis Lavena for working on this and making
-it so nice.
-
-After you do the gem install, find a Rails application you want to run
-and do:
-
- $ mongrel_rails_service install -n myapp \ 
-     -r c:\my\path\to\myapp -p 4000 -e production
- $ mongrel_rails_service start -n myapp
-
-Now hit the port and poof, works.  Stopping the app is just done with:
-
- $ mongrel_rails_service stop -n myapp
-
-And, you can *even* set the CPU processor affinity for the service when
-yourun the install command.  Can't even do that on POSIX yet.  Now
-that's hot.
-
-If you run into an app that's not running right, my suggestion is to run it with
-the regular mongrel_rails runner:
-
- $ cd c:\my\path\to\myapp
- $ mongrel_rails start -p 4500
-
-Since that will spit out error messages and stuff to the console.  *Use CTRL-Pause/Break to stop.*
+The main thing with Win32 support is that there is no *fork* 
+API for Ruby, so you have to use the services features to
+get persistent servers running.
 
 
-h2. Performance
+h1. Next Steps
 
-Mongrel's main competitor is WEBrick and "Tomcat":http://tomcat.apache.org/ but not 
-a full webserver like "Apache":http://httpd.apache.org/ or "lighttpd":http://www.lighttpd.net/
-for serving static content.  Mongrel is designed to run a web application with minimal
-static content capabilities with the idea that you'll put it behind a webserver that's
-faster for the static stuff.
+Now that you're a Mongrel user, there's some thing you should
+do to educate yourself:
 
-So far Mongrel seems competitive with Tomcat and typically blows the doors off WEBrick.
-Comparing Mongrel with Tomcat right now is not too fair since Tomcat does a whole lot
-more, but for serving basic content mongrel does pretty good.
+* "Join the mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users 
+* "Read the documentation":docs/index.html
+* Learn to use --help when you want to know what Mongrel commands can do.
 
-There will be a more formal performance analysis when Mongrel is more stable.
-
-*NOTE: On FreeBSD and Mac OSX I've found Mongrel performs really poorly.*  Compared
-to Linux, Win32, or NetBSD these two OS seem to be doing something very "different".
-We'll be tuning these two platforms better, but it may just be a Ruby problem.
+The last one is important.  A lot of effort went into making
+Mongrel as self-documenting as possible.  Before you hit the
+mailing list asking how to do something, try passing that
+command --help and see if it tells you.  If it's still not 
+clear then ask away.
 
 
-h2. Documentation
-
-Check out the "RDoc":/rdoc/index.html documentation to get a look at the
-API and dig into the source.  Since Mongrel is currently being used by
-other frameworks it's documentation is aimed at developers.  Real manuals
-will be written when there's something for "regular" folks to use.
 
 
-h2. Mailing Lists
-
-There's a "mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users that
-you should subscribe to if you're looking for help or are interested in tracking
-Mongrel.  We post announcements of pre-release gems you can play with to this
-mailing list and also discuss development of Mongrel there.
-
-Before you start asking for features you should read about 
-"bikeshedding":http://www.catb.org/jargon/html/B/bikeshedding.html and 
-understand that we're really nice, but sometimes code speaks better than rhetoric.
