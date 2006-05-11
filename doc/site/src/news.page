@@ -30,7 +30,7 @@ This release is right now in pre-release state while I work on the
 documentation.  Please grab it and test it with the following:
 
   gem install daemons
-  gem install --source=http://mongrel.rubyforge.org/releases/
+  gem install mongrel --source=http://mongrel.rubyforge.org/releases/
 
 As usual, win32 folks will have to wait while I test out this build
 on Windows.
