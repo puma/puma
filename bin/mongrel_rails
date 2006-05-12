@@ -24,7 +24,8 @@ class Start < GemPlugin::Plugin "/commands"
       ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, "public"],
       ['-B', '--debug', "Enable debugging mode", :@debug, false],
       ['-C', '--config PATH', "Use a config file", :@config_file, nil],
-      ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil]
+      ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil],
+      ['-G', '--generate CONFIG', "Generate a config file for -C", :@generate, nil]
     ]
   end
   
@@ -40,6 +41,7 @@ class Start < GemPlugin::Plugin "/commands"
     valid_dir? @docroot, "Path to docroot not valid: #@docroot"
     valid_exists? @mime_map, "MIME mapping file does not exist: #@mime_map" if @mime_map
     valid_exists? @config_file, "Config file not there: #@config_file" if @config_file
+    valid_dir? File.dirname(@generate), "Problem accessing directory to #@generate" if @generate
     return @valid
   end
 
@@ -52,6 +54,11 @@ class Start < GemPlugin::Plugin "/commands"
       :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
       :num_processors => @num_procs, :timeout => @timeout
     }
+
+    if @generate
+      STDERR.puts "** Writing config to #@generate"
+      open(@generate, "w") {|f| f.write(settings.to_yaml) }
+    end
 
     if @config_file
       STDERR.puts "** Loading settings from #{@config_file} (command line options override)."
