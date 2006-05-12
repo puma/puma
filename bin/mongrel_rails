@@ -49,7 +49,8 @@ class Start < GemPlugin::Plugin "/commands"
     settings = { :host => @address,  :port => @port, :cwd => @cwd,
       :log_file => @log_file, :pid_file => @pid_file, :environment => @environment,
       :docroot => @docroot, :mime_map => @mime_map, :daemon => @daemon,
-      :debug => @debug, :includes => ["mongrel"], :config_script => @config_script
+      :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
+      :num_processors => @num_procs, :timeout => @timeout
     }
 
     if @config_file
