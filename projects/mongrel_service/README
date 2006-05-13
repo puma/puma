@@ -1,0 +1,13 @@
+== Mongrel Native Win32 Service Plugin
+
+This plugin offer native win32 services for rails. This replace mongrel_rails_service.
+It will work like before, with this this syntax when calling mongrel_rails:
+
+service::install
+service::remove
+service::start
+service::stop
+service::status
+
+= Author:
+  Luis Lavena
