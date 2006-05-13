@@ -30,7 +30,7 @@ start command.  Use the *mongrel_rails start -h* to see them all.
 
 h2. Win32 Support
 
-Wind32 is fully supported by Mongrel with services and CPU
+Win32 is fully supported by Mongrel with services and CPU
 affinity support.  You should ready the "Win32 HOWTO":docs/win32.html
 for information on getting started.
 
@@ -53,7 +53,4 @@ Mongrel as self-documenting as possible.  Before you hit the
 mailing list asking how to do something, try passing that
 command --help and see if it tells you.  If it's still not 
 clear then ask away.
-
-
-
 

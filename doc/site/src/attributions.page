@@ -41,14 +41,18 @@ name here.
 * Mongrel was started by "Zed A. Shaw":http://www.zedshaw.com/
 * Win32 support for services was done by Luis Lavena.
 * Specialized Win32 gems were setup by Wilson Bilkovich.
+* Why the lucky stiff implemented initial Camping support as well as improvements to Mongrel's file processing.
+* Dan Kubb contributed conditional HTTP responses.
 
 Also with lots of testing from tons of people who are really appreciated.
+
 
 h2. Site Template
 
 The site's look and template is blatantly stolen from "OWD":http://openwebdesign.org
 and is specifically Copyright &copy; 2006 "Evgeni Dinev":http://www.evgenidinev.com/
 under the "Creative Commons":http://creativecommons.org license.
+
 
 h2. Photos
 
@@ -69,16 +73,19 @@ attributed to the people based on their Flickr accounts:
 Thanks to those people who publish their photos with the "Creative Commons":http://creativecommons.org
 license so others can see their photography (and look at their dogs).
 
+
 h2. Coding
 
 * "Rick Olson (aka technoweenie)":http://techno-weenie.net/ was the first to grab Mongrel
   and cram "Camping":http://redhanded.hobix.com/bits/campingAMicroframework.html into it.
 * "Why the lucky stiff":http://whytheluckystiff.net/ did work on getting the "Camping Framework":http://redhanded.hobix.com/bits/campingAMicroframework.html working with Mongrel more completely.
 
+
 h2. Tools
 
 * "RubyForge":http://rubyforge.org/ for providing space and hooking it all up.
 * "Webgen":http://webgen.rubyforge.org/
+
 
 h2. Testing
 

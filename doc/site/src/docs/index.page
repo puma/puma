@@ -90,6 +90,8 @@ and shoot them a thanks when you can.
 * "Scaling Rails with Apache 2.2, mod_proxy_balancer and Mongrel":http://blog.innerewut.de/articles/2006/04/21/scaling-rails-with-apache-2-2-mod_proxy_balancer-and-mongrel
 * "Dead Simple Deployment":http://brainspl.at/articles/2006/04/26/dead-simple-deployment
 * "Deployment Strategies for Rails on Windows servers":http://www.napcs.com/howto/rails/deploy/
+* "mongrel_cluster-0.1.1: the bird dog (capistrano support!)":http://fluxura.com/articles/2006/04/24/easy-mongrel-clustering-with-mongrel_cluster
+* "Easy Mongrel Clustering with mongrel_cluster":http://fluxura.com/articles/2006/05/01/mongrel_cluster-0-1-1-the-bird-dog-capistrano-support
 
 h1. Frequently Asked Questions
 

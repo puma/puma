@@ -48,24 +48,12 @@ future) that has built-in help thanks to optparse.  Just pass a -h to any
 command and it will dump the help for you:
 
  $ mongrel_rails start -h 
- Usage: start [options]
-    -e, --environment ENV            Rails environment to run as
-    -d, --daemonize                  Whether to run in the background or not
-    -p, --port PORT                  Which port to bind to
-    -a, --address ADDR               Address to bind to
-    -l, --log FILE                   Where to write log messages
-    -P, --pid FILE                   Where to write the PID
-    -n, --num-procs INT              Number of processor threads to use
-    -t, --timeout SECONDS            Timeout all requests after SECONDS time
-    -m, --mime PATH                  A YAML file that lists additional MIME types
-    -c, --chdir PATH                 Change to dir before starting (will be expanded)
-    -r, --root PATH                  Set the document root (default 'public')
-    -h, --help                       Show this message
-        --version                    Show version
 
 Also every option has reasonable default options, and will complain if you give 
 anything invalid.
 
+See the "HOWTO":howto.html for information on each option and what
+it does.
 
 h1. Running In Development
 

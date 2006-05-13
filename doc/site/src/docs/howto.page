@@ -6,45 +6,435 @@ directoryName: Documentation
 
 h1.  Mongrel HOWTO
 
-This is a collection of small tidbits of advice which don't fit into
-larger documentation just yet.
+After you have "Mongrel running":started.html you can start
+to configure Mongrel and tune it to your specific configuration.
+The "documentation":/docs/index.html page has documentation
+on the various web servers you can run, but this document
+will give you tips and tricks on getting Mongrel running.
 
 
-h1. Alternative Deployment Scenarios
+h2.  Every Start Option Explained
 
-Since Mongrel uses plain HTTP there's a huge number of deployment 
-scenarios you can use.  Take a look at the "Lighttpd instructions":lighttpd.html
-for a more complete example.
+Mongrel is a self-documenting program by giving you an extensive help
+listing for each command.  Simply running *mongrel_rails start -h*
+will print out each possible option and what it does.  Most of
+the options are similar to what you've been using already with
+script/server.
 
-
-h2. Pound+lighttpd+Mongrel
-
-"Pound":http://www.apsis.ch/pound/ is a decent software only HTTP proxy that
-also handles the SSL for you.  This means you can configure Pound with your
-SSL certificates and it'll handle the virtual hosts and proxying.  The
-interesting thing is that since Pound uses native threads it actually can't
-keep up with lighttpd.
-
-
-h2. Hardware Load Balancers
-
-Another approach is to put a hardware load balancer in front of lighttpd 
-and a bunch of Mongrel backends.  The attraction of this is that you
-can just route requests directly to lighttpd without proxying through.
+These options are also used in the -C config file option to
+set them without using the command line.  The name used in the
+config file is slightly different since it's a YAML file.  The
+name to use is in parenthesis after the option name.  The
+option names are different from the command line option names
+mostly for historical reasons.
 
 
-h3. URI Prefixes
+<dl>
+<dt>-e, --environment (:environment)</dt>
+<dd>
+Configures your Rails environment to what you need.
+<ul><li><b>Default:</b> debug</li></ul>
+</dd>
+</dl>
 
-One problem with many of these setups where you route requests for static
-files to lighttpd, but dynamic requests to Mongrel is that the load balancer
-needs a way of determining what is "dynamic" and what is "static".  Since
-rails uses sane URIs it's difficult to figure this out without some kind
-of prefix.
+<dl>
+<dt>-d, --daemonize (:daemon)</dt>
+<dd>
+If given (no options) then Mongrel will run in the background.
+<b>No Win32.</b>
+<ul><li><b>Default:</b> false</li></ul>
+</dd>
+</dl>
 
-The easiest way I've found is to prefix your Rails routes.rb with "/app"
-and then configure the load balancer to route anything starting with "/app"
-to the Mongrel servers.
+<dl>
+<dt>-p, --port (:port)</dt>
+<dd>
+Port to bind to when listening for connections.
+<ul><li><b>Default:</b> 3000</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-a, --address (:host)</dt>
+<dd>
+Address to bind to when listening for connections.
+<ul><li><b>Default:</b> 0.0.0.0 (every interface)</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-l, --log (:log_file)</dt>
+<dd>
+Where to dump log messages in daemon mode.
+<b>No Win32.</b>
+<ul><li><b>Default:</b> log/mongrel.log</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-P, --pid (:pid_file)</dt>
+<dd>
+Where to write the PID file so <b>start</b> and 
+<b>stop</b> commands know the Process ID.
+<b>No Win32.</b>
+<ul><li><b>Default:</b> log/mongrel.pid</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-n, --num-procs (:num_processors)</dt>
+<dd>
+Maximum number of concurrent processing threads before
+Mongrel starts denying connections and trying to kill
+old threads.
+<ul><li><b>Default:</b> 1024</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-t, --timeout (:timeout)</dt>
+<dd>
+Time to pause between accepting clients.  Used as a throttle
+mechanism.
+<ul><li><b>Default:</b> 0</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-m, --mime, (:mime_map)</dt>
+<dd>
+A YAML file that maps from file extensions to MIME types
+for static files.  It's important that if you are using
+page caching or you have a different language setting--like
+UTF8--then you have to configure this.  Read more below.
+<ul><li><b>Default:</b> not set.</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-c, --chdir (:cwd)</dt>
+<dd>
+Directory to change to prior to starting Mongrel.  "cwd" means
+"change working directory".
+<ul><li><b>Default:</b> . (current directory)</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-r, --root (:docroot)</dt>
+<dd>
+Document root where Mongrel should serve files from.
+If you are putting Mongrel under a different base URI, and
+you want it to serve files out of a different directory then
+you need to set this.
+<ul><li><b>Default:</b> public</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-B, --debug (:debug)</dt>
+<dd>
+Turns on a debugging mode which traces objects, threads, files
+request parameters, and logs accesses writing them to log/mongrel_debug.
+This option makes Mongrel <b>very</b> slow.
+<ul><li><b>Default:</b> false</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-c, --config (NONE)</dt>
+<dd>
+Specifies a configuration YAML file that sets options you're
+reading about right now.  Read "Command Line Settings" below
+for more information.
+<ul><li><b>Default:</b> You can't set this.</li></ul>
+</dd>
+</dl>
+
+<dl>
+<dt>-S, --script (:config_script)</dt>
+<dd>
+A special Ruby file that is run after Rails is configured
+to give you the ability to change the configuration with
+Ruby.  This would be where you can load customer Mongrel
+handlers, extra libraries, or setup additional Ruby code.
+This option is fairly advanced so use with caution.
+<ul><li><b>Default:</b> not set</li></ul>
+</dd>
+</dl>
 
 
+<dl>
+<dt>-G, --generate (NONE)</dt>
+<dd>
+Takes whatever options you've set for Mongrel, and the
+current defaults, and then writes them to a YAML file
+suitable for use with the -C option.
+<ul><li><b>Default:</b> not set</li></ul>
+</dd>
+</dl>
 
 
+h2.  Configuration Files
+
+When Mongrel runs with just *mongrel_rails start* it has
+reasonable defaults for most people's development work with Rails.
+It tries to be as similar to the existing @script/server@ command as 
+possible.
+
+When you need to run Mongrel in production (or if you're doing
+wicked fancy stuff) then you'll need to start using a few 
+configuration files.
+
+h2. MIME Types
+
+Mongrel comes with a very small set of default MIME types.
+The main theme with Mongrel is that it doesn't interfere with
+the frameworks it hosts.  Many frameworks do their own 
+MIME parsing and control, so Mongrel only has just enough to
+serve up a few static files.
+
+The default types are defined in DirHandler as a constant
+and are:
+
+ <pre><code>
+ MIME_TYPES = {
+ ".css"        =>  "text/css",
+ ".gif"        =>  "image/gif",
+ ".htm"        =>  "text/html",
+ ".html"       =>  "text/html",
+ ".jpeg"       =>  "image/jpeg",
+ ".jpg"        =>  "image/jpeg",
+ ".js"         =>  "text/javascript",
+ ".png"        =>  "image/png",
+ ".swf"        =>  "application/x-shockwave-flash",
+ ".txt"        =>  "text/plain"
+ }
+ </code></pre>
+
+Notice that it's just a hash mapping from extension (*with period*)
+to the type that needs to be set.
+
+To change this you just need to write a YAML file that sets
+up your new types or changes these:
+
+ <pre>
+ <code>
+ ---
+ .rss: text/xml
+ </code>
+ </pre>
+
+This would add .rss with the @text/xml@ MIME type.
+
+One problem that comes up quite frequently is that Mongrel's
+DirHandler isn't quite smart enough to know that a page cached
+/feed/rss.html should really be an RSS file with text/xml.
+Mongrel really doesn't have much information to go on, but it
+will happily serve this file up as @text/html@.  The best
+solution to this is to just not use Mongrel's DirHandler, but
+instead use a real web server.  Another option is to write a
+special handler for that URI which knows about it.
+
+You might also need to edit this file if, for example, you use a different encoding such as UTF8.
+You'll want to change all of these MIME types to have the 
+proper ending.  For example,if you wanted @charset=EUC-JP@ for 
+all your returned static documents, then you'd do:
+
+ <pre>
+ <code>
+ ---
+ .js: text/javascript; charset=EUC-JP
+ .htm: text/html; charset=EUC-JP
+ .html: text/html; charset=EUC-JP
+ .css: text/css; charset=EUC-JP
+ .txt: text/plain; charset=EUC-JP
+ </code>
+ </pre>
+
+You'd also probably need to do this with your Rails pages.
+
+*NOTE:* I'm looking for a method to fix this with a setting or detection.
+
+
+h2. Command Line Settings
+
+Sometimes it's a real pain to set all the command line options
+you need to run Mongrel in production.  Instead of setting the
+options on the command line, you can have Mongrel generate a
+configuration file for you with -G and then pass this (modified)
+file to the -C option next time you start.
+
+For example, if you do this:
+
+ mongrel_rails start -G config/mongrel_opts.conf 
+
+Then the mongrel_options.conf will have:
+
+ <pre>
+ <code>
+ ---
+ :config_script:
+ :environment: development
+ :pid_file: log/mongrel.pid
+ :num_processors: 1024
+ :docroot: public
+ :timeout: 0
+ :host: 0.0.0.0
+ :mime_map:
+ :port: 3000
+ :daemon: false
+ :cwd: /home/zedshaw/projects/mongrel/testapp
+ :includes:
+ - mongrel
+ :debug: false
+ :log_file: log/mongrel.log
+ </code>
+ </pre>
+
+The @:blah:@ (two colons) syntax is just how YAML does things.
+You can then either just edit this file and use it with:
+
+ mongrel_rails start -C config/mongrel_opts.conf 
+
+Or, you can run the start command again with -G and all the
+options you need to set and it will properly generate the
+config file again.
+
+
+h2. Mongrel Configure Scripts
+
+Mongrel uses a small DSL (Domain Specific Language) to configure
+it's internal workings.  It also lets *you* use this DSL and
+regular Ruby to alter it's internal workings.  The options that
+turn it on are -S or @:config_script:@ in the config file.
+
+Doing this is fairly advanced, but here's how I would create a
+second DirHandler that sits in another directory.  First, create
+a config/mongrel.conf file with this in it:
+
+  @uri "/newstuff", :handler => DirHandler.new("/var/www/newstuff")@
+
+And then do this:
+
+  mongrel_rails start -S config/mongrel.conf 
+
+Now when people go to /newstuff they get the files listed there.
+
+This is actually a Ruby file, so you can run
+most Ruby code you need, require libraries, etc.
+
+Main usage for this is to create handlers which run inside Mongrel
+and do extra work.
+
+For more information, read the "RDoc":/rdoc/ for 
+"Mongrel::Configurator":/rdoc/classes/Mongrel/Configurator.html
+on what functions are available.
+
+
+h2.  POSIX Signals Used
+
+When you run Mongrel on a POSIX compliant system (meaning *not* Win32)
+you are able to control with signals similar WEBrick or FastCGI.
+
+The signals Mongrel running Rails understands are:
+
+* *TERM* -- Stops mongrel and deleted PID file.
+* *USR2* -- Restarts mongrel (new process) and deletes PID file.
+* *INT* -- Same as USR2, just convenient since CTRL-C is used in debug mode.
+* *HUP* -- Internal reload that might not work so well.
+
+You can use the -S configure script to add your own handlers
+with code like this:
+
+ <pre><code>
+ trap("USR1") { log "I'm doing stuff." }
+ </code></pre>
+
+
+h2.  Super Debugging With Rails
+
+When you use the -B option Mongrel produces *tons* of
+useful debugging output.  The debugging output is actually
+implemented as a small set of handlers in lib/mongrel/debug.rb
+if you're interested in writing your own.
+
+The files that get generated are:
+
+* *rails.log* -- Logs all request parameters exactly as they come to Rails from Mongrel.
+* *objects.log* -- Logs a top 20 count of object types before and after each request.
+* *files.log* -- Logs open files before and after each request.
+* *threads.log* -- Logs active threads before and after each request.
+
+You use these log files to track down weird Rails behavior in your
+application.  Classic example is if your Rails server stops answering
+requests after a certain amount of time.  #1, #2, and #3 cause of this is
+that you are opening files and not closing them.  Turning on -B and
+look in the @files.log@ file will show you exactly what files are
+being leaked.
+
+Another place this helps is if you see that your application is generating
+a lot of RAM.  Look in @objects.log@ and you'll see right away what is the worst
+offending Object.
+
+Finally, the @threads.log@ will tell you if you're leaking threads.
+This happens mostly with people who use IO.popen and don't properly
+clean up the results.  IO.popen in Ruby threads is very tricky, 
+and you're better off putting this work into a DRb server anyway.
+
+
+h2.  Installing GemPlugins: mongrel_cluster
+
+Mongrel is extensible via a system called GemPlugins.  They
+are basically autoloaded RubyGems which you install and are
+configured based on how they depend on Mongrel.
+
+A good example is the @mongrel_cluster@ GemPlugin written
+by Bradley Taylor from RailsMachine.  It gives you a nice
+management system for a cluster of Mongrel servers.  This
+is very handy when you are running a large scale deployment
+and I recommend everyone uses it.
+
+You install it simply with:
+
+ $ gem install mongrel_cluster
+
+Once it's installed you can do @mongrel_rails -h@ and it'll
+show you the new commands:
+
+* cluster::configure -- Configures your cluster.
+* cluster::restart -- Restarts it.
+* cluster::start -- Yep, starts it.
+* cluster::stop -- And, yes, stops it.
+
+You can then pass --help to each one to find out the options
+it gets.  You then use it like so:
+
+
+ $ mongrel_rails cluster::configure -p 8080 -e production -a 127.0.0.1
+ $ mongrel_rails cluster::start
+ $ mongrel_rails cluster::stop
+
+If you don't like mongrel_cluster (shame on you!) then you can
+easily remove it with:
+
+ $ gem uninstall mongrel_cluster
+
+And all the commands go away.
+
+
+h1. More Documentation
+
+This should get you started with intermediate Mongrel usage.
+There quite a few more documents in the "Documentation":/docs/index.html 
+section in various states of completion.
+
+If you'd like to write one of these documents, then join the
+"mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users
+and volunteer.
+
+
+h1. Credits
+
+Thanks to "Jamie van Dyke":http://www.fearoffish.com/ and mly on #caboose for correcting some 
+grammar mistakes.
