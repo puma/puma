@@ -179,14 +179,15 @@ module Mongrel
         else unmodified_since || none_match  # validation successful if we get this far and at least one of the header exists
       end
 
+      header = response.header
+      header[Const::ETAG] = etag
+
       if same_response
         response.start(304) {}
       else
         # first we setup the headers and status then we do a very fast send on the socket directly
         response.status = 200
-        header = response.header
         header[Const::LAST_MODIFIED] = mtime.httpdate
-        header[Const::ETAG] = etag
 
         # set the mime type from our map based on the ending
         dot_at = req_path.rindex('.')

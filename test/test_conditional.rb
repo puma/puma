@@ -15,8 +15,8 @@ class HttpParserTest < Test::Unit::TestCase
     # get the ETag and Last-Modified headers
     @path = '/README'
     res = @http.start { |http| http.get(@path) }
-    @etag = res['ETag']
-    @last_modified = res['Last-Modified']
+    assert_not_nil @etag = res['ETag']
+    assert_not_nil @last_modified = res['Last-Modified']
   end
 
   def teardown
@@ -94,7 +94,13 @@ class HttpParserTest < Test::Unit::TestCase
     # assert the response status is correct for GET and HEAD
     def assert_status_for_get_and_head(status_class, headers = {})
       %w{ get head }.each do |method|
-        assert_kind_of status_class, @http.send(method, @path, headers)
+        res = @http.send(method, @path, headers)
+        assert_kind_of status_class, res
+        assert_equal @etag, res['ETag']
+        case status_class
+          when Net::HTTPNotModified : assert_nil res['Last-Modified']
+          when Net::HTTPOK          : assert_equal @last_modified, res['Last-Modified']
+        end
       end
     end
 end
