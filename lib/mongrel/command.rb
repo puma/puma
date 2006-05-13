@@ -10,6 +10,8 @@ module Mongrel
 
   module Command
 
+    BANNER = "Usage: mongrel_rails <command> [options]"
+    
     # A Command pattern implementation used to create the set of command available to the user
     # from Mongrel.  The script uses objects which implement this interface to do the
     # user's bidding.
@@ -35,6 +37,7 @@ module Mongrel
       def initialize(options={})
         argv = options[:argv] || []
         @opt = OptionParser.new
+        @opt.banner = Mongrel::Command::BANNER
         @valid = true
         # this is retarded, but it has to be done this way because -h and -v exit
         @done_validating = false
@@ -125,7 +128,7 @@ module Mongrel
 
       # Prints a list of available commands.
       def print_command_list
-        puts "Available commands are:\n\n"
+        puts "#{Mongrel::Command::BANNER}\nAvailable commands are:\n\n"
         
         self.commands.each do |name|
           puts " - #{name[1 .. -1]}\n"
@@ -161,7 +164,7 @@ module Mongrel
         # needed so the command is already valid so we can skip it.
         if not command.done_validating
           if not command.validate
-            STDERR.puts "#{cmd_name} reported an error. Use -h to get help."
+            STDERR.puts "#{cmd_name} reported an error. Use mongrel_rails #{cmd_name} -h to get help."
             return false
           else
             command.run
