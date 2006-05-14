@@ -61,9 +61,10 @@ module Mongrel
             controller.body.close
           end
         else
-          response.send_status(controller.body.length)
+          body = controller.body.to_s
+          response.send_status(body.length)
           response.send_header
-          response.write(controller.body.to_s)
+          response.write(body)
         end
       end
     end
