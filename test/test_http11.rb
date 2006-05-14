@@ -12,7 +12,7 @@ class HttpParserTest < Test::Unit::TestCase
     parser = HttpParser.new
     req = {}
     http = "GET / HTTP/1.1\r\n\r\n"
-    nread = parser.execute(req, http);
+    nread = parser.execute(req, http, 0)
     assert nread == http.length, "Failed to parse the full HTTP request"
     assert parser.finished?, "Parser didn't finish"
     assert !parser.error?, "Parser had error"
@@ -29,7 +29,7 @@ class HttpParserTest < Test::Unit::TestCase
 
     error = false
     begin
-      nread = parser.execute(req, bad_http)
+      nread = parser.execute(req, bad_http, 0)
     rescue => details
       error = true
     end
@@ -61,7 +61,7 @@ class HttpParserTest < Test::Unit::TestCase
     100.times do |c| 
       get = "GET /#{rand_data(1024, 1024+(c*1024))} HTTP/1.1\r\n"
       assert_raises Mongrel::HttpParserError do
-        parser.execute({}, get)
+        parser.execute({}, get, 0)
         parser.reset
       end
     end
@@ -70,7 +70,7 @@ class HttpParserTest < Test::Unit::TestCase
     100.times do |c|
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-#{rand_data(1024, 1024+(c*1024))}: Test\r\n\r\n"
       assert_raises Mongrel::HttpParserError do
-        parser.execute({}, get)
+        parser.execute({}, get, 0)
         parser.reset
       end
     end
@@ -79,7 +79,7 @@ class HttpParserTest < Test::Unit::TestCase
     100.times do |c|
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-Test: #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
       assert_raises Mongrel::HttpParserError do
-        parser.execute({}, get)
+        parser.execute({}, get, 0)
         parser.reset
       end
     end
@@ -88,7 +88,7 @@ class HttpParserTest < Test::Unit::TestCase
     get = "GET /#{rand_data(10,120)} HTTP/1.1\r\n"
     get << "X-Test: test\r\n" * (80 * 1024)
     assert_raises Mongrel::HttpParserError do
-      parser.execute({}, get)
+      parser.execute({}, get, 0)
       parser.reset
     end
 
@@ -96,7 +96,7 @@ class HttpParserTest < Test::Unit::TestCase
     10.times do |c|
       get = "GET #{rand_data(1024, 1024+(c*1024), false)} #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
       assert_raises Mongrel::HttpParserError do
-        parser.execute({}, get)
+        parser.execute({}, get, 0)
         parser.reset
       end
     end

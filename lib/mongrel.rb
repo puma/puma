@@ -377,7 +377,7 @@ module Mongrel
         if @socket.respond_to? :sendfile
           @socket.sendfile(f)
         else
-          while chunk = f.read(Const::CHUNK_SIZE)
+          while chunk = f.read(Const::CHUNK_SIZE) and chunk.length > 0
             @socket.write(chunk)
           end
         end
@@ -467,12 +467,16 @@ module Mongrel
       begin
         parser = HttpParser.new
         params = {}
-
+        
         data = client.readpartial(Const::CHUNK_SIZE)
-
-        while true
-          nread = parser.execute(params, data)
-
+        nparsed = 0
+        
+        # Assumption: nparsed will always be less since data will get filled with more
+        # after each parsing.  If it doesn't get more then there was a problem
+        # with the read operation on the client socket.
+        while nparsed < data.length
+          nparsed = parser.execute(params, data, nparsed)
+          
           if parser.finished?
             script_name, path_info, handlers = @classifier.resolve(params[Const::REQUEST_URI])
 
@@ -481,7 +485,7 @@ module Mongrel
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
               
-              request = HttpRequest.new(params, data[nread ... data.length] || "", client)
+              request = HttpRequest.new(params, data[nparsed ... data.length] || "", client)
               
               # in the case of large file uploads the user could close the socket, so skip those requests
               break if request.body == nil
@@ -503,14 +507,10 @@ module Mongrel
           
             break #done
           else
-            # gotta stream and read again until we can get the parser to be character safe
-            # TODO: make this more efficient since this means we're parsing a lot repeatedly
+            data << client.readpartial(Const::CHUNK_SIZE)
             if data.length >= Const::MAX_HEADER
               raise HttpParserError.new("HEADER is longer than allowed, aborting client early.")
             end
-            
-            parser.reset
-            data << client.readpartial(Const::CHUNK_SIZE)
           end
         end
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
