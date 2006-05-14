@@ -158,7 +158,8 @@ OPTIONS = {
   :docroot      => "public",
   :debug        => false,
   :config_file  => nil,
-  :config_script => nil
+  :config_script => nil,
+  :cpu          => nil
 }
 
 ARGV.options do |opts|
@@ -175,6 +176,7 @@ ARGV.options do |opts|
   opts.on('-B', '--debug', "Enable debugging mode") { |OPTIONS[:debug]| }
   opts.on('-C', '--config FILE', "Use a config file") { |OPTIONS[:config_file]| }
   opts.on('-S', '--script FILE', "Load the given file as an extra config script.") { |OPTIONS[:config_script]| }
+  opts.on('-u', '--cpu CPU', "Bind the process to specific cpu, starting from 1.") { |OPTIONS[:cpu]| }
 
   opts.parse!
 end
