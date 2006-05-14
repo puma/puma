@@ -5,54 +5,49 @@
 #include <ctype.h>
 #include <string.h>
 
-#define MARK(S,F) (S)->mark = (F);
+#define LEN(AT, FPC) (FPC - buffer - parser->AT)
+#define MARK(M,FPC) (parser->M = (FPC) - buffer)
+#define PTR_TO(F) (buffer + parser->F)
 
 /** machine **/
 %%{
 	machine http_parser;
 
-    	action mark {MARK(parser, fpc); }
+    	action mark {MARK(mark, fpc); }
 
-	action start_field { parser->field_start = fpc; }	
+	action start_field { MARK(field_start, fpc); }
 	action write_field { 
-	       parser->field_len = (p - parser->field_start);
+	       parser->field_len = LEN(field_start, fpc);
 	}
 
-	action start_value { MARK(parser, fpc); }
+	action start_value { MARK(mark, fpc); }
 	action write_value { 
-      	       assert(p - (parser->mark - 1) >= 0 && "buffer overflow"); 
 	       if(parser->http_field != NULL) {
-	       	       parser->http_field(parser->data, 
-		       		parser->field_start, parser->field_len, 
-				parser->mark+1, p - (parser->mark +1));
+	       	       parser->http_field(parser->data, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, fpc));
 		}
 	}
 	action request_method { 
-      	       assert(p - parser->mark >= 0 && "buffer overflow"); 
 	       if(parser->request_method != NULL) 
-	       	       parser->request_method(parser->data, parser->mark, p - parser->mark);
+	       	       parser->request_method(parser->data, PTR_TO(mark), LEN(mark, fpc));
 	}
 	action request_uri { 
-       	       assert(p - parser->mark >= 0 && "buffer overflow"); 
 	       if(parser->request_uri != NULL)
-	       	       parser->request_uri(parser->data, parser->mark, p - parser->mark);
+	       	       parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, fpc));
 	}
 	action query_string { 
-       	       assert(p - parser->mark >= 0 && "buffer overflow"); 
 	       if(parser->query_string != NULL)
-	       	       parser->query_string(parser->data, parser->mark, p - parser->mark);
+	       	       parser->query_string(parser->data, PTR_TO(mark), LEN(mark, fpc));
 	}
 
 	action http_version {	
-       	       assert(p - parser->mark >= 0 && "buffer overflow"); 
 	       if(parser->http_version != NULL)
-	       	       parser->http_version(parser->data, parser->mark, p - parser->mark);
+	       	       parser->http_version(parser->data, PTR_TO(mark), LEN(mark, fpc));
 	}
 
     	action done { 
-	       parser->body_start = p+1; 
+	       parser->body_start = fpc - buffer + 1; 
 	       if(parser->header_done != NULL)
-	       	       parser->header_done(parser->data, p, 0);
+	       	       parser->header_done(parser->data, fpc, 0);
 	       fbreak;
 	}
 
@@ -99,7 +94,7 @@
 
         field_value = any* >start_value %write_value;
 
-        message_header = field_name ":" field_value :> CRLF;
+        message_header = field_name ": " field_value :> CRLF;
 	
         Request = Request_Line (message_header)* ( CRLF @done);
 
@@ -113,27 +108,43 @@ int http_parser_init(http_parser *parser)  {
     int cs = 0;
     %% write init;
     parser->cs = cs;
-    parser->body_start = NULL;
+    parser->body_start = 0;
     parser->content_len = 0;
-    parser->mark = NULL;
+    parser->mark = 0;
     parser->nread = 0;
+    parser->field_len = 0;
+    parser->field_start = 0;    
 
     return(1);
 }
 
 
 /** exec **/
-size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len)  {
+size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, size_t off)  {
     const char *p, *pe;
     int cs = parser->cs;
 
-    p = buffer;
+    assert(off <= len && "offset past end of buffer");
+
+    p = buffer+off;
     pe = buffer+len;
+
+    assert(*pe == '\0' && "pointer does not end on NUL");
+    assert(pe - p == len - off && "pointers aren't same distance");
+
 
     %% write exec;
 
     parser->cs = cs;
-    parser->nread = p - buffer;
+    parser->nread += p - (buffer + off);
+
+    assert(p <= pe && "buffer overflow after parsing execute");
+    assert(parser->nread <= len && "nread longer than length");
+    assert(parser->body_start <= len && "body starts after buffer end");
+    assert(parser->mark < len && "mark is after buffer end");
+    assert(parser->field_len <= len && "field has length longer than whole buffer");
+    assert(parser->field_start < len && "field starts after buffer end");
+
     if(parser->body_start) {
         /* final \r\n combo encountered so stop right here */
 	%%write eof;

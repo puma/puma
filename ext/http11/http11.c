@@ -235,7 +235,7 @@ VALUE HttpParser_finish(VALUE self)
 
 /**
  * call-seq:
- *    parser.execute(req_hash, data) -> Integer
+ *    parser.execute(req_hash, data, start) -> Integer
  *
  * Takes a Hash and a String of data, parses the String of data filling in the Hash
  * returning an Integer to indicate how much of the data has been read.  No matter
@@ -245,23 +245,40 @@ VALUE HttpParser_finish(VALUE self)
  * This function now throws an exception when there is a parsing error.  This makes 
  * the logic for working with the parser much easier.  You can still test for an 
  * error, but now you need to wrap the parser with an exception handling block.
+ *
+ * The third argument allows for parsing a partial request and then continuing
+ * the parsing from that position.  It needs all of the original data as well 
+ * so you have to append to the data buffer as you read.
  */
-VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data)
+VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
 {
   http_parser *http = NULL;
+  int from = 0;
+  char *dptr = NULL;
+  long dlen = 0;
+
   DATA_GET(self, http_parser, http);
 
-  http->data = (void *)req_hash;
-  http_parser_execute(http, RSTRING(data)->ptr, RSTRING(data)->len);
-
-  VALIDATE_MAX_LENGTH(http_parser_nread(http), HEADER);
-
-  if(http_parser_has_error(http)) {
-    rb_raise(eHttpParserError, "Invalid HTTP format, parsing fails.");
+  from = FIX2INT(start);
+  dptr = RSTRING(data)->ptr;
+  dlen = RSTRING(data)->len;
+  
+  if(from >= dlen) {
+    rb_raise(eHttpParserError, "Requested start is after data buffer end.");
   } else {
-    return INT2FIX(http_parser_nread(http));
+    http->data = (void *)req_hash;
+    http_parser_execute(http, dptr, dlen, from);
+    
+    VALIDATE_MAX_LENGTH(http_parser_nread(http), HEADER);
+    
+    if(http_parser_has_error(http)) {
+      rb_raise(eHttpParserError, "Invalid HTTP format, parsing fails.");
+    } else {
+      return INT2FIX(http_parser_nread(http));
+    }
   }
 }
+
 
 
 /**
@@ -528,7 +545,7 @@ void Init_http11()
   rb_define_method(cHttpParser, "initialize", HttpParser_init,0);
   rb_define_method(cHttpParser, "reset", HttpParser_reset,0);
   rb_define_method(cHttpParser, "finish", HttpParser_finish,0);
-  rb_define_method(cHttpParser, "execute", HttpParser_execute,2);
+  rb_define_method(cHttpParser, "execute", HttpParser_execute,3);
   rb_define_method(cHttpParser, "error?", HttpParser_has_error,0);
   rb_define_method(cHttpParser, "finished?", HttpParser_is_finished,0);
   rb_define_method(cHttpParser, "nread", HttpParser_nread,0);

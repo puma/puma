@@ -12,11 +12,11 @@ typedef void (*field_cb)(void *data, const char *field, size_t flen, const char 
 
 typedef struct http_parser { 
   int cs;
-  const char *body_start;
+  size_t body_start;
   int content_len;
   size_t nread;
-  const char *mark;
-  const char *field_start;
+  size_t mark;
+  size_t field_start;
   size_t field_len;
 
   void *data;
@@ -32,7 +32,7 @@ typedef struct http_parser {
 
 int http_parser_init(http_parser *parser);
 int http_parser_finish(http_parser *parser);
-size_t http_parser_execute(http_parser *parser, const char *data, size_t len );
+size_t http_parser_execute(http_parser *parser, const char *data, size_t len, size_t off);
 int http_parser_has_error(http_parser *parser);
 int http_parser_is_finished(http_parser *parser);
 
