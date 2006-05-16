@@ -47,7 +47,8 @@ class ResponseTest < Test::Unit::TestCase
   def test_response_file
     contents = "PLAIN TEXT\r\nCONTENTS\r\n"
     require 'tempfile'
-    tmpf = open("test_response_file", "wb")
+    tmpf = Tempfile.new("test_response_file")
+    tmpf.binmode
     tmpf.write(contents)
     tmpf.rewind
 
@@ -60,8 +61,6 @@ class ResponseTest < Test::Unit::TestCase
     end
     io.rewind
     tmpf.close
-    
-    File.unlink("test_response_file")
     
     assert io.length > 0, "output didn't have data"
     assert io.read[-contents.length..-1] == contents, "output doesn't end with file payload"
