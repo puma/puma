@@ -6,10 +6,10 @@ include Mongrel
 
 class HttpParserTest < Test::Unit::TestCase
   def setup
-    @h = HttpServer.new('0.0.0.0', 3001)
+    @h = HttpServer.new('127.0.0.1', 3501)
     @h.register('/', Mongrel::DirHandler.new('.'))
     @h.run
-
+    
     @http = Net::HTTP.new(@h.host, @h.port)
 
     # get the ETag and Last-Modified headers

@@ -10,7 +10,7 @@ require 'mongrel/tcphack'
 require 'yaml'
 require 'time'
 require 'rubygems' 
-require 'resolv-replace'
+
 
 begin
   require 'sendfile'
