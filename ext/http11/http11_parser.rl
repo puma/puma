@@ -81,7 +81,7 @@
         param = ( pchar | "/" )* ;
         params = (param ( ";" param )*) ;
         rel_path = (path? (";" params)?) %request_uri  ("?" query)? ;
-        absolute_path = ("/" rel_path) >mark ;
+        absolute_path = ("/"+ rel_path) >mark ;
         
         Request_URI = ("*" >mark %request_uri | absolute_uri | absolute_path) ;
         Method = (upper | digit | safe){1,20} >mark %request_method;
