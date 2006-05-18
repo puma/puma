@@ -96,7 +96,7 @@ class Start < GemPlugin::Plugin "/commands"
         end
 
         log "Starting Rails in environment #{defaults[:environment]} ..."
-        uri "/", :handler => rails
+        uri "/", :handler => rails(:mime => mime)
         log "Rails loaded."
 
         log "Loading any Rails specific GemPlugins"
