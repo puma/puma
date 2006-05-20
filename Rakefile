@@ -31,11 +31,23 @@ task :ragel do
   sh %{/usr/local/bin/ragel ext/http11/http11_parser.rl | /usr/local/bin/rlcodegen -G2 -o ext/http11/http11_parser.c}
 end
 
-task :site do
+task :site_webgen do
   sh %{pushd doc/site; webgen; scp -r output/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
+end
+
+task :site_rdoc do
   sh %{ scp -r doc/rdoc/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
+end
+
+task :site_coverage => [:test_units_with_coverage] do
+  sh %{ scp -r test/coverage/unit/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/coverage/ }
+end
+
+task :site_projects_rdoc do
   sh %{ cd projects/gem_plugin; rake site }
 end
+
+task :site => [:site_webgen, :site_rdoc, :site_coverage, :site_projects_rdoc]
 
 setup_extension("http11", "http11")
 
