@@ -159,16 +159,13 @@ module Mongrel
       # but sets up the additional HUP handler to call reload!.
       def setup_rails_signals(options={})
         ops = resolve_defaults(options)
-
+        setup_signals(options)
+        
         if RUBY_PLATFORM !~ /mswin/
-          setup_signals(options)
-
           # rails reload
           trap("HUP") { log "HUP signal received."; reload!          }
 
           log "Rails signals registered.  HUP => reload (without restart).  It might not work well."
-        else
-          log "WARNING:  Rails does not support signals on Win32."
         end
       end
     end
