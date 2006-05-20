@@ -1,5 +1,6 @@
 require 'test/unit'
 require 'mongrel/stats'
+require 'stringio'
 
 class StatsTest < Test::Unit::TestCase
 

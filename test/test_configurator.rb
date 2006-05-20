@@ -1,5 +1,6 @@
 require 'test/unit'
 require 'mongrel'
+require 'net/http'
 
 $test_plugin_fired = 0
 
