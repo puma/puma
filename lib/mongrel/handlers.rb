@@ -95,7 +95,8 @@ module Mongrel
 
     # Checks if the given path can be served and returns the full path (or nil if not).
     def can_serve(path_info)
-      req_path = File.expand_path(File.join(@path,path_info), @path)
+      # TODO: investigate freezing the path_info to prevent double escaping
+      req_path = File.expand_path(File.join(@path,HttpRequest.unescape(path_info)), @path)
 
       if req_path.index(@path) == 0 and File.exist? req_path
         # it exists and it's in the right location
@@ -129,6 +130,7 @@ module Mongrel
     # object to send the results on.
     def send_dir_listing(base, dir, response)
       # take off any trailing / so the links come out right
+      base = HttpRequest.unescape(base)
       base.chop! if base[-1] == "/"[-1]
 
       if @listing_allowed
@@ -136,6 +138,7 @@ module Mongrel
           head[Const::CONTENT_TYPE] = "text/html"
           out << "<html><head><title>Directory Listing</title></head><body>"
           Dir.entries(dir).each do |child|
+            child = HttpRequest.unescape(child)
             next if child == "."
 
             if child == ".."
