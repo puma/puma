@@ -863,6 +863,7 @@ module Mongrel
         s.run 
       }
 
+      $mongrel_sleeper_thread = Thread.new { loop { sleep 1 } }
     end
 
     # Calls .stop on all the configured listeners so they
