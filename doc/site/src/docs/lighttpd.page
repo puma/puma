@@ -1,8 +1,15 @@
----
+--
 title: Lighttpd
 inMenu: true
 directoryName: Documentation
 ---
+
+*I'm sad to say that I have to recommend people not use lighttpd anymore.*
+The author hasn't updated the mod_proxy plugin and isn't providing too much
+support for the bugs it has.  If you're running lighttpd and you constantly
+see 500 errors that are never recovered, then you should switch to Apache
+or another web server that can handle properly balancing backends.
+
 
 h1.  Using Lighttpd With Mongrel
 

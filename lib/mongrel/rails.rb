@@ -19,7 +19,7 @@ module Mongrel
     #
     # * If the requested exact PATH_INFO exists as a file then serve it.
     # * If it exists at PATH_INFO+".html" exists then serve that.
-    # * Finally, construct a Mongrel::CGIWrapper and run Dispatcher.dispath to have Rails go.
+    # * Finally, construct a Mongrel::CGIWrapper and run Dispatcher.dispatch to have Rails go.
     #
     # This means that if you are using page caching it will actually work with Mongrel
     # and you should see a decent speed boost (but not as fast as if you use lighttpd).
@@ -42,7 +42,7 @@ module Mongrel
       #
       # * If the requested exact PATH_INFO exists as a file then serve it.
       # * If it exists at PATH_INFO+".html" exists then serve that.
-      # * Finally, construct a Mongrel::CGIWrapper and run Dispatcher.dispath to have Rails go.
+      # * Finally, construct a Mongrel::CGIWrapper and run Dispatcher.dispatch to have Rails go.
       def process(request, response)
         return if response.socket.closed?
 
@@ -115,7 +115,7 @@ module Mongrel
       # time you call this function it does all the config
       # needed to get your rails working.  After that
       # it returns the one handler you've configured.
-      # This lets you attach Rails to any URI (and mulitple)
+      # This lets you attach Rails to any URI (and multiple)
       # you want, but still protects you from threads destroying
       # your handler.
       def rails(options={})

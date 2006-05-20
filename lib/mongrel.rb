@@ -104,7 +104,7 @@ module Mongrel
     # This is the part of the path after the SCRIPT_NAME.  URIClassifier will determine this.
     PATH_INFO="PATH_INFO".freeze
 
-    # This is the intial part that your handler is identified as by URIClassifier.
+    # This is the initial part that your handler is identified as by URIClassifier.
     SCRIPT_NAME="SCRIPT_NAME".freeze
 
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
@@ -419,7 +419,7 @@ module Mongrel
   # You use it by doing the following:
   #
   #   server = HttpServer.new("0.0.0.0", 3000)
-  #   server.register("/stuff", MyNifterHandler.new)
+  #   server.register("/stuff", MyNiftyHandler.new)
   #   server.run.join
   #
   # The last line can be just server.run if you don't want to join the thread used.
@@ -491,7 +491,7 @@ module Mongrel
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
 
-              # TODO: Find a faster/better way to carve out the range, preferrably without copying.
+              # TODO: Find a faster/better way to carve out the range, preferably without copying.
               request = HttpRequest.new(params, data[nparsed ... data.length] || "", client)
 
               # in the case of large file uploads the user could close the socket, so skip those requests

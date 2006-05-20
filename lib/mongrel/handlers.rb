@@ -206,7 +206,7 @@ module Mongrel
     end
 
     # Process the request to either serve a file or a directory listing
-    # if allowed (based on the listing_allowed paramter to the constructor).
+    # if allowed (based on the listing_allowed parameter to the constructor).
     def process(request, response)
       req_method = request.params[Const::REQUEST_METHOD] || Const::GET
       req_path = can_serve request.params[Const::PATH_INFO]

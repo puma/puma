@@ -16,7 +16,7 @@ h2. Requirements
 
 We assume that the following:
 
-* Pound and the monogrel cluster are running on the same machine [1].
+* Pound and the Mongrel cluster are running on the same machine [1].
 * *Pound 2.0.4* is built and installed, including SSL support if desired.
 * The *mongrel* gem is installed.
 * The *mongrel_cluster* gem is installed.
@@ -134,6 +134,7 @@ SSL: <%= @sslyn %>
 
 Visiting @http://127.0.0.1/Test/@ should show @SSL: false@ while visiting @https://127.0.0.1/Test/@
 should return @SSL: true@.
+
 fn1. It is not required that pound run on the same machine as the mongrel servers.  It was just chosen
 for this example.
 

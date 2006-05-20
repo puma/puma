@@ -14,7 +14,7 @@ docs that you can refer to based on these.
 h2. Getting Started
 
 Start here to get a good grounding in getting Mongrel up and running.
-These documents are targetted at developers who will be starting off
+These documents are targeted at developers who will be starting off
 using Mongrel and might want to throw in a few little tricks. 
 Serious deployments should check out *Deployment Best Practices*.
 
@@ -74,7 +74,7 @@ People writing plugins will want these.
 * "GemPlugin RDoc":/gem_plugin_rdoc/index.html
 
 
-If there's documentation you'd like then feel free to e-mail the list or post
+If there's documentation you'd like then feel free to E-mail the list or post
 to the tracker.
 
 h1. Other People's Documentation

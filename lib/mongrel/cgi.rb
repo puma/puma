@@ -10,7 +10,7 @@ module Mongrel
   # The CGIWrapper.handler attribute is normally not set and is available for 
   # frameworks that need to get back to the handler.  Rails uses this to give
   # people access to the RailsHandler#files (DirHandler really) so they can
-  # look-up paths and do other things withthe files managed there.
+  # look-up paths and do other things with the files managed there.
   #
   # In Rails you can get the real file for a request with:
   #

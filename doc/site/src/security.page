@@ -25,7 +25,7 @@ the future.
 
 h2. Mongrels HTTP Restrictions
 
-Many of the exploits out there currently for web servers tend to expoit
+Many of the exploits out there currently for web servers tend to exploit
 either ambiguous areas of the HTTP grammar, or the lack of size specifications
 in the protocol.  To protect against this Mongrel uses a fairly strict parser,
 but since many browser authors don't read specifications (and hell, who'd want

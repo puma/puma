@@ -226,7 +226,7 @@ h2. Mar-15:   Mongrel 0.3.11 -- Edge Rails Compliant
 
 The main thing with this release is that it works with edge Rails
 and has all the right dependencies.  There was a nasty bug with
-how RubyGems loads autorequired gems when any dependency is loaded.
+how RubyGems loads auto required gems when any dependency is loaded.
 In order to avoid this GemPlugins will now require the init.rb for
 the plugin directly rather than through RubyGems.  There are also
 other little tweaks to clean up how Rails runs.
@@ -310,7 +310,7 @@ Just do:
  $ gem install mongrel_status
 
 If you run mongrel_rails now you'll see a new command "status".
-Change to a Rails appliction directory where you have a daemon
+Change to a Rails application directory where you have a daemon
 running and it'll print out the PID.
 
 There will be tons of documentation coming out, and the ability
