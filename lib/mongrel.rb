@@ -387,6 +387,8 @@ module Mongrel
             @socket.write(chunk)
           end
         end
+
+        @body_send = true
       end
     rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
       # ignore these since it means the client closed off early

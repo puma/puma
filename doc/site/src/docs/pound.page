@@ -16,7 +16,7 @@ h2. Requirements
 
 We assume that the following:
 
-* Pound and the Mongrel cluster are running on the same machine [1].
+* Pound and the monogrel cluster are running on the same machine[1].
 * *Pound 2.0.4* is built and installed, including SSL support if desired.
 * The *mongrel* gem is installed.
 * The *mongrel_cluster* gem is installed.
@@ -111,8 +111,8 @@ Our Rails application should now be available at http://127.0.0.1/ and https://1
 
 h2. Testing SSL in Rails
 
-The line @AddHeader "X-Forwarded-Proto: https"@[2] in the ListenHTTPS section tells pound to add
-a header to the request as it is passed back to the mongrel servers.  This will tell the rails application
+The line @AddHeader "X-Forwarded-Proto: https"@ in the ListenHTTPS section tells pound to add
+a header to the request as it is passed back to the mongrel servers[2].  This will tell the rails application
 that the request was originally an SSL request.  We can test this with the following simple Rails
 controller, app/controller/test_controller.rb:
 <pre>
@@ -125,15 +125,16 @@ end
 </code>
 </pre>
 And the acompanying view, app/views/test/index.rhtml: 
+
 <pre>
-<code>
 <h1>test</h1>
-SSL: <%= @sslyn %>
-</code>
+SSL: < %= @sslyn %>
 </pre>
 
 Visiting @http://127.0.0.1/Test/@ should show @SSL: false@ while visiting @https://127.0.0.1/Test/@
 should return @SSL: true@.
+
+<hr>
 
 fn1. It is not required that pound run on the same machine as the mongrel servers.  It was just chosen
 for this example.
