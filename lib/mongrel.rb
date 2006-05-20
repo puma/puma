@@ -9,7 +9,8 @@ require 'mongrel/command'
 require 'mongrel/tcphack'
 require 'yaml'
 require 'time'
-require 'rubygems' 
+require 'rubygems'
+require 'etc' 
 
 
 begin
@@ -692,12 +693,26 @@ module Mongrel
       @listeners = {}
       @defaults = defaults
       @needs_restart = false
-
+      
+      change_privilege(@defaults[:user], @defaults[:group])
+      
       if blk
         cloaker(&blk).bind(self).call
       end
     end
-
+    
+    # Change privilege of the process to specified user and group.
+    def change_privilege(user, group)
+      if user
+        log "Changing user to #{user}." 
+        Process::UID.change_privilege(Etc.getpwnam(user).uid)
+      end
+      if group
+        log "Changing group to #{group}."
+        Process::GID.change_privilege(Etc.getgrnam(group).gid)
+      end
+    end
+    
     # generates a class for cloaking the current self and making the DSL nicer
     def cloaking_class
       class << self

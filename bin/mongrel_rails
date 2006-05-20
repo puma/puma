@@ -3,6 +3,7 @@ require 'rubygems'
 require 'yaml'
 require 'mongrel'
 require 'mongrel/rails'
+require 'etc'
 
 
 class Version < GemPlugin::Plugin "/commands"
@@ -34,7 +35,9 @@ class Start < GemPlugin::Plugin "/commands"
       ['-B', '--debug', "Enable debugging mode", :@debug, false],
       ['-C', '--config PATH', "Use a config file", :@config_file, nil],
       ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil],
-      ['-G', '--generate CONFIG', "Generate a config file for -C", :@generate, nil]
+      ['-G', '--generate CONFIG', "Generate a config file for -C", :@generate, nil],
+      ['-u', '--user USER', "User to run as", :@user, nil],
+      ['-g', '--group GROUP', "Group to run as", :@group, nil]
     ]
   end
 
@@ -51,9 +54,32 @@ class Start < GemPlugin::Plugin "/commands"
     valid_exists? @mime_map, "MIME mapping file does not exist: #@mime_map" if @mime_map
     valid_exists? @config_file, "Config file not there: #@config_file" if @config_file
     valid_dir? File.dirname(@generate), "Problem accessing directory to #@generate" if @generate
+    valid_user? @user if @user
+    valid_group? @group if @group
+    
     return @valid
   end
-
+  
+  def valid_user?(user)
+    valid?(Process.uid == 0, "You must be root to change the user.")
+    begin
+      Etc.getpwnam(user)
+    rescue
+      failure "User does not exist: #{user}"
+      @valid = false
+    end
+  end
+  
+  def valid_group?(group)
+    valid?(Process.uid == 0, "You must be root to change the group.")
+    begin
+      Etc.getgrnam(group)
+    rescue
+      failure "Group does not exist: #{group}"
+      @valid = false
+    end
+  end
+  
   def run
 
     # command line setting override config file settings
@@ -61,7 +87,8 @@ class Start < GemPlugin::Plugin "/commands"
       :log_file => @log_file, :pid_file => @pid_file, :environment => @environment,
       :docroot => @docroot, :mime_map => @mime_map, :daemon => @daemon,
       :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
-      :num_processors => @num_procs, :timeout => @timeout
+      :num_processors => @num_procs, :timeout => @timeout,
+      :user => @user, :group => @group
     }
 
     if @generate
