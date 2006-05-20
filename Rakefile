@@ -20,7 +20,7 @@ task :compile => [:http11] do
   if Dir.glob(File.join("lib","http11.*")).length == 0
     STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     STDERR.puts "Gem actually failed to build.  Your system is"
-    STDERR.puts "NOT configured properly to build RubyGems."
+    STDERR.puts "NOT configured properly to build Mongrel."
     STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     exit(1)
   end
