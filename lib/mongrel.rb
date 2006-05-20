@@ -390,7 +390,7 @@ module Mongrel
       end
     rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
       # ignore these since it means the client closed off early
-      STDERR.puts "Client closed socket early requesting file #{req}: #$!"
+      STDERR.puts "Client closed socket early requesting file #{path}: #$!"
     end
 
     def write(data)
