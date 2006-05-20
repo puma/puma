@@ -941,15 +941,15 @@ module Mongrel
 
       @pid_file = ops[:pid_file]
 
+      # forced shutdown, even if previously restarted (actually just like TERM but for CTRL-C)
+      trap("INT") { log "INT signal received."; stop(need_restart=false) }
+
       if RUBY_PLATFORM !~ /mswin/
         # graceful shutdown
         trap("TERM") { log "TERM signal received."; stop }
 
         # restart
         trap("USR2") { log "USR2 signal received."; stop(need_restart=true) }
-
-        # forced shutdown, even if previously restarted (actually just like TERM but for CTRL-C)
-        trap("INT") { log "INT signal received."; stop(need_restart=false) }
 
         log "Signals ready.  TERM => stop.  USR2 => restart.  INT => stop (no restart)."
       else
