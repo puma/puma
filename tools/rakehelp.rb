@@ -109,3 +109,34 @@ def sub_project(project, *targets)
     sh %{cd projects/#{project}; rake #{target.to_s}; }
   end
 end
+
+#==============================================================
+# A set of rake tasks for using the Rcov code coverage utility
+# http://www.soapboxsoftware.org/articles/2006/05/06/another-rake-task-for-rcov
+#==============================================================
+
+require 'rake/clean'
+
+rcov_path = ENV['RCOV_PATH'] ? ENV['RCOV_PATH'] : "#{Config::CONFIG['bindir']}/rcov"
+rcov_test_output = "./test/coverage"
+rcov_unit_test_output = "#{rcov_test_output}/unit"
+rcov_exclude="rubygems,test/test_"
+# Add our created paths to the 'rake clobber' list
+CLOBBER.include(rcov_unit_test_output)
+
+desc 'Removes all previous unit test coverage information'
+task (:reset_unit_test_coverage) do |t|
+  mkdir_p rcov_unit_test_output
+  rm_rf rcov_unit_test_output
+  mkdir rcov_unit_test_output
+end
+
+desc 'Run all unit tests with Rcov to measure coverage'
+Rake::TestTask.new(:test_units_with_coverage => [ :reset_unit_test_coverage ]) do |t|
+  t.libs << "test"
+  t.pattern = 'test/**/*test*.rb'
+  t.ruby_opts << rcov_path
+  t.ruby_opts << "-o #{rcov_unit_test_output} -x #{rcov_exclude}"
+  t.verbose = true
+end
+

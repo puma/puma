@@ -28,15 +28,15 @@ module Mongrel
     class RailsHandler < Mongrel::HttpHandler
       attr_reader :files
       attr_reader :guard
-      
+
       def initialize(dir, mime_map = {})
         @files = Mongrel::DirHandler.new(dir,false)
         @guard = Mutex.new
-        
+
         # register the requested mime types
         mime_map.each {|k,v| Mongrel::DirHandler::add_mime_type(k,v) }
       end
-      
+
       # Attempts to resolve the request as follows:
       #
       #
@@ -45,12 +45,12 @@ module Mongrel
       # * Finally, construct a Mongrel::CGIWrapper and run Dispatcher.dispath to have Rails go.
       def process(request, response)
         return if response.socket.closed?
-        
+
         path_info = request.params[Mongrel::Const::PATH_INFO]
         page_cached = request.params[Mongrel::Const::PATH_INFO] + ".html"
-        
+
         if @files.can_serve(path_info)
-            # File exists as-is so serve it up
+          # File exists as-is so serve it up
           @files.process(request,response)
         elsif @files.can_serve(page_cached)
           # possible cached page, serve it up      
@@ -60,12 +60,12 @@ module Mongrel
           begin
             cgi = Mongrel::CGIWrapper.new(request, response)
             cgi.handler = self
-            
+
             @guard.synchronize do
               # Rails is not thread safe so must be run entirely within synchronize 
               Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
             end
-            
+
             # This finalizes the output using the proper HttpResponse way
             cgi.out {""}
           rescue Errno::EPIPE
@@ -76,8 +76,8 @@ module Mongrel
           end
         end
       end
-      
-      
+
+
       # Does the internal reload for Rails.  It might work for most cases, but
       # sometimes you get exceptions.  In that case just do a real restart.
       def reload!
@@ -93,7 +93,7 @@ module Mongrel
     # Creates Rails specific configuration options for people to use 
     # instead of the base Configurator.
     class RailsConfigurator < Mongrel::Configurator
-      
+
       # Creates a single rails handler and returns it so you
       # can add it to a uri. You can actually attach it to 
       # as many URIs as you want, but this returns the 
@@ -119,28 +119,28 @@ module Mongrel
       # you want, but still protects you from threads destroying
       # your handler.
       def rails(options={})
-        
+
         return @rails_handler if @rails_handler
-        
+
         ops = resolve_defaults(options)
-        
+
         # fix up some defaults
         ops[:environment] ||= "development"
         ops[:docroot] ||= "public"
         ops[:mime] ||= {}
-        
-        
+
+
         $orig_dollar_quote = $".clone
         ENV['RAILS_ENV'] = ops[:environment]
         env_location = "#{ops[:cwd]}/config/environment"
         require env_location
         require 'dispatcher'
         require 'mongrel/rails'
-        
+
         @rails_handler = RailsHandler.new(ops[:docroot], ops[:mime])
       end
-      
-      
+
+
       # Reloads rails.  This isn't too reliable really, but
       # should work for most minimal reload purposes.  Only reliable
       # way it so stop then start the process.
@@ -148,27 +148,24 @@ module Mongrel
         if not @rails_handler
           raise "Rails was not configured.  Read the docs for RailsConfigurator."
         end
-        
+
         log "Reloading rails..."
         @rails_handler.reload!
         log "Done reloading rails."
-        
+
       end
-      
+
       # Takes the exact same configuration as Mongrel::Configurator (and actually calls that)
       # but sets up the additional HUP handler to call reload!.
       def setup_rails_signals(options={})
         ops = resolve_defaults(options)
-        
+
         if RUBY_PLATFORM !~ /mswin/
           setup_signals(options)
-          
+
           # rails reload
-          trap("HUP") { 
-            log "HUP signal received."
-            reload!
-          }
-          
+          trap("HUP") { log "HUP signal received."; reload!          }
+
           log "Rails signals registered.  HUP => reload (without restart).  It might not work well."
         else
           log "WARNING:  Rails does not support signals on Win32."
