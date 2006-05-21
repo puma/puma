@@ -16,7 +16,7 @@ h2. Requirements
 
 We assume that the following:
 
-* Pound and the monogrel cluster are running on the same machine[1].
+* Pound and the mongrel cluster are running on the same machine[1].
 * *Pound 2.0.4* is built and installed, including SSL support if desired.
 * The *mongrel* gem is installed.
 * The *mongrel_cluster* gem is installed.

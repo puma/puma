@@ -32,6 +32,8 @@ static VALUE global_mongrel_version;
 static VALUE global_server_software;
 static VALUE global_port_80;
 
+#define TRIE_INCREASE 30
+
 /** Defines common length and error messages for input length validation. */
 #define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " # length " allowed length.";
 
@@ -63,7 +65,7 @@ void http_field(void *data, const char *field, size_t flen, const char *value, s
   v = rb_str_new(value, vlen);
   f = rb_str_dup(global_http_prefix);
   f = rb_str_buf_cat(f, field, flen); 
-  
+
   for(ch = RSTRING(f)->ptr, end = ch + RSTRING(f)->len; ch < end; ch++) {
     if(*ch == '-') {
       *ch = '_';
@@ -100,7 +102,7 @@ void query_string(void *data, const char *at, size_t length)
 {
   VALUE req = (VALUE)data;
   VALUE val = Qnil;
-  
+
   VALIDATE_MAX_LENGTH(length, QUERY_STRING);
 
   val = rb_str_new(at, length);
@@ -337,7 +339,6 @@ void URIClassifier_free(void *data)
 }
 
 
-#define TRIE_INCREASE 30
 
 VALUE URIClassifier_alloc(VALUE klass)
 {
