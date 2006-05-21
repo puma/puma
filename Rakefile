@@ -25,6 +25,7 @@ task :compile => [:http11] do
     exit(1)
   end
 end
+
 task :package => [:clean,:compile,:test]
 
 task :ragel do
