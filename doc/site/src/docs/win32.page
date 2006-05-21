@@ -15,9 +15,7 @@ pre-compiled gems available for people to use.
 
 h2. Stopping The mongrel_rails Script
 
-When you run the mongrel_rails script from the command line you'll have to use *CTRL-Pause/Break*
-to get it to exit rather than CTRL-C.
-
+Just like in POSIX systems, you use CTRL-C to exit the mongrel_rails script.
 
 h2. Running The Service
 

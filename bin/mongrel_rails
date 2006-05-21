@@ -36,8 +36,8 @@ class Start < GemPlugin::Plugin "/commands"
       ['-C', '--config PATH', "Use a config file", :@config_file, nil],
       ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil],
       ['-G', '--generate CONFIG', "Generate a config file for -C", :@generate, nil],
-      ['-u', '--user USER', "User to run as", :@user, nil],
-      ['-g', '--group GROUP', "Group to run as", :@group, nil]
+      ['', '--user USER', "User to run as", :@user, nil],
+      ['', '--group GROUP', "Group to run as", :@group, nil]
     ]
   end
 
@@ -62,6 +62,7 @@ class Start < GemPlugin::Plugin "/commands"
   
   def valid_user?(user)
     valid?(Process.uid == 0, "You must be root to change the user.")
+    valid?(@group, "You must also specify a group.")
     begin
       Etc.getpwnam(user)
     rescue
@@ -72,6 +73,7 @@ class Start < GemPlugin::Plugin "/commands"
   
   def valid_group?(group)
     valid?(Process.uid == 0, "You must be root to change the group.")
+    valid?(@user, "You must also specify a user.")
     begin
       Etc.getgrnam(group)
     rescue
@@ -140,6 +142,7 @@ class Start < GemPlugin::Plugin "/commands"
 
     config.run
     config.log "Mongrel available at #{settings[:host]}:#{settings[:port]}"
+    config.log "Use CTRL-C to stop." if not @daemon
     config.join
 
     if config.needs_restart

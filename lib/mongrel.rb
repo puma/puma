@@ -721,13 +721,13 @@ module Mongrel
     
     # Change privilege of the process to specified user and group.
     def change_privilege(user, group)
-      if user
-        log "Changing user to #{user}." 
-        Process::UID.change_privilege(Etc.getpwnam(user).uid)
-      end
       if group
         log "Changing group to #{group}."
         Process::GID.change_privilege(Etc.getgrnam(group).gid)
+      end
+      if user
+        log "Changing user to #{user}." 
+        Process::UID.change_privilege(Etc.getpwnam(user).uid)
       end
     end
     
@@ -989,7 +989,7 @@ module Mongrel
 
         log "Signals ready.  TERM => stop.  USR2 => restart.  INT => stop (no restart)."
       else
-        log "WARNING: Win32 does not have signals support."
+        log "Signals ready.  INT => stop (no restart)."
       end
     end
 
