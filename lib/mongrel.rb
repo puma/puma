@@ -264,7 +264,6 @@ module Mongrel
 
       return params
     end
-
   end
 
 
@@ -286,7 +285,6 @@ module Mongrel
     def[]=(key,value)
       @out.write(Const::HEADER_FORMAT % [key, value])
     end
-
   end
 
   # Writes and controls your response to the client using the HTTP/1.1 specification.
@@ -606,7 +604,6 @@ module Mongrel
               sleep @timeout/100 if @timeout > 0
             end
           rescue StopServer
-            STDERR.puts "Server stopped.  Exiting."
             @socket.close if not @socket.closed?
             break
           rescue Errno::EMFILE
@@ -909,7 +906,6 @@ module Mongrel
     # to prevent Ruby from exiting until each one is done.
     def run
       @listeners.each {|name,s| 
-        log "Running #{name} listener." 
         s.run 
       }
 
@@ -922,7 +918,6 @@ module Mongrel
     # should be unlinked on exit.
     def stop(needs_restart=false, unlink_pid_file=true)
       @listeners.each {|name,s| 
-        log "Stopping #{name} listener." 
         s.stop 
       }
 

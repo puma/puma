@@ -124,11 +124,11 @@ class HttpParserTest < Test::Unit::TestCase
 
 
   def test_query_parse
-    res = HttpRequest.query_parse("zed=1&frank=2")
+    res = HttpRequest.query_parse("zed=1&frank=#{HttpRequest.escape('&&& ')}")
     assert res["zed"], "didn't get the request right"
     assert res["frank"], "no frank"
     assert_equal "1", res["zed"], "wrong result"
-    assert_equal "2", res["frank"], "wrong result"
+    assert_equal "&&& ", HttpRequest.unescape(res["frank"]), "wrong result"
 
     res = HttpRequest.query_parse("zed=1&zed=2&zed=3&frank=11;zed=45")
     assert res["zed"], "didn't get the request right"

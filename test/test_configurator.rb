@@ -55,14 +55,20 @@ class ConfiguratorTest < Test::Unit::TestCase
         uri "/test", :handler => plugin("/handlers/testplugin")
         uri "/test", :handler => Mongrel::DirHandler.new(".")
         uri "/test", :handler => plugin("/handlers/testplugin")
+
+        debug "/"
+        setup_signals
+
+        run_config(File.dirname(__FILE__) + "/../test/mongrel.conf")
+        load_mime_map(File.dirname(__FILE__) + "/../examples/mime.yaml")
+
         run
       end
     end
 
 
     config.listeners.each do |host,listener| 
-      puts "Registered URIs: #{listener.classifier.uris.inspect}"
-      assert listener.classifier.uris.length == 2, "Wrong number of registered URIs"
+      assert listener.classifier.uris.length == 3, "Wrong number of registered URIs"
       assert listener.classifier.uris.include?("/"),  "/ not registered"
       assert listener.classifier.uris.include?("/test"), "/test not registered"
     end

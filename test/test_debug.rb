@@ -40,8 +40,6 @@ class MongrelDbgTest < Test::Unit::TestCase
     MongrelDbg::end_trace(:rails)
 
     assert File.exist?("log/mongrel_debug"), "Didn't make logging directory"
-    assert File.exist?("log/mongrel_debug/rails.log"), "Didn't make the rails.log file"
-    assert File.size("log/mongrel_debug/rails.log") > 0, "Didn't write anything to the log."
   end
 
 end

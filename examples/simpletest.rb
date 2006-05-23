@@ -1,7 +1,6 @@
 $LOAD_PATH << File.join(File.dirname(__FILE__), "..", "lib")
 require 'mongrel'
 require 'yaml'
-require 'zlib'
 
 class SimpleHandler < Mongrel::HttpHandler
   def process(request, response)

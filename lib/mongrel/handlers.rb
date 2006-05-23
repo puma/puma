@@ -1,4 +1,5 @@
 require 'mongrel/stats'
+require 'zlib'
 
 # Mongrel Web Server - A Mostly Ruby Webserver and Library
 #
@@ -273,17 +274,21 @@ module Mongrel
   # When added to a config script (-S in mongrel_rails) it will
   # look at the client's allowed response types and then gzip 
   # compress anything that is going out.
+  #
+  # Valid option is :always_deflate => false which tells the handler to 
+  # deflate everything even if the client can't handle it.
   class DeflateFilter < HttpHandler
     HTTP_ACCEPT_ENCODING = "HTTP_ACCEPT_ENCODING" 
 
     def initialize(ops={})
       @options = ops
+      @always_deflate = ops[:always_deflate] || false
     end
 
     def process(request, response)
       accepts = request.params[HTTP_ACCEPT_ENCODING]
       # only process if they support compression
-      if accepts and (accepts.include? "deflate" and not response.body_sent)
+      if @always_deflate or (accepts and (accepts.include? "deflate" and not response.body_sent))
         response.header["Content-Encoding"] = "deflate"
         # we can't just rewind the body and gzip it since the body could be an attached file
         response.body.rewind
