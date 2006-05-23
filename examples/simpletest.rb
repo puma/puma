@@ -28,13 +28,19 @@ if ARGV.length != 3
   exit(1)
 end
 
+stats = Mongrel::StatisticsFilter.new(:sample_rate => 1)
+
 config = Mongrel::Configurator.new :host => ARGV[0], :port => ARGV[1] do
   listener do
     uri "/", :handler => SimpleHandler.new
     uri "/", :handler => Mongrel::DeflateFilter.new
+    uri "/", :handler => stats
     uri "/dumb", :handler => DumbHandler.new
     uri "/dumb", :handler => Mongrel::DeflateFilter.new
+    uri "/dumb", :handler => stats
     uri "/files", :handler => Mongrel::DirHandler.new(ARGV[2])
+    uri "/files", :handler => stats
+    uri "/status", :handler => Mongrel::StatusHandler.new(:stats_filter => stats)
   end
 
   trap("INT") { stop }

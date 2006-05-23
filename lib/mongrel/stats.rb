@@ -57,8 +57,14 @@ class Stats
 
   # Dump this Stats object with an optional additional message.
   def dump(msg = "", out=STDERR)
-    out.puts "[#{@name}] #{msg} : SUM=#@sum, SUMSQ=#@sumsq, N=#@n, MEAN=#{mean}, SD=#{sd}, MIN=#@min, MAX=#@max"
+    out.puts "#{msg}: #{self.to_s}"
   end
+
+  # Returns a common display (used by dump)
+  def to_s  
+    "[#{@name}]: SUM=%0.4f, SUMSQ=%0.4f, N=%0.4f, MEAN=%0.4f, SD=%0.4f, MIN=%0.4f, MAX=%0.4f" % [@sum, @sumsq, @n, mean, sd, @min, @max]
+  end
+
 
   # Calculates and returns the mean for the data passed so far.
   def mean

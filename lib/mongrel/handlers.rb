@@ -1,3 +1,5 @@
+require 'mongrel/stats'
+
 # Mongrel Web Server - A Mostly Ruby Webserver and Library
 #
 # Copyright (C) 2005 Zed A. Shaw zedshaw AT zedshaw dot com
@@ -29,6 +31,7 @@ module Mongrel
   #
   class HttpHandler
     attr_reader :header_only
+    attr_accessor :listener
 
     def process(request, response)
     end
@@ -42,6 +45,7 @@ module Mongrel
   module HttpHandlerPlugin
     attr_reader :options
     attr_reader :header_only
+    attr_accessor :listener
 
     def initialize(options={})
       @options = options
@@ -64,7 +68,7 @@ module Mongrel
     def initialize(msg)
       @response = Const::ERROR_404_RESPONSE + msg
     end
-    
+
     # Just kicks back the standard 404 response with your special message.
     def process(request, response)
       response.socket.write(@response)
@@ -165,7 +169,7 @@ module Mongrel
             if child == ".."
               out << "<a href=\"#{base}/#{child}\">Up to parent..</a><br/>"
             else
-              out << "<a href=\"#{base}/#{child}\">#{child}</a><br/>"
+              out << "<a href=\"#{base}/#{child}/\">#{child}</a><br/>"
             end
           end
           out << "</body></html>"
@@ -177,7 +181,7 @@ module Mongrel
       end
     end
 
-    
+
     # Sends the contents of a file back to the user. Not terribly efficient since it's
     # opening and closing the file for each read.
     def send_file(req_path, request, response, header_only=false)
@@ -195,13 +199,13 @@ module Mongrel
       # test to see if this is a conditional request, and test if
       # the response would be identical to the last response
       same_response = case
-        when unmodified_since && !last_response_time = Time.httpdate(unmodified_since) rescue nil : false
-        when unmodified_since && last_response_time > Time.now                                    : false
-        when unmodified_since && mtime > last_response_time                                       : false
-        when none_match       && none_match == '*'                                                : false
-        when none_match       && !none_match.strip.split(/\s*,\s*/).include?(etag)                : false
-        else unmodified_since || none_match  # validation successful if we get this far and at least one of the header exists
-      end
+                      when unmodified_since && !last_response_time = Time.httpdate(unmodified_since) rescue nil : false
+                      when unmodified_since && last_response_time > Time.now                                    : false
+                      when unmodified_since && mtime > last_response_time                                       : false
+                      when none_match       && none_match == '*'                                                : false
+                      when none_match       && !none_match.strip.split(/\s*,\s*/).include?(etag)                : false
+                      else unmodified_since || none_match  # validation successful if we get this far and at least one of the header exists
+                      end
 
       header = response.header
       header[Const::ETAG] = etag
@@ -287,6 +291,106 @@ module Mongrel
         gzout.rewind
         response.body.close
         response.body = gzout
+      end
+    end
+  end
+
+
+  # Implements a few basic statistics for a particular URI.  Register it anywhere
+  # you want in the request chain and it'll quickly gather some numbers for you
+  # to analyze.  It is pretty fast, but don't put it out in production.
+  #
+  # You should pass the filter to StatusHandler as StatusHandler.new(:stats_filter => stats).
+  # This lets you then hit the status URI you want and get these stats from a browser.
+  #
+  # StatisticsFilter takes an option of :sample_rate.  This is a number that's passed to
+  # rand and if that number gets hit then a sample is taken.  This helps reduce the load
+  # and keeps the statistics valid (since sampling is a part of how they work).
+  #
+  # The exception to :sample_rate is that inter-request time is sampled on every request.
+  # If this wasn't done then it wouldn't be accurate as a measure of time between requests.
+  class StatisticsFilter < HttpHandler
+    attr_reader :stats
+
+    def initialize(ops={})
+      @sample_rate = ops[:sample_rate] || 300
+
+      @processors = Stats.new("processors")
+      @reqsize = Stats.new("request Kb")
+      @headcount = Stats.new("req param count")
+      @respsize = Stats.new("response Kb")
+      @interreq = Stats.new("inter-request time")
+    end
+
+
+    def process(request, response)
+      if rand(@sample_rate)+1 == @sample_rate
+        @processors.sample(listener.workers.list.length)
+        @headcount.sample(request.params.length)
+        @reqsize.sample(request.body.length / 1024.0)
+        @respsize.sample((response.body.length + response.header.out.length) / 1024.0)
+      end
+      @interreq.tick
+    end
+
+    def dump
+      "#{@processors.to_s}\n#{@reqsize.to_s}\n#{@headcount.to_s}\n#{@respsize.to_s}\n#{@interreq.to_s}"
+    end
+  end
+
+
+  # The :stats_filter is basically any configured stats filter that you've added to this same
+  # URI.  This lets the status handler print out statistics on how Mongrel is doing.
+  class StatusHandler < HttpHandler
+    def initialize(ops={})
+      @stats = ops[:stats_filter]
+    end
+
+    def table(title, rows)
+      results = "<table border=\"1\"><tr><th colspan=\"#{rows[0].length}\">#{title}</th></tr>"
+      rows.each do |cols|
+        results << "<tr>"
+        cols.each {|col| results << "<td>#{col}</td>" }
+        results << "</tr>"
+      end
+      results + "</table>"
+    end
+
+    def describe_listener
+      results = ""
+        results << "<h1>Listener #{listener.host}:#{listener.port}</h1>"
+        results << table("settings", [
+                         ["host",listener.host],
+                         ["port",listener.port],
+                         ["timeout",listener.timeout],
+                         ["workers max",listener.num_processors],
+        ])
+
+        if @stats
+          results << "<h2>Statistics</h2><p>N means the number of samples, pay attention to MEAN, SD, MIN and MAX."
+          results << "<pre>#{@stats.dump}</pre>"
+        end
+
+        results << "<h2>Registered Handlers</h2>"
+        uris = listener.classifier.handler_map
+        results << table("handlers", uris.map {|uri,handlers| 
+          [uri, 
+            "<pre>" + 
+            handlers.map {|h| h.class.to_s }.join("\n") + 
+            "</pre>"
+          ]
+        })
+
+      results
+    end
+
+    def process(request, response)
+      response.start do |head,out|
+        out.write <<-END
+        <html><body><title>Mongrel Server Status</title>
+        #{describe_listener}
+        </body></html>
+        END
       end
     end
   end

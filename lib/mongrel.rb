@@ -45,6 +45,8 @@ end
 module Mongrel
 
   class URIClassifier
+    attr_reader :handler_map
+  
     # Returns the URIs that have been registered with this classifier so far.
     # The URIs returned should not be modified as this will cause a memory leak.
     # You can use this to inspect the contents of the URIClassifier.
@@ -457,6 +459,8 @@ module Mongrel
     attr_reader :classifier
     attr_reader :host
     attr_reader :port
+    attr_reader :timeout
+    attr_reader :num_processors
 
     # Creates a working server on host:port (strange things happen if port isn't a Number).
     # Use HttpServer::run to start the server and HttpServer.acceptor.join to 
@@ -650,6 +654,8 @@ module Mongrel
           @classifier.register(uri, [handler])
         end
       end
+
+      handler.listener = self
     end
 
     # Removes any handlers registered at the given URI.  See Mongrel::URIClassifier#unregister
