@@ -143,6 +143,7 @@ class Start < GemPlugin::Plugin "/commands"
     config.run
     config.log "Mongrel available at #{settings[:host]}:#{settings[:port]}"
     config.log "Use CTRL-C to stop." if not @daemon
+    config.write_pid_file
     config.join
 
     if config.needs_restart

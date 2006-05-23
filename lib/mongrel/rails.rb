@@ -21,8 +21,6 @@ require 'cgi'
 
 module Mongrel
   module Rails
-
-
     # Implements a handler that can run Rails and serve files out of the
     # Rails application's public directory.  This lets you run your Rails
     # application with Mongrel during development and testing, then use it
@@ -65,7 +63,7 @@ module Mongrel
         return if response.socket.closed?
 
         path_info = request.params[Mongrel::Const::PATH_INFO]
-        page_cached = request.params[Mongrel::Const::PATH_INFO] + ".html"
+        page_cached = path_info + ".html"
 
         if @files.can_serve(path_info)
           # File exists as-is so serve it up

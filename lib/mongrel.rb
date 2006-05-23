@@ -699,6 +699,8 @@ module Mongrel
   # A major thing about Configurator is that it actually lets you configure 
   # multiple listeners for any hosts and ports you want.  These are kept in a
   # map config.listeners so you can get to them.
+  #
+  # * :pid_file => Where to write the process ID.
   class Configurator
     attr_reader :listeners
     attr_reader :defaults
@@ -730,7 +732,14 @@ module Mongrel
         Process::UID.change_privilege(Etc.getpwnam(user).uid)
       end
     end
-    
+
+    # Writes the PID file but only if we're on windows.
+    def write_pid_file
+      if RUBY_PLATFORM !~ /mswin/
+        open(@pid_file,"w") {|f| f.write(Process.pid) }
+      end
+    end
+
     # generates a class for cloaking the current self and making the DSL nicer
     def cloaking_class
       class << self
@@ -811,7 +820,6 @@ module Mongrel
     #
     # * :cwd => Directory to change to.
     # * :log_file => Where to write STDOUT and STDERR.
-    # * :pid_file => Where to write the process ID.
     # 
     # It is safe to call this on win32 as it will only require the daemons
     # gem/library if NOT win32.
@@ -826,7 +834,6 @@ module Mongrel
         # change back to the original starting directory
         Dir.chdir(ops[:cwd])
 
-        open(ops[:pid_file],"w") {|f| f.write(Process.pid) }
       else
         log "WARNING: Win32 does not support daemon mode."
       end
@@ -966,7 +973,7 @@ module Mongrel
     # It only configures if the platform is not win32 and doesn't do
     # a HUP signal since this is typically framework specific.
     #
-    # Requires a :pid_file option to indicate a file to delete.  
+    # Requires a :pid_file option given to Configurator.new to indicate a file to delete.  
     # It sets the MongrelConfig.needs_restart attribute if 
     # the start command should reload.  It's up to you to detect this
     # and do whatever is needed for a "restart".
@@ -974,8 +981,6 @@ module Mongrel
     # This command is safely ignored if the platform is win32 (with a warning)
     def setup_signals(options={})
       ops = resolve_defaults(options)
-
-      @pid_file = ops[:pid_file]
 
       # forced shutdown, even if previously restarted (actually just like TERM but for CTRL-C)
       trap("INT") { log "INT signal received."; stop(need_restart=false) }
