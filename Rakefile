@@ -40,8 +40,8 @@ task :site_rdoc do
   sh %{ scp -r doc/rdoc/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
 end
 
-task :site_coverage => [:test_units_with_coverage] do
-  sh %{ scp -r test/coverage/unit/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/coverage/ }
+task :site_coverage => [:rcov] do
+  sh %{ scp -r test/coverage/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/coverage/ }
 end
 
 task :site_projects_rdoc do

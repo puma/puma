@@ -319,6 +319,7 @@ module Mongrel
   class HttpResponse
     attr_reader :socket
     attr_reader :body
+    attr_writer :body
     attr_reader :header
     attr_reader :status
     attr_writer :status

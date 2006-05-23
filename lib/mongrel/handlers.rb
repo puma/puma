@@ -269,21 +269,21 @@ module Mongrel
   # When added to a config script (-S in mongrel_rails) it will
   # look at the client's allowed response types and then gzip 
   # compress anything that is going out.
-  class DeflateCompressFilter < HttpHandler
+  class DeflateFilter < HttpHandler
     HTTP_ACCEPT_ENCODING = "HTTP_ACCEPT_ENCODING" 
 
-    def initialize(ops)
+    def initialize(ops={})
       @options = ops
     end
 
     def process(request, response)
       accepts = request.params[HTTP_ACCEPT_ENCODING]
       # only process if they support compression
-      if accepts.include? "gzip" or accepts.include? "deflate" and not response.body_sent
-        head["Content-Encoding"] = "deflate"
+      if accepts and (accepts.include? "deflate" and not response.body_sent)
+        response.header["Content-Encoding"] = "deflate"
         # we can't just rewind the body and gzip it since the body could be an attached file
         response.body.rewind
-        gzout << Zlib::Deflate.deflate(response.body.read)
+        gzout = StringIO.new(Zlib::Deflate.deflate(response.body.read))
         gzout.rewind
         response.body.close
         response.body = gzout

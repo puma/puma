@@ -1,22 +1,16 @@
+$LOAD_PATH << File.join(File.dirname(__FILE__), "..", "lib")
 require 'mongrel'
 require 'yaml'
 require 'zlib'
 
 class SimpleHandler < Mongrel::HttpHandler
-    def process(request, response)
-      response.start do |head,out|
-        head["Content-Type"] = "text/html"
-        results = "<html><body>Your request:<br /><pre>#{request.params.to_yaml}</pre><a href=\"/files\">View the files.</a></body></html>"
-        if request.params["HTTP_ACCEPT_ENCODING"] == "gzip,deflate"
-          head["Content-Encoding"] = "deflate"
-          # send it back deflated
-          out << Zlib::Deflate.deflate(results)
-        else
-          # no gzip supported, send it back normal
-          out << results
-        end
-      end
+  def process(request, response)
+    response.start do |head,out|
+      head["Content-Type"] = "text/html"
+      results = "<html><body>Your request:<br /><pre>#{request.params.to_yaml}</pre><a href=\"/files\">View the files.</a></body></html>"
+      out << results
     end
+  end
 end
 
 class DumbHandler < Mongrel::HttpHandler
@@ -37,7 +31,9 @@ end
 config = Mongrel::Configurator.new :host => ARGV[0], :port => ARGV[1] do
   listener do
     uri "/", :handler => SimpleHandler.new
+    uri "/", :handler => Mongrel::DeflateFilter.new
     uri "/dumb", :handler => DumbHandler.new
+    uri "/dumb", :handler => Mongrel::DeflateFilter.new
     uri "/files", :handler => Mongrel::DirHandler.new(ARGV[2])
   end
 
