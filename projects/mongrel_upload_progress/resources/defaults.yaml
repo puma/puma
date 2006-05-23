@@ -1,2 +1,3 @@
 --- 
 :debug: false
+:upload_path: 'tmp/uploads'

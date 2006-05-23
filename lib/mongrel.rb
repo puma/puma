@@ -713,7 +713,8 @@ module Mongrel
       @listeners = {}
       @defaults = defaults
       @needs_restart = false
-      
+      @pid_file = defaults[:pid_file]
+
       change_privilege(@defaults[:user], @defaults[:group])
       
       if blk

@@ -28,6 +28,7 @@ module Mongrel
   # should be implemented using the HttpHandlerPlugin mixin.
   #
   class HttpHandler
+    attr_reader :header_only
 
     def process(request, response)
     end
@@ -40,9 +41,11 @@ module Mongrel
   # the process method later.
   module HttpHandlerPlugin
     attr_reader :options
+    attr_reader :header_only
 
     def initialize(options={})
       @options = options
+      @header_only = false
     end
 
     def process(request, response)
@@ -260,5 +263,31 @@ module Mongrel
       MIME_TYPES[extension] = type
     end
 
+  end
+
+
+  # When added to a config script (-S in mongrel_rails) it will
+  # look at the client's allowed response types and then gzip 
+  # compress anything that is going out.
+  class DeflateCompressFilter < HttpHandler
+    HTTP_ACCEPT_ENCODING = "HTTP_ACCEPT_ENCODING" 
+
+    def initialize(ops)
+      @options = ops
+    end
+
+    def process(request, response)
+      accepts = request.params[HTTP_ACCEPT_ENCODING]
+      # only process if they support compression
+      if accepts.include? "gzip" or accepts.include? "deflate" and not response.body_sent
+        head["Content-Encoding"] = "deflate"
+        # we can't just rewind the body and gzip it since the body could be an attached file
+        response.body.rewind
+        gzout << Zlib::Deflate.deflate(response.body.read)
+        gzout.rewind
+        response.body.close
+        response.body = gzout
+      end
+    end
   end
 end
