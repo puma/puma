@@ -6,17 +6,25 @@ directoryName: Documentation
 
 h1. Available Documentation
 
-We've got a small set of documentation to get people going.  Most of it is 
-geared toward Ruby on Rails but other projects using Mongrel should have their own
-docs that you can refer to based on these.
+We've got a small set of documentation to get people going.  Most of it is
+geared toward Ruby on Rails but other projects using Mongrel should have their
+own docs that you can refer to based on these.
 
+h2. Contributing Documentation
+
+As you can see many of the pages here are empty.  This is because they are
+being written mostly by one person (Zed) but some folks are now contributing
+documentation so things will go faster.  If you'd like to contribute some
+documentation then read the "instructions on how to do it":contrib.html and
+contact the "mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users
+to announce that you'd like to work on something.
 
 h2. Getting Started
 
-Start here to get a good grounding in getting Mongrel up and running.
-These documents are targeted at developers who will be starting off
-using Mongrel and might want to throw in a few little tricks. 
-Serious deployments should check out *Deployment Best Practices*.
+Start here to get a good grounding in getting Mongrel up and running.  These
+documents are targeted at developers who will be starting off using Mongrel and
+might want to throw in a few little tricks.  Serious deployments should check
+out *Deployment Best Practices*.
 
 * "Getting Started":started.html -- Installing and Other things
 * "Win32 HOWTO":win32.html -- Specific instructions for running on windows.
@@ -28,8 +36,7 @@ Serious deployments should check out *Deployment Best Practices*.
 
 h2. Frameworks
 
-Specific problems and things to know when you run different
-frameworks.
+Specific problems and things to know when you run different frameworks.
 
 * "Ruby on Rails Issues":ruby_on_rails.html
 * "Camping Issues":camping.html
@@ -38,13 +45,11 @@ frameworks.
 
 h2. Deployment Best Practices
 
-These documents are continually changing as deploying Mongrel
-becomes more solid and certain options and configurations
-start to work the best.  Each one is a *best practice* which
-means that if you do something different then you'll have to
-do your own research.  Best way to work it is to do the 
-*best practice* exactly as described, then try to do something
-weird from there.
+These documents are continually changing as deploying Mongrel becomes more
+solid and certain options and configurations start to work the best.  Each one
+is a *best practice* which means that if you do something different then you'll
+have to do your own research.  Best way to work it is to do the *best practice*
+exactly as described, then try to do something weird from there.
 
 * "Apache":apache.html -- Currently the best way to deploy Mongrel.
 * "Litespeed":litespeed.html -- Another good option, but not open source.
@@ -55,8 +60,8 @@ weird from there.
 
 h2. Advanced
 
-You are a grand master and have answered a few questions on the
-Mongrel mailing list so now it's time to get fancy.
+You are a grand master and have answered a few questions on the Mongrel mailing
+list so now it's time to get fancy.
 
 * "Writing Mongrel Plugins":gem_plugin.html -- Writing a GemPlugin for Mongrel.
 * "From Rails To Handlers":rails_to_handler.html -- Writing a Handler plugin for something that's slow in Rails.
@@ -79,10 +84,10 @@ to the tracker.
 
 h1. Other People's Documentation
 
-Many other folks have written documentation that they post to their
-blogs for people to use.  I've based a lot of the documentation
-here on their writings, so you should go check out their blogs
-and shoot them a thanks when you can.
+Many other folks have written documentation that they post to their blogs for
+people to use.  I've based a lot of the documentation here on their writings,
+so you should go check out their blogs and shoot them a thanks when you
+can.
 
 * "What About Apache to Mongrel for Rails Applications":http://weblog.textdrive.com/article/219/what-about-apache-to-mongrel-for-rails-applications
 * "Apache 2.2 worker on solaris to a remote mongrel":http://weblog.textdrive.com/article/223/apache-22-worker-on-solaris-to-a-remote-mongrel 
@@ -93,6 +98,7 @@ and shoot them a thanks when you can.
 * "mongrel_cluster-0.1.1: the bird dog (capistrano support!)":http://fluxura.com/articles/2006/04/24/easy-mongrel-clustering-with-mongrel_cluster
 * "Easy Mongrel Clustering with mongrel_cluster":http://fluxura.com/articles/2006/05/01/mongrel_cluster-0-1-1-the-bird-dog-capistrano-support
 
+
 h1. Frequently Asked Questions
 
 When people ask questions really frequently the results end up in the
@@ -101,12 +107,13 @@ When people ask questions really frequently the results end up in the
 
 h1. Mailing Lists
 
-There's a "mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users that
-you should subscribe to if you're looking for help or are interested in tracking
-Mongrel.  We post announcements of pre-release gems you can play with to this
-mailing list and also discuss development of Mongrel there.
+There's a "mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users
+that you should subscribe to if you're looking for help or are interested in
+tracking Mongrel.  We post announcements of pre-release gems you can play with
+to this mailing list and also discuss development of Mongrel there.
 
-Before you start asking for features you should read about 
-"bikeshedding":http://www.catb.org/jargon/html/B/bikeshedding.html and 
-understand that we're really nice, but sometimes code speaks better than rhetoric.
+Before you start asking for features you should read about
+"bikeshedding":http://www.catb.org/jargon/html/B/bikeshedding.html and
+understand that we're really nice, but sometimes code speaks better than
+rhetoric.
 

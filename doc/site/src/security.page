@@ -9,7 +9,7 @@ ordering: 2
 
 h1. Iron Mongrel Security
 
-This is where I'll be putting security tests, alerts, and advice for people 
+This is where I'll be putting security tests, alerts, and advice for people
 running Mongrel.  I test Mongrel fairly heavily using the following techniques:
 
 # Unit testing what I can.  Mongrel is a server so many tests have to be done "live".
@@ -18,20 +18,65 @@ running Mongrel.  I test Mongrel fairly heavily using the following techniques:
 # Running several extensive little scripts to explore the edges of death for Mongrel.
 # Heavy code audits covering as much code as possible to find any possible loose ends.
 
-The end result is a lot of little fixes which make Mongrel more robust against 
-badly behaving clients and possibly against many potential security risks in 
+The end result is a lot of little fixes which make Mongrel more robust against
+badly behaving clients and possibly against many potential security risks in
 the future.
 
+h2. The Latest Security Process And Tools
+
+The 0.3.13 release of Mongrel is turning out to be the "beta" release before
+the big 0.4 release.  Because of this I've been doing periodic code reviews,
+stepping up the testing, and I've picked up a few new tools to help with
+this effort.  Here's a short list of what I've been doing lately on the
+security front.
+
+* I've switched to "gvim 7":http://vim.sourceforge.net/ for all of my editing.
+** I use the various tagging and navigation goodies in vim to do controlled code audits.
+** I use vim's svn/svk integration to do finer grained commits to the repository.
+** A lot of my recent productivity is directly related to vim's Ruby integration.
+* I've started using "rcov":http://eigenclass.org/hiki.rb?rcov to do a "coverage report":http://mongrel.rubyforge.org/coverage/ and improve the test coverage.
+** Most of the code is covered except small sections of error handling.
+** The tests need to be expanded to confirm actual behavior.
+** Expanding the tests didn't find any new bugs, but did pinpoint some minor design improvements.
+* I now use "devtodo":http://swapoff.org/DevTodo to track the tasks I have to get done while working on Mongrel.  It's a very little console application that just lists tasks and priorities.  It's decent, and I've tied it into my .bashrc so that it prints out what I have to do for Mongrel every time I cd into the directory.
+
+While it may seem weird to list an editor as an improvement in how security is
+done, it does make a difference in my work habits.  Particularly the ability to
+systematically traverse files and their containing symbols and keep track of
+where I left off as I traverse the "tag stack" really helps.
+
+The process I use to audit code is still pretty much the same.  I still review
+each function in order, follow paths to other functions that might have
+unspecified assumptions, and document anything I'm not sure about.  The only
+thing that's really changed is that I'm using more tools to control the process
+and improve my productivity.
+
+
+h2. Upcoming Mongrel 0.3.13 Security Features
+
+The 0.3.13 release will feature a few security improvements that folks have
+asked for or that I've decided are necessary.
+
+* Bradley Taylor submitted patches to allow people to start Mongrel as root and change to another user as needed.
+* The IO processing loop has been rewritten to more efficiently and accurately handle the buffering and parsing process.  Mongrel is now "character accurate" in it's parsing, which means the client can trickle one character at a time and Mongrel will have no problem with it.
+* The restriction on URIs beginning with // has been removed.  There were a few people who just utterly hated that, so I made the one character change to fix it.  People should watch for these and let me know what they see.
+* The way the parser references pieces of memory was changed from using pointers to using relative indexing.  This was necessary so that Ruby could use realloc() to alter the size of strings dynamically as more IO is read.
+* More assertions were added to the newly minted parser code, so if people see sudden Aborts they should tell me what happened.  It will print out what caused it when there is an abort.
+* More buffer overflow checks during parsing and loading, all of which cause an abort, so let me know if it happens to you.
+* Removing most pointer juggling from the parser management code actually fixed quite a few potential defects that I was protecting against with logic.  The parser should be more stable, but I have to still go back through the code and validate it. 
+
+There's also quite a few other improvements to the code in 0.3.13 that should
+make lots of folks happy, not just about security.
 
 h2. Mongrels HTTP Restrictions
 
-Many of the exploits out there currently for web servers tend to exploit
-either ambiguous areas of the HTTP grammar, or the lack of size specifications
-in the protocol.  To protect against this Mongrel uses a fairly strict parser,
-but since many browser authors don't read specifications (and hell, who'd want
-to read the mountain of HTTP specifications out there), it can't be too 
-strict.  What it does enforce--apart from well formed headers and request lines--is 
-the following size restrictions on each part:
+Many of the exploits out there currently for web servers tend to exploit either
+ambiguous areas of the HTTP grammar, or the lack of size specifications in the
+protocol.  To protect against this Mongrel uses a fairly strict parser, but
+since many browser authors don't read specifications (and hell, who'd want to
+read the mountain of HTTP specifications out there), it can't be too
+strict.  What it does enforce (apart from well formed headers and request
+lines) is the following size restrictions on each part:
 
 * Any header over 112k.
 * Any query string over 10k.
@@ -39,58 +84,41 @@ the following size restrictions on each part:
 * Any header field name over 256 bytes.
 * Any request URI greater than 512 bytes.
 
-The large header size and field value is due to cookies being allowed to be so massive.
-It's not too clear whether a browser is allowed to cram all 20 of the 4k cookies
-into one cookie header, or if it should use multiple, but the end result is that
-a web server has to parser at least 112k of garbage before it can declare a client
-malicious.
+The large header size and field value is due to cookies being allowed to be so
+massive.  It's not too clear whether a browser is allowed to cram all 20 of the
+4k cookies into one cookie header, or if it should use multiple, but the end
+result is that a web server has to parser at least 112k of garbage before it
+can declare a client malicious.
 
-Now, when I say Mongrel is strict, I don't mean that it will abort on any
-minor little error according to the HTTP 1.1 RFC.  Mongrel's parser is
-pretty forgiving on formats.  Where Mongrel is exact is--as mentioned 
-before--in it's treatment of sizes and boundary characters.  Clients that
-can't even get that right aren't following the most basic safety elements
-of HTTP and you probably shouldn't deal with them.
+Now, when I say Mongrel is strict, I don't mean that it will abort on any minor
+little error according to the HTTP 1.1 RFC.  Mongrel's parser is pretty
+forgiving on formats.  Where Mongrel is exact is (as mentioned before) in it's
+treatment of sizes and boundary characters.  Clients that can't even get that
+right aren't following the most basic safety elements of HTTP and you probably
+shouldn't deal with them.
 
 
 h2. Quiet Things Happens To Bad People
 
-Rather than wasting any more time--and in order to not give out any 
-information to potentially malicious attackers--Mongrel just closes
-the socket immediately.  This may confuse good people, but it's the
-best way to deal with bad requests.
+Rather than wasting any more time--and in order to not give out any information
+to potentially malicious attackers--Mongrel just closes the socket immediately.
+This may confuse good people, but it's the best way to deal with bad requests.
 
 The assumption is that either the requesting client is not functioning
-correctly or it's attempting an attack.  If it's not functioning correctly
-then what's the point of sending back any results?  It probably can't
-parse them anyway.  If it's an attacker then why give them any more
-information?
+correctly or it's attempting an attack.  If it's not functioning correctly then
+what's the point of sending back any results?  It probably can't parse them
+anyway.  If it's an attacker then why give them any more information?
 
-Caught in the middle are people who are using a poorly written client.
-I'd suggest in those cases that they report the problem to the client's
-authors or contact me to see if it's an error on Mongrel's part.
-
-
-h2. Protocol Error Reporting
-
-The 0.3.12.2 release was the first Iron Mongrel release, but it isn't perfect
-for sure.  To make sure that it doesn't prevent people from making tons of 
-money the 0.3.12.2 release will report what data caused the parser to fail.
-If you see a legit request that causes the parser to choke then send it to
-me and I'll take a look.
-
-In general though, if you are getting bad requests they are probably intentionally
-malicious.  The nice thing about Mongrel's parser is that the detection of
-bad requests isn't based on pattern detection, but rather on just making the
-HTTP protocol more strict to where bad requests get kicked out early.
-
+Caught in the middle are people who are using a poorly written client.  I'd
+suggest in those cases that they report the problem to the client's authors or
+contact me to see if it's an error on Mongrel's part.
 
 h2. Reporting Security Problems
 
-If you think you've found a security problem with Mongrel, please
-report it to me right away at *zedshaw at zedshaw do com*.  I'm usually
-very responsive and will probably help even if the security problem is
-outside of Mongrel or if you need help securing your system.
+If you think you've found a security problem with Mongrel, please report it to
+me right away at *zedshaw at zedshaw do com*.  I'm usually very responsive and
+will probably help even if the security problem is outside of Mongrel or if you
+need help securing your system.
 
 
 h2. Logo

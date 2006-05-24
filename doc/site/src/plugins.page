@@ -11,8 +11,20 @@ Mongrel is designed to be *very* easy to extend with the
 GemPlugin anyone can extend Mongrel's commands or handlers
 then distribute them as regular RubyGems for people to install.
 
+To install a plugin you typically install it like you do any other
+gem by running @gem install GEMNAME@ and replace GEMNAME with the
+name below.  All gems are managed by their authors, but most authors
+hang out in the "mailing list":http://rubyforge.org/mail/?group_id=1306 
+and will answer your questions. 
+
 * mongrel_cluster -- Very sweet plugin that lets you manage a
   pack of Mongrels easily as well as dealing with Capistrano issues.
+
+
+h2. Getting Your Plugin Listed
+
+Just shoot a message to the "mailing list":http://rubyforge.org/mail/?group_id=1306
+and you'll get hooked up.
 
 
 h2. Licensing

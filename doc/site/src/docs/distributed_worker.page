@@ -1,7 +1,7 @@
 ---
-title: Distributed Worker
+title: Offloading
 inMenu: true
-directoryName: Distributed Worker
+directoryName: Offloading
 ---
 
 h1. Using Distributed Worker For Long Tasks

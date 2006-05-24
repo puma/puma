@@ -72,7 +72,7 @@ img {
 
 #wrapper {
 	margin: 0 auto;
-	width: 733px;
+	width: 833px;
 	text-align: left;
 	height: 100%;
 }
@@ -175,7 +175,7 @@ img {
 #body {
 	float: right;
 	margin-top: 3px;
-	width: 548px;
+	width: 648px;
 	clear: both;
 }
 
@@ -189,12 +189,12 @@ img {
 #content {
 	float: left;
 	padding-right: 14px;
-	width: 356px;
+	width: 456px;
 	border-right: 1px solid #AACCD5;
 }
 
 #news {
-	margin-left: 380px;
+	margin-left: 480px;
 	width: 165px;
 }
 

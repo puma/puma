@@ -1,0 +1,199 @@
+---
+title: Contribute
+inMenu: true
+directoryName: Contribute
+---
+
+h1. Contributing To The Mongrel Canon
+
+The documentation for Mongrel is typically written by the me (Zed), but other
+people have contributed lots of blog articles about Mongrel, actual site
+documentation, or reviews and enhancements.  It's pretty easy to contribute
+documentation to the Mongrel canon, although what gets in is strictly
+controlled in order to make sure the information quality is high.
+
+We are always looking for grammar and spelling freaks to send in suggestions,
+and anyone who has done a difficult deployment to post their experiences to
+the mailing list.  Typically if your experiences get a positive response
+then you may be asked to write up some documentation on it for the canon.
+
+
+h2. What We Need
+
+The Mongrel project strives to be simple to use so that people don't
+necessarily need to read many wizardly tomes to get started.  Once people have
+Mongrel figured out they typically want to do advanced things like deploy their
+application in a well configured production setting or extend it.
+
+With that in mind, we are not really looking for introductory documentation
+unless it is in languages other than English.  The initial getting started for
+Mongrel is pretty thin because it is so simple.
+
+Also, the code for Mongrel is well documented and constantly updated as work is
+done.  If you find errors in the "Mongrel RDoc":/rdoc/index.html then tell the
+"mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users and it'll
+get fixed right up.
+
+What we are looking for is anything that's blank on the main
+"documentation":/docs/index.html page and anything that is suitable for the FAQ
+or a quick tip or trick.
+
+When writing your documentation make sure you keep it very short and you focus
+on the details people need to get something working.  The end results should be
+functioning, but maybe not a complete massive google capable cluster.  A really
+good model to follow is the "cut-and-paste HOWTO".  In this style of
+documentation it's assumed that people will simple select the commands they
+have to type and it will work.
+
+Finally, do not focus on system specific issues such as Debian install, RedHat
+package management, setting up MySQL, etc.  These topics are really needed, but
+they don't fit in with documentation on Mongrel.  What you can do is place a
+statement that lists what people should already have configured prior to
+starting the instructions, especially referencing other instructions they
+should read.
+
+
+h2. Getting Credit
+
+A cornerstone of the Mongrel project is that everyone deserves credit for the
+free work they do.  There's an "attributions":/attributions.html page that I
+try to use to list people who've contributed work, cash, coffee, comments, etc.
+Sometimes people get dropped, but if you think you were missed then say
+something.  It's important that people who work for free get recognized for
+their contributions.
+
+When you write your documentation, feel free to add a by-line at the top and
+link to your blog.  Keep in mind that "RubyForge":http://www.rubyforge.org/
+doesn't like people linking to commercial entities, but personal blogs or other
+open source projects are just fine.  If your boss sponsored the time for you to
+develop the documentation and contribute it, then feel free to mention their
+name in the documentation and say thanks.
+
+h2. Avoid "Works-For-Me Syndrome"
+
+A very, very important thing to strive for is that people can take your
+documentation, and with a good knowledge of their own system, can get through
+the instructions with minimal difficulty.  Systems change, so you may have to
+keep track of the latest releases of packages and how your instructions might
+need an update.
+
+What you *don't* want to do is slam out some half-assed set of instructions
+that really only work on your little custo-hacked Debian/RedHat frankenstack.
+It's a really good idea to try your instructions out on a fresh machine using a
+different flavor of Linux or Unix just to make sure that you didn't miss
+anything.
+
+h1. Writing The Documentation
+
+Now that you've got something to say, it's time to go through the trouble of
+saying it.  You should read through the documentation that is currently written
+and see if you can get the same flavor.  Feel free to be quirky and write in
+your own style, just make sure the instructions are good.
+
+To start writing you're going to need a few tools and to dip into subversion
+land for a few seconds.
+
+h2. Installing Webgen And Friends
+
+The site is actually generated from static files that use
+"webgen":http://webgen.rubyforge.org/ to generate the site.  The contents are
+"Textile":http://textism.com/tools/textile/ and you can use the "hobix textile
+reference":http://hobix.com/textile/ to guide you.
+
+To install webgen do the following:
+
+ gem install webgen bluecloth redcloth
+
+The install may complain that you need other gems installed, so feel free to
+install those as well.  You typically don't need them since you're just gonna
+generate the site from the source so you can confirm that what you're writing
+fits.
+
+You should also make sure that you have
+"subversion":http://subversion.tigris.org/ and/or "svk":http://svk.elixus.org/
+installed.  These instructions will use subversion.
+
+You may also want to install Rake and any tools your operating system needs to
+build Mongrel itself, just in case you want to have a full build.  This isn't
+needed for writing documentation though.
+
+h2. Getting The Site
+
+You now just need to grab the source from the anonymous subversion repository:
+
+ svn checkout svn://rubyforge.org/var/svn/mongrel mongrel
+
+People using svk can do this with:
+
+ svk mirror svn://rubyforge.org/var/svn/mongrel //mirror/mongrel
+
+And then use the normal svk commands to check it out:
+
+ svk checkout //mirror/mongrel mongrel
+
+You should probably make sure you're in some kind of *projects* directory so
+that you don't have a bunch of garbage lying around.  Keep in mind also that
+svk is sensitive to you moving this directory--you have to "detach" it first.
+
+h2. Writing or Editing Your Page
+
+The Mongrel web site is held in the @doc/site@ directory.  In this directory
+there's a @src/docs@ directory where most of the documentation is kept.
+
+What you have to do is find the page you are going to edit it, and open it in
+your "favorite editor":http://vim.sourceforge.net/ to go to work.  You'll want
+to make sure you have a preamble like this on any new pages:
+
+<pre>
+<code>
+ ---
+ title: OneWordMenuTitle
+ inMenu: true
+ directoryName: MyTitle
+ ---
+</code>
+</pre>
+
+@MyTitle@ can be pretty much any length, but I typically have it match the one
+word title.  The @OneWordMenuTitle@ will show up in the left hand navigation
+menu, unless you set @inMenu@ to @false@.
+
+With that done, just use the "hobix textile
+reference":http://hobix.com/textile/ and write your documentation.
+
+h2. Reviewing Before Submitting
+
+Reviewing your documentation requires that you simply run @webgen@ and then
+look at the resulting .html page in your browser of choice.  Some important
+formatting issues to watch for are:
+
+* Make sure that you put &lt;pre&gt;&lt;code&gt;...&lt;/code&gt;&lt;/pre&gt; around code sections or use the textile syntax.
+* Make sure that code sections you have are not too wide since the site has a fixed width
+main section.
+* You can include images if you think a diagram will make more sense.
+* Use section heading to break up the instructions into discrete pieces.
+
+h2. Submitting Your Documentation
+
+The easiest way to submit changes to the documentation is to simple send me
+(zedshaw AT zedshaw dot com) the page and I'll put it up after reviewing it.
+If you have your own web site then you can also put the page on there
+temporarily.
+
+When you have several changes to multiple documents then you'll need to
+generate a patch and send that in.  With svk you'll use the @svk patch@ command
+and then mail me the results.  With subversion you should be able to just do
+@svn diff@ and I'll be able to use it.
+
+Make sure when you generate patches that you aren't including changes to the
+Mongrel source (unless that's your intent).  It's better to hand in site and
+code patches separately.
+
+
+h1. Getting And Giving Credit
+
+Don't forget that you deserve credit for working on this document, but that you
+also need to reference sources you read while writing it.  Put you name at the
+top as the author, and then list at the bottom other documents you referenced
+or people who helped you.
+

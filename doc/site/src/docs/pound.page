@@ -5,12 +5,14 @@ directoryName: Pound
 ---
 
 h1. Pound Best Practice Deployment
+h2. By Austin Godber
 
-"Pound":http://www.apsis.ch/pound/ is a load-balancing reverse HTTP proxy.  It can also handle SSL 
-connections.  Pound, itself, does not serve content but just acts as a front end to servers that do.  
-In this case pound will sit in front of a cluster of mongrel servers.  This arrangement is similar to 
-that illustrated on the "Using Lighttpd with Mongrel":lighttpd.html page, except pound replaces
-lighttpd.
+"Pound":http://www.apsis.ch/pound/ is a load-balancing reverse HTTP proxy.  It
+can also handle SSL connections.  Pound, itself, does not serve content but
+just acts as a front end to servers that do.  In this case pound will sit in
+front of a cluster of mongrel servers.  This arrangement is similar to that
+illustrated on the "Using Lighttpd with Mongrel":lighttpd.html page, except
+pound replaces lighttpd.
 
 h2. Requirements
 
@@ -21,27 +23,30 @@ We assume that the following:
 * The *mongrel* gem is installed.
 * The *mongrel_cluster* gem is installed.
 
-These instructions were performed on CentOS 4.3 using Ruby 1.8.4 from the CentOS 4 test repository.  
-They should apply on other Linux distributions.  They may work for other OSes, but please see the 
-"pound website":http://www.apsis.ch/pound/ for additional information.
+These instructions were performed on CentOS 4.3 using Ruby 1.8.4 from the
+CentOS 4 test repository.  They should apply on other Linux distributions.
+They may work for other OSes, but please see the "pound
+website":http://www.apsis.ch/pound/ for additional information.
 
 h2. Mongrel Cluster Setup
 
-First we need to prepare our rails application to run in a mongrel cluster.  In this example we will use
-mongrel_cluster to run three mongrel instances on ports 8000, 8001, and 8002.  We then launch
-the mongrel cluster:
+First we need to prepare our rails application to run in a mongrel cluster.  In
+this example we will use mongrel_cluster to run three mongrel instances on
+ports 8000, 8001, and 8002.  We then launch the mongrel cluster:
 
  $ cd railsapp/
  $ mongrel_rails cluster::configure -p 8000 -N 3
  $ mongrel_rails cluster::start
 
-We should now have three instances of our rails app running on ports 8000, 8001, and 8002.
+We should now have three instances of our rails app running on ports 8000,
+8001, and 8002.
 
 h2. Configuring Pound 
 
-Now we configure pound to proxy requests to the rails cluster we just created.  We will configure
-pound to accept both HTTP and HTTPS traffic on ports 80 and 443 respectively.  Pound will then proxy
-requests to the *Service*s listed in the configuration file.  Our configuration file (/usr/local/etc/pound.cfg) 
+Now we configure pound to proxy requests to the rails cluster we just created.
+We will configure pound to accept both HTTP and HTTPS traffic on ports 80 and
+443 respectively.  Pound will then proxy requests to the *Service*s listed in
+the configuration file.  Our configuration file (/usr/local/etc/pound.cfg)
 looks like this:
 
 <pre>
@@ -97,8 +102,8 @@ End
 </code>
 </pre>
 
-Before starting pound, we need to make sure our SSL certificate is present.  If not we can quickly
-generate a test certificate:
+Before starting pound, we need to make sure our SSL certificate is present.  If
+not we can quickly generate a test certificate:
 
  $ openssl req -x509 -newkey rs:1024 -keyout test.pem \
    -out test.pem -days -nodes
@@ -111,10 +116,12 @@ Our Rails application should now be available at http://127.0.0.1/ and https://1
 
 h2. Testing SSL in Rails
 
-The line @AddHeader "X-Forwarded-Proto: https"@ in the ListenHTTPS section tells pound to add
-a header to the request as it is passed back to the mongrel servers[2].  This will tell the rails application
-that the request was originally an SSL request.  We can test this with the following simple Rails
+The line @AddHeader "X-Forwarded-Proto: https"@ in the ListenHTTPS section
+tells pound to add a header to the request as it is passed back to the mongrel
+servers[2].  This will tell the rails application that the request was
+originally an SSL request.  We can test this with the following simple Rails
 controller, app/controller/test_controller.rb:
+
 <pre>
 <code>
 class TestController < ApplicationController
@@ -124,6 +131,7 @@ class TestController < ApplicationController
 end
 </code>
 </pre>
+
 And the acompanying view, app/views/test/index.rhtml: 
 
 <pre>
@@ -131,12 +139,12 @@ And the acompanying view, app/views/test/index.rhtml:
 SSL: < %= @sslyn %>
 </pre>
 
-Visiting @http://127.0.0.1/Test/@ should show @SSL: false@ while visiting @https://127.0.0.1/Test/@
-should return @SSL: true@.
+Visiting @http://127.0.0.1/Test/@ should show @SSL: false@ while visiting
+@https://127.0.0.1/Test/@ should return @SSL: true@.
 
-<hr>
+---
 
-fn1. It is not required that pound run on the same machine as the mongrel servers.  It was just chosen
-for this example.
+fn1. It is not required that pound run on the same machine as the mongrel
+servers.  It was just chosen for this example.
 
 fn2. Thanks to Joshua Harvey's post on the Mongrel mailing list for this fix.
