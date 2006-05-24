@@ -88,24 +88,30 @@ class WebServerTest < Test::Unit::TestCase
   end
 
   def test_bad_client
-    do_test("GET /test HTTP/BAD", 3)
+    redirect_test_io do
+      do_test("GET /test HTTP/BAD", 3)
+    end
   end
 
   def test_header_is_too_long
-    long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
-    assert_raises Errno::ECONNRESET, Errno::EPIPE do
-      do_test(long, long.length/2)
+    redirect_test_io do
+      long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
+      assert_raises Errno::ECONNRESET, Errno::EPIPE do
+        do_test(long, long.length/2)
+      end
     end
   end
 
   def test_num_processors_overload
-    assert_raises Errno::ECONNRESET, Errno::EPIPE do
-      tests = [
-        Thread.new { do_test(@request, 1) },
-        Thread.new { do_test(@request, 10) },
-      ]
+    redirect_test_io do
+      assert_raises Errno::ECONNRESET, Errno::EPIPE do
+        tests = [
+          Thread.new { do_test(@request, 1) },
+          Thread.new { do_test(@request, 10) },
+        ]
 
-      tests.each {|t| t.join}
+        tests.each {|t| t.join}
+      end
     end
   end
 
