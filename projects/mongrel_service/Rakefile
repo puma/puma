@@ -19,8 +19,8 @@ version="0.1"
 name="mongrel_service"
 
 setup_gem(name, version) do |spec|
-  spec.summary = "Mongrel Native Win32 Service Plugin"
-  spec.description = "This plugin offer native win32 services for rails."
+  spec.summary = "Mongrel Native Win32 Service Plugin for Rails"
+  spec.description = "This plugin offer native win32 services for rails, powered by Mongrel."
   spec.author="Luis Lavena"
   
   # added mongrel_service executable

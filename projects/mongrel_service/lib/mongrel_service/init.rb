@@ -5,17 +5,6 @@ require 'rbconfig'
 require 'win32/service'
 
 
-DEBUG_LOG_FILE = File.expand_path(File.dirname(__FILE__) + '/debug.log') 
-DEBUG_THREAD_LOG_FILE = File.expand_path(File.dirname(__FILE__) + '/debug_thread.log') 
-
-def dbg(msg)
-  File.open(DEBUG_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - #{msg}") }
-end
-  
-def dbg_th(msg)
-  File.open(DEBUG_THREAD_LOG_FILE,"a+") { |f| f.puts("#{Time.now} - #{msg}") }  
-end
-
 module Service
   class Install < GemPlugin::Plugin "/commands"
     include Mongrel::Command::Base
@@ -103,10 +92,10 @@ module Service
       argv = []
       
       # ruby.exe instead of rubyw.exe due a exception raised when stoping the service!
-      argv << '"' + Config::CONFIG['bindir'] + '/ruby.exe' + '" '
+      argv << '"' + Config::CONFIG['bindir'] + '/ruby.exe' + '"'
       
       # add service_script, we now use the rubygem powered one
-      argv << '"' + Config::CONFIG['bindir'] + '/mongrel_service' + '" '
+      argv << '"' + Config::CONFIG['bindir'] + '/mongrel_service' + '"'
 
       # now the options
       argv << "-e #{@options[:environment]}" if @options[:environment]

@@ -1,3 +1,4 @@
+require 'rubygems'
 require 'win32/service'
 require 'mongrel'
 require 'mongrel/rails'
@@ -41,107 +42,55 @@ module Kernel32
 end
 # End Kernel32 Module
 
-class RailsServer
+# RailsService code here
+class RailsService < Win32::Daemon
   def initialize(settings)
     @settings = settings
-  end # initialize
+  end
   
-  def configure
-    STDERR.puts "** Configuring Rails Server"
+  def service_init
     @config = Mongrel::Rails::RailsConfigurator.new(@settings) do
       log "Starting Mongrel in #{defaults[:environment]} mode at #{defaults[:host]}:#{defaults[:port]}"
-      
+
       listener do
         mime = {}
         if defaults[:mime_map]
           log "Loading additional MIME types from #{defaults[:mime_map]}"
           mime = load_mime_map(defaults[:mime_map], mime)
         end
-        
+
         if defaults[:debug]
           log "Installing debugging prefixed filters.  Look in log/mongrel_debug for the files."
           debug "/"
         end
-  
+
         log "Starting Rails in environment #{defaults[:environment]} ..."
-        uri "/", :handler => rails
+        uri "/", :handler => rails(:mime => mime)
         log "Rails loaded."
-  
-        #FIXME: We need to check why fail to load plugins.
+
         #log "Loading any Rails specific GemPlugins"
         #load_plugins
-  
+
         if defaults[:config_script]
           log "Loading #{defaults[:config_script]} external config script"
           run_config(defaults[:config_script])
         end
       end
     end
-    STDERR.puts "** Done with configuration"
-  end
-  
-  def start_serve
-    @runner = Thread.new do
-      STDERR.puts "** Configuration Thread suspended."
-      Thread.stop
-      
-      STDERR.puts "** Configuration Thread resumed, now joining..."
-      @config.join
-    end
 
-    STDERR.puts "** Start serving, config.run"
-    @config.run
-
-    STDERR.puts "** Running thread"
-    @runner.run
-  end
-  
-  def stop_serve
-    STDERR.puts "stop_serve entered"
-
-    if @runner.alive?
-      STDERR.puts "killing thread"
-      @runner.kill
-    end
-    
-    STDERR.puts "** Stoping Server"
-    @config.stop
-
-    STDERR.puts "stop_serve left"
-  end
-end
-
-# RailsService code here
-class RailsService < Win32::Daemon
-  def initialize(server)
-    @server = server
-  end
-  
-  def service_init
-    STDERR.puts "** Configuring server..."
-    
-    @server.configure
-
-    STDERR.puts "** Done Service_Init."
   end
   
   def service_main
-    STDERR.puts "** Start Serving "
-    @server.start_serve
+    @config.run
+    @config.log "Mongrel available at #{@settings[:host]}:#{@settings[:port]}"
 
-    STDERR.puts "Entering service_main loop"
     while state == RUNNING
       sleep 1
     end
 
-    @server.stop_serve
-    
-    STDERR.puts "leaving service_main."
+		@config.stop
   end
   
-  def service_stop
-    STDERR.puts "Stop signal received."
-  end
 end
 
 # default options
@@ -200,9 +149,5 @@ STDERR.sync = true
 #GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
 
 # initialize the daemon and pass control to win32/service
-STDERR.puts "Initializing MongrelDaemon with OPTIONS"
-server = RailsServer.new(OPTIONS)
-svc = RailsService.new(server)
+svc = RailsService.new(OPTIONS)
 svc.mainloop
-#svc.service_init
-#svc.service_main
