@@ -132,7 +132,7 @@ end
 </code>
 </pre>
 
-And the acompanying view, app/views/test/index.rhtml: 
+And the accompanying view, app/views/test/index.rhtml: 
 
 <pre>
 <h1>test</h1>

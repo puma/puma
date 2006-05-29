@@ -275,7 +275,7 @@ module Mongrel
   # look at the client's allowed response types and then gzip 
   # compress anything that is going out.
   #
-  # Valid option is :always_deflate => false which tells the handler to 
+  # Valid option is :always_deflate => false which tells the handler to
   # deflate everything even if the client can't handle it.
   class DeflateFilter < HttpHandler
     HTTP_ACCEPT_ENCODING = "HTTP_ACCEPT_ENCODING" 
@@ -363,28 +363,28 @@ module Mongrel
 
     def describe_listener
       results = ""
-        results << "<h1>Listener #{listener.host}:#{listener.port}</h1>"
-        results << table("settings", [
-                         ["host",listener.host],
-                         ["port",listener.port],
-                         ["timeout",listener.timeout],
-                         ["workers max",listener.num_processors],
-        ])
+      results << "<h1>Listener #{listener.host}:#{listener.port}</h1>"
+      results << table("settings", [
+                       ["host",listener.host],
+                       ["port",listener.port],
+                       ["timeout",listener.timeout],
+                       ["workers max",listener.num_processors],
+      ])
 
-        if @stats
-          results << "<h2>Statistics</h2><p>N means the number of samples, pay attention to MEAN, SD, MIN and MAX."
-          results << "<pre>#{@stats.dump}</pre>"
-        end
+      if @stats
+        results << "<h2>Statistics</h2><p>N means the number of samples, pay attention to MEAN, SD, MIN and MAX."
+        results << "<pre>#{@stats.dump}</pre>"
+      end
 
-        results << "<h2>Registered Handlers</h2>"
-        uris = listener.classifier.handler_map
-        results << table("handlers", uris.map {|uri,handlers| 
-          [uri, 
+      results << "<h2>Registered Handlers</h2>"
+      uris = listener.classifier.handler_map
+      results << table("handlers", uris.map {|uri,handlers| 
+        [uri, 
             "<pre>" + 
             handlers.map {|h| h.class.to_s }.join("\n") + 
             "</pre>"
-          ]
-        })
+        ]
+      })
 
       results
     end

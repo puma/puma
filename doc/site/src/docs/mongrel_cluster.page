@@ -31,7 +31,7 @@ Throughout these instructions we will assume the following:
 h2. Preliminary steps
 
 In general, when deploying a mongrel cluster, none of the mongrel servers will
-be listening on a privleged port.  This is nice, we don't have to run mongrel as
+be listening on a privileged port.  This is nice, we don't have to run mongrel as
 root, therefore we should create a user for mongrel to run as:
 <pre><code>
   $ sudo /usr/sbin/adduser -r mongrel
@@ -55,7 +55,7 @@ the log directory of your app has to be writable by the *mongrel* user:
 
 h2. Mongrel Cluster Setup
 
-With mongrel working and our webapp directory prepared we can procede with the
+With mongrel working and our webapp directory prepared we can proceed with the
 mongrel_cluster configuration step:
 <pre><code>
   $ sudo mongrel_rails cluster::configure -e production -p 8000 -N 3 \
@@ -72,7 +72,7 @@ Checking our host on ports 8000, 8001, and 8002 we should now be able to see our
 test application.  We can stop all of those mongrels with 
 @sudo mongrel_rails cluster::stop@.
 
-h2. On Boot Inititialization Setup
+h2. On Boot Initialization Setup
 
 At this point, mongrel and mongrel_cluster are setup and working with our sample
 webapp.  Ultimately, we want this cluster to start on boot.  Fortunately,
@@ -111,7 +111,7 @@ for several of the other deployment guides.
 <hr>
 
 fn1.  Thanks to "Bradley Taylor":http://fluxura.com/ for writing 
-mongrel_cluster and recent improvements in its startup capabilites.
+mongrel_cluster and recent improvements in its startup capabilities.
 
 fn2.  @adduser -r@ is a RedHat-centric way of creating a system account.  For
 Debian-ish distributions replace that with @adduser --system mongrel@.
