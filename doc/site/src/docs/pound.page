@@ -4,8 +4,8 @@ inMenu: true
 directoryName: Pound
 ---
 
-h1. Pound Best Practice Deployment
-h2. By Austin Godber
+h1. Pound Best Practice Deployment<br>
+<small><small>By Austin Godber</small></small>
 
 "Pound":http://www.apsis.ch/pound/ is a load-balancing reverse HTTP proxy.  It
 can also handle SSL connections.  Pound, itself, does not serve content but
@@ -142,7 +142,7 @@ SSL: < %= @sslyn %>
 Visiting @http://127.0.0.1/Test/@ should show @SSL: false@ while visiting
 @https://127.0.0.1/Test/@ should return @SSL: true@.
 
----
+<hr>
 
 fn1. It is not required that pound run on the same machine as the mongrel
 servers.  It was just chosen for this example.
