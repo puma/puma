@@ -4,6 +4,114 @@ inMenu: true
 directoryName: mongrel_cluster
 ---
 
-h1. Using Mongrel Cluster
+h1. Using Mongrel Cluster<br>
+<small><small>by Austin Godber</small></small>
 
+"Mongrel_cluster":http://rubyforge.org/projects/railsmachine/ is a 
+"GemPlugin":http://mongrel.rubyforge.org/gem_plugin_rdoc that wrappers 
+the mongrel HTTP server and simplifies the deployment of webapps 
+using a cluster of mongrel servers.  Mongrel_cluster will conveniently configure
+and control several mongrel servers, or groups of mongrel servers, which are
+then load balanced using a reverse proxy solution.  Typical load balancing
+reverse proxies include:
+* "Apache":apache.html - flexible and complex
+* "Lighttpd":lighttpd.html - development has stalled
+* "Pound":pound.html - Simple and SSL capable
+* "Pen/Balance":pen_balance.html - Simple
 
+h2. Requirements
+
+Throughout these instructions we will assume the following:
+* All mongrel instances are running on the same machine
+* Mongrel prerelease *0.3.13* or greater
+* Mongrel_cluster prerelease *0.1.3* or greater
+* Linux platform (Centos 4.3 in this case, so you will see RedHat like commands).
+* You have *sudo* or *root* access
+
+h2. Preliminary steps
+
+In general, when deploying a mongrel cluster, none of the mongrel servers will
+be listening on a privleged port.  This is nice, we don't have to run mongrel as
+root, therefore we should create a user for mongrel to run as:
+<pre><code>
+  $ sudo /usr/sbin/adduser -r mongrel
+</code></pre>
+For the purpose of this example we will just use a freshly minted rails app.
+You can adjust these instructions to work with your app, wherever you may have
+placed it but lets pretend we are working in */usr/local/vhosts*.  So lets go set
+up our app and test that mongrel will serve it:
+<pre><code>
+  $ cd /usr/local/vhosts
+  $ rails testapp
+  $ cd testapp
+  $ mongrel_rails start
+</code></pre>
+You should now be able to see your application at @http://host:3000/@.  If you
+can, you are good to go.  Hit @CTRL+C@ to stop the mongrel server.  At a minimum
+the log directory of your app has to be writable by the *mongrel* user:
+<pre><code>
+  $ sudo chown -R mongrel:mongrel /usr/local/vhosts/testapp
+</code></pre>
+
+h2. Mongrel Cluster Setup
+
+With mongrel working and our webapp directory prepared we can procede with the
+mongrel_cluster configuration step:
+<pre><code>
+  $ sudo mongrel_rails cluster::configure -e production -p 8000 -N 3 \
+    -c /usr/local/vhosts/testapp --user mongrel --group mongrel
+</code></pre>
+This will write a configuration file in *config/mongrel_cluster.yml*.  We have
+setup to run our cluster in production mode as the user *mongrel* and will start
+3 mongrel servers listening on ports 8000, 8001, and 8002.  Now, lets do a quick
+test of what we have setup so far:
+<pre><code>
+   $ sudo mongrel_rails cluster::start
+</code></pre>
+Checking our host on ports 8000, 8001, and 8002 we should now be able to see our
+test application.  We can stop all of those mongrels with 
+@sudo mongrel_rails cluster::stop@.
+
+h2. On Boot Inititialization Setup
+
+At this point, mongrel and mongrel_cluster are setup and working with our sample
+webapp.  Ultimately, we want this cluster to start on boot.  Fortunately,
+mongrel_cluster comes with an init script that we can just drop into place.  All
+we need to do is put the configuration files in */etc/mongrel_cluster* and take care of
+a few system tasks:
+<pre><code>
+  $ sudo mkdir /etc/mongrel_cluster
+  $ sudo ln -s /usr/local/vhosts/testapp/config/mongrel_cluster.yml \
+    /etc/mongrel_cluster/testapp.yml
+  $ sudo cp \
+    /path/to/mongrel_cluster_gem/resources/mongrel_cluster \
+    /etc/init.d/
+  $ sudo chmod +x /etc/init.d/mongrel_cluster 
+</code></pre>
+Now we have a typical System V init script that will launch our mongrel cluster.
+Actually, this script will launch any cluster that has a configuration file in
+*/etc/mongrel_cluster/*.  So when we run */etc/init.d/mongrel_cluster start* it
+will start all clusters.  Likewise for stop and restart.  If we are using a
+RedHat like system we can configure mongrel_cluster for startup:
+<pre><code>
+  $ sudo /sbin/chkconfig --level 345 mongrel_cluster on
+</code></pre>
+
+h2.  Conclusion
+
+We have configured mongrel and mongrel_cluster with our webapp and setup
+mongrel_cluster to run our cluster at startup.  What's missing?  Well, unless
+your application users expect to have to connect to port 8000-8002 you had best
+check out the reverse proxy options listed above.
+
+The process of setting up mongrel_cluster will be the same for all of the
+reverse proxy deployment options.  So this document will likely serve as a reference
+for several of the other deployment guides.
+
+<hr>
+
+fn1.  Thanks to "Bradley Taylor":http://fluxura.com/ for writing 
+mongrel_cluster and recent improvements in its startup capabilites.
+
+fn2.  @adduser -r@ is a RedHat-centric way of creating a system account.  For
+Debian-ish distributions replace that with @adduser --system mongrel@.
