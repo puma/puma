@@ -133,6 +133,9 @@ module Mongrel
 
     MONGREL_VERSION="0.3.13".freeze
 
+    # TODO: this use of a base for tempfiles needs to be looked at for security problems
+    MONGREL_TMP_BASE="mongrel".freeze
+
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
 
@@ -195,7 +198,7 @@ module Mongrel
       clen = params[Const::CONTENT_LENGTH].to_i - initial_body.length
 
       if clen > Const::MAX_BODY
-        @body = Tempfile.new(self.class.name)
+        @body = Tempfile.new(Const::MONGREL_TMP_BASE)
         @body.binmode
       else
         @body = StringIO.new

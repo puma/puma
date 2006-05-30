@@ -20,7 +20,7 @@ require 'test/unit'
 require 'net/http'
 require 'mongrel'
 require 'timeout'
-
+require File.dirname(__FILE__) + "/testhelp.rb"
 
 
 class TestHandler < Mongrel::HttpHandler
@@ -32,12 +32,6 @@ class TestHandler < Mongrel::HttpHandler
   end
 end
 
-def hit(uris)
-  uris.each do |u|
-    res = Net::HTTP.get(URI.parse(u))
-    assert res != nil, "Didn't get a response: #{u}"
-  end
-end
 
 class WebServerTest < Test::Unit::TestCase
 
@@ -96,7 +90,7 @@ class WebServerTest < Test::Unit::TestCase
   def test_header_is_too_long
     redirect_test_io do
       long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
-      assert_raises Errno::ECONNRESET, Errno::EPIPE do
+      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED do
         do_test(long, long.length/2)
       end
     end
