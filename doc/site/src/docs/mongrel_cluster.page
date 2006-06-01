@@ -38,10 +38,10 @@ root, therefore we should create a user for mongrel to run as:
 </code></pre>
 For the purpose of this example we will just use a freshly minted rails app.
 You can adjust these instructions to work with your app, wherever you may have
-placed it but lets pretend we are working in */usr/local/vhosts*.  So lets go set
+placed it but lets pretend we are working in */var/www/apps*.  So lets go set
 up our app and test that mongrel will serve it:
 <pre><code>
-  $ cd /usr/local/vhosts
+  $ cd /var/www/apps
   $ rails testapp
   $ cd testapp
   $ mongrel_rails start
@@ -50,7 +50,7 @@ You should now be able to see your application at @http://host:3000/@.  If you
 can, you are good to go.  Hit @CTRL+C@ to stop the mongrel server.  At a minimum
 the log directory of your app has to be writable by the *mongrel* user:
 <pre><code>
-  $ sudo chown -R mongrel:mongrel /usr/local/vhosts/testapp
+  $ sudo chown -R mongrel:mongrel /var/www/apps/testapp
 </code></pre>
 
 h2. Mongrel Cluster Setup
@@ -58,8 +58,9 @@ h2. Mongrel Cluster Setup
 With mongrel working and our webapp directory prepared we can proceed with the
 mongrel_cluster configuration step:
 <pre><code>
-  $ sudo mongrel_rails cluster::configure -e production -p 8000 -N 3 \
-    -c /usr/local/vhosts/testapp --user mongrel --group mongrel
+  $ sudo mongrel_rails cluster::configure -e production \
+    -p 8000 -N 3 -c /var/www/apps/testapp -a 127.0.0.1 \
+    --user mongrel --group mongrel 
 </code></pre>
 This will write a configuration file in *config/mongrel_cluster.yml*.  We have
 setup to run our cluster in production mode as the user *mongrel* and will start
@@ -81,7 +82,7 @@ we need to do is put the configuration files in */etc/mongrel_cluster* and take 
 a few system tasks:
 <pre><code>
   $ sudo mkdir /etc/mongrel_cluster
-  $ sudo ln -s /usr/local/vhosts/testapp/config/mongrel_cluster.yml \
+  $ sudo ln -s /var/www/apps/testapp/config/mongrel_cluster.yml \
     /etc/mongrel_cluster/testapp.yml
   $ sudo cp \
     /path/to/mongrel_cluster_gem/resources/mongrel_cluster \
@@ -101,7 +102,7 @@ h2.  Conclusion
 
 We have configured mongrel and mongrel_cluster with our webapp and setup
 mongrel_cluster to run our cluster at startup.  What's missing?  Well, unless
-your application users expect to have to connect to port 8000-8002 you had best
+your application users expect to have to connect to ports 8000-8002 you had best
 check out the reverse proxy options listed above.
 
 The process of setting up mongrel_cluster will be the same for all of the
