@@ -74,7 +74,11 @@ class Stats
   # Calculates the standard deviation of the data so far.
   def sd
     # (sqrt( ((s).sumsq - ( (s).sum * (s).sum / (s).n)) / ((s).n-1) ))
-    Math.sqrt( (@sumsq - ( @sum * @sum / @n)) / (@n-1) )
+    begin
+      return Math.sqrt( (@sumsq - ( @sum * @sum / @n)) / (@n-1) )
+    rescue Errno::EDOM
+      return 0.0
+    end
   end
 
 

@@ -1,5 +1,3 @@
-require 'rcov/rcovtask'
-
 def make(makedir)
   Dir.chdir(makedir) do
     sh(PLATFORM =~ /win32/ ? 'nmake' : 'make')
@@ -111,8 +109,14 @@ def sub_project(project, *targets)
   end
 end
 
-Rcov::RcovTask.new do |t|
-  t.test_files = FileList['test/test*.rb']
-  t.rcov_opts << "-x /usr"
-  t.output_dir = "test/coverage"
+# Conditional require rcov/rcovtask if present
+begin
+  require 'rcov/rcovtask'
+  
+  Rcov::RcovTask.new do |t|
+    t.test_files = FileList['test/test*.rb']
+    t.rcov_opts << "-x /usr"
+    t.output_dir = "test/coverage"
+  end
+rescue
 end
