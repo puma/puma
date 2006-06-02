@@ -92,15 +92,8 @@ def setup_gem(pkg_name, pkg_version)
 
   Rake::GemPackageTask.new(spec) do |p|
     p.gem_spec = spec
-    p.need_tar = true
+    p.need_tar = true if RUBY_PLATFORM !~ /mswin/
   end
-end
-
-def setup_win32_gem(pkg_name, pkg_version)
-  spec = base_gem_spec(pkg_name, pkg_version)
-  yield spec if block_given?
-
-  Gem::Builder.new(spec).build
 end
 
 def sub_project(project, *targets)

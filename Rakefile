@@ -26,7 +26,7 @@ task :compile => [:http11] do
   end
 end
 
-task :package => [:clean,:compile,:test]
+task :package => [:clean,:compile,:test,:rerdoc]
 
 task :ragel do
   sh %{/usr/local/bin/ragel ext/http11/http11_parser.rl | /usr/local/bin/rlcodegen -G2 -o ext/http11/http11_parser.c}
@@ -58,41 +58,23 @@ version="0.3.13"
 setup_gem(name, version) do |spec|
   spec.summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."
   spec.description = spec.summary
-  spec.test_file = "test/test_ws.rb"
+  spec.test_files = Dir.glob('test/test_*.rb')
   spec.author="Zed A. Shaw"
   spec.executables=['mongrel_rails']
   spec.files += %w(ext/http11/MANIFEST README Rakefile setup.rb)
 
-  spec.add_dependency('daemons', '>= 0.4.2')
-  spec.add_dependency('gem_plugin', '>= 0.2.1')
   spec.required_ruby_version = '>= 1.8.4'
-end
 
-desc "Build a binary gem for Win32"
-task :win32_gem => [:clean, :compile, :test, :rerdoc, :package_win32]
-
-task :package_win32 do
-  setup_win32_gem(name, version) do |spec|
-    spec.summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."
-    spec.description = spec.summary
-    spec.test_files = Dir.glob('test/test_*.rb') 
-    spec.author="Zed A. Shaw"
-    spec.executables=['mongrel_rails', 'mongrel_rails_service']
-    spec.homepage="http://mongrel.rubyforge.org"
-    spec.rubyforge_project="mongrel"
-    spec.files += %w(ext/http11/MANIFEST README Rakefile setup.rb)
+  if RUBY_PLATFORM =~ /mswin/
     spec.files << 'ext/http11/http11.so'
-
-    spec.required_ruby_version = '>= 1.8.4'
-
     spec.add_dependency('win32-service', '>= 0.5.0')
-    spec.add_dependency('gem_plugin', ">= 0.2.1")
-
-    spec.extensions = []
     spec.platform = Gem::Platform::WIN32
+  else
+    spec.add_dependency('daemons', '>= 0.4.2')
   end
+  
+  spec.add_dependency('gem_plugin', '>= 0.2.1')
 end
-
 
 task :install do
   sub_project("gem_plugin", :install)
