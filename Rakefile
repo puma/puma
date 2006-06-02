@@ -68,6 +68,7 @@ setup_gem(name, version) do |spec|
   if RUBY_PLATFORM =~ /mswin/
     spec.files << 'ext/http11/http11.so'
     spec.add_dependency('win32-service', '>= 0.5.0')
+    spec.extensions.clear
     spec.platform = Gem::Platform::WIN32
   else
     spec.add_dependency('daemons', '>= 0.4.2')
