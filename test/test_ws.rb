@@ -22,7 +22,6 @@ require 'mongrel'
 require 'timeout'
 require File.dirname(__FILE__) + "/testhelp.rb"
 
-
 class TestHandler < Mongrel::HttpHandler
   attr_reader :ran_test
 
@@ -68,6 +67,7 @@ class WebServerTest < Test::Unit::TestCase
         sleep 1
       end
     end
+    s.write(" ") if RUBY_PLATFORM =~ /mswin/
     s.close
   end
 
@@ -90,7 +90,7 @@ class WebServerTest < Test::Unit::TestCase
   def test_header_is_too_long
     redirect_test_io do
       long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
-      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED do
+      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL do
         do_test(long, long.length/2)
       end
     end
@@ -98,7 +98,7 @@ class WebServerTest < Test::Unit::TestCase
 
   def test_num_processors_overload
     redirect_test_io do
-      assert_raises Errno::ECONNRESET, Errno::EPIPE do
+      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL do
         tests = [
           Thread.new { do_test(@request, 1) },
           Thread.new { do_test(@request, 10) },
