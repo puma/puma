@@ -44,6 +44,7 @@ module Mongrel
     class RailsHandler < Mongrel::HttpHandler
       attr_reader :files
       attr_reader :guard
+      @@file_only_methods = ["GET","HEAD"]
 
       def initialize(dir, mime_map = {})
         @files = Mongrel::DirHandler.new(dir,false)
@@ -64,11 +65,12 @@ module Mongrel
 
         path_info = request.params[Mongrel::Const::PATH_INFO]
         page_cached = path_info + ".html"
+        get_or_head = @@file_only_methods.include? request.params[Mongrel::Const::REQUEST_METHOD]
 
-        if @files.can_serve(path_info)
+        if get_or_head and @files.can_serve(path_info)
           # File exists as-is so serve it up
           @files.process(request,response)
-        elsif @files.can_serve(page_cached)
+        elsif get_or_head and @files.can_serve(page_cached)
           # possible cached page, serve it up      
           request.params[Mongrel::Const::PATH_INFO] = page_cached
           @files.process(request,response)
@@ -77,8 +79,9 @@ module Mongrel
             cgi = Mongrel::CGIWrapper.new(request, response)
             cgi.handler = self
 
+            # ultra dangerous, but people are asking to kill themselves.  here's the Katana
             @guard.lock unless ActionController::Base.allow_concurrency
-            # Rails is not thread safe so must be run entirely within synchronize 
+
             Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
 
             # This finalizes the output using the proper HttpResponse way
@@ -89,7 +92,7 @@ module Mongrel
             STDERR.puts "Error calling Dispatcher.dispatch #{rails_error.inspect}"
             STDERR.puts rails_error.backtrace.join("\n")
           ensure
-            @guard.unlock
+            @guard.unlock unless ActionController::Base.allow_concurrency
           end
         end
       end
@@ -154,6 +157,9 @@ module Mongrel
         require 'dispatcher'
         require 'mongrel/rails'
 
+        if ActionController::Base.allow_concurrency
+          log "[RAILS] ActionController::Base.allow_concurrency is true.  Wow, you're very brave."
+        end
         @rails_handler = RailsHandler.new(ops[:docroot], ops[:mime])
       end
 
@@ -177,7 +183,7 @@ module Mongrel
       def setup_rails_signals(options={})
         ops = resolve_defaults(options)
         setup_signals(options)
-        
+
         if RUBY_PLATFORM !~ /mswin/
           # rails reload
           trap("HUP") { log "HUP signal received."; reload!          }

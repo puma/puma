@@ -57,10 +57,6 @@ class Start < GemPlugin::Plugin "/commands"
     valid_user? @user if @user
     valid_group? @group if @group
 
-    if ActionController::Base.allow_concurrency
-      STDERR.puts "[RAILS] allow_concurrency is true.  Wow, you're very brave."
-    end
-
     return @valid
   end
   
@@ -164,17 +160,19 @@ class Stop < GemPlugin::Plugin "/commands"
 
   def configure 
     options [ 
-      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
+      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
       ['-f', '--force', "Force the shutdown.", :@force, false],
       ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"]
     ]
   end
 
   def validate
-    @cwd = File.expand_path(@cwd)
-    valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+    if @cwd
+      @cwd = File.expand_path(@cwd)
+      valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+      @pid_file = File.join(@cwd,@pid_file)
+    end
 
-    @pid_file = File.join(@cwd,@pid_file)
     valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
 
     return @valid
@@ -197,17 +195,19 @@ class Restart < GemPlugin::Plugin "/commands"
 
   def configure 
     options [ 
-      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
+      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
       ['-s', '--soft', "Do a soft restart rather than a process exit restart", :@soft, false],
       ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"]
     ]
   end
 
   def validate
-    @cwd = File.expand_path(@cwd)
-    valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+    if @cwd
+      @cwd = File.expand_path(@cwd)
+      valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+      @pid_file = File.join(@cwd,@pid_file)
+    end
 
-    @pid_file = File.join(@cwd,@pid_file)
     valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
 
     return @valid
