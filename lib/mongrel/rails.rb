@@ -77,10 +77,9 @@ module Mongrel
             cgi = Mongrel::CGIWrapper.new(request, response)
             cgi.handler = self
 
-            @guard.synchronize do
-              # Rails is not thread safe so must be run entirely within synchronize 
-              Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
-            end
+            @guard.lock unless ActionController::Base.allow_concurrency
+            # Rails is not thread safe so must be run entirely within synchronize 
+            Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
 
             # This finalizes the output using the proper HttpResponse way
             cgi.out {""}
@@ -89,6 +88,8 @@ module Mongrel
           rescue Object => rails_error
             STDERR.puts "Error calling Dispatcher.dispatch #{rails_error.inspect}"
             STDERR.puts rails_error.backtrace.join("\n")
+          ensure
+            @guard.unlock
           end
         end
       end

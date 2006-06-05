@@ -56,31 +56,14 @@ class Start < GemPlugin::Plugin "/commands"
     valid_dir? File.dirname(@generate), "Problem accessing directory to #@generate" if @generate
     valid_user? @user if @user
     valid_group? @group if @group
-    
+
+    if ActionController::Base.allow_concurrency
+      STDERR.puts "[RAILS] allow_concurrency is true.  Wow, you're very brave."
+    end
+
     return @valid
   end
   
-  def valid_user?(user)
-    valid?(Process.uid == 0, "You must be root to change the user.")
-    valid?(@group, "You must also specify a group.")
-    begin
-      Etc.getpwnam(user)
-    rescue
-      failure "User does not exist: #{user}"
-      @valid = false
-    end
-  end
-  
-  def valid_group?(group)
-    valid?(Process.uid == 0, "You must be root to change the group.")
-    valid?(@user, "You must also specify a user.")
-    begin
-      Etc.getgrnam(group)
-    rescue
-      failure "Group does not exist: #{group}"
-      @valid = false
-    end
-  end
   
   def run
 

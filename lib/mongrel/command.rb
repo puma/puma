@@ -29,12 +29,12 @@ module Mongrel
   module Command
 
     BANNER = "Usage: mongrel_rails <command> [options]"
-    
+
     # A Command pattern implementation used to create the set of command available to the user
     # from Mongrel.  The script uses objects which implement this interface to do the
     # user's bidding.
     module Base
-      
+
       attr_reader :valid, :done_validating, :original_args
 
       # Called by the implemented command to set the options for that command.
@@ -68,7 +68,7 @@ module Mongrel
           @done_validating = true
           puts @opt
         end
-        
+
         # I need to add my own -v definition to prevent the -v from exiting by default as well.
         @opt.on_tail("--version", "Show version") do
           @done_validating = true
@@ -76,7 +76,7 @@ module Mongrel
             puts "Version #{Mongrel::Const::MONGREL_VERSION}"
           end
         end
-        
+
         @opt.parse! argv
       end
 
@@ -88,19 +88,19 @@ module Mongrel
       def validate
         return @valid
       end
-      
+
       # Returns a help message.  Defaults to OptionParser#help which should be good.
       def help
         @opt.help
       end
-      
+
       # Runs the command doing it's job.  You should implement this otherwise it will
       # throw a NotImplementedError as a reminder.
       def run
         raise NotImplementedError
       end
-      
-      
+
+
       # Validates the given expression is true and prints the message if not, exiting.
       def valid?(exp, message)
         if not @done_validating and (not exp)
@@ -114,16 +114,38 @@ module Mongrel
       def valid_exists?(file, message)
         valid?(file != nil && File.exist?(file), message)
       end
-      
-      
+
+
       # Validates that the file is a file and not a directory or something else.
       def valid_file?(file, message)
         valid?(file != nil && File.file?(file), message)
       end
-      
+
       # Validates that the given directory exists
       def valid_dir?(file, message)
         valid?(file != nil && File.directory?(file), message)
+      end
+
+      def valid_user?(user)
+        valid?(Process.uid == 0, "You must be root to change the user.")
+        valid?(@group, "You must also specify a group.")
+        begin
+          Etc.getpwnam(user)
+        rescue
+          failure "User does not exist: #{user}"
+          @valid = false
+        end
+      end
+
+      def valid_group?(group)
+        valid?(Process.uid == 0, "You must be root to change the group.")
+        valid?(@user, "You must also specify a user.")
+        begin
+          Etc.getgrnam(group)
+        rescue
+          failure "Group does not exist: #{group}"
+          @valid = false
+        end
       end
 
       # Just a simple method to display failure until something better is developed.
@@ -131,12 +153,12 @@ module Mongrel
         STDERR.puts "!!! #{message}"
       end
     end
-    
+
     # A Singleton class that manages all of the available commands
     # and handles running them.
     class Registry
       include Singleton
-      
+
       # Builds a list of possible commands from the Command derivates list
       def commands
         pmgr = GemPlugin::Manager.instance
@@ -147,27 +169,27 @@ module Mongrel
       # Prints a list of available commands.
       def print_command_list
         puts "#{Mongrel::Command::BANNER}\nAvailable commands are:\n\n"
-        
+
         self.commands.each do |name|
           puts " - #{name[1 .. -1]}\n"
         end
-        
+
         puts "\nEach command takes -h as an option to get help."
-        
+
       end
-      
-      
+
+
       # Runs the args against the first argument as the command name.
       # If it has any errors it returns a false, otherwise it return true.
       def run(args)
         # find the command
         cmd_name = args.shift
-        
+
         if !cmd_name or cmd_name == "?" or cmd_name == "help"
           print_command_list
           return true
         end
-        
+
         # command exists, set it up and validate it
         begin
           command = GemPlugin::Manager.instance.create("/commands/#{cmd_name}", :argv => args)
@@ -176,7 +198,7 @@ module Mongrel
           print_command_list
           return
         end
-        
+
         # Normally the command is NOT valid right after being created
         # but sometimes (like with -h or -v) there's no further processing
         # needed so the command is already valid so we can skip it.
@@ -190,7 +212,7 @@ module Mongrel
         end
         return true
       end
-      
+
     end
   end
 end
