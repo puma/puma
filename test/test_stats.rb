@@ -28,7 +28,7 @@ class StatsTest < Test::Unit::TestCase
     s = Stats.new("test")
     t = Stats.new("time")
 
-    10000.times { s.sample(rand(20)); t.tick }
+    100.times { s.sample(rand(20)); t.tick }
 
     s.dump("FIRST", out)
     t.dump("FIRST", out)
@@ -38,7 +38,7 @@ class StatsTest < Test::Unit::TestCase
 
     s.reset
     t.reset
-    10000.times { s.sample(rand(20)); t.tick }
+    100.times { s.sample(rand(30)); t.tick }
     
     s.dump("SECOND", out)
     t.dump("SECOND", out)
