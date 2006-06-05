@@ -7,6 +7,56 @@ ordering: 2
 
 h1. Latest News
 
+h2. Jun 5: Mongrel 0.3.13 Pre-Release -- Katana Suicide Concurrency
+
+We are *days* away from the official 0.3.13 release, which will be followed
+quickly by 0.4 code named Enterprisey Edition 1.2.  This latest pre-release
+update closes off the last of the annoying bugs, and adds one very nasty
+feature people should check out before we release.  Read about Katanas below.
+
+** This release doesn't have win32 yet.  That'll be uploaded Monday. **
+
+h3. GETTING IT
+
+Best thing to do is this:
+
+ $ gem install daemons
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases/
+
+h3. WHAT'S FIXED
+
+* Fixes a failure of -P to find PID files.
+* Changes the RailsHandler so that only passes GET or HEAD requests to the DirHandler for page caching.
+* Confirms that the new send_file and upload to tempfile works on win32.  More tests with big files uploaded on win32 are needed.
+* Lots of documentation on installing, with more to come.  Full Apache documentation and information on writing your own snazzy handlers and filters.
+* François SIMOND suggested a check for allow_concurrency and to avoid locking Rails if that's set to true.  I tried it, had to change the patch but I left it in.  Read below.
+* Moved some of the "change to user/group" code around so that any Mongrel command can use it.
+* Various code clean-ups and big improvements on the unit test coverage and reporting.  Check out "the coverage report":http://mongrel.rubyforge.org/coverage/
+* Lots of thrashing and code review, not much more will come for 0.3.13 unless an obviously broken piece needs work.
+
+
+h3. KATANA SUICIDE CONCURRENCY
+
+I resisted doing this, but it's going to come down sooner or later now that
+François SIMOND figured it out.  Mongrel was protecting the world from the
+allow_concurrency "feature" but now it lets you kill yourself in obscenely
+horrible ways.
+
+If you set ActionController::Base.allow_concurrency=true in your
+config/environments/* then Mongrel will *NOT* guard the Rails Dispatcher.  This
+means that you'll get full threaded madness thrashing
+your Rails controllers until they die horribly slicing
+themselves into tiny little bits leaving you breathless
+with the destruction.
+
+Mongrel will obnoxiously warn you about this, and people who try it will NOT
+get support from me without mad amounts of dough.  If you turn this on, and
+your world comes crashing around your head, then I warned you.  Otherwise, go
+ahead and give it a try and see if that improves things for you.
+
+Enjoy the release, and "report those bugs":http://rubyforge.org/tracker/?atid=5145&group_id=1306&func=browse
+
+
 h2. May 11:  Mongrel 0.3.13 Pre-Release -- Out of Hibernation
 
 This release is the long awaited 0.3.13 with the fancy

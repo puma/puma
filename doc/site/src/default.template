@@ -1,227 +1,238 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-<head>
-  <title>Mongrel: {title: }</title>
-  <link rel="stylesheet" href="{relocatable: default.css}" type="text/css" media=
-  "screen" />
-  <meta http-equiv="Content-Type" content=
-  "text/html; charset=us-ascii" />
-</head>
+  <head>
+    <title>Mongrel: {title: }</title>
+    <link rel="stylesheet" href="{relocatable: default.css}" type="text/css" media=
+    "screen" />
+    <meta http-equiv="Content-Type" content=
+    "text/html; charset=us-ascii" />
+  </head>
 
-<body>
-  <div id="wrapper">
-    <div id="head">
-      <div id="logo">
-        <a href="{relocatable: index.html}" title="Mongrel"><span>Mongrel</span></a>
+  <body>
+    <div id="wrapper">
+      <div id="head">
+        <div id="logo">
+          <a href="{relocatable: index.html}" title="Mongrel"><span>Mongrel</span></a>
+        </div>
+
+        <div id="slogan">
+          <span>Faster Is Possible</span>
+        </div>
+
+        <div id="toplinks">
+          <ul>
+            <li id="tl_home"><a href="/" title=
+              "Home"><span>Home</span></a></li>
+
+            <li id="tl_contact"><a href="http://rubyforge.org/project/memberlist.php?group_id=1306" title=
+              "Contact"><span>Contact</span></a></li>
+
+            <li id="tl_sitemap"><a href="{relocatable: sitemap.html}" title=
+              "Site map"><span>Site map</span></a></li>
+          </ul>
+        </div>
       </div>
 
-      <div id="slogan">
-        <span>Faster Is Possible</span>
-      </div>
+      <div id="body">
+        <div id="visual"></div>
 
-      <div id="toplinks">
-        <ul>
-          <li id="tl_home"><a href="/" title=
-          "Home"><span>Home</span></a></li>
+        <div id="content">
+          {content: }
+        </div>
 
-          <li id="tl_contact"><a href="http://rubyforge.org/project/memberlist.php?group_id=1306" title=
-          "Contact"><span>Contact</span></a></li>
+        <div id="news">
+          <h4>NEWS</h4>
 
-          <li id="tl_sitemap"><a href="{relocatable: sitemap.html}" title=
-          "Site map"><span>Site map</span></a></li>
-        </ul>
-      </div>
-    </div>
+          <dl>
+            <dt>Jun-5-2006</dt>
+            <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.13 Pre-Release -- Kitana Suicide Concurrency</a></h5>
 
-    <div id="body">
-      <div id="visual"></div>
+            <p>Well, you asked for it.  Lots of fixes, days away from official release, and allow_concurrency
+            can murder your children.
+            </p>
+            <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
-      <div id="content">
-      {content: }
-      </div>
-
-      <div id="news">
-        <h4>NEWS</h4>
-
-        <dl>
-          <dt>May-11-2006</dt>
-          <dd>
+            <dt>May-11-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.13 Pre-Release -- Out of Hibernation</a></h5>
 
             <p>This Pre-Release fixes lots of reported bugs, adds some requested features,
-		  and stars a lot of documentation.  Non-Win32 folks should grab
-		  and test.
-	    </p>
-	      <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            and stars a lot of documentation.  Non-Win32 folks should grab
+            and test.
+            </p>
+            <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
 
-          <dt>Apr-10-2006</dt>
-          <dd>
+            <dt>Apr-10-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.12.4 -- Relaxed Parser, Date Fix</a></h5>
 
             <p>A minor release that relaxes the HTTP parser to allow people to abuse HTTP 
-	      as a file system via webdav and a fix to the date formatting.
-	    </p>
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            as a file system via webdav and a fix to the date formatting.
+            </p>
+            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
 
-          <dt>Apr-6-2006</dt>
-          <dd>
+            <dt>Apr-6-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.12.3 -- Thread Debugging</a></h5>
 
             <p>Fixes a bug with CONTENT_TYPE from multipart forms.  Better shutdown when a 
-	      thread refuses to exit.  Thread logging for each request letting you track
-	      and debug thread leaks.
-	    </p>
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            thread refuses to exit.  Thread logging for each request letting you track
+            and debug thread leaks.
+            </p>
+            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
 
-          <dt>Apr-3-2006</dt>
-          <dd>
+            <dt>Apr-3-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.12.2 -- Iron Mongrel</a></h5>
 
             <p>This release is the result of pounding the crap out of Mongrel since the
-	    last release to make it more robust in the face of really bad traffic.  It is
-	    pretty ruthless so people should test and report if it's too ruthless.</p>
+            last release to make it more robust in the face of really bad traffic.  It is
+            pretty ruthless so people should test and report if it's too ruthless.</p>
 
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
 
-          <dt>Mar-30-2006</dt>
-          <dd>
+            <dt>Mar-30-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.12 -- Pre-Release</a></h5>
 
             <p>The official 0.3.12 release of Mongrel is here.  This release is hot, but test test test.
-	      Should support Rails 1.1 and has lots of debugging and tweaks.</p>
+            Should support Rails 1.1 and has lots of debugging and tweaks.</p>
 
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
-          <dt>Mar-27-2006</dt>
-          <dd>
+            <dt>Mar-27-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.12 -- Pre-Release</a></h5>
 
             <p>A pre-release of the 0.3.12 Mongrel which suppot tons of functionality, so it 
-	    needs more testing than normal.  Read the news for changes and install instructions.</p>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            needs more testing than normal.  Read the news for changes and install instructions.</p>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
-          <dt>Mar-15-2006</dt>
-          <dd>
+            <dt>Mar-15-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.11 -- Edge Rails Compliant</a></h5>
 
             <p>This release makes sure that Mongrel is edge Rails compliant, and fixes up 
-	    many little things with GemPlugins.  The <b>big</b> part of the release is
-	    the mongrel_config plugin which support win32 and Unix.</p>
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            many little things with GemPlugins.  The <b>big</b> part of the release is
+            the mongrel_config plugin which support win32 and Unix.</p>
+            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
-          <dt>Mar-12-2006</dt>
-          <dd>
+            <dt>Mar-12-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.10.1 -- Big Release Day</a></h5>
 
-	    <p>I normally do frequent little releases, but this
-	      release involved lots of little touches all over the entire code base.  It
-	      now has a ton of features and should have the best Rails support yet.  It's
-	      even got <b>GemPlugin</b> to a level that anyone can use it.  Read the 
-	      news for the full scoop.
-	    </p>
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            <p>I normally do frequent little releases, but this
+            release involved lots of little touches all over the entire code base.  It
+            now has a ton of features and should have the best Rails support yet.  It's
+            even got <b>GemPlugin</b> to a level that anyone can use it.  Read the 
+            news for the full scoop.
+            </p>
+            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
-          <dt>Mar-06-2006</dt>
-          <dd>
+            <dt>Mar-06-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.9 -- Gem Based Plugins</a></h5>
 
-	    <p>This release features not only gem based plugins, but a new sub-project
-	      named <a href="/gem_plugin_rdoc">GemPlugin</a> to support it.  There's a
-	      sample plugin you can try out as well.  Read the news for more info.
-	    </p>
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            <p>This release features not only gem based plugins, but a new sub-project
+            named <a href="/gem_plugin_rdoc">GemPlugin</a> to support it.  There's a
+            sample plugin you can try out as well.  Read the news for more info.
+            </p>
+            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
-          <dt>Mar-04-2006</dt>
-          <dd>
+            <dt>Mar-04-2006</dt>
+            <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.8 -- Bug Fixes</a></h5>
 
             <p>A small release to close off some of the bugs in the tracker.  This also
-	      adds the ability to get at the RailsHandler from within a Rails application.
-	      This is necessary to properly map URI's to their physical locations.
-	    </p>
-	      <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-	      <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-          </dd>
+            adds the ability to get at the RailsHandler from within a Rails application.
+            This is necessary to properly map URI's to their physical locations.
+            </p>
+            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
 
-        </dl>
-      </div>
-      <hr noshade="noshade" size="1" />
+          </dl>
+        </div>
+        <hr noshade="noshade" size="1" />
 
-      <div id="threecells">
-      </div>
-    </div>
-
-    <div id="side">
-      <div id="menu">
-	{menu: }
+        <div id="threecells">
+        </div>
       </div>
 
-      <dl id="ads">
-        <dt><a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads"><img src="{relocatable: images/3colls_p3.jpg}" /></a><br /></a></dt>
+      <div id="side">
+        <div id="menu">
+          {menu: }
+        </div>
+
+        <dl id="ads">
+          <dt><a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads"><img src="{relocatable: images/3colls_p3.jpg}" /></a><br /></a></dt>
         <dd>
-          <p><b>Downloads:</b> Grab new gear.</p>
+        <p><b>Downloads:</b> Grab new gear.</p>
         </dd>
 
         <dt><a href="{relocatable: docs/index.html}" title="Documentation"><img src="{relocatable: images/3colls_p2.jpg}" /></a><br /></a></dt>
-        <dd>
-          <p><b>Documentation:</b>  RTFM.</p>
-        </dd>
+      <dd>
+      <p><b>Documentation:</b>  RTFM.</p>
+      </dd>
 
-        <dt><a href="http://rubyforge.org/tracker/?atid=5145&group_id=1306&func=browse"><img src="{relocatable: images/side_p2.gif}" alt="Bugs" /><br /></a></dt>
-        <dd>
-          <p><b>Tracker:</b> Found a bug? Well then report it already?!</p>
-        </dd>
+      <dt><a href="http://rubyforge.org/tracker/?atid=5145&group_id=1306&func=browse"><img src="{relocatable: images/side_p2.gif}" alt="Bugs" /><br /></a></dt>
+      <dd>
+      <p><b>Tracker:</b> Found a bug? Well then report it already?!</p>
+      </dd>
 
-        <dt><a href="http://rubyforge.org/forum/?group_id=1306"><img src="{relocatable: images/side_p1.gif}" alt=
+      <dt><a href="http://rubyforge.org/forum/?group_id=1306"><img src="{relocatable: images/side_p1.gif}" alt=
         "Sad Dog" /><br /></a></dt>
-        <dd>
-          <p><b>Forums:</b> Mongrel making you sad? Why not say something?</p>
-        </dd>
+      <dd>
+      <p><b>Forums:</b> Mongrel making you sad? Why not say something?</p>
+      </dd>
 
-        <dt>
-<a href="http://rubyforge.org/project/memberlist.php?group_id=1306" title="Contact"><img src="{relocatable: images/3colls_p1.jpg}" /></a><br /></a></dt>
-        <dd>
-          <p><b>People:</b> Contact project people.</p>
-        </dd>
+      <dt>
+      <a href="http://rubyforge.org/project/memberlist.php?group_id=1306" title="Contact"><img src="{relocatable: images/3colls_p1.jpg}" /></a><br /></a></dt>
+    <dd>
+    <p><b>People:</b> Contact project people.</p>
+    </dd>
 
-        <dt><a href="http://rubyforge.org/projects/mongrel/"><img src="{relocatable: images/side_p3.gif}" alt=
-        "Tools" /><br /></a></dt>
-        <dd>
-          <p><b>Other:</b> Hit the project page for all sorts of other
-          goodies.</p>
-        </dd>
+    <dt><a href="http://rubyforge.org/projects/mongrel/"><img src="{relocatable: images/side_p3.gif}" alt=
+      "Tools" /><br /></a></dt>
+    <dd>
+    <p><b>Other:</b> Hit the project page for all sorts of other
+    goodies.</p>
+    </dd>
 
-      </dl>
-    </div>
+  </dl>
+</div>
 
-    <div id="foot">
-      Copyright &copy; 2006 <a href="http://www.zedshaw.com/">Zed A. Shaw</a><br />
-      <a href="{relocatable: attributions.html}">Additional contibutions and openly licensed
-      materials used.</a>
-    </div>
+<div id="foot">
+  Copyright &copy; 2006 <a href="http://www.zedshaw.com/">Zed A. Shaw</a><br />
+  <a href="{relocatable: attributions.html}">Additional contibutions and openly licensed
+    materials used.</a>
+</div>
   </div>
 </body>
 </html>
