@@ -80,6 +80,7 @@ ListenHTTPS
   Cert    "/usr/local/etc/test.pem"
   # pass along https hint
   AddHeader "X-Forwarded-Proto: https"
+  HeadRemove "X-Forwarded-Proto"
   Service
     BackEnd
       Address 127.0.0.1
