@@ -106,7 +106,7 @@ End
 Before starting pound, we need to make sure our SSL certificate is present.  If
 not we can quickly generate a test certificate:
 
- $ openssl req -x509 -newkey rs:1024 -keyout test.pem \
+ $ openssl req -x509 -newkey rsa:1024 -keyout test.pem \
    -out test.pem -days -nodes
 
 It should now be safe to start pound:
