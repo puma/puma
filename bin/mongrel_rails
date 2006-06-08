@@ -80,7 +80,7 @@ class Start < GemPlugin::Plugin "/commands"
     if @config_file
       STDERR.puts "** Loading settings from #{@config_file} (command line options override)."
       conf = YAML.load_file(@config_file)
-      settings = conf.merge(settings)
+      settings = settings.merge! conf
     end
 
     config = Mongrel::Rails::RailsConfigurator.new(settings) do
