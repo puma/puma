@@ -97,6 +97,17 @@ RedHat like system we can configure mongrel_cluster for startup:
 <pre><code>
   $ sudo /sbin/chkconfig --level 345 mongrel_cluster on
 </code></pre>
+*NOTE* At this point there are a few issues with this init script that only apply
+under certain circumstances.  Those issues include:
+
+* *Shebang line* - The init script uses *#!/usr/bin/env ruby* to find the
+appropriate interpreter.  Some distribution installs of ruby only give you a
+/usr/bin/ruby1.8.  You may change the shebang line or simply create a symbolic
+link from /usr/bin/ruby1.8 to /usr/bin/ruby[3].
+* *mongrel_cluster_ctl location* - If you have installed your gems in
+/usr/local/ you may find that the init script can not find mongrel_cluster_ctl.
+To resolve this, you can symbolically link /usr/local/bin/mongrel_cluster_ctl into 
+/usr/bin/
 
 h2.  Conclusion
 
@@ -112,7 +123,12 @@ for several of the other deployment guides.
 <hr>
 
 fn1.  Thanks to "Bradley Taylor":http://fluxura.com/ for writing 
-mongrel_cluster and recent improvements in its startup capabilities.
+mongrel_cluster and recent improvements in its startup capabilities.  The
+following people have provided valuable feedback on this document: Alison Rowland.
 
 fn2.  @adduser -r@ is a RedHat-centric way of creating a system account.  For
 Debian-ish distributions replace that with @adduser --system mongrel@.
+
+fn3. If you have this problem, you will probably discover other ruby related
+executables are also missing.  You may want to link irb1.8 and ri1.8 as well,
+though only /usr/bin/ruby is necessary for this init script.
