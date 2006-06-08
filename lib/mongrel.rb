@@ -731,13 +731,19 @@ module Mongrel
     
     # Change privilege of the process to specified user and group.
     def change_privilege(user, group)
-      if group
-        log "Changing group to #{group}."
-        Process::GID.change_privilege(Etc.getgrnam(group).gid)
-      end
-      if user
-        log "Changing user to #{user}." 
-        Process::UID.change_privilege(Etc.getpwnam(user).uid)
+      begin
+        if group
+          log "Changing group to #{group}."
+          Process::GID.change_privilege(Etc.getgrnam(group).gid)
+        end
+
+        if user
+          log "Changing user to #{user}." 
+          Process::UID.change_privilege(Etc.getpwnam(user).uid)
+        end
+      rescue Errno::EPERM
+        log "FAILED to change user:group #{user}:#{group}: #$!"
+        exit 1
       end
     end
 

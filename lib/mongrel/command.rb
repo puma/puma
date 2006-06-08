@@ -127,7 +127,6 @@ module Mongrel
       end
 
       def valid_user?(user)
-        valid?(Process.uid == 0, "You must be root to change the user.")
         valid?(@group, "You must also specify a group.")
         begin
           Etc.getpwnam(user)
@@ -138,7 +137,6 @@ module Mongrel
       end
 
       def valid_group?(group)
-        valid?(Process.uid == 0, "You must be root to change the group.")
         valid?(@user, "You must also specify a user.")
         begin
           Etc.getgrnam(group)
