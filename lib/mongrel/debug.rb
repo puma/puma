@@ -79,12 +79,14 @@ module ObjectTracker
     ospace = Set.new
     counts = {}
     
-    # Strings can't be tracked easily and are so numerous that they drown out all else
-    # so we just ignore them in the counts.
     ObjectSpace.each_object do |obj|
-      ospace << obj.object_id
-      counts[obj.class] ||= 0
-      counts[obj.class] += 1
+      begin
+        ospace << obj.object_id
+        counts[obj.class] ||= 0
+        counts[obj.class] += 1
+      rescue Object
+        # skip since object_id can magically get parameters
+      end
     end
     
     dead_objects = @active_objects - ospace
@@ -194,15 +196,19 @@ module RequestLog
     def process(request, response)
       MongrelDbg::trace(:threads, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
       ObjectSpace.each_object do |obj|
-        if obj.class == Mongrel::HttpServer
-          worker_list = obj.workers.list
+        begin
+          if obj.class == Mongrel::HttpServer
+            worker_list = obj.workers.list
 
-          if worker_list.length > 0
-            keys = "-----\n\tKEYS:"
-            worker_list.each {|t| keys << "\n\t\t-- #{t}: #{t.keys.inspect}" }
+            if worker_list.length > 0
+              keys = "-----\n\tKEYS:"
+              worker_list.each {|t| keys << "\n\t\t-- #{t}: #{t.keys.inspect}" }
+            end
+
+            MongrelDbg::trace(:threads, "#{obj.host}:#{obj.port} -- THREADS: #{worker_list.length} #{keys}")
           end
-
-          MongrelDbg::trace(:threads, "#{obj.host}:#{obj.port} -- THREADS: #{worker_list.length} #{keys}")
+        rescue Object
+          # ignore since obj.class can sometimes take parameters
         end
       end
     end

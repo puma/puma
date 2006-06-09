@@ -33,7 +33,7 @@ task :ragel do
 end
 
 task :site_webgen do
-  sh %{pushd doc/site; webgen; scp -r output/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
+  sh %{pushd doc/site; webgen; scp -r `find output -name "*.html" -print` #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
 end
 
 task :site_rdoc do
