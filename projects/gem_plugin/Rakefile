@@ -29,11 +29,11 @@ setup_gem(name, version) do |spec|
 end
 
 task :install => [:test, :package] do
-  sh %{sudo gem install pkg/#{name}-#{version}}
+  sh %{gem install pkg/#{name}-#{version}}
 end
 
 task :uninstall => [:clean] do
-  sh %{sudo gem uninstall #{name}}
+  sh %{gem uninstall #{name}}
 end
 
 task :site => [:rerdoc] do

@@ -80,7 +80,7 @@ end
 task :install do
   sub_project("gem_plugin", :install)
   sh %{rake package}
-  sh %{sudo gem install pkg/mongrel-#{version}}
+  sh %{gem install pkg/mongrel-#{version}}
   sub_project("mongrel_status", :install)
   sub_project("mongrel_config", :install)
   sub_project("mongrel_console", :install)
@@ -90,14 +90,14 @@ task :uninstall => [:clean] do
   sub_project("mongrel_status", :uninstall)
   sub_project("mongrel_config", :uninstall)
   sub_project("mongrel_console", :uninstall)
-  sh %{sudo gem uninstall mongrel}
+  sh %{gem uninstall mongrel}
   sub_project("gem_plugin", :uninstall)
 end
 
 
 task :gem_source do
   mkdir_p "pkg/gems"
-
+ 
   FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
   FileList["pkg/*.tgz"].each {|tgz| rm tgz }
   rm_rf "pkg/#{name}-#{version}"

@@ -111,5 +111,5 @@ begin
     t.rcov_opts << "-x /usr"
     t.output_dir = "test/coverage"
   end
-rescue
+rescue Object
 end
