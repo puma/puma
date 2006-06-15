@@ -256,8 +256,7 @@ module Mongrel
             response.start(403) {|head,out| out.write(ONLY_HEAD_GET) }
           end
         rescue => details
-          STDERR.puts "Error accessing file #{req_path}: #{details}"
-          STDERR.puts details.backtrace.join("\n")
+          STDERR.puts "Error sending file #{req_path}: #{details}"
         end
       end
     end

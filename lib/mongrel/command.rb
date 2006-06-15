@@ -186,6 +186,9 @@ module Mongrel
         if !cmd_name or cmd_name == "?" or cmd_name == "help"
           print_command_list
           return true
+        elsif cmd_name == "--version"
+          STDERR.puts "Mongrel Web Server #{Mongrel::Const::MONGREL_VERSION}"
+          return true
         end
 
         # command exists, set it up and validate it
@@ -194,7 +197,7 @@ module Mongrel
         rescue
           STDERR.puts "INVALID COMMAND: #$!"
           print_command_list
-          return
+          return false
         end
 
         # Normally the command is NOT valid right after being created
@@ -208,6 +211,7 @@ module Mongrel
             command.run
           end
         end
+
         return true
       end
 

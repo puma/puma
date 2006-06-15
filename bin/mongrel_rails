@@ -6,16 +6,6 @@ require 'mongrel/rails'
 require 'etc'
 
 
-class Version < GemPlugin::Plugin "/commands"
-  include Mongrel::Command::Base
-
-  def run
-    puts "Version #{Mongrel::Const::MONGREL_VERSION}"
-  end
-
-end
-
-
 class Start < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
 

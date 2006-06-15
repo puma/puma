@@ -372,7 +372,7 @@ module Mongrel
     def send_status(content_length=nil)
       if not @status_sent
         content_length ||= @body.length
-        @socket.write(Const::STATUS_FORMAT % [status, HTTP_STATUS_CODES[@status], content_length])
+        write(Const::STATUS_FORMAT % [status, HTTP_STATUS_CODES[@status], content_length])
         @status_sent = true
       end
     end
@@ -380,7 +380,7 @@ module Mongrel
     def send_header
       if not @header_sent
         @header.out.rewind
-        @socket.write(@header.out.read + Const::LINE_END)
+        write(@header.out.read + Const::LINE_END)
         @header_sent = true
       end
     end
@@ -388,7 +388,7 @@ module Mongrel
     def send_body
       if not @body_sent
         @body.rewind
-        @socket.write(@body.read)
+        write(@body.read)
         @body_sent = true
       end
     end 
@@ -404,22 +404,31 @@ module Mongrel
     def send_file(path)
       File.open(path, "rb") do |f|
         if @socket.respond_to? :sendfile
-          @socket.sendfile(f)
+          begin
+            @socket.sendfile(f)
+          rescue => details
+            socket_error(details)
+          end
         else
           while chunk = f.read(Const::CHUNK_SIZE) and chunk.length > 0
-            @socket.write(chunk)
+            write(chunk)
           end
         end
-
         @body_send = true
       end
-    rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
+    end
+
+    def socket_error(details)
       # ignore these since it means the client closed off early
-      STDERR.puts "Client closed socket early requesting file #{path}: #$!"
+      @socket.close unless @socket.closed?
+      done = true
+      raise details
     end
 
     def write(data)
       @socket.write(data)
+    rescue => details
+      socket_error(details)
     end
 
     # This takes whatever has been done to header and body and then writes it in the
@@ -428,6 +437,14 @@ module Mongrel
       send_status
       send_header
       send_body
+    end
+
+    # Used during error conditions to mark the response as "done" so there isn't any more processing
+    # sent to the client.
+    def done=(val)
+      @status_sent = true
+      @header_sent = true
+      @body_sent = true
     end
 
     def done
@@ -530,11 +547,11 @@ module Mongrel
               # Process each handler in registered order until we run out or one finalizes the response.
               handlers.each do |handler|
                 handler.process(request, response)
-                break if response.done
+                break if response.done or client.closed?
               end
 
               # And finally, if nobody closed the response off, we finalize it.
-              if not response.done
+              unless response.done or client.closed? 
                 response.finished
               end
             else
@@ -560,7 +577,7 @@ module Mongrel
         STDERR.puts "#{Time.now}: ERROR: #$!"
         STDERR.puts details.backtrace.join("\n")
       ensure
-        client.close
+        client.close unless client.closed?
       end
     end
 
