@@ -98,7 +98,9 @@ end
 
 def sub_project(project, *targets)
   targets.each do |target|
-    sh %{cd projects/#{project}; rake #{target.to_s}; }
+    Dir.chdir "projects/#{project}" do
+      sh %{rake --trace #{target.to_s} }
+    end
   end
 end
 

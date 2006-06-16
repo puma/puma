@@ -66,6 +66,9 @@ setup_gem(name, version) do |spec|
   spec.required_ruby_version = '>= 1.8.4'
 
   if RUBY_PLATFORM =~ /mswin/
+    Dir.chdir "projects/mongrel_service" do
+      sh %{rake install }
+    end
     spec.files << 'ext/http11/http11.so'
     spec.add_dependency('win32-service', '>= 0.5.0')
     spec.extensions.clear
@@ -82,16 +85,20 @@ task :install do
   sh %{rake package}
   sh %{gem install pkg/mongrel-#{version}}
   sub_project("mongrel_status", :install)
-  sub_project("mongrel_config", :install)
   sub_project("mongrel_console", :install)
+  if RUBY_PLATFORM =~ /mswin/
+    sub_project("mongrel_service", :install)
+  end
 end
 
 task :uninstall => [:clean] do
   sub_project("mongrel_status", :uninstall)
-  sub_project("mongrel_config", :uninstall)
   sub_project("mongrel_console", :uninstall)
   sh %{gem uninstall mongrel}
   sub_project("gem_plugin", :uninstall)
+  if RUBY_PLATFORM =~ /mswin/
+    sub_project("mongrel_service", :install)
+  end
 end
 
 
