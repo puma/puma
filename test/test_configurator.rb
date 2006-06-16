@@ -64,7 +64,7 @@ class ConfiguratorTest < Test::Unit::TestCase
           setup_signals
 
           run_config(File.dirname(__FILE__) + "/../test/mongrel.conf")
-          load_mime_map(File.dirname(__FILE__) + "/../examples/mime.yaml")
+          load_mime_map(File.dirname(__FILE__) + "/../test/mime.yaml")
 
           run
         end
