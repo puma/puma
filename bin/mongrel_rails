@@ -65,21 +65,28 @@ class Start < GemPlugin::Plugin "/commands"
     if @generate
       STDERR.puts "** Writing config to #@generate"
       open(@generate, "w") {|f| f.write(settings.to_yaml) }
+      STDERR.puts "## Exiting. Re-run without -G and WITH -C using your new config file."
+      exit 0
     end
 
     if @config_file
-      STDERR.puts "** Loading settings from #{@config_file} (command line options override)."
+      STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless defaults[:daemon]
       conf = YAML.load_file(@config_file)
       settings = settings.merge! conf
     end
 
     config = Mongrel::Rails::RailsConfigurator.new(settings) do
-      log "Starting Mongrel in #{defaults[:environment]} mode at #{defaults[:host]}:#{defaults[:port]}"
-
       if defaults[:daemon]
-        log "Daemonizing, any open files are closed.  Look at #{defaults[:pid_file]} and #{defaults[:log_file]} for info."
+        if File.exist? defaults[:pid_file]
+          log "!!! PID file #{defaults[:pid_file]} already exists.  Mongrel could be running already. Check your #{defaults[:log_file]} for errors."
+        end
+
         daemonize
+        log "Daemonized, any open files are closed.  Look at #{defaults[:pid_file]} and #{defaults[:log_file]} for info."
+        log "Settings loaded from #{@config_file} (they override command line)." if @config_file
       end
+
+      log "Starting Mongrel listening at #{defaults[:host]}:#{defaults[:port]}"
 
       listener do
         mime = {}
@@ -93,7 +100,7 @@ class Start < GemPlugin::Plugin "/commands"
           debug "/"
         end
 
-        log "Starting Rails in environment #{defaults[:environment]} ..."
+        log "Starting Rails with #{defaults[:environment]} environment ..."
         uri "/", :handler => rails(:mime => mime)
         log "Rails loaded."
 
