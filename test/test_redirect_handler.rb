@@ -1,6 +1,5 @@
 require 'test/unit'
 require 'mongrel'
-require 'mongrel/redirect_handler'
 require 'net/http'
 require 'uri'
 require 'timeout'
