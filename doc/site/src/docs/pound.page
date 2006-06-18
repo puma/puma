@@ -143,6 +143,11 @@ SSL: < %= @sslyn %>
 Visiting @http://127.0.0.1/Test/@ should show @SSL: false@ while visiting
 @https://127.0.0.1/Test/@ should return @SSL: true@.
 
+h2. Building Pound on OSX
+
+OSX has specific problems when building pound, but you can follow "Trotter Cashion's":http://lifecoding.com/blog/?p=29
+to get everything working.
+
 <hr>
 
 fn1. It is not required that pound run on the same machine as the mongrel

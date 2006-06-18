@@ -32,16 +32,7 @@ out *Deployment Best Practices*.
 * "Using mongrel_cluster":mongrel_cluster.html -- Nifty plugin for managing your clusters.
 * "Choosing A Deployment":choosing_deployment.html -- How to pick a best practice.
 * "Security":security.html -- Security issues to look at (for any web application).
-
-
-h2. Frameworks
-
-Specific problems and things to know when you run different frameworks.
-
-* "Ruby on Rails Issues":ruby_on_rails.html
-* "Camping Issues":camping.html
-* "Nitro Issues":nitro.html
-
+* "Frameworks":frameworks.html -- Specific problems and things to know when you run different frameworks.
 
 h2. Deployment Best Practices
 
@@ -51,7 +42,7 @@ is a *best practice* which means that if you do something different then you'll
 have to do your own research.  Best way to work it is to do the *best practice*
 exactly as described, then try to do something weird from there.
 
-* "Apache":apache.html -- Currently the best way to deploy Mongrel.
+* "Apache":apache.html -- Not written yet.
 * "Litespeed":litespeed.html -- Another good option, but not open source.
 * "Lighttpd":lighttpd.html -- Using mod_proxy to do a cluster.
 * "Pound":pound.html -- Small scale and dead simple with SSL.
@@ -64,11 +55,8 @@ You are a grand master and have answered a few questions on the Mongrel mailing
 list so now it's time to get fancy.
 
 * "Writing Mongrel Plugins":gem_plugin.html -- Writing a GemPlugin for Mongrel.
-* "From Rails To Handlers":rails_to_handler.html -- Writing a Handler plugin for something that's slow in Rails.
 * "Distributed Worker":distributed_worker.html -- A common pattern for actions that take forever and block Rails.
 * "Upload Progress Without Rails":upload_progress.html -- Uploading without blocking Rails and giving the user progress.
-* "Performance Tuning":performance.html -- Measuring, tuning, tweaking (in that order).
-
 
 
 h2. Ruby API Documentation

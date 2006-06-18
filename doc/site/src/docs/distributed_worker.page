@@ -4,6 +4,102 @@ inMenu: true
 directoryName: Offloading
 ---
 
-h1. Using Distributed Worker For Long Tasks
+h1. Long Tasks For Slow Rails
 
-Coming soon ...
+You've got the best idea ever for a web site.  It's a fantastic
+Franken-stack that takes requests from the internet, converts them
+to giant PDFs with latex, puts them onto 20 FTP servers, and then
+encrypts them using 2^718 bit Eliptic Curve Encryption.
+
+Best of all, in order to avoid a "single point of failure" you've
+decided that all this monstrous Rube Goldberg Architecture needs to
+be run via a series of IO.popen calls to various Perl scripts.
+
+
+h2. How Bad Ideas Begin
+
+Yes, this is contrived but not by much.  I've actually had people report
+architectures very close to this with pride.  I have no idea why 
+making something complex suddenly makes it smart, but oh well, I just work
+here.  You do what you want, but hear me out for a second before you
+continue down this path.
+
+Designs like this go very wrong very quickly for three main reasons:
+
+* Complex things are more fragile than simple things.  Your application is going
+down the same road as the Roman Empire, and just like them you don't realize it.
+* Systems with large numbers of interconnections are slower simply because 
+everything takes time and more interconnections means more time to complete a process.  
+This isn't always the case, but given two systems that do the same work, I'll
+take the simpler less connected version since I know I can make that faster.
+* Complex things do not change easily, which feeds into their fragile nature and
+means they can't improve in performance.
+
+An excellent example of the above three conditions is this wonderfully hilarious
+"stack trace":http://ptrthomas.wordpress.com/2006/06/06/java-call-stack-from-http-upto-jdbc-as-a-picture/ (and the comments to back it up).  Somehow it doesn't dawn on the author
+that his "Business Logic" box is pointing at one line.  The comments are full
+of statements that support this type of design, but I bet half this crap isn't
+really necessary.  *This* my friends is the classic Rube Goldberg Architecture.
+
+Your Ruby brain is laughing at this, and now you want to do the exact same
+thing?  Start laughing at yourself my friend because you're next.
+
+
+h2. Down With Complexity
+
+Before you start offloading tons of work to external programs and designing your
+Franken-stack, step back and ask this very simple question:
+
+ "How could I do the same thing with less stuff?"
+
+Your goal for the next two hours is to remove anything that can be done 
+simpler, isn't needed, or just simply adds overhead.  You want to ignore
+that voice in your head screaming, "*But how will you get a job!?*"  Yell
+back at it, "*I have a job!*"  And then do your job.  Create a system that
+does what it's supposed to with the least amount of resources.  No more, no
+less.  If you need to add something, add it later.  Right now an 80% solution
+that works is better than a 99% solution that's out 6 years from now.
+
+
+h1. The Distributed Worker Pattern
+
+You've simplified your Rube Goldberg Architecture down to the bare minimum 
+and you've thought of simpler ways to do your processing, but you *still*
+have to call an external program.  There's no way to turn this program into
+a server, and the program takes a long time to run.
+
+Whatever you do, don't use IO.popen() to run it.  Don't use exec.  Nothing.
+People think that calling these functions to run an external program suspends
+the current Rails request while the external program runs.  That's right.  What's
+wrong is that it *suspends every other request as well*.  Mongrel will still accept
+connections and happily queue them all up, but it waits for Rails to exit this
+request before it gives it the next one.
+
+What you *need* to do is give this request to a special server called a 
+"Distributed Worker".  This is a simple pattern where you hand something 
+that takes forever to a server that knows how to do two things:
+
+# Run the request to produce a result.
+# Report status to the requester when asked.
+
+The typical scenario for using a Distributed Worker is something like this:
+
+# You have a Rails server and a Worker server running.  They talk using DRb.
+# Request comes into Rails, and an action builds the information needed by the Worker.
+# Rails submits the request to the Worker and takes a ticket.  It stuffs this into the user's
+session and then sends them to a "status action".
+# The Worker begins working on the request identified by the ticket.
+# At periodic intervals (probably with JavaScript) the client hits the status action which
+in turn takes the ticket and asks the Worker for status.
+# When the Worker is done it tells the status action in one of the status responses and
+the status action goes to a "collector action" that picks up the results using the ticket.
+# Finally, the collector gets the result from the worker and presents it to users.
+
+If you're smart, you can actually have all this going on in the "background" of the
+user interface in such a way that the user just sees requests queue up and slowly change
+state until they are done.
+
+The particulars of actually implementing this pattern are left to you, since
+the idea is that it's probably different for everyone.  There is one project
+though that makes this whole process generic and fairly easy called
+"BackrounDRb":http://backgroundrb.rubyforge.org/ thanks to Ezra Zygmuntowicz.

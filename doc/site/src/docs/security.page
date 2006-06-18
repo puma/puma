@@ -30,7 +30,65 @@ through are typically skating on the edge of the HTTP grammar where they do not 
 Mongrel isn't infallible, but if Mongrel complains about something then you should investigate it.
 If you think Mongrel is wrong then shoot a message to the mailing list detailing what it should do
 and we'll consider adjusting the grammar.  If you think Mongrel should violate the grammar so that
-your little WebDAV++ Social Network Book Mark Chat Web 2.0 monstrosity can see the light of day, then
+your little WebDAV++ Social Network Bookmark Chat Web 2.0 monstrosity can see the light of day, then
 you "should write your own web server":/not_mongrel.html instead.
 
+h2. Learning About Web Application Security
+
+You should read the "OWASP":http://www.owasp.org/index.php/Main_Page document 
+"Top Ten Project":http://www.owasp.org/index.php/OWASP_Top_Ten_Project for information on
+the big security risks and how to avoid them.  The summary of these is:
+
+* Unvalidated Input
+* Broken Access Control
+* Broken Authentication And Session Management
+* Cross Site Scripting
+* Buffer Overflow
+* Injection Flaws
+* Improper Error Handling
+* Insecure Storage
+* Application Denial Of Service
+* Insecure Configuration Management
+
+Many of these errors depend on how you write your application and have little to do with Mongrel.
+The two that relate the most to Mongrel are *Buffer Overflows* and *Application Denial of Service*.
+
+
+h2. Buffer Overflows
+
+Mongrel is doing some heavy C buffer thrashing internally, but several controls are in place to make
+sure that things stay safe:
+
+* Pointers are checked with asserts and if statements to test if there's been a buffer overflow.
+* Ragel generates a safe state machine that is accurate to the byte level.
+* There are none of the "unsafe" string handling functions except for where absolutely necessary, and 
+that one spot is checked heavily.
+* Input is limited to maximum sizes--which also helps prevent denial of service.
+
+
+h2. Application Denial of Service
+
+Normally this is things like using algorithms in your application that make it easy for
+someone to take down your application with simple queries. A good example is a SQL database
+query that when given the right inputs takes forever.  It only takes a few of these to
+destroy your application's response time.
+
+Mongrel helps with Denial of Service by doing the following things:
+
+* Mongrel strict parser boots clients immediately to save on resources and time.
+* Mongrel boots clients that go over the (generous) size limits for input.
+* When Mongrel gets overloaded it starts denying clients and then finds existing
+requests that are taking to long and kills them.  It is pretty conservative about this, but
+you can use options to tune it more or less severe.
+* Mongrel is already using pure HTTP so there's plenty of tools available to help you.
+* It's designed to be as efficient as possible, but this has limits because of Ruby.
+
+Don't count on Mongrel to suddenly make your Rails application withstand a Russian 
+DOS blackmail operation though.  It works hard to prevent DOS potential, but there's only
+so much it can do.
+
+If you're very serious about security then you should check out "mod_security":http://www.modsecurity.org/
+which is an Apache module that has lots of active prevention of such things.  It can stop many web
+scanner attacks, DOS attempts, and other security attempts.  It does slow your server down, but it's
+probably worth it if you have something valuable.
 

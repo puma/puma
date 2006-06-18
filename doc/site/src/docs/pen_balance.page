@@ -28,11 +28,15 @@ Once you get Pen installed you just use it like this:
 
 # Make sure that you can run your application like normal and then 
 setup "mongrel_cluster":/docs/mongrel_cluster.html so that all of the running Mongrels work.
-# Run this command: pen ...
+# Run this command: pen -H 4000 localhost:3000 localhost:3001 
 # Check port 4000 to make sure that Pen is proxying correctly.
 
 As with the Balance instructions below you'll want to create a start-up script so that
-Pen gets started on machine reboots.
+Pen gets started on machine reboots.  The -H adds a "X-Forwarded-For" header to the 
+request, which helps if you need to track the client's IP address.  There's plenty
+of other options for pen as well.
+
+NOTE: Pen has experimental support for SSL.  Try it out if you need SSL.
 
 h2. Balance
 
@@ -40,7 +44,7 @@ Balance is pretty simple:
 
 # Make sure that you can run your application like normal and then 
 setup "mongrel_cluster":/docs/mongrel_cluster.html so that all of the running Mongrels work.
-# Run this command:  balance -p 4000 localhost:3001 localhost:3002 ...
+# Run this command:  balance 4000 localhost:3001 localhost:3002 ...
 # Hit port 4000 with a browser to see if it's working.
 
 That's all there is to it.  You might want to write a little start-up script that
@@ -50,4 +54,4 @@ you need to do more complex stuff, but this is usually all people need.
 h2. Limitations
 
 We found that Balance has an upper limit of 15 backend servers.  I haven't heard much
-about Pen.
+about Pen, but it's experimental SSL support is interesting.
