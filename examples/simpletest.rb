@@ -40,6 +40,8 @@ config = Mongrel::Configurator.new :host => ARGV[0], :port => ARGV[1] do
     uri "/files", :handler => Mongrel::DirHandler.new(ARGV[2])
     uri "/files", :handler => stats
     uri "/status", :handler => Mongrel::StatusHandler.new(:stats_filter => stats)
+    redirect "/redir1", "/"
+    redirect "/to", /to/, 'w'
   end
 
   trap("INT") { stop }

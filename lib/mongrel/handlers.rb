@@ -31,11 +31,19 @@ module Mongrel
   # should be implemented using the HttpHandlerPlugin mixin.
   #
   class HttpHandler
-    attr_reader :header_only
+    attr_reader :request_notify
     attr_accessor :listener
+
+    # This will be called by Mongrel on the *first* (index 0) handler *if* it has
+    # HttpHandler.request_notify set to *true*.  You only get the parameters 
+    # for the request, with the idea that you'd "bound" the beginning of the
+    # request processing and the first call to process.
+    def request_begins(params)
+    end
 
     def process(request, response)
     end
+
   end
 
 
@@ -45,8 +53,11 @@ module Mongrel
   # the process method later.
   module HttpHandlerPlugin
     attr_reader :options
-    attr_reader :header_only
+    attr_reader :request_notify
     attr_accessor :listener
+
+    def request_begins(params)
+    end
 
     def initialize(options={})
       @options = options
@@ -395,6 +406,50 @@ module Mongrel
         #{describe_listener}
         </body></html>
         END
+      end
+    end
+  end
+
+  # This handler allows you to redirect one url to another.
+  # You can use it like String#gsub, where the string is the REQUEST_URI.
+  # REQUEST_URI is the full path with GET parameters.
+  #
+  # Eg. /test/something?help=true&disclaimer=false
+  #
+  # == Examples
+  #
+  #   h = Mongrel::HttpServer.new('0.0.0.0')
+  #   h.register '/test', Mongrel::RedirectHandler.new('/to/there') # simple
+  #   h.register '/to',   Mongrel::RedirectHandler.new(/t/, 'w') # regexp
+  #   # and with a block
+  #   h.register '/hey',  Mongrel::RedirectHandler.new(/(\w+)/) { |match| ... }
+  # 
+  class RedirectHandler < Mongrel::HttpHandler
+    # You set the rewrite rules when building the object.
+    #
+    # pattern            => What to look for or replacement if used alone
+    #
+    # replacement, block => One of them is used to replace the found text
+
+    def initialize(pattern, replacement = nil, &block)
+      unless replacement or block
+        @replacement = pattern
+      else
+        @pattern, @replacement, @block = pattern, replacement, block
+      end
+    end
+
+    # Process the request and return a redirect response
+    def process(request, response)
+      unless @pattern
+        response.socket.write(Mongrel::Const::REDIRECT % @replacement)
+      else
+        if @block
+          new_path = request.params['REQUEST_URI'].gsub(@pattern, &@block)
+        else
+          new_path = request.params['REQUEST_URI'].gsub(@pattern, @replacement)
+        end
+        response.socket.write(Mongrel::Const::REDIRECT % new_path)
       end
     end
   end

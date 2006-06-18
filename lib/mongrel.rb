@@ -171,6 +171,7 @@ module Mongrel
     HTTP_X_FORWARDED_FOR="HTTP_X_FORWARDED_FOR".freeze
     HTTP_IF_UNMODIFIED_SINCE="HTTP_IF_UNMODIFIED_SINCE".freeze
     HTTP_IF_NONE_MATCH="HTTP_IF_NONE_MATCH".freeze
+    REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n".freeze
   end
 
 
@@ -534,9 +535,15 @@ module Mongrel
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
+              data = data[nparsed ... data.length] || ""
+
+              if handlers[0].request_notify
+                # this first handler wants to be notified when the process starts
+                handlers[0].request_begins(params)
+              end
 
               # TODO: Find a faster/better way to carve out the range, preferably without copying.
-              request = HttpRequest.new(params, data[nparsed ... data.length] || "", client)
+              request = HttpRequest.new(params, data, client)
 
               # in the case of large file uploads the user could close the socket, so skip those requests
               break if request.body == nil  # nil signals from HttpRequest::initialize that the request was aborted
@@ -926,6 +933,16 @@ module Mongrel
       GemPlugin::Manager.instance.create(name, ops)
     end
 
+    # Let's you do redirects easily as described in Mongrel::RedirectHandler.
+    # You use it inside the configurator like this:
+    #
+    #   redirect("/test", "/to/there") # simple
+    #   redirect("/to", /t/, 'w') # regexp
+    #   redirect("/hey", /(w+)/) {|match| ...}  # block
+    #
+    def redirect(from, pattern, replacement = nil, &block)
+      uri from, :handler => Mongrel::RedirectHandler.new(pattern, replacement, &block)
+    end
 
     # Works like a meta run method which goes through all the 
     # configured listeners.  Use the Configurator.join method
@@ -968,13 +985,21 @@ module Mongrel
     # found in Rails applications that are either slow or become unresponsive
     # after a little while.
     #
-    # TODO: Document the optional selections from the what parameter
+    # You can pass an extra parameter *what* to indicate what you want to 
+    # debug.  For example, if you just want to dump rails stuff then do:
+    #
+    #   debug "/", what = [:rails]
+    # 
+    # And it will only produce the log/mongrel_debug/rails.log file.
+    # Available options are:  :object, :railes, :files, :threads, :params
+    # 
+    # NOTE: Use [:files] to get acccesses dumped to stderr like with WEBrick.
     def debug(location, what = [:object, :rails, :files, :threads, :params])
       require 'mongrel/debug'
       handlers = {
-        :object => "/handlers/requestlog::access", 
+        :files => "/handlers/requestlog::access", 
         :rails => "/handlers/requestlog::files", 
-        :files => "/handlers/requestlog::objects", 
+        :object => "/handlers/requestlog::objects", 
         :threads => "/handlers/requestlog::threads",
         :params => "/handlers/requestlog::params"
       }
