@@ -6,3 +6,8 @@ directoryName: Upload Progress
 
 h1. Mongrel Upload Progress Plugin
 
+There's a plugin for Rails that gives folks a fancy "upload progress" but which really
+only works with FastCGI.  There's plans in the works to create a similar system 
+for Mongrel, but until that's made official you're pretty much on your own.
+
+

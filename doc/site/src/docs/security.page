@@ -6,3 +6,31 @@ directoryName: Security
 
 h1. Web Application Security Issues
 
+Mongrel takes a different approach to security than most web servers.  Rather than
+relying on massive human efforts to audit all possible code, Mongrel is implemented 
+using algorithms and methods that are difficult to subvert.  There is still auditing
+and checks, but Mongrel simply tries to avoid errors by not doing things that cause them.
+
+Read the "Iron Mongrel Security page":/security.html for information on how security
+is done in Mongrel.  The main points to remember with Mongrel's security are:
+
+* Mongrel uses a "Ragel":http://www.cs.queensu.ca/home/thurston/ragel/ generated parser 
+instead of a hand coded HTTP handler.  The grammar is very close to the ABNF specification, so
+if you see "BAD CLIENT" errors in your logs, that probably is a bad client.
+* Security tests have found that Mongrel stops most security attacks at the protocol level due to
+it's correctly written parser *and* it's explicit limits on the sizes of everything.
+* The Mongrel reaction to a protocol violation is to close the socket immediately.  It doesn't waste
+time and resources on bad clients since this is *always* a hack attempt.  If it isn't then it's a
+poorly written client and the author should learn to write a correct one.
+* Mongrel works with all the main clients out there, and ones it doesn't work with are crap living
+in a tiny tiny niche of the internet designed by horrible programmers.
+* While Mongrel is more strict than other servers, it isn't draconian.  The clients that can't get 
+through are typically skating on the edge of the HTTP grammar where they do not belong.
+
+Mongrel isn't infallible, but if Mongrel complains about something then you should investigate it.
+If you think Mongrel is wrong then shoot a message to the mailing list detailing what it should do
+and we'll consider adjusting the grammar.  If you think Mongrel should violate the grammar so that
+your little WebDAV++ Social Network Book Mark Chat Web 2.0 monstrosity can see the light of day, then
+you "should write your own web server":/not_mongrel.html instead.
+
+

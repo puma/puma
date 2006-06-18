@@ -7,6 +7,45 @@ ordering: 2
 
 h1. Latest News
 
+h2. Jun 16: Mongrel 0.3.13 -- Finally Out!
+
+After a huge push, tons of delays to fix bugs and add enhancements, and lots of
+feedback and contributions from many great people, I'm happy to announce the 
+official *release of Mongrel 0.3.13*.
+
+This release features lots of documentation, cleaned status output, improved IO processing,
+a major bug fix for a thread leak, and an improvement in the win32 support.
+
+Read below from past news for all the stuff that was fixed.  The main change that *win32* folks
+should be aware of is they have to install a second little gem to get the services support.
+This is slightly annoying, but the change makes it possible to work independently on the services
+support and not hold back future Mongrel releases.
+
+h3.  Getting The Release
+
+For normal people you should do this:
+
+  $ sudo gem install mongrel
+
+Of use update.  If update don't work then remove mongrel and re-install.
+
+h3. Win32: Getting The Release
+
+For *win32* people, you just do this:
+
+  $ gem install mongrel
+  $ gem install mongrel_service
+
+When you do the install, pick the mswin32 version.  After you install the
+mongrel_service you now just use @mongrel_rails@ like everyone else, but
+you get some new fancy @service::@ commands.
+
+h3.  Reporting Bugs
+
+Send them to the mailing list and make sure you have your OS, versions, web server,
+etc.
+
+
 h2. Jun 5: Mongrel 0.3.13 Pre-Release -- Katana Suicide Concurrency
 
 We are *days* away from the official 0.3.13 release, which will be followed

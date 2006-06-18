@@ -1,0 +1,34 @@
+---
+title: Frameworks
+inMenu: true
+directoryName: Frameworks
+---
+
+h1. Framework Issues
+
+As known issues specific to different frameworks are reported they get
+posted here.  Problems reported here aren't a sign that a framework is
+worse or better than others, just a reflection of people's experiences.
+
+h2. Rails
+
+* Rails is not thread safe so if you have long running actions then you can potentially
+block the server.  Keep in mind that this is the case for *any* server, it's just more
+pronounced for Rails.
+* You can easily kill a Rails server by not closing files.  Always open files in blocks.
+* If you turn on @allow_concurrency@ them Mongrel will run your application without any thread locking.
+This can be dangerous so test it first, and I'm pretty sure it won't work for most complex applications.
+* Mongrel will honor a HUP request and try to do an internal reload, but this usually doesn't work the
+way you think.  Mongrel's shutdown process is very nice and safe, so just restart.
+
+
+h2. Camping
+
+* Running Camping and Rails in the same Ruby interpreter 
+causes all sorts of problems with ActiveRecord. You either run one or the
+other but not both.
+
+
+h2. Nitro
+
+* None reported yet.

@@ -11,6 +11,7 @@ FastCGI or SCGI.  It is framework agnostic and already supports
 "Ruby On Rails":http://www.rubyonrails.org, "Og+Nitro":http://www.nitroproject.org/, 
 and "Camping":http://camping.rubyforge.org/files/README.html frameworks.
 
+@You need Ruby 1.8.4 just like the gem says you do.@
 
 h2. Getting Started
 
@@ -36,7 +37,13 @@ for information on getting started.
 
 The main thing with Win32 support is that there is no *fork* 
 API for Ruby, so you have to use the services features to
-get persistent servers running.
+get persistent servers running.  You can get this services
+support by doing:
+
+  > gem install mongrel_service
+
+And then just run @mongrel_rails@ to see what @services::@ commands
+are available.
 
 
 h1. Next Steps

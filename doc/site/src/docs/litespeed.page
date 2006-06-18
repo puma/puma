@@ -1,8 +1,84 @@
 ---
-title: Litespeed
+title: LiteSpeed
 inMenu: true
-directoryName: Litespeed
+directoryName: LiteSpeed
 ---
 
-h1. Litspeed Best Practice Deployment
+h1. LiteSpeed Best Practice Deployment
+
+h3. by "Alison Rowland":http://blog.alisonrowland.com
+
+LiteSpeed makes setting up a reverse proxy to Mongrel a snap with its excellent, web-based control panel. LiteSpeed has a built-in load balancer, so it also works well in conjunction with the "Mongrel_Cluster":mongrel_cluster.html plugin.
+
+h2. Requirements
+
+These instructions assume you have already completed the following steps:
+
+* installed the LiteSpeed Webserver, version 2.1.16 or greater[1] (note: not available for Windows),
+* set up your application as a virtual host[2],
+* installed and configured Mongrel,
+* and confirmed that you can start Mongrel and access your app by appending Mongrel's port number to your domain (e.g. mysite.com:8000).
+
+If you've done all that, then continue reading!
+
+h2. Configuring Mongrel as an External App
+
+# Enter your LiteSpeed Administration Panel (usually yourdomain:7080).
+# Go to *Server Configuration*.
+# Select your app under *Virtual Hosts* in the sidebar at left.
+# Go to the *External Apps* tab and click *Add*.
+# Choose *Web Server* for the *Type* and click *Next*.
+
+Fill in the following fields:
+
+* *Name*: Give this instance of Mongrel a name, such as @myapp-1@.
+* *Address*: This should be @127.0.0.1:XXXX@, where @XXXX@ is the port number your mongrel instance is running on.
+
+The other fields are up to you. Here are some values to start you off with a workable setup:
+
+* *Max Connections*: 20
+* *Connection Keepalive Timeout*: 1000
+* *Environment*: __leave blank__
+* *Initial Request Timeout (secs)*: 1
+* *Retry Timeout (secs)*: 0
+* *Response Buffering*: No
+
+Finally, click *Save*. If you're only running a single instance of Mongrel, skip down to the instructions on *Configuring a Context.* Otherwise, read on.
+
+h2. Load Balancing across Multiple Mongrel Instances
+
+If you're running more than one instance of Mongrel, or are using Mongrel_Cluster, you'll need to repeat the above directions for every instance of Mongrel, changing the name and port number as appropriate for each. Next, you need to set up a load balancer.
+
+# Back on the *External Apps* tab, click *Add*.
+# Choose *Load Balancer* for *Type* and click *Next*.
+# Give it a *Name*, such as @MyApp@
+# In the *Workers* field, enter all of the mongrel instances you set up, using the names you gave them, like so: <br />
+@proxy::myapp-1, proxy::myapp-2, proxy::myapp-3@
+# *Save*.
+
+h2. Configuring a Context
+
+Configuring a context prevents LiteSpeed from displaying Mongrel's port number in the URL.
+
+# Go to your virtual host's *Context* tab, and click *Add*.
+# If you're set up to run on just a single Mongrel instance, select *Proxy*. Otherwise, select *Load Balancer*.
+# Enter @/@ in *URI*.
+# Make sure your *Web Server* or *Load Balancer* is selected in the next field's drop-down menu.
+# The other settings are up to you. Most can be left blank.
+# *Save*.
+
+h2. Finishing Up
+
+The only thing left is to make sure Mongrel is fired up, and, in your LiteSpeed admin panel, click *Apply Changes*, then *Graceful Restart*. You should be good to go!
+
+
+h2. References
+
+Thanks go to Bob Silva[2] and Rick Olson[3], for their trailblazing articles on LiteSpeed deployment for Rails. 
+
+fn1. "LiteSpeed Technologies":http://litespeedtech.com
+
+fn2. "Launching Rails at the Speed of Lite with LiteSpeed Webserver":http://www.railtie.net/articles/2006/01/21/up-and-running-in-the-speed-of-light
+
+fn3. "Setting up LiteSpeed with Mongrel":http://weblog.techno-weenie.net/2006/4/11/setting-up-litespeed-with-mongrel
 

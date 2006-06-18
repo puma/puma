@@ -46,9 +46,20 @@
           <h4>NEWS</h4>
 
           <dl>
+            <dt>Jun-16-2006</dt>
+            <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.13 Officially Released!</a></h5>
+
+            <p>It's finally out!  Mongrel 0.3.13 with all the goodies for both win32 and everyone else
+            in the whole world.
+            </p>
+            <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
+
             <dt>Jun-5-2006</dt>
             <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.13 Pre-Release -- Kitana Suicide Concurrency</a></h5>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.13 Pre-Release -- Katana Suicide Concurrency</a></h5>
 
             <p>Well, you asked for it.  Lots of fixes, days away from official release, and allow_concurrency
             can murder your children.
@@ -115,64 +126,6 @@
             <p>The official 0.3.12 release of Mongrel is here.  This release is hot, but test test test.
             Should support Rails 1.1 and has lots of debugging and tweaks.</p>
 
-            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-            </dd>
-
-            <dt>Mar-27-2006</dt>
-            <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.12 -- Pre-Release</a></h5>
-
-            <p>A pre-release of the 0.3.12 Mongrel which suppot tons of functionality, so it 
-            needs more testing than normal.  Read the news for changes and install instructions.</p>
-            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-            </dd>
-
-            <dt>Mar-15-2006</dt>
-            <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.11 -- Edge Rails Compliant</a></h5>
-
-            <p>This release makes sure that Mongrel is edge Rails compliant, and fixes up 
-            many little things with GemPlugins.  The <b>big</b> part of the release is
-            the mongrel_config plugin which support win32 and Unix.</p>
-            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-            </dd>
-
-            <dt>Mar-12-2006</dt>
-            <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.10.1 -- Big Release Day</a></h5>
-
-            <p>I normally do frequent little releases, but this
-            release involved lots of little touches all over the entire code base.  It
-            now has a ton of features and should have the best Rails support yet.  It's
-            even got <b>GemPlugin</b> to a level that anyone can use it.  Read the 
-            news for the full scoop.
-            </p>
-            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-            </dd>
-
-            <dt>Mar-06-2006</dt>
-            <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.9 -- Gem Based Plugins</a></h5>
-
-            <p>This release features not only gem based plugins, but a new sub-project
-            named <a href="/gem_plugin_rdoc">GemPlugin</a> to support it.  There's a
-            sample plugin you can try out as well.  Read the news for more info.
-            </p>
-            <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-            </dd>
-
-            <dt>Mar-04-2006</dt>
-            <dd>
-            <h5><a href="{relocatable: news.html}">Mongrel 0.3.8 -- Bug Fixes</a></h5>
-
-            <p>A small release to close off some of the bugs in the tracker.  This also
-            adds the ability to get at the RailsHandler from within a Rails application.
-            This is necessary to properly map URI's to their physical locations.
-            </p>
             <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
             <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
             </dd>

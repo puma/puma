@@ -9,16 +9,10 @@ h1. Commercial Sponsorship
 Mongrel is a free open source web server and will always remain that way, but
 that doesn't mean that companies don't help to make it better.
 
-Mongrel now has sponsorship from "EastMedia":http://www.eastmedia.com
+Mongrel received sponsorship from "EastMedia Group":http://www.eastmedia.com
 in partnership with "VeriSign":http://www.verisign.com/ to make Mongrel 
-fast and stable enough for enterprise class loads (meaning "gigantic", 
-not "Java style").  Their sponsorship has made it possible to get large 
-pools of test servers, payment to myself for work done, and a real 
-application to use Mongrel on.  Everyone should toss out a thanks 
-to them since this may mean I'll get to work on Mongrel full time 
-in the near future and it will raise the quality of Ruby application 
-hosting in general.  Not to mention the fact that they are letting all 
-of my Mongrel work stay LGPL licensed and open source.  
+fast and stable enough for their "PIP":http://pip.verisignlabs.com/
+which should be a great Single Sign-On application and is being released open source.
 
 Other companies benefiting from Ruby should take this as an example.  I 
 can think of quite a few things (Ruby 1.9 and a real virtual machine are 
@@ -26,10 +20,6 @@ just two) that need some serious commercial cash to get them in gear.  If
 you're making cash off Ruby consider hiring a developer part-time, 
 full-time, or posting a bounty for something you need as well as the 
 community needs.  There's no better time for enlightened self-interest than now.
-
-The kind folks at "railsmachine.net":http://railsmachine.com/ have also donated 
-three VPS accounts for testing various installations on their hosting service.  
-They plan to use Mongrel as the default hosting setup in the very near future.
 
 
 h1. The People Who Made It Possible
@@ -79,7 +69,8 @@ h2. Coding
 * "Rick Olson (aka technoweenie)":http://techno-weenie.net/ was the first to grab Mongrel
   and cram "Camping":http://redhanded.hobix.com/bits/campingAMicroframework.html into it.
 * "Why the lucky stiff":http://whytheluckystiff.net/ did work on getting the "Camping Framework":http://redhanded.hobix.com/bits/campingAMicroframework.html working with Mongrel more completely.
-
+* Dan Kubb hooked up sweet Conditional HTTP Response support for Mongrel making it pretty damn fast for static files.
+* Lots of other folks have sent in patches and tweaks.  Let me know if I missed you.
 
 h2. Tools
 

@@ -65,7 +65,7 @@ Address to bind to when listening for connections.
 <dl>
 <dt>-l, --log (:log_file)</dt>
 <dd>
-Where to dump log messages in daemon mode.
+Where to dump log messages in daemon mode.  Use an *absolute* paths.
 <b>No Win32.</b>
 <ul><li><b>Default:</b> log/mongrel.log</li></ul>
 </dd>
@@ -75,7 +75,7 @@ Where to dump log messages in daemon mode.
 <dt>-P, --pid (:pid_file)</dt>
 <dd>
 Where to write the PID file so <b>start</b> and 
-<b>stop</b> commands know the Process ID.
+<b>stop</b> commands know the Process ID.  Use *absolute* paths.
 <b>No Win32.</b>
 <ul><li><b>Default:</b> log/mongrel.pid</li></ul>
 </dd>
@@ -142,11 +142,11 @@ This option makes Mongrel <b>very</b> slow.
 </dl>
 
 <dl>
-<dt>-c, --config (NONE)</dt>
+<dt>-C, --config (NONE)</dt>
 <dd>
 Specifies a configuration YAML file that sets options you're
 reading about right now.  Read "Command Line Settings" below
-for more information.
+for more information.  Use *absolute* paths.
 <ul><li><b>Default:</b> You can't set this.</li></ul>
 </dd>
 </dl>
@@ -184,7 +184,25 @@ possible.
 
 When you need to run Mongrel in production (or if you're doing
 wicked fancy stuff) then you'll need to start using a few 
-configuration files.
+configuration files.  Problem is the configuration file is in 
+this weird YAML syntax that most people just hate.  Rather than
+describe the file's syntax and all possible options, Mongrel has
+a -G (generate) feature that will take any command line options
+you give it, generate the YAML file to replicate those options, and
+then exit.  For example, you could make a config file like this:
+
+  @mongrel_rails start -G mongrel_8080.yml -e production -p 8080@
+
+And it'll write all the options possible to mongrel_8080.yml, but
+with your specific changed for environment (-e production) and
+port (-p 8080).
+
+When you run a configuration file with -C, don't pass other options.
+Rather than have complex rules about whether a configuration file or
+command line option wins, mongrel_rails just uses configuration file
+and defaults, or command line options and defaults.   Basically don't mix,
+it won't work.
+
 
 h2. MIME Types
 

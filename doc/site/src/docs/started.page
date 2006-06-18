@@ -28,6 +28,7 @@ get picked up for some people as a dependency.  You'll need to do this instead:
 
  $ gem install win32-service (pick the most recent one)
  $ gem install mongrel (pick the win32 pre-built)
+ $ gem install mongrel_service
 
 Now you're installed.  "Read the Win32 HOWTO for more instructions.":win32.html
 

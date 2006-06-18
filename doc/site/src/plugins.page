@@ -20,7 +20,6 @@ and will answer your questions.
 * mongrel_cluster -- Very sweet plugin that lets you manage a
   pack of Mongrels easily as well as dealing with Capistrano issues.
 
-
 h2. Getting Your Plugin Listed
 
 Just shoot a message to the "mailing list":http://rubyforge.org/mail/?group_id=1306

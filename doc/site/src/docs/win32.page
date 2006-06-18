@@ -13,24 +13,38 @@ pre-compiled gems available for people to use.
 
 *Before reading this document you need to read "Getting Started.":started.html and make sure it works.*
 
-h2. Stopping The mongrel_rails Script
+h2. Installing Service Support
 
-Just like in POSIX systems, you use CTRL-C to exit the mongrel_rails script.
+Mongrel used to have a separate mongrel_rails_service script but this 
+caused problems and has since been unified into just mongrel_rails 
+and a special GemPlugin that gives you a set of service:: commands.
+
+To install the mongrel_service GemPlugin you simply install mongrel and
+then do:
+
+  > gem install mongrel_service
+
+This will give you a set of service commands that you can find out about
+by just running mongrel_rails and then passing each one the -h option to
+get help.
+
 
 h2. Running The Service
 
 After you do the gem install, find a Rails application you want to run
 and do:
 
- $ mongrel_rails_service install -n myapp \ 
+ $ mongrel_rails service::install -N myapp \ 
      -r c:\my\path\to\myapp -p 4000 -e production
- $ mongrel_rails_service start -n myapp
+ $ mongrel_rails service::start -N myapp
 
 Now hit the port and poof, works (or should).
 
 The application will stop if you use:
 
- $ mongrel_rails_service stop -n myapp
+ $ mongrel_rails service::stop -N myapp
+
+@NOTE: Stop reports an exception but does stop the service.@
 
 Now the really great thing is that you can just do all this from
 the Services control panel like your Rails application is a regular
@@ -47,37 +61,37 @@ subversion check-out and run my tests again.
 
 h2. Other Service Commands
 
-There is a full set of service control commands in the mongrel_rails_service script.
+There is a full set of service control commands in the mongrel_service plugin.
 This lets you use either the Services control panel or a command line script to 
 manage your Rails applications.  What's also nice is that you can register as many
 applications as you want, and even the same one with different names.
 
 
-h3. install
+h3. service::install
 
-If you want to run the same app in different modes then use the *-n* option to the *install*
+If you want to run the same app in different modes then use the *-N* option to the *install*
 command:
 
- $ mongrel_rails_service install -n myapp_dev \ 
+ $ mongrel_rails service::install -N myapp_dev \ 
      -r c:\my\path\to\myapp -p 4000 -e development
- $ mongrel_rails_service start -n myapp
+ $ mongrel_rails service::start -N myapp
 
 You can also use the *-d* option to give the service a different display name in the
 Services console.
 
-h3. start
+h3. service::start
 
 Pretty much just takes a service name to start up.  It will run and print a message
 until the service finally starts, which sometimes can take 10-60 seconds.
 
-h3. stop
+h3. service::stop
 
-Sort of works right now and also only takes a -n parameter.  It has a few errors
+Sort of works right now and also only takes a -N parameter.  It has a few errors
 when it tries to stop a service so we're working on making it cleaner.
 
-h3. delete
+h3. service::remove
 
-Takes the name (-n) of the service to delete and then removes it from the list.
+Takes the name (-N) of the service to remove and then removes it from the list.
 *This would be how you'd remove a service so you can change it's start-up options.*
 
 
@@ -92,7 +106,7 @@ It's pretty easy to use, just pass the *-c or --cpu* option to the *install*
 command and give a CPU of 1-X.  That means if you have 4 CPUs and you want 
 Mongrel on #4 then do:
 
- $ mongrel_rails_service install -n myapp \ 
+ $ mongrel_rails service::install -N myapp \ 
      -r c:\my\path\to\myapp -p 4000 -e production -c 4
 
 Pretty much the same command, just one more option and you're done.

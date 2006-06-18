@@ -4,6 +4,7 @@ inMenu: true
 directoryName: Documentation
 ---
 
+* Jun 16: These docs are out of date and will be updated soon. *
 
 h1. Writing Mongrel Plugins with GemPlugin
 
