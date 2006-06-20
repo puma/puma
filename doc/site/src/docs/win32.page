@@ -35,7 +35,7 @@ After you do the gem install, find a Rails application you want to run
 and do:
 
  $ mongrel_rails service::install -N myapp \ 
-     -r c:\my\path\to\myapp -p 4000 -e production
+     -c c:\my\path\to\myapp -p 4000 -e production
  $ mongrel_rails service::start -N myapp
 
 Now hit the port and poof, works (or should).
@@ -73,7 +73,7 @@ If you want to run the same app in different modes then use the *-N* option to t
 command:
 
  $ mongrel_rails service::install -N myapp_dev \ 
-     -r c:\my\path\to\myapp -p 4000 -e development
+     -c c:\my\path\to\myapp -p 4000 -e development
  $ mongrel_rails service::start -N myapp
 
 You can also use the *-d* option to give the service a different display name in the
@@ -97,6 +97,8 @@ Takes the name (-N) of the service to remove and then removes it from the list.
 
 h2. CPU Affinity
 
+@NOTE: This section is out of date.  Refer to the service::install --help.@
+
 Mongrel's win32 support actually is able to set the CPU affinity of a running
 Mongrel service.  This is pretty neat since it means if you're running a 
 fancy SMP machine or a dual core that pretends to be SMP, then you can
@@ -107,7 +109,7 @@ command and give a CPU of 1-X.  That means if you have 4 CPUs and you want
 Mongrel on #4 then do:
 
  $ mongrel_rails service::install -N myapp \ 
-     -r c:\my\path\to\myapp -p 4000 -e production -c 4
+     -c c:\my\path\to\myapp -p 4000 -e production -c 4
 
 Pretty much the same command, just one more option and you're done.
 

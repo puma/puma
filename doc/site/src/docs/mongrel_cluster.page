@@ -23,8 +23,8 @@ h2. Requirements
 
 Throughout these instructions we will assume the following:
 * All mongrel instances are running on the same machine
-* Mongrel prerelease *0.3.13* or greater
-* Mongrel_cluster prerelease *0.1.3* or greater
+* Mongrel *0.3.13* or greater
+* "Mongrel_cluster":http://rubyforge.org/projects/railsmachine/ *0.2.0* or greater
 * Linux platform (Centos 4.3 in this case, so you will see RedHat like commands).
 * You have *sudo* or *root* access
 

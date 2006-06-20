@@ -71,10 +71,29 @@ let you bookmark via email and mobile phone.
 
 "MarkaBoo Rubyforge Project":http://markaboo.rubyforge.org/
 
+h2. Benjamin Curtis
+
+I saw your email to the list about Mongrel documentation, including  the
+Adoption page, and I thought I'd toss my info your way.  I'm  using Mongrel for
+both "tesly.com":http://www.tesly.com/ and
+"agilewebdevelopment.com":http://www.agilewebdevelopment.com/, both running on
+the same VPS being  proxied from lighty.  This has turned out to be a much more
+stable solution than lighty + fcgi.  My VPS is running Debian, so I've
+created init scripts to get those Mongrels going at boot time, and it  works
+like a charm.
+
+h2. "Jonathan Weiss":http://blog.innerewut.de
+
+"MeinProf.de":http://meinprof.de/ was the first site to deploy Mongrel with
+Apache 2.2 and mod_proxy_balancer. We evaluated Mongrel as an alternative to
+FastCGI and were impressed by the ease of use and simplicity of the setup.
+Since then Mongrel drives up to 250.000 requests per day on MeinProf.de without
+any problems.
+
 h3. Honorable Mentions
 
 * Fear of Fish says: "Fear of Fish isn't using it yet, but he will do when his current large project goes live."  He likes third person.
-* Wilson Bilkovich (Defiler) says: " Can I get on there saying that the web was a hollow lie before Mongrel was released?"  No, that quote is full of lies.
+* Wilson Bilkovich (Defiler) says: "Can I get on there saying that the web was a hollow lie before Mongrel was released?"  No, that quote is full of lies.
 
 h1. Actually Adopting A Mongrel
 
