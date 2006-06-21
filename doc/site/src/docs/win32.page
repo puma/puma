@@ -97,19 +97,17 @@ Takes the name (-N) of the service to remove and then removes it from the list.
 
 h2. CPU Affinity
 
-@NOTE: This section is out of date.  Refer to the service::install --help.@
-
 Mongrel's win32 support actually is able to set the CPU affinity of a running
 Mongrel service.  This is pretty neat since it means if you're running a 
 fancy SMP machine or a dual core that pretends to be SMP, then you can
 force Mongrel onto one of them and get a nice little boost.
 
-It's pretty easy to use, just pass the *-c or --cpu* option to the *install*
+It's pretty easy to use, just pass the *-u or --cpu* option to the *install*
 command and give a CPU of 1-X.  That means if you have 4 CPUs and you want 
 Mongrel on #4 then do:
 
  $ mongrel_rails service::install -N myapp \ 
-     -c c:\my\path\to\myapp -p 4000 -e production -c 4
+     -c c:\my\path\to\myapp -p 4000 -e production -u 4
 
 Pretty much the same command, just one more option and you're done.
 
