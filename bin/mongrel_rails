@@ -70,7 +70,7 @@ class Start < GemPlugin::Plugin "/commands"
     end
 
     if @config_file
-      STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless defaults[:daemon]
+      STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless settings[:daemon]
       conf = YAML.load_file(@config_file)
       settings = settings.merge! conf
     end
