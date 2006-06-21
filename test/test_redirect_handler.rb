@@ -4,12 +4,12 @@ require 'net/http'
 require 'uri'
 require 'timeout'
 
-class TC_RedirectHandler < Test::Unit::TestCase
+class RedirectHandlerTest < Test::Unit::TestCase
 
   def setup
-    @server = Mongrel::HttpServer.new('0.0.0.0', 9998)
+    @server = Mongrel::HttpServer.new('127.0.0.1', 9998)
     @server.run
-    @client = Net::HTTP.new('0.0.0.0', 9998)
+    @client = Net::HTTP.new('127.0.0.1', 9998)
   end
 
   def teardown
