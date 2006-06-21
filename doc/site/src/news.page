@@ -18,7 +18,7 @@ me how it works.
 This release fixes:
 
 * The -C configure file option was busted because of an errant line move.
-* Adds RedirectHandler thanks to (Author Soon) and a new redirect call to Configurator.
+* Adds RedirectHandler thanks to Jonas Pfenniger and a new redirect call to Configurator.
 * Fixes mongrel_servic documentation which was referring to -r instead of -c and -C instead of -u.
 
 h3. Using RedirectHandler
