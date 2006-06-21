@@ -131,7 +131,7 @@ module Mongrel
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'.freeze
 
-    MONGREL_VERSION="0.3.13".freeze
+    MONGREL_VERSION="0.3.13.1".freeze
 
     # TODO: this use of a base for tempfiles needs to be looked at for security problems
     MONGREL_TMP_BASE="mongrel".freeze

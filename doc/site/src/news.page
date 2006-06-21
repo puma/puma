@@ -7,6 +7,37 @@ ordering: 2
 
 h1. Latest News
 
+h2. Jun 20: Mongrel 0.3.13.1 -- Small Fixes
+
+This is a small release that fixes a little bug, some of the documentation,
+and adds the new RedirectHandler code and a @redirect@ call for the mongrel.conf
+files.  It's fresh so don't rely on it.  Everyone should upgrade with the 
+usual *gem update* command (which tells you it's "Upgrading...") and tell
+me how it works.
+
+This release fixes:
+
+* The -C configure file option was busted because of an errant line move.
+* Adds RedirectHandler thanks to (Author Soon) and a new redirect call to Configurator.
+* Fixes mongrel_servic documentation which was referring to -r instead of -c and -C instead of -u.
+
+h3. Using RedirectHandler
+
+Redirects are pretty simple.  You simply have either a new RedirectHandler class you can
+use or you can put this in a mongrel.conf and pass that to -S:
+
+  redirect "/from", "/to"
+
+It also accepts regex for the @from@ parameter and can take a block.  Play with it 
+if you're interested.
+
+h3. Deflate And Safari
+
+It looks like Safari does not honor the @Content-Encoding: deflate@ response, so
+avoid using DeflateFilter until I can find out why.  *This* is why you don't hand
+code network protocol parsers.
+
+
 h2. Jun 16: Mongrel 0.3.13 -- Finally Out!
 
 After a huge push, tons of delays to fix bugs and add enhancements, and lots of
