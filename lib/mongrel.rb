@@ -1,4 +1,4 @@
-# Mongrel Web Server - A Mostly Ruby Webserver and Library
+# Mongrel Web Server - A Mostly Ruby HTTP server and Library
 #
 # Copyright (C) 2005 Zed A. Shaw zedshaw AT zedshaw dot com
 #
@@ -212,7 +212,7 @@ module Mongrel
         clen -= @body.write(@socket.read(clen % Const::CHUNK_SIZE))
 
         # then stream out nothing but perfectly sized chunks
-        while clen > 0
+        while clen > 0 and !@socket.closed?
           data = @socket.read(Const::CHUNK_SIZE)
           # have to do it this way since @socket.eof? causes it to block
           raise "Socket closed or read failure" if not data or data.length != Const::CHUNK_SIZE
@@ -224,7 +224,7 @@ module Mongrel
         @body.rewind
       rescue Object
         # any errors means we should delete the file, including if the file is dumped
-        STDERR.puts "Error reading request: #$!"
+        @socket.close unless @socket.closed?
         @body.delete if @body.class == Tempfile
         @body = nil # signals that there was a problem
       end
@@ -454,7 +454,7 @@ module Mongrel
 
   end
 
-  # This is the main driver of Mongrel, while the Mognrel::HttpParser and Mongrel::URIClassifier
+  # This is the main driver of Mongrel, while the Mongrel::HttpParser and Mongrel::URIClassifier
   # make up the majority of how the server functions.  It's a very simple class that just
   # has a thread accepting connections and a simple HttpServer.process_client function
   # to do the heavy lifting with the IO and Ruby.  
@@ -517,7 +517,7 @@ module Mongrel
       begin
         parser = HttpParser.new
         params = {}
-
+        request = nil
         data = client.readpartial(Const::CHUNK_SIZE)
         nparsed = 0
 
@@ -535,6 +535,8 @@ module Mongrel
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
+
+              # TODO: Find a faster/better way to carve out the range, preferably without copying.
               data = data[nparsed ... data.length] || ""
 
               if handlers[0].request_notify
@@ -542,7 +544,6 @@ module Mongrel
                 handlers[0].request_begins(params)
               end
 
-              # TODO: Find a faster/better way to carve out the range, preferably without copying.
               request = HttpRequest.new(params, data, client)
 
               # in the case of large file uploads the user could close the socket, so skip those requests
@@ -563,7 +564,6 @@ module Mongrel
               end
             else
               # Didn't find it, return a stock 404 response.
-              # TODO: Implement customer 404 files (but really they should use a real web server).
               client.write(Const::ERROR_404_RESPONSE)
             end
 
@@ -580,26 +580,43 @@ module Mongrel
         # ignored
       rescue HttpParserError
         STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
-      rescue => details
+      rescue Object
         STDERR.puts "#{Time.now}: ERROR: #$!"
-        STDERR.puts details.backtrace.join("\n")
       ensure
         client.close unless client.closed?
+        request.body.delete if request and request.body.class == Tempfile
       end
     end
 
     # Used internally to kill off any worker threads that have taken too long
     # to complete processing.  Only called if there are too many processors
-    # currently servicing.
-    def reap_dead_workers(worker_list)
-      mark = Time.now
-      worker_list.each do |w|
-        w[:started_on] = Time.now if not w[:started_on]
+    # currently servicing.  It returns the count of workers still active
+    # after the reap is done.  It only runs if there are workers to reap.
+    def reap_dead_workers(reason='unknown')
+      if @workers.list.length > 0
+        STDERR.puts "#{Time.now}: Reaping #{@workers.list.length} threads for slow workers because of '#{reason}'"
+        mark = Time.now
+        @workers.list.each do |w|
+          w[:started_on] = Time.now if not w[:started_on]
 
-        if mark - w[:started_on] > @death_time + @timeout
-          STDERR.puts "Thread #{w.inspect} is too old, killing."
-          w.raise(StopServer.new("Timed out thread."))
+          if mark - w[:started_on] > @death_time + @timeout
+            STDERR.puts "Thread #{w.inspect} is too old, killing."
+            w.raise(StopServer.new("Timed out thread."))
+          end
         end
+      end
+
+      return @workers.list.length
+    end
+
+    # Performs a wait on all the currently running threads and kills any that take
+    # too long.  Right now it just waits 60 seconds, but will expand this to
+    # allow setting.  The @timeout setting does extend this waiting period by
+    # that much longer.
+    def graceful_shutdown
+      while reap_dead_workers("shutdown") > 0
+        STDERR.print "Waiting for #{@workers.list.length} requests to finish, could take #{@death_time + @timeout} seconds."
+        sleep @death_time / 10
       end
     end
 
@@ -618,14 +635,12 @@ module Mongrel
             if worker_list.length >= @num_processors
               STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max). Dropping connection."
               client.close
-              reap_dead_workers(worker_list)
+              reap_dead_workers("max processors")
             else
-              thread = Thread.new do
-                process_client(client)
-              end
+              thread = Thread.new { process_client(client) }
 
+              thread.abort_on_exception = true
               thread[:started_on] = Time.now
-              thread.priority=1
               @workers.add(thread)
 
               sleep @timeout/100 if @timeout > 0
@@ -634,22 +649,12 @@ module Mongrel
             @socket.close if not @socket.closed?
             break
           rescue Errno::EMFILE
-            STDERR.puts "Too many open files.  Try increasing ulimits."
+            reap_dead_workers("too many open files")
             sleep 0.5
           end
         end
 
-        # troll through the threads that are waiting and kill any that take too long
-        # TODO: Allow for death time to be set if people ask for it.
-        @death_time = 10
-        shutdown_start = Time.now
-
-        while @workers.list.length > 0
-          waited_for = (Time.now - shutdown_start).ceil
-          STDERR.print "Shutdown waited #{waited_for} for #{@workers.list.length} requests, could take #{@death_time + @timeout} seconds.\r" if @workers.list.length > 0
-          sleep 1
-          reap_dead_workers(@workers.list)
-        end
+        graceful_shutdown
       end
 
       return @acceptor
@@ -972,7 +977,7 @@ module Mongrel
 
 
     # This method should actually be called *outside* of the
-    # Configurator block so that you can control it.  In otherwords
+    # Configurator block so that you can control it.  In other words
     # do it like:  config.join.
     def join
       @listeners.values.each {|s| s.acceptor.join }
@@ -991,9 +996,9 @@ module Mongrel
     #   debug "/", what = [:rails]
     # 
     # And it will only produce the log/mongrel_debug/rails.log file.
-    # Available options are:  :object, :railes, :files, :threads, :params
+    # Available options are:  :object, :rails, :files, :threads, :params
     # 
-    # NOTE: Use [:files] to get acccesses dumped to stderr like with WEBrick.
+    # NOTE: Use [:files] to get accesses dumped to stderr like with WEBrick.
     def debug(location, what = [:object, :rails, :files, :threads, :params])
       require 'mongrel/debug'
       handlers = {

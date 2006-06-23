@@ -1,4 +1,4 @@
-/* Mongrel Web Server - A Mostly Ruby Webserver and Library
+/* Mongrel Web Server - A Mostly Ruby HTTP server and Library
  *
  * Copyright (C) 2005 Zed A. Shaw zedshaw AT zedshaw dot com
  *
