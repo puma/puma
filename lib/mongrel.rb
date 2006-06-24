@@ -28,8 +28,7 @@ require 'mongrel/tcphack'
 require 'yaml'
 require 'time'
 require 'rubygems'
-require 'etc' 
-
+require 'etc'
 
 begin
   require 'sendfile'
@@ -62,8 +61,10 @@ module Mongrel
 
 
   # Used to stop the HttpServer via Thread.raise.
-  class StopServer < Exception
-  end
+  class StopServer < Exception; end
+
+  # Thrown at a thread when it is timed out.
+  class TimeoutError < Exception; end
 
 
   # Every standard HTTP code mapped to the appropriate message.  These are
@@ -131,7 +132,7 @@ module Mongrel
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'.freeze
 
-    MONGREL_VERSION="0.3.13.1".freeze
+    MONGREL_VERSION="0.3.13.2".freeze
 
     # TODO: this use of a base for tempfiles needs to be looked at for security problems
     MONGREL_TMP_BASE="mongrel".freeze
@@ -580,6 +581,8 @@ module Mongrel
         # ignored
       rescue HttpParserError
         STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
+      rescue Errno::EMFILE
+        reap_dead_workers('too many files')
       rescue Object
         STDERR.puts "#{Time.now}: ERROR: #$!"
       ensure
@@ -601,7 +604,7 @@ module Mongrel
 
           if mark - w[:started_on] > @death_time + @timeout
             STDERR.puts "Thread #{w.inspect} is too old, killing."
-            w.raise(StopServer.new("Timed out thread."))
+            w.raise(TimeoutError.new("Timed out thread."))
           end
         end
       end
@@ -751,8 +754,6 @@ module Mongrel
       @needs_restart = false
       @pid_file = defaults[:pid_file]
 
-      change_privilege(@defaults[:user], @defaults[:group])
-      
       if blk
         cloaker(&blk).bind(self).call
       end
@@ -817,6 +818,8 @@ module Mongrel
     # * :port => Port to bind.
     # * :num_processors => The maximum number of concurrent threads allowed.  (950 default)
     # * :timeout => 1/100th of a second timeout between requests. (10 is 1/10th, 0 is timeout)
+    # * :user => User to change to, must have :group as well.
+    # * :group => Group to change to, must have :user as well.
     #
     def listener(options={},&blk)
       raise "Cannot call listener inside another listener block." if (@listener or @listener_name)
@@ -827,6 +830,10 @@ module Mongrel
       @listener = Mongrel::HttpServer.new(ops[:host], ops[:port].to_i, ops[:num_processors].to_i, ops[:timeout].to_i)
       @listener_name = "#{ops[:host]}:#{ops[:port]}"
       @listeners[@listener_name] = @listener
+
+      if ops[:user] and ops[:group]
+        change_privilege(ops[:user], ops[:group])
+      end
 
       # Does the actual cloaking operation to give the new implicit self.
       if blk

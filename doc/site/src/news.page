@@ -7,7 +7,7 @@ ordering: 2
 
 h1. Latest News
 
-h2. Jun 20: Mongrel 0.3.13.1 -- Small Fixes
+h2. Jun 20: Mongrel 0.3.13.2 -- Small Fixes
 
 This is a small release that fixes a little bug, some of the documentation,
 and adds the new RedirectHandler code and a @redirect@ call for the mongrel.conf
