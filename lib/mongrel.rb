@@ -193,11 +193,12 @@ module Mongrel
     # body data into the HttpRequest.body attribute.
     #
     # TODO: Implement tempfile removal when the request is done.
-    def initialize(params, initial_body, socket)
+    def initialize(params, initial_body, socket, notifier)
       @params = params
       @socket = socket
 
       clen = params[Const::CONTENT_LENGTH].to_i - initial_body.length
+      total = clen
 
       if clen > Const::MAX_BODY
         @body = Tempfile.new(Const::MONGREL_TMP_BASE)
@@ -219,12 +220,14 @@ module Mongrel
           raise "Socket closed or read failure" if not data or data.length != Const::CHUNK_SIZE
           clen -= @body.write(data)
           # ASSUME: we are writing to a disk and these writes always write the requested amount
+          notifier.request_progress(clen, total) if notifier
         end
 
         # rewind to keep the world happy
         @body.rewind
       rescue Object
         # any errors means we should delete the file, including if the file is dumped
+        STDERR.puts "ERROR: #$!"
         @socket.close unless @socket.closed?
         @body.delete if @body.class == Tempfile
         @body = nil # signals that there was a problem
@@ -536,16 +539,18 @@ module Mongrel
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
+              notifier = nil
 
               # TODO: Find a faster/better way to carve out the range, preferably without copying.
               data = data[nparsed ... data.length] || ""
 
               if handlers[0].request_notify
                 # this first handler wants to be notified when the process starts
-                handlers[0].request_begins(params)
+                notifier = handlers[0]
+                notifier.request_begins(params)
               end
 
-              request = HttpRequest.new(params, data, client)
+              request = HttpRequest.new(params, data, client, notifier)
 
               # in the case of large file uploads the user could close the socket, so skip those requests
               break if request.body == nil  # nil signals from HttpRequest::initialize that the request was aborted
