@@ -220,7 +220,7 @@ module Mongrel
           raise "Socket closed or read failure" if not data or data.length != Const::CHUNK_SIZE
           clen -= @body.write(data)
           # ASSUME: we are writing to a disk and these writes always write the requested amount
-          notifier.request_progress(clen, total) if notifier
+          notifier.request_progress(params, clen, total) if notifier
         end
 
         # rewind to keep the world happy
