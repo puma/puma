@@ -184,7 +184,12 @@ module Mongrel
   #
   # The HttpRequest.initialize method will convert any request that is larger than
   # Const::MAX_BODY into a Tempfile and use that as the body.  Otherwise it uses 
-  # a StringIO object.  To be safe, you should assume it works like a file.  
+  # a StringIO object.  To be safe, you should assume it works like a file.
+  #
+  # The HttpHandler.request_notify system is implemented by having HttpRequest call
+  # HttpHandler.request_begins, HttpHandler.request_progress, HttpHandler.process during
+  # the IO processing.  This adds a small amount of overhead but lets you implement
+  # finer controlled handlers and filters.
   class HttpRequest
     attr_reader :body, :params
 
@@ -209,9 +214,11 @@ module Mongrel
 
       begin
         @body.write(initial_body)
+        notifier.request_begins(params) if notifier
 
         # write the odd sized chunk first
         clen -= @body.write(@socket.read(clen % Const::CHUNK_SIZE))
+        notifier.request_progress(params, clen, total) if notifier
 
         # then stream out nothing but perfectly sized chunks
         while clen > 0 and !@socket.closed?
@@ -227,7 +234,6 @@ module Mongrel
         @body.rewind
       rescue Object
         # any errors means we should delete the file, including if the file is dumped
-        STDERR.puts "ERROR: #$!"
         @socket.close unless @socket.closed?
         @body.delete if @body.class == Tempfile
         @body = nil # signals that there was a problem
@@ -539,16 +545,10 @@ module Mongrel
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
-              notifier = nil
+              notifier = handlers[0].request_notify ? handlers[0] : nil
 
               # TODO: Find a faster/better way to carve out the range, preferably without copying.
               data = data[nparsed ... data.length] || ""
-
-              if handlers[0].request_notify
-                # this first handler wants to be notified when the process starts
-                notifier = handlers[0]
-                notifier.request_begins(params)
-              end
 
               request = HttpRequest.new(params, data, client, notifier)
 

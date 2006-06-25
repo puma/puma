@@ -46,6 +46,15 @@
           <h4>NEWS</h4>
 
           <dl>
+            <dt>Jun-25-2006</dt>
+            <dd>
+            <h5><a href="{relocatable: news.html}">Mongrel 0.3.13.2 -- RailsConf 2006 Release</a></h5>
+
+            <p>Release from RailsConf that does Upload Progress and defending better.</p>
+            <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
+            <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+            </dd>
+
             <dt>Jun-20-2006</dt>
             <dd>
             <h5><a href="{relocatable: news.html}">Mongrel 0.3.13.1 Small Bug Fixes</a></h5>

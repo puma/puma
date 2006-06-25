@@ -41,6 +41,12 @@ module Mongrel
     def request_begins(params)
     end
 
+    # Called by Mongrel for each IO chunk that is received on the request socket
+    # from the client, allowing you to track the progress of the IO and monitor
+    # the input.
+    def request_progress(params, clen, total)
+    end
+
     def process(request, response)
     end
 
@@ -57,6 +63,9 @@ module Mongrel
     attr_accessor :listener
 
     def request_begins(params)
+    end
+
+    def request_progress(params, clen, total)
     end
 
     def initialize(options={})

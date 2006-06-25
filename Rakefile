@@ -85,6 +85,7 @@ task :install do
   sh %{rake package}
   sh %{gem install pkg/mongrel-#{version}}
   sub_project("mongrel_status", :install)
+  sub_project("mongrel_upload_progress", :install)
   sub_project("mongrel_console", :install)
   if RUBY_PLATFORM =~ /mswin/
     sub_project("mongrel_service", :install)
@@ -93,6 +94,7 @@ end
 
 task :uninstall => [:clean] do
   sub_project("mongrel_status", :uninstall)
+  sub_project("mongrel_upload_progress", :uninstall)
   sub_project("mongrel_console", :uninstall)
   sh %{gem uninstall mongrel}
   sub_project("gem_plugin", :uninstall)

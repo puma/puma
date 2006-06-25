@@ -7,7 +7,35 @@ ordering: 2
 
 h1. Latest News
 
-h2. Jun 20: Mongrel 0.3.13.2 -- Small Fixes
+h2. Jun 25: Mongrel 0.3.13.2 -- RailsConf 2006 Release
+
+This is the release that came out of RailsConf hacking with folks like Rick 
+Olsen, Why The Luck Stiff and other incredibly cool folks.  The conference
+was great, so lets hope this release is good too.  The big thing it adds
+is *upload progress in Mongrel*.  That's right, Why and Rick pinned me down
+and made me put it in Mongrel.  They worked up the mongrel_upload_progress
+plugin and are now working on Rails and Camping code to make it happen.
+
+Install from the gem servers with your usual commands:
+
+  gem update
+
+  *or*
+
+  gem update mongrel
+
+  *or*
+
+  gem install mongrel
+
+But if you can't wait for the gem mirrors to update, then you can also do:
+
+  gem install mongrel --source=http://mongrel.rubyforge.org/releases
+
+To get around it all.
+
+
+h2. Jun 20: Mongrel 0.3.13.2 Pre-Release -- Small Fixes
 
 This is a small release that fixes a little bug, some of the documentation,
 and adds the new RedirectHandler code and a @redirect@ call for the mongrel.conf

@@ -1,8 +1,7 @@
 require 'mongrel'
 require 'gem_plugin'
-require File.join(File.dirname(__FILE__), 'progress')
 
-class Uploads
+class Mongrel::Uploads
   include Singleton
 
   def initialize
@@ -38,52 +37,31 @@ class Uploads
   end
 end
 
-class Progress < GemPlugin::Plugin "/handlers"
-  include Mongrel::HttpHandlerPlugin
-
-  def initialize(options)
-  end
-
-  def process(request, response)
-    qs     = Mongrel::HttpRequest.query_parse(request.params['QUERY_STRING'])
-    status = Mongrel::Uploads.instance.check(qs['upload_id'])
-    response.start 200 do |head, out|
-      out.write write_status(status, qs['upload_id'])
-    end
-  end
-
-  protected
-  def write_status(status, upload_id)
-    status ? ([status['size'], status['received']] * ',') : "no status for #{upload_id}"
-  end
-end
-
 class Upload < GemPlugin::Plugin "/handlers"
   include Mongrel::HttpHandlerPlugin
 
   def initialize(options = {})
-    @upload_path  = options[:upload_path] || 'tmp/uploads'
-    @redirect_url = options[:redirect_url]
+    @path_info      = options[:path_info]
     @request_notify = true
   end
 
   def request_begins(params)
-    upload_notify(:add, params, params[Const::CONTENT_LENGTH].to_i)
+    upload_notify(:add, params, params[Mongrel::Const::CONTENT_LENGTH].to_i) if params['PATH_INFO'] == @path_info
   end
 
   def request_progress(params, clen, total)
-    upload_notify(:mark, params, clen)
+    upload_notify(:mark, params, clen) if params['PATH_INFO'] == @path_info
   end
 
   def process(request, response)
-    upload_notify(:finish, request.params)
+    upload_notify(:finish, request.params) if request.params['PATH_INFO'] == @path_info
   end
 
   private
   def upload_notify(action, params, *args)
-    upload_id = params['upload_id']
-    if params[Const::REQUEST_METHOD] == 'POST' && upload_id
-      Uploads.instance.send(action, upload_id, *args) if upload_id
+    upload_id = Mongrel::HttpRequest.query_parse(params['QUERY_STRING'])['upload_id']
+    if params[Mongrel::Const::REQUEST_METHOD] == 'POST' && upload_id
+      Mongrel::Uploads.instance.send(action, upload_id, *args) if upload_id
     end
   end
 end
