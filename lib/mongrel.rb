@@ -425,7 +425,7 @@ module Mongrel
             write(chunk)
           end
         end
-        @body_send = true
+        @body_sent = true
       end
     end
 
@@ -646,7 +646,6 @@ module Mongrel
               reap_dead_workers("max processors")
             else
               thread = Thread.new { process_client(client) }
-
               thread.abort_on_exception = true
               thread[:started_on] = Time.now
               @workers.add(thread)
