@@ -103,6 +103,9 @@ class Start < GemPlugin::Plugin "/commands"
         if defaults[:debug]
           log "Installing debugging prefixed filters.  Look in log/mongrel_debug for the files."
           debug "/"
+        elsif not defaults[:daemon]
+          # they don't have debug on and aren't in daemon so at least log accesses
+          debug "/", what = [:files]
         end
 
         log "Starting Rails with #{defaults[:environment]} environment ..."

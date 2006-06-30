@@ -120,7 +120,7 @@ module Mongrel
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'.freeze
 
-    MONGREL_VERSION="0.3.13.2".freeze
+    MONGREL_VERSION="0.3.13.3".freeze
 
     # TODO: this use of a base for tempfiles needs to be looked at for security problems
     MONGREL_TMP_BASE="mongrel".freeze
@@ -995,21 +995,21 @@ module Mongrel
     #   debug "/", what = [:rails]
     # 
     # And it will only produce the log/mongrel_debug/rails.log file.
-    # Available options are:  :object, :rails, :files, :threads, :params
+    # Available options are:  :objects, :rails, :files, :threads, :params
     # 
     # NOTE: Use [:files] to get accesses dumped to stderr like with WEBrick.
-    def debug(location, what = [:object, :rails, :files, :threads, :params])
+    def debug(location, what = [:objects, :rails, :files, :threads, :params])
       require 'mongrel/debug'
       handlers = {
         :files => "/handlers/requestlog::access", 
         :rails => "/handlers/requestlog::files", 
-        :object => "/handlers/requestlog::objects", 
+        :objects => "/handlers/requestlog::objects", 
         :threads => "/handlers/requestlog::threads",
         :params => "/handlers/requestlog::params"
       }
 
       # turn on the debugging infrastructure, and ObjectTracker is a pig
-      ObjectTracker.configure if what.include? :object
+      ObjectTracker.configure if what.include? :objects
       MongrelDbg.configure
 
       # now we roll through each requested debug type, turn it on and load that plugin

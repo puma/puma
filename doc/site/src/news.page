@@ -7,11 +7,27 @@ ordering: 2
 
 h1. Latest News
 
-h2. Jun 30: Mongrel 0.3.13.3 -- Ruby Licensed Now
+h2. Jun 30: Mongrel 0.3.13.3 -- Ruby Licensed Release
 
 After talking with various people deep inside the Ruby machine, I've decided
 to release Mongrel Ruby licensed as of 0.3.13.3.  This release should make
-quite a few people happy.
+quite a few people happy.  It also means that contributors will hopefully
+feel better about their contibutions and people using Mongrel have more freedom.
+
+This release also fixes a problem with the -B option not actually logging 
+object counts.  The object count logging isn't perfect, but some folks use
+it.
+
+This release also will print the access log to the screen when you run it in
+your console.  This was requested by a few folks, but I'm not convinced I like
+it.  Try it out and if you do or don't then mention it in the mailing list.
+
+As usual, do your:
+
+  gem install mongrel
+
+To get the release, and if it doesn't show up then you have to wait
+for the ruby gems mirror to sync up.
 
 h2. Jun 25: Mongrel 0.3.13.2 -- RailsConf 2006 Release
 
