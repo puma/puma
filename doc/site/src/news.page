@@ -7,6 +7,12 @@ ordering: 2
 
 h1. Latest News
 
+h2. Jun 30: Mongrel 0.3.13.3 -- Ruby Licensed Now
+
+After talking with various people deep inside the Ruby machine, I've decided
+to release Mongrel Ruby licensed as of 0.3.13.3.  This release should make
+quite a few people happy.
+
 h2. Jun 25: Mongrel 0.3.13.2 -- RailsConf 2006 Release
 
 This is the release that came out of RailsConf hacking with folks like Rick 

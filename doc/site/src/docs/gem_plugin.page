@@ -41,7 +41,7 @@ package management system to give you:
 
 * A simple way to package, distribute, manage, and update your Mongrel plugins.
 * Dynamic loading based on the gem dependencies and not on specific configurations.
-* Segregated extensions for Mongrel in case you want a different license than LGPL.
+* Segregated extensions for Mongrel.
 * All the capabilities of RubyGems.  GemPlugin doesn't mess with them at all.
 * A little generator that starts your project off right similar to how Rails generators work.
 * The ability to package resources (images, configs, etc.) with your gem and then load them
@@ -75,14 +75,10 @@ h2.  Your First Plugin
 Make sure that you have rubygems, mongrel, gem_plugins, and
 rake all installed and working right.
 
-Yes, this means that you are forced to use RubyGems.   
-People who really don't like RubyGems are free to take the 
-core of the Mongrel Server API and re-use it as they wish, 
-but keep in mind that Mongrel is LGPL so any changes you
-make need to come back to me or you have to release your 
-whole project under LGPL too.  Just using Mongrel doesn't
-require this return so feel free to use it like crazy 
-in your commercial software or other licensed project.
+Yes, this means that you are forced to use RubyGems.   People who really don't
+like RubyGems are free to take the core of the Mongrel Server API and re-use it
+as they wish.  Just using Mongrel doesn't require this return so feel free to
+use it like crazy in your commercial software or other licensed project.
 
 Once you have all that installed you need to simply find a nice quiet
 place to generate your initial plugin directory with the *gpgen* 

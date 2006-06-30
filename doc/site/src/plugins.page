@@ -28,6 +28,5 @@ and you'll get hooked up.
 
 h2. Licensing
 
-People interested in extending Mongrel and avoiding licensing
-problems (Mongrel is LGPL) can use GemPlugins without any
-problems since the GemPlugin system is Ruby Licensed.
+Mongrel and GemPlugin are both "licensed the same as Ruby":/license.page so
+you can use it the same as Ruby.
