@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2005 Zed A. Shaw
+ * You can redistribute it and/or modify it under the same terms as Ruby.
+ */
 #include "http11_parser.h"
 #include <stdio.h>
 #include <assert.h>
