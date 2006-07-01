@@ -70,7 +70,6 @@ setup_gem(name, version) do |spec|
       sh %{rake install }
     end
     spec.files << 'ext/http11/http11.so'
-    spec.add_dependency('win32-service', '>= 0.5.0')
     spec.extensions.clear
     spec.platform = Gem::Platform::WIN32
   else
