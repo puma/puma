@@ -14,7 +14,7 @@ static VALUE mMongrel;
 static VALUE cHttpParser;
 static VALUE cURIClassifier;
 static VALUE eHttpParserError;
-static int id_handler_map;
+static ID id_handler_map;
 
 static VALUE global_http_prefix;
 static VALUE global_request_method;
