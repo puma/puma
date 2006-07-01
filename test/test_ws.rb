@@ -55,7 +55,7 @@ class WebServerTest < Test::Unit::TestCase
         sleep 1
       end
     end
-    s.write(" ") if RUBY_PLATFORM =~ /mswin/
+    s.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin/
     s.close
   end
 
