@@ -1,9 +1,44 @@
 require 'mongrel'
 require 'gem_plugin'
 
-class Mongrel::Uploads
-  include Singleton
+class Upload < GemPlugin::Plugin "/handlers"
+  include Mongrel::HttpHandlerPlugin
 
+  def initialize(options = {})
+    @path_info      = options[:path_info]
+    @request_notify = true
+    if options[:drb]
+      require 'drb'
+      DRb.start_service
+      Mongrel.const_set :UploadStatus, DRbObject.new(nil, options[:drb])
+    else
+      Mongrel.const_set :UploadStatus, Mongrel::UploadProgress.new
+    end
+    Mongrel::Upload::Status.instance.instance_variable_set(:@debug, true) if options[:debug]
+  end
+
+  def request_begins(params)
+    upload_notify(:add, params, params[Mongrel::Const::CONTENT_LENGTH].to_i)
+  end
+
+  def request_progress(params, clen, total)
+    upload_notify(:mark, params, clen)
+  end
+
+  def process(request, response)
+    upload_notify(:finish, request.params)
+  end
+
+  private
+    def upload_notify(action, params, *args)
+      return unless params['PATH_INFO'] == @path_info && params[Mongrel::Const::REQUEST_METHOD] == 'POST'
+      upload_id = Mongrel::HttpRequest.query_parse(params['QUERY_STRING'])['upload_id']
+      Mongrel::UploadStatus.send(action, upload_id, *args) if upload_id
+    end
+end
+
+# Keeps track of the status of all currently processing uploads
+class Mongrel::UploadProgress
   def initialize
     @guard    = Mutex.new
     @counters = {}
@@ -49,6 +84,10 @@ class Mongrel::Uploads
     true
   end
   
+  def list
+    @counters.keys.sort
+  end
+  
   private
     def upload_var(key)
       "@upload_#{key}"
@@ -56,34 +95,5 @@ class Mongrel::Uploads
     
     def checked_var(key)
       "@checked_#{key}"
-    end
-end
-
-class Upload < GemPlugin::Plugin "/handlers"
-  include Mongrel::HttpHandlerPlugin
-
-  def initialize(options = {})
-    @path_info      = options[:path_info]
-    @request_notify = true
-    Mongrel::Uploads.instance.instance_variable_set(:@debug, true) if options[:debug]
-  end
-
-  def request_begins(params)
-    upload_notify(:add, params, params[Mongrel::Const::CONTENT_LENGTH].to_i)
-  end
-
-  def request_progress(params, clen, total)
-    upload_notify(:mark, params, clen)
-  end
-
-  def process(request, response)
-    upload_notify(:finish, request.params)
-  end
-
-  private
-    def upload_notify(action, params, *args)
-      return unless params['PATH_INFO'] == @path_info && params[Mongrel::Const::REQUEST_METHOD] == 'POST'
-      upload_id = Mongrel::HttpRequest.query_parse(params['QUERY_STRING'])['upload_id']
-      Mongrel::Uploads.instance.send(action, upload_id, *args) if upload_id
     end
 end
