@@ -6,15 +6,16 @@ class Upload < GemPlugin::Plugin "/handlers"
 
   def initialize(options = {})
     @path_info      = options[:path_info]
+    @frequency      = options[:frequency] || 3
     @request_notify = true
     if options[:drb]
       require 'drb'
       DRb.start_service
-      Mongrel.const_set :UploadStatus, DRbObject.new(nil, options[:drb])
+      Mongrel.const_set :Uploads, DRbObject.new(nil, options[:drb])
     else
-      Mongrel.const_set :UploadStatus, Mongrel::UploadProgress.new
+      Mongrel.const_set :Uploads, Mongrel::UploadProgress.new
     end
-    Mongrel::Upload::Status.instance.instance_variable_set(:@debug, true) if options[:debug]
+    Mongrel::Uploads.debug = true if options[:debug]
   end
 
   def request_begins(params)
@@ -31,55 +32,57 @@ class Upload < GemPlugin::Plugin "/handlers"
 
   private
     def upload_notify(action, params, *args)
-      return unless params['PATH_INFO'] == @path_info && params[Mongrel::Const::REQUEST_METHOD] == 'POST'
-      upload_id = Mongrel::HttpRequest.query_parse(params['QUERY_STRING'])['upload_id']
-      Mongrel::UploadStatus.send(action, upload_id, *args) if upload_id
+      return unless params['PATH_INFO'] == @path_info &&
+        params[Mongrel::Const::REQUEST_METHOD] == 'POST' &&
+        upload_id = Mongrel::HttpRequest.query_parse(params['QUERY_STRING'])['upload_id']
+      if action == :mark
+        last_checked_time = instance_variable_get(checked_var(upid)) rescue nil
+        return unless last_checked_time && Time.now - last_checked_time > @frequency
+      end
+      return unless Mongrel::Uploads.send(action, upload_id, *args)
+      instance_variable_set(checked_var(upload_id), (action == :finish ? nil : Time.now))
+    end
+
+    def checked_var(key)
+      key && "@checked_#{key}"
     end
 end
 
 # Keeps track of the status of all currently processing uploads
 class Mongrel::UploadProgress
+  attr_accessor :debug
   def initialize
     @guard    = Mutex.new
     @counters = {}
   end
 
   def check(upid)
-    status = @counters[upid]
     puts "#{upid}: Checking" if @debug
-    instance_variable_get(upload_var(status)) if status
-  end
-  
-  def last_checked(upid)
-    status = @counters[upid]
-    instance_variable_get(checked_var(status)) if status
+    instance_variable_get(upload_var(upid)) rescue nil
   end
 
   def add(upid, size)
     @guard.synchronize do
-      @counters[upid] = rand(Time.now.to_i).to_s.intern
-      instance_variable_set(upload_var(@counters[upid]), {:size => size, :received => 0})
+      @counters[upid] = Time.now
+      instance_variable_set(upload_var(upid), {:size => size, :received => 0})
       puts "#{upid}: Added" if @debug
     end
+    true
+  rescue NameError # bad upid instance var
+    puts $!.message
+    @guard.synchronize { @counters[upid] = nil }
   end
 
   def mark(upid, len)
-    last_checked_time = last_checked(upid)
-    if last_checked_time.nil? || Time.now-last_checked_time > 3
-      status = check(upid)
-      status[:received] = status[:size] - len
-      instance_variable_set(checked_var(@counters[upid]), Time.now)
-      puts "#{upid}: #{status[:received]}" if @debug
-    end
+    puts "#{upid}: Marking" if @debug
+    status = check(upid)
+    status[:received] = status[:size] - len if status
   end
 
   def finish(upid)
     @guard.synchronize do
       puts "#{upid}: Finished" if @debug
-      counter = @counters.delete(upid)
-      return unless counter
-      instance_variable_set(upload_var(counter),  nil)
-      instance_variable_set(checked_var(counter), nil)
+      instance_variable_set(upload_var(upid),  nil) if @counters.delete(upid)
     end
     true
   end
@@ -90,10 +93,6 @@ class Mongrel::UploadProgress
   
   private
     def upload_var(key)
-      "@upload_#{key}"
-    end
-    
-    def checked_var(key)
-      "@checked_#{key}"
+      key && "@upload_#{key}"
     end
 end
