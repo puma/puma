@@ -77,7 +77,7 @@ module Mongrel
           rescue Errno::EPIPE
             # ignored
           rescue Object => rails_error
-            STDERR.puts "Error calling Dispatcher.dispatch #{rails_error.inspect}"
+            STDERR.puts "#{Tim.now}: Error calling Dispatcher.dispatch #{rails_error.inspect}"
             STDERR.puts rails_error.backtrace.join("\n")
           ensure
             @guard.unlock unless ActionController::Base.allow_concurrency
@@ -136,6 +136,7 @@ module Mongrel
         ops[:environment] ||= "development"
         ops[:docroot] ||= "public"
         ops[:mime] ||= {}
+        ops[:prefix] ||= "/"
 
 
         $orig_dollar_quote = $".clone
@@ -148,6 +149,9 @@ module Mongrel
         if ActionController::Base.allow_concurrency
           log "[RAILS] ActionController::Base.allow_concurrency is true.  Wow, you're very brave."
         end
+
+        ActionController::AbstractRequest.relative_url_root = ops[:prefix]
+
         @rails_handler = RailsHandler.new(ops[:docroot], ops[:mime])
       end
 

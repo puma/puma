@@ -32,7 +32,8 @@ class Start < GemPlugin::Plugin "/commands"
       ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil],
       ['-G', '--generate CONFIG', "Generate a config file for -C", :@generate, nil],
       ['', '--user USER', "User to run as", :@user, nil],
-      ['', '--group GROUP', "Group to run as", :@group, nil]
+      ['', '--group GROUP', "Group to run as", :@group, nil],
+      ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, '/']
     ]
   end
 
@@ -64,7 +65,7 @@ class Start < GemPlugin::Plugin "/commands"
       :docroot => @docroot, :mime_map => @mime_map, :daemon => @daemon,
       :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
       :num_processors => @num_procs, :timeout => @timeout,
-      :user => @user, :group => @group
+      :user => @user, :group => @group, :prefix => @prefix
     }
 
     if @generate
@@ -103,13 +104,10 @@ class Start < GemPlugin::Plugin "/commands"
         if defaults[:debug]
           log "Installing debugging prefixed filters.  Look in log/mongrel_debug for the files."
           debug "/"
-        elsif not defaults[:daemon]
-          # they don't have debug on and aren't in daemon so at least log accesses
-          debug "/", what = [:files]
         end
 
-        log "Starting Rails with #{defaults[:environment]} environment ..."
-        uri "/", :handler => rails(:mime => mime)
+        log "Starting Rails with #{defaults[:environment]} environment on #{defaults[:prefix]} ..."
+        uri defaults[:prefix], :handler => rails(:mime => mime, :prefix => @prefix)
         log "Rails loaded."
 
         log "Loading any Rails specific GemPlugins"

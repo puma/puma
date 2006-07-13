@@ -28,7 +28,9 @@ class WebServerTest < Test::Unit::TestCase
     @server = HttpServer.new("127.0.0.1", 9998,num_processors=1)
     @tester = TestHandler.new
     @server.register("/test", @tester)
-    @server.run 
+    redirect_test_io do
+      @server.run 
+    end
   end
 
   def teardown

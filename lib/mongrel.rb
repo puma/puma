@@ -14,6 +14,7 @@ require 'mongrel/handlers'
 require 'mongrel/command'
 require 'mongrel/tcphack'
 require 'yaml'
+require 'mongrel/configurator'
 require 'time'
 require 'rubygems'
 require 'etc'
@@ -33,7 +34,7 @@ module Mongrel
 
   class URIClassifier
     attr_reader :handler_map
-  
+
     # Returns the URIs that have been registered with this classifier so far.
     # The URIs returned should not be modified as this will cause a memory leak.
     # You can use this to inspect the contents of the URIClassifier.
@@ -120,13 +121,13 @@ module Mongrel
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'.freeze
 
-    MONGREL_VERSION="0.3.13.3".freeze
+    MONGREL_VERSION="0.3.13.4".freeze
 
     # TODO: this use of a base for tempfiles needs to be looked at for security problems
     MONGREL_TMP_BASE="mongrel".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
+    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Mongrel #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
 
     CONTENT_LENGTH="CONTENT_LENGTH".freeze
 
@@ -163,6 +164,10 @@ module Mongrel
     REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n".freeze
   end
 
+  # Basically a Hash with one extra parameter for the HTTP body, mostly used internally.
+  class HttpParams < Hash
+    attr_accessor :http_body
+  end
 
   # When a handler is found for a registered URI then this class is constructed
   # and passed to your HttpHandler::process method.  You should assume that 
@@ -186,27 +191,58 @@ module Mongrel
     # body data into the HttpRequest.body attribute.
     #
     # TODO: Implement tempfile removal when the request is done.
-    def initialize(params, initial_body, socket, notifier)
+    def initialize(params, socket, dispatcher)
       @params = params
       @socket = socket
+      content_length = params[Const::CONTENT_LENGTH].to_i
+      http_body_len = params.http_body.length
 
-      clen = params[Const::CONTENT_LENGTH].to_i - initial_body.length
-      total = clen
+      dispatcher.request_begins(params) if dispatcher
 
-      if clen > Const::MAX_BODY
-        @body = Tempfile.new(Const::MONGREL_TMP_BASE)
-        @body.binmode
-      else
+      # conditions to test:
+      #   * http_body_len == 0 && content_length == 0  -- Nothing to do
+      #   * http_body_len > content_length -- ERROR, abort
+      #   * http_body_len < content_length -- need to read more
+      #   * http_body_len == content_length -- initial body has all of it
+      if http_body_len == 0 && content_length == 0
+        # no body to process
         @body = StringIO.new
+        dispatcher.request_progress(params, 0, 0) if dispatcher
+      elsif http_body_len > content_length
+        # ERROR, they're sending bad requests
+        raise HttpParserError.new("Sent body size #{http_body_len} but declared Content-Length: #{content_length}")
+      elsif http_body_len < content_length
+        # must read more data to complete body
+        clen = content_length - http_body_len
+        if clen > Const::MAX_BODY
+          # huge body, put it in a tempfile
+          @body = Tempfile.new(Const::MONGREL_TMP_BASE)
+          @body.binmode
+        else
+          # small body, just use that
+          @body = StringIO.new(params.http_body)
+        end
+        read_body(clen, dispatcher)
+      elsif http_body_len == content_length
+        # we've got everything, pack it up
+        @body = StringIO.new(params.http_body)
+        dispatcher.request_progress(params, 0, http_body_len) if dispatcher
+      else
+        STDERR.puts "BAD LOGIC: Tell Zed he's a moron."
       end
+    end
 
+
+    # Does the heavy lifting of properly reading the larger body requests in 
+    # small chunks.  It expects @body to be an IO object, @socket to be valid,
+    # and will set @body = nil if the request fails.  It also expects any initial
+    # part of the body that has been read to be in the @body already.
+    def read_body(clen, dispatcher)
       begin
-        @body.write(initial_body)
-        notifier.request_begins(params) if notifier
-
+        total = clen
         # write the odd sized chunk first
         clen -= @body.write(@socket.read(clen % Const::CHUNK_SIZE))
-        notifier.request_progress(params, clen, total) if notifier
+        dispatcher.request_progress(params, clen, total) if dispatcher
 
         # then stream out nothing but perfectly sized chunks
         while clen > 0 and !@socket.closed?
@@ -215,7 +251,7 @@ module Mongrel
           raise "Socket closed or read failure" if not data or data.length != Const::CHUNK_SIZE
           clen -= @body.write(data)
           # ASSUME: we are writing to a disk and these writes always write the requested amount
-          notifier.request_progress(params, clen, total) if notifier
+          dispatcher.request_progress(params, clen, total) if dispatcher
         end
 
         # rewind to keep the world happy
@@ -227,6 +263,7 @@ module Mongrel
         @body = nil # signals that there was a problem
       end
     end
+
 
     # Performs URI escaping so that you can construct proper
     # query strings faster.  Use this rather than the cgi.rb
@@ -514,7 +551,7 @@ module Mongrel
     def process_client(client)
       begin
         parser = HttpParser.new
-        params = {}
+        params = HttpParams.new
         request = nil
         data = client.readpartial(Const::CHUNK_SIZE)
         nparsed = 0
@@ -535,10 +572,7 @@ module Mongrel
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
               notifier = handlers[0].request_notify ? handlers[0] : nil
 
-              # TODO: Find a faster/better way to carve out the range, preferably without copying.
-              data = data[nparsed ... data.length] || ""
-
-              request = HttpRequest.new(params, data, client, notifier)
+              request = HttpRequest.new(params, client, notifier)
 
               # in the case of large file uploads the user could close the socket, so skip those requests
               break if request.body == nil  # nil signals from HttpRequest::initialize that the request was aborted
@@ -578,6 +612,7 @@ module Mongrel
         reap_dead_workers('too many files')
       rescue Object
         STDERR.puts "#{Time.now}: ERROR: #$!"
+        STDERR.puts $!.backtrace.join("\n")
       ensure
         client.close unless client.closed?
         request.body.delete if request and request.body.class == Tempfile
@@ -646,6 +681,9 @@ module Mongrel
           rescue Errno::EMFILE
             reap_dead_workers("too many open files")
             sleep 0.5
+          rescue Errno::ECONNABORTED
+            # client closed the socket even before accept
+            client.close if not client.closed?
           end
         end
 
@@ -702,364 +740,4 @@ module Mongrel
   end
 
 
-  # Implements a simple DSL for configuring a Mongrel server for your 
-  # purposes.  More used by framework implementers to setup Mongrel
-  # how they like, but could be used by regular folks to add more things
-  # to an existing mongrel configuration.
-  #
-  # It is used like this:
-  #
-  #   require 'mongrel'
-  #   config = Mongrel::Configurator.new :host => "127.0.0.1" do
-  #     listener :port => 3000 do
-  #       uri "/app", :handler => Mongrel::DirHandler.new(".", load_mime_map("mime.yaml"))
-  #     end
-  #     run
-  #   end
-  # 
-  # This will setup a simple DirHandler at the current directory and load additional
-  # mime types from mimy.yaml.  The :host => "127.0.0.1" is actually not 
-  # specific to the servers but just a hash of default parameters that all 
-  # server or uri calls receive.
-  #
-  # When you are inside the block after Mongrel::Configurator.new you can simply
-  # call functions that are part of Configurator (like server, uri, daemonize, etc)
-  # without having to refer to anything else.  You can also call these functions on 
-  # the resulting object directly for additional configuration.
-  #
-  # A major thing about Configurator is that it actually lets you configure 
-  # multiple listeners for any hosts and ports you want.  These are kept in a
-  # map config.listeners so you can get to them.
-  #
-  # * :pid_file => Where to write the process ID.
-  class Configurator
-    attr_reader :listeners
-    attr_reader :defaults
-    attr_reader :needs_restart
-
-    # You pass in initial defaults and then a block to continue configuring.
-    def initialize(defaults={}, &blk)
-      @listener = nil
-      @listener_name = nil
-      @listeners = {}
-      @defaults = defaults
-      @needs_restart = false
-      @pid_file = defaults[:pid_file]
-
-      if blk
-        cloaker(&blk).bind(self).call
-      end
-    end
-    
-    # Change privilege of the process to specified user and group.
-    def change_privilege(user, group)
-      begin
-        if group
-          log "Changing group to #{group}."
-          Process::GID.change_privilege(Etc.getgrnam(group).gid)
-        end
-
-        if user
-          log "Changing user to #{user}." 
-          Process::UID.change_privilege(Etc.getpwnam(user).uid)
-        end
-      rescue Errno::EPERM
-        log "FAILED to change user:group #{user}:#{group}: #$!"
-        exit 1
-      end
-    end
-
-    # Writes the PID file but only if we're on windows.
-    def write_pid_file
-      if RUBY_PLATFORM !~ /mswin/
-        open(@pid_file,"w") {|f| f.write(Process.pid) }
-      end
-    end
-
-    # generates a class for cloaking the current self and making the DSL nicer
-    def cloaking_class
-      class << self
-        self
-      end
-    end
-
-    # Do not call this.  You were warned.
-    def cloaker(&blk)
-      cloaking_class.class_eval do
-        define_method :cloaker_, &blk
-        meth = instance_method( :cloaker_ )
-        remove_method :cloaker_
-        meth
-      end
-    end
-
-    # This will resolve the given options against the defaults.
-    # Normally just used internally.
-    def resolve_defaults(options)
-      options.merge(@defaults)
-    end
-
-    # Starts a listener block.  This is the only one that actually takes
-    # a block and then you make Configurator.uri calls in order to setup
-    # your URIs and handlers.  If you write your Handlers as GemPlugins
-    # then you can use load_plugins and plugin to load them.
-    # 
-    # It expects the following options (or defaults):
-    # 
-    # * :host => Host name to bind.
-    # * :port => Port to bind.
-    # * :num_processors => The maximum number of concurrent threads allowed.  (950 default)
-    # * :timeout => 1/100th of a second timeout between requests. (10 is 1/10th, 0 is timeout)
-    # * :user => User to change to, must have :group as well.
-    # * :group => Group to change to, must have :user as well.
-    #
-    def listener(options={},&blk)
-      raise "Cannot call listener inside another listener block." if (@listener or @listener_name)
-      ops = resolve_defaults(options)
-      ops[:num_processors] ||= 950
-      ops[:timeout] ||= 0
-
-      @listener = Mongrel::HttpServer.new(ops[:host], ops[:port].to_i, ops[:num_processors].to_i, ops[:timeout].to_i)
-      @listener_name = "#{ops[:host]}:#{ops[:port]}"
-      @listeners[@listener_name] = @listener
-
-      if ops[:user] and ops[:group]
-        change_privilege(ops[:user], ops[:group])
-      end
-
-      # Does the actual cloaking operation to give the new implicit self.
-      if blk
-        cloaker(&blk).bind(self).call
-      end
-
-      # all done processing this listener setup, reset implicit variables
-      @listener = nil
-      @listener_name = nil
-    end
-
-
-    # Called inside a Configurator.listener block in order to 
-    # add URI->handler mappings for that listener.  Use this as
-    # many times as you like.  It expects the following options
-    # or defaults:
-    #
-    # * :handler => HttpHandler -- Handler to use for this location.
-    # * :in_front => true/false -- Rather than appending, it prepends this handler.
-    def uri(location, options={})
-      ops = resolve_defaults(options)
-      @listener.register(location, ops[:handler], in_front=ops[:in_front])
-    end
-
-
-    # Daemonizes the current Ruby script turning all the
-    # listeners into an actual "server" or detached process.
-    # You must call this *before* frameworks that open files
-    # as otherwise the files will be closed by this function.
-    #
-    # Does not work for Win32 systems (the call is silently ignored).
-    #
-    # Requires the following options or defaults:
-    #
-    # * :cwd => Directory to change to.
-    # * :log_file => Where to write STDOUT and STDERR.
-    # 
-    # It is safe to call this on win32 as it will only require the daemons
-    # gem/library if NOT win32.
-    def daemonize(options={})
-      ops = resolve_defaults(options)
-      # save this for later since daemonize will hose it
-      if RUBY_PLATFORM !~ /mswin/
-        require 'daemons/daemonize'
-
-        Daemonize.daemonize(log_file=File.join(ops[:cwd], ops[:log_file]))
-
-        # change back to the original starting directory
-        Dir.chdir(ops[:cwd])
-
-      else
-        log "WARNING: Win32 does not support daemon mode."
-      end
-    end
-
-
-    # Uses the GemPlugin system to easily load plugins based on their
-    # gem dependencies.  You pass in either an :includes => [] or 
-    # :excludes => [] setting listing the names of plugins to include
-    # or exclude from the when determining the dependencies.
-    def load_plugins(options={})
-      ops = resolve_defaults(options)
-
-      load_settings = {}
-      if ops[:includes]
-        ops[:includes].each do |plugin|
-          load_settings[plugin] = GemPlugin::INCLUDE
-        end
-      end
-
-      if ops[:excludes]
-        ops[:excludes].each do |plugin|
-          load_settings[plugin] = GemPlugin::EXCLUDE
-        end
-      end
-
-      GemPlugin::Manager.instance.load(load_settings)
-    end
-
-
-    # Easy way to load a YAML file and apply default settings.
-    def load_yaml(file, default={})
-      default.merge(YAML.load_file(file))
-    end
-
-
-    # Loads the MIME map file and checks that it is correct
-    # on loading.  This is commonly passed to Mongrel::DirHandler
-    # or any framework handler that uses DirHandler to serve files.
-    # You can also include a set of default MIME types as additional
-    # settings.  See Mongrel::DirHandler for how the MIME types map
-    # is organized.
-    def load_mime_map(file, mime={})
-      # configure any requested mime map
-      mime = load_yaml(file, mime)
-
-      # check all the mime types to make sure they are the right format
-      mime.each {|k,v| log "WARNING: MIME type #{k} must start with '.'" if k.index(".") != 0 }
-
-      return mime
-    end
-
-
-    # Loads and creates a plugin for you based on the given
-    # name and configured with the selected options.  The options
-    # are merged with the defaults prior to passing them in.
-    def plugin(name, options={})
-      ops = resolve_defaults(options)
-      GemPlugin::Manager.instance.create(name, ops)
-    end
-
-    # Let's you do redirects easily as described in Mongrel::RedirectHandler.
-    # You use it inside the configurator like this:
-    #
-    #   redirect("/test", "/to/there") # simple
-    #   redirect("/to", /t/, 'w') # regexp
-    #   redirect("/hey", /(w+)/) {|match| ...}  # block
-    #
-    def redirect(from, pattern, replacement = nil, &block)
-      uri from, :handler => Mongrel::RedirectHandler.new(pattern, replacement, &block)
-    end
-
-    # Works like a meta run method which goes through all the 
-    # configured listeners.  Use the Configurator.join method
-    # to prevent Ruby from exiting until each one is done.
-    def run
-      @listeners.each {|name,s| 
-        s.run 
-      }
-
-      $mongrel_sleeper_thread = Thread.new { loop { sleep 1 } }
-    end
-
-    # Calls .stop on all the configured listeners so they
-    # stop processing requests (gracefully).  By default it
-    # assumes that you don't want to restart and that the pid file
-    # should be unlinked on exit.
-    def stop(needs_restart=false, unlink_pid_file=true)
-      @listeners.each {|name,s| 
-        s.stop 
-      }
-
-      @needs_restart = needs_restart
-      if unlink_pid_file
-        File.unlink @pid_file if (@pid_file and File.exist?(@pid_file))
-      end 
-    end
-
-
-    # This method should actually be called *outside* of the
-    # Configurator block so that you can control it.  In other words
-    # do it like:  config.join.
-    def join
-      @listeners.values.each {|s| s.acceptor.join }
-    end
-
-
-    # Calling this before you register your URIs to the given location
-    # will setup a set of handlers that log open files, objects, and the
-    # parameters for each request.  This helps you track common problems
-    # found in Rails applications that are either slow or become unresponsive
-    # after a little while.
-    #
-    # You can pass an extra parameter *what* to indicate what you want to 
-    # debug.  For example, if you just want to dump rails stuff then do:
-    #
-    #   debug "/", what = [:rails]
-    # 
-    # And it will only produce the log/mongrel_debug/rails.log file.
-    # Available options are:  :objects, :rails, :files, :threads, :params
-    # 
-    # NOTE: Use [:files] to get accesses dumped to stderr like with WEBrick.
-    def debug(location, what = [:objects, :rails, :files, :threads, :params])
-      require 'mongrel/debug'
-      handlers = {
-        :files => "/handlers/requestlog::access", 
-        :rails => "/handlers/requestlog::files", 
-        :objects => "/handlers/requestlog::objects", 
-        :threads => "/handlers/requestlog::threads",
-        :params => "/handlers/requestlog::params"
-      }
-
-      # turn on the debugging infrastructure, and ObjectTracker is a pig
-      ObjectTracker.configure if what.include? :objects
-      MongrelDbg.configure
-
-      # now we roll through each requested debug type, turn it on and load that plugin
-      what.each do |type| 
-        MongrelDbg.begin_trace type 
-        uri location, :handler => plugin(handlers[type])
-      end
-    end
-
-    # Used to allow you to let users specify their own configurations
-    # inside your Configurator setup.  You pass it a script name and
-    # it reads it in and does an eval on the contents passing in the right
-    # binding so they can put their own Configurator statements.
-    def run_config(script)
-      open(script) {|f| eval(f.read, proc {self}) }
-    end
-
-    # Sets up the standard signal handlers that are used on most Ruby
-    # It only configures if the platform is not win32 and doesn't do
-    # a HUP signal since this is typically framework specific.
-    #
-    # Requires a :pid_file option given to Configurator.new to indicate a file to delete.  
-    # It sets the MongrelConfig.needs_restart attribute if 
-    # the start command should reload.  It's up to you to detect this
-    # and do whatever is needed for a "restart".
-    #
-    # This command is safely ignored if the platform is win32 (with a warning)
-    def setup_signals(options={})
-      ops = resolve_defaults(options)
-
-      # forced shutdown, even if previously restarted (actually just like TERM but for CTRL-C)
-      trap("INT") { log "INT signal received."; stop(need_restart=false) }
-
-      if RUBY_PLATFORM !~ /mswin/
-        # graceful shutdown
-        trap("TERM") { log "TERM signal received."; stop }
-
-        # restart
-        trap("USR2") { log "USR2 signal received."; stop(need_restart=true) }
-
-        log "Signals ready.  TERM => stop.  USR2 => restart.  INT => stop (no restart)."
-      else
-        log "Signals ready.  INT => stop (no restart)."
-      end
-    end
-
-    # Logs a simple message to STDERR (or the mongrel log if in daemon mode).
-    def log(msg)
-      STDERR.print "** ", msg, "\n"
-    end
-
-  end
 end

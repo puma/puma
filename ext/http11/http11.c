@@ -14,7 +14,9 @@ static VALUE mMongrel;
 static VALUE cHttpParser;
 static VALUE cURIClassifier;
 static VALUE eHttpParserError;
-static ID id_handler_map;
+
+#define id_handler_map rb_intern("@handler_map")
+#define id_http_body rb_intern("@http_body")
 
 static VALUE global_http_prefix;
 static VALUE global_request_method;
@@ -121,7 +123,7 @@ void http_version(void *data, const char *at, size_t length)
 }
 
 /** Finalizes the request header to have a bunch of stuff that's
-    needed. */
+  needed. */
 
 void header_done(void *data, const char *at, size_t length)
 {
@@ -148,44 +150,46 @@ void header_done(void *data, const char *at, size_t length)
     if(colon != NULL) {
       rb_hash_aset(req, global_server_name, rb_str_substr(temp, 0, colon - RSTRING(temp)->ptr));
       rb_hash_aset(req, global_server_port, 
-		   rb_str_substr(temp, colon - RSTRING(temp)->ptr+1, 
-				 RSTRING(temp)->len));
+          rb_str_substr(temp, colon - RSTRING(temp)->ptr+1, 
+            RSTRING(temp)->len));
     } else {
       rb_hash_aset(req, global_server_name, temp);
       rb_hash_aset(req, global_server_port, global_port_80);
     }
   }
-  
+
+  // grab the initial body and stuff it into an ivar
+  rb_ivar_set(req, id_http_body, rb_str_new(at, length));
   rb_hash_aset(req, global_server_protocol, global_server_protocol_value);
   rb_hash_aset(req, global_server_software, global_mongrel_version);
 }
 
 
 void HttpParser_free(void *data) {
-    TRACE();
-    
-    if(data) {
-        free(data);
-    }
+  TRACE();
+
+  if(data) {
+    free(data);
+  }
 }
 
 
 VALUE HttpParser_alloc(VALUE klass)
 {
-    VALUE obj;
-    http_parser *hp = ALLOC_N(http_parser, 1);
-    TRACE();
-    hp->http_field = http_field;
-    hp->request_method = request_method;
-    hp->request_uri = request_uri;
-    hp->query_string = query_string;
-    hp->http_version = http_version;
-    hp->header_done = header_done;
-    http_parser_init(hp);
+  VALUE obj;
+  http_parser *hp = ALLOC_N(http_parser, 1);
+  TRACE();
+  hp->http_field = http_field;
+  hp->request_method = request_method;
+  hp->request_uri = request_uri;
+  hp->query_string = query_string;
+  hp->http_version = http_version;
+  hp->header_done = header_done;
+  http_parser_init(hp);
 
-    obj = Data_Wrap_Struct(klass, NULL, HttpParser_free, hp);
+  obj = Data_Wrap_Struct(klass, NULL, HttpParser_free, hp);
 
-    return obj;
+  return obj;
 }
 
 
@@ -200,7 +204,7 @@ VALUE HttpParser_init(VALUE self)
   http_parser *http = NULL;
   DATA_GET(self, http_parser, http);
   http_parser_init(http);
-  
+
   return self;
 }
 
@@ -217,7 +221,7 @@ VALUE HttpParser_reset(VALUE self)
   http_parser *http = NULL;
   DATA_GET(self, http_parser, http);
   http_parser_init(http);
-  
+
   return Qnil;
 }
 
@@ -234,7 +238,7 @@ VALUE HttpParser_finish(VALUE self)
   http_parser *http = NULL;
   DATA_GET(self, http_parser, http);
   http_parser_finish(http);
-  
+
   return http_parser_is_finished(http) ? Qtrue : Qfalse;
 }
 
@@ -268,15 +272,15 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
   from = FIX2INT(start);
   dptr = RSTRING(data)->ptr;
   dlen = RSTRING(data)->len;
-  
+
   if(from >= dlen) {
     rb_raise(eHttpParserError, "Requested start is after data buffer end.");
   } else {
     http->data = (void *)req_hash;
     http_parser_execute(http, dptr, dlen, from);
-    
+
     VALIDATE_MAX_LENGTH(http_parser_nread(http), HEADER);
-    
+
     if(http_parser_has_error(http)) {
       rb_raise(eHttpParserError, "Invalid HTTP format, parsing fails.");
     } else {
@@ -297,7 +301,7 @@ VALUE HttpParser_has_error(VALUE self)
 {
   http_parser *http = NULL;
   DATA_GET(self, http_parser, http);
-  
+
   return http_parser_has_error(http) ? Qtrue : Qfalse;
 }
 
@@ -312,7 +316,7 @@ VALUE HttpParser_is_finished(VALUE self)
 {
   http_parser *http = NULL;
   DATA_GET(self, http_parser, http);
-  
+
   return http_parser_is_finished(http) ? Qtrue : Qfalse;
 }
 
@@ -328,32 +332,32 @@ VALUE HttpParser_nread(VALUE self)
 {
   http_parser *http = NULL;
   DATA_GET(self, http_parser, http);
-  
+
   return INT2FIX(http->nread);
 }
 
 
 void URIClassifier_free(void *data) 
 {
-    TRACE();
-    
-    if(data) {
-      tst_cleanup((struct tst *)data);
-    }
+  TRACE();
+
+  if(data) {
+    tst_cleanup((struct tst *)data);
+  }
 }
 
 
 
 VALUE URIClassifier_alloc(VALUE klass)
 {
-    VALUE obj;
-    struct tst *tst = tst_init(TRIE_INCREASE);
-    TRACE();
-    assert(tst && "failed to initialize trie structure");
+  VALUE obj;
+  struct tst *tst = tst_init(TRIE_INCREASE);
+  TRACE();
+  assert(tst && "failed to initialize trie structure");
 
-    obj = Data_Wrap_Struct(klass, NULL, URIClassifier_free, tst);
+  obj = Data_Wrap_Struct(klass, NULL, URIClassifier_free, tst);
 
-    return obj;
+  return obj;
 }
 
 /**
@@ -415,7 +419,7 @@ VALUE URIClassifier_register(VALUE self, VALUE uri, VALUE handler)
   } else if(rc == TST_NULL_KEY) {
     rb_raise(rb_eStandardError, "URI was empty");
   }
-  
+
   rb_hash_aset(rb_ivar_get(self, id_handler_map), uri, handler);
 
   return Qnil;
@@ -504,7 +508,7 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
       // matches a script so process like normal
       rb_ary_push(result, rb_str_substr(uri, pref_len, RSTRING(uri)->len));
     }
-      
+
     rb_ary_push(result, (VALUE)handler);
   } else {
     // not found so push back nothing
@@ -521,7 +525,6 @@ void Init_http11()
 {
 
   mMongrel = rb_define_module("Mongrel");
-  id_handler_map = rb_intern("@handler_map");
 
   DEF_GLOBAL(http_prefix, "HTTP_");
   DEF_GLOBAL(request_method, "REQUEST_METHOD");
@@ -539,7 +542,7 @@ void Init_http11()
   DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
   DEF_GLOBAL(server_protocol_value, "HTTP/1.1");
   DEF_GLOBAL(http_host, "HTTP_HOST");
-  DEF_GLOBAL(mongrel_version, "Mongrel 0.3.13.3");
+  DEF_GLOBAL(mongrel_version, "Mongrel 0.3.13.4");
   DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
   DEF_GLOBAL(port_80, "80");
 
@@ -562,5 +565,5 @@ void Init_http11()
   rb_define_method(cURIClassifier, "unregister", URIClassifier_unregister, 1);
   rb_define_method(cURIClassifier, "resolve", URIClassifier_resolve, 1);
 }
- 
+
 
