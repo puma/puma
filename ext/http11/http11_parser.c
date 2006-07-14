@@ -30,40 +30,40 @@ static int http_parser_error = 1;
 #line 110 "ext/http11/http11_parser.rl"
 
 int http_parser_init(http_parser *parser)  {
-    int cs = 0;
-    
+  int cs = 0;
+  
 #line 36 "ext/http11/http11_parser.c"
 	{
 	cs = http_parser_start;
 	}
 #line 114 "ext/http11/http11_parser.rl"
-    parser->cs = cs;
-    parser->body_start = 0;
-    parser->content_len = 0;
-    parser->mark = 0;
-    parser->nread = 0;
-    parser->field_len = 0;
-    parser->field_start = 0;    
+  parser->cs = cs;
+  parser->body_start = 0;
+  parser->content_len = 0;
+  parser->mark = 0;
+  parser->nread = 0;
+  parser->field_len = 0;
+  parser->field_start = 0;    
 
-    return(1);
+  return(1);
 }
 
 
 /** exec **/
 size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, size_t off)  {
-    const char *p, *pe;
-    int cs = parser->cs;
+  const char *p, *pe;
+  int cs = parser->cs;
 
-    assert(off <= len && "offset past end of buffer");
+  assert(off <= len && "offset past end of buffer");
 
-    p = buffer+off;
-    pe = buffer+len;
+  p = buffer+off;
+  pe = buffer+len;
 
-    assert(*pe == '\0' && "pointer does not end on NUL");
-    assert(pe - p == len - off && "pointers aren't same distance");
+  assert(*pe == '\0' && "pointer does not end on NUL");
+  assert(pe - p == len - off && "pointers aren't same distance");
 
 
-    
+  
 #line 68 "ext/http11/http11_parser.c"
 	{
 	p -= 1;
@@ -113,9 +113,9 @@ case 2:
 tr18:
 #line 33 "ext/http11/http11_parser.rl"
 	{ 
-	       if(parser->request_method != NULL) 
-	       	       parser->request_method(parser->data, PTR_TO(mark), LEN(mark, p));
-	}
+    if(parser->request_method != NULL) 
+      parser->request_method(parser->data, PTR_TO(mark), LEN(mark, p));
+  }
 	goto st3;
 st3:
 	if ( ++p == pe )
@@ -152,16 +152,16 @@ case 4:
 tr20:
 #line 37 "ext/http11/http11_parser.rl"
 	{ 
-	       if(parser->request_uri != NULL)
-	       	       parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, p));
-	}
+    if(parser->request_uri != NULL)
+      parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, p));
+  }
 	goto st5;
 tr32:
 #line 41 "ext/http11/http11_parser.rl"
 	{ 
-	       if(parser->query_string != NULL)
-	       	       parser->query_string(parser->data, PTR_TO(mark), LEN(mark, p));
-	}
+    if(parser->query_string != NULL)
+      parser->query_string(parser->data, PTR_TO(mark), LEN(mark, p));
+  }
 	goto st5;
 st5:
 	if ( ++p == pe )
@@ -239,17 +239,17 @@ case 13:
 tr23:
 #line 46 "ext/http11/http11_parser.rl"
 	{	
-	       if(parser->http_version != NULL)
-	       	       parser->http_version(parser->data, PTR_TO(mark), LEN(mark, p));
-	}
+    if(parser->http_version != NULL)
+      parser->http_version(parser->data, PTR_TO(mark), LEN(mark, p));
+  }
 	goto st14;
 tr35:
 #line 28 "ext/http11/http11_parser.rl"
 	{ 
-	       if(parser->http_field != NULL) {
-	       	       parser->http_field(parser->data, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, p));
-		}
-	}
+    if(parser->http_field != NULL) {
+      parser->http_field(parser->data, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, p));
+    }
+  }
 	goto st14;
 st14:
 	if ( ++p == pe )
@@ -297,11 +297,11 @@ case 16:
 tr26:
 #line 51 "ext/http11/http11_parser.rl"
 	{ 
-	       parser->body_start = p - buffer + 1; 
-	       if(parser->header_done != NULL)
-	       	       parser->header_done(parser->data, p, 0);
-	       goto _out51;
-	}
+    parser->body_start = p - buffer + 1; 
+    if(parser->header_done != NULL)
+      parser->header_done(parser->data, p + 1, pe - p - 1);
+    goto _out51;
+  }
 	goto st51;
 st51:
 	if ( ++p == pe )
@@ -345,8 +345,8 @@ case 17:
 tr16:
 #line 23 "ext/http11/http11_parser.rl"
 	{ 
-	       parser->field_len = LEN(field_start, p);
-	}
+    parser->field_len = LEN(field_start, p);
+  }
 	goto st18;
 st18:
 	if ( ++p == pe )
@@ -500,9 +500,9 @@ case 27:
 tr30:
 #line 37 "ext/http11/http11_parser.rl"
 	{ 
-	       if(parser->request_uri != NULL)
-	       	       parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, p));
-	}
+    if(parser->request_uri != NULL)
+      parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, p));
+  }
 	goto st28;
 st28:
 	if ( ++p == pe )
@@ -963,50 +963,50 @@ case 50:
 	}
 #line 141 "ext/http11/http11_parser.rl"
 
-    parser->cs = cs;
-    parser->nread += p - (buffer + off);
+  parser->cs = cs;
+  parser->nread += p - (buffer + off);
 
-    assert(p <= pe && "buffer overflow after parsing execute");
-    assert(parser->nread <= len && "nread longer than length");
-    assert(parser->body_start <= len && "body starts after buffer end");
-    assert(parser->mark < len && "mark is after buffer end");
-    assert(parser->field_len <= len && "field has length longer than whole buffer");
-    assert(parser->field_start < len && "field starts after buffer end");
+  assert(p <= pe && "buffer overflow after parsing execute");
+  assert(parser->nread <= len && "nread longer than length");
+  assert(parser->body_start <= len && "body starts after buffer end");
+  assert(parser->mark < len && "mark is after buffer end");
+  assert(parser->field_len <= len && "field has length longer than whole buffer");
+  assert(parser->field_start < len && "field starts after buffer end");
 
-    if(parser->body_start) {
-        /* final \r\n combo encountered so stop right here */
-	
+  if(parser->body_start) {
+    /* final \r\n combo encountered so stop right here */
+    
 #line 980 "ext/http11/http11_parser.c"
 #line 155 "ext/http11/http11_parser.rl"
-	parser->nread++;
-    }
+    parser->nread++;
+  }
 
-    return(parser->nread);
+  return(parser->nread);
 }
 
 int http_parser_finish(http_parser *parser)
 {
-	int cs = parser->cs;
+  int cs = parser->cs;
 
-	
+  
 #line 993 "ext/http11/http11_parser.c"
 #line 166 "ext/http11/http11_parser.rl"
 
-	parser->cs = cs;
+  parser->cs = cs;
 
-	if (http_parser_has_error(parser) ) {
-		return -1;
-	} else if (http_parser_is_finished(parser) ) {
-		return 1;
-	} else {
-	       return 0;
-	}
+  if (http_parser_has_error(parser) ) {
+    return -1;
+  } else if (http_parser_is_finished(parser) ) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 int http_parser_has_error(http_parser *parser) {
-    return parser->cs == http_parser_error;
+  return parser->cs == http_parser_error;
 }
 
 int http_parser_is_finished(http_parser *parser) {
-    return parser->cs == http_parser_first_final;
+  return parser->cs == http_parser_first_final;
 }

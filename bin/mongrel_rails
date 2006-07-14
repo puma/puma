@@ -33,7 +33,7 @@ class Start < GemPlugin::Plugin "/commands"
       ['-G', '--generate CONFIG', "Generate a config file for -C", :@generate, nil],
       ['', '--user USER', "User to run as", :@user, nil],
       ['', '--group GROUP', "Group to run as", :@group, nil],
-      ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, '/']
+      ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, nil]
     ]
   end
 
@@ -44,6 +44,7 @@ class Start < GemPlugin::Plugin "/commands"
     # change there to start, then we'll have to come back after daemonize
     Dir.chdir(@cwd)
 
+    valid? @prefix[-1].chr != "/", "Don't put / at the end of your prefix" if @prefix
     valid_dir? File.dirname(@log_file), "Path to log file not valid: #@log_file"
     valid_dir? File.dirname(@pid_file), "Path to pid file not valid: #@pid_file"
     valid_dir? @docroot, "Path to docroot not valid: #@docroot"
@@ -106,8 +107,9 @@ class Start < GemPlugin::Plugin "/commands"
           debug "/"
         end
 
-        log "Starting Rails with #{defaults[:environment]} environment on #{defaults[:prefix]} ..."
-        uri defaults[:prefix], :handler => rails(:mime => mime, :prefix => @prefix)
+        log "Starting Rails with #{defaults[:environment]} environment..."
+        log "Mounting Rails at #{defaults[:prefix]}..." if defaults[:prefix]
+        uri defaults[:prefix] || "/", :handler => rails(:mime => mime, :prefix => defaults[:prefix])
         log "Rails loaded."
 
         log "Loading any Rails specific GemPlugins"

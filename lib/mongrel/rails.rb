@@ -136,8 +136,6 @@ module Mongrel
         ops[:environment] ||= "development"
         ops[:docroot] ||= "public"
         ops[:mime] ||= {}
-        ops[:prefix] ||= "/"
-
 
         $orig_dollar_quote = $".clone
         ENV['RAILS_ENV'] = ops[:environment]
@@ -150,7 +148,7 @@ module Mongrel
           log "[RAILS] ActionController::Base.allow_concurrency is true.  Wow, you're very brave."
         end
 
-        ActionController::AbstractRequest.relative_url_root = ops[:prefix]
+        ActionController::AbstractRequest.relative_url_root = ops[:prefix] if ops[:prefix]
 
         @rails_handler = RailsHandler.new(ops[:docroot], ops[:mime])
       end
