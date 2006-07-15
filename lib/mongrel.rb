@@ -730,6 +730,4 @@ module Mongrel
     end
 
   end
-
-
 end
