@@ -199,40 +199,31 @@ module Mongrel
       
 
       dispatcher.request_begins(params) if dispatcher
-      STDERR.puts "REQUEST: #{params.inspect}"
 
       if remain == 0
         # we've got everything, pack it up
-        STDERR.puts "everything already read, packing up and done: #{params.http_body.inspect}"
         @body = StringIO.new
         @body.write params.http_body
         dispatcher.request_progress(params, 0, content_length) if dispatcher
       elsif remain < 0
-        STDERR.puts "ERROR: body length larger than content length, stupid client"
         # ERROR, they're sending bad requests
         raise HttpParserError.new("Sent body size #{params.http_body.length} but declared Content-Length: #{content_length}")
       elsif remain > 0
-        STDERR.puts "need to read #{remain} more of the body #{content_length}"
         # must read more data to complete body
         if remain > Const::MAX_BODY
-          STDERR.puts "Big content, saving to tempfile"
           # huge body, put it in a tempfile
           @body = Tempfile.new(Const::MONGREL_TMP_BASE)
           @body.binmode
         else
           # small body, just use that
-          STDERR.puts "Small file, using ram"
           @body = StringIO.new 
         end
 
         @body.write params.http_body
         read_body(remain, content_length, dispatcher)
-      else
-        STDERR.puts "BAD LOGIC: Tell Zed he's a moron."
       end
 
       @body.rewind
-      STDERR.puts "DONE"
     end
 
 
@@ -241,17 +232,14 @@ module Mongrel
     # and will set @body = nil if the request fails.  It also expects any initial
     # part of the body that has been read to be in the @body already.
     def read_body(remain, total, dispatcher)
-      STDERR.puts "reading body"
       begin
         # write the odd sized chunk first
         remain -= @body.write(@socket.read(remain % Const::CHUNK_SIZE))
-        STDERR.puts "first read, remaining: #{remain}"
         dispatcher.request_progress(params, remain, total) if dispatcher
 
         # then stream out nothing but perfectly sized chunks
         until remain <= 0 or @socket.closed?
           data = @socket.read(Const::CHUNK_SIZE)
-          STDERR.puts "read #{data.length} more"
           # have to do it this way since @socket.eof? causes it to block
           raise "Socket closed or read failure" if not data or data.length != Const::CHUNK_SIZE
           remain -= @body.write(data)
