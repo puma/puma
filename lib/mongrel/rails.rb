@@ -77,7 +77,7 @@ module Mongrel
           rescue Errno::EPIPE
             # ignored
           rescue Object => rails_error
-            STDERR.puts "#{Tim.now}: Error calling Dispatcher.dispatch #{rails_error.inspect}"
+            STDERR.puts "#{Time.now}: Error calling Dispatcher.dispatch #{rails_error.inspect}"
             STDERR.puts rails_error.backtrace.join("\n")
           ensure
             @guard.unlock unless ActionController::Base.allow_concurrency

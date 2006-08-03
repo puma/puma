@@ -145,7 +145,7 @@ module Mongrel
     MAX_BODY=MAX_HEADER
 
     # A frozen format for this is about 15% faster
-    STATUS_FORMAT = "HTTP/1.1 %d %s\r\nContent-Length: %d\r\nConnection: close\r\n".freeze
+    STATUS_FORMAT = "HTTP/1.1 %d %s\r\nConnection: close\r\n".freeze
     CONTENT_TYPE = "Content-Type".freeze
     LAST_MODIFIED = "Last-Modified".freeze
     ETAG = "ETag".freeze
@@ -159,7 +159,7 @@ module Mongrel
     LINE_END="\r\n".freeze
     REMOTE_ADDR="REMOTE_ADDR".freeze
     HTTP_X_FORWARDED_FOR="HTTP_X_FORWARDED_FOR".freeze
-    HTTP_IF_UNMODIFIED_SINCE="HTTP_IF_UNMODIFIED_SINCE".freeze
+    HTTP_IF_MODIFIED_SINCE="HTTP_IF_MODIFIED_SINCE".freeze
     HTTP_IF_NONE_MATCH="HTTP_IF_NONE_MATCH".freeze
     REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n".freeze
   end
@@ -397,10 +397,10 @@ module Mongrel
       end
     end
 
-    def send_status(content_length=nil)
+    def send_status(content_length=@body.length)
       if not @status_sent
-        content_length ||= @body.length
-        write(Const::STATUS_FORMAT % [status, HTTP_STATUS_CODES[@status], content_length])
+        @header['Content-Length'] = content_length unless @status == 304
+        write(Const::STATUS_FORMAT % [@status, HTTP_STATUS_CODES[@status]])
         @status_sent = true
       end
     end
@@ -643,16 +643,29 @@ module Mongrel
       end
     end
 
+    def configure_socket_options
+      if /linux/ === RUBY_PLATFORM
+        # 9 is currently TCP_DEFER_ACCEPT
+        $tcp_defer_accept_opts = [9,1]
+        $tcp_cork_opts = [3,1]
+      end
+    end
 
     # Runs the thing.  It returns the thread used so you can "join" it.  You can also
     # access the HttpServer::acceptor attribute to get the thread later.
     def run
       BasicSocket.do_not_reverse_lookup=true
 
+      configure_socket_options
+
+      @socket.setsockopt(Socket::SOL_TCP, $tcp_defer_accept_opts[0], $tcp_defer_accept_opts[1]) if $tcp_defer_accept_opts
+
       @acceptor = Thread.new do
         while true
           begin
             client = @socket.accept
+            client.setsockopt(Socket::SOL_TCP, $tcp_cork_opts[0], $tcp_cork_opts[1]) if $tcp_cork_opts
+
             worker_list = @workers.list
 
             if worker_list.length >= @num_processors
