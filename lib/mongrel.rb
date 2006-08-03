@@ -19,13 +19,6 @@ require 'time'
 require 'rubygems'
 require 'etc'
 
-begin
-  require 'sendfile'
-  STDERR.puts "** You have sendfile installed, will use that to serve files."
-rescue Object
-  # do nothing
-end
-
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
@@ -431,16 +424,8 @@ module Mongrel
     # just make sure it follows the ruby-sendfile signature.
     def send_file(path)
       File.open(path, "rb") do |f|
-        if @socket.respond_to? :sendfile
-          begin
-            @socket.sendfile(f)
-          rescue => details
-            socket_error(details)
-          end
-        else
-          while chunk = f.read(Const::CHUNK_SIZE) and chunk.length > 0
-            write(chunk)
-          end
+        while chunk = f.read(Const::CHUNK_SIZE) and chunk.length > 0
+          write(chunk)
         end
         @body_sent = true
       end
