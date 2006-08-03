@@ -341,7 +341,7 @@ module Mongrel
       trap("INT") { log "INT signal received."; stop(need_restart=false) }
 
       # clean up the pid file always
-      at_exit { File.unlink(@pid_file) if File.exists?(@pid_file) }
+      at_exit { File.unlink(@pid_file) if @pid_file and File.exists?(@pid_file) }
 
       if RUBY_PLATFORM !~ /mswin/
         # graceful shutdown
