@@ -262,17 +262,13 @@ module Mongrel
 
     # Calls .stop on all the configured listeners so they
     # stop processing requests (gracefully).  By default it
-    # assumes that you don't want to restart and that the pid file
-    # should be unlinked on exit.
-    def stop(needs_restart=false, unlink_pid_file=true)
+    # assumes that you don't want to restart.
+    def stop(needs_restart=false)
       @listeners.each {|name,s| 
         s.stop 
       }
 
       @needs_restart = needs_restart
-      if unlink_pid_file
-        File.unlink @pid_file if (@pid_file and File.exist?(@pid_file))
-      end 
     end
 
 
@@ -343,6 +339,9 @@ module Mongrel
 
       # forced shutdown, even if previously restarted (actually just like TERM but for CTRL-C)
       trap("INT") { log "INT signal received."; stop(need_restart=false) }
+
+      # clean up the pid file always
+      at_exit { File.unlink(@pid_file) if File.exists?(@pid_file) }
 
       if RUBY_PLATFORM !~ /mswin/
         # graceful shutdown
