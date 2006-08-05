@@ -44,7 +44,7 @@ class Start < GemPlugin::Plugin "/commands"
     # change there to start, then we'll have to come back after daemonize
     Dir.chdir(@cwd)
 
-    valid? @prefix[-1].chr != "/", "Don't put / at the end of your prefix" if @prefix
+    valid?(@prefix[0].chr == "/" && @prefix[-1].chr != "/", "Prefix must begin with / and not end in /") if @prefix
     valid_dir? File.dirname(@log_file), "Path to log file not valid: #@log_file"
     valid_dir? File.dirname(@pid_file), "Path to pid file not valid: #@pid_file"
     valid_dir? @docroot, "Path to docroot not valid: #@docroot"
