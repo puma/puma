@@ -173,14 +173,10 @@ module Mongrel
           head[Const::CONTENT_TYPE] = "text/html"
           out << "<html><head><title>Directory Listing</title></head><body>"
           Dir.entries(dir).each do |child|
-            child = HttpRequest.unescape(child)
             next if child == "."
-
-            if child == ".."
-              out << "<a href=\"#{base}/#{child}\">Up to parent..</a><br/>"
-            else
-              out << "<a href=\"#{base}/#{child}/\">#{child}</a><br/>"
-            end
+            out << "<a href=\"#{base}/#{ HttpRequest.escape(child)}\">"
+            out << (child == ".." ? "Up to parent.." : child)
+            out << "</a><br/>"
           end
           out << "</body></html>"
         end
