@@ -30,6 +30,7 @@ typedef struct http_parser {
   field_cb http_field;
   element_cb request_method;
   element_cb request_uri;
+  element_cb request_path;
   element_cb query_string;
   element_cb http_version;
   element_cb header_done;

@@ -51,6 +51,11 @@
       parser->http_version(parser->data, PTR_TO(mark), LEN(mark, fpc));
   }
 
+  action request_path {
+    if(parser->request_path != NULL)
+      parser->request_path(parser->data, PTR_TO(mark), LEN(mark,fpc));
+  }
+
   action done { 
     parser->body_start = fpc - buffer + 1; 
     if(parser->header_done != NULL)
@@ -81,16 +86,16 @@
 
 # URI schemes and absolute paths
   scheme = ( alpha | digit | "+" | "-" | "." )* ;
-  absolute_uri = (scheme ":" (uchar | reserved )*) >mark %request_uri;
+  absolute_uri = (scheme ":" (uchar | reserved )*);
 
   path = (pchar+ ( "/" pchar* )*) ;
   query = ( uchar | reserved )* >start_query %query_string ;
   param = ( pchar | "/" )* ;
   params = (param ( ";" param )*) ;
-  rel_path = (path? (";" params)?) ("?" query)?;
+  rel_path = (path? %request_path (";" params)?) ("?" query)?;
   absolute_path = ("/"+ rel_path);
 
-  Request_URI = ("*" %request_uri | absolute_uri | absolute_path) >mark %request_uri;
+  Request_URI = ("*" | absolute_uri | absolute_path) >mark %request_uri;
   Method = (upper | digit | safe){1,20} >mark %request_method;
 
   http_number = (digit+ "." digit+) ;

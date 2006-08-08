@@ -113,6 +113,7 @@ module Mongrel
 
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
     REQUEST_URI='REQUEST_URI'.freeze
+    REQUEST_PATH='REQUEST_PATH'.freeze
 
     MONGREL_VERSION="0.3.13.4".freeze
 
@@ -541,7 +542,7 @@ module Mongrel
           nparsed = parser.execute(params, data, nparsed)
 
           if parser.finished?
-            script_name, path_info, handlers = @classifier.resolve(params[Const::REQUEST_URI])
+            script_name, path_info, handlers = @classifier.resolve(params[Const::REQUEST_PATH])
 
             if handlers
               params[Const::PATH_INFO] = path_info
