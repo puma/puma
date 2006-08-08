@@ -167,7 +167,7 @@ class Stop < GemPlugin::Plugin "/commands"
     options [ 
       ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
       ['-f', '--force', "Force the shutdown.", :@force, false],
-      ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"]
+      ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
     ]
   end
 
@@ -175,7 +175,6 @@ class Stop < GemPlugin::Plugin "/commands"
     if @cwd
       @cwd = File.expand_path(@cwd)
       valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
-      @pid_file = File.join(@cwd,@pid_file)
     end
 
     valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
@@ -202,7 +201,7 @@ class Restart < GemPlugin::Plugin "/commands"
     options [ 
       ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
       ['-s', '--soft', "Do a soft restart rather than a process exit restart", :@soft, false],
-      ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"]
+      ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
     ]
   end
 

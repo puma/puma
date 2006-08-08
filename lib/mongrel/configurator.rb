@@ -172,7 +172,7 @@ module Mongrel
       if RUBY_PLATFORM !~ /mswin/
         require 'daemons/daemonize'
 
-        Daemonize.daemonize(log_file=File.join(ops[:cwd], ops[:log_file]))
+        Daemonize.daemonize(log_file=ops[:log_file])
 
         # change back to the original starting directory
         Dir.chdir(ops[:cwd])
