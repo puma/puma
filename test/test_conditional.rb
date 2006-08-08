@@ -10,7 +10,7 @@ require 'mongrel'
 
 include Mongrel
 
-class HttpParserTest < Test::Unit::TestCase
+class ConditionalResponseTest < Test::Unit::TestCase
   def setup
     @h = HttpServer.new('127.0.0.1', 3501)
     @h.register('/', Mongrel::DirHandler.new('.'))

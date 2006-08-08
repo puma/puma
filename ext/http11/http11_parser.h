@@ -23,6 +23,7 @@ typedef struct http_parser {
   size_t mark;
   size_t field_start;
   size_t field_len;
+  size_t query_start;
 
   void *data;
 

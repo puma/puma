@@ -19,6 +19,7 @@
 
   action mark {MARK(mark, fpc); }
 
+
   action start_field { MARK(field_start, fpc); }
   action write_field { 
     parser->field_len = LEN(field_start, fpc);
@@ -38,9 +39,11 @@
     if(parser->request_uri != NULL)
       parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, fpc));
   }
+
+  action start_query {MARK(query_start, fpc); }
   action query_string { 
     if(parser->query_string != NULL)
-      parser->query_string(parser->data, PTR_TO(mark), LEN(mark, fpc));
+      parser->query_string(parser->data, PTR_TO(query_start), LEN(query_start, fpc));
   }
 
   action http_version {	
@@ -81,13 +84,13 @@
   absolute_uri = (scheme ":" (uchar | reserved )*) >mark %request_uri;
 
   path = (pchar+ ( "/" pchar* )*) ;
-  query = ( uchar | reserved )* >mark %query_string ;
+  query = ( uchar | reserved )* >start_query %query_string ;
   param = ( pchar | "/" )* ;
   params = (param ( ";" param )*) ;
-  rel_path = (path? (";" params)?) %request_uri  ("?" query)? ;
-  absolute_path = ("/"+ rel_path) >mark ;
+  rel_path = (path? (";" params)?) ("?" query)?;
+  absolute_path = ("/"+ rel_path);
 
-  Request_URI = ("*" >mark %request_uri | absolute_uri | absolute_path) ;
+  Request_URI = ("*" %request_uri | absolute_uri | absolute_path) >mark %request_uri;
   Method = (upper | digit | safe){1,20} >mark %request_method;
 
   http_number = (digit+ "." digit+) ;
