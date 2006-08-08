@@ -182,9 +182,13 @@ module Mongrel
         # command exists, set it up and validate it
         begin
           command = GemPlugin::Manager.instance.create("/commands/#{cmd_name}", :argv => args)
+        rescue OptionParser::InvalidOption
+          STDERR.puts "#$! for command '#{cmd_name}'"
+          STDERR.puts "Try #{cmd_name} -h to get help."
+          return false
         rescue
-          STDERR.puts "INVALID COMMAND: #$!"
-          print_command_list
+          STDERR.puts "ERROR RUNNING '#{cmd_name}': #$!"
+          STDERR.puts "Use help command to get help"
           return false
         end
 
