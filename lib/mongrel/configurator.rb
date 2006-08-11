@@ -73,6 +73,7 @@ module Mongrel
     # Writes the PID file but only if we're on windows.
     def write_pid_file
       if RUBY_PLATFORM !~ /mswin/
+        log "Writing PID file to #{@pid_file}"
         open(@pid_file,"w") {|f| f.write(Process.pid) }
       end
     end

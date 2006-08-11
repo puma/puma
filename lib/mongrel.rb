@@ -194,7 +194,8 @@ module Mongrel
 
       dispatcher.request_begins(params) if dispatcher
 
-      if remain == 0
+      # Some clients (like FF1.0) report 0 for body and then send a body.  This will probably truncate them but at least the request goes through usually.
+      if remain <= 0
         # we've got everything, pack it up
         @body = StringIO.new
         @body.write params.http_body
@@ -416,17 +417,18 @@ module Mongrel
     end 
 
     # Appends the contents of +path+ to the response stream.  The file is opened for binary
-    # reading and written in chunks to the socket.  If the 
-    # <a href="http://rubyforge.org/projects/ruby-sendfile">sendfile</a> library is found,
-    # it is used to send the file, often with greater speed and less memory/cpu usage.
+    # reading and written in chunks to the socket.
     #
-    # The presence of ruby-sendfile is determined by @socket.response_to? :sendfile, which means
-    # that if you have your own sendfile implementation you can use it without changing this function,
-    # just make sure it follows the ruby-sendfile signature.
+    # Sendfile API support has been removed in 0.3.13.4 due to stability problems.
     def send_file(path)
       File.open(path, "rb") do |f|
         while chunk = f.read(Const::CHUNK_SIZE) and chunk.length > 0
-          write(chunk)
+          begin
+            write(chunk)
+          rescue Object => exc
+            # TODO: find out if people care about failures to write these files
+            break
+          end
         end
         @body_sent = true
       end

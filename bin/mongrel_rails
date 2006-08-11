@@ -69,6 +69,7 @@ class Start < GemPlugin::Plugin "/commands"
       :user => @user, :group => @group, :prefix => @prefix
     }
 
+
     if @generate
       STDERR.puts "** Writing config to #@generate"
       open(@generate, "w") {|f| f.write(settings.to_yaml) }
@@ -77,9 +78,9 @@ class Start < GemPlugin::Plugin "/commands"
     end
 
     if @config_file
-      STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless settings[:daemon]
       conf = YAML.load_file(@config_file)
       settings = settings.merge! conf
+      STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless settings[:daemon]
     end
 
     config = Mongrel::Rails::RailsConfigurator.new(settings) do
@@ -127,10 +128,10 @@ class Start < GemPlugin::Plugin "/commands"
     config.run
     config.log "Mongrel available at #{settings[:host]}:#{settings[:port]}"
     
-    if not @daemon
-      config.log "Use CTRL-C to stop." 
-    else
+    if config.defaults[:daemon]
       config.write_pid_file
+    else
+      config.log "Use CTRL-C to stop." 
     end
 
     config.join
