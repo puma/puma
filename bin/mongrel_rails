@@ -69,7 +69,6 @@ class Start < GemPlugin::Plugin "/commands"
       :user => @user, :group => @group, :prefix => @prefix
     }
 
-
     if @generate
       STDERR.puts "** Writing config to #@generate"
       open(@generate, "w") {|f| f.write(settings.to_yaml) }

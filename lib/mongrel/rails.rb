@@ -67,10 +67,12 @@ module Mongrel
             cgi = Mongrel::CGIWrapper.new(request, response)
             cgi.handler = self
 
-            # ultra dangerous, but people are asking to kill themselves.  here's the Katana
-            @guard.lock unless ActionController::Base.allow_concurrency
+
+            lock!
 
             Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
+
+            unlock!
 
             # This finalizes the output using the proper HttpResponse way
             cgi.out {""}
@@ -80,11 +82,19 @@ module Mongrel
             STDERR.puts "#{Time.now}: Error calling Dispatcher.dispatch #{rails_error.inspect}"
             STDERR.puts rails_error.backtrace.join("\n")
           ensure
-            @guard.unlock unless ActionController::Base.allow_concurrency
+            unlock!
           end
         end
       end
 
+      def lock!
+        # ultra dangerous, but people are asking to kill themselves.  here's the Katana
+        @guard.lock unless ActionController::Base.allow_concurrency
+      end
+
+      def unlock!
+        @guard.unlock unless ActionController::Base.allow_concurrency
+      end
 
       # Does the internal reload for Rails.  It might work for most cases, but
       # sometimes you get exceptions.  In that case just do a real restart.
