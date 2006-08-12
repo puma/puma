@@ -209,7 +209,6 @@ class Restart < GemPlugin::Plugin "/commands"
     if @cwd
       @cwd = File.expand_path(@cwd)
       valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
-      @pid_file = File.join(@cwd,@pid_file)
     end
 
     valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
