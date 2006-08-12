@@ -85,7 +85,6 @@ module Mongrel
         options.each{|k,v| @head[k] = v}
       end
 
-      STDERR.puts "HEADER: #{@head.inspect}"
       # doing this fakes out the cgi library to think the headers are empty
       # we then do the real headers in the out function call later
       ""
@@ -133,7 +132,6 @@ module Mongrel
 
       header(options)
 
-      STDERR.puts "RAILS: #{options.inspect}, HEADER: #{@head.inspect}"
 
       @response.start status do |head, body|
         send_cookies(head)
@@ -156,7 +154,6 @@ module Mongrel
         @status = stat || "200"
       end
 
-      STDERR.puts "STATUS: #{@status} from HEAD: #{@head["Status"]}"
       @status
     end
 
