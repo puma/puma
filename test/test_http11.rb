@@ -26,7 +26,16 @@ class HttpParserTest < Test::Unit::TestCase
     parser.reset
     assert parser.nread == 0, "Number read after reset should be 0"
   end
-  
+ 
+  def test_parse_dumbfuck_headers
+    parser = HttpParser.new
+    req = {}
+    should_be_good = "GET / HTTP/1.1\r\naaaaaaaaaaaaa:++++++++++\r\n\r\n"
+    nread = parser.execute(req, should_be_good, 0)
+    assert_equal should_be_good.length, nread
+    assert parser.finished?
+    assert !parser.error?
+  end
   
   def test_parse_error
     parser = HttpParser.new
