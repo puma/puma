@@ -99,11 +99,14 @@ module Mongrel
       # Does the internal reload for Rails.  It might work for most cases, but
       # sometimes you get exceptions.  In that case just do a real restart.
       def reload!
-        @guard.synchronize do
+        begin
+          lock!
           $".replace $orig_dollar_quote
           GC.start
           Dispatcher.reset_application!
           ActionController::Routing::Routes.reload
+        ensure
+          unlock!
         end
       end
     end
