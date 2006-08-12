@@ -27,8 +27,10 @@ module Mongrel
   class CGIWrapper < ::CGI
     public :env_table
     attr_reader :options
-    attr_reader :handler
-    attr_writer :handler
+    attr_accessor :handler
+    # Set this to false if you want calls to CGIWrapper.out to not actually send
+    # the response until you force it.
+    attr_accessor :default_really_final
 
     # these are stripped out of any keys passed to CGIWrapper.header function
     REMOVED_KEYS = [ "nph","status","server","connection","type",
@@ -44,6 +46,7 @@ module Mongrel
       @input = request.body
       @head = {}
       @out_called = false
+      @default_really_final=true
       super(*args)
     end
     
@@ -116,8 +119,16 @@ module Mongrel
     # So, we just reuse header and then finalize the HttpResponse the right way.
     # Status is taken from the various options and converted to what Mongrel needs
     # via the CGIWrapper.status function.
-    def out(options = "text/html")
-      return if @out_called  # don't do this more than once
+    #
+    # We also prevent Rails from actually doing the final send by adding a
+    # second parameter "really_final".  Only Mongrel calls this after Rails
+    # is done.  Since this will break other frameworks, it defaults to 
+    # a different setting for rails (false) and (true) for others.
+    def out(options = "text/html", really_final=@default_really_final)
+      if @out_called || !really_final
+        # don't do it more than once or if it's not the really final call
+        return
+      end
 
       header(options)
 

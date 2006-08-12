@@ -66,7 +66,8 @@ module Mongrel
           begin
             cgi = Mongrel::CGIWrapper.new(request, response)
             cgi.handler = self
-
+            # we don't want the output to be really final until we're out of the lock
+            cgi.default_really_final = false
 
             lock!
 
@@ -75,7 +76,7 @@ module Mongrel
             unlock!
 
             # This finalizes the output using the proper HttpResponse way
-            cgi.out {""}
+            cgi.out(really_final=true) {""}
           rescue Errno::EPIPE
             # ignored
           rescue Object => rails_error
