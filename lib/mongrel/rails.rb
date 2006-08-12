@@ -76,7 +76,7 @@ module Mongrel
             unlock!
 
             # This finalizes the output using the proper HttpResponse way
-            cgi.out(really_final=true) {""}
+            cgi.out("text/html",true) {""}
           rescue Errno::EPIPE
             # ignored
           rescue Object => rails_error

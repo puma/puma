@@ -149,7 +149,7 @@ module Mongrel
     # * :in_front => true/false -- Rather than appending, it prepends this handler.
     def uri(location, options={})
       ops = resolve_defaults(options)
-      @listener.register(location, ops[:handler], in_front=ops[:in_front])
+      @listener.register(location, ops[:handler], ops[:in_front])
     end
 
 
@@ -173,7 +173,16 @@ module Mongrel
       if RUBY_PLATFORM !~ /mswin/
         require 'daemons/daemonize'
 
-        Daemonize.daemonize(log_file=ops[:log_file])
+        logfile = ops[:log_file]
+        if logfile[0].chr != "/"
+          logfile = File.join(ops[:cwd],logfile)
+          if not File.exist?(File.dirname(logfile))
+            log "!!! Log file directory not found at full path #{File.dirname(logfile)}.  Update your configuration to use a full path."
+            exit 1
+          end
+        end
+
+        Daemonize.daemonize(logfile)
 
         # change back to the original starting directory
         Dir.chdir(ops[:cwd])
@@ -339,7 +348,7 @@ module Mongrel
       ops = resolve_defaults(options)
 
       # forced shutdown, even if previously restarted (actually just like TERM but for CTRL-C)
-      trap("INT") { log "INT signal received."; stop(need_restart=false) }
+      trap("INT") { log "INT signal received."; stop(false) }
 
       # clean up the pid file always
       at_exit { File.unlink(@pid_file) if @pid_file and File.exists?(@pid_file) }
@@ -349,7 +358,7 @@ module Mongrel
         trap("TERM") { log "TERM signal received."; stop }
 
         # restart
-        trap("USR2") { log "USR2 signal received."; stop(need_restart=true) }
+        trap("USR2") { log "USR2 signal received."; stop(true) }
 
         log "Signals ready.  TERM => stop.  USR2 => restart.  INT => stop (no restart)."
       else

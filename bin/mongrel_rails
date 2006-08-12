@@ -66,7 +66,7 @@ class Start < GemPlugin::Plugin "/commands"
       :docroot => @docroot, :mime_map => @mime_map, :daemon => @daemon,
       :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
       :num_processors => @num_procs, :timeout => @timeout,
-      :user => @user, :group => @group, :prefix => @prefix
+      :user => @user, :group => @group, :prefix => @prefix, :config_file => @config_file
     }
 
     if @generate
