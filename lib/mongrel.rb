@@ -245,7 +245,7 @@ module Mongrel
         STDERR.puts "ERROR reading http body: #$!"
         $!.backtrace.join("\n")
         # any errors means we should delete the file, including if the file is dumped
-        @socket.close unless @socket.closed?
+        @socket.close rescue Object
         @body.delete if @body.class == Tempfile
         @body = nil # signals that there was a problem
       end
@@ -436,7 +436,7 @@ module Mongrel
 
     def socket_error(details)
       # ignore these since it means the client closed off early
-      @socket.close unless @socket.closed?
+      @socket.close rescue Object
       done = true
       raise details
     end
@@ -594,7 +594,7 @@ module Mongrel
         STDERR.puts "#{Time.now}: ERROR: #$!"
         STDERR.puts $!.backtrace.join("\n")
       ensure
-        client.close unless client.closed?
+        client.close rescue Object
         request.body.delete if request and request.body.class == Tempfile
       end
     end
@@ -658,7 +658,7 @@ module Mongrel
 
             if worker_list.length >= @num_processors
               STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max). Dropping connection."
-              client.close
+              client.close rescue Object
               reap_dead_workers("max processors")
             else
               thread = Thread.new { process_client(client) }
@@ -669,14 +669,14 @@ module Mongrel
               sleep @timeout/100 if @timeout > 0
             end
           rescue StopServer
-            @socket.close if not @socket.closed?
+            @socket.close rescue Object
             break
           rescue Errno::EMFILE
             reap_dead_workers("too many open files")
             sleep 0.5
           rescue Errno::ECONNABORTED
             # client closed the socket even before accept
-            client.close if not client.closed?
+            client.close rescue Object
           end
         end
 
