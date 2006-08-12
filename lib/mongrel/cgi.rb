@@ -132,11 +132,11 @@ module Mongrel
 
       header(options)
 
-      @response.start status do |head, out|
+      @response.start status do |head, body|
         send_cookies(head)
         
         @head.each {|k,v| head[k] = v}
-        out.write(yield || "")
+        body.write(yield || "")
       end
     end
     
