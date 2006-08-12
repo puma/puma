@@ -132,7 +132,6 @@ module Mongrel
 
       header(options)
 
-
       @response.start status do |head, body|
         send_cookies(head)
         
