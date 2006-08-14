@@ -66,6 +66,8 @@ class RailsService < Win32::Daemon
 
         log "Starting Rails in environment #{defaults[:environment]} ..."
         uri "/", :handler => rails(:mime => mime)
+        log "Mounting Rails at #{defaults[:prefix]}..." if defaults[:prefix]
+        uri defaults[:prefix] || "/", :handler => rails(:mime => mime, :prefix => defaults[:prefix])
         log "Rails loaded."
 
         #log "Loading any Rails specific GemPlugins"
@@ -108,7 +110,8 @@ OPTIONS = {
   :debug        => false,
   :config_file  => nil,
   :config_script => nil,
-  :cpu          => nil
+  :cpu          => nil,
+  :prefix       => nil
 }
 
 ARGV.options do |opts|
@@ -126,6 +129,7 @@ ARGV.options do |opts|
   opts.on('-C', '--config FILE', "Use a config file") { |OPTIONS[:config_file]| }
   opts.on('-S', '--script FILE', "Load the given file as an extra config script.") { |OPTIONS[:config_script]| }
   opts.on('-u', '--cpu CPU', "Bind the process to specific cpu, starting from 1.") { |OPTIONS[:cpu]| }
+  opts.on('--prefix PATH', "URL prefix for Rails app") { |OPTIONS[:prefix]| }
 
   opts.parse!
 end

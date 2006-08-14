@@ -26,7 +26,8 @@ module Service
           ['-B', '--debug', "Enable debugging mode", :@debug, false],
           ['-C', '--config PATH', "Use a config file", :@config_file, nil],
           ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil],
-          ['-u', '--cpu CPU', "Bind the process to specific cpu, starting from 1.", :@cpu, nil]
+          ['-u', '--cpu CPU', "Bind the process to specific cpu, starting from 1.", :@cpu, nil],
+          ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, nil]
         ]
     end
     
@@ -48,6 +49,8 @@ module Service
           break
         end
       end
+
+      valid?(@prefix[0].chr == "/" && @prefix[-1].chr != "/", "Prefix must begin with / and not end in /") if @prefix
 
       valid? app_exist == true, "The path you specified isn't a valid Rails application."
 
@@ -80,13 +83,14 @@ module Service
         :log_file => @log_file, :pid_file => @pid_file, :environment => @environment,
         :docroot => @docroot, :mime_map => @mime_map,
         :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
-        :num_procs => @num_procs, :timeout => @timeout, :cpu => @cpu
+        :num_procs => @num_procs, :timeout => @timeout, :cpu => @cpu, :prefix => @prefix
+
       }
 
       if @config_file
         STDERR.puts "** Loading settings from #{@config_file} (command line options override)."
         conf = YAML.load_file(@config_file)
-        @options = conf.merge(@options)
+        @options = @options.merge! conf
       end
 
       argv = []
@@ -111,6 +115,7 @@ module Service
       argv << "-B" if @options[:debug]
       argv << "-S \"#{@options[:config_script]}\"" if @options[:config_script]
       argv << "-u #{@options[:cpu.to_i]}" if @options[:cpu]
+      argv << "--prefix \"#{@options[:prefix]}\"" if @options[:prefix]
 
       svc = Win32::Service.new
       begin
