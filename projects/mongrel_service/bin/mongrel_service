@@ -65,7 +65,6 @@ class RailsService < Win32::Daemon
         end
 
         log "Starting Rails in environment #{defaults[:environment]} ..."
-        uri "/", :handler => rails(:mime => mime)
         log "Mounting Rails at #{defaults[:prefix]}..." if defaults[:prefix]
         uri defaults[:prefix] || "/", :handler => rails(:mime => mime, :prefix => defaults[:prefix])
         log "Rails loaded."
