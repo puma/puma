@@ -67,9 +67,10 @@ setup_gem(name, version) do |spec|
 
   if RUBY_PLATFORM =~ /mswin/
     Dir.chdir "projects/mongrel_service" do
-      sh %{rake install }
+      `rake install`
     end
-    spec.files << 'ext/http11/http11.so'
+    spec.files += ['ext/http11/http11.so']
+    spec.files += ['lib/http11.so']
     spec.extensions.clear
     spec.platform = Gem::Platform::WIN32
   else
