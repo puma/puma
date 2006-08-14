@@ -165,20 +165,19 @@ class Stop < GemPlugin::Plugin "/commands"
 
   def configure 
     options [ 
-      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
+      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, "."],
       ['-f', '--force', "Force the shutdown.", :@force, false],
       ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
     ]
   end
 
   def validate
-    if @cwd
-      @cwd = File.expand_path(@cwd)
-      valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
-    end
+    @cwd = File.expand_path(@cwd)
+    valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+
+    Dir.chdir @cwd
 
     valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
-
     return @valid
   end
 
@@ -199,20 +198,19 @@ class Restart < GemPlugin::Plugin "/commands"
 
   def configure 
     options [ 
-      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
+      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, '.'],
       ['-s', '--soft', "Do a soft restart rather than a process exit restart", :@soft, false],
       ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
     ]
   end
 
   def validate
-    if @cwd
-      @cwd = File.expand_path(@cwd)
-      valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
-    end
+    @cwd = File.expand_path(@cwd)
+    valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+
+    Dir.chdir @cwd
 
     valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
-
     return @valid
   end
 
