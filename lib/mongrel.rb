@@ -200,9 +200,6 @@ module Mongrel
         @body = StringIO.new
         @body.write params.http_body
         dispatcher.request_progress(params, 0, content_length) if dispatcher
-      elsif remain < 0
-        # ERROR, they're sending bad requests
-        raise HttpParserError.new("Sent body size #{params.http_body.length} but declared Content-Length: #{content_length}")
       elsif remain > 0
         # must read more data to complete body
         if remain > Const::MAX_BODY
@@ -218,7 +215,7 @@ module Mongrel
         read_body(remain, content_length, dispatcher)
       end
 
-      @body.rewind
+      @body.rewind if body
     end
 
 
