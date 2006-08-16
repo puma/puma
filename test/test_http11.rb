@@ -60,9 +60,9 @@ class HttpParserTest < Test::Unit::TestCase
     res = count.to_s + "/"
     
     if readable
-      res << Digest::SHA1.hexdigest(rand(count * 1000).to_s) * (count / 40)
+      res << Digest::SHA1.hexdigest(rand(count * 100).to_s) * (count / 40)
     else
-      res << Digest::SHA1.digest(rand(count * 1000).to_s) * (count / 20)
+      res << Digest::SHA1.digest(rand(count * 100).to_s) * (count / 20)
     end
 
     return res
@@ -72,17 +72,8 @@ class HttpParserTest < Test::Unit::TestCase
   def test_horrible_queries
     parser = HttpParser.new
 
-    # first verify that large random get requests fail
-    100.times do |c| 
-      get = "GET /#{rand_data(1024, 1024+(c*1024))} HTTP/1.1\r\n"
-      assert_raises Mongrel::HttpParserError do
-        parser.execute({}, get, 0)
-        parser.reset
-      end
-    end
-
     # then that large header names are caught
-    100.times do |c|
+    10.times do |c|
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-#{rand_data(1024, 1024+(c*1024))}: Test\r\n\r\n"
       assert_raises Mongrel::HttpParserError do
         parser.execute({}, get, 0)
@@ -91,7 +82,7 @@ class HttpParserTest < Test::Unit::TestCase
     end
 
     # then that large mangled field values are caught
-    100.times do |c|
+    10.times do |c|
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-Test: #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
       assert_raises Mongrel::HttpParserError do
         parser.execute({}, get, 0)

@@ -4,6 +4,8 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
+$mongrel_debug_client = false
+
 require 'socket'
 require 'http11'
 require 'tempfile'
@@ -585,11 +587,14 @@ module Mongrel
         # ignored
       rescue HttpParserError
         STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
+        if $mongrel_debug_client
+          STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
+        end
       rescue Errno::EMFILE
         reap_dead_workers('too many files')
       rescue Object
         STDERR.puts "#{Time.now}: ERROR: #$!"
-        STDERR.puts $!.backtrace.join("\n")
+        STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
       ensure
         client.close rescue Object
         request.body.delete if request and request.body.class == Tempfile

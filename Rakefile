@@ -87,6 +87,7 @@ task :install do
   sub_project("mongrel_status", :install)
   sub_project("mongrel_upload_progress", :install)
   sub_project("mongrel_console", :install)
+  sub_project("mongrel_cluster", :install)
   if RUBY_PLATFORM =~ /mswin/
     sub_project("mongrel_service", :install)
   end

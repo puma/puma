@@ -89,10 +89,10 @@
   absolute_uri = (scheme ":" (uchar | reserved )*);
 
   path = (pchar+ ( "/" pchar* )*) ;
-  query = ( uchar | reserved )* >start_query %query_string ;
+  query = ( uchar | reserved )* %query_string ;
   param = ( pchar | "/" )* ;
   params = (param ( ";" param )*) ;
-  rel_path = (path? %request_path (";" params)?) ("?" query)?;
+  rel_path = (path? %request_path (";" params)?) ("?" %start_query query)?;
   absolute_path = ("/"+ rel_path);
 
   Request_URI = ("*" | absolute_uri | absolute_path) >mark %request_uri;
