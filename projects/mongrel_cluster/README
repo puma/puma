@@ -1,0 +1,47 @@
+== Mongrel Cluster Plugin
+
+Tool to help start/stop/restart multiple mongrel servers to use behind a load balancer like Apache 2.2 (mod_proxy_balancer), Lighttpd, Pound, Pen or Balance. This plugin adds an option to specify a number of Mongrel servers to launch, a range of ports, and a configuration file for the cluster. Use "-h" to see command syntax.
+
+Configure cluster and write configuration file:
+mongrel_rails cluster::configure  
+
+Start cluster:
+mongrel_rails cluster::start
+
+Restart cluster:
+mongrel_rails cluster::restart
+
+Stop cluster:
+mongrel_rails cluster::stop
+
+Capistrano Recipe
+
+Add to config/deploy.rb:
+require 'mongrel_cluster/recipes'
+
+Example usage:
+cap -a configure_mongrel_cluster
+
+Variables
+mongrel_servers: Number of Mongrel servers to start.
+mongrel_port: Starting port to bind to.
+mongrel_address: Address to bind to.
+mongrel_environment: Rails environment to run as.
+mongrel_conf: Path to conf file. Defaults to /etc/mongrel_cluster/app_name.conf
+mongrel_user: User to run mongrels in cluster as. Unset by default
+mongrel_group: Group to run mongrels in cluster as. Unset by default.
+
+Tasks (performed on :app role)
+configure_mongrel_cluster: Configure the cluster with variables.
+start_mongrel_cluster: Start Mongrel processes on the app server.
+stop_mongrel_cluster: Stop the Mongrel processes on the app server.
+restart_mongrel_cluster: Restart the Mongrel processes on the app server by starting and stopping mongrel_cluster.
+restart: Calls restart_mongrel_cluster to allow Mongrel to be used with the standard Capistrano deploy task.
+spinner: Calls start_mongrel_cluster to allow Mongrel to be used with the standard Capistrano cold_deploy task.
+
+Supporting starting clusters on boot.
+1. Create mongrel_cluster conf directory (/etc/mongrel_cluster).
+2. Assign ownership to your capistrano user.
+3. Copy the init.d script from this gem's resouces directory /etc/init.d.
+4. chmod +x /etc/init.d/mongrel_cluster
+5. Add to init.d startup. On RHEL/CentOS use: /sbin/chkconfig --level 345 mongrel_cluster on

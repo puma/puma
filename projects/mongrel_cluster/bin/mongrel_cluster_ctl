@@ -1,0 +1,64 @@
+#!/usr/bin/env ruby
+# Copyright (c) 2006 Bradley Taylor, bradley@fluxura.com
+
+require 'optparse'
+
+def run(command, verbose)
+  Dir.chdir @options[:conf_path] do
+    confs =  Dir.glob("*.yml")
+    confs += Dir.glob("*.conf")
+    confs.each do |conf|
+      cmd = "mongrel_rails cluster::#{command} -c #{conf}"
+      cmd += " -v" if verbose
+      puts cmd if verbose
+      output = `#{cmd}`
+      puts output if verbose
+      puts "mongrel_rails cluster::#{command} returned an error." unless $?.success?     
+    end
+  end  
+end
+
+@options = {}
+@options[:conf_path] = "/etc/mongrel_cluster"
+@options[:verbose] = false
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{$0} (start|stop|restart) [options]"
+ 
+  opts.on("-c", "--conf_path PATH", "Path to mongrel_cluster configuration files") { |value| @options[:conf_path] = value }
+  opts.on('-v', '--verbose', "Print all called commands and output.") { |value| @options[:verbose] = value }
+
+  if ARGV.empty?
+    puts opts
+    exit
+  else
+    @cmd = opts.parse!(ARGV)
+    if @cmd.nil?
+      puts opts
+      exit
+    end
+  end
+  
+end
+
+if @options[:conf_path] == nil && !File.directory?(@options[:conf_path])
+  puts "Invalid path to mongrel_cluster configuration files: #{@options[:conf_path]}"
+  exit
+end
+
+case @cmd[0]
+when "start": 
+  puts "Starting all mongrel_clusters..."
+  run "start", @options[:verbose]
+when "stop":
+  puts "Stopping all mongrel_clusters..."
+  run "stop", @options[:verbose]
+when "restart":
+  puts "Restarting all mongrel_clusters..."
+  run "stop", @options[:verbose]
+  run "start", @options[:verbose]
+else
+ puts "Unknown command."
+end
+
+exit
