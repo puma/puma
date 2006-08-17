@@ -316,7 +316,6 @@ module Mongrel
       }
 
       # turn on the debugging infrastructure, and ObjectTracker is a pig
-      ObjectTracker.configure if what.include? :objects
       MongrelDbg.configure
 
       # now we roll through each requested debug type, turn it on and load that plugin

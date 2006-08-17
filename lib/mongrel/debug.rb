@@ -8,15 +8,22 @@ require 'logger'
 require 'set'
 require 'socket'
 
+
+
 $mongrel_debugging=true
 
 module MongrelDbg
   SETTINGS = { :tracing => {}}
   LOGGING = { }
 
-  def MongrelDbg::configure(log_dir = "log/mongrel_debug")
+  def MongrelDbg::configure(log_dir = File.join("log","mongrel_debug"))
     Dir.mkdir(log_dir) if not File.exist?(log_dir)
     @log_dir = log_dir
+    $objects_out=open(File.join("log","mongrel_debug","objects.log"),"w")
+    $objects_out.puts "run,classname,last,count,delta"
+    $objects_out.sync = true
+    $last_stat = nil
+    $run_count = 0
   end
 
   
@@ -47,53 +54,6 @@ module MongrelDbg
 end
 
 
-module ObjectTracker
-  @active_objects = nil
-
-  def ObjectTracker.configure
-    @active_objects = Set.new
-
-    ObjectSpace.each_object do |obj|
-      begin
-        # believe it or not, some idiots actually alter the object_id method
-        @active_objects << obj.object_id
-      rescue Object
-        # skip this one, he's an idiot
-      end
-    end
-  end
-
-  def ObjectTracker.sample
-    ospace = Set.new
-    counts = {}
-    
-    ObjectSpace.each_object do |obj|
-      begin
-        ospace << obj.object_id
-        counts[obj.class] ||= 0
-        counts[obj.class] += 1
-      rescue Object
-        # skip since object_id can magically get parameters
-      end
-    end
-    
-    dead_objects = @active_objects - ospace
-    new_objects = ospace - @active_objects
-    live_objects = ospace & @active_objects
-    
-    MongrelDbg::trace(:objects, "COUNTS: #{dead_objects.length},#{new_objects.length},#{live_objects.length}")
-    
-    if MongrelDbg::tracing? :objects
-      top_20 = counts.sort{|a,b| b[1] <=> a[1]}[0..20]
-      MongrelDbg::trace(:objects,"TOP 20: #{top_20.inspect}")
-    end
-    
-    @active_objects = live_objects + new_objects
-    
-    [@active_objects, top_20]
-  end
-
-end
 
 $open_files = {}
 
@@ -157,20 +117,31 @@ module RequestLog
     
   end
 
+  # stolen from Robert Klemme
   class Objects < GemPlugin::Plugin "/handlers"
     include Mongrel::HttpHandlerPlugin
-    
-    def process(request, response)
-      MongrelDbg::trace(:objects, "#{'-' * 10}\n#{Time.now} OBJECT STATS BEFORE REQUEST #{request.params['PATH_INFO']}")
-      ObjectTracker.sample
+
+    def process(request,response)
+      stats = Hash.new(0)
+      ObjectSpace.each_object {|o| stats[o.class] += 1}
+
+      stats.sort {|(k1,v1),(k2,v2)| v2 <=> v1}.each do |k,v|
+        if $last_stat
+          delta = v - $last_stat[k]
+          if v > 10 and delta != 0
+            $objects_out.printf "%d,%s,%d,%d,%d\n", $run_count, k, $last_stat[k], v, delta
+          end
+        end
+      end
+
+      $run_count += 1
+      $last_stat = stats
     end
-    
   end
-  
 
   class Params < GemPlugin::Plugin "/handlers"
     include Mongrel::HttpHandlerPlugin
-    
+
     def process(request, response)
       MongrelDbg::trace(:rails, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
       MongrelDbg::trace(:rails, request.params.to_yaml)
@@ -180,7 +151,7 @@ module RequestLog
 
   class Threads < GemPlugin::Plugin "/handlers"
     include Mongrel::HttpHandlerPlugin
-    
+
     def process(request, response)
       MongrelDbg::trace(:threads, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
       ObjectSpace.each_object do |obj|
