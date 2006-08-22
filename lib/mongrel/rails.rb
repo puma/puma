@@ -7,6 +7,11 @@
 require 'mongrel'
 require 'cgi'
 
+class Mutex
+  # modified to open the waiting list for reporting purposes
+  attr_accessor :waiting
+end
+
 module Mongrel
   module Rails
     # Implements a handler that can run Rails and serve files out of the
@@ -37,6 +42,7 @@ module Mongrel
       def initialize(dir, mime_map = {})
         @files = Mongrel::DirHandler.new(dir,false)
         @guard = Mutex.new
+        @tick = Time.now
 
         # register the requested mime types
         mime_map.each {|k,v| Mongrel::DirHandler::add_mime_type(k,v) }
@@ -69,7 +75,7 @@ module Mongrel
             # we don't want the output to be really final until we're out of the lock
             cgi.default_really_final = false
 
-            lock!
+            lock! request.params[Mongrel::Const::PATH_INFO]
 
             Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
 
@@ -88,20 +94,29 @@ module Mongrel
         end
       end
 
-      def lock!
+      def lock!(path)
         # ultra dangerous, but people are asking to kill themselves.  here's the Katana
+        log_threads_waiting_for path
         @guard.lock unless ActionController::Base.allow_concurrency
       end
 
       def unlock!
+        log_threads_waiting_for "unlock"
         @guard.unlock unless ActionController::Base.allow_concurrency
+      end
+
+      def log_threads_waiting_for(event)
+        if $mongrel_debug_client and (Time.now - @tick > 10)
+          STDERR.puts "#{Time.now}: #{@guard.waiting.length} threads waiting for #{event}."
+          @tick = Time.now
+        end
       end
 
       # Does the internal reload for Rails.  It might work for most cases, but
       # sometimes you get exceptions.  In that case just do a real restart.
       def reload!
         begin
-          lock!
+          lock! "RAILS RELOAD"
           $".replace $orig_dollar_quote
           GC.start
           Dispatcher.reset_application!

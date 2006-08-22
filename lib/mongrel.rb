@@ -577,7 +577,10 @@ module Mongrel
             break #done
           else
             # Parser is not done, queue up more data to read and continue parsing
-            data << client.readpartial(Const::CHUNK_SIZE)
+            chunk = client.readpartial(Const::CHUNK_SIZE)
+            break if !chunk or chunk.length == 0  # read failed, stop processing
+
+            data << chunk
             if data.length >= Const::MAX_HEADER
               raise HttpParserError.new("HEADER is longer than allowed, aborting client early.")
             end
@@ -586,8 +589,8 @@ module Mongrel
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
         # ignored
       rescue HttpParserError
-        STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
         if $mongrel_debug_client
+          STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
           STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
         end
       rescue Errno::EMFILE
@@ -680,6 +683,9 @@ module Mongrel
           rescue Errno::ECONNABORTED
             # client closed the socket even before accept
             client.close rescue Object
+          rescue Object => exc
+            STDERR.puts "!!!!!! UNHANDLED EXCEPTION! #{exc}.  TELL ZED HE'S A MORON."
+            STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
           end
         end
 
