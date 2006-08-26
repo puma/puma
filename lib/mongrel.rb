@@ -228,15 +228,13 @@ module Mongrel
     def read_body(remain, total, dispatcher)
       begin
         # write the odd sized chunk first
-        remain -= @body.write(@socket.read(remain % Const::CHUNK_SIZE))
+
+        remain -= @body.write(read_socket(remain % Const::CHUNK_SIZE))
         dispatcher.request_progress(params, remain, total) if dispatcher
 
         # then stream out nothing but perfectly sized chunks
         until remain <= 0 or @socket.closed?
-          data = @socket.read(Const::CHUNK_SIZE)
-          # have to do it this way since @socket.eof? causes it to block
-          raise "Socket closed or read failure" if not data or data.length != Const::CHUNK_SIZE
-          remain -= @body.write(data)
+          remain -= @body.write(read_socket(Const::CHUNK_SIZE))
           # ASSUME: we are writing to a disk and these writes always write the requested amount
           dispatcher.request_progress(params, remain, total) if dispatcher
         end
@@ -250,6 +248,20 @@ module Mongrel
       end
     end
 
+    def read_socket(len)
+      if !@socket.closed?
+        data = @socket.read(len)
+        if !data
+          raise "Socket read return nil"
+        elsif data.length != len
+          raise "Socket read returned insufficient data: #{data.length}"
+        else
+          data
+        end
+      else
+        raise "Socket already closed when reading."
+      end
+    end
 
     # Performs URI escaping so that you can construct proper
     # query strings faster.  Use this rather than the cgi.rb
@@ -386,8 +398,9 @@ module Mongrel
       elsif @header_sent
         raise "You have already sent the request headers."
       else
-        @header.out.rewind
-        @body.rewind
+        @header.out.truncate(0)
+        @body.close
+        @body = StringIO.new
       end
     end
 
@@ -587,7 +600,7 @@ module Mongrel
           end
         end
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
-        # ignored
+        client.close rescue Object
       rescue HttpParserError
         if $mongrel_debug_client
           STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"

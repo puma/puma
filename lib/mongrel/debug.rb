@@ -20,7 +20,7 @@ module MongrelDbg
     Dir.mkdir(log_dir) if not File.exist?(log_dir)
     @log_dir = log_dir
     $objects_out=open(File.join("log","mongrel_debug","objects.log"),"w")
-    $objects_out.puts "run,classname,last,count,delta"
+    $objects_out.puts "run,classname,last,count,delta,lenmean,lensd,lenmax"
     $objects_out.sync = true
     $last_stat = nil
     $run_count = 0
@@ -122,20 +122,40 @@ module RequestLog
     include Mongrel::HttpHandlerPlugin
 
     def process(request,response)
-      stats = Hash.new(0)
-      ObjectSpace.each_object {|o| stats[o.class] += 1}
+      begin
+        stats = Hash.new(0)
+        lengths = {}
+        ObjectSpace.each_object do |o| 
+          begin
+            if o.respond_to? :length
+              len = o.length
+              lengths[o.class] ||= Stats.new(o.class)
+              lengths[o.class].sample(len)
+            end
+          rescue Object
+          end
 
-      stats.sort {|(k1,v1),(k2,v2)| v2 <=> v1}.each do |k,v|
-        if $last_stat
-          delta = v - $last_stat[k]
-          if v > 10 and delta != 0
-            $objects_out.printf "%d,%s,%d,%d,%d\n", $run_count, k, $last_stat[k], v, delta
+          stats[o.class] += 1
+        end
+
+        stats.sort {|(k1,v1),(k2,v2)| v2 <=> v1}.each do |k,v|
+          if $last_stat
+            delta = v - $last_stat[k]
+            if v > 10 and delta != 0
+              if lengths[k]
+                $objects_out.printf "%d,%s,%d,%d,%d,%f,%f,%f\n", $run_count, k, $last_stat[k], v, delta,lengths[k].mean,lengths[k].sd,lengths[k].max
+              else
+                $objects_out.printf "%d,%s,%d,%d,%d,,,\n", $run_count, k, $last_stat[k], v, delta
+              end
+            end
           end
         end
-      end
 
-      $run_count += 1
-      $last_stat = stats
+        $run_count += 1
+        $last_stat = stats
+      rescue Object
+        STDERR.puts "object.log ERROR: #$!"
+      end
     end
   end
 

@@ -6,10 +6,11 @@
 
 require 'mongrel'
 require 'cgi'
+require 'sync'
 
-class Mutex
+class Sync
   # modified to open the waiting list for reporting purposes
-  attr_accessor :waiting
+  attr_accessor :sync_waiting
 end
 
 module Mongrel
@@ -41,7 +42,7 @@ module Mongrel
 
       def initialize(dir, mime_map = {})
         @files = Mongrel::DirHandler.new(dir,false)
-        @guard = Mutex.new
+        @guard = Sync.new
         @tick = Time.now
 
         # register the requested mime types
@@ -75,11 +76,11 @@ module Mongrel
             # we don't want the output to be really final until we're out of the lock
             cgi.default_really_final = false
 
-            lock! request.params[Mongrel::Const::PATH_INFO]
+            log_threads_waiting_for(request.params["PATH_INFO"])
 
-            Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
-
-            unlock!
+            @guard.synchronize(:EX) {
+              Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
+            }
 
             # This finalizes the output using the proper HttpResponse way
             cgi.out("text/html",true) {""}
@@ -88,26 +89,13 @@ module Mongrel
           rescue Object => rails_error
             STDERR.puts "#{Time.now}: Error calling Dispatcher.dispatch #{rails_error.inspect}"
             STDERR.puts rails_error.backtrace.join("\n")
-          ensure
-            unlock!
           end
         end
       end
 
-      def lock!(path)
-        # ultra dangerous, but people are asking to kill themselves.  here's the Katana
-        log_threads_waiting_for path
-        @guard.lock unless ActionController::Base.allow_concurrency
-      end
-
-      def unlock!
-        log_threads_waiting_for "unlock"
-        @guard.unlock unless ActionController::Base.allow_concurrency
-      end
-
       def log_threads_waiting_for(event)
         if $mongrel_debug_client and (Time.now - @tick > 10)
-          STDERR.puts "#{Time.now}: #{@guard.waiting.length} threads waiting for #{event}."
+          STDERR.puts "#{Time.now}: #{@guard.sync_waiting.length} threads sync_waiting for #{event}, #{self.listener.workers.list.length} still active in mongrel."
           @tick = Time.now
         end
       end
@@ -116,13 +104,12 @@ module Mongrel
       # sometimes you get exceptions.  In that case just do a real restart.
       def reload!
         begin
-          lock! "RAILS RELOAD"
-          $".replace $orig_dollar_quote
-          GC.start
-          Dispatcher.reset_application!
-          ActionController::Routing::Routes.reload
-        ensure
-          unlock!
+          @guard.synchronize(:EX) {
+            $".replace $orig_dollar_quote
+            GC.start
+            Dispatcher.reset_application!
+            ActionController::Routing::Routes.reload
+          }
         end
       end
     end
@@ -172,10 +159,6 @@ module Mongrel
         require env_location
         require 'dispatcher'
         require 'mongrel/rails'
-
-        if ActionController::Base.allow_concurrency
-          log "[RAILS] ActionController::Base.allow_concurrency is true.  Wow, you're very brave."
-        end
 
         ActionController::AbstractRequest.relative_url_root = ops[:prefix] if ops[:prefix]
 
