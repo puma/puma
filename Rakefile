@@ -67,7 +67,7 @@ setup_gem(name, version) do |spec|
 
   if RUBY_PLATFORM =~ /mswin/
     Dir.chdir "projects/mongrel_service" do
-      `rake install`
+      `rake.cmd install`
     end
     spec.files += ['ext/http11/http11.so']
     spec.files += ['lib/http11.so']
