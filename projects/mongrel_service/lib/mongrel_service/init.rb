@@ -27,7 +27,8 @@ module Service
           ['-C', '--config PATH', "Use a config file", :@config_file, nil],
           ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil],
           ['-u', '--cpu CPU', "Bind the process to specific cpu, starting from 1.", :@cpu, nil],
-          ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, nil]
+          ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, nil],
+          ['', '--start-type TYPE', "service start mode: 'auto' or 'manual' (default)", :@svc_start_type, 'manual']
         ]
     end
     
@@ -70,6 +71,7 @@ module Service
       end
 
       valid? @svc_name != nil, "A service name is mandatory."
+      valid? %w{ auto manual }.include?(@svc_start_type), "use either auto or manual for --start-type"
       
       # default service display to service name
       @svc_display = @svc_name if !@svc_display
@@ -124,6 +126,7 @@ module Service
           s.display_name     = @svc_display
           s.binary_path_name = argv.join ' '
           s.dependencies     = []
+          s.start_type       = (@svc_start_type == 'auto') ? Win32::Service::AUTO_START : Win32::Service::DEMAND_START
         }
         puts "Mongrel service '#{@svc_display}' installed as '#{@svc_name}'."
       rescue Win32::ServiceError => err
