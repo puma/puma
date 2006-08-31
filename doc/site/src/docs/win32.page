@@ -76,7 +76,7 @@ command:
      -c c:\my\path\to\myapp -p 4000 -e development
  $ mongrel_rails service::start -N myapp
 
-You can also use the *-d* option to give the service a different display name in the
+You can also use the *-D* option to give the service a different display name in the
 Services console.
 
 h3. service::start
@@ -112,3 +112,16 @@ Mongrel on #4 then do:
 Pretty much the same command, just one more option and you're done.
 
 
+h2. Making you Service autostart with Windows
+
+By default, the new Mongrel service get installed to be run _manually_, using 
+Mongrel's commands or the Service Manager. You could tweak it to start automatically 
+when Windows start, just use the Service Control commandline tool:
+
+ $ sc config myapp start=auto
+ 
+Also, you can configure the services that are neede to make it work, like database 
+support:
+
+ $ sc config myapp start=auto dependency=MySql
+ 
