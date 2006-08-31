@@ -126,7 +126,11 @@ module GemPlugin
         # makes them false so we'll skip this gem if any excludes are found
         if (check.select {|name,test| !test}).length == 0
           # looks like no needs were set to false, so it's good
-          gem_dir = File.join(Gem.dir, "gems", "#{gem.name}-#{gem.version}")
+          
+          # Previously was set wrong, we already have the correct gem path!
+          #gem_dir = File.join(Gem.dir, "gems", "#{gem.name}-#{gem.version}")
+          gem_dir = File.join(Gem.dir, "gems", path)
+          
           require File.join(gem_dir, "lib", gem.name, "init.rb")
           @gems[gem.name] = gem_dir
         end
