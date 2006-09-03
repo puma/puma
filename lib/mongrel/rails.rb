@@ -56,7 +56,9 @@ module Mongrel
       # * If it exists at PATH_INFO+".html" exists then serve that.
       # * Finally, construct a Mongrel::CGIWrapper and run Dispatcher.dispatch to have Rails go.
       def process(request, response)
-        return if response.socket.closed?
+        if response.socket.closed?
+          return
+        end
 
         path_info = request.params[Mongrel::Const::PATH_INFO]
         page_cached = path_info + ".html"
@@ -66,7 +68,7 @@ module Mongrel
           # File exists as-is so serve it up
           @files.process(request,response)
         elsif get_or_head and @files.can_serve(page_cached)
-          # possible cached page, serve it up      
+          # possible cached page, serve it up
           request.params[Mongrel::Const::PATH_INFO] = page_cached
           @files.process(request,response)
         else
@@ -76,7 +78,7 @@ module Mongrel
             # we don't want the output to be really final until we're out of the lock
             cgi.default_really_final = false
 
-            log_threads_waiting_for(request.params["PATH_INFO"])
+            log_threads_waiting_for(request.params["PATH_INFO"]) if $mongrel_debug_client
 
             @guard.synchronize(:EX) {
               Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
@@ -85,7 +87,7 @@ module Mongrel
             # This finalizes the output using the proper HttpResponse way
             cgi.out("text/html",true) {""}
           rescue Errno::EPIPE
-            # ignored
+            response.socket.close
           rescue Object => rails_error
             STDERR.puts "#{Time.now}: Error calling Dispatcher.dispatch #{rails_error.inspect}"
             STDERR.puts rails_error.backtrace.join("\n")
@@ -94,7 +96,7 @@ module Mongrel
       end
 
       def log_threads_waiting_for(event)
-        if $mongrel_debug_client and (Time.now - @tick > 10)
+        if Time.now - @tick > 10
           STDERR.puts "#{Time.now}: #{@guard.sync_waiting.length} threads sync_waiting for #{event}, #{self.listener.workers.list.length} still active in mongrel."
           @tick = Time.now
         end

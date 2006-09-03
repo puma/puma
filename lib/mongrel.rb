@@ -432,18 +432,21 @@ module Mongrel
     # reading and written in chunks to the socket.
     #
     # Sendfile API support has been removed in 0.3.13.4 due to stability problems.
-    def send_file(path)
-      File.open(path, "rb") do |f|
-        while chunk = f.read(Const::CHUNK_SIZE) and chunk.length > 0
-          begin
-            write(chunk)
-          rescue Object => exc
-            # TODO: find out if people care about failures to write these files
-            break
+    def send_file(path, small_file = false)
+      if small_file
+        File.open(path, "rb") {|f| @socket << f.read }
+      else
+        File.open(path, "rb") do |f|
+          while chunk = f.read(Const::CHUNK_SIZE) and chunk.length > 0
+            begin
+              write(chunk)
+            rescue Object => exc
+              break
+            end
           end
         end
-        @body_sent = true
       end
+      @body_sent = true
     end
 
     def socket_error(details)

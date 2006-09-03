@@ -234,7 +234,7 @@ module Mongrel
         response.send_header
 
         if not header_only
-          response.send_file(req_path)
+          response.send_file(req_path, stat.size < Const::CHUNK_SIZE * 2)
         end
       end
     end
