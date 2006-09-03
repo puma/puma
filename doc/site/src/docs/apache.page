@@ -6,4 +6,250 @@ directoryName: Apache
 
 h1. Apache Best Practice Deployment
 
-Coming soon...
+h3. By Philip Hallstrom
+
+The preferred setup (for now) is to put Mongrel behind an Apache 2.2.3 
+server running mod_proxy_balancer.  Apache is a proven web server, runs 
+half the Internet, and is a pain to configure.  These instructions by
+Philip Hallstrom should get you started, but refer to the Apache folks
+for anything more complex or weird.
+
+When you're just starting out, don't bother with doing anything but 
+running Mongrel.  Mongrel is slower than Apache, but not so slow that
+small installations will notice it.  The worst thing you can do is
+try to learn Apache install when you're also trying to learn Ruby on Rails
+and Mongrel too.  Start small, then *when you need* build up to the big stuff.
+
+
+h2. A simple single mongrel configuration
+
+Start up a single mongrel instance on port 8000:
+
+<pre><code>
+  $ mongrel_rails start -d -p 8000 \
+   -e production -P log/mongrel-1.pid
+</code></pre>
+
+Simply add the following to your httpd.conf or in a vhost.conf file:
+
+<pre><code>
+  <VirtualHost *:80>
+    ServerName myapp.com
+    ServerAlias www.myapp.com
+
+    ProxyPass / http://www.myapp.com:8000/
+    ProxyPassReverse / http://www.myapp.com:8000
+    ProxyPreserveHost on
+  </VirtualHost>
+</code></pre>
+
+That's it, in a nutshell.  In this configuration (while it is highly unlikely
+given the nature of how web applications work), it is possible that two
+users could hit your application at the exact same time, and one would have to
+wait literally milliseconds until the first request is finished before having a
+turn at the mongrel instance.  Unless you've got some really long HTTP
+processes, the nature of the HTTP protocol is pretty good at waiting in line.
+Only you can determine through metrics how long and how many
+users will come at your application at the exact same time.
+
+Sufficient to say, if you're ready to start scaling with multiple mongrel
+instances, read on.
+
+h2. Using multiple mongrel instances with mod_proxy_balancer
+
+First, let's start up a few mongrel instances (*nix-style):
+
+<pre><code>
+$ mongrel_rails start -d -p 8001 \
+   -e production -P log/mongrel-1.pid
+$ mongrel_rails start -d -p 8002 \
+   -e production -P log/mongrel-2.pid
+$ mongrel_rails start -d -p 8003 \
+   -e production -P log/mongrel-3.pid
+$ mongrel_rails start -d -p 8004 \
+   -e production -P log/mongrel-4.pid
+</code></pre>
+
+You can also use mongrel_cluster by Bradley Taylor [2] for
+managing several mongrel instances with a configuration file (and sysv init
+scripts for *nix servers).
+
+We're going to be requiring the use of mod_proxy_balancer, a new feature in
+Apache 2.1/2.2 and above
+(http://httpd.apache.org/docs/2.2/new_features_2_2.html) to proxy requests to
+our mongrel instances.  This software based HTTP load balancer will distribute
+requests evenly (applying a weighting and selection algorithm) to our mongrel
+instance(s).  It even comes with a swell load-balancing manager page for
+monitoring incoming requests.  For more information, see:
+http://httpd.apache.org/docs/2.2/mod/mod_proxy_balancer.html.
+
+h2. Obtaining Apache 2(.1+)
+
+I won't go into too many details, as windows and the various linux
+distributions all have several methods for obtaining apache2, but you will need
+the use of the following modules:
+
+ * mod_proxy, mod_proxy-html, and mod_proxy_balancer
+ * mod_rewrite
+ * mod_deflate
+ * mod_headers
+ * (optional) mod_cache and one of mod_memcache or mod_filecache 
+ * (optional) mod_ssl
+
+If you're compiling from source, this configuration should do the trick:
+
+<pre><code>
+#./configure --enable-deflate --enable-proxy --enable-proxy-html \ 
+--enable-proxy-balancer --enable-rewrite --enable-cache  \ 
+--enable-mem-cache --enable-ssl --enable-headers
+</code></pre>
+
+h2. Configuring Apache2
+
+A good practice is the separation of apache configuration files.  Recommended
+by several other good guides, we'll be storing information for our application
+in several different files.  Put these files somewhere that apache2 knows
+about.  Apache is quite good about scanning for all .conf files in certain
+directories.
+
+h3. myapp.common
+
+Apache lets you include common configuration items into another configuration 
+so you can cut down on repetition.  What we're going to do is make a file
+that has all the common junk that every Mongrel application needs to 
+work at all, then we'll just include this in little .conf files for
+any application we deploy.
+
+Notice that this file doesn't end in .conf since it's not a real configuration
+file, but you can name it however you wish.
+
+<pre><code>
+  ServerName myapp.com
+  DocumentRoot /var/www/myapp.com/current/public
+
+  <Directory "/var/www/myapp.com/current/public">
+    Options FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+  </Directory>
+
+  RewriteEngine On
+
+  # Uncomment for rewrite debugging
+  #RewriteLog logs/myapp_rewrite_log
+  #RewriteLogLevel 9 
+
+  # Check for maintenance file and redirect all requests
+  #  ( this is for use with Capistrano's disable_web task )
+  RewriteCond %{DOCUMENT_ROOT}/system/maintenance.html -f
+  RewriteCond %{SCRIPT_FILENAME} !maintenance.html
+  RewriteRule ^.*$ /system/maintenance.html [L]
+
+  # Rewrite index to check for static
+  RewriteRule ^/$ /index.html [QSA] 
+
+  # Rewrite to check for Rails cached page
+  RewriteRule ^([^.]+)$ $1.html [QSA]
+
+  # Redirect all non-static requests to cluster
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME} !-f
+  RewriteRule ^/(.*)$ balancer://mongrel_cluster%{REQUEST_URI} [P,QSA,L]
+
+  # Deflate
+  AddOutputFilterByType DEFLATE text/html text/plain text/css
+  # ... text/xml application/xml application/xhtml+xml text/javascript 
+  BrowserMatch ^Mozilla/4 gzip-only-text/html
+  BrowserMatch ^Mozilla/4.0[678] no-gzip
+  BrowserMatch bMSIE !no-gzip !gzip-only-text/html
+
+  # Uncomment for deflate debugging
+  #DeflateFilterNote Input input_info
+  #DeflateFilterNote Output output_info
+  #DeflateFilterNote Ratio ratio_info
+  #LogFormat '"%r" %{output_info}n/%{input_info}n (%{ratio_info}n%%)' deflate
+  #CustomLog logs/myapp_deflate_log deflate
+</code></pre>
+
+h3. myapp.conf
+
+We then take the above commmon file and include it in our configuration file
+for this application deployment.
+
+If you're using virtual hosting (a pretty good idea, even when you're the only
+one on the server), your sample configuration can be this simple:
+
+<pre><code>
+  <VirtualHost *:80>
+    Include /etc/httpd/conf.d/myapp.common
+
+    ErrorLog logs/myapp_errors_log
+    CustomLog logs/myapp_log combined
+  </VirtualHost>
+</code></pre>
+
+h3. myapp.proxy_cluster.conf
+
+This is the meat of our configuration, and goes hand in hand with our mongrel
+(or mongrel_cluster) configuration.  This configuration tells the apache2
+mod_proxy_balancer to proxy requests to 3 mongrel instances running on ports
+8000, 8001, and 8002.  
+
+<pre><code>
+  <Proxy balancer://mongrel_cluster>
+    BalancerMember http://127.0.0.1:8000
+    BalancerMember http://127.0.0.1:8001
+    BalancerMember http://127.0.0.1:8002
+  </Proxy>
+</code></pre>
+
+If you had an seperate application server, you could balance to it easily by
+replacing the 127.0.0.1 with the ip or hostname of your application server, but
+be sure to make them listen on an external interface (rather than 127.0.0.1).
+
+When you add an additional mongrel to your mongrel_cluster, you can simply add
+an additional BalancerMember to this file, restart apache (or reload) and
+you're all set.
+
+h3. (optional) myapp.proxy_frontend.conf
+
+This optional file will setup the balancer-manager -- a simple front-end for
+viewing how your requests are being handled.  This balancer in the
+configuration below will only work from the localhost, so no one else (or
+possibly you) can view it unless you alter the "Deny" and "Allow" lines.
+
+<pre><code>
+Listen 8080
+<VirtualHost *:8080>
+  <Location />
+    SetHandler balancer-manager
+    Deny from all
+    Allow from localhost
+  </Location>
+</VirtualHost>
+</code></pre>
+
+h3. SSL Requirements
+
+In order for mongrel to know that this request has a forwarded protocol of
+https, we'll need to add a special header (hence the addition of mod_header,
+included in most apache2 builds).
+
+<pre><code>
+  Include /etc/httpd/conf.d/myapp.common
+
+  # This is required to convince Rails (via mod_proxy_balancer) that we're
+  # actually using HTTPS.
+  RequestHeader set X_FORWARDED_PROTO 'https'
+</code></pre>
+
+You need this mostly so that redirects go back to https and so you can 
+spot when people are coming through SSL or not.
+
+h2. References and Other Guides
+
+[1] "Time For A Grown-Up Server: Rails, Mongrel, Apache, Capistrano and You":http://blog.codahale.com/2006/06/19/time-for-a-grown-up-server-rails-mongrel-apache-capistrano-and-you/
+
+[2] "Bradley Taylor's Fluxura":http://fluxura.com/
+
+

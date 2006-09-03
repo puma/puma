@@ -97,6 +97,10 @@ RedHat like system we can configure mongrel_cluster for startup:
 <pre><code>
   $ sudo /sbin/chkconfig --level 345 mongrel_cluster on
 </code></pre>
+For users of Debian, you can use this command to install the script:
+<pre><code>
+  $ sudo /usr/sbin/update-rc.d -f mongrel_cluster defaults
+</code></pre>
 *NOTE* At this point there are a few issues with this init script that only apply
 under certain circumstances.  Those issues include:
 

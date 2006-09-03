@@ -14,6 +14,19 @@ telling people about it.  The site doesn't have to be public, just tell
 us how Mongrel made your life easier and what you like about it.
 
 
+h2. OpenSUSE
+
+"OpenSUSE":http://www.opensuse.org/ has a "page dedicated to Ruby":http://en.opensuse.org/Ruby
+that also includes information on Ruby in their build service, how to install 
+Ruby on Rails, and Mongrel rpms.  
+
+Mongrel is also a part of the "SUSE Linux Enterprise 10 SDK":http://developer.novell.com/wiki/index.php/SLES_SDK
+which I think is the first commercial distro, but I'm sure all the other distros 
+will whine and complain now that I've said that.
+
+It's maintained by Marcus Rückert.
+
+
 h2. Alison Rowland
 
 "After months of tearing my hair out due to a lack of reliable Rails  

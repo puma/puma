@@ -9,36 +9,11 @@ h1. FAQ
 
 h2. Design
 
-h3. Q: How does Mongrel relate to SCGI?
-
-Mongrel and SCGI are *completely unrelated* except for the fact that I wrote 
-the SCGI Rails Runner and Mongrel.
-
-There has been some confusion by people as to how Mongrel and SCGI are related.  
-Some folks actually think that Mongrel uses SCGI to run Ruby on Rails or other 
-web applications.  Their confusion can be summarized in this diagram:
-
-!images/mongrel_not_scgi.jpg!
-
-As you can see on the *right*, Ruby on Rails (and other web apps) 
-run *inside* Mongrel as just straight Ruby code and are served
-using *regular HTTP*.  There are no:
-
-# Additional network protocols other than HTTP.
-# Started processes for each request.
-# External connectors or libraries required.
-# Additional server software.
-# Need for SCGI at all ever no way.
-
-In fact *you could drop lighttpd completely* from both diagrams and just serve
-your Mongrel server straight to the network.
-
-
 h3. Q: How is Mongrel designed?
 
 The design of Mongrel most closely matches "Simple":http://simpleweb.sourceforge.net/ 
 which is a very nicely designed web server framework for Java.  Despite being written
-in Java Simple is very clean and simple, thus the name (clever eh?).  The main difference
+in Java, Simple is very clean and simple, thus the name (clever eh?).  The main difference
 between Mongrel and Simple is that Simple monitors returned output from handlers so that
 it can modify the results.  Mongrel instead uses Ruby's blocks to get the same effect.
 
@@ -61,10 +36,10 @@ Other than this there's not much more to it.
 
 h3. Q: Is it multi-threaded or can it handle concurrent requests?
 
-Mongrel is uses a pool of thread workers to do it's processing.  This means that
-it is able to handle concurrent access and should be thread safe.  This also
-means that you have to be more careful about how you use Mongrel.  You can't
-just write your application assuming that there are no threads involved.
+Mongrel uses one thread per request, but it will start closing connections
+when it gets "overloaded".  While Mongrel is processing HTTP requests and
+sending responses it uses Ruby's threading system (which is more like
+Java's original green threads and uses select).
 
 Camping and Og+Nitro are supposed to be thread safe and work with Mongrel directly.
 This hasn't been heavily tested so people should let me know if they get weird
@@ -73,25 +48,116 @@ explosions under heavy load.
 Ruby on Rails is not thread safe so there is a synchronized block around the calls
 to Dispatcher.dispatch.  This means that everything is threaded right before and
 right after Rails runs.  While Rails is running there is only one controller
-in operation at a time.
+in operation at a time.  This is why people typically have to run a small
+set of Mongrel processes (a "Pack of Mongrels") to get good concurrency.
+
+If you have long running actions then you'll most likely have performance
+problems.  You should look at "BackgrounDRB":http://backgroundrb.rubyforge.org/
+as a very nice way to offload work to another process so that your Rails
+app can keep working.
+
+h3. Q: But no, I mean how is it *exactly* locked? Because it's really really important that I know everything.
+
+First off, you should drink less coffee.  Knowing exactly how Rails is locked
+will not help you plan your deployment for the best performance, only testing
+your deployment's speed will help.  You should read "Tuning":/docs/how_many_mongrels.html
+to get a good quick idea on how to figure out what your optimal Mongrel number
+is, and then you should check out "BackgrounDRb":http://backgroundrb.rubyforge.org/ 
+for a good way to move long running tasks outside of Rails for better response.
+
+h3. Q: But, but, but, I really really need to know!  It's killing me I *have* to know!
+
+Fine! It goes like this:
+
+# A request hits mongrel.
+# Mongrel makes a thread and parses the HTTP request headers.
+# If the body is small, then it puts the body into a StringIO.
+# If the body is large then it streams the body to a temp file.
+# When the request is "cooked" it call the RailsHandler.
+# The RailsHandler sees if the file is possibly page cached, if so then it sends the cached page.
+# Now you're *finally* ready to process the Rails request.  *LOCK!*
+# Still *locked*, Mongrel calls the Rails Dispatcher to handle the request, passing in the headers, and StringIO or Tempfile for body.
+# When Rails is done, *UNLOCK!*.  Rails has (hopefully) put all of its output into a StringIO.
+# Mongrel then takes this StringIO output, any output headers, and streams them back to the client super fast.
+
+There's also a bit of processing with chains of Handlers, but that's a minor point.
+For the most part, your goal as a Rails programmer is to make all of your Rails
+actions as fast as possible, and to not do anything that takes a long time.
 
 
-h2. Web Site
+h3. Q: Can I run mongrel without rails?
 
-h3. Q: How did you make this site?
+Yes, Mongrel is designed to host any framework, and already hosts Camping or Nitro 
+as well.  If you're feeling adventurous, check out the "RDoc":/rdoc/index.html
+for the latest API documentation.
 
-The site was actually incredibly easy to create.  I simply went to "OSWD":http://openwebdesign.org/
-and found a design that fit what I wanted for the site.  I then went to "Flickr":http://flickr.com/
-and found pictures of various animals that were licensed under the 
-"Creative Commons":http://creativecommons.org/ license.  Once I chopped the images up, worked them
-into the design structure, and wrote an initial set of content I was done.
+h2. Security
 
-The tool I use to generate the site is called "webgen":http://webgen.rubyforge.org/ which
-is a static site generator written in Ruby.  I write all of the content using redcloth
-mark-up and leave the generation to webgen.  Finally I hooked into the Mongrel Rakefile
-so that it's auto-generated and deployed to the site for me.
+h3. Q: Is Mongrel secure?
 
-Refer to the "attributions":/attributions.html page for information on the resources used.
+Anyone who claims their server is "SECURE" is full of crap.  You can't be
+absolutely certain that any system is secure, but what you can do is put
+policies and practices in place to try and make them more secure.
+
+As you can read in the "Iron Mongrel":/security.html documentation, I 
+have a policy of:
+
+* Extensive testing with multiple techniques, and even wrote my own HTTP fuzzing tool "RFuzz":http://rfuzz.rubyforge.org/
+* Full disclosure on any security issues found.
+* Security auditing of all code before it's released.
+* Design decisions such as using a parser generator and fixed limits on all HTTP.
+* Simply trying to remove all defects and being proactive about it.
+
+Understand that I'm just one person with a few other people's help, so there's
+bound to be mistakes.  You use this technology (and *any* technology) at your
+own risk.
+
+Then again, if someone is telling you their system is secure, but can't tell
+you why it's secure, then maybe you should take a look at what I do to keep
+Mongrel's defects low and ask if they do any of this.  You might be surprised
+at their response.
+
+h3. Q: What's this about .svn directories?
+
+Yeah, Capistrano doesn't use svn export to create the deployment directory so 
+there's a bunch of extra information in the .svn files.  Without special config
+changes to your web server you'll be letting people access these.  Best solution
+is to use svn export rather than checkout to get your code.  If you're already
+screwed then just do:
+
+ find . -name ".svn" -exec rm -rf {} \;
+
+And that'll delete them all in a very final way.
+
+You should also read "the official page on that":http://subversion.tigris.org/faq.html#website-auto-update
+to make sure there's nothing more you need to do.
+
+Finally, you can configure capistrano to do export instead of checkout
+following "their instructions":http://manuals.rubyonrails.com/read/chapter/102
+instead of the ruthless delete I have above.
+
+h3. Q: Does Mongrel have SSL?
+
+No, having a Ruby web server do complex SSL cryptography is stupid when you can
+get any of the major web servers to do it faster.
+
+h3. Q: Why are Apache & SSL - Redirects going to http:// not https://?
+
+Basically, you need to pass in a header so Rails knows what to do.  Read
+the bottom of the "Apache Documentation":/docs/apache.html for instructions
+on how to do this.
+
+
+h2. Installation
+
+h3. Q: I can't get Mongrel installed on Debian.
+
+You should read the "Debian":/docs/debian-sarge.html documentation.
+
+h3. Q: I can't get Mongrel installed on Fedora.
+
+Not sure when Fedora decided to start chopping up its packages like Debian,
+but you should basically just install Ruby from source, then install Mongrel.
 
 
 h2. Deployment
@@ -102,6 +168,16 @@ Take a look at the "documentation pages":/docs/index.html for
 information on deploying and enhancing Mongrel.  Feel free to
 suggest documentation that you think is needed.
 
+h3. Q: Is there some kind of caching of session data in mongrel? 
+
+Nope, Mongrel doesn't do anything with sessions and leaves that to the
+framework.
+
+h3. Q: What is the best way to get mongrel servers within a cluster to always keep their sessions synced?
+
+For Rails the best way is either memcached or database session storage.
+*Do not use PStore!*  It is broken, will crash or lock your Mongrel processes,
+and really isn't all that fast.
 
 h3. Q: What does num-procs do?
 
@@ -176,3 +252,144 @@ It will log objects that get created to log/mongrel_debug and you can
 look in there to find out what object is causing the problems.
 
 
+h3. Why doesn't Mongrel write the .pid file like I tell it to?
+
+There was a change to the 0.3.13.4 release and on that makes it so Mongrel
+doesn't try to "fix" invalid paths.  You should change your configurations
+so that they give explicit full paths to both the log and pid files.
+
+
+h3. How do I put my Rails site at /someprefix?
+
+Most people use a virtual host configuration, but Mongrel now has an option
+that lets you put your site at an arbitrary URI.  Just start mongrel with:
+
+ mongrel_rails start -e production --prefix=/someprefix
+
+Then your site will be at the same host but everything will be relative to
+/someprefix.  The only thing is you have to *religiously* use Rails link_to
+and friends.  If you don't then the links in your pages won't be written right.
+
+
+h3. How many Mongrel processes should I run?
+
+First off, the type of machine you have doesn't matter, what matters is 
+that you measure your *deployment's* speed and tune that for optimal 
+performance.  Then you *must* re-test after every change to your deployment
+configuration to make sure that things didn't get worse or improve.
+
+There's a simple "document on tuning":/docs/how_many_mongrels.html that 
+should get you started.
+
+h3. What does BAD CLIENT mean?
+
+It means that a request came in which Mongrel rejects because it doesn't follow
+the RFC grammar.  Mongrel is pretty relaxed about most requests, but in order to
+block the majority of security attacks for web servers it is strict about characters
+used, header formats, status line formats, etc.  This is also based on matching
+the RFC's grammar specification to a Ragel grammar specification, so it's easy
+to compare.
+
+If you need to know why the client is triggering this, then simply hit your
+Mongrel processes with USR1 signals and they'll log the full request data
+and parameters that were collected.  Then, if you think the request is valid
+send me this data and I'll look.  If it's not valid than fix the client.
+
+Mongrel takes the stance that all clients are written by software developers and
+that they should follow the standard.  By doing this it reduces the bugs and 
+potential security holes found in many other web servers.  It also means that
+if you absolutely have to allow a bad client, then you'll need to not use Mongrel.
+
+
+h3. Why do I get MySQL "lost connection to database" errors?
+
+The most common cause is that you're using mysql.rb that comes with Rails
+rather than the MySQL compiled ruby driver from gems.  Do this:
+
+  sudo gem install mysql
+
+And pick the one for your system (don't type sudo if you're win32).
+
+
+h3. Why does Mongrel keep dying on me?
+
+There are three known causes to this, and all of them are your fault.
+First, there's a few symptoms to check to see if you fit in these
+categories.
+
+* CLOSE_WAIT: Run @lsof -i -P | grep CLOSE_WAIT@ and if you see a bunch of mongrels then you've got a problem.
+* 99% CPU: Check the mongrel processes and see if one or more are at 99%.
+* MEMORY LEAK:  We've supposedly fixed it, but you might be causing it yourself.
+
+In the case of CLOSE_WAIT and 99% CPU the problem is most likely you're using the
+PStore for your session storage.  Don't do this.  Use memcached or database for your
+session storage.  PStore is slow anyway, but with multiple processes it's deadly.
+
+Another cause of CLOSE_WAIT and 99% CPU is one of your Rails actions is doing something
+that "jams" Mongrel requests.  Temporarily turn on USR1 debugging:
+
+  killall -USR1 mongrel_rails
+
+And then watch what Mongrel says about the number of threads waiting for the various
+Rails actions you have.  You'll see right away which one is causing it.  Usually
+it's because you're using an external 3rd party library that isn't designed for
+multiple process action.
+
+For memory leaks the most common cause is using Mutex.  We found that on most systems
+Mutex caused memory leaks when the Mutex was managing many Threads.  Switch to using
+Sync and see if the memory leak goes away.
+
+Other things that can cause big pauses are:
+
+* Using a broken or slow DNS server to resolve hosts.  Ruby blocks the whole process while it resolves.
+* Loading tons and tons of data over and over again.  The GC will kill you if Linux doesn't.
+* Locking files wrong.  Multiple processes locking files is a delicate thing to do.
+* Doing stuff over the network that takes a long time.  Move that process to a DRb server run locally.
+
+If you have to do extensive DNS resolving then consider using dnsmasq run locally to cache the DNS
+queries and make them faster.
+
+h3. How can I run some code before Rails starts?
+
+Simplest way is to put it in your production.rb and configure it there, but if
+you need it done long before Rails starts, then you can throw it into a
+mongrel.conf and run that file with the -S option (see mongrel_rails --help).
+The mongrel.conf is a Ruby script that lets you configure Mongrel with special
+Ruby code, but you can also put other Ruby code in it.
+
+h3. Why do I see my headers when Mongrel is behind Apache?
+
+If you see something weird like this in your browser when you're behind Apache:
+
+  HTTP/1.1 0 Content-Length: 7636
+  Connection: close
+  Date: Sat, 02 Sep 2006 14:10:38 GMT
+  Set-Cookie: device_id=; path=/; expires=Sun, 02 Sep 2007 14:10:38 GMT
+  Set-Cookie: _session_id=85d7a3c296268e0222cb796127da9c43; path=/
+  *Status: status500*
+  Cache-Control: no-cache
+  Server: Mongrel 0.3.13.3
+  Content-Type: text/html
+
+Then what you've done is you've mangled the *status* code inside rails with something 
+that is setting "status => 500".  Rails is then injecting this right in, as you can
+see in the above Status line.  Since this is an invalid status, Apache "helpfully"
+shows you the error so you can correct it.
+
+
+h2. Mongrel Web Site
+
+h3. Q: How did you make this site?
+
+The site was actually incredibly easy to create.  I simply went to "OSWD":http://openwebdesign.org/
+and found a design that fit what I wanted for the site.  I then went to "Flickr":http://flickr.com/
+and found pictures of various animals that were licensed under the 
+"Creative Commons":http://creativecommons.org/ license.  Once I chopped the images up, worked them
+into the design structure, and wrote an initial set of content I was done.
+
+The tool I use to generate the site is called "webgen":http://webgen.rubyforge.org/ which
+is a static site generator written in Ruby.  I write all of the content using redcloth
+mark-up and leave the generation to webgen.  Finally I hooked into the Mongrel Rakefile
+so that it's auto-generated and deployed to the site for me.
+
+Refer to the "attributions":/attributions.html page for information on the resources used.

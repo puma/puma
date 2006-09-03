@@ -1,0 +1,289 @@
+---
+title: Debian HOWTO
+inMenu: true
+useERB: false
+directoryName: Documentation
+---
+
+h1.  Debian
+
+h3.  By Chris McGrath
+
+There's been issues with people installing on Debian, so this document is an
+attempt to detail how to do it. There are actually three different ways (at
+least! You may find more). The easy way worked first time I attempted it on
+a new VPS I was installing. The frankinstall way was discovered when I
+attempted to recreate the easy way to test the process on a brand new local
+Debian install. The backport your own way was worked out to avoid the
+frankinstall you end up with using the second method. 
+
+h2. How to find out which one you need
+
+Debian 3.1 only has Ruby 1.8.2, so you'll need to get Ruby 1.8.4 which is in testing. So
+add the following to your /etc/apt/sources.list. 
+
+<pre>
+  <code>
+    deb ftp://ftp.uk.debian.org/debian/ testing main
+  </code>
+</pre>
+
+*Make sure and change the .uk. to your local mirror.*
+
+Now pin the testing repo so you don't install stuff from it accidentally.
+You'll need to edit /etc/apt/preferences, which doesn't exist on a bare install
+so create it and add the following three lines:
+
+<pre>
+  <code>
+    Package: *
+    Pin: release a=testing
+    Pin-Priority: 200
+  </code>
+</pre>
+
+OK, now to find out whether you're a lucky bunny or you have displeased your
+personal favorite deity. As root do:
+
+<pre>
+  <code>
+    root# apt-get update
+    root# apt-get -s -t testing install ruby irb rdoc ri ruby1.8-dev \
+          libzlib-ruby libopenssl-ruby1.8
+    
+  </code>
+</pre>
+
+*Notice the -s it's important*
+
+Examine the output, if you see the following:
+
+<pre>
+  <code>
+    The following packages will be REMOVED:
+      base-config initrd-tools kernel-image-2.6.8-2-386
+  </code>
+</pre>
+
+Then you're one of the unlucky ones, sorry. Skip to the backport way
+(preferred) or if you're feeling brave the frankinstall way.
+
+h2. Installing the basic stack
+
+If your still reading, congratulations! You don't have kernel issues and you
+should be up and running pretty quickly.
+
+h3. Ruby
+
+First actually install Ruby, so as root do:
+
+<pre>
+  <code>
+    root# apt-get -t testing install ruby irb rdoc ri ruby1.8-dev \
+          libzlib-ruby libopenssl-ruby1.8
+  </code>
+</pre>
+
+h3. RubyGems
+
+Debian don't provide packages for RubyGems, so we have to get it from somewhere
+else. A kind soul has made debs for RubyGems 0.8.11 available, so add the
+following to your /etc/apt/sources.list
+
+<pre>
+  <code>
+    deb http://www.sgtpepper.net/hyspro/deb unstable/
+  </code>
+</pre>
+
+The final / is important. To install RubyGems do:
+
+<pre>
+  <code>
+    root# apt-get update
+    root# apt-get install rubygems
+  </code>
+</pre>
+
+This package doesn't copy gem files to /usr/bin, instead it puts them in
+/var/lib/gems/1.8/bin so we need to add that to the path. Edit /etc/profile and
+add <code>:/var/lib/gems/1.8/bin</code> to the end of each PATH statement,
+there's one for root and one for other users in the standard Debian
+install. You'll need to log in and out again to get your path setup
+correctly.
+
+(NOTE: Some people say just install rubygems from source if this doesn't work
+for you).
+
+h3. GCC & Friends
+
+We're nearly ready to install Mongrel, if you're doing a frankinstall go back
+to that page for the details. For the rest of us, the command is:
+
+<pre>
+  <code>
+    root# apt-get install build-essential
+  </code>
+</pre>
+
+h3. Rails & Mongrel
+
+Time to install Rails and Mongrel at last!
+
+<pre>
+  <code>
+    root# gem install rails --include-dependencies
+    root# gem install mongrel mongrel_cluster --include-dependencies
+  </code>
+</pre>
+
+Pick the latest ruby version of Mongrel from the menu. Wait for it to finish. *CONGRATULATIONS*
+
+h3. Testing
+
+To make sure the congratulations weren't premature, lets check it works. Login
+as a normal user and do:
+
+<pre>
+  <code>
+    user$ rails test_app
+    user$ cd test_app
+    user$ script/generate controller HelloWorld index
+  </code>
+</pre>
+
+Edit <code>app/views/hello_world/index.rhtml</code> to look like:
+
+<pre>
+  <code>
+    <h1>Hello World</h1>
+    <p><%= Time.now.to_s(:long) %></p>
+  </code>
+</pre>
+
+Lets check it's all running.
+
+<pre>
+  <code>
+    user$ mongrel_rails start
+  </code>
+</pre>
+
+Point your browser at http://999.999.999.999:3000/hello_world
+
+(NOTE: Replace 999.999.999.999 with your IP address.)
+
+h1. Backporting 1.8.4 from testing
+
+Sorry you're here, but hey lets get this done. This involves building your own
+debs for Ruby 1.8.4 from source, so you don't have to upgrade your kernel and
+install the build tools from testing like in the frankinstall.
+
+h2. Building your own Ruby debs
+
+First up, you need to *remove* the line we added before in
+/etc/apt/sources.list and clear out /etc/apt/preferences, so do that now. We're
+going to get the source from testing, so add the following to
+/etc/apt/sources.list
+
+<pre>
+  <code>
+    deb-src ftp://ftp.uk.debian.org/debian testing main
+  </code>
+</pre>
+
+*Make sure and change the .uk. to your local mirror.*
+
+And do the following as root:
+
+<pre>
+  <code>
+    root# apt-get update
+    root# apt-get install devscripts # if you don't have them already
+    root# mkdir scratch
+    root# cd scratch
+    root# apt-get source ruby1.8
+    root# apt-get build-dep ruby1.8 
+    root# cd ruby1.8-1.8.4
+    root# debuild -us -uc
+    root# cd ..
+    root# rm ruby1.8-elisp # unless of course you've emacs installed
+    root# dpkg -i *.deb
+    root# ln -s /usr/bin/ruby1.8 /usr/bin/ruby
+    root# ln -s /usr/bin/irb1.8 /usr/bin/irb
+    root# ln -s /usr/bin/ri1.8 /usr/bin/ri
+    root# ln -s /usr/bin/rdoc1.8 /usr/bin/rdoc
+  </code>
+</pre>
+
+
+h3. To be worked out:
+
+* No libzlib-ruby deb made... couldn't figure out how to get it done
+* Install rubygems - when I ignored that and tried to use Ezra's sgtpepper.net mirror it wants to install ruby-1.8.2
+
+
+h1. Frankinstall of Mongrel on Debian Sarge
+
+If you're here I'm really, really sorry. I hope this doesn't mess up your
+machine. If you're going to do this I'd consider just using testing itself, or
+Ubuntu or something. Anyways, it's here for completeness, I had to re-install
+Debian four times to figure this out so I'm damn well writing it up.
+
+This details how to go from a basic debian-31r2-i386-netinst.iso install to
+having Ruby 1.8.4, RubyGems, Rails and Mongrel running (and a good part of
+testing). I'm not going to cover MySQL or any of that, this is purely about
+the dog.
+
+When I say a basic install, I mean a basic install. I entered linux26 at the
+boot menu to get a 2.6 based system. Let it do it's stuff, then when the
+installer asks what kind of system you want I chose to manual package
+selection, and only installed ssh.
+
+I'm going to assume you got as far as adding the testing stuff to
+/etc/apt/sources.list and /etc/apt/preferences from the Debian HOWTO page. The
+next thing you need to read is
+"this":http://www200.pair.com/mecham/spam/kernel.html, which explains why we
+have to do what we now have to do.
+
+h3. Upgrading the kernel
+
+<pre>
+  <code>
+    root# apt-get -t testing install initrd-tools
+  </code>
+</pre>
+
+This installed 0.1.84.1, so next time to install an updated kernel that can handle udev. 
+
+<pre>
+  <code>
+    root# apt-get -t testing install linux-image-486
+  </code>
+</pre>
+
+Lots of stuff gets installed, including a 2.6.15 kernel. It asks you if you
+want to upgrade glibc during this so say yes. When it's finished, reboot the
+system.
+
+When it comes back up (and lets hope it does), time to install Ruby. Now you've
+upgraded the kernel this is the same procedure the lucky people get to use. So
+go and follow the instructions for Ruby and RubyGems there, then come back here
+when it's time for GCC and it's toolchain.
+
+h3. Installing the testing version of the GCC toolchain
+
+Because of glibc issues now you've upgraded your kernel, you're back here. It's
+actually not that different a command from the lucky people, it just installs a
+bunch more stuff from testing than you might be comfortable with.
+
+<pre>
+  <code>
+    root# apt-get -t testing install build-essential
+  </code>
+</pre>
+
+When it's finished, and you have your frankinstall, it's time to install Rails
+and Mongrel at last! Back to the luck people page, it's the same from here on
+in. Good luck! I don't guarantee you'll have a trouble free ride installing
+whatever else you need to get going, but I hope you do. 

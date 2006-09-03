@@ -1,0 +1,90 @@
+---
+title: Tuning
+inMenu: true
+directoryName: Tuning
+---
+
+h1.  How Many Mongrel Instances Should I Run?
+
+There is no set number that is "best" since that depends on factors like the
+type of application, server hardware, how dynamic the appication is, etc.
+
+I've found that 8-12 mongrel processes per CPU is about right, but I determined
+this by starting with 1 and then doing the following:
+
+h2. Baseline Your Server
+
+Pick a URL to a small file that is running on your apache server and is not
+served by Mongrel at all.  This URL will be your "best possible baseline".
+
+Build your baseline measurement first.  Using httperf, measure the speed of
+your URL so that you know how fast you could possibly get if you served
+everything static in ideal situations.
+
+**Make sure you do this on a different machine over an ideal network.** 
+Not your damn wifi over a phone line through sixteen poorly configured routers.
+Right next to the box your testing with a fast switch and only one hop is the
+best test situation.  This removes network latency from your test as a
+confounding factor.
+
+
+h2. Baseline Rails and Mongrel
+
+Pick a page that's a good representative page for your application.  Make sure
+you disable logins to make this test easier to run.  Hit this Rails page and
+compare it to your baseline page.
+
+* If your rails measurement is *faster* than your baseline
+  measurement then you screwed up.  Rails shouldn't be faster than a file
+  off your static server.  Check your config.
+* If your rails measurement is *horribly slow* compared to baseline
+  then you've got some config to do before you even start tuning the
+  number of process.  Repeat this test until one mongrel is as fast as
+  possible.
+
+h2. Tweak
+
+Once you've got a Rails page going at a reasonable speed, then you'll want to
+increase the --rate setting to make sure that it can handle the reported rate.
+
+Finally, alternate between adding a mongrel process and running the test with
+the next highest rate you'd get.  Stop when adding one more server doesn't
+improve your rate.
+
+*Make sure you run one round of the test to get the server "warmed up", and
+then run the real one.*  Heck, run like 5 or 6 just to make sure you're not
+getting a possibly bad reading.
+
+h2. Example
+
+# Run the test and find out that one mongrel can support a @--rate@ of 120 req/second.
+# Add another mongrel and run the test again with @--rate@ 240.  It handles this
+  just find so you add another and get @--rate@ 360.
+# Try another one and it dies.  Giving @--rate@ 480 gets you only a rate of 100.
+  Your server has hit it's max and broke.  
+# Try tuning the @--rate@ down at this and see if it's totally busted (like, 4 mongrels 
+  only gets you @--rate@ 380) or if it's pretty close to 480.
+# That should do it.  A good practice is to also look at the CPUs on the
+  server with top and see what kind of thrashing you give the server.
+
+
+h2. HTTPERF
+
+Here's the commands I use for each test, but read the man page for
+httperf so that you learn to use it.  It's an important tool and just
+cut-pasting what I have here is not going to do it for you.
+
+* @httperf --server www.theserver.com --port 80 --uri /tested --num-conns <10 second count>@
+
+* @httperf --server www.theserver.com --port 80 --uri /tested --num-conns <10 second count> --rate <reported req/sec>@
+
+Where @<10 second count>@ is enough connections to make the test run for 10
+seconds.  Start off with like 100 and keep raising it until it goes for 10
+seconds.
+
+Where @<reported req/sec>@ is whatever httperf said the estimated
+requests/second were.  What you're doing here is seeing if it really can handle
+that much concurrency.  Try raising it up and dropping it down to see the
+impact of performance on higher loads.
+
+Have fun.
