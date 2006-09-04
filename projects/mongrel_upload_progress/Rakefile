@@ -22,7 +22,7 @@ setup_gem(name, version) do |spec|
   spec.summary = "The mongrel_upload_progress GemPlugin"
   spec.description = spec.summary
   spec.author="Nobody"
-  spec.add_dependency('mongrel', '= 0.3.13.4')
+  spec.add_dependency('mongrel', '>= 0.3.13.3')
   spec.add_dependency('gem_plugin', '>= 0.2.1')
   spec.files += Dir.glob("resources/**/*")
 end
