@@ -40,7 +40,7 @@ as an example, but this should work with any Ruby framework, such as Camping or
 Nitro.
 
 Now that Mongrel is set up, let's create a "basic upload
-form":/docs/upload_progress_form.html.  If you
+form":/docs/upload_progress_form.rhtml.  If you
 look closely you'll notice a few things:
 
 * A unique <code>:upload_id</code> parameter must be sent to the upload_progress handler.  This is so requests don't get mixed up, and the client page has an ID to query with.
