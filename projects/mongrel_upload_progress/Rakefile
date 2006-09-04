@@ -15,14 +15,14 @@ setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 desc "Does a full compile, test run"
 task :default => [:test, :package]
 
-version="0.1"
+version="0.2"
 name="mongrel_upload_progress"
 
 setup_gem(name, version) do |spec|
   spec.summary = "The mongrel_upload_progress GemPlugin"
   spec.description = spec.summary
   spec.author="Nobody"
-  spec.add_dependency('mongrel', '>= 0.3.13')
+  spec.add_dependency('mongrel', '= 0.3.13.4')
   spec.add_dependency('gem_plugin', '>= 0.2.1')
   spec.files += Dir.glob("resources/**/*")
 end

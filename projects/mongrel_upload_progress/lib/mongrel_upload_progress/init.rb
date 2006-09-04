@@ -36,7 +36,7 @@ class Upload < GemPlugin::Plugin "/handlers"
         params[Mongrel::Const::REQUEST_METHOD] == 'POST' &&
         upload_id = Mongrel::HttpRequest.query_parse(params['QUERY_STRING'])['upload_id']
       if action == :mark
-        last_checked_time = instance_variable_get(checked_var(upid)) rescue nil
+        last_checked_time = instance_variable_get(checked_var(upload_id)) rescue nil
         return unless last_checked_time && Time.now - last_checked_time > @frequency
       end
       return unless Mongrel::Uploads.send(action, upload_id, *args)
