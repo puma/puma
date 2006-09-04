@@ -6,8 +6,131 @@ directoryName: Upload Progress
 
 h1. Mongrel Upload Progress Plugin
 
-There's a plugin for Rails that gives folks a fancy "upload progress" but which really
-only works with FastCGI.  There's plans in the works to create a similar system 
-for Mongrel, but until that's made official you're pretty much on your own.
+One of the really nice things about Mongrel is its simplicity.  It's very easy
+for someone to take and extend for their own needs.  The Mongrel Upload
+Progress plugin is an example of how I'm able to extend the Mongrel HTTP
+Request object and provide near-realtime progress updates.
+
+The reason why this is a challenge, is because web servers usually gather the
+HTTP request, send it on to the web framework, and wait on a response.  This is
+fine for most requests, because they're too small to cause an issue.  For large
+file uploads this is a usability nightmare. The user is left wondering what
+whether their upload is going through or not.  
+
+To do this, I've written a Mongrel handler that hooks into some basic Request
+callbacks.  To use it, you need to install the gem, and create a small config
+file for it:
+
+<pre><code>gem install mongrel_upload_progress
+
+# config/mongrel_upload_progress.conf
+uri "/", 
+  :handler => plugin("/handlers/upload", :path_info => '/files/upload'), 
+  :in_front => true
+
+# start mongrel
+mongrel_rails -d -p 3000 -S config/mongrel_upload_progress.conf
+</code></pre>
+
+That config file tells mongrel to load the Upload handler in front of all other
+handlers.  <code>:path_info</code> is passed to it, telling upload_progress to
+only watch the /files/upload action.  There are two more parameters that I'll
+get into later: <code>:frequency</code> and <code>:drb</code>.  I'm using Rails
+as an example, but this should work with any Ruby framework, such as Camping or
+Nitro.
+
+Now that Mongrel is set up, let's create a "basic upload
+form":/docs/upload_progress_form.html.  If you
+look closely you'll notice a few things:
+
+* A unique <code>:upload_id</code> parameter must be sent to the upload_progress handler.  This is so requests don't get mixed up, and the client page has an ID to query with.
+* The &lt;form> tag is targetted to an iFrame to do the uploading.  Certain browsers (like Safari) won't execute javascript while a request is taken place, so this step is necessary. 
+* There is a little "javascript library":/docs/upload_progress_javascript.js being used.  This handles the polling and status bar updates.  
+* Notice the form's action is file/upload, just like the upload_progress handler.
+
+The "Rails controller
+actions":/docs/upload_progress_rails.rb for this are very
+simple.  The upload form itself needs no custom code.  The upload action only
+renders javascript to be executed in the iFrame, to modify the contents of the
+parent page.  The progress action is a basic RJS action that updates the
+current status.  Most of the guts of this are implemented in the javascript
+library.  
+
+Here's what happens when you submit the form:
+
+* The UploadProgress class creates a PeriodicalExecuter and gets ready to poll.
+* The browser initiates the upload.
+* Every 3 seconds, the PeriodicalExecuter calls the RJS #progress action and gets back the current status of the file.  
+* Once finished, the iFrame calls <code>window.parent.UploadProgress.finish()</code>, which  removes the status bar and performs any other finishing actions.
+
+How's this work with a single Mongrel process if "Mongrel synchronizes Rails
+requests":http://david.planetargon.us/articles/2006/08/08/why-you-need-multiple-mongrel-instances-with-rails?
+It's actually very careful about locking, synchronizing only the bare minimum.
+The whole time that Mongrel is receiving the request and updating the progress
+is spent _in_ Mongrel, so it can happily serve other requests.  This is how the
+RJS action is able poll while it's uploading.
+
+This is fine and dandy, but not too many sites run on a single Mongrel.  You'll
+quickly run into problems with multiple mongrels since only one Mongrel process
+knows about the upload.  You'll either have to specify a specific mongrel port
+to communicate with, or set up a dedicated mongrel upload process.  The third
+option, is use DRb.
+
+<pre><code># config/mongrel_upload_progress.conf
+uri "/", 
+  :handler => plugin("/handlers/upload", 
+    :path_info => '/files/upload', 
+    :drb => 'druby://0.0.0.0:2999'), 
+  :in_front => true
+
+# lib/upload.rb, the upload drb server
+require 'rubygems'
+require 'drb'
+require 'gem_plugin'
+GemPlugin::Manager.instance.load 'mongrel' => GemPlugin::INCLUDE
+DRb.start_service 'druby://0.0.0.0:2999', Mongrel::UploadProgress.new
+DRb.thread.join</code></pre>
+
+Now in addition to starting mongrel, you'll need to start the DRb service too:
+
+<pre><code>ruby lib/upload.rb</code></pre>
+
+The Rails app should work the same as before, but now it is using a shared DRb
+instance to store the updates.  This gives us one other advantage: a console
+interface to the current uploads.
+
+<pre><code># lib/upload_client.rb, a simple upload drb client
+require 'drb'
+DRb.start_service
+
+def get_status
+  DRbObject.new nil, 'druby://0.0.0.0:2999'
+end
+
+# typical console session
+$ irb -r lib/upload_client.rb
+>> uploads = get_status
+>> uploads.list
+=> []
+# start uploading in the browser
+>> uploads.list
+=> ["1157399821"]
+>> uploads.check "1157399821"
+=> {:size=>863467686, :received=>0}</code></pre>
+
+Using DRb gives you a simple way to monitor the status of current uploads in
+progress.  You could also write a simple web frontend for this too, accessing
+the DRb client with Mongrel::Uploads.
+
+One final note is the use of the <code>:frequency</code> option.  By default,
+    the upload progress is marked every three seconds.  This can be modified
+    through the mongrel config file:
+
+<pre><code>uri "/", 
+  :handler => plugin("/handlers/upload", 
+    :path_info => '/files/upload', 
+    :frequency => 1,
+    :drb => 'druby://0.0.0.0:2999'), 
+  :in_front => true</code></pre>
 
 
