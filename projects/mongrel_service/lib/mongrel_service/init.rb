@@ -104,7 +104,7 @@ module Service
       # now the options
       argv << "-e #{@options[:environment]}" if @options[:environment]
       argv << "-p #{@options[:port]}"
-      argv << "-a #{@options[:address]}"  if @options[:address]
+      argv << "-a #{@options[:host]}"  if @options[:host]
       argv << "-l \"#{@options[:log_file]}\"" if @options[:log_file]
       argv << "-P \"#{@options[:pid_file]}\""
       argv << "-c \"#{@options[:cwd]}\"" if @options[:cwd]

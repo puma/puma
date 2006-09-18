@@ -15,7 +15,7 @@ setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 desc "Does a full compile, test run"
 task :default => [:test, :package]
 
-version="0.2"
+version="0.2.1"
 name="mongrel_service"
 
 setup_gem(name, version) do |spec|
