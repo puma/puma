@@ -42,7 +42,7 @@ is a *best practice* which means that if you do something different then you'll
 have to do your own research.  Best way to work it is to do the *best practice*
 exactly as described, then try to do something weird from there.
 
-* "Apache":apache.html -- Not written yet.
+* "Apache":apache.html -- The current preferred way to host Mongrel.
 * "Litespeed":litespeed.html -- Another good option, but not open source.
 * "Lighttpd":lighttpd.html -- Using mod_proxy to do a cluster.
 * "Pound":pound.html -- Small scale and dead simple with SSL.

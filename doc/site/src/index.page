@@ -13,6 +13,7 @@ and "Camping":http://camping.rubyforge.org/files/README.html frameworks.
 
 @You need Ruby 1.8.4 just like the gem says you do.@
 
+
 h2. Getting Started
 
 The easiest way to get started with Mongrel is to install it via RubyGems
@@ -32,7 +33,7 @@ start command.  Use the *mongrel_rails start -h* to see them all.
 h2. Win32 Support
 
 Win32 is fully supported by Mongrel with services and CPU
-affinity support.  You should ready the "Win32 HOWTO":docs/win32.html
+affinity support.  You should read the "Win32 HOWTO":docs/win32.html
 for information on getting started.
 
 The main thing with Win32 support is that there is no *fork* 

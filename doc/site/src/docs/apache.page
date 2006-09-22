@@ -6,7 +6,7 @@ directoryName: Apache
 
 h1. Apache Best Practice Deployment
 
-h3. By Philip Hallstrom and Charles Brian Quinn
+h3. By Charles Brian Quinn
 
 The preferred setup (for now) is to put Mongrel behind an Apache 2.2.3 
 server running mod_proxy_balancer.  Apache is a proven web server, runs 

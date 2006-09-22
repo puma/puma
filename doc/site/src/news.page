@@ -7,12 +7,42 @@ ordering: 2
 
 h1. Latest News
 
+h2. Sep 18: Finally! 0.3.13.4 Is Official (for Unix)!
+
+Everyone's favorite web server went gold this weekend.  I let it sit for
+a while to make sure all the remaining bugs were out, and people seem to
+be doing really well with the pre-release.  This release only fixes the
+problem of Start, Restart, Stop, and Stats class names clashing with 
+people's Rails models.  Otherwise, if you've been tracking the periodic
+releases then you know what's up.
+
+I'll be posting *win32* releases and a full change log over the next week.
+This release should be very stable and once everyone's actually migrated
+to it and I've worked out any remaining kinks I'll bump the version up
+before working on 0.4.
+
+h3. INSTALLING
+
+As usual you install it using:
+
+ gem install mongrel
+
+And I'm really really sorry about the forty thousand gems that get listed.
+I promise to drive one of the RubyGems guys into a corner until they help
+me clean that mess out.
+
+*Win32* people will be able to upgrade in the next week or so.
+
+h3. CHANGE LOG
+
+Coming soon... it's lots of stuff.
+
 h2. Jun 30: Mongrel 0.3.13.3 -- Ruby Licensed Release
 
 After talking with various people deep inside the Ruby machine, I've decided
 to release Mongrel Ruby licensed as of 0.3.13.3.  This release should make
 quite a few people happy.  It also means that contributors will hopefully
-feel better about their contibutions and people using Mongrel have more freedom.
+feel better about their contributions and people using Mongrel have more freedom.
 
 This release also fixes a problem with the -B option not actually logging 
 object counts.  The object count logging isn't perfect, but some folks use
@@ -69,7 +99,7 @@ This release fixes:
 
 * The -C configure file option was busted because of an errant line move.
 * Adds RedirectHandler thanks to Jonas Pfenniger and a new redirect call to Configurator.
-* Fixes mongrel_servic documentation which was referring to -r instead of -c and -C instead of -u.
+* Fixes mongrel_service documentation which was referring to -r instead of -c and -C instead of -u.
 
 h3. Using RedirectHandler
 
