@@ -157,6 +157,10 @@ module Mongrel
         puts "#{Mongrel::Command::BANNER}\nAvailable commands are:\n\n"
 
         self.commands.each do |name|
+          if /mongrel::/ =~ name
+            name = name[9 .. -1]
+          end
+
           puts " - #{name[1 .. -1]}\n"
         end
 
@@ -179,8 +183,12 @@ module Mongrel
           return true
         end
 
-        # command exists, set it up and validate it
         begin
+          # quick hack so that existing commands will keep working but the Mongrel:: ones can be moved
+          if ["start", "stop", "restart"].include? cmd_name
+            cmd_name = "mongrel::" + cmd_name
+          end
+
           command = GemPlugin::Manager.instance.create("/commands/#{cmd_name}", :argv => args)
         rescue OptionParser::InvalidOption
           STDERR.puts "#$! for command '#{cmd_name}'"

@@ -10,216 +10,217 @@ require 'mongrel'
 require 'mongrel/rails'
 require 'etc'
 
+module Mongrel
+  class Start < GemPlugin::Plugin "/commands"
+    include Mongrel::Command::Base
 
-class Start < GemPlugin::Plugin "/commands"
-  include Mongrel::Command::Base
-
-  def configure
-    options [
-      ["-e", "--environment ENV", "Rails environment to run as", :@environment, ENV['RAILS_ENV'] || "development"],
-      ["-d", "--daemonize", "Whether to run in the background or not", :@daemon, false],
-      ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
-      ['-a', '--address ADDR', "Address to bind to", :@address, "0.0.0.0"],
-      ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
-      ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"],
-      ['-n', '--num-procs INT', "Number of processors active before clients denied", :@num_procs, 1024],
-      ['-t', '--timeout TIME', "Timeout all requests after 100th seconds time", :@timeout, 0],
-      ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
-      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
-      ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, "public"],
-      ['-B', '--debug', "Enable debugging mode", :@debug, false],
-      ['-C', '--config PATH', "Use a config file", :@config_file, nil],
-      ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil],
-      ['-G', '--generate CONFIG', "Generate a config file for -C", :@generate, nil],
-      ['', '--user USER', "User to run as", :@user, nil],
-      ['', '--group GROUP', "Group to run as", :@group, nil],
-      ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, nil]
-    ]
-  end
-
-  def validate
-    @cwd = File.expand_path(@cwd)
-    valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
-
-    # change there to start, then we'll have to come back after daemonize
-    Dir.chdir(@cwd)
-
-    valid?(@prefix[0].chr == "/" && @prefix[-1].chr != "/", "Prefix must begin with / and not end in /") if @prefix
-    valid_dir? File.dirname(@log_file), "Path to log file not valid: #@log_file"
-    valid_dir? File.dirname(@pid_file), "Path to pid file not valid: #@pid_file"
-    valid_dir? @docroot, "Path to docroot not valid: #@docroot"
-    valid_exists? @mime_map, "MIME mapping file does not exist: #@mime_map" if @mime_map
-    valid_exists? @config_file, "Config file not there: #@config_file" if @config_file
-    valid_dir? File.dirname(@generate), "Problem accessing directory to #@generate" if @generate
-    valid_user? @user if @user
-    valid_group? @group if @group
-
-    return @valid
-  end
-  
-  
-  def run
-
-    # command line setting override config file settings
-    settings = { :host => @address,  :port => @port, :cwd => @cwd,
-      :log_file => @log_file, :pid_file => @pid_file, :environment => @environment,
-      :docroot => @docroot, :mime_map => @mime_map, :daemon => @daemon,
-      :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
-      :num_processors => @num_procs, :timeout => @timeout,
-      :user => @user, :group => @group, :prefix => @prefix, :config_file => @config_file
-    }
-
-    if @generate
-      STDERR.puts "** Writing config to #@generate"
-      open(@generate, "w") {|f| f.write(settings.to_yaml) }
-      STDERR.puts "## Exiting. Re-run without -G and WITH -C using your new config file."
-      exit 0
+    def configure
+      options [
+        ["-e", "--environment ENV", "Rails environment to run as", :@environment, ENV['RAILS_ENV'] || "development"],
+        ["-d", "--daemonize", "Whether to run in the background or not", :@daemon, false],
+        ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
+        ['-a', '--address ADDR', "Address to bind to", :@address, "0.0.0.0"],
+        ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
+        ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"],
+        ['-n', '--num-procs INT', "Number of processors active before clients denied", :@num_procs, 1024],
+        ['-t', '--timeout TIME', "Timeout all requests after 100th seconds time", :@timeout, 0],
+        ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
+        ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
+        ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, "public"],
+        ['-B', '--debug', "Enable debugging mode", :@debug, false],
+        ['-C', '--config PATH', "Use a config file", :@config_file, nil],
+        ['-S', '--script PATH', "Load the given file as an extra config script.", :@config_script, nil],
+        ['-G', '--generate CONFIG', "Generate a config file for -C", :@generate, nil],
+        ['', '--user USER', "User to run as", :@user, nil],
+        ['', '--group GROUP', "Group to run as", :@group, nil],
+        ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, nil]
+      ]
     end
 
-    if @config_file
-      conf = YAML.load_file(@config_file)
-      settings = settings.merge! conf
-      STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless settings[:daemon]
+    def validate
+      @cwd = File.expand_path(@cwd)
+      valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+
+      # change there to start, then we'll have to come back after daemonize
+      Dir.chdir(@cwd)
+
+      valid?(@prefix[0].chr == "/" && @prefix[-1].chr != "/", "Prefix must begin with / and not end in /") if @prefix
+      valid_dir? File.dirname(@log_file), "Path to log file not valid: #@log_file"
+      valid_dir? File.dirname(@pid_file), "Path to pid file not valid: #@pid_file"
+      valid_dir? @docroot, "Path to docroot not valid: #@docroot"
+      valid_exists? @mime_map, "MIME mapping file does not exist: #@mime_map" if @mime_map
+      valid_exists? @config_file, "Config file not there: #@config_file" if @config_file
+      valid_dir? File.dirname(@generate), "Problem accessing directory to #@generate" if @generate
+      valid_user? @user if @user
+      valid_group? @group if @group
+
+      return @valid
     end
 
-    config = Mongrel::Rails::RailsConfigurator.new(settings) do
-      if defaults[:daemon]
-        if File.exist? defaults[:pid_file]
-          log "!!! PID file #{defaults[:pid_file]} already exists.  Mongrel could be running already. Check your #{defaults[:log_file]} for errors."
-        end
 
-        daemonize
-        log "Daemonized, any open files are closed.  Look at #{defaults[:pid_file]} and #{defaults[:log_file]} for info."
-        log "Settings loaded from #{@config_file} (they override command line)." if @config_file
+    def run
+
+      # command line setting override config file settings
+      settings = { :host => @address,  :port => @port, :cwd => @cwd,
+        :log_file => @log_file, :pid_file => @pid_file, :environment => @environment,
+        :docroot => @docroot, :mime_map => @mime_map, :daemon => @daemon,
+        :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
+        :num_processors => @num_procs, :timeout => @timeout,
+        :user => @user, :group => @group, :prefix => @prefix, :config_file => @config_file
+      }
+
+      if @generate
+        STDERR.puts "** Writing config to #@generate"
+        open(@generate, "w") {|f| f.write(settings.to_yaml) }
+        STDERR.puts "## Exiting. Re-run without -G and WITH -C using your new config file."
+        exit 0
       end
 
-      log "Starting Mongrel listening at #{defaults[:host]}:#{defaults[:port]}"
-
-      listener do
-        mime = {}
-        if defaults[:mime_map]
-          log "Loading additional MIME types from #{defaults[:mime_map]}"
-          mime = load_mime_map(defaults[:mime_map], mime)
-        end
-
-        if defaults[:debug]
-          log "Installing debugging prefixed filters.  Look in log/mongrel_debug for the files."
-          debug "/"
-        end
-
-        log "Starting Rails with #{defaults[:environment]} environment..."
-        log "Mounting Rails at #{defaults[:prefix]}..." if defaults[:prefix]
-        uri defaults[:prefix] || "/", :handler => rails(:mime => mime, :prefix => defaults[:prefix])
-        log "Rails loaded."
-
-        log "Loading any Rails specific GemPlugins"
-        load_plugins
-
-        if defaults[:config_script]
-          log "Loading #{defaults[:config_script]} external config script"
-          run_config(defaults[:config_script])
-        end
-
-        setup_rails_signals
+      if @config_file
+        conf = YAML.load_file(@config_file)
+        settings = settings.merge! conf
+        STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless settings[:daemon]
       end
-    end
 
-    config.run
-    config.log "Mongrel available at #{settings[:host]}:#{settings[:port]}"
-    
-    if config.defaults[:daemon]
-      config.write_pid_file
-    else
-      config.log "Use CTRL-C to stop." 
-    end
+      config = Mongrel::Rails::RailsConfigurator.new(settings) do
+        if defaults[:daemon]
+          if File.exist? defaults[:pid_file]
+            log "!!! PID file #{defaults[:pid_file]} already exists.  Mongrel could be running already. Check your #{defaults[:log_file]} for errors."
+          end
 
-    config.join
+          daemonize
+          log "Daemonized, any open files are closed.  Look at #{defaults[:pid_file]} and #{defaults[:log_file]} for info."
+          log "Settings loaded from #{@config_file} (they override command line)." if @config_file
+        end
 
-    if config.needs_restart
-      if RUBY_PLATFORM !~ /mswin/
-        cmd = "ruby #{__FILE__} start #{original_args.join(' ')}"
-        config.log "Restarting with arguments:  #{cmd}"
-        exec cmd
+        log "Starting Mongrel listening at #{defaults[:host]}:#{defaults[:port]}"
+
+        listener do
+          mime = {}
+          if defaults[:mime_map]
+            log "Loading additional MIME types from #{defaults[:mime_map]}"
+            mime = load_mime_map(defaults[:mime_map], mime)
+          end
+
+          if defaults[:debug]
+            log "Installing debugging prefixed filters.  Look in log/mongrel_debug for the files."
+            debug "/"
+          end
+
+          log "Starting Rails with #{defaults[:environment]} environment..."
+          log "Mounting Rails at #{defaults[:prefix]}..." if defaults[:prefix]
+          uri defaults[:prefix] || "/", :handler => rails(:mime => mime, :prefix => defaults[:prefix])
+          log "Rails loaded."
+
+          log "Loading any Rails specific GemPlugins"
+          load_plugins
+
+          if defaults[:config_script]
+            log "Loading #{defaults[:config_script]} external config script"
+            run_config(defaults[:config_script])
+          end
+
+          setup_rails_signals
+        end
+      end
+
+      config.run
+      config.log "Mongrel available at #{settings[:host]}:#{settings[:port]}"
+
+      if config.defaults[:daemon]
+        config.write_pid_file
       else
-        config.log "Win32 does not support restarts. Exiting."
+        config.log "Use CTRL-C to stop." 
+      end
+
+      config.join
+
+      if config.needs_restart
+        if RUBY_PLATFORM !~ /mswin/
+          cmd = "ruby #{__FILE__} start #{original_args.join(' ')}"
+          config.log "Restarting with arguments:  #{cmd}"
+          exec cmd
+        else
+          config.log "Win32 does not support restarts. Exiting."
+        end
       end
     end
   end
-end
 
-def send_signal(signal, pid_file)
-  pid = open(pid_file).read.to_i
-  print "Sending #{signal} to Mongrel at PID #{pid}..."
-  begin
-    Process.kill(signal, pid)
-  rescue Errno::ESRCH
-    puts "Process does not exist.  Not running."
-  end
+  def Mongrel::send_signal(signal, pid_file)
+    pid = open(pid_file).read.to_i
+    print "Sending #{signal} to Mongrel at PID #{pid}..."
+    begin
+      Process.kill(signal, pid)
+    rescue Errno::ESRCH
+      puts "Process does not exist.  Not running."
+    end
 
-  puts "Done."
-end
-
-
-class Stop < GemPlugin::Plugin "/commands"
-  include Mongrel::Command::Base
-
-  def configure 
-    options [ 
-      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, "."],
-      ['-f', '--force', "Force the shutdown.", :@force, false],
-      ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
-    ]
-  end
-
-  def validate
-    @cwd = File.expand_path(@cwd)
-    valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
-
-    Dir.chdir @cwd
-
-    valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
-    return @valid
+    puts "Done."
   end
 
 
-  def run
-    if @force
-      send_signal("KILL", @pid_file)
-    else
-      send_signal("TERM", @pid_file)
+  class Stop < GemPlugin::Plugin "/commands"
+    include Mongrel::Command::Base
+
+    def configure 
+      options [ 
+        ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, "."],
+        ['-f', '--force', "Force the shutdown.", :@force, false],
+        ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
+      ]
+    end
+
+    def validate
+      @cwd = File.expand_path(@cwd)
+      valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+
+      Dir.chdir @cwd
+
+      valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
+      return @valid
+    end
+
+
+    def run
+      if @force
+        Mongrel::send_signal("KILL", @pid_file)
+      else
+        Mongrel::send_signal("TERM", @pid_file)
+      end
     end
   end
-end
 
 
 
-class Restart < GemPlugin::Plugin "/commands"
-  include Mongrel::Command::Base
+  class Restart < GemPlugin::Plugin "/commands"
+    include Mongrel::Command::Base
 
-  def configure 
-    options [ 
-      ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, '.'],
-      ['-s', '--soft', "Do a soft restart rather than a process exit restart", :@soft, false],
-      ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
-    ]
-  end
+    def configure 
+      options [ 
+        ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, '.'],
+        ['-s', '--soft', "Do a soft restart rather than a process exit restart", :@soft, false],
+        ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
+      ]
+    end
 
-  def validate
-    @cwd = File.expand_path(@cwd)
-    valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
+    def validate
+      @cwd = File.expand_path(@cwd)
+      valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
 
-    Dir.chdir @cwd
+      Dir.chdir @cwd
 
-    valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
-    return @valid
-  end
+      valid_exists? @pid_file, "PID file #@pid_file does not exist. Not running?" 
+      return @valid
+    end
 
 
-  def run
-    if @soft
-      send_signal("HUP", @pid_file)
-    else
-      send_signal("USR2", @pid_file)
+    def run
+      if @soft
+        Mongrel::send_signal("HUP", @pid_file)
+      else
+        Mongrel::send_signal("USR2", @pid_file)
+      end
     end
   end
 end
@@ -227,10 +228,6 @@ end
 
 GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
 
-
 if not Mongrel::Command::Registry.instance.run ARGV
   exit 1
 end
-
-
-

@@ -78,10 +78,12 @@ module Mongrel
             # we don't want the output to be really final until we're out of the lock
             cgi.default_really_final = false
 
-            log_threads_waiting_for(request.params["PATH_INFO"]) if $mongrel_debug_client
+            log_threads_waiting_for(request.params["PATH_INFO"] || @active_request_path) if $mongrel_debug_client
 
             @guard.synchronize(:EX) {
+              @active_request_path = request.params["PATH_INFO"] 
               Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
+              @active_request_path = nil
             }
 
             # This finalizes the output using the proper HttpResponse way

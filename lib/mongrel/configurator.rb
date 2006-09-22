@@ -302,17 +302,17 @@ module Mongrel
     #   debug "/", what = [:rails]
     # 
     # And it will only produce the log/mongrel_debug/rails.log file.
-    # Available options are:  :objects, :rails, :files, :threads, :params
+    # Available options are: :access, :files, :objects, :threads, :rails 
     # 
     # NOTE: Use [:files] to get accesses dumped to stderr like with WEBrick.
-    def debug(location, what = [:objects, :rails, :files, :threads, :params])
+    def debug(location, what = [:access, :files, :objects, :threads, :rails])
       require 'mongrel/debug'
       handlers = {
-        :files => "/handlers/requestlog::access", 
-        :rails => "/handlers/requestlog::files", 
+        :access => "/handlers/requestlog::access", 
+        :files => "/handlers/requestlog::files", 
         :objects => "/handlers/requestlog::objects", 
         :threads => "/handlers/requestlog::threads",
-        :params => "/handlers/requestlog::params"
+        :rails => "/handlers/requestlog::params"
       }
 
       # turn on the debugging infrastructure, and ObjectTracker is a pig

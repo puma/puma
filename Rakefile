@@ -53,7 +53,7 @@ task :site => [:site_webgen, :site_rdoc, :site_coverage, :site_projects_rdoc]
 setup_extension("http11", "http11")
 
 name="mongrel"
-version="0.3.13.4"
+version="0.3.13.5"
 
 setup_gem(name, version) do |spec|
   spec.summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."

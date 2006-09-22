@@ -324,11 +324,11 @@ module Mongrel
     def initialize(ops={})
       @sample_rate = ops[:sample_rate] || 300
 
-      @processors = Stats.new("processors")
-      @reqsize = Stats.new("request Kb")
-      @headcount = Stats.new("req param count")
-      @respsize = Stats.new("response Kb")
-      @interreq = Stats.new("inter-request time")
+      @processors = Mongrel::Stats.new("processors")
+      @reqsize = Mongrel::Stats.new("request Kb")
+      @headcount = Mongrel::Stats.new("req param count")
+      @respsize = Mongrel::Stats.new("response Kb")
+      @interreq = Mongrel::Stats.new("inter-request time")
     end
 
 

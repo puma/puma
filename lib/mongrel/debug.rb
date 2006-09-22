@@ -129,7 +129,7 @@ module RequestLog
           begin
             if o.respond_to? :length
               len = o.length
-              lengths[o.class] ||= Stats.new(o.class)
+              lengths[o.class] ||= Mongrel::Stats.new(o.class)
               lengths[o.class].sample(len)
             end
           rescue Object

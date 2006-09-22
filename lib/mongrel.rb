@@ -117,7 +117,7 @@ module Mongrel
     REQUEST_URI='REQUEST_URI'.freeze
     REQUEST_PATH='REQUEST_PATH'.freeze
 
-    MONGREL_VERSION="0.3.13.4".freeze
+    MONGREL_VERSION="0.3.13.5".freeze
 
     # TODO: this use of a base for tempfiles needs to be looked at for security problems
     MONGREL_TMP_BASE="mongrel".freeze
@@ -683,7 +683,7 @@ module Mongrel
               client.close rescue Object
               reap_dead_workers("max processors")
             else
-              thread = Thread.new { process_client(client) }
+              thread = Thread.new(client) {|c| process_client(c) }
               thread.abort_on_exception = true
               thread[:started_on] = Time.now
               @workers.add(thread)
