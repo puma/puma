@@ -10,16 +10,15 @@ h3. By Charles Brian Quinn
 
 The preferred setup (for now) is to put Mongrel behind an Apache 2.2.3 
 server running mod_proxy_balancer.  Apache is a proven web server, runs 
-half the Internet, and is a pain to configure.  These instructions by
-Philip Hallstrom should get you started, but refer to the Apache folks
-for anything more complex or weird.
+half the Internet, and is a pain to configure.  These instructions should 
+get you started, but refer to the Apache folks for anything more complex 
+or weird.
 
 When you're just starting out, don't bother with doing anything but 
-running Mongrel.  Mongrel is slower than Apache, but not so slow that
+running just Mongrel.  Mongrel is slower than Apache, but not so slow that
 small installations will notice it.  The worst thing you can do is
 try to learn Apache install when you're also trying to learn Ruby on Rails
 and Mongrel too.  Start small, then *when you need* build up to the big stuff.
-
 
 h2. A simple single mongrel configuration
 
@@ -27,10 +26,12 @@ Start up a single mongrel instance on port 8000:
 
 <pre><code>
   $ mongrel_rails start -d -p 8000 \
-   -e production -P log/mongrel-1.pid
+   -e production -P /full/path/to/log/mongrel-1.pid
 </code></pre>
 
-Simply add the following to your httpd.conf or in a vhost.conf file:
+Now, we'll tell Apache to simply proxy all requests to the mongrel server
+running on port 8000.  Simply add the following to your httpd.conf or in 
+a vhost.conf file:
 
 <pre><code>
   <VirtualHost *:80>
@@ -43,14 +44,35 @@ Simply add the following to your httpd.conf or in a vhost.conf file:
   </VirtualHost>
 </code></pre>
 
-That's it, in a nutshell.  In this configuration (while it is highly unlikely
-given the nature of how web applications work), it is possible that two
-users could hit your application at the exact same time, and one would have to
-wait literally milliseconds until the first request is finished before having a
-turn at the mongrel instance.  Unless you've got some really long HTTP
-processes, the nature of the HTTP protocol is pretty good at waiting in line.
-Only you can determine through metrics how long and how many
-users will come at your application at the exact same time.
+That's it, in a nutshell.  Several things to note in this configuration:
+
+1) This configuration forwards all traffic to mongrel.  This means mongrel
+will serve images, javascript, files, and everything else.  It's quite fast
+at this, but Apache can do it better.
+
+Here are some basic proxypass rules you can add to tell the ProxyPass not 
+to forward on requests to certain documents/requests:
+
+<pre><code>
+ProxyPass /images ! 
+ProxyPass /stylesheets ! 
+#continue with other static files that should be served by apache
+
+Alias /images /path/to/public/images
+Alias /stylesheets /path/to/public/stylesheets 
+#continue with aliases for static content
+</code></pre>
+
+For a more detailed set of rules for forwarding on all dynamic content to mongrel, 
+see the more detailed configuration below for more details.
+
+2) In this configuration, it is entirely possible that two users (web 
+requests) could hit your application at the exact same time, and one would 
+have to wait literally milliseconds until the first request is finished 
+before having a turn at the mongrel instance.  Unless you've got some really 
+long HTTP processes, the nature of the HTTP protocol is pretty good at waiting 
+in line. Only you can determine ("through metrics":http://mongrel.rubyforge.org/docs/how_many_mongrels.html) how long and 
+how many users will come at your application at the exact same time.
 
 Sufficient to say, if you're ready to start scaling with multiple mongrel
 instances, read on.
@@ -70,18 +92,17 @@ $ mongrel_rails start -d -p 8004 \
    -e production -P log/mongrel-4.pid
 </code></pre>
 
-You can also use mongrel_cluster by Bradley Taylor [2] for
+You can also use "mongrel_cluster":http://mongrel.rubyforge.org/docs/mongrel_cluster.html by "Bradley Taylor":http://fluxura.com/ for
 managing several mongrel instances with a configuration file (and sysv init
 scripts for *nix servers).
 
-We're going to be requiring the use of mod_proxy_balancer, a new feature in
-Apache 2.1/2.2 and above
-(http://httpd.apache.org/docs/2.2/new_features_2_2.html) to proxy requests to
+We're going to be requiring the use of mod_proxy_balancer, a "new feature":http://httpd.apache.org/docs/2.2/new_features_2_2.html in
+Apache 2.1/2.2 and above to proxy requests to
 our mongrel instances.  This software based HTTP load balancer will distribute
 requests evenly (applying a weighting and selection algorithm) to our mongrel
 instance(s).  It even comes with a swell load-balancing manager page for
 monitoring incoming requests.  For more information, see:
-http://httpd.apache.org/docs/2.2/mod/mod_proxy_balancer.html.
+"Apache's mod_proxy_balancer Documentation":http://httpd.apache.org/docs/2.2/mod/mod_proxy_balancer.html.
 
 h2. Obtaining Apache 2(.1+)
 
@@ -246,10 +267,36 @@ included in most apache2 builds).
 You need this mostly so that redirects go back to https and so you can 
 spot when people are coming through SSL or not.
 
+h2. Automation, Automation, Automation
+
+There are several great tools that automate the setup of Apache for use with 
+mongrel and mongrel_cluster.  The "RailsMachine gem":https://support.railsmachine.com/index.php?pg=kb.chapter&id=18 can 
+automate an entire setup of a Rails application.  Also, "Slingshot Hosting":http://www.slingshothosting.com/ has 
+a sample set of "Capistrano recipes":http://www.slingshothosting.com/support/capistrano that automatically setup Apache2 and mongrel 
+through the @rake remote:setup@ task.  Be sure to check out both for some ideas.
+
+h2. Running Multiple Rails Apps with Mongrel
+
+The newest version of Mongrel supports multiple Rails applications through
+the use of the --prefix command.  The Apache magic for proxying a 
+single application is here assuming your prefix is app1:
+
+<pre><code>
+ProxyPass /app1 http://127.0.0.1:3000/app1
+ProxyPassReverse /app1 http://127.0.0.1:3000/app1
+</code></pre>
+
+You need to have the proxy pass the new directory name.
+
+Thanks to Joey Geiger and others of the mongrel list for these 
+instructions.
+
 h2. References and Other Guides
 
 [1] "Time For A Grown-Up Server: Rails, Mongrel, Apache, Capistrano and You":http://blog.codahale.com/2006/06/19/time-for-a-grown-up-server-rails-mongrel-apache-capistrano-and-you/
 
-[2] "Bradley Taylor's Fluxura":http://fluxura.com/
+[2] "Bradley Taylor's Fluxura":http://fluxura.com/ and "RailsMachine":http://www.railsmachine.com/
+
+[3] "Slingshot Hosting Automated Capistrano Recipe":http://www.slingshothosting.com/support/capistrano
 
 
