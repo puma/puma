@@ -252,7 +252,7 @@ module Mongrel
       GemPlugin::Manager.instance.create(name, ops)
     end
 
-    # Let's you do redirects easily as described in Mongrel::RedirectHandler.
+    # Lets you do redirects easily as described in Mongrel::RedirectHandler.
     # You use it inside the configurator like this:
     #
     #   redirect("/test", "/to/there") # simple

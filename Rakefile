@@ -56,7 +56,7 @@ name="mongrel"
 version="0.3.13.5"
 
 setup_gem(name, version) do |spec|
-  spec.summary = "A small fast HTTP library and server that runs Rails, Camping, and Nitro apps."
+  spec.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
   spec.description = spec.summary
   spec.test_files = Dir.glob('test/test_*.rb')
   spec.author="Zed A. Shaw"

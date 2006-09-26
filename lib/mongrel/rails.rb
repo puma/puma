@@ -32,9 +32,8 @@ module Mongrel
     # * Finally, construct a Mongrel::CGIWrapper and run Dispatcher.dispatch to have Rails go.
     #
     # This means that if you are using page caching it will actually work with Mongrel
-    # and you should see a decent speed boost (but not as fast as if you use lighttpd).
-    #
-    # An additional feature you can use is 
+    # and you should see a decent speed boost (but not as fast as if you use a static
+    # server like Apache or Litespeed).
     class RailsHandler < Mongrel::HttpHandler
       attr_reader :files
       attr_reader :guard
@@ -45,12 +44,11 @@ module Mongrel
         @guard = Sync.new
         @tick = Time.now
 
-        # register the requested mime types
+        # Register the requested MIME types
         mime_map.each {|k,v| Mongrel::DirHandler::add_mime_type(k,v) }
       end
 
       # Attempts to resolve the request as follows:
-      #
       #
       # * If the requested exact PATH_INFO exists as a file then serve it.
       # * If it exists at PATH_INFO+".html" exists then serve that.
@@ -68,14 +66,14 @@ module Mongrel
           # File exists as-is so serve it up
           @files.process(request,response)
         elsif get_or_head and @files.can_serve(page_cached)
-          # possible cached page, serve it up
+          # Possible cached page, serve it up
           request.params[Mongrel::Const::PATH_INFO] = page_cached
           @files.process(request,response)
         else
           begin
             cgi = Mongrel::CGIWrapper.new(request, response)
             cgi.handler = self
-            # we don't want the output to be really final until we're out of the lock
+            # We don't want the output to be really final until we're out of the lock
             cgi.default_really_final = false
 
             log_threads_waiting_for(request.params["PATH_INFO"] || @active_request_path) if $mongrel_debug_client
@@ -99,7 +97,7 @@ module Mongrel
 
       def log_threads_waiting_for(event)
         if Time.now - @tick > 10
-          STDERR.puts "#{Time.now}: #{@guard.sync_waiting.length} threads sync_waiting for #{event}, #{self.listener.workers.list.length} still active in mongrel."
+          STDERR.puts "#{Time.now}: #{@guard.sync_waiting.length} threads sync_waiting for #{event}, #{self.listener.workers.list.length} still active in Mongrel."
           @tick = Time.now
         end
       end
@@ -123,7 +121,7 @@ module Mongrel
     class RailsConfigurator < Mongrel::Configurator
 
       # Creates a single rails handler and returns it so you
-      # can add it to a uri. You can actually attach it to 
+      # can add it to a URI. You can actually attach it to 
       # as many URIs as you want, but this returns the 
       # same RailsHandler for each call.
       #
@@ -141,10 +139,10 @@ module Mongrel
       # one installed per Ruby interpreter (talk to them 
       # about thread safety).  Because of this the first
       # time you call this function it does all the config
-      # needed to get your rails working.  After that
+      # needed to get your Rails working.  After that
       # it returns the one handler you've configured.
-      # This lets you attach Rails to any URI (and multiple)
-      # you want, but still protects you from threads destroying
+      # This lets you attach Rails to any URI(s) you want,
+      # but it still protects you from threads destroying
       # your handler.
       def rails(options={})
 
@@ -169,18 +167,17 @@ module Mongrel
         @rails_handler = RailsHandler.new(ops[:docroot], ops[:mime])
       end
 
-
-      # Reloads rails.  This isn't too reliable really, but
-      # should work for most minimal reload purposes.  Only reliable
-      # way it so stop then start the process.
+      # Reloads Rails.  This isn't too reliable really, but it
+      # should work for most minimal reload purposes.  The only reliable
+      # way to reload properly is to stop and then start the process.
       def reload!
         if not @rails_handler
           raise "Rails was not configured.  Read the docs for RailsConfigurator."
         end
 
-        log "Reloading rails..."
+        log "Reloading Rails..."
         @rails_handler.reload!
-        log "Done reloading rails."
+        log "Done reloading Rails."
 
       end
 

@@ -101,8 +101,7 @@ module Mongrel
   # can change it anything you want using the DirHandler.default_content_type
   # attribute.
   class DirHandler < HttpHandler
-    attr_reader :default_content_type
-    attr_writer :default_content_type
+    attr_accessor :default_content_type
     attr_reader :path
 
     MIME_TYPES = {

@@ -47,6 +47,7 @@ module Mongrel
   # Used to stop the HttpServer via Thread.raise.
   class StopServer < Exception; end
 
+
   # Thrown at a thread when it is timed out.
   class TimeoutError < Exception; end
 
@@ -93,7 +94,6 @@ module Mongrel
     504  => 'Gateway Time-out', 
     505  => 'HTTP Version not supported'
   }
-
 
 
   # Frequently used constants when constructing requests or responses.  Many times
@@ -160,10 +160,12 @@ module Mongrel
     REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n".freeze
   end
 
+
   # Basically a Hash with one extra parameter for the HTTP body, mostly used internally.
   class HttpParams < Hash
     attr_accessor :http_body
   end
+
 
   # When a handler is found for a registered URI then this class is constructed
   # and passed to your HttpHandler::process method.  You should assume that 
@@ -323,6 +325,7 @@ module Mongrel
       @out.write(Const::HEADER_FORMAT % [key, value])
     end
   end
+
 
   # Writes and controls your response to the client using the HTTP/1.1 specification.
   # You use it by simply doing:
@@ -484,6 +487,7 @@ module Mongrel
 
   end
 
+
   # This is the main driver of Mongrel, while the Mongrel::HttpParser and Mongrel::URIClassifier
   # make up the majority of how the server functions.  It's a very simple class that just
   # has a thread accepting connections and a simple HttpServer.process_client function
@@ -536,7 +540,6 @@ module Mongrel
       @num_processors = num_processors
       @death_time = 60
     end
-
 
     # Does the majority of the IO processing.  It has been written in Ruby using
     # about 7 different IO processing strategies and no matter how it's done 
@@ -704,13 +707,11 @@ module Mongrel
             STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
           end
         end
-
         graceful_shutdown
       end
 
       return @acceptor
     end
-
 
     # Simply registers a handler with the internal URIClassifier.  When the URI is
     # found in the prefix of a request then your handler's HttpHandler::process method
