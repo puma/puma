@@ -70,6 +70,10 @@ module Mongrel
       end
     end
 
+    def remove_pid_file
+      File.unlink(@pid_file) if @pid_file and File.exists?(@pid_file)
+    end
+
     # Writes the PID file but only if we're on windows.
     def write_pid_file
       if RUBY_PLATFORM !~ /mswin/
@@ -350,7 +354,7 @@ module Mongrel
       trap("INT") { log "INT signal received."; stop(false) }
 
       # clean up the pid file always
-      at_exit { File.unlink(@pid_file) if @pid_file and File.exists?(@pid_file) }
+      at_exit { remove_pid_file }
 
       if RUBY_PLATFORM !~ /mswin/
         # graceful shutdown

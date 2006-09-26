@@ -139,7 +139,15 @@ module Mongrel
         if RUBY_PLATFORM !~ /mswin/
           cmd = "ruby #{__FILE__} start #{original_args.join(' ')}"
           config.log "Restarting with arguments:  #{cmd}"
-          exec cmd
+          config.stop
+          config.remove_pid_file
+
+          if config.defaults[:daemon]
+            system cmd
+          else
+            STDERR.puts "Can't restart unless in daemon mode."
+            exit 1
+          end
         else
           config.log "Win32 does not support restarts. Exiting."
         end
