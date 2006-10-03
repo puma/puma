@@ -219,7 +219,9 @@ module Mongrel
         read_body(remain, content_length, dispatcher)
       end
 
-      @body.rewind if body
+      raise HttpParserError.new("BAD CLIENT: Actual body length does not match Content-Length") if @body.pos != content_length
+
+      @body.rewind if @body
     end
 
 
@@ -687,7 +689,6 @@ module Mongrel
               reap_dead_workers("max processors")
             else
               thread = Thread.new(client) {|c| process_client(c) }
-              thread.abort_on_exception = true
               thread[:started_on] = Time.now
               @workers.add(thread)
 
