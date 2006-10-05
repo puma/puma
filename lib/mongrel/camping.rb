@@ -33,13 +33,29 @@ module Mongrel
     # the results into something the Mongrel::HttpResponse
     # needs.
     class CampingHandler < Mongrel::HttpHandler
+      attr_reader :files
+      attr_reader :guard
+      @@file_only_methods = ["GET","HEAD"]
+
       def initialize(klass)
+        @files = Mongrel::DirHandler.new("/",false)
+        @guard = Sync.new
         @klass = klass
       end
 
       def process(request, response)
-        controller = @klass.run(request.body, request.params)
+        if response.socket.closed?
+          return
+        end
+
+        controller = nil
+        @guard.synchronize(:EX) {
+          controller = @klass.run(request.body, request.params)
+        }
+
         sendfile, clength = nil
+        get_or_head = @@file_only_methods.include? request.params[Mongrel::Const::REQUEST_METHOD]
+
         response.status = controller.status
         controller.headers.each do |k, v|
           if k =~ /^X-SENDFILE$/i
@@ -54,9 +70,8 @@ module Mongrel
         end
 
         if sendfile
-          response.send_status(File.size(sendfile))
-          response.send_header
-          response.send_file(sendfile)
+          request.params[Mongrel::Const::PATH_INFO] = sendfile
+          @files.process(request, response)
         elsif controller.body.respond_to? :read
           response.send_status(clength)
           response.send_header
