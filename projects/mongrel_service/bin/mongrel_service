@@ -98,7 +98,7 @@ end
 OPTIONS = {
   :environment  => ENV['RAILS_ENV'] || "development",
   :port         => 3000,
-  :address      => "0.0.0.0",
+  :host         => "0.0.0.0",
   :log_file     => "log/mongrel.log",
   :pid_file     => "log/mongrel.pid",
   :num_procs    => 1024,
@@ -116,7 +116,7 @@ OPTIONS = {
 ARGV.options do |opts|
   opts.on('-e', '--environment ENV', "Rails environment to run as") { |OPTIONS[:environment]| }
   opts.on('-p', '--port PORT', "Which port to bind to") { |OPTIONS[:port]| }
-  opts.on('-a', '--address ADDR', "Address to bind to") { |OPTIONS[:address]| }
+  opts.on('-a', '--address ADDR', "Address to bind to") { |OPTIONS[:host]| }
   opts.on('-l', '--log FILE', "Where to write log messages") { |OPTIONS[:log_file]| }
   opts.on('-P', '--pid FILE', "Where to write the PID") { |OPTIONS[:pid_file]| }
   opts.on('-n', '--num-procs INT', "Number of processors active before clients denied") { |OPTIONS[:num_procs]| }
