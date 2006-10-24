@@ -115,6 +115,7 @@ module Mongrel
       ".png"        =>  "image/png",
       ".swf"        =>  "application/x-shockwave-flash",
       ".txt"        =>  "text/plain"
+      ".xml"        =>  "text/xml"
     }
 
     ONLY_HEAD_GET="Only HEAD and GET allowed.".freeze
