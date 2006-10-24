@@ -45,7 +45,7 @@ class HandlersTest < Test::Unit::TestCase
         uri "/", :handler => SimpleHandler.new
         uri "/", :handler => stats
         uri "/404", :handler => Mongrel::Error404Handler.new("Not found")
-        uri "/dumb", :handler => Mongrel::DeflateFilter.new(:always_deflate => true)
+        uri "/dumb", :handler => Mongrel::DeflateFilter.new
         uri "/dumb", :handler => DumbHandler.new, :in_front => true
         uri "/files", :handler => Mongrel::DirHandler.new("doc")
         uri "/files_nodir", :handler => Mongrel::DirHandler.new("doc",listing_allowed=false, index_html="none")
@@ -73,8 +73,21 @@ class HandlersTest < Test::Unit::TestCase
     check_status res, String
   end
 
-  def test_deflate_access
-    req = Net::HTTP::Get.new("http://localhost:9998/dumb")
+  def test_deflate
+    Net::HTTP.start("localhost", 9998) do |h|
+      # test that no accept-encoding returns a non-deflated response
+      req = h.get("/dumb")
+      assert(
+        !req.header['Content-Encoding'] ||
+        !req.header['Content-Encoding'].include?('deflate'))
+      assert_equal "test", req.body
+
+      req = h.get("/dumb", {"Accept-Encoding" => "deflate"})
+      # -MAX_WBITS stops zlib from looking for a zlib header
+      inflater = Zlib::Inflate.new(-Zlib::MAX_WBITS)
+      assert req.header['Content-Encoding'].include?('deflate')
+      assert_equal "test", inflater.inflate(req.body)
+    end
   end
 
   # TODO: find out why this fails on win32 but nowhere else

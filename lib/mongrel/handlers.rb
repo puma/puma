@@ -282,6 +282,7 @@ module Mongrel
   # Valid option is :always_deflate => false which tells the handler to
   # deflate everything even if the client can't handle it.
   class DeflateFilter < HttpHandler
+    include Zlib
     HTTP_ACCEPT_ENCODING = "HTTP_ACCEPT_ENCODING" 
 
     def initialize(ops={})
@@ -294,14 +295,25 @@ module Mongrel
       # only process if they support compression
       if @always_deflate or (accepts and (accepts.include? "deflate" and not response.body_sent))
         response.header["Content-Encoding"] = "deflate"
-        # we can't just rewind the body and gzip it since the body could be an attached file
-        response.body.rewind
-        gzout = StringIO.new(Zlib::Deflate.deflate(response.body.read))
-        gzout.rewind
-        response.body.close
-        response.body = gzout
+        response.body = deflate(response.body)
       end
     end
+
+    private
+      def deflate(stream)
+        deflater = Deflate.new(
+          DEFAULT_COMPRESSION,
+          # drop the zlib header which causes both Safari and IE to choke
+          -MAX_WBITS, 
+          DEF_MEM_LEVEL,
+          DEFAULT_STRATEGY)
+
+        stream.rewind
+        gzout = StringIO.new(deflater.deflate(stream.read, FINISH))
+        stream.close
+        gzout.rewind
+        gzout
+      end
   end
 
 
