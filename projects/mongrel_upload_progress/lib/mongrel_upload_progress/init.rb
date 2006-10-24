@@ -5,7 +5,7 @@ class Upload < GemPlugin::Plugin "/handlers"
   include Mongrel::HttpHandlerPlugin
 
   def initialize(options = {})
-    @path_info      = options[:path_info]
+    @path_info      = Array(options[:path_info])
     @frequency      = options[:frequency] || 3
     @request_notify = true
     if options[:drb]
@@ -32,7 +32,7 @@ class Upload < GemPlugin::Plugin "/handlers"
 
   private
     def upload_notify(action, params, *args)
-      return unless params['PATH_INFO'] == @path_info &&
+      return unless @path_info.include?(params['PATH_INFO']) &&
         params[Mongrel::Const::REQUEST_METHOD] == 'POST' &&
         upload_id = Mongrel::HttpRequest.query_parse(params['QUERY_STRING'])['upload_id']
       if action == :mark
