@@ -114,7 +114,7 @@ module Mongrel
       ".js"         =>  "text/javascript",
       ".png"        =>  "image/png",
       ".swf"        =>  "application/x-shockwave-flash",
-      ".txt"        =>  "text/plain"
+      ".txt"        =>  "text/plain",
       ".xml"        =>  "text/xml"
     }
 
