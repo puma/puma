@@ -113,6 +113,6 @@ task :gem_source do
   FileList["pkg/*.tgz"].each {|tgz| rm tgz }
   rm_rf "pkg/#{name}-#{version}"
 
-  sh %{ generate_yaml_index.rb -d pkg }
-  sh %{ scp -r pkg/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
+  sh %{ index_gem_repository.rb -d pkg }
+  sh %{ scp -r ChangeLog pkg/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
 end
