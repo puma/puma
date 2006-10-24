@@ -59,7 +59,7 @@ module Mongrel
         end
 
         path_info = request.params[Mongrel::Const::PATH_INFO]
-        page_cached = path_info + ".html"
+        page_cached = path_info + ActionController::Base.page_cache_extension
         get_or_head = @@file_only_methods.include? request.params[Mongrel::Const::REQUEST_METHOD]
 
         if get_or_head and @files.can_serve(path_info)
