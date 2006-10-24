@@ -32,9 +32,9 @@ module Mongrel
         ['-C', '--config PATH', "Use a config file", :@config_file, nil],
         ['-S', '--script PATH', "Load the given file as an extra config script", :@config_script, nil],
         ['-G', '--generate PATH', "Generate a config file for use with -C", :@generate, nil],
-        [nil, '--user USER', "User to run as", :@user, nil],
-        [nil, '--group GROUP', "Group to run as", :@group, nil],
-        [nil, '--prefix PATH', "URL prefix for Rails app", :@prefix, nil]
+        ['', '--user USER', "User to run as", :@user, nil],
+        ['', '--group GROUP', "Group to run as", :@group, nil],
+        ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, nil]
       ]
     end
 
