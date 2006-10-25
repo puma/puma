@@ -54,8 +54,6 @@ module Mongrel
         }
 
         sendfile, clength = nil
-        get_or_head = @@file_only_methods.include? request.params[Mongrel::Const::REQUEST_METHOD]
-
         response.status = controller.status
         controller.headers.each do |k, v|
           if k =~ /^X-SENDFILE$/i
