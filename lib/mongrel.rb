@@ -192,18 +192,28 @@ module Mongrel
     def initialize(params, socket, dispatcher)
       @params = params
       @socket = socket
-      content_length = params[Const::CONTENT_LENGTH].to_i
-      remain = content_length - params.http_body.length
+      content_length = @params[Const::CONTENT_LENGTH].to_i
+      remain = content_length - @params.http_body.length
       
+      if @params.has_key? 'CONTENT_TYPE'
+        # see if it's multipart, and carve out the boundary for later
+        @mpart_type, @mpart_boundary = @params['CONTENT_TYPE'].split(/;\s*/)
+        if @mpart_type and @mpart_boundary and @mpart_boundary.include? "="
+          @mpart_boundary = @mpart_boundary.split("=")[1].strip
+          STDERR.puts "Multipart upload: type=#{@mpart_type}, boundary=#{@mpart_boundary}"
+          @params['MULTIPART_TYPE'] = @mpart_type
+          @params['MULTIPART_BOUNDARY'] = @mpart_boundary
+        end
+      end
 
-      dispatcher.request_begins(params) if dispatcher
+      dispatcher.request_begins(@params) if dispatcher
 
       # Some clients (like FF1.0) report 0 for body and then send a body.  This will probably truncate them but at least the request goes through usually.
       if remain <= 0
         # we've got everything, pack it up
         @body = StringIO.new
-        @body.write params.http_body
-        dispatcher.request_progress(params, 0, content_length) if dispatcher
+        @body.write @params.http_body
+        dispatcher.request_progress(@params, 0, content_length) if dispatcher
       elsif remain > 0
         # must read more data to complete body
         if remain > Const::MAX_BODY
@@ -215,11 +225,9 @@ module Mongrel
           @body = StringIO.new 
         end
 
-        @body.write params.http_body
+        @body.write @params.http_body
         read_body(remain, content_length, dispatcher)
       end
-
-      raise HttpParserError.new("BAD CLIENT: Actual body length does not match Content-Length") if @body.pos != content_length
 
       @body.rewind if @body
     end
@@ -232,15 +240,15 @@ module Mongrel
     def read_body(remain, total, dispatcher)
       begin
         # write the odd sized chunk first
-
-        remain -= @body.write(read_socket(remain % Const::CHUNK_SIZE))
-        dispatcher.request_progress(params, remain, total) if dispatcher
+        @params.http_body = read_socket(remain % Const::CHUNK_SIZE)
+        remain -= @body.write(@params.http_body)
+        dispatcher.request_progress(@params, remain, total) if dispatcher
 
         # then stream out nothing but perfectly sized chunks
         until remain <= 0 or @socket.closed?
-          remain -= @body.write(read_socket(Const::CHUNK_SIZE))
           # ASSUME: we are writing to a disk and these writes always write the requested amount
-          dispatcher.request_progress(params, remain, total) if dispatcher
+          remain -= @body.write(read_socket(Const::CHUNK_SIZE))
+          dispatcher.request_progress(@params, remain, total) if dispatcher
         end
       rescue Object
         STDERR.puts "ERROR reading http body: #$!"

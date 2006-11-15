@@ -6,12 +6,12 @@
 
 require 'mongrel'
 require 'cgi'
-require 'sync'
+require 'optimized_locking'
 
-class Sync
-  # modified to open the waiting list for reporting purposes
-  attr_accessor :sync_waiting
-end
+#class Sync
+#  # modified to open the waiting list for reporting purposes
+#  attr_accessor :sync_waiting
+#end
 
 module Mongrel
   module Rails
@@ -41,7 +41,7 @@ module Mongrel
 
       def initialize(dir, mime_map = {})
         @files = Mongrel::DirHandler.new(dir,false)
-        @guard = Sync.new
+        @guard = OptimizedMutex.new
         @tick = Time.now
 
         # Register the requested MIME types
@@ -97,7 +97,7 @@ module Mongrel
 
       def log_threads_waiting_for(event)
         if Time.now - @tick > 10
-          STDERR.puts "#{Time.now}: #{@guard.sync_waiting.length} threads sync_waiting for #{event}, #{self.listener.workers.list.length} still active in Mongrel."
+          # STDERR.puts "#{Time.now}: #{@guard.sync_waiting.length} threads sync_waiting for #{event}, #{self.listener.workers.list.length} still active in Mongrel."
           @tick = Time.now
         end
       end
