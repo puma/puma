@@ -16,7 +16,7 @@ desc "Does a full compile, test run"
 task :default => [:compile, :test]
 
 desc "Compiles all extensions"
-task :compile => [:http11] do
+task :compile => [:http11, :optimized_locking] do
   if Dir.glob(File.join("lib","http11.*")).length == 0
     STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     STDERR.puts "Gem actually failed to build.  Your system is"
@@ -51,6 +51,7 @@ end
 task :site => [:site_webgen, :site_rdoc, :site_coverage, :site_projects_rdoc]
 
 setup_extension("http11", "http11")
+setup_extension("optimized_locking", "optimized_locking")
 
 name="mongrel"
 version="0.3.14"
