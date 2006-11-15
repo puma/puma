@@ -78,7 +78,7 @@ module Mongrel
 
             log_threads_waiting_for(@active_request_path || request.params["PATH_INFO"]) if $mongrel_debug_client
 
-            @guard.synchronize(:EX) {
+            @guard.synchronize {
               @active_request_path = request.params["PATH_INFO"] 
               Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
               @active_request_path = nil
@@ -106,7 +106,7 @@ module Mongrel
       # sometimes you get exceptions.  In that case just do a real restart.
       def reload!
         begin
-          @guard.synchronize(:EX) {
+          @guard.synchronize {
             $".replace $orig_dollar_quote
             GC.start
             Dispatcher.reset_application!
