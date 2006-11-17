@@ -54,7 +54,7 @@ setup_extension("http11", "http11")
 setup_extension("optimized_locking", "optimized_locking")
 
 name="mongrel"
-version="0.3.15"
+version="0.3.16"
 
 setup_gem(name, version) do |spec|
   spec.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
