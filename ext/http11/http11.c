@@ -195,9 +195,11 @@ void header_done(void *data, const char *at, size_t length)
 inline size_t max(size_t a, size_t b) { return a>b ? a : b; }
 
 void BMHSearch_free(void *data) {
+  BMHSearchState *S = (BMHSearchState *)data;
+
   if(data) {
-    free(((BMHSearchState *)data)->needle);
-    free(((BMHSearchState *)data)->found_at);
+    if(S->needle) free(S->needle);
+    if(S->found_at) free(S->found_at);
     free(data);
   }
 }
@@ -229,21 +231,29 @@ VALUE BMHSearch_init(VALUE self, VALUE needle, VALUE max_find)
 
   DATA_GET(self, BMHSearchState, S);
 
-
   S->htotal = 0;
   S->nfound = 0;
   S->skip = 0;
   S->nlen = RSTRING(needle)->len;
   S->max_find = FIX2INT(max_find);
+  S->needle = NULL;
+  S->found_at = NULL;
 
   if(S->nlen <= 0) rb_raise(eBMHSearchError, "Needle can't be 0 length.");
 
   // copy it so we don't have to worry about Ruby messing it up
-  S->needle = malloc(S->nlen);
+  S->needle = ALLOC_N(unsigned char, S->nlen);
   memcpy(S->needle, RSTRING(needle)->ptr, S->nlen);
 
+  // the only restriction on the needle so far is that you can't have repeat chars
+  if(S->needle[0] == S->needle[1]) {
+    free(S->needle);
+    S->needle = NULL;
+    rb_raise(eBMHSearchError, "Needle can't begin with > 1 of the same char.");
+  }
+
   // setup the number of finds they want
-  S->found_at = malloc(sizeof(size_t) * S->max_find);
+  S->found_at = ALLOC_N(size_t, S->max_find);
 
   /* Preprocess */
   /* Initialize the table to default value */
@@ -279,7 +289,7 @@ VALUE BMHSearch_find(VALUE self, VALUE hay)
 {
   size_t hpos = 0, npos = 0, skip = 0;
   unsigned char* haystack = NULL;
-  size_t hlen = 0;
+  size_t hlen = 0, last = 0;
   BMHSearchState *S = NULL;
 
   DATA_GET(self, BMHSearchState, S);
@@ -311,14 +321,16 @@ VALUE BMHSearch_find(VALUE self, VALUE hay)
     }
   }
 
+
   while(hpos < hlen) {
     /* Compare the S->needle backwards, and stop when first mismatch is found */
     npos = S->nlen-1;
 
-    while(haystack[hpos] == S->needle[npos]) {
+    while(hpos < hlen && haystack[hpos] == S->needle[npos]) {
       if(npos == 0) {
         // found one, log it in found_at, but reduce by the skip if we're at the beginning
         S->found_at[S->nfound++] = hpos + S->htotal;
+        last = hpos;  // keep track of the last one we found in this chunk
 
         if(S->nfound > S->max_find) {
           rb_raise(eBMHSearchError, "More than max requested needles found. Use pop.");
@@ -334,23 +346,45 @@ VALUE BMHSearch_find(VALUE self, VALUE hay)
       }
     }
 
+    // exhausted the string already, done
+    if(hpos > hlen) break;
+
     /* Find out how much ahead we can skip based on the byte that was found */
     skip = max(S->nlen - npos, S->occ[haystack[hpos]]);
     hpos += skip;
   }
 
-  size_t back = S->nlen - S->occ[haystack[hlen-1]];
-  if(back < S->nlen && back > 0) {
-    for(hpos = hlen - back; hpos < hlen; hpos++) {
-      skip = hlen - hpos;
-      if(haystack[hpos] == S->needle[0] && !memcmp(haystack+hpos, S->needle, skip)) break;
+
+  skip = 0;  // skip defaults to 0
+
+  // don't bother if the string ends in the needle completely
+  if(S->nfound == 0 || last != hlen - S->nlen) {
+    // invert the occ array to figure out how much to jump back
+    size_t back = S->nlen - S->occ[haystack[hlen-1]];
+
+    // the needle could have an ending char that's also repeated in the needle
+    // in that case, we have to adjust to search for nlen-1 just in case
+    if(haystack[hlen-1] == S->needle[S->nlen - 1]) {
+      back = S->nlen - 1;
     }
-  } else {
-    skip = 0;
+
+    int found_it = 0;  // defaults to 0 for test at end of it
+    if(back < S->nlen && back > 0) {
+      // search for the longest possible prefix
+      for(hpos = hlen - back; hpos < hlen; hpos++) {
+        skip = hlen - hpos;
+        if(!memcmp(haystack+hpos, S->needle, skip)) {
+          found_it = 1; // make sure we actually found it
+          break;
+        }
+      }
+    }
+    // skip will be 1 if nothing was found, so we have to force it 0
+    if(!found_it) skip = 0;
   }
 
+  // keep track of the skip, it's set to 0 by the code above
   S->skip = skip;
-
   // update the total processed so far so indexes will be in sync
   S->htotal += hlen;
 
