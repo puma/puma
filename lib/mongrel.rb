@@ -117,7 +117,7 @@ module Mongrel
     REQUEST_URI='REQUEST_URI'.freeze
     REQUEST_PATH='REQUEST_PATH'.freeze
 
-    MONGREL_VERSION="0.3.13.5".freeze
+    MONGREL_VERSION="0.3.15".freeze
 
     # TODO: this use of a base for tempfiles needs to be looked at for security problems
     MONGREL_TMP_BASE="mongrel".freeze
@@ -200,13 +200,14 @@ module Mongrel
         @mpart_type, @mpart_boundary = @params['CONTENT_TYPE'].split(/;\s*/)
         if @mpart_type and @mpart_boundary and @mpart_boundary.include? "="
           @mpart_boundary = @mpart_boundary.split("=")[1].strip
-          STDERR.puts "Multipart upload: type=#{@mpart_type}, boundary=#{@mpart_boundary}"
           @params['MULTIPART_TYPE'] = @mpart_type
           @params['MULTIPART_BOUNDARY'] = @mpart_boundary
+          @search = BMHSearch.new(@mpart_boundary, 100)
         end
       end
 
       dispatcher.request_begins(@params) if dispatcher
+      @search.find @params.http_body if @search and @params.http_body.length > @mpart_boundary.length
 
       # Some clients (like FF1.0) report 0 for body and then send a body.  This will probably truncate them but at least the request goes through usually.
       if remain <= 0
@@ -229,6 +230,14 @@ module Mongrel
         read_body(remain, content_length, dispatcher)
       end
 
+      if @search
+        @body.rewind
+        @search.pop.each do |boundary|
+          @body.seek(boundary)
+          STDERR.puts "BOUNDARY at #{boundary}: #{@body.readline}"
+        end
+      end
+
       @body.rewind if @body
     end
 
@@ -241,13 +250,17 @@ module Mongrel
       begin
         # write the odd sized chunk first
         @params.http_body = read_socket(remain % Const::CHUNK_SIZE)
+        @search.find(@params.http_body) if @search
+
         remain -= @body.write(@params.http_body)
         dispatcher.request_progress(@params, remain, total) if dispatcher
 
         # then stream out nothing but perfectly sized chunks
         until remain <= 0 or @socket.closed?
           # ASSUME: we are writing to a disk and these writes always write the requested amount
-          remain -= @body.write(read_socket(Const::CHUNK_SIZE))
+          @params.http_body = read_socket(Const::CHUNK_SIZE)
+          @search.find(@params.http_body) if @search
+          remain -= @body.write(@params.http_body)
           dispatcher.request_progress(@params, remain, total) if dispatcher
         end
       rescue Object
