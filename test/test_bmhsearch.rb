@@ -96,11 +96,11 @@ class BMHSearchTest < Test::Unit::TestCase
 
     if has_rfuzz
       r = RFuzz::RandomGenerator.new
-      needles = r.base64(2000, 100).collect {|n| "\r\n" + n.strip }
+      needles = r.base64(20, 64).collect {|n| "\r\n" + n.strip }
       needles.each do |needle|
         next if needle.length == 0
 
-        nchunks = r.num(1000) + 10
+        nchunks = r.num(10) + 10
         bmh = BMHSearch.new(needle, nchunks+1)
         total = ""  # used to collect the full string for compare
 
