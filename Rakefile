@@ -80,10 +80,12 @@ setup_gem(name, version) do |spec|
   
   spec.add_dependency('gem_plugin', '>= 0.2.1')
   spec.add_dependency('cgi_multipart_eof_fix', '>= 0.2.1')
+  spec.add_dependency('fastthread', '>= 0.1')
 end
 
 task :install do
   sub_project("gem_plugin", :install)
+  sub_project("fastthread", :install)
   sh %{rake package}
   sh %{gem install pkg/mongrel-#{version}}
   sub_project("mongrel_status", :install)
@@ -101,6 +103,7 @@ task :uninstall => [:clean] do
   sub_project("mongrel_console", :uninstall)
   sh %{gem uninstall mongrel}
   sub_project("gem_plugin", :uninstall)
+  sub_project("fastthread", :uninstall)
   if RUBY_PLATFORM =~ /mswin/
     sub_project("mongrel_service", :install)
   end
