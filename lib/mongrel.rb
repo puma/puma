@@ -9,7 +9,7 @@ $mongrel_debug_client = false
 require 'socket'
 require 'http11'
 require 'tempfile'
-require 'thread'
+require 'fastthread'
 require 'stringio'
 require 'mongrel/cgi'
 require 'mongrel/handlers'
@@ -200,6 +200,7 @@ module Mongrel
         @mpart_type, @mpart_boundary = @params['CONTENT_TYPE'].split(/;\s*/)
         if @mpart_type and @mpart_boundary and @mpart_boundary.include? "="
           @mpart_boundary = @mpart_boundary.split("=")[1].strip
+          STDERR.puts "boundary: #{@mpart_boundary}"
           @params['MULTIPART_TYPE'] = @mpart_type
           @params['MULTIPART_BOUNDARY'] = @mpart_boundary
           @search = BMHSearch.new(@mpart_boundary, 100)
@@ -230,11 +231,12 @@ module Mongrel
         read_body(remain, content_length, dispatcher)
       end
 
-      if @search
+      if @search and @body
+        STDERR.puts "number of boundaries: #{@search.nfound}"
         @body.rewind
         @search.pop.each do |boundary|
-          @body.seek(boundary)
-          STDERR.puts "BOUNDARY at #{boundary}: #{@body.readline}"
+          @body.seek(boundary - 2)
+          STDERR.puts "BOUNDARY at #{boundary}: #{@body.read(@mpart_boundary.length + 2)}"
         end
       end
 
