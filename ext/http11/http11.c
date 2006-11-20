@@ -245,13 +245,6 @@ VALUE BMHSearch_init(VALUE self, VALUE needle, VALUE max_find)
   S->needle = ALLOC_N(unsigned char, S->nlen);
   memcpy(S->needle, RSTRING(needle)->ptr, S->nlen);
 
-  // the only restriction on the needle so far is that you can't have repeat chars
-  if(S->needle[0] == S->needle[1]) {
-    free(S->needle);
-    S->needle = NULL;
-    rb_raise(eBMHSearchError, "Needle can't begin with > 1 of the same char.");
-  }
-
   // setup the number of finds they want
   S->found_at = ALLOC_N(size_t, S->max_find);
 
