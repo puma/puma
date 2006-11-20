@@ -81,11 +81,6 @@ class BMHSearchTest < Test::Unit::TestCase
     end
   end
 
-  def test_no_repeat_begin_chars
-    assert_raises BMHSearchError do
-      b = BMHSearch.new("FFI5LguQEg==", 10)
-    end
-  end
 
   def test_fuzzing
     begin
