@@ -6,10 +6,15 @@
 
 $mongrel_debug_client = false
 
+require 'rubygems'
 require 'socket'
 require 'http11'
 require 'tempfile'
-require 'fastthread'
+begin
+  require 'fastthread'
+rescue Object
+  require 'thread'
+end
 require 'stringio'
 require 'mongrel/cgi'
 require 'mongrel/handlers'
@@ -18,7 +23,6 @@ require 'mongrel/tcphack'
 require 'yaml'
 require 'mongrel/configurator'
 require 'time'
-require 'rubygems'
 require 'etc'
 
 
