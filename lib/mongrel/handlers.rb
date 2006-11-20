@@ -115,7 +115,9 @@ module Mongrel
       ".png"        =>  "image/png",
       ".swf"        =>  "application/x-shockwave-flash",
       ".txt"        =>  "text/plain",
-      ".xml"        =>  "text/xml"
+      ".xml"        =>  "application/xml",
+      ".rss"        =>  "application/xml+rss",
+      ".atom"       =>  "application/xml+atom",
     }
 
     ONLY_HEAD_GET="Only HEAD and GET allowed.".freeze
