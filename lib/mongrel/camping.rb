@@ -6,7 +6,6 @@
 
 require 'mongrel'
 
-
 module Mongrel
   # Support for the Camping micro framework at http://camping.rubyforge.org
   # This implements the unusually long Postamble that Camping usually
@@ -85,23 +84,13 @@ module Mongrel
           response.send_header
           response.write(body)
         end
+      rescue Errno::EPIPE
+        # ignored
+      rescue Object => camping_error
+        STDERR.puts "Error calling #{@klass}.run #{camping_error.inspect}"
+        STDERR.puts camping_error.backtrace.join("\n")
       end
     end
 
-    # This is a convenience method that wires up a CampingHandler
-    # for your application on a given port and uri.  It's pretty
-    # much all you need for a camping application to work right.
-    #
-    # It returns the Mongrel::HttpServer which you should either
-    # join or somehow manage.  The thread is running when 
-    # returned.
-
-    def Camping.start(server, port, uri, klass)
-      h = Mongrel::HttpServer.new(server, port)
-      h.register(uri, CampingHandler.new(klass))
-      h.register("/favicon.ico", Mongrel::Error404Handler.new(""))
-      h.run
-      return h
-    end
   end
 end
