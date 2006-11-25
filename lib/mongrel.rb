@@ -661,10 +661,17 @@ module Mongrel
     end
 
     def configure_socket_options
-      if /linux/ === RUBY_PLATFORM
+      case RUBY_PLATFORM
+      when /linux/
         # 9 is currently TCP_DEFER_ACCEPT
-        $tcp_defer_accept_opts = [9,1]
-        $tcp_cork_opts = [3,1]
+        $tcp_defer_accept_opts = [Socket::SOL_TCP, 9, 1]
+        $tcp_cork_opts = [Socket::SOL_TCP, 3, 1]
+      when /freebsd/
+        # Use the HTTP accept filter if available.
+        # The struct made by pack() is defined in /usr/include/sys/socket.h as accept_filter_arg
+        unless `/sbin/sysctl -nq net.inet.accf.http`.empty?
+          $tcp_defer_accept_opts = [Socket::SOL_SOCKET, Socket::SO_ACCEPTFILTER, ['httpready', nil].pack('a16a240')]
+        end
       end
     end
 
@@ -675,13 +682,13 @@ module Mongrel
 
       configure_socket_options
 
-      @socket.setsockopt(Socket::SOL_TCP, $tcp_defer_accept_opts[0], $tcp_defer_accept_opts[1]) if $tcp_defer_accept_opts
+      @socket.setsockopt(*$tcp_defer_accept_opts) if $tcp_defer_accept_opts
 
       @acceptor = Thread.new do
         while true
           begin
             client = @socket.accept
-            client.setsockopt(Socket::SOL_TCP, $tcp_cork_opts[0], $tcp_cork_opts[1]) if $tcp_cork_opts
+            client.setsockopt(*$tcp_cork_opts) if $tcp_cork_opts
 
             worker_list = @workers.list
 
