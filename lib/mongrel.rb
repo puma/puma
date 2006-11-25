@@ -322,12 +322,16 @@ module Mongrel
     attr_reader :out
 
     def initialize(out)
+      @sent = {}
       @out = out
     end
 
     # Simply writes "#{key}: #{value}" to an output buffer.
     def[]=(key,value)
-      @out.write(Const::HEADER_FORMAT % [key, value])
+      if not @sent.has_key?(key)
+        @sent[key] = true
+        @out.write(Const::HEADER_FORMAT % [key, value])
+      end
     end
   end
 

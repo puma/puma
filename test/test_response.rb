@@ -37,6 +37,19 @@ class ResponseTest < Test::Unit::TestCase
     assert io.length > 0, "output didn't have data"
   end
 
+  def test_response_duplicate_header_squash
+    io = StringIO.new
+    resp = HttpResponse.new(io)
+    resp.start do |head,out|
+      head["Content-Length"] = 30
+      head["Content-Length"] = 0
+    end
+
+    resp.finished
+
+    assert_equal io.length, 95, "too much output"
+  end
+
   def test_response_404
     io = StringIO.new
 
