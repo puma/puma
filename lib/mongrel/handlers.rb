@@ -229,6 +229,8 @@ module Mongrel
         dot_at = req_path.rindex('.')
         if dot_at
           header[Const::CONTENT_TYPE] = MIME_TYPES[req_path[dot_at .. -1]] || @default_content_type
+        else
+          header[Const::CONTENT_TYPE] = @default_content_type
         end
 
         # send a status with out content length
