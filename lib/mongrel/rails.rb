@@ -92,7 +92,6 @@ module Mongrel
 
       def log_threads_waiting_for(event)
         if Time.now - @tick > 10
-          # TODO: add sync locking again
           @tick = Time.now
         end
       end

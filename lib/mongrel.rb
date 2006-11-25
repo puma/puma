@@ -123,7 +123,6 @@ module Mongrel
 
     MONGREL_VERSION="0.3.18".freeze
 
-    # TODO: this use of a base for tempfiles needs to be looked at for security problems
     MONGREL_TMP_BASE="mongrel".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
@@ -191,8 +190,6 @@ module Mongrel
     # You don't really call this.  It's made for you.
     # Main thing it does is hook up the params, and store any remaining
     # body data into the HttpRequest.body attribute.
-    #
-    # TODO: Implement tempfile removal when the request is done.
     def initialize(params, socket, dispatcher)
       @params = params
       @socket = socket
@@ -537,8 +534,6 @@ module Mongrel
     # The timeout parameter is a sleep timeout (in hundredths of a second) that is placed between 
     # socket.accept calls in order to give the server a cheap throttle time.  It defaults to 0 and
     # actually if it is 0 then the sleep is not done at all.
-    #
-    # TODO: Find out if anyone actually uses the timeout option since it seems to cause problems on FBSD.
     def initialize(host, port, num_processors=(2**30-1), timeout=0)
       @socket = TCPServer.new(host, port) 
       @classifier = URIClassifier.new

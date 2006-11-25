@@ -132,7 +132,6 @@ module Mongrel
 
     # Checks if the given path can be served and returns the full path (or nil if not).
     def can_serve(path_info)
-      # TODO: investigate freezing the path_info to prevent double escaping
       req_path = File.expand_path(File.join(@path,HttpRequest.unescape(path_info)), @path)
 
       if req_path.index(@path) == 0 and File.exist? req_path
