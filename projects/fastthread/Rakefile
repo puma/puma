@@ -4,7 +4,7 @@ require 'rake/testtask'
 require 'rake/gempackagetask'
 require 'tools/rakehelp'
 
-GEM_VERSION="0.4"
+GEM_VERSION="0.4.1"
 
 task :default => ['fastthread', 'test', 'package']
 
