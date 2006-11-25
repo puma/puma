@@ -39,7 +39,7 @@ module Mongrel
 
       def initialize(klass)
         @files = Mongrel::DirHandler.new("/",false)
-        @guard = Sync.new
+        @guard = Mutex.new
         @klass = klass
       end
 
@@ -49,7 +49,7 @@ module Mongrel
         end
 
         controller = nil
-        @guard.synchronize(:EX) {
+        @guard.synchronize {
           controller = @klass.run(request.body, request.params)
         }
 
