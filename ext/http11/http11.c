@@ -299,9 +299,6 @@ VALUE BMHSearch_find(VALUE self, VALUE hay)
     rb_raise(eBMHSearchError, "Corrupt search state. REALLY BAD!");
   }
 
-  /* Start searching from the end of S->needle (this is not a typo) */
-  hpos = S->nlen-1;
-
   /* Check for a trailing remainder, which is only possible if skip > 1 */
   if(S->skip) {
     // only scan for what should be the rest of the string
@@ -314,6 +311,9 @@ VALUE BMHSearch_find(VALUE self, VALUE hay)
     }
   }
 
+
+  /* Start searching from the end of S->needle (this is not a typo) */
+  hpos = S->nlen-1;
 
   while(hpos < hlen) {
     /* Compare the S->needle backwards, and stop when first mismatch is found */
