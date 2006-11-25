@@ -1,5 +1,5 @@
 require 'test/unit'
-$:.unshift File.expand_path( File.join( File.dirname( __FILE__ ), "../ext" ) )
+$:.unshift File.expand_path( File.join( File.dirname( __FILE__ ), "../ext/fastthread" ) )
 require 'fastthread'
 
 class TestCondVar < Test::Unit::TestCase

@@ -4,7 +4,7 @@ require 'rake/testtask'
 require 'rake/gempackagetask'
 require 'tools/rakehelp'
 
-VERSION="0.4"
+GEM_VERSION="0.4"
 
 task :default => ['fastthread', 'test', 'package']
 
@@ -18,7 +18,7 @@ end
 
 gemspec = Gem::Specification.new do |gemspec|
   gemspec.name = "fastthread"
-  gemspec.version = VERSION
+  gemspec.version = GEM_VERSION
   gemspec.platform = Gem::Platform::RUBY
   gemspec.author = "MenTaLguY <mental@rydia.net>"
   gemspec.summary = "Optimized replacement for thread.rb primitives"
