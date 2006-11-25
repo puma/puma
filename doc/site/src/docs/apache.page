@@ -18,7 +18,7 @@ When you're just starting out, don't bother with doing anything but
 running just Mongrel.  Mongrel is slower than Apache, but not so slow that
 small installations will notice it.  The worst thing you can do is
 try to learn Apache install when you're also trying to learn Ruby on Rails
-and Mongrel too.  Start small, then *when you need* build up to the big stuff.
+and Mongrel too.  Start small, then *when you need*, build up to the big stuff.
 
 h2. A simple single mongrel configuration
 
@@ -144,6 +144,8 @@ any application we deploy.
 Notice that this file doesn't end in .conf since it's not a real configuration
 file, but you can name it however you wish.
 
+<b>Important Update: "typo fixed in IE deflate rules":http://rubyforge.org/pipermail/mongrel-users/2006-October/001868.html</b>
+
 <pre><code>
   ServerName myapp.com
   DocumentRoot /var/www/myapp.com/current/public
@@ -182,7 +184,7 @@ file, but you can name it however you wish.
   # ... text/xml application/xml application/xhtml+xml text/javascript 
   BrowserMatch ^Mozilla/4 gzip-only-text/html
   BrowserMatch ^Mozilla/4.0[678] no-gzip
-  BrowserMatch bMSIE !no-gzip !gzip-only-text/html
+  BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
 
   # Uncomment for deflate debugging
   #DeflateFilterNote Input input_info
@@ -291,6 +293,182 @@ You need to have the proxy pass the new directory name.
 Thanks to Joey Geiger and others of the mongrel list for these 
 instructions.
 
+h2. Success Stories
+
+Martins on the mongrel-list has submitted this simple apache configuration.  It serves up static content with apache, and forwards dynamic content on to mongrel using ProxyPass.  Thanks Martins:
+
+<pre><code>
+<VirtualHost *>
+       ServerName myapp.tld
+       ServerAlias www.myapp.tld
+
+       DocumentRoot /var/www/sites/myapp/current/public
+
+       <Directory "/var/www/sites/myapp/current/public">
+               Options FollowSymLinks
+               AllowOverride None
+               Order allow,deny
+               Allow from all
+       </Directory>
+
+       RewriteEngine On
+
+       # Check for maintenance file. Let apache load it if it exists
+       RewriteCond %{DOCUMENT_ROOT}/system/maintenance.html -f
+       RewriteRule . /system/maintenance.html [L]
+
+       # Let apache serve static files
+       RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} -f
+       RewriteRule (.*) $1 [L]
+
+       # Don't do forward proxying
+       ProxyRequests Off
+
+       # Enable reverse proxying
+       <Proxy *>
+               Order deny,allow
+               Allow from all
+       </Proxy>
+
+       # Pass other requests to mongrel instance
+       ProxyPass / http://127.0.0.1:8200/
+       ProxyPassReverse / http://127.0.0.1:8200/
+
+</VirtualHost>
+</code></pre>
+
+Phillip Hallstrom has submitted this apache configuration, which includes support for having static directories handled by Apache, php support, and hiding svn directories.
+
+<pre><code>
+<VirtualHost *:80>
+
+  ServerName myserver.com
+  DocumentRoot /path/to/my/app/public
+
+  <Directory "/path/to/my/app/public">
+    Options FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+  </Directory>
+
+  <Proxy balancer://mongrel_cluster>
+    BalancerMember http://127.0.0.1:8805
+  </Proxy>
+
+  RewriteEngine On
+
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME} -d
+  RewriteRule ^(.+[^/])$ $1/ [R]
+
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME} \.php
+  RewriteRule ^(.*)$ $1 [QSA,L]
+
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME} !-f
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.*)$ $1/index.html [QSA,L]
+
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME} !-f
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME}/index.php -f
+  RewriteRule ^(.*)$ $1/index.php [QSA,L]
+
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME} -d
+  RewriteRule ^(.*)[^/]$ $1/ [QSA,L]
+
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME} !-f
+  RewriteRule ^/(.*)$ balancer://mongrel_cluster%{REQUEST_URI} [P,QSA,L]
+
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE application/x-javascript
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE application/xhtml+xml
+
+  BrowserMatch ^Mozilla/4 gzip-only-text/html
+  BrowserMatch ^Mozilla/4.0[678] no-gzip
+  BrowserMatch bMSIE !no-gzip !gzip-only-text/html
+
+  php_value include_path /path/to/my/app/php:/usr/local/lib/php:.
+  php_value auto_prepend_file /path/to/my/app/php/auto_prepend.php
+
+  # this not only blocks access to .svn directories, but makes it appear
+  # as though they aren't even there, not just that they are forbidden
+  <DirectoryMatch "^/.*/\.svn/">
+    ErrorDocument 403 /404.html
+    Order allow,deny
+    Deny from all
+    Satisfy All
+  </DirectoryMatch>
+
+</VirtualHost>
+</code></pre>
+
+Jens Kraemer reports this differing proxy setup that uses the P option in Rewrite rules so as not to use the ProxyPass directive:
+
+<pre><code>
+  # Don't do forward proxying
+   ProxyRequests Off
+
+   # Enable reverse proxying
+   <Proxy *>
+     Order deny,allow
+     Allow from all
+   </Proxy>
+
+   RewriteEngine On
+
+   # Check for maintenance file. Let apache load it if it exists
+   RewriteCond %{DOCUMENT_ROOT}/system/maintenance.html -f
+   RewriteRule . /system/maintenance.html [L]
+
+   # Rewrite index to check for static
+   RewriteRule ^/$ /index.html [QSA]
+
+   # Let apache serve static files (send everything via mod_proxy that
+   # is *no* static file (!-f)
+   RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} !-f
+   RewriteRule .* http://127.0.0.1:8200%{REQUEST_URI} [L,P,QSA]
+</code></pre>
+
+the P option to the last rule replaces the ProxyPass and
+ProxyPassReverse directives.
+
+
+h2. SVN Security
+
+If you use svn to issue checkouts instead of exports, you'll need to hide those pesky .svn directories.  This works:
+
+<pre><code>
+# this not only blocks access to .svn directories, but makes it appear
+  # as though they aren't even there, not just that they are forbidden
+  <DirectoryMatch "^/.*/\.svn/">
+    ErrorDocument 403 /404.html
+    Order allow,deny
+    Deny from all
+    Satisfy All
+  </DirectoryMatch>
+
+</VirtualHost>
+</code></pre>
+
+h2. Reading REMOTE_USER from mongrel through proxy
+
+Jon Reads reports successfully reading the REMOTE_USER variable:
+
+After many hours trying to solve the same problem I found this post: "Forcing a proxied host to generate REMOTE_USER":http://www.nabble.com/Forcing-a-proxied-host-to-generate-REMOTE_USER-tf1114364.html#a2914465
+
+and can confirm that the following works for me when put in the Proxy
+directive on Apache 2:
+
+<pre><code>
+   RewriteEngine On
+   RewriteCond %{LA-U:REMOTE_USER} (.+)
+   RewriteRule . - [E=RU:%1]
+   RequestHeader add X-Forwarded-User %{RU}e
+</code></pre>
+
 h2. References and Other Guides
 
 [1] "Time For A Grown-Up Server: Rails, Mongrel, Apache, Capistrano and You":http://blog.codahale.com/2006/06/19/time-for-a-grown-up-server-rails-mongrel-apache-capistrano-and-you/
@@ -299,4 +477,5 @@ h2. References and Other Guides
 
 [3] "Slingshot Hosting Automated Capistrano Recipe":http://www.slingshothosting.com/support/capistrano
 
+Thanks to many users on the mongrel list for making it easy for me to compile all these tips and tricks as they come across the list.
 
