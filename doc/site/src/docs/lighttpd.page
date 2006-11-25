@@ -13,7 +13,7 @@ or another web server that can handle properly balancing backends.
 
 h1.  Using Lighttpd With Mongrel
 
-It is possible host an application with just Mongrel since it is
+It is possible to host an application with just Mongrel since it is
 able to serve files like a normal web server.  Still, no matter
 how fast Mongrel gets it probably can't compete with something
 like lighttpd for serving static files.  Because of this I've
