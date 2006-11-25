@@ -7,6 +7,42 @@ ordering: 2
 
 h1. Latest News
 
+h2. Nov 24: 0.3.17 Almost 1.0 RC1
+
+We're hard at work getting the hot new win32 service Luis wrote out
+and ready for production.  We're hoping to have that included in the
+1.0 RC1 release we make very soon.
+
+This pre-release is just to make sure that we didn't step on any toes.
+Install it with:
+
+ $ gem install fastthread --source=http://mongrel.rubyforge.org/releases
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases
+
+The fastthread gem implements mentalguy's fastthread set of Thread locking
+alternatives.  It is optional, so if it causes you problems, remove it from
+your gems:
+
+ $ gem uninstall fastthread
+
+Restart Mongrel and all will be as it was before.  The fastthread stuff will
+hopefully make Mongrel a little quicker and also reduce it's memory leakage
+potential.
+
+I've also updated all the stale documentation, including the 
+"Apache documentation":/docs/apache.html and added information
+pimping people's "books":/books.html including *mine*.  If there's
+a book I've missed then shoot me an e-mail and I'll pimp it equally
+as well.  I want as much information for Mongrel as possible available
+to as many people as possible.
+
+Finally, there's an "Atom":http://www.atomenabled.org/ feed available
+which will let people track changes to all the documentation.  Try it 
+at "http://mongrel.rubyforge.org/feed.atom":http://mongrel.rubyforge.org/feed.atom
+and let me know how you like it.
+
+"Read the ChangeLog":http://mongrel.rubyforge.org/releases/ChangeLog
+
 h2. Sep 18: Finally! 0.3.13.4 Is Official (for Unix)!
 
 Everyone's favorite web server went gold this weekend.  I let it sit for
