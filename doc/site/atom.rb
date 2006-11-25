@@ -64,7 +64,7 @@ end
 pages = []
 
 Find.find("src") do |path|
-  if /.page$/ === path and !path.index("index.page") and not /src\/[a-z]*\.page/ === path
+  if /.page$/ === path and !path.index("index.page")
     pages << Page.new(path)
   end
 end
