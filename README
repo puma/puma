@@ -9,27 +9,7 @@ What makes Mongrel so fast is the careful use of a C extension to provide fast
 HTTP 1.1 protocol parsing and fast URI lookup.  This combination makes the server
 scream without too many portability issues.
 
-== Status
-
-Mongrel 0.3.9 now supports a fancy RubyGems based plugin system called GemPlugin.
-It uses the basic machinery of RubyGems to implement dynamically loaded plugins
-based on dependencies.  Writing a plugin is pretty easy, but right now it's
-not as well documented as it should be.  There is a simple example plugin 
-for adding a status command to your mongrel.  Just do:
-
- > gem install mongrel_status
-
-And you'll then get a new status command.  Then just do:
-
- > cd myrailsapp
- > mongrel_rails start -d
- > mongrel_rails status
-
-And it'll print out the PID your Rails app is running under.
-
-The GemPlugin project is a sub-project of Mongrel, but it's licensed under
-the Ruby license and is usable outside Mongrel
-
+You can view http://mongrel.rubyforge.org for more information.
 
 == Quick Start
 
@@ -60,39 +40,6 @@ changing to a different directory, adding more MIME types, and setting processor
 threads and timeouts.
 
 
-=== Win32 Service Support
-
-Mongrel now has support for running as a Win32 service right out of the
-box.  The support is still rough but works well enough that we decided
-to release it.  You can thank Luis Lavena for working on this and making
-it so nice.
-
-After you do the gem install, find a Rails application you want to run
-and do:
-
- $ mongrel_rails_service install -n myapp \ 
-     -r c:\my\path\to\myapp -p 4000 -e production
- $ mongrel_rails_service start -n myapp
-
-Now hit the port and poof, works.  
-
-Stopping a service is simple:
-
- $ mongrel_rails_service stop -n myapp
-
-If you run into an app that's not running right, my suggestion is to run it with
-the regular mongrel_rails runner:
-
- $ cd c:\my\path\to\myapp
- $ mongrel_rails start -p 4500
-
-Since that will spit out error messages and stuff to the console.  *Use CTRL-Pause/Break to stop.*
-
-Best thing about the win32 support is that you can simply use the Windows Services
-in Control Panel->Admin Tools to work with it.  You can also install the same
-Rails app as different installs.  For example I've got myapp_dev, and myapp_prod and
-just start/stop which one I want to work with.
-
 == Install
 
 It doesn't explicitly require Camping, but if you want to run the examples/camping/
@@ -103,7 +50,6 @@ The library consists of a C extension so you'll need a C compiler or at least a 
 who can build it for you.
 
 Finally, the source includes a setup.rb for those who hate RubyGems.
-
 
 == Usage
 
@@ -134,26 +80,6 @@ basic way to give a more complex 404 message.
 This also shows the DirHandler with directory listings.  This is still
 rough but it should work for basic hosting.  *File extension to mime
 type mapping is missing though.*
-
-
-== Speed
-
-Like previous releases 0.3.1 continues the trend of making things
-as fast as possible.  It currently might be a little slower than
-other releases but should hold up pretty good against at least 
-WEBrick (especially when running Rails).
-
-As before you can control the number of processor threads (and thus
-ActiveRecord database connections) with:
-
- h = Mongrel::HttpServer.new("0.0.0.0", "3000", 40)
-
-Which will make 40 thread processors.  Right now the optimal setting is up in
-the air, but 20 seemed to be about the sweet spot on my systems.  The 
-limited processors also means that you can use ActiveRecord as-is and it will
-create a matching database connection for each processor thread.  More on 
-this in future releases.
-
 
 == Contact
 
