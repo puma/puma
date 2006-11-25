@@ -1,0 +1,7 @@
+= mongrel_service (native) TODO List
+
+  * Add more documentation about services
+  * Build win32/service extension inside the gem and ship with it.
+    (instead of relying in the non-official 0.5.0 one).
+  * Sanitize SingleMongrel and document the functions
+  

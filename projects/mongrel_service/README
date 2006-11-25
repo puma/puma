@@ -5,9 +5,7 @@ It will work like before, with this this syntax when calling mongrel_rails:
 
 service::install
 service::remove
-service::start
-service::stop
-service::status
+service::update
 
 = Author:
   Luis Lavena

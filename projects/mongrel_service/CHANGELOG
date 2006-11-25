@@ -1,0 +1,5 @@
+*SVN*
+    * Single Service (SingleMongrel) object type implemented.
+    * Updated Rakefile to reflect the new building steps.
+    * Removed SendSignal, too hackish for my taste, replaced with complete FB solution.
+    
