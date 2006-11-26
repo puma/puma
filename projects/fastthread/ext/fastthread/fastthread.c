@@ -131,7 +131,6 @@ shift_list(list)
     entry->next = list->entry_pool;
     list->entry_pool = entry;
   } else {
-    fprintf(stderr, "DEBUG: freeing entry\n");
     free(entry);
   }
 
