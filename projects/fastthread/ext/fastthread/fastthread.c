@@ -17,11 +17,14 @@ static VALUE avoid_mem_pools;
 #define USE_MEM_POOLS !RTEST(avoid_mem_pools)
 #endif
 
+static ID mutex_ivar;
+
 static VALUE rb_cMutex;
 static VALUE rb_cConditionVariable;
 static VALUE rb_eThreadError;
 static VALUE rb_cQueue;
 static VALUE rb_cSizedQueue;
+static VALUE rb_mMutex_m;
 
 static VALUE
 return_value(value)
@@ -388,6 +391,47 @@ rb_mutex_synchronize(self)
 {
   rb_mutex_lock(self);
   return rb_ensure(rb_yield, Qundef, rb_mutex_unlock, self);
+}
+
+static VALUE
+rb_mutex_m_initialize(self)
+  VALUE self;
+{
+  rb_ivar_set(self, mutex_ivar, rb_mutex_alloc(rb_cMutex));
+  return self;
+}
+
+static VALUE
+rb_mutex_m_synchronize(self)
+  VALUE self;
+{
+  return rb_mutex_synchronize(rb_ivar_get(self, mutex_ivar));
+}
+
+static VALUE
+rb_mutex_m_locked_p(self)
+  VALUE self;
+{
+  return rb_mutex_locked_p(rb_ivar_get(self, mutex_ivar));
+}
+
+static VALUE
+rb_mutex_m_try_lock(self)
+  VALUE self;
+{
+  return rb_mutex_try_lock(rb_ivar_get(self, mutex_ivar));
+}
+
+static VALUE
+rb_mutex_m_lock(self)
+{
+  return rb_mutex_lock(rb_ivar_get(self, mutex_ivar));
+}
+
+static VALUE
+rb_mutex_m_unlock(self)
+{
+  return rb_mutex_unlock(rb_ivar_get(self, mutex_ivar));
 }
 
 typedef struct _ConditionVariable {
@@ -818,6 +862,13 @@ rb_sized_queue_push(self, value)
   return self;
 }
 
+static void
+require_first(char const *lib) {
+  if (!RTEST(rb_require(lib))) {
+    rb_raise(rb_eRuntimeError, "fastthread must be required before %s", lib);
+  }
+}
+
 void
 Init_fastthread()
 {
@@ -825,9 +876,10 @@ Init_fastthread()
   rb_global_variable(&avoid_mem_pools);
   rb_define_variable("$fastthread_avoid_mem_pools", &avoid_mem_pools);
 
-  if (!RTEST(rb_require("thread"))) {
-    rb_raise(rb_eRuntimeError, "fastthread must be required before thread");
-  }
+  mutex_ivar = rb_intern("__mutex__");
+
+  require_first("thread");
+  require_first("mutex_m");
 
   rb_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
 
@@ -875,5 +927,13 @@ Init_fastthread()
   rb_alias(rb_cQueue, rb_intern("<<"), rb_intern("push"));
   rb_alias(rb_cQueue, rb_intern("deq"), rb_intern("pop"));
   rb_alias(rb_cQueue, rb_intern("shift"), rb_intern("pop"));
+
+  rb_mMutex_m = rb_define_module("Mutex_m");
+  rb_define_method(rb_mMutex_m, "mu_initialize", rb_mutex_m_initialize, 0);
+  rb_define_method(rb_mMutex_m, "mu_synchronize", rb_mutex_m_synchronize, 0);
+  rb_define_method(rb_mMutex_m, "mu_locked?", rb_mutex_m_locked_p, 0);
+  rb_define_method(rb_mMutex_m, "mu_try_lock", rb_mutex_m_try_lock, 0);
+  rb_define_method(rb_mMutex_m, "mu_lock", rb_mutex_m_lock, 0);
+  rb_define_method(rb_mMutex_m, "mu_unlock", rb_mutex_m_unlock, 0);
 }
 
