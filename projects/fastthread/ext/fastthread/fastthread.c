@@ -11,8 +11,10 @@
 #include <intern.h>
 #include <rubysig.h>
 
+static VALUE avoid_mem_pools;
+
 #ifndef USE_MEM_POOLS
-#define USE_MEM_POOLS 1
+#define USE_MEM_POOLS !RTEST(avoid_mem_pools)
 #endif
 
 static VALUE rb_cMutex;
@@ -129,6 +131,7 @@ shift_list(list)
     entry->next = list->entry_pool;
     list->entry_pool = entry;
   } else {
+    fprintf(stderr, "DEBUG: freeing entry\n");
     free(entry);
   }
 
@@ -819,6 +822,10 @@ rb_sized_queue_push(self, value)
 void
 Init_fastthread()
 {
+  avoid_mem_pools = rb_gv_get("$fastthread_avoid_mem_pools");
+  rb_global_variable(&avoid_mem_pools);
+  rb_define_variable("$fastthread_avoid_mem_pools", &avoid_mem_pools);
+
   if (!RTEST(rb_require("thread"))) {
     rb_raise(rb_eRuntimeError, "fastthread must be required before thread");
   }
