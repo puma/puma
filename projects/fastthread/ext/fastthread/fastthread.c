@@ -11,6 +11,10 @@
 #include <intern.h>
 #include <rubysig.h>
 
+#ifndef USE_MEM_POOLS
+#define USE_MEM_POOLS 1
+#endif
+
 static VALUE rb_cMutex;
 static VALUE rb_cConditionVariable;
 static VALUE rb_eThreadError;
@@ -108,6 +112,7 @@ shift_list(list)
   List *list;
 {
   Entry *entry;
+  VALUE value;
 
   entry = list->entries;
   if (!entry) return Qundef;
@@ -116,12 +121,18 @@ shift_list(list)
   if ( entry == list->last_entry ) {
     list->last_entry = NULL;
   }
-  entry->next = list->entry_pool;
-  list->entry_pool = entry;
 
   --list->size;
 
-  return entry->value;
+  value = entry->value;
+  if (USE_MEM_POOLS) {
+    entry->next = list->entry_pool;
+    list->entry_pool = entry;
+  } else {
+    free(entry);
+  }
+
+  return value;
 }
 
 static void
@@ -129,8 +140,12 @@ clear_list(list)
   List *list;
 {
   if (list->last_entry) {
-    list->last_entry->next = list->entry_pool;
-    list->entry_pool = list->entries;
+    if (USE_MEM_POOLS) {
+      list->last_entry->next = list->entry_pool;
+      list->entry_pool = list->entries;
+    } else {
+      free_entries(list->entries);
+    }
     list->entries = NULL;
     list->last_entry = NULL;
     list->size = 0;
