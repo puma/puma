@@ -19,15 +19,23 @@ end
 gemspec = Gem::Specification.new do |gemspec|
   gemspec.name = "fastthread"
   gemspec.version = GEM_VERSION
-  gemspec.platform = Gem::Platform::RUBY
   gemspec.author = "MenTaLguY <mental@rydia.net>"
   gemspec.summary = "Optimized replacement for thread.rb primitives"
   gemspec.test_file = 'test/test_all.rb'
-  gemspec.extensions = Dir.glob( 'ext/**/extconf.rb' )
   gemspec.files = %w( Rakefile ) +
                   Dir.glob( 'test/*.rb' ) +
-                  Dir.glob( 'ext/**/*.{c,rb}' )
-  gemspec.require_path = 'ext'
+                  Dir.glob( 'ext/**/*.{c,rb}' ) +
+                  Dir.glob( 'tools/*.rb' )
+                  
+  gemspec.require_path = 'lib'
+
+  if RUBY_PLATFORM.match("win32")
+    gemspec.platform = Gem::Platform::WIN32
+    gemspec.files += ['lib/fastthread.so']
+  else
+    gemspec.platform = Gem::Platform::RUBY
+    gemspec.extensions = Dir.glob( 'ext/**/extconf.rb' )
+  end
 end
 
 Rake::GemPackageTask.new( gemspec ) do |task|
