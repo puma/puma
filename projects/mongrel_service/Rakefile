@@ -14,10 +14,13 @@ setup_clean ["pkg", "lib/*.bundle", "*.gem", ".config"]
 setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 
 desc "Does a full compile, test run"
-task :default => [:test, :compile, :package]
+task :default => [:compile, :test]
 
 GEM_VERSION = "0.3.0"
 GEM_NAME = "mongrel_service"
+
+desc "Compile native code"
+task :compile => [:native_lib, :native_service]
 
 # ServiceFB namespace (lib)
 namespace :lib do
@@ -39,8 +42,8 @@ namespace :lib do
 end
 # add lib namespace to global tasks
 #include_projects_of :lib
-task :compile => "lib:build"
-task :clobber => "lib:clobber"
+task :native_lib => "lib:build"
+task :clean => "lib:clobber"
 
 # mongrel_service (native)
 namespace :native do
@@ -65,9 +68,10 @@ namespace :native do
   end
 end
 #include_projects_of :native
-task :compile => "native:build"
-task :clobber => "native:clobber"
+task :native_service => "native:build"
+task :clean => "native:clobber"
 
+task :package => [:clean, :compile, :test]
 
 setup_gem(GEM_NAME, GEM_VERSION) do |spec|
   spec.summary = "Mongrel Native Win32 Service Plugin for Rails"

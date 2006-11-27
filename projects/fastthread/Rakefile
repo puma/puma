@@ -6,9 +6,12 @@ require 'tools/rakehelp'
 
 GEM_VERSION="0.4.1"
 
-task :default => ['fastthread', 'test', 'package']
-
 setup_extension('fastthread', 'fastthread')
+
+desc "Compiles native extensions"
+task :compile => [:fastthread]
+
+task :default => [:compile, :test]
 
 Rake::TestTask.new do |task|
   task.libs << 'test'
@@ -38,6 +41,7 @@ gemspec = Gem::Specification.new do |gemspec|
   end
 end
 
+task :package => [:clean, :compile, :test]
 Rake::GemPackageTask.new( gemspec ) do |task|
   task.gem_spec = gemspec
   task.need_tar = true
