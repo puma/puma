@@ -25,7 +25,7 @@ namespace :lib do
     lib       'ServiceFB'
     build_to  'lib'
 
-    define    'SERVICEFB_DEBUG_LOG' if ENV['DEBUG_LIB']
+    define    'SERVICEFB_DEBUG_LOG' unless ENV['RELEASE'] 
     source    'lib/ServiceFB/ServiceFB.bas'
   end
   
@@ -33,7 +33,7 @@ namespace :lib do
     lib       'ServiceFB_Utils'
     build_to  'lib'
 
-    define    'SERVICEFB_DEBUG_LOG' if ENV['DEBUG_LIB']
+    define    'SERVICEFB_DEBUG_LOG' unless ENV['RELEASE']
     source    'lib/ServiceFB/ServiceFB_Utils.bas'
   end
 end
@@ -48,7 +48,7 @@ namespace :native do
     executable  'mongrel_service'
     build_to    'bin'
     
-    define      'DEBUG_LOG' if ENV['DEBUG_LOG']
+    define      'DEBUG_LOG' unless ENV['RELEASE']
     
     main        'native/mongrel_service.bas'
     source      'native/process.bas'
@@ -71,6 +71,7 @@ task :clobber => "native:clobber"
 
 setup_gem(GEM_NAME, GEM_VERSION) do |spec|
   spec.summary = "Mongrel Native Win32 Service Plugin for Rails"
+  spec.summary += " (debug build)" unless ENV['RELEASE'] 
   spec.description = "This plugin offer native win32 services for rails, powered by Mongrel."
   spec.author = "Luis Lavena"
   spec.platform = Gem::Platform::WIN32

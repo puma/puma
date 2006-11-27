@@ -1,7 +1,19 @@
-= mongrel_service (native) TODO List
+Legend:
+[ ] not done
+[X] done
+[+] in progess
 
-  * Add more documentation about services
-  * Build win32/service extension inside the gem and ship with it.
-    (instead of relying in the non-official 0.5.0 one).
-  * Sanitize SingleMongrel and document the functions
-  
+### General
+[ ] Add more documentation about services and requirements
+[ ] Add process monitoring.
+
+### Dependencies
+[+] Remove win32/service extension dependency (instead of relying in the non-official 0.5.0 one).
+  [ ] Add service management (from ServiceFB) to install and remove services.
+    
+### SingleMongrel
+[+] Sanitize SingleMongrel and document the functions.
+
+### ClusterMongrel
+[ ] Parse mongrel_cluster configuration file (yaml) looking for port information
+  [ ] Reimplent SingleMongrel for ClusterMongrel, splitting source files for better organization.
