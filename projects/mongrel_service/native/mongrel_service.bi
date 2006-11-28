@@ -5,7 +5,6 @@
 '# 
 '# Copyright (c) 2006 Multimedia systems
 '# (c) and code by Luis Lavena
-'# Portions (c) Louis Thomas
 '# 
 '#  mongrel_service (native) and mongrel_service gem_pluing are licensed
 '#  in the same terms as mongrel, please review the mongrel license at
