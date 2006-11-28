@@ -869,6 +869,23 @@ require_first(char const *lib) {
   }
 }
 
+/* Existing code expects to be able to serialize Mutexes... */
+
+static VALUE
+dummy_load(self, string)
+  VALUE self;
+  VALUE string;
+{
+  return Qnil;
+}
+
+static VALUE
+dummy_dump(self)
+  VALUE self;
+{
+  return rb_str_new2("");
+}
+
 void
 Init_fastthread()
 {
@@ -885,6 +902,8 @@ Init_fastthread()
 
   rb_cMutex = rb_define_class("Mutex", rb_cObject);
   rb_define_alloc_func(rb_cMutex, rb_mutex_alloc);
+  rb_define_method(rb_cMutex, "marshal_load", dummy_load, 1);
+  rb_define_method(rb_cMutex, "marshal_dump", dummy_dump, 0);
   rb_define_method(rb_cMutex, "initialize", return_value, 0);
   rb_define_method(rb_cMutex, "locked?", rb_mutex_locked_p, 0);
   rb_define_method(rb_cMutex, "try_lock", rb_mutex_try_lock, 0);
@@ -895,6 +914,8 @@ Init_fastthread()
 
   rb_cConditionVariable = rb_define_class("ConditionVariable", rb_cObject);
   rb_define_alloc_func(rb_cConditionVariable, rb_condvar_alloc);
+  rb_define_method(rb_cConditionVariable, "marshal_load", dummy_load, 1);
+  rb_define_method(rb_cConditionVariable, "marshal_dump", dummy_dump, 0);
   rb_define_method(rb_cConditionVariable, "initialize", return_value, 0);
   rb_define_method(rb_cConditionVariable, "wait", rb_condvar_wait, 1);
   rb_define_method(rb_cConditionVariable, "broadcast", rb_condvar_broadcast, 0);
