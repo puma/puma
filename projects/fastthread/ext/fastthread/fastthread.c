@@ -9,6 +9,7 @@
 
 #include <ruby.h>
 #include <intern.h>
+#include <st.h>
 #include <rubysig.h>
 
 static VALUE avoid_mem_pools;
@@ -18,6 +19,11 @@ static VALUE avoid_mem_pools;
 #endif
 
 static ID mutex_ivar;
+static ID sync_ivar;
+
+static VALUE SYNC_UN;
+static VALUE SYNC_SH;
+static VALUE SYNC_EX;
 
 static VALUE rb_cMutex;
 static VALUE rb_cConditionVariable;
@@ -25,6 +31,8 @@ static VALUE rb_eThreadError;
 static VALUE rb_cQueue;
 static VALUE rb_cSizedQueue;
 static VALUE rb_mMutex_m;
+static VALUE rb_cSync;
+static VALUE rb_mSync_m;
 
 static VALUE
 return_value(value)
@@ -862,6 +870,199 @@ rb_sized_queue_push(self, value)
   return self;
 }
 
+typedef struct _Sync {
+  Mutex mutex;
+  ConditionVariable upgrade_ready;
+  ConditionVariable ready;
+  VALUE sh_holders;
+  VALUE ex_holder;
+  unsigned ex_count;
+} Sync;
+
+static void
+init_sync(sync)
+  Sync *sync;
+{
+  init_mutex(&sync->mutex);
+  init_condvar(&sync->upgrade_ready);
+  init_condvar(&sync->ready);
+  sync->sh_holders = rb_hash_new();
+  sync->ex_holder = Qnil;
+  sync->ex_count = 0;
+}
+
+static void
+mark_sync(sync)
+  Sync *sync;
+{
+  mark_mutex(&sync->mutex);
+  mark_condvar(&sync->upgrade_ready);
+  mark_condvar(&sync->ready);
+  rb_gc_mark(sync->sh_holders);
+  rb_gc_mark(sync->ex_holder);
+}
+
+static void
+finalize_sync(sync)
+  Sync *sync;
+{
+  finalize_mutex(&sync->mutex);
+  finalize_condvar(&sync->upgrade_ready);
+  finalize_condvar(&sync->ready);
+  sync->sh_holders = Qnil;
+  sync->ex_holder = Qnil;
+}
+
+static void
+free_sync(sync)
+  Sync *sync;
+{
+  finalize_sync(sync);
+  free(sync);
+}
+
+static VALUE
+rb_sync_alloc(klass)
+  VALUE klass;
+{
+  Sync *sync;
+  sync = (Sync *)malloc(sizeof(Sync));
+  init_sync(sync);
+  return Data_Wrap_Struct(klass, mark_sync, free_sync, sync);
+}
+
+static VALUE
+rb_sync_mode(self)
+  VALUE self;
+{
+  Sync *sync;
+  Data_Get_Struct(self, Sync, sync);
+  if (RTEST(sync->ex_holder)) {
+    return SYNC_EX;
+  } else if (RHASH(sync->sh_holders)->tbl->num_entries) {
+    return SYNC_SH;
+  } else {
+    return SYNC_UN;
+  }
+}
+
+static VALUE
+rb_sync_locked_p(self)
+  VALUE self;
+{
+  VALUE mode;
+  mode = rb_sync_mode(self);
+  return ( mode != SYNC_UN ? Qtrue : Qfalse );
+}
+
+static VALUE
+rb_sync_shared_p(self)
+  VALUE self;
+{
+  VALUE mode;
+  mode = rb_sync_mode(self);
+  return ( mode == SYNC_SH ? Qtrue : Qfalse );
+}
+
+static VALUE
+rb_sync_exclusive_p(self)
+  VALUE self;
+{
+  VALUE mode;
+  mode = rb_sync_mode(self);
+  return ( mode == SYNC_EX ? Qtrue : Qfalse );
+}
+
+static VALUE
+rb_sync_try_lock(argc, argv, self)
+  int argc;
+  VALUE *argv;
+  VALUE self;
+{
+  return self;
+}
+
+static VALUE
+rb_sync_lock(argc, argv, self)
+  int argc;
+  VALUE *argv;
+  VALUE self;
+{
+  return self;
+}
+
+static VALUE
+rb_sync_unlock(argc, argv, self)
+  int argc;
+  VALUE *argv;
+  VALUE self;
+{
+  return self;
+}
+
+static VALUE
+rb_sync_m_initialize(self)
+  VALUE self;
+{
+  rb_ivar_set(self, sync_ivar, rb_sync_alloc(rb_cSync));
+  return self;
+}
+
+static VALUE
+rb_sync_m_mode(self)
+  VALUE self;
+{
+  return rb_sync_mode(rb_ivar_get(self, sync_ivar));
+}
+
+static VALUE
+rb_sync_m_locked_p(self)
+  VALUE self;
+{
+  return rb_sync_locked_p(rb_ivar_get(self, sync_ivar));
+}
+
+static VALUE
+rb_sync_m_shared_p(self)
+  VALUE self;
+{
+  return rb_sync_shared_p(rb_ivar_get(self, sync_ivar));
+}
+
+static VALUE
+rb_sync_m_exclusive_p(self)
+  VALUE self;
+{
+  return rb_sync_exclusive_p(rb_ivar_get(self, sync_ivar));
+}
+
+static VALUE
+rb_sync_m_try_lock(argc, argv, self)
+  int argc;
+  VALUE *argv;
+  VALUE self;
+{
+  return rb_sync_try_lock(argc, argv, rb_ivar_get(self, sync_ivar));
+}
+
+static VALUE
+rb_sync_m_lock(argc, argv, self)
+  int argc;
+  VALUE *argv;
+  VALUE self;
+{
+  return rb_sync_lock(argc, argv, rb_ivar_get(self, sync_ivar));
+}
+
+static VALUE
+rb_sync_m_unlock(argc, argv, self)
+  int argc;
+  VALUE *argv;
+  VALUE self;
+{
+  return rb_sync_unlock(argc, argv, rb_ivar_get(self, sync_ivar));
+}
+
 static void
 require_first(char const *lib) {
   if (!RTEST(rb_require(lib))) {
@@ -894,9 +1095,15 @@ Init_fastthread()
   rb_define_variable("$fastthread_avoid_mem_pools", &avoid_mem_pools);
 
   mutex_ivar = rb_intern("__mutex__");
+  sync_ivar = rb_intern("__sync__");
+
+  SYNC_UN = ID2SYM(rb_intern("UN"));
+  SYNC_SH = ID2SYM(rb_intern("SH"));
+  SYNC_EX = ID2SYM(rb_intern("EX"));
 
   require_first("thread");
   require_first("mutex_m");
+  require_first("sync");
 
   rb_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
 
@@ -956,5 +1163,26 @@ Init_fastthread()
   rb_define_method(rb_mMutex_m, "mu_try_lock", rb_mutex_m_try_lock, 0);
   rb_define_method(rb_mMutex_m, "mu_lock", rb_mutex_m_lock, 0);
   rb_define_method(rb_mMutex_m, "mu_unlock", rb_mutex_m_unlock, 0);
+
+  rb_cSync = rb_class_new(rb_cObject);
+  rb_define_alloc_func(rb_cSync, rb_sync_alloc);
+  rb_define_method(rb_cSync, "initialize", return_value, 0);
+  rb_define_method(rb_cSync, "mode", rb_sync_mode, 0);
+  rb_define_method(rb_cSync, "locked?", rb_sync_locked_p, 0);
+  rb_define_method(rb_cSync, "shared?", rb_sync_shared_p, 0);
+  rb_define_method(rb_cSync, "exclusive?", rb_sync_exclusive_p, 0);
+  rb_define_method(rb_cSync, "try_lock", rb_sync_try_lock, -1);
+  rb_define_method(rb_cSync, "lock", rb_sync_lock, -1);
+  rb_define_method(rb_cSync, "unlock", rb_sync_unlock, -1);
+
+  rb_mSync_m = rb_define_module("Sync_m");
+  rb_define_method(rb_mSync_m, "sync_initialize", rb_sync_m_initialize, 0);
+  rb_define_method(rb_mSync_m, "sync_mode", rb_sync_m_mode, 0);
+  rb_define_method(rb_mSync_m, "sync_locked?", rb_sync_m_locked_p, 0);
+  rb_define_method(rb_mSync_m, "sync_shared?", rb_sync_m_shared_p, 0);
+  rb_define_method(rb_mSync_m, "sync_exclusive?", rb_sync_m_exclusive_p, 0);
+  rb_define_method(rb_mSync_m, "sync_try_lock", rb_sync_m_try_lock, -1);
+  rb_define_method(rb_mSync_m, "sync_lock", rb_sync_m_lock, -1);
+  rb_define_method(rb_mSync_m, "sync_unlock", rb_sync_m_unlock, -1);
 }
 
