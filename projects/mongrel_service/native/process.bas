@@ -265,6 +265,39 @@ namespace process
     end function
     
     
+    '# StillActive(PID) will return FALSE (0) in case the process no longer
+    '# exist of get terminated with error.
+    function Status(byval pid as uinteger) as ProcessStateEnum
+        dim result as ProcessStateEnum
+        dim exit_code as DWORD
+        
+        '# process reference
+        dim child as HANDLE
+        
+        '# presume error?
+        result = ProcessQueryError
+        
+        '# is pid valid?
+        if (pid > 0) then
+            '# try getting a handler to the process
+            child = OpenProcess(PROCESS_QUERY_INFORMATION or SYNCHRONIZE, FALSE, pid)
+            if not (child = NULL) then
+                '# the process reference is valid, get the exit_code
+                if not (GetExitCodeProcess(child, @exit_code) = 0) then
+                    '# no error in the query, get result
+                    if (exit_code = STILL_ACTIVE) then
+                        result = ProcessStillActive
+                    end if '# (exit_code = STILL_ACTIVE)
+                end if '# not (GetExitCodeProcess())
+                
+                '# closes the process handle
+                CloseHandle(child)
+            end if '# not (child = NULL)
+        end if '# (pid > 0)
+        
+        return result
+    end function
+    
     '# Special hook used to avoid the process calling Terminate()
     '# respond to CTRL_*_EVENTS when terminating child process
     private function _child_console_handler(byval dwCtrlType as DWORD) as BOOL

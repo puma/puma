@@ -28,6 +28,13 @@ namespace process
     '# fb.process functions that allow creation/graceful termination
     '# of child process.
     
+    '# Process Status Enum
+    enum ProcessStateEnum
+        ProcessQueryError = 0
+        ProcessStillActive = STILL_ACTIVE
+    end enum
+    
+    
     '# Spawn(cmdline) will try to create a new process, monitor
     '# if it launched successfuly (5 seconds) and then return the
     '# new children PID (Process IDentification) or 0 in case of problems
@@ -37,6 +44,10 @@ namespace process
     '# and try sending CTRL_C_EVENT, CTRL_BREAK_EVENT and TerminateProcess
     '# in case of the first two fails.
     declare function Terminate(byval as uinteger) as BOOL
+    
+    '# StillActive(PID) will return FALSE (0) in case the process no longer
+    '# exist of get terminated with error.
+    declare function Status(byval as uinteger) as ProcessStateEnum
     
     '# Special hook used to avoid the process calling Terminate()
     '# respond to CTRL_*_EVENTS when terminating child process

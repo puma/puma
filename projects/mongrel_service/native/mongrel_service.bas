@@ -93,7 +93,24 @@ namespace mongrel_service
         debug("single_onStart()")
         
         do while (self.state = Running) or (self.state = Paused)
-            sleep 100
+            '# instead of sitting idle here, we must monitor the pid
+            '# and re-spawn a new process if needed
+            if not (Status(single_mongrel_ref->__child_pid) = ProcessStillActive) then
+                '# check if we aren't terminating
+                if (self.state = Running) or (self.state = Paused) then
+                    debug("child process terminated!, re-spawning a new one")
+                    
+                    single_mongrel_ref->__child_pid = 0
+                    single_mongrel_ref->__child_pid = Spawn(self.commandline)
+                    
+                    if (single_mongrel_ref->__child_pid > 0) then
+                        debug("new child process pid: " + str(single_mongrel_ref->__child_pid))
+                    end if
+                end if
+            end if
+            
+            '# wait for 5 seconds
+            sleep 5000
         loop
         
         debug("single_onStart() done")
