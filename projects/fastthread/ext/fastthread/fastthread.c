@@ -658,6 +658,7 @@ rb_queue_length(self)
 
 static VALUE
 rb_queue_num_waiting(self)
+  VALUE self;
 {
   Queue *queue;
   VALUE result;
