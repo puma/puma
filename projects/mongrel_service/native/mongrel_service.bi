@@ -23,6 +23,9 @@
 #include once "process.bi"
 
 namespace mongrel_service
+    const VERSION as string = "0.3.1"
+    
+    '# namespace include
     using fb.svc
     using fb.svc.utils
     

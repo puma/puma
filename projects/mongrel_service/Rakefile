@@ -16,7 +16,7 @@ setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 desc "Does a full compile, test run"
 task :default => [:compile, :test]
 
-GEM_VERSION = "0.3.0"
+GEM_VERSION = "0.3.1"
 GEM_NAME = "mongrel_service"
 
 desc "Compile native code"
