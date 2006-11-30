@@ -880,18 +880,6 @@ typedef struct _Sync {
 } Sync;
 
 static void
-init_sync(sync)
-  Sync *sync;
-{
-  init_mutex(&sync->mutex);
-  init_condvar(&sync->upgrade_ready);
-  init_condvar(&sync->ready);
-  sync->sh_holders = rb_hash_new();
-  sync->ex_holder = Qnil;
-  sync->ex_count = 0;
-}
-
-static void
 mark_sync(sync)
   Sync *sync;
 {
@@ -903,7 +891,7 @@ mark_sync(sync)
 }
 
 static void
-finalize_sync(sync)
+free_sync(sync)
   Sync *sync;
 {
   finalize_mutex(&sync->mutex);
@@ -911,13 +899,6 @@ finalize_sync(sync)
   finalize_condvar(&sync->ready);
   sync->sh_holders = Qnil;
   sync->ex_holder = Qnil;
-}
-
-static void
-free_sync(sync)
-  Sync *sync;
-{
-  finalize_sync(sync);
   free(sync);
 }
 
@@ -927,7 +908,12 @@ rb_sync_alloc(klass)
 {
   Sync *sync;
   sync = (Sync *)malloc(sizeof(Sync));
-  init_sync(sync);
+  init_mutex(&sync->mutex);
+  init_condvar(&sync->upgrade_ready);
+  init_condvar(&sync->ready);
+  sync->sh_holders = rb_hash_new();
+  sync->ex_holder = Qnil;
+  sync->ex_count = 0;
   return Data_Wrap_Struct(klass, mark_sync, free_sync, sync);
 }
 
