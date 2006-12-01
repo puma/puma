@@ -112,6 +112,18 @@ push_list(list, value)
   ++list->size;
 }
 
+static void
+push_multiple_list(list, values, count)
+  List *list;
+  VALUE *values;
+  unsigned count;
+{
+  unsigned i;
+  for ( i = 0 ; i < count ; i++ ) {
+    push_list(list, values[i]);
+  }
+}
+
 static VALUE
 shift_list(list)
   List *list;
@@ -155,6 +167,19 @@ clear_list(list)
     list->last_entry = NULL;
     list->size = 0;
   }
+}
+
+static VALUE
+array_from_list(list)
+  List const *list;
+{
+  VALUE ary;
+  Entry *entry;
+  ary = rb_ary_new();
+  for ( entry = list->entries ; entry ; entry = entry->next ) {
+    rb_ary_push(ary, entry->value);
+  }
+  return ary;
 }
 
 static VALUE
@@ -603,6 +628,33 @@ rb_queue_alloc(VALUE klass)
 }
 
 static VALUE
+rb_queue_marshal_load(self, data)
+  VALUE self;
+  VALUE data;
+{
+  Queue *queue;
+  VALUE ary;
+  Data_Get_Struct(self, Queue, queue);
+
+  ary = rb_marshal_load(data);
+  if ( TYPE(ary) != T_ARRAY ) {
+    rb_raise(rb_eRuntimeError, "expected Array of queue data");
+  }
+  push_multiple_list(&queue->values, RARRAY(ary)->ptr, (unsigned)RARRAY(ary)->len);
+
+  return self;
+}
+
+static VALUE
+rb_queue_marshal_dump(self)
+{
+  Queue *queue;
+  Data_Get_Struct(self, Queue, queue);
+
+  return rb_marshal_dump(array_from_list(&queue->values), Qnil);
+}
+
+static VALUE
 rb_queue_clear(VALUE self)
 {
   Queue *queue;
@@ -745,6 +797,43 @@ rb_sized_queue_alloc(VALUE klass)
   queue->capacity = 0;
 
   return Data_Wrap_Struct(klass, mark_sized_queue, free_sized_queue, queue);
+}
+
+static VALUE
+rb_sized_queue_marshal_load(self, data)
+  VALUE self;
+  VALUE data;
+{
+  SizedQueue *queue;
+  VALUE pair;
+
+  Data_Get_Struct(self, SizedQueue, queue);
+
+  pair = rb_marshal_load(data);
+  if ( TYPE(pair) != T_ARRAY && RARRAY(pair)->len != 2 ) {
+    rb_raise(rb_eRuntimeError, "expected pair of values");
+  }
+
+  queue->capacity = NUM2ULONG(RARRAY(pair)->ptr[0]);
+  rb_queue_marshal_load(self, RARRAY(pair)->ptr[1]);
+
+  return self;
+}
+
+static VALUE
+rb_sized_queue_marshal_dump(self)
+  VALUE self;
+{
+  SizedQueue *queue;
+  VALUE data;
+  VALUE pair;
+
+  Data_Get_Struct(self, SizedQueue, queue);
+
+  data = rb_queue_marshal_dump(self);
+  pair = rb_ary_new3(2, ULONG2NUM(queue->capacity), data);
+
+  return rb_marshal_dump(pair, Qnil);
 }
 
 static VALUE
@@ -920,6 +1009,8 @@ Init_fastthread()
 
   rb_cQueue = rb_define_class("Queue", rb_cObject);
   rb_define_alloc_func(rb_cQueue, rb_queue_alloc);
+  rb_define_method(rb_cQueue, "marshal_load", rb_queue_marshal_load, 1);
+  rb_define_method(rb_cQueue, "marshal_dump", rb_queue_marshal_dump, 0);
   rb_define_method(rb_cQueue, "initialize", return_value, 0);
   rb_define_method(rb_cQueue, "clear", rb_queue_clear, 0);
   rb_define_method(rb_cQueue, "empty?", rb_queue_empty_p, 0);
@@ -934,6 +1025,8 @@ Init_fastthread()
 
   rb_cSizedQueue = rb_define_class("SizedQueue", rb_cQueue);
   rb_define_alloc_func(rb_cSizedQueue, rb_sized_queue_alloc);
+  rb_define_method(rb_cQueue, "marshal_load", rb_sized_queue_marshal_load, 1);
+  rb_define_method(rb_cQueue, "marshal_dump", rb_sized_queue_marshal_dump, 0);
   rb_define_method(rb_cSizedQueue, "initialize", rb_sized_queue_initialize, 1);
   rb_define_method(rb_cSizedQueue, "clear", rb_sized_queue_clear, 0);
   rb_define_method(rb_cSizedQueue, "max", rb_sized_queue_max, 0);
