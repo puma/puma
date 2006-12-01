@@ -12,7 +12,10 @@ require 'http11'
 require 'tempfile'
 begin
   require 'fastthread'
-rescue Object
+rescue RuntimeError => e
+  $stderr.puts "fastthread not loaded: #{ e.message }"
+rescue LoadError
+ensure
   require 'thread'
 end
 require 'stringio'
