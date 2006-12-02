@@ -13,7 +13,7 @@ require 'tempfile'
 begin
   require 'fastthread'
 rescue RuntimeError => e
-  $stderr.puts "fastthread not loaded: #{ e.message }"
+  warn "fastthread not loaded: #{ e.message }"
 rescue LoadError
 ensure
   require 'thread'
