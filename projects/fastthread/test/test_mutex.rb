@@ -7,15 +7,8 @@ class TestMutex < Test::Unit::TestCase
     define_method( "test_#{ name }" ) do
       body.call( self, Mutex.new, "" )
     end
-    define_method( "test_#{ name }_extended" ) do
-      obj = Object.new
-      obj.extend Mutex_m
-      body.call( self, obj, "" )
-    end
-    define_method( "test_#{ name }_included" ) do
-      c = Class.new { include Mutex_m }
-      body.call( self, c.new, "" )
-    end
+    # at one time we also tested Mutex_m here, but it's no longer
+    # part of fastthread
   end
 
   mutex_test( :locked_p ) do |test, m, prefix|

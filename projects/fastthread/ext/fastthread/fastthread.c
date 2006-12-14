@@ -900,7 +900,7 @@ rb_sized_queue_push(self, value)
   while ( queue->queue.values.size >= queue->capacity ) {
     wait_condvar(&queue->space_available, &queue->queue.mutex);
   }
-  push_list(&queue->queue.values);
+  push_list(&queue->queue.values, value);
   unlock_mutex(&queue->queue.mutex);
   
   return self;
@@ -987,8 +987,8 @@ Init_fastthread()
                    rb_sized_queue_num_waiting, 0);
   rb_define_method(rb_cSizedQueue, "pop", rb_sized_queue_pop, -1);
   rb_define_method(rb_cSizedQueue, "push", rb_sized_queue_push, 1);
-  rb_alias(rb_cQueue, rb_intern("<<"), rb_intern("push"));
-  rb_alias(rb_cQueue, rb_intern("deq"), rb_intern("pop"));
-  rb_alias(rb_cQueue, rb_intern("shift"), rb_intern("pop"));
+  rb_alias(rb_cSizedQueue, rb_intern("<<"), rb_intern("push"));
+  rb_alias(rb_cSizedQueue, rb_intern("deq"), rb_intern("pop"));
+  rb_alias(rb_cSizedQueue, rb_intern("shift"), rb_intern("pop"));
 }
 

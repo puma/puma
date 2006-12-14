@@ -21,9 +21,15 @@ class TestQueue < Test::Unit::TestCase
     check_sequence( Queue.new )
   end
 
-  def test_sized_queue
+  def test_sized_queue_full
     check_sequence( SizedQueue.new( 6 ) )
+  end
+
+  def test_sized_queue_half
     check_sequence( SizedQueue.new( 3 ) )
+  end
+
+  def test_sized_queue_one
     check_sequence( SizedQueue.new( 1 ) )
   end
 end 
