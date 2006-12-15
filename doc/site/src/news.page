@@ -7,6 +7,43 @@ ordering: 2
 
 h1. Latest News
 
+h2. Nov 25: 0.3.19 The Gnostic MIME Types
+
+This release features two major capitulations on Mongrel's stance of not being
+a full web server.  The first is Mongrel now sports a YAML file with 739 MIME
+types in it that it will use.  The second is Mongrel will now accept clients who
+insist on doing their requests with "GET http://host:3000/index.html HTTP/1.1"
+even though it's not understood by a web server (that's for *proxies* people).
+
+It also features a patch to allow for multiple listeners on the request chains,
+so anyone running *mongrel_upload_progress* should test it heavily.  Finally,
+we're getting close to having a clean build for win32, and my apology for 
+holding things back on that.
+
+Install with:
+
+ $ gem install fastthread --source=http://mongrel.rubyforge.org/releases
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases
+
+If you get an error about the missing mime_types.yml file then uninstall Mongrel
+completely and reinstall.
+
+Now, the MIME types are not finalized because, after looking at several sources
+I found out everyone is completely out to lunch.  I gathered together several
+sources and recommended mime types, merged them all together, sorted and made
+them unique.
+
+I now have a wiki page entitle "The Gnostic MIME Types":http://wiki.rubyonrails.org/rails/pages/TheGnosticMimeTypes
+and I'm going to leave it up for the next 24 hours.  People can edit the list to
+remove what they think are invalid, correct the list, and fight over wiki wars
+to make the MIME type list.
+
+Whatever survives after the wars will become the official Mongrel MIME types.
+The ones that remain will be labeled "The Gnostic MIME Types" and simply
+documented on the Mongrel site so people know what happened.
+
+Let the battle begin!
+
 h2. Nov 25: 0.3.18 FreeBSD Tweak and Camping Fix
 
 Alright folks, I put in a fix for camping and added the patch by Thomas Hurst for the accf_http deferred accept settings for FreeBSD.

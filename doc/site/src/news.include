@@ -1,4 +1,14 @@
 <dl>
+  <dt>Dec-14-2006</dt>
+  <dd>
+  <h5><a href="{relocatable: news.html}">Mongrel 0.3.19 -- The Gnostic MIME Types</a></h5>
+
+  <p>One more release for Mongrel with MIME types, handling of a few more dumb clients,
+  and a patch to allow multiple listeners.</p>
+  <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
+  <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+  </dd>
+
   <dt>Nov-25-2006</dt>
   <dd>
   <h5><a href="{relocatable: news.html}">Mongrel 0.3.18 -- FreeBSD Tweaks, Camping Fix</a></h5>
