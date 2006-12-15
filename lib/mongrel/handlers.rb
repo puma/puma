@@ -23,16 +23,16 @@ module Mongrel
     attr_reader :request_notify
     attr_accessor :listener
 
-    # This will be called by Mongrel on the *first* (index 0) handler *if* it has
-    # HttpHandler.request_notify set to *true*.  You only get the parameters 
-    # for the request, with the idea that you'd "bound" the beginning of the
-    # request processing and the first call to process.
+    # This will be called by Mongrel if HttpHandler.request_notify set to *true*.
+    # You only get the parameters for the request, with the idea that you'd "bound"
+    # the beginning of the request processing and the first call to process.
     def request_begins(params)
     end
 
     # Called by Mongrel for each IO chunk that is received on the request socket
     # from the client, allowing you to track the progress of the IO and monitor
-    # the input.
+    # the input.  This will be called by Mongrel only if HttpHandler.request_notify
+    # set to *true*.
     def request_progress(params, clen, total)
     end
 

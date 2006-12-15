@@ -27,6 +27,7 @@ require 'yaml'
 require 'mongrel/configurator'
 require 'time'
 require 'etc'
+require 'uri'
 
 
 # Mongrel module containing all of the classes (include C extensions) for running
@@ -124,7 +125,7 @@ module Mongrel
     REQUEST_URI='REQUEST_URI'.freeze
     REQUEST_PATH='REQUEST_PATH'.freeze
 
-    MONGREL_VERSION="0.3.18".freeze
+    MONGREL_VERSION="0.3.19".freeze
 
     MONGREL_TMP_BASE="mongrel".freeze
 
@@ -164,6 +165,7 @@ module Mongrel
     HTTP_IF_MODIFIED_SINCE="HTTP_IF_MODIFIED_SINCE".freeze
     HTTP_IF_NONE_MATCH="HTTP_IF_NONE_MATCH".freeze
     REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n".freeze
+    HOST = "HOST".freeze
   end
 
 
@@ -193,20 +195,24 @@ module Mongrel
     # You don't really call this.  It's made for you.
     # Main thing it does is hook up the params, and store any remaining
     # body data into the HttpRequest.body attribute.
-    def initialize(params, socket, dispatcher)
+    def initialize(params, socket, dispatchers)
       @params = params
       @socket = socket
+      @dispatchers = dispatchers
       content_length = @params[Const::CONTENT_LENGTH].to_i
       remain = content_length - @params.http_body.length
       
-      dispatcher.request_begins(@params) if dispatcher
+      # tell all dispatchers the request has begun
+      @dispatchers.each do |dispatcher|
+        dispatcher.request_begins(@params) 
+      end unless @dispatchers.nil? || @dispatchers.empty?
 
       # Some clients (like FF1.0) report 0 for body and then send a body.  This will probably truncate them but at least the request goes through usually.
       if remain <= 0
         # we've got everything, pack it up
         @body = StringIO.new
         @body.write @params.http_body
-        dispatcher.request_progress(@params, 0, content_length) if dispatcher
+        update_request_progress(0, content_length)
       elsif remain > 0
         # must read more data to complete body
         if remain > Const::MAX_BODY
@@ -219,31 +225,41 @@ module Mongrel
         end
 
         @body.write @params.http_body
-        read_body(remain, content_length, dispatcher)
+        read_body(remain, content_length)
       end
 
       @body.rewind if @body
     end
 
+    # updates all dispatchers about our progress
+    def update_request_progress(clen, total)
+      return if @dispatchers.nil? || @dispatchers.empty?
+      @dispatchers.each do |dispatcher|
+        dispatcher.request_progress(@params, clen, total) 
+      end 
+    end
+    private :update_request_progress
 
     # Does the heavy lifting of properly reading the larger body requests in 
     # small chunks.  It expects @body to be an IO object, @socket to be valid,
     # and will set @body = nil if the request fails.  It also expects any initial
     # part of the body that has been read to be in the @body already.
-    def read_body(remain, total, dispatcher)
+    def read_body(remain, total)
       begin
         # write the odd sized chunk first
         @params.http_body = read_socket(remain % Const::CHUNK_SIZE)
 
         remain -= @body.write(@params.http_body)
-        dispatcher.request_progress(@params, remain, total) if dispatcher
+
+        update_request_progress(remain, total)
 
         # then stream out nothing but perfectly sized chunks
         until remain <= 0 or @socket.closed?
           # ASSUME: we are writing to a disk and these writes always write the requested amount
           @params.http_body = read_socket(Const::CHUNK_SIZE)
           remain -= @body.write(@params.http_body)
-          dispatcher.request_progress(@params, remain, total) if dispatcher
+
+          update_request_progress(remain, total)
         end
       rescue Object
         STDERR.puts "ERROR reading http body: #$!"
@@ -254,7 +270,7 @@ module Mongrel
         @body = nil # signals that there was a problem
       end
     end
-
+ 
     def read_socket(len)
       if !@socket.closed?
         data = @socket.read(len)
@@ -569,15 +585,24 @@ module Mongrel
           nparsed = parser.execute(params, data, nparsed)
 
           if parser.finished?
+            if not params[Const::REQUEST_PATH]
+              # it might be a dumbass full host request header
+              uri = URI.parse(params[Const::REQUEST_URI])
+              params[Const::REQUEST_PATH] = uri.request_uri
+            end
+
+            raise "No REQUEST PATH" if not params[Const::REQUEST_PATH]
+
             script_name, path_info, handlers = @classifier.resolve(params[Const::REQUEST_PATH])
 
             if handlers
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
               params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
-              notifier = handlers[0].request_notify ? handlers[0] : nil
 
-              request = HttpRequest.new(params, client, notifier)
+              # select handlers that want more detailed request notification
+              notifiers = handlers.select { |h| h.request_notify }
+              request = HttpRequest.new(params, client, notifiers)
 
               # in the case of large file uploads the user could close the socket, so skip those requests
               break if request.body == nil  # nil signals from HttpRequest::initialize that the request was aborted
@@ -685,13 +710,18 @@ module Mongrel
 
       configure_socket_options
 
-      @socket.setsockopt(*$tcp_defer_accept_opts) if $tcp_defer_accept_opts
+      if $tcp_defer_accept_opts
+        @socket.setsockopt(*$tcp_defer_accept_opts) rescue nil
+      end
 
       @acceptor = Thread.new do
         while true
           begin
             client = @socket.accept
-            client.setsockopt(*$tcp_cork_opts) if $tcp_cork_opts
+
+            if $tcp_cork_opts
+              client.setsockopt(*$tcp_cork_opts) rescue nil
+            end
 
             worker_list = @workers.list
 
