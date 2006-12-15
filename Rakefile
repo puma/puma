@@ -61,7 +61,7 @@ setup_gem(name, version) do |spec|
   spec.test_files = Dir.glob('test/test_*.rb')
   spec.author="Zed A. Shaw"
   spec.executables=['mongrel_rails']
-  spec.files += %w(ext/http11/MANIFEST README Rakefile setup.rb)
+  spec.files += %w(ext/http11/MANIFEST README Rakefile setup.rb lib/mongrel/mime_types.yml)
 
   spec.required_ruby_version = '>= 1.8.4'
 

@@ -6,6 +6,7 @@
 
 require 'mongrel/stats'
 require 'zlib'
+require 'yaml'
 
 
 module Mongrel
@@ -104,21 +105,8 @@ module Mongrel
     attr_accessor :default_content_type
     attr_reader :path
 
-    MIME_TYPES = {
-      ".css"        =>  "text/css",
-      ".gif"        =>  "image/gif",
-      ".htm"        =>  "text/html",
-      ".html"       =>  "text/html",
-      ".jpeg"       =>  "image/jpeg",
-      ".jpg"        =>  "image/jpeg",
-      ".js"         =>  "text/javascript",
-      ".png"        =>  "image/png",
-      ".swf"        =>  "application/x-shockwave-flash",
-      ".txt"        =>  "text/plain",
-      ".xml"        =>  "application/xml",
-      ".rss"        =>  "application/xml+rss",
-      ".atom"       =>  "application/xml+atom",
-    }
+    MIME_TYPES_FILE = "mime_types.yml"
+    MIME_TYPES = YAML.load_file(File.join(File.dirname(__FILE__), MIME_TYPES_FILE))
 
     ONLY_HEAD_GET="Only HEAD and GET allowed.".freeze
 
@@ -127,7 +115,7 @@ module Mongrel
       @path = File.expand_path(path)
       @listing_allowed=listing_allowed
       @index_html = index_html
-      @default_content_type = "text/plain; charset=ISO-8859-1".freeze
+      @default_content_type = "application/octet-stream".freeze
     end
 
     # Checks if the given path can be served and returns the full path (or nil if not).
