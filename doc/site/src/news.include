@@ -1,4 +1,13 @@
 <dl>
+  <dt>Nov-25-2006</dt>
+  <dd>
+  <h5><a href="{relocatable: news.html}">Mongrel 0.3.18 -- FreeBSD Tweaks, Camping Fix</a></h5>
+
+  <p>One step close to 1.0 RC1 this release adds a bit of a boost for FreeBSD people.</p>
+  <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
+  <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+  </dd>
+
   <dt>Nov-24-2006</dt>
   <dd>
   <h5><a href="{relocatable: news.html}">Mongrel 0.3.17 -- Close to 1.0 RC1</a></h5>

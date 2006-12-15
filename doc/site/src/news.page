@@ -7,6 +7,20 @@ ordering: 2
 
 h1. Latest News
 
+h2. Nov 25: 0.3.18 FreeBSD Tweak and Camping Fix
+
+Alright folks, I put in a fix for camping and added the patch by Thomas Hurst for the accf_http deferred accept settings for FreeBSD.
+
+As usual, please test this release out and let me know if it has any additional problems.  I'll be working on win32 builds today and tomorrow with Luis.
+
+Install with:
+
+ $ gem install fastthread --source=http://mongrel.rubyforge.org/releases
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases
+
+Fastthread didn't change so you don't need the first install if you've got it already.
+
+
 h2. Nov 24: 0.3.17 Almost 1.0 RC1
 
 We're hard at work getting the hot new win32 service Luis wrote out
