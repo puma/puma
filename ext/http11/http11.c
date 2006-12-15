@@ -556,7 +556,7 @@ void Init_http11()
   DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
   DEF_GLOBAL(server_protocol_value, "HTTP/1.1");
   DEF_GLOBAL(http_host, "HTTP_HOST");
-  DEF_GLOBAL(mongrel_version, "Mongrel 0.3.18");
+  DEF_GLOBAL(mongrel_version, "Mongrel 0.3.19");
   DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
   DEF_GLOBAL(port_80, "80");
 
