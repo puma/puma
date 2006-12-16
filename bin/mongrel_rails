@@ -84,6 +84,8 @@ module Mongrel
         if defaults[:daemon]
           if File.exist? defaults[:pid_file]
             log "!!! PID file #{defaults[:pid_file]} already exists.  Mongrel could be running already.  Check your #{defaults[:log_file]} for errors."
+            log "!!! Exiting with error.  You must stop mongrel and clear the .pid before I'll attempt a start."
+            exit 1
           end
 
           daemonize

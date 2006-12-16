@@ -50,6 +50,24 @@ class ResponseTest < Test::Unit::TestCase
     assert_equal io.length, 95, "too much output"
   end
 
+
+  def test_response_some_duplicates_allowed
+    allowed_duplicates = ["Set-Cookie", "Set-Cookie2", "Warning", "WWW-Authenticate"]
+    io = StringIO.new
+    resp = HttpResponse.new(io)
+    resp.start do |head,out|
+      allowed_duplicates.each do |dup|
+        10.times do |i|
+          head[dup] = i
+        end
+      end
+    end
+
+    resp.finished
+
+    assert_equal io.length, 734, "wrong amount of output"
+  end
+
   def test_response_404
     io = StringIO.new
 

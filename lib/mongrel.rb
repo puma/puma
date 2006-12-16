@@ -125,7 +125,7 @@ module Mongrel
     REQUEST_URI='REQUEST_URI'.freeze
     REQUEST_PATH='REQUEST_PATH'.freeze
 
-    MONGREL_VERSION="0.3.19".freeze
+    MONGREL_VERSION="0.3.20".freeze
 
     MONGREL_TMP_BASE="mongrel".freeze
 
@@ -336,15 +336,18 @@ module Mongrel
   # semantics for Hash (where doing an insert replaces) is not there.
   class HeaderOut
     attr_reader :out
+    attr_accessor :allowed_duplicates
 
     def initialize(out)
       @sent = {}
+      @allowed_duplicates = {"Set-Cookie" => true, "Set-Cookie2" => true,
+        "Warning" => true, "WWW-Authenticate" => true}
       @out = out
     end
 
     # Simply writes "#{key}: #{value}" to an output buffer.
     def[]=(key,value)
-      if not @sent.has_key?(key)
+      if not @sent.has_key?(key) or @allowed_duplicates.has_key?(key)
         @sent[key] = true
         @out.write(Const::HEADER_FORMAT % [key, value])
       end
