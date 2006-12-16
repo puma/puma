@@ -174,7 +174,8 @@ module Mongrel
     def configure 
       options [ 
         ['-c', '--chdir PATH', "Change to dir before starting (will be expanded).", :@cwd, "."],
-        ['-f', '--force', "Force the shutdown.", :@force, false],
+        ['-f', '--force', "Force the shutdown (kill -9).", :@force, false],
+        ['-w', '--wait SECONDS', "Wait SECONDS before forcing shutdown", :@wait, "0"], 
         ['-P', '--pid FILE', "Where the PID file is located.", :@pid_file, "log/mongrel.pid"]
       ]
     end
@@ -191,7 +192,12 @@ module Mongrel
 
     def run
       if @force
-        Mongrel::send_signal("KILL", @pid_file)
+        @wait.to_i.times do |waiting|
+          exit(0) if not File.exist? @pid_file
+          sleep 1
+        end
+
+        Mongrel::send_signal("KILL", @pid_file) if File.exist? @pid_file
       else
         Mongrel::send_signal("TERM", @pid_file)
       end
