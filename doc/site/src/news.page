@@ -7,7 +7,51 @@ ordering: 2
 
 h1. Latest News
 
-h2. Nov 25: 0.3.19 The Gnostic MIME Types
+h2. Dec 15: 0.3.20 5 Hour Deadline
+
+Another fancy release with just a few little changes from yesterday:
+
+# Set-Cookie, Set-Cookie2, Warning, and WWW-Authenticate are allowed as duplicate headers.
+# mongrel_rails stop now has a --wait option to go with --force.  It will wait for either the given timeout in SECONDS or the PID file to go away.  If the PID file goes away it just exits.  If the timeout happens then it does a kill -9 on the mongrel process.
+# The MIME types as of 22:00 PDT are included in this release.  Five more hours to make changes and complain if you don't like them.  "Edit the wiki":http://wiki.rubyonrails.org/rails/pages/TheGnosticMimeTypes to make a difference.
+# Default MIME type is application/octet-stream (it was with 0.3.19, but now you all know).
+
+Install with:
+
+ $ gem install fastthread --source=http://mongrel.rubyforge.org/releases
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases
+
+This release will be what goes in the 1.0 RC1 with the exception of any changes we
+have to make for win32 and the final version of the MIME types.
+
+h3. Using The Force
+
+Mongrel is *very* conservative when it shuts down.  It will wait up to 60 seconds for threads to exit before it finally exits gracefully.  Most people don't understand this so they think Mongrel is stuck, when actually it's doing what everyone also wants which is not lose a single connection.
+
+The hypocrisy is that people want Mongrel's shutdown to be "robust" but mean two things.  "Robust" when you've gotta have Mongrel down NOW to avoid the digg to your fancy social network mashup with potato porn means "down now! now! NOW! don't wait! NOW!"
+
+"Robust" when you're rolling out the latest version of your crafted ultimate killer online PIM software your company has banked its reputation on means "very carefully, we don't want to lose a single byte in any request ever."  Don't ask me why these people are using HTTP but oh well.
+
+Mongrel is "robust" in the second form.  To make Mongrel "robust" in the first form, you use the force:
+
+  $ mongrel_rails stop --force
+
+This sends mongrel a kill -9 and then *you* must delete the .pid file.  If you don't mongrel now does this when you try to start:
+
+  $ mongrel_rails start -e production -d
+  ** !!! PID file log/mongrel.pid already exists.  Mongrel could be running already.   Check your log/mongrel.log for errors.
+  ** !!! Exiting with error.  You must stop mongrel and clear the .pid before I'll attempt a start.
+
+So, if you had to force it down, you've gotta do the clean-up.  Now, let's say you do want to give most requests a chance to get out, but maybe not the usual time, you can now use --wait with force:
+
+  $ mongrel_rails stop --force --wait 15
+
+The --wait parameter only makes sense with --force.  When you do this, Mongrel will watch the mongrel.pid file for 15 seconds.  If the PID file goes away on its own (meaning the process exited anyway) then the stop command is ignored and mongrel_rails exits.  If 15 seconds pass by and the PID file is still there *then* mongrel sends kill -9 to ruin your customer's day.
+
+But don't worry, you've probably planned your outages and have scheduled this with your customers and have "come back later" pages right?
+
+
+h2. Dec 14: 0.3.19 The Gnostic MIME Types
 
 This release features two major capitulations on Mongrel's stance of not being
 a full web server.  The first is Mongrel now sports a YAML file with 739 MIME
