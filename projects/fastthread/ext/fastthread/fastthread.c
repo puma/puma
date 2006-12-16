@@ -858,7 +858,16 @@ Init_fastthread()
 
   rb_cSizedQueue = rb_define_class("SizedQueue", rb_cQueue);
   rb_define_method(rb_cSizedQueue, "initialize", rb_sized_queue_max_set, 1);
+  rb_define_method(rb_cSizedQueue, "clear", rb_queue_clear, 0);
+  rb_define_method(rb_cSizedQueue, "empty?", rb_queue_empty_p, 0);
+  rb_define_method(rb_cSizedQueue, "length", rb_queue_length, 0);
+  rb_define_method(rb_cSizedQueue, "num_waiting", rb_queue_num_waiting, 0);
+  rb_define_method(rb_cSizedQueue, "pop", rb_queue_pop, -1);
+  rb_define_method(rb_cSizedQueue, "push", rb_queue_push, 1);
   rb_define_method(rb_cSizedQueue, "max", rb_sized_queue_max, 0);
   rb_define_method(rb_cSizedQueue, "max=", rb_sized_queue_max_set, 1);
+  rb_alias(rb_cSizedQueue, rb_intern("<<"), rb_intern("push"));
+  rb_alias(rb_cSizedQueue, rb_intern("deq"), rb_intern("pop"));
+  rb_alias(rb_cSizedQueue, rb_intern("shift"), rb_intern("pop"));
 }
 

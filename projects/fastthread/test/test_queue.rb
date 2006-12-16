@@ -4,21 +4,30 @@ require 'fastthread'
 
 class TestQueue < Test::Unit::TestCase
   def check_sequence( q )
+    range = "a".."f"
+
     s = ""
+    e = nil
+
     t = Thread.new do
-      for c in "a".."f"
-        q.push c
-        Thread.pass
+      begin
+        for c in range
+          q.push c
+          s << c
+          Thread.pass
+        end
+      rescue Exception => e
       end
     end
 
-    for c in "a".."f"
+    for c in range
+      unless t.alive?
+        raise e if e
+        assert_equal range.to_a.join, s, "expected all values pushed"
+      end
       x = q.shift
-      assert_equal c,x,"wrong result from shift"
-      s << x
+      assert_equal c, x, "sequence error: expected #{ c } but got #{ x }"
     end
-
-    assert_equal "abcdef", s
   end
 
   def test_queue
@@ -26,18 +35,15 @@ class TestQueue < Test::Unit::TestCase
   end
 
   def test_sized_queue_full
-    # this test fails on Linux
-    #check_sequence( SizedQueue.new( 6 ) )
+    check_sequence( SizedQueue.new( 6 ) )
   end
 
   def test_sized_queue_half
-    # this test deadlocks
-    # check_sequence( SizedQueue.new( 3 ) )
+    check_sequence( SizedQueue.new( 3 ) )
   end
 
   def test_sized_queue_one
-    # this test also deadlocks 
-    # check_sequence( SizedQueue.new( 1 ) )
+    check_sequence( SizedQueue.new( 1 ) )
   end
 end 
 
