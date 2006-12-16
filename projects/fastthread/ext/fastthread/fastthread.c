@@ -538,7 +538,9 @@ rb_condvar_signal(self)
 typedef struct _Queue {
   Mutex mutex;
   ConditionVariable value_available;
+  ConditionVariable space_available;
   List values;
+  unsigned long capacity;
 } Queue;
 
 static void
@@ -547,6 +549,7 @@ mark_queue(queue)
 {
   mark_mutex(&queue->mutex);
   mark_condvar(&queue->value_available);
+  mark_condvar(&queue->space_available);
   mark_list(&queue->values);
 }
 
@@ -556,6 +559,7 @@ finalize_queue(queue)
 {
   finalize_mutex(&queue->mutex);
   finalize_condvar(&queue->value_available);
+  finalize_condvar(&queue->space_available);
   finalize_list(&queue->values);
 }
 
@@ -573,7 +577,9 @@ init_queue(queue)
 {
   init_mutex(&queue->mutex);
   init_condvar(&queue->value_available);
+  init_condvar(&queue->space_available);
   init_list(&queue->values);
+  queue->capacity = 0;
 }
 
 static VALUE
@@ -591,14 +597,18 @@ rb_queue_marshal_load(self, data)
   VALUE data;
 {
   Queue *queue;
-  VALUE ary;
+  VALUE array;
   Data_Get_Struct(self, Queue, queue);
 
-  ary = rb_marshal_load(data);
-  if ( TYPE(ary) != T_ARRAY ) {
+  array = rb_marshal_load(data);
+  if ( TYPE(array) != T_ARRAY ) {
     rb_raise(rb_eRuntimeError, "expected Array of queue data");
   }
-  push_multiple_list(&queue->values, RARRAY(ary)->ptr, (unsigned)RARRAY(ary)->len);
+  if ( RARRAY(array)->len < 1 ) {
+    rb_raise(rb_eRuntimeError, "missing capacity value");
+  }
+  queue->capacity = NUM2ULONG(rb_ary_shift(array));
+  push_multiple_list(&queue->values, RARRAY(array)->ptr, (unsigned)RARRAY(array)->len);
 
   return self;
 }
@@ -609,7 +619,9 @@ rb_queue_marshal_dump(self)
   Queue *queue;
   Data_Get_Struct(self, Queue, queue);
 
-  return rb_marshal_dump(array_from_list(&queue->values), Qnil);
+  VALUE array = array_from_list(&queue->values);
+  rb_ary_unshift(array, ULONG2NUM(queue->capacity));
+  return rb_marshal_dump(array, Qnil);
 }
 
 static VALUE
@@ -620,6 +632,7 @@ rb_queue_clear(VALUE self)
 
   lock_mutex(&queue->mutex);
   clear_list(&queue->values);
+  signal_condvar(&queue->space_available);
   unlock_mutex(&queue->mutex);
 
   return self;
@@ -664,7 +677,8 @@ rb_queue_num_waiting(self)
   Data_Get_Struct(self, Queue, queue);
 
   lock_mutex(&queue->mutex);
-  result = ULONG2NUM(queue->value_available.waiting.size);
+  result = ULONG2NUM(queue->value_available.waiting.size +
+                     queue->space_available.waiting.size);
   unlock_mutex(&queue->mutex);
 
   return result;
@@ -700,6 +714,9 @@ rb_queue_pop(argc, argv, self)
   }
 
   result = shift_list(&queue->values);
+  if ( queue->capacity && queue->values.size < queue->capacity ) {
+    signal_condvar(&queue->space_available);
+  }
   unlock_mutex(&queue->mutex);
 
   return result;
@@ -714,94 +731,13 @@ rb_queue_push(self, value)
   Data_Get_Struct(self, Queue, queue);
 
   lock_mutex(&queue->mutex);
-  push_list(&queue->values, value);
-  unlock_mutex(&queue->mutex);
-  signal_condvar(&queue->value_available);
-
-  return self;
-}
-
-typedef struct _SizedQueue {
-  Queue queue;
-  ConditionVariable space_available;
-  unsigned long capacity;
-} SizedQueue;
-
-static void
-mark_sized_queue(queue)
-  SizedQueue *queue;
-{
-  mark_queue(&queue->queue);
-  mark_condvar(&queue->space_available);
-}
-
-static void
-free_sized_queue(queue)
-  SizedQueue *queue;
-{
-  finalize_queue(&queue->queue);
-  finalize_condvar(&queue->space_available);
-  free(queue);
-}
-
-static VALUE
-rb_sized_queue_alloc(VALUE klass)
-{
-  SizedQueue *queue;
-  queue = (SizedQueue *)malloc(sizeof(SizedQueue));
-
-  init_queue(&queue->queue);
-  init_condvar(&queue->space_available);
-  queue->capacity = 0;
-
-  return Data_Wrap_Struct(klass, mark_sized_queue, free_sized_queue, queue);
-}
-
-static VALUE
-rb_sized_queue_marshal_load(self, data)
-  VALUE self;
-  VALUE data;
-{
-  SizedQueue *queue;
-  VALUE pair;
-
-  Data_Get_Struct(self, SizedQueue, queue);
-
-  pair = rb_marshal_load(data);
-  if ( TYPE(pair) != T_ARRAY && RARRAY(pair)->len != 2 ) {
-    rb_raise(rb_eRuntimeError, "expected pair of values");
+  while ( queue->capacity && queue->values.size >= queue->capacity ) {
+    wait_condvar(&queue->space_available, &queue->mutex);
   }
+  push_list(&queue->values, value);
+  signal_condvar(&queue->value_available);
+  unlock_mutex(&queue->mutex);
 
-  queue->capacity = NUM2ULONG(RARRAY(pair)->ptr[0]);
-  rb_queue_marshal_load(self, RARRAY(pair)->ptr[1]);
-
-  return self;
-}
-
-static VALUE
-rb_sized_queue_marshal_dump(self)
-  VALUE self;
-{
-  SizedQueue *queue;
-  VALUE data;
-  VALUE pair;
-
-  Data_Get_Struct(self, SizedQueue, queue);
-
-  data = rb_queue_marshal_dump(self);
-  pair = rb_ary_new3(2, ULONG2NUM(queue->capacity), data);
-
-  return rb_marshal_dump(pair, Qnil);
-}
-
-static VALUE
-rb_sized_queue_clear(self)
-  VALUE self;
-{
-  SizedQueue *queue;
-  Data_Get_Struct(self, SizedQueue, queue);
-  rb_queue_clear(self);
-  signal_condvar(&queue->space_available);
   return self;
 }
 
@@ -809,13 +745,13 @@ static VALUE
 rb_sized_queue_max(self)
   VALUE self;
 {
-  SizedQueue *queue;
+  Queue *queue;
   VALUE result;
-  Data_Get_Struct(self, SizedQueue, queue);
+  Data_Get_Struct(self, Queue, queue);
 
-  lock_mutex(&queue->queue.mutex);
+  lock_mutex(&queue->mutex);
   result = ULONG2NUM(queue->capacity);
-  unlock_mutex(&queue->queue.mutex);
+  unlock_mutex(&queue->mutex);
 
   return result;
 }
@@ -825,84 +761,29 @@ rb_sized_queue_max_set(self, value)
   VALUE self;
   VALUE value;
 {
-  SizedQueue *queue;
+  Queue *queue;
   unsigned long new_capacity;
   unsigned long difference;
-  Data_Get_Struct(self, SizedQueue, queue);
+  Data_Get_Struct(self, Queue, queue);
 
   new_capacity = NUM2ULONG(value);
 
-  lock_mutex(&queue->queue.mutex);
-  if ( new_capacity > queue->capacity ) {
+  if ( new_capacity < 1 ) {
+    rb_raise(rb_eArgError, "value must be positive");
+  }
+
+  lock_mutex(&queue->mutex);
+  if ( queue->capacity && new_capacity > queue->capacity ) {
     difference = new_capacity - queue->capacity;
   } else {
     difference = 0;
   }
   queue->capacity = new_capacity;
-  unlock_mutex(&queue->queue.mutex);
-
   for ( ; difference > 0 ; --difference ) {
     signal_condvar(&queue->space_available);
   }
+  unlock_mutex(&queue->mutex);
 
-  return self;
-}
-
-static VALUE
-rb_sized_queue_initialize(self, max)
-  VALUE self;
-  VALUE max;
-{
-  return rb_sized_queue_max_set(self, max);
-}
-
-static VALUE
-rb_sized_queue_num_waiting(self)
-  VALUE self;
-{
-  SizedQueue *queue;
-  VALUE result;
-  Data_Get_Struct(self, SizedQueue, queue);
-
-  lock_mutex(&queue->queue.mutex);
-  result = ULONG2NUM(queue->queue.value_available.waiting.size +
-                     queue->space_available.waiting.size);
-  unlock_mutex(&queue->queue.mutex);
-
-  return result;
-}
-
-static VALUE
-rb_sized_queue_pop(argc, argv, self)
-  int argc;
-  VALUE *argv;
-  VALUE self;
-{
-  SizedQueue *queue;
-  VALUE result;
-  Data_Get_Struct(self, SizedQueue, queue);
-
-  result = rb_queue_pop(argc, argv, self);
-  signal_condvar(&queue->space_available);
-
-  return result;
-}
-
-static VALUE
-rb_sized_queue_push(self, value)
-  VALUE self;
-  VALUE value;
-{
-  SizedQueue *queue;
-  Data_Get_Struct(self, SizedQueue, queue);
-
-  lock_mutex(&queue->queue.mutex);
-  while ( queue->queue.values.size >= queue->capacity ) {
-    wait_condvar(&queue->space_available, &queue->queue.mutex);
-  }
-  push_list(&queue->queue.values, value);
-  unlock_mutex(&queue->queue.mutex);
-  
   return self;
 }
 
@@ -976,19 +857,8 @@ Init_fastthread()
   rb_alias(rb_cQueue, rb_intern("size"), rb_intern("length"));
 
   rb_cSizedQueue = rb_define_class("SizedQueue", rb_cQueue);
-  rb_define_alloc_func(rb_cSizedQueue, rb_sized_queue_alloc);
-  rb_define_method(rb_cQueue, "marshal_load", rb_sized_queue_marshal_load, 1);
-  rb_define_method(rb_cQueue, "marshal_dump", rb_sized_queue_marshal_dump, 0);
-  rb_define_method(rb_cSizedQueue, "initialize", rb_sized_queue_initialize, 1);
-  rb_define_method(rb_cSizedQueue, "clear", rb_sized_queue_clear, 0);
+  rb_define_method(rb_cSizedQueue, "initialize", rb_sized_queue_max_set, 1);
   rb_define_method(rb_cSizedQueue, "max", rb_sized_queue_max, 0);
   rb_define_method(rb_cSizedQueue, "max=", rb_sized_queue_max_set, 1);
-  rb_define_method(rb_cSizedQueue, "num_waiting",
-                   rb_sized_queue_num_waiting, 0);
-  rb_define_method(rb_cSizedQueue, "pop", rb_sized_queue_pop, -1);
-  rb_define_method(rb_cSizedQueue, "push", rb_sized_queue_push, 1);
-  rb_alias(rb_cSizedQueue, rb_intern("<<"), rb_intern("push"));
-  rb_alias(rb_cSizedQueue, rb_intern("deq"), rb_intern("pop"));
-  rb_alias(rb_cSizedQueue, rb_intern("shift"), rb_intern("pop"));
 }
 
