@@ -245,8 +245,11 @@ init_mutex(mutex)
   init_list(&mutex->waiting);
 }
 
+static VALUE rb_mutex_alloc _((VALUE));
+
 static VALUE 
-rb_mutex_alloc(VALUE klass)
+rb_mutex_alloc(klass)
+  VALUE klass;
 {
   Mutex *mutex;
   mutex = (Mutex *)malloc(sizeof(Mutex));
@@ -449,8 +452,11 @@ init_condvar(condvar)
   init_list(&condvar->waiting);
 }
 
+static VALUE rb_condvar_alloc _((VALUE));
+
 static VALUE
-rb_condvar_alloc(VALUE klass)
+rb_condvar_alloc(klass)
+  VALUE klass;
 {
   ConditionVariable *condvar;
 
@@ -582,8 +588,11 @@ init_queue(queue)
   queue->capacity = 0;
 }
 
+static VALUE rb_queue_alloc _((VALUE));
+
 static VALUE
-rb_queue_alloc(VALUE klass)
+rb_queue_alloc(klass)
+  VALUE klass;
 {
   Queue *queue;
   queue = (Queue *)malloc(sizeof(Queue));
@@ -615,6 +624,7 @@ rb_queue_marshal_load(self, data)
 
 static VALUE
 rb_queue_marshal_dump(self)
+  VALUE self;
 {
   Queue *queue;
   Data_Get_Struct(self, Queue, queue);
@@ -625,7 +635,8 @@ rb_queue_marshal_dump(self)
 }
 
 static VALUE
-rb_queue_clear(VALUE self)
+rb_queue_clear(self)
+  VALUE self;
 {
   Queue *queue;
   Data_Get_Struct(self, Queue, queue);
