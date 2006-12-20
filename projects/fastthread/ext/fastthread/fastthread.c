@@ -629,7 +629,8 @@ rb_queue_marshal_dump(self)
   Queue *queue;
   Data_Get_Struct(self, Queue, queue);
 
-  VALUE array = array_from_list(&queue->values);
+  VALUE array;
+  array = array_from_list(&queue->values);
   rb_ary_unshift(array, ULONG2NUM(queue->capacity));
   return rb_marshal_dump(array, Qnil);
 }
