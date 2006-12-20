@@ -1,4 +1,13 @@
 <dl>
+  <dt>Dec-19-2006</dt>
+  <dd>
+  <h5><a href="{relocatable: news.html}">Mongrel 1.0 RC1 -- Win32 TOO</a></h5>
+
+  <p>1.0 RC1 is out with all the win32 goodies.</p>
+  <a href="{relocatable: news.html}" title="Read About It">Read About It</a>
+  <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+  </dd>
+
   <dt>Dec-15-2006</dt>
   <dd>
   <h5><a href="{relocatable: news.html}">Mongrel 0.3.20 -- 5 Hour Deadline</a></h5>

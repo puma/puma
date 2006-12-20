@@ -7,6 +7,56 @@ ordering: 2
 
 h1. Latest News
 
+h2. Dec 19: Mongrel 1.0 RC1 Full Win32 Build
+
+It's *finally* here.  Mongrel 1.0 RC1 for everyone to test, even the win32 folks.
+I managed to get everything to build on windows, including fastthread, and even
+cleaned up the "releases source":http://mongrel.rubyforge.org/releases/ so that
+it should install cleaner.  Win32 will have to try and report problems, as it
+seems rubygems is real finicky on win32.
+
+UNIX Install with:
+
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases
+
+WIN32 Install with:
+
+ $ gem uninstall mongrel
+ $ gem uninstall gem_plugin
+ $ gem uninstall fastthread
+ $ gem install fastthread --source=http://mongrel.rubyforge.org/releases
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases
+ $ gem install mongrel_service --source=http://mongrel.rubyforge.org/releases
+
+If you have problems with fastthread then skip it, it's optional on Win32.  The
+win32 process is more involved because there hasn't been a stable release of it
+for a while now.  That's why you have to remove everything you can and then
+re-install.
+
+  Make sure that gem_plugin is version 0.2.2 or the whole thing dies.
+
+If you have problems installing any of this then add a / to the end of the source:
+
+ $ gem install mongrel --source=http://mongrel.rubyforge.org/releases/
+
+Yes, that's retarded, blame the rubygems folks.
+
+You can view the ChangeLog for this latest release 
+"in the releases":http://mongrel.rubyforge.org/releases/ChangeLog directory 
+like normal.  This ChangeLog covers everything done since 0.3.18 but it's
+in svn log format so only read it if you're really uptight.
+
+And as usual, report any bugs.  I'll be posting instructions on using the
+new mongrel_service when I get them from Luis.
+
+h3. IT'S RC1 FOR A REASON
+
+Before you go off installing this thing in your production servers because you
+missed the RC1 identifier, remember that RC means "Release Candidate".  Test
+it to death, use it, report bugs, but only a fool installs it in mission 
+critical situations without fully testing it.
+
+
 h2. Dec 15: 0.3.20 5 Hour Deadline
 
 Another fancy release with just a few little changes from yesterday:
