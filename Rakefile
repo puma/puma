@@ -53,7 +53,7 @@ task :site => [:site_webgen, :site_rdoc, :site_coverage, :site_projects_rdoc]
 setup_extension("http11", "http11")
 
 name="mongrel"
-version="0.3.20"
+version="1.0"
 
 setup_gem(name, version) do |spec|
   spec.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
@@ -71,6 +71,7 @@ setup_gem(name, version) do |spec|
     spec.platform = Gem::Platform::WIN32
   else
     spec.add_dependency('daemons', '>= 0.4.2')
+    spec.add_dependency('fastthread', '>= 0.5.3.1')
   end
   
   spec.add_dependency('gem_plugin', '>= 0.2.1')
