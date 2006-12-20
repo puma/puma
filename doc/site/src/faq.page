@@ -162,6 +162,26 @@ but you should basically just install Ruby from source, then install Mongrel.
 
 h2. Deployment
 
+h3. Q: What can cause Mongrel to lock up on a regular basis?
+
+There are several reasons Mongrel can stop functioning properly, but
+most of them are related to using resources that aren't shared properly
+between multiple processes.  The following is just a short list of the
+possible things you could be doing to cause Mongrel processes to lock:
+
+# Configuring Logger to rotate log files.  Logger doesn't do this reliably
+between processes, so use an external log rotation like logrotate.
+# Using PStore to store your sessions.  This isn't faster than the database
+and has frequent locking and coordination issues.
+# Sharing a file or similar service without proper locking.  SQLite and BerkleyDB are
+both culprits here.
+# Not setting the MySQL timeout properly (see later in the FAQ).
+# Using up too much CPU or memory on Linux will cause the oomkiller to 
+kill your Mongrel process.
+
+If you have frequent stopping and stability issues, then install "monit":http://www.tildeslash.com/monit/
+and have it restart your Mongrels when the go down or don't respond promptly.
+
 h3. Q: How do I deploy Mongrel in production?
 
 Take a look at the "documentation pages":/docs/index.html for
