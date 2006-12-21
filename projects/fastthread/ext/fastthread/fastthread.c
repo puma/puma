@@ -21,7 +21,8 @@ static ID mutex_ivar;
 
 static VALUE rb_cMutex;
 static VALUE rb_cConditionVariable;
-static VALUE rb_eThreadError;
+/* post-1.8.5 Ruby exposes rb_eThreadError; earlier versions do not */
+static VALUE private_eThreadError;
 static VALUE rb_cQueue;
 static VALUE rb_cSizedQueue;
 
@@ -190,7 +191,7 @@ wake_one(list)
   waking = Qnil;
   while ( list->entries && !RTEST(waking) ) {
     waking = rb_rescue2(rb_thread_wakeup, shift_list(list),
-                        return_value, Qnil, rb_eThreadError, 0);
+                        return_value, Qnil, private_eThreadError, 0);
   }
 
   return waking;
@@ -299,7 +300,7 @@ lock_mutex(mutex)
   while (RTEST(mutex->owner)) {
     if ( mutex->owner == current ) {
       rb_thread_critical = Qfalse;
-      rb_raise(rb_eThreadError, "deadlock; recursive locking");
+      rb_raise(private_eThreadError, "deadlock; recursive locking");
     }
 
     push_list(&mutex->waiting, current);
@@ -359,7 +360,7 @@ unlock_mutex(mutex)
   }
 
   if (RTEST(waking)) {
-    rb_rescue2(rb_thread_run, waking, return_value, Qnil, rb_eThreadError, 0);
+    rb_rescue2(rb_thread_run, waking, return_value, Qnil, private_eThreadError, 0);
   }
 
   return Qtrue;
@@ -405,7 +406,7 @@ rb_mutex_exclusive_unlock(self)
   }
 
   if (RTEST(waking)) {
-    rb_rescue2(rb_thread_run, waking, return_value, Qnil, rb_eThreadError, 0);
+    rb_rescue2(rb_thread_run, waking, return_value, Qnil, private_eThreadError, 0);
   }
 
   return self;
@@ -478,7 +479,7 @@ wait_condvar(condvar, mutex)
   }
   if ( mutex->owner != rb_thread_current() ) {
     rb_thread_critical = Qfalse;
-    rb_raise(rb_eThreadError, "Not owner");
+    rb_raise(private_eThreadError, "Not owner");
   }
   mutex->owner = Qnil;
   push_list(&condvar->waiting, rb_thread_current());
@@ -527,7 +528,7 @@ signal_condvar(condvar)
   rb_thread_critical = Qtrue;
   waking = rb_ensure(wake_one, (VALUE)&condvar->waiting, set_critical, Qfalse);
   if (RTEST(waking)) {
-    rb_rescue2(rb_thread_run, waking, return_value, Qnil, rb_eThreadError, 0);
+    rb_rescue2(rb_thread_run, waking, return_value, Qnil, private_eThreadError, 0);
   }
 }
 
@@ -718,7 +719,7 @@ rb_queue_pop(argc, argv, self)
   lock_mutex(&queue->mutex);
   if ( !queue->values.entries && !should_block ) {
     unlock_mutex(&queue->mutex);
-    rb_raise(rb_eThreadError, "queue empty");
+    rb_raise(private_eThreadError, "queue empty");
   }
 
   while (!queue->values.entries) {
@@ -829,7 +830,7 @@ Init_fastthread()
     rb_raise(rb_eRuntimeError, "fastthread must be required before thread");
   }
 
-  rb_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
+  private_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
 
   rb_cMutex = rb_define_class("Mutex", rb_cObject);
   rb_define_alloc_func(rb_cMutex, rb_mutex_alloc);
