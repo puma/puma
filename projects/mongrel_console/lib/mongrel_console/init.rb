@@ -2,14 +2,13 @@ require 'rubygems'
 require 'gem_plugin'
 require 'mongrel'
 
-
 class Console < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base
 
   def configure 
     options [
-             ['-c', '--chdir DIR', "Change to directory before running", :@dir, "."]
-            ]
+      ['-c', '--chdir DIR', "Change to directory before running", :@dir, "."]
+    ]
   end
 
   def validate
@@ -26,4 +25,3 @@ class Console < GemPlugin::Plugin "/commands"
     end
   end
 end
-
