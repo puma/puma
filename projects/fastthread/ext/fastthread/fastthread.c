@@ -278,12 +278,12 @@ rb_mutex_try_lock(self)
 
   result = Qfalse;
 
-  rb_thread_critical = Qtrue;
+  rb_thread_critical = 1;
   if (!RTEST(mutex->owner)) {
     mutex->owner = rb_thread_current();
     result = Qtrue;
   }
-  rb_thread_critical = Qfalse;
+  rb_thread_critical = 0;
 
   return result;
 }
@@ -295,22 +295,22 @@ lock_mutex(mutex)
   VALUE current;
   current = rb_thread_current();
 
-  rb_thread_critical = Qtrue;
+  rb_thread_critical = 1;
 
   while (RTEST(mutex->owner)) {
     if ( mutex->owner == current ) {
-      rb_thread_critical = Qfalse;
+      rb_thread_critical = 0;
       rb_raise(private_eThreadError, "deadlock; recursive locking");
     }
 
     push_list(&mutex->waiting, current);
     rb_thread_stop();
 
-    rb_thread_critical = Qtrue;
+    rb_thread_critical = 1;
   }
   mutex->owner = current; 
 
-  rb_thread_critical = Qfalse;
+  rb_thread_critical = 0;
 }
 
 static VALUE
@@ -342,7 +342,7 @@ static VALUE
 set_critical(value)
   VALUE value;
 {
-  rb_thread_critical = value;
+  rb_thread_critical = (int)value;
   return Qnil;
 }
 
@@ -352,8 +352,8 @@ unlock_mutex(mutex)
 {
   VALUE waking;
 
-  rb_thread_critical = Qtrue;
-  waking = rb_ensure(unlock_mutex_inner, (VALUE)mutex, set_critical, Qfalse);
+  rb_thread_critical = 1;
+  waking = rb_ensure(unlock_mutex_inner, (VALUE)mutex, set_critical, 0);
 
   if ( waking == Qundef ) {
     return Qfalse;
@@ -398,8 +398,8 @@ rb_mutex_exclusive_unlock(self)
   VALUE waking;
   Data_Get_Struct(self, Mutex, mutex);
 
-  rb_thread_critical = Qtrue;
-  waking = rb_ensure(rb_mutex_exclusive_unlock_inner, (VALUE)mutex, set_critical, Qfalse);
+  rb_thread_critical = 1;
+  waking = rb_ensure(rb_mutex_exclusive_unlock_inner, (VALUE)mutex, set_critical, 0);
 
   if ( waking == Qundef ) {
     return Qnil;
@@ -472,7 +472,7 @@ wait_condvar(condvar, mutex)
   ConditionVariable *condvar;
   Mutex *mutex;
 {
-  rb_thread_critical = Qtrue;
+  rb_thread_critical = 1;
   if (!RTEST(mutex->owner)) {
     rb_thread_critical = Qfalse;
     return;
@@ -513,8 +513,8 @@ rb_condvar_broadcast(self)
 
   Data_Get_Struct(self, ConditionVariable, condvar);
   
-  rb_thread_critical = Qtrue;
-  rb_ensure(wake_all, (VALUE)&condvar->waiting, set_critical, Qfalse);
+  rb_thread_critical = 1;
+  rb_ensure(wake_all, (VALUE)&condvar->waiting, set_critical, 0);
   rb_thread_schedule();
 
   return self;
@@ -525,8 +525,8 @@ signal_condvar(condvar)
   ConditionVariable *condvar;
 {
   VALUE waking;
-  rb_thread_critical = Qtrue;
-  waking = rb_ensure(wake_one, (VALUE)&condvar->waiting, set_critical, Qfalse);
+  rb_thread_critical = 1;
+  waking = rb_ensure(wake_one, (VALUE)&condvar->waiting, set_critical, 0);
   if (RTEST(waking)) {
     rb_rescue2(rb_thread_run, waking, return_value, Qnil, private_eThreadError, 0);
   }
