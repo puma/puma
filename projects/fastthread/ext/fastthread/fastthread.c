@@ -298,11 +298,6 @@ lock_mutex(mutex)
   rb_thread_critical = 1;
 
   while (RTEST(mutex->owner)) {
-    if ( mutex->owner == current ) {
-      rb_thread_critical = 0;
-      rb_raise(private_eThreadError, "deadlock; recursive locking");
-    }
-
     push_list(&mutex->waiting, current);
     rb_thread_stop();
 
