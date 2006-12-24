@@ -1,6 +1,10 @@
 require 'test/unit'
-$:.unshift File.expand_path( File.join( File.dirname( __FILE__ ), "../ext/fastthread" ) )
-require 'fastthread'
+if RUBY_PLATFORM == java
+  require 'thread'
+else
+  $:.unshift File.expand_path( File.join( File.dirname( __FILE__ ), "../ext/fastthread" ) )
+  require 'fastthread'
+end
 
 class TestQueue < Test::Unit::TestCase
   def check_sequence( q )
