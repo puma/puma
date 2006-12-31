@@ -4,7 +4,7 @@ require 'rake/testtask'
 require 'rake/gempackagetask'
 require 'tools/rakehelp'
 
-GEM_VERSION="0.5.3.5"
+GEM_VERSION="0.6"
 
 setup_extension('fastthread', 'fastthread')
 
