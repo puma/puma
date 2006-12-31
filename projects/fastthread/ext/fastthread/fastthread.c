@@ -821,12 +821,11 @@ Init_fastthread()
 
   mutex_ivar = rb_intern("__mutex__");
 
-  if (!RTEST(rb_require("thread"))) {
-    rb_raise(rb_eRuntimeError, "fastthread must be required before thread");
-  }
+  rb_require("thread");
 
   private_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
 
+  rb_mod_remove_const(rb_cObject, rb_str_new2("Mutex"));
   rb_cMutex = rb_define_class("Mutex", rb_cObject);
   rb_define_alloc_func(rb_cMutex, rb_mutex_alloc);
   rb_define_method(rb_cMutex, "marshal_load", dummy_load, 1);
@@ -839,6 +838,7 @@ Init_fastthread()
   rb_define_method(rb_cMutex, "exclusive_unlock", rb_mutex_exclusive_unlock, 0);
   rb_define_method(rb_cMutex, "synchronize", rb_mutex_synchronize, 0);
 
+  rb_mod_remove_const(rb_cObject, rb_str_new2("ConditionVariable"));
   rb_cConditionVariable = rb_define_class("ConditionVariable", rb_cObject);
   rb_define_alloc_func(rb_cConditionVariable, rb_condvar_alloc);
   rb_define_method(rb_cConditionVariable, "marshal_load", dummy_load, 1);
@@ -848,6 +848,7 @@ Init_fastthread()
   rb_define_method(rb_cConditionVariable, "broadcast", rb_condvar_broadcast, 0);
   rb_define_method(rb_cConditionVariable, "signal", rb_condvar_signal, 0);
 
+  rb_mod_remove_const(rb_cObject, rb_str_new2("Queue"));
   rb_cQueue = rb_define_class("Queue", rb_cObject);
   rb_define_alloc_func(rb_cQueue, rb_queue_alloc);
   rb_define_method(rb_cQueue, "marshal_load", rb_queue_marshal_load, 1);
@@ -864,6 +865,7 @@ Init_fastthread()
   rb_alias(rb_cQueue, rb_intern("shift"), rb_intern("pop"));
   rb_alias(rb_cQueue, rb_intern("size"), rb_intern("length"));
 
+  rb_mod_remove_const(rb_cObject, rb_str_new2("SizedQueue"));
   rb_cSizedQueue = rb_define_class("SizedQueue", rb_cQueue);
   rb_define_method(rb_cSizedQueue, "initialize", rb_sized_queue_max_set, 1);
   rb_define_method(rb_cSizedQueue, "clear", rb_queue_clear, 0);
