@@ -812,6 +812,26 @@ dummy_dump(self)
   return rb_str_new2("");
 }
 
+static void
+swap_class(name, value)
+  const char *name;
+  VALUE value;
+{
+  rb_mod_remove_const(rb_cObject, rb_str_new2(name));
+  rb_const_set(rb_cObject, rb_intern(name), value);
+}
+
+static VALUE
+swap_classes(unused)
+  VALUE unused;
+{
+  swap_class("Mutex", rb_cMutex);
+  swap_class("ConditionVariable", rb_cConditionVariable);
+  swap_class("Queue", rb_cQueue);
+  swap_class("SizedQueue", rb_cSizedQueue);
+  return Qnil;
+}
+
 void
 Init_fastthread()
 {
@@ -825,8 +845,7 @@ Init_fastthread()
 
   private_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
 
-  rb_mod_remove_const(rb_cObject, rb_str_new2("Mutex"));
-  rb_cMutex = rb_define_class("Mutex", rb_cObject);
+  rb_cMutex = rb_class_new(rb_cObject);
   rb_define_alloc_func(rb_cMutex, rb_mutex_alloc);
   rb_define_method(rb_cMutex, "marshal_load", dummy_load, 1);
   rb_define_method(rb_cMutex, "marshal_dump", dummy_dump, 0);
@@ -838,8 +857,7 @@ Init_fastthread()
   rb_define_method(rb_cMutex, "exclusive_unlock", rb_mutex_exclusive_unlock, 0);
   rb_define_method(rb_cMutex, "synchronize", rb_mutex_synchronize, 0);
 
-  rb_mod_remove_const(rb_cObject, rb_str_new2("ConditionVariable"));
-  rb_cConditionVariable = rb_define_class("ConditionVariable", rb_cObject);
+  rb_cConditionVariable = rb_class_new(rb_cObject);
   rb_define_alloc_func(rb_cConditionVariable, rb_condvar_alloc);
   rb_define_method(rb_cConditionVariable, "marshal_load", dummy_load, 1);
   rb_define_method(rb_cConditionVariable, "marshal_dump", dummy_dump, 0);
@@ -848,8 +866,7 @@ Init_fastthread()
   rb_define_method(rb_cConditionVariable, "broadcast", rb_condvar_broadcast, 0);
   rb_define_method(rb_cConditionVariable, "signal", rb_condvar_signal, 0);
 
-  rb_mod_remove_const(rb_cObject, rb_str_new2("Queue"));
-  rb_cQueue = rb_define_class("Queue", rb_cObject);
+  rb_cQueue = rb_class_new(rb_cObject);
   rb_define_alloc_func(rb_cQueue, rb_queue_alloc);
   rb_define_method(rb_cQueue, "marshal_load", rb_queue_marshal_load, 1);
   rb_define_method(rb_cQueue, "marshal_dump", rb_queue_marshal_dump, 0);
@@ -865,8 +882,7 @@ Init_fastthread()
   rb_alias(rb_cQueue, rb_intern("shift"), rb_intern("pop"));
   rb_alias(rb_cQueue, rb_intern("size"), rb_intern("length"));
 
-  rb_mod_remove_const(rb_cObject, rb_str_new2("SizedQueue"));
-  rb_cSizedQueue = rb_define_class("SizedQueue", rb_cQueue);
+  rb_cSizedQueue = rb_class_new(rb_cQueue);
   rb_define_method(rb_cSizedQueue, "initialize", rb_sized_queue_max_set, 1);
   rb_define_method(rb_cSizedQueue, "clear", rb_queue_clear, 0);
   rb_define_method(rb_cSizedQueue, "empty?", rb_queue_empty_p, 0);
@@ -879,5 +895,9 @@ Init_fastthread()
   rb_alias(rb_cSizedQueue, rb_intern("<<"), rb_intern("push"));
   rb_alias(rb_cSizedQueue, rb_intern("deq"), rb_intern("pop"));
   rb_alias(rb_cSizedQueue, rb_intern("shift"), rb_intern("pop"));
+
+  // swap classes atomically to avoid race conditions
+  rb_thread_critical = 1;  
+  rb_ensure(swap_classes, Qnil, set_critical, 0);
 }
 
