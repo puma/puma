@@ -14,7 +14,7 @@ class TestCondVar < Test::Unit::TestCase
     ready = false
 
     t = Thread.new do
-      nil until m.synchronize { ready }
+      nil until ( Thread.pass ; m.synchronize { ready } )
       m.synchronize { s << "b" }
       cv.signal
     end
