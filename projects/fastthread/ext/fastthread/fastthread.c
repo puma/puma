@@ -17,8 +17,6 @@ static VALUE avoid_mem_pools;
 #define USE_MEM_POOLS !RTEST(avoid_mem_pools)
 #endif
 
-static ID mutex_ivar;
-
 static VALUE rb_cMutex;
 static VALUE rb_cConditionVariable;
 /* post-1.8.5 Ruby exposes rb_eThreadError; earlier versions do not */
@@ -45,6 +43,8 @@ typedef struct _List {
   unsigned long size;
 } List;
 
+static void init_list _((List *));
+
 static void
 init_list(list)
   List *list;
@@ -55,6 +55,8 @@ init_list(list)
   list->size = 0;
 }
 
+static void mark_list _((List *));
+
 static void
 mark_list(list)
   List *list;
@@ -64,6 +66,8 @@ mark_list(list)
     rb_gc_mark(entry->value);
   }
 }
+
+static void free_entries _((Entry *));
 
 static void
 free_entries(first)
@@ -77,6 +81,8 @@ free_entries(first)
   }
 }
 
+static void finalize_list _((List *));
+
 static void
 finalize_list(list)
   List *list;
@@ -84,6 +90,8 @@ finalize_list(list)
   free_entries(list->entries);
   free_entries(list->entry_pool);
 }
+
+static void push_list _((List *, VALUE));
 
 static void
 push_list(list, value)
@@ -112,6 +120,8 @@ push_list(list, value)
   ++list->size;
 }
 
+static void push_multiple_list _((List *, VALUE *, unsigned));
+
 static void
 push_multiple_list(list, values, count)
   List *list;
@@ -123,6 +133,8 @@ push_multiple_list(list, values, count)
     push_list(list, values[i]);
   }
 }
+
+static VALUE shift_list _((List *));
 
 static VALUE
 shift_list(list)
@@ -152,6 +164,8 @@ shift_list(list)
   return value;
 }
 
+static void clear_list _((List *));
+
 static void
 clear_list(list)
   List *list;
@@ -169,6 +183,8 @@ clear_list(list)
   }
 }
 
+static VALUE array_from_list _((List const *));
+
 static VALUE
 array_from_list(list)
   List const *list;
@@ -182,6 +198,28 @@ array_from_list(list)
   return ary;
 }
 
+static VALUE wake_thread _((VALUE));
+
+static VALUE
+wake_thread(thread)
+  VALUE thread;
+{
+  return rb_rescue2(rb_thread_wakeup, thread,
+                    return_value, Qnil, private_eThreadError, 0);
+}
+
+static VALUE run_thread _((VALUE));
+
+static VALUE
+run_thread(thread)
+  VALUE thread;
+{
+  return rb_rescue2(rb_thread_run, thread,
+                    return_value, Qnil, private_eThreadError, 0);
+}
+
+static VALUE wake_one _((List *));
+
 static VALUE
 wake_one(list)
   List *list;
@@ -190,12 +228,13 @@ wake_one(list)
 
   waking = Qnil;
   while ( list->entries && !RTEST(waking) ) {
-    waking = rb_rescue2(rb_thread_wakeup, shift_list(list),
-                        return_value, Qnil, private_eThreadError, 0);
+    waking = wake_thread(shift_list(list));
   }
 
   return waking;
 }
+
+static VALUE wake_all _((List *));
 
 static VALUE
 wake_all(list)
@@ -207,10 +246,28 @@ wake_all(list)
   return Qnil;
 }
 
+static void assert_no_survivors _((List *, const char *, void *));
+
+static void
+assert_no_survivors(waiting, label, addr)
+  List *waiting;
+  const char *label;
+  void *addr;
+{
+  Entry *entry;
+  for ( entry = waiting->entries ; entry ; entry = entry->next ) {
+    if (RTEST(wake_thread(entry->value))) {
+      rb_bug("%s %p freed with live thread(s) waiting", label, addr);
+    }
+  }
+}
+
 typedef struct _Mutex {
   VALUE owner;
   List waiting;
 } Mutex;
+
+static void mark_mutex _((Mutex *));
 
 static void
 mark_mutex(mutex)
@@ -220,6 +277,8 @@ mark_mutex(mutex)
   mark_list(&mutex->waiting);
 }
 
+static void finalize_mutex _((Mutex *));
+
 static void
 finalize_mutex(mutex)
   Mutex *mutex;
@@ -227,16 +286,18 @@ finalize_mutex(mutex)
   finalize_list(&mutex->waiting);
 }
 
+static void free_mutex _((Mutex *));
+
 static void
 free_mutex(mutex)
   Mutex *mutex;
 {
-  if (mutex->waiting.entries) {
-    rb_bug("mutex %p freed with thread(s) waiting", mutex);
-  }
+  assert_no_survivors(&mutex->waiting, "mutex", mutex);
   finalize_mutex(mutex);
   free(mutex);
 }
+
+static void init_mutex _((Mutex *));
 
 static void
 init_mutex(mutex)
@@ -258,6 +319,8 @@ rb_mutex_alloc(klass)
   return Data_Wrap_Struct(klass, mark_mutex, free_mutex, mutex);
 }
 
+static VALUE rb_mutex_locked_p _((VALUE));
+
 static VALUE
 rb_mutex_locked_p(self)
   VALUE self;
@@ -266,6 +329,8 @@ rb_mutex_locked_p(self)
   Data_Get_Struct(self, Mutex, mutex);
   return ( RTEST(mutex->owner) ? Qtrue : Qfalse );
 }
+
+static VALUE rb_mutex_try_lock _((VALUE));
 
 static VALUE
 rb_mutex_try_lock(self)
@@ -288,6 +353,8 @@ rb_mutex_try_lock(self)
   return result;
 }
 
+static void lock_mutex _((Mutex *));
+
 static void
 lock_mutex(mutex)
   Mutex *mutex;
@@ -308,6 +375,8 @@ lock_mutex(mutex)
   rb_thread_critical = 0;
 }
 
+static VALUE rb_mutex_lock _((VALUE));
+
 static VALUE
 rb_mutex_lock(self)
   VALUE self;
@@ -317,6 +386,8 @@ rb_mutex_lock(self)
   lock_mutex(mutex);
   return self;
 }
+
+static VALUE unlock_mutex_inner _((Mutex *));
 
 static VALUE
 unlock_mutex_inner(mutex)
@@ -333,6 +404,8 @@ unlock_mutex_inner(mutex)
   return waking;
 }
 
+static VALUE set_critical _((VALUE));
+
 static VALUE
 set_critical(value)
   VALUE value;
@@ -340,6 +413,8 @@ set_critical(value)
   rb_thread_critical = (int)value;
   return Qnil;
 }
+
+static VALUE unlock_mutex _((Mutex *));
 
 static VALUE
 unlock_mutex(mutex)
@@ -355,11 +430,13 @@ unlock_mutex(mutex)
   }
 
   if (RTEST(waking)) {
-    rb_rescue2(rb_thread_run, waking, return_value, Qnil, private_eThreadError, 0);
+    run_thread(waking);
   }
 
   return Qtrue;
 }
+
+static VALUE rb_mutex_unlock _((VALUE));
 
 static VALUE
 rb_mutex_unlock(self)
@@ -375,6 +452,8 @@ rb_mutex_unlock(self)
   }
 }
 
+static VALUE rb_mutex_exclusive_unlock_inner _((Mutex *));
+
 static VALUE
 rb_mutex_exclusive_unlock_inner(mutex)
   Mutex *mutex;
@@ -384,6 +463,8 @@ rb_mutex_exclusive_unlock_inner(mutex)
   rb_yield(Qundef);
   return waking;
 }
+
+static VALUE rb_mutex_exclusive_unlock _((VALUE));
 
 static VALUE
 rb_mutex_exclusive_unlock(self)
@@ -401,11 +482,13 @@ rb_mutex_exclusive_unlock(self)
   }
 
   if (RTEST(waking)) {
-    rb_rescue2(rb_thread_run, waking, return_value, Qnil, private_eThreadError, 0);
+    run_thread(waking);
   }
 
   return self;
 }
+
+static VALUE rb_mutex_synchronize _((VALUE));
 
 static VALUE
 rb_mutex_synchronize(self)
@@ -419,12 +502,16 @@ typedef struct _ConditionVariable {
   List waiting;
 } ConditionVariable;
 
+static void mark_condvar _((ConditionVariable *));
+
 static void
 mark_condvar(condvar)
   ConditionVariable *condvar;
 {
   mark_list(&condvar->waiting);
 }
+
+static void finalize_condvar _((ConditionVariable *));
 
 static void
 finalize_condvar(condvar)
@@ -433,13 +520,18 @@ finalize_condvar(condvar)
   finalize_list(&condvar->waiting);
 }
 
+static void free_condvar _((ConditionVariable *));
+
 static void
 free_condvar(condvar)
   ConditionVariable *condvar;
 {
+  assert_no_survivors(&condvar->waiting, "condition variable", condvar);
   finalize_condvar(condvar);
   free(condvar);
 }
+
+static void init_condvar _((ConditionVariable *));
 
 static void
 init_condvar(condvar)
@@ -462,6 +554,8 @@ rb_condvar_alloc(klass)
   return Data_Wrap_Struct(klass, mark_condvar, free_condvar, condvar);
 }
 
+static void wait_condvar _((ConditionVariable *, Mutex *));
+
 static void
 wait_condvar(condvar, mutex)
   ConditionVariable *condvar;
@@ -483,8 +577,12 @@ wait_condvar(condvar, mutex)
   lock_mutex(mutex);
 }
 
+static VALUE rb_condvar_wait _((VALUE, VALUE));
+
 static VALUE
-rb_condvar_wait(VALUE self, VALUE mutex_v)
+rb_condvar_wait(self, mutex_v)
+  VALUE self;
+  VALUE mutex_v;
 {
   ConditionVariable *condvar;
   Mutex *mutex;
@@ -499,6 +597,8 @@ rb_condvar_wait(VALUE self, VALUE mutex_v)
 
   return self;
 }
+
+static VALUE rb_condvar_broadcast _((VALUE));
 
 static VALUE
 rb_condvar_broadcast(self)
@@ -515,6 +615,8 @@ rb_condvar_broadcast(self)
   return self;
 }
 
+static void signal_condvar _((ConditionVariable *condvar));
+
 static void
 signal_condvar(condvar)
   ConditionVariable *condvar;
@@ -523,9 +625,11 @@ signal_condvar(condvar)
   rb_thread_critical = 1;
   waking = rb_ensure(wake_one, (VALUE)&condvar->waiting, set_critical, 0);
   if (RTEST(waking)) {
-    rb_rescue2(rb_thread_run, waking, return_value, Qnil, private_eThreadError, 0);
+    run_thread(waking);
   }
 }
+
+static VALUE rb_condvar_signal _((VALUE));
 
 static VALUE
 rb_condvar_signal(self)
@@ -545,6 +649,8 @@ typedef struct _Queue {
   unsigned long capacity;
 } Queue;
 
+static void mark_queue _((Queue *));
+
 static void
 mark_queue(queue)
   Queue *queue;
@@ -554,6 +660,8 @@ mark_queue(queue)
   mark_condvar(&queue->space_available);
   mark_list(&queue->values);
 }
+
+static void finalize_queue _((Queue *));
 
 static void
 finalize_queue(queue)
@@ -565,13 +673,20 @@ finalize_queue(queue)
   finalize_list(&queue->values);
 }
 
+static void free_queue _((Queue *));
+
 static void
 free_queue(queue)
   Queue *queue;
 {
+  assert_no_survivors(&queue->mutex.waiting, "queue", queue);
+  assert_no_survivors(&queue->space_available.waiting, "queue", queue);
+  assert_no_survivors(&queue->value_available.waiting, "queue", queue);
   finalize_queue(queue);
   free(queue);
 }
+
+static void init_queue _((Queue *));
 
 static void
 init_queue(queue)
@@ -596,6 +711,8 @@ rb_queue_alloc(klass)
   return Data_Wrap_Struct(klass, mark_queue, free_queue, queue);
 }
 
+static VALUE rb_queue_marshal_load _((VALUE, VALUE));
+
 static VALUE
 rb_queue_marshal_load(self, data)
   VALUE self;
@@ -618,6 +735,8 @@ rb_queue_marshal_load(self, data)
   return self;
 }
 
+static VALUE rb_queue_marshal_dump _((VALUE));
+
 static VALUE
 rb_queue_marshal_dump(self)
   VALUE self;
@@ -630,6 +749,8 @@ rb_queue_marshal_dump(self)
   rb_ary_unshift(array, ULONG2NUM(queue->capacity));
   return rb_marshal_dump(array, Qnil);
 }
+
+static VALUE rb_queue_clear _((VALUE));
 
 static VALUE
 rb_queue_clear(self)
@@ -646,6 +767,8 @@ rb_queue_clear(self)
   return self;
 }
 
+static VALUE rb_queue_empty_p _((VALUE));
+
 static VALUE
 rb_queue_empty_p(self)
   VALUE self;
@@ -660,6 +783,8 @@ rb_queue_empty_p(self)
 
   return result;
 }
+
+static VALUE rb_queue_length _((VALUE));
 
 static VALUE
 rb_queue_length(self)
@@ -676,6 +801,8 @@ rb_queue_length(self)
   return result;
 }
 
+static VALUE rb_queue_num_waiting _((VALUE));
+
 static VALUE
 rb_queue_num_waiting(self)
   VALUE self;
@@ -691,6 +818,8 @@ rb_queue_num_waiting(self)
 
   return result;
 }
+
+static VALUE rb_queue_pop _((int, VALUE *, VALUE));
 
 static VALUE
 rb_queue_pop(argc, argv, self)
@@ -730,6 +859,8 @@ rb_queue_pop(argc, argv, self)
   return result;
 }
 
+static VALUE rb_queue_push _((VALUE, VALUE));
+
 static VALUE
 rb_queue_push(self, value)
   VALUE self;
@@ -749,6 +880,8 @@ rb_queue_push(self, value)
   return self;
 }
 
+static VALUE rb_sized_queue_max _((VALUE));
+
 static VALUE
 rb_sized_queue_max(self)
   VALUE self;
@@ -763,6 +896,8 @@ rb_sized_queue_max(self)
 
   return result;
 }
+
+static VALUE rb_sized_queue_max_set _((VALUE, VALUE));
 
 static VALUE
 rb_sized_queue_max_set(self, value)
@@ -797,6 +932,8 @@ rb_sized_queue_max_set(self, value)
 
 /* Existing code expects to be able to serialize Mutexes... */
 
+static VALUE dummy_load _((VALUE, VALUE)); 
+
 static VALUE
 dummy_load(self, string)
   VALUE self;
@@ -805,6 +942,8 @@ dummy_load(self, string)
   return Qnil;
 }
 
+static VALUE dummy_dump _((VALUE));
+
 static VALUE
 dummy_dump(self)
   VALUE self;
@@ -812,40 +951,13 @@ dummy_dump(self)
   return rb_str_new2("");
 }
 
-static void
-swap_class(name, value)
-  const char *name;
-  VALUE value;
-{
-  rb_mod_remove_const(rb_cObject, rb_str_new2(name));
-  rb_const_set(rb_cObject, rb_intern(name), value);
-}
+static VALUE setup_classes _((VALUE));
 
-static VALUE
-swap_classes(unused)
+static VALUE setup_classes(unused)
   VALUE unused;
 {
-  swap_class("Mutex", rb_cMutex);
-  swap_class("ConditionVariable", rb_cConditionVariable);
-  swap_class("Queue", rb_cQueue);
-  swap_class("SizedQueue", rb_cSizedQueue);
-  return Qnil;
-}
-
-void
-Init_fastthread()
-{
-  avoid_mem_pools = rb_gv_get("$fastthread_avoid_mem_pools");
-  rb_global_variable(&avoid_mem_pools);
-  rb_define_variable("$fastthread_avoid_mem_pools", &avoid_mem_pools);
-
-  mutex_ivar = rb_intern("__mutex__");
-
-  rb_require("thread");
-
-  private_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
-
-  rb_cMutex = rb_class_new(rb_cObject);
+  rb_mod_remove_const(rb_cObject, ID2SYM(rb_intern("Mutex")));
+  rb_cMutex = rb_define_class("Mutex", rb_cObject);
   rb_define_alloc_func(rb_cMutex, rb_mutex_alloc);
   rb_define_method(rb_cMutex, "marshal_load", dummy_load, 1);
   rb_define_method(rb_cMutex, "marshal_dump", dummy_dump, 0);
@@ -857,7 +969,8 @@ Init_fastthread()
   rb_define_method(rb_cMutex, "exclusive_unlock", rb_mutex_exclusive_unlock, 0);
   rb_define_method(rb_cMutex, "synchronize", rb_mutex_synchronize, 0);
 
-  rb_cConditionVariable = rb_class_new(rb_cObject);
+  rb_mod_remove_const(rb_cObject, ID2SYM(rb_intern("ConditionVariable")));
+  rb_cConditionVariable = rb_define_class("ConditionVariable", rb_cObject);
   rb_define_alloc_func(rb_cConditionVariable, rb_condvar_alloc);
   rb_define_method(rb_cConditionVariable, "marshal_load", dummy_load, 1);
   rb_define_method(rb_cConditionVariable, "marshal_dump", dummy_dump, 0);
@@ -866,7 +979,8 @@ Init_fastthread()
   rb_define_method(rb_cConditionVariable, "broadcast", rb_condvar_broadcast, 0);
   rb_define_method(rb_cConditionVariable, "signal", rb_condvar_signal, 0);
 
-  rb_cQueue = rb_class_new(rb_cObject);
+  rb_mod_remove_const(rb_cObject, ID2SYM(rb_intern("Queue")));
+  rb_cQueue = rb_define_class("Queue", rb_cObject);
   rb_define_alloc_func(rb_cQueue, rb_queue_alloc);
   rb_define_method(rb_cQueue, "marshal_load", rb_queue_marshal_load, 1);
   rb_define_method(rb_cQueue, "marshal_dump", rb_queue_marshal_dump, 0);
@@ -882,7 +996,8 @@ Init_fastthread()
   rb_alias(rb_cQueue, rb_intern("shift"), rb_intern("pop"));
   rb_alias(rb_cQueue, rb_intern("size"), rb_intern("length"));
 
-  rb_cSizedQueue = rb_class_new(rb_cQueue);
+  rb_mod_remove_const(rb_cObject, ID2SYM(rb_intern("SizedQueue")));
+  rb_cSizedQueue = rb_define_class("SizedQueue", rb_cQueue);
   rb_define_method(rb_cSizedQueue, "initialize", rb_sized_queue_max_set, 1);
   rb_define_method(rb_cSizedQueue, "clear", rb_queue_clear, 0);
   rb_define_method(rb_cSizedQueue, "empty?", rb_queue_empty_p, 0);
@@ -896,8 +1011,25 @@ Init_fastthread()
   rb_alias(rb_cSizedQueue, rb_intern("deq"), rb_intern("pop"));
   rb_alias(rb_cSizedQueue, rb_intern("shift"), rb_intern("pop"));
 
-  // swap classes atomically to avoid race conditions
-  rb_thread_critical = 1;  
-  rb_ensure(swap_classes, Qnil, set_critical, 0);
+  return Qnil;
+}
+
+void
+Init_fastthread()
+{
+  int saved_critical;
+
+  avoid_mem_pools = rb_gv_get("$fastthread_avoid_mem_pools");
+  rb_global_variable(&avoid_mem_pools);
+  rb_define_variable("$fastthread_avoid_mem_pools", &avoid_mem_pools);
+
+  rb_require("thread");
+
+  private_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
+
+  /* ensure that classes get replaced atomically */
+  saved_critical = rb_thread_critical;
+  rb_thread_critical = 1;
+  rb_ensure(setup_classes, Qnil, set_critical, (VALUE)saved_critical);
 }
 
