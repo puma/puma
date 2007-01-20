@@ -33,15 +33,15 @@ task :ragel do
 end
 
 task :site_webgen do
-  sh %{pushd doc/site; webgen; ruby atom.rb > output/feed.atom; scp -r output/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
+  sh %{pushd doc/site; webgen; ruby atom.rb > output/feed.atom; rsync -azv output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
 end
 
 task :site_rdoc do
-  sh %{ scp -r doc/rdoc/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
+  sh %{ rsync -azv doc/rdoc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
 end
 
 task :site_coverage => [:rcov] do
-  sh %{ scp -r test/coverage/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/coverage/ }
+  sh %{ rsync -azv test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/ }
 end
 
 task :site_projects_rdoc do
@@ -70,12 +70,12 @@ setup_gem(name, version) do |spec|
     spec.extensions.clear
     spec.platform = Gem::Platform::WIN32
   else
-    spec.add_dependency('daemons', '>= 0.4.2')
-    spec.add_dependency('fastthread', '>= 0.5.3.1')
+    spec.add_dependency('daemons', '>= 1.0.3')
+    spec.add_dependency('fastthread', '>= 0.6.2')
   end
   
-  spec.add_dependency('gem_plugin', '>= 0.2.1')
-  spec.add_dependency('cgi_multipart_eof_fix', '>= 0.2.1')
+  spec.add_dependency('gem_plugin', '>= 0.2.2')
+  spec.add_dependency('cgi_multipart_eof_fix', '>= 1.0.0')
 end
 
 task :install do
@@ -113,5 +113,5 @@ task :gem_source do
   rm_rf "pkg/#{name}-#{version}"
 
   sh %{ index_gem_repository.rb -d pkg }
-  sh %{ scp -r ChangeLog pkg/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
+  sh %{ scp -r ChangeLog pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
 end

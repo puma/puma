@@ -37,5 +37,5 @@ task :uninstall => [:clean] do
 end
 
 task :site => [:rerdoc] do
-  sh %{ scp -r doc/rdoc/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin_rdoc/ }
+  sh %{ rsync -r doc/rdoc/* rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin_rdoc/ }
 end
