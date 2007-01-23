@@ -1,4 +1,13 @@
 <dl>
+  <dt>Jan-22-2007</dt>
+  <dd>
+  <h5><a href="{relocatable: news.html}">Mongrel 1.0.1 Is Official</a></h5>
+
+  <p>It's out for everyone to fondle and admire.</p>
+  <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+  <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+  </dd>
+
   <dt>Dec-19-2006</dt>
   <dd>
   <h5><a href="{relocatable: news.html}">Mongrel 1.0 RC1 -- Win32 TOO</a></h5>
@@ -128,17 +137,5 @@
   <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
   </dd>
 
-
-  <dt>Apr-6-2006</dt>
-  <dd>
-  <h5><a href="{relocatable: news.html}">Mongrel 0.3.12.3 -- Thread Debugging</a></h5>
-
-  <p>Fixes a bug with CONTENT_TYPE from multipart forms.  Better shutdown when a 
-  thread refuses to exit.  Thread logging for each request letting you track
-  and debug thread leaks.
-  </p>
-  <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
-  <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
-  </dd>
 
 </dl>

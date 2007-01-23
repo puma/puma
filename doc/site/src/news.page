@@ -7,6 +7,62 @@ ordering: 2
 
 h1. Latest News
 
+h2. Jan 22: Mongrel 1.0.1 Baby!
+
+Alright folks, after nearly a month of pounding and beating up the Mongrel 1.0
+RC1 release we're putting out the official 1.0.1 release.  It's official, so
+let the chaos spread across the 2.0 web in a destructive blaze viewable from
+the buckle of Orion's Belt.
+
+Or, you could just install it with:
+
+  $ gem install mongrel
+
+It should properly pull all the required dependencies, and updating your gems should
+get all the new cool stuff.
+
+h3. What happened to 1.0?
+
+We decided to follow official Rails Configuration
+Management Board Standards and do a silent 1.0 followed by an official 1.0.1.
+There weren't any bugs in 1.0 but we didn't want to break with tradition by not
+offering a 1.0.1. (Yes, this is a joke.)
+
+Also, this forces the upgrade even for people who grabbed 1.0 from the releases
+directory.
+
+h3. Information
+
+ * "RDoc":/rdoc/
+ * "Coverage Report":/coverage/
+ * "Report Bugs":http://rubyforge.org/tracker/index.php?group_id=1306&atid=5145
+ * "Documentation":/docs/index.html
+ * "Adoptions":/adoptions.html
+ * "Books":/books.html
+
+h3. Are You Using It?
+
+I want to build up a good list of people who are using Mongrel, no matter what
+you use it for or where.  Any use is a good use.  I'll be filling in documentation
+and collecting up all the pictures of people's dogs that I've collected, so
+adding more "mongrel success stories" would be a great addition.
+
+If you *wrote a book* or mentioned Mongrel in a book then tell me that too.  I
+want to make sure more than just my book is mentioned.  I'll be adding to that
+list as well.
+
+You can *send an e-mail to _zedshaw_at_zedshaw_dot_com_ or post to the mailing list.*
+If you ask me to keep the company secret then I won't post your usage, just keep it
+for my own records and smug self-satisfaction.
+
+h3. What's Next?
+
+I've got some ideas for what might be next for Mongrel, but I'm looking to take
+my time and take a break for a few months.  If you've got ideas, send them in,
+no matter how crazy.  Just imagine if I'd never written "not
+mongrel":/not_mongrel.html and you could ask me for anything.
+
+
 h2. Dec 19: Mongrel 1.0 RC1 Full Win32 Build
 
 It's *finally* here.  Mongrel 1.0 RC1 for everyone to test, even the win32 folks.
