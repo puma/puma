@@ -49,7 +49,7 @@ end
 
 setup_clean ["ext/fastthread/*.{bundle,so,obj,pdb,lib,def,exp}", "ext/fastthread/Makefile", "pkg", "lib/*.bundle", "*.gem", ".config"]
 
-task :install => [:default] do
+task :install => [:default, :package] do
   sh %{ sudo gem install pkg/fastthread-#{GEM_VERSION}.gem }
 end
 
