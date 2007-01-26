@@ -1,7 +1,6 @@
 require 'test/unit'
-if RUBY_PLATFORM == "java"
-  require 'thread'
-else
+require 'thread'
+if RUBY_PLATFORM != "java"
   $:.unshift File.expand_path( File.join( File.dirname( __FILE__ ), "../ext/fastthread" ) )
   require 'fastthread'
 end
