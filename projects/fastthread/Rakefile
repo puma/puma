@@ -4,7 +4,7 @@ require 'rake/testtask'
 require 'rake/gempackagetask'
 require 'tools/rakehelp'
 
-GEM_VERSION="0.6.2"
+GEM_VERSION="0.6.3"
 
 setup_extension('fastthread', 'fastthread')
 
@@ -49,7 +49,7 @@ end
 
 setup_clean ["ext/fastthread/*.{bundle,so,obj,pdb,lib,def,exp}", "ext/fastthread/Makefile", "pkg", "lib/*.bundle", "*.gem", ".config"]
 
-task :install => [:default,:package] do
+task :install => [:default] do
   sh %{ sudo gem install pkg/fastthread-#{GEM_VERSION}.gem }
 end
 
