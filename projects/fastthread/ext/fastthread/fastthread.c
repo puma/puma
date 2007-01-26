@@ -2,7 +2,7 @@
  * Optimized Ruby Mutex implementation, loosely based on thread.rb by
  * Yukihiro Matsumoto <matz@ruby-lang.org>
  *
- *  Copyright 2006  MenTaLguY <mental@rydia.net>
+ *  Copyright 2006-2007  MenTaLguY <mental@rydia.net>
  *
  * This file is made available under the same terms as Ruby.
  */
@@ -623,7 +623,6 @@ rb_condvar_wait(self, mutex_v)
   } else {
     Mutex *mutex;
     Data_Get_Struct(mutex_v, Mutex, mutex);
-
     wait_condvar(condvar, mutex);
   }
 
