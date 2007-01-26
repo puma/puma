@@ -6,7 +6,10 @@ module Cluster
   
   module ExecBase
      include Mongrel::Command::Base
-     
+      
+      STATUS_OK = 0
+      STATUS_MISSING = 2
+
       def validate
         valid_exists?(@config_file, "Configuration file does not exist. Run mongrel_rails cluster::configure.")
         return @valid
@@ -21,34 +24,44 @@ module Cluster
         }
         conf = YAML.load_file(@config_file)
         @options.merge! conf if conf
+        @pid_file = @options["pid_file"].split(".")
+        
+        start_port = end_port = @only
+        start_port ||=  @options["port"].to_i
+        end_port ||=  start_port + @options["servers"] - 1
+        @ports = (start_port..end_port).to_a
+  
+      end
+
+      def port_pid_file(port)
+        "#{@pid_file[0]}.#{port}.#{@pid_file[1]}"
       end
       
       def start
         read_options
-        port = @options["port"].to_i - 1
-        pid = @options["pid_file"].split(".")
-        puts "Starting #{@options["servers"]} Mongrel servers..."
-        1.upto(@options["servers"].to_i) do |i|
-          argv = [ "mongrel_rails" ]
-          argv << "start"
-          argv << "-d"
-          argv << "-e #{@options["environment"]}" if @options["environment"]
-          argv << "-p #{port+i}"
-          argv << "-a #{@options["address"]}"  if @options["address"]
-          argv << "-l #{@options["log_file"]}" if @options["log_file"]
-          argv << "-P #{pid[0]}.#{port+i}.#{pid[1]}"
-          argv << "-c #{@options["cwd"]}" if @options["cwd"]
-          argv << "-t #{@options["timeout"]}" if @options["timeout"]
-          argv << "-m #{@options["mime_map"]}" if @options["mime_map"]
-          argv << "-r #{@options["docroot"]}" if @options["docroot"]
-          argv << "-n #{@options["num_procs"]}" if @options["num_procs"]
-          argv << "-B" if @options["debug"]
-          argv << "-S #{@options["config_script"]}" if @options["config_script"]
-          argv << "--user #{@options["user"]}" if @options["user"]
-          argv << "--group #{@options["group"]}" if @options["group"]
-          argv << "--prefix #{@options["prefix"]}" if @options["prefix"]
-          cmd = argv.join " "
+        
+        argv = [ "mongrel_rails" ]
+        argv << "start"
+        argv << "-d"
+        argv << "-e #{@options["environment"]}" if @options["environment"]
+        argv << "-a #{@options["address"]}"  if @options["address"]
+        argv << "-l #{@options["log_file"]}" if @options["log_file"]
+        argv << "-c #{@options["cwd"]}" if @options["cwd"]
+        argv << "-t #{@options["timeout"]}" if @options["timeout"]
+        argv << "-m #{@options["mime_map"]}" if @options["mime_map"]
+        argv << "-r #{@options["docroot"]}" if @options["docroot"]
+        argv << "-n #{@options["num_procs"]}" if @options["num_procs"]
+        argv << "-B" if @options["debug"]
+        argv << "-S #{@options["config_script"]}" if @options["config_script"]
+        argv << "--user #{@options["user"]}" if @options["user"]
+        argv << "--group #{@options["group"]}" if @options["group"]
+        argv << "--prefix #{@options["prefix"]}" if @options["prefix"]
+        cmd = argv.join " "
+        
+        puts "Starting #{@ports.length} Mongrel servers..."
 
+        @ports.each do |port|
+          cmd += " -p #{port} -P #{port_pid_file(port)}"
           puts cmd if @verbose
           output = `#{cmd}`
           unless $?.success?
@@ -60,16 +73,17 @@ module Cluster
       
       def stop
         read_options
-        port = @options["port"].to_i - 1
-        pid = @options["pid_file"].split(".")
-        puts "Stopping #{@options["servers"]} Mongrel servers..."
-        1.upto(@options["servers"].to_i) do |i|
-          argv = [ "mongrel_rails" ]
-          argv << "stop"
-          argv << "-P #{pid[0]}.#{port+i}.#{pid[1]}"
-          argv << "-c #{@options["cwd"]}" if @options["cwd"]
-          argv << "-f" if @force
-          cmd = argv.join " "
+      
+        argv = [ "mongrel_rails" ]
+        argv << "stop"
+        argv << "-c #{@options["cwd"]}" if @options["cwd"]
+        argv << "-f" if @force
+        cmd = argv.join " "
+        
+        puts "Stopping #{@ports.length} Mongrel servers..."
+
+        @ports.each do |port|
+          cmd += " -P #{port_pid_file(port)}"
           puts cmd if @verbose
           output = `#{cmd}`
           unless $?.success?
@@ -77,6 +91,44 @@ module Cluster
             puts output
           end
         end
+      end
+
+      def clean
+        read_options
+
+        puts "Cleaning #{@ports.length} pid files..."
+        Dir.chdir @options["cwd"] if @options["cwd"]         
+        
+        @ports.each do |port|
+          pid_file = port_pid_file(port)          
+          puts "Removing {pid_file}!" if @verbose
+          File.unlink(pid_file) if File.exists?(pid_file)
+        end
+
+      end
+    
+      def status
+        read_options
+        
+        puts "Checking #{@ports.length} Mongrel servers..."
+        Dir.chdir @options["cwd"] if @options["cwd"]
+
+        status = STATUS_OK
+        @ports.each do |port|
+          pid_file = port_pid_file(port)
+          if File.exists?(pid_file)
+            pid = File.read(pid_file)
+            ps_output = `ps -o cmd= -p #{pid}`
+            status = STATUS_MISSING unless (ps_output =~ /mongrel_rails/) 
+            msg = status == STATUS_OK ? "Found dog: #{port}" : "Lost dog: #{port}"           
+          else
+            msg = "Missing pid: #{pid_file}"
+            status = STATUS_MISSING
+          end
+          puts msg
+        end
+
+        return status
       end
       
   end
@@ -87,11 +139,14 @@ module Cluster
     def configure
       options [ 
         ['-C', '--config PATH', "Path to cluster configuration file", :@config_file, "config/mongrel_cluster.yml"],
-        ['-v', '--verbose', "Print all called commands and output.", :@verbose, false]
+        ['-v', '--verbose', "Print all called commands and output.", :@verbose, false],
+        ['', '--clean', "Remove pid_file before starting", :@clean, false],
+        ['', '--only PORT', "Port number of cluster member", :@only, nil]
       ]
     end
 
     def run
+      clean if @clean
       start      
     end
   end
@@ -103,7 +158,8 @@ module Cluster
       options [
        ['-C', '--config PATH', "Path to cluster configuration file", :@config_file, "config/mongrel_cluster.yml"],
        ['-f', '--force', "Force the shutdown.", :@force, false],
-       ['-v', '--verbose', "Print all called commands and output.", :@verbose, false]
+       ['-v', '--verbose', "Print all called commands and output.", :@verbose, false],
+       ['', '--only PORT', "Port number of cluster member", :@only, nil]
       ]
     end
     
@@ -119,7 +175,8 @@ module Cluster
       options [ 
         ['-C', '--config PATH', "Path to cluster configuration file", :@config_file, "config/mongrel_cluster.yml"],
         ['-f', '--force', "Force the shutdown.", :@force, false],
-        ['-v', '--verbose', "Print all called commands and output.", :@verbose, false]       
+        ['-v', '--verbose', "Print all called commands and output.", :@verbose, false],
+        ['', '--only PORT', "Port number of cluster member", :@only, nil]       
       ]
     end
     
@@ -188,6 +245,23 @@ module Cluster
       puts "Writing configuration file to #{@config_file}."
       File.open(@config_file,"w") {|f| f.write(@options.to_yaml)}
     end  
+  end
+
+  class Status < GemPlugin::Plugin "/commands"
+    include ExecBase
+
+    def configure 
+      options [ 
+        ['-C', '--config PATH', "Path to cluster configuration file", :@config_file, "config/mongrel_cluster.yml"],
+        ['-v', '--verbose', "Print all called commands and output.", :@verbose, false],
+        ['', '--only PORT', "Port number of cluster member", :@only, nil]       
+      ]
+    end
+    
+    def run
+      status
+    end
+
   end
 end
 
