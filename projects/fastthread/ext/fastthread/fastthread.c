@@ -577,6 +577,33 @@ wait_condvar(condvar, mutex)
   lock_mutex(mutex);
 }
 
+static VALUE legacy_exclusive_unlock _((VALUE));
+
+static VALUE
+legacy_exclusive_unlock(mutex)
+  VALUE mutex;
+{
+  return rb_funcall(mutex, rb_intern("exclusive_unlock"), 0);
+}
+
+typedef struct {
+  ConditionVariable *condvar;
+  VALUE mutex;
+} legacy_wait_args;
+
+static VALUE legacy_wait _((VALUE, legacy_wait_args *));
+
+static VALUE
+legacy_wait(unused, args)
+  VALUE unused;
+  legacy_wait_args *args;
+{
+  push_list(&args->condvar->waiting, rb_thread_current());
+  rb_thread_stop();
+  rb_funcall(args->mutex, rb_intern("lock"), 0);
+  return Qnil;
+}
+
 static VALUE rb_condvar_wait _((VALUE, VALUE));
 
 static VALUE
@@ -585,15 +612,20 @@ rb_condvar_wait(self, mutex_v)
   VALUE mutex_v;
 {
   ConditionVariable *condvar;
-  Mutex *mutex;
+  Data_Get_Struct(self, ConditionVariable, condvar);
 
   if ( CLASS_OF(mutex_v) != rb_cMutex ) {
-    rb_raise(rb_eTypeError, "Not a Mutex");
-  }
-  Data_Get_Struct(self, ConditionVariable, condvar);
-  Data_Get_Struct(mutex_v, Mutex, mutex);
+    /* interoperate with legacy mutex */
+    legacy_wait_args args;
+    args.condvar = condvar;
+    args.mutex = mutex_v;
+    rb_iterate(legacy_exclusive_unlock, mutex_v, legacy_wait, (VALUE)&args);
+  } else {
+    Mutex *mutex;
+    Data_Get_Struct(mutex_v, Mutex, mutex);
 
-  wait_condvar(condvar, mutex);
+    wait_condvar(condvar, mutex);
+  }
 
   return self;
 }
