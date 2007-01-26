@@ -58,6 +58,16 @@ Capistrano.configuration(:must_exist).load do
     set_mongrel_conf
     send(run_method, "mongrel_rails cluster::stop -C #{mongrel_conf}")
   end
+
+  desc <<-DESC
+  Check the status of the Mongrel processes on the app server.  This uses the :use_sudo
+  variable to determine whether to use sudo or not. By default, :use_sudo is
+  set to true.
+  DESC
+  task :status_mongrel_cluster , :roles => :app do
+    set_mongrel_conf
+    send(run_method, "mongrel_rails cluster::status -C #{mongrel_conf}")
+  end
   
   desc <<-DESC
   Restart the Mongrel processes on the app server by calling restart_mongrel_cluster.

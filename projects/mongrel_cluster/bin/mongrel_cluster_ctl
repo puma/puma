@@ -8,11 +8,11 @@ def run(command, verbose)
     confs =  Dir.glob("*.yml")
     confs += Dir.glob("*.conf")
     confs.each do |conf|
-      cmd = "mongrel_rails cluster::#{command} -c #{conf}"
+      cmd = "mongrel_rails cluster::#{command} -C #{conf}"
       cmd += " -v" if verbose
-      puts cmd if verbose
+      puts cmd if verbose || command == "status"
       output = `#{cmd}`
-      puts output if verbose
+      puts output if verbose || command == "status"
       puts "mongrel_rails cluster::#{command} returned an error." unless $?.success?     
     end
   end  
@@ -23,7 +23,7 @@ end
 @options[:verbose] = false
 
 OptionParser.new do |opts|
-  opts.banner = "Usage: #{$0} (start|stop|restart) [options]"
+  opts.banner = "Usage: #{$0} (start|stop|restart|status) [options]"
  
   opts.on("-c", "--conf_path PATH", "Path to mongrel_cluster configuration files") { |value| @options[:conf_path] = value }
   opts.on('-v', '--verbose', "Print all called commands and output.") { |value| @options[:verbose] = value }
@@ -57,6 +57,9 @@ when "restart":
   puts "Restarting all mongrel_clusters..."
   run "stop", @options[:verbose]
   run "start", @options[:verbose]
+when "status":
+  puts "Checking all mongrel_clusters..."
+  run "status", @options[:verbose]
 else
  puts "Unknown command."
 end
