@@ -15,15 +15,15 @@ setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 desc "Does a full compile, test run"
 task :default => [:test, :package]
 
-version="0.2.1"
+version="0.2.2"
 name="mongrel_cluster"
 
 setup_gem(name, version) do |spec|
   spec.summary = "Mongrel plugin that provides commands and Capistrano tasks for managing multiple Mongrel processes."
   spec.description = spec.summary
   spec.author="Bradley Taylor"
-  spec.add_dependency('gem_plugin', '>= 0.2.1')
-  spec.add_dependency('mongrel', '>= 0.3.13.4')
+  spec.add_dependency('gem_plugin', '>= 0.2.2')
+  spec.add_dependency('mongrel', '>= 1.0.1')
   spec.files += Dir.glob("resources/**/*")
   spec.has_rdoc = false
   spec.files += Dir.glob("bin/*")
