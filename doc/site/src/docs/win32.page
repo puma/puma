@@ -89,6 +89,9 @@ h3. service::stop
 Sort of works right now and also only takes a -N parameter.  It has a few errors
 when it tries to stop a service so we're working on making it cleaner.
 
+*NOTE:* since mongrel_service 0.3.1, start and stop commands were removed.
+Use net start / net stop instead.
+
 h3. service::remove
 
 Takes the name (-N) of the service to remove and then removes it from the list.
