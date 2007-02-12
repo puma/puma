@@ -8,14 +8,18 @@
 # For example:
 #
 # namespace :projects do
-#   ProjectTask.new( :my_fb_project ) do |p|
-#     p.type = :exe (executable), :lib (static), :dylib (dynamic, dll)
-#     p.build_path = File.join ROOT, 'bin/'
-#     p.version = '1.0.3'
-#
-#     p.main_file = File.join ROOT, 'src/main.bas'
-#     p.src_files = ['src/module1.bas', 'src/module2.bas']
-#     p.libraries = ['user32', 'lib/mylib']
+#   project_task :my_fb_project do
+#     lib         'static'
+#     dylib       'dynamic library'
+#     executable  'exename'
+#     
+#     build_to    'bin'
+#     
+#     define      'MY_DEFINE'
+#     
+#     main        'src/main.bas'
+#     source      'src/other_module.bas'
+#     source      "src/*.bas"
 #   end
 # end
 #
@@ -50,13 +54,14 @@ module FreeBASIC
     attr_accessor :libraries_path
     
     def initialize(name, &block)
-      @name = name
+      @name = name.to_s
       @build_path = '.'
       @defines = []
       @sources = Rake::FileList.new
       @libraries = []
       @search_path = []
       @libraries_path = []
+      @options = {}
       
       instance_eval &block
       
@@ -145,6 +150,12 @@ module FreeBASIC
         @libraries_path << libraries_path
       end
       
+      # use this to add additional compiler parameters (like debug or errorchecking options)
+      #
+      def option(new_options = {})
+        @options.merge!(new_options)
+      end
+      
     protected
       # this method will fix nested libraries and defines
       # also, if main_file is missing (or wasn't set) will shift the first one
@@ -196,6 +207,10 @@ module FreeBASIC
       def fbc_compile(source, target, main = nil)
         cmdline = []
         cmdline << "fbc"
+        cmdline << "-g" if (@options.has_key?(:debug) && @options[:debug] == true)
+        cmdline << "-#{@options[:errorchecking].to_s}" if @options.has_key?(:errorchecking)
+        cmdline << "-profile" if (@options.has_key?(:profile) && @options[:profile] == true)
+        cmdline << "-mt" if (@options.has_key?(:mt) && @options[:mt] == true)
         cmdline << "-c #{source}"
         cmdline << "-o #{target}"
         cmdline << "-m #{main}" unless main.nil?
@@ -207,6 +222,9 @@ module FreeBASIC
       def fbc_link(target, files, extra_files = [])
         cmdline = []
         cmdline << "fbc"
+        cmdline << "-g" if (@options.has_key?(:debug) && @options[:debug] == true)
+        cmdline << "-profile" if (@options.has_key?(:profile) && @options[:profile] == true)
+        cmdline << "-mt" if (@options.has_key?(:mt) && @options[:mt] == true)
         cmdline << "-#{@type.to_s}" unless @type == :executable
         cmdline << "-x #{target}"
         cmdline << files << extra_files

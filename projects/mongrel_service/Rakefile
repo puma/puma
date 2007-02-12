@@ -1,3 +1,26 @@
+#--
+# Copyright (c) 2006-2007 Luis Lavena, Multimedia systems
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#++
+
 require 'rake'
 require 'rake/testtask'
 require 'rake/clean'
@@ -22,6 +45,13 @@ GEM_NAME = "mongrel_service"
 desc "Compile native code"
 task :compile => [:native_lib, :native_service]
 
+# global options shared by all the project in this Rakefile
+OPTIONS = { :debug => false, :profile => false, :errorchecking => :ex, :mt => true }
+
+OPTIONS[:debug] = true if ENV['DEBUG']
+OPTIONS[:profile] = true if ENV['PROFILE']
+OPTIONS[:errorchecking] = :exx if ENV['EXX']
+
 # ServiceFB namespace (lib)
 namespace :lib do
   project_task 'servicefb' do
@@ -30,6 +60,8 @@ namespace :lib do
 
     define    'SERVICEFB_DEBUG_LOG' unless ENV['RELEASE'] 
     source    'lib/ServiceFB/ServiceFB.bas'
+    
+    option    OPTIONS
   end
   
   project_task 'servicefb_utils' do
@@ -38,6 +70,8 @@ namespace :lib do
 
     define    'SERVICEFB_DEBUG_LOG' unless ENV['RELEASE']
     source    'lib/ServiceFB/ServiceFB_Utils.bas'
+    
+    option    OPTIONS
   end
 end
 # add lib namespace to global tasks
@@ -63,8 +97,9 @@ namespace :native do
     
     lib_path    'lib'
     library     'ServiceFB', 'ServiceFB_Utils'
-    # library     'send_signal'
     library     'user32', 'advapi32', 'psapi'
+    
+    option      OPTIONS
   end
 end
 #include_projects_of :native
