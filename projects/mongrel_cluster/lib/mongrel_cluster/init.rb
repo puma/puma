@@ -101,7 +101,7 @@ module Cluster
         
         @ports.each do |port|
           pid_file = port_pid_file(port)          
-          puts "Removing {pid_file}!" if @verbose
+          puts "Removing #{pid_file}!" if @verbose
           File.unlink(pid_file) if File.exists?(pid_file)
         end
 
@@ -118,7 +118,7 @@ module Cluster
           pid_file = port_pid_file(port)
           if File.exists?(pid_file)
             pid = File.read(pid_file)
-            ps_output = `ps -o cmd= -p #{pid}`
+            ps_output = `ps -o command= -p #{pid}`
             status = STATUS_MISSING unless (ps_output =~ /mongrel_rails/) 
             msg = status == STATUS_OK ? "Found dog: #{port}" : "Lost dog: #{port}"           
           else
@@ -196,7 +196,7 @@ module Cluster
         ['-p', '--port PORT', "Starting port to bind to", :@port, 3000],
         ['-a', '--address ADDR', "Address to bind to", :@address, nil],
         ['-l', '--log FILE', "Where to write log messages", :@log_file, nil],
-        ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"],
+        ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "tmp/pids/mongrel.pid"],
         ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
         ['-t', '--timeout SECONDS', "Timeout all requests after SECONDS time", :@timeout, nil],
         ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],

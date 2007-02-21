@@ -39,7 +39,7 @@ case "$1" in
       RETVAL=$?
   ;;
     status)
-      mongrel_cluster_ctl restart -c $CONF_DIR
+      mongrel_cluster_ctl status -c $CONF_DIR
       RETVAL=$?
   ;;
     *)
