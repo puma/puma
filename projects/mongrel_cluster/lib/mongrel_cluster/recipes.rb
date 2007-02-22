@@ -7,7 +7,9 @@ Capistrano.configuration(:must_exist).load do
   set :mongrel_user, nil
   set :mongrel_group, nil
   set :mongrel_prefix, nil
-  
+  set :mongrel_rails, 'mongrel_rails'
+  set :mongrel_clean, false
+
   desc <<-DESC
   Configure Mongrel processes on the app server. This uses the :use_sudo
   variable to determine whether to use sudo or not. By default, :use_sudo is
@@ -17,7 +19,7 @@ Capistrano.configuration(:must_exist).load do
     set_mongrel_conf
         
     argv = []
-    argv << "mongrel_rails cluster::configure"
+    argv << "#{mongrel_rails} cluster::configure"
     argv << "-N #{mongrel_servers.to_s}"
     argv << "-p #{mongrel_port.to_s}"
     argv << "-e #{mongrel_environment}"
@@ -37,7 +39,9 @@ Capistrano.configuration(:must_exist).load do
   DESC
   task :start_mongrel_cluster , :roles => :app do
     set_mongrel_conf
-    send(run_method, "mongrel_rails cluster::start -C #{mongrel_conf}")
+    cmd = "#{mongrel_rails} cluster::start -C #{mongrel_conf}"
+    cmd += " --clean" if mongrel_clean    
+    send(run_method, cmd)
   end
   
   desc <<-DESC
@@ -46,7 +50,9 @@ Capistrano.configuration(:must_exist).load do
   DESC
   task :restart_mongrel_cluster , :roles => :app do
     set_mongrel_conf
-    send(run_method, "mongrel_rails cluster::restart -C #{mongrel_conf}")
+    cmd = "#{mongrel_rails} cluster::restart -C #{mongrel_conf}"
+    cmd += " --clean" if mongrel_clean    
+    send(run_method, cmd)
   end
   
   desc <<-DESC
@@ -56,7 +62,9 @@ Capistrano.configuration(:must_exist).load do
   DESC
   task :stop_mongrel_cluster , :roles => :app do
     set_mongrel_conf
-    send(run_method, "mongrel_rails cluster::stop -C #{mongrel_conf}")
+    cmd = "#{mongrel_rails} cluster::stop -C #{mongrel_conf}"
+    cmd += " --clean" if mongrel_clean    
+    send(run_method, cmd)
   end
 
   desc <<-DESC
@@ -66,7 +74,7 @@ Capistrano.configuration(:must_exist).load do
   DESC
   task :status_mongrel_cluster , :roles => :app do
     set_mongrel_conf
-    send(run_method, "mongrel_rails cluster::status -C #{mongrel_conf}")
+    send(run_method, "#{mongrel_rails} cluster::status -C #{mongrel_conf}")
   end
   
   desc <<-DESC
