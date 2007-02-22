@@ -79,7 +79,7 @@ module Cluster
       @ports.each do |port|
         pid_file = port_pid_file(port)          
         if @clean && pid_file_exists?(port) && !check_process(port)        
-          log "Removing #{pid_file}!"
+          log "removing #{pid_file}"
           File.unlink(pid_file) 
         end
         
