@@ -9,6 +9,8 @@ Capistrano.configuration(:must_exist).load do
   set :mongrel_prefix, nil
   set :mongrel_rails, 'mongrel_rails'
   set :mongrel_clean, false
+  set :mongrel_pid_file, nil
+  set :mongrel_log_file, nil
 
   desc <<-DESC
   Configure Mongrel processes on the app server. This uses the :use_sudo
@@ -26,6 +28,8 @@ Capistrano.configuration(:must_exist).load do
     argv << "-a #{mongrel_address}"
     argv << "-c #{current_path}"
     argv << "-C #{mongrel_conf}"
+    argv << "-P #{mongrel_pid_file}" if mongrel_pid_file
+    argv << "-l #{mongrel_log_file}" if mongrel_log_file
     argv << "--user #{mongrel_user}" if mongrel_user
     argv << "--group #{mongrel_group}" if mongrel_group
     argv << "--prefix #{mongrel_prefix}" if mongrel_prefix
