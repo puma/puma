@@ -79,7 +79,7 @@ module Cluster
       @ports.each do |port|
         pid_file = port_pid_file(port)          
         if @clean && pid_file_exists?(port) && !check_process(port)        
-          log "removing #{pid_file}"
+          log "missing process: removing #{pid_file}"
           File.unlink(pid_file) 
         end
         
@@ -109,7 +109,7 @@ module Cluster
       @ports.each do |port|
         pid = check_process(port)        
         if @clean && pid && !pid_file_exists?(port)       
-          log "killing mongrel_rails (port: #{port}, pid:#{pid})"
+          log "missing pid_file: killing mongrel_rails (port: #{port}, pid:#{pid})"
           Process.kill("KILL", pid.to_i)  
         end
         
