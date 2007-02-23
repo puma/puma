@@ -29,7 +29,7 @@ end
 task :package => [:clean,:compile,:test,:rerdoc]
 
 task :ragel do
-  sh %{/usr/local/bin/ragel ext/http11/http11_parser.rl | /usr/local/bin/rlcodegen -G2 -o ext/http11/http11_parser.c}
+  sh %{ragel ext/http11/http11_parser.rl | rlgen-cd -G2 -o ext/http11/http11_parser.c}
 end
 
 task :site_webgen do
