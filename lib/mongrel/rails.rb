@@ -52,8 +52,8 @@ module Mongrel
         if response.socket.closed?
           return
         end
-
         path_info = request.params[Mongrel::Const::PATH_INFO]
+        path_info << $1 if request.params[Mongrel::Const::REQUEST_URI] =~ /^#{Regexp.escape path_info}(;[^\?]+)/
         page_cached = path_info + ActionController::Base.page_cache_extension
         get_or_head = @@file_only_methods.include? request.params[Mongrel::Const::REQUEST_METHOD]
 
@@ -71,10 +71,10 @@ module Mongrel
             # We don't want the output to be really final until we're out of the lock
             cgi.default_really_final = false
 
-            log_threads_waiting_for(@active_request_path || request.params["PATH_INFO"]) if $mongrel_debug_client
+            log_threads_waiting_for(@active_request_path || request.params[Mongrel::Const::PATH_INFO]) if $mongrel_debug_client
 
             @guard.synchronize {
-              @active_request_path = request.params["PATH_INFO"] 
+              @active_request_path = request.params[Mongrel::Const::PATH_INFO] 
               Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
               @active_request_path = nil
             }
