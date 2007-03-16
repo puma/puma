@@ -109,7 +109,7 @@ module Cluster
       @ports.each do |port|
         pid = check_process(port)        
         if @clean && pid && !pid_file_exists?(port)       
-          log "missing pid_file: killing mongrel_rails (port: #{port}, pid:#{pid})"
+          log "missing pid_file: killing mongrel_rails port #{port}, pid #{pid}"
           Process.kill("KILL", pid.to_i)  
         end
         
@@ -142,9 +142,9 @@ module Cluster
           log "found pid_file: #{port_pid_file(port)}"
         end    
         if pid
-          log "mongrel_rails (port: #{port}, pid:#{pid}) is running..."
+          log "found mongrel_rails: port #{port}, pid #{pid}"
         else
-          log "mongrel_rails (port: #{port}) is not running..."
+          log "missing mongrel_rails: port #{port}"
           status = STATUS_ERROR
         end
         puts ""
@@ -161,13 +161,17 @@ module Cluster
     def check_process(port)
       if pid_file_exists?(port)
         pid = read_pid(port)
-        ps_output = `ps -o args= -p #{pid}`
+        ps_output = `ps -o #{cmd_name}= -p #{pid}`
         pid = ps_output =~ /mongrel_rails/ ? pid : nil
       else
         pid = find_pid(port)
       end
       return pid
     end 
+    
+    def cmd_name 
+      RUBY_PLATFORM =~ /solaris/i ? "args" : "command"
+    end
 
     def read_pid(port)
       pid_file = port_pid_file(port)
@@ -175,7 +179,7 @@ module Cluster
     end
  
     def find_pid(port)
-      ps_cmd = "ps -ewwo pid,args"
+      ps_cmd = "ps -ewwo pid,#{cmd_name}"
       ps_output = `#{ps_cmd}`      
       ps_output.each do |line|     
         if line =~ /-P #{Regexp.escape(port_pid_file(port))} /              
@@ -254,7 +258,7 @@ module Cluster
   end
   
   class Configure < GemPlugin::Plugin "/commands"
-    include Mongrel::Command::Base
+    include ExecBase
     
     def configure 
       options [
