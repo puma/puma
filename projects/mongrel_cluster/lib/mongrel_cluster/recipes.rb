@@ -11,7 +11,8 @@ Capistrano.configuration(:must_exist).load do
   set :mongrel_clean, false
   set :mongrel_pid_file, nil
   set :mongrel_log_file, nil
-
+  set :mongrel_config_script, nil
+ 
   desc <<-DESC
   Configure Mongrel processes on the app server. This uses the :use_sudo
   variable to determine whether to use sudo or not. By default, :use_sudo is
@@ -33,6 +34,7 @@ Capistrano.configuration(:must_exist).load do
     argv << "--user #{mongrel_user}" if mongrel_user
     argv << "--group #{mongrel_group}" if mongrel_group
     argv << "--prefix #{mongrel_prefix}" if mongrel_prefix
+    argv << "-S #{mongrel_config_script}" if mongrel_config_script
     cmd = argv.join " "
     send(run_method, cmd)
   end
