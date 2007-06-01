@@ -1,4 +1,7 @@
-* SVN *
+* 0.3.2 *
+    
+    * Solved detection of parent process at ServiceFB level
+      (solves the x64 Windows issues).
     
     * Upgraded to ServiceFB 'trunk' (but pistoned it, just in case).
     
