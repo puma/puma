@@ -161,7 +161,7 @@ namespace process
     '# Terminate(PID) will hook the special console handler (_child_console_handler)
     '# and try sending CTRL_C_EVENT, CTRL_BREAK_EVENT and TerminateProcess
     '# in case of the first two fails.
-    function Terminate(pid as uinteger) as BOOL
+    function Terminate(byval pid as uinteger) as BOOL
         dim result as BOOL
         dim success as BOOL
         dim exit_code as DWORD

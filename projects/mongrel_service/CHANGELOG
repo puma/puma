@@ -1,5 +1,17 @@
-*SVN*
+* SVN *
+    
+    * Upgraded to ServiceFB 'trunk' (but pistoned it, just in case).
+    
+    * Fixed problems with ruby installations outside PATH or inside folders with spaces.
+    
+    * Activate FB pedantic warnings by default (is really useful).
+    
+* 0.3.1 *
+    
     * Single Service (SingleMongrel) object type implemented.
+    
     * Updated Rakefile to reflect the new building steps.
+    
     * Removed SendSignal, too hackish for my taste, replaced with complete FB solution.
+    
     * Added basic Process monitoring and re-spawning.

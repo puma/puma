@@ -1,24 +1,8 @@
 '#--
 '# Copyright (c) 2006-2007 Luis Lavena, Multimedia systems
 '#
-'# Permission is hereby granted, free of charge, to any person obtaining
-'# a copy of this software and associated documentation files (the
-'# "Software"), to deal in the Software without restriction, including
-'# without limitation the rights to use, copy, modify, merge, publish,
-'# distribute, sublicense, and/or sell copies of the Software, and to
-'# permit persons to whom the Software is furnished to do so, subject to
-'# the following conditions:
-'#
-'# The above copyright notice and this permission notice shall be
-'# included in all copies or substantial portions of the Software.
-'#
-'# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-'# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-'# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-'# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-'# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-'# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-'# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+'# This source code is released under the MIT License.
+'# See MIT-LICENSE file for details
 '#++
 
 #include once "ServiceFB.bi"
@@ -113,7 +97,7 @@ namespace svc
     '# to avoid SCM shut us down.
     '# is not for the the end-user (*you*) to access it, but implemented in this
     '# way to reduce needed to pass the right service reference each time
-    sub ServiceProcess.UpdateState(state as DWORD, checkpoint as integer = 0, waithint as integer = 0)
+    sub ServiceProcess.UpdateState(byval state as DWORD, byval checkpoint as integer = 0, byval waithint as integer = 0)
         _dprint("ServiceProcess.UpdateState()")
         '# set the state
         select case state
@@ -162,7 +146,7 @@ namespace svc
     '# (if they take too much time).
     '# by default we set a wait hint gap of 10 seconds, but you could specify how many
     '# you could specify how many seconds more will require your *work*
-    sub ServiceProcess.StillAlive(waithint as integer = 10)
+    sub ServiceProcess.StillAlive(byval waithint as integer = 10)
         dim as integer checkpoint
 
         _dprint("ServiceProcess.StillAlive()")
@@ -259,7 +243,7 @@ namespace svc
     '# because it is a global _main for all the services in the table, looking up
     '# in the references for the right service is needed prior registering its
     '# control handler.
-    private sub _main(argc as DWORD, argv as LPSTR ptr)
+    private sub _main(byval argc as DWORD, byval argv as LPSTR ptr)
         dim success as integer
         dim service as ServiceProcess ptr
         dim run_mode as string
@@ -352,7 +336,7 @@ namespace svc
                     service->UpdateState(SERVICE_RUNNING)
                     if not (service->onStart = 0) then
                         _dprint("dispatch onStart() as new thread")
-                        service->_threadHandle = threadcreate(service->onStart, cint(service))
+                        service->_threadHandle = threadcreate(service->onStart, service)
                         '# my guess? was a hit!
                     end if
                     
@@ -387,7 +371,7 @@ namespace svc
     '# (as callback from service manager).
     '# we process each control codes and perform the actions using the pseudo-events (callbacks)
     '# also we use lpContext to get the right reference when _main registered the control handler.
-    private function _control_ex(dwControl as DWORD, dwEventType as DWORD, lpEventData as LPVOID, lpContext as LPVOID) as DWORD
+    private function _control_ex(byval dwControl as DWORD, byval dwEventType as DWORD, byval lpEventData as LPVOID, byval lpContext as LPVOID) as DWORD
         dim result as DWORD
         dim service as ServiceProcess ptr
         

@@ -89,6 +89,9 @@ namespace utils   '# fb.svc.utils
         
         '# now the the name
         parent_name = _process_name(parent_pid)
+        if (parent_name = "<unknown>") then
+          parent_name = _process_name_dyn_psapi(parent_pid)
+        end if
         _dprint("Parent Name: " + parent_name)
         
         '# this process started as service?
@@ -185,7 +188,7 @@ namespace utils   '# fb.svc.utils
                     '# now, fire the main loop (onStart)
                     if not (service->onStart = 0) then
                         '# create the thread
-                        working_thread = threadcreate(service->onStart, cint(service))
+                        working_thread = threadcreate(service->onStart, service)
                     end if
                     
                     print "Service is in running state."
@@ -330,7 +333,7 @@ namespace utils   '# fb.svc.utils
     '# that launched that process.
     '# on fail, it will return 0
     '# Thanks to MichaelW (FreeBASIC forums) for his help about this.
-    private function _parent_pid(PID as uinteger) as uinteger
+    private function _parent_pid(byval PID as uinteger) as uinteger
         dim as uinteger result
         dim as HANDLE hProcessSnap
         dim as PROCESSENTRY32 pe32
@@ -358,7 +361,7 @@ namespace utils   '# fb.svc.utils
     
     '# _process_name is used to retrieve the name (ImageName, BaseModule, whatever) of the PID you
     '# pass to it. if no module name was found, it should return <unknown>
-    private function _process_name(PID as uinteger) as string
+    private function _process_name(byval PID as uinteger) as string
         dim result as string
         dim hProcess as HANDLE
         dim hMod as HMODULE
@@ -386,6 +389,92 @@ namespace utils   '# fb.svc.utils
         result = trim(result)
         return result
     end function
+    
+    '# _process_name_dyn_psapi is a workaround for some issues with x64 versions of Windows.
+    '# by default, 32bits process can't query information from 64bits modules.
+    private function _process_name_dyn_psapi(byval PID as uinteger) as string
+        dim result as string
+        dim chop as uinteger
+        dim zresult as zstring * MAX_PATH
+        dim hLib as any ptr
+        dim hProcess as HANDLE
+        dim cbNeeded as DWORD
+        dim GetProcessImageFileName as function (byval as HANDLE, byval as LPTSTR, byval as DWORD) as DWORD
+      
+        '# assign "<unknown>" to process name, allocate MAX_PATH (260 bytes)
+        zresult = "<unknown>" + chr(0)
+    
+        '# get dynlib
+        hLib = dylibload("psapi.dll")
+        if not (hlib = 0) then
+            GetProcessImageFileName = dylibsymbol(hlib, "GetProcessImageFileNameA")
+            if not (GetProcessImageFileName = 0) then
+                '# get a handle to the Process
+                hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, PID)
+                
+                '# if valid, get the process name
+                if not (hProcess = NULL) then
+                    cbNeeded = sizeof(zresult)
+                    if (GetProcessImageFileName(hProcess, @zresult, cbNeeded) = 0) then
+                        _dprint("Error with GetProcessImageFileName")
+                        _dprint("GetLastError: " + str(GetLastError()) + _show_error())
+                    else
+                        result = zresult
+                        chop = InStrRev(0, result, "\")
+                        if (chop > 0) then
+                          result = mid(result, chop + 1, (len(result) - chop))
+                        end if
+                    end if
+                else
+                    _dprint("Error with OpenProcess")
+                    _dprint("GetLastError: " + str(GetLastError()) + _show_error())
+                end if
+                
+                CloseHandle(hProcess)
+            else
+                _dprint("Unable to get a reference to dynamic symbol GetProcessImageFileNameA.")
+            end if
+        else
+            _dprint("Unable to dynamic load psapi.dll")
+        end if
+        
+        '# return a trimmed result
+        'result = trim(result)
+        return result
+    end function
+    
+    private function _show_error() as string
+        dim buffer as string * 1024
+        dim p as integer
+        
+        FormatMessage( FORMAT_MESSAGE_FROM_SYSTEM,_
+                       0,_
+                       GetLastError(),_
+                       0,_
+                       strptr(buffer),_
+                       1024,_
+                       0 )
+        buffer = rtrim(buffer)
+        p = instr(buffer, chr(13))
+        if p then buffer = left(buffer, p - 1)
+        
+        return buffer
+    end function
+    
+    private function InStrRev(byval start as uinteger = 0, byref src as string, byref search as string) as uinteger
+        dim lensearch as uinteger = len(search)
+        dim as uinteger b, a = 0, exit_loop = 0
+        
+        do
+            b = a
+            a += 1
+            a = instr(a, src, search)
+            if start >= lensearch then if a + lensearch > start then exit_loop = 1
+        loop while (a > 0) and (exit_loop = 0)
+        
+        return b
+    end function
+
 end namespace     '# fb.svc.utils
 end namespace     '# fb.svc
 end namespace     '# fb
