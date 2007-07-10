@@ -15,7 +15,7 @@ setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 desc "Does a full compile, test run"
 task :default => [:test, :package]
 
-version="1.0.1.1"
+version="1.0.2"
 name="mongrel_cluster"
 
 setup_gem(name, version) do |spec|
@@ -49,6 +49,6 @@ task :gem_source do
   rm_rf "pkg/#{name}-#{version}"
 
   sh %{ generate_yaml_index.rb -d pkg }
-  sh %{ scp -r pkg/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/railsmachine/releases/ }
+  sh %{ scp -r pkg/* #{ENV['SSH_USER']}@rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
 end
 

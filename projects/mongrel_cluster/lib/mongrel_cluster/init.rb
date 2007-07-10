@@ -75,10 +75,10 @@ module Cluster
       argv << "--group #{@options["group"]}" if @options["group"]
       argv << "--prefix #{@options["prefix"]}" if @options["prefix"]
       cmd = argv.join " "
-
-      @ports.each do |port|
-        pid_file = port_pid_file(port)          
-        if @clean && pid_file_exists?(port) && !check_process(port)        
+      
+      @ports.each do |port|              
+        if @clean && pid_file_exists?(port) && !check_process(port)
+          pid_file = port_pid_file(port)        
           log "missing process: removing #{pid_file}"
           File.unlink(pid_file) 
         end
@@ -130,9 +130,8 @@ module Cluster
     def status
       read_options
       
-      Dir.chdir @options["cwd"] if @options["cwd"]
-
       status = STATUS_OK
+     
       @ports.each do |port|
         pid = check_process(port)        
         unless pid_file_exists?(port)        
@@ -149,13 +148,17 @@ module Cluster
         end
         puts ""
       end
-      
+
       return status
     end
 
     def pid_file_exists?(port)    
-      pid_file = port_pid_file(port)     
-      File.exists?(pid_file)  
+      pid_file = port_pid_file(port)
+      exists = false
+      chdir_cwd do     
+        exists = File.exists?(pid_file)  
+      end
+      exists
     end
 
     def check_process(port)
@@ -173,9 +176,20 @@ module Cluster
       RUBY_PLATFORM =~ /solaris/i ? "args" : "command"
     end
 
+    def chdir_cwd
+      pwd = Dir.pwd
+      Dir.chdir(@options["cwd"]) if @options["cwd"]     
+      yield
+      Dir.chdir(pwd) if @options["cwd"]
+    end
+
     def read_pid(port)
       pid_file = port_pid_file(port)
-      pid = File.read(pid_file)
+      pid = 0
+      chdir_cwd do     
+        pid = File.read(pid_file)
+      end
+      return pid
     end
  
     def find_pid(port)
