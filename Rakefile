@@ -107,9 +107,10 @@ end
 
 task :gem_source do
   mkdir_p "pkg/gems"
+  mkdir_p "pkg/tar"
  
   FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
-  FileList["pkg/*.tgz"].each {|tgz| rm tgz }
+  FileList["pkg/*.tgz"].each {|tgz| mv tgz, "pkg/tar" }
   rm_rf "pkg/#{name}-#{version}"
 
   sh %{ index_gem_repository.rb -d pkg }
