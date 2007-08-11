@@ -591,7 +591,7 @@ module Mongrel
             if not params[Const::REQUEST_PATH]
               # it might be a dumbass full host request header
               uri = URI.parse(params[Const::REQUEST_URI])
-              params[Const::REQUEST_PATH] = uri.request_uri
+              params[Const::REQUEST_PATH] = uri.path
             end
 
             raise "No REQUEST PATH" if not params[Const::REQUEST_PATH]
