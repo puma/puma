@@ -32,7 +32,7 @@ Run the included test to verify that the patch works as intended. Then, <tt>requ
   require 'rubygems' 
   require 'cgi_multipart_eof_fix'
   
-Currently Mongrel requires this gem automatically. However, Mongrel may change in the future.
+Currently <tt>mongrel_rails</tt> requires this gem automatically. However, Mongrel may change in the future.
 
 == Further resources
 
