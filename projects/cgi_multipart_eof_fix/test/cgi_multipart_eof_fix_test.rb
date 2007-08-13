@@ -12,7 +12,7 @@ ENV['CONTENT_TYPE']   = "multipart/form-data; boundary=\"#{BOUNDARY}\""
 ENV['CONTENT_LENGTH'] = PAYLOAD.length.to_s
 
 Object.send(:remove_const, :STDERR)
-STDERR = StringIO.new
+STDERR = StringIO.new # hide the multipart load warnings
 
 version  = RUBY_VERSION.split(".").map {|i| i.to_i }
 IS_VULNERABLE = (version [0] < 2 and version [1] < 9 and version [2] < 6)

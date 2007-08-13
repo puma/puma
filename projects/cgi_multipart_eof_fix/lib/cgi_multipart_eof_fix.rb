@@ -1,7 +1,11 @@
 
-version = RUBY_VERSION.split(".").map {|num| num.to_i }
+# unfortunately: 
+# >> "1.8.6" < "1.8.10"
+# => false
 
-if version[0] < 2 and version[1] < 9 and version[2] < 6
+version = RUBY_VERSION.split(".").map {|i| i.to_i }
+
+if version [0] < 2 and version [1] < 9 and version [2] < 6
 
   STDERR.puts "** Ruby version is not up-to-date; loading cgi_multipart_eof_fix"  
 

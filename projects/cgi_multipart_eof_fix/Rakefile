@@ -3,7 +3,7 @@ require 'rubygems'
 require 'lib/rake_task_redefine_task.rb'
 
 begin
-  gem 'echoe', '=>2.3'
+  gem 'echoe', '>=2.3'
   require 'echoe'
 
   echoe = Echoe.new("cgi_multipart_eof_fix") do |p|
