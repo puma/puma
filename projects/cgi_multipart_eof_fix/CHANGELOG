@@ -1,0 +1,10 @@
+
+v2.3. Use STDERR, not $stderr, just like Mongrel.
+
+v2.2. Don't load on Ruby > 1.8.5; copyright correction at request of Zed Shaw.
+
+v2.1. License change due to no provision for use in original Ruby license (prevents installation in Florida).
+
+v2.0. Updated for second cgi.rb vulnerability.
+
+v1.0.0. Original single-patch release by Zed Shaw, et. al.

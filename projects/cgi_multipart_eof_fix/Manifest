@@ -1,0 +1,7 @@
+test/cgi_multipart_eof_fix_test.rb
+lib/rake_task_redefine_task.rb
+lib/cgi_multipart_eof_fix.rb
+RUBY-LICENSE
+README
+CHANGELOG
+AFL3-LICENSE
