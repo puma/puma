@@ -5,29 +5,55 @@ require 'cgi'
 require 'stringio'
 require 'timeout'
 
-def test_read_multipart_eof_fix
-  boundary = '%?%(\w*)\\((\w*)\\)'
-  data = "--#{boundary}\r\nContent-Disposition: form-data; name=\"a_field\"\r\n\r\nBang!\r\n--#{boundary}--\r\n"
+BOUNDARY = '%?%(\w*)\\((\w*)\\)'
+PAYLOAD = "--#{BOUNDARY}\r\nContent-Disposition: form-data; name=\"a_field\"\r\n\r\nBang!\r\n--#{BOUNDARY}--\r\n"
+ENV['REQUEST_METHOD'] = "POST"
+ENV['CONTENT_TYPE']   = "multipart/form-data; boundary=\"#{BOUNDARY}\""
+ENV['CONTENT_LENGTH'] = PAYLOAD.length.to_s
 
-  ENV['REQUEST_METHOD'] = "POST"
-  ENV['CONTENT_TYPE']   = "multipart/form-data; boundary=\"#{boundary}\""
-  ENV['CONTENT_LENGTH'] = data.length.to_s
+Object.send(:remove_const, :STDERR)
+STDERR = StringIO.new
 
-  STDIN = StringIO.new(data)
+version  = RUBY_VERSION.split(".").map {|i| i.to_i }
+IS_VULNERABLE = (version [0] < 2 and version [1] < 9 and version [2] < 6)
 
-  begin
-    Timeout.timeout(3) { CGI.new }
-    STDERR.puts ' => CGI is safe: read_multipart does not hang on malicious multipart requests.'
-  rescue TimeoutError
-    STDERR.puts ' => CGI is exploitable: read_multipart hangs on malicious multipart requests.'
-  end
+class CgiMultipartTestError < StandardError
 end
 
-STDERR.puts 'Testing malicious multipart boundary request injection'
-test_read_multipart_eof_fix
+class CgiMultipartEofFixTest < Test::Unit::TestCase
 
-STDERR.puts 'Patching CGI::QueryExtension.read_multipart'
-require 'rubygems'
-require 'cgi_multipart_eof_fix'
-
-test_read_multipart_eof_fix
+  def read_multipart  
+    # can't use STDIN because of the dynamic constant assignment rule
+    $stdin = StringIO.new(PAYLOAD) 
+  
+    begin
+      Timeout.timeout(3) do 
+        CGI.new
+      end
+      "CGI is safe: read_multipart does not hang on malicious multipart requests."
+    rescue TimeoutError
+      raise CgiMultipartTestError, "CGI is exploitable: read_multipart hangs on malicious multipart requests."
+    end
+  end
+  
+  def test_exploitable
+    if IS_VULNERABLE
+      assert_raises CgiMultipartTestError do
+        read_multipart
+      end
+    else
+      # we're on 1.8.6 or higher already
+      assert_nothing_raised do
+        read_multipart      
+      end      
+    end
+  end
+  
+  def test_fixed
+    assert_nothing_raised do
+      load "#{File.dirname(__FILE__)}/../lib/cgi_multipart_eof_fix.rb"
+      read_multipart
+    end
+  end  
+  
+end
