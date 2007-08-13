@@ -10,6 +10,7 @@ require 'rubygems'
 require 'socket'
 require 'http11'
 require 'tempfile'
+
 begin
   require 'fastthread'
 rescue RuntimeError => e
@@ -18,6 +19,12 @@ rescue LoadError
 ensure
   require 'thread'
 end
+
+begin
+  require 'cgi_multipart_eof_fix'
+rescue LoadError
+end
+
 require 'stringio'
 require 'mongrel/cgi'
 require 'mongrel/handlers'

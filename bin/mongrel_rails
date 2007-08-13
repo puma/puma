@@ -9,7 +9,6 @@ require 'yaml'
 require 'mongrel'
 require 'mongrel/rails'
 require 'etc'
-require 'cgi_multipart_eof_fix' rescue nil
 
 module Mongrel
   class Start < GemPlugin::Plugin "/commands"

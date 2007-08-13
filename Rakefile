@@ -75,7 +75,7 @@ setup_gem(name, version) do |spec|
   end
   
   spec.add_dependency('gem_plugin', '>= 0.2.2')
-  spec.add_dependency('cgi_multipart_eof_fix', '>= 1.0.0')
+  spec.add_dependency('cgi_multipart_eof_fix', '>= 2')
 end
 
 task :install do
