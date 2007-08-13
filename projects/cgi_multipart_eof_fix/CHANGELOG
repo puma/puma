@@ -1,7 +1,7 @@
 
-v2.3. Use STDERR, not $stderr, just like Mongrel.
+v2.3. Use STDERR, not $stderr, just like Mongrel; tests now use Test::Unit; moving to the mongrel project on RubyForge.
 
-v2.2. Don't load on Ruby > 1.8.5; copyright correction at request of Zed Shaw.
+v2.2. Don't load on Ruby > 1.8.5; copyright correction.
 
 v2.1. License change due to no provision for use in original Ruby license (prevents installation in Florida).
 
