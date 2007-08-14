@@ -123,5 +123,5 @@ if version [0] < 2 and version [1] < 9 and version [2] < 6
   end
 
 else
-  STDERR.puts "** Ruby version is up-to-date; cgi_multipart_eof_fix was not loaded"  
+  # Ruby version is up-to-date; cgi_multipart_eof_fix was not loaded
 end
