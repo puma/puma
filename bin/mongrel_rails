@@ -70,7 +70,7 @@ module Mongrel
       if @generate
         STDERR.puts "** Writing config to \"#@generate\"."
         open(@generate, "w") {|f| f.write(settings.to_yaml) }
-        STDERR.puts "** Finished.  Run \"mongrel_rails -C #@generate\" to use the config file."
+        STDERR.puts "** Finished.  Run \"mongrel_rails start -C #@generate\" to use the config file."
         exit 0
       end
 
