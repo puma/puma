@@ -444,7 +444,7 @@ module Mongrel
 
     def send_status(content_length=@body.length)
       if not @status_sent
-        @header['Content-Length'] = content_length unless @status == 304
+        @header['Content-Length'] = content_length if content_length and @status != 304
         write(Const::STATUS_FORMAT % [@status, HTTP_STATUS_CODES[@status]])
         @status_sent = true
       end
