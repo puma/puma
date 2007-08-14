@@ -9,7 +9,7 @@ begin
   echoe = Echoe.new("cgi_multipart_eof_fix") do |p|
     p.author = "Evan Weaver" 
     p.rubyforge_name = "mongrel"
-    p.summary = p.description = "Fix an exploitable bug in CGI multipart parsing which affects Ruby <= 1.8.5 when multipart boundary attribute contains a non-halting regular expression string."    
+    p.summary = p.description = "Fix an exploitable bug in CGI multipart parsing."    
     p.url = "http://blog.evanweaver.com/pages/code#cgi_multipart_eof_fix"
     p.docs_host = "blog.evanweaver.com:~/www/snax/public/files/doc/"
     p.rdoc_pattern = /CHANGELOG|LICENSE|README|lib\/cgi_multipart_eof_fix/
