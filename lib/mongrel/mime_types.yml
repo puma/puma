@@ -605,6 +605,7 @@
 .xpix: application/x-vnd.ls-xpix
 .xpm: image/x-xpixmap
 .xpm: image/xpm
+.xsl: application/xslt+xml
 .xsr: video/x-amt-showrun
 .xwd: image/x-xwd
 .xwd: image/x-xwindowdump
