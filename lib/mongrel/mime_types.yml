@@ -18,7 +18,7 @@
 .asp: text/asp
 .asr: video/x-ms-asf
 .asx: video/x-ms-asf
-.atom: application/xml+atom
+.atom: application/atom+xml
 .au: audio/basic
 .au: audio/x-au
 .avi: video/avi
