@@ -109,10 +109,10 @@ module Mongrel
         end
         
         @head.delete('cookie')
-
-        # @output_cookies seems to never be used, but we'll process it just in case
-        @output_cookies.each {|c| to['Set-Cookie'] = c.to_s } if @output_cookies
       end
+      
+      # @output_cookies seems to never be used, but we'll process it just in case
+      @output_cookies.each {|c| to['Set-Cookie'] = c.to_s } if @output_cookies
     end
     
     # The dumb thing is people can call header or this or both and in any order.
