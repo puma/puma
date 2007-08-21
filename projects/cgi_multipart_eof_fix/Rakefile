@@ -11,7 +11,7 @@ begin
     p.rubyforge_name = "mongrel"
     p.summary = p.description = "Fix an exploitable bug in CGI multipart parsing."    
     p.url = "http://blog.evanweaver.com/pages/code#cgi_multipart_eof_fix"
-    p.docs_host = "blog.evanweaver.com:~/www/snax/public/files/doc/"
+    p.docs_host = "blog.evanweaver.com:~/www/bax/public/files/doc/"
     p.rdoc_pattern = /CHANGELOG|LICENSE|README|lib\/cgi_multipart_eof_fix/
     p.need_tar_gz = false
     p.need_tgz = true
