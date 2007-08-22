@@ -11,21 +11,16 @@ Copyright 2006, 2007 Cloudburst, LLC. Portions copyright 2006 Jeremy Kemper, Jam
 
 Fixes an exploitable bug in CGI multipart parsing which affects Ruby <= 1.8.5. When multipart boundary attributes contain non-halting regular expression strings, the boundary searcher in the CGI module does not properly escape the parameter and will execute arbitrary regular expressions. This fix adds escaping for the user data.
 
-This is fix is cumulative with previous CGI multipart vulnerability fixes; see version 1.0.0 of the gem by Jamis Buck et. al.
-
-== Installation
-
-  sudo gem install cgi_multipart_eof_fix
-
-== Scope
-
-* Affected: standalone CGI, Mongrel, WEBrick
+* Affected application servers: standalone CGI, Mongrel, WEBrick
 * Unaffected: FastCGI, Ruby 1.8.6 (all servers)
 * Unknown: mod_ruby
 
-This library will not modify versions of Ruby greater than 1.8.5.
+This fix will not modify versions of Ruby greater than 1.8.5, and is cumulative with previous CGI multipart vulnerability fixes.
 
 == Usage
+
+Install the gem:
+  sudo gem install cgi_multipart_eof_fix
 
 Run the included test to verify that the patch works as intended. Then, <tt>require</tt> the gem in every affected application, as follows:
 
