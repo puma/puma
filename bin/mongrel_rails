@@ -1,7 +1,7 @@
-# Copyright (c) 2005 Zed A. Shaw 
+# Copyright (c) 2005 Zed A. Shaw
 # You can redistribute it and/or modify it under the same terms as Ruby.
 #
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
+# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html
 # for more information.
 
 require 'rubygems'
@@ -38,13 +38,21 @@ module Mongrel
     end
 
     def validate
+      if @config_file
+        valid_exists?(@config_file, "Config file not there: #@config_file")
+        return false unless @valid
+        @config_file = File.expand_path(@config_file)
+        load_config
+        return false unless @valid
+      end
+
       @cwd = File.expand_path(@cwd)
       valid_dir? @cwd, "Invalid path to change to during daemon mode: #@cwd"
 
       # Change there to start, then we'll have to come back after daemonize
       Dir.chdir(@cwd)
 
-      valid?(@prefix[0].chr == "/" && @prefix[-1].chr != "/", "Prefix must begin with / and not end in /") if @prefix
+      valid?(@prefix[0] == ?/ && @prefix[-1] != ?/, "Prefix must begin with / and not end in /") if @prefix
       valid_dir? File.dirname(@log_file), "Path to log file not valid: #@log_file"
       valid_dir? File.dirname(@pid_file), "Path to pid file not valid: #@pid_file"
       valid_dir? @docroot, "Path to docroot not valid: #@docroot"
@@ -58,25 +66,12 @@ module Mongrel
     end
 
     def run
-      # Config file settings will override command line settings
-      settings = { :host => @address,  :port => @port, :cwd => @cwd,
-        :log_file => @log_file, :pid_file => @pid_file, :environment => @environment,
-        :docroot => @docroot, :mime_map => @mime_map, :daemon => @daemon,
-        :debug => @debug, :includes => ["mongrel"], :config_script => @config_script,
-        :num_processors => @num_procs, :timeout => @timeout,
-        :user => @user, :group => @group, :prefix => @prefix, :config_file => @config_file
-      }
-
       if @generate
+	@generate = File.expand_path(@generate)
         STDERR.puts "** Writing config to \"#@generate\"."
         open(@generate, "w") {|f| f.write(settings.to_yaml) }
         STDERR.puts "** Finished.  Run \"mongrel_rails start -C #@generate\" to use the config file."
         exit 0
-      end
-
-      if @config_file
-        settings.merge! YAML.load_file(@config_file)
-        STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless settings[:daemon]
       end
 
       config = Mongrel::Rails::RailsConfigurator.new(settings) do
@@ -124,7 +119,7 @@ module Mongrel
       end
 
       config.run
-      config.log "Mongrel available at #{settings[:host]}:#{settings[:port]}"
+      config.log "Mongrel available at #{@address}:#{@port}"
 
       if config.defaults[:daemon]
         config.write_pid_file
@@ -150,6 +145,44 @@ module Mongrel
         else
           config.log "Win32 does not support restarts. Exiting."
         end
+      end
+    end
+
+    def load_config
+      settings = {}
+      begin
+        settings = YAML.load_file(@config_file)
+      ensure
+        STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless @daemon || settings[:daemon] 
+      end
+
+      settings[:includes] ||= ["mongrel"]
+
+      # Config file settings will override command line settings
+      settings.each do |key, value|
+        key = key.to_s
+        if config_keys.include?(key)
+          key = 'address' if key == 'host'
+          self.instance_variable_set("@#{key}", value)
+        else
+          failure "Unknown configuration setting: #{key}"  
+          @valid = false
+        end
+      end
+    end
+
+    def config_keys
+      @config_keys ||=
+        %w(host port cwd log_file pid_file environment docroot mime_map daemon debug includes config_script
+           num_processors timeout user group prefix)
+    end
+
+    def settings
+      config_keys.inject({}) do |hash, key|
+        value = self.instance_variable_get("@#{key}")
+        key = 'host' if key == 'address'
+        hash[key.to_sym] = value
+        hash
       end
     end
   end
