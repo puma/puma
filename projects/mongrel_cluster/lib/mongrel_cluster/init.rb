@@ -282,7 +282,7 @@ module Cluster
         ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
         ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "tmp/pids/mongrel.pid"],
         ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
-        ['-t', '--timeout SECONDS', "Timeout all requests after SECONDS time", :@timeout, nil],
+        ['-t', '--timeout TIME', "Time to pause (in hundredths of a second) between accepting clients", :@timeout, nil],
         ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
         ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, nil],
         ['-n', '--num-procs INT', "Number of processor threads to use", :@num_procs, nil],
