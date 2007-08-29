@@ -94,8 +94,8 @@ old threads.
 <dl>
 <dt>-t, --timeout (:timeout)</dt>
 <dd>
-Time to pause between accepting clients.  Used as a throttle
-mechanism.
+Time to pause (in hundredths of a second) between accepting 
+clients. Used as a throttle mechanism.
 <ul><li><b>Default:</b> 0</li></ul>
 </dd>
 </dl>
