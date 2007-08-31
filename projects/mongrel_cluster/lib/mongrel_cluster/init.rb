@@ -315,7 +315,7 @@ module Cluster
       @options["log_file"] = @log_file if @log_file
       @options["debug"] = @debug if @debug
       @options["num_procs"] = @num_procs if @num_procs
-      @options["docroot"] = @docroot if @docroots
+      @options["docroot"] = @docroot if @docroot
       @options["address"] = @address if @address
       @options["timeout"] = @timeout if @timeout
       @options["environment"] = @environment if @environment
