@@ -608,7 +608,13 @@ module Mongrel
             if handlers
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
-              params[Const::REMOTE_ADDR] = params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last
+	      # From http://www.ietf.org/rfc/rfc3875 :
+	      # "Script authors should be aware that the REMOTE_ADDR and REMOTE_HOST
+	      #  meta-variables (see sections 4.1.8 and 4.1.9) may not identify the
+	      #  ultimate source of the request.  They identify the client for the
+	      #  immediate request to the server; that client may be a proxy, gateway,
+	      #  or other intermediary acting on behalf of the actual source client."
+              params[Const::REMOTE_ADDR] = client.peeraddr.last
 
               # select handlers that want more detailed request notification
               notifiers = handlers.select { |h| h.request_notify }
