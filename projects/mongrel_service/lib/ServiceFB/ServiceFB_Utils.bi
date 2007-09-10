@@ -5,7 +5,7 @@
 '# See MIT-LICENSE file for details
 '#++
 
-#if __FB_VERSION__ <> "0.17"
+#if __FB_VERSION__ < "0.17"
 #error ServiceFB is designed to compile with FreeBASIC version "0.17"
 #else
 

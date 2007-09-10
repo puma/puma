@@ -5,7 +5,7 @@
 '# See MIT-LICENSE file for details
 '#++
 
-#if __FB_VERSION__ <> "0.17"
+#if __FB_VERSION__ < "0.17"
 #error ServiceFB is designed to compile with FreeBASIC version "0.17"
 #else
 
@@ -61,6 +61,9 @@ namespace svc   '# fb.svc
         onStop          as sub(byref as ServiceProcess)
         onPause         as sub(byref as ServiceProcess)
         onContinue      as sub(byref as ServiceProcess)
+        
+        '# call_* are used to avoid the warning arround ThreadCreate
+        declare static sub call_onStart(byval as any ptr)
         
         '# properties (public)
         name            as string

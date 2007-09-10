@@ -1,3 +1,9 @@
+* SVN *
+    
+    * Properly display package/gem version for mongrel_service. Closes #13823.
+    
+    * Updated ServiceFB to r80 to solve issue when compiling with FB > 0.17.
+    
 * 0.3.2 *
     
     * Solved detection of parent process at ServiceFB level

@@ -163,6 +163,13 @@ namespace svc
     end sub
     
     
+    '# call_onStart() is a wrapper around the new limitation of threadcreate
+    '# sub used as pointers in threadcreate must conform the signature
+    sub ServiceProcess.call_onStart(byval any_service as any ptr)
+        var service = cast(ServiceProcess ptr, any_service)
+        service->onStart(*service)
+    end sub
+    
     '#####################
     '# ServiceHost
     '# ctor()
@@ -336,7 +343,7 @@ namespace svc
                     service->UpdateState(SERVICE_RUNNING)
                     if not (service->onStart = 0) then
                         _dprint("dispatch onStart() as new thread")
-                        service->_threadHandle = threadcreate(service->onStart, service)
+                        service->_threadHandle = threadcreate(@ServiceProcess.call_onStart, service)
                         '# my guess? was a hit!
                     end if
                     
