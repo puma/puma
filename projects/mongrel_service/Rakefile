@@ -92,6 +92,7 @@ namespace :native do
     build_to    'bin'
     
     define      'DEBUG_LOG' unless ENV['RELEASE']
+    define      "GEM_VERSION=#{GEM_VERSION}"
     
     main        'native/mongrel_service.bas'
     source      'native/process.bas'

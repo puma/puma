@@ -22,8 +22,16 @@
 #include once "lib/ServiceFB/ServiceFB.bi"
 #include once "process.bi"
 
+'# use for debug versions
+#if not defined(GEM_VERSION)
+  #define GEM_VERSION (debug mode)
+#endif
+
+'# preprocessor stringize
+#define PPSTR(x) #x
+
 namespace mongrel_service
-    const VERSION as string = "0.3.1"
+    const VERSION as string = PPSTR(GEM_VERSION)
     
     '# namespace include
     using fb.svc
