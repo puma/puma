@@ -39,7 +39,7 @@
         <div id="visual"></div>
 
         <div id="content">
-          {content: }
+          {block: }
         </div>
 
         <div id="news">
