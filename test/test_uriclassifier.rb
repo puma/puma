@@ -167,6 +167,25 @@ class URIClassifierTest < Test::Unit::TestCase
     assert_equal 1,h, "didn't find handler"
   end
 
+  # Verifies that a root mounted ("/") handler
+  # is the default point, doesn't matter the order we use
+  # to resgister the URIs
+  def test_classifier_order
+    tests = ["/before", "/way_past"]
+    root = "/"
+    path = "/path"
+
+    u = URIClassifier.new
+    u.register(path, 1)
+    u.register(root, 2)
+
+    tests.each do |uri|
+        sn, pi, h = u.resolve(uri)
+        assert_equal root, sn, "didn't get right script name"
+        assert_equal uri, pi, "didn't get right path info"
+        assert_equal 2, h, "didn't find handler"
+    end
+  end
 
 end
 
