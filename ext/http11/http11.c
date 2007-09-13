@@ -506,7 +506,7 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
   DATA_GET(self, struct tst, tst);
   uri_str = (unsigned char *)StringValueCStr(uri);
 
-  handler = tst_search(uri_str, tst, &pref_len);
+  handler = tst_search(uri_str, tst, TST_LONGEST_MATCH, &pref_len);
 
   /* setup for multiple return values */
   result = rb_ary_new();

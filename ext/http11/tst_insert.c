@@ -2,16 +2,16 @@
 #include "tst.h"
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h> 
 
 int tst_grow_node_free_list(struct tst *tst);
 int tst_insert(unsigned char *key, void *data, struct tst *tst, int option, void **exist_ptr)
 {
    struct node *current_node;
    struct node *new_node_tree_begin = NULL;
+   struct node *new_node;
    int key_index;
    int perform_loop = 1;
-
    
    if (key == NULL)
       return TST_NULL_KEY;
@@ -91,7 +91,33 @@ int tst_insert(unsigned char *key, void *data, struct tst *tst, int option, void
             }
          }
       }
-   
+      if(key[key_index] == 0)
+      {
+      	 if(tst->free_list == NULL)
+	 {
+	     if(tst_grow_node_free_list(tst) != 1)
+		 return TST_ERROR;
+	 }
+	 new_node = tst->free_list;
+	 tst->free_list = tst->free_list->middle;
+
+	 memcpy((void*)new_node, (void*)current_node, sizeof(struct node));
+	 current_node->value = 0;
+	 if(new_node->value < 64)
+	 {
+	    current_node->left = new_node;
+	    current_node->right = '\0';
+	 }
+	 else
+	 {
+	    current_node->left = '\0';
+	    current_node->right = new_node;
+         }
+
+         current_node->middle = data;
+         return TST_OK;
+      }
+
       if( ((current_node->value == 0) && (key[key_index] < 64)) ||
          ((current_node->value != 0) && (key[key_index] <
          current_node->value)) )
