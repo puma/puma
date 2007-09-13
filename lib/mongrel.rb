@@ -270,9 +270,9 @@ module Mongrel
         end
       rescue Object
         STDERR.puts "ERROR reading http body: #$!"
-        $!.backtrace.join("\n")
+        STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
         # any errors means we should delete the file, including if the file is dumped
-        @socket.close rescue Object
+        @socket.close rescue nil
         @body.delete if @body.class == Tempfile
         @body = nil # signals that there was a problem
       end
@@ -489,7 +489,7 @@ module Mongrel
 
     def socket_error(details)
       # ignore these since it means the client closed off early
-      @socket.close rescue Object
+      @socket.close rescue nil
       done = true
       raise details
     end
@@ -654,7 +654,7 @@ module Mongrel
           end
         end
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
-        client.close rescue Object
+        client.close rescue nil
       rescue HttpParserError
         if $mongrel_debug_client
           STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
@@ -666,7 +666,7 @@ module Mongrel
         STDERR.puts "#{Time.now}: ERROR: #$!"
         STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
       ensure
-        client.close rescue Object
+        client.close rescue nil
         request.body.delete if request and request.body.class == Tempfile
       end
     end
@@ -745,7 +745,7 @@ module Mongrel
 
             if worker_list.length >= @num_processors
               STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max). Dropping connection."
-              client.close rescue Object
+              client.close rescue nil
               reap_dead_workers("max processors")
             else
               thread = Thread.new(client) {|c| process_client(c) }
@@ -755,14 +755,14 @@ module Mongrel
               sleep @timeout/100 if @timeout > 0
             end
           rescue StopServer
-            @socket.close rescue Object
+            @socket.close rescue nil
             break
           rescue Errno::EMFILE
             reap_dead_workers("too many open files")
             sleep 0.5
           rescue Errno::ECONNABORTED
             # client closed the socket even before accept
-            client.close rescue Object
+            client.close rescue nil
           rescue Object => exc
             STDERR.puts "!!!!!! UNHANDLED EXCEPTION! #{exc}.  TELL ZED HE'S A MORON."
             STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
