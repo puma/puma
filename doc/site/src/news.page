@@ -7,6 +7,11 @@ ordering: 2
 
 h1. Latest News
 
+h2. Sep 19: Mongrel 1.0.2 is barking at the moon!
+
+It means mongrel 1.0.2 is out! After cleaning up the bug list, this version is
+mainly a bug fix release. 
+
 h2. Jan 22: Mongrel 1.0.1 Baby!
 
 Alright folks, after nearly a month of pounding and beating up the Mongrel 1.0
