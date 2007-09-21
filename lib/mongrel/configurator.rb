@@ -55,6 +55,11 @@ module Mongrel
     # Change privilege of the process to specified user and group.
     def change_privilege(user, group)
       begin
+        if group && user
+          log "Initializing groups for #{user}:#{group}."
+          Process.initgroups(user, Etc.getgrnam(group).gid)
+        end
+        
         if group
           log "Changing group to #{group}."
           Process::GID.change_privilege(Etc.getgrnam(group).gid)
