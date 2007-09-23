@@ -1,38 +1,15 @@
-require 'rake'
-require 'rake/testtask'
-require 'rake/clean'
-require 'rake/gempackagetask'
-require 'rake/rdoctask'
-require 'tools/rakehelp'
-require 'fileutils'
-include FileUtils
 
-setup_tests
-setup_clean ["pkg", "lib/*.bundle", "*.gem", ".config"]
+require 'echoe'
 
-setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
+Echoe.new("mongrel_upload_progress") do |p|
+  p.summary = "The mongrel_upload_progress gemplugin"
+  p.project = "mongrel"
+  p.author="The Mongrel team"
+  p.dependencies = ['mongrel >=0.3.13.3', 'gem_plugin >=0.2.1']
 
-desc "Does a full compile, test run"
-task :default => [:test, :package]
-
-version="0.2.1"
-name="mongrel_upload_progress"
-
-setup_gem(name, version) do |spec|
-  spec.summary = "The mongrel_upload_progress GemPlugin"
-  spec.description = spec.summary
-  spec.author="Nobody"
-  spec.add_dependency('mongrel', '>= 0.3.13.3')
-  spec.add_dependency('gem_plugin', '>= 0.2.1')
-  spec.files += Dir.glob("resources/**/*")
+  p.need_tar_gz = false
+  p.need_tgz = true
+  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  p.require_signed = true
 end
-
-
-task :install => [:test, :package] do
-  sh %{gem install pkg/#{name}-#{version}.gem}
-end
-
-task :uninstall => [:clean] do
-  sh %{gem uninstall #{name}}
-end
-
