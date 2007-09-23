@@ -1,49 +1,26 @@
-#--
-# Copyright (c) 2006-2007 Luis Lavena, Multimedia systems
-#
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and associated documentation files (the
-# "Software"), to deal in the Software without restriction, including
-# without limitation the rights to use, copy, modify, merge, publish,
-# distribute, sublicense, and/or sell copies of the Software, and to
-# permit persons to whom the Software is furnished to do so, subject to
-# the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#++
 
-require 'rake'
-require 'rake/testtask'
-require 'rake/clean'
-require 'rake/gempackagetask'
-require 'rake/rdoctask'
-require 'tools/rakehelp'
+require 'echoe'
 require 'tools/freebasic'
-require 'fileutils'
-include FileUtils
 
-setup_tests
-setup_clean ["pkg", "lib/*.bundle", "*.gem", ".config"]
+echoe_spec = Echoe.new("mongrel_service") do |p|
+  p.summary = "Mongrel Native Win32 Service Plugin for Rails"
+  p.summary += " (debug build)" unless ENV['RELEASE'] 
+  p.description = "This plugin offer native win32 services for rails, powered by Mongrel."
+  p.author = "Luis Lavena"
+  p.platform = Gem::Platform::WIN32
+  p.dependencies = ['gem_plugin >=0.2.1', 'mongrel >=0.3.12.4', 'win32-service >=0.5.0']
 
-setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
-
-desc "Does a full compile, test run"
-task :default => [:compile, :test]
-
-GEM_VERSION = "0.3.3"
-GEM_NAME = "mongrel_service"
+  p.need_tar_gz = false
+  p.need_zip = true
+  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  p.require_signed = true
+end
 
 desc "Compile native code"
 task :compile => [:native_lib, :native_service]
+
+task :"bin/mongrel_service.exe" => [:clean, :compile]
 
 # global options shared by all the project in this Rakefile
 OPTIONS = {
@@ -92,13 +69,13 @@ namespace :native do
     build_to    'bin'
     
     define      'DEBUG_LOG' unless ENV['RELEASE']
-    define      "GEM_VERSION=#{GEM_VERSION}"
+    define      "GEM_VERSION=#{echoe_spec.version}"
     
     main        'native/mongrel_service.bas'
     source      'native/process.bas'
     
     # including the precompiled file show warnings when linking with
-    # ld, due special m$ directives in the obj file
+    # ld, due pial m$ directives in the obj file
     # will solve that later, when migrate the asm part of code to gcc
     # source      'native/send_signal.o'
     
@@ -112,33 +89,4 @@ end
 #include_projects_of :native
 task :native_service => "native:build"
 task :clean => "native:clobber"
-
-task :package => [:clean, :compile, :test]
-
-setup_gem(GEM_NAME, GEM_VERSION) do |spec|
-  spec.summary = "Mongrel Native Win32 Service Plugin for Rails"
-  spec.summary += " (debug build)" unless ENV['RELEASE'] 
-  spec.description = "This plugin offer native win32 services for rails, powered by Mongrel."
-  spec.author = "Luis Lavena"
-  spec.platform = Gem::Platform::WIN32
-  
-  spec.files -= Dir["bin/**/*"]
-  spec.files -= Dir["**/*.{o,a}"]
-  spec.files += Dir["native/**/*.{bas,bi}"]
-  spec.files += ["bin/mongrel_service.exe"]
-  
-  spec.add_dependency('gem_plugin', '>= 0.2.1')
-  spec.add_dependency('mongrel', '>= 0.3.12.4')
-  spec.add_dependency('win32-service', '>= 0.5.0')
-  
-  spec.files += Dir.glob("resources/**/*")
-end
-
-task :install => [:test, :package] do
-  sh %{gem install pkg/#{name}-#{version}.gem}
-end
-
-task :uninstall => [:clean] do
-  sh %{gem uninstall #{name}}
-end
 
