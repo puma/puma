@@ -1,4 +1,6 @@
 
+v2.4. Signed gem.
+
 v2.3. Use STDERR, not $stderr, just like Mongrel; tests now use Test::Unit; moving to the mongrel project on RubyForge.
 
 v2.2. Don't load on Ruby > 1.8.5; copyright correction.
