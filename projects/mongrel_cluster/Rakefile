@@ -3,6 +3,7 @@ require 'echoe'
 
 Echoe.new("mongrel_cluster") do |p|
   p.summary = "Mongrel plugin that provides commands and Capistrano tasks for managing multiple Mongrel processes."
+  p.project = "mongrel"
   p.author="Bradley Taylor"
   p.dependencies = ['gem_plugin >=0.2.2', 'mongrel >=1.0.1']
   p.has_rdoc = false
