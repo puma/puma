@@ -1,22 +1,35 @@
-require 'rake'
-require 'rake/testtask'
-require 'rake/clean'
-require 'rake/gempackagetask'
-require 'rake/rdoctask'
-require 'tools/rakehelp'
-require 'fileutils'
-include FileUtils
 
-setup_tests
-setup_clean ["ext/http11/*.{bundle,so,obj,pdb,lib,def,exp}", "ext/http11/Makefile", "pkg", "lib/*.bundle", "*.gem", "doc/site/output", ".config"]
+require 'echoe'
 
-setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
+Echoe.new("mongrel") do |p|
+  p.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
+  p.author ="Zed A. Shaw"
+  p.clean_pattern = ["ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}", "ext/http11/Makefile", "pkg", "lib/*.bundle", "*.gem", "doc/site/output", ".config"]
+  p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
+  p.ignore_pattern = /^projects/
+  p.ruby_version = '>= 1.8.4'
+  p.dependencies = ['gem_plugin >=0.2.2', 'cgi_multipart_eof_fix >=2']
 
-desc "Does a full compile, test run"
-task :default => [:compile, :test]
+  p.need_tar_gz = false
+  p.need_tgz = true
+  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  p.require_signed = true
 
-desc "Compiles all extensions"
-task :compile => [:http11] do
+  p.eval = proc do  
+    if RUBY_PLATFORM =~ /mswin/
+      files += ['lib/http11.so']
+      extensions.clear
+      platform = Gem::Platform::WIN32
+    else
+      add_dependency('daemons', '>= 1.0.3')
+      add_dependency('fastthread', '>= 0.6.2')
+    end
+  end
+end
+
+task :compile do
+  # Append a sanity check to the compile task
   if Dir.glob(File.join("lib","http11.*")).length == 0
     STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     STDERR.puts "Gem actually failed to build.  Your system is"
@@ -26,63 +39,25 @@ task :compile => [:http11] do
   end
 end
 
-task :package => [:clean,:compile,:test,:rerdoc]
+#### Project-wide install and uninstall tasks
 
-task :ragel do
-  sh %{ragel ext/http11/http11_parser.rl | rlgen-cd -G2 -o ext/http11/http11_parser.c}
-end
-
-task :site_webgen do
-  sh %{pushd doc/site; webgen; ruby atom.rb > output/feed.atom; rsync -azv output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
-end
-
-task :site_rdoc do
-  sh %{ rsync -azv doc/rdoc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
-end
-
-task :site_coverage => [:rcov] do
-  sh %{ rsync -azv test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/ }
-end
-
-task :site_projects_rdoc do
-  sh %{ cd projects/gem_plugin; rake site }
-end
-
-task :site => [:site_webgen, :site_rdoc, :site_coverage, :site_projects_rdoc]
-
-setup_extension("http11", "http11")
-
-name="mongrel"
-version="1.0.2"
-
-setup_gem(name, version) do |spec|
-  spec.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
-  spec.description = spec.summary
-  spec.test_files = Dir.glob('test/test_*.rb')
-  spec.author="Zed A. Shaw"
-  spec.executables=['mongrel_rails']
-  spec.files += %w(ext/http11/MANIFEST README Rakefile setup.rb lib/mongrel/mime_types.yml)
-
-  spec.required_ruby_version = '>= 1.8.4'
-
-  if RUBY_PLATFORM =~ /mswin/
-    spec.files += ['lib/http11.so']
-    spec.extensions.clear
-    spec.platform = Gem::Platform::WIN32
-  else
-    spec.add_dependency('daemons', '>= 1.0.3')
-    spec.add_dependency('fastthread', '>= 0.6.2')
+def sub_project(project, *targets)
+  targets.each do |target|
+    Dir.chdir "projects/#{project}" do
+      sh %{rake --trace #{target.to_s} }
+    end
   end
-  
-  spec.add_dependency('gem_plugin', '>= 0.2.2')
-  spec.add_dependency('cgi_multipart_eof_fix', '>= 2')
 end
 
-task :install do
+task :install_requirements do
+  # These run before Mongrel is installed
   sub_project("gem_plugin", :install)
+  sub_project("cgi_multipart_eof_fix", :install)
   sub_project("fastthread", :install)
-  sh %{rake package}
-  sh %{gem install pkg/mongrel-#{version}}
+end
+
+task :install => [:install_requirements] do
+  # These run after Mongrel is installed
   sub_project("mongrel_status", :install)
   sub_project("mongrel_upload_progress", :install)
   sub_project("mongrel_console", :install)
@@ -94,9 +69,9 @@ end
 
 task :uninstall => [:clean] do
   sub_project("mongrel_status", :uninstall)
+  sub_project("cgi_multipart_eof_fix", :uninstall)
   sub_project("mongrel_upload_progress", :uninstall)
   sub_project("mongrel_console", :uninstall)
-  sh %{gem uninstall mongrel}
   sub_project("gem_plugin", :uninstall)
   sub_project("fastthread", :uninstall)
   if RUBY_PLATFORM =~ /mswin/
@@ -104,7 +79,9 @@ task :uninstall => [:clean] do
   end
 end
 
+#### Documentation upload tasks
 
+# Is this still used?
 task :gem_source do
   mkdir_p "pkg/gems"
   mkdir_p "pkg/tar"
@@ -116,3 +93,25 @@ task :gem_source do
   sh %{ index_gem_repository.rb -d pkg }
   sh %{ scp -r ChangeLog pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
 end
+
+task :ragel do
+  sh %{ragel ext/http11/http11_parser.rl | rlgen-cd -G2 -o ext/http11/http11_parser.c}
+end
+
+task :site_webgen do
+  sh %{pushd site; webgen; ruby atom.rb > output/feed.atom; rsync -azv output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
+end
+
+task :site_rdoc => [:redoc] do
+  sh %{ rsync -azv doc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
+end
+
+task :site_coverage => [:rcov] do
+  sh %{ rsync -azv test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/ }
+end
+
+task :site_projects_rdoc do
+  sh %{ cd projects/gem_plugin; rake site }
+end
+
+task :site => [:site_webgen, :site_rdoc, :site_coverage, :site_projects_rdoc]
