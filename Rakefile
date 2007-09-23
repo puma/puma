@@ -8,7 +8,7 @@ Echoe.new("mongrel") do |p|
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
   p.ignore_pattern = /^projects/
   p.ruby_version = '>= 1.8.4'
-  p.dependencies = ['gem_plugin >=0.2.2', 'cgi_multipart_eof_fix >=2']
+  p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4']
 
   p.need_tar_gz = false
   p.need_tgz = true
@@ -23,7 +23,7 @@ Echoe.new("mongrel") do |p|
       platform = Gem::Platform::WIN32
     else
       add_dependency('daemons', '>= 1.0.3')
-      add_dependency('fastthread', '>= 0.6.2')
+      add_dependency('fastthread', '>= 1.0.1')
     end
   end
 end
