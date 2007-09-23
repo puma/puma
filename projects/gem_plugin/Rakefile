@@ -11,7 +11,10 @@ Echoe.new("gem_plugin") do |p|
   p.include_gemspec = false
   p.need_tar_gz = false
   p.need_tgz = true
-
+  p.require_signed = true
+  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  
   p.test_pattern = "test/test_plugins.rb"
   p.clean_pattern += ["pkg", "lib/*.bundle", "*.gem", ".config"]
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
