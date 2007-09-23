@@ -1,46 +1,20 @@
-require 'rake'
-require 'rake/testtask'
-require 'rake/clean'
-require 'rake/gempackagetask'
-require 'rake/rdoctask'
-require 'tools/rakehelp'
-require 'fileutils'
-include FileUtils
 
-setup_tests
-setup_clean ["pkg", "lib/*.bundle", "*.gem", ".config"]
+require 'echoe'
 
-setup_rdoc ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
+Echoe.new("mongrel_cluster") do |p|
+  p.summary = "Mongrel plugin that provides commands and Capistrano tasks for managing multiple Mongrel processes."
+  p.author="Bradley Taylor"
+  p.dependencies = ['gem_plugin >=0.2.2', 'mongrel >=1.0.1']
+  p.has_rdoc = false
 
-desc "Does a full compile, test run"
-task :default => [:test, :package]
-
-version="1.0.2"
-name="mongrel_cluster"
-
-setup_gem(name, version) do |spec|
-  spec.summary = "Mongrel plugin that provides commands and Capistrano tasks for managing multiple Mongrel processes."
-  spec.description = spec.summary
-  spec.author="Bradley Taylor"
-  spec.add_dependency('gem_plugin', '>= 0.2.2')
-  spec.add_dependency('mongrel', '>= 1.0.1')
-  spec.files += Dir.glob("resources/**/*")
-  spec.has_rdoc = false
-  spec.files += Dir.glob("bin/*")
-  spec.files += Dir.glob("examples/*")
-  spec.default_executable = "mongrel_cluster_ctl"
-  spec.executables = ["mongrel_cluster_ctl"]
+  p.need_tar_gz = false
+  p.need_tgz = true
+  p.require_signed = true
+  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
 end
 
-
-task :install => [:test, :package] do
-  sh %{sudo gem install pkg/#{name}-#{version}.gem}
-end
-
-task :uninstall => [:clean] do
-  sh %{sudo gem uninstall #{name}}
-end
-
+# Is this still used?
 task :gem_source do
   mkdir_p "pkg/gems"
 
