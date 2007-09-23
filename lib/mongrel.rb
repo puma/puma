@@ -728,7 +728,7 @@ module Mongrel
 
       configure_socket_options
 
-      if $tcp_defer_accept_opts
+      if defined?($tcp_defer_accept_opts) and $tcp_defer_accept_opts
         @socket.setsockopt(*$tcp_defer_accept_opts) rescue nil
       end
 
@@ -737,7 +737,7 @@ module Mongrel
           begin
             client = @socket.accept
 
-            if $tcp_cork_opts
+            if defined?($tcp_cork_opts) and $tcp_cork_opts
               client.setsockopt(*$tcp_cork_opts) rescue nil
             end
 
