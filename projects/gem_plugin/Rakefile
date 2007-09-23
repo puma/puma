@@ -11,5 +11,5 @@ Echoe.new("gem_plugin") do |p|
 end
 
 task :site => [:redocs] do
-  sh %{ rsync -r doc/rdoc/* rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin_rdoc/ }
+  sh %{ rsync -r doc/* rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin_rdoc/ }
 end
