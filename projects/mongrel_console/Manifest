@@ -1,0 +1,8 @@
+resources/defaults.yaml
+README
+Manifest
+LICENSE
+lib/mongrel_console/init.rb
+lib/mongrel_console/console.rb
+COPYING
+CHANGELOG
