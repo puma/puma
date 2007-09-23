@@ -1,58 +1,25 @@
-require 'rake'
-require 'rake/clean'
-require 'rake/testtask'
-require 'rake/gempackagetask'
-require 'tools/rakehelp'
 
-GEM_VERSION="1.0"
+require 'echoe'
 
-setup_extension('fastthread', 'fastthread')
+Echoe.new("fastthread") do |p|
+  p.project = "mongrel"
+  p.author = "MenTaLguY <mental@rydia.net>"
+  p.summary = "Optimized replacement for thread.rb primitives"
+  p.extensions = "ext/fastthread/extconf.rb"
+  p.clean_pattern = ['build/*', '**/*.o', '**/*.so', '**/*.a', 'lib/*-*', '**/*.log', "ext/fastthread/*.{bundle,so,obj,pdb,lib,def,exp}", "ext/fastthread/Makefile", "pkg", "lib/*.bundle", "*.gem", ".config"]
 
-desc "Compiles native extensions"
-task :compile => [:fastthread]
+  p.need_tar_gz = false
+  p.need_tgz = true
+  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  p.require_signed = true
 
-task :default => [:compile, :test]
-
-Rake::TestTask.new do |task|
-  task.libs << 'test'
-  task.test_files = Dir.glob( 'test/test*.rb' )
-  task.verbose = true
-end
-
-gemspec = Gem::Specification.new do |gemspec|
-  gemspec.name = "fastthread"
-  gemspec.version = GEM_VERSION
-  gemspec.author = "MenTaLguY <mental@rydia.net>"
-  gemspec.summary = "Optimized replacement for thread.rb primitives"
-  gemspec.test_file = 'test/test_all.rb'
-  gemspec.files = %w( Rakefile setup.rb ) +
-                  Dir.glob( 'test/*.rb' ) +
-                  Dir.glob( 'ext/**/*.{c,rb}' ) +
-                  Dir.glob( 'tools/*.rb' )
-                  
-  gemspec.require_path = 'lib'
-
-  if RUBY_PLATFORM.match("win32")
-    gemspec.platform = Gem::Platform::WIN32
-    gemspec.files += ['lib/fastthread.so']
-  else
-    gemspec.platform = Gem::Platform::RUBY
-    gemspec.extensions = Dir.glob( 'ext/**/extconf.rb' )
+  p.eval = proc do  
+    if RUBY_PLATFORM.match("win32")
+      platform = Gem::Platform::WIN32
+      files += ['lib/fastthread.so']
+      task :package => [:clean, :compile]
+    end
   end
-end
 
-task :package => [:clean, :compile, :test]
-Rake::GemPackageTask.new( gemspec ) do |task|
-  task.gem_spec = gemspec
-  task.need_tar = true
-end
-
-setup_clean ["ext/fastthread/*.{bundle,so,obj,pdb,lib,def,exp}", "ext/fastthread/Makefile", "pkg", "lib/*.bundle", "*.gem", ".config"]
-
-task :install => [:default, :package] do
-  sh %{ sudo gem install pkg/fastthread-#{GEM_VERSION}.gem }
-end
-
-task :uninstall do
-  sh %{ sudo gem uninstall fastthread }
 end
