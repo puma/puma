@@ -40,15 +40,15 @@ task :uninstall => [:clean] do
 end
 
 Rake::TestTask.new do |t|
-    t.libs << "test"
-    t.test_files = FileList['test/test*.rb']
-    t.verbose = true
+  t.libs << "test"
+  t.test_files = FileList['test/test*.rb']
+  t.verbose = true
 end
 
 Rake::RDocTask.new do |rdoc|
-    rdoc.rdoc_dir = 'doc/rdoc'
-    rdoc.options << '--line-numbers'
-    rdoc.rdoc_files.add ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
+  rdoc.rdoc_dir = 'doc/rdoc'
+  rdoc.options << '--line-numbers'
+  rdoc.rdoc_files.add ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 end
 
 task :default => [:test, :package]
