@@ -1,26 +1,25 @@
-
 require 'echoe'
 require 'tools/freebasic'
 
-echoe_spec = Echoe.new("mongrel_service") do |p|
+echoe_spec = Echoe.new("mongrel_service", "0.3.3") do |p|
   p.summary = "Mongrel Native Win32 Service Plugin for Rails"
   p.summary += " (debug build)" unless ENV['RELEASE'] 
   p.description = "This plugin offer native win32 services for rails, powered by Mongrel."
   p.author = "Luis Lavena"
   p.platform = Gem::Platform::WIN32
-  p.dependencies = ['gem_plugin >=0.2.1', 'mongrel >=0.3.12.4', 'win32-service >=0.5.0']
+  p.dependencies = ['gem_plugin >=0.2.2', 'mongrel >=1.0.1', 'win32-service >=0.5.0']
 
   p.need_tar_gz = false
   p.need_zip = true
-  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
-    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
+    '~/gem_certificates/luislavena-mongrel-public_cert.pem']
   p.require_signed = true
 end
 
 desc "Compile native code"
 task :compile => [:native_lib, :native_service]
 
-task :"bin/mongrel_service.exe" => [:clean, :compile]
+#task :"bin/mongrel_service.exe" => [:clean, :compile]
 
 # global options shared by all the project in this Rakefile
 OPTIONS = {
@@ -57,6 +56,7 @@ namespace :lib do
     option    OPTIONS
   end
 end
+
 # add lib namespace to global tasks
 #include_projects_of :lib
 task :native_lib => "lib:build"
@@ -72,12 +72,7 @@ namespace :native do
     define      "GEM_VERSION=#{echoe_spec.version}"
     
     main        'native/mongrel_service.bas'
-    source      'native/process.bas'
-    
-    # including the precompiled file show warnings when linking with
-    # ld, due pial m$ directives in the obj file
-    # will solve that later, when migrate the asm part of code to gcc
-    # source      'native/send_signal.o'
+    source      'native/console_process.bas'
     
     lib_path    'lib'
     library     'ServiceFB', 'ServiceFB_Utils'
@@ -86,7 +81,7 @@ namespace :native do
     option      OPTIONS
   end
 end
+
 #include_projects_of :native
 task :native_service => "native:build"
 task :clean => "native:clobber"
-

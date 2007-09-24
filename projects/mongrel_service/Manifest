@@ -3,10 +3,10 @@ tools/freebasic.rb
 TODO
 resources/defaults.yaml
 README
-native/process.bi
-native/process.bas
 native/mongrel_service.bi
 native/mongrel_service.bas
+native/console_process.bi
+native/console_process.bas
 native/_debug.bi
 LICENSE
 lib/ServiceFB/ServiceFB_Utils.bi

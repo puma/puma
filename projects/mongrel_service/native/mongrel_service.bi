@@ -14,13 +14,13 @@
 
 '##################################################################
 '# Requirements:
-'# - FreeBASIC 0.17, Win32 CVS Build (as for November 09, 2006).
+'# - FreeBASIC 0.18.
 '# 
 '##################################################################
 
 #define SERVICEFB_INCLUDE_UTILS
 #include once "lib/ServiceFB/ServiceFB.bi"
-#include once "process.bi"
+#include once "console_process.bi"
 
 '# use for debug versions
 #if not defined(GEM_VERSION)
@@ -52,6 +52,7 @@ namespace mongrel_service
         'declare sub onStop()
         
         __service       as ServiceProcess
+        __console       as ConsoleProcess
         __child_pid     as uinteger
     end type
     

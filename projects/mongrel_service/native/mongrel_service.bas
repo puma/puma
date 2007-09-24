@@ -14,7 +14,7 @@
 
 '##################################################################
 '# Requirements:
-'# - FreeBASIC 0.17, Win32 CVS Build (as for November 09, 2006).
+'# - FreeBASIC 0.18
 '# 
 '##################################################################
 
@@ -23,9 +23,9 @@
 #include once "_debug.bi"
 
 namespace mongrel_service
-    using fb.process
-    
     constructor SingleMongrel()
+        dim redirect_file as string
+        
         with this.__service
             .name = "single"
             .description = "Mongrel Single Process service"
@@ -37,6 +37,12 @@ namespace mongrel_service
             .onInit = @single_onInit
             .onStart = @single_onStart
             .onStop = @single_onStop
+        end with
+        
+        with this.__console
+            redirect_file = EXEPATH + "\mongrel.log"
+            debug("redirecting to: " + redirect_file)
+            .redirect(ProcessStdBoth, redirect_file)
         end with
         
         '# TODO: fix inheritance here
@@ -64,6 +70,10 @@ namespace mongrel_service
         '# SingleMongrel instance. now we should call StillAlive
         self.StillAlive()
         if (len(self.commandline) > 0) then
+            '# assign the program
+            single_mongrel_ref->__console.filename = mongrel_cmd
+            single_mongrel_ref->__console.arguments = self.commandline
+            
             '# fix commandline, it currently contains params to be passed to
             '# mongrel_rails, and not ruby.exe nor the script to be run.
             self.commandline = mongrel_cmd + " " + self.commandline
@@ -71,7 +81,9 @@ namespace mongrel_service
             '# now launch the child process
             debug("starting child process with cmdline: " + self.commandline)
             single_mongrel_ref->__child_pid = 0
-            single_mongrel_ref->__child_pid = Spawn(self.commandline)
+            if (single_mongrel_ref->__console.start() = true) then
+                single_mongrel_ref->__child_pid = single_mongrel_ref->__console.pid
+            end if
             self.StillAlive()
             
             '# check if pid is valid
@@ -96,13 +108,15 @@ namespace mongrel_service
         do while (self.state = Running) or (self.state = Paused)
             '# instead of sitting idle here, we must monitor the pid
             '# and re-spawn a new process if needed
-            if not (Status(single_mongrel_ref->__child_pid) = ProcessStillActive) then
+            if not (single_mongrel_ref->__console.running = true) then
                 '# check if we aren't terminating
                 if (self.state = Running) or (self.state = Paused) then
                     debug("child process terminated!, re-spawning a new one")
                     
                     single_mongrel_ref->__child_pid = 0
-                    single_mongrel_ref->__child_pid = Spawn(self.commandline)
+                    if (single_mongrel_ref->__console.start() = true) then
+                        single_mongrel_ref->__child_pid = single_mongrel_ref->__console.pid
+                    end if
                     
                     if (single_mongrel_ref->__child_pid > 0) then
                         debug("new child process pid: " + str(single_mongrel_ref->__child_pid))
@@ -123,8 +137,7 @@ namespace mongrel_service
         '# now terminates the child process
         if not (single_mongrel_ref->__child_pid = 0) then
             debug("trying to kill pid: " + str(single_mongrel_ref->__child_pid))
-            'if not (send_break(single_mongrel_ref->__child_pid) = 0) then
-            if not (Terminate(single_mongrel_ref->__child_pid) = TRUE) then
+            if not (single_mongrel_ref->__console.terminate() = true) then
                 debug("Terminate() reported a problem when terminating process " + str(single_mongrel_ref->__child_pid))
             else
                 debug("child process terminated with success.")
