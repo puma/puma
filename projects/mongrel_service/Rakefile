@@ -1,6 +1,10 @@
 require 'echoe'
 require 'tools/freebasic'
 
+# Task :package needs compile before doing the gem stuff.
+# (weird behavior of Rake?)
+task :package => [:compile]
+
 echoe_spec = Echoe.new("mongrel_service", "0.3.3") do |p|
   p.summary = "Mongrel Native Win32 Service Plugin for Rails"
   p.summary += " (debug build)" unless ENV['RELEASE'] 
@@ -11,15 +15,13 @@ echoe_spec = Echoe.new("mongrel_service", "0.3.3") do |p|
 
   p.need_tar_gz = false
   p.need_zip = true
-  p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
-    '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+  p.certificate_chain = ['D:/Users/Developer/gem_certificates/mongrel-public_cert.pem',
+    'D:/Users/Developer/gem_certificates/luislavena-mongrel-public_cert.pem']
   p.require_signed = true
 end
 
 desc "Compile native code"
 task :compile => [:native_lib, :native_service]
-
-#task :"bin/mongrel_service.exe" => [:clean, :compile]
 
 # global options shared by all the project in this Rakefile
 OPTIONS = {
