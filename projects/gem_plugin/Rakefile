@@ -5,10 +5,7 @@ Echoe.new("gem_plugin") do |p|
   p.author="Zed A. Shaw"
   p.project = "mongrel"
   p.summary = "A plugin system based on rubygems that uses dependencies only"
-  p.dependencies = ["rake >=0.7"]
 
-  p.include_rakefile = true
-  p.include_gemspec = false
   p.need_tar_gz = false
   p.need_tgz = true
   p.require_signed = true
