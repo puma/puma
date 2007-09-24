@@ -1,4 +1,7 @@
+
 * SVN *
+
+* 0.3.3 *
     
     * Properly display package/gem version for mongrel_service. Closes #13823.
     
@@ -24,3 +27,4 @@
     * Removed SendSignal, too hackish for my taste, replaced with complete FB solution.
     
     * Added basic Process monitoring and re-spawning.
+    
