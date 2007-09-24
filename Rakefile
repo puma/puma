@@ -18,7 +18,7 @@ Echoe.new("mongrel") do |p|
 
   p.eval = proc do  
     if RUBY_PLATFORM =~ /mswin/
-      files += ['lib/http11.so']
+      self.files += ['lib/http11.so']
       extensions.clear
       platform = Gem::Platform::WIN32
     else
