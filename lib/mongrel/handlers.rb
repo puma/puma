@@ -374,6 +374,7 @@ module Mongrel
       results << table("settings", [
                        ["host",listener.host],
                        ["port",listener.port],
+                       ["throttle",listener.throttle],
                        ["timeout",listener.timeout],
                        ["workers max",listener.num_processors],
       ])

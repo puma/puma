@@ -547,6 +547,7 @@ module Mongrel
     attr_reader :classifier
     attr_reader :host
     attr_reader :port
+    attr_reader :throttle
     attr_reader :timeout
     attr_reader :num_processors
 
@@ -560,18 +561,18 @@ module Mongrel
     # way to deal with overload.  Other schemes involve still parsing the client's request
     # which defeats the point of an overload handling system.
     # 
-    # The timeout parameter is a sleep timeout (in hundredths of a second) that is placed between 
+    # The throttle parameter is a sleep timeout (in hundredths of a second) that is placed between 
     # socket.accept calls in order to give the server a cheap throttle time.  It defaults to 0 and
     # actually if it is 0 then the sleep is not done at all.
-    def initialize(host, port, num_processors=(2**30-1), timeout=0)
+    def initialize(host, port, num_processors=950, throttle=0, timeout=60)
       @socket = TCPServer.new(host, port) 
       @classifier = URIClassifier.new
       @host = host
       @port = port
       @workers = ThreadGroup.new
-      @timeout = timeout
+      @throttle = throttle
       @num_processors = num_processors
-      @death_time = 60
+      @timeout = timeout
     end
 
     # Does the majority of the IO processing.  It has been written in Ruby using
@@ -608,12 +609,13 @@ module Mongrel
             if handlers
               params[Const::PATH_INFO] = path_info
               params[Const::SCRIPT_NAME] = script_name
-	      # From http://www.ietf.org/rfc/rfc3875 :
-	      # "Script authors should be aware that the REMOTE_ADDR and REMOTE_HOST
-	      #  meta-variables (see sections 4.1.8 and 4.1.9) may not identify the
-	      #  ultimate source of the request.  They identify the client for the
-	      #  immediate request to the server; that client may be a proxy, gateway,
-	      #  or other intermediary acting on behalf of the actual source client."
+
+              # From http://www.ietf.org/rfc/rfc3875 :
+              # "Script authors should be aware that the REMOTE_ADDR and REMOTE_HOST
+              #  meta-variables (see sections 4.1.8 and 4.1.9) may not identify the
+              #  ultimate source of the request.  They identify the client for the
+              #  immediate request to the server; that client may be a proxy, gateway,
+              #  or other intermediary acting on behalf of the actual source client."
               params[Const::REMOTE_ADDR] = client.peeraddr.last
 
               # select handlers that want more detailed request notification
@@ -683,7 +685,7 @@ module Mongrel
         @workers.list.each do |w|
           w[:started_on] = Time.now if not w[:started_on]
 
-          if mark - w[:started_on] > @death_time + @timeout
+          if mark - w[:started_on] > @timeout + @throttle
             STDERR.puts "Thread #{w.inspect} is too old, killing."
             w.raise(TimeoutError.new(error_msg))
           end
@@ -694,13 +696,13 @@ module Mongrel
     end
 
     # Performs a wait on all the currently running threads and kills any that take
-    # too long.  Right now it just waits 60 seconds, but will expand this to
-    # allow setting.  The @timeout setting does extend this waiting period by
+    # too long.  It waits by @timeout seconds, which can be set in .initialize or
+    # via mongrel_rails. The @throttle setting does extend this waiting period by
     # that much longer.
     def graceful_shutdown
       while reap_dead_workers("shutdown") > 0
-        STDERR.print "Waiting for #{@workers.list.length} requests to finish, could take #{@death_time + @timeout} seconds."
-        sleep @death_time / 10
+        STDERR.print "Waiting for #{@workers.list.length} requests to finish, could take #{@timeout + @throttle} seconds."
+        sleep @timeout / 10
       end
     end
 
@@ -752,7 +754,7 @@ module Mongrel
               thread[:started_on] = Time.now
               @workers.add(thread)
 
-              sleep @timeout/100 if @timeout > 0
+              sleep @throttle/100.0 if @throttle > 0
             end
           rescue StopServer
             @socket.close rescue nil

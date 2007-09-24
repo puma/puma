@@ -119,8 +119,9 @@ module Mongrel
     # 
     # * :host => Host name to bind.
     # * :port => Port to bind.
-    # * :num_processors => The maximum number of concurrent threads allowed.  (950 default)
-    # * :timeout => 1/100th of a second timeout between requests. (10 is 1/10th, 0 is timeout)
+    # * :num_processors => The maximum number of concurrent threads allowed.
+    # * :throttle => Time to pause (in hundredths of a second) between accepting clients. 
+    # * :timeout => Time to wait (in seconds) before killing a stalled thread.
     # * :user => User to change to, must have :group as well.
     # * :group => Group to change to, must have :user as well.
     #
@@ -128,9 +129,10 @@ module Mongrel
       raise "Cannot call listener inside another listener block." if (@listener or @listener_name)
       ops = resolve_defaults(options)
       ops[:num_processors] ||= 950
-      ops[:timeout] ||= 0
+      ops[:throttle] ||= 0
+      ops[:timeout] ||= 60
 
-      @listener = Mongrel::HttpServer.new(ops[:host], ops[:port].to_i, ops[:num_processors].to_i, ops[:timeout].to_i)
+      @listener = Mongrel::HttpServer.new(ops[:host], ops[:port].to_i, ops[:num_processors].to_i, ops[:throttle].to_i, ops[:timeout].to_i)
       @listener_name = "#{ops[:host]}:#{ops[:port]}"
       @listeners[@listener_name] = @listener
 
