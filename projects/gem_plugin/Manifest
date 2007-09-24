@@ -1,6 +1,5 @@
 test/test_plugins.rb
 setup.rb
-resources/tools/rakehelp.rb
 resources/resources/defaults.yaml
 resources/README
 resources/Rakefile
