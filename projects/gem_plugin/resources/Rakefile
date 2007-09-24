@@ -9,7 +9,7 @@ include FileUtils
 version="0.1"
 name="<%= project %>"
 
-Gem::Specification.new do |s|
+spec = Gem::Specification.new do |s|
   s.name = name
   s.version = version
   s.description = s.summary = "The <%= project %> GemPlugin"
@@ -29,6 +29,10 @@ Gem::Specification.new do |s|
   
   s.require_path = "lib"
   s.bindir = "bin"
+end
+
+Rake::GemPackageTask.new(spec) do |p|
+  p.need_tar = true if RUBY_PLATFORM !~ /mswin/
 end
 
 task :install => [:test, :package] do
