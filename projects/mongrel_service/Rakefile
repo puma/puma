@@ -5,7 +5,7 @@ require 'tools/freebasic'
 # (weird behavior of Rake?)
 task :package => [:compile]
 
-echoe_spec = Echoe.new("mongrel_service", "0.3.3") do |p|
+echoe_spec = Echoe.new("mongrel_service") do |p|
   p.summary = "Mongrel Native Win32 Service Plugin for Rails"
   p.summary += " (debug build)" unless ENV['RELEASE'] 
   p.description = "This plugin offer native win32 services for rails, powered by Mongrel."
