@@ -6,7 +6,7 @@ Echoe.new("mongrel") do |p|
   p.author ="Zed A. Shaw"
   p.clean_pattern = ["ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}", "ext/http11/Makefile", "pkg", "lib/*.bundle", "*.gem", "doc/site/output", ".config"]
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
-  p.ignore_pattern = /^projects/
+  p.ignore_pattern = /^projects|^site/
   p.ruby_version = '>= 1.8.4'
   p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4']
 
