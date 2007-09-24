@@ -431,7 +431,7 @@ module Mongrel
 
     def initialize(pattern, replacement = nil, &block)
       unless replacement or block
-        @replacement = pattern
+        @pattern, @replacement = nil, pattern
       else
         @pattern, @replacement, @block = pattern, replacement, block
       end

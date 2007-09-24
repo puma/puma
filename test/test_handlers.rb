@@ -78,14 +78,14 @@ class HandlersTest < Test::Unit::TestCase
       # test that no accept-encoding returns a non-deflated response
       req = h.get("/dumb")
       assert(
-        !req.header['Content-Encoding'] ||
-        !req.header['Content-Encoding'].include?('deflate'))
+        !req['Content-Encoding'] ||
+        !req['Content-Encoding'].include?('deflate'))
       assert_equal "test", req.body
 
       req = h.get("/dumb", {"Accept-Encoding" => "deflate"})
       # -MAX_WBITS stops zlib from looking for a zlib header
       inflater = Zlib::Inflate.new(-Zlib::MAX_WBITS)
-      assert req.header['Content-Encoding'].include?('deflate')
+      assert req['Content-Encoding'].include?('deflate')
       assert_equal "test", inflater.inflate(req.body)
     end
   end
