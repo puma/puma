@@ -30,12 +30,17 @@ end
 
 task :compile do
   # Append a sanity check to the compile task
-  if Dir.glob(File.join("lib","http11.*")).length == 0
+  files = Dir["lib/http11/http11.*"]
+  unless files.any?
     STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     STDERR.puts "Gem actually failed to build.  Your system is"
     STDERR.puts "NOT configured properly to build Mongrel."
     STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     exit(1)
+  else
+    files.each do |file|
+      mv file, "lib/"
+    end
   end
 end
 
