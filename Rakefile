@@ -12,8 +12,15 @@ Echoe.new("mongrel") do |p|
 
   p.need_tar_gz = false
   p.need_tgz = true
-  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
-    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  p.eval = proc do
+    unless RUBY_PLATFORM =~ /mswin/
+      self.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+        '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
+    else
+      self.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
+                                '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+    end
+  end
   p.require_signed = true
 
   p.eval = proc do  
@@ -28,21 +35,22 @@ Echoe.new("mongrel") do |p|
   end
 end
 
-task :compile do
-  # Append a sanity check to the compile task
-  files = Dir["lib/http11/http11.*"]
-  unless files.any?
-    STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    STDERR.puts "Gem actually failed to build.  Your system is"
-    STDERR.puts "NOT configured properly to build Mongrel."
-    STDERR.puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    exit(1)
-  else
-    files.each do |file|
-      mv file, "lib/"
-    end
+# NOTE: a big HACK around RubyGems and Echoe for pre-compiled extensions.
+# as usual, just for win32... to make it happy.
+# starting to feel the pain...
+file "lib/http11.so" do
+  extension = "ext/http11/extconf.rb"
+  directory = File.dirname(extension)
+  Dir.chdir(directory) do 
+    ruby File.basename(extension)
+    system(PLATFORM =~ /win32/ ? 'nmake' : 'make')
   end
-end
+  Dir["#{directory}/*.#{Config::CONFIG['DLEXT']}"].each do |file|
+    cp file, "lib/"
+  end
+end if RUBY_PLATFORM =~ /mswin/
+
+task :compile => ["lib/http11.so"] if RUBY_PLATFORM =~ /mswin/
 
 #### Project-wide install and uninstall tasks
 
