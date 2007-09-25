@@ -15,8 +15,8 @@ echoe_spec = Echoe.new("mongrel_service") do |p|
 
   p.need_tar_gz = false
   p.need_zip = true
-  p.certificate_chain = ['D:/Users/Developer/gem_certificates/mongrel-public_cert.pem',
-    'D:/Users/Developer/gem_certificates/luislavena-mongrel-public_cert.pem']
+  p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
+    '~/gem_certificates/luislavena-mongrel-public_cert.pem']
   p.require_signed = true
 end
 
