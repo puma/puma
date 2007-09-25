@@ -27,7 +27,7 @@ Echoe.new("mongrel") do |p|
     if RUBY_PLATFORM =~ /mswin/
       self.files += ['lib/http11.so']
       extensions.clear
-      platform = Gem::Platform::WIN32
+      self.platform = Gem::Platform::WIN32
     else
       add_dependency('daemons', '>= 1.0.3')
       add_dependency('fastthread', '>= 1.0.1')
