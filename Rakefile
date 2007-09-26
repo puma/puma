@@ -12,16 +12,15 @@ Echoe.new("mongrel") do |p|
 
   p.need_tar_gz = false
   p.need_tgz = true
-  p.eval = proc do
-    unless RUBY_PLATFORM =~ /mswin/
-      self.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
-        '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
-    else
-      self.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
-                                '~/gem_certificates/luislavena-mongrel-public_cert.pem']
-    end
-  end
   p.require_signed = true
+
+  unless RUBY_PLATFORM =~ /mswin/
+    self.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+      '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
+  else
+    self.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
+                              '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+  end
 
   p.eval = proc do  
     if RUBY_PLATFORM =~ /mswin/
