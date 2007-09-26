@@ -15,8 +15,8 @@ Echoe.new("mongrel") do |p|
   p.require_signed = true
 
   unless RUBY_PLATFORM =~ /mswin/
-    self.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
-      '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
+    self.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+      '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
   else
     self.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
                               '~/gem_certificates/luislavena-mongrel-public_cert.pem']
