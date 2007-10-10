@@ -6,11 +6,11 @@ Echoe.new("mongrel_config") do |p|
   p.project = "mongrel"
   p.test_pattern = "test/test_config.rb"
   p.author="Zed A. Shaw"
-  p.dependencies = ['mongrel >=0.3.11', 'gem_plugin >=0.2.1', 'camping >=1.3']
+  p.dependencies = ['mongrel >=1.0.2', 'gem_plugin >=0.2.3', 'camping >=1.5']
   
   p.need_tar_gz = false
   p.need_tgz = true
-  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
-    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
   p.require_signed = true
 end

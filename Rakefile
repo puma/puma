@@ -8,18 +8,18 @@ Echoe.new("mongrel") do |p|
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>= 1.8.4'
-  p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4']
+  p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4', 'fastthread >=1.0.1']
 
   p.need_tar_gz = false
   p.need_tgz = true
   p.require_signed = true
 
   unless RUBY_PLATFORM =~ /mswin/
-    self.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem', 
       '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
   else
-    self.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
-                              '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+    p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem', 
+      '~/gem_certificates/luislavena-mongrel-public_cert.pem']
   end
 
   p.eval = proc do  

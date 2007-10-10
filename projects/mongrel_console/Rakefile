@@ -5,11 +5,11 @@ Echoe.new("mongrel_console") do |p|
   p.summary = "Provides a combined Mongrel and Rails IRB console."
   p.project = "mongrel"
   p.author="Zed A. Shaw"
-  p.dependencies = ['gem_plugin >=0.2.1', 'mongrel >=0.3.11'] 
+  p.dependencies = ['gem_plugin >=0.2.3', 'mongrel >=1.0.2'] 
 
   p.need_tar_gz = false
   p.need_tgz = true
-  p.certificate_chain = ['/Users/eweaver/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
-    '/Users/eweaver/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
+  p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+    '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']    
   p.require_signed = true
 end
