@@ -1,2 +1,2 @@
 
-v1.0.3. Signed gem.
+v1.0.3. Signed gem; Capistrano 2.0 tasks (require 'mongrel_cluster/recipes_2').
