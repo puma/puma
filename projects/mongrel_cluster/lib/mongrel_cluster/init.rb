@@ -80,7 +80,9 @@ module Cluster
         if @clean && pid_file_exists?(port) && !check_process(port)
           pid_file = port_pid_file(port)        
           log "missing process: removing #{pid_file}"
-          File.unlink(pid_file) 
+          chdir_cwd do
+            File.unlink(pid_file) 
+          end
         end
         
         if pid_file_exists?(port) && check_process(port)
