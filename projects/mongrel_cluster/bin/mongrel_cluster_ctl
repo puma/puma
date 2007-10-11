@@ -3,13 +3,14 @@
 
 require 'optparse'
 
-def run(command, verbose)
+def run(command, verbose, clean=false)
   Dir.chdir @options[:conf_path] do
     confs =  Dir.glob("*.yml")
     confs += Dir.glob("*.conf")
     confs.each do |conf|
       cmd = "mongrel_rails cluster::#{command} -C #{conf}"
       cmd += " -v" if verbose
+      cmd += " --clean" if clean
       puts cmd if verbose || command == "status"
       output = `#{cmd}`
       puts output if verbose || command == "status"
@@ -21,12 +22,14 @@ end
 @options = {}
 @options[:conf_path] = "/etc/mongrel_cluster"
 @options[:verbose] = false
+@options[:clean] = false
 
 OptionParser.new do |opts|
   opts.banner = "Usage: #{$0} (start|stop|restart|status) [options]"
  
   opts.on("-c", "--conf_path PATH", "Path to mongrel_cluster configuration files") { |value| @options[:conf_path] = value }
   opts.on('-v', '--verbose', "Print all called commands and output.") { |value| @options[:verbose] = value }
+  opts.on('--clean', "Remove pid files if needed beforehand.") { |value| @options[:clean] = value }
 
   if ARGV.empty?
     puts opts
@@ -49,14 +52,14 @@ end
 case @cmd[0]
 when "start": 
   puts "Starting all mongrel_clusters..."
-  run "start", @options[:verbose]
+  run "start", @options[:verbose], @options[:clean]
 when "stop":
   puts "Stopping all mongrel_clusters..."
-  run "stop", @options[:verbose]
+  run "stop", @options[:verbose], @options[:clean]
 when "restart":
   puts "Restarting all mongrel_clusters..."
-  run "stop", @options[:verbose]
-  run "start", @options[:verbose]
+  run "stop", @options[:verbose], @options[:clean]
+  run "start", @options[:verbose], @options[:clean]
 when "status":
   puts "Checking all mongrel_clusters..."
   run "status", @options[:verbose]
