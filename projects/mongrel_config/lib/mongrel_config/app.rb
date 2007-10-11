@@ -68,7 +68,7 @@ module Configure::Views
     pid = _pid 
     open(GemPlugin::Manager.instance.resource("mongrel_config", "/index.html")) do |f|
       template = ERB.new(f.read)
-      self << template.result(binding)
+      template.result(binding)
     end
   end
 
