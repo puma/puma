@@ -406,6 +406,7 @@ module Mongrel
       @socket = socket
       @body = StringIO.new
       @status = 404
+      @reason = HTTP_STATUS_CODES[@status]
       @header = HeaderOut.new(StringIO.new)
       @header[Const::DATE] = Time.now.httpdate
       @body_sent = false
@@ -421,8 +422,9 @@ module Mongrel
     # by simple passing "finalize=true" to the start method.  By default
     # all handlers run and then mongrel finalizes the request when they're
     # all done.
-    def start(status=200, finalize=false)
+    def start(status=200, finalize=false, reason=HTTP_STATUS_CODES[status])
       @status = status.to_i
+      @reason = reason
       yield @header, @body
       finished if finalize
     end
@@ -445,7 +447,7 @@ module Mongrel
     def send_status(content_length=@body.length)
       if not @status_sent
         @header['Content-Length'] = content_length if content_length and @status != 304
-        write(Const::STATUS_FORMAT % [@status, HTTP_STATUS_CODES[@status]])
+        write(Const::STATUS_FORMAT % [@status, @reason])
         @status_sent = true
       end
     end

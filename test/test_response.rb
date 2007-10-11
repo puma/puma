@@ -102,5 +102,28 @@ class ResponseTest < Test::Unit::TestCase
     assert io.length > 0, "output didn't have data"
     assert io.read[-contents.length..-1] == contents, "output doesn't end with file payload"
   end
+
+  def test_response_with_custom_reason
+    reason = "You made a bad request"
+    io = StringIO.new
+    resp = HttpResponse.new(io)
+    resp.start(400, false, reason) { |head,out| }
+    resp.finished
+
+    io.rewind
+    assert_match(/.* #{reason}$/, io.readline.chomp, "wrong custom reason phrase")
+  end
+
+  def test_response_with_default_reason
+    code = 400
+    io = StringIO.new
+    resp = HttpResponse.new(io)
+    resp.start(code) { |head,out| }
+    resp.finished
+
+    io.rewind
+    assert_match(/.* #{HTTP_STATUS_CODES[code]}$/, io.readline.chomp, "wrong default reason phrase")
+  end
+
 end
 
