@@ -8,7 +8,7 @@ Echoe.new("mongrel") do |p|
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>= 1.8.4'
-  p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4', 'fastthread >=1.0.1']
+  p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4']
 
   p.need_tar_gz = false
   p.need_tgz = true
