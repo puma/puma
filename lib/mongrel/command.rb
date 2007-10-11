@@ -179,7 +179,7 @@ module Mongrel
           print_command_list
           return true
         elsif cmd_name == "--version"
-          STDERR.puts "Mongrel Web Server #{Mongrel::Const::MONGREL_VERSION}"
+          puts "Mongrel Web Server #{Mongrel::Const::MONGREL_VERSION}"
           return true
         end
 
