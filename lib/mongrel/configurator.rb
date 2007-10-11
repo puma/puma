@@ -79,15 +79,19 @@ module Mongrel
       File.unlink(@pid_file) if @pid_file and File.exists?(@pid_file)
     end
 
-    # Writes the PID file but only if we're on windows.
+    # Writes the PID file if we're not on Windows.
     def write_pid_file
       if RUBY_PLATFORM !~ /mswin/
         log "Writing PID file to #{@pid_file}"
         open(@pid_file,"w") {|f| f.write(Process.pid) }
+        open(@pid_file,"w") do |f|
+          f.write(Process.pid)
+          File.chmod(0644, @pid_file)
+        end      
       end
     end
 
-    # generates a class for cloaking the current self and making the DSL nicer
+    # Generates a class for cloaking the current self and making the DSL nicer.
     def cloaking_class
       class << self
         self
