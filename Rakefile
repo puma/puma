@@ -1,4 +1,6 @@
 
+require 'rubygems'
+gem 'echoe', '>=2.6.4'
 require 'echoe'
 
 Echoe.new("mongrel") do |p|
