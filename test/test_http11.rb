@@ -19,10 +19,21 @@ class HttpParserTest < Test::Unit::TestCase
     req = {}
     http = "GET / HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
+
     assert nread == http.length, "Failed to parse the full HTTP request"
     assert parser.finished?, "Parser didn't finish"
     assert !parser.error?, "Parser had error"
     assert nread == parser.nread, "Number read returned from execute does not match"
+
+    assert_equal 'HTTP/1.1', req['SERVER_PROTOCOL']
+    assert_equal '/', req['REQUEST_PATH']
+    assert_equal 'HTTP/1.1', req['HTTP_VERSION']
+    assert_equal '/', req['REQUEST_URI']
+    assert_equal 'CGI/1.2', req['GATEWAY_INTERFACE']
+    assert_equal 'GET', req['REQUEST_METHOD']    
+    assert_nil req['FRAGMENT']
+    assert_nil req['QUERY_STRING']
+    
     parser.reset
     assert parser.nread == 0, "Number read after reset should be 0"
   end
@@ -60,6 +71,17 @@ class HttpParserTest < Test::Unit::TestCase
     assert error, "failed to throw exception"
     assert !parser.finished?, "Parser shouldn't be finished"
     assert parser.error?, "Parser SHOULD have error"
+  end
+
+  def test_fragment_in_uri
+    parser = HttpParser.new
+    req = {}
+    get = "GET /forums/1/topics/2375?page=1#posts-17408 HTTP/1.1\r\n\r\n"
+    assert_nothing_raised do
+      parser.execute(req, get, 0)
+    end
+    assert parser.finished?
+    assert_equal 'posts-17408', req['FRAGMENT']
   end
 
   # lame random garbage maker

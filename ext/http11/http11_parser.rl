@@ -39,6 +39,10 @@
     if(parser->request_uri != NULL)
       parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, fpc));
   }
+  action fragment { 
+    if(parser->fragment != NULL)
+      parser->fragment(parser->data, PTR_TO(mark), LEN(mark, fpc));
+  }
 
   action start_query {MARK(query_start, fpc); }
   action query_string { 
@@ -96,11 +100,12 @@
   absolute_path = ("/"+ rel_path);
 
   Request_URI = ("*" | absolute_uri | absolute_path) >mark %request_uri;
+  Fragment = ( uchar | reserved )* >mark %fragment;
   Method = (upper | digit | safe){1,20} >mark %request_method;
 
   http_number = (digit+ "." digit+) ;
   HTTP_Version = ("HTTP/" http_number) >mark %http_version ;
-  Request_Line = (Method " " Request_URI " " HTTP_Version CRLF) ;
+  Request_Line = (Method " " Request_URI ("#" Fragment ){0,1} " " HTTP_Version CRLF) ;
 
   field_name = (token -- ":")+ >start_field %write_field;
 

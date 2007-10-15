@@ -21,6 +21,7 @@ static VALUE eHttpParserError;
 static VALUE global_http_prefix;
 static VALUE global_request_method;
 static VALUE global_request_uri;
+static VALUE global_fragment;
 static VALUE global_query_string;
 static VALUE global_http_version;
 static VALUE global_content_length;
@@ -55,6 +56,7 @@ static VALUE global_port_80;
 DEF_MAX_LENGTH(FIELD_NAME, 256);
 DEF_MAX_LENGTH(FIELD_VALUE, 80 * 1024);
 DEF_MAX_LENGTH(REQUEST_URI, 1024 * 12);
+DEF_MAX_LENGTH(FRAGMENT, 1024); /* Don't know if this length is specified somewhere or not */
 DEF_MAX_LENGTH(REQUEST_PATH, 1024);
 DEF_MAX_LENGTH(QUERY_STRING, (1024 * 10));
 DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
@@ -103,6 +105,17 @@ void request_uri(void *data, const char *at, size_t length)
 
   val = rb_str_new(at, length);
   rb_hash_aset(req, global_request_uri, val);
+}
+
+void fragment(void *data, const char *at, size_t length)
+{
+  VALUE req = (VALUE)data;
+  VALUE val = Qnil;
+
+  VALIDATE_MAX_LENGTH(length, FRAGMENT);
+
+  val = rb_str_new(at, length);
+  rb_hash_aset(req, global_fragment, val);
 }
 
 void request_path(void *data, const char *at, size_t length)
@@ -194,6 +207,7 @@ VALUE HttpParser_alloc(VALUE klass)
   hp->http_field = http_field;
   hp->request_method = request_method;
   hp->request_uri = request_uri;
+  hp->fragment = fragment;
   hp->request_path = request_path;
   hp->query_string = query_string;
   hp->http_version = http_version;
@@ -542,6 +556,7 @@ void Init_http11()
   DEF_GLOBAL(http_prefix, "HTTP_");
   DEF_GLOBAL(request_method, "REQUEST_METHOD");
   DEF_GLOBAL(request_uri, "REQUEST_URI");
+  DEF_GLOBAL(fragment, "FRAGMENT");
   DEF_GLOBAL(query_string, "QUERY_STRING");
   DEF_GLOBAL(http_version, "HTTP_VERSION");
   DEF_GLOBAL(request_path, "REQUEST_PATH");
