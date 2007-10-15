@@ -63,7 +63,7 @@ def sub_project(project, *targets)
   end
 end
 
-task :package_all do
+task :package_all => [:package] do
   sub_project("gem_plugin", :clean, :package)
   sub_project("cgi_multipart_eof_fix", :clean, :package)
   sub_project("fastthread", :clean, :package)
@@ -107,9 +107,8 @@ task :uninstall => [:clean] do
   end
 end
 
-#### Documentation upload tasks
+#### Extra upload tasks
 
-# Is this still used?
 task :gem_source => [:package_all] do
   rm_rf "pkg/gems"
   rm_rf "pkg/tars"
@@ -117,8 +116,13 @@ task :gem_source => [:package_all] do
   mkdir_p "pkg/tars"
  
   FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
-  FileList["pkg/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
-  rm_rf "pkg/mongrel*"
+  FileList["**/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
+  
+  # XXX Hack
+  sh %{ cp ~/Downloads/mongrel-1.0.2-mswin32.gem pkg/gems/ }
+  sh %{ cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/ }
+  
+  sh %{ rm -rf pkg/mongrel* }
 
   sh %{ index_gem_repository.rb -d pkg }
   sh %{ scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
