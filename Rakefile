@@ -63,6 +63,20 @@ def sub_project(project, *targets)
   end
 end
 
+task :package_all do
+  sub_project("gem_plugin", :clean, :package)
+  sub_project("cgi_multipart_eof_fix", :clean, :package)
+  sub_project("fastthread", :clean, :package)
+  sub_project("mongrel_status", :clean, :package)
+  sub_project("mongrel_upload_progress", :clean, :package)
+  sub_project("mongrel_console", :clean, :package)
+  sub_project("mongrel_cluster", :clean, :package)
+  if RUBY_PLATFORM =~ /mswin/
+    sub_project("mongrel_service", :clean, :package)
+  end
+end
+
+
 task :install_requirements do
   # These run before Mongrel is installed
   sub_project("gem_plugin", :install)
@@ -96,16 +110,20 @@ end
 #### Documentation upload tasks
 
 # Is this still used?
-task :gem_source do
+task :gem_source => [:package_all] do
+  rm_rf "pkg/gems"
+  rm_rf "pkg/tars"
   mkdir_p "pkg/gems"
-  mkdir_p "pkg/tar"
+  mkdir_p "pkg/tars"
  
   FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
-  FileList["pkg/*.tgz"].each {|tgz| mv tgz, "pkg/tar" }
-  rm_rf "pkg/#{name}-#{version}"
+  FileList["pkg/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
+  rm_rf "pkg/mongrel*"
 
   sh %{ index_gem_repository.rb -d pkg }
-  sh %{ scp -r ChangeLog pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
+  sh %{ scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
+  sh %{ svn log -v > SVN_LOG }
+  sh %{ scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
 end
 
 task :ragel do
