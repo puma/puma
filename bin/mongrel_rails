@@ -23,7 +23,7 @@ module Mongrel
         ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
         ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"],
         ['-n', '--num-procs INT', "Number of processors active before clients denied", :@num_procs, 1024],
-        ['-o', '--timeout TIME', "Time to wait (in seconds) before killing a stalled thread", :@timeout, 0],
+        ['-o', '--timeout TIME', "Time to wait (in seconds) before killing a stalled thread", :@timeout, 60],
         ['-t', '--throttle TIME', "Time to pause (in hundredths of a second) between accepting clients", :@throttle, 0],
         ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
         ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
