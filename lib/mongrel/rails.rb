@@ -52,10 +52,10 @@ module Mongrel
         return if response.socket.closed?
         
         path_info = request.params[Mongrel::Const::PATH_INFO]
-        query_string = request.params[Mongrel::Const::REQUEST_URI][/^#{Regexp.escape path_info}(;[^\?]+)/, 1].to_s
+        rest_operator = request.params[Mongrel::Const::REQUEST_URI][/^#{Regexp.escape path_info}(;[^\?]+)/, 1].to_s
         path_info.chomp!("/")
         
-        page_cached = path_info + query_string + ActionController::Base.page_cache_extension
+        page_cached = path_info + rest_operator + ActionController::Base.page_cache_extension
         get_or_head = @@file_only_methods.include? request.params[Mongrel::Const::REQUEST_METHOD]
 
         if get_or_head and @files.can_serve(path_info)
