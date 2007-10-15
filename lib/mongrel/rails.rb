@@ -52,7 +52,7 @@ module Mongrel
         if response.socket.closed?
           return
         end
-        path_info = request.params[Mongrel::Const::PATH_INFO]
+        path_info = request.params[Mongrel::Const::PATH_INFO].chomp("/")
         path_info << $1 if request.params[Mongrel::Const::REQUEST_URI] =~ /^#{Regexp.escape path_info}(;[^\?]+)/
         page_cached = path_info + ActionController::Base.page_cache_extension
         get_or_head = @@file_only_methods.include? request.params[Mongrel::Const::REQUEST_METHOD]
