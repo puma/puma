@@ -8,7 +8,7 @@ h1. Apache Best Practice Deployment
 
 h3. By Charles Brian Quinn
 
-The preferred setup (for now) is to put Mongrel behind an Apache 2.2.3 
+The preferred setup (for now) is to put Mongrel behind an Apache 2.2.x 
 server running mod_proxy_balancer.  Apache is a proven web server, runs 
 half the Internet, and is a pain to configure.  These instructions should 
 get you started, but refer to the Apache folks for anything more complex 
@@ -17,7 +17,7 @@ or weird.
 When you're just starting out, don't bother with doing anything but 
 running just Mongrel.  Mongrel is slower than Apache, but not so slow that
 small installations will notice it.  The worst thing you can do is
-try to learn Apache install when you're also trying to learn Ruby on Rails
+try to learn Apache configuration when you're also trying to learn Ruby on Rails
 and Mongrel too.  Start small, then *when you need*, build up to the big stuff.
 
 h2. A simple single mongrel configuration
@@ -79,7 +79,7 @@ instances, read on.
 
 h2. Using multiple mongrel instances with mod_proxy_balancer
 
-First, let's start up a few mongrel instances (*nix-style):
+First, let's start up a few mongrel instances (linux/freesd):
 
 <pre><code>
 $ mongrel_rails start -d -p 8001 \
@@ -94,7 +94,7 @@ $ mongrel_rails start -d -p 8004 \
 
 You can also use "mongrel_cluster":http://mongrel.rubyforge.org/docs/mongrel_cluster.html by "Bradley Taylor":http://fluxura.com/ for
 managing several mongrel instances with a configuration file (and sysv init
-scripts for *nix servers).
+scripts for -nix-flavor servers).
 
 We're going to be requiring the use of mod_proxy_balancer, a "new feature":http://httpd.apache.org/docs/2.2/new_features_2_2.html in
 Apache 2.1/2.2 and above to proxy requests to
@@ -124,6 +124,19 @@ If you're compiling from source, this configuration should do the trick:
 --enable-proxy-balancer --enable-rewrite --enable-cache  \ 
 --enable-mem-cache --enable-ssl --enable-headers
 </code></pre>
+
+Note: If you're going to be serving only Mongrel instances (Mongrel 
+serving up Ruby on Rails or any other ActiveRecord containing framework), 
+some have noted better performance and stability using the MPM worker class 
+instead of the pre-fork. If you don't know what this means, it's safe to 
+ignore.  
+
+Essentially, in the default pre-fork worker mode, Apache will spawn several 
+processes when it starts up (pre-forking) and will spawn more if more requests 
+come in that need to be handled.  On a heavily trafficked, very dynamic (not 
+much cached content/assets) Rails site, if you are doing nothing but servicing 
+Rails, it doesn't make sense to spawn 20 apache processes, in front of 3 
+Mongrel processes, as Mongrel will be queuing them up, anyways.
 
 h2. Configuring Apache2
 
@@ -453,14 +466,15 @@ If you use svn to issue checkouts instead of exports, you'll need to hide those 
 </VirtualHost>
 </code></pre>
 
-h2. Reading REMOTE_USER from mongrel through proxy
+h2. Sending Environment variables to mongrel through proxy
 
 Jon Reads reports successfully reading the REMOTE_USER variable:
 
+<blockquote>
 After many hours trying to solve the same problem I found this post: "Forcing a proxied host to generate REMOTE_USER":http://www.nabble.com/Forcing-a-proxied-host-to-generate-REMOTE_USER-tf1114364.html#a2914465
 
-and can confirm that the following works for me when put in the Proxy
-directive on Apache 2:
+and can confirm that the following works for me when put in the Proxy directive on Apache 2:
+</blockquote>
 
 <pre><code>
    RewriteEngine On
@@ -468,6 +482,67 @@ directive on Apache 2:
    RewriteRule . - [E=RU:%1]
    RequestHeader add X-Forwarded-User %{RU}e
 </code></pre>
+
+*Update:*
+
+Satya reports that this works better:
+
+<pre><code>
+RewriteEngine On
+RewriteCond %{IS_SUBREQ} ^false$
+RewriteCond %{LA-U:REMOTE_USER} (.+)
+RewriteRule . - [E=RU:%1]
+RequestHeader add Remote-User %{RU}e
+</code></pre>
+
+His explanation:
+
+<blockquote>
+Note the first RewriteCond. The LA-U in the 2nd RewriteCond causes an
+internal subrequest, which causes inf recursion inside apache. Apache
+eventually catches it, but it does bog down the server (and crashed our
+shib, but that's not your problem). I think the 1st RewriteCond fixes
+it.
+</blockquote>
+
+Peer Allen reports that you can send any environment variable through to mongrel:
+
+<blockquote>
+Here is the Apache config I used to forward the GEOIP_COUNTRY_CODE from the
+Maxmind mod_geoip module.  It is basically the same as the REMOTE_USER
+forwarding, but since the GEOIP variable is an environment variable in
+Apache you have to access it differently in the RewriteCond with the "ENV"
+prefix.  See the mod_rewrite documentation for this:
+</blockquote>
+
+<pre><code>
+2. %\{ENV:variable}, where variable can be any environment variable, is
+also available. This is looked-up via internal Apache structures and (if not
+found there) via getenv() from the Apache server process. 
+</code></pre>
+--"http://httpd.apache.org/docs/2.0/mod/mod_rewrite.html#RewriteRule":http://httpd.apache.org/docs/2.0/mod/mod_rewrite.html#RewriteRule
+
+<pre><code>
+# Forward the GEOIP_COUNTRY_CODE
+RewriteCond %\{ENV:GEOIP_COUNTRY_CODE} (.+)
+RewriteRule . - [E=RU:%1]
+RequestHeader add X-Forwarded-GeoIP %{RU}e
+</code></pre>
+
+h2. Caveats
+
+Jason Hoffman reports:
+
+<blockquote>
+Apache's mod_proxy_balancer module is a fully blocking module and with
+the default httpd.conf you're going to max out in the 120-160 requests/
+second range on a decent box. You can tune up its proxying to about a
+1000 req/sec.
+
+So yes the net result is that you can really only put a couple of
+mongrels behind apache's proxy engine (about 2  "hello world" rails
+mongrels).
+</blockquote>
 
 h2. References and Other Guides
 
