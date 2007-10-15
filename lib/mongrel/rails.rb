@@ -49,12 +49,13 @@ module Mongrel
       # * If it exists at PATH_INFO+".html" exists then serve that.
       # * Finally, construct a Mongrel::CGIWrapper and run Dispatcher.dispatch to have Rails go.
       def process(request, response)
-        if response.socket.closed?
-          return
-        end
-        path_info = request.params[Mongrel::Const::PATH_INFO].chomp("/")
-        path_info << $1 if request.params[Mongrel::Const::REQUEST_URI] =~ /^#{Regexp.escape path_info}(;[^\?]+)/
-        page_cached = path_info + ActionController::Base.page_cache_extension
+        return if response.socket.closed?
+        
+        path_info = request.params[Mongrel::Const::PATH_INFO]
+        query_string = request.params[Mongrel::Const::REQUEST_URI][/^#{Regexp.escape path_info}(;[^\?]+)/, 1].to_s
+        path_info.chomp!("/")
+        
+        page_cached = path_info + query_string + ActionController::Base.page_cache_extension
         get_or_head = @@file_only_methods.include? request.params[Mongrel::Const::REQUEST_METHOD]
 
         if get_or_head and @files.can_serve(path_info)
