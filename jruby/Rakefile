@@ -1,0 +1,63 @@
+# Usage:
+#  Checkout mongrel from source
+#  Set the MONGREL_SUPPORT environment variable to the directory
+#  where this file is located.
+#  Go to the mongrel source tree
+#  Run this command
+#    jruby -S rake -f $MONGREL_SUPPORT/Rakefile
+#
+
+require 'rake'
+require 'rake/testtask'
+require 'rake/clean'
+require 'rake/gempackagetask'
+require 'rake/rdoctask'
+require 'tools/rakehelp'
+require 'fileutils'
+include FileUtils
+
+$mongrel_support = ENV['MONGREL_SUPPORT']
+
+unless $mongrel_support
+  warn "MONGREL_SUPPORT needs to be set to the source directory of Mongrel"
+  exit 1
+end
+
+desc "Does a compile and package"
+task :default => [:package]
+
+desc "Compiles Mongrel-support"
+task :compile do
+  Dir.chdir($mongrel_support) do 
+    sh %(ant jar)
+  end
+end
+
+task :package => [:compile]
+
+task 'lib/http11.jar' do 
+  cp "#{$mongrel_support}/lib/http11.jar", 'lib'
+end
+
+name="mongrel"
+version="1.0.1"
+
+setup_gem(name, version) do |spec|
+  spec.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
+  spec.description = spec.summary
+  spec.test_files = Dir.glob("test/test_*.rb")
+  spec.author="Zed A. Shaw"
+  spec.executables=['mongrel_rails']
+  spec.files += %w(README Rakefile setup.rb lib/mongrel/mime_types.yml)
+
+  spec.required_ruby_version = '>= 1.8.4'
+
+  spec.files += ['lib/http11.jar']
+  spec.extensions.clear
+  spec.platform = 'jruby'
+  
+  spec.add_dependency('gem_plugin', '>= 0.2.2')
+  spec.add_dependency('cgi_multipart_eof_fix', '>= 1.0.0')
+end
+
+
