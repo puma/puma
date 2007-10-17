@@ -7,7 +7,7 @@ require 'echoe'
 RUBY_PLATFORM = 'java' if ENV['FORCE_JAVA']
 RUBY_PLATFORM = 'mswin' if ENV['FORCE_WINDOWS']
 
-Echoe.new("mongrel") do |p|
+e = Echoe.new("mongrel") do |p|
   p.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
   p.author ="Zed A. Shaw"
   p.clean_pattern = ['ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'ext/http11/Makefile', 'pkg', 'lib/*.bundle', '*.gem', 'doc/site/output', '.config', 'lib/http11.jar', 'ext/http11_java/classes']
@@ -63,7 +63,15 @@ task :ragel do
   end
 end
 
-#### A hack around RubyGems and Echoe for pre-compiled extensions.
+#### XXX Hack around JRuby test/unit interaction problems
+
+task :test_java do
+  e.test_pattern.each do |f|
+    sh "/opt/local/jruby/bin/jruby -w -Ilib:ext:bin:test -e 'require \"#{f}\"; require \"test/unit\"'" rescue nil
+  end
+end
+
+#### XXX Hack around RubyGems and Echoe for pre-compiled extensions.
 
 def move_extensions
   Dir["ext/**/*.#{Config::CONFIG['DLEXT']}"].each { |file| cp file, "lib/" }
