@@ -20,6 +20,8 @@ Echoe.new("mongrel") do |p|
   when /mswin/
     p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem', 
       '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+  when /java/
+    p.clean_pattern += ["lib/http11.jar"]
   else
     p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem', 
       '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
@@ -31,10 +33,10 @@ Echoe.new("mongrel") do |p|
       extensions.clear
       self.files += ['lib/http11.so']
       self.platform = Gem::Platform::WIN32
-    when /jruby/
+    when /java/
       extensions.clear
       self.files += ['lib/http11.jar']
-      self.platform = 'jruby'        
+      self.platform = 'jruby'
     else
       add_dependency('daemons', '>= 1.0.3')
       add_dependency('fastthread', '>= 1.0.1')
@@ -61,13 +63,28 @@ when /mswin/
   end 
   task :compile => [filename]
 
-when /jruby/
+when /java/
   filename = "lib/http11.jar"
+  def java_classpath_arg # myriad of ways to discover JRuby classpath
+    begin
+      require 'java' # already running in a JRuby JVM
+      jruby_cpath = Java::java.lang.System.getProperty('java.class.path')
+    rescue LoadError
+    end
+    unless jruby_cpath
+      jruby_cpath = ENV['JRUBY_PARENT_CLASSPATH'] || ENV['JRUBY_HOME'] &&
+        FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
+    end
+    cpath_arg = jruby_cpath ? "-cp #{jruby_cpath}" : ""
+  end
   file filename do
-    Dir.chdir("ext/http11_java") { sh "ant jar" }
+    mkdir_p "pkg/classes"
+    sh "javac -target 1.4 -source 1.4 -d pkg/classes #{java_classpath_arg} #{FileList['ext/http11_java//**/*.java'].join(' ')}"
+    sh "jar cf lib/http11.jar -C pkg/classes/ ."
     move_extensions      
   end      
   task :compile => [filename]
+
 end
 
 #### Project-wide install and uninstall tasks
