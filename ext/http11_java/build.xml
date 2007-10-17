@@ -3,15 +3,12 @@
   <property environment="env"/>   
   <property file="build.properties"/>   
   
-  <property name="src.java" value="src/java"/>
-  <property name="src.javacc" value="src/javacc"/>
   <property name="target" value="target"/>   
   <property name="target.classes" value="${target}/classes"/>   
   <property name="target.classes.test" value="${target}/test-classes"/>   
-  <property name="lib.dir" value="lib"/>   
 
   <path id="build.classpath">
-    <fileset dir="${lib.dir}" includes="*.jar" excludes="mongrel-support.jar,http11.jar"/>
+    <fileset dir="." includes="*.jar" excludes="mongrel-support.jar,http11.jar"/>
   </path>
   
   <target name="init">
@@ -27,10 +24,10 @@
   <target name="ragel" description="Standalone target that generates all our ragel based source files. Requires ragel and rlgen-java to be on the classpath">
     <exec executable="ragel" output="__ragel_out">
       <arg line="-J"/>
-      <arg line="${src.java}/org/jruby/mongrel/http11_parser.rl"/>
+      <arg line="org/jruby/mongrel/http11_parser.rl"/>
     </exec>
     <exec executable="rlgen-java" input="__ragel_out">
-      <arg line="-o ${src.java}/org/jruby/mongrel/Http11Parser.java"/>
+      <arg line="-o org/jruby/mongrel/Http11Parser.java"/>
     </exec>
     <delete file="__ragel_out"/>
   </target>
@@ -38,7 +35,7 @@
   <target depends="init" name="wbuild" description="Builds version without references to JRuby or the Extension API">
     <javac debug="true" destdir="${target.classes}" source="${version.source}" target="${version.target}">
       <classpath refid="build.classpath"/>
-      <src path="${src.java}"/>
+      <src path="."/>
       <include name="**/HttpParserImpl.java"/>
       <include name="httpp/**/*.java"/>
     </javac>
@@ -47,12 +44,12 @@
   <target depends="init" name="build" description="Compiles Java source files">
     <javac debug="true" destdir="${target.classes}" source="${version.source}" target="${version.target}">
       <classpath refid="build.classpath"/>
-      <src path="${src.java}"/>
+      <src path="."/>
     </javac>
   </target>
  
   <target depends="build" name="jar" description="Build a JAR file with the generated Java class files">
-    <jar destfile="${lib.dir}/mongrel-support.jar" basedir="${target.classes}"/>   
-    <jar destfile="${lib.dir}/http11.jar" basedir="${target.classes}"/>   
+    <jar destfile="mongrel-support.jar" basedir="${target.classes}"/>   
+    <jar destfile="http11.jar" basedir="${target.classes}"/>   
   </target>   
 </project>
