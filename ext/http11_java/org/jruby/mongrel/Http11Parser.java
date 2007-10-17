@@ -1,4 +1,4 @@
-// line 1 "org/jruby/mongrel/http11_parser.rl"
+// line 1 "http11_parser.rl"
 package org.jruby.mongrel;
 
 import org.jruby.util.ByteList;
@@ -6,7 +6,7 @@ import org.jruby.util.ByteList;
 public class Http11Parser {
 
 /** machine **/
-// line 104 "org/jruby/mongrel/http11_parser.rl"
+// line 104 "http11_parser.rl"
 
 
 /** Data **/
@@ -275,7 +275,7 @@ static final int http_parser_error = 0;
 
 static final int http_parser_en_main = 1;
 
-// line 108 "org/jruby/mongrel/http11_parser.rl"
+// line 108 "http11_parser.rl"
 
    public static interface ElementCB {
      public void call(Object data, int at, int length);
@@ -314,7 +314,7 @@ static final int http_parser_en_main = 1;
 	{
 	cs = http_parser_start;
 	}
-// line 142 "org/jruby/mongrel/http11_parser.rl"
+// line 142 "http11_parser.rl"
 
           body_start = 0;
           content_len = 0;
@@ -413,25 +413,25 @@ static final int http_parser_en_main = 1;
 		switch ( _http_parser_actions[_acts++] )
 		{
 	case 0:
-// line 11 "org/jruby/mongrel/http11_parser.rl"
+// line 11 "http11_parser.rl"
 	{parser.mark = p; }
 	break;
 	case 1:
-// line 13 "org/jruby/mongrel/http11_parser.rl"
+// line 13 "http11_parser.rl"
 	{ parser.field_start = p; }
 	break;
 	case 2:
-// line 14 "org/jruby/mongrel/http11_parser.rl"
+// line 14 "http11_parser.rl"
 	{ 
     parser.field_len = p-parser.field_start;
   }
 	break;
 	case 3:
-// line 18 "org/jruby/mongrel/http11_parser.rl"
+// line 18 "http11_parser.rl"
 	{ parser.mark = p; }
 	break;
 	case 4:
-// line 19 "org/jruby/mongrel/http11_parser.rl"
+// line 19 "http11_parser.rl"
 	{ 
     if(parser.http_field != null) {
       parser.http_field.call(parser.data, parser.field_start, parser.field_len, parser.mark, p-parser.mark);
@@ -439,46 +439,46 @@ static final int http_parser_en_main = 1;
   }
 	break;
 	case 5:
-// line 24 "org/jruby/mongrel/http11_parser.rl"
+// line 24 "http11_parser.rl"
 	{ 
     if(parser.request_method != null) 
       parser.request_method.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 6:
-// line 28 "org/jruby/mongrel/http11_parser.rl"
+// line 28 "http11_parser.rl"
 	{ 
     if(parser.request_uri != null)
       parser.request_uri.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 7:
-// line 33 "org/jruby/mongrel/http11_parser.rl"
+// line 33 "http11_parser.rl"
 	{parser.query_start = p; }
 	break;
 	case 8:
-// line 34 "org/jruby/mongrel/http11_parser.rl"
+// line 34 "http11_parser.rl"
 	{ 
     if(parser.query_string != null)
       parser.query_string.call(parser.data, parser.query_start, p-parser.query_start);
   }
 	break;
 	case 9:
-// line 39 "org/jruby/mongrel/http11_parser.rl"
+// line 39 "http11_parser.rl"
 	{	
     if(parser.http_version != null)
       parser.http_version.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 10:
-// line 44 "org/jruby/mongrel/http11_parser.rl"
+// line 44 "http11_parser.rl"
 	{
     if(parser.request_path != null)
       parser.request_path.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 11:
-// line 49 "org/jruby/mongrel/http11_parser.rl"
+// line 49 "http11_parser.rl"
 	{ 
     parser.body_start = p + 1; 
     if(parser.header_done != null)
@@ -498,7 +498,7 @@ static final int http_parser_en_main = 1;
 	}
 	}	}
 	}
-// line 166 "org/jruby/mongrel/http11_parser.rl"
+// line 166 "http11_parser.rl"
 
      parser.cs = cs;
      parser.nread += (p - off);
@@ -514,7 +514,7 @@ static final int http_parser_en_main = 1;
         /* final \r\n combo encountered so stop right here */
         
 // line 517 "org/jruby/mongrel/Http11Parser.java"
-// line 180 "org/jruby/mongrel/http11_parser.rl"
+// line 180 "http11_parser.rl"
         parser.nread++;
      }
 
@@ -526,7 +526,7 @@ static final int http_parser_en_main = 1;
 
      
 // line 529 "org/jruby/mongrel/Http11Parser.java"
-// line 190 "org/jruby/mongrel/http11_parser.rl"
+// line 190 "http11_parser.rl"
 
      parser.cs = cs;
  

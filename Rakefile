@@ -165,7 +165,18 @@ task :gem_source => [:package_all] do
 end
 
 task :ragel do
-  sh "ragel ext/http11/http11_parser.rl | rlgen-cd -G2 -o ext/http11/http11_parser.c"
+  Dir.chdir "ext/http11" do
+    target = "http11_parser.c"
+    File.unlink target if File.exist? target
+    sh "ragel http11_parser.rl | rlgen-cd -G2 -o #{target}"
+    raise "Failed to build C source" unless File.exist? target
+  end
+  Dir.chdir "ext/http11_java" do
+    target = "org/jruby/mongrel/Http11Parser.java"
+    File.unlink target if File.exist? target
+    sh "ragel -J http11_parser.rl | rlgen-java -o #{target}"
+    raise "Failed to build Java source" unless File.exist? target
+  end
 end
 
 task :site_webgen do
