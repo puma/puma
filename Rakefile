@@ -45,18 +45,15 @@ end
 
 #### A hack around RubyGems and Echoe for pre-compiled extensions.
 
-extension = "ext/http11/extconf.rb"
-extension_dir = File.dirname(extension)
-
 def move_extensions
-  Dir["#{extension_dir}/*.#{Config::CONFIG['DLEXT']}"].each { |file| cp file, "lib/" }
+  Dir["ext/**/*.#{Config::CONFIG['DLEXT']}"].each { |file| cp file, "lib/" }
 end
 
 case RUBY_PLATFORM
 when /mswin/
   filename = "lib/http11.so"
   file filename do
-    Dir.chdir(extension_dir) do 
+    Dir.chdir("ext/http11") do 
       ruby File.basename(extension)
       system(PLATFORM =~ /win32/ ? 'nmake' : 'make')
     end
@@ -67,7 +64,7 @@ when /mswin/
 when /jruby/
   filename = "lib/http11.jar"
   file filename do
-    Dir.chdir(extension_dir) { sh "ant jar" }
+    Dir.chdir("ext/http11_java") { sh "ant jar" }
     move_extensions      
   end      
   task :compile => [filename]
@@ -139,35 +136,34 @@ task :gem_source => [:package_all] do
   FileList["**/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
   
   # XXX Hack
-  sh %{ cp ~/Downloads/mongrel-1.0.2-mswin32.gem pkg/gems/ }
-  sh %{ cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/ }
-  
-  sh %{ rm -rf pkg/mongrel* }
-
-  sh %{ index_gem_repository.rb -d pkg }
-  sh %{ scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
-  sh %{ svn log -v > SVN_LOG }
-  sh %{ scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/ }
+  sh "cp ~/Downloads/mongrel-1.0.2-mswin32.gem pkg/gems/"
+  sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"  
+  sh "rm -rf pkg/mongrel*"
+  sh "index_gem_repository.rb -d pkg"  
+  sh "scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
+  sh "svn log -v > SVN_LOG"
+  sh "scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
+  rm "SVN_LOG"  
 end
 
 task :ragel do
-  sh %{ragel ext/http11/http11_parser.rl | rlgen-cd -G2 -o ext/http11/http11_parser.c}
+  sh "ragel ext/http11/http11_parser.rl | rlgen-cd -G2 -o ext/http11/http11_parser.c"
 end
 
 task :site_webgen do
-  sh %{pushd site; webgen; ruby atom.rb > output/feed.atom; rsync -azv output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd }
+  sh "pushd site; webgen; ruby atom.rb > output/feed.atom; rsync -azv output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd"
 end
 
 task :site_rdoc => [:redoc] do
-  sh %{ rsync -azv doc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/ }
+  sh "rsync -azv doc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/"
 end
 
 task :site_coverage => [:rcov] do
-  sh %{ rsync -azv test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/ }
+  sh "rsync -azv test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/"
 end
 
 task :site_projects_rdoc do
-  sh %{ cd projects/gem_plugin; rake site }
+  sh "cd projects/gem_plugin; rake site"
 end
 
 task :site => [:site_webgen, :site_rdoc, :site_coverage, :site_projects_rdoc]
