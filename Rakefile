@@ -6,7 +6,7 @@ require 'echoe'
 Echoe.new("mongrel") do |p|
   p.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
   p.author ="Zed A. Shaw"
-  p.clean_pattern = ["ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}", "ext/http11/Makefile", "pkg", "lib/*.bundle", "*.gem", "doc/site/output", ".config"]
+  p.clean_pattern = ['ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'ext/http11/Makefile', 'pkg', 'lib/*.bundle', '*.gem', 'doc/site/output', '.config', 'lib/http11.jar', 'ext/http11_java/classes']
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>= 1.8.4'
@@ -21,7 +21,6 @@ Echoe.new("mongrel") do |p|
     p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem', 
       '~/gem_certificates/luislavena-mongrel-public_cert.pem']
   when /java/
-    p.clean_pattern += ["lib/http11.jar"]
   else
     p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem', 
       '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
@@ -51,6 +50,18 @@ def move_extensions
   Dir["ext/**/*.#{Config::CONFIG['DLEXT']}"].each { |file| cp file, "lib/" }
 end
 
+def java_classpath_arg 
+  # A myriad of ways to discover the JRuby classpath
+  classpath = begin
+    require 'java' 
+    # Already running in a JRuby JVM
+    Java::java.lang.System.getProperty('java.class.path')
+  rescue LoadError
+    ENV['JRUBY_PARENT_CLASSPATH'] || ENV['JRUBY_HOME'] && FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
+  end
+  classpath ? "-cp #{classpath}" : ""
+end
+
 case RUBY_PLATFORM
 when /mswin/
   filename = "lib/http11.so"
@@ -65,22 +76,12 @@ when /mswin/
 
 when /java/
   filename = "lib/http11.jar"
-  def java_classpath_arg # myriad of ways to discover JRuby classpath
-    begin
-      require 'java' # already running in a JRuby JVM
-      jruby_cpath = Java::java.lang.System.getProperty('java.class.path')
-    rescue LoadError
-    end
-    unless jruby_cpath
-      jruby_cpath = ENV['JRUBY_PARENT_CLASSPATH'] || ENV['JRUBY_HOME'] &&
-        FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
-    end
-    cpath_arg = jruby_cpath ? "-cp #{jruby_cpath}" : ""
-  end
   file filename do
-    mkdir_p "pkg/classes"
-    sh "javac -target 1.4 -source 1.4 -d pkg/classes #{java_classpath_arg} #{FileList['ext/http11_java//**/*.java'].join(' ')}"
-    sh "jar cf lib/http11.jar -C pkg/classes/ ."
+    build_dir = "ext/http11_java/classes"
+    mkdir_p build_dir
+    sources = FileList['ext/http11_java/**/*.java'].join(' ')
+    sh "javac -target 1.4 -source 1.4 -d #{build_dir} #{java_classpath_arg} #{sources}"
+    sh "jar cf lib/http11.jar -C #{build_dir} ."
     move_extensions      
   end      
   task :compile => [filename]
