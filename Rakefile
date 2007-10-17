@@ -44,6 +44,23 @@ Echoe.new("mongrel") do |p|
   
 end
 
+#### Ragel builder
+
+task :ragel do
+  Dir.chdir "ext/http11" do
+    target = "http11_parser.c"
+    File.unlink target if File.exist? target
+    sh "ragel http11_parser.rl | rlgen-cd -G2 -o #{target}"
+    raise "Failed to build C source" unless File.exist? target
+  end
+  Dir.chdir "ext/http11_java" do
+    target = "org/jruby/mongrel/Http11Parser.java"
+    File.unlink target if File.exist? target
+    sh "ragel -J http11_parser.rl | rlgen-java -o #{target}"
+    raise "Failed to build Java source" unless File.exist? target
+  end
+end
+
 #### A hack around RubyGems and Echoe for pre-compiled extensions.
 
 def move_extensions
@@ -162,21 +179,6 @@ task :gem_source => [:package_all] do
   sh "svn log -v > SVN_LOG"
   sh "scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
   rm "SVN_LOG"  
-end
-
-task :ragel do
-  Dir.chdir "ext/http11" do
-    target = "http11_parser.c"
-    File.unlink target if File.exist? target
-    sh "ragel http11_parser.rl | rlgen-cd -G2 -o #{target}"
-    raise "Failed to build C source" unless File.exist? target
-  end
-  Dir.chdir "ext/http11_java" do
-    target = "org/jruby/mongrel/Http11Parser.java"
-    File.unlink target if File.exist? target
-    sh "ragel -J http11_parser.rl | rlgen-java -o #{target}"
-    raise "Failed to build Java source" unless File.exist? target
-  end
 end
 
 task :site_webgen do
