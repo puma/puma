@@ -16,42 +16,60 @@ Echoe.new("mongrel") do |p|
   p.need_tgz = true
   p.require_signed = true
 
-  unless RUBY_PLATFORM =~ /mswin/
-    p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem', 
-      '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
-  else
-    p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem', 
-      '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+  case RUBY_PLATFORM 
+    when /mswin/
+      p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem', 
+        '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+    else
+      p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem', 
+        '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
+    end
   end
 
   p.eval = proc do  
-    if RUBY_PLATFORM =~ /mswin/
-      self.files += ['lib/http11.so']
-      extensions.clear
-      self.platform = Gem::Platform::WIN32
-    else
-      add_dependency('daemons', '>= 1.0.3')
-      add_dependency('fastthread', '>= 1.0.1')
-    end
+    case RUBY_PLATFORM
+      when /mswin/
+        self.files += ['lib/http11.so']
+        extensions.clear
+        self.platform = Gem::Platform::WIN32
+      when /jruby/
+        self.files += ['lib/http11.jar']
+        extensions.clear
+        self.platform = 'jruby'        
+      else
+        add_dependency('daemons', '>= 1.0.3')
+        add_dependency('fastthread', '>= 1.0.1')
+      end
   end
 end
 
-# NOTE: a big HACK around RubyGems and Echoe for pre-compiled extensions.
-# as usual, just for win32... to make it happy.
-# starting to feel the pain...
-file "lib/http11.so" do
-  extension = "ext/http11/extconf.rb"
-  directory = File.dirname(extension)
-  Dir.chdir(directory) do 
-    ruby File.basename(extension)
-    system(PLATFORM =~ /win32/ ? 'nmake' : 'make')
-  end
-  Dir["#{directory}/*.#{Config::CONFIG['DLEXT']}"].each do |file|
-    cp file, "lib/"
-  end
-end if RUBY_PLATFORM =~ /mswin/
+case RUBY_PLATFORM
+  # A hack around RubyGems and Echoe for pre-compiled extensions.
+  when /mswin/
+    file "lib/http11.so" do
+      extension = "ext/http11/extconf.rb"
+      directory = File.dirname(extension)
+      Dir.chdir(directory) do 
+        ruby File.basename(extension)
+        system(PLATFORM =~ /win32/ ? 'nmake' : 'make')
+      end
+      move_extensions
+    end 
+    task :compile => ["lib/http11.so"]
+  when /jruby/
+    file "lib/http11.jar" do
+      directory = "jruby_ext/http11"
+      Dir.chdir(directory) { system "ant jar" }
+      move_extensions      
+    end      
+    task :compile => ["lib/http11.jar"]
+end
 
-task :compile => ["lib/http11.so"] if RUBY_PLATFORM =~ /mswin/
+#### Helper
+
+def move_extensions
+  Dir["#{directory}/*.#{Config::CONFIG['DLEXT']}"].each { |file| cp file, "lib/" }
+end
 
 #### Project-wide install and uninstall tasks
 
