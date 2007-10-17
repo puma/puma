@@ -660,8 +660,8 @@ module Mongrel
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
         client.close rescue nil
       rescue HttpParserError
+        STDERR.puts "#{Time.now}: HTTP PARSE ERROR, MALFORMED REQUEST (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
         if $mongrel_debug_client
-          STDERR.puts "#{Time.now}: BAD CLIENT (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
           STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
         end
       rescue Errno::EMFILE
