@@ -3,17 +3,17 @@
   <property environment="env"/>   
   <property file="build.properties"/>   
   
+  <property name="lib.dir" value="${env.JRUBY_HOME}/lib"/>
   <property name="target" value="target"/>   
   <property name="target.classes" value="${target}/classes"/>   
   <property name="target.classes.test" value="${target}/test-classes"/>   
 
   <path id="build.classpath">
-    <fileset dir="." includes="*.jar" excludes="mongrel-support.jar,http11.jar"/>
+    <fileset dir="${lib.dir}" includes="*.jar" excludes="mongrel-support.jar,http11.jar"/>
   </path>
   
   <target name="init">
     <mkdir dir="${target}"/>
-    <mkdir dir="${target}/java/httpp"/>
     <mkdir dir="${target.classes}"/>
   </target>
   
@@ -32,17 +32,8 @@
     <delete file="__ragel_out"/>
   </target>
 
-  <target depends="init" name="wbuild" description="Builds version without references to JRuby or the Extension API">
-    <javac debug="true" destdir="${target.classes}" source="${version.source}" target="${version.target}">
-      <classpath refid="build.classpath"/>
-      <src path="."/>
-      <include name="**/HttpParserImpl.java"/>
-      <include name="httpp/**/*.java"/>
-    </javac>
-  </target>
-
   <target depends="init" name="build" description="Compiles Java source files">
-    <javac debug="true" destdir="${target.classes}" source="${version.source}" target="${version.target}">
+    <javac debug="true" destdir="${target.classes}">
       <classpath refid="build.classpath"/>
       <src path="."/>
     </javac>
