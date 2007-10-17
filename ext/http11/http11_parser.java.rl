@@ -31,7 +31,11 @@ public class Http11Parser {
     if(parser.request_uri != null)
       parser.request_uri.call(parser.data, parser.mark, fpc-parser.mark);
   }
-
+  action fragment { 
+    if(parser.fragment != null)
+      parser.fragment.call(parser.data, parser.mark, fpc-parser.mark);
+  }
+  
   action start_query {parser.query_start = fpc; }
   action query_string { 
     if(parser.query_string != null)
@@ -86,6 +90,7 @@ public class Http11Parser {
       public FieldCB http_field;
       public ElementCB request_method;
       public ElementCB request_uri;
+      public ElementCB fragment;
       public ElementCB request_path;
       public ElementCB query_string;
       public ElementCB http_version;
