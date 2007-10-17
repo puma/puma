@@ -1,6 +1,6 @@
 %%{
   
-  machine http_parser;
+  machine http_parser_common;
 
 #### HTTP PROTOCOL GRAMMAR
 # line endings
@@ -50,4 +50,5 @@
   Request = Request_Line ( message_header )* ( CRLF @done );
 
 main := Request;
+
 }%%

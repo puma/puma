@@ -53,10 +53,10 @@ task :ragel do
     sh "ragel http11_parser.rl | rlgen-cd -G2 -o #{target}"
     raise "Failed to build C source" unless File.exist? target
   end
-  Dir.chdir "ext/http11_java" do
-    target = "org/jruby/mongrel/Http11Parser.java"
+  Dir.chdir "ext/http11" do
+    target = "../../ext/http11_java/org/jruby/mongrel/Http11Parser.java"
     File.unlink target if File.exist? target
-    sh "ragel -J http11_parser.rl | rlgen-java -o #{target}"
+    sh "ragel -J http11_parser.java.rl | rlgen-java -o #{target}"
     raise "Failed to build Java source" unless File.exist? target
   end
 end

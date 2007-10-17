@@ -55,6 +55,8 @@ public class Http11Parser {
     fbreak;
   }
 
+  include http_parser_common "http11_parser_common.rl";
+
 }%%
 
 /** Data **/
