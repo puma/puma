@@ -1,56 +1,6 @@
 %%{
+  
   machine http_parser;
-
-  action mark {MARK(mark, fpc); }
-
-
-  action start_field { MARK(field_start, fpc); }
-  action write_field { 
-    parser->field_len = LEN(field_start, fpc);
-  }
-
-  action start_value { MARK(mark, fpc); }
-  action write_value { 
-    if(parser->http_field != NULL) {
-      parser->http_field(parser->data, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, fpc));
-    }
-  }
-  action request_method { 
-    if(parser->request_method != NULL) 
-      parser->request_method(parser->data, PTR_TO(mark), LEN(mark, fpc));
-  }
-  action request_uri { 
-    if(parser->request_uri != NULL)
-      parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, fpc));
-  }
-  action fragment { 
-    if(parser->fragment != NULL)
-      parser->fragment(parser->data, PTR_TO(mark), LEN(mark, fpc));
-  }
-
-  action start_query {MARK(query_start, fpc); }
-  action query_string { 
-    if(parser->query_string != NULL)
-      parser->query_string(parser->data, PTR_TO(query_start), LEN(query_start, fpc));
-  }
-
-  action http_version {	
-    if(parser->http_version != NULL)
-      parser->http_version(parser->data, PTR_TO(mark), LEN(mark, fpc));
-  }
-
-  action request_path {
-    if(parser->request_path != NULL)
-      parser->request_path(parser->data, PTR_TO(mark), LEN(mark,fpc));
-  }
-
-  action done { 
-    parser->body_start = fpc - buffer + 1; 
-    if(parser->header_done != NULL)
-      parser->header_done(parser->data, fpc + 1, pe - fpc - 1);
-    fbreak;
-  }
-
 
 #### HTTP PROTOCOL GRAMMAR
 # line endings
