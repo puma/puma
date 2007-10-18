@@ -1,7 +1,6 @@
 require 'yaml'
 require 'etc'
 
-
 module Mongrel
   # Implements a simple DSL for configuring a Mongrel server for your 
   # purposes.  More used by framework implementers to setup Mongrel
@@ -290,7 +289,10 @@ module Mongrel
     # assumes that you don't want to restart.
     def stop(needs_restart=false)
       @listeners.each {|name,s| 
-        s.stop 
+        s.stop
+        
+        # XXX Try to get JRuby to wait for the thread to actually stop
+        s.acceptor.join 
       }
 
       @needs_restart = needs_restart
