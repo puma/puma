@@ -77,9 +77,9 @@ class ConfiguratorTest < Test::Unit::TestCase
       assert $test_plugin_fired == 6, "Test filter plugin didn't run 6 times."
     end
 
-#    redirect_test_io do
-      config.stop(false, false)
-#    end
+    redirect_test_io do
+      config.stop(false, true)
+    end
 
     assert_raise Errno::EBADF, Errno::ECONNREFUSED do
       res = Net::HTTP.get(URI.parse("http://localhost:4501/"))
