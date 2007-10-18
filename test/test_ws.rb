@@ -10,6 +10,8 @@ require 'mongrel'
 require 'timeout'
 require File.dirname(__FILE__) + "/testhelp.rb"
 
+include Mongrel
+
 class TestHandler < Mongrel::HttpHandler
   attr_reader :ran_test
 
@@ -34,7 +36,7 @@ class WebServerTest < Test::Unit::TestCase
   end
 
   def teardown
-    @server.stop
+    @server.stop(true)
   end
 
   def test_simple_server
@@ -57,7 +59,7 @@ class WebServerTest < Test::Unit::TestCase
         sleep 1
       end
     end
-    s.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin/
+    s.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin|java/
     s.close
   end
 

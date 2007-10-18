@@ -287,16 +287,10 @@ module Mongrel
     # Calls .stop on all the configured listeners so they
     # stop processing requests (gracefully).  By default it
     # assumes that you don't want to restart.
-    def stop(needs_restart=false, synchronous=false)
-   
-      @listeners.each {|name,s| s.stop }
-      
-      if synchronous        
-        sleep(0.5) while (@listeners.map do |name, listener|
-          listener.acceptor.alive?
-        end.any?)
-      end
-
+    def stop(needs_restart=false, synchronous=false)   
+      @listeners.each do |name,s| 
+        s.stop(synchronous)      
+      end      
       @needs_restart = needs_restart
     end
 

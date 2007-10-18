@@ -809,8 +809,12 @@ module Mongrel
 
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.
-    def stop
+    def stop(synchronous=false)
       @acceptor.raise(StopServer.new)
+
+      if synchronous        
+        sleep(0.5) while @acceptor.alive?
+      end
     end
 
   end
