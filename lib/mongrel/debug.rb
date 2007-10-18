@@ -8,10 +8,6 @@ require 'logger'
 require 'set'
 require 'socket'
 
-
-
-$mongrel_debugging=true
-
 module MongrelDbg
   SETTINGS = { :tracing => {}}
   LOGGING = { }

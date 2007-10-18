@@ -369,8 +369,6 @@ module Mongrel
       if RUBY_PLATFORM !~ /mswin/
         # graceful shutdown
         trap("TERM") { log "TERM signal received."; stop }
-        trap("USR1") { log "USR1 received, toggling $mongrel_debug_client to #{!$mongrel_debug_client}"; $mongrel_debug_client = !$mongrel_debug_client }
-        # restart
         trap("USR2") { log "USR2 signal received."; stop(true) }
 
         log "Signals ready.  TERM => stop.  USR2 => restart.  INT => stop (no restart)."

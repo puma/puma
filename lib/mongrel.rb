@@ -4,8 +4,6 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-$mongrel_debug_client = false
-
 require 'rubygems'
 require 'socket'
 require 'http11'
@@ -269,8 +267,8 @@ module Mongrel
           update_request_progress(remain, total)
         end
       rescue Object
-        STDERR.puts "ERROR reading http body: #$!"
-        STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
+        STDERR.puts "#{Time.now}: Error reading HTTP body: #$!"
+        STDERR.puts $!.backtrace.join("\n")
         # any errors means we should delete the file, including if the file is dumped
         @socket.close rescue nil
         @body.delete if @body.class == Tempfile
@@ -660,15 +658,13 @@ module Mongrel
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
         client.close rescue nil
       rescue HttpParserError
-        STDERR.puts "#{Time.now}: HTTP PARSE ERROR, MALFORMED REQUEST (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
-        if $mongrel_debug_client
-          STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
-        end
+        STDERR.puts "#{Time.now}: HTTP parse error, malformed request (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
+        STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
       rescue Errno::EMFILE
         reap_dead_workers('too many files')
       rescue Object
-        STDERR.puts "#{Time.now}: ERROR: #$!"
-        STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
+        STDERR.puts "#{Time.now}: Error: #$!"
+        STDERR.puts $!.backtrace.join("\n")
       ensure
         client.close rescue nil
         request.body.delete if request and request.body.class == Tempfile
@@ -768,8 +764,8 @@ module Mongrel
             # client closed the socket even before accept
             client.close rescue nil
           rescue Object => exc
-            STDERR.puts "!!!!!! UNHANDLED EXCEPTION! #{exc}.  TELL ZED HE'S A MORON."
-            STDERR.puts $!.backtrace.join("\n") if $mongrel_debug_client
+            STDERR.puts "** unhandled exception; please report to the Mongrel team."
+            STDERR.puts $!.backtrace.join("\n")
           end
         end
         graceful_shutdown
