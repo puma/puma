@@ -764,7 +764,7 @@ module Mongrel
             # client closed the socket even before accept
             client.close rescue nil
           rescue Object => exc
-            STDERR.puts "** unhandled exception; please report to the Mongrel team."
+            STDERR.puts "** Unhandled exception #{exc.inspect}."
             STDERR.puts $!.backtrace.join("\n")
           end
         end
