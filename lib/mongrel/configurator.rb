@@ -288,9 +288,13 @@ module Mongrel
     # stop processing requests (gracefully).  By default it
     # assumes that you don't want to restart.
     def stop(needs_restart=false)
-      @listeners.each {|name,s| 
-        s.stop
-      }
+      @listeners.map do |name, listener| 
+        stopper = Thread.new { listener.stop }
+        stopper.priority = 10
+        stopper
+      end.each do |stopper|
+        stopper.join
+      end
 
       @needs_restart = needs_restart
     end
