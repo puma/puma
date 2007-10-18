@@ -288,9 +288,14 @@ module Mongrel
     # stop processing requests (gracefully).  By default it
     # assumes that you don't want to restart.
     def stop(needs_restart=false, asynchronous=true)
-      @listeners.each {|name,s| 
-        s.stop(asynchronous)
-      }
+   
+      @listeners.each {|name,s| s.stop }
+      
+      unless asynchronous        
+        sleep(0.5) while (@listeners.map do |name, listener|
+          listener.acceptor.alive?
+        end.any?)
+      end
 
       @needs_restart = needs_restart
     end

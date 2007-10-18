@@ -4,6 +4,11 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
+if ENV['DEBUG']
+  require 'ruby-debug'
+  Debugger.start
+end
+
 def redirect_test_io
   orig_err = STDERR.dup
   orig_out = STDOUT.dup
