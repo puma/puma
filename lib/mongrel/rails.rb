@@ -37,7 +37,6 @@ module Mongrel
       def initialize(dir, mime_map = {})
         @files = Mongrel::DirHandler.new(dir,false)
         @guard = Mutex.new
-        @tick = Time.now
 
         # Register the requested MIME types
         mime_map.each {|k,v| Mongrel::DirHandler::add_mime_type(k,v) }
@@ -72,8 +71,6 @@ module Mongrel
             # We don't want the output to be really final until we're out of the lock
             cgi.default_really_final = false
 
-            log_threads_waiting_for(@active_request_path || request.params[Mongrel::Const::PATH_INFO]) if $mongrel_debug_client
-
             @guard.synchronize {
               @active_request_path = request.params[Mongrel::Const::PATH_INFO] 
               Dispatcher.dispatch(cgi, ActionController::CgiRequest::DEFAULT_SESSION_OPTIONS, response.body)
@@ -88,12 +85,6 @@ module Mongrel
             STDERR.puts "#{Time.now}: Error calling Dispatcher.dispatch #{rails_error.inspect}"
             STDERR.puts rails_error.backtrace.join("\n")
           end
-        end
-      end
-
-      def log_threads_waiting_for(event)
-        if Time.now - @tick > 10
-          @tick = Time.now
         end
       end
 
