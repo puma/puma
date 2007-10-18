@@ -81,6 +81,7 @@ class HttpParserTest < Test::Unit::TestCase
       parser.execute(req, get, 0)
     end
     assert parser.finished?
+    assert_equal '/forums/1/topics/2375?page=1', req['REQUEST_URI']
     assert_equal 'posts-17408', req['FRAGMENT']
   end
 

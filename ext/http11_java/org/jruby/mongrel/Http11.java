@@ -53,6 +53,8 @@ public class Http11 extends RubyObject {
     public final static String MAX_FIELD_VALUE_LENGTH_ERR = "HTTP element FIELD_VALUE is longer than the 81920 allowed length.";
     public final static int MAX_REQUEST_URI_LENGTH = 1024 * 12;
     public final static String MAX_REQUEST_URI_LENGTH_ERR = "HTTP element REQUEST_URI is longer than the 12288 allowed length.";
+    public final static int MAX_FRAGMENT_LENGTH = 1024;
+    public final static String MAX_FRAGMENT_LENGTH_ERR = "HTTP element REQUEST_PATH is longer than the 1024 allowed length.";
     public final static int MAX_REQUEST_PATH_LENGTH = 1024;
     public final static String MAX_REQUEST_PATH_LENGTH_ERR = "HTTP element REQUEST_PATH is longer than the 1024 allowed length.";
     public final static int MAX_QUERY_STRING_LENGTH = 1024 * 10;
@@ -97,6 +99,7 @@ public class Http11 extends RubyObject {
         this.hp.parser.http_field = http_field;
         this.hp.parser.request_method = request_method;
         this.hp.parser.request_uri = request_uri;
+        this.hp.parser.fragment = fragment;
         this.hp.parser.request_path = request_path;
         this.hp.parser.query_string = query_string;
         this.hp.parser.http_version = http_version;
@@ -146,6 +149,15 @@ public class Http11 extends RubyObject {
                 validateMaxLength(length, MAX_REQUEST_URI_LENGTH, MAX_REQUEST_URI_LENGTH_ERR);
                 RubyString val = RubyString.newString(runtime,new ByteList(hp.parser.buffer,at,length));
                 req.aset(runtime.newString("REQUEST_URI"),val);
+            }
+        };
+
+    private Http11Parser.ElementCB fragment = new Http11Parser.ElementCB() {
+            public void call(Object data, int at, int length) {
+                RubyHash req = (RubyHash)data;
+                validateMaxLength(length, MAX_FRAGMENT_LENGTH, MAX_FRAGMENT_LENGTH_ERR);
+                RubyString val = RubyString.newString(runtime,new ByteList(hp.parser.buffer,at,length));
+                req.aset(runtime.newString("FRAGMENT"),val);
             }
         };
 
