@@ -4,23 +4,17 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'fileutils'
-FileUtils.mkdir_p "log/mongrel_debug"
-
 require 'test/unit'
 require 'mongrel/rails'
 require 'mongrel/debug'
-
+require 'fileutils'
 
 class MongrelDbgTest < Test::Unit::TestCase
 
-  def setup
-    FileUtils.rm_rf "log/mongrel_debug"
-    MongrelDbg::configure
-  end
-
-
   def test_tracing_to_log
+    FileUtils.rm_rf "log/mongrel_debug"
+
+    MongrelDbg::configure
     out = StringIO.new
 
     MongrelDbg::begin_trace(:rails)
