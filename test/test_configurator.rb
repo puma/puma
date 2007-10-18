@@ -78,7 +78,7 @@ class ConfiguratorTest < Test::Unit::TestCase
     end
 
     redirect_test_io do
-      config.stop
+      config.stop(false, true)
     end
 
     assert_raise Errno::EBADF, Errno::ECONNREFUSED do

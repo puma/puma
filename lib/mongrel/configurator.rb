@@ -287,14 +287,10 @@ module Mongrel
     # Calls .stop on all the configured listeners so they
     # stop processing requests (gracefully).  By default it
     # assumes that you don't want to restart.
-    def stop(needs_restart=false)
-      @listeners.map do |name, listener| 
-        stopper = Thread.new { listener.stop }
-        stopper.priority = 10
-        stopper
-      end.each do |stopper|
-        stopper.join
-      end
+    def stop(needs_restart=false, asynchronous=true)
+      @listeners.each {|name,s| 
+        s.stop(asynchronous)
+      }
 
       @needs_restart = needs_restart
     end
@@ -373,6 +369,8 @@ module Mongrel
       if RUBY_PLATFORM !~ /mswin/
         # graceful shutdown
         trap("TERM") { log "TERM signal received."; stop }
+        trap("USR1") { log "USR1 received, toggling $mongrel_debug_client to #{!$mongrel_debug_client}"; $mongrel_debug_client = !$mongrel_debug_client }
+        # restart
         trap("USR2") { log "USR2 signal received."; stop(true) }
 
         log "Signals ready.  TERM => stop.  USR2 => restart.  INT => stop (no restart)."
