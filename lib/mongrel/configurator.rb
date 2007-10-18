@@ -290,9 +290,6 @@ module Mongrel
     def stop(needs_restart=false)
       @listeners.each {|name,s| 
         s.stop
-        
-        # XXX Try to get JRuby to wait for the thread to actually stop
-        s.acceptor.join 
       }
 
       @needs_restart = needs_restart
