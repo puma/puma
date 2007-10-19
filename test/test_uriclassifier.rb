@@ -33,7 +33,7 @@ class URIClassifierTest < Test::Unit::TestCase
 
     script_name, path_info, value = uri_classifier.resolve(prefix)
     script_name, path_info, value = uri_classifier.resolve(test)
-    assert value, "didn't resolve"
+    assert value
     assert_equal prefix, script_name
     assert_equal test[script_name.length .. -1], path_info
 
