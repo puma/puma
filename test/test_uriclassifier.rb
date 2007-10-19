@@ -14,13 +14,13 @@ include Mongrel
 class URIClassifierTest < Test::Unit::TestCase
 
   def test_uri_finding
-    u = URIClassifier.new
-    u.register("/test", 1)
+    uri_classifier = URIClassifier.new
+    uri_classifier.register("/test", 1)
     
-    sn,pi,val = u.resolve("/test")
-    assert val != nil, "didn't resolve"
-    assert_equal 1, val, "wrong value"
-    assert_equal "/test",sn, "wrong SCRIPT_NAME"
+    script_name, path_info, value = uri_classifier.resolve("/test")
+    assert value
+    assert_equal 1, value
+    assert_equal "/test", script_name
   end
 
 
@@ -28,121 +28,121 @@ class URIClassifierTest < Test::Unit::TestCase
     test = "/pre/fix/test"
     prefix = "/pre"
 
-    u = URIClassifier.new
-    u.register(prefix,1)
+    uri_classifier = URIClassifier.new
+    uri_classifier.register(prefix,1)
 
-    sn,pi,val = u.resolve(prefix)
-    sn,pi,val = u.resolve(test)
-    assert val != nil, "didn't resolve"
-    assert_equal prefix,sn, "wrong script name"
-    assert_equal test[sn.length .. -1],pi, "wrong path info"
+    script_name, path_info, value = uri_classifier.resolve(prefix)
+    script_name, path_info, value = uri_classifier.resolve(test)
+    assert value, "didn't resolve"
+    assert_equal prefix, script_name
+    assert_equal test[script_name.length .. -1], path_info
 
-    assert u.inspect != nil, "No inspect for classifier"
-    assert u.uris[0] == prefix, "URI list didn't match"
+    assert uri_classifier.inspect
+    assert_equal prefix, uri_classifier.uris[0]
   end
 
   def test_not_finding
     test = "/cant/find/me"
-    u = URIClassifier.new
-    u.register(test, 1)
+    uri_classifier = URIClassifier.new
+    uri_classifier.register(test, 1)
 
-    sn,pi,val = u.resolve("/nope/not/here")
-    assert_equal nil,sn, "shouldn't be found"
-    assert_equal nil,pi, "shouldn't be found"
-    assert_equal nil,val, "shouldn't be found"
+    script_name, path_info, value = uri_classifier.resolve("/nope/not/here")
+    assert_nil script_name
+    assert_nil path_info
+    assert_nil value
   end
 
   def test_exceptions
-    u = URIClassifier.new
+    uri_classifier = URIClassifier.new
 
-    u.register("test", 1)
+    uri_classifier.register("test", 1)
     
     failed = false
     begin 
-      u.register("test", 1)
+      uri_classifier.register("test", 1)
     rescue => e
       failed = true
     end
 
-    assert failed, "it didn't fail as expected"
+    assert failed
 
     failed = false
     begin
-      u.register("", 1)
+      uri_classifier.register("", 1)
     rescue => e
       failed = true
     end
 
-    assert failed, "it didn't fail as expected"
+    assert failed
   end
 
 
   def test_register_unregister
-    u = URIClassifier.new
+    uri_classifier = URIClassifier.new
     
     100.times do
-      u.register("stuff", 1)
-      val = u.unregister("stuff")
-      assert_equal 1,val, "didn't get the right return value"
+      uri_classifier.register("stuff", 1)
+      value = uri_classifier.unregister("stuff")
+      assert_equal 1, value
     end
 
-    u.register("things",1)
-    sn,pi,val = u.resolve("things")
-    assert_equal 1, val, "result doesn't match"
+    uri_classifier.register("things",1)
+    script_name, path_info, value = uri_classifier.resolve("things")
+    assert_equal 1, value
 
-    u.unregister("things")
-    sn,pi,val = u.resolve("things")
-    assert_equal nil, val, "result should be nil"
+    uri_classifier.unregister("things")
+    script_name, path_info, value = uri_classifier.resolve("things")
+    assert_nil value
 
   end
 
 
   def test_uri_branching
-    u = URIClassifier.new
-    u.register("/test", 1)
-    u.register("/test/this",2)
+    uri_classifier = URIClassifier.new
+    uri_classifier.register("/test", 1)
+    uri_classifier.register("/test/this",2)
   
-    sn,pi,h = u.resolve("/test")
-    sn,pi,h = u.resolve("/test/that")
-    assert_equal "/test", sn, "failed to properly find script off branch portion of uri"
-    assert_equal "/that", pi, "didn't get the right patch info"
-    assert_equal 1, h, "wrong result for branching uri"
+    script_name, path_info, handler = uri_classifier.resolve("/test")
+    script_name, path_info, handler = uri_classifier.resolve("/test/that")
+    assert_equal "/test", script_name, "failed to properly find script off branch portion of uri"
+    assert_equal "/that", path_info
+    assert_equal 1, handler, "wrong result for branching uri"
   end
 
   def test_all_prefixing
     tests = ["/test","/test/that","/test/this"]
     uri = "/test/this/that"
-    u = URIClassifier.new
+    uri_classifier = URIClassifier.new
     
-    cur = ""
+    current = ""
     uri.each_byte do |c|
-      cur << c.chr
-      u.register(cur, c)
+      current << c.chr
+      uri_classifier.register(current, c)
     end
 
     # try to resolve everything with no asserts as a fuzzing
     tests.each do |prefix|
-      cur = ""
+      current = ""
       prefix.each_byte do |c|
-        cur << c.chr
-        sn, pi, h = u.resolve(cur)
-        assert sn != nil, "didn't get a script name"
-        assert pi != nil, "didn't get path info"
-        assert h != nil, "didn't find the handler"
+        current << c.chr
+        script_name, path_info, handler = uri_classifier.resolve(current)
+        assert script_name
+        assert path_info
+        assert handler
       end
     end
 
     # assert that we find stuff
     tests.each do |t|
-      sn, pi, h = u.resolve(t)
-      assert h != nil, "didn't find handler"
+      script_name, path_info, handler = uri_classifier.resolve(t)
+      assert handler
     end
 
     # assert we don't find stuff
-    sn, pi, h = u.resolve("chicken")
-    assert_nil h, "shoulnd't find anything"
-    assert_nil sn, "shoulnd't find anything"
-    assert_nil pi, "shoulnd't find anything"
+    script_name, path_info, handler = uri_classifier.resolve("chicken")
+    assert_nil handler
+    assert_nil script_name
+    assert_nil path_info
   end
 
 
@@ -150,21 +150,21 @@ class URIClassifierTest < Test::Unit::TestCase
   # such that path info matches the original URI.
   # This is needed to accomodate real usage of handlers.
   def test_root_mounted
-    u = URIClassifier.new
+    uri_classifier = URIClassifier.new
     root = "/"
     path = "/this/is/a/test"
 
-    u.register(root, 1)
+    uri_classifier.register(root, 1)
 
-    sn, pi, h = u.resolve(root)
-    assert_equal 1,h, "didn't find handler"
-    assert_equal root,pi, "didn't get right path info"
-    assert_equal root,sn, "didn't get right script name"
+    script_name, path_info, handler = uri_classifier.resolve(root)
+    assert_equal 1, handler
+    assert_equal root, path_info
+    assert_equal root, script_name
 
-    sn, pi, h = u.resolve(path)
-    assert_equal path,pi, "didn't get right path info"
-    assert_equal root,sn, "didn't get right script name"
-    assert_equal 1,h, "didn't find handler"
+    script_name, path_info, handler = uri_classifier.resolve(path)
+    assert_equal path, path_info
+    assert_equal root, script_name
+    assert_equal 1, handler
   end
 
   # Verifies that a root mounted ("/") handler
@@ -175,15 +175,15 @@ class URIClassifierTest < Test::Unit::TestCase
     root = "/"
     path = "/path"
 
-    u = URIClassifier.new
-    u.register(path, 1)
-    u.register(root, 2)
+    uri_classifier = URIClassifier.new
+    uri_classifier.register(path, 1)
+    uri_classifier.register(root, 2)
 
     tests.each do |uri|
-        sn, pi, h = u.resolve(uri)
-        assert_equal root, sn, "didn't get right script name"
-        assert_equal uri, pi, "didn't get right path info"
-        assert_equal 2, h, "didn't find handler"
+      script_name, path_info, handler = uri_classifier.resolve(uri)
+      assert_equal root, script_name
+      assert_equal uri, path_info
+      assert_equal 2, handler
     end
   end
 
