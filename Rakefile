@@ -94,7 +94,7 @@ when /mswin/
   filename = "lib/http11.so"
   file filename do
     Dir.chdir("ext/http11") do 
-      ruby File.basename(extension)
+      ruby "extconf.rb"
       system(PLATFORM =~ /win32/ ? 'nmake' : 'make')
     end
     move_extensions
