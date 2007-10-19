@@ -18,9 +18,9 @@ class UploadBeginHandler < Mongrel::HttpHandler
   end
 
   def reset
-    @request_began = 
-      @request_progressed = 
-        @request_processed = false
+    @request_began = false
+    @request_progressed = false
+    @request_processed = false
   end
 
   def request_begins(params)
