@@ -45,22 +45,22 @@ class WebServerTest < Test::Unit::TestCase
   end
 
 
-  def do_test(st, chunk, close_after=nil)
-    s = TCPSocket.new("127.0.0.1", 9998);
-    req = StringIO.new(st)
-    nout = 0
+  def do_test(string, chunk, close_after=nil)
+    socket = TCPSocket.new("127.0.0.1", 9998);
+    request = StringIO.new(string)
+    chunks_out = 0
 
-    while data = req.read(chunk)
-      nout += s.write(data)
-      s.flush
+    while data = request.read(chunk)
+      chunks_out += socket.write(data)
+      socket.flush
       sleep 0.2
-      if close_after and nout > close_after
-        s.close_write
+      if close_after and chunks_out > close_after
+        socket.close_write
         sleep 1
       end
     end
-    s.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin|java/
-    s.close
+    socket.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin|java/
+    socket.close
   end
 
   def test_trickle_attack
