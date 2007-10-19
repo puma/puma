@@ -1,7 +1,6 @@
-test/cgi_multipart_eof_fix_test.rb
-README
-Manifest
-LICENSE
-lib/rake_task_redefine_task.rb
-lib/cgi_multipart_eof_fix.rb
 CHANGELOG
+lib/cgi_multipart_eof_fix.rb
+LICENSE
+Manifest
+README
+test/test_cgi_multipart_eof_fix.rb

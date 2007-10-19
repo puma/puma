@@ -15,7 +15,7 @@ Object.send(:remove_const, :STDERR)
 STDERR = StringIO.new # hide the multipart load warnings
 
 version  = RUBY_VERSION.split(".").map {|i| i.to_i }
-IS_VULNERABLE = (version [0] < 2 and version [1] < 9 and version [2] < 6)
+IS_VULNERABLE = (version [0] < 2 and version [1] < 9 and version [2] < 6 and RUBY_PLATFORM !~ /java/)
 
 class CgiMultipartTestError < StandardError
 end

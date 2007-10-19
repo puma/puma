@@ -1,4 +1,6 @@
 
+v2.5.0. Not required for JRuby.
+
 v2.4.0. Signed gem.
 
 v2.3.0. Use STDERR, not $stderr, just like Mongrel; tests now use Test::Unit; moving to the mongrel project on RubyForge.

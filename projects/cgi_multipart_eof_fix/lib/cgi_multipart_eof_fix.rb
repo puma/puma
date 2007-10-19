@@ -5,7 +5,7 @@
 
 version = RUBY_VERSION.split(".").map {|i| i.to_i }
 
-if version [0] < 2 and version [1] < 9 and version [2] < 6
+if version [0] < 2 and version [1] < 9 and version [2] < 6 and RUBY_PLATFORM !~ /java/
 
   STDERR.puts "** Ruby version is not up-to-date; loading cgi_multipart_eof_fix"  
 
