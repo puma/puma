@@ -3,10 +3,6 @@ require 'rubygems'
 gem 'echoe', '>=2.6.4'
 require 'echoe'
 
-# XXX Workaround for http://jira.codehaus.org/browse/JRUBY-1444
-RUBY_PLATFORM = 'java' if ENV['FORCE_JAVA']
-RUBY_PLATFORM = 'mswin' if ENV['FORCE_WINDOWS']
-
 e = Echoe.new("mongrel") do |p|
   p.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
   p.author ="Zed A. Shaw"

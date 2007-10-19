@@ -30,9 +30,9 @@ class WebServerTest < Test::Unit::TestCase
     @server = HttpServer.new("127.0.0.1", 9998, num_processors=1)
     @tester = TestHandler.new
     @server.register("/test", @tester)
-#    redirect_test_io do
-    @server.run 
-#    end
+    redirect_test_io do
+      @server.run 
+    end
   end
 
   def teardown
@@ -59,7 +59,7 @@ class WebServerTest < Test::Unit::TestCase
         sleep 1
       end
     end
-    socket.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin|java/
+    socket.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin/
     socket.close
   end
 

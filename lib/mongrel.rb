@@ -755,7 +755,7 @@ module Mongrel
               sleep @throttle/100.0 if @throttle > 0
             end
           rescue StopServer
-            @socket.close rescue nil
+            @socket.close
             break
           rescue Errno::EMFILE
             reap_dead_workers("too many open files")
