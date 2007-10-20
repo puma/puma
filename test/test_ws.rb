@@ -21,8 +21,9 @@ end
 class WebServerTest < Test::Unit::TestCase
 
   def setup
-    @request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
-    # we set num_processors=1 so that we can test the reaping code
+    @valid_request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
+
+    # We set num_processors=1 so that we can test the reaping code
     @server = HttpServer.new("127.0.0.1", 9998, num_processors=1)
     @tester = TestHandler.new
     @server.register("/test", @tester)
@@ -48,24 +49,27 @@ class WebServerTest < Test::Unit::TestCase
 
     while data = request.read(chunk)
       chunks_out += socket.write(data)
+      puts "Chunks: #{chunks_out.inspect}"
       socket.flush
       sleep 0.2
       if close_after and chunks_out > close_after
+        puts "** Closing write"
         socket.close_write
         sleep 1
       end
     end
     socket.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin/
     socket.close
+    puts "** Closing entire socket"
   end
 
   def test_trickle_attack
-    do_test(@request, 3)
+    do_test(@valid_request, 3)
   end
 
   def test_close_client
     assert_raises IOError do
-      do_test(@request, 10, 20)
+      do_test(@valid_request, 10, 20)
     end
   end
 
@@ -88,8 +92,8 @@ class WebServerTest < Test::Unit::TestCase
     redirect_test_io do
       assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL do
         tests = [
-          Thread.new { do_test(@request, 1) },
-          Thread.new { do_test(@request, 10) },
+          Thread.new { do_test(@valid_request, 1) },
+          Thread.new { do_test(@valid_request, 10) },
         ]
 
         tests.each {|t| t.join}

@@ -4,6 +4,11 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
+HERE = File.dirname(__FILE__)
+%w(lib ext bin test).each do |dir| 
+  $LOAD_PATH.unshift "#{HERE}/../#{dir}"
+end
+
 require 'rubygems'
 require 'test/unit'
 require 'net/http'
