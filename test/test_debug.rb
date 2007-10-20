@@ -5,6 +5,7 @@
 # for more information.
 
 require 'test/testhelp'
+require 'mongrel/debug'
 
 class MongrelDbgTest < Test::Unit::TestCase
 
