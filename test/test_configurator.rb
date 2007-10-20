@@ -4,10 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'mongrel'
-require 'net/http'
-require File.dirname(__FILE__) + "/testhelp.rb"
+require 'test/testhelp'
 
 $test_plugin_fired = 0
 
@@ -32,10 +29,10 @@ end
 class ConfiguratorTest < Test::Unit::TestCase
 
   def test_base_handler_config
-    config = nil
+    @config = nil
 
     redirect_test_io do
-      config = Mongrel::Configurator.new :host => "localhost" do
+      @config = Mongrel::Configurator.new :host => "localhost" do
         listener :port => 4501 do
           # 2 in front should run, but the sentinel shouldn't since dirhandler processes the request
           uri "/", :handler => plugin("/handlers/testplugin")
@@ -60,7 +57,7 @@ class ConfiguratorTest < Test::Unit::TestCase
     end
 
 
-    config.listeners.each do |host,listener| 
+    @config.listeners.each do |host,listener| 
       assert listener.classifier.uris.length == 3, "Wrong number of registered URIs"
       assert listener.classifier.uris.include?("/"),  "/ not registered"
       assert listener.classifier.uris.include?("/test"), "/test not registered"
@@ -78,7 +75,7 @@ class ConfiguratorTest < Test::Unit::TestCase
     end
 
     redirect_test_io do
-      config.stop(false, true)
+      @config.stop(false, true)
     end
 
     assert_raise Errno::EBADF, Errno::ECONNREFUSED do

@@ -4,19 +4,17 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'net/http'
-require 'mongrel'
+require 'test/testhelp'
 
 include Mongrel
 
 class ConditionalResponseTest < Test::Unit::TestCase
   def setup
-    @h = HttpServer.new('127.0.0.1', 3501)
-    @h.register('/', Mongrel::DirHandler.new('.'))
-    @h.run
+    @server = HttpServer.new('127.0.0.1', 3501)
+    @server.register('/', Mongrel::DirHandler.new('.'))
+    @server.run
     
-    @http = Net::HTTP.new(@h.host, @h.port)
+    @http = Net::HTTP.new(@server.host, @server.port)
 
     # get the ETag and Last-Modified headers
     @path = '/README'
@@ -27,17 +25,7 @@ class ConditionalResponseTest < Test::Unit::TestCase
   end
 
   def teardown
-    orig_stderr = STDERR.dup
-
-    # temporarily disable the puts method in STDERR to silence warnings from stop
-    class << STDERR
-      define_method(:puts) {}
-    end
-
-    @h.stop
-  ensure
-    # restore STDERR
-    STDERR.reopen(orig_stderr)
+    @server.stop(true)
   end
 
   # status should be 304 Not Modified when If-None-Match is the matching ETag

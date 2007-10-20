@@ -4,6 +4,20 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
+require 'rubygems'
+require 'test/unit'
+require 'net/http'
+require 'timeout'
+require 'cgi/session'
+require 'fileutils'
+require 'benchmark'
+require 'digest/sha1'
+require 'uri'
+require 'stringio'
+
+require 'mongrel'
+require 'mongrel/stats'
+
 if ENV['DEBUG']
   require 'ruby-debug'
   Debugger.start

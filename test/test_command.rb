@@ -4,10 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'mongrel'
-require File.dirname(__FILE__) + '/testhelp.rb'
-
+require 'test/testhelp'
 
 class TestCommand < GemPlugin::Plugin "/commands"
   include Mongrel::Command::Base

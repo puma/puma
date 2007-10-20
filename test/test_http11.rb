@@ -4,11 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'http11'
-require 'mongrel'
-require 'benchmark'
-require 'digest/sha1'
+require 'test/testhelp'
 
 include Mongrel
 

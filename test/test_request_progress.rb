@@ -49,7 +49,7 @@ class RequestProgressTest < Test::Unit::TestCase
   end
 
   def teardown
-    @server.stop
+    @server.stop(true)
   end
 
   def test_begin_end_progress

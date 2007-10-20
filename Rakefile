@@ -63,7 +63,7 @@ end
 
 task :test_java do
   e.test_pattern.each do |f|
-    sh "/opt/local/jruby/bin/jruby -w -Ilib:ext:bin:test -e 'require \"#{f}\"; require \"test/unit\"'" rescue nil
+    sh "/opt/local/jruby/bin/jruby -w -Ilib:ext:bin:test -e 'require \"#{f}\"'" rescue nil
   end
 end
 

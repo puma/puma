@@ -4,11 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'mongrel'
-require 'net/http'
-require 'uri'
-require 'timeout'
+require 'test/testhelp'
 
 class RedirectHandlerTest < Test::Unit::TestCase
 
@@ -19,7 +15,7 @@ class RedirectHandlerTest < Test::Unit::TestCase
   end
 
   def teardown
-    @server.stop
+    @server.stop(true)
   end
 
   def test_simple_redirect

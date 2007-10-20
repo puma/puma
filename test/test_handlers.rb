@@ -4,11 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'net/http'
-require 'mongrel'
-require 'timeout'
-require File.dirname(__FILE__) + "/testhelp.rb"
+require 'test/testhelp'
 
 class SimpleHandler < Mongrel::HttpHandler
   def process(request, response)
@@ -56,7 +52,7 @@ class HandlersTest < Test::Unit::TestCase
   end
 
   def teardown
-    @config.stop
+    @config.stop(false, true)
   end
 
   def test_more_web_server

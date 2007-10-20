@@ -4,9 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'mongrel/stats'
-require 'stringio'
+require 'test/testhelp'
 
 class StatsTest < Test::Unit::TestCase
 

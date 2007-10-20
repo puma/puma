@@ -4,10 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'mongrel/rails'
-require 'mongrel/debug'
-require 'fileutils'
+require 'test/testhelp'
 
 class MongrelDbgTest < Test::Unit::TestCase
 

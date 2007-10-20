@@ -1,7 +1,5 @@
-require 'test/unit'
-require 'rubygems'
-require 'mongrel'
-require 'cgi/session'
+
+require 'test/testhelp'
 
 class MockHttpRequest
   attr_reader :body
