@@ -18,8 +18,8 @@ def do_test(st, chunk)
         break
       end
     end
-  rescue Object
-    STDERR.puts "ERROR: #$!"
+  rescue Object => e
+    STDERR.puts "ERROR: #{e}"
   ensure
     s.close
   end

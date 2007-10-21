@@ -266,9 +266,9 @@ module Mongrel
 
           update_request_progress(remain, total)
         end
-      rescue Object
-        STDERR.puts "#{Time.now}: Error reading HTTP body: #$!"
-        STDERR.puts $!.backtrace.join("\n")
+      rescue Object => e
+        STDERR.puts "#{Time.now}: Error reading HTTP body: #{e.inspect}"
+        STDERR.puts e.backtrace.join("\n")
         # any errors means we should delete the file, including if the file is dumped
         @socket.close rescue nil
         @body.delete if @body.class == Tempfile
@@ -657,16 +657,23 @@ module Mongrel
         end
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
         client.close rescue nil
-      rescue HttpParserError
-        STDERR.puts "#{Time.now}: HTTP parse error, malformed request (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #$!"
+      rescue HttpParserError => e
+        STDERR.puts "#{Time.now}: HTTP parse error, malformed request (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
         STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
       rescue Errno::EMFILE
         reap_dead_workers('too many files')
-      rescue Object
-        STDERR.puts "#{Time.now}: Error: #$!"
-        STDERR.puts $!.backtrace.join("\n")
+      rescue Object => e
+        STDERR.puts "#{Time.now}: Read error: #{e.inspect}"
+        STDERR.puts e.backtrace.join("\n")
       ensure
-        client.close rescue nil
+        begin
+          client.close
+        rescue IOError
+          # Already closed
+        rescue Object => e
+          STDERR.puts "#{Time.now}: Client error: #{e.inspect}"
+          STDERR.puts e.backtrace.join("\n")
+        end
         request.body.delete if request and request.body.class == Tempfile
       end
     end
@@ -763,9 +770,9 @@ module Mongrel
           rescue Errno::ECONNABORTED
             # client closed the socket even before accept
             client.close rescue nil
-          rescue Object => exc
-            STDERR.puts "** Unhandled exception #{exc.inspect}."
-            STDERR.puts $!.backtrace.join("\n")
+          rescue Object => e
+            STDERR.puts "#{Time.now}: Unhandled listen loop exception #{e.inspect}."
+            STDERR.puts e.backtrace.join("\n")
           end
         end
         graceful_shutdown
