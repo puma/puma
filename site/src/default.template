@@ -54,7 +54,6 @@
 
       <div id="side">
         <div id="menu">
-          {menu: }
         </div>
 
         <dl id="ads">
