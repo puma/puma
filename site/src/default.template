@@ -73,10 +73,10 @@
       <p><b>Tracker:</b> Found a bug? Well then report it already?!</p>
       </dd>
 
-      <dt><a href="http://rubyforge.org/forum/?group_id=1306"><img src="{relocatable: images/side_p1.gif}" alt=
+      <dt><a href="http://rubyforge.org/mailman/listinfo/mongrel-users"><img src="{relocatable: images/side_p1.gif}" alt=
         "Sad Dog" /><br /></a></dt>
       <dd>
-      <p><b>Forums:</b> Mongrel making you sad? Why not say something?</p>
+      <p><b>Mailing list:</b> Mongrel making you sad? Why not say something?</p>
       </dd>
 
       <dt>
