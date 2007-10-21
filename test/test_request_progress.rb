@@ -4,11 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/unit'
-require 'mongrel'
-require 'net/http'
-require File.dirname(__FILE__) + '/testhelp.rb'
-
+require 'test/testhelp'
 
 class UploadBeginHandler < Mongrel::HttpHandler
   attr_reader :request_began, :request_progressed, :request_processed
