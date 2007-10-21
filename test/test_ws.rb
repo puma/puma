@@ -48,9 +48,11 @@ class WebServerTest < Test::Unit::TestCase
     @socket = TCPSocket.new("127.0.0.1", 9998);
     request = StringIO.new(string)
     chunks_out = 0
+#    STDERR.puts chunks_out
 
     while data = request.read(chunk)
       chunks_out += @socket.write(data)
+#      STDERR.puts chunks_out
       @socket.flush
       sleep 0.2
       if close_after and chunks_out > close_after
