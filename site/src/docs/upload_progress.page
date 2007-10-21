@@ -29,7 +29,7 @@ uri "/",
   :in_front => true
 
 # start mongrel
-mongrel_rails -d -p 3000 -S config/mongrel_upload_progress.conf
+mongrel_rails start -d -p 3000 -S config/mongrel_upload_progress.conf
 </code></pre>
 
 That config file tells mongrel to load the Upload handler in front of all other
