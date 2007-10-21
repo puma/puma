@@ -33,7 +33,9 @@ class WebServerTest < Test::Unit::TestCase
   end
 
   def teardown
-    @server.stop(true)
+    redirect_test_io do
+      @server.stop(true)
+    end
   end
 
   def test_simple_server
@@ -43,24 +45,20 @@ class WebServerTest < Test::Unit::TestCase
 
 
   def do_test(string, chunk, close_after=nil)
-    socket = TCPSocket.new("127.0.0.1", 9998);
+    @socket = TCPSocket.new("127.0.0.1", 9998);
     request = StringIO.new(string)
     chunks_out = 0
 
     while data = request.read(chunk)
-      chunks_out += socket.write(data)
-      puts "Chunks: #{chunks_out.inspect}"
-      socket.flush
+      chunks_out += @socket.write(data)
+      @socket.flush
       sleep 0.2
       if close_after and chunks_out > close_after
-        puts "** Closing write"
-        socket.close_write
+        @socket.close
         sleep 1
       end
     end
-    socket.write(" ") if RUBY_PLATFORM =~ /mingw|mswin|cygwin/
-    socket.close
-    puts "** Closing entire socket"
+    @socket.write(" ") # Some platforms only raise the exception on attempted write
   end
 
   def test_trickle_attack
