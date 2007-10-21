@@ -188,7 +188,7 @@ task :gem_source => [:package_all] do
 end
 
 task :site_webgen do
-  sh "pushd site; webgen; ruby atom.rb > output/feed.atom; rsync -azv output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd"
+  sh "pushd site; webgen; ruby atom.rb > output/feed.atom; rsync -azv --no-perms --no-times output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd"
 end
 
 task :site_rdoc => [:redoc] do

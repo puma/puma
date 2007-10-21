@@ -8,7 +8,7 @@ require 'socket'
   this_client = server_socket.accept
   4.times do |n|
     begin
-      data = this_client.readpartial(4)
+      data = this_client.readpartial(2)
       puts "Server got:  #{data}"
       if n == 0
         this_client.close 

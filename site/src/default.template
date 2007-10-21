@@ -70,7 +70,7 @@
 
       <dt><a href="http://rubyforge.org/tracker/?atid=5145&group_id=1306&func=browse"><img src="{relocatable: images/side_p2.gif}" alt="Bugs" /><br /></a></dt>
       <dd>
-      <p><b>Tracker:</b> Found a bug? Well then report it already?!</p>
+      <p><b>Tracker:</b> Found a bug? Well then report it already!</p>
       </dd>
 
       <dt><a href="http://rubyforge.org/mailman/listinfo/mongrel-users"><img src="{relocatable: images/side_p1.gif}" alt=
