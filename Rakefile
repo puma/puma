@@ -6,7 +6,7 @@ require 'echoe'
 e = Echoe.new("mongrel") do |p|
   p.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
   p.author ="Zed A. Shaw"
-  p.clean_pattern = ['ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'ext/http11/Makefile', 'pkg', 'lib/*.bundle', '*.gem', 'doc/site/output', '.config', 'lib/http11.jar', 'ext/http11_java/classes']
+  p.clean_pattern = ['ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'ext/http11/Makefile', 'pkg', 'lib/*.bundle', '*.gem', 'site/output', '.config', 'lib/http11.jar', 'ext/http11_java/classes']
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>= 1.8.4'
