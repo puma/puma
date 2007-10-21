@@ -117,7 +117,7 @@ class URIClassifierTest < Test::Unit::TestCase
       uri_classifier.register(current, c)
     end
 
-    # try to resolve everything with no asserts as a fuzzing
+    # Try to resolve everything with no asserts as a fuzzing
     tests.each do |prefix|
       current = ""
       prefix.each_byte do |c|
@@ -129,13 +129,13 @@ class URIClassifierTest < Test::Unit::TestCase
       end
     end
 
-    # assert that we find stuff
+    # Assert that we find stuff
     tests.each do |t|
       script_name, path_info, handler = uri_classifier.resolve(t)
       assert handler
     end
 
-    # assert we don't find stuff
+    # Assert we don't find stuff
     script_name, path_info, handler = uri_classifier.resolve("chicken")
     assert_nil handler
     assert_nil script_name
@@ -145,7 +145,7 @@ class URIClassifierTest < Test::Unit::TestCase
 
   # Verifies that a root mounted ("/") handler resolves
   # such that path info matches the original URI.
-  # This is needed to accomodate real usage of handlers.
+  # This is needed to accommodate real usage of handlers.
   def test_root_mounted
     uri_classifier = URIClassifier.new
     root = "/"
@@ -166,7 +166,7 @@ class URIClassifierTest < Test::Unit::TestCase
 
   # Verifies that a root mounted ("/") handler
   # is the default point, doesn't matter the order we use
-  # to resgister the URIs
+  # to register the URIs
   def test_classifier_order
     tests = ["/before", "/way_past"]
     root = "/"
