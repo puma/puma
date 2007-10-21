@@ -44,6 +44,7 @@ end
 
 #### Ragel builder
 
+desc "Rebuild the Ragel sources"
 task :ragel do
   Dir.chdir "ext/http11" do
     target = "http11_parser.c"
@@ -61,6 +62,7 @@ end
 
 #### XXX Hack around JRuby test/unit interaction problems
 
+desc "Run each test suite in isolation on JRuby"
 task :test_java do
   e.test_pattern.each do |f|
     sh "/opt/local/jruby/bin/jruby -w -Ilib:ext:bin:test -e 'require \"#{f}\"'" rescue nil
@@ -121,6 +123,7 @@ def sub_project(project, *targets)
   end
 end
 
+desc "Package Mongrel and all subprojects"
 task :package_all => [:package] do
   sub_project("gem_plugin", :clean, :package)
   sub_project("cgi_multipart_eof_fix", :clean, :package)
@@ -134,7 +137,6 @@ task :package_all => [:package] do
   end
 end
 
-
 task :install_requirements do
   # These run before Mongrel is installed
   sub_project("gem_plugin", :install)
@@ -142,6 +144,7 @@ task :install_requirements do
   sub_project("fastthread", :install)
 end
 
+desc "for Mongrel and all subprojects"
 task :install => [:install_requirements] do
   # These run after Mongrel is installed
   sub_project("mongrel_status", :install)
@@ -153,6 +156,7 @@ task :install => [:install_requirements] do
   end
 end
 
+desc "for Mongrel and all its subprojects"
 task :uninstall => [:clean] do
   sub_project("mongrel_status", :uninstall)
   sub_project("cgi_multipart_eof_fix", :uninstall)
@@ -165,42 +169,48 @@ task :uninstall => [:clean] do
   end
 end
 
-#### Extra upload tasks
+#### Site upload tasks
 
-task :gem_source => [:package_all] do
-  rm_rf "pkg/gems"
-  rm_rf "pkg/tars"
-  mkdir_p "pkg/gems"
-  mkdir_p "pkg/tars"
- 
-  FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
-  FileList["**/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
+namespace :site do
+
+  desc "Package and upload .gem files and .tgz files for Mongrel and all subprojects to http://mongrel.rubyforge.org/releases/"
+  task :source => [:package_all] do
+    rm_rf "pkg/gems"
+    rm_rf "pkg/tars"
+    mkdir_p "pkg/gems"
+    mkdir_p "pkg/tars"
+   
+    FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
+    FileList["**/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
+    
+    # XXX Hack, because only Luis can package for Win32 right now
+    sh "cp ~/Downloads/mongrel-1.0.2-mswin32.gem pkg/gems/"
+    sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"  
+    sh "rm -rf pkg/mongrel*"
+    sh "index_gem_repository.rb -d pkg"  
+    sh "scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
+    sh "svn log -v > SVN_LOG"
+    sh "scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
+    rm "SVN_LOG"  
+  end
   
-  # XXX Hack
-  sh "cp ~/Downloads/mongrel-1.0.2-mswin32.gem pkg/gems/"
-  sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"  
-  sh "rm -rf pkg/mongrel*"
-  sh "index_gem_repository.rb -d pkg"  
-  sh "scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
-  sh "svn log -v > SVN_LOG"
-  sh "scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
-  rm "SVN_LOG"  
+  desc "Upload the website"
+  task :web do
+    sh "pushd site; webgen; ruby atom.rb > output/feed.atom; rsync -azv --no-perms --no-times output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd"
+  end
+  
+  desc "Upload the rdocs"
+  task :rdoc => [:redoc] do
+    sh "rsync -azv doc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/"
+    sh "cd projects/gem_plugin; rake site"
+  end
+  
+  desc "Upload the coverage report"
+  task :coverage => [:rcov] do
+    sh "rsync -azv test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/"
+  end
+  
+  desc "Upload the website, the rdocs, and the coverage report"
+  task :all => [:web, :rdoc, :coverage]
+  
 end
-
-task :site_webgen do
-  sh "pushd site; webgen; ruby atom.rb > output/feed.atom; rsync -azv --no-perms --no-times output/* rubyforge.org:/var/www/gforge-projects/mongrel/; popd"
-end
-
-task :site_rdoc => [:redoc] do
-  sh "rsync -azv doc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/"
-end
-
-task :site_coverage => [:rcov] do
-  sh "rsync -azv test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/"
-end
-
-task :site_projects_rdoc do
-  sh "cd projects/gem_plugin; rake site"
-end
-
-task :site => [:site_webgen, :site_rdoc, :site_coverage, :site_projects_rdoc]
