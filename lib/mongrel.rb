@@ -85,10 +85,8 @@ module Mongrel
         [Const::SLASH, request_uri, @root_handler]
       elsif match = @matcher.match(request_uri)
         uri = match.to_s
-        path_info = match.post_match
         # A root mounted ("/") handler must resolve such that path info matches the original URI.
-        path_info = "#{Const::SLASH}#{path_info}" if uri == Const::SLASH
-        [uri, path_info, @handler_map[uri]]
+        [uri, (uri == Const::SLASH ? request_uri : match.post_match), @handler_map[uri]]
       else
         [nil, nil, nil]
       end

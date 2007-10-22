@@ -193,56 +193,59 @@ class URIClassifierTest < Test::Unit::TestCase
     end
   end
   
-  def xtest_benchmark    
-    # This benchmark should favor a TST, but it seems to be mostly irrelevant
-  
-    @uris = %w(
-      / 
-      /dag /dig /digbark /dog /dogbark /dog/bark /dug /dugbarking /puppy 
-      /c /cat /cat/tree /cat/tree/mulberry /cats /cot /cot/tree/mulberry /kitty /kittycat
-    )
+  if ENV['BENCHMARK']
+    # Eventually we will have a suite of benchmarks instead of lamely installing a test
     
-    @requests = %w(
-      /
-      /dig
-      /digging
-      /dogging
-      /dogbarking/
-      /puppy/barking
-      /c
-      /cat
-      /cat/shrub
-      /cat/tree
-      /cat/tree/maple
-      /cat/tree/mulberry/tree
-      /cat/tree/oak
-      /cats/
-      /cats/tree
-      /cod
-      /zebra
-    )
-  
-    @classifier = URIClassifier.new
-    @uris.each do |uri|
-      @classifier.register(uri, 1)
-    end
-    
-    puts "#{@uris.size} URIs / #{@requests.size * 10000} requests"
+    def test_benchmark    
 
-    Benchmark.bm do |x|
-      x.report do
-#        require 'ruby-prof'
-#        profile = RubyProf.profile do
-          10000.times do
-            @requests.each do |request|
-              @classifier.resolve(request)
-            end
-          end
-#        end
-#        File.open("profile.html", 'w') { |file| RubyProf::GraphHtmlPrinter.new(profile).print(file, 0) }
+      # This URI scheme should favor a TST, but it seems to be mostly irrelevant    
+      @uris = %w(
+        / 
+        /dag /dig /digbark /dog /dogbark /dog/bark /dug /dugbarking /puppy 
+        /c /cat /cat/tree /cat/tree/mulberry /cats /cot /cot/tree/mulberry /kitty /kittycat
+      )
+      
+      @requests = %w(
+        /
+        /dig
+        /digging
+        /dogging
+        /dogbarking/
+        /puppy/barking
+        /c
+        /cat
+        /cat/shrub
+        /cat/tree
+        /cat/tree/maple
+        /cat/tree/mulberry/tree
+        /cat/tree/oak
+        /cats/
+        /cats/tree
+        /cod
+        /zebra
+      )
+    
+      @classifier = URIClassifier.new
+      @uris.each do |uri|
+        @classifier.register(uri, 1)
       end
+      
+      puts "#{@uris.size} URIs / #{@requests.size * 10000} requests"
+  
+      Benchmark.bm do |x|
+        x.report do
+  #        require 'ruby-prof'
+  #        profile = RubyProf.profile do
+            10000.times do
+              @requests.each do |request|
+                @classifier.resolve(request)
+              end
+            end
+  #        end
+  #        File.open("profile.html", 'w') { |file| RubyProf::GraphHtmlPrinter.new(profile).print(file, 0) }
+        end
+      end          
     end
-        
   end
   
 end
