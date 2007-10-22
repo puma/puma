@@ -218,6 +218,8 @@ class URIClassifierTest < Test::Unit::TestCase
     @uris.each do |uri|
       @classifier.register(uri, 1)
     end
+    
+#    puts "#{@uris.size} URIs / #{@requests.size * 10000} requests"
 
     Benchmark.bm do |x|
       x.report do

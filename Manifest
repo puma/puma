@@ -1,6 +1,7 @@
 bin/mongrel_rails
 CHANGELOG
 COPYING
+diff
 examples/builder.rb
 examples/camping/blog.rb
 examples/camping/README
@@ -19,15 +20,13 @@ ext/http11/extconf.rb
 ext/http11/http11.c
 ext/http11/http11_parser.c
 ext/http11/http11_parser.h
+ext/http11/http11_parser.java.rl
 ext/http11/http11_parser.rl
+ext/http11/http11_parser_common.rl
 ext/http11/MANIFEST
-ext/http11/tst.h
-ext/http11/tst_cleanup.c
-ext/http11/tst_delete.c
-ext/http11/tst_grow_node_free_list.c
-ext/http11/tst_init.c
-ext/http11/tst_insert.c
-ext/http11/tst_search.c
+ext/http11_java/Http11Service.java
+ext/http11_java/org/jruby/mongrel/Http11.java
+ext/http11_java/org/jruby/mongrel/Http11Parser.java
 lib/mongrel/camping.rb
 lib/mongrel/cgi.rb
 lib/mongrel/command.rb
@@ -46,6 +45,7 @@ Manifest
 mongrel-public_cert.pem
 README
 setup.rb
+test/jruby_socket.rb
 test/mime.yaml
 test/mongrel.conf
 test/test_cgi_wrapper.rb
