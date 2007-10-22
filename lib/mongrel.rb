@@ -59,19 +59,17 @@ module Mongrel
       @matcher = nil
     end
     
-    def register(path, handler)
-      if @routes[path]
-        raise RegistrationError, "#{path.inspect} is already registered"
-      elsif !path or path.empty?
-        raise RegistrationError, "Path is empty"
-      end      
-      @routes[path.dup] = handler
+    def register(uri, handler)
+      raise RegistrationError, "#{uri.inspect} is already registered" if @routes[uri]
+      raise RegistrationError, "URI is empty" if !uri or uri.empty?
+      raise RegistrationError, "URI must begin with a \"#{Const::SLASH}\"" unless uri[0..0] == Const::SLASH
+      @routes[uri.dup] = handler
       rebuild
     end
     
-    def unregister(path)
-      handler = @routes.delete(path)
-      raise RegistrationError, "#{path.inspect} was not registered" unless handler
+    def unregister(uri)
+      handler = @routes.delete(uri)
+      raise RegistrationError, "#{uri.inspect} was not registered" unless handler
       rebuild
       handler
     end
@@ -94,15 +92,15 @@ module Mongrel
     private
     
     def rebuild
-      routes = @routes.sort_by do |path, handler|        
+      routes = @routes.sort_by do |uri, handler|        
         # Sort by name
-        path
-      end.sort_by do |path, handler|          
+        uri
+      end.sort_by do |uri, handler|          
         # Then by descending length
-        -path.length 
+        -uri.length 
       end
-      @matcher = Regexp.new(routes.map do |path, handler|
-        Regexp.new('^' + Regexp.escape(path))
+      @matcher = Regexp.new(routes.map do |uri, handler|
+        Regexp.new('^' + Regexp.escape(uri))
       end.join('|'))
     end    
     

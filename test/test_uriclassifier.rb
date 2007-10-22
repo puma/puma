@@ -52,11 +52,11 @@ class URIClassifierTest < Test::Unit::TestCase
   def test_exceptions
     uri_classifier = URIClassifier.new
 
-    uri_classifier.register("test", 1)
+    uri_classifier.register("/test", 1)
     
     failed = false
     begin 
-      uri_classifier.register("test", 1)
+      uri_classifier.register("/test", 1)
     rescue => e
       failed = true
     end
@@ -78,17 +78,17 @@ class URIClassifierTest < Test::Unit::TestCase
     uri_classifier = URIClassifier.new
     
     100.times do
-      uri_classifier.register("stuff", 1)
-      value = uri_classifier.unregister("stuff")
+      uri_classifier.register("/stuff", 1)
+      value = uri_classifier.unregister("/stuff")
       assert_equal 1, value
     end
 
-    uri_classifier.register("things",1)
-    script_name, path_info, value = uri_classifier.resolve("things")
+    uri_classifier.register("/things",1)
+    script_name, path_info, value = uri_classifier.resolve("/things")
     assert_equal 1, value
 
-    uri_classifier.unregister("things")
-    script_name, path_info, value = uri_classifier.resolve("things")
+    uri_classifier.unregister("/things")
+    script_name, path_info, value = uri_classifier.resolve("/things")
     assert_nil value
 
   end
@@ -184,6 +184,39 @@ class URIClassifierTest < Test::Unit::TestCase
       assert_equal 2, handler
     end
   end
+  
+  def test_benchmark    
+    require 'facets/core/array/combos'
+  
+    @fragments = %w(the benchmark module provides methods to measure and report the time used to execute ruby code)
+    @classifier = URIClassifier.new
 
+    @fragments.size.times do |n|
+      @classifier.register("/" + @fragments[0..n].join("/"), 1)
+    end
+    
+    flip = false
+    @requests = @fragments.combos.map do |combo|
+      request = "/" + combo.join("/")
+      request = request[0..-4] if flip and request.size > 4
+      flip = !flip
+      request
+    end
+    
+    p @requests
+    
+    puts "#{@fragments.size} paths registered"
+    puts "#{@requests.size} requests queued"
+    
+    Benchmark.bm do |x|
+      x.report do
+        @requests.each do |request|
+          @classifier.resolve(request)
+        end
+      end
+    end
+    
+  end
+  
 end
 
