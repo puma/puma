@@ -15,11 +15,19 @@ class URIClassifierTest < Test::Unit::TestCase
     uri_classifier.register("/test", 1)
     
     script_name, path_info, value = uri_classifier.resolve("/test")
-    assert value
     assert_equal 1, value
     assert_equal "/test", script_name
   end
-
+  
+  def test_root_handler_only
+    uri_classifier = URIClassifier.new
+    uri_classifier.register("/", 1)
+    
+    script_name, path_info, value = uri_classifier.resolve("/test")
+    assert_equal 1, value
+    assert_equal "/", script_name 
+    assert_equal "/test", path_info
+  end
 
   def test_uri_prefix_ops
     test = "/pre/fix/test"
@@ -30,7 +38,7 @@ class URIClassifierTest < Test::Unit::TestCase
 
     script_name, path_info, value = uri_classifier.resolve(prefix)
     script_name, path_info, value = uri_classifier.resolve(test)
-    assert value
+    assert_equal 1, value
     assert_equal prefix, script_name
     assert_equal test[script_name.length .. -1], path_info
 
@@ -219,7 +227,7 @@ class URIClassifierTest < Test::Unit::TestCase
       @classifier.register(uri, 1)
     end
     
-#    puts "#{@uris.size} URIs / #{@requests.size * 10000} requests"
+    puts "#{@uris.size} URIs / #{@requests.size * 10000} requests"
 
     Benchmark.bm do |x|
       x.report do

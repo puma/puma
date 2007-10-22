@@ -53,6 +53,7 @@ module Mongrel
     def initialize
       @handler_map = {}
       @matcher = //
+      @root_handler = nil
     end
     
     # Register a handler object at a particular URI. The handler can be whatever 
@@ -78,8 +79,11 @@ module Mongrel
     
     # Resolve a request URI by finding the best partial match in the registered 
     # handler URIs.
-    def resolve(request_uri)      
-      if match = @matcher.match(request_uri)
+    def resolve(request_uri)
+      if @root_handler
+        # Optimization for the pathological case of only one handler on "/"; e.g. Rails
+        [Const::SLASH, request_uri, @root_handler]
+      elsif match = @matcher.match(request_uri)
         uri = match.to_s
         path_info = match.post_match
         # A root mounted ("/") handler must resolve such that path info matches the original URI.
@@ -93,12 +97,17 @@ module Mongrel
     private
     
     def rebuild
-      routes = @handler_map.keys.sort.sort_by do |uri|
-        -uri.length
+      if @handler_map.size == 1 and @handler_map[Const::SLASH]
+        @root_handler = @handler_map.values.first
+      else
+        @root_handler = nil
+        routes = @handler_map.keys.sort.sort_by do |uri|
+          -uri.length
+        end
+        @matcher = Regexp.new(routes.map do |uri|
+          Regexp.new('^' + Regexp.escape(uri))
+        end.join('|'))
       end
-      @matcher = Regexp.new(routes.map do |uri|
-        Regexp.new('^' + Regexp.escape(uri))
-      end.join('|'))
     end    
     
   end
