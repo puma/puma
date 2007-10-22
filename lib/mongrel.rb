@@ -37,21 +37,21 @@ require 'uri'
 module Mongrel
 
   class URIClassifier
-    attr_reader :routes
-    
+  
     class RegistrationError < RuntimeError
     end
     class UsageError < RuntimeError
     end
 
+    attr_reader :handler_map   
+ 
     # Returns the URIs that have been registered with this classifier so far.
-    # The URIs returned should not be modified.
     def uris
-      @routes.keys
+      @handler_map.keys
     end
 
     def initialize
-      @routes = {}
+      @handler_map = {}
       @matcher = //
     end
     
@@ -61,16 +61,16 @@ module Mongrel
     # Registering a handler is not necessarily threadsafe, so be careful if you go
     # mucking around once the server is running.
     def register(uri, handler)
-      raise RegistrationError, "#{uri.inspect} is already registered" if @routes[uri]
+      raise RegistrationError, "#{uri.inspect} is already registered" if @handler_map[uri]
       raise RegistrationError, "URI is empty" if !uri or uri.empty?
       raise RegistrationError, "URI must begin with a \"#{Const::SLASH}\"" unless uri[0..0] == Const::SLASH
-      @routes[uri.dup] = handler
+      @handler_map[uri.dup] = handler
       rebuild
     end
     
     # Unregister a particular URI and its handler.
     def unregister(uri)
-      handler = @routes.delete(uri)
+      handler = @handler_map.delete(uri)
       raise RegistrationError, "#{uri.inspect} was not registered" unless handler
       rebuild
       handler
@@ -84,18 +84,16 @@ module Mongrel
         path_info = match.post_match
         # A root mounted ("/") handler must resolve such that path info matches the original URI.
         path_info = "#{Const::SLASH}#{path_info}" if uri == Const::SLASH
-        [uri, path_info, @routes[uri]]
+        [uri, path_info, @handler_map[uri]]
       else
         [nil, nil, nil]
       end
     end
         
-    alias :handler_map :routes # Legacy
-    
     private
     
     def rebuild
-      routes = @routes.keys.sort.sort_by do |uri|
+      routes = @handler_map.keys.sort.sort_by do |uri|
         -uri.length
       end
       @matcher = Regexp.new(routes.map do |uri|
