@@ -125,15 +125,15 @@ end
 
 desc "Package Mongrel and all subprojects"
 task :package_all => [:package] do
-  sub_project("gem_plugin", :clean, :package)
-  sub_project("cgi_multipart_eof_fix", :clean, :package)
-  sub_project("fastthread", :clean, :package)
-  sub_project("mongrel_status", :clean, :package)
-  sub_project("mongrel_upload_progress", :clean, :package)
-  sub_project("mongrel_console", :clean, :package)
-  sub_project("mongrel_cluster", :clean, :package)
+  sub_project("gem_plugin", :package)
+  sub_project("cgi_multipart_eof_fix", :package)
+  sub_project("fastthread", :package)
+  sub_project("mongrel_status", :package)
+  sub_project("mongrel_upload_progress", :package)
+  sub_project("mongrel_console", :package)
+  sub_project("mongrel_cluster", :package)
   if RUBY_PLATFORM =~ /mswin/
-    sub_project("mongrel_service", :clean, :package)
+    sub_project("mongrel_service", :package)
   end
 end
 
@@ -166,6 +166,20 @@ task :uninstall => [:clean] do
   sub_project("fastthread", :uninstall)
   if RUBY_PLATFORM =~ /mswin/
     sub_project("mongrel_service", :install)
+  end
+end
+
+desc "for Mongrel and all its subprojects"
+task :clean do
+  sub_project("gem_plugin", :clean)
+  sub_project("cgi_multipart_eof_fix", :clean)
+  sub_project("fastthread", :clean)
+  sub_project("mongrel_status", :clean)
+  sub_project("mongrel_upload_progress", :clean)
+  sub_project("mongrel_console", :clean)
+  sub_project("mongrel_cluster", :clean)
+  if RUBY_PLATFORM =~ /mswin/
+    sub_project("mongrel_service", :clean)
   end
 end
 
