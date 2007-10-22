@@ -185,25 +185,25 @@ class URIClassifierTest < Test::Unit::TestCase
     end
   end
   
-  def test_benchmark    
-    require 'facets/core/array/combos'
-  
+  def test_benchmark  
     @fragments = %w(the benchmark module provides methods to measure and report the time used to execute ruby code)
-    @classifier = URIClassifier.new
 
+    @classifier = URIClassifier.new
+    @classifier.register("/", 1)
+
+    @requests = []
+    
     @fragments.size.times do |n|
-      @classifier.register("/" + @fragments[0..n].join("/"), 1)
+      this_uri = "/" + @fragments[0..n].join("/")
+      @classifier.register(this_uri, 1)
+      @requests << this_uri
     end
     
-    flip = false
-    @requests = @fragments.combos.map do |combo|
-      request = "/" + combo.join("/")
-      request = request[0..-4] if flip and request.size > 4
-      flip = !flip
-      request
-    end
-    
-    p @requests
+    @requests = @requests.map do |path|
+      (0..100).map do |n|      
+        path.size > n ? path[0..-n] : path
+      end
+    end.flatten * 10
     
     puts "#{@fragments.size} paths registered"
     puts "#{@requests.size} requests queued"
