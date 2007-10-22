@@ -132,9 +132,8 @@ task :package_all => [:package] do
   sub_project("mongrel_upload_progress", :package)
   sub_project("mongrel_console", :package)
   sub_project("mongrel_cluster", :package)
-  if RUBY_PLATFORM =~ /mswin/
-    sub_project("mongrel_service", :package)
-  end
+  sub_project("mongrel_service", :package) if RUBY_PLATFORM =~ /mswin/
+  sh("rake java package") unless RUBY_PLATFORM =~ /java/
 end
 
 task :install_requirements do
@@ -150,10 +149,8 @@ task :install => [:install_requirements] do
   sub_project("mongrel_status", :install)
   sub_project("mongrel_upload_progress", :install)
   sub_project("mongrel_console", :install)
-  sub_project("mongrel_cluster", :install)
-  if RUBY_PLATFORM =~ /mswin/
-    sub_project("mongrel_service", :install)
-  end
+  sub_project("mongrel_cluster", :install)  
+  sub_project("mongrel_service", :install) if RUBY_PLATFORM =~ /mswin/
 end
 
 desc "for Mongrel and all its subprojects"
@@ -163,10 +160,8 @@ task :uninstall => [:clean] do
   sub_project("mongrel_upload_progress", :uninstall)
   sub_project("mongrel_console", :uninstall)
   sub_project("gem_plugin", :uninstall)
-  sub_project("fastthread", :uninstall)
-  if RUBY_PLATFORM =~ /mswin/
-    sub_project("mongrel_service", :install)
-  end
+  sub_project("fastthread", :uninstall)  
+  sub_project("mongrel_service", :install) if RUBY_PLATFORM =~ /mswin/
 end
 
 desc "for Mongrel and all its subprojects"
@@ -177,10 +172,8 @@ task :clean do
   sub_project("mongrel_status", :clean)
   sub_project("mongrel_upload_progress", :clean)
   sub_project("mongrel_console", :clean)
-  sub_project("mongrel_cluster", :clean)
-  if RUBY_PLATFORM =~ /mswin/
-    sub_project("mongrel_service", :clean)
-  end
+  sub_project("mongrel_cluster", :clean) 
+  sub_project("mongrel_service", :clean) if RUBY_PLATFORM =~ /mswin/
 end
 
 #### Site upload tasks
