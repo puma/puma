@@ -41,19 +41,71 @@ require 'uri'
 module Mongrel
 
   class URIClassifier
-    attr_reader :handler_map
+    attr_reader :routes
+    
+    class RegistrationError < RuntimeError
+    end
+    class UsageError < RuntimeError
+    end
 
     # Returns the URIs that have been registered with this classifier so far.
-    # The URIs returned should not be modified as this will cause a memory leak.
-    # You can use this to inspect the contents of the URIClassifier.
+    # The URIs returned should not be modified.
     def uris
-      @handler_map.keys
+      @routes.keys
     end
 
-    # Simply does an inspect that looks like a Hash inspect.
-    def inspect
-      @handler_map.inspect
+    def initialize
+      @routes = {}
+      @matcher = nil
     end
+    
+    def register(path, handler)
+      if @routes[path]
+        raise RegistrationError, "#{path.inspect} is already registered"
+      elsif !path or path.empty?
+        raise RegistrationError, "Path is empty"
+      end      
+      @routes[path.dup] = handler
+      rebuild
+    end
+    
+    def unregister(path)
+      handler = @routes.delete(path)
+      raise RegistrationError, "#{path.inspect} was not registered" unless handler
+      rebuild
+      handler
+    end
+    
+    def resolve(request_uri)
+      raise UsageError, "No routes have been registered" unless @matcher
+      match = request_uri[@matcher, 0]
+      if match
+        path_info = request_uri[match.size..-1]
+        # A root mounted ("/") handler must resolve such that path info matches the original URI.
+        path_info = "#{Const::SLASH}#{path_info}" if match == Const::SLASH
+        [match, path_info, @routes[match]]
+      else
+        [nil, nil, nil]
+      end
+    end
+        
+    alias :handler_map :routes # Legacy
+    
+    private
+    
+    def rebuild
+      routes = @routes.sort_by do |path, handler|        
+        # Sort by name
+        path
+      end.sort_by do |path, handler|          
+        # Then by descending length
+        -path.length 
+      end
+      @matcher = Regexp.new(routes.map do |path, handler|
+        Regexp.new('^' + Regexp.escape(path))
+      end.join('|'))
+    end    
+    
   end
 
 
@@ -785,25 +837,16 @@ module Mongrel
     # found in the prefix of a request then your handler's HttpHandler::process method
     # is called.  See Mongrel::URIClassifier#register for more information.
     #
-    # If you set in_front=true then the passed in handler will be put in front in the list.
-    # Otherwise it's placed at the end of the list.
+    # If you set in_front=true then the passed in handler will be put in the front of the list
+    # for that particular URI. Otherwise it's placed at the end of the list.
     def register(uri, handler, in_front=false)
-      script_name, path_info, handlers = @classifier.resolve(uri)
-
-      if not handlers
+      begin
         @classifier.register(uri, [handler])
-      else
-        if path_info.length == 0 or (script_name == Const::SLASH and path_info == Const::SLASH)
-          if in_front
-            handlers.unshift(handler)
-          else
-            handlers << handler
-          end
-        else
-          @classifier.register(uri, [handler])
-        end
+      rescue URIClassifier::RegistrationError
+        handlers = @classifier.resolve(uri)[2]
+        method_name = in_front ? 'unshift' : 'push'
+        handlers.send(method_name, handler)
       end
-
       handler.listener = self
     end
 

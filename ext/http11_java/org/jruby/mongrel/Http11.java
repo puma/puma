@@ -83,8 +83,6 @@ public class Http11 extends RubyObject {
         cHttpParser.defineFastMethod("error?",cf.getFastMethod("has_error"));
         cHttpParser.defineFastMethod("finished?",cf.getFastMethod("is_finished"));
         cHttpParser.defineFastMethod("nread",cf.getFastMethod("nread"));
-
-        URIClassifier.createURIClassifier(runtime, mMongrel);
     }
 
     private Ruby runtime;

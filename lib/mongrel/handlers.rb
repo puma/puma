@@ -385,7 +385,7 @@ module Mongrel
       end
 
       results << "<h2>Registered Handlers</h2>"
-      uris = listener.classifier.handler_map
+      uris = listener.classifier.routes
       results << table("handlers", uris.map {|uri,handlers| 
         [uri, 
             "<pre>" + 
