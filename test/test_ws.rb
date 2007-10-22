@@ -45,22 +45,21 @@ class WebServerTest < Test::Unit::TestCase
 
 
   def do_test(string, chunk, close_after=nil)
-    @socket = TCPSocket.new("127.0.0.1", 9998);
+    # Do not use instance variables here, because it needs to be thread safe
+    socket = TCPSocket.new("127.0.0.1", 9998);
     request = StringIO.new(string)
     chunks_out = 0
-#    STDERR.puts chunks_out
 
     while data = request.read(chunk)
-      chunks_out += @socket.write(data)
-#      STDERR.puts chunks_out
-      @socket.flush
+      chunks_out += socket.write(data)
+      socket.flush
       sleep 0.2
       if close_after and chunks_out > close_after
-        @socket.close
+        socket.close
         sleep 1
       end
     end
-    @socket.write(" ") # Some platforms only raise the exception on attempted write
+    socket.write(" ") # Some platforms only raise the exception on attempted write
   end
 
   def test_trickle_attack
