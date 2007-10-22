@@ -4,7 +4,6 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'rubygems'
 require 'socket'
 require 'http11'
 require 'tempfile'
@@ -18,10 +17,7 @@ ensure
   require 'thread'
 end
 
-begin
-  require 'cgi_multipart_eof_fix'
-rescue LoadError
-end
+require 'cgi_multipart_eof_fix'
 
 require 'stringio'
 require 'mongrel/cgi'
@@ -56,9 +52,11 @@ module Mongrel
 
     def initialize
       @routes = {}
-      @matcher = nil
+      @matcher = //
     end
     
+    # Register a handler object at a particular URI. The handler can be whatever 
+    # you want, including an array. It's up to you what to do with it.
     def register(uri, handler)
       raise RegistrationError, "#{uri.inspect} is already registered" if @routes[uri]
       raise RegistrationError, "URI is empty" if !uri or uri.empty?
@@ -67,6 +65,7 @@ module Mongrel
       rebuild
     end
     
+    # Unregister a particular URI and its handler.
     def unregister(uri)
       handler = @routes.delete(uri)
       raise RegistrationError, "#{uri.inspect} was not registered" unless handler
@@ -74,14 +73,15 @@ module Mongrel
       handler
     end
     
-    def resolve(request_uri)
-      raise UsageError, "No routes have been registered" unless @matcher
-      match = request_uri[@matcher, 0]
-      if match
-        path_info = request_uri[match.size..-1]
+    # Resolve a request URI by finding the best partial match in the registered 
+    # handler URIs.
+    def resolve(request_uri)      
+      if match = @matcher.match(request_uri)
+        uri = match.to_s
+        path_info = match.post_match
         # A root mounted ("/") handler must resolve such that path info matches the original URI.
-        path_info = "#{Const::SLASH}#{path_info}" if match == Const::SLASH
-        [match, path_info, @routes[match]]
+        path_info = "#{Const::SLASH}#{path_info}" if uri == Const::SLASH
+        [uri, path_info, @routes[uri]]
       else
         [nil, nil, nil]
       end
@@ -92,14 +92,10 @@ module Mongrel
     private
     
     def rebuild
-      routes = @routes.sort_by do |uri, handler|        
-        # Sort by name
-        uri
-      end.sort_by do |uri, handler|          
-        # Then by descending length
-        -uri.length 
+      routes = @routes.keys.sort.sort_by do |uri|
+        -uri.length
       end
-      @matcher = Regexp.new(routes.map do |uri, handler|
+      @matcher = Regexp.new(routes.map do |uri|
         Regexp.new('^' + Regexp.escape(uri))
       end.join('|'))
     end    

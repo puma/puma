@@ -185,37 +185,54 @@ class URIClassifierTest < Test::Unit::TestCase
     end
   end
   
-  def test_benchmark  
-    @fragments = %w(the benchmark module provides methods to measure and report the time used to execute ruby code)
-
+  def xtest_benchmark    
+    # This benchmark should favor a TST, but it seems to be mostly irrelevant
+  
+    @uris = %w(
+      / 
+      /dag /dig /digbark /dog /dogbark /dog/bark /dug /dugbarking /puppy 
+      /c /cat /cat/tree /cat/tree/mulberry /cats /cot /cot/tree/mulberry /kitty /kittycat
+    )
+    
+    @requests = %w(
+      /
+      /dig
+      /digging
+      /dogging
+      /dogbarking/
+      /puppy/barking
+      /c
+      /cat
+      /cat/shrub
+      /cat/tree
+      /cat/tree/maple
+      /cat/tree/mulberry/tree
+      /cat/tree/oak
+      /cats/
+      /cats/tree
+      /cod
+      /zebra
+    )
+  
     @classifier = URIClassifier.new
-    @classifier.register("/", 1)
-
-    @requests = []
-    
-    @fragments.size.times do |n|
-      this_uri = "/" + @fragments[0..n].join("/")
-      @classifier.register(this_uri, 1)
-      @requests << this_uri
+    @uris.each do |uri|
+      @classifier.register(uri, 1)
     end
-    
-    @requests = @requests.map do |path|
-      (0..100).map do |n|      
-        path.size > n ? path[0..-n] : path
-      end
-    end.flatten * 10
-    
-    puts "#{@fragments.size} paths registered"
-    puts "#{@requests.size} requests queued"
-    
+
     Benchmark.bm do |x|
       x.report do
-        @requests.each do |request|
-          @classifier.resolve(request)
-        end
+#        require 'ruby-prof'
+#        profile = RubyProf.profile do
+          10000.times do
+            @requests.each do |request|
+              @classifier.resolve(request)
+            end
+          end
+#        end
+#        File.open("profile.html", 'w') { |file| RubyProf::GraphHtmlPrinter.new(profile).print(file, 0) }
       end
     end
-    
+        
   end
   
 end
