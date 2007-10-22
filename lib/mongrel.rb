@@ -57,6 +57,9 @@ module Mongrel
     
     # Register a handler object at a particular URI. The handler can be whatever 
     # you want, including an array. It's up to you what to do with it.
+    #
+    # Registering a handler is not necessarily threadsafe, so be careful if you go
+    # mucking around once the server is running.
     def register(uri, handler)
       raise RegistrationError, "#{uri.inspect} is already registered" if @routes[uri]
       raise RegistrationError, "URI is empty" if !uri or uri.empty?

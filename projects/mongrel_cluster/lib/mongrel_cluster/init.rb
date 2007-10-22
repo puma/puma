@@ -62,18 +62,19 @@ module Cluster
       argv = [ "mongrel_rails" ]
       argv << "start"
       argv << "-d"
-      argv << "-e #{@options["environment"]}" if @options["environment"]
-      argv << "-a #{@options["address"]}"  if @options["address"]
-      argv << "-c #{@options["cwd"]}" if @options["cwd"]
-      argv << "-t #{@options["timeout"]}" if @options["timeout"]
-      argv << "-m #{@options["mime_map"]}" if @options["mime_map"]
-      argv << "-r #{@options["docroot"]}" if @options["docroot"]
-      argv << "-n #{@options["num_procs"]}" if @options["num_procs"]
-      argv << "-B" if @options["debug"]
-      argv << "-S #{@options["config_script"]}" if @options["config_script"]
-      argv << "--user #{@options["user"]}" if @options["user"]
-      argv << "--group #{@options["group"]}" if @options["group"]
-      argv << "--prefix #{@options["prefix"]}" if @options["prefix"]
+      argv << "-e #{@options['environment']}" if @options['environment']
+      argv << "-a #{@options['address']}"  if @options['address']
+      argv << "-c #{@options['cwd']}" if @options['cwd']
+      argv << "-o #{@options['timeout']}" if @options['timeout']
+      argv << "-t #{@options['throttle']}" if @options['throttle']
+      argv << "-m #{@options['mime_map']}" if @options['mime_map']
+      argv << "-r #{@options['docroot']}" if @options['docroot']
+      argv << "-n #{@options['num_procs']}" if @options['num_procs']
+      argv << "-B" if @options['debug']
+      argv << "-S #{@options['config_script']}" if @options['config_script']
+      argv << "--user #{@options['user']}" if @options['user']
+      argv << "--group #{@options['group']}" if @options['group']
+      argv << "--prefix #{@options['prefix']}" if @options['prefix']
       cmd = argv.join " "
       
       @ports.each do |port|              
@@ -287,7 +288,8 @@ module Cluster
         ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
         ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "tmp/pids/mongrel.pid"],
         ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, nil],
-        ['-t', '--timeout TIME', "Time to pause (in hundredths of a second) between accepting clients", :@timeout, nil],
+        ['-o', '--timeout TIME', "Time to wait (in seconds) before killing a stalled thread", :@timeout, nil],
+        ['-t', '--throttle TIME', "Time to pause (in hundredths of a second) between accepting clients", :@throttle, nil],
         ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
         ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, nil],
         ['-n', '--num-procs INT', "Number of processor threads to use", :@num_procs, nil],
@@ -323,6 +325,7 @@ module Cluster
       @options["docroot"] = @docroot if @docroot
       @options["address"] = @address if @address
       @options["timeout"] = @timeout if @timeout
+      @options["throttle"] = @throttle if @throttle
       @options["environment"] = @environment if @environment
       @options["mime_map"] = @mime_map if @mime_map
       @options["config_script"] = @config_script if @config_script
