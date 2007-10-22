@@ -7,13 +7,14 @@
 require 'logger'
 require 'set'
 require 'socket'
+require 'fileutils'
 
 module MongrelDbg
   SETTINGS = { :tracing => {}}
   LOGGING = { }
 
   def MongrelDbg::configure(log_dir = File.join("log","mongrel_debug"))
-    Dir.mkdir(log_dir) if not File.exist?(log_dir)
+    FileUtils.mkdir_p(log_dir)
     @log_dir = log_dir
     $objects_out=open(File.join("log","mongrel_debug","objects.log"),"w")
     $objects_out.puts "run,classname,last,count,delta,lenmean,lensd,lenmax"
