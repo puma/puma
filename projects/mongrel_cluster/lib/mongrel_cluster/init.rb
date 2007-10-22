@@ -11,7 +11,7 @@ module Cluster
     
     def validate
       valid_exists?(@config_file, "Configuration file does not exist. Run mongrel_rails cluster::configure.")
-      return @valid
+      @valid
     end
       
     def read_options
@@ -151,7 +151,7 @@ module Cluster
         puts ""
       end
 
-      return status
+      status
     end
 
     def pid_file_exists?(port)    
@@ -171,13 +171,17 @@ module Cluster
       else
         pid = find_pid(port)
       end
-      return pid
+      pid
     end 
     
-    def cmd_name 
-      RUBY_PLATFORM =~ /solaris/i ? "args" : "command"
+    def cmd_name
+      RUBY_PLATFORM =~ /solaris|aix/i ? "args" : "command"
     end
-
+        
+    def cmd_flags
+      RUBY_PLATFORM =~ /solaris|aix/i ? "-eo" : "-ewwo"
+    end
+    
     def chdir_cwd
       pwd = Dir.pwd
       Dir.chdir(@options["cwd"]) if @options["cwd"]     
@@ -191,21 +195,20 @@ module Cluster
       chdir_cwd do     
         pid = File.read(pid_file)
       end
-      return pid
+      pid
     end
  
     def find_pid(port)
-      ps_cmd = "ps -ewwo pid,#{cmd_name}"
-      ps_output = `#{ps_cmd}`      
-      ps_output.each do |line|     
-        if line =~ /-P #{Regexp.escape(port_pid_file(port))} /              
+      ps_cmd = "ps #{cmd_flags} pid,#{cmd_name}"
+      ps_output = `#{ps_cmd}`
+      ps_output.each do |line|
+        if line =~ /-P #{Regexp.escape(port_pid_file(port))} /
           pid = line.split[0]
           return pid
         end
       end
-      return nil
     end
-
+    
     def log_error(message)
       log(message)
     end
@@ -304,7 +307,7 @@ module Cluster
       valid?(@servers > 0, "Must give a valid number of servers")
       valid_dir? File.dirname(@config_file), "Path to config file not valid: #{@config_file}"
       
-      return @valid
+      @valid
     end
 
     def run
