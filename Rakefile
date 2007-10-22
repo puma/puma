@@ -201,7 +201,7 @@ namespace :site do
     sh "cp ~/Downloads/mongrel-1.0.2-mswin32.gem pkg/gems/"
     sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"  
     sh "rm -rf pkg/mongrel*"
-    sh "index_gem_repository.rb -d pkg"  
+    sh "gem generate_index -d pkg"  
     sh "scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
     sh "svn log -v > SVN_LOG"
     sh "scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
