@@ -13,6 +13,8 @@ echoe_spec = Echoe.new("mongrel_service") do |p|
   p.platform = Gem::Platform::WIN32
   p.dependencies = ['gem_plugin >=0.2.3', 'mongrel >=1.0.2', 'win32-service >=0.5.0']
 
+  p.executable_pattern = ""
+  
   p.need_tar_gz = false
   p.need_zip = true
   p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
