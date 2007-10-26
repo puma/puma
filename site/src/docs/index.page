@@ -12,9 +12,7 @@ own docs that you can refer to based on these.
 
 h2. Contributing Documentation
 
-As you can see many of the pages here are empty.  This is because they are
-being written mostly by one person (Zed) but some folks are now contributing
-documentation so things will go faster.  If you'd like to contribute some
+As you can see many of the pages here are empty. If you'd like to contribute some
 documentation then read the "instructions on how to do it":contrib.html and
 contact the "mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users
 to announce that you'd like to work on something.
@@ -73,7 +71,7 @@ to the tracker.
 h1. Other People's Documentation
 
 Many other folks have written documentation that they post to their blogs for
-people to use.  I've based a lot of the documentation here on their writings,
+people to use.  We've based a lot of the documentation here on their writings,
 so you should go check out their blogs and shoot them a thanks when you
 can.
 
@@ -91,7 +89,6 @@ h1. Frequently Asked Questions
 
 When people ask questions really frequently the results end up in the
 "FAQ":../faq.html.
-
 
 h1. Mailing Lists
 
