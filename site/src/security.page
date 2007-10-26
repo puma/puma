@@ -67,7 +67,7 @@ contact us to see if it's an error on Mongrel's part.
 
 h2. Reporting Security Problems
 
-If you think you've found a security problem with Mongrel, please report it to the list right away at http://rubyforge.org/pipermail/mongrel-users/.  We're usually very responsive and will probably help even if the security problem is outside of Mongrel or if you need help securing your system.
+If you think you've found a security problem with Mongrel, please report it to the list right away at http://rubyforge.org/mailman/listinfo/mongrel-users.  We're usually very responsive and will probably help even if the security problem is outside of Mongrel or if you need help securing your system.
 
 h2. Logo
 
