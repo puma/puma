@@ -42,7 +42,7 @@ massive.  It's not too clear whether a browser is allowed to cram all 20 of the
 result is that a web server has to parser at least 112k of garbage before it
 can declare a client malicious.
 
-Now, when I say Mongrel is strict, I don't mean that it will abort on any minor
+Now, when we say Mongrel is strict, we don't mean that it will abort on any minor
 little error according to the HTTP 1.1 RFC.  Mongrel's parser is pretty
 forgiving on formats.  Where Mongrel is exact is (as mentioned before) in it's
 treatment of sizes and boundary characters.  Clients that can't even get that
@@ -61,17 +61,13 @@ correctly or it's attempting an attack.  If it's not functioning correctly then
 what's the point of sending back any results?  It probably can't parse them
 anyway.  If it's an attacker then why give them any more information?
 
-Caught in the middle are people who are using a poorly written client.  I'd
+Caught in the middle are people who are using a poorly written client. We'd
 suggest in those cases that they report the problem to the client's authors or
-contact me to see if it's an error on Mongrel's part.
+contact us to see if it's an error on Mongrel's part.
 
 h2. Reporting Security Problems
 
-If you think you've found a security problem with Mongrel, please report it to
-me right away at *zedshaw at zedshaw do com*.  I'm usually very responsive and
-will probably help even if the security problem is outside of Mongrel or if you
-need help securing your system.
-
+If you think you've found a security problem with Mongrel, please report it to the list right away at http://rubyforge.org/pipermail/mongrel-users/.  We're usually very responsive and will probably help even if the security problem is outside of Mongrel or if you need help securing your system.
 
 h2. Logo
 
