@@ -15,7 +15,7 @@ Other companies benefiting from Ruby should take this as an example.  We can thi
 h1. The People Who Made It Possible
 
 There's quite a few people who either directly or indirectly helped to
-make Mongrel.  If I missed anyone then just e-mail me and I'll put your
+make Mongrel.  If we missed anyone then just e-mail me and we'll put your
 name here.
 
 * Mongrel was started by "Zed A. Shaw":http://www.zedshaw.com/
@@ -63,4 +63,4 @@ h2. Tools
 
 h2. Testing
 
-Lots of people from the "Ruby on Rails mailing list":http://lists.rubyonrails.org/mailman/listinfo/rails and "ruby-lang mailing list":http://www.ruby-lang.org/en/20020104.html found bugs reported them.
+Lots of people from the "Mongrel List":http://rubyforge.org/pipermail/mongrel-users/, the "Ruby on Rails mailing list":http://lists.rubyonrails.org/mailman/listinfo/rails and the "Ruby-lang mailing list":http://www.ruby-lang.org/en/20020104.html found bugs and reported them.
