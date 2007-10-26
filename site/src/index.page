@@ -12,9 +12,6 @@ Rails":http://www.rubyonrails.org, "Og+Nitro":http://www.nitroproject.org/,
 "Camping":http://camping.rubyforge.org/files/README.html, and
 "IOWA":http://enigo.com/projects/iowa/tutorial/what_is_it.html frameworks.
 
-@You need Ruby 1.8.4 just like the gem says you do.@
-
-
 h2. Getting Started
 
 The easiest way to get started with Mongrel is to install it via RubyGems
