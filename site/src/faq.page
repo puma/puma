@@ -23,10 +23,6 @@ As for the internals of Mongrel there are a few key technologies being used:
   standard and using "an ABNF dump":http://www.cs.columbia.edu/sip/syntax/rfc2068.html thankfully
   put online by someone.  The parser is written using "Ragel":http://www.elude.ca/ragel/ and 
   is written C as a Ruby extension.
-* A URIClassifier that uses a "Ternary Search Trie":http://www.octavian.org/cs/software.html
-  written by Peter A. Friend and modified to quickly look up handlers for a URI based on
-  a prefix.  This makes finding any handler from any URI quick and painless and is much
-  faster than the alternative of parsing the path and using nested Hash structures.
 * A simple server that uses the parser and URIClassifier to process requests, find the 
   right handlers, and then pass the results on to the handler for processing.
 * Handlers are responsible for using HttpRequest and HttpResponse objects to do their
@@ -85,7 +81,7 @@ For the most part, your goal as a Rails programmer is to make all of your Rails
 actions as fast as possible, and to not do anything that takes a long time.
 
 
-h3. Q: Can I run mongrel without rails?
+h3. Q: Can I run Mongrel without Rails?
 
 Yes, Mongrel is designed to host any framework, and already hosts Camping or Nitro 
 as well.  If you're feeling adventurous, check out the "RDoc":/rdoc/index.html
@@ -401,15 +397,15 @@ h2. Mongrel Web Site
 
 h3. Q: How did you make this site?
 
-The site was actually incredibly easy to create.  I simply went to "OSWD":http://openwebdesign.org/
-and found a design that fit what I wanted for the site.  I then went to "Flickr":http://flickr.com/
-and found pictures of various animals that were licensed under the 
-"Creative Commons":http://creativecommons.org/ license.  Once I chopped the images up, worked them
-into the design structure, and wrote an initial set of content I was done.
+Zed made most of this site:
 
-The tool I use to generate the site is called "webgen":http://webgen.rubyforge.org/ which
-is a static site generator written in Ruby.  I write all of the content using redcloth
-mark-up and leave the generation to webgen.  Finally I hooked into the Mongrel Rakefile
-so that it's auto-generated and deployed to the site for me.
-
-Refer to the "attributions":/attributions.html page for information on the resources used.
+  The site was actually incredibly easy to create.  I simply went to "OSWD":http://openwebdesign.org/
+  and found a design that fit what I wanted for the site.  I then went to "Flickr":http://flickr.com/
+  and found pictures of various animals that were licensed under the 
+  "Creative Commons":http://creativecommons.org/ license.  Once I chopped the images up, worked them
+  into the design structure, and wrote an initial set of content I was done.
+  
+  The tool I use to generate the site is called "webgen":http://webgen.rubyforge.org/ which
+  is a static site generator written in Ruby.  I write all of the content using redcloth
+  mark-up and leave the generation to webgen.  Finally I hooked into the Mongrel Rakefile
+  so that it's auto-generated and deployed to the site for me.
