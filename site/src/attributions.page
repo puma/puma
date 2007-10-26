@@ -23,6 +23,7 @@ name here.
 * Specialized Win32 gems were setup by Wilson Bilkovich.
 * Why the lucky stiff implemented initial Camping support as well as improvements to Mongrel's file processing.
 * Dan Kubb contributed conditional HTTP responses.
+* Ola Bini did the initial Java parser port.
 * MenTaL guY made Ruby threading not suck.
 * Filipe Lautert handled various bugfixes.
 * The JRuby team has been very supportive despite all the bugs we filed against them.
