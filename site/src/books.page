@@ -6,27 +6,14 @@ directoryName: Books
 
 h1. Books About or Mentioning Mongrel
 
-This is a list of *all* the books available for Mongrel not just the one
-written by Matt Pelletier and myself (Zed).  The more books that are out there
-in as many languages the better off everyone is so I'm listing other competitors.
+Pretty much every book about Rails mentions Mongrel these days. If you want yours to be listed here, pop a message to the "mailing list":http://rubyforge.org/mailman/listinfo/mongrel-users. We are especially interested in books that aren't primarily about Rails.
 
 h2. Mongrel: Serving, Deploying, and Extending Your Ruby Applications
 
-This is of course the more or less official book, but don't take that to mean
-the others are bad.  It focuses entirely on Mongrel and is written by the
-Mongrel author (me, Zed) and Matt Pelletier.
+This is of course the more or less official book, but don't take that to mean the others are bad.  It focuses entirely on Mongrel and is written by the Mongrel founder (Zed Shaw) and Matt Pelletier.
 
 "You can buy it online as a PDF.":http://www.awprofessional.com/bookstore/product.asp?isbn=0321483502&rl=1
 
 h2. Repensando a web com Rails
 
-This book was written by Fabio Akita with contributions from myself (Zed) and
-Piers Harding.  It is a book in Brazilian Portuguese and seems to cover quite a
-bit of material.  "You can read the blog for the site for more
-information.":http://www.balanceonrails.com.br/
-
-h1. Not Mentioned?
-
-If you're book hasn't been published yet then wait until it's available in at
-least beta form then shoot me an e-mail so I can include it.  Include purchase
-links and any website links.
+This book was written by Fabio Akita with contributions from Zed and Piers Harding.  It is a book in Brazilian Portuguese and seems to cover quite a bit of material.  "You can read the blog for the site for more information.":http://www.balanceonrails.com.br/
