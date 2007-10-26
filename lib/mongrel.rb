@@ -1,12 +1,12 @@
-# Copyright (c) 2005 Zed A. Shaw 
-# You can redistribute it and/or modify it under the same terms as Ruby.
-#
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
-# for more information.
 
 require 'socket'
 require 'http11'
 require 'tempfile'
+require 'yaml'
+require 'time'
+require 'etc'
+require 'uri'
+require 'stringio'
 
 begin
   require 'fastthread'
@@ -19,17 +19,11 @@ end
 
 require 'cgi_multipart_eof_fix'
 
-require 'stringio'
 require 'mongrel/cgi'
 require 'mongrel/handlers'
 require 'mongrel/command'
 require 'mongrel/tcphack'
-require 'yaml'
 require 'mongrel/configurator'
-require 'time'
-require 'etc'
-require 'uri'
-
 
 # Mongrel module containing all of the classes (include C extensions) for running
 # a Mongrel web server.  It contains a minimalist HTTP server with just enough
@@ -870,4 +864,12 @@ module Mongrel
     end
 
   end
+end
+
+# Load experimental gem, if present. We put it here so it can override anything
+# in regular Mongrel.
+
+begin
+  require 'mongrel_experimental', '=1.1'
+rescue LoadError
 end
