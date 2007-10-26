@@ -6,21 +6,11 @@ ordering: 100
 ---
 h1. Commercial Sponsorship
 
-Mongrel is a free open source web server and will always remain that way, but
-that doesn't mean that companies don't help to make it better.
+Mongrel is a free open source web server and will always remain that way, but that doesn't mean that companies don't help to make it better.
 
-Mongrel received sponsorship from "EastMedia Group":http://www.eastmedia.com
-in partnership with "VeriSign":http://www.verisign.com/ to make Mongrel 
-fast and stable enough for their "PIP":http://pip.verisignlabs.com/
-which should be a great Single Sign-On application and is being released open source.
+Mongrel received sponsorship from "EastMedia Group":http://www.eastmedia.com in partnership with "VeriSign":http://www.verisign.com/ to make Mongrel fast and stable enough for their "PIP":http://pip.verisignlabs.com/ which should be a great Single Sign-On application and is being released open source.
 
-Other companies benefiting from Ruby should take this as an example.  I 
-can think of quite a few things (Ruby 1.9 and a real virtual machine are 
-just two) that need some serious commercial cash to get them in gear.  If 
-you're making cash off Ruby consider hiring a developer part-time, 
-full-time, or posting a bounty for something you need as well as the 
-community needs.  There's no better time for enlightened self-interest than now.
-
+Other companies benefiting from Ruby should take this as an example.  We can think of quite a few things that need some serious commercial cash to get them in gear.  If you're making cash off Ruby consider hiring a developer part-time, full-time, or posting a bounty for something you need as well as the community needs.  There's no better time for enlightened self-interest than now.
 
 h1. The People Who Made It Possible
 
@@ -33,9 +23,12 @@ name here.
 * Specialized Win32 gems were setup by Wilson Bilkovich.
 * Why the lucky stiff implemented initial Camping support as well as improvements to Mongrel's file processing.
 * Dan Kubb contributed conditional HTTP responses.
+* MenTaL guY made Ruby threading not suck.
+* Filipe Lautert handled various bugfixes.
+* The JRuby team has been very supportive despite all the bugs we filed against them.
+* Evan Weaver has been driving the 1.0.2 and 1.1 releases.
 
 Also with lots of testing from tons of people who are really appreciated.
-
 
 h2. Site Template
 
@@ -63,24 +56,11 @@ attributed to the people based on their Flickr accounts:
 Thanks to those people who publish their photos with the "Creative Commons":http://creativecommons.org
 license so others can see their photography (and look at their dogs).
 
-
-h2. Coding
-
-* "Rick Olson (aka technoweenie)":http://techno-weenie.net/ was the first to grab Mongrel
-  and cram "Camping":http://redhanded.hobix.com/bits/campingAMicroframework.html into it.
-* "Why the lucky stiff":http://whytheluckystiff.net/ did work on getting the "Camping Framework":http://redhanded.hobix.com/bits/campingAMicroframework.html working with Mongrel more completely.
-* Dan Kubb hooked up sweet Conditional HTTP Response support for Mongrel making it pretty damn fast for static files.
-* Lots of other folks have sent in patches and tweaks.  Let me know if I missed you.
-
 h2. Tools
 
 * "RubyForge":http://rubyforge.org/ for providing space and hooking it all up.
 * "Webgen":http://webgen.rubyforge.org/
 
-
 h2. Testing
 
-Lots of people from the 
-"Ruby on Rails mailing list":http://lists.rubyonrails.org/mailman/listinfo/rails 
-and "ruby-lang mailing list":http://www.ruby-lang.org/en/20020104.html found bugs
-reported them.
+Lots of people from the "Ruby on Rails mailing list":http://lists.rubyonrails.org/mailman/listinfo/rails and "ruby-lang mailing list":http://www.ruby-lang.org/en/20020104.html found bugs reported them.
