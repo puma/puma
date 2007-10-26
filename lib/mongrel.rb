@@ -89,7 +89,10 @@ module Mongrel
     # socket.accept calls in order to give the server a cheap throttle time.  It defaults to 0 and
     # actually if it is 0 then the sleep is not done at all.
     def initialize(host, port, num_processors=950, throttle=0, timeout=60)
+      
+      tries = 0
       @socket = TCPServer.new(host, port) 
+      
       @classifier = URIClassifier.new
       @host = host
       @port = port
@@ -211,12 +214,12 @@ module Mongrel
         STDERR.puts "#{Time.now}: Reaping #{@workers.list.length} threads for slow workers because of '#{reason}'"
         error_msg = "Mongrel timed out this thread: #{reason}"
         mark = Time.now
-        @workers.list.each do |w|
-          w[:started_on] = Time.now if not w[:started_on]
+        @workers.list.each do |worker|
+          worker[:started_on] = Time.now if not worker[:started_on]
 
-          if mark - w[:started_on] > @timeout + @throttle
+          if mark - worker[:started_on] > @timeout + @throttle
             STDERR.puts "Thread #{w.inspect} is too old, killing."
-            w.raise(TimeoutError.new(error_msg))
+            worker.raise(TimeoutError.new(error_msg))
           end
         end
       end
@@ -264,42 +267,46 @@ module Mongrel
       end
 
       @acceptor = Thread.new do
-        while true
-          begin
-            client = @socket.accept
-
-            if defined?($tcp_cork_opts) and $tcp_cork_opts
-              client.setsockopt(*$tcp_cork_opts) rescue nil
-            end
-
-            worker_list = @workers.list
-
-            if worker_list.length >= @num_processors
-              STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max). Dropping connection."
+        begin
+          while true
+            begin
+              client = @socket.accept
+  
+              if defined?($tcp_cork_opts) and $tcp_cork_opts
+                client.setsockopt(*$tcp_cork_opts) rescue nil
+              end
+  
+              worker_list = @workers.list
+  
+              if worker_list.length >= @num_processors
+                STDERR.puts "Server overloaded with #{worker_list.length} processors (#@num_processors max). Dropping connection."
+                client.close rescue nil
+                reap_dead_workers("max processors")
+              else
+                thread = Thread.new(client) {|c| process_client(c) }
+                thread[:started_on] = Time.now
+                @workers.add(thread)
+  
+                sleep @throttle/100.0 if @throttle > 0
+              end
+            rescue StopServer
+              break
+            rescue Errno::EMFILE
+              reap_dead_workers("too many open files")
+              sleep 0.5
+            rescue Errno::ECONNABORTED
+              # client closed the socket even before accept
               client.close rescue nil
-              reap_dead_workers("max processors")
-            else
-              thread = Thread.new(client) {|c| process_client(c) }
-              thread[:started_on] = Time.now
-              @workers.add(thread)
-
-              sleep @throttle/100.0 if @throttle > 0
+            rescue Object => e
+              STDERR.puts "#{Time.now}: Unhandled listen loop exception #{e.inspect}."
+              STDERR.puts e.backtrace.join("\n")
             end
-          rescue StopServer
-            @socket.close
-            break
-          rescue Errno::EMFILE
-            reap_dead_workers("too many open files")
-            sleep 0.5
-          rescue Errno::ECONNABORTED
-            # client closed the socket even before accept
-            client.close rescue nil
-          rescue Object => e
-            STDERR.puts "#{Time.now}: Unhandled listen loop exception #{e.inspect}."
-            STDERR.puts e.backtrace.join("\n")
           end
+          graceful_shutdown
+        ensure
+          @socket.close
+          # STDERR.puts "#{Time.now}: Closed socket."
         end
-        graceful_shutdown
       end
 
       return @acceptor
@@ -334,7 +341,7 @@ module Mongrel
     def stop(synchronous=false)
       @acceptor.raise(StopServer.new)
 
-      if synchronous        
+      if synchronous
         sleep(0.5) while @acceptor.alive?
       end
     end

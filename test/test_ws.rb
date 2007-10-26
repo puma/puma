@@ -22,9 +22,12 @@ class WebServerTest < Test::Unit::TestCase
 
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
-
-    # We set num_processors=1 so that we can test the reaping code
-    @server = HttpServer.new("127.0.0.1", 9998, num_processors=1)
+    
+    redirect_test_io do
+      # We set num_processors=1 so that we can test the reaping code
+      @server = HttpServer.new("127.0.0.1", 9998, num_processors=1)
+    end
+    
     @tester = TestHandler.new
     @server.register("/test", @tester)
     redirect_test_io do

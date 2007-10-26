@@ -38,7 +38,9 @@ end
 
 class RequestProgressTest < Test::Unit::TestCase
   def setup
-    @server = Mongrel::HttpServer.new("127.0.0.1", 9998)
+    redirect_test_io do
+      @server = Mongrel::HttpServer.new("127.0.0.1", 9998)
+    end
     @handler = UploadBeginHandler.new
     @server.register("/upload", @handler)
     @server.run
