@@ -198,11 +198,20 @@ class URIClassifierTest < Test::Unit::TestCase
     
     def test_benchmark    
 
-      # This URI scheme should favor a TST, but it seems to be mostly irrelevant    
+      # This URI set should favor a TST. Both versions increase linearly until you hit 14 
+      # URIs, then the TST flattens out.
       @uris = %w(
         / 
         /dag /dig /digbark /dog /dogbark /dog/bark /dug /dugbarking /puppy 
         /c /cat /cat/tree /cat/tree/mulberry /cats /cot /cot/tree/mulberry /kitty /kittycat
+#        /eag /eig /eigbark /eog /eogbark /eog/bark /eug /eugbarking /iuppy 
+#        /f /fat /fat/tree /fat/tree/mulberry /fats /fot /fot/tree/mulberry /jitty /jittyfat
+#        /gag /gig /gigbark /gog /gogbark /gog/bark /gug /gugbarking /kuppy 
+#        /h /hat /hat/tree /hat/tree/mulberry /hats /hot /hot/tree/mulberry /litty /littyhat
+#        /ceag /ceig /ceigbark /ceog /ceogbark /ceog/cbark /ceug /ceugbarking /ciuppy 
+#        /cf /cfat /cfat/ctree /cfat/ctree/cmulberry /cfats /cfot /cfot/ctree/cmulberry /cjitty /cjittyfat
+#        /cgag /cgig /cgigbark /cgog /cgogbark /cgog/cbark /cgug /cgugbarking /ckuppy 
+#        /ch /chat /chat/ctree /chat/ctree/cmulberry /chats /chot /chot/ctree/cmulberry /citty /cittyhat
       )
       
       @requests = %w(

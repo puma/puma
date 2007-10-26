@@ -209,7 +209,7 @@ module Mongrel
         response.start(304) {}
       else
         # first we setup the headers and status then we do a very fast send on the socket directly
-        response.status = 200
+        response.status ||= 200
         header[Const::LAST_MODIFIED] = mtime.httpdate
 
         # set the mime type from our map based on the ending
