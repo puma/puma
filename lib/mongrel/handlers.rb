@@ -218,11 +218,14 @@ module Mongrel
       if same_response
         response.start(304) {}
       else
-        # first we setup the headers and status then we do a very fast send on the socket directly
-        response.status ||= 200
+        
+        # First we setup the headers and status then we do a very fast send on the socket directly
+        
+        # Support custom responses except 404, which is the default. A little awkward. 
+        response.status = 200 if response.status == 404        
         header[Const::LAST_MODIFIED] = mtime.httpdate
 
-        # set the mime type from our map based on the ending
+        # Set the mime type from our map based on the ending
         dot_at = req_path.rindex('.')
         if dot_at
           header[Const::CONTENT_TYPE] = MIME_TYPES[req_path[dot_at .. -1]] || @default_content_type

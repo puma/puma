@@ -44,8 +44,9 @@ class HandlersTest < Test::Unit::TestCase
         uri "/dumb", :handler => Mongrel::DeflateFilter.new
         uri "/dumb", :handler => DumbHandler.new, :in_front => true
         uri "/files", :handler => Mongrel::DirHandler.new("doc")
-        uri "/files_nodir", :handler => Mongrel::DirHandler.new("doc",listing_allowed=false, index_html="none")
+        uri "/files_nodir", :handler => Mongrel::DirHandler.new("doc", listing_allowed=false, index_html="none")
         uri "/status", :handler => Mongrel::StatusHandler.new(:stats_filter => stats)
+        uri "/relative", :handler => Mongrel::DirHandler.new(nil, listing_allowed=false, index_html="none")
       end
     end
     @config.run
@@ -66,6 +67,7 @@ class HandlersTest < Test::Unit::TestCase
           "http://localhost:9998/status",
     ])
 
+    # XXX This can't possibly have good coverage.
     check_status res, String
   end
 
