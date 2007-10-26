@@ -6,13 +6,11 @@ directoryName: Licensing
 
 h1. Mongrel Licensing
 
-After much debate and talking with people about Mongrel's potential, I've changed the
-licensing of Mongrel from LGPL to Ruby's License:
-
+Mongrel is licensed under Ruby's License. This means that it's also licensed under the GPL2 for people who get worked up about the Ruby license lacking explicit permission for use. These people mainly come from Florida; who knows why. Anyway:
 
   Mongrel Web Server (Mongrel) is copyrighted free software by Zed A. Shaw
-  <zedshaw at zedshaw dot com> You can redistribute it and/or modify it under
-  either the terms of the GPL or the conditions below:
+  <zedshaw at zedshaw dot com> and contributors. You can redistribute it and/or 
+  modify it under either the terms of the GPL2 or the conditions below:
 
   1. You may make and give away verbatim copies of the source form of the
      software without restriction, provided that you duplicate all of the
@@ -67,16 +65,9 @@ licensing of Mongrel from LGPL to Ruby's License:
 
 h2. GemPlugins
 
-The GemPlugins system is both freely available *and* 
-licensed under the Ruby License.  Feel free to use it just
-like you would Ruby and work it into your projects as you
-need.  
+The GemPlugins system is both freely available *and*  licensed under the Ruby License.  Feel free to use it just like you would Ruby and work it into your projects as you need.  
 
 h2. Some Charities To Consider
 
-Any charity that helps children is a good one.  My personal favorite is 
-"The Train Platform Schools":http://www.globalgiving.com/pr/1100/proj1042a.html
-in India.  They help children who are extremely poor get food, medical
-attention, and education by holding small school sessions on the train
-platforms in Bhubaneswar, India.
+Any charity that helps children is a good one.  Zed's personal favorite is "The Train Platform Schools":http://www.globalgiving.com/pr/1100/proj1042a.html in India.  They help children who are extremely poor get food, medical attention, and education by holding small school sessions on the train platforms in Bhubaneswar, India.
 
