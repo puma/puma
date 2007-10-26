@@ -6,7 +6,7 @@ require 'echoe'
 e = Echoe.new("mongrel") do |p|
   p.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
   p.author ="Zed A. Shaw"
-  p.clean_pattern = ['ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'ext/http11/Makefile', 'pkg', 'lib/*.bundle', '*.gem', 'site/output', '.config', 'lib/http11.jar', 'ext/http11_java/classes']
+  p.clean_pattern = ['ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'ext/http11/Makefile', 'pkg', 'lib/*.bundle', '*.gem', 'site/output', '.config']
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc', 'ext/http11/http11.c']
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>= 1.8.4'
@@ -30,10 +30,6 @@ e = Echoe.new("mongrel") do |p|
       extensions.clear
       self.files += ['lib/http11.so']
       self.platform = Gem::Platform::WIN32
-    when /java/
-      extensions.clear
-      self.files += ['lib/http11.jar']
-      self.platform = 'jruby'
     else
       add_dependency('daemons', '>= 1.0.3')
       add_dependency('fastthread', '>= 1.0.1')
@@ -52,39 +48,12 @@ task :ragel do
     sh "ragel http11_parser.rl | rlgen-cd -G2 -o #{target}"
     raise "Failed to build C source" unless File.exist? target
   end
-  Dir.chdir "ext/http11" do
-    target = "../../ext/http11_java/org/jruby/mongrel/Http11Parser.java"
-    File.unlink target if File.exist? target
-    sh "ragel -J http11_parser.java.rl | rlgen-java -o #{target}"
-    raise "Failed to build Java source" unless File.exist? target
-  end
-end
-
-#### XXX Hack around JRuby test/unit interaction problems
-
-desc "Run each test suite in isolation on JRuby"
-task :test_java do
-  e.test_pattern.each do |f|
-    sh "/opt/local/jruby/bin/jruby -w -Ilib:ext:bin:test -e 'require \"#{f}\"'" rescue nil
-  end
 end
 
 #### XXX Hack around RubyGems and Echoe for pre-compiled extensions.
 
 def move_extensions
   Dir["ext/**/*.#{Config::CONFIG['DLEXT']}"].each { |file| cp file, "lib/" }
-end
-
-def java_classpath_arg 
-  # A myriad of ways to discover the JRuby classpath
-  classpath = begin
-    require 'java' 
-    # Already running in a JRuby JVM
-    Java::java.lang.System.getProperty('java.class.path')
-  rescue LoadError
-    ENV['JRUBY_PARENT_CLASSPATH'] || ENV['JRUBY_HOME'] && FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
-  end
-  classpath ? "-cp #{classpath}" : ""
 end
 
 case RUBY_PLATFORM
@@ -98,19 +67,6 @@ when /mswin/
     move_extensions
   end 
   task :compile => [filename]
-
-when /java/
-  filename = "lib/http11.jar"
-  file filename do
-    build_dir = "ext/http11_java/classes"
-    mkdir_p build_dir
-    sources = FileList['ext/http11_java/**/*.java'].join(' ')
-    sh "javac -target 1.4 -source 1.4 -d #{build_dir} #{java_classpath_arg} #{sources}"
-    sh "jar cf lib/http11.jar -C #{build_dir} ."
-    move_extensions      
-  end      
-  task :compile => [filename]
-
 end
 
 #### Project-wide install and uninstall tasks
@@ -133,7 +89,6 @@ task :package_all => [:package] do
   sub_project("mongrel_console", :package)
   sub_project("mongrel_cluster", :package)
   sub_project("mongrel_service", :package) if RUBY_PLATFORM =~ /mswin/
-  sh("rake java package") unless RUBY_PLATFORM =~ /java/
 end
 
 task :install_requirements do

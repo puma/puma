@@ -124,7 +124,6 @@ class URIClassifierTest < Test::Unit::TestCase
       current << c.chr
       uri_classifier.register(current, c)
     end
-    
 
     # Try to resolve everything with no asserts as a fuzzing
     tests.each do |prefix|
@@ -187,6 +186,7 @@ class URIClassifierTest < Test::Unit::TestCase
 
     tests.each do |uri|
       script_name, path_info, handler = uri_classifier.resolve(uri)
+#      p uri_classifier.resolve(uri)
       assert_equal root, script_name, "#{uri} did not resolve to #{root}"
       assert_equal uri, path_info
       assert_equal 2, handler

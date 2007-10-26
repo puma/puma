@@ -37,87 +37,26 @@ require 'uri'
 module Mongrel
 
   class URIClassifier
-  
-    class RegistrationError < RuntimeError
-    end
-    class UsageError < RuntimeError
-    end
-
     attr_reader :handler_map   
  
     # Returns the URIs that have been registered with this classifier so far.
+    # The URIs returned should not be modified as this will cause a memory leak.
+    # You can use this to inspect the contents of the URIClassifier.
     def uris
       @handler_map.keys
     end
+    # Simply does an inspect that looks like a Hash inspect.
+    def inspect
+      @handler_map.inspect
+    end
 
-    def initialize
-      @handler_map = {}
-      @matcher = //
-      @root_handler = nil
-    end
-    
-    # Register a handler object at a particular URI. The handler can be whatever 
-    # you want, including an array. It's up to you what to do with it.
-    #
-    # Registering a handler is not necessarily threadsafe, so be careful if you go
-    # mucking around once the server is running.
-    def register(uri, handler)
-      raise RegistrationError, "#{uri.inspect} is already registered" if @handler_map[uri]
-      raise RegistrationError, "URI is empty" if !uri or uri.empty?
-      raise RegistrationError, "URI must begin with a \"#{Const::SLASH}\"" unless uri[0..0] == Const::SLASH
-      @handler_map[uri.dup] = handler
-      rebuild
-    end
-    
-    # Unregister a particular URI and its handler.
-    def unregister(uri)
-      handler = @handler_map.delete(uri)
-      raise RegistrationError, "#{uri.inspect} was not registered" unless handler
-      rebuild
-      handler
-    end
-    
-    # Resolve a request URI by finding the best partial match in the registered 
-    # handler URIs.
-    def resolve(request_uri)
-      if @root_handler
-        # Optimization for the pathological case of only one handler on "/"; e.g. Rails
-        [Const::SLASH, request_uri, @root_handler]
-      elsif match = @matcher.match(request_uri)
-        uri = match.to_s
-        # A root mounted ("/") handler must resolve such that path info matches the original URI.
-        [uri, (uri == Const::SLASH ? request_uri : match.post_match), @handler_map[uri]]
-      else
-        [nil, nil, nil]
-      end
-    end
-        
-    private
-    
-    def rebuild
-      if @handler_map.size == 1 and @handler_map[Const::SLASH]
-        @root_handler = @handler_map.values.first
-      else
-        @root_handler = nil
-        routes = @handler_map.keys.sort.sort_by do |uri|
-          -uri.length
-        end
-        @matcher = Regexp.new(routes.map do |uri|
-          Regexp.new('^' + Regexp.escape(uri))
-        end.join('|'))
-      end
-    end    
-    
   end
-
 
   # Used to stop the HttpServer via Thread.raise.
   class StopServer < Exception; end
 
-
   # Thrown at a thread when it is timed out.
   class TimeoutError < Exception; end
-
 
   # Every standard HTTP code mapped to the appropriate message.  These are
   # used so frequently that they are placed directly in Mongrel for easy
@@ -839,16 +778,25 @@ module Mongrel
     # found in the prefix of a request then your handler's HttpHandler::process method
     # is called.  See Mongrel::URIClassifier#register for more information.
     #
-    # If you set in_front=true then the passed in handler will be put in the front of the list
-    # for that particular URI. Otherwise it's placed at the end of the list.
+    # If you set in_front=true then the passed in handler will be put in front in the list.
+    # Otherwise it's placed at the end of the list.
     def register(uri, handler, in_front=false)
-      begin
+      script_name, path_info, handlers = @classifier.resolve(uri)
+
+      if not handlers
         @classifier.register(uri, [handler])
-      rescue URIClassifier::RegistrationError
-        handlers = @classifier.resolve(uri)[2]
-        method_name = in_front ? 'unshift' : 'push'
-        handlers.send(method_name, handler)
+      else
+        if path_info.length == 0 or (script_name == Const::SLASH and path_info == Const::SLASH)
+          if in_front
+            handlers.unshift(handler)
+          else
+            handlers << handler
+          end
+        else
+          @classifier.register(uri, [handler])
+        end
       end
+
       handler.listener = self
     end
 

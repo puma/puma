@@ -56,7 +56,6 @@ class ConfiguratorTest < Test::Unit::TestCase
       end
     end
 
-    # pp @config.listeners.values.first.classifier.routes
 
     @config.listeners.each do |host,listener| 
       assert listener.classifier.uris.length == 3, "Wrong number of registered URIs"

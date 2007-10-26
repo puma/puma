@@ -20,7 +20,6 @@ require 'benchmark'
 require 'digest/sha1'
 require 'uri'
 require 'stringio'
-require 'pp'
 
 require 'mongrel'
 require 'mongrel/stats'
