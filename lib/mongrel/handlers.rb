@@ -98,6 +98,10 @@ module Mongrel
   # that the final expanded path includes the root path.  If it doesn't
   # than it simply gives a 404.
   #
+  # If you pass nil as the root path, it will not check any locations or
+  # expand any paths. This lets you serve files from multiple directories
+  # on win32.
+  #
   # The default content type is "text/plain; charset=ISO-8859-1" but you
   # can change it anything you want using the DirHandler.default_content_type
   # attribute.
@@ -110,9 +114,9 @@ module Mongrel
 
     ONLY_HEAD_GET="Only HEAD and GET allowed.".freeze
 
-    # You give it the path to the directory root and an (optional) 
+    # You give it the path to the directory root and and optional listing_allowed and index_html
     def initialize(path, listing_allowed=true, index_html="index.html")
-      @path = File.expand_path(path)
+      @path = File.expand_path(path) if path
       @listing_allowed=listing_allowed
       @index_html = index_html
       @default_content_type = "application/octet-stream".freeze
@@ -120,7 +124,13 @@ module Mongrel
 
     # Checks if the given path can be served and returns the full path (or nil if not).
     def can_serve(path_info)
-      req_path = File.expand_path(File.join(@path,HttpRequest.unescape(path_info)), @path)
+
+      req_path = HttpRequest.unescape(path_info)
+      if @path
+        req_path = File.expand_path(File.join(@path, path_info), @path)
+      else
+        req_path = File.expand_path(req_path)
+      end
 
       if req_path.index(@path) == 0 and File.exist? req_path
         # it exists and it's in the right location
