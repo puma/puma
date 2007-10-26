@@ -1,7 +1,6 @@
 bin/mongrel_rails
 CHANGELOG
 COPYING
-diff
 examples/builder.rb
 examples/camping/blog.rb
 examples/camping/README
