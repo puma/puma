@@ -204,7 +204,7 @@ namespace :site do
   desc "Upload the website"
   task :web do
     # Requires the 'webgem' gem and the 'atom-tools' gem
-    sh "cd site; webgen; ruby atom.rb > output/feed.atom; rsync -azv --no-perms --no-times output/* rubyforge.org:/var/www/gforge-projects/mongrel/"
+    sh "cd site; webgen; webgen; ruby atom.rb > output/feed.atom; rsync -azv --no-perms --no-times output/* rubyforge.org:/var/www/gforge-projects/mongrel/"
   end
   
   desc "Upload the rdocs"
