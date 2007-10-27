@@ -233,7 +233,7 @@ module Mongrel
     # that much longer.
     def graceful_shutdown
       while reap_dead_workers("shutdown") > 0
-        STDERR.print "Waiting for #{@workers.list.length} requests to finish, could take #{@timeout + @throttle} seconds."
+        STDERR.puts "Waiting for #{@workers.list.length} requests to finish, could take #{@timeout + @throttle} seconds."
         sleep @timeout / 10
       end
     end

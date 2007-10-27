@@ -47,7 +47,7 @@ class WebServerTest < Test::Unit::TestCase
   end
 
 
-  def do_test(string, chunk, close_after=nil)
+  def do_test(string, chunk, close_after=nil, shutdown_delay=0)
     # Do not use instance variables here, because it needs to be thread safe
     socket = TCPSocket.new("127.0.0.1", 9998);
     request = StringIO.new(string)
@@ -62,7 +62,9 @@ class WebServerTest < Test::Unit::TestCase
         sleep 1
       end
     end
+    sleep(shutdown_delay)
     socket.write(" ") # Some platforms only raise the exception on attempted write
+    socket.flush
   end
 
   def test_trickle_attack
@@ -85,7 +87,7 @@ class WebServerTest < Test::Unit::TestCase
     redirect_test_io do
       long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
       assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL do
-        do_test(long, long.length/2)
+        do_test(long, long.length/2, 10)
       end
     end
   end
