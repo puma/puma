@@ -219,6 +219,6 @@ namespace :site do
   end
   
   desc "Upload the website, the rdocs, and the coverage report"
-  task :all => [:web, :rdoc, :coverage]
+  task :all => [:clean, :web, :rdoc, :coverage]
   
 end
