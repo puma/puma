@@ -9,18 +9,18 @@ h1. Latest News
 
 h2. Oct 26: Mongrel 1.0.2 Airdrop!
 
-Mongrel 1.0.2 is finally out with an asspile of bug fixes. It and its dependencies are now signed, so add the Mongrel public certificate via:
+Mongrel 1.0.2 is finally out with an asspile of bug fixes. It's now a signed gem, so add the Mongrel public certificate via:
 
   $ wget http://rubyforge.org/frs/download.php/25325/mongrel-public_cert.pem
   $ gem cert --add mongrel-public_cert.pem
 
-Now install it via:
+Now install via:
 
   $ gem install mongrel --include-dependencies -P HighSecurity
   
-Manual downloads (gems and tarballs) are at http://mongrel.rubyforge.org/releases/.
+Manual downloads (gems and tarballs) are at http://mongrel.rubyforge.org/releases/. 
 
-Mongrel 1.1 is coming very soon with JRuby support and a few other things.
+Mongrel 1.1 is coming real soon now with JRuby support and a few other things.
 
 h2. Jan 22: Mongrel 1.0.1 Baby!
 
