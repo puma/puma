@@ -16,7 +16,7 @@ There's quite a few people who either directly or indirectly helped to make Mong
 * MenTaL guY made Ruby threading not suck.
 * Filipe Lautert handled various bugfixes.
 * The JRuby team has been very supportive despite all the bugs we filed against them.
-* Evan Weaver has been driving the 1.0.2 and 1.1 releases.
+* Evan Weaver has been driving the 1.0.3 and 1.1 releases.
 
 Also with lots of testing from tons of people who are really appreciated.
 
