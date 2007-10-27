@@ -208,7 +208,7 @@ namespace :site do
   end
   
   desc "Upload the rdocs"
-  task :rdoc => [:redoc] do
+  task :rdoc => [:doc] do
     sh "rsync -azv doc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/"
     sh "cd projects/gem_plugin; rake site"
   end
