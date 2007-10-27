@@ -9,7 +9,7 @@ h1. Latest News
 
 h2. Oct 26: Mongrel 1.0.2
 
-Mongrel 1.0.2 is finally out with an asspile of bug fixes. Mongrel 1.1 will come hot on its heels, with a more modular architecture and JRuby support, just as soon as JRuby fixes their TCPSocket problems. Call them on the phone or something and encourage them. 
+Mongrel 1.0.2 is finally out with an asspile of bug fixes. Mongrel 1.1 will come hot on its heels, with a more modular architecture and JRuby support. Props to their team for quickly fixing the JRuby bugs we reported.
 
 h2. Jan 22: Mongrel 1.0.1 Baby!
 
