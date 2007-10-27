@@ -60,7 +60,7 @@ module Mongrel
 
         if uid != target_uid or gid != target_gid
           log "Initiating groups for #{user.inspect}:#{group.inspect}."
-          Process.initgroups(user, target_id)
+          Process.initgroups(user, target_gid)
         
           log "Changing group to #{group.inspect}."
           Process::GID.change_privilege(target_gid)

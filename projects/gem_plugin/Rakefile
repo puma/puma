@@ -17,9 +17,8 @@ Echoe.new("gem_plugin") do |p|
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
 end
 
-# The default Echoe rdoc location should be good enough, but it's not what we currently use.
-# It would be: rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin/
-#
-# task :site => [:redocs] do
-#   sh %{ rsync -r doc/* rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin_rdoc/ }
-# end
+namespace :site do
+  task :rdoc => [:doc] do
+    sh "rsync -azv --no-perms --no-times  doc/* rubyforge.org:/var/www/gforge-projects/mongrel/gem_plugin_rdoc/"
+  end
+end
