@@ -86,7 +86,7 @@ class WebServerTest < Test::Unit::TestCase
   def test_header_is_too_long
     redirect_test_io do
       long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
-      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL do
+      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
         do_test(long, long.length/2, 10)
       end
     end
