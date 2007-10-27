@@ -211,7 +211,7 @@ module Mongrel
     # Uses the GemPlugin system to easily load plugins based on their
     # gem dependencies.  You pass in either an :includes => [] or 
     # :excludes => [] setting listing the names of plugins to include
-    # or exclude from the when determining the dependencies.
+    # or exclude from the determining the dependencies.
     def load_plugins(options={})
       ops = resolve_defaults(options)
 
