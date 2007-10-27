@@ -4,11 +4,15 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html
 # for more information.
 
-require 'rubygems'
 require 'yaml'
+require 'etc'
+
+$LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../lib"
 require 'mongrel'
 require 'mongrel/rails'
-require 'etc'
+
+# require 'ruby-debug'
+# Debugger.start
 
 module Mongrel
   class Start < GemPlugin::Plugin "/commands"
@@ -174,15 +178,14 @@ module Mongrel
 
     def config_keys
       @config_keys ||=
-        %w(host port cwd log_file pid_file environment docroot mime_map daemon debug includes config_script
-           num_processors timeout throttle user group prefix)
+        %w(address host port cwd log_file pid_file environment docroot mime_map daemon debug includes config_script num_processors timeout throttle user group prefix)
     end
 
     def settings
       config_keys.inject({}) do |hash, key|
         value = self.instance_variable_get("@#{key}")
         key = 'host' if key == 'address'
-        hash[key.to_sym] = value
+        hash[key.to_sym] ||= value
         hash
       end
     end
