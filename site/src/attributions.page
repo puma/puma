@@ -18,7 +18,7 @@ There's quite a few people who either directly or indirectly helped to
 make Mongrel.  If we missed anyone then just e-mail me and we'll put your
 name here.
 
-* Mongrel was started by "Zed A. Shaw":http://www.zedshaw.com/
+* Mongrel was started by "Zed A. Shaw":http://www.zedshaw.com/.
 * Win32 support for services was done by Luis Lavena.
 * Specialized Win32 gems were setup by Wilson Bilkovich.
 * Why the lucky stiff implemented initial Camping support as well as improvements to Mongrel's file processing.
@@ -30,11 +30,13 @@ name here.
 
 Also with lots of testing from tons of people who are really appreciated.
 
+h2. Who To Contact
+
+The best way to contact the Mongrel team is to mail the "Mongrel List":http://rubyforge.org/mailman/listinfo/mongrel-users. If for some reason that's not appropriate, the best people to contact right now are probably "Evan Weaver":http://blog.evanweaver.com or "Luis Lavena":http://blog.mmediasys.com/.
+
 h2. Site Template
 
-The site's look and template is blatantly stolen from "OWD":http://openwebdesign.org
-and is specifically Copyright &copy; 2006 "Evgeni Dinev":http://www.evgenidinev.com/
-under the "Creative Commons":http://creativecommons.org license.
+The site's look and template is from "OWD":http://openwebdesign.org and is specifically Copyright &copy; 2006 "Evgeni Dinev":http://www.evgenidinev.com/ under the "Creative Commons":http://creativecommons.org license.
 
 
 h2. Photos
@@ -49,9 +51,9 @@ attributed to the people based on their Flickr accounts:
 * "Allen Wrench Mess":http://www.flickr.com/photos/eklektikos/79968762/
 * "Tools":http://www.flickr.com/photos/book_slut/87022458/
 * "Big Wrench":http://flickr.com/photos/actionatadistance/63325054/in/set-1367823/
-* "bolt":http://www-us.flickr.com/photos/lwr/6267035/in/set-775375/
+* "Bolt":http://www-us.flickr.com/photos/lwr/6267035/in/set-775375/
 * "Book Collage":http://www.flickr.com/photos/muybridge/85895062/
-* "squared circle megaphone":http://www.ruby-lang.org/en/20020104.html
+* "The Spinto Band at The Social":http://flickr.com/photo_zoom.gne?id=250878012
 
 Thanks to those people who publish their photos with the "Creative Commons":http://creativecommons.org
 license so others can see their photography (and look at their dogs).

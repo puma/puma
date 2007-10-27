@@ -26,7 +26,7 @@
             <li id="tl_home"><a href="/" title=
               "Home"><span>Home</span></a></li>
 
-            <li id="tl_contact"><a href="http://rubyforge.org/project/memberlist.php?group_id=1306" title=
+            <li id="tl_contact"><a href="{relocatable: attributions.html}" title=
               "Contact"><span>Contact</span></a></li>
 
             <li id="tl_sitemap"><a href="{relocatable: sitemap.html}" title=
@@ -79,9 +79,9 @@
       </dd>
 
       <dt>
-      <a href="http://rubyforge.org/project/memberlist.php?group_id=1306" title="Contact"><img src="{relocatable: images/3colls_p1.jpg}" /></a><br /></a></dt>
+      <a href="{relocatable: attributions.html}" title="Attributions"><img src="{relocatable: images/250878012_55b96c985c_o.jpg}" /></a><br /></a></dt>
     <dd>
-    <p><b>People:</b> Contact project people.</p>
+    <p><b>Attributions:</b> Who made it happen. Who to talk to.</p>
     </dd>
 
     <dt><a href="http://rubyforge.org/projects/mongrel/"><img src="{relocatable: images/side_p3.gif}" alt=
@@ -95,9 +95,8 @@
 </div>
 
 <div id="foot">
-  Copyright &copy; 2006 <a href="http://www.zedshaw.com/">Zed A. Shaw</a><br />
-  <a href="{relocatable: attributions.html}">Additional contibutions and openly licensed
-    materials used.</a>
+  Copyright &copy; 2007 <a href="http://www.zedshaw.com/">Zed A. Shaw</a>  and contributors<br />
+  <a href="{relocatable: attributions.html}">Additional contibutions and openly licensed materials used.</a>
 </div>
   </div>
 </body>
