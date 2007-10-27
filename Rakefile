@@ -215,7 +215,7 @@ namespace :site do
   
   desc "Upload the coverage report"
   task :coverage => [:rcov] do
-    sh "rsync -azv --no-perms --no-times test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/"
+    sh "rsync -azv --no-perms --no-times test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/" rescue nil
   end
   
   desc "Upload the website, the rdocs, and the coverage report"
