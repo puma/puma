@@ -3,8 +3,6 @@ require 'rubygems'
 gem 'echoe', '>=2.6.4'
 require 'echoe'
 
-ENV['RDOC_TEMPLATE'] = nil
-
 e = Echoe.new("mongrel") do |p|
   p.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
   p.author ="Zed A. Shaw"
