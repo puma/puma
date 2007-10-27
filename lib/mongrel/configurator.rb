@@ -39,6 +39,8 @@ module Mongrel
 
     # You pass in initial defaults and then a block to continue configuring.
     def initialize(defaults={}, &block)
+      p defaults
+      p instance_variables
       @listener = nil
       @listener_name = nil
       @listeners = {}

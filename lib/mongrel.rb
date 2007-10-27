@@ -10,14 +10,17 @@ require 'stringio'
 
 begin
   require 'fastthread'
-rescue RuntimeError => e
-  warn "fastthread not loaded: #{ e.message }"
-rescue LoadError
+rescue LoadError, RuntimeError
+  require 'rubygems' and retry
 ensure
   require 'thread'
 end
 
-require 'cgi_multipart_eof_fix'
+begin
+  require 'cgi_multipart_eof_fix'
+rescue LoadError
+  require 'rubygems' and retry
+end
 
 require 'mongrel/cgi'
 require 'mongrel/handlers'

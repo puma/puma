@@ -4,10 +4,13 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'rubygems'
-require 'gem_plugin'
+begin
+  require 'gem_plugin'
+rescue LoadError
+  require 'rubygems' and retry
+end
 
-# file is just a stub that makes sure the mongrel_plugins gem is loaded and ready
+# File is just a stub that makes sure the mongrel_plugins gem is loaded and ready
 
 
 

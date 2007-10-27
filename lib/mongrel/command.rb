@@ -4,10 +4,14 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'rubygems'
 require 'singleton'
 require 'optparse'
-require 'gem_plugin'
+
+begin
+  require 'gem_plugin'
+rescue LoadError
+  require 'rubygems' and retry
+end
 
 module Mongrel
 
