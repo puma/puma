@@ -4,19 +4,9 @@ inMenu: true
 directoryName: Attributions
 ordering: 100
 ---
-h1. Commercial Sponsorship
-
-Mongrel is a free open source web server and will always remain that way, but that doesn't mean that companies don't help to make it better.
-
-Mongrel received sponsorship from "EastMedia Group":http://www.eastmedia.com in partnership with "VeriSign":http://www.verisign.com/ to make Mongrel fast and stable enough for their "PIP":http://pip.verisignlabs.com/ which should be a great Single Sign-On application and is being released open source.
-
-Other companies benefiting from Ruby should take this as an example.  We can think of quite a few things that need some serious commercial cash to get them in gear.  If you're making cash off Ruby consider hiring a developer part-time, full-time, or posting a bounty for something you need as well as the community needs.  There's no better time for enlightened self-interest than now.
-
 h1. The People Who Made It Possible
 
-There's quite a few people who either directly or indirectly helped to
-make Mongrel.  If we missed anyone then just e-mail me and we'll put your
-name here.
+There's quite a few people who either directly or indirectly helped to make Mongrel.  If we missed anyone then just e-mail us and we'll put your name here.
 
 * Mongrel was started by "Zed A. Shaw":http://www.zedshaw.com/.
 * Win32 support for services was done by Luis Lavena.
@@ -30,9 +20,17 @@ name here.
 
 Also with lots of testing from tons of people who are really appreciated.
 
-h2. Who To Contact
+h1. Who To Contact
 
-The easiest way to contact the Mongrel team is to mail the "Mongrel List":http://rubyforge.org/mailman/listinfo/mongrel-users. If for some reason that's not appropriate, the best individuals to contact right now are probably "Evan Weaver":http://blog.evanweaver.com, "Filipe Lautert":https://rubyforge.org/users/filipe/, or "Luis Lavena":http://blog.mmediasys.com/.
+The easiest way to contact the Mongrel team is to mail the "Mongrel List":http://rubyforge.org/mailman/listinfo/mongrel-users. If for some reason that's not appropriate, the best individuals to contact right now are probably "Filipe Lautert":https://rubyforge.org/users/filipe/, "Luis Lavena":http://blog.mmediasys.com/, or "Evan Weaver":http://blog.evanweaver.com.
+
+h1. Commercial Sponsorship
+
+Mongrel is a free open source web server and will always remain that way, but that doesn't mean that companies don't help to make it better.
+
+Mongrel received sponsorship from "EastMedia Group":http://www.eastmedia.com in partnership with "VeriSign":http://www.verisign.com/ to make Mongrel fast and stable enough for their "PIP":http://pip.verisignlabs.com/ which should be a great Single Sign-On application and is being released open source.
+
+Other companies benefiting from Ruby should take this as an example.  We can think of quite a few things that need some serious commercial cash to get them in gear.  If you're making cash off Ruby consider hiring a developer part-time, full-time, or posting a bounty for something you need as well as the community needs.  There's no better time for enlightened self-interest than now.
 
 h2. Site Template
 
