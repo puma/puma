@@ -191,7 +191,7 @@ namespace :site do
     FileList["**/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
     
     # XXX Hack, because only Luis can package for Win32 right now
-    sh "cp ~/Downloads/mongrel-1.0.2-mswin32.gem pkg/gems/"
+    sh "cp ~/Downloads/mongrel-#{e.version}-mswin32.gem pkg/gems/"
     sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"  
     sh "rm -rf pkg/mongrel*"
     sh "gem generate_index -d pkg"  
