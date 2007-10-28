@@ -126,29 +126,27 @@ module Mongrel
     def can_serve(path_info)
 
       req_path = HttpRequest.unescape(path_info)
-      if @path
-        req_path = File.expand_path(File.join(@path, path_info), @path)
-      else
-        req_path = File.expand_path(req_path)
-      end
-
-      if req_path.index(@path) == 0 and File.exist? req_path
-        # it exists and it's in the right location
+      # Add the drive letter or root path
+      req_path = File.join(@path, req_path) if @path
+      req_path = File.expand_path req_path
+      
+      if File.exist? req_path
+        # It exists and it's in the right location
         if File.directory? req_path
-          # the request is for a directory
+          # The request is for a directory
           index = File.join(req_path, @index_html)
           if File.exist? index
-            # serve the index
+            # Serve the index
             return index
           elsif @listing_allowed
-            # serve the directory
+            # Serve the directory
             return req_path
           else
-            # do not serve anything
+            # Do not serve anything
             return nil
           end
         else
-          # it's a file and it's there
+          # It's a file and it's there
           return req_path
         end
       else
