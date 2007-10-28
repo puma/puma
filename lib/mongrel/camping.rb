@@ -38,7 +38,7 @@ module Mongrel
       @@file_only_methods = ["GET","HEAD"]
 
       def initialize(klass)
-        @files = Mongrel::DirHandler.new("/",false)
+        @files = Mongrel::DirHandler.new(nil, false)
         @guard = Mutex.new
         @klass = klass
       end
