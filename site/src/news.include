@@ -1,7 +1,7 @@
 <dl>
   <dt>Oct-26-2007</dt>
   <dd>
-  <h5><a href="{relocatable: news.html}">Mongrel 1.0.4</a></h5>
+  <h5><a href="{relocatable: news.html}">Mongrel 1.0.4 released</a></h5>
 
   <p>Mongrel 1.0.4 is out. It fixes three bugs that were introduced in 1.0.3.</p>
   <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
@@ -10,7 +10,7 @@
 
   <dt>Oct-26-2007</dt>
   <dd>
-  <h5><a href="{relocatable: news.html}">Mongrel 1.0.3</a></h5>
+  <h5><a href="{relocatable: news.html}">Mongrel 1.0.3 is out</a></h5>
 
   <p>Mongrel 1.0.3 is out with an asspile of bug fixes.</p>
   <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
