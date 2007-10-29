@@ -1,5 +1,5 @@
 
-v1.1. Pure Ruby URIClassifier. More modular architecture. JRuby support. Move C URIClassifier into mongrel_experimental project.
+v1.0.9. Pure Ruby URIClassifier. More modular architecture. JRuby support. Move C URIClassifier into mongrel_experimental project.
 
 v1.0.3. Fix user-switching bug; make people upgrade to the latest from the RC.
 
