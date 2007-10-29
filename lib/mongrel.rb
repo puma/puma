@@ -243,18 +243,10 @@ module Mongrel
 
     def configure_socket_options
       case RUBY_PLATFORM
-      when /linux/
-        # 9 is currently TCP_DEFER_ACCEPT
-        $tcp_defer_accept_opts = [Socket::SOL_TCP, 9, 1]
-        $tcp_cork_opts = [Socket::SOL_TCP, 3, 1]
-      when /freebsd(([1-4]\..{1,2})|5\.[0-4])/
-        # Do nothing, just closing a bug when freebsd <= 5.4
-      when /freebsd/
-        # Use the HTTP accept filter if available.
-        # The struct made by pack() is defined in /usr/include/sys/socket.h as accept_filter_arg
-        unless `/sbin/sysctl -nq net.inet.accf.http`.empty?
-          $tcp_defer_accept_opts = [Socket::SOL_SOCKET, Socket::SO_ACCEPTFILTER, ['httpready', nil].pack('a16a240')]
-        end
+        when /linux/
+          # 9 is currently TCP_DEFER_ACCEPT
+          $tcp_defer_accept_opts = [Socket::SOL_TCP, 9, 1]
+          $tcp_cork_opts = [Socket::SOL_TCP, 3, 1]
       end
     end
 
