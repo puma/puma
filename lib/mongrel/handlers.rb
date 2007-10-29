@@ -69,9 +69,11 @@ module Mongrel
   end
 
 
+  #
   # The server normally returns a 404 response if an unknown URI is requested, but it
   # also returns a lame empty message.  This lets you do a 404 response
   # with a custom message for special URIs.
+  #
   class Error404Handler < HttpHandler
 
     # Sets the message to return.  This is constructed once for the handler
@@ -87,24 +89,25 @@ module Mongrel
 
   end
 
-
+  #
   # Serves the contents of a directory.  You give it the path to the root
   # where the files are located, and it tries to find the files based on 
   # the PATH_INFO inside the directory.  If the requested path is a
   # directory then it returns a simple directory listing.
   #
   # It does a simple protection against going outside it's root path by
-  # converting all paths to an absolute expanded path, and then making sure
-  # that the final expanded path includes the root path.  If it doesn't
+  # converting all paths to an absolute expanded path, and then making 
+  # sure that the final expanded path includes the root path.  If it doesn't
   # than it simply gives a 404.
   #
   # If you pass nil as the root path, it will not check any locations or
-  # expand any paths. This lets you serve files from multiple directories
+  # expand any paths. This lets you serve files from multiple drives
   # on win32.
   #
   # The default content type is "text/plain; charset=ISO-8859-1" but you
   # can change it anything you want using the DirHandler.default_content_type
   # attribute.
+  #
   class DirHandler < HttpHandler
     attr_accessor :default_content_type
     attr_reader :path
