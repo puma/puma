@@ -134,6 +134,7 @@ task :package_all => [:package] do
   sub_project("mongrel_cluster", :package)
   sub_project("mongrel_service", :package) if RUBY_PLATFORM =~ /mswin/
   sh("rake java package") unless RUBY_PLATFORM =~ /java/
+  # sh("rake mswin package") unless RUBY_PLATFORM =~ /mswin/
 end
 
 task :install_requirements do
