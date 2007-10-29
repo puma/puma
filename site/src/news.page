@@ -7,6 +7,10 @@ ordering: 2
 
 h1. Latest News
 
+h2. Oct 29: Mongrel 1.0.4, spooky.
+
+Mongrel 1.0.4 is out. It fixes three bugs that were introduced in 1.0.3. Blame Evan.
+
 h2. Oct 26: Mongrel 1.0.3 drops!
 
 Mongrel 1.0.3 is finally out with an asspile of bug fixes. It's now a signed gem, so add the Mongrel public certificate via:
