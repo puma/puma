@@ -161,7 +161,7 @@ task :uninstall => [:clean] do
   sub_project("mongrel_console", :uninstall)
   sub_project("gem_plugin", :uninstall)
   sub_project("fastthread", :uninstall)  
-  sub_project("mongrel_service", :install) if RUBY_PLATFORM =~ /mswin/
+  sub_project("mongrel_service", :uninstall) if RUBY_PLATFORM =~ /mswin/
 end
 
 desc "for Mongrel and all its subprojects"
