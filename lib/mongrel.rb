@@ -348,7 +348,15 @@ end
 # in regular Mongrel.
 
 begin  
-  gem 'mongrel_experimental', '=1.1' if respond_to? 'gem'
+  # Look for SVN version
+  $LOAD_PATH.unshift 'projects/mongrel_experimental/lib/'
   require 'mongrel_experimental'  
 rescue LoadError
+  begin
+    # Look for gem
+    gem 'mongrel_experimental', '=1.1' if respond_to? 'gem'
+    require 'mongrel_experimental'  
+  rescue LoadError
+    # Not found
+  end
 end
