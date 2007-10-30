@@ -6,7 +6,6 @@
 #include "ext_help.h"
 #include <assert.h>
 #include <string.h>
-#include "http11_parser.h"
 #include <ctype.h>
 #include "tst.h"
 
@@ -548,44 +547,10 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
 }
 
 
-void Init_http11()
+void Init_uri_classifier()
 {
 
   mMongrel = rb_define_module("Mongrel");
-
-  DEF_GLOBAL(http_prefix, "HTTP_");
-  DEF_GLOBAL(request_method, "REQUEST_METHOD");
-  DEF_GLOBAL(request_uri, "REQUEST_URI");
-  DEF_GLOBAL(fragment, "FRAGMENT");
-  DEF_GLOBAL(query_string, "QUERY_STRING");
-  DEF_GLOBAL(http_version, "HTTP_VERSION");
-  DEF_GLOBAL(request_path, "REQUEST_PATH");
-  DEF_GLOBAL(content_length, "CONTENT_LENGTH");
-  DEF_GLOBAL(http_content_length, "HTTP_CONTENT_LENGTH");
-  DEF_GLOBAL(content_type, "CONTENT_TYPE");
-  DEF_GLOBAL(http_content_type, "HTTP_CONTENT_TYPE");
-  DEF_GLOBAL(gateway_interface, "GATEWAY_INTERFACE");
-  DEF_GLOBAL(gateway_interface_value, "CGI/1.2");
-  DEF_GLOBAL(server_name, "SERVER_NAME");
-  DEF_GLOBAL(server_port, "SERVER_PORT");
-  DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
-  DEF_GLOBAL(server_protocol_value, "HTTP/1.1");
-  DEF_GLOBAL(http_host, "HTTP_HOST");
-  DEF_GLOBAL(mongrel_version, "Mongrel 1.0.4");
-  DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
-  DEF_GLOBAL(port_80, "80");
-
-  eHttpParserError = rb_define_class_under(mMongrel, "HttpParserError", rb_eIOError);
-
-  cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
-  rb_define_alloc_func(cHttpParser, HttpParser_alloc);
-  rb_define_method(cHttpParser, "initialize", HttpParser_init,0);
-  rb_define_method(cHttpParser, "reset", HttpParser_reset,0);
-  rb_define_method(cHttpParser, "finish", HttpParser_finish,0);
-  rb_define_method(cHttpParser, "execute", HttpParser_execute,3);
-  rb_define_method(cHttpParser, "error?", HttpParser_has_error,0);
-  rb_define_method(cHttpParser, "finished?", HttpParser_is_finished,0);
-  rb_define_method(cHttpParser, "nread", HttpParser_nread,0);
 
   cURIClassifier = rb_define_class_under(mMongrel, "URIClassifier", rb_cObject);
   rb_define_alloc_func(cURIClassifier, URIClassifier_alloc);
