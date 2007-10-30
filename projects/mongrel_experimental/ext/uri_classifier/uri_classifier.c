@@ -198,8 +198,7 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
 }
 
 VALUE URIClassifier_uris(VALUE self) {
-  /* XXX Not implemented */
-  return Qnil;
+  return rb_funcall(rb_ivar_get(self, id_handler_map), rb_intern("keys"), 0);
 }
 
 void Init_uri_classifier()
