@@ -197,6 +197,10 @@ VALUE URIClassifier_resolve(VALUE self, VALUE uri)
   return result;
 }
 
+VALUE URIClassifier_uris(VALUE self) {
+  /* XXX Not implemented */
+  return Qnil;
+}
 
 void Init_uri_classifier()
 {
@@ -209,4 +213,5 @@ void Init_uri_classifier()
   rb_define_method(cURIClassifier, "register", URIClassifier_register, 2);
   rb_define_method(cURIClassifier, "unregister", URIClassifier_unregister, 1);
   rb_define_method(cURIClassifier, "resolve", URIClassifier_resolve, 1);
+  rb_define_method(cURIClassifier, "uris", URIClassifier_uris, 0);
 }
