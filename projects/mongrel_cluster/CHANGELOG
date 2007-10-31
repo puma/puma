@@ -1,2 +1,4 @@
 
-v1.0.3. Signed gem; Capistrano 2.0 tasks (require 'mongrel_cluster/recipes_2').
+v1.0.4. Actually ship the Cap 2 tasks; use an autorequire based on whether namespace() is available (Kevin Runde).
+
+v1.0.3. Signed gem.
