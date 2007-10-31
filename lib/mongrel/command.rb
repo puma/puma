@@ -7,11 +7,8 @@
 require 'singleton'
 require 'optparse'
 
-begin
-  require 'gem_plugin'
-rescue LoadError
-  require 'rubygems' and retry
-end
+require 'mongrel/gems'
+Mongrel::Gems.require 'gem_plugin'
 
 module Mongrel
 

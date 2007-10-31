@@ -1,6 +1,5 @@
 
 require 'socket'
-require 'http11'
 require 'tempfile'
 require 'yaml'
 require 'time'
@@ -8,20 +7,13 @@ require 'etc'
 require 'uri'
 require 'stringio'
 
-begin
-  require 'fastthread'
-rescue LoadError, RuntimeError
-  require 'rubygems' and retry
-ensure
-  require 'thread'
-end
+require 'mongrel/gems'
 
-begin
-  require 'cgi_multipart_eof_fix'
-rescue LoadError
-  require 'rubygems' and retry
-end
+Mongrel::Gems.require 'cgi_multipart_eof_fix'
+Mongrel::Gems.require 'fastthread'
+require 'thread'
 
+require 'http11'
 require 'mongrel/cgi'
 require 'mongrel/handlers'
 require 'mongrel/command'
@@ -347,16 +339,5 @@ end
 # Load experimental library, if present. We put it here so it can override anything
 # in regular Mongrel.
 
-begin  
-  # Look for SVN version
-  $LOAD_PATH.unshift 'projects/mongrel_experimental/lib/'
-  require 'mongrel_experimental'  
-rescue LoadError
-  begin
-    # Look for gem
-    gem 'mongrel_experimental', '=1.1' if respond_to? 'gem'
-    require 'mongrel_experimental'  
-  rescue LoadError
-    # Not found
-  end
-end
+$LOAD_PATH.unshift 'projects/mongrel_experimental/lib/'
+Mongrel::Gems.require 'mongrel_experimental', '=1.1'
