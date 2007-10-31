@@ -14,7 +14,7 @@ Restart cluster:
 Stop cluster:
   mongrel_rails cluster::stop
 
-== Capistrano 1.0 Recipes
+== Capistrano Recipes
 
 Add to config/deploy.rb:
   require 'mongrel_cluster/recipes'
@@ -28,20 +28,8 @@ Variables:
   mongrel_user: User to run mongrels in cluster as. Unset by default
   mongrel_group: Group to run mongrels in cluster as. Unset by default.
 
-Tasks (performed on :app role)
-  configure_mongrel_cluster: Configure the cluster with variables.
-  start_mongrel_cluster: Start Mongrel processes on the app server.
-  stop_mongrel_cluster: Stop the Mongrel processes on the app server.
-  restart_mongrel_cluster: Restart the Mongrel processes on the app server by starting and stopping mongrel_cluster.
-  restart: Calls restart_mongrel_cluster to allow Mongrel to be used with the standard Capistrano deploy task.
-  spinner: Calls start_mongrel_cluster to allow Mongrel to be used with the standard Capistrano cold_deploy task.
+On Capistrano 2 you get then get the following tasks:
 
-== Capistrano 2.0 Recipes
-
-Add to config/deploy.rb:
-  require 'mongrel_cluster/recipes_2'
-
-Capistrano 2.0 uses namespaced tasks. The new task names are:
   mongrel:cluster:configure Configure the cluster with variables.
   mongrel:cluster:start: Start Mongrel processes on the app server.
   mongrel:cluster:stop: Stop the Mongrel processes on the app server.
@@ -49,6 +37,15 @@ Capistrano 2.0 uses namespaced tasks. The new task names are:
   deploy:restart: Calls mongrel:cluster:restart to allow Mongrel to be used with the standard Capistrano deploy task.
   deploy:start: Calls mongrel:cluster:start to allow Mongrel to be used with the standard Capistrano deploy task.
   deploy:stop: Calls mongrel:cluster:stop to allow Mongrel to be used with the standard Capistrano deploy task.
+  
+On Capistrano 1 you get the same tasks, but without the namespace:  
+
+  configure_mongrel_cluster: Configure the cluster with variables.
+  start_mongrel_cluster: Start Mongrel processes on the app server.
+  stop_mongrel_cluster: Stop the Mongrel processes on the app server.
+  restart_mongrel_cluster: Restart the Mongrel processes on the app server by starting and stopping mongrel_cluster.
+  restart: Calls restart_mongrel_cluster to allow Mongrel to be used with the standard Capistrano deploy task.
+  spinner: Calls start_mongrel_cluster to allow Mongrel to be used with the standard Capistrano cold_deploy task.
 
 == Starting clusters at boot
 
