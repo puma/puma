@@ -46,9 +46,9 @@ lib/mongrel.rb
 LICENSE
 Manifest
 mongrel-public_cert.pem
+mongrel.gemspec
 README
 setup.rb
-test/jruby_socket.rb
 test/mime.yaml
 test/mongrel.conf
 test/test_cgi_wrapper.rb
