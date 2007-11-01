@@ -1,0 +1,3 @@
+
+v1.2. Rewrite and merge mongrel cluster and mongrel_rails into something small and maintainable. Remove gem_plugin entirely.
+
