@@ -7,6 +7,10 @@ ordering: 2
 
 h1. Latest News
 
+h2. Nov 1: Mongrel 1.1, Java edition
+
+Mongrel 1.1. It adds JRuby support. Mongrel_cluster is also updated to 1.0.4, with fixes for a Capistrano recipe bug.
+
 h2. Oct 29: Mongrel 1.0.4, spooky.
 
 Mongrel 1.0.4 is out. It fixes three bugs that were introduced in 1.0.3.
