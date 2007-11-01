@@ -42,7 +42,7 @@
         </div>
 
         <div id="news">
-          <h4>NEWS</h4>
+          <h4><a href="http://mongrel.rubyforge.org/rss.xml"><img src="/images/rss.png"></a> <a href="http://mongrel.rubyforge.org/rss.xml">NEWS</a></h4>
           <%= open("src/news.include").read %>
         </div>
         <hr noshade="noshade" size="1" />
