@@ -7,7 +7,7 @@ e = Echoe.new("mongrel") do |p|
   p.summary = "A small fast HTTP library and server that runs Rails, Camping, Nitro and Iowa apps."
   p.author ="Zed A. Shaw"
   p.clean_pattern = ['ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'lib/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'ext/http11/Makefile', 'pkg', 'lib/*.bundle', '*.gem', 'site/output', '.config', 'lib/http11.jar', 'ext/http11_java/classes', 'coverage']
-  p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
+  p.rdoc_pattern = ['README', 'LICENSE', 'CHANGELOG', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>= 1.8.4'
   p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4']
