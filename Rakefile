@@ -15,14 +15,14 @@ e = Echoe.new("mongrel") do |p|
   p.need_tar_gz = false
   p.need_tgz = true
 
-  case RUBY_PLATFORM 
-  when /mswin/
-    p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem', 
-      '~/gem_certificates/luislavena-mongrel-public_cert.pem']
-  else
+#  case RUBY_PLATFORM 
+#  when /mswin/
+#    p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem', 
+#      '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+#  else
     p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem', 
       '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
-  end
+#  end
 
   p.eval = proc do  
     case RUBY_PLATFORM
@@ -198,8 +198,8 @@ namespace :site do
     FileList["**/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
     
     # XXX Hack, because only Luis can package for Win32 right now
-    # sh "cp ~/Downloads/mongrel-#{e.version}-mswin32.gem pkg/gems/"
-    # sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"  
+    sh "cp ~/Downloads/mongrel-#{e.version}-mswin32.gem pkg/gems/"
+    sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"  
     sh "rm -rf pkg/mongrel*"
     sh "gem generate_index -d pkg"  
     sh "scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 

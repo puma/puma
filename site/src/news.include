@@ -1,7 +1,16 @@
 <dl>
+  <dt>Nov-1-2007</dt>
+  <dd>
+  <h5><a href="{relocatable: news.html}">Mongrel 1.1, caffeinated edition</a></h5>
+
+  <p>Mongrel 1.1 is out, with JRuby support. Mongrel_cluster is also updated to 1.0.4.</p>
+  <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+  <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+  </dd>
+  
   <dt>Oct-29-2007</dt>
   <dd>
-  <h5><a href="{relocatable: news.html}">Mongrel 1.0.4 released</a></h5>
+  <h5><a href="{relocatable: news.html}">Mongrel 1.0.4, bugfix release</a></h5>
 
   <p>Mongrel 1.0.4 is out. It fixes three bugs that were introduced in 1.0.3.</p>
   <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>

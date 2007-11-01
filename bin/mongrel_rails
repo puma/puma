@@ -124,7 +124,7 @@ module Mongrel
       end
 
       config.run
-      config.log "Mongrel available at #{@address}:#{@port}"
+      config.log "Mongrel #{Mongrel::Const::MONGREL_VERSION} available at #{@address}:#{@port}"
 
       if config.defaults[:daemon]
         config.write_pid_file

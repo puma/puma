@@ -348,4 +348,4 @@ end
 # in regular Mongrel.
 
 $LOAD_PATH.unshift 'projects/mongrel_experimental/lib/'
-Mongrel::Gems.require 'mongrel_experimental', '=1.1'
+Mongrel::Gems.require 'mongrel_experimental', ">=#{Mongrel::Const::MONGREL_VERSION}"

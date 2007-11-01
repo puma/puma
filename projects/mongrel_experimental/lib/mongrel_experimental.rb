@@ -1,3 +1,3 @@
 
 require 'uri_classifier'
-STDERR.puts "** mongrel_experimental loaded"
+STDERR.puts "** Mongrel_experimental loaded"
