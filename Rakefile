@@ -118,7 +118,9 @@ end
 def sub_project(project, *targets)
   targets.each do |target|
     Dir.chdir "projects/#{project}" do
-      sh %{rake --trace #{target.to_s} }
+      unless RUBY_PLATFORM =~ /mswin/
+        sh %{rake --trace #{target.to_s} }
+      end
     end
   end
 end
