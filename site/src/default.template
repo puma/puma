@@ -4,10 +4,9 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
     <title>Mongrel: {title: }</title>
-    <link rel="stylesheet" href="{relocatable: default.css}" type="text/css" media=
-    "screen" />
-    <meta http-equiv="Content-Type" content=
-    "text/html; charset=us-ascii" />
+    <link rel="stylesheet" href="{relocatable: default.css}" type="text/css" media="screen" />
+    <link rel="alternate" type="application/rss+xml" title="RSS 2.0" href="http://mongrel.rubyforge.org/rss.xml" />
+    <meta http-equiv="Content-Type" content="text/html; charset=us-ascii" />
   </head>
 
   <body>

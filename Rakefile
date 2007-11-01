@@ -15,16 +15,16 @@ e = Echoe.new("mongrel") do |p|
   p.need_tar_gz = false
   p.need_tgz = true
 
-#  case RUBY_PLATFORM 
-#  when /mswin/
-#    p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem', 
-#      '~/gem_certificates/luislavena-mongrel-public_cert.pem']
-#  else
-    p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem', 
-      '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
-#  end
+  #  case RUBY_PLATFORM
+  #  when /mswin/
+  #    p.certificate_chain = ['~/gem_certificates/mongrel-public_cert.pem',
+  #      '~/gem_certificates/luislavena-mongrel-public_cert.pem']
+  #  else
+  p.certificate_chain = ['~/p/configuration/gem_certificates/mongrel/mongrel-public_cert.pem',
+  '~/p/configuration/gem_certificates/evan_weaver-mongrel-public_cert.pem']
+  #  end
 
-  p.eval = proc do  
+  p.eval = proc do
     case RUBY_PLATFORM
     when /mswin/
       extensions.clear
@@ -39,7 +39,7 @@ e = Echoe.new("mongrel") do |p|
       add_dependency('fastthread', '>= 1.0.1')
     end
   end
-  
+
 end
 
 #### Ragel builder
@@ -75,10 +75,10 @@ def move_extensions
   Dir["ext/**/*.#{Config::CONFIG['DLEXT']}"].each { |file| mv file, "lib/" }
 end
 
-def java_classpath_arg 
+def java_classpath_arg
   # A myriad of ways to discover the JRuby classpath
   classpath = begin
-    require 'java' 
+    require 'java'
     # Already running in a JRuby JVM
     Java::java.lang.System.getProperty('java.class.path')
   rescue LoadError
@@ -91,12 +91,12 @@ case RUBY_PLATFORM
 when /mswin/
   filename = "lib/http11.so"
   file filename do
-    Dir.chdir("ext/http11") do 
+    Dir.chdir("ext/http11") do
       ruby "extconf.rb"
       system(PLATFORM =~ /mswin/ ? 'nmake' : 'make')
     end
     move_extensions
-  end 
+  end
   task :compile => [filename]
 
 when /java/
@@ -107,8 +107,8 @@ when /java/
     sources = FileList['ext/http11_java/**/*.java'].join(' ')
     sh "javac -target 1.4 -source 1.4 -d #{build_dir} #{java_classpath_arg} #{sources}"
     sh "jar cf lib/http11.jar -C #{build_dir} ."
-    move_extensions      
-  end      
+    move_extensions
+  end
   task :compile => [filename]
 
 end
@@ -153,7 +153,7 @@ task :install => [:install_requirements] do
   sub_project("mongrel_status", :install)
   sub_project("mongrel_upload_progress", :install)
   sub_project("mongrel_console", :install)
-  sub_project("mongrel_cluster", :install)  
+  sub_project("mongrel_cluster", :install)
   sub_project("mongrel_experimental", :install)
   sub_project("mongrel_service", :install) if RUBY_PLATFORM =~ /mswin/
 end
@@ -165,8 +165,8 @@ task :uninstall => [:clean] do
   sub_project("mongrel_upload_progress", :uninstall)
   sub_project("mongrel_console", :uninstall)
   sub_project("gem_plugin", :uninstall)
-  sub_project("fastthread", :uninstall)  
-  sub_project("mongrel_experimental", :uninstall)  
+  sub_project("fastthread", :uninstall)
+  sub_project("mongrel_experimental", :uninstall)
   sub_project("mongrel_service", :uninstall) if RUBY_PLATFORM =~ /mswin/
 end
 
@@ -178,8 +178,8 @@ task :clean do
   sub_project("mongrel_status", :clean)
   sub_project("mongrel_upload_progress", :clean)
   sub_project("mongrel_console", :clean)
-  sub_project("mongrel_cluster", :clean) 
-  sub_project("mongrel_experimental", :clean)    
+  sub_project("mongrel_cluster", :clean)
+  sub_project("mongrel_experimental", :clean)
   sub_project("mongrel_service", :clean) if RUBY_PLATFORM =~ /mswin/
 end
 
@@ -193,39 +193,39 @@ namespace :site do
     rm_rf "pkg/tars"
     mkdir_p "pkg/gems"
     mkdir_p "pkg/tars"
-   
+
     FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
     FileList["**/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
-    
+
     # XXX Hack, because only Luis can package for Win32 right now
     sh "cp ~/Downloads/mongrel-#{e.version}-mswin32.gem pkg/gems/"
-    sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"  
+    sh "cp ~/Downloads/mongrel_service-0.3.3-mswin32.gem pkg/gems/"
     sh "rm -rf pkg/mongrel*"
-    sh "gem generate_index -d pkg"  
-    sh "scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
+    sh "gem generate_index -d pkg"
+    sh "scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/"
     sh "svn log -v > SVN_LOG"
-    sh "scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/" 
-    rm "SVN_LOG"  
+    sh "scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/"
+    rm "SVN_LOG"
   end
-  
+
   desc "Upload the website"
   task :web do
-    # Requires the 'webgem' gem and the 'atom-tools' gem
-    sh "cd site; webgen; webgen; ruby atom.rb > output/feed.atom; rsync -azv --no-perms --no-times output/* rubyforge.org:/var/www/gforge-projects/mongrel/"
+    # Requires the 'webgem' gem
+    sh "cd site; webgen; webgen; curl 'http://feed43.com/mongrel.xml' > output/rss.xml; rsync -azv --no-perms --no-times output/* rubyforge.org:/var/www/gforge-projects/mongrel/"
   end
-  
+
   desc "Upload the rdocs"
   task :rdoc => [:doc] do
     sh "rsync -azv --no-perms --no-times doc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/"
     sh "cd projects/gem_plugin; rake site:rdoc"
   end
-  
+
   desc "Upload the coverage report"
   task :coverage => [:rcov] do
     sh "rsync -azv --no-perms --no-times test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/" rescue nil
   end
-  
+
   desc "Upload the website, the rdocs, and the coverage report"
   task :all => [:clean, :web, :rdoc, :coverage]
-  
+
 end
