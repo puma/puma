@@ -208,6 +208,7 @@ module Cluster
           return pid
         end
       end
+      nil
     end
     
     def log_error(message)
