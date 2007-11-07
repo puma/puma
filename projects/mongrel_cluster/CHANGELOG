@@ -1,4 +1,6 @@
 
+v1.0.5. Close #15406 (find_pid returning non-false) (Eden Li).
+
 v1.0.4. Actually ship the Cap 2 tasks; use an autorequire based on whether namespace() is available (Kevin Runde).
 
 v1.0.3. Signed gem.
