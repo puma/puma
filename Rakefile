@@ -11,6 +11,7 @@ e = Echoe.new("mongrel") do |p|
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>= 1.8.4'
   p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4']
+  p.rdoc_template = `allison --path`.chomp
 
   p.need_tar_gz = false
   p.need_tgz = true
