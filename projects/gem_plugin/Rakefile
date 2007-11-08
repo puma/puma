@@ -15,6 +15,7 @@ Echoe.new("gem_plugin") do |p|
   p.test_pattern = "test/test_plugins.rb"
   p.clean_pattern += ["pkg", "lib/*.bundle", "*.gem", ".config"]
   p.rdoc_pattern = ['README', 'LICENSE', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
+  p.rdoc_template = `allison --path`.chomp  
 end
 
 namespace :site do
