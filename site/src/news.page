@@ -7,6 +7,10 @@ ordering: 2
 
 h1. Latest News
 
+h2. Nov 12: Mongrel 1.1.1, never forget.
+
+Mongrel 1.1.1 is out. It fixes the mongrel_rails restart bug that annoyed everybody, as well as a couple of other things.
+
 h2. Nov 1: Mongrel 1.1, caffeinated edition
 
 Mongrel 1.1 is out, with JRuby support. Mongrel_cluster is also updated to 1.0.4, with fixes for a Capistrano recipe bug. The URIClassifier has been updated; if you still need the old one (you don't), it's available in the mongrel_experimental gem.
