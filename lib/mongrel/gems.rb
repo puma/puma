@@ -2,19 +2,18 @@ module Mongrel
   module Gems
     class << self
     
-      alias :original_require :require
-    
       def require(library, version = nil)
         begin
-          original_require library
+          Kernel.require library
         rescue LoadError, RuntimeError => e
-          unless respond_to? 'gem'
+          begin 
             # ActiveSupport breaks 'require' by making it always return a true value
             require 'rubygems'
-            gem library, version if version
-            retry 
+            version ? gem(library, version) : gem(library)
+            retry
+          rescue Gem::LoadError, LoadError, RuntimeError
+            # puts "** #{library.inspect} could not be loaded" unless library == "mongrel_experimental"
           end
-          # Fail without reraising
         end  
       end
       

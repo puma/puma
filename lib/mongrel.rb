@@ -9,7 +9,6 @@ require 'stringio'
 
 require 'mongrel/gems'
 
-Mongrel::Gems.require 'gem_plugin'
 Mongrel::Gems.require 'cgi_multipart_eof_fix'
 Mongrel::Gems.require 'fastthread'
 require 'thread'

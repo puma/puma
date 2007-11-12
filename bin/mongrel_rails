@@ -11,6 +11,8 @@ $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../lib"
 require 'mongrel'
 require 'mongrel/rails'
 
+Mongrel::Gems.require 'gem_plugin'
+
 # require 'ruby-debug'
 # Debugger.start
 
