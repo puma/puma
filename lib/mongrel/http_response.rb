@@ -43,6 +43,7 @@ module Mongrel
       @socket = socket
       @body = StringIO.new
       @status = 404
+      @reason = nil
       @header = HeaderOut.new(StringIO.new)
       @header[Const::DATE] = Time.now.httpdate
       @body_sent = false

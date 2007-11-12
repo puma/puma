@@ -120,7 +120,7 @@ def sub_project(project, *targets)
   targets.each do |target|
     Dir.chdir "projects/#{project}" do
       unless RUBY_PLATFORM =~ /mswin/
-        sh %{rake --trace #{target.to_s} }
+        sh("rake #{target.to_s}") # --trace 
       end
     end
   end
@@ -155,7 +155,7 @@ task :install => [:install_requirements] do
   sub_project("mongrel_upload_progress", :install)
   sub_project("mongrel_console", :install)
   sub_project("mongrel_cluster", :install)
-  sub_project("mongrel_experimental", :install)
+  # sub_project("mongrel_experimental", :install)
   sub_project("mongrel_service", :install) if RUBY_PLATFORM =~ /mswin/
 end
 
@@ -167,7 +167,7 @@ task :uninstall => [:clean] do
   sub_project("mongrel_console", :uninstall)
   sub_project("gem_plugin", :uninstall)
   sub_project("fastthread", :uninstall)
-  sub_project("mongrel_experimental", :uninstall)
+  # sub_project("mongrel_experimental", :uninstall)
   sub_project("mongrel_service", :uninstall) if RUBY_PLATFORM =~ /mswin/
 end
 

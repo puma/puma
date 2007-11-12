@@ -122,17 +122,20 @@ module RequestLog
       begin
         stats = Hash.new(0)
         lengths = {}
-        ObjectSpace.each_object do |o| 
-          begin
-            if o.respond_to? :length
-              len = o.length
-              lengths[o.class] ||= Mongrel::Stats.new(o.class)
-              lengths[o.class].sample(len)
+        begin
+          ObjectSpace.each_object do |o| 
+            begin
+              if o.respond_to? :length
+                len = o.length
+                lengths[o.class] ||= Mongrel::Stats.new(o.class)
+                lengths[o.class].sample(len)
+              end
+            rescue Object
             end
-          rescue Object
+  
+            stats[o.class] += 1
           end
-
-          stats[o.class] += 1
+        rescue Object # Ignore since ObjectSpace might not be loaded on JRuby
         end
 
         stats.sort {|(k1,v1),(k2,v2)| v2 <=> v1}.each do |k,v|
@@ -171,21 +174,23 @@ module RequestLog
 
     def process(request, response)
       MongrelDbg::trace(:threads, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
-      ObjectSpace.each_object do |obj|
-        begin
-          if obj.class == Mongrel::HttpServer
-            worker_list = obj.workers.list
-
-            if worker_list.length > 0
-              keys = "-----\n\tKEYS:"
-              worker_list.each {|t| keys << "\n\t\t-- #{t}: #{t.keys.inspect}" }
+      begin
+        ObjectSpace.each_object do |obj|
+          begin
+            if obj.class == Mongrel::HttpServer
+              worker_list = obj.workers.list
+  
+              if worker_list.length > 0
+                keys = "-----\n\tKEYS:"
+                worker_list.each {|t| keys << "\n\t\t-- #{t}: #{t.keys.inspect}" }
+              end
+  
+              MongrelDbg::trace(:threads, "#{obj.host}:#{obj.port} -- THREADS: #{worker_list.length} #{keys}")
             end
-
-            MongrelDbg::trace(:threads, "#{obj.host}:#{obj.port} -- THREADS: #{worker_list.length} #{keys}")
+          rescue Object # Ignore since obj.class can sometimes take parameters            
           end
-        rescue Object
-          # ignore since obj.class can sometimes take parameters
         end
+      rescue Object # Ignore since ObjectSpace might not be loaded on JRuby
       end
     end
   end
