@@ -9,6 +9,13 @@
 #include "http11_parser.h"
 #include <ctype.h>
 
+#ifndef RSTRING_PTR
+#define RSTRING_PTR(s) (RSTRING(s)->ptr)
+#endif
+#ifndef RSTRING_LEN
+#define RSTRING_LEN(s) (RSTRING(s)->len)
+#endif
+
 static VALUE mMongrel;
 static VALUE cHttpParser;
 static VALUE eHttpParserError;
@@ -74,7 +81,7 @@ void http_field(void *data, const char *field, size_t flen, const char *value, s
   f = rb_str_dup(global_http_prefix);
   f = rb_str_buf_cat(f, field, flen); 
 
-  for(ch = RSTRING(f)->ptr, end = ch + RSTRING(f)->len; ch < end; ch++) {
+  for(ch = RSTRING_PTR(f), end = ch + RSTRING_LEN(f); ch < end; ch++) {
     if(*ch == '-') {
       *ch = '_';
     } else {
@@ -169,12 +176,12 @@ void header_done(void *data, const char *at, size_t length)
   rb_hash_aset(req, global_gateway_interface, global_gateway_interface_value);
   if((temp = rb_hash_aref(req, global_http_host)) != Qnil) {
     /* ruby better close strings off with a '\0' dammit */
-    colon = strchr(RSTRING(temp)->ptr, ':');
+    colon = strchr(RSTRING_PTR(temp), ':');
     if(colon != NULL) {
-      rb_hash_aset(req, global_server_name, rb_str_substr(temp, 0, colon - RSTRING(temp)->ptr));
+      rb_hash_aset(req, global_server_name, rb_str_substr(temp, 0, colon - RSTRING_PTR(temp)));
       rb_hash_aset(req, global_server_port, 
-          rb_str_substr(temp, colon - RSTRING(temp)->ptr+1, 
-            RSTRING(temp)->len));
+          rb_str_substr(temp, colon - RSTRING_PTR(temp)+1, 
+            RSTRING_LEN(temp)));
     } else {
       rb_hash_aset(req, global_server_name, temp);
       rb_hash_aset(req, global_server_port, global_port_80);
@@ -295,8 +302,8 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
   DATA_GET(self, http_parser, http);
 
   from = FIX2INT(start);
-  dptr = RSTRING(data)->ptr;
-  dlen = RSTRING(data)->len;
+  dptr = RSTRING_PTR(data);
+  dlen = RSTRING_LEN(data);
 
   if(from >= dlen) {
     rb_raise(eHttpParserError, "Requested start is after data buffer end.");
