@@ -8,7 +8,7 @@ module Mongrel
         rescue LoadError, RuntimeError => e
           begin 
             # ActiveSupport breaks 'require' by making it always return a true value
-            require 'rubygems'
+            Kernel.require 'rubygems'
             version ? gem(library, version) : gem(library)
             retry
           rescue Gem::LoadError, LoadError, RuntimeError
