@@ -7,6 +7,10 @@ ordering: 2
 
 h1. Latest News
 
+h2. Dec 15: Mongrel 1.1.2, holiday edition.
+
+Mongrel 1.1.2 is out. It fixes a few bugs and adds JRuby 1.0.x compatibility.
+
 h2. Nov 12: Mongrel 1.1.1, never forget.
 
 Mongrel 1.1.1 is out. It fixes the mongrel_rails restart bug that annoyed everybody, as well as a couple of other things.
