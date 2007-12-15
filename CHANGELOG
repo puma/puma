@@ -1,4 +1,6 @@
 
+v1.1.2. Fix worker termination bug; fix JRuby 1.0.3 load order issue; fix require issue on systems without Rubygems.
+
 v1.1.1. Fix mongrel_rails restart bug; fix bug with Rack status codes.
 
 v1.1. Pure Ruby URIClassifier. More modular architecture. JRuby support. Move C URIClassifier into mongrel_experimental project.
