@@ -10,7 +10,7 @@ e = Echoe.new("mongrel") do |p|
   p.rdoc_pattern = ['README', 'LICENSE', 'CHANGELOG', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>= 1.8.4'
-  p.dependencies = ['gem_plugin >=0.2.3', 'cgi_multipart_eof_fix >=2.4']
+  p.dependencies = ['gem_plugin >=0.2.3']
   (p.rdoc_template = `allison --path`.chomp) rescue nil
 
   p.need_tar_gz = false
@@ -31,6 +31,7 @@ e = Echoe.new("mongrel") do |p|
       extensions.clear
       self.files += ['lib/http11.so']
       self.platform = Gem::Platform::WIN32
+      add_dependency('cgi_multipart_eof_fix', '>= 2.4')
     when /java/
       extensions.clear
       self.files += ['lib/http11.jar']
@@ -38,6 +39,7 @@ e = Echoe.new("mongrel") do |p|
     else
       add_dependency('daemons', '>= 1.0.3')
       add_dependency('fastthread', '>= 1.0.1')
+      add_dependency('cgi_multipart_eof_fix', '>= 2.4')
     end
   end
 
