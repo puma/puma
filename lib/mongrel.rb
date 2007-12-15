@@ -1,4 +1,5 @@
 
+# Standard libraries
 require 'socket'
 require 'tempfile'
 require 'yaml'
@@ -7,13 +8,16 @@ require 'etc'
 require 'uri'
 require 'stringio'
 
-require 'mongrel/gems'
+# Compiled Mongrel extension
+require 'http11'
 
+# Gem conditional loader
+require 'mongrel/gems'
 Mongrel::Gems.require 'cgi_multipart_eof_fix'
 Mongrel::Gems.require 'fastthread'
 require 'thread'
 
-require 'http11'
+# Ruby Mongrel
 require 'mongrel/cgi'
 require 'mongrel/handlers'
 require 'mongrel/command'
