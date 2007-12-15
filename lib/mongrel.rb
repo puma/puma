@@ -213,7 +213,7 @@ module Mongrel
           worker[:started_on] = Time.now if not worker[:started_on]
 
           if mark - worker[:started_on] > @timeout + @throttle
-            STDERR.puts "Thread #{w.inspect} is too old, killing."
+            STDERR.puts "Thread #{worker.inspect} is too old, killing."
             worker.raise(TimeoutError.new(error_msg))
           end
         end
