@@ -344,7 +344,7 @@ module Mongrel
     # it reads it in and does an eval on the contents passing in the right
     # binding so they can put their own Configurator statements.
     def run_config(script)
-      open(script) {|f| eval(f.read, proc {self}) }
+      open(script) {|f| eval(f.read, proc {self}.binding) }
     end
 
     # Sets up the standard signal handlers that are used on most Ruby
