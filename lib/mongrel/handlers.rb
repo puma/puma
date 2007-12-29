@@ -132,8 +132,12 @@ module Mongrel
       # Add the drive letter or root path
       req_path = File.join(@path, req_path) if @path
       req_path = File.expand_path req_path
-      
-      if File.exist? req_path
+     
+      # do not remove the check for @path at the beginning, it's what prevents
+      # the serving of arbitrary files (and good programmer Rule #1 Says: If
+      # you don't understand something, it's not because I'm stupid, it's
+      # because you are).
+      if req_path.index(@path) == 0 and File.exist? req_path
         # It exists and it's in the right location
         if File.directory? req_path
           # The request is for a directory
@@ -153,7 +157,7 @@ module Mongrel
           return req_path
         end
       else
-        # does not exist or isn't in the right spot
+        # does not exist or isn't in the right spot or isn't valid because not start with @path
         return nil
       end
     end
