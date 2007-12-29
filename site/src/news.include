@@ -1,4 +1,14 @@
 <dl>
+
+  <dt>Dec-29-2007</dt>
+  <dd>
+  <h5><a href="{relocatable: news.html}">Mongrel 1.1.3 and 1.0.5, security update</a></h5>
+  
+  <p>Mongrel 1.1.3 and 1.0.5 are out. They fix a security flaw in the DirHandler as reported on the list. You should upgrade when you get the chance.</p>
+  <a href="http://rubyforge.org/frs/?group_id=1306" title="Downloads">Download</a>
+  <a href="{relocatable: news.html}"><img src="{relocatable: images/li4.gif}" alt="more" /><br /></a></p>
+  </dd>
+
   <dt>Dec-15-2007</dt>
   <dd>
   <h5><a href="{relocatable: news.html}">Mongrel 1.1.2, holiday edition</a></h5>

@@ -7,6 +7,10 @@ ordering: 2
 
 h1. Latest News
 
+h2. Dec 29: Mongrel 1.1.3 and 1.0.5, security update. For serious.
+
+Mongrel 1.1.3 and 1.0.5 are out. They fix a security flaw in the DirHandler as reported on the list. The flaw may or may not be already mitigated by your proxy configuration, but you should upgrade when you get the chance (or downgrade to 1.0.3).
+
 h2. Dec 15: Mongrel 1.1.2, holiday edition.
 
 Mongrel 1.1.2 is out. It fixes a few bugs and adds JRuby 1.0.x compatibility.
