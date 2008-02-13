@@ -9,6 +9,7 @@ e = Echoe.new("mongrel") do |p|
   p.clean_pattern = ['ext/http11/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'lib/*.{bundle,so,o,obj,pdb,lib,def,exp}', 'ext/http11/Makefile', 'pkg', 'lib/*.bundle', '*.gem', 'site/output', '.config', 'lib/http11.jar', 'ext/http11_java/classes', 'coverage']
   p.url = "http://mongrel.rubyforge.org"
   p.rdoc_pattern = ['README', 'LICENSE', 'CHANGELOG', 'COPYING', 'lib/**/*.rb', 'doc/**/*.rdoc']
+  p.docs_host = 'mongrel.cloudbur.st:/home/eweaver/www/mongrel/htdocs/web'
   p.ignore_pattern = /^(pkg|site|projects|doc|log)|CVS|\.log/
   p.ruby_version = '>=1.8.4'
   p.dependencies = ['gem_plugin >=0.2.3']  
@@ -194,44 +195,8 @@ end
 #### Site upload tasks
 
 namespace :site do
-
-  desc "Package and upload .gem files and .tgz files for Mongrel and all subprojects to http://mongrel.rubyforge.org/releases/"
-  task :source => [:package_all] do
-    rm_rf "pkg/gems"
-    rm_rf "pkg/tars"
-    mkdir_p "pkg/gems"
-    mkdir_p "pkg/tars"
-
-    FileList["**/*.gem"].each { |gem| mv gem, "pkg/gems" }
-    FileList["**/*.tgz"].each {|tgz| mv tgz, "pkg/tars" }
-
-    sh "rm -rf pkg/mongrel*"
-    sh "gem generate_index -d pkg"
-    sh "scp -r CHANGELOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/"
-    sh "svn log -v > SVN_LOG"
-    sh "scp -r SVN_LOG pkg/* rubyforge.org:/var/www/gforge-projects/mongrel/releases/"
-    rm "SVN_LOG"
-  end
-
-  desc "Upload the website"
-  task :web do
-    # Requires the 'webgem' gem
-    sh "cd site; webgen; webgen; curl 'http://feed43.com/mongrel.xml' > output/rss.xml; rsync -azv --no-perms --no-times output/* rubyforge.org:/var/www/gforge-projects/mongrel/"
-    puts "\nMake sure to re-run the site update 6 hours later if you updated the news. This delay is required for Feed43 to pick up the site changes."
-  end
-
-  desc "Upload the rdocs"
-  task :rdoc => [:doc] do
-    sh "rsync -azv --no-perms --no-times doc/* rubyforge.org:/var/www/gforge-projects/mongrel/rdoc/"
-    sh "cd projects/gem_plugin; rake site:rdoc"
-  end
-
   desc "Upload the coverage report"
   task :coverage => [:rcov] do
-    sh "rsync -azv --no-perms --no-times test/coverage/* rubyforge.org:/var/www/gforge-projects/mongrel/coverage/" rescue nil
+    sh "rsync -azv --no-perms --no-times test/coverage/* mongrel.cloudbur.st:/home/eweaver/www/mongrel/htdocs/web/coverage" rescue nil
   end
-
-  desc "Upload the website, the rdocs, and the coverage report"
-  task :all => [:clean, :web, :rdoc, :coverage]
-
 end
