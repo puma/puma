@@ -133,7 +133,7 @@ module Mongrel
       req_path = File.join(@path, req_path) if @path
       req_path = File.expand_path req_path
       
-      if File.exist? req_path # and (!@path or req_path.index(@path) == 0)
+      if File.exist? req_path and (!@path or req_path.index(@path) == 0)
         # It exists and it's in the right location
         if File.directory? req_path
           # The request is for a directory
