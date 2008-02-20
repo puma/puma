@@ -1,5 +1,5 @@
 
-v1.1.4. Fix camping handler.
+v1.1.4. Fix camping handler. Correct treatment of @throttle parameter.
 
 v1.1.3. Fix security flaw of DirHandler; reported on mailing list.
 
