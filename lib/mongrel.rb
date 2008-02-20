@@ -96,7 +96,7 @@ module Mongrel
       @host = host
       @port = port
       @workers = ThreadGroup.new
-      @throttle = throttle
+      @throttle = throttle / 100.0
       @num_processors = num_processors
       @timeout = timeout
     end
@@ -286,7 +286,7 @@ module Mongrel
                 thread[:started_on] = Time.now
                 @workers.add(thread)
   
-                sleep @throttle/100.0 if @throttle > 0
+                sleep @throttle if @throttle > 0
               end
             rescue StopServer
               break
