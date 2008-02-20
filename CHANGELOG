@@ -1,4 +1,6 @@
 
+v1.1.4. Fix camping handler.
+
 v1.1.3. Fix security flaw of DirHandler; reported on mailing list.
 
 v1.1.2. Fix worker termination bug; fix JRuby 1.0.3 load order issue; fix require issue on systems without Rubygems.
