@@ -1,5 +1,5 @@
 
-require 'test/test_helper'
+require 'test/testhelp'
 
 class MockHttpRequest
   attr_reader :body
