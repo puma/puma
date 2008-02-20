@@ -4,7 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/testhelp'
+require 'test/test_helper'
 
 class RedirectHandlerTest < Test::Unit::TestCase
 

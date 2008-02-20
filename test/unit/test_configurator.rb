@@ -4,7 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/testhelp'
+require 'test/test_helper'
 
 $test_plugin_fired = 0
 
@@ -48,8 +48,8 @@ class ConfiguratorTest < Test::Unit::TestCase
           debug "/"
           setup_signals
 
-          run_config(File.dirname(__FILE__) + "/../test/mongrel.conf")
-          load_mime_map(File.dirname(__FILE__) + "/../test/mime.yaml")
+          run_config(HERE + "/mongrel.conf")
+          load_mime_map(HERE + "/mime.yaml")
 
           run
         end

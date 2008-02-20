@@ -4,7 +4,7 @@
 # Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
 # for more information.
 
-require 'test/testhelp'
+require 'test/test_helper'
 
 class UploadBeginHandler < Mongrel::HttpHandler
   attr_reader :request_began, :request_progressed, :request_processed
