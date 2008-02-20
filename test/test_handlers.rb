@@ -49,11 +49,17 @@ class HandlersTest < Test::Unit::TestCase
         uri "/relative", :handler => Mongrel::DirHandler.new(nil, listing_allowed=false, index_html="none")
       end
     end
+    
+    File.open("/tmp/testfile", 'w') do
+      # Do nothing
+    end
+    
     @config.run
   end
 
   def teardown
     @config.stop(false, true)
+    File.delete "/tmp/testfile"
   end
 
   def test_more_web_server
@@ -66,14 +72,28 @@ class HandlersTest < Test::Unit::TestCase
           "http://localhost:9998/files_nodir/rdoc/",
           "http://localhost:9998/status",
     ])
-
-    # XXX This can't possibly have good coverage.
     check_status res, String
+  end
+  
+  def test_nil_dirhandler
+    # Camping uses this internally
+    handler = Mongrel::DirHandler.new(nil, false)  
+    assert handler.can_serve("/tmp/testfile")
+    # Not a bug! A nil @file parameter is the only circumstance under which
+    # we are allowed to serve any existing file
+    assert handler.can_serve("../../../../../../../../../../tmp/testfile")
+  end
+  
+  def test_non_nil_dirhandler_is_not_vulnerable_to_path_traversal
+    # The famous security bug of Mongrel 1.1.2
+    handler = Mongrel::DirHandler.new("/doc", false)
+    assert_nil handler.can_serve("/tmp/testfile")
+    assert_nil handler.can_serve("../../../../../../../../../../tmp/testfile")
   end
 
   def test_deflate
     Net::HTTP.start("localhost", 9998) do |h|
-      # test that no accept-encoding returns a non-deflated response
+      # Test that no accept-encoding returns a non-deflated response
       req = h.get("/dumb")
       assert(
         !req['Content-Encoding'] ||

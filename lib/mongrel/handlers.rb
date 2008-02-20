@@ -8,7 +8,6 @@ require 'mongrel/stats'
 require 'zlib'
 require 'yaml'
 
-
 module Mongrel
 
   # You implement your application handler with this.  It's very light giving
@@ -102,7 +101,8 @@ module Mongrel
   #
   # If you pass nil as the root path, it will not check any locations or
   # expand any paths. This lets you serve files from multiple drives
-  # on win32.
+  # on win32. It should probably not be used in a public-facing way
+  # without additional checks.
   #
   # The default content type is "text/plain; charset=ISO-8859-1" but you
   # can change it anything you want using the DirHandler.default_content_type
@@ -120,7 +120,7 @@ module Mongrel
     # You give it the path to the directory root and and optional listing_allowed and index_html
     def initialize(path, listing_allowed=true, index_html="index.html")
       @path = File.expand_path(path) if path
-      @listing_allowed=listing_allowed
+      @listing_allowed = listing_allowed
       @index_html = index_html
       @default_content_type = "application/octet-stream".freeze
     end
@@ -132,12 +132,8 @@ module Mongrel
       # Add the drive letter or root path
       req_path = File.join(@path, req_path) if @path
       req_path = File.expand_path req_path
-     
-      # do not remove the check for @path at the beginning, it's what prevents
-      # the serving of arbitrary files (and good programmer Rule #1 Says: If
-      # you don't understand something, it's not because I'm stupid, it's
-      # because you are).
-      if req_path.index(@path) == 0 and File.exist? req_path
+      
+      if File.exist? req_path # and (!@path or req_path.index(@path) == 0)
         # It exists and it's in the right location
         if File.directory? req_path
           # The request is for a directory
@@ -157,7 +153,7 @@ module Mongrel
           return req_path
         end
       else
-        # does not exist or isn't in the right spot or isn't valid because not start with @path
+        # does not exist or isn't in the right spot
         return nil
       end
     end
