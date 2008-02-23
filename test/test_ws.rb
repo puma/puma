@@ -94,7 +94,7 @@ class WebServerTest < Test::Unit::TestCase
 
   def test_num_processors_overload
     redirect_test_io do
-      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL do
+      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
         tests = [
           Thread.new { do_test(@valid_request, 1) },
           Thread.new { do_test(@valid_request, 10) },
