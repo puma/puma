@@ -35,7 +35,7 @@ e = Echoe.new("mongrel") do |p|
     case RUBY_PLATFORM
     when /mswin/
       self.files += ['lib/http11.so']
-      self.platform = Gem::Platform::WIN32
+      self.platform = Gem::Platform::CURRENT
       add_dependency('cgi_multipart_eof_fix', '>= 2.4')
     when /java/
       self.files += ['lib/http11.jar']
