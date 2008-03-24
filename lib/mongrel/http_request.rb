@@ -93,7 +93,7 @@ module Mongrel
         STDERR.puts e.backtrace.join("\n")
         # any errors means we should delete the file, including if the file is dumped
         @socket.close rescue nil
-        @body.delete if @body.class == Tempfile
+        @body.close! if @body.class == Tempfile
         @body = nil # signals that there was a problem
       end
     end

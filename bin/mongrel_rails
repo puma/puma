@@ -194,7 +194,7 @@ module Mongrel
   end
 
   def Mongrel::send_signal(signal, pid_file)
-    pid = open(pid_file).read.to_i
+    pid = File.read(pid_file).to_i 
     print "Sending #{signal} to Mongrel at PID #{pid}..."
     begin
       Process.kill(signal, pid)

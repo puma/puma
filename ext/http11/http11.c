@@ -7,7 +7,13 @@
 #include <assert.h>
 #include <string.h>
 #include "http11_parser.h"
-#include <ctype.h>
+
+#ifndef RSTRING_PTR
+#define RSTRING_PTR(s) (RSTRING(s)->ptr)
+#endif
+#ifndef RSTRING_LEN
+#define RSTRING_LEN(s) (RSTRING(s)->len)
+#endif
 
 static VALUE mMongrel;
 static VALUE cHttpParser;
@@ -15,8 +21,9 @@ static VALUE eHttpParserError;
 
 #define id_handler_map rb_intern("@handler_map")
 #define id_http_body rb_intern("@http_body")
+#define HTTP_PREFIX "HTTP_"
+#define HTTP_PREFIX_LEN (sizeof(HTTP_PREFIX) - 1)
 
-static VALUE global_http_prefix;
 static VALUE global_request_method;
 static VALUE global_request_uri;
 static VALUE global_fragment;
@@ -59,10 +66,119 @@ DEF_MAX_LENGTH(REQUEST_PATH, 1024);
 DEF_MAX_LENGTH(QUERY_STRING, (1024 * 10));
 DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
 
+struct common_field {
+	const signed long len;
+	const char *name;
+	VALUE value;
+};
+
+/*
+ * A list of common HTTP headers we expect to receive.
+ * This allows us to avoid repeatedly creating identical string
+ * objects to be used with rb_hash_aset().
+ */
+static struct common_field common_http_fields[] = {
+# define f(N) { (sizeof(N) - 1), N, Qnil }
+	f("ACCEPT"),
+	f("ACCEPT_CHARSET"),
+	f("ACCEPT_ENCODING"),
+	f("ACCEPT_LANGUAGE"),
+	f("ALLOW"),
+	f("AUTHORIZATION"),
+	f("CACHE_CONTROL"),
+	f("CONNECTION"),
+	f("CONTENT_ENCODING"),
+	f("CONTENT_LENGTH"),
+	f("CONTENT_TYPE"),
+	f("COOKIE"),
+	f("DATE"),
+	f("EXPECT"),
+	f("FROM"),
+	f("HOST"),
+	f("IF_MATCH"),
+	f("IF_MODIFIED_SINCE"),
+	f("IF_NONE_MATCH"),
+	f("IF_RANGE"),
+	f("IF_UNMODIFIED_SINCE"),
+	f("KEEP_ALIVE"), /* Firefox sends this */
+	f("MAX_FORWARDS"),
+	f("PRAGMA"),
+	f("PROXY_AUTHORIZATION"),
+	f("RANGE"),
+	f("REFERER"),
+	f("TE"),
+	f("TRAILER"),
+	f("TRANSFER_ENCODING"),
+	f("UPGRADE"),
+	f("USER_AGENT"),
+	f("VIA"),
+	f("X_FORWARDED_FOR"), /* common for proxies */
+	f("X_REAL_IP"), /* common for proxies */
+	f("WARNING")
+# undef f
+};
+
+/*
+ * qsort(3) and bsearch(3) improve average performance slightly, but may
+ * not be worth it for lack of portability to certain platforms...
+ */
+#if defined(HAVE_QSORT_BSEARCH)
+/* sort by length, then by name if there's a tie */
+static int common_field_cmp(const void *a, const void *b)
+{
+  struct common_field *cfa = (struct common_field *)a;
+  struct common_field *cfb = (struct common_field *)b;
+  signed long diff = cfa->len - cfb->len;
+  return diff ? diff : memcmp(cfa->name, cfb->name, cfa->len);
+}
+#endif /* HAVE_QSORT_BSEARCH */
+
+static void init_common_fields(void)
+{
+  int i;
+  struct common_field *cf = common_http_fields;
+  char tmp[256]; /* MAX_FIELD_NAME_LENGTH */
+  memcpy(tmp, HTTP_PREFIX, HTTP_PREFIX_LEN);
+
+  for(i = 0; i < ARRAY_SIZE(common_http_fields); cf++, i++) {
+    memcpy(tmp + HTTP_PREFIX_LEN, cf->name, cf->len + 1);
+    cf->value = rb_obj_freeze(rb_str_new(tmp, HTTP_PREFIX_LEN + cf->len));
+    rb_global_variable(&cf->value);
+  }
+
+#if defined(HAVE_QSORT_BSEARCH)
+  qsort(common_http_fields,
+        ARRAY_SIZE(common_http_fields),
+        sizeof(struct common_field),
+        common_field_cmp);
+#endif /* HAVE_QSORT_BSEARCH */
+}
+
+static VALUE find_common_field_value(const char *field, size_t flen)
+{
+#if defined(HAVE_QSORT_BSEARCH)
+  struct common_field key;
+  struct common_field *found;
+  key.name = field;
+  key.len = (signed long)flen;
+  found = (struct common_field *)bsearch(&key, common_http_fields,
+                                         ARRAY_SIZE(common_http_fields),
+                                         sizeof(struct common_field),
+                                         common_field_cmp);
+  return found ? found->value : Qnil;
+#else /* !HAVE_QSORT_BSEARCH */
+  int i;
+  struct common_field *cf = common_http_fields;
+  for(i = 0; i < ARRAY_SIZE(common_http_fields); i++, cf++) {
+    if (cf->len == flen && !memcmp(cf->name, field, flen))
+      return cf->value;
+  }
+  return Qnil;
+#endif /* !HAVE_QSORT_BSEARCH */
+}
 
 void http_field(void *data, const char *field, size_t flen, const char *value, size_t vlen)
 {
-  char *ch, *end;
   VALUE req = (VALUE)data;
   VALUE v = Qnil;
   VALUE f = Qnil;
@@ -71,15 +187,25 @@ void http_field(void *data, const char *field, size_t flen, const char *value, s
   VALIDATE_MAX_LENGTH(vlen, FIELD_VALUE);
 
   v = rb_str_new(value, vlen);
-  f = rb_str_dup(global_http_prefix);
-  f = rb_str_buf_cat(f, field, flen); 
 
-  for(ch = RSTRING(f)->ptr, end = ch + RSTRING(f)->len; ch < end; ch++) {
-    if(*ch == '-') {
-      *ch = '_';
-    } else {
-      *ch = toupper(*ch);
-    }
+  f = find_common_field_value(field, flen);
+
+  if (f == Qnil) {
+    /*
+     * We got a strange header that we don't have a memoized value for.
+     * Fallback to creating a new string to use as a hash key.
+     *
+     * using rb_str_new(NULL, len) here is faster than rb_str_buf_new(len)
+     * in my testing, because: there's no minimum allocation length (and
+     * no check for it, either), RSTRING_LEN(f) does not need to be
+     * written twice, and and RSTRING_PTR(f) will already be
+     * null-terminated for us.
+     */
+    f = rb_str_new(NULL, HTTP_PREFIX_LEN + flen);
+    memcpy(RSTRING_PTR(f), HTTP_PREFIX, HTTP_PREFIX_LEN);
+    memcpy(RSTRING_PTR(f) + HTTP_PREFIX_LEN, field, flen);
+    assert(*(RSTRING_PTR(f) + RSTRING_LEN(f)) == '\0'); /* paranoia */
+    /* fprintf(stderr, "UNKNOWN HEADER <%s>\n", RSTRING_PTR(f)); */
   }
 
   rb_hash_aset(req, f, v);
@@ -168,13 +294,12 @@ void header_done(void *data, const char *at, size_t length)
 
   rb_hash_aset(req, global_gateway_interface, global_gateway_interface_value);
   if((temp = rb_hash_aref(req, global_http_host)) != Qnil) {
-    /* ruby better close strings off with a '\0' dammit */
-    colon = strchr(RSTRING(temp)->ptr, ':');
+    colon = memchr(RSTRING_PTR(temp), ':', RSTRING_LEN(temp));
     if(colon != NULL) {
-      rb_hash_aset(req, global_server_name, rb_str_substr(temp, 0, colon - RSTRING(temp)->ptr));
+      rb_hash_aset(req, global_server_name, rb_str_substr(temp, 0, colon - RSTRING_PTR(temp)));
       rb_hash_aset(req, global_server_port, 
-          rb_str_substr(temp, colon - RSTRING(temp)->ptr+1, 
-            RSTRING(temp)->len));
+          rb_str_substr(temp, colon - RSTRING_PTR(temp)+1, 
+            RSTRING_LEN(temp)));
     } else {
       rb_hash_aset(req, global_server_name, temp);
       rb_hash_aset(req, global_server_port, global_port_80);
@@ -295,8 +420,8 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
   DATA_GET(self, http_parser, http);
 
   from = FIX2INT(start);
-  dptr = RSTRING(data)->ptr;
-  dlen = RSTRING(data)->len;
+  dptr = RSTRING_PTR(data);
+  dlen = RSTRING_LEN(data);
 
   if(from >= dlen) {
     rb_raise(eHttpParserError, "Requested start is after data buffer end.");
@@ -366,7 +491,6 @@ void Init_http11()
 
   mMongrel = rb_define_module("Mongrel");
 
-  DEF_GLOBAL(http_prefix, "HTTP_");
   DEF_GLOBAL(request_method, "REQUEST_METHOD");
   DEF_GLOBAL(request_uri, "REQUEST_URI");
   DEF_GLOBAL(fragment, "FRAGMENT");
@@ -384,7 +508,7 @@ void Init_http11()
   DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
   DEF_GLOBAL(server_protocol_value, "HTTP/1.1");
   DEF_GLOBAL(http_host, "HTTP_HOST");
-  DEF_GLOBAL(mongrel_version, "Mongrel 1.1.5"); /* XXX Why is this defined here? */
+  DEF_GLOBAL(mongrel_version, "Mongrel 1.1.6"); /* XXX Why is this defined here? */
   DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
   DEF_GLOBAL(port_80, "80");
 
@@ -399,4 +523,5 @@ void Init_http11()
   rb_define_method(cHttpParser, "error?", HttpParser_has_error,0);
   rb_define_method(cHttpParser, "finished?", HttpParser_is_finished,0);
   rb_define_method(cHttpParser, "nread", HttpParser_nread,0);
+  init_common_fields();
 }

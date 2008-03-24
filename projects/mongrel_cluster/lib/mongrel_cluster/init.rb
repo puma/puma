@@ -59,7 +59,7 @@ module Cluster
     def start
       read_options
       
-      argv = [ "mongrel_rails" ]
+      argv = @options['mongrel_rails']
       argv << "start"
       argv << "-d"
       argv << "-e #{@options['environment']}" if @options['environment']
@@ -103,7 +103,7 @@ module Cluster
     def stop
       read_options
     
-      argv = [ "mongrel_rails" ]
+      argv = @options['mongrel_rails']
       argv << "stop"
       argv << "-c #{@options["cwd"]}" if @options["cwd"]
       argv << "-f" if @force
@@ -300,6 +300,7 @@ module Cluster
         ['-C', '--config PATH', "Path to cluster configuration file", :@config_file, "config/mongrel_cluster.yml"],
         ['', '--user USER', "User to run as", :@user, nil],
         ['', '--group GROUP', "Group to run as", :@group, nil],
+        ['', '--mongrel_rails PATH', "Full path to mongrel_rails script", :@mongrel_rails, "mongrel_rails"],
         ['', '--prefix PREFIX', "Rails prefix to use", :@prefix, nil]
       ]
     end
@@ -334,6 +335,7 @@ module Cluster
       @options["user"] = @user if @user
       @options["group"] = @group if @group
       @options["prefix"] = @prefix if @prefix
+      @options["mongrel_rails"] = @mongrel_rails if @mongrel_rails 
       
       log "Writing configuration file to #{@config_file}."
       File.open(@config_file,"w") {|f| f.write(@options.to_yaml)}

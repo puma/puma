@@ -41,7 +41,7 @@
   HTTP_Version = ( "HTTP/" http_number ) >mark %http_version ;
   Request_Line = ( Method " " Request_URI ("#" Fragment){0,1} " " HTTP_Version CRLF ) ;
 
-  field_name = ( token -- ":" )+ >start_field %write_field;
+  field_name = ( token -- ":" )+ >start_field $snake_upcase_field %write_field;
 
   field_value = any* >start_value %write_value;
 

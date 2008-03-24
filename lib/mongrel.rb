@@ -200,7 +200,7 @@ module Mongrel
           STDERR.puts "#{Time.now}: Client error: #{e.inspect}"
           STDERR.puts e.backtrace.join("\n")
         end
-        request.body.delete if request and request.body.class == Tempfile
+        request.body.close! if request and request.body.class == Tempfile
       end
     end
 
@@ -320,10 +320,15 @@ module Mongrel
     def register(uri, handler, in_front=false)
       begin
         @classifier.register(uri, [handler])
-      rescue URIClassifier::RegistrationError
+      rescue URIClassifier::RegistrationError => e
         handlers = @classifier.resolve(uri)[2]
-        method_name = in_front ? 'unshift' : 'push'
-        handlers.send(method_name, handler)
+        if handlers
+          # Already registered
+          method_name = in_front ? 'unshift' : 'push'
+          handlers.send(method_name, handler)
+        else
+          raise
+        end
       end
       handler.listener = self
     end

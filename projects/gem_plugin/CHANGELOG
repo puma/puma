@@ -1,2 +1,4 @@
 
+v0.3. Use Gem.path, not Gem.dir, so that local gem repositories work (rooster).
+
 v0.2.3. Signed gem.
