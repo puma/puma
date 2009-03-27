@@ -205,11 +205,11 @@ module Mongrel
       # test to see if this is a conditional request, and test if
       # the response would be identical to the last response
       same_response = case
-                      when modified_since && !last_response_time = Time.httpdate(modified_since) rescue nil : false
-                      when modified_since && last_response_time > Time.now                                  : false
-                      when modified_since && mtime > last_response_time                                     : false
-                      when none_match     && none_match == '*'                                              : false
-                      when none_match     && !none_match.strip.split(/\s*,\s*/).include?(etag)              : false
+                      when modified_since && !last_response_time = Time.httpdate(modified_since) rescue nil then false
+                      when modified_since && last_response_time > Time.now                                  then false
+                      when modified_since && mtime > last_response_time                                     then false
+                      when none_match     && none_match == '*'                                              then false
+                      when none_match     && !none_match.strip.split(/\s*,\s*/).include?(etag)              then false
                       else modified_since || none_match  # validation successful if we get this far and at least one of the header exists
                       end
 

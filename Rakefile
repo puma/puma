@@ -36,14 +36,14 @@ e = Echoe.new("mongrel") do |p|
     when /mswin/
       self.files += ['lib/http11.so']
       self.platform = Gem::Platform::CURRENT
-      add_dependency('cgi_multipart_eof_fix', '>= 2.4')
+      # add_dependency('cgi_multipart_eof_fix', '>= 2.4')
     when /java/
       self.files += ['lib/http11.jar']
       self.platform = 'jruby' # XXX Is this right?
     else
       add_dependency('daemons', '>= 1.0.3')
-      add_dependency('fastthread', '>= 1.0.1')
-      add_dependency('cgi_multipart_eof_fix', '>= 2.4')
+      # add_dependency('fastthread', '>= 1.0.1')
+      # add_dependency('cgi_multipart_eof_fix', '>= 2.4')
     end
   end
 
@@ -134,8 +134,8 @@ end
 desc "Package Mongrel and all subprojects"
 task :package_all => [:package] do
   sub_project("gem_plugin", :package)
-  sub_project("cgi_multipart_eof_fix", :package)
-  sub_project("fastthread", :package)
+  # sub_project("cgi_multipart_eof_fix", :package)
+  # sub_project("fastthread", :package)
   sub_project("mongrel_status", :package)
   sub_project("mongrel_upload_progress", :package)
   sub_project("mongrel_console", :package)
@@ -152,8 +152,8 @@ end
 task :install_requirements do
   # These run before Mongrel is installed
   sub_project("gem_plugin", :install)
-  sub_project("cgi_multipart_eof_fix", :install)
-  sub_project("fastthread", :install)
+  # sub_project("cgi_multipart_eof_fix", :install)
+  # sub_project("fastthread", :install)
 end
 
 desc "for Mongrel and all subprojects"
@@ -170,11 +170,11 @@ end
 desc "for Mongrel and all its subprojects"
 task :uninstall => [:clean] do
   sub_project("mongrel_status", :uninstall)
-  sub_project("cgi_multipart_eof_fix", :uninstall)
+  # sub_project("cgi_multipart_eof_fix", :uninstall)
   sub_project("mongrel_upload_progress", :uninstall)
   sub_project("mongrel_console", :uninstall)
   sub_project("gem_plugin", :uninstall)
-  sub_project("fastthread", :uninstall)
+  # sub_project("fastthread", :uninstall)
   # sub_project("mongrel_experimental", :uninstall)
   sub_project("mongrel_service", :uninstall) if RUBY_PLATFORM =~ /mswin/
 end
@@ -182,8 +182,8 @@ end
 desc "for Mongrel and all its subprojects"
 task :clean do
   sub_project("gem_plugin", :clean)
-  sub_project("cgi_multipart_eof_fix", :clean)
-  sub_project("fastthread", :clean)
+  # sub_project("cgi_multipart_eof_fix", :clean)
+  # sub_project("fastthread", :clean)
   sub_project("mongrel_status", :clean)
   sub_project("mongrel_upload_progress", :clean)
   sub_project("mongrel_console", :clean)
