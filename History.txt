@@ -1,14 +1,23 @@
-=== (unrealeased) / 2009-07-??
+=== 1.1.6 / 2009-07-07
+
+Improvements:
+
+* Ruby 1.9 early compatbility: Merged commits form Eric Wong.
+* Better RubyGems support thanks to added env she-bang to mongrel_rails executable.
+* Smartly load http11 extension using fat-binary approach.
+
+Bugfixes:
+
+* Fixed proper version reporting under 1.9
+* Consider MinGW as valid Windows platform.
+
+Reorganization:
 
 * Rake task project reorganization and reformat using Hoe.
 * Compile extension using rake-compiler
 * Upgraded http11_parser to work with Ragel 6.2
-* Ruby 1.9 early compatbility: Merged commits form Eric Wong.
-* Better RubyGems support thanks to added env she-bang to mongrel_rails executable.
-* Fixed proper version reporting under 1.9
-* Consider MinGW as valid Windows platform.
-* Smartly load http11 extension using fat-binary approach.
 * Deprecated obsolete Windows service example scripts (from 2006!)
+
 
 === 1.1.5 / 2008-05-22
 

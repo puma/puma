@@ -13,8 +13,6 @@ examples/camping/tepee.rb
 examples/httpd.conf
 examples/mime.yaml
 examples/mongrel.conf
-examples/mongrel_simple_ctrl.rb
-examples/mongrel_simple_service.rb
 examples/monitrc
 examples/random_thrash.rb
 examples/simpletest.rb
