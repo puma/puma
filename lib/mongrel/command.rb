@@ -61,9 +61,7 @@ module Mongrel
         # I need to add my own -v definition to prevent the -v from exiting by default as well.
         @opt.on_tail("--version", "Show version") do
           @done_validating = true
-          if VERSION
-            puts "Version #{Mongrel::Const::MONGREL_VERSION}"
-          end
+          puts "Version #{Mongrel::Const::MONGREL_VERSION}"
         end
 
         @opt.parse! argv
