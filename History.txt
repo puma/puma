@@ -1,7 +1,7 @@
 === (unrealeased) / 2009-07-??
 
 * Rake task project reorganization and reformat using Hoe.
-
+* Compile extension using rake-compiler
 
 === 1.1.5 / 2008-05-22
 

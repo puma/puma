@@ -30,6 +30,7 @@ ext/http11/http11_parser_common.rl
 ext/http11_java/Http11Service.java
 ext/http11_java/org/jruby/mongrel/Http11.java
 ext/http11_java/org/jruby/mongrel/Http11Parser.java
+lib/mongrel.rb
 lib/mongrel/camping.rb
 lib/mongrel/cgi.rb
 lib/mongrel/command.rb
@@ -47,10 +48,9 @@ lib/mongrel/rails.rb
 lib/mongrel/stats.rb
 lib/mongrel/tcphack.rb
 lib/mongrel/uri_classifier.rb
-lib/mongrel.rb
-mongrel-public_cert.pem
 setup.rb
 tasks/gem.rake
+tasks/native.rake
 test/mime.yaml
 test/mongrel.conf
 test/test_cgi_wrapper.rb

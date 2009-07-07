@@ -12,6 +12,7 @@ HOE = Hoe.spec 'mongrel' do
   spec_extras[:required_ruby_version] = Gem::Requirement.new('>= 1.8.6')
 
   spec_extras[:extensions] = ["ext/http11/extconf.rb"]
+  spec_extras[:executables] = ['mongrel_rails']
 
   extra_deps << ['gem_plugin', '>= 0.2.3']
   extra_dev_deps << ['rake-compiler', ">= 0.5.0"]
