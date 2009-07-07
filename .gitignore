@@ -3,5 +3,6 @@
 *.o
 *.so
 doc
+log
 pkg
 tmp

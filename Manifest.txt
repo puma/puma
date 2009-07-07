@@ -51,6 +51,7 @@ lib/mongrel/uri_classifier.rb
 setup.rb
 tasks/gem.rake
 tasks/native.rake
+tasks/ragel.rake
 test/mime.yaml
 test/mongrel.conf
 test/test_cgi_wrapper.rb

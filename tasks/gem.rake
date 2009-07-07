@@ -18,6 +18,8 @@ HOE = Hoe.spec 'mongrel' do
 
   extra_deps << ['gem_plugin', '>= 0.2.3']
   extra_dev_deps << ['rake-compiler', ">= 0.5.0"]
+
+  clean_globs.push('test_*.log', 'log')
 end
 
 file "#{HOE.spec.name}.gemspec" => ['Rakefile', 'tasks/gem.rake'] do |t|
