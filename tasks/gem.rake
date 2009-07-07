@@ -16,12 +16,10 @@ HOE = Hoe.spec 'mongrel' do
 
   spec_extras[:extra_rdoc_files] = ['README', 'LICENSE', 'History.txt']
 
-  spec_extras['rdoc_options'] = proc do |rdoc_options|
-    rdoc_options << "--main=README"
-  end
-
   extra_deps << ['gem_plugin', '>= 0.2.3']
   extra_dev_deps << ['rake-compiler', ">= 0.5.0"]
+
+  spec_extras[:requirements] = "Please install 'daemons' gem >= 1.0.3 to allow daemonize to work."
 
   clean_globs.push('test_*.log', 'log')
 end
