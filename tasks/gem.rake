@@ -1,4 +1,4 @@
-require 'rubygems/package_task'
+
 require 'hoe'
 
 HOE = Hoe.spec 'mongrel' do
