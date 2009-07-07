@@ -1,0 +1,7 @@
+*.bundle
+*.log
+*.o
+*.so
+doc
+pkg
+tmp
