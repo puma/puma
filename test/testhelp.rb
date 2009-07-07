@@ -64,3 +64,8 @@ def hit(uris)
 
   return results
 end
+
+# Platform check helper ;-)
+def windows?
+  result = RUBY_PLATFORM =~ /mingw|mswin/
+end

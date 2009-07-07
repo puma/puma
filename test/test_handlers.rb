@@ -49,17 +49,17 @@ class HandlersTest < Test::Unit::TestCase
         uri "/relative", :handler => Mongrel::DirHandler.new(nil, listing_allowed=false, index_html="none")
       end
     end
-    
-    File.open("/tmp/testfile", 'w') do
-      # Do nothing
+
+    unless windows?
+      File.open("/tmp/testfile", 'w') { } # Do nothing
     end
-    
+
     @config.run
   end
 
   def teardown
     @config.stop(false, true)
-    File.delete "/tmp/testfile"
+    File.delete "/tmp/testfile" unless windows?
   end
 
   def test_more_web_server
@@ -74,10 +74,12 @@ class HandlersTest < Test::Unit::TestCase
     ])
     check_status res, String
   end
-  
+
   def test_nil_dirhandler
+    return if windows?
+
     # Camping uses this internally
-    handler = Mongrel::DirHandler.new(nil, false)  
+    handler = Mongrel::DirHandler.new(nil, false)
     assert handler.can_serve("/tmp/testfile")
     # Not a bug! A nil @file parameter is the only circumstance under which
     # we are allowed to serve any existing file
