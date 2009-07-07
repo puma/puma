@@ -9,7 +9,13 @@ require 'uri'
 require 'stringio'
 
 # Compiled Mongrel extension
-require 'http11'
+# support multiple ruby version (fat binaries under windows)
+begin
+  require 'http11'
+rescue LoadError
+  RUBY_VERSION =~ /(\d+.\d+)/
+  require "#{$1}/http11"
+end
 
 # Gem conditional loader
 require 'mongrel/gems'
