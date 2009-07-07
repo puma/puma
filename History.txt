@@ -1,0 +1,51 @@
+=== (unrealeased) / 2009-07-??
+
+* Rake task project reorganization and reformat using Hoe.
+
+
+=== 1.1.5 / 2008-05-22
+
+* Fix bug where num_processors is not actually set from mongrel_rails.
+
+
+=== 1.1.4 / 2008-02-29
+
+* Fix camping handler. Correct treatment of @throttle parameter.
+
+
+=== 1.1.3 / 2007-12-29
+
+* Fix security flaw of DirHandler; reported on mailing list.
+
+
+=== 1.1.2 /  2007-12-15
+
+* Fix worker termination bug; fix JRuby 1.0.3 load order issue; fix require issue on systems without Rubygems.
+
+
+=== 1.1.1 / 2007-11-12
+
+* Fix mongrel_rails restart bug; fix bug with Rack status codes.
+
+
+=== 1.1 / 2007-11-01
+
+* Pure Ruby URIClassifier.
+* More modular architecture.
+* JRuby support.
+* Move C URIClassifier into mongrel_experimental project.
+
+
+=== 1.0.4 / 2007-10-29
+
+* Backport fixes for versioning inconsistency, mongrel_rails bug, and DirHandler bug.
+
+
+=== 1.0.3
+
+* Fix user-switching bug; make people upgrade to the latest from the RC.
+
+
+=== 1.0.2
+
+* Signed gem; many minor bugfixes and patches.

@@ -1,9 +1,14 @@
-bin/mongrel_rails
-CHANGELOG
 COPYING
+History.txt
+LICENSE
+Manifest.txt
+README
+Rakefile
+TODO
+bin/mongrel_rails
 examples/builder.rb
-examples/camping/blog.rb
 examples/camping/README
+examples/camping/blog.rb
 examples/camping/tepee.rb
 examples/httpd.conf
 examples/mime.yaml
@@ -43,12 +48,9 @@ lib/mongrel/stats.rb
 lib/mongrel/tcphack.rb
 lib/mongrel/uri_classifier.rb
 lib/mongrel.rb
-LICENSE
-Manifest
 mongrel-public_cert.pem
-mongrel.gemspec
-README
 setup.rb
+tasks/gem.rake
 test/mime.yaml
 test/mongrel.conf
 test/test_cgi_wrapper.rb
@@ -65,5 +67,4 @@ test/test_stats.rb
 test/test_uriclassifier.rb
 test/test_ws.rb
 test/testhelp.rb
-TODO
 tools/trickletest.rb
