@@ -2,6 +2,7 @@
 
 * Rake task project reorganization and reformat using Hoe.
 * Compile extension using rake-compiler
+* Upgraded http11_parser to work with Ragel 6.2
 
 === 1.1.5 / 2008-05-22
 

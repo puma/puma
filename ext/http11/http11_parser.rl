@@ -23,12 +23,13 @@
 
 
   action start_field { MARK(field_start, fpc); }
+  action snake_upcase_field { snake_upcase_char((char *)fpc); }
   action write_field { 
     parser->field_len = LEN(field_start, fpc);
   }
 
   action start_value { MARK(mark, fpc); }
-  action write_value { 
+  action write_value {
     if(parser->http_field != NULL) {
       parser->http_field(parser->data, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, fpc));
     }
@@ -41,7 +42,7 @@
     if(parser->request_uri != NULL)
       parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, fpc));
   }
-  action fragment { 
+  action fragment {
     if(parser->fragment != NULL)
       parser->fragment(parser->data, PTR_TO(mark), LEN(mark, fpc));
   }
@@ -104,10 +105,10 @@ size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, 
   assert(*pe == '\0' && "pointer does not end on NUL");
   assert(pe - p == len - off && "pointers aren't same distance");
 
-
   %% write exec;
 
-  parser->cs = cs;
+  if (!http_parser_has_error(parser))
+    parser->cs = cs;
   parser->nread += p - (buffer + off);
 
   assert(p <= pe && "buffer overflow after parsing execute");
@@ -117,23 +118,11 @@ size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, 
   assert(parser->field_len <= len && "field has length longer than whole buffer");
   assert(parser->field_start < len && "field starts after buffer end");
 
-  if(parser->body_start) {
-    /* final \r\n combo encountered so stop right here */
-    %%write eof;
-    parser->nread++;
-  }
-
   return(parser->nread);
 }
 
 int http_parser_finish(http_parser *parser)
 {
-  int cs = parser->cs;
-
-  %%write eof;
-
-  parser->cs = cs;
-
   if (http_parser_has_error(parser) ) {
     return -1;
   } else if (http_parser_is_finished(parser) ) {
