@@ -6,6 +6,7 @@
 * Ruby 1.9 early compatbility: Merged commits form Eric Wong.
 * Better RubyGems support thanks to added env she-bang to mongrel_rails executable.
 * Fixed proper version reporting under 1.9
+* Consider MinGW as valid Windows platform.
 
 === 1.1.5 / 2008-05-22
 

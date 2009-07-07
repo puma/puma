@@ -81,13 +81,13 @@ module Mongrel
 
     # Writes the PID file if we're not on Windows.
     def write_pid_file
-      if RUBY_PLATFORM !~ /mswin/
+      if RUBY_PLATFORM !~ /mingw|mswin/
         log "Writing PID file to #{@pid_file}"
         open(@pid_file,"w") {|f| f.write(Process.pid) }
         open(@pid_file,"w") do |f|
           f.write(Process.pid)
           File.chmod(0644, @pid_file)
-        end      
+        end
       end
     end
 
@@ -185,7 +185,7 @@ module Mongrel
     def daemonize(options={})
       ops = resolve_defaults(options)
       # save this for later since daemonize will hose it
-      if RUBY_PLATFORM !~ /mswin/
+      if RUBY_PLATFORM !~ /mingw|mswin/
         require 'daemons/daemonize'
 
         logfile = ops[:log_file]
@@ -366,7 +366,7 @@ module Mongrel
       # clean up the pid file always
       at_exit { remove_pid_file }
 
-      if RUBY_PLATFORM !~ /mswin/
+      if RUBY_PLATFORM !~ /mingw|mswin/
         # graceful shutdown
         trap("TERM") { log "TERM signal received."; stop }
         trap("USR1") { log "USR1 received, toggling $mongrel_debug_client to #{!$mongrel_debug_client}"; $mongrel_debug_client = !$mongrel_debug_client }
