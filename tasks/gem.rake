@@ -14,6 +14,8 @@ HOE = Hoe.spec 'mongrel' do
   spec_extras[:extensions] = ["ext/http11/extconf.rb"]
   spec_extras[:executables] = ['mongrel_rails']
 
+  spec_extras[:extra_rdoc_files] = ['LICENSE']
+
   extra_deps << ['gem_plugin', '>= 0.2.3']
   extra_dev_deps << ['rake-compiler', ">= 0.5.0"]
 end
