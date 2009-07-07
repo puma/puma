@@ -75,7 +75,10 @@ module Mongrel
       elsif @header_sent
         raise "You have already sent the request headers."
       else
-        @header.out.truncate(0)
+        # XXX Dubious ( http://mongrel.rubyforge.org/ticket/19 )
+        @header.out.close
+        @header = HeaderOut.new(StringIO.new) 
+        
         @body.close
         @body = StringIO.new
       end

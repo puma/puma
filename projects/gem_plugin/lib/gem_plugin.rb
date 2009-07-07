@@ -105,8 +105,8 @@ module GemPlugin
     # To prevent this load requires the full path to the "init.rb" file, which
     # avoids the RubyGems autorequire magic.
     def load(needs = {})
-      sdir = File.join(Gem.dir, "specifications")
-      gems = Gem::SourceIndex.from_installed_gems(sdir)
+      sdirs = Gem::SourceIndex.installed_spec_directories
+      gems = Gem::SourceIndex.from_gems_in(sdirs)
       needs = needs.merge({"gem_plugin" => INCLUDE})
       
       gems.each do |path, gem|
@@ -128,8 +128,11 @@ module GemPlugin
           # looks like no needs were set to false, so it's good
           
           # Previously was set wrong, we already have the correct gem path!
-          #gem_dir = File.join(Gem.dir, "gems", "#{gem.name}-#{gem.version}")
-          gem_dir = File.join(Gem.dir, "gems", path)
+          gem_dir = ""
+          Gem.path.each do |gem_path|
+            gem_dir = File.join(gem_path, "gems", path)
+            break if File.exists?(gem_dir)
+          end
           
           require File.join(gem_dir, "lib", gem.name, "init.rb")
           @gems[gem.name] = gem_dir

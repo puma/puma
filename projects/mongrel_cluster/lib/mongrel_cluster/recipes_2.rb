@@ -7,7 +7,7 @@ Capistrano::Configuration.instance.load do
   set :mongrel_user, nil
   set :mongrel_group, nil
   set :mongrel_prefix, nil
-  set :mongrel_rails, 'mongrel_rails'
+  set :mongrel_rails, "mongrel_rails"
   set :mongrel_clean, false
   set :mongrel_pid_file, nil
   set :mongrel_log_file, nil
@@ -37,6 +37,7 @@ Capistrano::Configuration.instance.load do
         argv << "--group #{mongrel_group}" if mongrel_group
         argv << "--prefix #{mongrel_prefix}" if mongrel_prefix
         argv << "-S #{mongrel_config_script}" if mongrel_config_script
+        argv << "--mongrel_rails #{mongrel_rails}" if mongrel_rails         
         cmd = argv.join " "
         send(run_method, cmd)
       end

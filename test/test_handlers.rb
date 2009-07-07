@@ -61,6 +61,16 @@ class HandlersTest < Test::Unit::TestCase
     @config.stop(false, true)
     File.delete "/tmp/testfile" unless windows?
   end
+  
+  def test_registration_exception_is_not_lost
+    assert_raises(Mongrel::URIClassifier::RegistrationError) do      
+      @config = Mongrel::Configurator.new do
+        listener do
+          uri "bogus", :handler => SimpleHandler.new
+        end
+      end
+    end
+  end
 
   def test_more_web_server
     res = hit([ "http://localhost:9998/test",

@@ -13,6 +13,7 @@ public class Http11Parser {
   action mark {parser.mark = fpc; }
 
   action start_field { parser.field_start = fpc; }
+  action snake_upcase_field { /* FIXME stub */ }
   action write_field { 
     parser.field_len = fpc-parser.field_start;
   }

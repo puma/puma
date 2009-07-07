@@ -26,7 +26,7 @@ module Mongrel
   # Refer to DirHandler#can_serve for more information on this.
   class CGIWrapper < ::CGI
     public :env_table
-    attr_reader :options
+    attr_reader :head
     attr_accessor :handler
     # Set this to false if you want calls to CGIWrapper.out to not actually send
     # the response until you force it.
@@ -105,7 +105,7 @@ module Mongrel
         when Hash
           cookie.each_value {|c| to['Set-Cookie'] = c.to_s}
         else
-          to['Set-Cookie'] = options['cookie'].to_s
+          to['Set-Cookie'] = head['cookie'].to_s
         end
         
         @head.delete('cookie')
