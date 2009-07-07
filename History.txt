@@ -8,6 +8,7 @@
 * Fixed proper version reporting under 1.9
 * Consider MinGW as valid Windows platform.
 * Smartly load http11 extension using fat-binary approach.
+* Deprecated obsolete Windows service example scripts (from 2006!)
 
 === 1.1.5 / 2008-05-22
 
