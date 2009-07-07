@@ -4,6 +4,7 @@
 * Compile extension using rake-compiler
 * Upgraded http11_parser to work with Ragel 6.2
 * Ruby 1.9 early compatbility: Merged commits form Eric Wong.
+* Better RubyGems support thanks to added env she-bang to mongrel_rails executable.
 
 === 1.1.5 / 2008-05-22
 
