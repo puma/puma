@@ -10,6 +10,7 @@ Bugfixes:
 
 * Fixed proper version reporting under 1.9
 * Consider MinGW as valid Windows platform.
+* Properly drop PID when daemonizing (EngineYard patched 1.1.5.1).
 
 Reorganization:
 
