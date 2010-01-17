@@ -17,7 +17,7 @@ class ConditionalResponseTest < Test::Unit::TestCase
     @http = Net::HTTP.new(@server.host, @server.port)
 
     # get the ETag and Last-Modified headers
-    @path = '/README'
+    @path = '/README.txt'
     res = @http.start { |http| http.get(@path) }
     assert_not_nil @etag = res['ETag']
     assert_not_nil @last_modified = res['Last-Modified']
