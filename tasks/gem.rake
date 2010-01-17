@@ -1,25 +1,20 @@
-
 require 'hoe'
 
 HOE = Hoe.spec 'mongrel' do
   self.rubyforge_name = 'mongrel'
-  self.author         = ['Zed A. Shaw']
-  self.email          = %w[mongrel-users@rubyforge.org]
-  self.readme_file    = "README"
-  self.need_tar       = false
-  self.need_zip       = false
+  developer 'Zed A. Shaw', 'mongrel-users@rubyforge.org'
 
   spec_extras[:required_ruby_version] = Gem::Requirement.new('>= 1.8.6')
 
   spec_extras[:extensions] = ["ext/http11/extconf.rb"]
   spec_extras[:executables] = ['mongrel_rails']
 
-  spec_extras[:extra_rdoc_files] = ['README', 'LICENSE', 'History.txt']
+  extra_rdoc_files << 'LICENSE'
 
-  extra_deps << ['gem_plugin', '>= 0.2.3']
-  extra_dev_deps << ['rake-compiler', ">= 0.5.0"]
+  extra_deps << ['gem_plugin', '~> 0.2.3']
+  extra_deps << ['daemons', '~> 1.0.10']
 
-  spec_extras[:requirements] = "Please install 'daemons' gem >= 1.0.3 to allow daemonize to work."
+  extra_dev_deps << ['rake-compiler', "~> 0.7.0"]
 
   clean_globs.push('test_*.log', 'log')
 end
