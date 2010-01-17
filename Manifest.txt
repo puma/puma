@@ -2,7 +2,7 @@ COPYING
 History.txt
 LICENSE
 Manifest.txt
-README
+README.txt
 Rakefile
 TODO
 bin/mongrel_rails
