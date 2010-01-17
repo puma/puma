@@ -13,6 +13,10 @@ Rake::ExtensionTask.new('http11', HOE.spec) do |ext|
   unless RUBY_PLATFORM =~ /mingw|mswin/ then
     ext.cross_compile = true
     ext.cross_platform = ['i386-mswin32', 'i386-mingw32']
+
+    ext.cross_compiling do |gs|
+      gs.dependencies.delete gs.dependencies.find { |d| d.name == 'daemons' }
+    end
   end
 end
 
