@@ -1,39 +1,20 @@
-// line 1 "ext/http11/http11_parser.rl"
-/**
- * Copyright (c) 2005 Zed A. Shaw
- * You can redistribute it and/or modify it under the same terms as Ruby.
- */
-#include "http11_parser.h"
-#include <stdio.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
 
-/*
- * capitalizes all lower-case ASCII characters,
- * converts dashes to underscores.
- */
-static void snake_upcase_char(char *c)
-{
-    if (*c >= 'a' && *c <= 'z')
-      *c &= ~0x20;
-    else if (*c == '-')
-      *c = '_';
-}
+// line 1 "ext/http11/http11_parser.java.rl"
+package org.jruby.mongrel;
 
-#define LEN(AT, FPC) (FPC - buffer - parser->AT)
-#define MARK(M,FPC) (parser->M = (FPC) - buffer)
-#define PTR_TO(F) (buffer + parser->F)
+import org.jruby.util.ByteList;
+
+public class Http11Parser {
 
 /** Machine **/
 
-// line 87 "ext/http11/http11_parser.rl"
+
+// line 65 "ext/http11/http11_parser.java.rl"
 
 
 /** Data **/
 
-// line 37 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
+// line 18 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
 private static byte[] init__http_parser_actions_0()
 {
 	return new byte [] {
@@ -218,43 +199,74 @@ static final int http_parser_error = 0;
 
 static final int http_parser_en_main = 1;
 
-// line 91 "ext/http11/http11_parser.rl"
 
-int http_parser_init(http_parser *parser)  {
-  int cs = 0;
-  
-// line 227 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
+// line 69 "ext/http11/http11_parser.java.rl"
+
+   public static interface ElementCB {
+     public void call(Object data, int at, int length);
+   }
+
+   public static interface FieldCB {
+     public void call(Object data, int field, int flen, int value, int vlen);
+   }
+
+   public static class HttpParser {
+      int cs;
+      int body_start;
+      int content_len;
+      int nread;
+      int mark;
+      int field_start;
+      int field_len;
+      int query_start;
+
+      Object data;
+      ByteList buffer;
+
+      public FieldCB http_field;
+      public ElementCB request_method;
+      public ElementCB request_uri;
+      public ElementCB fragment;
+      public ElementCB request_path;
+      public ElementCB query_string;
+      public ElementCB http_version;
+      public ElementCB header_done;
+
+      public void init() {
+          cs = 0;
+
+          
+// line 240 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
 	{
 	cs = http_parser_start;
 	}
-// line 95 "ext/http11/http11_parser.rl"
-  parser->cs = cs;
-  parser->body_start = 0;
-  parser->content_len = 0;
-  parser->mark = 0;
-  parser->nread = 0;
-  parser->field_len = 0;
-  parser->field_start = 0;    
 
-  return(1);
-}
+// line 104 "ext/http11/http11_parser.java.rl"
 
+          body_start = 0;
+          content_len = 0;
+          mark = 0;
+          nread = 0;
+          field_len = 0;
+          field_start = 0;
+      }
+   }
 
-/** exec **/
-size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, size_t off)  {
-  const char *p, *pe;
-  int cs = parser->cs;
+   public final HttpParser parser = new HttpParser();
 
-  assert(off <= len && "offset past end of buffer");
+   public int execute(ByteList buffer, int off) {
+     int p, pe;
+     int cs = parser.cs;
+     int len = buffer.realSize;
+     assert off<=len : "offset past end of buffer";
 
-  p = buffer+off;
-  pe = buffer+len;
+     p = off;
+     pe = len;
+     byte[] data = buffer.bytes;
+     parser.buffer = buffer;
 
-  /* assert(*pe == '\0' && "pointer does not end on NUL"); */
-  assert(pe - p == len - off && "pointers aren't same distance");
-
-  
-// line 258 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
+     
+// line 270 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
 	{
 	int _klen;
 	int _trans = 0;
@@ -335,91 +347,91 @@ case 1:
 			switch ( _http_parser_actions[_acts++] )
 			{
 	case 0:
-// line 34 "ext/http11/http11_parser.rl"
-	{MARK(mark, p); }
+// line 13 "ext/http11/http11_parser.java.rl"
+	{parser.mark = p; }
 	break;
 	case 1:
-// line 37 "ext/http11/http11_parser.rl"
-	{ MARK(field_start, p); }
+// line 15 "ext/http11/http11_parser.java.rl"
+	{ parser.field_start = p; }
 	break;
 	case 2:
-// line 38 "ext/http11/http11_parser.rl"
-	{ snake_upcase_char((char *)p); }
+// line 16 "ext/http11/http11_parser.java.rl"
+	{ /* FIXME stub */ }
 	break;
 	case 3:
-// line 39 "ext/http11/http11_parser.rl"
+// line 17 "ext/http11/http11_parser.java.rl"
 	{ 
-    parser->field_len = LEN(field_start, p);
+    parser.field_len = p-parser.field_start;
   }
 	break;
 	case 4:
-// line 43 "ext/http11/http11_parser.rl"
-	{ MARK(mark, p); }
+// line 21 "ext/http11/http11_parser.java.rl"
+	{ parser.mark = p; }
 	break;
 	case 5:
-// line 44 "ext/http11/http11_parser.rl"
-	{
-    if(parser->http_field != NULL) {
-      parser->http_field(parser->data, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, p));
+// line 22 "ext/http11/http11_parser.java.rl"
+	{ 
+    if(parser.http_field != null) {
+      parser.http_field.call(parser.data, parser.field_start, parser.field_len, parser.mark, p-parser.mark);
     }
   }
 	break;
 	case 6:
-// line 49 "ext/http11/http11_parser.rl"
+// line 27 "ext/http11/http11_parser.java.rl"
 	{ 
-    if(parser->request_method != NULL) 
-      parser->request_method(parser->data, PTR_TO(mark), LEN(mark, p));
+    if(parser.request_method != null) 
+      parser.request_method.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 7:
-// line 53 "ext/http11/http11_parser.rl"
+// line 31 "ext/http11/http11_parser.java.rl"
 	{ 
-    if(parser->request_uri != NULL)
-      parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, p));
+    if(parser.request_uri != null)
+      parser.request_uri.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 8:
-// line 57 "ext/http11/http11_parser.rl"
-	{
-    if(parser->fragment != NULL)
-      parser->fragment(parser->data, PTR_TO(mark), LEN(mark, p));
+// line 35 "ext/http11/http11_parser.java.rl"
+	{ 
+    if(parser.fragment != null)
+      parser.fragment.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 9:
-// line 62 "ext/http11/http11_parser.rl"
-	{MARK(query_start, p); }
+// line 40 "ext/http11/http11_parser.java.rl"
+	{parser.query_start = p; }
 	break;
 	case 10:
-// line 63 "ext/http11/http11_parser.rl"
+// line 41 "ext/http11/http11_parser.java.rl"
 	{ 
-    if(parser->query_string != NULL)
-      parser->query_string(parser->data, PTR_TO(query_start), LEN(query_start, p));
+    if(parser.query_string != null)
+      parser.query_string.call(parser.data, parser.query_start, p-parser.query_start);
   }
 	break;
 	case 11:
-// line 68 "ext/http11/http11_parser.rl"
+// line 46 "ext/http11/http11_parser.java.rl"
 	{	
-    if(parser->http_version != NULL)
-      parser->http_version(parser->data, PTR_TO(mark), LEN(mark, p));
+    if(parser.http_version != null)
+      parser.http_version.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 12:
-// line 73 "ext/http11/http11_parser.rl"
+// line 51 "ext/http11/http11_parser.java.rl"
 	{
-    if(parser->request_path != NULL)
-      parser->request_path(parser->data, PTR_TO(mark), LEN(mark,p));
+    if(parser.request_path != null)
+      parser.request_path.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 13:
-// line 78 "ext/http11/http11_parser.rl"
+// line 56 "ext/http11/http11_parser.java.rl"
 	{ 
-    parser->body_start = p - buffer + 1; 
-    if(parser->header_done != NULL)
-      parser->header_done(parser->data, p + 1, pe - p - 1);
+    parser.body_start = p + 1; 
+    if(parser.header_done != null)
+      parser.header_done.call(parser.data, p + 1, pe - p - 1);
     { p += 1; _goto_targ = 5; if (true)  continue _goto;}
   }
 	break;
-// line 423 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
+// line 435 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
 			}
 		}
 	}
@@ -438,37 +450,37 @@ case 5:
 	}
 	break; }
 	}
-// line 121 "ext/http11/http11_parser.rl"
 
-  if (!http_parser_has_error(parser))
-    parser->cs = cs;
-  parser->nread += p - (buffer + off);
+// line 128 "ext/http11/http11_parser.java.rl"
 
-  assert(p <= pe && "buffer overflow after parsing execute");
-  assert(parser->nread <= len && "nread longer than length");
-  assert(parser->body_start <= len && "body starts after buffer end");
-  assert(parser->mark < len && "mark is after buffer end");
-  assert(parser->field_len <= len && "field has length longer than whole buffer");
-  assert(parser->field_start < len && "field starts after buffer end");
+     parser.cs = cs;
+     parser.nread += (p - off);
+     
+     assert p <= pe                  : "buffer overflow after parsing execute";
+     assert parser.nread <= len      : "nread longer than length";
+     assert parser.body_start <= len : "body starts after buffer end";
+     assert parser.mark < len        : "mark is after buffer end";
+     assert parser.field_len <= len  : "field has length longer than whole buffer";
+     assert parser.field_start < len : "field starts after buffer end";
 
-  return(parser->nread);
-}
+     return parser.nread;
+   }
 
-int http_parser_finish(http_parser *parser)
-{
-  if (http_parser_has_error(parser) ) {
-    return -1;
-  } else if (http_parser_is_finished(parser) ) {
-    return 1;
-  } else {
-    return 0;
+   public int finish() {
+    if(has_error()) {
+      return -1;
+    } else if(is_finished()) {
+      return 1;
+    } else {
+      return 0;
+    }
   }
-}
 
-int http_parser_has_error(http_parser *parser) {
-  return parser->cs == http_parser_error;
-}
+  public boolean has_error() {
+    return parser.cs == http_parser_error;
+  }
 
-int http_parser_is_finished(http_parser *parser) {
-  return parser->cs >= http_parser_first_final;
+  public boolean is_finished() {
+    return parser.cs == http_parser_first_final;
+  }
 }

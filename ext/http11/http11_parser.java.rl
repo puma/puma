@@ -136,22 +136,10 @@ public class Http11Parser {
      assert parser.field_len <= len  : "field has length longer than whole buffer";
      assert parser.field_start < len : "field starts after buffer end";
 
-     if(parser.body_start>0) {
-        /* final \r\n combo encountered so stop right here */
-        %%write eof;
-        parser.nread++;
-     }
-
      return parser.nread;
    }
 
    public int finish() {
-     int cs = parser.cs;
-
-     %%write eof;
-
-     parser.cs = cs;
- 
     if(has_error()) {
       return -1;
     } else if(is_finished()) {
