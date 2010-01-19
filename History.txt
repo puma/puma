@@ -18,7 +18,7 @@ Reorganization:
 * Compile extension using rake-compiler
 * Upgraded http11_parser to work with Ragel 6.2
 * Deprecated obsolete Windows service example scripts (from 2006!)
-
+* Relocate Http11 JRuby extension to share http11 C extension folder and name.
 
 === 1.1.5 / 2008-05-22
 

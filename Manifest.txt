@@ -25,9 +25,9 @@ ext/http11/http11_parser.h
 ext/http11/http11_parser.java.rl
 ext/http11/http11_parser.rl
 ext/http11/http11_parser_common.rl
-ext/http11_java/Http11Service.java
-ext/http11_java/org/jruby/mongrel/Http11.java
-ext/http11_java/org/jruby/mongrel/Http11Parser.java
+ext/http11/Http11Service.java
+ext/http11/org/jruby/mongrel/Http11.java
+ext/http11/org/jruby/mongrel/Http11Parser.java
 lib/mongrel.rb
 lib/mongrel/camping.rb
 lib/mongrel/cgi.rb
