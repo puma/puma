@@ -2,6 +2,7 @@
 *.log
 *.o
 *.so
+*.jar
 doc
 log
 pkg
