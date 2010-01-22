@@ -116,12 +116,12 @@ public class Http11Parser {
    public int execute(ByteList buffer, int off) {
      int p, pe;
      int cs = parser.cs;
-     int len = buffer.realSize;
+     int len = buffer.length();
      assert off<=len : "offset past end of buffer";
 
      p = off;
      pe = len;
-     byte[] data = buffer.bytes;
+     byte[] data = buffer.unsafeBytes();
      parser.buffer = buffer;
 
      %% write exec;

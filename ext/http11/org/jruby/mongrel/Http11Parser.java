@@ -14,7 +14,7 @@ public class Http11Parser {
 
 /** Data **/
 
-// line 18 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
+// line 18 "ext/http11/org/jruby/mongrel/Http11Parser.java"
 private static byte[] init__http_parser_actions_0()
 {
 	return new byte [] {
@@ -236,7 +236,7 @@ static final int http_parser_en_main = 1;
           cs = 0;
 
           
-// line 240 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
+// line 240 "ext/http11/org/jruby/mongrel/Http11Parser.java"
 	{
 	cs = http_parser_start;
 	}
@@ -257,16 +257,16 @@ static final int http_parser_en_main = 1;
    public int execute(ByteList buffer, int off) {
      int p, pe;
      int cs = parser.cs;
-     int len = buffer.realSize;
+     int len = buffer.length();
      assert off<=len : "offset past end of buffer";
 
      p = off;
      pe = len;
-     byte[] data = buffer.bytes;
+     byte[] data = buffer.unsafeBytes();
      parser.buffer = buffer;
 
      
-// line 270 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
+// line 270 "ext/http11/org/jruby/mongrel/Http11Parser.java"
 	{
 	int _klen;
 	int _trans = 0;
@@ -431,7 +431,7 @@ case 1:
     { p += 1; _goto_targ = 5; if (true)  continue _goto;}
   }
 	break;
-// line 435 "ext/http11_java/org/jruby/mongrel/Http11Parser.java"
+// line 435 "ext/http11/org/jruby/mongrel/Http11Parser.java"
 			}
 		}
 	}
