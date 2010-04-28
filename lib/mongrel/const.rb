@@ -65,7 +65,7 @@ module Mongrel
     REQUEST_URI='REQUEST_URI'.freeze
     REQUEST_PATH='REQUEST_PATH'.freeze
 
-    MONGREL_VERSION = VERSION = "1.2.0.pre2".freeze
+    MONGREL_VERSION = VERSION = "1.2.0".freeze
 
     MONGREL_TMP_BASE="mongrel".freeze
 
