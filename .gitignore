@@ -3,6 +3,7 @@
 *.o
 *.so
 *.jar
+*.rbc
 doc
 log
 pkg
