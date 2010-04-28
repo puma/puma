@@ -93,8 +93,6 @@ class WebServerTest < Test::Unit::TestCase
   end
 
   def test_num_processors_overload
-    # Skipped this for Windows until further investigation
-    return if RUBY_PLATFORM =~ /mingw|mswin/
     redirect_test_io do
       assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
         tests = [
