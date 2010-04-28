@@ -5,6 +5,7 @@ Improvements:
 * Ruby 1.9 early compatbility: Merged commits form Eric Wong and Matt Aimonetti.
 * Better RubyGems support thanks to added env she-bang to mongrel_rails executable.
 * Smartly load http11 extension using fat-binary approach.
+* Better detection of Windows platform (usage of RbConfig::CONFIG instead of RUBY_PLATFORM)
 
 Bugfixes:
 

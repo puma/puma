@@ -67,5 +67,5 @@ end
 
 # Platform check helper ;-)
 def windows?
-  result = RUBY_PLATFORM =~ /mingw|mswin/
+  @windows ||= RbConfig::CONFIG['host_os'] =~ /mingw|mswin/
 end
