@@ -7,10 +7,8 @@ Rake::ExtensionTask.new('http11', HOE.spec) do |ext|
   if RUBY_PLATFORM =~ /mingw|mswin/ then
     RUBY_VERSION =~ /(\d+\.\d+)/
     ext.lib_dir = "lib/#{$1}"
-  end
-
-  # define cross-compilation tasks when not on Windows.
-  unless RUBY_PLATFORM =~ /mingw|mswin/ then
+  else
+    # define cross-compilation tasks when not on Windows.
     ext.cross_compile = true
     ext.cross_platform = ['i386-mswin32', 'i386-mingw32']
 
@@ -18,6 +16,9 @@ Rake::ExtensionTask.new('http11', HOE.spec) do |ext|
       gs.dependencies.delete gs.dependencies.find { |d| d.name == 'daemons' }
     end
   end
+
+  # cleanup versioned library directory
+  CLEAN.include 'lib/{1.8,1.9}'
 end
 
 # ensure things are built prior testing

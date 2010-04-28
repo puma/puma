@@ -11,10 +11,10 @@ require 'stringio'
 # Compiled Mongrel extension
 # support multiple ruby version (fat binaries under windows)
 begin
-  require 'http11'
-rescue LoadError
   RUBY_VERSION =~ /(\d+.\d+)/
   require "#{$1}/http11"
+rescue LoadError
+  require 'http11'
 end
 
 # Gem conditional loader
