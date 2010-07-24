@@ -183,7 +183,7 @@ public class Http11 extends RubyObject {
 
                 req.setInstanceVariable("@http_body", RubyString.newString(runtime, new ByteList(hp.parser.buffer, at, length)));
                 req.op_aset(context, runtime.newString("SERVER_PROTOCOL"),runtime.newString("HTTP/1.1"));
-                req.op_aset(context, runtime.newString("SERVER_SOFTWARE"),runtime.newString("Mongrel 1.2.0"));
+                req.op_aset(context, runtime.newString("SERVER_SOFTWARE"),runtime.newString("Mongrel 1.2.0.beta.1"));
             }
         };
 
