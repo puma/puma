@@ -157,7 +157,7 @@ public class Http11 extends RubyObject {
                 RubyHash req = (RubyHash)data;
                 ThreadContext context = req.getRuntime().getCurrentContext();
                 IRubyObject temp,ctype,clen;
-                
+
                 clen = req.op_aref(context, runtime.newString("HTTP_CONTENT_LENGTH"));
                 if(!clen.isNil()) {
                     req.op_aset(context, runtime.newString("CONTENT_LENGTH"),clen);

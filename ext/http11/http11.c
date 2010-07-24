@@ -304,8 +304,8 @@ void header_done(void *data, const char *at, size_t length)
     colon = memchr(RSTRING_PTR(temp), ':', RSTRING_LEN(temp));
     if(colon != NULL) {
       rb_hash_aset(req, global_server_name, rb_str_substr(temp, 0, colon - RSTRING_PTR(temp)));
-      rb_hash_aset(req, global_server_port, 
-          rb_str_substr(temp, colon - RSTRING_PTR(temp)+1, 
+      rb_hash_aset(req, global_server_port,
+          rb_str_substr(temp, colon - RSTRING_PTR(temp)+1,
             RSTRING_LEN(temp)));
     } else {
       rb_hash_aset(req, global_server_name, temp);
@@ -408,13 +408,13 @@ VALUE HttpParser_finish(VALUE self)
  * returning an Integer to indicate how much of the data has been read.  No matter
  * what the return value, you should call HttpParser#finished? and HttpParser#error?
  * to figure out if it's done parsing or there was an error.
- * 
- * This function now throws an exception when there is a parsing error.  This makes 
- * the logic for working with the parser much easier.  You can still test for an 
+ *
+ * This function now throws an exception when there is a parsing error.  This makes
+ * the logic for working with the parser much easier.  You can still test for an
  * error, but now you need to wrap the parser with an exception handling block.
  *
  * The third argument allows for parsing a partial request and then continuing
- * the parsing from that position.  It needs all of the original data as well 
+ * the parsing from that position.  It needs all of the original data as well
  * so you have to append to the data buffer as you read.
  */
 VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
