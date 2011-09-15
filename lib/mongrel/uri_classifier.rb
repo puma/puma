@@ -4,6 +4,7 @@ module Mongrel
   
     class RegistrationError < RuntimeError
     end
+
     class UsageError < RuntimeError
     end
 
@@ -56,8 +57,6 @@ module Mongrel
       end
     end
         
-    private
-    
     def rebuild
       if @handler_map.size == 1 and @handler_map[Const::SLASH]
         @root_handler = @handler_map.values.first
@@ -66,11 +65,16 @@ module Mongrel
         routes = @handler_map.keys.sort.sort_by do |uri|
           -uri.length
         end
-        @matcher = Regexp.new(routes.map do |uri|
-          Regexp.new('^' + Regexp.escape(uri))
-        end.join('|'))
+
+        all_possibles = routes.map do |uri|
+                          Regexp.new('^' + Regexp.escape(uri))
+                        end.join('|')
+
+        @matcher = Regexp.new(all_possibles)
       end
-    end    
+    end
+
+    private :rebuild
     
   end
 end

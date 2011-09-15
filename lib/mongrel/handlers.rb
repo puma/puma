@@ -119,7 +119,7 @@ module Mongrel
 
     # You give it the path to the directory root and and optional listing_allowed and index_html
     def initialize(path, listing_allowed=true, index_html="index.html")
-      @path = File.expand_path(path) if path
+      @path = (File.expand_path(path) if path)
       @listing_allowed = listing_allowed
       @index_html = index_html
       @default_content_type = "application/octet-stream".freeze

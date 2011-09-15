@@ -21,11 +21,9 @@ class HttpParserTest < Test::Unit::TestCase
     assert !parser.error?, "Parser had error"
     assert nread == parser.nread, "Number read returned from execute does not match"
 
-    assert_equal 'HTTP/1.1', req['SERVER_PROTOCOL']
     assert_equal '/', req['REQUEST_PATH']
     assert_equal 'HTTP/1.1', req['HTTP_VERSION']
     assert_equal '/', req['REQUEST_URI']
-    assert_equal 'CGI/1.2', req['GATEWAY_INTERFACE']
     assert_equal 'GET', req['REQUEST_METHOD']    
     assert_nil req['FRAGMENT']
     assert_nil req['QUERY_STRING']

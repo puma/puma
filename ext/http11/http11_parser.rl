@@ -31,7 +31,7 @@ static void snake_upcase_char(char *c)
   
   machine http_parser;
 
-  action mark {MARK(mark, fpc); }
+  action mark { MARK(mark, fpc); }
 
 
   action start_field { MARK(field_start, fpc); }
@@ -42,43 +42,34 @@ static void snake_upcase_char(char *c)
 
   action start_value { MARK(mark, fpc); }
   action write_value {
-    if(parser->http_field != NULL) {
-      parser->http_field(parser->data, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, fpc));
-    }
+    parser->http_field(parser, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, fpc));
   }
   action request_method { 
-    if(parser->request_method != NULL) 
-      parser->request_method(parser->data, PTR_TO(mark), LEN(mark, fpc));
+    parser->request_method(parser, PTR_TO(mark), LEN(mark, fpc));
   }
   action request_uri { 
-    if(parser->request_uri != NULL)
-      parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, fpc));
+    parser->request_uri(parser, PTR_TO(mark), LEN(mark, fpc));
   }
   action fragment {
-    if(parser->fragment != NULL)
-      parser->fragment(parser->data, PTR_TO(mark), LEN(mark, fpc));
+    parser->fragment(parser, PTR_TO(mark), LEN(mark, fpc));
   }
 
-  action start_query {MARK(query_start, fpc); }
+  action start_query { MARK(query_start, fpc); }
   action query_string { 
-    if(parser->query_string != NULL)
-      parser->query_string(parser->data, PTR_TO(query_start), LEN(query_start, fpc));
+    parser->query_string(parser, PTR_TO(query_start), LEN(query_start, fpc));
   }
 
   action http_version {	
-    if(parser->http_version != NULL)
-      parser->http_version(parser->data, PTR_TO(mark), LEN(mark, fpc));
+    parser->http_version(parser, PTR_TO(mark), LEN(mark, fpc));
   }
 
   action request_path {
-    if(parser->request_path != NULL)
-      parser->request_path(parser->data, PTR_TO(mark), LEN(mark,fpc));
+    parser->request_path(parser, PTR_TO(mark), LEN(mark,fpc));
   }
 
   action done { 
     parser->body_start = fpc - buffer + 1; 
-    if(parser->header_done != NULL)
-      parser->header_done(parser->data, fpc + 1, pe - fpc - 1);
+    parser->header_done(parser, fpc + 1, pe - fpc - 1);
     fbreak;
   }
 
@@ -98,9 +89,10 @@ int http_parser_init(http_parser *parser)  {
   parser->mark = 0;
   parser->nread = 0;
   parser->field_len = 0;
-  parser->field_start = 0;    
+  parser->field_start = 0;
+  parser->request = Qnil;
 
-  return(1);
+  return 1;
 }
 
 

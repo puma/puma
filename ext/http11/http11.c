@@ -8,12 +8,7 @@
 #include <string.h>
 #include "http11_parser.h"
 
-#ifndef RSTRING_PTR
-#define RSTRING_PTR(s) (RSTRING(s)->ptr)
-#endif
-#ifndef RSTRING_LEN
-#define RSTRING_LEN(s) (RSTRING(s)->len)
-#endif
+#ifndef MANAGED_STRINGS
 
 #ifndef RSTRING_PTR
 #define RSTRING_PTR(s) (RSTRING(s)->ptr)
@@ -22,8 +17,11 @@
 #define RSTRING_LEN(s) (RSTRING(s)->len)
 #endif
 
-static VALUE mMongrel;
-static VALUE cHttpParser;
+#define rb_extract_chars(e, sz) (*sz = RSTRING_LEN(e), RSTRING_PTR(e))
+#define rb_free_chars(e) /* nothing */
+
+#endif
+
 static VALUE eHttpParserError;
 
 #define id_handler_map rb_intern("@handler_map")
@@ -36,21 +34,7 @@ static VALUE global_request_uri;
 static VALUE global_fragment;
 static VALUE global_query_string;
 static VALUE global_http_version;
-static VALUE global_content_length;
-static VALUE global_http_content_length;
 static VALUE global_request_path;
-static VALUE global_content_type;
-static VALUE global_http_content_type;
-static VALUE global_gateway_interface;
-static VALUE global_gateway_interface_value;
-static VALUE global_server_name;
-static VALUE global_server_port;
-static VALUE global_server_protocol;
-static VALUE global_server_protocol_value;
-static VALUE global_http_host;
-static VALUE global_mongrel_version;
-static VALUE global_server_software;
-static VALUE global_port_80;
 
 #define TRIE_INCREASE 30
 
@@ -61,7 +45,7 @@ static VALUE global_port_80;
 #define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, MAX_##N##_LENGTH_ERR); }
 
 /** Defines global strings in the init method. */
-#define DEF_GLOBAL(N, val)   global_##N = rb_obj_freeze(rb_str_new2(val)); rb_global_variable(&global_##N)
+#define DEF_GLOBAL(N, val)   global_##N = rb_str_new2(val); rb_global_variable(&global_##N)
 
 
 /* Defines the maximum allowed lengths for various input elements.*/
@@ -149,7 +133,7 @@ static void init_common_fields(void)
 
   for(i = 0; i < ARRAY_SIZE(common_http_fields); cf++, i++) {
     memcpy(tmp + HTTP_PREFIX_LEN, cf->name, cf->len + 1);
-    cf->value = rb_obj_freeze(rb_str_new(tmp, HTTP_PREFIX_LEN + cf->len));
+    cf->value = rb_str_new(tmp, HTTP_PREFIX_LEN + cf->len);
     rb_global_variable(&cf->value);
   }
 
@@ -184,9 +168,9 @@ static VALUE find_common_field_value(const char *field, size_t flen)
 #endif /* !HAVE_QSORT_BSEARCH */
 }
 
-void http_field(void *data, const char *field, size_t flen, const char *value, size_t vlen)
+void http_field(http_parser* hp, const char *field, size_t flen,
+                                 const char *value, size_t vlen)
 {
-  VALUE req = (VALUE)data;
   VALUE v = Qnil;
   VALUE f = Qnil;
 
@@ -201,122 +185,83 @@ void http_field(void *data, const char *field, size_t flen, const char *value, s
     /*
      * We got a strange header that we don't have a memoized value for.
      * Fallback to creating a new string to use as a hash key.
-     *
-     * using rb_str_new(NULL, len) here is faster than rb_str_buf_new(len)
-     * in my testing, because: there's no minimum allocation length (and
-     * no check for it, either), RSTRING_LEN(f) does not need to be
-     * written twice, and and RSTRING_PTR(f) will already be
-     * null-terminated for us.
      */
-    f = rb_str_new(NULL, HTTP_PREFIX_LEN + flen);
-    memcpy(RSTRING_PTR(f), HTTP_PREFIX, HTTP_PREFIX_LEN);
-    memcpy(RSTRING_PTR(f) + HTTP_PREFIX_LEN, field, flen);
-    assert(*(RSTRING_PTR(f) + RSTRING_LEN(f)) == '\0'); /* paranoia */
-    /* fprintf(stderr, "UNKNOWN HEADER <%s>\n", RSTRING_PTR(f)); */
+
+    size_t new_size = HTTP_PREFIX_LEN + flen;
+    assert(new_size < BUFFER_LEN);
+
+    memcpy(hp->buf, HTTP_PREFIX, HTTP_PREFIX_LEN);
+    memcpy(hp->buf + HTTP_PREFIX_LEN, field, flen);
+
+    f = rb_str_new(hp->buf, new_size);
   }
 
-  rb_hash_aset(req, f, v);
+  rb_hash_aset(hp->request, f, v);
 }
 
-void request_method(void *data, const char *at, size_t length)
+void request_method(http_parser* hp, const char *at, size_t length)
 {
-  VALUE req = (VALUE)data;
   VALUE val = Qnil;
 
   val = rb_str_new(at, length);
-  rb_hash_aset(req, global_request_method, val);
+  rb_hash_aset(hp->request, global_request_method, val);
 }
 
-void request_uri(void *data, const char *at, size_t length)
+void request_uri(http_parser* hp, const char *at, size_t length)
 {
-  VALUE req = (VALUE)data;
   VALUE val = Qnil;
 
   VALIDATE_MAX_LENGTH(length, REQUEST_URI);
 
   val = rb_str_new(at, length);
-  rb_hash_aset(req, global_request_uri, val);
+  rb_hash_aset(hp->request, global_request_uri, val);
 }
 
-void fragment(void *data, const char *at, size_t length)
+void fragment(http_parser* hp, const char *at, size_t length)
 {
-  VALUE req = (VALUE)data;
   VALUE val = Qnil;
 
   VALIDATE_MAX_LENGTH(length, FRAGMENT);
 
   val = rb_str_new(at, length);
-  rb_hash_aset(req, global_fragment, val);
+  rb_hash_aset(hp->request, global_fragment, val);
 }
 
-void request_path(void *data, const char *at, size_t length)
+void request_path(http_parser* hp, const char *at, size_t length)
 {
-  VALUE req = (VALUE)data;
   VALUE val = Qnil;
 
   VALIDATE_MAX_LENGTH(length, REQUEST_PATH);
 
   val = rb_str_new(at, length);
-  rb_hash_aset(req, global_request_path, val);
+  rb_hash_aset(hp->request, global_request_path, val);
 }
 
-void query_string(void *data, const char *at, size_t length)
+void query_string(http_parser* hp, const char *at, size_t length)
 {
-  VALUE req = (VALUE)data;
   VALUE val = Qnil;
 
   VALIDATE_MAX_LENGTH(length, QUERY_STRING);
 
   val = rb_str_new(at, length);
-  rb_hash_aset(req, global_query_string, val);
+  rb_hash_aset(hp->request, global_query_string, val);
 }
 
-void http_version(void *data, const char *at, size_t length)
+void http_version(http_parser* hp, const char *at, size_t length)
 {
-  VALUE req = (VALUE)data;
   VALUE val = rb_str_new(at, length);
-  rb_hash_aset(req, global_http_version, val);
+  rb_hash_aset(hp->request, global_http_version, val);
 }
 
 /** Finalizes the request header to have a bunch of stuff that's
   needed. */
 
-void header_done(void *data, const char *at, size_t length)
+void header_done(http_parser* hp, const char *at, size_t length)
 {
-  VALUE req = (VALUE)data;
-  VALUE temp = Qnil;
-  VALUE ctype = Qnil;
-  VALUE clen = Qnil;
-  char *colon = NULL;
-
-  clen = rb_hash_aref(req, global_http_content_length);
-  if(clen != Qnil) {
-    rb_hash_aset(req, global_content_length, clen);
-  }
-
-  ctype = rb_hash_aref(req, global_http_content_type);
-  if(ctype != Qnil) {
-    rb_hash_aset(req, global_content_type, ctype);
-  }
-
-  rb_hash_aset(req, global_gateway_interface, global_gateway_interface_value);
-  if((temp = rb_hash_aref(req, global_http_host)) != Qnil) {
-    colon = memchr(RSTRING_PTR(temp), ':', RSTRING_LEN(temp));
-    if(colon != NULL) {
-      rb_hash_aset(req, global_server_name, rb_str_substr(temp, 0, colon - RSTRING_PTR(temp)));
-      rb_hash_aset(req, global_server_port,
-          rb_str_substr(temp, colon - RSTRING_PTR(temp)+1,
-            RSTRING_LEN(temp)));
-    } else {
-      rb_hash_aset(req, global_server_name, temp);
-      rb_hash_aset(req, global_server_port, global_port_80);
-    }
-  }
+  VALUE req = hp->request;
 
   /* grab the initial body and stuff it into an ivar */
   rb_ivar_set(req, id_http_body, rb_str_new(at, length));
-  rb_hash_aset(req, global_server_protocol, global_server_protocol_value);
-  rb_hash_aset(req, global_server_software, global_mongrel_version);
 }
 
 
@@ -328,10 +273,12 @@ void HttpParser_free(void *data) {
   }
 }
 
+void HttpParser_mark(http_parser* hp) {
+  if(hp->request) rb_gc_mark(hp->request);
+}
 
 VALUE HttpParser_alloc(VALUE klass)
 {
-  VALUE obj;
   http_parser *hp = ALLOC_N(http_parser, 1);
   TRACE();
   hp->http_field = http_field;
@@ -342,13 +289,12 @@ VALUE HttpParser_alloc(VALUE klass)
   hp->query_string = query_string;
   hp->http_version = http_version;
   hp->header_done = header_done;
+  hp->request = Qnil;
+
   http_parser_init(hp);
 
-  obj = Data_Wrap_Struct(klass, NULL, HttpParser_free, hp);
-
-  return obj;
+  return Data_Wrap_Struct(klass, HttpParser_mark, HttpParser_free, hp);
 }
-
 
 /**
  * call-seq:
@@ -427,15 +373,16 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
   DATA_GET(self, http_parser, http);
 
   from = FIX2INT(start);
-  dptr = RSTRING_PTR(data);
-  dlen = RSTRING_LEN(data);
+  dptr = rb_extract_chars(data, &dlen);
 
   if(from >= dlen) {
+    rb_free_chars(dptr);
     rb_raise(eHttpParserError, "Requested start is after data buffer end.");
   } else {
-    http->data = (void *)req_hash;
+    http->request = req_hash;
     http_parser_execute(http, dptr, dlen, from);
 
+    rb_free_chars(dptr);
     VALIDATE_MAX_LENGTH(http_parser_nread(http), HEADER);
 
     if(http_parser_has_error(http)) {
@@ -496,7 +443,7 @@ VALUE HttpParser_nread(VALUE self)
 void Init_http11()
 {
 
-  mMongrel = rb_define_module("Mongrel");
+  VALUE mMongrel = rb_define_module("Mongrel");
 
   DEF_GLOBAL(request_method, "REQUEST_METHOD");
   DEF_GLOBAL(request_uri, "REQUEST_URI");
@@ -504,24 +451,11 @@ void Init_http11()
   DEF_GLOBAL(query_string, "QUERY_STRING");
   DEF_GLOBAL(http_version, "HTTP_VERSION");
   DEF_GLOBAL(request_path, "REQUEST_PATH");
-  DEF_GLOBAL(content_length, "CONTENT_LENGTH");
-  DEF_GLOBAL(http_content_length, "HTTP_CONTENT_LENGTH");
-  DEF_GLOBAL(content_type, "CONTENT_TYPE");
-  DEF_GLOBAL(http_content_type, "HTTP_CONTENT_TYPE");
-  DEF_GLOBAL(gateway_interface, "GATEWAY_INTERFACE");
-  DEF_GLOBAL(gateway_interface_value, "CGI/1.2");
-  DEF_GLOBAL(server_name, "SERVER_NAME");
-  DEF_GLOBAL(server_port, "SERVER_PORT");
-  DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
-  DEF_GLOBAL(server_protocol_value, "HTTP/1.1");
-  DEF_GLOBAL(http_host, "HTTP_HOST");
-  DEF_GLOBAL(mongrel_version, "Mongrel 1.2.0.beta.1"); /* XXX Why is this defined here? */
-  DEF_GLOBAL(server_software, "SERVER_SOFTWARE");
-  DEF_GLOBAL(port_80, "80");
 
   eHttpParserError = rb_define_class_under(mMongrel, "HttpParserError", rb_eIOError);
+  rb_global_variable(&eHttpParserError);
 
-  cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
+  VALUE cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
   rb_define_method(cHttpParser, "initialize", HttpParser_init,0);
   rb_define_method(cHttpParser, "reset", HttpParser_reset,0);

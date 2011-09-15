@@ -4,5 +4,7 @@
 # Thank You.
 #
 
+require 'rubygems'
+
 # load rakefile extensions (tasks)
 Dir['tasks/*.rake'].sort.each { |f| load f }

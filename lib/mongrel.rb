@@ -19,8 +19,6 @@ end
 
 # Gem conditional loader
 require 'mongrel/gems'
-Mongrel::Gems.require 'cgi_multipart_eof_fix'
-Mongrel::Gems.require 'fastthread'
 require 'thread'
 
 # Ruby Mongrel
@@ -71,6 +69,9 @@ module Mongrel
   # releases of Mongrel will find other creative ways to make threads faster, but don't
   # hold your breath until Ruby 1.9 is actually finally useful.
   class HttpServer
+
+    include Mongrel::Const
+
     attr_reader :acceptor
     attr_reader :workers
     attr_reader :classifier
@@ -117,7 +118,7 @@ module Mongrel
         parser = HttpParser.new
         params = HttpParams.new
         request = nil
-        data = client.readpartial(Const::CHUNK_SIZE)
+        data = client.readpartial(CHUNK_SIZE)
         nparsed = 0
 
         # Assumption: nparsed will always be less since data will get filled with more
@@ -128,19 +129,42 @@ module Mongrel
           nparsed = parser.execute(params, data, nparsed)
 
           if parser.finished?
-            if not params[Const::REQUEST_PATH]
-              # it might be a dumbass full host request header
-              uri = URI.parse(params[Const::REQUEST_URI])
-              params[Const::REQUEST_PATH] = uri.path
+
+            if host = params[HTTP_HOST]
+              if colon = host.index(":")
+                params[SERVER_NAME] = host[0, colon]
+                params[SERVER_PORT] = host[colon+1, host.size]
+              else
+                params[SERVER_NAME] = host
+                params[SERVER_PORT] = PORT_80
+              end
             end
 
-            raise "No REQUEST PATH" if not params[Const::REQUEST_PATH]
+            if len = params[HTTP_CONTENT_LENGTH]
+              params[CONTENT_LENGTH] = len
+            end
 
-            script_name, path_info, handlers = @classifier.resolve(params[Const::REQUEST_PATH])
+            if type = params[HTTP_CONTENT_TYPE]
+              params[RAW_CONTENT_TYPE] = type
+            end
+
+            params[SERVER_PROTOCOL] = HTTP_11
+            params[SERVER_SOFTWARE] = MONGREL_VERSION
+            params[GATEWAY_INTERFACE] = CGI_VER
+
+            if not params[REQUEST_PATH]
+              # it might be a dumbass full host request header
+              uri = URI.parse(params[REQUEST_URI])
+              params[REQUEST_PATH] = uri.path
+            end
+
+            raise "No REQUEST PATH" if not params[REQUEST_PATH]
+
+            script_name, path_info, handlers = @classifier.resolve(params[REQUEST_PATH])
 
             if handlers
-              params[Const::PATH_INFO] = path_info
-              params[Const::SCRIPT_NAME] = script_name
+              params[PATH_INFO] = path_info
+              params[SCRIPT_NAME] = script_name
 
               # From http://www.ietf.org/rfc/rfc3875 :
               # "Script authors should be aware that the REMOTE_ADDR and REMOTE_HOST
@@ -148,7 +172,7 @@ module Mongrel
               #  ultimate source of the request.  They identify the client for the
               #  immediate request to the server; that client may be a proxy, gateway,
               #  or other intermediary acting on behalf of the actual source client."
-              params[Const::REMOTE_ADDR] = client.peeraddr.last
+              params[REMOTE_ADDR] = client.peeraddr.last
 
               # select handlers that want more detailed request notification
               notifiers = handlers.select { |h| h.request_notify }
@@ -172,17 +196,17 @@ module Mongrel
               end
             else
               # Didn't find it, return a stock 404 response.
-              client.write(Const::ERROR_404_RESPONSE)
+              client.write(ERROR_404_RESPONSE)
             end
 
             break #done
           else
             # Parser is not done, queue up more data to read and continue parsing
-            chunk = client.readpartial(Const::CHUNK_SIZE)
+            chunk = client.readpartial(CHUNK_SIZE)
             break if !chunk or chunk.length == 0  # read failed, stop processing
 
             data << chunk
-            if data.length >= Const::MAX_HEADER
+            if data.length >= MAX_HEADER
               raise HttpParserError.new("HEADER is longer than allowed, aborting client early.")
             end
           end
@@ -190,7 +214,7 @@ module Mongrel
       rescue EOFError,Errno::ECONNRESET,Errno::EPIPE,Errno::EINVAL,Errno::EBADF
         client.close rescue nil
       rescue HttpParserError => e
-        STDERR.puts "#{Time.now}: HTTP parse error, malformed request (#{params[Const::HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
+        STDERR.puts "#{Time.now}: HTTP parse error, malformed request (#{params[HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
         STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
       rescue Errno::EMFILE
         reap_dead_workers('too many files')
@@ -244,18 +268,22 @@ module Mongrel
     end
 
     def configure_socket_options
+      @tcp_defer_accept_opts = nil
+      @tcp_cork_opts = nil
+
       case RUBY_PLATFORM
       when /linux/
         # 9 is currently TCP_DEFER_ACCEPT
-        $tcp_defer_accept_opts = [Socket::SOL_TCP, 9, 1]
-        $tcp_cork_opts = [Socket::SOL_TCP, 3, 1]
+        @tcp_defer_accept_opts = [Socket::SOL_TCP, 9, 1]
+        @tcp_cork_opts = [Socket::SOL_TCP, 3, 1]
+
       when /freebsd(([1-4]\..{1,2})|5\.[0-4])/
         # Do nothing, just closing a bug when freebsd <= 5.4
       when /freebsd/
         # Use the HTTP accept filter if available.
         # The struct made by pack() is defined in /usr/include/sys/socket.h as accept_filter_arg
         unless `/sbin/sysctl -nq net.inet.accf.http`.empty?
-          $tcp_defer_accept_opts = [Socket::SOL_SOCKET, Socket::SO_ACCEPTFILTER, ['httpready', nil].pack('a16a240')]
+          @tcp_defer_accept_opts = [Socket::SOL_SOCKET, Socket::SO_ACCEPTFILTER, ['httpready', nil].pack('a16a240')]
         end
       end
     end
@@ -267,9 +295,11 @@ module Mongrel
 
       configure_socket_options
 
-      if defined?($tcp_defer_accept_opts) and $tcp_defer_accept_opts
-        @socket.setsockopt(*$tcp_defer_accept_opts) rescue nil
+      if @tcp_defer_accept_opts
+        @socket.setsockopt(*@tcp_defer_accept_opts)
       end
+
+      tcp_cork_opts = @tcp_cork_opts
 
       @acceptor = Thread.new do
         begin
@@ -277,9 +307,7 @@ module Mongrel
             begin
               client = @socket.accept
   
-              if defined?($tcp_cork_opts) and $tcp_cork_opts
-                client.setsockopt(*$tcp_cork_opts) rescue nil
-              end
+              client.setsockopt(*tcp_cork_opts) if tcp_cork_opts
   
               worker_list = @workers.list
   
@@ -288,7 +316,7 @@ module Mongrel
                 client.close rescue nil
                 reap_dead_workers("max processors")
               else
-                thread = Thread.new(client) {|c| process_client(c) }
+                thread = Thread.new(client) { |c| process_client(c) }
                 thread[:started_on] = Time.now
                 @workers.add(thread)
   
@@ -359,8 +387,4 @@ module Mongrel
   end
 end
 
-# Load experimental library, if present. We put it here so it can override anything
-# in regular Mongrel.
-
-$LOAD_PATH.unshift 'projects/mongrel_experimental/lib/'
 Mongrel::Gems.require 'mongrel_experimental', ">=#{Mongrel::Const::MONGREL_VERSION}"

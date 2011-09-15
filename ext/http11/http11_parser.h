@@ -6,14 +6,24 @@
 #ifndef http11_parser_h
 #define http11_parser_h
 
+#include "ruby.h"
+
 #include <sys/types.h>
 
 #if defined(_WIN32)
 #include <stddef.h>
 #endif
 
-typedef void (*element_cb)(void *data, const char *at, size_t length);
-typedef void (*field_cb)(void *data, const char *field, size_t flen, const char *value, size_t vlen);
+#define BUFFER_LEN 1024
+
+struct http_parser;
+
+typedef void (*element_cb)(struct http_parser* hp,
+                           const char *at, size_t length);
+
+typedef void (*field_cb)(struct http_parser* hp,
+                         const char *field, size_t flen,
+                         const char *value, size_t vlen);
 
 typedef struct http_parser { 
   int cs;
@@ -25,7 +35,7 @@ typedef struct http_parser {
   size_t field_len;
   size_t query_start;
 
-  void *data;
+  VALUE request;
 
   field_cb http_field;
   element_cb request_method;
@@ -35,12 +45,15 @@ typedef struct http_parser {
   element_cb query_string;
   element_cb http_version;
   element_cb header_done;
+
+  char buf[BUFFER_LEN];
   
 } http_parser;
 
 int http_parser_init(http_parser *parser);
 int http_parser_finish(http_parser *parser);
-size_t http_parser_execute(http_parser *parser, const char *data, size_t len, size_t off);
+size_t http_parser_execute(http_parser *parser, const char *data,
+                           size_t len, size_t off);
 int http_parser_has_error(http_parser *parser);
 int http_parser_is_finished(http_parser *parser);
 
