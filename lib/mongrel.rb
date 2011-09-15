@@ -95,8 +95,6 @@ module Mongrel
     # socket.accept calls in order to give the server a cheap throttle time.  It defaults to 0 and
     # actually if it is 0 then the sleep is not done at all.
     def initialize(host, port, num_processors=950, throttle=0, timeout=60)
-      
-      tries = 0
       @socket = TCPServer.new(host, port) 
       
       @classifier = URIClassifier.new
@@ -152,15 +150,16 @@ module Mongrel
             params[SERVER_SOFTWARE] = MONGREL_VERSION
             params[GATEWAY_INTERFACE] = CGI_VER
 
-            if not params[REQUEST_PATH]
+            unless params[REQUEST_PATH]
               # it might be a dumbass full host request header
               uri = URI.parse(params[REQUEST_URI])
               params[REQUEST_PATH] = uri.path
+
+              raise "No REQUEST PATH" unless params[REQUEST_PATH]
             end
 
-            raise "No REQUEST PATH" if not params[REQUEST_PATH]
-
-            script_name, path_info, handlers = @classifier.resolve(params[REQUEST_PATH])
+            script_name, path_info, handlers =
+                         @classifier.resolve(params[REQUEST_PATH])
 
             if handlers
               params[PATH_INFO] = path_info

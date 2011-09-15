@@ -24,7 +24,6 @@
 
 static VALUE eHttpParserError;
 
-#define id_handler_map rb_intern("@handler_map")
 #define id_http_body rb_intern("@http_body")
 #define HTTP_PREFIX "HTTP_"
 #define HTTP_PREFIX_LEN (sizeof(HTTP_PREFIX) - 1)
@@ -35,8 +34,6 @@ static VALUE global_fragment;
 static VALUE global_query_string;
 static VALUE global_http_version;
 static VALUE global_request_path;
-
-#define TRIE_INCREASE 30
 
 /** Defines common length and error messages for input length validation. */
 #define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " # length " allowed length."
