@@ -85,7 +85,7 @@ module Mongrel
     end
 
     def send_status(content_length=@body.length)
-      if not @status_sent
+      unless @status_sent
         @header['Content-Length'] = content_length if content_length and @status != 304
         write(Const::STATUS_FORMAT % [@status, @reason || HTTP_STATUS_CODES[@status]])
         @status_sent = true
@@ -93,7 +93,7 @@ module Mongrel
     end
 
     def send_header
-      if not @header_sent
+      unless @header_sent
         @header.out.rewind
         write(@header.out.read + Const::LINE_END)
         @header_sent = true
@@ -101,7 +101,7 @@ module Mongrel
     end
 
     def send_body
-      if not @body_sent
+      unless @body_sent
         @body.rewind
         write(@body.read)
         @body_sent = true

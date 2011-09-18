@@ -89,7 +89,9 @@ module Mongrel
 
     # A frozen format for this is about 15% faster
     STATUS_FORMAT = "HTTP/1.1 %d %s\r\nConnection: close\r\n"
+
     CONTENT_TYPE = "Content-Type"
+
     LAST_MODIFIED = "Last-Modified"
     ETAG = "ETag"
     SLASH = "/"
@@ -98,7 +100,6 @@ module Mongrel
     HEAD="HEAD"
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
     ETAG_FORMAT="\"%x-%x-%x\""
-    HEADER_FORMAT="%s: %s\r\n"
     LINE_END="\r\n"
     REMOTE_ADDR="REMOTE_ADDR"
     HTTP_X_FORWARDED_FOR="HTTP_X_FORWARDED_FOR"
@@ -119,9 +120,7 @@ module Mongrel
     GATEWAY_INTERFACE = "GATEWAY_INTERFACE"
     CGI_VER = "CGI/1.2"
 
-    HTTP_CONTENT_LENGTH = "HTTP_CONTENT_LENGTH"
+    STOP_COMMAND = "!"
 
-    HTTP_CONTENT_TYPE = "HTTP_CONTENT_TYPE"
-    RAW_CONTENT_TYPE = "CONTENT_TYPE"
   end
 end

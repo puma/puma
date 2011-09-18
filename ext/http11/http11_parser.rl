@@ -91,6 +91,7 @@ int http_parser_init(http_parser *parser)  {
   parser->field_len = 0;
   parser->field_start = 0;
   parser->request = Qnil;
+  parser->body = Qnil;
 
   return 1;
 }

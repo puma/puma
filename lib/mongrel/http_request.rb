@@ -4,17 +4,14 @@ module Mongrel
   # When a handler is found for a registered URI then this class is constructed
   # and passed to your HttpHandler::process method.  You should assume that 
   # *one* handler processes all requests.  Included in the HttpRequest is a
-  # HttpRequest.params Hash that matches common CGI params, and a HttpRequest.body
-  # which is a string containing the request body (raw for now).
+  # HttpRequest#params Hash that matches common CGI params, and a
+  # HttpRequest#body which is a string containing the request body
+  # (raw for now).
   #
-  # The HttpRequest.initialize method will convert any request that is larger than
-  # Const::MAX_BODY into a Tempfile and use that as the body.  Otherwise it uses 
-  # a StringIO object.  To be safe, you should assume it works like a file.
-  #
-  # The HttpHandler.request_notify system is implemented by having HttpRequest call
-  # HttpHandler.request_begins, HttpHandler.request_progress, HttpHandler.process during
-  # the IO processing.  This adds a small amount of overhead but lets you implement
-  # finer controlled handlers and filters.
+  # The HttpRequest#initialize method will convert any request that is larger
+  # than Const::MAX_BODY into a Tempfile and use that as the body.
+  # Otherwise it uses a StringIO object. To be safe, you should assume it
+  # works like a file.
   #
   class HttpRequest
     attr_reader :body, :params
@@ -22,24 +19,20 @@ module Mongrel
     # You don't really call this.  It's made for you.
     # Main thing it does is hook up the params, and store any remaining
     # body data into the HttpRequest.body attribute.
-    def initialize(params, socket, dispatchers)
+    def initialize(params, socket, body)
       @params = params
       @socket = socket
-      @dispatchers = dispatchers
       content_length = @params[Const::CONTENT_LENGTH].to_i
-      remain = content_length - @params.http_body.length
-      
-      # tell all dispatchers the request has begun
-      @dispatchers.each do |dispatcher|
-        dispatcher.request_begins(@params) 
-      end unless @dispatchers.nil? || @dispatchers.empty?
 
-      # Some clients (like FF1.0) report 0 for body and then send a body.  This will probably truncate them but at least the request goes through usually.
+      remain = content_length - body.size
+      
+      # Some clients (like FF1.0) report 0 for body and then send a body.
+      # This will probably truncate them but at least the request goes
+      # through usually.
+      #
       if remain <= 0
         # we've got everything, pack it up
-        @body = StringIO.new
-        @body.write @params.http_body
-        update_request_progress(0, content_length)
+        @body = StringIO.new body
       elsif remain > 0
         # must read more data to complete body
         if remain > Const::MAX_BODY
@@ -51,55 +44,50 @@ module Mongrel
           @body = StringIO.new 
         end
 
-        @body.write @params.http_body
-        read_body(remain, content_length)
+        @body.write body
+
+        read_body remain, content_length
       end
 
       @body.rewind if @body
     end
 
-    # updates all dispatchers about our progress
-    def update_request_progress(clen, total)
-      return if @dispatchers.nil? || @dispatchers.empty?
-      @dispatchers.each do |dispatcher|
-        dispatcher.request_progress(@params, clen, total) 
-      end 
-    end
-    private :update_request_progress
-
     # Does the heavy lifting of properly reading the larger body requests in 
     # small chunks.  It expects @body to be an IO object, @socket to be valid,
-    # and will set @body = nil if the request fails.  It also expects any initial
-    # part of the body that has been read to be in the @body already.
+    # and will set @body = nil if the request fails.  It also expects any
+    # initial part of the body that has been read to be in the @body already.
     def read_body(remain, total)
       begin
         # write the odd sized chunk first
-        @params.http_body = read_socket(remain % Const::CHUNK_SIZE)
+        chunk = read_socket(remain % Const::CHUNK_SIZE)
 
-        remain -= @body.write(@params.http_body)
-
-        update_request_progress(remain, total)
+        remain -= @body.write(chunk)
 
         # then stream out nothing but perfectly sized chunks
         until remain <= 0 or @socket.closed?
-          # ASSUME: we are writing to a disk and these writes always write the requested amount
-          @params.http_body = read_socket(Const::CHUNK_SIZE)
-          remain -= @body.write(@params.http_body)
-
-          update_request_progress(remain, total)
+          # ASSUME: we are writing to a disk and these writes always
+          # write the requested amount
+          chunk = read_socket(Const::CHUNK_SIZE)
+          remain -= @body.write(chunk)
         end
-      rescue Object => e
-        STDERR.puts "#{Time.now}: Error reading HTTP body: #{e.inspect}"
-        STDERR.puts e.backtrace.join("\n")
-        # any errors means we should delete the file, including if the file is dumped
+      rescue RuntimeError
+        # any errors means we should delete the file, including if the
+        # file is dumped
         @socket.close rescue nil
-        @body.close! if @body.class == Tempfile
-        @body = nil # signals that there was a problem
+        close_body
+
+        raise BodyReadError
       end
+    end
+
+    def close_body
+      @body.close! if @body.kind_of? IO
     end
  
     def read_socket(len)
-      if !@socket.closed?
+      if @socket.closed?
+        raise "Socket already closed when reading."
+      else
         data = @socket.read(len)
         if !data
           raise "Socket read return nil"
@@ -108,8 +96,6 @@ module Mongrel
         else
           data
         end
-      else
-        raise "Socket already closed when reading."
       end
     end
 

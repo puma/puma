@@ -36,6 +36,7 @@ typedef struct http_parser {
   size_t query_start;
 
   VALUE request;
+  VALUE body;
 
   field_cb http_field;
   element_cb request_method;

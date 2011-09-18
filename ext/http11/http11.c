@@ -24,7 +24,6 @@
 
 static VALUE eHttpParserError;
 
-#define id_http_body rb_intern("@http_body")
 #define HTTP_PREFIX "HTTP_"
 #define HTTP_PREFIX_LEN (sizeof(HTTP_PREFIX) - 1)
 
@@ -57,6 +56,7 @@ DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
 struct common_field {
 	const signed long len;
 	const char *name;
+  int raw;
 	VALUE value;
 };
 
@@ -66,7 +66,8 @@ struct common_field {
  * objects to be used with rb_hash_aset().
  */
 static struct common_field common_http_fields[] = {
-# define f(N) { (sizeof(N) - 1), N, Qnil }
+# define f(N) { (sizeof(N) - 1), N, 0, Qnil }
+# define fr(N) { (sizeof(N) - 1), N, 1, Qnil }
 	f("ACCEPT"),
 	f("ACCEPT_CHARSET"),
 	f("ACCEPT_ENCODING"),
@@ -76,8 +77,8 @@ static struct common_field common_http_fields[] = {
 	f("CACHE_CONTROL"),
 	f("CONNECTION"),
 	f("CONTENT_ENCODING"),
-	f("CONTENT_LENGTH"),
-	f("CONTENT_TYPE"),
+	fr("CONTENT_LENGTH"),
+	fr("CONTENT_TYPE"),
 	f("COOKIE"),
 	f("DATE"),
 	f("EXPECT"),
@@ -129,8 +130,12 @@ static void init_common_fields(void)
   memcpy(tmp, HTTP_PREFIX, HTTP_PREFIX_LEN);
 
   for(i = 0; i < ARRAY_SIZE(common_http_fields); cf++, i++) {
-    memcpy(tmp + HTTP_PREFIX_LEN, cf->name, cf->len + 1);
-    cf->value = rb_str_new(tmp, HTTP_PREFIX_LEN + cf->len);
+    if(cf->raw) {
+      cf->value = rb_str_new(cf->name, cf->len);
+    } else {
+      memcpy(tmp + HTTP_PREFIX_LEN, cf->name, cf->len + 1);
+      cf->value = rb_str_new(tmp, HTTP_PREFIX_LEN + cf->len);
+    }
     rb_global_variable(&cf->value);
   }
 
@@ -255,10 +260,7 @@ void http_version(http_parser* hp, const char *at, size_t length)
 
 void header_done(http_parser* hp, const char *at, size_t length)
 {
-  VALUE req = hp->request;
-
-  /* grab the initial body and stuff it into an ivar */
-  rb_ivar_set(req, id_http_body, rb_str_new(at, length));
+  hp->body = rb_str_new(at, length);
 }
 
 
@@ -272,6 +274,7 @@ void HttpParser_free(void *data) {
 
 void HttpParser_mark(http_parser* hp) {
   if(hp->request) rb_gc_mark(hp->request);
+  if(hp->body) rb_gc_mark(hp->body);
 }
 
 VALUE HttpParser_alloc(VALUE klass)
@@ -437,6 +440,19 @@ VALUE HttpParser_nread(VALUE self)
   return INT2FIX(http->nread);
 }
 
+/**
+ * call-seq:
+ *    parser.body -> nil or String
+ *
+ * If the request included a body, returns it.
+ */
+VALUE HttpParser_body(VALUE self) {
+  http_parser *http = NULL;
+  DATA_GET(self, http_parser, http);
+
+  return http->body;
+}
+
 void Init_http11()
 {
 
@@ -454,12 +470,13 @@ void Init_http11()
 
   VALUE cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
-  rb_define_method(cHttpParser, "initialize", HttpParser_init,0);
-  rb_define_method(cHttpParser, "reset", HttpParser_reset,0);
-  rb_define_method(cHttpParser, "finish", HttpParser_finish,0);
-  rb_define_method(cHttpParser, "execute", HttpParser_execute,3);
-  rb_define_method(cHttpParser, "error?", HttpParser_has_error,0);
-  rb_define_method(cHttpParser, "finished?", HttpParser_is_finished,0);
-  rb_define_method(cHttpParser, "nread", HttpParser_nread,0);
+  rb_define_method(cHttpParser, "initialize", HttpParser_init, 0);
+  rb_define_method(cHttpParser, "reset", HttpParser_reset, 0);
+  rb_define_method(cHttpParser, "finish", HttpParser_finish, 0);
+  rb_define_method(cHttpParser, "execute", HttpParser_execute, 3);
+  rb_define_method(cHttpParser, "error?", HttpParser_has_error, 0);
+  rb_define_method(cHttpParser, "finished?", HttpParser_is_finished, 0);
+  rb_define_method(cHttpParser, "nread", HttpParser_nread, 0);
+  rb_define_method(cHttpParser, "body", HttpParser_body, 0);
   init_common_fields();
 }
