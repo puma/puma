@@ -351,7 +351,6 @@ module Mongrel
 
     def process(request, response)
       if rand(@sample_rate)+1 == @sample_rate
-        @processors.sample(listener.workers.list.length)
         @headcount.sample(request.params.length)
         @reqsize.sample(request.body.length / 1024.0)
         @respsize.sample((response.body.length + response.header.out.length) / 1024.0)
@@ -360,7 +359,7 @@ module Mongrel
     end
 
     def dump
-      "#{@processors.to_s}\n#{@reqsize.to_s}\n#{@headcount.to_s}\n#{@respsize.to_s}\n#{@interreq.to_s}"
+      "#{@reqsize.to_s}\n#{@headcount.to_s}\n#{@respsize.to_s}\n#{@interreq.to_s}"
     end
   end
 
@@ -390,7 +389,7 @@ module Mongrel
                        ["port",listener.port],
                        ["throttle",listener.throttle],
                        ["timeout",listener.timeout],
-                       ["workers max",listener.num_processors],
+                       ["concurrency",listener.concurrent],
       ])
 
       if @stats

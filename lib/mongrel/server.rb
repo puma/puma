@@ -1,4 +1,5 @@
 require 'rack'
+require 'mongrel/thread_pool'
 
 module Mongrel
   # Thrown at a thread when it is timed out.
@@ -35,7 +36,7 @@ module Mongrel
     attr_reader :port
     attr_reader :throttle
     attr_reader :timeout
-    attr_reader :num_processors
+    attr_reader :concurrent
 
     # Creates a working server on host:port (strange things happen if port
     # isn't a Number).
@@ -43,29 +44,29 @@ module Mongrel
     # Use HttpServer.run to start the server and HttpServer.acceptor.join to 
     # join the thread that's processing incoming requests on the socket.
     #
-    # The num_processors optional argument is the maximum number of concurrent
-    # processors to accept, anything over this is closed immediately to maintain
-    # server processing performance.  This may seem mean but it is the most
-    # efficient way to deal with overload.  Other schemes involve still
-    # parsing the client's request which defeats the point of an overload
-    # handling system.
-    # 
+    # +concurrent+ indicates how many concurrent requests should be run at
+    # the same time. Any requests over this ammount are queued and handled
+    # as soon as a thread is available.
+    #
     # The throttle parameter is a sleep timeout (in hundredths of a second)
     # that is placed between  socket.accept calls in order to give the server
     # a cheap throttle time.  It defaults to 0 and actually if it is 0 then
     # the sleep is not done at all.
-    def initialize(host, port, num_processors=950, throttle=0, timeout=60)
+    def initialize(host, port, concurrent=10, throttle=0, timeout=60)
       @socket = TCPServer.new(host, port) 
       
       @host = host
       @port = port
-      @workers = ThreadGroup.new
       @throttle = throttle / 100.0
-      @num_processors = num_processors
+      @concurrent = concurrent
       @timeout = timeout
 
       @check, @notify = IO.pipe
       @running = true
+
+      @thread_pool = ThreadPool.new(0, concurrent) do |client|
+        process_client(client)
+      end
     end
 
     def handle_request(params, client, body)
@@ -147,9 +148,6 @@ module Mongrel
         STDERR.puts "#{Time.now}: HTTP parse error, malformed request (#{params[HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
         STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
 
-      rescue Errno::EMFILE
-        reap_dead_workers('too many files')
-
       rescue Object => e
         STDERR.puts "#{Time.now}: Read error: #{e.inspect}"
         STDERR.puts e.backtrace.join("\n")
@@ -163,42 +161,12 @@ module Mongrel
           STDERR.puts "#{Time.now}: Client error: #{e.inspect}"
           STDERR.puts e.backtrace.join("\n")
         end
-
-        request.close_body if request
       end
     end
 
-    # Used internally to kill off any worker threads that have taken too long
-    # to complete processing.  Only called if there are too many processors
-    # currently servicing.  It returns the count of workers still active
-    # after the reap is done.  It only runs if there are workers to reap.
-    def reap_dead_workers(reason='unknown')
-      if @workers.list.length > 0
-        STDERR.puts "#{Time.now}: Reaping #{@workers.list.length} threads for slow workers because of '#{reason}'"
-        error_msg = "Mongrel timed out this thread: #{reason}"
-        mark = Time.now
-        @workers.list.each do |worker|
-          worker[:started_on] = Time.now if not worker[:started_on]
-
-          if mark - worker[:started_on] > @timeout + @throttle
-            STDERR.puts "Thread #{worker.inspect} is too old, killing."
-            worker.raise(TimeoutError.new(error_msg))
-          end
-        end
-      end
-
-      return @workers.list.length
-    end
-
-    # Performs a wait on all the currently running threads and kills any that
-    # take too long.  It waits by @timeout seconds, which can be set in
-    # .initialize or via mongrel_rails. The @throttle setting does extend
-    # this waiting period by that much longer.
+    # Wait for all outstanding requests to finish.
     def graceful_shutdown
-      while reap_dead_workers("shutdown") > 0
-        STDERR.puts "Waiting for #{@workers.list.length} requests to finish, could take #{@timeout + @throttle} seconds."
-        sleep @timeout / 10
-      end
+      @thread_pool.shutdown
     end
 
     def configure_socket_options
@@ -234,12 +202,6 @@ module Mongrel
       return false
     end
 
-    def handle_overload(client)
-      STDERR.puts "Server overloaded with #{@workers.list.size} processors (#@num_processors max). Dropping connection."
-      client.close rescue nil
-      reap_dead_workers "max processors"
-    end
-    
     # Runs the thing.  It returns the thread used so you can "join" it.
     # You can also access the HttpServer::acceptor attribute to get the
     # thread later.
@@ -258,6 +220,7 @@ module Mongrel
         begin
           check = @check
           sockets = [check, @socket]
+          pool = @thread_pool
 
           while @running
             begin
@@ -269,23 +232,10 @@ module Mongrel
                   client = sock.accept
 
                   client.setsockopt(*tcp_cork_opts) if tcp_cork_opts
-      
-                  worker_list = @workers.list
-      
-                  if worker_list.length >= @num_processors
-                    handle_overload(client)
-                  else
-                    thread = Thread.new(client) { |c| process_client(c) }
-                    thread[:started_on] = Time.now
-                    @workers.add(thread)
-      
-                    sleep @throttle if @throttle > 0
-                  end
+     
+                  pool << client
                 end
               end
-            rescue Errno::EMFILE
-              reap_dead_workers("too many open files")
-              sleep 0.5
             rescue Errno::ECONNABORTED
               # client closed the socket even before accept
               client.close rescue nil
@@ -339,19 +289,23 @@ module Mongrel
           return
         end
 
-        # request is good so far, continue processing the response
-        response = HttpResponse.new(client)
+        begin
+          # request is good so far, continue processing the response
+          response = HttpResponse.new(client)
 
-        # Process each handler in registered order until we run out
-        # or one finalizes the response.
-        handlers.each do |handler|
-          handler.process(request, response)
-          break if response.done or client.closed?
-        end
+          # Process each handler in registered order until we run out
+          # or one finalizes the response.
+          handlers.each do |handler|
+            handler.process(request, response)
+            break if response.done or client.closed?
+          end
 
-        # And finally, if nobody closed the response off, we finalize it.
-        unless response.done or client.closed? 
-          response.finished
+          # And finally, if nobody closed the response off, we finalize it.
+          unless response.done or client.closed? 
+            response.finished
+          end
+        ensure
+          request.close_body
         end
       else
         # Didn't find it, return a stock 404 response.
@@ -396,9 +350,9 @@ module Mongrel
   class RackServer < Server
     attr_accessor :app
 
-    def process(params, client, body)
+    def process(env, client, body)
       begin
-        request = HttpRequest.new(params, client, body)
+        request = HttpRequest.new(env, client, body)
 
         # in the case of large file uploads the user could close
         # the socket, so skip those requests
@@ -406,24 +360,22 @@ module Mongrel
         return
       end
 
-      env = params
-
-      env["SCRIPT_NAME"] = ""
-
-      env["rack.version"] = Rack::VERSION
-      env["rack.input"] = request.body
-      env["rack.errors"] = $stderr
-      env["rack.multithread"] = true
-      env["rack.multiprocess"] = false
-      env["rack.run_once"] = true
-      env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
-
-      env["CONTENT_TYPE"] ||= ""
-      env["QUERY_STRING"] ||= ""
-
-      status, headers, body = @app.call(env)
-
       begin
+        env["SCRIPT_NAME"] = ""
+
+        env["rack.version"] = Rack::VERSION
+        env["rack.input"] = request.body
+        env["rack.errors"] = $stderr
+        env["rack.multithread"] = true
+        env["rack.multiprocess"] = false
+        env["rack.run_once"] = true
+        env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
+
+        env["CONTENT_TYPE"] ||= ""
+        env["QUERY_STRING"] ||= ""
+
+        status, headers, body = @app.call(env)
+
         client.write "HTTP/1.1 "
         client.write status.to_s
         client.write " "
@@ -454,6 +406,7 @@ module Mongrel
           end
         end
       ensure
+        request.close_body
         body.close if body.respond_to? :close
       end
     end

@@ -24,8 +24,7 @@ class WebServerTest < Test::Unit::TestCase
     @valid_request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
     
     redirect_test_io do
-      # We set num_processors=1 so that we can test the reaping code
-      @server = HttpServer.new("127.0.0.1", 9998, num_processors=1)
+      @server = HttpServer.new("127.0.0.1", 9998)
     end
     
     @tester = TestHandler.new
@@ -88,19 +87,6 @@ class WebServerTest < Test::Unit::TestCase
       long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
       assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
         do_test(long, long.length/2, 10)
-      end
-    end
-  end
-
-  def test_num_processors_overload
-    redirect_test_io do
-      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
-        tests = [
-          Thread.new { do_test(@valid_request, 1) },
-          Thread.new { do_test(@valid_request, 10) },
-        ]
-
-        tests.each {|t| t.join}
       end
     end
   end
