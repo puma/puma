@@ -53,29 +53,29 @@ module Mongrel
   # REMOTE_USER, or REMOTE_HOST parameters since those are either a security problem or
   # too taxing on performance.
   module Const
-    DATE = "Date"
+    DATE = "Date".freeze
 
     # This is the part of the path after the SCRIPT_NAME.  URIClassifier will determine this.
-    PATH_INFO="PATH_INFO"
+    PATH_INFO="PATH_INFO".freeze
 
     # This is the initial part that your handler is identified as by URIClassifier.
-    SCRIPT_NAME="SCRIPT_NAME"
+    SCRIPT_NAME="SCRIPT_NAME".freeze
 
     # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
-    REQUEST_URI='REQUEST_URI'
-    REQUEST_PATH='REQUEST_PATH'
+    REQUEST_URI='REQUEST_URI'.freeze
+    REQUEST_PATH='REQUEST_PATH'.freeze
 
-    MONGREL_VERSION = VERSION = "1.3.0"
+    MONGREL_VERSION = VERSION = "1.3.0".freeze
 
-    MONGREL_TMP_BASE="mongrel"
+    MONGREL_TMP_BASE="mongrel".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Mongrel #{MONGREL_VERSION}\r\n\r\nNOT FOUND"
+    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Mongrel #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
 
-    CONTENT_LENGTH="CONTENT_LENGTH"
+    CONTENT_LENGTH="CONTENT_LENGTH".freeze
 
     # A common header for indicating the server is too busy.  Not used yet.
-    ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY"
+    ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
 
     # The basic max request size we'll try to read.
     CHUNK_SIZE=(16 * 1024)
@@ -88,39 +88,39 @@ module Mongrel
     MAX_BODY=MAX_HEADER
 
     # A frozen format for this is about 15% faster
-    STATUS_FORMAT = "HTTP/1.1 %d %s\r\nConnection: close\r\n"
+    STATUS_FORMAT = "HTTP/1.1 %d %s\r\nConnection: close\r\n".freeze
 
-    CONTENT_TYPE = "Content-Type"
+    CONTENT_TYPE = "Content-Type".freeze
 
-    LAST_MODIFIED = "Last-Modified"
-    ETAG = "ETag"
-    SLASH = "/"
-    REQUEST_METHOD="REQUEST_METHOD"
-    GET="GET"
-    HEAD="HEAD"
+    LAST_MODIFIED = "Last-Modified".freeze
+    ETAG = "ETag".freeze
+    SLASH = "/".freeze
+    REQUEST_METHOD="REQUEST_METHOD".freeze
+    GET="GET".freeze
+    HEAD="HEAD".freeze
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
-    ETAG_FORMAT="\"%x-%x-%x\""
-    LINE_END="\r\n"
-    REMOTE_ADDR="REMOTE_ADDR"
-    HTTP_X_FORWARDED_FOR="HTTP_X_FORWARDED_FOR"
-    HTTP_IF_MODIFIED_SINCE="HTTP_IF_MODIFIED_SINCE"
-    HTTP_IF_NONE_MATCH="HTTP_IF_NONE_MATCH"
-    REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n"
-    HOST = "HOST"
+    ETAG_FORMAT="\"%x-%x-%x\"".freeze
+    LINE_END="\r\n".freeze
+    REMOTE_ADDR="REMOTE_ADDR".freeze
+    HTTP_X_FORWARDED_FOR="HTTP_X_FORWARDED_FOR".freeze
+    HTTP_IF_MODIFIED_SINCE="HTTP_IF_MODIFIED_SINCE".freeze
+    HTTP_IF_NONE_MATCH="HTTP_IF_NONE_MATCH".freeze
+    REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n".freeze
+    HOST = "HOST".freeze
 
-    SERVER_NAME = "SERVER_NAME"
-    SERVER_PORT = "SERVER_PORT"
-    HTTP_HOST = "HTTP_HOST"
-    PORT_80 = "80"
+    SERVER_NAME = "SERVER_NAME".freeze
+    SERVER_PORT = "SERVER_PORT".freeze
+    HTTP_HOST = "HTTP_HOST".freeze
+    PORT_80 = "80".freeze
 
-    SERVER_PROTOCOL = "SERVER_PROTOCOL"
-    HTTP_11 = "HTTP/1.1"
+    SERVER_PROTOCOL = "SERVER_PROTOCOL".freeze
+    HTTP_11 = "HTTP/1.1".freeze
 
-    SERVER_SOFTWARE = "SERVER_SOFTWARE"
-    GATEWAY_INTERFACE = "GATEWAY_INTERFACE"
-    CGI_VER = "CGI/1.2"
+    SERVER_SOFTWARE = "SERVER_SOFTWARE".freeze
+    GATEWAY_INTERFACE = "GATEWAY_INTERFACE".freeze
+    CGI_VER = "CGI/1.2".freeze
 
-    STOP_COMMAND = "!"
+    STOP_COMMAND = "!".freeze
 
   end
 end
