@@ -8,27 +8,28 @@ require 'test/testhelp'
 
 include Puma
 
-class TestHandler < Puma::HttpHandler
+class TestHandler
   attr_reader :ran_test
 
-  def process(request, response)
+  def call(env)
     @ran_test = true
-    response.socket.write("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nhello!\n")
+
+    [200, {"Content-Type" => "text/plain"}, ["hello!"]]
   end
 end
-
 
 class WebServerTest < Test::Unit::TestCase
 
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
     
-    redirect_test_io do
-      @server = HttpServer.new("127.0.0.1", 9998)
-    end
+    @server = HttpServer.new("127.0.0.1", 9998)
+    @server.stderr = StringIO.new
     
     @tester = TestHandler.new
-    @server.register("/test", @tester)
+
+    @server.app = @tester
+
     redirect_test_io do
       @server.run 
     end

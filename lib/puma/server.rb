@@ -38,6 +38,10 @@ module Puma
     attr_reader :timeout
     attr_reader :concurrent
 
+    attr_accessor :app
+
+    attr_accessor :stderr, :stdout
+
     # Creates a working server on host:port (strange things happen if port
     # isn't a Number).
     #
@@ -67,6 +71,9 @@ module Puma
       @thread_pool = ThreadPool.new(0, concurrent) do |client|
         process_client(client)
       end
+
+      @stderr = STDERR
+      @stdout = STDOUT
     end
 
     def handle_request(params, client, body)
@@ -145,12 +152,12 @@ module Puma
         client.close rescue nil
 
       rescue HttpParserError => e
-        STDERR.puts "#{Time.now}: HTTP parse error, malformed request (#{params[HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
-        STDERR.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
+        @stderr.puts "#{Time.now}: HTTP parse error, malformed request (#{params[HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
+        @stderr.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
 
       rescue Object => e
-        STDERR.puts "#{Time.now}: Read error: #{e.inspect}"
-        STDERR.puts e.backtrace.join("\n")
+        @stderr.puts "#{Time.now}: Read error: #{e.inspect}"
+        @stderr.puts e.backtrace.join("\n")
 
       ensure
         begin
@@ -158,8 +165,8 @@ module Puma
         rescue IOError
           # Already closed
         rescue Object => e
-          STDERR.puts "#{Time.now}: Client error: #{e.inspect}"
-          STDERR.puts e.backtrace.join("\n")
+          @stderr.puts "#{Time.now}: Client error: #{e.inspect}"
+          @stderr.puts e.backtrace.join("\n")
         end
       end
     end
@@ -240,115 +247,19 @@ module Puma
               # client closed the socket even before accept
               client.close rescue nil
             rescue Object => e
-              STDERR.puts "#{Time.now}: Unhandled listen loop exception #{e.inspect}."
-              STDERR.puts e.backtrace.join("\n")
+              @stderr.puts "#{Time.now}: Unhandled listen loop exception #{e.inspect}."
+              @stderr.puts e.backtrace.join("\n")
             end
           end
           graceful_shutdown
         ensure
           @socket.close
-          # STDERR.puts "#{Time.now}: Closed socket."
+          # @stderr.puts "#{Time.now}: Closed socket."
         end
       end
 
       return @acceptor
     end
-
-    # Stops the acceptor thread and then causes the worker threads to finish
-    # off the request queue before finally exiting.
-    def stop(sync=false)
-      @notify << STOP_COMMAND
-
-      @acceptor.join if sync
-    end
-
-  end
-
-  class HttpServer < Server
-    attr_reader :classifier
-
-    def initialize(*)
-      super
-      @classifier = URIClassifier.new
-    end
-
-    def process(params, client, body)
-      script_name, path_info, handlers =
-        @classifier.resolve(params[REQUEST_PATH])
-
-      if handlers
-        params[PATH_INFO] = path_info
-        params[SCRIPT_NAME] = script_name
-
-        begin
-          request = HttpRequest.new(params, client, body)
-
-          # in the case of large file uploads the user could close
-          # the socket, so skip those requests
-        rescue BodyReadError => e
-          return
-        end
-
-        begin
-          # request is good so far, continue processing the response
-          response = HttpResponse.new(client)
-
-          # Process each handler in registered order until we run out
-          # or one finalizes the response.
-          handlers.each do |handler|
-            handler.process(request, response)
-            break if response.done or client.closed?
-          end
-
-          # And finally, if nobody closed the response off, we finalize it.
-          unless response.done or client.closed? 
-            response.finished
-          end
-        ensure
-          request.close_body
-        end
-      else
-        # Didn't find it, return a stock 404 response.
-        client.write(ERROR_404_RESPONSE)
-      end
-
-    end
-
-    # Simply registers a handler with the internal URIClassifier. 
-    # When the URI is found in the prefix of a request then your handler's
-    # HttpHandler::process method is called.
-    # See Puma::URIClassifier#register for more information.
-    #
-    # If you set in_front=true then the passed in handler will be put in
-    # the front of the list for that particular URI. Otherwise it's placed
-    # at the end of the list.
-    def register(uri, handler, in_front=false)
-      begin
-        @classifier.register(uri, [handler])
-      rescue URIClassifier::RegistrationError => e
-        handlers = @classifier.resolve(uri)[2]
-        if handlers
-          # Already registered
-          method_name = in_front ? 'unshift' : 'push'
-          handlers.send(method_name, handler)
-        else
-          raise
-        end
-      end
-      handler.listener = self
-    end
-
-    # Removes any handlers registered at the given URI.  See Puma::URIClassifier#unregister
-    # for more information.  Remember this removes them *all* so the entire
-    # processing chain goes away.
-    def unregister(uri)
-      @classifier.unregister(uri)
-    end
-
-  end
-
-  class RackServer < Server
-    attr_accessor :app
 
     def process(env, client, body)
       begin
@@ -411,6 +322,15 @@ module Puma
       end
     end
 
+
+    # Stops the acceptor thread and then causes the worker threads to finish
+    # off the request queue before finally exiting.
+    def stop(sync=false)
+      @notify << STOP_COMMAND
+
+      @acceptor.join if sync
+    end
   end
 
+  HttpServer = Server
 end

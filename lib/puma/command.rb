@@ -42,6 +42,9 @@ module Puma
       # The call is destructive on argv since it uses the OptionParser#parse! function.
       def initialize(options={})
         argv = options[:argv] || []
+        @stderr = options[:stderr] || $stderr
+        @stdout = options[:stdout] || $stderr
+
         @opt = OptionParser.new
         @opt.banner = Puma::Command::BANNER
         @valid = true
@@ -54,13 +57,13 @@ module Puma
         # I need to add my own -h definition to prevent the -h by default from exiting.
         @opt.on_tail("-h", "--help", "Show this message") do
           @done_validating = true
-          puts @opt
+          @stdout.puts @opt
         end
 
         # I need to add my own -v definition to prevent the -v from exiting by default as well.
         @opt.on_tail("--version", "Show version") do
           @done_validating = true
-          puts "Version #{Puma::Const::PUMA_VERSION}"
+          @stdout.puts "Version #{Puma::Const::PUMA_VERSION}"
         end
 
         @opt.parse! argv
@@ -134,14 +137,21 @@ module Puma
 
       # Just a simple method to display failure until something better is developed.
       def failure(message)
-        STDERR.puts "!!! #{message}"
+        @stderr.puts "!!! #{message}"
       end
     end
 
     # A Singleton class that manages all of the available commands
     # and handles running them.
     class Registry
-      include Singleton
+      def self.instance
+        @global ||= new
+      end
+
+      def initialize(stdout=STDOUT, stderr=STDERR)
+        @stdout = stdout
+        @stderr = stderr
+      end
 
       # Builds a list of possible commands from the Command derivates list
       def commands
@@ -152,18 +162,17 @@ module Puma
 
       # Prints a list of available commands.
       def print_command_list
-        puts "#{Puma::Command::BANNER}\nAvailable commands are:\n\n"
+        @stdout.puts "#{Puma::Command::BANNER}\nAvailable commands are:\n\n"
 
         self.commands.each do |name|
           if /puma::/ =~ name
             name = name[9 .. -1]
           end
 
-          puts " - #{name[1 .. -1]}\n"
+          @stdout.puts " - #{name[1 .. -1]}\n"
         end
 
-        puts "\nEach command takes -h as an option to get help."
-
+        @stdout.puts "\nEach command takes -h as an option to get help."
       end
 
 
@@ -177,7 +186,7 @@ module Puma
           print_command_list
           return true
         elsif cmd_name == "--version"
-          puts "Puma Web Server #{Puma::Const::PUMA_VERSION}"
+          @stdout.puts "Puma Web Server #{Puma::Const::PUMA_VERSION}"
           return true
         end
 
@@ -187,14 +196,21 @@ module Puma
             cmd_name = "puma::" + cmd_name
           end
 
-          command = GemPlugin::Manager.instance.create("/commands/#{cmd_name}", :argv => args)
+          opts = {
+            :argv => args,
+            :stderr => @stderr,
+            :stdout => @stdout
+          }
+
+          command = GemPlugin::Manager.instance.create("/commands/#{cmd_name}", opts)
+
         rescue OptionParser::InvalidOption
-          STDERR.puts "#$! for command '#{cmd_name}'"
-          STDERR.puts "Try #{cmd_name} -h to get help."
+          @stderr.puts "#$! for command '#{cmd_name}'"
+          @stderr.puts "Try #{cmd_name} -h to get help."
           return false
         rescue
-          STDERR.puts "ERROR RUNNING '#{cmd_name}': #$!"
-          STDERR.puts "Use help command to get help"
+          @stderr.puts "ERROR RUNNING '#{cmd_name}': #$!"
+          @stderr.puts "Use help command to get help"
           return false
         end
 
@@ -203,7 +219,7 @@ module Puma
         # needed so the command is already valid so we can skip it.
         if not command.done_validating
           if not command.validate
-            STDERR.puts "#{cmd_name} reported an error. Use puma_rails #{cmd_name} -h to get help."
+            @stderr.puts "#{cmd_name} reported an error. Use puma_rails #{cmd_name} -h to get help."
             return false
           else
             command.run

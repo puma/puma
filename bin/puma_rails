@@ -77,9 +77,9 @@ module Puma
     def run
       if @generate
 	@generate = File.expand_path(@generate)
-        STDERR.puts "** Writing config to \"#@generate\"."
+        @stderr.puts "** Writing config to \"#@generate\"."
         open(@generate, "w") {|f| f.write(settings.to_yaml) }
-        STDERR.puts "** Finished.  Run \"puma_rails start -C #@generate\" to use the config file."
+        @stderr.puts "** Finished.  Run \"puma_rails start -C #@generate\" to use the config file."
         exit 0
       end
 
@@ -147,7 +147,7 @@ module Puma
           if config.defaults[:daemon]
             system cmd
           else
-            STDERR.puts "Can't restart unless in daemon mode."
+            @stderr.puts "Can't restart unless in daemon mode."
             exit 1
           end
         else
@@ -161,7 +161,7 @@ module Puma
       begin
         settings = YAML.load_file(@config_file)
       ensure
-        STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless @daemon || settings[:daemon] 
+        @stderr.puts "** Loading settings from #{@config_file} (they override command line)." unless @daemon || settings[:daemon] 
       end
 
       settings[:includes] ||= ["puma"]
@@ -276,9 +276,7 @@ module Puma
 end
 
 
-GemPlugin::Manager.instance.load "puma" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
+GemPlugin::Manager.instance.load "puma" => GemPlugin::INCLUDE,
+                                 "rails" => GemPlugin::EXCLUDE
 
-
-if not Puma::Command::Registry.instance.run ARGV
-  exit 1
-end
+exit 1 unless Puma::Command::Registry.instance.run(ARGV)

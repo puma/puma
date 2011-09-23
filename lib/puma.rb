@@ -22,7 +22,6 @@ require 'puma/gems'
 require 'thread'
 
 # Ruby Puma
-require 'puma/handlers'
 require 'puma/command'
 require 'puma/tcphack'
 require 'puma/configurator'

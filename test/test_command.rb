@@ -41,13 +41,15 @@ class CommandTest < Test::Unit::TestCase
 
   def setup
     $test_command_ran = false
+    @stdout = StringIO.new
+    @stderr = StringIO.new
   end
 
   def teardown
   end
 
   def run_cmd(args)
-    Puma::Command::Registry.instance.run args
+    Puma::Command::Registry.new(@stdout, @stderr).run args
   end
 
   def test_run_command
