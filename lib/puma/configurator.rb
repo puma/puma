@@ -1,18 +1,18 @@
 require 'yaml'
 require 'etc'
 
-module Mongrel
-  # Implements a simple DSL for configuring a Mongrel server for your 
-  # purposes.  More used by framework implementers to setup Mongrel
+module Puma
+  # Implements a simple DSL for configuring a Puma server for your 
+  # purposes.  More used by framework implementers to setup Puma
   # how they like, but could be used by regular folks to add more things
-  # to an existing mongrel configuration.
+  # to an existing puma configuration.
   #
   # It is used like this:
   #
-  #   require 'mongrel'
-  #   config = Mongrel::Configurator.new :host => "127.0.0.1" do
+  #   require 'puma'
+  #   config = Puma::Configurator.new :host => "127.0.0.1" do
   #     listener :port => 3000 do
-  #       uri "/app", :handler => Mongrel::DirHandler.new(".", load_mime_map("mime.yaml"))
+  #       uri "/app", :handler => Puma::DirHandler.new(".", load_mime_map("mime.yaml"))
   #     end
   #     run
   #   end
@@ -22,7 +22,7 @@ module Mongrel
   # specific to the servers but just a hash of default parameters that all 
   # server or uri calls receive.
   #
-  # When you are inside the block after Mongrel::Configurator.new you can simply
+  # When you are inside the block after Puma::Configurator.new you can simply
   # call functions that are part of Configurator (like server, uri, daemonize, etc)
   # without having to refer to anything else.  You can also call these functions on 
   # the resulting object directly for additional configuration.
@@ -70,7 +70,7 @@ module Mongrel
         end
       rescue Errno::EPERM => e
         log "Couldn't change user and group to #{user.inspect}:#{group.inspect}: #{e.to_s}."
-        log "Mongrel failed to start."
+        log "Puma failed to start."
         exit 1
       end
     end
@@ -136,7 +136,7 @@ module Mongrel
       ops[:throttle] ||= 0
       ops[:timeout] ||= 60
 
-      @listener = Mongrel::HttpServer.new(ops[:host], ops[:port].to_i, ops[:num_processors].to_i, ops[:throttle].to_i, ops[:timeout].to_i)
+      @listener = Puma::HttpServer.new(ops[:host], ops[:port].to_i, ops[:num_processors].to_i, ops[:throttle].to_i, ops[:timeout].to_i)
       @listener_name = "#{ops[:host]}:#{ops[:port]}"
       @listeners[@listener_name] = @listener
 
@@ -239,10 +239,10 @@ module Mongrel
 
 
     # Loads the MIME map file and checks that it is correct
-    # on loading.  This is commonly passed to Mongrel::DirHandler
+    # on loading.  This is commonly passed to Puma::DirHandler
     # or any framework handler that uses DirHandler to serve files.
     # You can also include a set of default MIME types as additional
-    # settings.  See Mongrel::DirHandler for how the MIME types map
+    # settings.  See Puma::DirHandler for how the MIME types map
     # is organized.
     def load_mime_map(file, mime={})
       # configure any requested mime map
@@ -263,7 +263,7 @@ module Mongrel
       GemPlugin::Manager.instance.create(name, ops)
     end
 
-    # Lets you do redirects easily as described in Mongrel::RedirectHandler.
+    # Lets you do redirects easily as described in Puma::RedirectHandler.
     # You use it inside the configurator like this:
     #
     #   redirect("/test", "/to/there") # simple
@@ -271,7 +271,7 @@ module Mongrel
     #   redirect("/hey", /(w+)/) {|match| ...}  # block
     #
     def redirect(from, pattern, replacement = nil, &block)
-      uri from, :handler => Mongrel::RedirectHandler.new(pattern, replacement, &block)
+      uri from, :handler => Puma::RedirectHandler.new(pattern, replacement, &block)
     end
 
     # Works like a meta run method which goes through all the 
@@ -282,7 +282,7 @@ module Mongrel
         s.run 
       }
 
-      $mongrel_sleeper_thread = Thread.new { loop { sleep 1 } }
+      $puma_sleeper_thread = Thread.new { loop { sleep 1 } }
     end
 
     # Calls .stop on all the configured listeners so they
@@ -315,12 +315,12 @@ module Mongrel
     #
     #   debug "/", what = [:rails]
     # 
-    # And it will only produce the log/mongrel_debug/rails.log file.
+    # And it will only produce the log/puma_debug/rails.log file.
     # Available options are: :access, :files, :objects, :threads, :rails 
     # 
     # NOTE: Use [:files] to get accesses dumped to stderr like with WEBrick.
     def debug(location, what = [:access, :files, :objects, :threads, :rails])
-      require 'mongrel/debug'
+      require 'puma/debug'
       handlers = {
         :access => "/handlers/requestlog::access", 
         :files => "/handlers/requestlog::files", 
@@ -330,11 +330,11 @@ module Mongrel
       }
 
       # turn on the debugging infrastructure, and ObjectTracker is a pig
-      MongrelDbg.configure
+      PumaDbg.configure
 
       # now we roll through each requested debug type, turn it on and load that plugin
       what.each do |type| 
-        MongrelDbg.begin_trace type 
+        PumaDbg.begin_trace type 
         uri location, :handler => plugin(handlers[type])
       end
     end
@@ -352,7 +352,7 @@ module Mongrel
     # a HUP signal since this is typically framework specific.
     #
     # Requires a :pid_file option given to Configurator.new to indicate a file to delete.  
-    # It sets the MongrelConfig.needs_restart attribute if 
+    # It sets the PumaConfig.needs_restart attribute if 
     # the start command should reload.  It's up to you to detect this
     # and do whatever is needed for a "restart".
     #
@@ -369,7 +369,7 @@ module Mongrel
       unless RbConfig::CONFIG['host_os'] =~ /mingw|mswin/
         # graceful shutdown
         trap("TERM") { log "TERM signal received."; stop }
-        trap("USR1") { log "USR1 received, toggling $mongrel_debug_client to #{!$mongrel_debug_client}"; $mongrel_debug_client = !$mongrel_debug_client }
+        trap("USR1") { log "USR1 received, toggling $puma_debug_client to #{!$puma_debug_client}"; $puma_debug_client = !$puma_debug_client }
         # restart
         trap("USR2") { log "USR2 signal received."; stop(true) }
 
@@ -379,7 +379,7 @@ module Mongrel
       end
     end
 
-    # Logs a simple message to STDERR (or the mongrel log if in daemon mode).
+    # Logs a simple message to STDERR (or the puma log if in daemon mode).
     def log(msg)
       STDERR.print "** ", msg, "\n"
     end

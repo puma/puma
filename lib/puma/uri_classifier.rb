@@ -1,5 +1,5 @@
 
-module Mongrel
+module Puma
   class URIClassifier
   
     class RegistrationError < RuntimeError

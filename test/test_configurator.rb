@@ -1,7 +1,7 @@
 # Copyright (c) 2005 Zed A. Shaw 
 # You can redistribute it and/or modify it under the same terms as Ruby.
 #
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
+# Additional work donated by contributors.  See http://puma.rubyforge.org/attributions.html 
 # for more information.
 
 require 'test/testhelp'
@@ -9,7 +9,7 @@ require 'test/testhelp'
 $test_plugin_fired = 0
 
 class TestPlugin < GemPlugin::Plugin "/handlers"
-  include Mongrel::HttpHandlerPlugin
+  include Puma::HttpHandlerPlugin
 
   def process(request, response)
     $test_plugin_fired += 1
@@ -18,7 +18,7 @@ end
 
 
 class Sentinel < GemPlugin::Plugin "/handlers"
-  include Mongrel::HttpHandlerPlugin
+  include Puma::HttpHandlerPlugin
 
   def process(request, response)
     raise "This Sentinel plugin shouldn't run."
@@ -32,23 +32,23 @@ class ConfiguratorTest < Test::Unit::TestCase
     @config = nil
 
     redirect_test_io do
-      @config = Mongrel::Configurator.new :host => "localhost" do
+      @config = Puma::Configurator.new :host => "localhost" do
         listener :port => 4501 do
           # 2 in front should run, but the sentinel shouldn't since dirhandler processes the request
           uri "/", :handler => plugin("/handlers/testplugin")
           uri "/", :handler => plugin("/handlers/testplugin")
-          uri "/", :handler => Mongrel::DirHandler.new(".")
+          uri "/", :handler => Puma::DirHandler.new(".")
           uri "/", :handler => plugin("/handlers/testplugin")
 
           uri "/test", :handler => plugin("/handlers/testplugin")
           uri "/test", :handler => plugin("/handlers/testplugin")
-          uri "/test", :handler => Mongrel::DirHandler.new(".")
+          uri "/test", :handler => Puma::DirHandler.new(".")
           uri "/test", :handler => plugin("/handlers/testplugin")
 
           debug "/"
           setup_signals
 
-          run_config(File.dirname(__FILE__) + "/../test/mongrel.conf")
+          run_config(File.dirname(__FILE__) + "/../test/puma.conf")
           load_mime_map(File.dirname(__FILE__) + "/../test/mime.yaml")
 
           run

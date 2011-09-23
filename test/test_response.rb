@@ -6,7 +6,7 @@
 
 require 'test/testhelp'
 
-include Mongrel
+include Puma
 
 class ResponseTest < Test::Unit::TestCase
   

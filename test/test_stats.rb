@@ -11,8 +11,8 @@ class StatsTest < Test::Unit::TestCase
   def test_sampling_speed
     out = StringIO.new
 
-    s = Mongrel::Stats.new("test")
-    t = Mongrel::Stats.new("time")
+    s = Puma::Stats.new("test")
+    t = Puma::Stats.new("time")
 
     100.times { s.sample(rand(20)); t.tick }
 

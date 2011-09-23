@@ -1,6 +1,6 @@
 require 'test/unit'
 
-require 'mongrel/thread_pool'
+require 'puma/thread_pool'
 
 class TestThreadPool < Test::Unit::TestCase
 
@@ -10,7 +10,7 @@ class TestThreadPool < Test::Unit::TestCase
 
   def new_pool(min, max, &blk)
     blk = lambda { } unless blk
-    @pool = Mongrel::ThreadPool.new(min, max, &blk)
+    @pool = Puma::ThreadPool.new(min, max, &blk)
   end
 
   def test_append_spawns

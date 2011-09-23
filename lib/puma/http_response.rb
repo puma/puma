@@ -1,4 +1,4 @@
-module Mongrel
+module Puma
   # Writes and controls your response to the client using the HTTP/1.1 specification.
   # You use it by simply doing:
   #
@@ -7,7 +7,7 @@ module Mongrel
   #    out.write("hello\n")
   #  end
   #
-  # The parameter to start is the response code--which Mongrel will translate for you
+  # The parameter to start is the response code--which Puma will translate for you
   # based on HTTP_STATUS_CODES.  The head parameter is how you write custom headers.
   # The out parameter is where you write your body.  The default status code for 
   # HttpResponse.start is 200 so the above example is redundant.
@@ -57,7 +57,7 @@ module Mongrel
     # body content as needed.  Handlers are able to modify pretty much
     # any part of the request in the chain, and can stop further processing
     # by simple passing "finalize=true" to the start method.  By default
-    # all handlers run and then mongrel finalizes the request when they're
+    # all handlers run and then puma finalizes the request when they're
     # all done.
     def start(status=200, finalize=false, reason=nil)
       @status = status.to_i
@@ -75,7 +75,6 @@ module Mongrel
       elsif @header_sent
         raise "You have already sent the request headers."
       else
-        # XXX Dubious ( http://mongrel.rubyforge.org/ticket/19 )
         @header.out.close
         @header = HeaderOut.new(StringIO.new) 
         

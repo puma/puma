@@ -6,9 +6,9 @@
 
 require 'test/testhelp'
 
-include Mongrel
+include Puma
 
-class TestHandler < Mongrel::HttpHandler
+class TestHandler < Puma::HttpHandler
   attr_reader :ran_test
 
   def process(request, response)
@@ -92,9 +92,9 @@ class WebServerTest < Test::Unit::TestCase
   end
 
   def test_file_streamed_request
-    body = "a" * (Mongrel::Const::MAX_BODY * 2)
+    body = "a" * (Puma::Const::MAX_BODY * 2)
     long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\n\r\n" + body
-    do_test(long, Mongrel::Const::CHUNK_SIZE * 2 -400)
+    do_test(long, Puma::Const::CHUNK_SIZE * 2 -400)
   end
 
 end

@@ -6,7 +6,7 @@
 
 require 'test/testhelp'
 
-include Mongrel
+include Puma
 
 class URIClassifierTest < Test::Unit::TestCase
 

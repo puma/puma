@@ -6,7 +6,7 @@
 
 require 'test/testhelp'
 
-include Mongrel
+include Puma
 
 class HttpParserTest < Test::Unit::TestCase
     
@@ -100,7 +100,7 @@ class HttpParserTest < Test::Unit::TestCase
     # then that large header names are caught
     10.times do |c|
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-#{rand_data(1024, 1024+(c*1024))}: Test\r\n\r\n"
-      assert_raises Mongrel::HttpParserError do
+      assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
         parser.reset
       end
@@ -109,7 +109,7 @@ class HttpParserTest < Test::Unit::TestCase
     # then that large mangled field values are caught
     10.times do |c|
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-Test: #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
-      assert_raises Mongrel::HttpParserError do
+      assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
         parser.reset
       end
@@ -118,7 +118,7 @@ class HttpParserTest < Test::Unit::TestCase
     # then large headers are rejected too
     get = "GET /#{rand_data(10,120)} HTTP/1.1\r\n"
     get << "X-Test: test\r\n" * (80 * 1024)
-    assert_raises Mongrel::HttpParserError do
+    assert_raises Puma::HttpParserError do
       parser.execute({}, get, 0)
       parser.reset
     end
@@ -126,7 +126,7 @@ class HttpParserTest < Test::Unit::TestCase
     # finally just that random garbage gets blocked all the time
     10.times do |c|
       get = "GET #{rand_data(1024, 1024+(c*1024), false)} #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
-      assert_raises Mongrel::HttpParserError do
+      assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
         parser.reset
       end

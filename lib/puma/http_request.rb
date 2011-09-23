@@ -1,5 +1,5 @@
 
-module Mongrel
+module Puma
   #
   # When a handler is found for a registered URI then this class is constructed
   # and passed to your HttpHandler::process method.  You should assume that 
@@ -37,7 +37,7 @@ module Mongrel
         # must read more data to complete body
         if remain > Const::MAX_BODY
           # huge body, put it in a tempfile
-          @body = Tempfile.new(Const::MONGREL_TMP_BASE)
+          @body = Tempfile.new(Const::PUMA_TMP_BASE)
           @body.binmode
         else
           # small body, just use that

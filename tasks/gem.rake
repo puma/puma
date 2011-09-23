@@ -1,13 +1,11 @@
 require 'hoe'
 
-HOE = Hoe.spec 'mongrel' do
-  self.rubyforge_name = 'mongrel'
-  developer 'Zed A. Shaw', 'mongrel-users@rubyforge.org'
-
-  spec_extras[:required_ruby_version] = Gem::Requirement.new('>= 1.8.6')
+HOE = Hoe.spec 'puma' do
+  self.rubyforge_name = 'puma'
+  developer 'Evan Phoenix', 'evan@phx.io'
 
   spec_extras[:extensions] = ["ext/http11/extconf.rb"]
-  spec_extras[:executables] = ['mongrel_rails']
+  spec_extras[:executables] = ['puma_rails']
 
   extra_rdoc_files << 'LICENSE'
 

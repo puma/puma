@@ -1,14 +1,12 @@
 # Copyright (c) 2005 Zed A. Shaw 
 # You can redistribute it and/or modify it under the same terms as Ruby.
 #
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
-# for more information.
 
-require 'mongrel/stats'
+require 'puma/stats'
 require 'zlib'
 require 'yaml'
 
-module Mongrel
+module Puma
 
   # You implement your application handler with this.  It's very light giving
   # just the minimum necessary for you to handle a request and shoot back 
@@ -23,15 +21,15 @@ module Mongrel
     attr_reader :request_notify
     attr_accessor :listener
 
-    # This will be called by Mongrel if HttpHandler.request_notify set to *true*.
+    # This will be called by Puma if HttpHandler.request_notify set to *true*.
     # You only get the parameters for the request, with the idea that you'd "bound"
     # the beginning of the request processing and the first call to process.
     def request_begins(params)
     end
 
-    # Called by Mongrel for each IO chunk that is received on the request socket
+    # Called by Puma for each IO chunk that is received on the request socket
     # from the client, allowing you to track the progress of the IO and monitor
-    # the input.  This will be called by Mongrel only if HttpHandler.request_notify
+    # the input.  This will be called by Puma only if HttpHandler.request_notify
     # set to *true*.
     def request_progress(params, clen, total)
     end
@@ -280,7 +278,7 @@ module Mongrel
   end
 
 
-  # When added to a config script (-S in mongrel_rails) it will
+  # When added to a config script (-S in puma_rails) it will
   # look at the client's allowed response types and then gzip 
   # compress anything that is going out.
   #
@@ -341,11 +339,11 @@ module Mongrel
     def initialize(ops={})
       @sample_rate = ops[:sample_rate] || 300
 
-      @processors = Mongrel::Stats.new("processors")
-      @reqsize = Mongrel::Stats.new("request Kb")
-      @headcount = Mongrel::Stats.new("req param count")
-      @respsize = Mongrel::Stats.new("response Kb")
-      @interreq = Mongrel::Stats.new("inter-request time")
+      @processors = Puma::Stats.new("processors")
+      @reqsize = Puma::Stats.new("request Kb")
+      @headcount = Puma::Stats.new("req param count")
+      @respsize = Puma::Stats.new("response Kb")
+      @interreq = Puma::Stats.new("inter-request time")
     end
 
 
@@ -365,7 +363,7 @@ module Mongrel
 
 
   # The :stats_filter is basically any configured stats filter that you've added to this same
-  # URI.  This lets the status handler print out statistics on how Mongrel is doing.
+  # URI.  This lets the status handler print out statistics on how Puma is doing.
   class StatusHandler < HttpHandler
     def initialize(ops={})
       @stats = ops[:stats_filter]
@@ -413,7 +411,7 @@ module Mongrel
     def process(request, response)
       response.start do |head,out|
         out.write <<-END
-        <html><body><title>Mongrel Server Status</title>
+        <html><body><title>Puma Server Status</title>
         #{describe_listener}
         </body></html>
         END
@@ -429,13 +427,13 @@ module Mongrel
   #
   # == Examples
   #
-  #   h = Mongrel::HttpServer.new('0.0.0.0')
-  #   h.register '/test', Mongrel::RedirectHandler.new('/to/there') # simple
-  #   h.register '/to',   Mongrel::RedirectHandler.new(/t/, 'w') # regexp
+  #   h = Puma::HttpServer.new('0.0.0.0')
+  #   h.register '/test', Puma::RedirectHandler.new('/to/there') # simple
+  #   h.register '/to',   Puma::RedirectHandler.new(/t/, 'w') # regexp
   #   # and with a block
-  #   h.register '/hey',  Mongrel::RedirectHandler.new(/(\w+)/) { |match| ... }
+  #   h.register '/hey',  Puma::RedirectHandler.new(/(\w+)/) { |match| ... }
   # 
-  class RedirectHandler < Mongrel::HttpHandler
+  class RedirectHandler < Puma::HttpHandler
     # You set the rewrite rules when building the object.
     #
     # pattern            => What to look for or replacement if used alone
@@ -453,14 +451,14 @@ module Mongrel
     # Process the request and return a redirect response
     def process(request, response)
       unless @pattern
-        response.socket.write(Mongrel::Const::REDIRECT % @replacement)
+        response.socket.write(Puma::Const::REDIRECT % @replacement)
       else
         if @block
           new_path = request.params['REQUEST_URI'].gsub(@pattern, &@block)
         else
           new_path = request.params['REQUEST_URI'].gsub(@pattern, @replacement)
         end
-        response.socket.write(Mongrel::Const::REDIRECT % new_path)
+        response.socket.write(Puma::Const::REDIRECT % new_path)
       end
     end
   end

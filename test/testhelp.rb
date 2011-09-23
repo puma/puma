@@ -1,7 +1,7 @@
 # Copyright (c) 2005 Zed A. Shaw 
 # You can redistribute it and/or modify it under the same terms as Ruby.
 #
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
+# Additional work donated by contributors.  See http://puma.rubyforge.org/attributions.html 
 # for more information.
 
 
@@ -22,8 +22,8 @@ require 'uri'
 require 'stringio'
 require 'pp'
 
-require 'mongrel'
-require 'mongrel/stats'
+require 'puma'
+require 'puma/stats'
 
 if ENV['DEBUG']
   require 'ruby-debug'

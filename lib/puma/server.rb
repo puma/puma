@@ -1,12 +1,12 @@
 require 'rack'
-require 'mongrel/thread_pool'
+require 'puma/thread_pool'
 
-module Mongrel
+module Puma
   # Thrown at a thread when it is timed out.
   class TimeoutError < RuntimeError; end
 
-  # This is the main driver of Mongrel, while the Mongrel::HttpParser and
-  # Mongrel::URIClassifier make up the majority of how the server functions.
+  # This is the main driver of Puma, while the Puma::HttpParser and
+  # Puma::URIClassifier make up the majority of how the server functions.
   # It's a very simple class that just has a thread accepting connections and
   # a simple HttpServer.process_client function to do the heavy lifting with
   # the IO and Ruby.  
@@ -22,13 +22,13 @@ module Mongrel
   #
   # Ruby's thread implementation is "interesting" to say the least. 
   # Experiments with *many* different types of IO processing simply cannot
-  # make a dent in it.  Future releases of Mongrel will find other creative
+  # make a dent in it.  Future releases of Puma will find other creative
   # ways to make threads faster, but don't hold your breath until Ruby 1.9
   # is actually finally useful.
 
   class Server
 
-    include Mongrel::Const
+    include Puma::Const
 
     attr_reader :acceptor
     attr_reader :workers
@@ -81,7 +81,7 @@ module Mongrel
       end
 
       params[SERVER_PROTOCOL] = HTTP_11
-      params[SERVER_SOFTWARE] = MONGREL_VERSION
+      params[SERVER_SOFTWARE] = PUMA_VERSION
       params[GATEWAY_INTERFACE] = CGI_VER
 
       unless params[REQUEST_PATH]
@@ -317,7 +317,7 @@ module Mongrel
     # Simply registers a handler with the internal URIClassifier. 
     # When the URI is found in the prefix of a request then your handler's
     # HttpHandler::process method is called.
-    # See Mongrel::URIClassifier#register for more information.
+    # See Puma::URIClassifier#register for more information.
     #
     # If you set in_front=true then the passed in handler will be put in
     # the front of the list for that particular URI. Otherwise it's placed
@@ -338,7 +338,7 @@ module Mongrel
       handler.listener = self
     end
 
-    # Removes any handlers registered at the given URI.  See Mongrel::URIClassifier#unregister
+    # Removes any handlers registered at the given URI.  See Puma::URIClassifier#unregister
     # for more information.  Remember this removes them *all* so the entire
     # processing chain goes away.
     def unregister(uri)

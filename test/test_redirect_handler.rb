@@ -10,7 +10,7 @@ class RedirectHandlerTest < Test::Unit::TestCase
 
   def setup
     redirect_test_io do
-      @server = Mongrel::HttpServer.new('127.0.0.1', 9998)
+      @server = Puma::HttpServer.new('127.0.0.1', 9998)
     end
     @server.run
     @client = Net::HTTP.new('127.0.0.1', 9998)
@@ -21,7 +21,7 @@ class RedirectHandlerTest < Test::Unit::TestCase
   end
 
   def test_simple_redirect
-    tester = Mongrel::RedirectHandler.new('/yo')
+    tester = Puma::RedirectHandler.new('/yo')
     @server.register("/test", tester)
 
     sleep(1)
@@ -31,7 +31,7 @@ class RedirectHandlerTest < Test::Unit::TestCase
   end
 
   def test_rewrite
-    tester = Mongrel::RedirectHandler.new(/(\w+)/, '+\1+')
+    tester = Puma::RedirectHandler.new(/(\w+)/, '+\1+')
     @server.register("/test", tester)
 
     sleep(1)

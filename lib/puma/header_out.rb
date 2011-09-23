@@ -1,4 +1,4 @@
-module Mongrel
+module Puma
   # This class implements a simple way of constructing the HTTP headers
   # dynamically via a Hash syntax.  Think of it as a write-only Hash. 
   # Refer to HttpResponse for information on how this is used.

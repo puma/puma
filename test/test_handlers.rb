@@ -6,7 +6,7 @@
 
 require 'test/testhelp'
 
-class SimpleHandler < Mongrel::HttpHandler
+class SimpleHandler < Puma::HttpHandler
   def process(request, response)
     response.start do |head,out|
       head["Content-Type"] = "text/html"
@@ -16,7 +16,7 @@ class SimpleHandler < Mongrel::HttpHandler
   end
 end
 
-class DumbHandler < Mongrel::HttpHandler
+class DumbHandler < Puma::HttpHandler
   def process(request, response)
     response.start do |head,out|
       head["Content-Type"] = "text/html"
@@ -34,19 +34,19 @@ end
 class HandlersTest < Test::Unit::TestCase
 
   def setup
-    stats = Mongrel::StatisticsFilter.new(:sample_rate => 1)
+    stats = Puma::StatisticsFilter.new(:sample_rate => 1)
 
-    @config = Mongrel::Configurator.new :host => '127.0.0.1', :port => 9998 do
+    @config = Puma::Configurator.new :host => '127.0.0.1', :port => 9998 do
       listener do
         uri "/", :handler => SimpleHandler.new
         uri "/", :handler => stats
-        uri "/404", :handler => Mongrel::Error404Handler.new("Not found")
-        uri "/dumb", :handler => Mongrel::DeflateFilter.new
+        uri "/404", :handler => Puma::Error404Handler.new("Not found")
+        uri "/dumb", :handler => Puma::DeflateFilter.new
         uri "/dumb", :handler => DumbHandler.new, :in_front => true
-        uri "/files", :handler => Mongrel::DirHandler.new("doc")
-        uri "/files_nodir", :handler => Mongrel::DirHandler.new("doc", listing_allowed=false, index_html="none")
-        uri "/status", :handler => Mongrel::StatusHandler.new(:stats_filter => stats)
-        uri "/relative", :handler => Mongrel::DirHandler.new(nil, listing_allowed=false, index_html="none")
+        uri "/files", :handler => Puma::DirHandler.new("doc")
+        uri "/files_nodir", :handler => Puma::DirHandler.new("doc", listing_allowed=false, index_html="none")
+        uri "/status", :handler => Puma::StatusHandler.new(:stats_filter => stats)
+        uri "/relative", :handler => Puma::DirHandler.new(nil, listing_allowed=false, index_html="none")
       end
     end
 
@@ -63,8 +63,8 @@ class HandlersTest < Test::Unit::TestCase
   end
   
   def test_registration_exception_is_not_lost
-    assert_raises(Mongrel::URIClassifier::RegistrationError) do      
-      @config = Mongrel::Configurator.new do
+    assert_raises(Puma::URIClassifier::RegistrationError) do      
+      @config = Puma::Configurator.new do
         listener do
           uri "bogus", :handler => SimpleHandler.new
         end
@@ -89,7 +89,7 @@ class HandlersTest < Test::Unit::TestCase
     return if windows?
 
     # Camping uses this internally
-    handler = Mongrel::DirHandler.new(nil, false)
+    handler = Puma::DirHandler.new(nil, false)
     assert handler.can_serve("/tmp/testfile")
     # Not a bug! A nil @file parameter is the only circumstance under which
     # we are allowed to serve any existing file
@@ -97,8 +97,8 @@ class HandlersTest < Test::Unit::TestCase
   end
   
   def test_non_nil_dirhandler_is_not_vulnerable_to_path_traversal
-    # The famous security bug of Mongrel 1.1.2
-    handler = Mongrel::DirHandler.new("/doc", false)
+    # The famous security bug of Puma 1.1.2
+    handler = Puma::DirHandler.new("/doc", false)
     assert_nil handler.can_serve("/tmp/testfile")
     assert_nil handler.can_serve("../../../../../../../../../../tmp/testfile")
   end

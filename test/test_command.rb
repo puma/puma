@@ -7,7 +7,7 @@
 require 'test/testhelp'
 
 class TestCommand < GemPlugin::Plugin "/commands"
-  include Mongrel::Command::Base
+  include Puma::Command::Base
 
   def configure
     options [
@@ -47,7 +47,7 @@ class CommandTest < Test::Unit::TestCase
   end
 
   def run_cmd(args)
-    Mongrel::Command::Registry.instance.run args
+    Puma::Command::Registry.instance.run args
   end
 
   def test_run_command

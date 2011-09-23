@@ -6,12 +6,12 @@
 
 require 'test/testhelp'
 
-include Mongrel
+include Puma
 
 class ConditionalResponseTest < Test::Unit::TestCase
   def setup
     @server = HttpServer.new('127.0.0.1', 3501)
-    @server.register('/', Mongrel::DirHandler.new('.'))
+    @server.register('/', Puma::DirHandler.new('.'))
     @server.run
     
     @http = Net::HTTP.new(@server.host, @server.port)

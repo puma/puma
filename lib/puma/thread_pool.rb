@@ -1,6 +1,6 @@
 require 'thread'
 
-module Mongrel
+module Puma
   class ThreadPool
     def initialize(min, max, &blk)
       @todo = Queue.new

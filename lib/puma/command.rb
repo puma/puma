@@ -1,26 +1,25 @@
 # Copyright (c) 2005 Zed A. Shaw 
+# Copyright (c) 2011 Evan Phoenix
 # You can redistribute it and/or modify it under the same terms as Ruby.
 #
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
-# for more information.
 
 require 'singleton'
 require 'optparse'
 
-require 'mongrel/gems'
-Mongrel::Gems.require 'gem_plugin'
+require 'puma/gems'
+Puma::Gems.require 'gem_plugin'
 
-module Mongrel
+module Puma
 
   # Contains all of the various commands that are used with 
-  # Mongrel servers.
+  # Puma servers.
 
   module Command
 
-    BANNER = "Usage: mongrel_rails <command> [options]"
+    BANNER = "Usage: puma_rails <command> [options]"
 
     # A Command pattern implementation used to create the set of command available to the user
-    # from Mongrel.  The script uses objects which implement this interface to do the
+    # from Puma.  The script uses objects which implement this interface to do the
     # user's bidding.
     module Base
 
@@ -44,7 +43,7 @@ module Mongrel
       def initialize(options={})
         argv = options[:argv] || []
         @opt = OptionParser.new
-        @opt.banner = Mongrel::Command::BANNER
+        @opt.banner = Puma::Command::BANNER
         @valid = true
         # this is retarded, but it has to be done this way because -h and -v exit
         @done_validating = false
@@ -61,7 +60,7 @@ module Mongrel
         # I need to add my own -v definition to prevent the -v from exiting by default as well.
         @opt.on_tail("--version", "Show version") do
           @done_validating = true
-          puts "Version #{Mongrel::Const::MONGREL_VERSION}"
+          puts "Version #{Puma::Const::PUMA_VERSION}"
         end
 
         @opt.parse! argv
@@ -153,10 +152,10 @@ module Mongrel
 
       # Prints a list of available commands.
       def print_command_list
-        puts "#{Mongrel::Command::BANNER}\nAvailable commands are:\n\n"
+        puts "#{Puma::Command::BANNER}\nAvailable commands are:\n\n"
 
         self.commands.each do |name|
-          if /mongrel::/ =~ name
+          if /puma::/ =~ name
             name = name[9 .. -1]
           end
 
@@ -178,14 +177,14 @@ module Mongrel
           print_command_list
           return true
         elsif cmd_name == "--version"
-          puts "Mongrel Web Server #{Mongrel::Const::MONGREL_VERSION}"
+          puts "Puma Web Server #{Puma::Const::PUMA_VERSION}"
           return true
         end
 
         begin
-          # quick hack so that existing commands will keep working but the Mongrel:: ones can be moved
+          # quick hack so that existing commands will keep working but the Puma:: ones can be moved
           if ["start", "stop", "restart"].include? cmd_name
-            cmd_name = "mongrel::" + cmd_name
+            cmd_name = "puma::" + cmd_name
           end
 
           command = GemPlugin::Manager.instance.create("/commands/#{cmd_name}", :argv => args)
@@ -204,7 +203,7 @@ module Mongrel
         # needed so the command is already valid so we can skip it.
         if not command.done_validating
           if not command.validate
-            STDERR.puts "#{cmd_name} reported an error. Use mongrel_rails #{cmd_name} -h to get help."
+            STDERR.puts "#{cmd_name} reported an error. Use puma_rails #{cmd_name} -h to get help."
             return false
           else
             command.run

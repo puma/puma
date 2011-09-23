@@ -1,9 +1,9 @@
 
-module Mongrel
+module Puma
 
   # Every standard HTTP code mapped to the appropriate message.  These are
-  # used so frequently that they are placed directly in Mongrel for easy
-  # access rather than Mongrel::Const itself.
+  # used so frequently that they are placed directly in Puma for easy
+  # access rather than Puma::Const itself.
   HTTP_STATUS_CODES = {
     100  => 'Continue',
     101  => 'Switching Protocols',
@@ -49,7 +49,7 @@ module Mongrel
   # gave about a 3% to 10% performance improvement over using the strings directly.
   # Symbols did not really improve things much compared to constants.
   #
-  # While Mongrel does try to emulate the CGI/1.2 protocol, it does not use the REMOTE_IDENT,
+  # While Puma does try to emulate the CGI/1.2 protocol, it does not use the REMOTE_IDENT,
   # REMOTE_USER, or REMOTE_HOST parameters since those are either a security problem or
   # too taxing on performance.
   module Const
@@ -65,12 +65,12 @@ module Mongrel
     REQUEST_URI='REQUEST_URI'.freeze
     REQUEST_PATH='REQUEST_PATH'.freeze
 
-    MONGREL_VERSION = VERSION = "1.3.0".freeze
+    PUMA_VERSION = VERSION = "1.3.0".freeze
 
-    MONGREL_TMP_BASE="mongrel".freeze
+    PUMA_TMP_BASE="puma".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Mongrel #{MONGREL_VERSION}\r\n\r\nNOT FOUND".freeze
+    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\nNOT FOUND".freeze
 
     CONTENT_LENGTH="CONTENT_LENGTH".freeze
 

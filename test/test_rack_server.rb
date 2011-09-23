@@ -1,5 +1,5 @@
 require 'test/unit'
-require 'mongrel'
+require 'puma'
 require 'rack/lint'
 require 'test/testhelp'
 
@@ -42,7 +42,7 @@ class TestRackServer < Test::Unit::TestCase
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
     
-    @server = Mongrel::RackServer.new("127.0.0.1", 9998)
+    @server = Puma::RackServer.new("127.0.0.1", 9998)
     @simple = lambda { |env| [200, { "X-Header" => "Works" }, "Hello"] }
     @server.app = @simple
   end

@@ -3,24 +3,24 @@
 # Copyright (c) 2005 Zed A. Shaw
 # You can redistribute it and/or modify it under the same terms as Ruby.
 #
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html
+# Additional work donated by contributors.  See http://puma.rubyforge.org/attributions.html
 # for more information.
 
 require 'yaml'
 require 'etc'
 
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../lib"
-require 'mongrel'
-require 'mongrel/rails'
+require 'puma'
+require 'puma/rails'
 
-Mongrel::Gems.require 'gem_plugin'
+Puma::Gems.require 'gem_plugin'
 
 # require 'ruby-debug'
 # Debugger.start
 
-module Mongrel
+module Puma
   class Start < GemPlugin::Plugin "/commands"
-    include Mongrel::Command::Base
+    include Puma::Command::Base
 
     def configure
       options [
@@ -28,8 +28,8 @@ module Mongrel
         ["-d", "--daemonize", "Run daemonized in the background", :@daemon, false],
         ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
         ['-a', '--address ADDR', "Address to bind to", :@address, "0.0.0.0"],
-        ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/mongrel.log"],
-        ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/mongrel.pid"],
+        ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/puma.log"],
+        ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/puma.pid"],
         ['-n', '--num-processors INT', "Number of processors active before clients denied", :@num_processors, 1024],
         ['-o', '--timeout TIME', "Time to wait (in seconds) before killing a stalled thread", :@timeout, 60],
         ['-t', '--throttle TIME', "Time to pause (in hundredths of a second) between accepting clients", :@throttle, 0],
@@ -79,15 +79,15 @@ module Mongrel
 	@generate = File.expand_path(@generate)
         STDERR.puts "** Writing config to \"#@generate\"."
         open(@generate, "w") {|f| f.write(settings.to_yaml) }
-        STDERR.puts "** Finished.  Run \"mongrel_rails start -C #@generate\" to use the config file."
+        STDERR.puts "** Finished.  Run \"puma_rails start -C #@generate\" to use the config file."
         exit 0
       end
 
-      config = Mongrel::Rails::RailsConfigurator.new(settings) do
+      config = Puma::Rails::RailsConfigurator.new(settings) do
         if defaults[:daemon]
           if File.exist? defaults[:pid_file]
-            log "!!! PID file #{defaults[:pid_file]} already exists.  Mongrel could be running already.  Check your #{defaults[:log_file]} for errors."
-            log "!!! Exiting with error.  You must stop mongrel and clear the .pid before I'll attempt a start."
+            log "!!! PID file #{defaults[:pid_file]} already exists.  Puma could be running already.  Check your #{defaults[:log_file]} for errors."
+            log "!!! Exiting with error.  You must stop puma and clear the .pid before I'll attempt a start."
             exit 1
           end
 
@@ -97,7 +97,7 @@ module Mongrel
           log "Settings loaded from #{@config_file} (they override command line)." if @config_file
         end
 
-        log "Starting Mongrel listening at #{defaults[:host]}:#{defaults[:port]}"
+        log "Starting Puma listening at #{defaults[:host]}:#{defaults[:port]}"
 
         listener do
           mime = {}
@@ -107,7 +107,7 @@ module Mongrel
           end
 
           if defaults[:debug]
-            log "Installing debugging prefixed filters. Look in log/mongrel_debug for the files."
+            log "Installing debugging prefixed filters. Look in log/puma_debug for the files."
             debug "/"
           end
 
@@ -129,7 +129,7 @@ module Mongrel
       end
 
       config.run
-      config.log "Mongrel #{Mongrel::Const::MONGREL_VERSION} available at #{@address}:#{@port}"
+      config.log "Puma #{Puma::Const::PUMA_VERSION} available at #{@address}:#{@port}"
 
       unless config.defaults[:daemon]
         config.log "Use CTRL-C to stop." 
@@ -164,7 +164,7 @@ module Mongrel
         STDERR.puts "** Loading settings from #{@config_file} (they override command line)." unless @daemon || settings[:daemon] 
       end
 
-      settings[:includes] ||= ["mongrel"]
+      settings[:includes] ||= ["puma"]
 
       # Config file settings will override command line settings
       settings.each do |key, value|
@@ -194,9 +194,9 @@ module Mongrel
     end
   end
 
-  def Mongrel::send_signal(signal, pid_file)
+  def Puma::send_signal(signal, pid_file)
     pid = File.read(pid_file).to_i 
-    print "Sending #{signal} to Mongrel at PID #{pid}..."
+    print "Sending #{signal} to Puma at PID #{pid}..."
     begin
       Process.kill(signal, pid)
     rescue Errno::ESRCH
@@ -208,14 +208,14 @@ module Mongrel
 
 
   class Stop < GemPlugin::Plugin "/commands"
-    include Mongrel::Command::Base
+    include Puma::Command::Base
 
     def configure 
       options [ 
         ['-c', '--chdir PATH', "Change to dir before starting (will be expanded).", :@cwd, "."],
         ['-f', '--force', "Force the shutdown (kill -9).", :@force, false],
         ['-w', '--wait SECONDS', "Wait SECONDS before forcing shutdown", :@wait, "0"], 
-        ['-P', '--pid FILE', "Where the PID file is located.", :@pid_file, "log/mongrel.pid"]
+        ['-P', '--pid FILE', "Where the PID file is located.", :@pid_file, "log/puma.pid"]
       ]
     end
 
@@ -236,22 +236,22 @@ module Mongrel
           sleep 1
         end
 
-        Mongrel::send_signal("KILL", @pid_file) if File.exist? @pid_file
+        Puma::send_signal("KILL", @pid_file) if File.exist? @pid_file
       else
-        Mongrel::send_signal("TERM", @pid_file)
+        Puma::send_signal("TERM", @pid_file)
       end
     end
   end
 
 
   class Restart < GemPlugin::Plugin "/commands"
-    include Mongrel::Command::Base
+    include Puma::Command::Base
 
     def configure 
       options [ 
         ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, '.'],
         ['-s', '--soft', "Do a soft restart rather than a process exit restart", :@soft, false],
-        ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/mongrel.pid"]
+        ['-P', '--pid FILE', "Where the PID file is located", :@pid_file, "log/puma.pid"]
       ]
     end
 
@@ -267,18 +267,18 @@ module Mongrel
 
     def run
       if @soft
-        Mongrel::send_signal("HUP", @pid_file)
+        Puma::send_signal("HUP", @pid_file)
       else
-        Mongrel::send_signal("USR2", @pid_file)
+        Puma::send_signal("USR2", @pid_file)
       end
     end
   end
 end
 
 
-GemPlugin::Manager.instance.load "mongrel" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
+GemPlugin::Manager.instance.load "puma" => GemPlugin::INCLUDE, "rails" => GemPlugin::EXCLUDE
 
 
-if not Mongrel::Command::Registry.instance.run ARGV
+if not Puma::Command::Registry.instance.run ARGV
   exit 1
 end

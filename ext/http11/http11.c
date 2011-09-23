@@ -456,7 +456,7 @@ VALUE HttpParser_body(VALUE self) {
 void Init_http11()
 {
 
-  VALUE mMongrel = rb_define_module("Mongrel");
+  VALUE mPuma = rb_define_module("Puma");
 
   DEF_GLOBAL(request_method, "REQUEST_METHOD");
   DEF_GLOBAL(request_uri, "REQUEST_URI");
@@ -465,10 +465,10 @@ void Init_http11()
   DEF_GLOBAL(http_version, "HTTP_VERSION");
   DEF_GLOBAL(request_path, "REQUEST_PATH");
 
-  eHttpParserError = rb_define_class_under(mMongrel, "HttpParserError", rb_eIOError);
+  eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eIOError);
   rb_global_variable(&eHttpParserError);
 
-  VALUE cHttpParser = rb_define_class_under(mMongrel, "HttpParser", rb_cObject);
+  VALUE cHttpParser = rb_define_class_under(mPuma, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
   rb_define_method(cHttpParser, "initialize", HttpParser_init, 0);
   rb_define_method(cHttpParser, "reset", HttpParser_reset, 0);

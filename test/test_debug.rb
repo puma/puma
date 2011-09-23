@@ -1,25 +1,25 @@
 # Copyright (c) 2005 Zed A. Shaw 
 # You can redistribute it and/or modify it under the same terms as Ruby.
 #
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
+# Additional work donated by contributors.  See http://puma.rubyforge.org/attributions.html 
 # for more information.
 
 require 'test/testhelp'
-require 'mongrel/debug'
+require 'puma/debug'
 
-class MongrelDbgTest < Test::Unit::TestCase
+class PumaDbgTest < Test::Unit::TestCase
 
   def test_tracing_to_log
-    FileUtils.rm_rf "log/mongrel_debug"
+    FileUtils.rm_rf "log/puma_debug"
 
-    MongrelDbg::configure
+    PumaDbg::configure
     out = StringIO.new
 
-    MongrelDbg::begin_trace(:rails)
-    MongrelDbg::trace(:rails, "Good stuff")
-    MongrelDbg::end_trace(:rails)
+    PumaDbg::begin_trace(:rails)
+    PumaDbg::trace(:rails, "Good stuff")
+    PumaDbg::end_trace(:rails)
 
-    assert File.exist?("log/mongrel_debug"), "Didn't make logging directory"
+    assert File.exist?("log/puma_debug"), "Didn't make logging directory"
   end
 
 end

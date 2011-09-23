@@ -1,22 +1,20 @@
 # Copyright (c) 2005 Zed A. Shaw 
 # You can redistribute it and/or modify it under the same terms as Ruby.
 #
-# Additional work donated by contributors.  See http://mongrel.rubyforge.org/attributions.html 
-# for more information.
 
 require 'logger'
 require 'set'
 require 'socket'
 require 'fileutils'
 
-module MongrelDbg
+module PumaDbg
   SETTINGS = { :tracing => {}}
   LOGGING = { }
 
-  def MongrelDbg::configure(log_dir = File.join("log","mongrel_debug"))
+  def PumaDbg::configure(log_dir = File.join("log","puma_debug"))
     FileUtils.mkdir_p(log_dir)
     @log_dir = log_dir
-    $objects_out=open(File.join("log","mongrel_debug","objects.log"),"w")
+    $objects_out=open(File.join("log","puma_debug","objects.log"),"w")
     $objects_out.puts "run,classname,last,count,delta,lenmean,lensd,lenmax"
     $objects_out.sync = true
     $last_stat = nil
@@ -24,28 +22,28 @@ module MongrelDbg
   end
 
   
-  def MongrelDbg::trace(target, message)
+  def PumaDbg::trace(target, message)
     if SETTINGS[:tracing][target] and LOGGING[target]
       LOGGING[target].log(Logger::DEBUG, message)
     end
   end
 
-  def MongrelDbg::begin_trace(target)
+  def PumaDbg::begin_trace(target)
     SETTINGS[:tracing][target] = true
     if not LOGGING[target]
       LOGGING[target] = Logger.new(File.join(@log_dir, "#{target.to_s}.log"))
     end                          
-    MongrelDbg::trace(target, "TRACING ON #{Time.now}")
+    PumaDbg::trace(target, "TRACING ON #{Time.now}")
   end
 
-  def MongrelDbg::end_trace(target)
+  def PumaDbg::end_trace(target)
     SETTINGS[:tracing][target] = false
-    MongrelDbg::trace(target, "TRACING OFF #{Time.now}")
+    PumaDbg::trace(target, "TRACING OFF #{Time.now}")
     LOGGING[target].close
     LOGGING[target] = nil
   end
 
-  def MongrelDbg::tracing?(target)
+  def PumaDbg::tracing?(target)
     SETTINGS[:tracing][target]
   end
 end
@@ -84,7 +82,7 @@ module Kernel
       open_counts[args] ||= 0
       open_counts[args] += 1
     end
-    MongrelDbg::trace(:files, open_counts.to_yaml)
+    PumaDbg::trace(:files, open_counts.to_yaml)
   end
 end  
 
@@ -92,10 +90,10 @@ end
 
 module RequestLog
 
-  # Just logs whatever requests it gets to STDERR (which ends up in the mongrel
+  # Just logs whatever requests it gets to STDERR (which ends up in the puma
   # log when daemonized).
   class Access < GemPlugin::Plugin "/handlers"
-    include Mongrel::HttpHandlerPlugin
+    include Puma::HttpHandlerPlugin
     
     def process(request,response)
       p = request.params
@@ -105,10 +103,10 @@ module RequestLog
   
 
   class Files < GemPlugin::Plugin "/handlers"
-    include Mongrel::HttpHandlerPlugin
+    include Puma::HttpHandlerPlugin
     
     def process(request, response)
-      MongrelDbg::trace(:files, "#{Time.now} FILES OPEN BEFORE REQUEST #{request.params['PATH_INFO']}")
+      PumaDbg::trace(:files, "#{Time.now} FILES OPEN BEFORE REQUEST #{request.params['PATH_INFO']}")
       log_open_files
     end
     
@@ -116,7 +114,7 @@ module RequestLog
 
   # stolen from Robert Klemme
   class Objects < GemPlugin::Plugin "/handlers"
-    include Mongrel::HttpHandlerPlugin
+    include Puma::HttpHandlerPlugin
 
     def process(request,response)
       begin
@@ -127,7 +125,7 @@ module RequestLog
             begin
               if o.respond_to? :length
                 len = o.length
-                lengths[o.class] ||= Mongrel::Stats.new(o.class)
+                lengths[o.class] ||= Puma::Stats.new(o.class)
                 lengths[o.class].sample(len)
               end
             rescue Object
@@ -160,24 +158,24 @@ module RequestLog
   end
 
   class Params < GemPlugin::Plugin "/handlers"
-    include Mongrel::HttpHandlerPlugin
+    include Puma::HttpHandlerPlugin
 
     def process(request, response)
-      MongrelDbg::trace(:rails, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
-      MongrelDbg::trace(:rails, request.params.to_yaml)
+      PumaDbg::trace(:rails, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
+      PumaDbg::trace(:rails, request.params.to_yaml)
     end
 
   end
 
   class Threads < GemPlugin::Plugin "/handlers"
-    include Mongrel::HttpHandlerPlugin
+    include Puma::HttpHandlerPlugin
 
     def process(request, response)
-      MongrelDbg::trace(:threads, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
+      PumaDbg::trace(:threads, "#{Time.now} REQUEST #{request.params['PATH_INFO']}")
       begin
         ObjectSpace.each_object do |obj|
           begin
-            if obj.class == Mongrel::HttpServer
+            if obj.class == Puma::HttpServer
               worker_list = obj.workers.list
   
               if worker_list.length > 0
@@ -185,7 +183,7 @@ module RequestLog
                 worker_list.each {|t| keys << "\n\t\t-- #{t}: #{t.keys.inspect}" }
               end
   
-              MongrelDbg::trace(:threads, "#{obj.host}:#{obj.port} -- THREADS: #{worker_list.length} #{keys}")
+              PumaDbg::trace(:threads, "#{obj.host}:#{obj.port} -- THREADS: #{worker_list.length} #{keys}")
             end
           rescue Object # Ignore since obj.class can sometimes take parameters            
           end
@@ -198,6 +196,6 @@ end
 
 
 END {
-  MongrelDbg::trace(:files, "FILES OPEN AT EXIT")
+  PumaDbg::trace(:files, "FILES OPEN AT EXIT")
   log_open_files
 }

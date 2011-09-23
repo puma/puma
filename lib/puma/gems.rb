@@ -1,4 +1,4 @@
-module Mongrel
+module Puma
   module Gems
     class << self
     
@@ -12,7 +12,7 @@ module Mongrel
             version ? gem(library, version) : gem(library)
             retry
           rescue Gem::LoadError, LoadError, RuntimeError
-            # puts "** #{library.inspect} could not be loaded" unless library == "mongrel_experimental"
+            # puts "** #{library.inspect} could not be loaded" unless library == "puma_experimental"
           end
         end  
       end
