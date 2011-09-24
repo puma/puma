@@ -5,7 +5,7 @@ Manifest.txt
 README.txt
 Rakefile
 TODO
-bin/puma_rails
+bin/puma
 examples/builder.rb
 examples/camping/README
 examples/camping/blog.rb

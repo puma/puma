@@ -7,7 +7,7 @@ require 'singleton'
 require 'optparse'
 
 require 'puma/gems'
-Puma::Gems.require 'gem_plugin'
+Puma::Gems.require 'puma/gem_plugin'
 
 module Puma
 
@@ -16,7 +16,7 @@ module Puma
 
   module Command
 
-    BANNER = "Usage: puma_rails <command> [options]"
+    BANNER = "Usage: puma <command> [options]"
 
     # A Command pattern implementation used to create the set of command available to the user
     # from Puma.  The script uses objects which implement this interface to do the
@@ -31,9 +31,10 @@ module Puma
       def options(opts)
         # process the given options array
         opts.each do |short, long, help, variable, default|
-          self.instance_variable_set(variable, default)
+          instance_variable_set(variable, default)
+
           @opt.on(short, long, help) do |arg|
-            self.instance_variable_set(variable, arg)
+            instance_variable_set(variable, arg)
           end
         end
       end
@@ -43,7 +44,7 @@ module Puma
       def initialize(options={})
         argv = options[:argv] || []
         @stderr = options[:stderr] || $stderr
-        @stdout = options[:stdout] || $stderr
+        @stdout = options[:stdout] || $stdout
 
         @opt = OptionParser.new
         @opt.banner = Puma::Command::BANNER
@@ -165,22 +166,30 @@ module Puma
         @stdout.puts "#{Puma::Command::BANNER}\nAvailable commands are:\n\n"
 
         self.commands.each do |name|
-          if /puma::/ =~ name
-            name = name[9 .. -1]
+          if /puma::(.*)/ =~ name
+            name = $1
           end
 
-          @stdout.puts " - #{name[1 .. -1]}\n"
+          @stdout.puts " - #{name}\n"
         end
 
         @stdout.puts "\nEach command takes -h as an option to get help."
       end
 
+      BUILTIN_COMMANDS = ["start", "stop", "restart"]
 
       # Runs the args against the first argument as the command name.
       # If it has any errors it returns a false, otherwise it return true.
       def run(args)
         # find the command
-        cmd_name = args.shift
+        cmd_name = args.first
+
+        if !cmd_name or (!BUILTIN_COMMANDS.include?(cmd_name) and
+                          File.exists?(cmd_name))
+          cmd_name = "start"
+        else
+          args.shift
+        end
 
         if !cmd_name or cmd_name == "?" or cmd_name == "help"
           print_command_list
@@ -191,8 +200,10 @@ module Puma
         end
 
         begin
-          # quick hack so that existing commands will keep working but the Puma:: ones can be moved
-          if ["start", "stop", "restart"].include? cmd_name
+          # quick hack so that existing commands will keep working but the
+          # Puma:: ones can be moved
+
+          if BUILTIN_COMMANDS.include? cmd_name
             cmd_name = "puma::" + cmd_name
           end
 

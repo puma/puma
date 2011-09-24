@@ -1,6 +1,8 @@
 require 'yaml'
 require 'etc'
 
+require 'rack/builder'
+
 module Puma
   # Implements a simple DSL for configuring a Puma server for your 
   # purposes.  More used by framework implementers to setup Puma
@@ -47,7 +49,7 @@ module Puma
       @pid_file = defaults[:pid_file]
 
       if block
-        cloaker(&block).bind(self).call
+        yield self
       end
     end
 
@@ -129,14 +131,14 @@ module Puma
     # * :user => User to change to, must have :group as well.
     # * :group => Group to change to, must have :user as well.
     #
-    def listener(options={},&block)
+    def listener(options={})
       raise "Cannot call listener inside another listener block." if (@listener or @listener_name)
       ops = resolve_defaults(options)
       ops[:num_processors] ||= 950
       ops[:throttle] ||= 0
       ops[:timeout] ||= 60
 
-      @listener = Puma::HttpServer.new(ops[:host], ops[:port].to_i, ops[:num_processors].to_i, ops[:throttle].to_i, ops[:timeout].to_i)
+      @listener = Puma::Server.new(ops[:host], ops[:port].to_i, ops[:concurrency].to_i)
       @listener_name = "#{ops[:host]}:#{ops[:port]}"
       @listeners[@listener_name] = @listener
 
@@ -145,8 +147,8 @@ module Puma
       end
 
       # Does the actual cloaking operation to give the new implicit self.
-      if block
-        cloaker(&block).bind(self).call
+      if block_given?
+        yield self
       end
 
       # all done processing this listener setup, reset implicit variables
@@ -154,59 +156,12 @@ module Puma
       @listener_name = nil
     end
 
+    def load_rackup(file)
+      app, options = Rack::Builder.parse_file file
 
-    # Called inside a Configurator.listener block in order to 
-    # add URI->handler mappings for that listener.  Use this as
-    # many times as you like.  It expects the following options
-    # or defaults:
-    #
-    # * :handler => HttpHandler -- Handler to use for this location.
-    # * :in_front => true/false -- Rather than appending, it prepends this handler.
-    def uri(location, options={})
-      ops = resolve_defaults(options)
-      @listener.register(location, ops[:handler], ops[:in_front])
+      @listener.app = app
+      # Do something with options?
     end
-
-
-    # Daemonizes the current Ruby script turning all the
-    # listeners into an actual "server" or detached process.
-    # You must call this *before* frameworks that open files
-    # as otherwise the files will be closed by this function.
-    #
-    # Does not work for Win32 systems (the call is silently ignored).
-    #
-    # Requires the following options or defaults:
-    #
-    # * :cwd => Directory to change to.
-    # * :log_file => Where to write STDOUT and STDERR.
-    # 
-    # It is safe to call this on win32 as it will only require the daemons
-    # gem/library if NOT win32.
-    def daemonize(options={})
-      ops = resolve_defaults(options)
-      # save this for later since daemonize will hose it
-      unless RbConfig::CONFIG['host_os'] =~ /mingw|mswin/
-        require 'daemons/daemonize'
-
-        logfile = ops[:log_file]
-        if logfile[0].chr != "/"
-          logfile = File.join(ops[:cwd],logfile)
-          if not File.exist?(File.dirname(logfile))
-            log "!!! Log file directory not found at full path #{File.dirname(logfile)}.  Update your configuration to use a full path."
-            exit 1
-          end
-        end
-
-        Daemonize.daemonize(logfile)
-
-        # change back to the original starting directory
-        Dir.chdir(ops[:cwd])
-
-      else
-        log "WARNING: Win32 does not support daemon mode."
-      end
-    end
-
 
     # Uses the GemPlugin system to easily load plugins based on their
     # gem dependencies.  You pass in either an :includes => [] or 
@@ -237,24 +192,6 @@ module Puma
       default.merge(YAML.load_file(file))
     end
 
-
-    # Loads the MIME map file and checks that it is correct
-    # on loading.  This is commonly passed to Puma::DirHandler
-    # or any framework handler that uses DirHandler to serve files.
-    # You can also include a set of default MIME types as additional
-    # settings.  See Puma::DirHandler for how the MIME types map
-    # is organized.
-    def load_mime_map(file, mime={})
-      # configure any requested mime map
-      mime = load_yaml(file, mime)
-
-      # check all the mime types to make sure they are the right format
-      mime.each {|k,v| log "WARNING: MIME type #{k} must start with '.'" if k.index(".") != 0 }
-
-      return mime
-    end
-
-
     # Loads and creates a plugin for you based on the given
     # name and configured with the selected options.  The options
     # are merged with the defaults prior to passing them in.
@@ -281,8 +218,6 @@ module Puma
       @listeners.each {|name,s| 
         s.run 
       }
-
-      $puma_sleeper_thread = Thread.new { loop { sleep 1 } }
     end
 
     # Calls .stop on all the configured listeners so they
@@ -301,42 +236,6 @@ module Puma
     # do it like:  config.join.
     def join
       @listeners.values.each {|s| s.acceptor.join }
-    end
-
-
-    # Calling this before you register your URIs to the given location
-    # will setup a set of handlers that log open files, objects, and the
-    # parameters for each request.  This helps you track common problems
-    # found in Rails applications that are either slow or become unresponsive
-    # after a little while.
-    #
-    # You can pass an extra parameter *what* to indicate what you want to 
-    # debug.  For example, if you just want to dump rails stuff then do:
-    #
-    #   debug "/", what = [:rails]
-    # 
-    # And it will only produce the log/puma_debug/rails.log file.
-    # Available options are: :access, :files, :objects, :threads, :rails 
-    # 
-    # NOTE: Use [:files] to get accesses dumped to stderr like with WEBrick.
-    def debug(location, what = [:access, :files, :objects, :threads, :rails])
-      require 'puma/debug'
-      handlers = {
-        :access => "/handlers/requestlog::access", 
-        :files => "/handlers/requestlog::files", 
-        :objects => "/handlers/requestlog::objects", 
-        :threads => "/handlers/requestlog::threads",
-        :rails => "/handlers/requestlog::params"
-      }
-
-      # turn on the debugging infrastructure, and ObjectTracker is a pig
-      PumaDbg.configure
-
-      # now we roll through each requested debug type, turn it on and load that plugin
-      what.each do |type| 
-        PumaDbg.begin_trace type 
-        uri location, :handler => plugin(handlers[type])
-      end
     end
 
     # Used to allow you to let users specify their own configurations

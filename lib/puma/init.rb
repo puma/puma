@@ -3,6 +3,6 @@
 #
 
 require 'puma/gems'
-Puma::Gems.require 'gem_plugin'
+Puma::Gems.require 'puma/gem_plugin'
 
 # File is just a stub that makes sure the puma_plugins gem is loaded and ready

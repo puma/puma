@@ -9,11 +9,9 @@
 require 'yaml'
 require 'etc'
 
-$LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../lib"
 require 'puma'
-require 'puma/rails'
 
-Puma::Gems.require 'gem_plugin'
+Puma::Gems.require 'puma/gem_plugin'
 
 # require 'ruby-debug'
 # Debugger.start
@@ -24,25 +22,19 @@ module Puma
 
     def configure
       options [
-        ["-e", "--environment ENV", "Rails environment to run as", :@environment, ENV['RAILS_ENV'] || "development"],
-        ["-d", "--daemonize", "Run daemonized in the background", :@daemon, false],
         ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
         ['-a', '--address ADDR', "Address to bind to", :@address, "0.0.0.0"],
         ['-l', '--log FILE', "Where to write log messages", :@log_file, "log/puma.log"],
         ['-P', '--pid FILE', "Where to write the PID", :@pid_file, "log/puma.pid"],
-        ['-n', '--num-processors INT', "Number of processors active before clients denied", :@num_processors, 1024],
-        ['-o', '--timeout TIME', "Time to wait (in seconds) before killing a stalled thread", :@timeout, 60],
-        ['-t', '--throttle TIME', "Time to pause (in hundredths of a second) between accepting clients", :@throttle, 0],
-        ['-m', '--mime PATH', "A YAML file that lists additional MIME types", :@mime_map, nil],
+        ['-n', '--concurrency INT', "Number of concurrent threads to use",
+                                    :@concurrency, 16],
         ['-c', '--chdir PATH', "Change to dir before starting (will be expanded)", :@cwd, Dir.pwd],
-        ['-r', '--root PATH', "Set the document root (default 'public')", :@docroot, "public"],
-        ['-B', '--debug', "Enable debugging mode", :@debug, false],
         ['-C', '--config PATH', "Use a config file", :@config_file, nil],
         ['-S', '--script PATH', "Load the given file as an extra config script", :@config_script, nil],
         ['-G', '--generate PATH', "Generate a config file for use with -C", :@generate, nil],
+        ['-r', '--rackup PATH', 'Load a specific rackup file', :@rackup_file, "config.ru"],
         ['', '--user USER', "User to run as", :@user, nil],
-        ['', '--group GROUP', "Group to run as", :@group, nil],
-        ['', '--prefix PATH', "URL prefix for Rails app", :@prefix, nil]
+        ['', '--group GROUP', "Group to run as", :@group, nil]
       ]
     end
 
@@ -61,99 +53,52 @@ module Puma
       # Change there to start, then we'll have to come back after daemonize
       Dir.chdir(@cwd)
 
-      valid?(@prefix[0] == ?/ && @prefix[-1] != ?/, "Prefix must begin with / and not end in /") if @prefix
       valid_dir? File.dirname(@log_file), "Path to log file not valid: #@log_file"
       valid_dir? File.dirname(@pid_file), "Path to pid file not valid: #@pid_file"
-      valid_dir? @docroot, "Path to docroot not valid: #@docroot"
       valid_exists? @mime_map, "MIME mapping file does not exist: #@mime_map" if @mime_map
       valid_exists? @config_file, "Config file not there: #@config_file" if @config_file
       valid_dir? File.dirname(@generate), "Problem accessing directory to #@generate" if @generate
       valid_user? @user if @user
       valid_group? @group if @group
 
+      @rackup = ARGV.shift || "config.ru"
+
+      valid? File.exists?(@rackup), "Unable to find rackup file"
+
       return @valid
     end
 
     def run
       if @generate
-	@generate = File.expand_path(@generate)
+        @generate = File.expand_path(@generate)
         @stderr.puts "** Writing config to \"#@generate\"."
         open(@generate, "w") {|f| f.write(settings.to_yaml) }
         @stderr.puts "** Finished.  Run \"puma_rails start -C #@generate\" to use the config file."
         exit 0
       end
 
-      config = Puma::Rails::RailsConfigurator.new(settings) do
-        if defaults[:daemon]
-          if File.exist? defaults[:pid_file]
-            log "!!! PID file #{defaults[:pid_file]} already exists.  Puma could be running already.  Check your #{defaults[:log_file]} for errors."
-            log "!!! Exiting with error.  You must stop puma and clear the .pid before I'll attempt a start."
-            exit 1
+      rackup = @rackup
+
+      config = Puma::Configurator.new(settings) do |c|
+        c.log "Starting Puma listening at #{c.defaults[:host]}:#{c.defaults[:port]}"
+
+        c.listener do |l|
+          l.load_rackup rackup
+
+          l.load_plugins
+
+          if c.defaults[:config_script]
+            c.log "Loading #{c.defaults[:config_script]} external config script"
+            c.run_config(c.defaults[:config_script])
           end
-
-          daemonize
-          write_pid_file
-          log "Daemonized, any open files are closed.  Look at #{defaults[:pid_file]} and #{defaults[:log_file]} for info."
-          log "Settings loaded from #{@config_file} (they override command line)." if @config_file
-        end
-
-        log "Starting Puma listening at #{defaults[:host]}:#{defaults[:port]}"
-
-        listener do
-          mime = {}
-          if defaults[:mime_map]
-            log "Loading additional MIME types from #{defaults[:mime_map]}"
-            mime = load_mime_map(defaults[:mime_map], mime)
-          end
-
-          if defaults[:debug]
-            log "Installing debugging prefixed filters. Look in log/puma_debug for the files."
-            debug "/"
-          end
-
-          log "Starting Rails with #{defaults[:environment]} environment..."
-          log "Mounting Rails at #{defaults[:prefix]}..." if defaults[:prefix]
-          uri defaults[:prefix] || "/", :handler => rails(:mime => mime, :prefix => defaults[:prefix])
-          log "Rails loaded."
-
-          log "Loading any Rails specific GemPlugins"
-          load_plugins
-
-          if defaults[:config_script]
-            log "Loading #{defaults[:config_script]} external config script"
-            run_config(defaults[:config_script])
-          end
-
-          setup_rails_signals
         end
       end
 
       config.run
       config.log "Puma #{Puma::Const::PUMA_VERSION} available at #{@address}:#{@port}"
-
-      unless config.defaults[:daemon]
-        config.log "Use CTRL-C to stop." 
-      end
+      config.log "Use CTRL-C to stop." 
 
       config.join
-
-      if config.needs_restart
-        unless RbConfig::CONFIG['host_os'] =~ /mingw|mswin/
-          cmd = "ruby #{__FILE__} start #{original_args.join(' ')}"
-          config.log "Restarting with arguments:  #{cmd}"
-          config.stop(false, true)
-          config.remove_pid_file
-
-          if config.defaults[:daemon]
-            system cmd
-          else
-            @stderr.puts "Can't restart unless in daemon mode."
-            exit 1
-          end
-        else
-          config.log "Win32 does not support restarts. Exiting."
-        end
-      end
     end
 
     def load_config
@@ -161,7 +106,7 @@ module Puma
       begin
         settings = YAML.load_file(@config_file)
       ensure
-        @stderr.puts "** Loading settings from #{@config_file} (they override command line)." unless @daemon || settings[:daemon] 
+        @stderr.puts "** Loading settings from #{@config_file} (they override command line)."
       end
 
       settings[:includes] ||= ["puma"]
@@ -181,7 +126,7 @@ module Puma
 
     def config_keys
       @config_keys ||=
-        %w(address host port cwd log_file pid_file environment docroot mime_map daemon debug includes config_script num_processors timeout throttle user group prefix)
+        %w(address host port cwd log_file pid_file config_script concurrency user group)
     end
 
     def settings
@@ -194,7 +139,7 @@ module Puma
     end
   end
 
-  def Puma::send_signal(signal, pid_file)
+  def Puma.send_signal(signal, pid_file)
     pid = File.read(pid_file).to_i 
     print "Sending #{signal} to Puma at PID #{pid}..."
     begin
@@ -205,7 +150,6 @@ module Puma
 
     puts "Done."
   end
-
 
   class Stop < GemPlugin::Plugin "/commands"
     include Puma::Command::Base
@@ -236,9 +180,9 @@ module Puma
           sleep 1
         end
 
-        Puma::send_signal("KILL", @pid_file) if File.exist? @pid_file
+        Puma.send_signal("KILL", @pid_file) if File.exist? @pid_file
       else
-        Puma::send_signal("TERM", @pid_file)
+        Puma.send_signal("TERM", @pid_file)
       end
     end
   end
@@ -267,16 +211,15 @@ module Puma
 
     def run
       if @soft
-        Puma::send_signal("HUP", @pid_file)
+        Puma.send_signal("HUP", @pid_file)
       else
-        Puma::send_signal("USR2", @pid_file)
+        Puma.send_signal("USR2", @pid_file)
       end
     end
   end
 end
 
 
-GemPlugin::Manager.instance.load "puma" => GemPlugin::INCLUDE,
-                                 "rails" => GemPlugin::EXCLUDE
+GemPlugin::Manager.instance.load "puma" => GemPlugin::INCLUDE
 
 exit 1 unless Puma::Command::Registry.instance.run(ARGV)

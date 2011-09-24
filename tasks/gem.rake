@@ -5,7 +5,7 @@ HOE = Hoe.spec 'puma' do
   developer 'Evan Phoenix', 'evan@phx.io'
 
   spec_extras[:extensions] = ["ext/http11/extconf.rb"]
-  spec_extras[:executables] = ['puma_rails']
+  spec_extras[:executables] = ['puma']
 
   extra_rdoc_files << 'LICENSE'
 
