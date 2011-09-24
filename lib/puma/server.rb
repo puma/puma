@@ -7,11 +7,8 @@ module Puma
     include Puma::Const
 
     attr_reader :acceptor
-    attr_reader :workers
     attr_reader :host
     attr_reader :port
-    attr_reader :throttle
-    attr_reader :timeout
     attr_reader :concurrent
 
     attr_accessor :app

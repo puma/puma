@@ -93,23 +93,6 @@ module Puma
       end
     end
 
-    # Generates a class for cloaking the current self and making the DSL nicer.
-    def cloaking_class
-      class << self
-        self
-      end
-    end
-
-    # Do not call this.  You were warned.
-    def cloaker(&block)
-      cloaking_class.class_eval do
-        define_method :cloaker_, &block
-        meth = instance_method( :cloaker_ )
-        remove_method :cloaker_
-        meth
-      end
-    end
-
     # This will resolve the given options against the defaults.
     # Normally just used internally.
     def resolve_defaults(options)
@@ -125,18 +108,12 @@ module Puma
     # 
     # * :host => Host name to bind.
     # * :port => Port to bind.
-    # * :num_processors => The maximum number of concurrent threads allowed.
-    # * :throttle => Time to pause (in hundredths of a second) between accepting clients. 
-    # * :timeout => Time to wait (in seconds) before killing a stalled thread.
     # * :user => User to change to, must have :group as well.
     # * :group => Group to change to, must have :user as well.
     #
     def listener(options={})
       raise "Cannot call listener inside another listener block." if (@listener or @listener_name)
       ops = resolve_defaults(options)
-      ops[:num_processors] ||= 950
-      ops[:throttle] ||= 0
-      ops[:timeout] ||= 60
 
       @listener = Puma::Server.new(ops[:host], ops[:port].to_i, ops[:concurrency].to_i)
       @listener_name = "#{ops[:host]}:#{ops[:port]}"
@@ -146,10 +123,7 @@ module Puma
         change_privilege(ops[:user], ops[:group])
       end
 
-      # Does the actual cloaking operation to give the new implicit self.
-      if block_given?
-        yield self
-      end
+      yield self if block_given?
 
       # all done processing this listener setup, reset implicit variables
       @listener = nil
