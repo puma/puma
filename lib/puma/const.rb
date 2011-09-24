@@ -47,7 +47,10 @@ module Puma
   # Frequently used constants when constructing requests or responses.  Many times
   # the constant just refers to a string with the same contents.  Using these constants
   # gave about a 3% to 10% performance improvement over using the strings directly.
-  # Symbols did not really improve things much compared to constants.
+  #
+  # The constants are frozen because Hash#[]= when called with a String key dups
+  # the String UNLESS the String is frozen. This saves us therefore 2 object
+  # allocations when creating the env hash later.
   #
   # While Puma does try to emulate the CGI/1.2 protocol, it does not use the REMOTE_IDENT,
   # REMOTE_USER, or REMOTE_HOST parameters since those are either a security problem or
@@ -55,37 +58,33 @@ module Puma
   module Const
     DATE = "Date".freeze
 
-    # This is the part of the path after the SCRIPT_NAME.  URIClassifier will determine this.
-    PATH_INFO="PATH_INFO".freeze
+    SCRIPT_NAME = "SCRIPT_NAME".freeze
 
-    # This is the initial part that your handler is identified as by URIClassifier.
-    SCRIPT_NAME="SCRIPT_NAME".freeze
+    # The original URI requested by the client.
+    REQUEST_URI= 'REQUEST_URI'.freeze
+    REQUEST_PATH = 'REQUEST_PATH'.freeze
 
-    # The original URI requested by the client.  Passed to URIClassifier to build PATH_INFO and SCRIPT_NAME.
-    REQUEST_URI='REQUEST_URI'.freeze
-    REQUEST_PATH='REQUEST_PATH'.freeze
+    PUMA_VERSION = VERSION = "1.0.0".freeze
 
-    PUMA_VERSION = VERSION = "1.3.0".freeze
-
-    PUMA_TMP_BASE="puma".freeze
+    PUMA_TMP_BASE = "puma".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-    ERROR_404_RESPONSE="HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\nNOT FOUND".freeze
+    ERROR_404_RESPONSE = "HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\nNOT FOUND".freeze
 
-    CONTENT_LENGTH="CONTENT_LENGTH".freeze
+    CONTENT_LENGTH = "CONTENT_LENGTH".freeze
 
     # A common header for indicating the server is too busy.  Not used yet.
-    ERROR_503_RESPONSE="HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
+    ERROR_503_RESPONSE = "HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
 
     # The basic max request size we'll try to read.
-    CHUNK_SIZE=(16 * 1024)
+    CHUNK_SIZE = 16 * 1024
 
     # This is the maximum header that is allowed before a client is booted.  The parser detects
     # this, but we'd also like to do this as well.
-    MAX_HEADER=1024 * (80 + 32)
+    MAX_HEADER = 1024 * (80 + 32)
 
     # Maximum request body size before it is moved out of memory and into a tempfile for reading.
-    MAX_BODY=MAX_HEADER
+    MAX_BODY = MAX_HEADER
 
     # A frozen format for this is about 15% faster
     STATUS_FORMAT = "HTTP/1.1 %d %s\r\nConnection: close\r\n".freeze
@@ -95,16 +94,16 @@ module Puma
     LAST_MODIFIED = "Last-Modified".freeze
     ETAG = "ETag".freeze
     SLASH = "/".freeze
-    REQUEST_METHOD="REQUEST_METHOD".freeze
-    GET="GET".freeze
-    HEAD="HEAD".freeze
+    REQUEST_METHOD = "REQUEST_METHOD".freeze
+    GET = "GET".freeze
+    HEAD = "HEAD".freeze
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
-    ETAG_FORMAT="\"%x-%x-%x\"".freeze
-    LINE_END="\r\n".freeze
-    REMOTE_ADDR="REMOTE_ADDR".freeze
-    HTTP_X_FORWARDED_FOR="HTTP_X_FORWARDED_FOR".freeze
-    HTTP_IF_MODIFIED_SINCE="HTTP_IF_MODIFIED_SINCE".freeze
-    HTTP_IF_NONE_MATCH="HTTP_IF_NONE_MATCH".freeze
+    ETAG_FORMAT = "\"%x-%x-%x\"".freeze
+    LINE_END = "\r\n".freeze
+    REMOTE_ADDR = "REMOTE_ADDR".freeze
+    HTTP_X_FORWARDED_FOR = "HTTP_X_FORWARDED_FOR".freeze
+    HTTP_IF_MODIFIED_SINCE = "HTTP_IF_MODIFIED_SINCE".freeze
+    HTTP_IF_NONE_MATCH = "HTTP_IF_NONE_MATCH".freeze
     REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n".freeze
     HOST = "HOST".freeze
 
