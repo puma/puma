@@ -328,7 +328,7 @@ module Puma
           client.write body
           client.flush
         else
-          res-body.each do |part|
+          res_body.each do |part|
             client.write part
             client.flush
           end
