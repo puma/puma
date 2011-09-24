@@ -13,6 +13,10 @@ class TestThreadPool < Test::Unit::TestCase
     @pool = Puma::ThreadPool.new(min, max, &blk)
   end
 
+  def pause
+    sleep 0.2
+  end
+
   def test_append_spawns
     saw = []
 
@@ -21,6 +25,8 @@ class TestThreadPool < Test::Unit::TestCase
     end
 
     pool << 1
+
+    pause
 
     assert_equal [1], saw
     assert_equal 1, pool.spawned
@@ -34,6 +40,8 @@ class TestThreadPool < Test::Unit::TestCase
     pool << 2
     pool << 3
 
+    pause
+
     assert_equal 2, pool.backlog
 
     finish = true
@@ -43,6 +51,8 @@ class TestThreadPool < Test::Unit::TestCase
     pool = new_pool(0, 1)
 
     pool << 1
+
+    pause
 
     assert_equal 1, pool.spawned
     pool.trim
