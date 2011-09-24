@@ -3,7 +3,7 @@
 
 require 'test/testhelp'
 
-class TestCommand < GemPlugin::Plugin "/commands"
+class TestCommand < Puma::GemPlugin::Plugin "/commands"
   include Puma::Command::Base
 
   def configure

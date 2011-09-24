@@ -9,7 +9,7 @@ require 'etc'
 
 require 'puma'
 
-Puma::Gems.require 'puma/gem_plugin'
+require 'puma/gem_plugin'
 
 # require 'ruby-debug'
 # Debugger.start
@@ -218,6 +218,6 @@ module Puma
 end
 
 
-GemPlugin::Manager.instance.load "puma" => GemPlugin::INCLUDE
+Puma::GemPlugin::Manager.instance.load "puma" => Puma::GemPlugin::INCLUDE
 
 exit 1 unless Puma::Command::Registry.instance.run(ARGV)

@@ -1,4 +1,3 @@
-require 'singleton'
 require 'rubygems'
 
 # Implements a dynamic plugin loading, configuration, and discovery system
@@ -47,24 +46,25 @@ require 'rubygems'
 #
 # The "magic" part though is pretty simple and done via the GemPlugin::Manager.load
 # method.  Read that to see how it is really done.
-module GemPlugin
+module Puma::GemPlugin
 
   EXCLUDE = true
   INCLUDE = false
 
   class PluginNotLoaded < StandardError; end
 
-  
   # This class is used by people who use gem plugins (but don't necessarily make them)
   # to add plugins to their own systems.  It provides a way to load plugins, list them,
   # and create them as needed.
   #
   # It is a singleton so you use like this:  GemPlugins::Manager.instance.load
   class Manager
-    include Singleton
     attr_reader :plugins
     attr_reader :gems
     
+    def self.instance
+      @instance ||= new
+    end
 
     def initialize
       # plugins that have been loaded
@@ -290,7 +290,7 @@ module GemPlugin
   # use this returned class to create the new class, GemPlugin::Base.inherited
   # gets called.  GemPlugin::Base.inherited then uses the set category, class name,
   # and class to register the plugin in the right way.
-  def GemPlugin.Plugin(c)
+  def self.Plugin(c)
     Base.category = c
     Base
   end
