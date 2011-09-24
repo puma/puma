@@ -23,10 +23,12 @@ module Puma
     # parameter (which defaults to '&;'.
     def self.query_parse(qs, d = '&;')
       params = {}
-      (qs||'').split(/[#{d}] */n).inject(params) { |h,p|
-        k, v=unescape(p).split('=',2)
+
+      qs.split(/[#{d}] */n).each do |p|
+        k, v = unescape(p).split('=', 2)
+
         if cur = params[k]
-          if cur.class == Array
+          if cur.kind_of? Array
             params[k] << v
           else
             params[k] = [cur, v]
@@ -34,7 +36,7 @@ module Puma
         else
           params[k] = v
         end
-      }
+      end
 
       return params
     end
