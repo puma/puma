@@ -256,7 +256,7 @@ module Puma
 
       # Read an odd sized chunk so we can read even sized ones
       # after this
-      chunk = client.read(remain % CHUNK_SIZE)
+      chunk = client.readpartial(remain % CHUNK_SIZE)
 
       # No chunk means a closed socket
       unless chunk
@@ -268,7 +268,7 @@ module Puma
 
       # Raed the rest of the chunks
       while remain > 0
-        chunk = client.read(CHUNK_SIZE)
+        chunk = client.readpartial(CHUNK_SIZE)
         unless chunk
           stream.close
           return nil
