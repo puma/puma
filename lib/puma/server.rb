@@ -28,18 +28,12 @@ module Puma
     # the same time. Any requests over this ammount are queued and handled
     # as soon as a thread is available.
     #
-    # The throttle parameter is a sleep timeout (in hundredths of a second)
-    # that is placed between  socket.accept calls in order to give the server
-    # a cheap throttle time.  It defaults to 0 and actually if it is 0 then
-    # the sleep is not done at all.
-    def initialize(host, port, concurrent=10, throttle=0, timeout=60)
+    def initialize(host, port, concurrent=10)
       @socket = TCPServer.new(host, port) 
       
       @host = host
       @port = port
-      @throttle = throttle / 100.0
       @concurrent = concurrent
-      @timeout = timeout
 
       @check, @notify = IO.pipe
       @running = true
@@ -52,47 +46,93 @@ module Puma
       @stdout = STDOUT
     end
 
-    def handle_request(params, client, body)
-      if host = params[HTTP_HOST]
-        if colon = host.index(":")
-          params[SERVER_NAME] = host[0, colon]
-          params[SERVER_PORT] = host[colon+1, host.size]
-        else
-          params[SERVER_NAME] = host
-          params[SERVER_PORT] = PORT_80
+    # Runs the server.  It returns the thread used so you can "join" it.
+    # You can also access the HttpServer#acceptor attribute to get the
+    # thread later.
+    def run
+      BasicSocket.do_not_reverse_lookup = true
+
+      configure_socket_options
+
+      if @tcp_defer_accept_opts
+        @socket.setsockopt(*@tcp_defer_accept_opts)
+      end
+
+      tcp_cork_opts = @tcp_cork_opts
+
+      @acceptor = Thread.new do
+        begin
+          check = @check
+          sockets = [check, @socket]
+          pool = @thread_pool
+
+          while @running
+            begin
+              ios = IO.select sockets
+              ios.first.each do |sock|
+                if sock == check
+                  break if handle_check
+                else
+                  client = sock.accept
+
+                  client.setsockopt(*tcp_cork_opts) if tcp_cork_opts
+     
+                  pool << client
+                end
+              end
+            rescue Errno::ECONNABORTED
+              # client closed the socket even before accept
+              client.close rescue nil
+            rescue Object => e
+              @stderr.puts "#{Time.now}: Unhandled listen loop exception #{e.inspect}."
+              @stderr.puts e.backtrace.join("\n")
+            end
+          end
+          graceful_shutdown
+        ensure
+          @socket.close
+          # @stderr.puts "#{Time.now}: Closed socket."
         end
       end
 
-      params[SERVER_PROTOCOL] = HTTP_11
-      params[SERVER_SOFTWARE] = PUMA_VERSION
-      params[GATEWAY_INTERFACE] = CGI_VER
-
-      unless params[REQUEST_PATH]
-        # it might be a dumbass full host request header
-        uri = URI.parse(params[REQUEST_URI])
-        params[REQUEST_PATH] = uri.path
-
-        raise "No REQUEST PATH" unless params[REQUEST_PATH]
-      end
-
-      # From http://www.ietf.org/rfc/rfc3875 :
-      # "Script authors should be aware that the REMOTE_ADDR and
-      # REMOTE_HOST meta-variables (see sections 4.1.8 and 4.1.9)
-      # may not identify the ultimate source of the request.
-      # They identify the client for the immediate request to the
-      # server; that client may be a proxy, gateway, or other
-      # intermediary acting on behalf of the actual source client."
-      #
-      params[REMOTE_ADDR] = client.peeraddr.last
-
-      process params, client, body
+      return @acceptor
     end
 
-    # Does the majority of the IO processing.  It has been written in Ruby using
-    # about 7 different IO processing strategies and no matter how it's done 
-    # the performance just does not improve.  It is currently carefully constructed
-    # to make sure that it gets the best possible performance, but anyone who
-    # thinks they can make it faster is more than welcome to take a crack at it.
+    def configure_socket_options
+      @tcp_defer_accept_opts = nil
+      @tcp_cork_opts = nil
+
+      case RUBY_PLATFORM
+      when /linux/
+        # 9 is currently TCP_DEFER_ACCEPT
+        @tcp_defer_accept_opts = [Socket::SOL_TCP, 9, 1]
+        @tcp_cork_opts = [Socket::SOL_TCP, 3, 1]
+
+      when /freebsd(([1-4]\..{1,2})|5\.[0-4])/
+        # Do nothing, just closing a bug when freebsd <= 5.4
+      when /freebsd/
+        # Use the HTTP accept filter if available.
+        # The struct made by pack() is defined in /usr/include/sys/socket.h as accept_filter_arg
+        unless `/sbin/sysctl -nq net.inet.accf.http`.empty?
+          @tcp_defer_accept_opts = [Socket::SOL_SOCKET, Socket::SO_ACCEPTFILTER, ['httpready', nil].pack('a16a240')]
+        end
+      end
+    end
+
+
+
+    def handle_check
+      cmd = @check.read(1) 
+
+      case cmd
+      when STOP_COMMAND
+        @running = false
+        return true
+      end
+
+      return false
+    end
+
     def process_client(client)
       begin
         parser = HttpParser.new
@@ -147,139 +187,40 @@ module Puma
       end
     end
 
-    # Wait for all outstanding requests to finish.
-    def graceful_shutdown
-      @thread_pool.shutdown
-    end
-
-    def configure_socket_options
-      @tcp_defer_accept_opts = nil
-      @tcp_cork_opts = nil
-
-      case RUBY_PLATFORM
-      when /linux/
-        # 9 is currently TCP_DEFER_ACCEPT
-        @tcp_defer_accept_opts = [Socket::SOL_TCP, 9, 1]
-        @tcp_cork_opts = [Socket::SOL_TCP, 3, 1]
-
-      when /freebsd(([1-4]\..{1,2})|5\.[0-4])/
-        # Do nothing, just closing a bug when freebsd <= 5.4
-      when /freebsd/
-        # Use the HTTP accept filter if available.
-        # The struct made by pack() is defined in /usr/include/sys/socket.h as accept_filter_arg
-        unless `/sbin/sysctl -nq net.inet.accf.http`.empty?
-          @tcp_defer_accept_opts = [Socket::SOL_SOCKET, Socket::SO_ACCEPTFILTER, ['httpready', nil].pack('a16a240')]
-        end
-      end
-    end
-
-    def handle_check
-      cmd = @check.read(1) 
-
-      case cmd
-      when STOP_COMMAND
-        @running = false
-        return true
-      end
-
-      return false
-    end
-
-    # Runs the thing.  It returns the thread used so you can "join" it.
-    # You can also access the HttpServer::acceptor attribute to get the
-    # thread later.
-    def run
-      BasicSocket.do_not_reverse_lookup = true
-
-      configure_socket_options
-
-      if @tcp_defer_accept_opts
-        @socket.setsockopt(*@tcp_defer_accept_opts)
-      end
-
-      tcp_cork_opts = @tcp_cork_opts
-
-      @acceptor = Thread.new do
-        begin
-          check = @check
-          sockets = [check, @socket]
-          pool = @thread_pool
-
-          while @running
-            begin
-              ios = IO.select sockets
-              ios.first.each do |sock|
-                if sock == check
-                  break if handle_check
-                else
-                  client = sock.accept
-
-                  client.setsockopt(*tcp_cork_opts) if tcp_cork_opts
-     
-                  pool << client
-                end
-              end
-            rescue Errno::ECONNABORTED
-              # client closed the socket even before accept
-              client.close rescue nil
-            rescue Object => e
-              @stderr.puts "#{Time.now}: Unhandled listen loop exception #{e.inspect}."
-              @stderr.puts e.backtrace.join("\n")
-            end
-          end
-          graceful_shutdown
-        ensure
-          @socket.close
-          # @stderr.puts "#{Time.now}: Closed socket."
+    def handle_request(params, client, body)
+      if host = params[HTTP_HOST]
+        if colon = host.index(":")
+          params[SERVER_NAME] = host[0, colon]
+          params[SERVER_PORT] = host[colon+1, host.size]
+        else
+          params[SERVER_NAME] = host
+          params[SERVER_PORT] = PORT_80
         end
       end
 
-      return @acceptor
-    end
+      params[SERVER_PROTOCOL] = HTTP_11
+      params[SERVER_SOFTWARE] = PUMA_VERSION
+      params[GATEWAY_INTERFACE] = CGI_VER
 
-    def read_body(env, client, body)
-      content_length = env[CONTENT_LENGTH].to_i
+      unless params[REQUEST_PATH]
+        # it might be a dumbass full host request header
+        uri = URI.parse(params[REQUEST_URI])
+        params[REQUEST_PATH] = uri.path
 
-      remain = content_length - body.size
-
-      return StringIO.new(body) if remain <= 0
-
-      # Use a Tempfile if there is a lot of data left
-      if remain > MAX_BODY
-        stream = Tempfile.new(Const::PUMA_TMP_BASE)
-        stream.binmode
-      else
-        stream = StringIO.new
+        raise "No REQUEST PATH" unless params[REQUEST_PATH]
       end
 
-      stream.write body
+      # From http://www.ietf.org/rfc/rfc3875 :
+      # "Script authors should be aware that the REMOTE_ADDR and
+      # REMOTE_HOST meta-variables (see sections 4.1.8 and 4.1.9)
+      # may not identify the ultimate source of the request.
+      # They identify the client for the immediate request to the
+      # server; that client may be a proxy, gateway, or other
+      # intermediary acting on behalf of the actual source client."
+      #
+      params[REMOTE_ADDR] = client.peeraddr.last
 
-      # Read an odd sized chunk so we can read even sized ones
-      # after this
-      chunk = client.readpartial(remain % CHUNK_SIZE)
-
-      # No chunk means a closed socket
-      unless chunk
-        stream.close
-        return nil
-      end
-
-      remain -= stream.write(chunk)
-
-      # Raed the rest of the chunks
-      while remain > 0
-        chunk = client.readpartial(CHUNK_SIZE)
-        unless chunk
-          stream.close
-          return nil
-        end
-
-        remain -= stream.write(chunk)
-      end
-
-      stream.rewind
-
-      return stream
+      process params, client, body
     end
 
     def process(env, client, body)
@@ -339,6 +280,55 @@ module Puma
       end
     end
 
+    def read_body(env, client, body)
+      content_length = env[CONTENT_LENGTH].to_i
+
+      remain = content_length - body.size
+
+      return StringIO.new(body) if remain <= 0
+
+      # Use a Tempfile if there is a lot of data left
+      if remain > MAX_BODY
+        stream = Tempfile.new(Const::PUMA_TMP_BASE)
+        stream.binmode
+      else
+        stream = StringIO.new
+      end
+
+      stream.write body
+
+      # Read an odd sized chunk so we can read even sized ones
+      # after this
+      chunk = client.readpartial(remain % CHUNK_SIZE)
+
+      # No chunk means a closed socket
+      unless chunk
+        stream.close
+        return nil
+      end
+
+      remain -= stream.write(chunk)
+
+      # Raed the rest of the chunks
+      while remain > 0
+        chunk = client.readpartial(CHUNK_SIZE)
+        unless chunk
+          stream.close
+          return nil
+        end
+
+        remain -= stream.write(chunk)
+      end
+
+      stream.rewind
+
+      return stream
+    end
+
+    # Wait for all outstanding requests to finish.
+    def graceful_shutdown
+      @thread_pool.shutdown
+    end
 
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.
