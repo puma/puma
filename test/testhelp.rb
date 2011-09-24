@@ -1,34 +1,19 @@
+# Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw 
-# You can redistribute it and/or modify it under the same terms as Ruby.
-#
-# Additional work donated by contributors.  See http://puma.rubyforge.org/attributions.html 
-# for more information.
 
 
-HERE = File.dirname(__FILE__)
 %w(lib ext bin test).each do |dir| 
-  $LOAD_PATH.unshift "#{HERE}/../#{dir}"
+  $LOAD_PATH.unshift File.expand_path("../../#{dir}", __FILE__)
 end
 
 require 'rubygems'
 require 'test/unit'
 require 'net/http'
-require 'timeout'
-require 'cgi/session'
-require 'fileutils'
-require 'benchmark'
 require 'digest/sha1'
 require 'uri'
 require 'stringio'
-require 'pp'
 
 require 'puma'
-require 'puma/stats'
-
-if ENV['DEBUG']
-  require 'ruby-debug'
-  Debugger.start
-end
 
 def redirect_test_io
   yield
@@ -53,9 +38,4 @@ def hit(uris)
   end
 
   return results
-end
-
-# Platform check helper ;-)
-def windows?
-  @windows ||= RbConfig::CONFIG['host_os'] =~ /mingw|mswin/
 end

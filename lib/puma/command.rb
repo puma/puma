@@ -1,6 +1,5 @@
-# Copyright (c) 2005 Zed A. Shaw 
 # Copyright (c) 2011 Evan Phoenix
-# You can redistribute it and/or modify it under the same terms as Ruby.
+# Copyright (c) 2005 Zed A. Shaw 
 #
 
 require 'singleton'
@@ -93,7 +92,7 @@ module Puma
 
       # Validates the given expression is true and prints the message if not, exiting.
       def valid?(exp, message)
-        if not @done_validating and (not exp)
+        if !@done_validating and !exp
           failure message
           @valid = false
           @done_validating = true
@@ -215,12 +214,12 @@ module Puma
 
           command = GemPlugin::Manager.instance.create("/commands/#{cmd_name}", opts)
 
-        rescue OptionParser::InvalidOption
-          @stderr.puts "#$! for command '#{cmd_name}'"
+        rescue OptionParser::InvalidOption => e
+          @stderr.puts "#{e} for command '#{cmd_name}'"
           @stderr.puts "Try #{cmd_name} -h to get help."
           return false
-        rescue
-          @stderr.puts "ERROR RUNNING '#{cmd_name}': #$!"
+        rescue => e
+          @stderr.puts "ERROR RUNNING '#{cmd_name}': #{e.message} (#{e.class})"
           @stderr.puts "Use help command to get help"
           return false
         end
@@ -228,12 +227,12 @@ module Puma
         # Normally the command is NOT valid right after being created
         # but sometimes (like with -h or -v) there's no further processing
         # needed so the command is already valid so we can skip it.
-        if not command.done_validating
-          if not command.validate
-            @stderr.puts "#{cmd_name} reported an error. Use puma_rails #{cmd_name} -h to get help."
-            return false
-          else
+        unless command.done_validating
+          if command.validate
             command.run
+          else
+            @stderr.puts "#{cmd_name} reported an error. Use puma #{cmd_name} -h to get help."
+            return false
           end
         end
 

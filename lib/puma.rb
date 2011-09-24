@@ -23,13 +23,9 @@ require 'thread'
 
 # Ruby Puma
 require 'puma/command'
-require 'puma/tcphack'
 require 'puma/configurator'
-require 'puma/uri_classifier'
 require 'puma/const'
 require 'puma/http_request'
-require 'puma/header_out'
-require 'puma/http_response'
 require 'puma/server'
 
 # Puma module containing all of the classes (include C extensions)
