@@ -7,7 +7,7 @@ Rake::ExtensionTask.new('http11', HOE.spec) do |ext|
   if RUBY_PLATFORM =~ /mingw|mswin/ then
     RUBY_VERSION =~ /(\d+\.\d+)/
     ext.lib_dir = "lib/#{$1}"
-  else
+  elsif ENV['CROSS']
     # define cross-compilation tasks when not on Windows.
     ext.cross_compile = true
     ext.cross_platform = ['i386-mswin32', 'i386-mingw32']

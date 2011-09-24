@@ -7,11 +7,6 @@ HOE = Hoe.spec 'puma' do
   spec_extras[:extensions] = ["ext/http11/extconf.rb"]
   spec_extras[:executables] = ['puma']
 
-  extra_rdoc_files << 'LICENSE'
-
-  extra_deps << ['gem_plugin', '~> 0.2.3']
-  extra_deps << ['daemons', '~> 1.0.10']
-
   extra_dev_deps << ['rake-compiler', "~> 0.7.0"]
 
   clean_globs.push('test_*.log', 'log')
