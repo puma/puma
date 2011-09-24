@@ -15,6 +15,8 @@ module Puma
 
     attr_accessor :stderr, :stdout
 
+    Default = lambda { |e| raise "no rack app configured" }
+
     # Creates a working server on host:port (strange things happen if port
     # isn't a Number).
     #
@@ -25,7 +27,7 @@ module Puma
     # the same time. Any requests over this ammount are queued and handled
     # as soon as a thread is available.
     #
-    def initialize(host, port, concurrent=10)
+    def initialize(host, port, concurrent=10, app=Default)
       @socket = TCPServer.new(host, port) 
       
       @host = host
@@ -41,6 +43,8 @@ module Puma
 
       @stderr = STDERR
       @stdout = STDOUT
+
+      @app = app
     end
 
     # Runs the server.  It returns the thread used so you can "join" it.
@@ -115,8 +119,6 @@ module Puma
         end
       end
     end
-
-
 
     def handle_check
       cmd = @check.read(1) 
@@ -240,7 +242,11 @@ module Puma
         env["CONTENT_TYPE"] ||= ""
         env["QUERY_STRING"] ||= ""
 
-        status, headers, res_body = @app.call(env)
+        begin
+          status, headers, res_body = @app.call(env)
+        rescue => e
+          status, headers, res_body = lowlevel_error(e)
+        end
 
         client.write "HTTP/1.1 "
         client.write status.to_s
@@ -320,6 +326,10 @@ module Puma
       stream.rewind
 
       return stream
+    end
+
+    def lowlevel_error(e)
+      [500, {}, ["No application configured"]]
     end
 
     # Wait for all outstanding requests to finish.
