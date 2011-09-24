@@ -2,30 +2,6 @@ require 'rack'
 require 'puma/thread_pool'
 
 module Puma
-  # Thrown at a thread when it is timed out.
-  class TimeoutError < RuntimeError; end
-
-  # This is the main driver of Puma, while the Puma::HttpParser and
-  # Puma::URIClassifier make up the majority of how the server functions.
-  # It's a very simple class that just has a thread accepting connections and
-  # a simple HttpServer.process_client function to do the heavy lifting with
-  # the IO and Ruby.  
-  #
-  # You use it by doing the following:
-  #
-  #   server = HttpServer.new("0.0.0.0", 3000)
-  #   server.register("/stuff", MyNiftyHandler.new)
-  #   server.run.join
-  #
-  # The last line can be just server.run if you don't want to join the
-  # thread used. If you don't though Ruby will mysteriously just exit on you.
-  #
-  # Ruby's thread implementation is "interesting" to say the least. 
-  # Experiments with *many* different types of IO processing simply cannot
-  # make a dent in it.  Future releases of Puma will find other creative
-  # ways to make threads faster, but don't hold your breath until Ruby 1.9
-  # is actually finally useful.
-
   class Server
 
     include Puma::Const
@@ -45,7 +21,7 @@ module Puma
     # Creates a working server on host:port (strange things happen if port
     # isn't a Number).
     #
-    # Use HttpServer.run to start the server and HttpServer.acceptor.join to 
+    # Use HttpServer#run to start the server and HttpServer#acceptor.join to 
     # join the thread that's processing incoming requests on the socket.
     #
     # +concurrent+ indicates how many concurrent requests should be run at
@@ -261,21 +237,62 @@ module Puma
       return @acceptor
     end
 
-    def process(env, client, body)
-      begin
-        request = HttpRequest.new(env, client, body)
+    def read_body(env, client, body)
+      content_length = env[CONTENT_LENGTH].to_i
 
-        # in the case of large file uploads the user could close
-        # the socket, so skip those requests
-      rescue BodyReadError => e
-        return
+      remain = content_length - body.size
+
+      return StringIO.new(body) if remain <= 0
+
+      # Use a Tempfile if there is a lot of data left
+      if remain > MAX_BODY
+        stream = Tempfile.new(Const::PUMA_TMP_BASE)
+        stream.binmode
+      else
+        stream = StringIO.new
       end
+
+      stream.write body
+
+      # Read an odd sized chunk so we can read even sized ones
+      # after this
+      chunk = client.read(remain % CHUNK_SIZE)
+
+      # No chunk means a closed socket
+      unless chunk
+        stream.close
+        return nil
+      end
+
+      remain -= stream.write(chunk)
+
+      # Raed the rest of the chunks
+      while remain > 0
+        chunk = client.read(CHUNK_SIZE)
+        unless chunk
+          stream.close
+          return nil
+        end
+
+        remain -= stream.write(chunk)
+      end
+
+      stream.rewind
+
+      return stream
+    end
+
+    def process(env, client, body)
+
+      body = read_body env, client, body
+
+      return unless body
 
       begin
         env["SCRIPT_NAME"] = ""
 
         env["rack.version"] = Rack::VERSION
-        env["rack.input"] = request.body
+        env["rack.input"] = body
         env["rack.errors"] = $stderr
         env["rack.multithread"] = true
         env["rack.multiprocess"] = false
@@ -285,7 +302,7 @@ module Puma
         env["CONTENT_TYPE"] ||= ""
         env["QUERY_STRING"] ||= ""
 
-        status, headers, body = @app.call(env)
+        status, headers, res_body = @app.call(env)
 
         client.write "HTTP/1.1 "
         client.write status.to_s
@@ -296,29 +313,29 @@ module Puma
         colon = ": "
         line_ending = "\r\n"
 
-        headers.each { |k, vs|
-          vs.split("\n").each { |v|
+        headers.each do |k, vs|
+          vs.split("\n").each do |v|
             client.write k
             client.write colon
             client.write v
             client.write line_ending
-          }
-        }
+          end
+        end
 
         client.write line_ending
 
-        if body.kind_of? String
+        if res_body.kind_of? String
           client.write body
           client.flush
         else
-          body.each do |part|
+          res-body.each do |part|
             client.write part
             client.flush
           end
         end
       ensure
-        request.close_body
-        body.close if body.respond_to? :close
+        body.close
+        res_body.close if res_body.respond_to? :close
       end
     end
 

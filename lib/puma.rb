@@ -25,8 +25,8 @@ require 'thread'
 require 'puma/command'
 require 'puma/configurator'
 require 'puma/const'
-require 'puma/http_request'
 require 'puma/server'
+require 'puma/utils'
 
 # Puma module containing all of the classes (include C extensions)
 # for running a Puma web server.  It contains a minimalist HTTP server
