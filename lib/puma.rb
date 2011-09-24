@@ -28,17 +28,5 @@ require 'puma/const'
 require 'puma/server'
 require 'puma/utils'
 
-# Puma module containing all of the classes (include C extensions)
-# for running a Puma web server.  It contains a minimalist HTTP server
-# with just enough functionality to service web application requests
-# fast as possible.
-module Puma
-
-  # Thrown at a thread when it is timed out.
-  class TimeoutError < RuntimeError; end
-
-  class BodyReadError < RuntimeError; end
-end
-
-Puma::Gems.require "puma_experimental",
-                      ">=#{Puma::Const::PUMA_VERSION}"
+Puma::Gems.optional "puma_experimental",
+                    ">=#{Puma::Const::PUMA_VERSION}"

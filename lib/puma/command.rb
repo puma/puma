@@ -5,8 +5,7 @@
 require 'singleton'
 require 'optparse'
 
-require 'puma/gems'
-Puma::Gems.require 'puma/gem_plugin'
+require 'puma/gem_plugin'
 
 module Puma
 
