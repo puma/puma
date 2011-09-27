@@ -54,6 +54,12 @@ module Puma
     def load_rackup
       @app, options = Rack::Builder.parse_file @rackup
       @options.merge! options
+
+      options.each do |key,val|
+        if key.to_s[0,4] == "bind"
+          @binds << val
+        end
+      end
     end
 
     def run
