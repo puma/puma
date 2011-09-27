@@ -20,10 +20,12 @@ class WebServerTest < Test::Unit::TestCase
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
     
-    @server = HttpServer.new("127.0.0.1", 9998)
-    @server.stderr = StringIO.new
-    
     @tester = TestHandler.new
+
+    @server = Server.new @tester
+    @server.add_tcp_listener "127.0.0.1", 9998
+
+    @server.stderr = StringIO.new
 
     @server.app = @tester
 

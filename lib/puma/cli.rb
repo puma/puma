@@ -1,17 +1,13 @@
 require 'optparse'
+require 'uri'
+
 require 'puma/configurator'
 require 'puma/const'
 
 module Puma
   class CLI
-    Options = [
-        ['-p', '--port PORT', "Which port to bind to", :@port, 3000],
-        ['-a', '--address ADDR', "Address to bind to", :@address, "0.0.0.0"],
-        ['-n', '--concurrency INT', "Number of concurrent threads to use",
-                                    :@concurrency, 16],
-    ]
-
-    Banner = "puma <options> <rackup file>"
+    DefaultTCPHost = "0.0.0.0"
+    DefaultTCPPort = 3000
 
     def initialize(argv, stdout=STDOUT)
       @argv = argv
@@ -21,26 +17,37 @@ module Puma
     end
 
     def setup_options
-      @options = OptionParser.new do |o|
-        Options.each do |short, long, help, variable, default|
-          instance_variable_set(variable, default)
+      @options = {
+        :concurrency => 16
+      }
 
-          o.on(short, long, help) do |arg|
-            instance_variable_set(variable, arg)
-          end
+      @binds = []
+
+      @parser = OptionParser.new do |o|
+        o.on '-n', '--concurrency INT', "Number of concurrent threads to use" do |arg|
+          @options[:concurrency] = arg.to_i
+        end
+
+        o.on "-b", "--bind URI", "URI to bind to (tcp:// and unix:// only)" do |arg|
+          @binds << arg
         end
       end
 
-      @options.banner = Banner
+      @parser.banner = "puma <options> <rackup file>"
 
-      @options.on_tail "-h", "--help", "Show help" do
-        @stdout.puts @options
+      @parser.on_tail "-h", "--help", "Show help" do
+        @stdout.puts @parser
         exit 1
       end
     end
 
+    def load_rackup
+      @app, options = Rack::Builder.parse_file @rackup
+      @options.merge! options
+    end
+
     def run
-      @options.parse! @argv
+      @parser.parse! @argv
 
       @rackup = ARGV.shift || "config.ru"
 
@@ -48,24 +55,46 @@ module Puma
         raise "Missing rackup file '#{@rackup}'"
       end
 
-      settings = {
-        :host => @address,
-        :port => @port,
-        :concurrency => @concurrency,
-        :stdout => @stdout
-      }
+      load_rackup
 
-      config = Puma::Configurator.new(settings) do |c|
-        c.listener do |l|
-          l.load_rackup @rackup
+      if @binds.empty?
+        @options[:Host] ||= DefaultTCPHost
+        @options[:Port] ||= DefaultTCPPort
+      end
+
+      server = Puma::Server.new @app, @options[:concurrency]
+
+      @stdout.puts "Puma #{Puma::Const::PUMA_VERSION} starting..."
+
+      if @options[:Host]
+        @stdout.puts "Listening on tcp://#{@options[:Host]}:#{@options[:Port]}"
+        server.add_tcp_listener @options[:Host], @options[:Port]
+      end
+
+      @binds.each do |str|
+        uri = URI.parse str
+        case uri.scheme
+        when "tcp"
+          @stdout.puts "Listening on #{str}"
+          server.add_tcp_listener uri.host, uri.port
+        when "unix"
+          @stdout.puts "Listening on #{str}"
+          if uri.host
+            path = "#{uri.host}/#{uri.path}"
+          else
+            path = uri.path
+          end
+
+          server.add_unix_listener path
+        else
+          @stdout.puts "Invalid URI: #{str}"
+          exit 1
         end
       end
 
-      config.run
-      config.log "Puma #{Puma::Const::PUMA_VERSION} available at #{@address}:#{@port}"
-      config.log "Use CTRL-C to stop." 
+      @stdout.puts "Use Ctrl-C to stop"
 
-      config.join
+      server.run.join
     end
   end
 end

@@ -1,4 +1,3 @@
-require 'yaml'
 require 'etc'
 
 require 'rubygems'
@@ -8,9 +7,7 @@ require 'puma/server'
 
 module Puma
   # Implements a simple DSL for configuring a Puma server for your 
-  # purposes.  More used by framework implementers to setup Puma
-  # how they like, but could be used by regular folks to add more things
-  # to an existing puma configuration.
+  # purposes. 
   #
   # It is used like this:
   #
@@ -40,15 +37,13 @@ module Puma
   class Configurator
     attr_reader :listeners
     attr_reader :defaults
-    attr_reader :needs_restart
 
     # You pass in initial defaults and then a block to continue configuring.
     def initialize(defaults={}, &block)
       @listener = nil
       @listener_name = nil
-      @listeners = {}
+      @listeners = []
       @defaults = defaults
-      @needs_restart = false
 
       if block
         yield self
@@ -98,7 +93,7 @@ module Puma
 
       @listener = Puma::Server.new(ops[:host], ops[:port].to_i, ops[:concurrency].to_i)
       @listener_name = "#{ops[:host]}:#{ops[:port]}"
-      @listeners[@listener_name] = @listener
+      @listeners << @listener
 
       if ops[:user] and ops[:group]
         change_privilege(ops[:user], ops[:group])
@@ -118,28 +113,20 @@ module Puma
       # Do something with options?
     end
 
-    # Easy way to load a YAML file and apply default settings.
-    def load_yaml(file, default={})
-      default.merge(YAML.load_file(file))
-    end
-
     # Works like a meta run method which goes through all the 
     # configured listeners.  Use the Configurator.join method
     # to prevent Ruby from exiting until each one is done.
     def run
-      @listeners.each {|name,s| 
-        s.run 
-      }
+      @listeners.each { |s| s.run }
     end
 
     # Calls .stop on all the configured listeners so they
     # stop processing requests (gracefully).  By default it
     # assumes that you don't want to restart.
-    def stop(needs_restart=false, synchronous=false)   
-      @listeners.each do |name,s| 
+    def stop(synchronous=false)
+      @listeners.each do |s|
         s.stop(synchronous)      
       end      
-      @needs_restart = needs_restart
     end
 
 
@@ -147,7 +134,7 @@ module Puma
     # Configurator block so that you can control it.  In other words
     # do it like:  config.join.
     def join
-      @listeners.values.each {|s| s.acceptor.join }
+      @listeners.each { |s| s.acceptor.join }
     end
 
     # Used to allow you to let users specify their own configurations

@@ -1,4 +1,5 @@
 require 'rack'
+require 'stringio'
 
 require 'puma/thread_pool'
 require 'puma/const'
@@ -21,8 +22,6 @@ module Puma
 
     attr_accessor :stderr, :stdout
 
-    Default = lambda { |e| raise "no rack app configured" }
-
     # Creates a working server on host:port (strange things happen if port
     # isn't a Number).
     #
@@ -33,14 +32,13 @@ module Puma
     # the same time. Any requests over this ammount are queued and handled
     # as soon as a thread is available.
     #
-    def initialize(host, port, concurrent=10, app=Default)
-      @socket = TCPServer.new(host, port) 
-      
-      @host = host
-      @port = port
+    def initialize(app, concurrent=10)
       @concurrent = concurrent
 
       @check, @notify = IO.pipe
+
+      @ios = [@check]
+
       @running = true
 
       @thread_pool = ThreadPool.new(0, concurrent) do |client|
@@ -53,24 +51,24 @@ module Puma
       @app = app
     end
 
+    def add_tcp_listener(host, port)
+      @ios << TCPServer.new(host, port)
+    end
+
+    def add_unix_listener(path)
+      @ios << UNIXServer.new(path)
+    end
+
     # Runs the server.  It returns the thread used so you can "join" it.
     # You can also access the HttpServer#acceptor attribute to get the
     # thread later.
     def run
       BasicSocket.do_not_reverse_lookup = true
 
-      configure_socket_options
-
-      if @tcp_defer_accept_opts
-        @socket.setsockopt(*@tcp_defer_accept_opts)
-      end
-
-      tcp_cork_opts = @tcp_cork_opts
-
       @acceptor = Thread.new do
         begin
           check = @check
-          sockets = [check, @socket]
+          sockets = @ios
           pool = @thread_pool
 
           while @running
@@ -80,11 +78,7 @@ module Puma
                 if sock == check
                   break if handle_check
                 else
-                  client = sock.accept
-
-                  client.setsockopt(*tcp_cork_opts) if tcp_cork_opts
-     
-                  pool << client
+                  pool << sock.accept
                 end
               end
             rescue Errno::ECONNABORTED
@@ -97,33 +91,11 @@ module Puma
           end
           graceful_shutdown
         ensure
-          @socket.close
-          # @stderr.puts "#{Time.now}: Closed socket."
+          @ios.each { |i| i.close }
         end
       end
 
       return @acceptor
-    end
-
-    def configure_socket_options
-      @tcp_defer_accept_opts = nil
-      @tcp_cork_opts = nil
-
-      case RUBY_PLATFORM
-      when /linux/
-        # 9 is currently TCP_DEFER_ACCEPT
-        @tcp_defer_accept_opts = [Socket::SOL_TCP, 9, 1]
-        @tcp_cork_opts = [Socket::SOL_TCP, 3, 1]
-
-      when /freebsd(([1-4]\..{1,2})|5\.[0-4])/
-        # Do nothing, just closing a bug when freebsd <= 5.4
-      when /freebsd/
-        # Use the HTTP accept filter if available.
-        # The struct made by pack() is defined in /usr/include/sys/socket.h as accept_filter_arg
-        unless `/sbin/sysctl -nq net.inet.accf.http`.empty?
-          @tcp_defer_accept_opts = [Socket::SOL_SOCKET, Socket::SO_ACCEPTFILTER, ['httpready', nil].pack('a16a240')]
-        end
-      end
     end
 
     def handle_check
@@ -351,6 +323,4 @@ module Puma
       @acceptor.join if sync
     end
   end
-
-  HttpServer = Server
 end
