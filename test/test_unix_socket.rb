@@ -10,7 +10,7 @@ class TestPumaUnixSocket < Test::Unit::TestCase
   Path = "test/puma.sock"
 
   def setup
-    @server = Puma::Server.new App, 2
+    @server = Puma::Server.new App
   end
 
   def teardown

@@ -15,14 +15,12 @@ module Puma
 
     include Puma::Const
 
-    attr_reader :acceptor
-    attr_reader :host
-    attr_reader :port
-    attr_reader :concurrent
-
+    attr_reader :thread
+    attr_reader :events
     attr_accessor :app
 
-    attr_reader :events
+    attr_accessor :min_threads
+    attr_accessor :max_threads
 
     # Creates a working server on host:port (strange things happen if port
     # isn't a Number).
@@ -30,26 +28,20 @@ module Puma
     # Use HttpServer#run to start the server and HttpServer#acceptor.join to 
     # join the thread that's processing incoming requests on the socket.
     #
-    # +concurrent+ indicates how many concurrent requests should be run at
-    # the same time. Any requests over this ammount are queued and handled
-    # as soon as a thread is available.
-    #
-    def initialize(app, concurrent=10, events=Events::DEFAULT)
-      @concurrent = concurrent
-
-      @check, @notify = IO.pipe
-
-      @ios = [@check]
-
-      @running = true
-
-      @thread_pool = ThreadPool.new(0, concurrent) do |client|
-        process_client(client)
-      end
-
+    def initialize(app, events=Events::DEFAULT)
+      @app = app
       @events = events
 
-      @app = app
+      @check, @notify = IO.pipe
+      @ios = [@check]
+
+      @running = false
+
+      @min_threads = 0
+      @max_threads = 16
+
+      @thread = nil
+      @thread_pool = nil
 
       @proto_env = {
         "rack.version".freeze => Rack::VERSION,
@@ -80,7 +72,13 @@ module Puma
     def run
       BasicSocket.do_not_reverse_lookup = true
 
-      @acceptor = Thread.new do
+      @running = true
+
+      @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
+        process_client(client)
+      end
+
+      @thread = Thread.new do
         begin
           check = @check
           sockets = @ios
@@ -109,7 +107,7 @@ module Puma
         end
       end
 
-      return @acceptor
+      return @thread
     end
 
     def handle_check
@@ -307,7 +305,7 @@ module Puma
 
     # Wait for all outstanding requests to finish.
     def graceful_shutdown
-      @thread_pool.shutdown
+      @thread_pool.shutdown if @thread_pool
     end
 
     # Stops the acceptor thread and then causes the worker threads to finish
@@ -315,7 +313,7 @@ module Puma
     def stop(sync=false)
       @notify << STOP_COMMAND
 
-      @acceptor.join if @acceptor && sync
+      @thread.join if @thread && sync
     end
   end
 end
