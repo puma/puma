@@ -89,11 +89,7 @@ module Puma
           server.add_tcp_listener uri.host, uri.port
         when "unix"
           log "Listening on #{str}"
-          if uri.host
-            path = "#{uri.host}/#{uri.path}"
-          else
-            path = uri.path
-          end
+          path = "#{uri.host}#{uri.path}"
 
           server.add_unix_listener path
         else
