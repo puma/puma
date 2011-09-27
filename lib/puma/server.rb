@@ -1,5 +1,11 @@
 require 'rack'
+
 require 'puma/thread_pool'
+require 'puma/const'
+
+require 'http11'
+
+require 'socket'
 
 module Puma
   class Server

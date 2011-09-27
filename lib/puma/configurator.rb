@@ -1,7 +1,10 @@
 require 'yaml'
 require 'etc'
 
+require 'rubygems'
 require 'rack/builder'
+
+require 'puma/server'
 
 module Puma
   # Implements a simple DSL for configuring a Puma server for your 
@@ -46,7 +49,6 @@ module Puma
       @listeners = {}
       @defaults = defaults
       @needs_restart = false
-      @pid_file = defaults[:pid_file]
 
       if block
         yield self
@@ -77,39 +79,18 @@ module Puma
       end
     end
 
-    def remove_pid_file
-      File.unlink(@pid_file) if @pid_file and File.exists?(@pid_file)
-    end
-
-    # Writes the PID file if we're not on Windows.
-    def write_pid_file
-      unless RbConfig::CONFIG['host_os'] =~ /mingw|mswin/
-        log "Writing PID file to #{@pid_file}"
-        open(@pid_file,"w") {|f| f.write(Process.pid) }
-        open(@pid_file,"w") do |f|
-          f.write(Process.pid)
-          File.chmod(0644, @pid_file)
-        end
-      end
-    end
-
     # This will resolve the given options against the defaults.
     # Normally just used internally.
     def resolve_defaults(options)
       options.merge(@defaults)
     end
 
-    # Starts a listener block.  This is the only one that actually takes
-    # a block and then you make Configurator.uri calls in order to setup
-    # your URIs and handlers.  If you write your Handlers as GemPlugins
-    # then you can use load_plugins and plugin to load them.
+    # Starts a listener block.
     # 
     # It expects the following options (or defaults):
     # 
     # * :host => Host name to bind.
     # * :port => Port to bind.
-    # * :user => User to change to, must have :group as well.
-    # * :group => Group to change to, must have :user as well.
     #
     def listener(options={})
       raise "Cannot call listener inside another listener block." if (@listener or @listener_name)
@@ -137,52 +118,9 @@ module Puma
       # Do something with options?
     end
 
-    # Uses the GemPlugin system to easily load plugins based on their
-    # gem dependencies.  You pass in either an :includes => [] or 
-    # :excludes => [] setting listing the names of plugins to include
-    # or exclude from the determining the dependencies.
-    def load_plugins(options={})
-      ops = resolve_defaults(options)
-
-      load_settings = {}
-      if ops[:includes]
-        ops[:includes].each do |plugin|
-          load_settings[plugin] = GemPlugin::INCLUDE
-        end
-      end
-
-      if ops[:excludes]
-        ops[:excludes].each do |plugin|
-          load_settings[plugin] = GemPlugin::EXCLUDE
-        end
-      end
-
-      GemPlugin::Manager.instance.load(load_settings)
-    end
-
-
     # Easy way to load a YAML file and apply default settings.
     def load_yaml(file, default={})
       default.merge(YAML.load_file(file))
-    end
-
-    # Loads and creates a plugin for you based on the given
-    # name and configured with the selected options.  The options
-    # are merged with the defaults prior to passing them in.
-    def plugin(name, options={})
-      ops = resolve_defaults(options)
-      GemPlugin::Manager.instance.create(name, ops)
-    end
-
-    # Lets you do redirects easily as described in Puma::RedirectHandler.
-    # You use it inside the configurator like this:
-    #
-    #   redirect("/test", "/to/there") # simple
-    #   redirect("/to", /t/, 'w') # regexp
-    #   redirect("/hey", /(w+)/) {|match| ...}  # block
-    #
-    def redirect(from, pattern, replacement = nil, &block)
-      uri from, :handler => Puma::RedirectHandler.new(pattern, replacement, &block)
     end
 
     # Works like a meta run method which goes through all the 
@@ -224,20 +162,14 @@ module Puma
     # It only configures if the platform is not win32 and doesn't do
     # a HUP signal since this is typically framework specific.
     #
-    # Requires a :pid_file option given to Configurator.new to indicate a file to delete.  
-    # It sets the PumaConfig.needs_restart attribute if 
-    # the start command should reload.  It's up to you to detect this
-    # and do whatever is needed for a "restart".
-    #
     # This command is safely ignored if the platform is win32 (with a warning)
     def setup_signals(options={})
       ops = resolve_defaults(options)
 
-      # forced shutdown, even if previously restarted (actually just like TERM but for CTRL-C)
+      # forced shutdown, even if previously restarted (actually just like TERM
+      # but for CTRL-C)
+      #
       trap("INT") { log "INT signal received."; stop(false) }
-
-      # clean up the pid file always
-      at_exit { remove_pid_file }
 
       unless RbConfig::CONFIG['host_os'] =~ /mingw|mswin/
         # graceful shutdown
