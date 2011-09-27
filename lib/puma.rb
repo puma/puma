@@ -13,7 +13,6 @@ require 'puma/gems'
 require 'thread'
 
 # Ruby Puma
-require 'puma/configurator'
 require 'puma/const'
 require 'puma/server'
 require 'puma/utils'

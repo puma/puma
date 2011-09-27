@@ -1,3 +1,4 @@
+require 'rubygems'
 require 'rack'
 require 'stringio'
 
@@ -320,7 +321,7 @@ module Puma
     def stop(sync=false)
       @notify << STOP_COMMAND
 
-      @acceptor.join if sync
+      @acceptor.join if @acceptor && sync
     end
   end
 end

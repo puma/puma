@@ -1,7 +1,7 @@
 require 'optparse'
 require 'uri'
 
-require 'puma/configurator'
+require 'puma/server'
 require 'puma/const'
 
 module Puma
@@ -9,11 +9,21 @@ module Puma
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 3000
 
-    def initialize(argv, stdout=STDOUT)
+    def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @argv = argv
       @stdout = stdout
+      @stderr = stderr
 
       setup_options
+    end
+
+    def log(str)
+      @stdout.puts str
+    end
+
+    def error(str)
+      @stderr.puts "ERROR: #{str}"
+      exit 1
     end
 
     def setup_options
@@ -36,7 +46,7 @@ module Puma
       @parser.banner = "puma <options> <rackup file>"
 
       @parser.on_tail "-h", "--help", "Show help" do
-        @stdout.puts @parser
+        log @parser
         exit 1
       end
     end
@@ -64,10 +74,10 @@ module Puma
 
       server = Puma::Server.new @app, @options[:concurrency]
 
-      @stdout.puts "Puma #{Puma::Const::PUMA_VERSION} starting..."
+      log "Puma #{Puma::Const::PUMA_VERSION} starting..."
 
       if @options[:Host]
-        @stdout.puts "Listening on tcp://#{@options[:Host]}:#{@options[:Port]}"
+        log "Listening on tcp://#{@options[:Host]}:#{@options[:Port]}"
         server.add_tcp_listener @options[:Host], @options[:Port]
       end
 
@@ -75,10 +85,10 @@ module Puma
         uri = URI.parse str
         case uri.scheme
         when "tcp"
-          @stdout.puts "Listening on #{str}"
+          log "Listening on #{str}"
           server.add_tcp_listener uri.host, uri.port
         when "unix"
-          @stdout.puts "Listening on #{str}"
+          log "Listening on #{str}"
           if uri.host
             path = "#{uri.host}/#{uri.path}"
           else
@@ -87,12 +97,11 @@ module Puma
 
           server.add_unix_listener path
         else
-          @stdout.puts "Invalid URI: #{str}"
-          exit 1
+          error "Invalid URI: #{str}"
         end
       end
 
-      @stdout.puts "Use Ctrl-C to stop"
+      log "Use Ctrl-C to stop"
 
       server.run.join
     end
