@@ -7,7 +7,7 @@ require 'puma/const'
 module Puma
   class CLI
     DefaultTCPHost = "0.0.0.0"
-    DefaultTCPPort = 3000
+    DefaultTCPPort = 9292
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @argv = argv

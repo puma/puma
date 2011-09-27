@@ -22,12 +22,8 @@ class WebServerTest < Test::Unit::TestCase
     
     @tester = TestHandler.new
 
-    @server = Server.new @tester
+    @server = Server.new @tester, 1, Events.strings
     @server.add_tcp_listener "127.0.0.1", 9998
-
-    @server.stderr = StringIO.new
-
-    @server.app = @tester
 
     redirect_test_io do
       @server.run 

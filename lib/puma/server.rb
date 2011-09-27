@@ -4,6 +4,7 @@ require 'stringio'
 
 require 'puma/thread_pool'
 require 'puma/const'
+require 'puma/events'
 
 require 'http11'
 
@@ -21,7 +22,7 @@ module Puma
 
     attr_accessor :app
 
-    attr_accessor :stderr, :stdout
+    attr_reader :events
 
     # Creates a working server on host:port (strange things happen if port
     # isn't a Number).
@@ -33,7 +34,7 @@ module Puma
     # the same time. Any requests over this ammount are queued and handled
     # as soon as a thread is available.
     #
-    def initialize(app, concurrent=10)
+    def initialize(app, concurrent=10, events=Events::DEFAULT)
       @concurrent = concurrent
 
       @check, @notify = IO.pipe
@@ -46,14 +47,13 @@ module Puma
         process_client(client)
       end
 
-      @stderr = STDERR
-      @stdout = STDOUT
+      @events = events
 
       @app = app
 
       @proto_env = {
         "rack.version".freeze => Rack::VERSION,
-        "rack.errors".freeze => @stderr,
+        "rack.errors".freeze => events.stderr,
         "rack.multithread".freeze => true,
         "rack.multiprocess".freeze => false,
         "rack.run_once".freeze => true,
@@ -100,8 +100,7 @@ module Puma
               # client closed the socket even before accept
               client.close rescue nil
             rescue Object => e
-              @stderr.puts "#{Time.now}: Unhandled listen loop exception #{e.inspect}."
-              @stderr.puts e.backtrace.join("\n")
+              @events.unknown_error self, env, e, "Listen loop"
             end
           end
           graceful_shutdown
@@ -155,26 +154,22 @@ module Puma
             end
           end
         end
-      rescue EOFError, Errno::ECONNRESET, Errno::EPIPE, Errno::EINVAL,
-             Errno::EBADF
+      rescue EOFError, SystemCallError
         client.close rescue nil
 
       rescue HttpParserError => e
-        @stderr.puts "#{Time.now}: HTTP parse error, malformed request (#{env[HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
-        @stderr.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{env.inspect}\n---\n"
+        @events.parse_error self, env, e
 
-      rescue Object => e
-        @stderr.puts "#{Time.now}: Read error: #{e.inspect}"
-        @stderr.puts e.backtrace.join("\n")
+      rescue StandardError => e
+        @events.unknown_error self, env, e, "Read"
 
       ensure
         begin
           client.close
-        rescue IOError
+        rescue IOError, SystemCallError
           # Already closed
-        rescue Object => e
-          @stderr.puts "#{Time.now}: Client error: #{e.inspect}"
-          @stderr.puts e.backtrace.join("\n")
+        rescue StandardError => e
+          @events.unknown_error self, env, e, "Client"
         end
       end
     end
