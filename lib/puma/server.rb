@@ -50,6 +50,20 @@ module Puma
       @stdout = STDOUT
 
       @app = app
+
+      @proto_env = {
+        "rack.version".freeze => Rack::VERSION,
+        "rack.errors".freeze => @stderr,
+        "rack.multithread".freeze => true,
+        "rack.multiprocess".freeze => false,
+        "rack.run_once".freeze => true,
+        "SCRIPT_NAME".freeze => "",
+        "CONTENT_TYPE".freeze => "",
+        "QUERY_STRING".freeze => "",
+        SERVER_PROTOCOL => HTTP_11,
+        SERVER_SOFTWARE => PUMA_VERSION,
+        GATEWAY_INTERFACE => CGI_VER
+      }
     end
 
     def add_tcp_listener(host, port)
@@ -114,7 +128,7 @@ module Puma
     def process_client(client)
       begin
         parser = HttpParser.new
-        params = {}
+        env = @proto_env.dup
         data = client.readpartial(CHUNK_SIZE)
         nparsed = 0
 
@@ -124,10 +138,10 @@ module Puma
         # Effect is to stop processing when the socket can't fill the buffer
         # for further parsing.
         while nparsed < data.length
-          nparsed = parser.execute(params, data, nparsed)
+          nparsed = parser.execute(env, data, nparsed)
 
           if parser.finished?
-            handle_request params, client, parser.body
+            handle_request env, client, parser.body
             break
           else
             # Parser is not done, queue up more data to read and continue parsing
@@ -146,8 +160,8 @@ module Puma
         client.close rescue nil
 
       rescue HttpParserError => e
-        @stderr.puts "#{Time.now}: HTTP parse error, malformed request (#{params[HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
-        @stderr.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{params.inspect}\n---\n"
+        @stderr.puts "#{Time.now}: HTTP parse error, malformed request (#{env[HTTP_X_FORWARDED_FOR] || client.peeraddr.last}): #{e.inspect}"
+        @stderr.puts "#{Time.now}: REQUEST DATA: #{data.inspect}\n---\nPARAMS: #{env.inspect}\n---\n"
 
       rescue Object => e
         @stderr.puts "#{Time.now}: Read error: #{e.inspect}"
@@ -165,27 +179,23 @@ module Puma
       end
     end
 
-    def handle_request(params, client, body)
-      if host = params[HTTP_HOST]
+    def normalize_env(env, client)
+      if host = env[HTTP_HOST]
         if colon = host.index(":")
-          params[SERVER_NAME] = host[0, colon]
-          params[SERVER_PORT] = host[colon+1, host.size]
+          env[SERVER_NAME] = host[0, colon]
+          env[SERVER_PORT] = host[colon+1, host.size]
         else
-          params[SERVER_NAME] = host
-          params[SERVER_PORT] = PORT_80
+          env[SERVER_NAME] = host
+          env[SERVER_PORT] = PORT_80
         end
       end
 
-      params[SERVER_PROTOCOL] = HTTP_11
-      params[SERVER_SOFTWARE] = PUMA_VERSION
-      params[GATEWAY_INTERFACE] = CGI_VER
-
-      unless params[REQUEST_PATH]
+      unless env[REQUEST_PATH]
         # it might be a dumbass full host request header
-        uri = URI.parse(params[REQUEST_URI])
-        params[REQUEST_PATH] = uri.path
+        uri = URI.parse(env[REQUEST_URI])
+        env[REQUEST_PATH] = uri.path
 
-        raise "No REQUEST PATH" unless params[REQUEST_PATH]
+        raise "No REQUEST PATH" unless env[REQUEST_PATH]
       end
 
       # From http://www.ietf.org/rfc/rfc3875 :
@@ -196,31 +206,20 @@ module Puma
       # server; that client may be a proxy, gateway, or other
       # intermediary acting on behalf of the actual source client."
       #
-      params[REMOTE_ADDR] = client.peeraddr.last
-
-      process params, client, body
+      env[REMOTE_ADDR] = client.peeraddr.last
     end
 
-    def process(env, client, body)
+    def handle_request(env, client, body)
+      normalize_env env, client
 
       body = read_body env, client, body
 
       return unless body
 
+      env["rack.input"] = body
+      env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
+
       begin
-        env["SCRIPT_NAME"] = ""
-
-        env["rack.version"] = Rack::VERSION
-        env["rack.input"] = body
-        env["rack.errors"] = $stderr
-        env["rack.multithread"] = true
-        env["rack.multiprocess"] = false
-        env["rack.run_once"] = true
-        env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
-
-        env["CONTENT_TYPE"] ||= ""
-        env["QUERY_STRING"] ||= ""
-
         begin
           status, headers, res_body = @app.call(env)
         rescue => e
