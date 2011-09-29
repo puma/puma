@@ -315,5 +315,34 @@ module Puma
 
       @thread.join if @thread && sync
     end
+
+    def attempt_bonjour(name)
+      begin
+        require 'dnssd'
+      rescue LoadeError
+        return false
+      end
+
+      @bonjour_registered = false
+      announced = false
+
+      @ios.each do |io|
+        if io.kind_of? TCPServer
+          fixed_name = name.gsub /\./, "-"
+
+          DNSSD.announce io, "puma - #{fixed_name}", "http" do |r|
+            @bonjour_registered = true
+          end
+
+          announced = true
+        end
+      end
+
+      return announced
+    end
+
+    def bonjour_registered?
+      @bonjour_registered ||= false
+    end
   end
 end
