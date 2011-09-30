@@ -263,7 +263,7 @@ module Puma
 
         if res_body.kind_of? String
           if chunked
-            client.write res_body.size.to_s
+            client.write res_body.size.to_s(16)
             client.write line_ending
             client.write res_body
             client.write line_ending
@@ -275,7 +275,7 @@ module Puma
         else
           res_body.each do |part|
             if chunked
-              client.write part.size.to_s
+              client.write part.size.to_s(16)
               client.write line_ending
               client.write part
               client.write line_ending

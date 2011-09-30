@@ -55,4 +55,14 @@ class TestPersistent < Test::Unit::TestCase
     assert_equal "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nX-Header: Works\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n", lines(9)
   end
 
+  def test_hex
+    str = "This is longer and will be in hex"
+    @body << str
+
+    @client << @valid_request
+
+    assert_equal "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nX-Header: Works\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n", lines(9)
+
+  end
+
 end
