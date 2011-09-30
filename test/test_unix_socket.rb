@@ -11,6 +11,8 @@ class TestPumaUnixSocket < Test::Unit::TestCase
 
   def setup
     @server = Puma::Server.new App
+    @server.add_unix_listener Path
+    @server.run
   end
 
   def teardown
@@ -19,14 +21,14 @@ class TestPumaUnixSocket < Test::Unit::TestCase
   end
 
   def test_server
-    @server.add_unix_listener Path
-    @server.run
-
     sock = UNIXSocket.new Path
 
     sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nWorks",
-                 sock.read
+    expected = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
+
+    assert_equal expected, sock.read(expected.size)
+
+    sock.close
   end
 end

@@ -124,31 +124,32 @@ module Puma
 
     def process_client(client)
       begin
-        parser = HttpParser.new
-        env = @proto_env.dup
-        data = client.readpartial(CHUNK_SIZE)
-        nparsed = 0
+        while true
+          parser = HttpParser.new
+          env = @proto_env.dup
+          data = client.readpartial(CHUNK_SIZE)
+          nparsed = 0
 
-        # Assumption: nparsed will always be less since data will get filled
-        # with more after each parsing.  If it doesn't get more then there was
-        # a problem with the read operation on the client socket. 
-        # Effect is to stop processing when the socket can't fill the buffer
-        # for further parsing.
-        while nparsed < data.length
-          nparsed = parser.execute(env, data, nparsed)
+          # Assumption: nparsed will always be less since data will get filled
+          # with more after each parsing.  If it doesn't get more then there was
+          # a problem with the read operation on the client socket. 
+          # Effect is to stop processing when the socket can't fill the buffer
+          # for further parsing.
+          while nparsed < data.length
+            nparsed = parser.execute(env, data, nparsed)
 
-          if parser.finished?
-            handle_request env, client, parser.body
-            break
-          else
-            # Parser is not done, queue up more data to read and continue parsing
-            chunk = client.readpartial(CHUNK_SIZE)
-            break if !chunk or chunk.length == 0  # read failed, stop processing
+            if parser.finished?
+              return unless handle_request env, client, parser.body
+            else
+              # Parser is not done, queue up more data to read and continue parsing
+              chunk = client.readpartial(CHUNK_SIZE)
+              return if !chunk or chunk.length == 0  # read failed, stop processing
 
-            data << chunk
-            if data.length >= MAX_HEADER
-              raise HttpParserError,
-                "HEADER is longer than allowed, aborting client early."
+              data << chunk
+              if data.length >= MAX_HEADER
+                raise HttpParserError,
+                  "HEADER is longer than allowed, aborting client early."
+              end
             end
           end
         end
@@ -207,10 +208,13 @@ module Puma
 
       body = read_body env, client, body
 
-      return unless body
+      return false unless body
 
       env["rack.input"] = body
       env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
+
+      keep_alive = false
+      chunked = false
 
       begin
         begin
@@ -219,11 +223,26 @@ module Puma
           status, headers, res_body = lowlevel_error(e)
         end
 
+        content_length = nil
+
+        if res_body.kind_of? String
+          content_length = res_body.size
+        elsif res_body.kind_of? Array and res_body.size == 1
+          content_length = res_body[0].size
+        end
+
         client.write "HTTP/1.1 "
         client.write status.to_s
         client.write " "
         client.write HTTP_STATUS_CODES[status]
-        client.write "\r\nConnection: close\r\n"
+
+        if content_length
+          client.write "\r\nContent-Length: #{content_length}\r\n"
+          keep_alive = true
+        else
+          client.write "\r\nTransfer-Encoding: chunked\r\n"
+          chunked = true
+        end
 
         colon = ": "
         line_ending = "\r\n"
@@ -240,18 +259,43 @@ module Puma
         client.write line_ending
 
         if res_body.kind_of? String
-          client.write body
+          if chunked
+            client.write res_body.size.to_s
+            client.write line_ending
+            client.write res_body
+            client.write line_ending
+          else
+            client.write res_body
+          end
+
           client.flush
         else
           res_body.each do |part|
-            client.write part
+            if chunked
+              client.write part.size.to_s
+              client.write line_ending
+              client.write part
+              client.write line_ending
+            else
+              client.write part
+            end
+
             client.flush
           end
         end
+
+        if chunked
+          client.write "0"
+          client.write line_ending
+          client.flush
+        end
+
       ensure
         body.close
         res_body.close if res_body.respond_to? :close
       end
+
+      return keep_alive
     end
 
     def read_body(env, client, body)
@@ -328,7 +372,7 @@ module Puma
 
       @ios.each do |io|
         if io.kind_of? TCPServer
-          fixed_name = name.gsub /\./, "-"
+          fixed_name = name.gsub(/\./, "-")
 
           DNSSD.announce io, "puma - #{fixed_name}", "http" do |r|
             @bonjour_registered = true
