@@ -213,7 +213,7 @@ module Puma
       env["rack.input"] = body
       env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
 
-      keep_alive = false
+      keep_alive = env["Connection"] != "close"
       chunked = false
 
       begin
@@ -236,9 +236,12 @@ module Puma
         client.write " "
         client.write HTTP_STATUS_CODES[status]
 
+        unless keep_alive
+          client.write "\r\nConnection: close\r\n"
+        end
+
         if content_length
           client.write "\r\nContent-Length: #{content_length}\r\n"
-          keep_alive = true
         else
           client.write "\r\nTransfer-Encoding: chunked\r\n"
           chunked = true
