@@ -453,7 +453,7 @@ VALUE HttpParser_body(VALUE self) {
   return http->body;
 }
 
-void Init_http11()
+void Init_puma_http11()
 {
 
   VALUE mPuma = rb_define_module("Puma");

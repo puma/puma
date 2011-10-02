@@ -6,7 +6,7 @@ require 'puma/thread_pool'
 require 'puma/const'
 require 'puma/events'
 
-require 'http11'
+require 'puma_http11'
 
 require 'socket'
 

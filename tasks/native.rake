@@ -2,7 +2,7 @@
 require 'rake/extensiontask'
 
 # build http11 C extension
-Rake::ExtensionTask.new('http11', HOE.spec) do |ext|
+Rake::ExtensionTask.new('puma_http11', HOE.spec) do |ext|
   # define target for extension (supporting fat binaries)
   if RUBY_PLATFORM =~ /mingw|mswin/ then
     RUBY_VERSION =~ /(\d+\.\d+)/
