@@ -1,6 +1,6 @@
 require 'test/testhelp'
 
-class HttpParserTest < Test::Unit::TestCase
+class Http10ParserTest < Test::Unit::TestCase
   include Puma
 
   def test_parse_simple

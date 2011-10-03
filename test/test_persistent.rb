@@ -69,7 +69,7 @@ class TestPersistent < Test::Unit::TestCase
 
   end
 
-  def test_client_close
+  def test_client11_close
     @client << @close_request
     sz = @body[0].size.to_s
 
@@ -77,7 +77,7 @@ class TestPersistent < Test::Unit::TestCase
     assert_equal "Hello", @client.read(5)
   end
 
-  def test_client_close
+  def test_client10_close
     @client << @http10_request
     sz = @body[0].size.to_s
 
