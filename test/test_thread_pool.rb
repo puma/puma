@@ -9,7 +9,7 @@ class TestThreadPool < Test::Unit::TestCase
   end
 
   def new_pool(min, max, &blk)
-    blk = lambda { } unless blk
+    blk = proc { } unless blk
     @pool = Puma::ThreadPool.new(min, max, &blk)
   end
 
@@ -56,6 +56,8 @@ class TestThreadPool < Test::Unit::TestCase
 
     assert_equal 1, pool.spawned
     pool.trim
+
+    pause
     assert_equal 0, pool.spawned
   end
 
@@ -70,11 +72,11 @@ class TestThreadPool < Test::Unit::TestCase
 
     assert_equal 2, pool.spawned
     pool.trim
-    Thread.pass # give the others a chance to run and exit
+    pause
 
     assert_equal 1, pool.spawned
     pool.trim
-    Thread.pass # give the others a chance to run and exit
+    pause
 
     assert_equal 1, pool.spawned
 
@@ -93,7 +95,7 @@ class TestThreadPool < Test::Unit::TestCase
 
     finish = true
 
-    Thread.pass # give the others a chance to run and exit
+    pause
 
     assert_equal 1, pool.spawned
   end
