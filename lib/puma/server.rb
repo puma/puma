@@ -213,7 +213,14 @@ module Puma
       env["rack.input"] = body
       env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
 
-      keep_alive = env["HTTP_CONNECTION"] != "close"
+      if env['HTTP_VERSION'] == 'HTTP/1.1'
+        http_version = "HTTP/1.1 "
+        keep_alive = env["HTTP_CONNECTION"] != "close"
+      else
+        http_version = "HTTP/1.0 "
+        keep_alive = env["HTTP_CONNECTION"] == "Keep-Alive"
+      end
+
       chunked = false
 
       begin
@@ -231,7 +238,7 @@ module Puma
           content_length = res_body[0].size
         end
 
-        client.write "HTTP/1.1 "
+        client.write http_version
         client.write status.to_s
         client.write " "
         client.write HTTP_STATUS_CODES[status]

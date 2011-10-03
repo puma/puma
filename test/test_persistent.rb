@@ -5,6 +5,8 @@ class TestPersistent < Test::Unit::TestCase
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
     @close_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
+    @http10_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+    @keep_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\n\r\n"
 
     @headers = { "X-Header" => "Works" }
     @body = ["Hello"]
@@ -72,6 +74,22 @@ class TestPersistent < Test::Unit::TestCase
     sz = @body[0].size.to_s
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(5)
+    assert_equal "Hello", @client.read(5)
+  end
+
+  def test_client_close
+    @client << @http10_request
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(5)
+    assert_equal "Hello", @client.read(5)
+  end
+
+  def test_one_with_keep_alive_header
+    @client << @keep_request
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
