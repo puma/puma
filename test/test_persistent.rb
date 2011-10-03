@@ -4,6 +4,8 @@ require 'test/unit'
 class TestPersistent < Test::Unit::TestCase
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+    @close_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
+
     @headers = { "X-Header" => "Works" }
     @body = ["Hello"]
     @simple = lambda { |env| [200, @headers, @body] }
@@ -63,6 +65,14 @@ class TestPersistent < Test::Unit::TestCase
 
     assert_equal "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nX-Header: Works\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n", lines(9)
 
+  end
+
+  def test_client_close
+    @client << @close_request
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(5)
+    assert_equal "Hello", @client.read(5)
   end
 
 end
