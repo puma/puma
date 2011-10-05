@@ -21,6 +21,7 @@ module Puma
 
     attr_accessor :min_threads
     attr_accessor :max_threads
+    attr_accessor :persistent_timeout
 
     # Creates a working server on host:port (strange things happen if port
     # isn't a Number).
@@ -42,6 +43,8 @@ module Puma
 
       @thread = nil
       @thread_pool = nil
+
+      @persistent_timeout = PERSISTENT_TIMEOUT
 
       @proto_env = {
         "rack.version".freeze => Rack::VERSION,
@@ -140,6 +143,10 @@ module Puma
 
             if parser.finished?
               return unless handle_request env, client, parser.body
+
+              unless IO.select([client], nil, nil, @persistent_timeout)
+                raise EOFError, "Timed out persistent connection"
+              end
             else
               # Parser is not done, queue up more data to read and continue parsing
               chunk = client.readpartial(CHUNK_SIZE)

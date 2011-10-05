@@ -56,6 +56,11 @@ module Puma
   # REMOTE_USER, or REMOTE_HOST parameters since those are either a security problem or
   # too taxing on performance.
   module Const
+
+    # The default number of seconds for another request within a persistent
+    # session.
+    PERSISTENT_TIMEOUT = 20
+
     DATE = "Date".freeze
 
     SCRIPT_NAME = "SCRIPT_NAME".freeze

@@ -93,4 +93,19 @@ class TestPersistent < Test::Unit::TestCase
     assert_equal "Hello", @client.read(5)
   end
 
+  def test_persistent_timeout
+    @server.persistent_timeout = 2
+    @client << @valid_request
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(4)
+    assert_equal "Hello", @client.read(5)
+
+    sleep 3
+
+    assert_raises EOFError do
+      @client.read_nonblock(1)
+    end
+  end
+
 end
