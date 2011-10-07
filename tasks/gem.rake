@@ -2,6 +2,7 @@ require 'hoe'
 
 HOE = Hoe.spec 'puma' do
   self.rubyforge_name = 'puma'
+  self.readme_file = "README.md"
   developer 'Evan Phoenix', 'evan@phx.io'
 
   spec_extras[:extensions] = ["ext/http11/extconf.rb"]
@@ -14,7 +15,7 @@ end
 
 file "#{HOE.spec.name}.gemspec" => ['Rakefile', 'tasks/gem.rake'] do |t|
   puts "Generating #{t.name}"
-  File.open(t.name, 'w') { |f| f.puts HOE.spec.to_yaml }
+  File.open(t.name, 'w') { |f| f.puts HOE.spec.to_ruby }
 end
 
 desc "Generate or update the standalone gemspec file for the project"
