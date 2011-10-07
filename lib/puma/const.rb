@@ -69,7 +69,7 @@ module Puma
     REQUEST_URI= 'REQUEST_URI'.freeze
     REQUEST_PATH = 'REQUEST_PATH'.freeze
 
-    PUMA_VERSION = VERSION = "1.0.0".freeze
+    PUMA_VERSION = VERSION = "0.8.0".freeze
 
     PUMA_TMP_BASE = "puma".freeze
 
