@@ -63,4 +63,14 @@ class TestRackServer < Test::Unit::TestCase
       raise exc
     end
   end
+
+  def test_path_info
+    input = nil
+    @server.app = lambda { |env| input = env; @simple.call(env) }
+    @server.run
+
+    hit(['http://localhost:9998/test/a/b/c'])
+
+    assert_equal "/test/a/b/c", input['PATH_INFO']
+  end
 end
