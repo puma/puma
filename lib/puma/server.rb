@@ -253,6 +253,23 @@ module Puma
         client.write HTTP_STATUS_CODES[status]
         client.write "\r\n"
 
+        colon = ": "
+        line_ending = "\r\n"
+
+        headers.each do |k, vs|
+          if k == "Content-Length"
+            content_length = vs
+            next
+          end
+
+          vs.split("\n").each do |v|
+            client.write k
+            client.write colon
+            client.write v
+            client.write line_ending
+          end
+        end
+
         client.write "Connection: close\r\n" unless keep_alive
 
         if content_length
@@ -260,18 +277,6 @@ module Puma
         else
           client.write "Transfer-Encoding: chunked\r\n"
           chunked = true
-        end
-
-        colon = ": "
-        line_ending = "\r\n"
-
-        headers.each do |k, vs|
-          vs.split("\n").each do |v|
-            client.write k
-            client.write colon
-            client.write v
-            client.write line_ending
-          end
         end
 
         client.write line_ending

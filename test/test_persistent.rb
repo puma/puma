@@ -33,7 +33,7 @@ class TestPersistent < Test::Unit::TestCase
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -41,13 +41,13 @@ class TestPersistent < Test::Unit::TestCase
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -56,7 +56,7 @@ class TestPersistent < Test::Unit::TestCase
 
     @client << @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nX-Header: Works\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n", lines(9)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n", lines(9)
   end
 
   def test_hex
@@ -65,7 +65,7 @@ class TestPersistent < Test::Unit::TestCase
 
     @client << @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nX-Header: Works\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n", lines(9)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n", lines(9)
 
   end
 
@@ -73,7 +73,7 @@ class TestPersistent < Test::Unit::TestCase
     @client << @close_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(5)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nConnection: close\r\nContent-Length: #{sz}\r\n\r\n", lines(5)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -81,7 +81,7 @@ class TestPersistent < Test::Unit::TestCase
     @client << @http10_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(5)
+    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nConnection: close\r\nContent-Length: #{sz}\r\n\r\n", lines(5)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -89,7 +89,7 @@ class TestPersistent < Test::Unit::TestCase
     @client << @keep_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -98,7 +98,7 @@ class TestPersistent < Test::Unit::TestCase
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: #{sz}\r\nX-Header: Works\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
     sleep 3
@@ -106,6 +106,17 @@ class TestPersistent < Test::Unit::TestCase
     assert_raises EOFError do
       @client.read_nonblock(1)
     end
+  end
+
+  def test_app_sets_content_length
+    @body = ["hello", " world"]
+    @headers['Content-Length'] = "11"
+
+    @client << @valid_request
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: 11\r\n\r\n",
+                 lines(4)
+    assert_equal "hello world", @client.read(11)
   end
 
 end
