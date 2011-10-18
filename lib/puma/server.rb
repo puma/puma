@@ -229,7 +229,10 @@ module Puma
       env["rack.input"] = body
       env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
 
+      allow_chunked = false
+
       if env['HTTP_VERSION'] == 'HTTP/1.1'
+        allow_chunked = true
         http_version = "HTTP/1.1 "
         keep_alive = env["HTTP_CONNECTION"] != "close"
       else
@@ -281,7 +284,7 @@ module Puma
 
         if content_length
           client.write "Content-Length: #{content_length}\r\n"
-        else
+        elsif allow_chunked
           client.write "Transfer-Encoding: chunked\r\n"
           chunked = true
         end
