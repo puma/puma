@@ -119,4 +119,21 @@ class TestPersistent < Test::Unit::TestCase
     assert_equal "hello world", @client.read(11)
   end
 
+  def test_two_requests_in_one_chunk
+    @server.persistent_timeout = 3
+
+    req = @valid_request.to_s
+    req << "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+
+    @client << req
+
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "Hello", @client.read(5)
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "Hello", @client.read(5)
+  end
+
 end

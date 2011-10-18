@@ -144,8 +144,15 @@ module Puma
             if parser.finished?
               return unless handle_request env, client, parser.body
 
-              unless IO.select([client], nil, nil, @persistent_timeout)
-                raise EOFError, "Timed out persistent connection"
+              if data.size > nparsed
+                data.slice!(0, nparsed)
+                parser = HttpParser.new
+                env = @proto_env.dup
+                nparsed = 0
+              else
+                unless IO.select([client], nil, nil, @persistent_timeout)
+                  raise EOFError, "Timed out persistent connection"
+                end
               end
             else
               # Parser is not done, queue up more data to read and continue parsing
