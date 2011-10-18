@@ -251,9 +251,7 @@ module Puma
 
         content_length = nil
 
-        if res_body.kind_of? String
-          content_length = res_body.size
-        elsif res_body.kind_of? Array and res_body.size == 1
+        if res_body.kind_of? Array and res_body.size == 1
           content_length = res_body[0].size
         end
 
@@ -291,30 +289,17 @@ module Puma
 
         client.write line_ending
 
-        if res_body.kind_of? String
+        res_body.each do |part|
           if chunked
-            client.write res_body.size.to_s(16)
+            client.write part.size.to_s(16)
             client.write line_ending
-            client.write res_body
+            client.write part
             client.write line_ending
           else
-            client.write res_body
+            client.write part
           end
 
           client.flush
-        else
-          res_body.each do |part|
-            if chunked
-              client.write part.size.to_s(16)
-              client.write line_ending
-              client.write part
-              client.write line_ending
-            else
-              client.write part
-            end
-
-            client.flush
-          end
         end
 
         if chunked
