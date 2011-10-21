@@ -56,7 +56,7 @@ class TestPersistent < Test::Unit::TestCase
 
     @client << @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n", lines(9)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n", lines(10)
   end
 
   def test_no_chunked_in_http10
@@ -74,7 +74,7 @@ class TestPersistent < Test::Unit::TestCase
 
     @client << @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n", lines(9)
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n\r\n", lines(10)
 
   end
 

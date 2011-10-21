@@ -307,6 +307,7 @@ module Puma
         if chunked
           client.write "0"
           client.write line_ending
+          client.write line_ending
           client.flush
         end
 
