@@ -2,6 +2,8 @@ require 'test/unit'
 require 'puma'
 require 'rack/lint'
 require 'test/testhelp'
+require 'rack/commonlogger'
+require 'puma/rack_patch'
 
 class TestRackServer < Test::Unit::TestCase
 
@@ -87,5 +89,19 @@ class TestRackServer < Test::Unit::TestCase
     hit(['http://localhost:9998/test'])
 
     assert_equal true, closed
+  end
+
+  def test_common_logger
+    log = StringIO.new
+
+    logger = Rack::CommonLogger.new(@simple, log)
+
+    @server.app = logger
+
+    @server.run
+
+    hit(['http://localhost:9998/test'])
+
+    assert_match %r!GET /test HTTP/1\.1!, log.string
   end
 end
