@@ -5,7 +5,7 @@ HOE = Hoe.spec 'puma' do
   self.readme_file = "README.md"
   developer 'Evan Phoenix', 'evan@phx.io'
 
-  spec_extras[:extensions] = ["ext/http11/extconf.rb"]
+  spec_extras[:extensions] = ["ext/puma_http11/extconf.rb"]
   spec_extras[:executables] = ['puma']
 
   extra_dev_deps << ['rake-compiler', "~> 0.7.0"]
