@@ -242,6 +242,8 @@ module Puma
 
       chunked = false
 
+      after_reply = env['rack.after_reply'] = []
+
       begin
         begin
           status, headers, res_body = @app.call(env)
@@ -311,6 +313,8 @@ module Puma
       ensure
         body.close
         res_body.close if res_body.respond_to? :close
+
+        after_reply.each { |o| o.call }
       end
 
       return keep_alive

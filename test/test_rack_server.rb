@@ -73,4 +73,19 @@ class TestRackServer < Test::Unit::TestCase
 
     assert_equal "/test/a/b/c", input['PATH_INFO']
   end
+
+  def test_after_reply
+    closed = false
+
+    @server.app = lambda do |env|
+      env['rack.after_reply'] << lambda { closed = true }
+      @simple.call(env)
+    end
+
+    @server.run
+
+    hit(['http://localhost:9998/test'])
+
+    assert_equal true, closed
+  end
 end
