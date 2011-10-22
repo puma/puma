@@ -20,7 +20,7 @@ examples/webrick_compare.rb
 ext/puma_http11/Http11Service.java
 ext/puma_http11/ext_help.h
 ext/puma_http11/extconf.rb
-ext/puma_http11/http11.c
+ext/puma_http11/puma_http11.c
 ext/puma_http11/http11_parser.c
 ext/puma_http11/http11_parser.h
 ext/puma_http11/http11_parser.java.rl
