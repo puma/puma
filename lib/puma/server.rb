@@ -386,7 +386,7 @@ module Puma
     def attempt_bonjour(name)
       begin
         require 'dnssd'
-      rescue LoadeError
+      rescue LoadError
         return false
       end
 
