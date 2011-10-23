@@ -267,9 +267,13 @@ module Puma
         line_ending = "\r\n"
 
         headers.each do |k, vs|
-          if k == "Content-Length"
+          case k
+          when "Content-Length"
             content_length = vs
             next
+          when "Transfer-Encoding"
+            allow_chunked = false
+            content_length = nil
           end
 
           vs.split("\n").each do |v|

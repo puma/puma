@@ -128,6 +128,17 @@ class TestPersistent < Test::Unit::TestCase
     assert_equal "hello world", @client.read(11)
   end
 
+  def test_allow_app_to_chunk_itself
+    @headers = {'Transfer-Encoding' => "chunked" }
+
+    @body = ["5\r\nhello\r\n0\r\n\r\n"]
+
+    @client << @valid_request
+
+    assert_equal "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n", lines(7)
+  end
+
+
   def test_two_requests_in_one_chunk
     @server.persistent_timeout = 3
 
