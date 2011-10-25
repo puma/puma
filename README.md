@@ -23,3 +23,38 @@ Now you should have the puma command available in your PATH, so just do the foll
 ## Install
 
     $ gem install puma
+
+## Advanced Setup
+
+### Sinatra
+
+You can run your Sinatra application with Puma from the command line like this:
+
+    $ ruby app.rb -s Puma
+
+Or you can configure your application to always use Puma:
+
+    require 'sinatra'
+    configure { set :server, :puma }
+
+If you use Bundler, make sure you add Puma to your Gemfile (see below).
+
+### Rails
+
+First, make sure Puma is in your Gemfile:
+
+    gem 'puma'
+
+Then start your server with the `rails` command:
+
+    $ rails s puma
+
+### Rackup
+
+You can pass it as an option to `rackup`:
+
+    $ rackup -s puma
+
+Alternatively, you can modify your `config.ru` to choose Puma by default, by adding the following as the first line:
+
+    #\ -s puma
