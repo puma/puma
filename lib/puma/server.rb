@@ -142,7 +142,11 @@ module Puma
             nparsed = parser.execute(env, data, nparsed)
 
             if parser.finished?
-              return unless handle_request env, client, parser.body
+              cl = env[CONTENT_LENGTH]
+
+              return unless handle_request(env, client, parser.body, cl)
+
+              nparsed += parser.body.size if cl
 
               if data.size > nparsed
                 data.slice!(0, nparsed)
@@ -219,10 +223,10 @@ module Puma
       env[REMOTE_ADDR] = client.peeraddr.last
     end
 
-    def handle_request(env, client, body)
+    def handle_request(env, client, body, cl)
       normalize_env env, client
 
-      body = read_body env, client, body
+      body = read_body env, client, body, cl
 
       return false unless body
 
@@ -325,8 +329,8 @@ module Puma
       return keep_alive
     end
 
-    def read_body(env, client, body)
-      content_length = env[CONTENT_LENGTH].to_i
+    def read_body(env, client, body, cl)
+      content_length = cl.to_i
 
       remain = content_length - body.size
 

@@ -1,5 +1,6 @@
 require 'puma'
 require 'test/unit'
+require 'timeout'
 
 class TestPersistent < Test::Unit::TestCase
   def setup
@@ -7,6 +8,8 @@ class TestPersistent < Test::Unit::TestCase
     @close_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
     @http10_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
     @keep_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\n\r\n"
+
+    @valid_post = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello"
 
     @headers = { "X-Header" => "Works" }
     @body = ["Hello"]
@@ -25,7 +28,9 @@ class TestPersistent < Test::Unit::TestCase
 
   def lines(count, s=@client)
     str = ""
-    count.times { str << s.gets }
+    timeout(5) do
+      count.times { str << s.gets }
+    end
     str
   end
 
@@ -39,6 +44,20 @@ class TestPersistent < Test::Unit::TestCase
 
   def test_two_back_to_back
     @client << @valid_request
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "Hello", @client.read(5)
+
+    @client << @valid_request
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "Hello", @client.read(5)
+  end
+
+  def test_post_then_get
+    @client << @valid_post
     sz = @body[0].size.to_s
 
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
