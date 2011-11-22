@@ -1,6 +1,6 @@
 
 // line 1 "ext/http11/http11_parser.java.rl"
-package org.jruby.mongrel;
+package org.jruby.puma;
 
 import org.jruby.util.ByteList;
 
