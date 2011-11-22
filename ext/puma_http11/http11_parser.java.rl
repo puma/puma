@@ -121,7 +121,9 @@ public class Http11Parser {
 
      p = off;
      pe = len;
-     byte[] data = buffer.unsafeBytes();
+     // get a copy of the bytes, since it may not start at 0
+     // FIXME: figure out how to just use the bytes in-place
+     byte[] data = buffer.bytes();
      parser.buffer = buffer;
 
      %% write exec;
