@@ -1,4 +1,4 @@
-if ENV['JAVA']
+if IS_JRUBY
 
   require 'rake/javaextensiontask'
 

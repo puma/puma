@@ -1,4 +1,4 @@
-if !ENV['JAVA']
+unless IS_JRUBY
   
   # use rake-compiler for building the extension
   require 'rake/extensiontask'

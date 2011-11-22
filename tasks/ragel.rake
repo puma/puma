@@ -17,4 +17,8 @@ file 'ext/puma_http11/org/jruby/puma/Http11Parser.java' => ['ext/puma_http11/htt
   end
 end
 
-task :ragel => (defined?(JRUBY_VERSION) ? 'ext/puma_http11/org/jruby/puma/Http11Parser.java' : 'ext/puma_http11/http11_parser.c')
+if IS_JRUBY
+  task :ragel => 'ext/puma_http11/org/jruby/puma/Http11Parser.java'
+else
+  task :ragel => 'ext/puma_http11/http11_parser.c'
+end
