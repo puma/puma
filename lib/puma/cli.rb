@@ -51,6 +51,10 @@ module Puma
         o.on "-b", "--bind URI", "URI to bind to (tcp:// and unix:// only)" do |arg|
           @binds << arg
         end
+
+        o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
+          @options[:pidfile] = arg
+        end
       end
 
       @parser.banner = "puma <options> <rackup file>"
@@ -72,8 +76,20 @@ module Puma
       end
     end
 
-    def run
+    def write_pid
+      if path = @options[:pidfile]
+        File.open(path, "w") do |f|
+          f.puts Process.pid
+        end
+      end
+    end
+
+    def parse_options
       @parser.parse! @argv
+    end
+
+    def run
+      parse_options
 
       @rackup = ARGV.shift || "config.ru"
 
@@ -82,6 +98,7 @@ module Puma
       end
 
       load_rackup
+      write_pid
 
       if @binds.empty?
         @options[:Host] ||= DefaultTCPHost
