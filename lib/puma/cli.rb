@@ -4,6 +4,8 @@ require 'uri'
 require 'puma/server'
 require 'puma/const'
 
+require 'rack/commonlogger'
+
 module Puma
   class CLI
     DefaultTCPHost = "0.0.0.0"
@@ -31,12 +33,25 @@ module Puma
     def setup_options
       @options = {
         :min_threads => 0,
-        :max_threads => 16
+        :max_threads => 16,
+        :quiet => false
       }
 
       @binds = []
 
       @parser = OptionParser.new do |o|
+        o.on "-b", "--bind URI", "URI to bind to (tcp:// and unix:// only)" do |arg|
+          @binds << arg
+        end
+
+        o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
+          @options[:pidfile] = arg
+        end
+
+        o.on "-q", "--quiet", "Quiet down the output" do
+          @options[:quiet] = true
+        end
+
         o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
           min, max = arg.split(":")
           if max
@@ -48,13 +63,6 @@ module Puma
           end
         end
 
-        o.on "-b", "--bind URI", "URI to bind to (tcp:// and unix:// only)" do |arg|
-          @binds << arg
-        end
-
-        o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
-          @options[:pidfile] = arg
-        end
       end
 
       @parser.banner = "puma <options> <rackup file>"
@@ -100,6 +108,10 @@ module Puma
       load_rackup
       write_pid
 
+      unless @quiet
+        @app = Rack::CommonLogger.new(@app, STDOUT)
+      end
+
       if @binds.empty?
         @options[:Host] ||= DefaultTCPHost
         @options[:Port] ||= DefaultTCPPort
@@ -142,7 +154,11 @@ module Puma
 
       log "Use Ctrl-C to stop"
 
-      server.run.join
+      begin
+        server.run.join
+      rescue Interrupt
+        log " - Shutting down..."
+      end
     end
   end
 end
