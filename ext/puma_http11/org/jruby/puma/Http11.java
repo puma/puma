@@ -1,4 +1,4 @@
-package org.jruby.mongrel;
+package org.jruby.puma;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -45,21 +45,22 @@ public class Http11 extends RubyObject {
     };
 
     public static void createHttp11(Ruby runtime) {
-        RubyModule mMongrel = runtime.defineModule("Mongrel");
-        mMongrel.defineClassUnder("HttpParserError",runtime.getClass("IOError"),runtime.getClass("IOError").getAllocator());
+        RubyModule mPuma = runtime.defineModule("Puma");
+        mPuma.defineClassUnder("HttpParserError",runtime.getClass("IOError"),runtime.getClass("IOError").getAllocator());
 
-        RubyClass cHttpParser = mMongrel.defineClassUnder("HttpParser",runtime.getObject(),ALLOCATOR);
+        RubyClass cHttpParser = mPuma.defineClassUnder("HttpParser",runtime.getObject(),ALLOCATOR);
         cHttpParser.defineAnnotatedMethods(Http11.class);
     }
 
     private Ruby runtime;
     private RubyClass eHttpParserError;
     private Http11Parser hp;
+    private RubyString body;
 
     public Http11(Ruby runtime, RubyClass clazz) {
         super(runtime,clazz);
         this.runtime = runtime;
-        this.eHttpParserError = (RubyClass)runtime.getModule("Mongrel").getConstant("HttpParserError");
+        this.eHttpParserError = (RubyClass)runtime.getModule("Puma").getConstant("HttpParserError");
         this.hp = new Http11Parser();
         this.hp.parser.http_field = http_field;
         this.hp.parser.request_method = request_method;
@@ -181,9 +182,9 @@ public class Http11 extends RubyObject {
                     }
                 }
 
-                req.setInstanceVariable("@http_body", RubyString.newString(runtime, new ByteList(hp.parser.buffer, at, length)));
+                body = RubyString.newString(runtime, new ByteList(hp.parser.buffer, at, length));
                 req.op_aset(context, runtime.newString("SERVER_PROTOCOL"),runtime.newString("HTTP/1.1"));
-                req.op_aset(context, runtime.newString("SERVER_SOFTWARE"),runtime.newString("Mongrel 1.2.0.beta.1"));
+                req.op_aset(context, runtime.newString("SERVER_SOFTWARE"),runtime.newString("Puma 1.2.0.beta.1"));
             }
         };
 
@@ -237,5 +238,10 @@ public class Http11 extends RubyObject {
     @JRubyMethod
     public IRubyObject nread() {
         return runtime.newFixnum(this.hp.parser.nread);
+    }
+    
+    @JRubyMethod
+    public IRubyObject body() {
+        return body;
     }
 }// Http11

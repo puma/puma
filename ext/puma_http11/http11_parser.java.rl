@@ -1,4 +1,4 @@
-package org.jruby.mongrel;
+package org.jruby.puma;
 
 import org.jruby.util.ByteList;
 
