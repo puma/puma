@@ -47,10 +47,17 @@ class TestRackServer < Test::Unit::TestCase
     @simple = lambda { |env| [200, { "X-Header" => "Works" }, ["Hello"]] }
     @server = Puma::Server.new @simple
     @server.add_tcp_listener "127.0.0.1", 9998
+
+    @stopped = false
+  end
+
+  def stop
+    @server.stop(true)
+    @stopped = true
   end
 
   def teardown
-    @server.stop(true)
+    @server.stop(true) unless @stopped
   end
 
   def test_lint
@@ -101,6 +108,8 @@ class TestRackServer < Test::Unit::TestCase
     @server.run
 
     hit(['http://localhost:9998/test'])
+
+    stop
 
     assert_match %r!GET /test HTTP/1\.1!, log.string
   end

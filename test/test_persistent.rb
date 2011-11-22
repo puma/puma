@@ -13,7 +13,13 @@ class TestPersistent < Test::Unit::TestCase
 
     @headers = { "X-Header" => "Works" }
     @body = ["Hello"]
-    @simple = lambda { |env| [200, @headers, @body] }
+    @inputs = []
+
+    @simple = lambda do |env|
+      @inputs << env['rack.input']
+      [200, @headers, @body]
+    end
+
     @server = Puma::Server.new @simple
     @server.add_tcp_listener "127.0.0.1", 9988
     @server.run
@@ -173,6 +179,27 @@ class TestPersistent < Test::Unit::TestCase
 
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
+  end
+
+  def test_second_request_not_in_first_req_body
+    @server.persistent_timeout = 3
+
+    req = @valid_request.to_s
+    req << "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+
+    @client << req
+
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "Hello", @client.read(5)
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "Hello", @client.read(5)
+
+    assert_equal "", @inputs[0].string
+    assert_equal "", @inputs[1].string
+
   end
 
 end

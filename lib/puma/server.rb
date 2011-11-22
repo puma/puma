@@ -226,9 +226,12 @@ module Puma
     def handle_request(env, client, body, cl)
       normalize_env env, client
 
-      body = read_body env, client, body, cl
-
-      return false unless body
+      if cl
+        body = read_body env, client, body, cl
+        return false unless body
+      else
+        body = StringIO.new("")
+      end
 
       env["rack.input"] = body
       env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
