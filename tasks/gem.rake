@@ -8,7 +8,7 @@ HOE = Hoe.spec 'puma' do
   spec_extras[:extensions] = ["ext/puma_http11/extconf.rb"]
   spec_extras[:executables] = ['puma']
 
-  dependency 'rack', '~> 1.3'
+  dependency 'rack', '~> 1.2'
 
   extra_dev_deps << ['rake-compiler', "~> 0.7.0"]
 

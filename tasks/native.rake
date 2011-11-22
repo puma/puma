@@ -24,5 +24,13 @@ unless IS_JRUBY
   end
 end
 
+task :ext_clean do
+  sh "rm -rf lib/puma_http11.bundle"
+  sh "rm -rf lib/puma_http11.jar"
+  sh "rm -rf lib/puma_http11.so"
+end
+
 # ensure things are built prior testing
 task :test => [:compile]
+
+task :clean => :ext_clean
