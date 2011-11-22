@@ -87,7 +87,6 @@ public class Http11 extends RubyObject {
                 validateMaxLength(vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
 
                 v = RubyString.newString(runtime, new ByteList(Http11.this.hp.parser.buffer,value,vlen));
-                f = RubyString.newString(runtime, "HTTP_");
                 ByteList b = new ByteList(Http11.this.hp.parser.buffer,field,flen);
                 for(int i = 0,j = b.length();i<j;i++) {
                     if((b.get(i) & 0xFF) == '-') {
@@ -96,7 +95,15 @@ public class Http11 extends RubyObject {
                         b.set(i, (byte)Character.toUpperCase((char)b.get(i)));
                     }
                 }
-                f.cat(b);
+
+                String as = b.toString();
+
+                if(as.equals("CONTENT_LENGTH") || as.equals("CONTENT_TYPE")) {
+                  f = RubyString.newString(runtime, b);
+                } else {
+                  f = RubyString.newString(runtime, "HTTP_");
+                  f.cat(b);
+                }
                 req.op_aset(req.getRuntime().getCurrentContext(), f,v);
             }
         };
@@ -155,36 +162,7 @@ public class Http11 extends RubyObject {
 
     private Http11Parser.ElementCB header_done = new Http11Parser.ElementCB() {
             public void call(Object data, int at, int length) {
-                RubyHash req = (RubyHash)data;
-                ThreadContext context = req.getRuntime().getCurrentContext();
-                IRubyObject temp,ctype,clen;
-
-                clen = req.op_aref(context, runtime.newString("HTTP_CONTENT_LENGTH"));
-                if(!clen.isNil()) {
-                    req.op_aset(context, runtime.newString("CONTENT_LENGTH"),clen);
-                }
-
-                ctype = req.op_aref(context, runtime.newString("HTTP_CONTENT_TYPE"));
-                if(!ctype.isNil()) {
-                    req.op_aset(context, runtime.newString("CONTENT_TYPE"),ctype);
-                }
-
-                req.op_aset(context, runtime.newString("GATEWAY_INTERFACE"),runtime.newString("CGI/1.2"));
-                if(!(temp = req.op_aref(context, runtime.newString("HTTP_HOST"))).isNil()) {
-                    String s = temp.toString();
-                    int colon = s.indexOf(':');
-                    if(colon != -1) {
-                        req.op_aset(context, runtime.newString("SERVER_NAME"),runtime.newString(s.substring(0,colon)));
-                        req.op_aset(context, runtime.newString("SERVER_PORT"),runtime.newString(s.substring(colon+1)));
-                    } else {
-                        req.op_aset(context, runtime.newString("SERVER_NAME"),temp);
-                        req.op_aset(context, runtime.newString("SERVER_PORT"),runtime.newString("80"));
-                    }
-                }
-
                 body = RubyString.newString(runtime, new ByteList(hp.parser.buffer, at, length));
-                req.op_aset(context, runtime.newString("SERVER_PROTOCOL"),runtime.newString("HTTP/1.1"));
-                req.op_aset(context, runtime.newString("SERVER_SOFTWARE"),runtime.newString("Puma 1.2.0.beta.1"));
             }
         };
 
