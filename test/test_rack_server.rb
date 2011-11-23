@@ -68,6 +68,8 @@ class TestRackServer < Test::Unit::TestCase
 
     hit(['http://localhost:9998/test'])
 
+    stop
+
     if exc = @checker.exception
       raise exc
     end
@@ -79,6 +81,8 @@ class TestRackServer < Test::Unit::TestCase
     @server.run
 
     hit(['http://localhost:9998/test/a/b/c'])
+
+    stop
 
     assert_equal "/test/a/b/c", input['PATH_INFO']
   end
@@ -94,6 +98,8 @@ class TestRackServer < Test::Unit::TestCase
     @server.run
 
     hit(['http://localhost:9998/test'])
+
+    stop
 
     assert_equal true, closed
   end
