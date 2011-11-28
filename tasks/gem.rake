@@ -15,6 +15,10 @@ HOE = Hoe.spec 'puma' do
   clean_globs.push('test_*.log', 'log')
 end
 
+# hoe/test and rake-compiler don't seem to play well together, so disable
+# hoe/test's .gemtest touch file thingy for now
+HOE.spec.files -= [".gemtest"]
+
 file "#{HOE.spec.name}.gemspec" => ['Rakefile', 'tasks/gem.rake'] do |t|
   puts "Generating #{t.name}"
   File.open(t.name, 'w') { |f| f.puts HOE.spec.to_ruby }
