@@ -123,7 +123,7 @@ class TestPersistent < Test::Unit::TestCase
     @client << @keep_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nConnection: Keep-Alive\r\nContent-Length: #{sz}\r\n\r\n", lines(5)
     assert_equal "Hello", @client.read(5)
   end
 

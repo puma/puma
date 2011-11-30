@@ -245,9 +245,11 @@ module Puma
         allow_chunked = true
         http_version = "HTTP/1.1 "
         keep_alive = env["HTTP_CONNECTION"] != "close"
+        include_keepalive_header = false
       else
         http_version = "HTTP/1.0 "
         keep_alive = env["HTTP_CONNECTION"] == "Keep-Alive"
+        include_keepalive_header = keep_alive
       end
 
       chunked = false
@@ -294,7 +296,11 @@ module Puma
           end
         end
 
-        client.write "Connection: close\r\n" unless keep_alive
+        if include_keepalive_header
+          client.write "Connection: Keep-Alive\r\n"
+        elsif !keep_alive
+          client.write "Connection: close\r\n"
+        end
 
         if content_length
           client.write "Content-Length: #{content_length}\r\n"
