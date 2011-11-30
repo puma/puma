@@ -108,7 +108,7 @@ module Puma
       load_rackup
       write_pid
 
-      unless @quiet
+      unless @options[:quiet]
         @app = Rack::CommonLogger.new(@app, STDOUT)
       end
 
