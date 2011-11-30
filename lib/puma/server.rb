@@ -126,6 +126,10 @@ module Puma
     end
 
     def process_client(client)
+      if client.kind_of? TCPSocket
+        client.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+      end
+
       begin
         while true
           parser = HttpParser.new
