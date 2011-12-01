@@ -61,6 +61,25 @@ module Puma
       }
     end
 
+    if RUBY_PLATFORM =~ /linux/
+      # 6 == Socket::IPPROTO_TCP
+      # 3 == TCP_CORK
+      # 1/0 == turn on/off
+      def cork_socket(socket)
+        socket.setsockopt(6, 3, 1)
+      end
+
+      def uncork_socket(socket)
+        socket.setsockopt(6, 3, 0)
+      end
+    else
+      def cork_socket(socket)
+      end
+
+      def uncork_socket(socket)
+      end
+    end
+
     def add_tcp_listener(host, port, optimize_for_latency=true)
       s = TCPServer.new(host, port)
       if optimize_for_latency
@@ -273,6 +292,8 @@ module Puma
           content_length = res_body[0].size
         end
 
+        cork_socket client
+
         client.write http_version
         client.write status.to_s
         client.write " "
@@ -336,6 +357,8 @@ module Puma
         end
 
       ensure
+        uncork_socket client
+
         body.close
         res_body.close if res_body.respond_to? :close
 
