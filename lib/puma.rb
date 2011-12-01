@@ -13,4 +13,3 @@ require 'thread'
 # Ruby Puma
 require 'puma/const'
 require 'puma/server'
-require 'puma/utils'
