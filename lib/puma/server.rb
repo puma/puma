@@ -61,8 +61,12 @@ module Puma
       }
     end
 
-    def add_tcp_listener(host, port)
-      @ios << TCPServer.new(host, port)
+    def add_tcp_listener(host, port, optimize_for_latency=true)
+      s = TCPServer.new(host, port)
+      if optimize_for_latency
+        s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+      end
+      @ios << s
     end
 
     def add_unix_listener(path)
@@ -126,10 +130,6 @@ module Puma
     end
 
     def process_client(client)
-      if client.kind_of? TCPSocket
-        client.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
-      end
-
       begin
         while true
           parser = HttpParser.new
