@@ -6,7 +6,7 @@ require 'test/testhelp'
 include Puma
 
 class Http11ParserTest < Test::Unit::TestCase
-    
+
   def test_parse_simple
     parser = HttpParser.new
     req = {}
@@ -130,22 +130,5 @@ class Http11ParserTest < Test::Unit::TestCase
     end
 
   end
-
-
-
-  def test_query_parse
-    res = Utils.query_parse("zed=1&frank=#{Utils.escape('&&& ')}")
-    assert res["zed"], "didn't get the request right"
-    assert res["frank"], "no frank"
-    assert_equal "1", res["zed"], "wrong result"
-    assert_equal "&&& ", Utils.unescape(res["frank"]), "wrong result"
-
-    res = Utils.query_parse("zed=1&zed=2&zed=3&frank=11;zed=45")
-    assert res["zed"], "didn't get the request right"
-    assert res["frank"], "no frank"
-    assert_equal 4,res["zed"].length, "wrong number for zed"
-    assert_equal "11",res["frank"], "wrong number for frank"
-  end
-  
 end
 

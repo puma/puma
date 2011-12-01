@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Evan Phoenix"]
-  s.date = "2011-11-28"
+  s.date = "2011-12-01"
   s.description = "Puma is a small library that provides a very fast and concurrent HTTP 1.1 server for Ruby web applications.  It is designed for running rack apps only.\n\nWhat makes Puma so fast is the careful use of an Ragel extension to provide fast, accurate HTTP 1.1 protocol parsing. This makes the server scream without too many portability issues."
   s.email = ["evan@phx.io"]
   s.executables = ["puma"]
