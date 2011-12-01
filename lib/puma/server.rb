@@ -262,25 +262,10 @@ module Puma
         body = StringIO.new(EmptyBinary)
       end
 
-      env["rack.input"] = body
-      env["rack.url_scheme"] =  env["HTTPS"] ? "https" : "http"
+      env[RACK_INPUT] = body
+      env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
 
-      allow_chunked = false
-
-      if env['HTTP_VERSION'] == 'HTTP/1.1'
-        allow_chunked = true
-        http_version = "HTTP/1.1 "
-        keep_alive = env["HTTP_CONNECTION"] != "close"
-        include_keepalive_header = false
-      else
-        http_version = "HTTP/1.0 "
-        keep_alive = env["HTTP_CONNECTION"] == "Keep-Alive"
-        include_keepalive_header = keep_alive
-      end
-
-      chunked = false
-
-      after_reply = env['rack.after_reply'] = []
+      after_reply = env[RACK_AFTER_REPLY] = []
 
       begin
         begin
@@ -297,26 +282,50 @@ module Puma
 
         cork_socket client
 
-        client.write http_version
-        client.write status.to_s
-        client.write " "
-        client.write HTTP_STATUS_CODES[status]
-        client.write "\r\n"
+        if env[HTTP_VERSION] == HTTP_11
+          allow_chunked = true
+          keep_alive = env[HTTP_CONNECTION] != CLOSE
+          include_keepalive_header = false
 
-        colon = ": "
-        line_ending = "\r\n"
+          if status == 200
+            client.write HTTP_11_200
+          else
+            client.write "HTTP/1.1 "
+            client.write status.to_s
+            client.write " "
+            client.write HTTP_STATUS_CODES[status]
+            client.write "\r\n"
+          end
+        else
+          allow_chunked = false
+          keep_alive = env[HTTP_CONNECTION] == KEEP_ALIVE
+          include_keepalive_header = keep_alive
+
+          if status == 200
+            client.write HTTP_10_200
+          else
+            client.write "HTTP/1.1 "
+            client.write status.to_s
+            client.write " "
+            client.write HTTP_STATUS_CODES[status]
+            client.write "\r\n"
+          end
+        end
+
+        colon = COLON
+        line_ending = LINE_END
 
         headers.each do |k, vs|
           case k
-          when "Content-Length"
+          when CONTENT_LENGTH2
             content_length = vs
             next
-          when "Transfer-Encoding"
+          when TRANSFER_ENCODING
             allow_chunked = false
             content_length = nil
           end
 
-          vs.split("\n").each do |v|
+          vs.split(NEWLINE).each do |v|
             client.write k
             client.write colon
             client.write v
@@ -325,15 +334,18 @@ module Puma
         end
 
         if include_keepalive_header
-          client.write "Connection: Keep-Alive\r\n"
+          client.write CONNECTION_KEEP_ALIVE
         elsif !keep_alive
-          client.write "Connection: close\r\n"
+          client.write CONNECTION_CLOSE
         end
 
         if content_length
-          client.write "Content-Length: #{content_length}\r\n"
+          client.write CONTENT_LENGTH_S
+          client.write content_length.to_s
+          client.write line_ending
+          chunked = false
         elsif allow_chunked
-          client.write "Transfer-Encoding: chunked\r\n"
+          client.write TRANSFER_ENCODING_CHUNKED
           chunked = true
         end
 
@@ -353,9 +365,7 @@ module Puma
         end
 
         if chunked
-          client.write "0"
-          client.write line_ending
-          client.write line_ending
+          client.write CLOSE_CHUNKED
           client.flush
         end
 

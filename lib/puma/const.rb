@@ -121,6 +121,7 @@ module Puma
 
     SERVER_PROTOCOL = "SERVER_PROTOCOL".freeze
     HTTP_11 = "HTTP/1.1".freeze
+    HTTP_10 = "HTTP/1.0".freeze
 
     SERVER_SOFTWARE = "SERVER_SOFTWARE".freeze
     GATEWAY_INTERFACE = "GATEWAY_INTERFACE".freeze
@@ -128,5 +129,36 @@ module Puma
 
     STOP_COMMAND = "!".freeze
 
+    RACK_INPUT = "rack.input".freeze
+    RACK_URL_SCHEME = "rack.url_scheme".freeze
+    RACK_AFTER_REPLY = "rack.after_reply".freeze
+
+    HTTP = "http".freeze
+    HTTPS = "https".freeze
+
+    HTTPS_KEY = "HTTPS".freeze
+
+    HTTP_VERSION = "HTTP_VERSION".freeze
+    HTTP_CONNECTION = "HTTP_CONNECTION".freeze
+
+    HTTP_11_200 = "HTTP/1.1 200 OK\r\n".freeze
+    HTTP_10_200 = "HTTP/1.0 200 OK\r\n".freeze
+
+    CLOSE = "close".freeze
+    KEEP_ALIVE = "Keep-Alive".freeze
+
+    CONTENT_LENGTH2 = "Content-Length".freeze
+    CONTENT_LENGTH_S = "Content-Length: ".freeze
+    TRANSFER_ENCODING = "Transfer-Encoding".freeze
+
+    CONNECTION_CLOSE = "Connection: close\r\n".freeze
+    CONNECTION_KEEP_ALIVE = "Connection: Keep-Alive\r\n".freeze
+
+    TRANSFER_ENCODING_CHUNKED = "Transfer-Encoding: chunked\r\n".freeze
+    CLOSE_CHUNKED = "0\r\n\r\n".freeze
+
+    COLON = ": ".freeze
+
+    NEWLINE = "\n".freeze
   end
 end
