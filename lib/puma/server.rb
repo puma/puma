@@ -12,6 +12,8 @@ require 'puma_http11'
 require 'socket'
 
 module Puma
+
+  # The HTTP Server itself. Serves out a single Rack app.
   class Server
 
     include Puma::Const
@@ -24,11 +26,13 @@ module Puma
     attr_accessor :max_threads
     attr_accessor :persistent_timeout
 
-    # Creates a working server on host:port (strange things happen if port
-    # isn't a Number).
+    # Create a server for the rack app +app+.
     #
-    # Use HttpServer#run to start the server and HttpServer#acceptor.join to 
-    # join the thread that's processing incoming requests on the socket.
+    # +events+ is an object which will be called when certain error events occur
+    # to be handled. See Puma::Events for the list of current methods to implement.
+    #
+    # Server#run returns a thread that you can join on to wait for the server
+    # to do it's work.
     #
     def initialize(app, events=Events::DEFAULT)
       @app = app
@@ -62,6 +66,9 @@ module Puma
       }
     end
 
+    # On Linux, use TCP_CORK to better control how the TCP stack
+    # packetizes our stream. This improves both latency and throughput.
+    #
     if RUBY_PLATFORM =~ /linux/
       # 6 == Socket::IPPROTO_TCP
       # 3 == TCP_CORK
@@ -81,6 +88,10 @@ module Puma
       end
     end
 
+    # Tell the server to listen on host +host+, port +port+.
+    # If optimize_for_latency is true (the default) then clients connecting
+    # will be optimized for latency over throughput.
+    #
     def add_tcp_listener(host, port, optimize_for_latency=true)
       s = TCPServer.new(host, port)
       if optimize_for_latency
@@ -89,13 +100,15 @@ module Puma
       @ios << s
     end
 
+    # Tell the server to listen on +path+ as a UNIX domain socket.
+    #
     def add_unix_listener(path)
       @ios << UNIXServer.new(path)
     end
 
-    # Runs the server.  It returns the thread used so you can "join" it.
-    # You can also access the HttpServer#acceptor attribute to get the
-    # thread later.
+    # Runs the server.  It returns the thread used so you can join it.
+    # The thread is always available via #thread to be join'd
+    #
     def run
       BasicSocket.do_not_reverse_lookup = true
 
@@ -137,6 +150,7 @@ module Puma
       return @thread
     end
 
+    # :nodoc:
     def handle_check
       cmd = @check.read(1) 
 
@@ -149,6 +163,12 @@ module Puma
       return false
     end
 
+    # Given a connection on +client+, handle the incoming requests.
+    #
+    # This method support HTTP Keep-Alive so it may, depending on if the client
+    # indicates that it supports keep alive, wait for another request before
+    # returning.
+    #
     def process_client(client)
       parser = HttpParser.new
 
@@ -198,12 +218,16 @@ module Puma
             end
           end
         end
-      rescue EOFError, SystemCallError
-        client.close rescue nil
 
+      # The client disconnected while we were reading data
+      rescue EOFError, SystemCallError
+        # Swallow them. The ensure tries to close +client+ down
+
+      # The client doesn't know HTTP well
       rescue HttpParserError => e
         @events.parse_error self, env, e
 
+      # Server error
       rescue StandardError => e
         @events.unknown_error self, env, e, "Read"
 
@@ -218,6 +242,9 @@ module Puma
       end
     end
 
+    # Given a Hash +env+ for the request read from +client+, add
+    # and fixup keys to comply with Rack's env guidelines.
+    #
     def normalize_env(env, client)
       if host = env[HTTP_HOST]
         if colon = host.index(":")
@@ -250,8 +277,19 @@ module Puma
       env[REMOTE_ADDR] = client.peeraddr.last
     end
 
+    # The object used for a request with no body. All requests with
+    # no body share this one object since it has no state.
     EmptyBody = NullIO.new
 
+    # Given the request +env+ from +client+ and a partial request body
+    # in +body+, finish reading the body if there is one and invoke
+    # the rack app. Then construct the response and write it back to
+    # +client+
+    #
+    # +cl+ is the previously fetched Content-Length header if there
+    # was one. This is an optimization to keep from having to look
+    # it up again.
+    #
     def handle_request(env, client, body, cl)
       normalize_env env, client
 
@@ -265,6 +303,9 @@ module Puma
       env[RACK_INPUT] = body
       env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
 
+      # A rack extension. If the app writes #call'ables to this
+      # array, we will invoke them when the request is done.
+      #
       after_reply = env[RACK_AFTER_REPLY] = []
 
       begin
@@ -287,6 +328,10 @@ module Puma
           keep_alive = env[HTTP_CONNECTION] != CLOSE
           include_keepalive_header = false
 
+          # An optimization. The most common response is 200, so we can
+          # reply with the proper 200 status without having to compute
+          # the response header.
+          #
           if status == 200
             client.write HTTP_11_200
           else
@@ -301,6 +346,8 @@ module Puma
           keep_alive = env[HTTP_CONNECTION] == KEEP_ALIVE
           include_keepalive_header = keep_alive
 
+          # Same optimization as above for HTTP/1.1
+          #
           if status == 200
             client.write HTTP_10_200
           else
@@ -381,6 +428,13 @@ module Puma
       return keep_alive
     end
 
+    # Given the requset +env+ from +client+ and the partial body +body+
+    # plus a potential Content-Length value +cl+, finish reading
+    # the body and return it.
+    #
+    # If the body is larger than MAX_BODY, a Tempfile object is used
+    # for the body, otherwise a StringIO is used.
+    #
     def read_body(env, client, body, cl)
       content_length = cl.to_i
 
@@ -426,23 +480,32 @@ module Puma
       return stream
     end
 
+    # A fallback rack response if +@app+ raises as exception.
+    #
     def lowlevel_error(e)
       [500, {}, ["No application configured"]]
     end
 
     # Wait for all outstanding requests to finish.
+    #
     def graceful_shutdown
       @thread_pool.shutdown if @thread_pool
     end
 
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.
+    #
     def stop(sync=false)
       @notify << STOP_COMMAND
 
       @thread.join if @thread && sync
     end
 
+    # If the dnssd gem is installed, advertise any TCPServer's configured
+    # out via bonjour.
+    #
+    # +name+ is the host name to use when advertised.
+    #
     def attempt_bonjour(name)
       begin
         require 'dnssd'
@@ -468,6 +531,8 @@ module Puma
       return announced
     end
 
+    # Indicate if attempt_bonjour worked.
+    #
     def bonjour_registered?
       @bonjour_registered ||= false
     end

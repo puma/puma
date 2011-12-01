@@ -7,10 +7,18 @@ require 'puma/const'
 require 'rack/commonlogger'
 
 module Puma
+  # Handles invoke a Puma::Server in a command line style.
+  #
   class CLI
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 9292
 
+    # Create a new CLI object using +argv+ as the command line
+    # arguments.
+    #
+    # +stdout+ and +stderr+ can be set to IO-like objects which
+    # this object will report status on.
+    #
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @argv = argv
       @stdout = stdout
@@ -21,15 +29,21 @@ module Puma
       setup_options
     end
 
+    # Write +str+ to +@stdout+
+    #
     def log(str)
       @stdout.puts str
     end
 
+    # Write +str+ to +@stderr+
+    #
     def error(str)
       @stderr.puts "ERROR: #{str}"
       exit 1
     end
 
+    # Build the OptionParser object to handle the available options.
+    #
     def setup_options
       @options = {
         :min_threads => 0,
@@ -73,6 +87,9 @@ module Puma
       end
     end
 
+    # Load the specified rackup file, pull an options from
+    # the rackup file, and set @app.
+    #
     def load_rackup
       @app, options = Rack::Builder.parse_file @rackup
       @options.merge! options
@@ -84,6 +101,9 @@ module Puma
       end
     end
 
+    # If configured, write the pid of the current process out
+    # to a file.
+    #
     def write_pid
       if path = @options[:pidfile]
         File.open(path, "w") do |f|
@@ -92,10 +112,14 @@ module Puma
       end
     end
 
+    # :nodoc:
     def parse_options
       @parser.parse! @argv
     end
 
+    # Parse the options, load the rackup, start the server and wait
+    # for it to finish.
+    #
     def run
       parse_options
 

@@ -1,7 +1,16 @@
 require 'thread'
 
 module Puma
+  # A simple thread pool management object.
+  #
   class ThreadPool
+
+    # Maintain a minimum of +min+ and maximum of +max+ threads
+    # in the pool.
+    #
+    # The block passed is the work that will be performed in each
+    # thread.
+    #
     def initialize(min, max, &blk)
       @todo = Queue.new
       @mutex = Mutex.new
@@ -20,6 +29,8 @@ module Puma
 
     attr_reader :spawned
 
+    # How many objects have yet to be processed by the pool?
+    #
     def backlog
       @todo.size
     end
@@ -27,6 +38,7 @@ module Puma
     Stop = Object.new
     Trim = Object.new
 
+    # :nodoc:
     def spawn_thread
       @mutex.synchronize do
         @spawned += 1
@@ -64,6 +76,7 @@ module Puma
       th
     end
 
+    # Add +work+ to the todo list for a Thread to pickup and process.
     def <<(work)
       if @todo.num_waiting == 0 and @spawned < @max
         spawn_thread
@@ -72,6 +85,9 @@ module Puma
       @todo << work
     end
 
+    # If too many threads are in the pool, tell one to finish go ahead
+    # and exit.
+    #
     def trim
       @mutex.synchronize do
         if @spawned - @trim_requested > @min
@@ -81,6 +97,8 @@ module Puma
       end
     end
 
+    # Tell all threads in the pool to exit and wait for them to finish.
+    #
     def shutdown
       @spawned.times do
         @todo << Stop

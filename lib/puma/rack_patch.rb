@@ -1,7 +1,10 @@
 require 'rack/commonlogger'
 
 module Rack
-  # Patch CommonLogger to use after_reply
+  # Patch CommonLogger to use after_reply.
+  #
+  # Simply request this file and CommonLogger will be a bit more 
+  # efficient.
   class CommonLogger
     remove_method :call
 
