@@ -149,9 +149,12 @@ module Puma
     end
 
     def process_client(client)
+      parser = HttpParser.new
+
       begin
         while true
-          parser = HttpParser.new
+          parser.reset
+
           env = @proto_env.dup
           data = client.readpartial(CHUNK_SIZE)
           nparsed = 0
