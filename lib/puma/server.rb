@@ -66,11 +66,11 @@ module Puma
       # 3 == TCP_CORK
       # 1/0 == turn on/off
       def cork_socket(socket)
-        socket.setsockopt(6, 3, 1)
+        socket.setsockopt(6, 3, 1) if socket.kind_of? TCPSocket
       end
 
       def uncork_socket(socket)
-        socket.setsockopt(6, 3, 0)
+        socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
       end
     else
       def cork_socket(socket)
