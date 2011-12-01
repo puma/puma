@@ -8,8 +8,6 @@ require 'etc'
 require 'uri'
 require 'stringio'
 
-# Gem conditional loader
-require 'puma/gems'
 require 'thread'
 
 # Ruby Puma
