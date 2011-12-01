@@ -177,7 +177,7 @@ module Puma
 
               if data.size > nparsed
                 data.slice!(0, nparsed)
-                parser = HttpParser.new
+                parser.reset
                 env = @proto_env.dup
                 nparsed = 0
               else
