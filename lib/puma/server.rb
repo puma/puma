@@ -5,6 +5,7 @@ require 'stringio'
 require 'puma/thread_pool'
 require 'puma/const'
 require 'puma/events'
+require 'puma/null_io'
 
 require 'puma_http11'
 
@@ -249,8 +250,7 @@ module Puma
       env[REMOTE_ADDR] = client.peeraddr.last
     end
 
-    EmptyBinary = ""
-    EmptyBinary.force_encoding("BINARY") if EmptyBinary.respond_to? :force_encoding
+    EmptyBody = NullIO.new
 
     def handle_request(env, client, body, cl)
       normalize_env env, client
@@ -259,7 +259,7 @@ module Puma
         body = read_body env, client, body, cl
         return false unless body
       else
-        body = StringIO.new(EmptyBinary)
+        body = EmptyBody
       end
 
       env[RACK_INPUT] = body

@@ -197,8 +197,8 @@ class TestPersistent < Test::Unit::TestCase
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
-    assert_equal "", @inputs[0].string
-    assert_equal "", @inputs[1].string
+    assert_kind_of Puma::NullIO, @inputs[0]
+    assert_kind_of Puma::NullIO, @inputs[1]
 
   end
 
