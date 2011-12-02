@@ -25,7 +25,7 @@ task :test => [:compile]
 # hoe/test's .gemtest touch file thingy for now
 HOE.spec.files -= [".gemtest"]
 
-file "#{HOE.spec.name}.gemspec" => ['Rakefile', 'tasks/gem.rake'] do |t|
+file "#{HOE.spec.name}.gemspec" => ['Rakefile'] do |t|
   puts "Generating #{t.name}"
   File.open(t.name, 'w') { |f| f.puts HOE.spec.to_ruby }
 end
