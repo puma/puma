@@ -500,41 +500,5 @@ module Puma
 
       @thread.join if @thread && sync
     end
-
-    # If the dnssd gem is installed, advertise any TCPServer's configured
-    # out via bonjour.
-    #
-    # +name+ is the host name to use when advertised.
-    #
-    def attempt_bonjour(name)
-      begin
-        require 'dnssd'
-      rescue LoadError
-        return false
-      end
-
-      @bonjour_registered = false
-      announced = false
-
-      @ios.each do |io|
-        if io.kind_of? TCPServer
-          fixed_name = name.gsub(/\./, "-")
-
-          DNSSD.announce io, "puma - #{fixed_name}", "http" do |r|
-            @bonjour_registered = true
-          end
-
-          announced = true
-        end
-      end
-
-      return announced
-    end
-
-    # Indicate if attempt_bonjour worked.
-    #
-    def bonjour_registered?
-      @bonjour_registered ||= false
-    end
   end
 end

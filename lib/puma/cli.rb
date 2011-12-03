@@ -172,10 +172,6 @@ module Puma
         end
       end
 
-      if server.attempt_bonjour(@rackup)
-        log "* Announced services via bonjour"
-      end
-
       log "Use Ctrl-C to stop"
 
       begin
