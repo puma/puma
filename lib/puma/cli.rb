@@ -177,7 +177,9 @@ module Puma
       begin
         server.run.join
       rescue Interrupt
-        log " - Shutting down..."
+        log " - Gracefully stopping, waiting for requests to finish"
+        server.stop(true)
+        log " - Goodbye!"
       end
     end
   end
