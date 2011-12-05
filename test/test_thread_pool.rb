@@ -99,4 +99,28 @@ class TestThreadPool < Test::Unit::TestCase
 
     assert_equal 1, pool.spawned
   end
+
+  def test_autotrim
+    finish = false
+    pool = new_pool(1, 2) { Thread.pass until finish }
+
+    pool << 1
+    pool << 2
+
+    assert_equal 2, pool.spawned
+
+    finish = true
+
+    pause
+
+    assert_equal 2, pool.spawned
+
+    pool.auto_trim! 1
+
+    sleep 1
+
+    pause
+
+    assert_equal 1, pool.spawned
+  end
 end

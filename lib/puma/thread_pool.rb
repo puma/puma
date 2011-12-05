@@ -24,6 +24,8 @@ module Puma
 
       @workers = []
 
+      @auto_trim = nil
+
       min.times { spawn_thread }
     end
 
@@ -97,9 +99,40 @@ module Puma
       end
     end
 
+    class AutoTrim
+      def initialize(pool, timeout)
+        @pool = pool
+        @timeout = timeout
+        @running = false
+      end
+
+      def start!
+        @running = true
+
+        @thread = Thread.new do
+          while @running
+            @pool.trim
+            sleep @timeout
+          end
+        end
+      end
+
+      def stop
+        @running = false
+        @thread.wakeup
+      end
+    end
+
+    def auto_trim!(timeout=5)
+      @auto_trim = AutoTrim.new(self, timeout)
+      @auto_trim.start!
+    end
+
     # Tell all threads in the pool to exit and wait for them to finish.
     #
     def shutdown
+      @auto_trim.stop if @auto_trim
+
       @spawned.times do
         @todo << Stop
       end

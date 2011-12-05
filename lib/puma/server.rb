@@ -25,6 +25,7 @@ module Puma
     attr_accessor :min_threads
     attr_accessor :max_threads
     attr_accessor :persistent_timeout
+    attr_accessor :auto_trim_time
 
     # Create a server for the rack app +app+.
     #
@@ -45,6 +46,7 @@ module Puma
 
       @min_threads = 0
       @max_threads = 16
+      @auto_trim_time = 1
 
       @thread = nil
       @thread_pool = nil
@@ -116,6 +118,10 @@ module Puma
 
       @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
         process_client(client)
+      end
+
+      if @auto_trim_time
+        @thread_pool.auto_trim!(@auto_trim_time)
       end
 
       @thread = Thread.new do
