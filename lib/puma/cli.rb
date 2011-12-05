@@ -84,8 +84,17 @@ module Puma
           @options[:state] = arg
         end
 
-        o.on "--status URL", "The bind url to use for the status server" do |arg|
-          @options[:status_address] = arg
+        o.on "--status [URL]", "The bind url to use for the status server" do |arg|
+          if arg
+            @options[:status_address] = arg
+          else
+            require 'tmpdir'
+
+            t = (Time.now.to_f * 1000).to_i
+            path = "#{Dir.tmpdir}/puma-status-#{t}-#{$$}"
+
+            @options[:status_address] = "unix://#{path}"
+          end
         end
 
       end

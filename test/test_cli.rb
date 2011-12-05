@@ -72,6 +72,23 @@ class TestCLI < Test::Unit::TestCase
     t.join
   end
 
+  def test_tmp_status
+    url = "tcp://127.0.0.1:8232"
+    cli = Puma::CLI.new ["--state", @tmp_path, "--status"]
+    cli.parse_options
+    cli.write_state
+
+    data = YAML.load_file(@tmp_path)
+
+    assert_equal Process.pid, data["pid"]
+
+    url = data["status_address"]
+
+    m = %r!unix://(.*)!.match(url)
+
+    assert m, "'#{url}' is not a URL"
+  end
+
   def test_state
     url = "tcp://127.0.0.1:8232"
     cli = Puma::CLI.new ["--state", @tmp_path, "--status", url]
