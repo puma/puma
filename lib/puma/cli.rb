@@ -26,6 +26,9 @@ module Puma
 
       @events = Events.new @stdout, @stderr
 
+      @server = nil
+      @status = nil
+
       setup_options
     end
 
@@ -77,6 +80,14 @@ module Puma
           end
         end
 
+        o.on "-S", "--state PATH", "Where to store the state details" do |arg|
+          @options[:state] = arg
+        end
+
+        o.on "--status URL", "The bind url to use for the status server" do |arg|
+          @options[:status_address] = arg
+        end
+
       end
 
       @parser.banner = "puma <options> <rackup file>"
@@ -112,6 +123,22 @@ module Puma
       end
     end
 
+    def write_state
+      require 'yaml'
+
+      if path = @options[:state]
+        state = { "pid" => Process.pid }
+
+        if url = @options[:status_address]
+          state["status_address"] = url
+        end
+
+        File.open(path, "w") do |f|
+          f.write state.to_yaml
+        end
+      end
+    end
+
     # :nodoc:
     def parse_options
       @parser.parse! @argv
@@ -123,7 +150,7 @@ module Puma
     def run
       parse_options
 
-      @rackup = ARGV.shift || "config.ru"
+      @rackup = @argv.shift || "config.ru"
 
       unless File.exists?(@rackup)
         raise "Missing rackup file '#{@rackup}'"
@@ -172,6 +199,35 @@ module Puma
         end
       end
 
+      @server = server
+
+      if str = @options[:status_address]
+        require 'puma/app/status'
+
+        uri = URI.parse str
+
+        app = Puma::App::Status.new server
+        status = Puma::Server.new app, @events
+        status.min_threads = 0
+        status.max_threads = 1
+
+        case uri.scheme
+        when "tcp"
+          log "* Starting status server on #{str}"
+          status.add_tcp_listener uri.host, uri.port
+        when "unix"
+          log "* Starting status server on #{str}"
+          path = "#{uri.host}#{uri.path}"
+
+          status.add_unix_listener path
+        else
+          error "Invalid status URI: #{str}"
+        end
+
+        status.run
+        @status = status
+      end
+
       log "Use Ctrl-C to stop"
 
       begin
@@ -181,6 +237,10 @@ module Puma
         server.stop(true)
         log " - Goodbye!"
       end
+    end
+
+    def stop
+      @server.stop(true) if @server
     end
   end
 end

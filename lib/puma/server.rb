@@ -108,6 +108,14 @@ module Puma
       @ios << UNIXServer.new(path)
     end
 
+    def backlog
+      @thread_pool and @thread_pool.backlog
+    end
+
+    def running
+      @thread_pool and @thread_pool.spawned
+    end
+
     # Runs the server.  It returns the thread used so you can join it.
     # The thread is always available via #thread to be join'd
     #
