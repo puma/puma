@@ -1,8 +1,9 @@
 module Puma
   module App
     class Status
-      def initialize(server)
+      def initialize(server, cli)
         @server = server
+        @cli = cli
       end
 
       def call(env)
@@ -14,6 +15,14 @@ module Puma
         when "/halt"
           @server.halt
           return [200, {}, ['{ "status": "ok" }']]
+
+        when "/restart"
+          if @cli and @cli.restart_on_stop!
+            @server.stop
+            return [200, {}, ['{ "status": "ok" }']]
+          else
+            return [200, {}, ['{ "status": "not configured" }']]
+          end
 
         when "/stats"
           b = @server.backlog

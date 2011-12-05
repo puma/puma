@@ -23,7 +23,7 @@ class TestAppStatus < Test::Unit::TestCase
 
   def setup
     @server = FakeServer.new
-    @app = Puma::App::Status.new(@server)
+    @app = Puma::App::Status.new(@server, @server)
   end
 
   def test_unsupported

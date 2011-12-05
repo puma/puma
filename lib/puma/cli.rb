@@ -31,7 +31,58 @@ module Puma
       @server = nil
       @status = nil
 
+      @restart = false
+      @temp_status_path = nil
+
       setup_options
+
+      generate_restart_data
+    end
+
+    def restart_on_stop!
+      if @restart_argv
+        @restart = true
+        return true
+      else
+        return false
+      end
+    end
+
+    def generate_restart_data
+      # Use the same trick as unicorn, namely favor PWD because
+      # it will contain an unresolved symlink, useful for when
+      # the pwd is /data/releases/current.
+      if dir = ENV['PWD']
+        s_env = File.stat(dir)
+        s_pwd = File.stat(Dir.pwd)
+
+        if s_env.ino == s_pwd.ino and s_env.dev == s_pwd.dev
+          @restart_dir = dir
+        end
+      end
+
+      @restart_dir ||= Dir.pwd
+
+      if defined? Rubinius::OS_ARGV
+        @restart_argv = Rubinius::OS_ARGV
+      else
+        require 'rubygems'
+
+        # if $0 is a file in the current directory, then restart
+        # it the same, otherwise add -S on there because it was
+        # picked up in PATH.
+        #
+        if File.exists?($0)
+          @restart_argv = [Gem.ruby, $0] + ARGV
+        else
+          @restart_argv = [Gem.ruby, "-S", $0] + ARGV
+        end
+      end
+    end
+
+    def restart!
+      Dir.chdir @restart_dir
+      Kernel.exec(*@restart_argv)
     end
 
     # Write +str+ to +@stdout+
@@ -87,7 +138,7 @@ module Puma
         end
 
         o.on "--status [URL]", "The bind url to use for the status server" do |arg|
-          if arg
+          if arg and arg != "@"
             @options[:status_address] = arg
           elsif IS_JRUBY
             raise NotImplementedError, "No default url available on JRuby"
@@ -96,6 +147,8 @@ module Puma
 
             t = (Time.now.to_f * 1000).to_i
             path = "#{Dir.tmpdir}/puma-status-#{t}-#{$$}"
+
+            @temp_status_path = path
 
             @options[:status_address] = "unix://#{path}"
           end
@@ -171,6 +224,7 @@ module Puma
 
       load_rackup
       write_pid
+      write_state
 
       unless @options[:quiet]
         @app = Rack::CommonLogger.new(@app, STDOUT)
@@ -219,7 +273,7 @@ module Puma
 
         uri = URI.parse str
 
-        app = Puma::App::Status.new server
+        app = Puma::App::Status.new server, self
         status = Puma::Server.new app, @events
         status.min_threads = 0
         status.max_threads = 1
@@ -249,6 +303,13 @@ module Puma
         log " - Gracefully stopping, waiting for requests to finish"
         server.stop(true)
         log " - Goodbye!"
+      end
+
+      File.unlink @temp_status_path if @temp_status_path
+
+      if @restart
+        log "* Restarting..."
+        restart!
       end
     end
 
