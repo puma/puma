@@ -127,7 +127,8 @@ module Puma
     GATEWAY_INTERFACE = "GATEWAY_INTERFACE".freeze
     CGI_VER = "CGI/1.2".freeze
 
-    STOP_COMMAND = "!".freeze
+    STOP_COMMAND = "?".freeze
+    HALT_COMMAND = "!".freeze
 
     RACK_INPUT = "rack.input".freeze
     RACK_URL_SCHEME = "rack.url_scheme".freeze

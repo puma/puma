@@ -41,7 +41,7 @@ module Puma
       @check, @notify = IO.pipe
       @ios = [@check]
 
-      @running = false
+      @status = :stop
 
       @min_threads = 0
       @max_threads = 16
@@ -112,7 +112,7 @@ module Puma
     def run
       BasicSocket.do_not_reverse_lookup = true
 
-      @running = true
+      @status = :run
 
       @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
         process_client(client)
@@ -124,7 +124,7 @@ module Puma
           sockets = @ios
           pool = @thread_pool
 
-          while @running
+          while @status == :run
             begin
               ios = IO.select sockets
               ios.first.each do |sock|
@@ -141,7 +141,8 @@ module Puma
               @events.unknown_error self, env, e, "Listen loop"
             end
           end
-          graceful_shutdown
+
+          graceful_shutdown if @status == :stop
         ensure
           @ios.each { |i| i.close }
         end
@@ -156,7 +157,10 @@ module Puma
 
       case cmd
       when STOP_COMMAND
-        @running = false
+        @status = :stop
+        return true
+      when HALT_COMMAND
+        @status = :halt
         return true
       end
 
@@ -497,6 +501,12 @@ module Puma
     #
     def stop(sync=false)
       @notify << STOP_COMMAND
+
+      @thread.join if @thread && sync
+    end
+
+    def halt(sync=false)
+      @notify << HALT_COMMAND
 
       @thread.join if @thread && sync
     end
