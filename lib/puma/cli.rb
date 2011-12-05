@@ -13,6 +13,8 @@ module Puma
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 9292
 
+    IS_JRUBY = defined?(JRUBY_VERSION)
+
     # Create a new CLI object using +argv+ as the command line
     # arguments.
     #
@@ -87,6 +89,8 @@ module Puma
         o.on "--status [URL]", "The bind url to use for the status server" do |arg|
           if arg
             @options[:status_address] = arg
+          elsif IS_JRUBY
+            raise NotImplementedError, "No default url available on JRuby"
           else
             require 'tmpdir'
 

@@ -27,6 +27,7 @@ class TestCLI < Test::Unit::TestCase
     assert_equal File.read(@tmp_path).strip.to_i, Process.pid
   end
 
+  unless defined? JRUBY_VERSION
   def test_status
     url = "unix://#{@tmp_path}"
 
@@ -87,6 +88,7 @@ class TestCLI < Test::Unit::TestCase
     m = %r!unix://(.*)!.match(url)
 
     assert m, "'#{url}' is not a URL"
+  end
   end
 
   def test_state
