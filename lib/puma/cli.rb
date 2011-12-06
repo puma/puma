@@ -81,8 +81,13 @@ module Puma
     end
 
     def restart!
-      Dir.chdir @restart_dir
-      Kernel.exec(*@restart_argv)
+      if IS_JRUBY
+        require 'puma/jruby_restart'
+        JRubyRestart.chdir_exec(@restart_dir, Gem.ruby, *@restart_argv)
+      else
+        Dir.chdir @restart_dir
+        Kernel.exec(*@restart_argv)
+      end
     end
 
     # Write +str+ to +@stdout+
