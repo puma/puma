@@ -28,13 +28,13 @@ class TestCLI < Test::Unit::TestCase
   end
 
   unless defined? JRUBY_VERSION
-  def test_status
+  def test_control
     url = "unix://#{@tmp_path}"
 
     sin = StringIO.new
     sout = StringIO.new
 
-    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}", "--status", url, "test/lobster.ru"], sin, sout
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}", "--control", url, "test/lobster.ru"], sin, sout
     cli.parse_options
 
     t = Thread.new { cli.run }
@@ -51,13 +51,13 @@ class TestCLI < Test::Unit::TestCase
     t.join
   end
 
-  def test_status_stop
+  def test_control_stop
     url = "unix://#{@tmp_path}"
 
     sin = StringIO.new
     sout = StringIO.new
 
-    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}", "--status", url, "test/lobster.ru"], sin, sout
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}", "--control", url, "test/lobster.ru"], sin, sout
     cli.parse_options
 
     t = Thread.new { cli.run }
@@ -73,9 +73,9 @@ class TestCLI < Test::Unit::TestCase
     t.join
   end
 
-  def test_tmp_status
+  def test_tmp_control
     url = "tcp://127.0.0.1:8232"
-    cli = Puma::CLI.new ["--state", @tmp_path, "--status"]
+    cli = Puma::CLI.new ["--state", @tmp_path, "--control", "auto"]
     cli.parse_options
     cli.write_state
 
@@ -83,7 +83,7 @@ class TestCLI < Test::Unit::TestCase
 
     assert_equal Process.pid, data["pid"]
 
-    url = data["status_address"]
+    url = data["config"].options[:control_url]
 
     m = %r!unix://(.*)!.match(url)
 
@@ -93,13 +93,13 @@ class TestCLI < Test::Unit::TestCase
 
   def test_state
     url = "tcp://127.0.0.1:8232"
-    cli = Puma::CLI.new ["--state", @tmp_path, "--status", url]
+    cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
     cli.parse_options
     cli.write_state
 
     data = YAML.load_file(@tmp_path)
 
     assert_equal Process.pid, data["pid"]
-    assert_equal url, data["status_address"]
+    assert_equal url, data["config"].options[:control_url]
   end
 end

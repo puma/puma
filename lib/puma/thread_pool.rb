@@ -137,7 +137,9 @@ module Puma
         @todo << Stop
       end
 
-      @workers.each { |w| w.join }
+      # Use this instead of #each so that we don't stop in the middle
+      # of each and see a mutated object mid #each
+      @workers.first.join until @workers.empty?
 
       @spawned = 0
       @workers = []

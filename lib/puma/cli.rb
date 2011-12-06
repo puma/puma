@@ -3,6 +3,7 @@ require 'uri'
 
 require 'puma/server'
 require 'puma/const'
+require 'puma/config'
 
 require 'rack/commonlogger'
 
@@ -10,9 +11,7 @@ module Puma
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI
-    DefaultTCPHost = "0.0.0.0"
-    DefaultTCPPort = 9292
-
+    DefaultRackup = "config.ru"
     IS_JRUBY = defined?(JRUBY_VERSION)
 
     # Create a new CLI object using +argv+ as the command line
@@ -109,14 +108,17 @@ module Puma
       @options = {
         :min_threads => 0,
         :max_threads => 16,
-        :quiet => false
+        :quiet => false,
+        :binds => []
       }
-
-      @binds = []
 
       @parser = OptionParser.new do |o|
         o.on "-b", "--bind URI", "URI to bind to (tcp:// and unix:// only)" do |arg|
-          @binds << arg
+          @options[:binds] << arg
+        end
+
+        o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
+          @options[:config_file] = arg
         end
 
         o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
@@ -127,6 +129,19 @@ module Puma
           @options[:quiet] = true
         end
 
+        o.on "-S", "--state PATH", "Where to store the state details" do |arg|
+          @options[:state] = arg
+        end
+
+        o.on "--control URL", "The bind url to use for the control server",
+                              "Use 'auto' to use temp unix server" do |arg|
+          if arg
+            @options[:control_url] = arg
+          elsif IS_JRUBY
+            raise NotImplementedError, "No default url available on JRuby"
+          end
+        end
+
         o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
           min, max = arg.split(":")
           if max
@@ -135,27 +150,6 @@ module Puma
           else
             @options[:min_threads] = 0
             @options[:max_threads] = arg.to_i
-          end
-        end
-
-        o.on "-S", "--state PATH", "Where to store the state details" do |arg|
-          @options[:state] = arg
-        end
-
-        o.on "--status [URL]", "The bind url to use for the status server" do |arg|
-          if arg and arg != "@"
-            @options[:status_address] = arg
-          elsif IS_JRUBY
-            raise NotImplementedError, "No default url available on JRuby"
-          else
-            require 'tmpdir'
-
-            t = (Time.now.to_f * 1000).to_i
-            path = "#{Dir.tmpdir}/puma-status-#{t}-#{$$}"
-
-            @temp_status_path = path
-
-            @options[:status_address] = "unix://#{path}"
           end
         end
 
@@ -173,7 +167,7 @@ module Puma
     # the rackup file, and set @app.
     #
     def load_rackup
-      @app, options = Rack::Builder.parse_file @rackup
+      @app, options = Rack::Builder.parse_file @options[:rackup]
       @options.merge! options
 
       options.each do |key,val|
@@ -200,9 +194,7 @@ module Puma
       if path = @options[:state]
         state = { "pid" => Process.pid }
 
-        if url = @options[:status_address]
-          state["status_address"] = url
-        end
+        state["config"] = @config
 
         File.open(path, "w") do |f|
           f.write state.to_yaml
@@ -213,6 +205,18 @@ module Puma
     # :nodoc:
     def parse_options
       @parser.parse! @argv
+
+      @config = Puma::Configuration.new @options
+      @config.load
+
+      unless @options[:rackup]
+        @options[:rackup] = @argv.shift || DefaultRackup
+      end
+
+      if @options[:control_url] == "auto"
+        path = @temp_status_path = Configuration.temp_path
+        @options[:control_url] = "unix://#{path}"
+      end
     end
 
     # Parse the options, load the rackup, start the server and wait
@@ -221,10 +225,10 @@ module Puma
     def run
       parse_options
 
-      @rackup = @argv.shift || "config.ru"
+      rackup = @options[:rackup]
 
-      unless File.exists?(@rackup)
-        raise "Missing rackup file '#{@rackup}'"
+      unless File.exists?(rackup)
+        raise "Missing rackup file '#{rackup}'"
       end
 
       load_rackup
@@ -233,11 +237,6 @@ module Puma
 
       unless @options[:quiet]
         @app = Rack::CommonLogger.new(@app, STDOUT)
-      end
-
-      if @binds.empty?
-        @options[:Host] ||= DefaultTCPHost
-        @options[:Port] ||= DefaultTCPPort
       end
 
       min_t = @options[:min_threads]
@@ -250,12 +249,7 @@ module Puma
       log "Puma #{Puma::Const::PUMA_VERSION} starting..."
       log "* Min threads: #{min_t}, max threads: #{max_t}"
 
-      if @options[:Host]
-        log "* Listening on tcp://#{@options[:Host]}:#{@options[:Port]}"
-        server.add_tcp_listener @options[:Host], @options[:Port]
-      end
-
-      @binds.each do |str|
+      @options[:binds].each do |str|
         uri = URI.parse str
         case uri.scheme
         when "tcp"
@@ -273,7 +267,7 @@ module Puma
 
       @server = server
 
-      if str = @options[:status_address]
+      if str = @options[:control_url]
         require 'puma/app/status'
 
         uri = URI.parse str

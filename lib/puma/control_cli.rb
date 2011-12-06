@@ -1,6 +1,8 @@
 require 'optparse'
 
 require 'puma/const'
+require 'puma/config'
+
 require 'yaml'
 require 'uri'
 
@@ -22,7 +24,7 @@ module Puma
     end
 
     def connect
-      if str = @state['status_address']
+      if str = @config.options[:control_url]
         uri = URI.parse str
         case uri.scheme
         when "tcp"
@@ -44,6 +46,7 @@ module Puma
       @parser.parse! @argv
 
       @state = YAML.load_file(@path)
+      @config = @state['config']
 
       cmd = @argv.shift
 
@@ -101,8 +104,8 @@ module Puma
 
     def command_stats
       sock = connect
-      s << "GET /stats HTTP/1.0\r\n\r\n"
-      rep = s.read
+      sock << "GET /stats HTTP/1.0\r\n\r\n"
+      rep = sock.read
 
       body = rep.split("\r\n").last
 
