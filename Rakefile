@@ -10,7 +10,7 @@ HOE = Hoe.spec 'puma' do
   developer 'Evan Phoenix', 'evan@phx.io'
 
   spec_extras[:extensions] = ["ext/puma_http11/extconf.rb"]
-  spec_extras[:executables] = ['puma']
+  spec_extras[:executables] = ['puma', 'pumactl']
 
   dependency 'rack', '~> 1.2'
 
