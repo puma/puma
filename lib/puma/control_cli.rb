@@ -1,7 +1,7 @@
 require 'optparse'
 
 require 'puma/const'
-require 'puma/config'
+require 'puma/configuration'
 
 require 'yaml'
 require 'uri'

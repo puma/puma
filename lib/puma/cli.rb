@@ -3,7 +3,7 @@ require 'uri'
 
 require 'puma/server'
 require 'puma/const'
-require 'puma/config'
+require 'puma/configuration'
 
 require 'rack/commonlogger'
 
@@ -11,7 +11,6 @@ module Puma
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI
-    DefaultRackup = "config.ru"
     IS_JRUBY = defined?(JRUBY_VERSION)
 
     # Create a new CLI object using +argv+ as the command line
@@ -168,20 +167,6 @@ module Puma
       end
     end
 
-    # Load the specified rackup file, pull an options from
-    # the rackup file, and set @app.
-    #
-    def load_rackup
-      @app, options = Rack::Builder.parse_file @options[:rackup]
-      @options.merge! options
-
-      options.each do |key,val|
-        if key.to_s[0,4] == "bind"
-          @binds << val
-        end
-      end
-    end
-
     # If configured, write the pid of the current process out
     # to a file.
     #
@@ -211,12 +196,12 @@ module Puma
     def parse_options
       @parser.parse! @argv
 
+      if @argv.last
+        @options[:rackup] = @argv.shift
+      end
+
       @config = Puma::Configuration.new @options
       @config.load
-
-      unless @options[:rackup]
-        @options[:rackup] = @argv.shift || DefaultRackup
-      end
 
       @temp_status_path = @options[:control_path_temp]
     end
@@ -227,19 +212,10 @@ module Puma
     def run
       parse_options
 
-      rackup = @options[:rackup]
+      app = @config.app
 
-      unless File.exists?(rackup)
-        raise "Missing rackup file '#{rackup}'"
-      end
-
-      load_rackup
       write_pid
       write_state
-
-      unless @options[:quiet]
-        @app = Rack::CommonLogger.new(@app, STDOUT)
-      end
 
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
