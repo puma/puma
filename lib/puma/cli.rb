@@ -220,7 +220,7 @@ module Puma
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
-      server = Puma::Server.new @app, @events
+      server = Puma::Server.new app, @events
       server.min_threads = min_t
       server.max_threads = max_t
 
