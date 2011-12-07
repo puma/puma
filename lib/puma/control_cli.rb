@@ -11,8 +11,9 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    def initialize(argv)
+    def initialize(argv, stdout=STDOUT)
       @argv = argv
+      @stdout = stdout
     end
 
     def setup_options
@@ -80,7 +81,7 @@ module Puma
     end
 
     def command_pid
-      puts "#{@state['pid']}"
+      @stdout.puts "#{@state['pid']}"
     end
 
     def command_stop
@@ -90,7 +91,7 @@ module Puma
       if body != '{ "status": "ok" }'
         raise "Invalid response: '#{body}'"
       else
-        puts "Requested stop from server"
+        @stdout.puts "Requested stop from server"
       end
     end
 
@@ -101,7 +102,7 @@ module Puma
       if body != '{ "status": "ok" }'
         raise "Invalid response: '#{body}'"
       else
-        puts "Requested halt from server"
+        @stdout.puts "Requested halt from server"
       end
     end
 
@@ -112,7 +113,7 @@ module Puma
       if body != '{ "status": "ok" }'
         raise "Invalid response: '#{body}'"
       else
-        puts "Requested restart from server"
+        @stdout.puts "Requested restart from server"
       end
     end
 
@@ -120,7 +121,7 @@ module Puma
       sock = connect
       body = request sock, "/stats"
 
-      puts body
+      @stdout.puts body
     end
   end
 end

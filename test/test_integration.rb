@@ -2,6 +2,9 @@ require 'test/unit'
 require 'rubygems'
 require 'socket'
 
+require 'puma/cli'
+require 'puma/control_cli'
+
 class TestIntegration < Test::Unit::TestCase
   def setup
     @state_path = "test/test_puma.state"
@@ -16,15 +19,13 @@ class TestIntegration < Test::Unit::TestCase
   end
 
   def test_stop_via_pumactl
-    status = nil
+    sin = StringIO.new
+    sout = StringIO.new
 
-    io = IO.popen "#{Gem.ruby} -Ilib bin/puma -S #{@state_path} -b unix://#{@bind_path} --control unix://#{@control_path} test/hello.ru 2>&1", "r"
+    cli = Puma::CLI.new %W!-q -S #{@state_path} -b unix://#{@bind_path} --control unix://#{@control_path} test/hello.ru!, sin, sout
 
-    line = nil
-
-    until /Use Ctrl-C to stop/ =~ line.to_s
-      line = io.gets
-      raise "error" unless line
+    t = Thread.new do
+      cli.run
     end
 
     sleep 1
@@ -33,10 +34,10 @@ class TestIntegration < Test::Unit::TestCase
     s << "GET / HTTP/1.0\r\n\r\n"
     assert_equal "Hello World", s.read.split("\r\n").last
 
-    `#{Gem.ruby} -Ilib bin/pumactl -S #{@state_path} stop 2>&1`
+    ccli = Puma::ControlCLI.new %W!-S #{@state_path} stop!, sout
 
-    pid, status = Process.wait2(io.pid)
+    ccli.run
 
-    assert_equal 0, status.to_i
+    assert_kind_of Thread, t.join(1), "server didn't stop"
   end
 end

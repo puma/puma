@@ -32,7 +32,7 @@ class TestAppStatus < Test::Unit::TestCase
 
     env = { 'PATH_INFO' => "/whatever" }
 
-    status, header, body = @app.call env
+    status, _, _ = @app.call env
 
     assert_equal 403, status
   end
@@ -45,7 +45,7 @@ class TestAppStatus < Test::Unit::TestCase
       'QUERY_STRING' => "token=abcdef"
     }
 
-    status, header, body = @app.call env
+    status, _, _ = @app.call env
 
     assert_equal 404, status
   end
@@ -53,7 +53,7 @@ class TestAppStatus < Test::Unit::TestCase
   def test_unsupported
     env = { 'PATH_INFO' => "/not-real" }
 
-    status, header, body = @app.call env
+    status, _, _ = @app.call env
 
     assert_equal 404, status
   end
@@ -61,7 +61,7 @@ class TestAppStatus < Test::Unit::TestCase
   def test_stop
     env = { 'PATH_INFO' => "/stop" }
 
-    status, header, body = @app.call env
+    status, _ , body = @app.call env
 
     assert_equal :stop, @server.status
     assert_equal 200, status
@@ -71,7 +71,7 @@ class TestAppStatus < Test::Unit::TestCase
   def test_halt
     env = { 'PATH_INFO' => "/halt" }
 
-    status, header, body = @app.call env
+    status, _ , body = @app.call env
 
     assert_equal :halt, @server.status
     assert_equal 200, status
@@ -84,7 +84,7 @@ class TestAppStatus < Test::Unit::TestCase
     @server.backlog = 1
     @server.running = 9
 
-    status, header, body = @app.call env
+    status, _ , body = @app.call env
 
     assert_equal 200, status
     assert_equal ['{ "backlog": 1, "running": 9 }'], body
