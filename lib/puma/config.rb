@@ -25,6 +25,44 @@ module Puma
       if @options[:binds].empty?
         @options[:binds] << "tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"
       end
+
+      if @options[:control_url] == "auto"
+        path = Configuration.temp_path
+        @options[:control_url] = "unix://#{path}"
+        @options[:control_url_temp] = path
+      end
+
+      unless @options[:control_auth_token]
+        setup_random_token
+      end
+    end
+
+    def setup_random_token
+      begin
+        require 'openssl'
+      rescue LoadError
+      end
+
+      count = 16
+
+      bytes = nil
+
+      if defined? OpenSSL::Random
+        bytes = OpenSSL::Random.random_bytes(count)
+      elsif File.exists?("/dev/urandom")
+        File.open("/dev/urandom") do |f|
+          bytes = f.read(count)
+        end
+      end
+
+      if bytes
+        token = ""
+        bytes.each_byte { |b| token << b.to_s(16) }
+      else
+        token = (0..count).to_a.map { rand(255).to_s(16) }.join
+      end
+
+      @options[:control_auth_token] = token
     end
 
     def self.temp_path
@@ -48,8 +86,18 @@ module Puma
     # Start the Puma control rack app on +url+. This app can be communicated
     # with to control the main server.
     #
-    def activate_control_app(url="auto")
+    def activate_control_app(url="auto", opts=nil)
       @options[:control_url] = url
+
+      if opts
+        if tok = opts[:auth_token]
+          @options[:control_auth_token] = tok
+        end
+
+        if opts[:no_token]
+          @options[:control_auth_token] = :none
+        end
+      end
     end
 
     # Bind the server to +url+. tcp:// and unix:// are the only accepted

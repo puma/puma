@@ -59,16 +59,34 @@ module Puma
       end
     end
 
+    def request(sock, url)
+      token = @config.options[:control_auth_token]
+      if token
+        url = "#{url}?token=#{token}"
+      end
+
+      sock << "GET #{url} HTTP/1.0\r\n\r\n"
+
+      rep = sock.read.split("\r\n")
+
+      m = %r!HTTP/1.\d (\d+)!.match(rep.first)
+      if m[1] == "403"
+        raise "Unauthorized access to server (wrong auth token)"
+      elsif m[1] != "200"
+        raise "Bad response code from server: #{m[1]}"
+      end
+
+      return rep.last
+    end
+
     def command_pid
       puts "#{@state['pid']}"
     end
 
     def command_stop
       sock = connect
-      sock << "GET /stop HTTP/1.0\r\n\r\n"
-      rep = sock.read
+      body = request sock, "/stop"
 
-      body = rep.split("\r\n").last
       if body != '{ "status": "ok" }'
         raise "Invalid response: '#{body}'"
       else
@@ -78,10 +96,8 @@ module Puma
 
     def command_halt
       sock = connect
-      s << "GET /halt HTTP/1.0\r\n\r\n"
-      rep = s.read
+      body = request sock, "/halt"
 
-      body = rep.split("\r\n").last
       if body != '{ "status": "ok" }'
         raise "Invalid response: '#{body}'"
       else
@@ -91,10 +107,8 @@ module Puma
 
     def command_restart
       sock = connect
-      sock << "GET /restart HTTP/1.0\r\n\r\n"
-      rep = sock.read
+      body = request sock, "/restart"
 
-      body = rep.split("\r\n").last
       if body != '{ "status": "ok" }'
         raise "Invalid response: '#{body}'"
       else
@@ -104,10 +118,7 @@ module Puma
 
     def command_stats
       sock = connect
-      sock << "GET /stats HTTP/1.0\r\n\r\n"
-      rep = sock.read
-
-      body = rep.split("\r\n").last
+      body = request sock, "/stats"
 
       puts body
     end

@@ -142,6 +142,11 @@ module Puma
           end
         end
 
+        o.on "--control-token TOKEN",
+             "The token to use as authentication for the control server" do |arg|
+          @options[:control_auth_token] = arg
+        end
+
         o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
           min, max = arg.split(":")
           if max
@@ -213,10 +218,7 @@ module Puma
         @options[:rackup] = @argv.shift || DefaultRackup
       end
 
-      if @options[:control_url] == "auto"
-        path = @temp_status_path = Configuration.temp_path
-        @options[:control_url] = "unix://#{path}"
-      end
+      @temp_status_path = @options[:control_path_temp]
     end
 
     # Parse the options, load the rackup, start the server and wait
@@ -273,6 +275,11 @@ module Puma
         uri = URI.parse str
 
         app = Puma::App::Status.new server, self
+
+        if token = @options[:control_auth_token]
+          app.auth_token = token unless token.empty? or token == :none
+        end
+
         status = Puma::Server.new app, @events
         status.min_threads = 0
         status.max_threads = 1

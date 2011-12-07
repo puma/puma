@@ -34,7 +34,10 @@ class TestCLI < Test::Unit::TestCase
     sin = StringIO.new
     sout = StringIO.new
 
-    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}", "--control", url, "test/lobster.ru"], sin, sout
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
+                         "--control", url,
+                         "--control-token", "",
+                         "test/lobster.ru"], sin, sout
     cli.parse_options
 
     t = Thread.new { cli.run }
@@ -57,7 +60,10 @@ class TestCLI < Test::Unit::TestCase
     sin = StringIO.new
     sout = StringIO.new
 
-    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}", "--control", url, "test/lobster.ru"], sin, sout
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
+                         "--control", url,
+                         "--control-token", "",
+                         "test/lobster.ru"], sin, sout
     cli.parse_options
 
     t = Thread.new { cli.run }
