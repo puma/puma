@@ -4,9 +4,21 @@ module Puma
       def initialize(server, cli)
         @server = server
         @cli = cli
+        @auth_token = nil
+      end
+
+      attr_accessor :auth_token
+
+      def authenticate(env)
+        return true unless @auth_token
+        env['QUERY_STRING'].to_s.split(/&;/).include?("token=#{@auth_token}")
       end
 
       def call(env)
+        unless authenticate(env)
+          return [403, {}, ["Invalid auth token"]]
+        end
+
         case env['PATH_INFO']
         when "/stop"
           @server.stop

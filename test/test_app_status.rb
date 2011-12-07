@@ -24,6 +24,30 @@ class TestAppStatus < Test::Unit::TestCase
   def setup
     @server = FakeServer.new
     @app = Puma::App::Status.new(@server, @server)
+    @app.auth_token = nil
+  end
+
+  def test_bad_token
+    @app.auth_token = "abcdef"
+
+    env = { 'PATH_INFO' => "/whatever" }
+
+    status, header, body = @app.call env
+
+    assert_equal 403, status
+  end
+
+  def test_good_token
+    @app.auth_token = "abcdef"
+
+    env = {
+      'PATH_INFO' => "/whatever",
+      'QUERY_STRING' => "token=abcdef"
+    }
+
+    status, header, body = @app.call env
+
+    assert_equal 404, status
   end
 
   def test_unsupported
