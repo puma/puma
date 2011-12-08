@@ -52,6 +52,7 @@ module Puma
       @thread_pool = nil
 
       @persistent_timeout = PERSISTENT_TIMEOUT
+      @persistent_check, @persistent_wakeup = IO.pipe
 
       @proto_env = {
         "rack.version".freeze => Rack::VERSION,
@@ -219,9 +220,11 @@ module Puma
                 env = @proto_env.dup
                 nparsed = 0
               else
-                unless IO.select([client], nil, nil, @persistent_timeout)
+                unless ret = IO.select([client, @persistent_check], nil, nil, @persistent_timeout)
                   raise EOFError, "Timed out persistent connection"
                 end
+
+                return if ret.first.include? @persistent_check
               end
             else
               # Parser is not done, queue up more data to read and continue parsing
@@ -514,12 +517,14 @@ module Puma
     # off the request queue before finally exiting.
     #
     def stop(sync=false)
+      @persistent_wakeup.close
       @notify << STOP_COMMAND
 
       @thread.join if @thread && sync
     end
 
     def halt(sync=false)
+      @persistent_wakeup.close
       @notify << HALT_COMMAND
 
       @thread.join if @thread && sync
