@@ -337,6 +337,7 @@ module Puma
         end
 
         content_length = nil
+        no_body = STATUS_WITH_NO_ENTITY_BODY.include? status
 
         if res_body.kind_of? Array and res_body.size == 1
           content_length = res_body[0].size
@@ -391,6 +392,8 @@ module Puma
           when TRANSFER_ENCODING
             allow_chunked = false
             content_length = nil
+          when CONTENT_TYPE
+            next if no_body
           end
 
           vs.split(NEWLINE).each do |v|
@@ -399,6 +402,11 @@ module Puma
             client.write v
             client.write line_ending
           end
+        end
+
+        if no_body
+          client.write line_ending
+          return keep_alive
         end
 
         if include_keepalive_header
