@@ -1,3 +1,4 @@
+require 'set'
 
 module Puma
 
@@ -43,6 +44,9 @@ module Puma
     504  => 'Gateway Time-out',
     505  => 'HTTP Version not supported'
   }
+
+  # For some HTTP status codes the client only expects headers.
+  STATUS_WITH_NO_ENTITY_BODY = Set.new((100..199).to_a << 204 << 205 << 304)
 
   # Frequently used constants when constructing requests or responses.  Many times
   # the constant just refers to a string with the same contents.  Using these constants
