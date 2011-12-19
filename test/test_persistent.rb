@@ -10,6 +10,7 @@ class TestPersistent < Test::Unit::TestCase
     @keep_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\n\r\n"
 
     @valid_post = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello"
+    @valid_no_body = "GET / HTTP/1.1\r\nHost: test.com\r\nX-Status: 204\r\nContent-Type: text/plain\r\n\r\n"
 
     @headers = { "X-Header" => "Works" }
     @body = ["Hello"]
@@ -17,7 +18,8 @@ class TestPersistent < Test::Unit::TestCase
 
     @simple = lambda do |env|
       @inputs << env['rack.input']
-      [200, @headers, @body]
+      status = Integer(env['HTTP_X_STATUS'] || 200)
+      [status, @headers, @body]
     end
 
     @server = Puma::Server.new @simple
@@ -68,6 +70,17 @@ class TestPersistent < Test::Unit::TestCase
 
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
+
+    @client << @valid_request
+    sz = @body[0].size.to_s
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "Hello", @client.read(5)
+  end
+
+  def test_no_body_then_get
+    @client << @valid_no_body
+    assert_equal "HTTP/1.1 204 No Content\r\nX-Header: Works\r\n\r\n", lines(3)
 
     @client << @valid_request
     sz = @body[0].size.to_s
