@@ -92,15 +92,18 @@ module Puma
     end
 
     # Tell the server to listen on host +host+, port +port+.
-    # If optimize_for_latency is true (the default) then clients connecting
+    # If +optimize_for_latency+ is true (the default) then clients connecting
     # will be optimized for latency over throughput.
     #
-    def add_tcp_listener(host, port, optimize_for_latency=true)
+    # +backlog+ indicates how many unaccepted connections the kernel should
+    # allow to accumulate before returning connection refused.
+    #
+    def add_tcp_listener(host, port, optimize_for_latency=true, backlog=1024)
       s = TCPServer.new(host, port)
       if optimize_for_latency
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
-      s.listen 1024
+      s.listen backlog
       @ios << s
     end
 
