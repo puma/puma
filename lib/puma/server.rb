@@ -100,6 +100,7 @@ module Puma
       if optimize_for_latency
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
+      s.listen 1024
       @ios << s
     end
 
