@@ -8,13 +8,13 @@ module Rack
         :Host => '0.0.0.0',
         :Port => 8080,
         :Threads => '0:16',
-        :Quiet => false
+        :Verbose => false
       }
 
       def self.run(app, options = {})
         options  = DEFAULT_OPTIONS.merge(options)
 
-        unless options[:Quiet]
+        if options[:Verbose]
           app = Rack::CommonLogger.new(app, STDOUT)
         end
 
