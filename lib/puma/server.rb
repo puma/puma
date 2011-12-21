@@ -341,7 +341,7 @@ module Puma
         end
 
         content_length = nil
-        no_body = STATUS_WITH_NO_ENTITY_BODY.include? status
+        no_body = false
 
         if res_body.kind_of? Array and res_body.size == 1
           content_length = res_body[0].size
@@ -366,6 +366,8 @@ module Puma
             client.write " "
             client.write HTTP_STATUS_CODES[status]
             client.write "\r\n"
+
+            no_body = status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
         else
           allow_chunked = false
@@ -382,6 +384,8 @@ module Puma
             client.write " "
             client.write HTTP_STATUS_CODES[status]
             client.write "\r\n"
+
+            no_body = status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
         end
 
