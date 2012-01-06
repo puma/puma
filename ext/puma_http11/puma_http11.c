@@ -268,7 +268,7 @@ void HttpParser_free(void *data) {
   TRACE();
 
   if(data) {
-    free(data);
+    xfree(data);
   }
 }
 
