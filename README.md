@@ -69,7 +69,7 @@ Puma will automatically scale the number of threads based on how much traffic is
 
 ### Binding TCP / Sockets
 
-In contrast to many server configs, Puma simply uses takes one URI parameter with the `-b` (or `--bind`) flag:
+In contrast to many other server configs which require multiple flags, Puma simply uses one URI parameter with the `-b` (or `--bind`) flag:
 
     $ puma -b tcp://127.0.0.1:9292
 
