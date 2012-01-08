@@ -2,6 +2,8 @@ require "hoe"
 require "rake/extensiontask"
 require "rake/javaextensiontask"
 
+IS_JRUBY = defined?(RUBY_ENGINE) ? RUBY_ENGINE == "jruby" : false
+
 HOE = Hoe.spec "puma" do
   self.rubyforge_name = 'puma'
   self.readme_file    = "README.md"
@@ -15,6 +17,10 @@ HOE = Hoe.spec "puma" do
 
   extra_dev_deps << ["rake-compiler", "~> 0.8.0"]
 end
+
+# hoe/test and rake-compiler don't seem to play well together, so disable
+# hoe/test's .gemtest touch file thingy for now
+HOE.spec.files -= [".gemtest"]
 
 # puma.gemspec
 
@@ -51,14 +57,21 @@ task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
 # compile extensions using rake-compiler
 # C (MRI, Rubinius)
 Rake::ExtensionTask.new("puma_http11", HOE.spec) do |ext|
+  # place extension inside namespace
+  ext.lib_dir = "lib/puma"
 end
 
 # Java (JRuby)
 Rake::JavaExtensionTask.new("puma_http11", HOE.spec) do |ext|
+  ext.lib_dir = "lib/puma"
 end
 
-# tests require extension be compiled
-task :test => [:compile]
+# tests require extension be compiled, but depend on the platform
+if IS_JRUBY
+  task :test => [:java]
+else
+  task :test => [:compile]
+end
 
 __END__
 require 'rubygems'
