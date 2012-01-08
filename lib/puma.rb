@@ -1,4 +1,3 @@
-
 # Standard libraries
 require 'socket'
 require 'tempfile'
