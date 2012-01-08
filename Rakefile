@@ -1,3 +1,33 @@
+require "hoe"
+require "rake/extensiontask"
+
+HOE = Hoe.spec "puma" do
+  self.rubyforge_name = 'puma'
+  self.readme_file    = "README.md"
+
+  developer 'Evan Phoenix', 'evan@phx.io'
+
+  spec_extras[:extensions]  = ["ext/puma_http11/extconf.rb"]
+  spec_extras[:executables] = ['puma', 'pumactl']
+
+  dependency "rack", "~> 1.2"
+
+  extra_dev_deps << ["rake-compiler", "~> 0.8.0"]
+end
+
+# puma.gemspec
+file "#{HOE.spec.name}.gemspec" => ['Rakefile'] do |t|
+  puts "Generating #{t.name}"
+  File.open(t.name, 'wb') { |f| f.write HOE.spec.to_ruby }
+end
+
+desc "Generate or update the standalone gemspec file for the project"
+task :gemspec => ["#{HOE.spec.name}.gemspec"]
+
+# tests require extension be compiled
+task :test => [:compile]
+
+__END__
 require 'rubygems'
 
 require 'hoe'
