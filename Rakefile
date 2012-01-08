@@ -1,5 +1,6 @@
 require "hoe"
 require "rake/extensiontask"
+require "rake/javaextensiontask"
 
 HOE = Hoe.spec "puma" do
   self.rubyforge_name = 'puma'
@@ -46,6 +47,15 @@ file 'ext/puma_http11/org/jruby/puma/Http11Parser.java' => ['ext/puma_http11/htt
   end
 end
 task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
+
+# compile extensions using rake-compiler
+# C (MRI, Rubinius)
+Rake::ExtensionTask.new("puma_http11", HOE.spec) do |ext|
+end
+
+# Java (JRuby)
+Rake::JavaExtensionTask.new("puma_http11", HOE.spec) do |ext|
+end
 
 # tests require extension be compiled
 task :test => [:compile]
