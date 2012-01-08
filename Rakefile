@@ -16,6 +16,7 @@ HOE = Hoe.spec "puma" do
 end
 
 # puma.gemspec
+
 file "#{HOE.spec.name}.gemspec" => ['Rakefile'] do |t|
   puts "Generating #{t.name}"
   File.open(t.name, 'wb') { |f| f.write HOE.spec.to_ruby }
@@ -23,6 +24,28 @@ end
 
 desc "Generate or update the standalone gemspec file for the project"
 task :gemspec => ["#{HOE.spec.name}.gemspec"]
+
+# generate extension code using Ragel (C and Java)
+desc "Generate extension code (C and Java) using Ragel"
+task :ragel
+
+file 'ext/puma_http11/http11_parser.c' => ['ext/puma_http11/http11_parser.rl'] do |t|
+  begin
+    sh "ragel #{t.prerequisites.last} -C -G2 -I ext/puma_http11 -o #{t.name}"
+  rescue
+    fail "Could not build wrapper using Ragel (it failed or not installed?)"
+  end
+end
+task :ragel => ['ext/puma_http11/http11_parser.c']
+
+file 'ext/puma_http11/org/jruby/puma/Http11Parser.java' => ['ext/puma_http11/http11_parser.java.rl'] do |t|
+  begin
+    sh "ragel #{t.prerequisites.last} -J -G2 -I ext/puma_http11 -o #{t.name}"
+  rescue
+    fail "Could not build wrapper using Ragel (it failed or not installed?)"
+  end
+end
+task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
 
 # tests require extension be compiled
 task :test => [:compile]
