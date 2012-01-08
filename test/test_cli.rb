@@ -86,7 +86,7 @@ class TestCLI < Test::Unit::TestCase
     cli.parse_options
     cli.write_state
 
-    data = YAML.load File.open(@tmp_path, "r") { |f| f.read }
+    data = YAML.load File.read(@tmp_path)
 
     assert_equal Process.pid, data["pid"]
 
@@ -104,7 +104,7 @@ class TestCLI < Test::Unit::TestCase
     cli.parse_options
     cli.write_state
 
-    data = YAML.load File.open(@tmp_path, "r") { |f| f.read }
+    data = YAML.load File.read(@tmp_path)
 
     assert_equal Process.pid, data["pid"]
     assert_equal url, data["config"].options[:control_url]

@@ -13,6 +13,8 @@ HOE = Hoe.spec "puma" do
   spec_extras[:extensions]  = ["ext/puma_http11/extconf.rb"]
   spec_extras[:executables] = ['puma', 'pumactl']
 
+  require_ruby_version ">= 1.8.7"
+
   dependency "rack", "~> 1.2"
 
   extra_dev_deps << ["rake-compiler", "~> 0.8.0"]

@@ -46,7 +46,7 @@ module Puma
 
       @parser.parse! @argv
 
-      @state = YAML.load File.open(@path, "r") { |f| f.read }
+      @state = YAML.load File.read(@path)
       @config = @state['config']
 
       cmd = @argv.shift
