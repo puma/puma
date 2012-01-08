@@ -59,6 +59,11 @@ task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
 Rake::ExtensionTask.new("puma_http11", HOE.spec) do |ext|
   # place extension inside namespace
   ext.lib_dir = "lib/puma"
+
+  ext.cross_compile = true
+  ext.cross_platform = ['i386-mswin32-60', 'i386-mingw32']
+
+  CLEAN.include "lib/puma/{1.8,1.9}"
 end
 
 # Java (JRuby)
