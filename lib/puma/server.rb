@@ -1,4 +1,3 @@
-require 'rubygems'
 require 'rack'
 require 'stringio'
 
@@ -7,7 +6,7 @@ require 'puma/const'
 require 'puma/events'
 require 'puma/null_io'
 
-require 'puma_http11'
+require 'puma/puma_http11'
 
 require 'socket'
 

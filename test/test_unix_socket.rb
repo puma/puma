@@ -1,10 +1,12 @@
+require "rbconfig"
 require 'test/unit'
 require 'puma/server'
 
 require 'socket'
 
 # UNIX sockets are not recommended on JRuby
-unless defined?(JRUBY_VERSION)
+# (or Windows)
+unless defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
   class TestPumaUnixSocket < Test::Unit::TestCase
   
     App = lambda { |env| [200, {}, ["Works"]] }
