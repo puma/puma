@@ -193,6 +193,7 @@ module Puma
     #
     def process_client(client)
       parser = HttpParser.new
+      close_socket = true
 
       begin
         while true
@@ -213,7 +214,13 @@ module Puma
             if parser.finished?
               cl = env[CONTENT_LENGTH]
 
-              return unless handle_request(env, client, parser.body, cl)
+              case handle_request(env, client, parser.body, cl)
+              when false
+                return
+              when :async
+                close_socket = false
+                return
+              end
 
               nparsed += parser.body.size if cl
 
@@ -257,7 +264,7 @@ module Puma
 
       ensure
         begin
-          client.close
+          client.close if close_socket
         rescue IOError, SystemCallError
           # Already closed
         rescue StandardError => e
@@ -335,6 +342,14 @@ module Puma
       begin
         begin
           status, headers, res_body = @app.call(env)
+
+          if status == -1
+            unless headers.empty? and res_body == []
+              raise "async response must have empty headers and body"
+            end
+
+            return :async
+          end
         rescue => e
           status, headers, res_body = lowlevel_error(e)
         end
