@@ -75,7 +75,7 @@ module Puma
 
     PATH_INFO = 'PATH_INFO'.freeze
 
-    PUMA_VERSION = VERSION = "0.9.2".freeze
+    PUMA_VERSION = VERSION = "0.9.3".freeze
 
     PUMA_TMP_BASE = "puma".freeze
 
