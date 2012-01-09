@@ -2,8 +2,9 @@
 # Copyright (c) 2005 Zed A. Shaw 
 
 
-%w(lib ext bin test).each do |dir| 
-  $LOAD_PATH.unshift File.expand_path("../../#{dir}", __FILE__)
+%w(lib test).each do |d|
+  dir = File.expand_path("../../#{d}", __FILE__)
+  $LOAD_PATH.unshift dir unless $LOAD_PATH.include?(dir)
 end
 
 require 'rubygems'
@@ -18,7 +19,7 @@ require 'puma'
 def redirect_test_io
   yield
 end
-    
+
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
 def hit(uris)

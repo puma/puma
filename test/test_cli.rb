@@ -1,3 +1,4 @@
+require "rbconfig"
 require 'test/unit'
 require 'puma/cli'
 require 'tempfile'
@@ -27,7 +28,7 @@ class TestCLI < Test::Unit::TestCase
     assert_equal File.read(@tmp_path).strip.to_i, Process.pid
   end
 
-  unless defined? JRUBY_VERSION
+  unless defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
   def test_control
     url = "unix://#{@tmp_path}"
 
@@ -85,7 +86,7 @@ class TestCLI < Test::Unit::TestCase
     cli.parse_options
     cli.write_state
 
-    data = YAML.load_file(@tmp_path)
+    data = YAML.load File.read(@tmp_path)
 
     assert_equal Process.pid, data["pid"]
 
@@ -95,7 +96,7 @@ class TestCLI < Test::Unit::TestCase
 
     assert m, "'#{url}' is not a URL"
   end
-  end
+  end # JRUBY or Windows
 
   def test_state
     url = "tcp://127.0.0.1:8232"
@@ -103,7 +104,7 @@ class TestCLI < Test::Unit::TestCase
     cli.parse_options
     cli.write_state
 
-    data = YAML.load_file(@tmp_path)
+    data = YAML.load File.read(@tmp_path)
 
     assert_equal Process.pid, data["pid"]
     assert_equal url, data["config"].options[:control_url]

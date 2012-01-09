@@ -1,5 +1,5 @@
+require "rbconfig"
 require 'test/unit'
-require 'rubygems'
 require 'socket'
 
 require 'puma/cli'
@@ -19,7 +19,7 @@ class TestIntegration < Test::Unit::TestCase
   end
 
   def test_stop_via_pumactl
-    if defined? JRUBY_VERSION
+    if defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
       assert true
       return
     end
