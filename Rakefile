@@ -62,7 +62,7 @@ Rake::ExtensionTask.new("puma_http11", HOE.spec) do |ext|
   # place extension inside namespace
   ext.lib_dir = "lib/puma"
 
-  ext.cross_compile = !!ENV['CROSS']
+  ext.cross_compile = true
   ext.cross_platform = ['i386-mswin32-60', 'i386-mingw32']
   ext.cross_compiling do |spec|
     # add fat-binary stub only when cross compiling
@@ -74,10 +74,8 @@ Rake::ExtensionTask.new("puma_http11", HOE.spec) do |ext|
 end
 
 # Java (JRuby)
-if defined? JRUBY_VERSION
-  Rake::JavaExtensionTask.new("puma_http11", HOE.spec) do |ext|
-    ext.lib_dir = "lib/puma"
-  end
+Rake::JavaExtensionTask.new("puma_http11", HOE.spec) do |ext|
+  ext.lib_dir = "lib/puma"
 end
 
 # the following is a fat-binary stub that will be used when
