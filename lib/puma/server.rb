@@ -66,6 +66,8 @@ module Puma
         SERVER_SOFTWARE => PUMA_VERSION,
         GATEWAY_INTERFACE => CGI_VER
       }
+
+      ENV['RACK_ENV'] ||= "development"
     end
 
     # On Linux, use TCP_CORK to better control how the TCP stack
