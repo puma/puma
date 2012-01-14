@@ -179,6 +179,15 @@ module Puma
         @options[:max_threads] = max
       end
 
+      def ssl_bind(host, port, opts)
+        o = [
+          "cert=#{opts[:cert]}",
+          "key=#{opts[:key]}"
+        ]
+
+        @options[:binds] << "ssl://#{host}:#{port}?#{o.join('&')}"
+      end
+
       # Use +path+ as the file to store the server info state. This is
       # used by pumactl to query and control the server.
       #

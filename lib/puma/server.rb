@@ -108,6 +108,15 @@ module Puma
       @ios << s
     end
 
+    def add_ssl_listener(host, port, ctx, optimize_for_latency=true, backlog=1024)
+      s = TCPServer.new(host, port)
+      if optimize_for_latency
+        s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+      end
+      s.listen backlog
+      @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
+    end
+
     # Tell the server to listen on +path+ as a UNIX domain socket.
     #
     def add_unix_listener(path)
@@ -158,7 +167,7 @@ module Puma
               # client closed the socket even before accept
               client.close rescue nil
             rescue Object => e
-              @events.unknown_error self, env, e, "Listen loop"
+              @events.unknown_error self, e, "Listen loop"
             end
           end
 

@@ -33,7 +33,7 @@ module Puma
     # +server+ is the Server object, +env+ the request, +error+ an exception
     # object, and +kind+ some additional info.
     #
-    def unknown_error(server, env, error, kind="Unknown")
+    def unknown_error(server, error, kind="Unknown")
       if error.respond_to? :render
         error.render "#{Time.now}: #{kind} error", @stderr
       else

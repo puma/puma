@@ -6,6 +6,7 @@ require 'puma/const'
 require 'puma/configuration'
 
 require 'rack/commonlogger'
+require 'rack/utils'
 
 module Puma
   # Handles invoke a Puma::Server in a command line style.
@@ -243,6 +244,27 @@ module Puma
           path = "#{uri.host}#{uri.path}"
 
           server.add_unix_listener path
+        when "ssl"
+          log "* Listening on #{str}"
+          params = Rack::Utils.parse_query uri.query
+          require 'openssl'
+
+          ctx = OpenSSL::SSL::SSLContext.new
+          unless params['key']
+            error "Please specify the SSL key via 'key='"
+          end
+
+          ctx.key = OpenSSL::PKey::RSA.new File.read(params['key'])
+
+          unless params['cert']
+            error "Please specify the SSL cert via 'cert='"
+          end
+
+          ctx.cert = OpenSSL::X509::Certificate.new File.read(params['cert'])
+
+          ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+          server.add_ssl_listener uri.host, uri.port, ctx
         else
           error "Invalid URI: #{str}"
         end
