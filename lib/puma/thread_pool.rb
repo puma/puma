@@ -24,6 +24,9 @@ module Puma
 
       @workers = []
 
+      @work_available = 0
+      @working_workers = 0
+
       @auto_trim = nil
 
       min.times { spawn_thread }
@@ -57,13 +60,24 @@ module Puma
           when Stop
             break
           when Trim
-            @mutex.synchronize do
-              @trim_requested -= 1
-            end
-
-            break
+            break if @mutex.synchronize {
+              if @work_available < @workers.length - @working_workers
+                @trim_requested -= 1
+                true
+              else 
+                @todo << Trim
+                false
+              end
+            }
           else
+            @mutex.synchronize { 
+              @working_workers += 1 
+              @work_available -= 1
+            }
+            
             block.call work
+    
+            @mutex.synchronize {  @working_workers -= 1 }
           end
         end
 
@@ -85,6 +99,8 @@ module Puma
       end
 
       @todo << work
+      
+      @mutex.synchronize { @work_available += 1 }
     end
 
     # If too many threads are in the pool, tell one to finish go ahead
