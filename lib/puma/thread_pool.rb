@@ -12,13 +12,19 @@ module Puma
     # thread.
     #
     def initialize(min, max, &blk)
-      @todo = Queue.new
+      @cond = ConditionVariable.new
       @mutex = Mutex.new
 
+      @todo = []
+
       @spawned = 0
+      @waiting = 0
+
       @min = min
       @max = max
       @block = blk
+
+      @shutdown = false
 
       @trim_requested = 0
 
@@ -26,7 +32,9 @@ module Puma
 
       @auto_trim = nil
 
-      min.times { spawn_thread }
+      @mutex.synchronize do
+        min.times { spawn_thread }
+      end
     end
 
     attr_reader :spawned
@@ -34,37 +42,54 @@ module Puma
     # How many objects have yet to be processed by the pool?
     #
     def backlog
-      @todo.size
+      @mutex.synchronize { @todo.size }
     end
 
-    Stop = Object.new
-    Trim = Object.new
-
     # :nodoc:
+    #
+    # Must be called with @mutex held!
+    #
     def spawn_thread
-      @mutex.synchronize do
-        @spawned += 1
-      end
+      @spawned += 1
 
       th = Thread.new do
         todo = @todo
         block = @block
 
         while true
-          work = todo.pop
+          work = nil
 
-          case work
-          when Stop
-            break
-          when Trim
-            @mutex.synchronize do
-              @trim_requested -= 1
+          continue = true
+
+          @mutex.synchronize do
+            while todo.empty?
+              if @trim_requested > 0
+                @trim_requested -= 1
+                continue = false
+                break
+              end
+
+              if @shutdown
+                continue = false
+                break
+              end
+
+              @waiting += 1
+              @cond.wait @mutex
+              @waiting -= 1
+
+              if @shutdown
+                continue = false
+                break
+              end
             end
 
-            break
-          else
-            block.call work
+            work = todo.pop if continue
           end
+
+          break unless continue
+
+          block.call work
         end
 
         @mutex.synchronize do
@@ -73,28 +98,39 @@ module Puma
         end
       end
 
-      @mutex.synchronize { @workers << th }
+      @workers << th
 
       th
     end
 
+    private :spawn_thread
+
     # Add +work+ to the todo list for a Thread to pickup and process.
     def <<(work)
-      if @todo.num_waiting == 0 and @spawned < @max
-        spawn_thread
-      end
+      @mutex.synchronize do
+        if @shutdown
+          raise "Unable to add work while shutting down"
+        end
 
-      @todo << work
+        @todo << work
+
+        if @waiting == 0 and @spawned < @max
+          spawn_thread
+        end
+
+        @cond.signal
+      end
     end
 
     # If too many threads are in the pool, tell one to finish go ahead
-    # and exit.
+    # and exit. If +force+ is true, then a trim request is requested
+    # even if all threads are being utilized.
     #
-    def trim
+    def trim(force=false)
       @mutex.synchronize do
-        if @spawned - @trim_requested > @min
+        if (force or @waiting > 0) and @spawned - @trim_requested > @min
           @trim_requested += 1
-          @todo << Trim
+          @cond.signal
         end
       end
     end
@@ -131,10 +167,11 @@ module Puma
     # Tell all threads in the pool to exit and wait for them to finish.
     #
     def shutdown
-      @auto_trim.stop if @auto_trim
+      @mutex.synchronize do
+        @shutdown = true
+        @cond.broadcast
 
-      @spawned.times do
-        @todo << Stop
+        @auto_trim.stop if @auto_trim
       end
 
       # Use this instead of #each so that we don't stop in the middle

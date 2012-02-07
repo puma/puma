@@ -70,6 +70,8 @@ class TestThreadPool < Test::Unit::TestCase
 
     finish = true
 
+    pause
+
     assert_equal 2, pool.spawned
     pool.trim
     pause
@@ -82,7 +84,25 @@ class TestThreadPool < Test::Unit::TestCase
 
   end
 
-  def test_trim_doesnt_overtrim
+  def test_force_trim_doesnt_overtrim
+    finish = false
+    pool = new_pool(1, 2) { Thread.pass until finish }
+
+    pool << 1
+    pool << 2
+
+    assert_equal 2, pool.spawned
+    pool.trim true
+    pool.trim true
+
+    finish = true
+
+    pause
+
+    assert_equal 1, pool.spawned
+  end
+
+  def test_trim_is_ignored_if_no_waiting_threads
     finish = false
     pool = new_pool(1, 2) { Thread.pass until finish }
 
@@ -97,7 +117,7 @@ class TestThreadPool < Test::Unit::TestCase
 
     pause
 
-    assert_equal 1, pool.spawned
+    assert_equal 2, pool.spawned
   end
 
   def test_autotrim
