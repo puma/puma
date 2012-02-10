@@ -261,9 +261,12 @@ module Puma
           end
         end
 
-      # The client disconnected while we were reading data
-      rescue EOFError, SystemCallError
-        # Swallow them. The ensure tries to close +client+ down
+      # always thrown
+      rescue EOFError
+      
+      # The client disconnected while we were reading data  
+      rescue SystemCallError
+        # Swallow. The ensure tries to close +client+ down
 
       # The client doesn't know HTTP well
       rescue HttpParserError => e
