@@ -123,7 +123,7 @@ module Puma
 
         o.on "-p", "--port PORT", "Define what port TCP port to bind to",
                                   "Use -b for more advanced options" do |arg|
-          @options[:binds] = "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
+          @options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
         end
 
         o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
