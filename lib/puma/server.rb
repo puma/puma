@@ -114,6 +114,7 @@ module Puma
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
       s.listen backlog
+      @proto_env[HTTPS_KEY] = HTTPS
       @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
     end
 
