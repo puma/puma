@@ -30,7 +30,14 @@ module Rack
         server.max_threads = Integer(max)
         yield server if block_given?
 
-        server.run.join
+        begin
+          server.run.join
+        rescue Interrupt
+          puts "* Gracefully stopping, waiting for requests to finish"
+          server.stop(true)
+          puts "* Goodbye!"
+        end
+
       end
 
       def self.valid_options
