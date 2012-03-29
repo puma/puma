@@ -235,9 +235,9 @@ module Puma
                 return
               end
 
-              nparsed += parser.body.size if cl
+              nparsed += parser.body.bytesize if cl
 
-              if data.size > nparsed
+              if data.bytesize > nparsed
                 data.slice!(0, nparsed)
                 parser.reset
                 env = @proto_env.dup
@@ -293,7 +293,7 @@ module Puma
       if host = env[HTTP_HOST]
         if colon = host.index(":")
           env[SERVER_NAME] = host[0, colon]
-          env[SERVER_PORT] = host[colon+1, host.size]
+          env[SERVER_PORT] = host[colon+1, host.bytesize]
         else
           env[SERVER_NAME] = host
           env[SERVER_PORT] = PORT_80
@@ -371,7 +371,7 @@ module Puma
         no_body = false
 
         if res_body.kind_of? Array and res_body.size == 1
-          content_length = res_body[0].size
+          content_length = res_body[0].bytesize
         end
 
         cork_socket client
@@ -502,7 +502,7 @@ module Puma
     def read_body(env, client, body, cl)
       content_length = cl.to_i
 
-      remain = content_length - body.size
+      remain = content_length - body.bytesize
 
       return StringIO.new(body) if remain <= 0
 
