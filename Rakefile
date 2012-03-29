@@ -4,6 +4,8 @@ require "rake/javaextensiontask"
 
 IS_JRUBY = defined?(RUBY_ENGINE) ? RUBY_ENGINE == "jruby" : false
 
+Hoe.plugin :git
+
 HOE = Hoe.spec "puma" do
   self.rubyforge_name = 'puma'
   self.readme_file    = "README.md"
