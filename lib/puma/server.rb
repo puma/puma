@@ -5,6 +5,7 @@ require 'puma/thread_pool'
 require 'puma/const'
 require 'puma/events'
 require 'puma/null_io'
+require 'puma/compat'
 
 require 'puma/puma_http11'
 
@@ -463,7 +464,7 @@ module Puma
 
         res_body.each do |part|
           if chunked
-            client.write part.size.to_s(16)
+            client.write part.bytesize.to_s(16)
             client.write line_ending
             client.write part
             client.write line_ending
