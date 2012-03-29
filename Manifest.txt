@@ -8,7 +8,16 @@ Rakefile
 TODO
 bin/puma
 bin/pumactl
+examples/CA/cacert.pem
+examples/CA/newcerts/cert_1.pem
+examples/CA/newcerts/cert_2.pem
+examples/CA/private/cakeypair.pem
+examples/CA/serial
 examples/config.rb
+examples/puma/cert_puma.pem
+examples/puma/csr_puma.pem
+examples/puma/puma_keypair.pem
+examples/qc_config.rb
 ext/puma_http11/PumaHttp11Service.java
 ext/puma_http11/ext_help.h
 ext/puma_http11/extconf.rb
@@ -23,6 +32,7 @@ ext/puma_http11/puma_http11.c
 lib/puma.rb
 lib/puma/app/status.rb
 lib/puma/cli.rb
+lib/puma/compat.rb
 lib/puma/configuration.rb
 lib/puma/const.rb
 lib/puma/control_cli.rb
