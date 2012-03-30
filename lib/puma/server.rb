@@ -123,9 +123,18 @@ module Puma
 
     # Tell the server to listen on +path+ as a UNIX domain socket.
     #
-    def add_unix_listener(path)
+    def add_unix_listener(path, umask=nil)
       @unix_paths << path
-      @ios << UNIXServer.new(path)
+
+      # Let anyone connect by default
+      umask ||= 0
+
+      begin
+        old_mask = File.umask(umask)
+        @ios << UNIXServer.new(path)
+      ensure
+        File.umask old_mask
+      end
     end
 
     def backlog

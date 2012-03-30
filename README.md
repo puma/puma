@@ -77,6 +77,14 @@ Want to use UNIX Sockets instead of TCP (which can provide a 5-10% performance b
 
     $ puma -b unix:///var/run/puma.sock
 
+If you need to change the permissions of the UNIX socket, just add a umask parameter:
+
+    $ puma -b 'unix:///var/run/puma.sock?umask=0777'
+
+Need a bit of security? Use SSL sockets!
+
+    $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
+
 ## License
 
 Puma is copyright 2011 Evan Phoenix and contributors. It is licensed under the BSD license. See the include LICENSE file for details.

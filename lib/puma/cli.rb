@@ -243,7 +243,17 @@ module Puma
           log "* Listening on #{str}"
           path = "#{uri.host}#{uri.path}"
 
-          server.add_unix_listener path
+          umask = nil
+
+          if uri.query
+            params = Rack::Utils.parse_query uri.query
+            if u = params['umask']
+              # Use Integer() to respect the 0 prefix as octal
+              umask = Integer(u)
+            end
+          end
+
+          server.add_unix_listener path, umask
         when "ssl"
           log "* Listening on #{str}"
           params = Rack::Utils.parse_query uri.query
