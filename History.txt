@@ -1,69 +1,19 @@
-=== 1.2.0.beta.1 / 2010-07-??
+=== 1.1.1 / 2012-03-30
 
-Improvements:
+ 1 bugfix:
 
-* Ruby 1.9 early compatbility: Merged commits form Eric Wong and Matt Aimonetti.
-* Better RubyGems support thanks to added env she-bang to mongrel_rails executable.
-* Smartly load http11 extension using fat-binary approach.
-* Better detection of Windows platform (usage of RbConfig::CONFIG instead of RUBY_PLATFORM)
+   * Include puma/compat.rb in the gem (oops!)
 
-Bugfixes:
+=== 1.1.0 / 2012-03-30
 
-* Fixed proper version reporting under 1.9
-* Consider MinGW as valid Windows platform.
-* Properly drop PID when daemonizing (EngineYard patched 1.1.5.1).
+ 1 bugfix:
 
-Reorganization:
+   * Make sure that the unix socket has the perms 0777 by default
 
-* Rake task project reorganization and reformat using Hoe.
-* Compile extension using rake-compiler
-* Upgraded http11_parser to work with Ragel 6.2
-* Deprecated obsolete Windows service example scripts (from 2006!)
-* Relocate Http11 JRuby extension to share http11 C extension folder and name.
+ 1 minor feature:
 
-=== 1.1.5 / 2008-05-22
+   * Add umask param to the unix:// bind to set the umask
 
-* Fix bug where num_processors is not actually set from mongrel_rails.
+=== 1.0.0 / 2012-03-29
 
-
-=== 1.1.4 / 2008-02-29
-
-* Fix camping handler. Correct treatment of @throttle parameter.
-
-
-=== 1.1.3 / 2007-12-29
-
-* Fix security flaw of DirHandler; reported on mailing list.
-
-
-=== 1.1.2 /  2007-12-15
-
-* Fix worker termination bug; fix JRuby 1.0.3 load order issue; fix require issue on systems without Rubygems.
-
-
-=== 1.1.1 / 2007-11-12
-
-* Fix mongrel_rails restart bug; fix bug with Rack status codes.
-
-
-=== 1.1 / 2007-11-01
-
-* Pure Ruby URIClassifier.
-* More modular architecture.
-* JRuby support.
-* Move C URIClassifier into mongrel_experimental project.
-
-
-=== 1.0.4 / 2007-10-29
-
-* Backport fixes for versioning inconsistency, mongrel_rails bug, and DirHandler bug.
-
-
-=== 1.0.3
-
-* Fix user-switching bug; make people upgrade to the latest from the RC.
-
-
-=== 1.0.2
-
-* Signed gem; many minor bugfixes and patches.
+* Released!
