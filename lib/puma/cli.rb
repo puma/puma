@@ -109,7 +109,8 @@ module Puma
         :min_threads => 0,
         :max_threads => 16,
         :quiet => false,
-        :binds => []
+        :binds => [],
+        :detach => false
       }
 
       @parser = OptionParser.new do |o|
@@ -162,6 +163,11 @@ module Puma
             @options[:max_threads] = arg.to_i
           end
         end
+        
+        o.on "-D", "--detach", "Detach server process from terminal (also quiets all logs)" do
+          @options[:detach] = true
+          @options[:quiet] = true
+        end
 
       end
 
@@ -174,21 +180,25 @@ module Puma
     end
 
     # If configured, write the pid of the current process out
-    # to a file.
+    # to a file. Optionally write +pid+ of forked process.
     #
-    def write_pid
+    def write_pid(pid=nil)
+      pid ||= Process.pid
+
       if path = @options[:pidfile]
         File.open(path, "w") do |f|
-          f.puts Process.pid
+          f.puts pid
         end
       end
     end
 
-    def write_state
+    def write_state(pid=nil)
       require 'yaml'
 
+      pid ||= Process.pid
+
       if path = @options[:state]
-        state = { "pid" => Process.pid }
+        state = { "pid" => pid }
 
         state["config"] = @config
 
@@ -314,14 +324,27 @@ module Puma
         @status = status
       end
 
-      log "Use Ctrl-C to stop"
+      if @options[:detach]
+        pid = fork do
+          %w(INT TERM KILL).each { |sig| Signal.trap(sig) { server.stop(true) } }
+          Signal.trap :HUP, :IGNORE
+          server.run.join
+        end
 
-      begin
-        server.run.join
-      rescue Interrupt
-        log " - Gracefully stopping, waiting for requests to finish"
-        server.stop(true)
-        log " - Goodbye!"
+        Process.detach pid
+
+        write_pid pid
+        write_state pid
+      else
+        log "Use Ctrl-C to stop"
+        
+        begin
+          server.run.join
+        rescue Interrupt
+          log " - Gracefully stopping, waiting for requests to finish"
+          server.stop(true)
+          log " - Goodbye!"
+        end
       end
 
       File.unlink @temp_status_path if @temp_status_path

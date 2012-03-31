@@ -195,6 +195,13 @@ module Puma
       def state_path(path)
         @options[:state] = path.to_s
       end
+      
+      # Detach server process from terminal (also quiets all logs).
+      #
+      def detach
+        @options[:detach] = true
+        @options[:quiet] = true
+      end
     end
   end
 end
