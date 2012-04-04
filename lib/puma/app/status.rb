@@ -30,7 +30,8 @@ module Puma
 
         when "/restart"
           if @cli and @cli.restart_on_stop!
-            @server.stop
+            @server.begin_restart
+
             return [200, {}, ['{ "status": "ok" }']]
           else
             return [200, {}, ['{ "status": "not configured" }']]

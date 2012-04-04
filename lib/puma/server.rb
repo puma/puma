@@ -109,6 +109,13 @@ module Puma
       end
       s.listen backlog
       @ios << s
+      s
+    end
+
+    def inherit_tcp_listener(host, port, fd)
+      s = TCPServer.for_fd(fd)
+      @ios << s
+      s
     end
 
     def add_ssl_listener(host, port, ctx, optimize_for_latency=true, backlog=1024)
@@ -119,6 +126,13 @@ module Puma
       s.listen backlog
       @proto_env[HTTPS_KEY] = HTTPS
       @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
+      s
+    end
+
+    def inherited_ssl_listener(fd, ctx)
+      s = TCPServer.for_fd(fd)
+      @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
+      s
     end
 
     # Tell the server to listen on +path+ as a UNIX domain socket.
@@ -131,10 +145,22 @@ module Puma
 
       begin
         old_mask = File.umask(umask)
-        @ios << UNIXServer.new(path)
+        s = UNIXServer.new(path)
+        @ios << s
       ensure
         File.umask old_mask
       end
+
+      s
+    end
+
+    def inherit_unix_listener(path, fd)
+      @unix_paths << path
+
+      s = UNIXServer.for_fd fd
+      @ios << s
+
+      s
     end
 
     def backlog
@@ -187,8 +213,10 @@ module Puma
 
           graceful_shutdown if @status == :stop
         ensure
-          @ios.each { |i| i.close }
-          @unix_paths.each { |i| File.unlink i }
+          unless @status == :restart
+            @ios.each { |i| i.close }
+            @unix_paths.each { |i| File.unlink i }
+          end
         end
       end
 
@@ -205,6 +233,9 @@ module Puma
         return true
       when HALT_COMMAND
         @status = :halt
+        return true
+      when RESTART_COMMAND
+        @status = :restart
         return true
       end
 
@@ -584,6 +615,11 @@ module Puma
       @notify << HALT_COMMAND
 
       @thread.join if @thread && sync
+    end
+
+    def begin_restart
+      @persistent_wakeup.close
+      @notify << RESTART_COMMAND
     end
   end
 end

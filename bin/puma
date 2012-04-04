@@ -7,10 +7,4 @@ require 'puma/cli'
 
 cli = Puma::CLI.new ARGV
 
-begin
-  cli.run
-rescue => e
-  raise e if $DEBUG
-  STDERR.puts e.message
-  exit 1
-end
+cli.run

@@ -8,9 +8,14 @@ module Puma
     def initialize(options)
       @options = options
       @options[:binds] ||= []
+      @options[:on_restart] ||= []
     end
 
     attr_reader :options
+
+    def initialize_copy(other)
+      @options = @options.dup
+    end
 
     def load
       if path = @options[:config_file]
@@ -148,6 +153,15 @@ module Puma
       #
       def bind(url)
         @options[:binds] << url
+      end
+
+      # Code to run before doing a restart. This code should
+      # close logfiles, database connections, etc.
+      #
+      # This can be called multiple times to add code each time.
+      #
+      def on_restart(&blk)
+        @options[:on_restart] << blk
       end
 
       # Store the pid of the server in the file at +path+.
