@@ -426,6 +426,7 @@ module Puma
 
       if @restart
         log "* Restarting..."
+        @status.stop true
         restart!
       end
     end
