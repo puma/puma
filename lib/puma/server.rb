@@ -62,9 +62,9 @@ module Puma
         "rack.multithread".freeze => true,
         "rack.multiprocess".freeze => false,
         "rack.run_once".freeze => true,
-        "SCRIPT_NAME".freeze => "",
-        "CONTENT_TYPE".freeze => "",
-        "QUERY_STRING".freeze => "",
+        "SCRIPT_NAME".freeze => nil,
+        "CONTENT_TYPE".freeze => nil,
+        "QUERY_STRING".freeze => nil,
         SERVER_PROTOCOL => HTTP_11,
         SERVER_SOFTWARE => PUMA_VERSION,
         GATEWAY_INTERFACE => CGI_VER
