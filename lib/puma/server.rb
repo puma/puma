@@ -286,7 +286,7 @@ module Puma
 
       # Server error
       rescue StandardError => e
-        @events.unknown_error self, env, e, "Read"
+        @events.unknown_error self, e, "Read"
 
       ensure
         begin
@@ -294,7 +294,7 @@ module Puma
         rescue IOError, SystemCallError
           # Already closed
         rescue StandardError => e
-          @events.unknown_error self, env, e, "Client"
+          @events.unknown_error self, e, "Client"
         end
       end
     end
