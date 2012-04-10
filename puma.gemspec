@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name = "puma"
-  s.version = "1.1.0"
+  s.version = "1.1.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Evan Phoenix"]
@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
   s.required_ruby_version = Gem::Requirement.new(">= 1.8.7")
   s.rubyforge_project = "puma"
-  s.rubygems_version = "1.8.18"
+  s.rubygems_version = "1.8.21"
   s.summary = "Puma is a simple, fast, and highly concurrent HTTP 1.1 server for Ruby web applications"
   s.test_files = ["test/test_app_status.rb", "test/test_cli.rb", "test/test_config.rb", "test/test_http10.rb", "test/test_http11.rb", "test/test_integration.rb", "test/test_persistent.rb", "test/test_rack_handler.rb", "test/test_rack_server.rb", "test/test_thread_pool.rb", "test/test_unix_socket.rb", "test/test_ws.rb"]
 
@@ -26,19 +26,19 @@ Gem::Specification.new do |s|
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<rack>, ["~> 1.2"])
-      s.add_development_dependency(%q<rake-compiler>, ["~> 0.8.0"])
       s.add_development_dependency(%q<rdoc>, ["~> 3.10"])
-      s.add_development_dependency(%q<hoe>, ["~> 2.14"])
+      s.add_development_dependency(%q<rake-compiler>, ["~> 0.8.0"])
+      s.add_development_dependency(%q<hoe>, ["~> 3.0"])
     else
       s.add_dependency(%q<rack>, ["~> 1.2"])
-      s.add_dependency(%q<rake-compiler>, ["~> 0.8.0"])
       s.add_dependency(%q<rdoc>, ["~> 3.10"])
-      s.add_dependency(%q<hoe>, ["~> 2.14"])
+      s.add_dependency(%q<rake-compiler>, ["~> 0.8.0"])
+      s.add_dependency(%q<hoe>, ["~> 3.0"])
     end
   else
     s.add_dependency(%q<rack>, ["~> 1.2"])
-    s.add_dependency(%q<rake-compiler>, ["~> 0.8.0"])
     s.add_dependency(%q<rdoc>, ["~> 3.10"])
-    s.add_dependency(%q<hoe>, ["~> 2.14"])
+    s.add_dependency(%q<rake-compiler>, ["~> 0.8.0"])
+    s.add_dependency(%q<hoe>, ["~> 3.0"])
   end
 end
