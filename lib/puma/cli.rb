@@ -33,9 +33,26 @@ module Puma
       @restart = false
       @temp_status_path = nil
 
+      @listeners = []
+
       setup_options
 
       generate_restart_data
+
+      @inherited_fds = {}
+      remove = []
+
+      ENV.each do |k,v|
+        if k =~ /PUMA_INHERIT_\d+/
+          fd, url = v.split(":", 2)
+          @inherited_fds[url] = fd.to_i
+          remove << k
+        end
+      end
+
+      remove.each do |k|
+        ENV.delete k
+      end
     end
 
     def restart_on_stop!
@@ -62,6 +79,8 @@ module Puma
 
       @restart_dir ||= Dir.pwd
 
+      @original_argv = ARGV.dup
+
       if defined? Rubinius::OS_ARGV
         @restart_argv = Rubinius::OS_ARGV
       else
@@ -72,20 +91,47 @@ module Puma
         # picked up in PATH.
         #
         if File.exists?($0)
-          @restart_argv = [Gem.ruby, $0] + ARGV
+          arg0 = [Gem.ruby, $0]
         else
-          @restart_argv = [Gem.ruby, "-S", $0] + ARGV
+          arg0 = [Gem.ruby, "-S", $0]
         end
+
+        @restart_argv = arg0 + ARGV
       end
     end
 
     def restart!
+      @options[:on_restart].each do |blk|
+        blk.call self
+      end
+
       if IS_JRUBY
+        @listeners.each_with_index do |(str,io),i|
+          io.close
+
+          # We have to unlink a unix socket path that's not being used
+          uri = URI.parse str
+          if uri.scheme == "unix"
+            path = "#{uri.host}#{uri.path}"
+            File.unlink path
+          end
+        end
+
         require 'puma/jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, Gem.ruby, *@restart_argv)
       else
+        @listeners.each_with_index do |(l,io),i|
+          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+        end
+
+        if cmd = @options[:restart_cmd]
+          argv = cmd.split(' ') + @original_argv
+        else
+          argv = @restart_argv
+        end
+
         Dir.chdir @restart_dir
-        Kernel.exec(*@restart_argv)
+        Kernel.exec(*argv)
       end
     end
 
@@ -163,6 +209,11 @@ module Puma
           end
         end
 
+        o.on "--restart-cmd CMD",
+             "The puma command to run during a hot restart",
+             "Default: inferred" do |cmd|
+          @options[:restart_cmd] = cmd
+        end
       end
 
       @parser.banner = "puma <options> <rackup file>"
@@ -190,7 +241,10 @@ module Puma
       if path = @options[:state]
         state = { "pid" => Process.pid }
 
-        state["config"] = @config
+        cfg = @config.dup
+        cfg.options.delete :on_restart
+
+        state["config"] = cfg
 
         File.open(path, "w") do |f|
           f.write state.to_yaml
@@ -237,25 +291,38 @@ module Puma
         uri = URI.parse str
         case uri.scheme
         when "tcp"
-          log "* Listening on #{str}"
-          server.add_tcp_listener uri.host, uri.port
-        when "unix"
-          log "* Listening on #{str}"
-          path = "#{uri.host}#{uri.path}"
-
-          umask = nil
-
-          if uri.query
-            params = Rack::Utils.parse_query uri.query
-            if u = params['umask']
-              # Use Integer() to respect the 0 prefix as octal
-              umask = Integer(u)
-            end
+          if fd = @inherited_fds.delete(str)
+            log "* Inherited #{str}"
+            io = server.inherit_tcp_listener uri.host, uri.port, fd
+          else
+            log "* Listening on #{str}"
+            io = server.add_tcp_listener uri.host, uri.port
           end
 
-          server.add_unix_listener path, umask
+          @listeners << [str, io]
+        when "unix"
+          if fd = @inherited_fds.delete(str)
+            log "* Inherited #{str}"
+            io = server.inherit_unix_listener uri.path, fd
+          else
+            log "* Listening on #{str}"
+            path = "#{uri.host}#{uri.path}"
+
+            umask = nil
+
+            if uri.query
+              params = Rack::Utils.parse_query uri.query
+              if u = params['umask']
+                # Use Integer() to respect the 0 prefix as octal
+                umask = Integer(u)
+              end
+            end
+
+            io = server.add_unix_listener path, umask
+          end
+
+          @listeners << [str, io]
         when "ssl"
-          log "* Listening on #{str}"
           params = Rack::Utils.parse_query uri.query
           require 'openssl'
 
@@ -274,9 +341,35 @@ module Puma
 
           ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-          server.add_ssl_listener uri.host, uri.port, ctx
+          if fd = @inherited_fds.delete(str)
+            log "* Inherited #{str}"
+            io = server.inherited_ssl_listener fd, ctx
+          else
+            log "* Listening on #{str}"
+            io = server.add_ssl_listener uri.host, uri.port, ctx
+          end
+
+          @listeners << [str, io]
         else
           error "Invalid URI: #{str}"
+        end
+      end
+
+      # If we inherited fds but didn't use them (because of a
+      # configuration change), then be sure to close them.
+      @inherited_fds.each do |str, fd|
+        log "* Closing unused inherited connection: #{str}"
+
+        begin
+          IO.for_fd(fd).close
+        rescue SystemCallError
+        end
+
+        # We have to unlink a unix socket path that's not being used
+        uri = URI.parse str
+        if uri.scheme == "unix"
+          path = "#{uri.host}#{uri.path}"
+          File.unlink path
         end
       end
 
@@ -312,6 +405,11 @@ module Puma
 
         status.run
         @status = status
+      end
+
+      Signal.trap "SIGUSR2" do
+        @restart = true
+        server.begin_restart
       end
 
       log "Use Ctrl-C to stop"

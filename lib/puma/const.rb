@@ -133,6 +133,7 @@ module Puma
 
     STOP_COMMAND = "?".freeze
     HALT_COMMAND = "!".freeze
+    RESTART_COMMAND = "R".freeze
 
     RACK_INPUT = "rack.input".freeze
     RACK_URL_SCHEME = "rack.url_scheme".freeze
