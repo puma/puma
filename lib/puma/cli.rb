@@ -266,6 +266,12 @@ module Puma
       @temp_status_path = @options[:control_path_temp]
     end
 
+    def graceful_stop(server)
+      log " - Gracefully stopping, waiting for requests to finish"
+      server.stop(true)
+      log " - Goodbye!"
+    end
+
     # Parse the options, load the rackup, start the server and wait
     # for it to finish.
     #
@@ -412,14 +418,16 @@ module Puma
         server.begin_restart
       end
 
+      Signal.trap "SIGTERM" do
+        graceful_stop server
+      end
+
       log "Use Ctrl-C to stop"
 
       begin
         server.run.join
       rescue Interrupt
-        log " - Gracefully stopping, waiting for requests to finish"
-        server.stop(true)
-        log " - Goodbye!"
+        graceful_stop server
       end
 
       File.unlink @temp_status_path if @temp_status_path
