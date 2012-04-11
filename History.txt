@@ -1,3 +1,28 @@
+=== 1.2.0 / 2012-04-11
+
+ 1 major feature:
+
+   * When possible, the internal restart does a "hot restart" meaning
+     the server sockets remains open, so no connections are lost.
+
+ 1 minor feature:
+
+    * More helpful fallback error message
+
+ 6 bug fixes:
+
+    * Pass the proper args to unknown_error. Fixes #54, #58
+    * Stop the control server before restarting. Fixes #61
+    * Fix reporting https only on a true SSL connection
+    * Set the default content type to 'text/plain'. Fixes #63
+    * Use REUSEADDR. Fixes #60
+    * Shutdown gracefull on SIGTERM. Fixes #53
+
+ 2 new contributers:
+
+   * Seamus Abshere
+   * Steve Richert
+
 === 1.1.1 / 2012-03-30
 
  1 bugfix:

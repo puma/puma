@@ -9,6 +9,7 @@ Hoe.plugin :git
 HOE = Hoe.spec "puma" do
   self.rubyforge_name = 'puma'
   self.readme_file    = "README.md"
+  self.urls = %w!http://puma.io http://github.com/puma/puma!
 
   developer 'Evan Phoenix', 'evan@phx.io'
 
