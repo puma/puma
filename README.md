@@ -87,6 +87,35 @@ Need a bit of security? Use SSL sockets!
 
     $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 
+### Control/Status Server
+
+Puma comes with a builtin status/control app that can be used query and control puma itself. Here is an example of starting puma with the control server:
+
+    $ puma --control tcp://127.0.0.1:9293 --control-token foo
+
+This directly puma to start the control server on localhost port 9293. Additionally, all requests to the control server will need to include `token=foo` as a query parameter. This allows for simple authentication. Check out [https://github.com/puma/puma/blob/master/lib/puma/app/status.rb]() to see what the app has available.
+
+## Restart
+
+Puma includes the ability to restart itself, allowing for new versions to be easily upgraded to. When available (currently anywhere but JRuby), puma performs a "hot restart". This is the same functionality available in *unicorn* and *nginx* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
+
+To perform a restart, there are 2 builtin mechanism:
+
+  * Send the puma process the `SIGUSR2` signal
+  * Use the status server and issue `/restart`
+
+No code is shared between the current and restarted process, so it should be safe to issue a restart any place where you would manually stop puma and start it again.
+
+If the new process is unable to load, it will simply exit. You should therefore run puma under a supervisor when using it in production.
+
+## pumactl
+
+If you start puma with `-S some/path` then you can pass that same path to the `pumactl` program to control your server. For instance:
+
+    $ pumactl -S some/path restart
+
+will cause the server to perform a restart. `pumactl` is a simple CLI frontend to the contro/status app described above.
+
 ## License
 
 Puma is copyright 2011 Evan Phoenix and contributors. It is licensed under the BSD license. See the include LICENSE file for details.
