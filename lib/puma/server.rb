@@ -70,6 +70,8 @@ module Puma
         GATEWAY_INTERFACE => CGI_VER
       }
 
+      @envs = {}
+
       ENV['RACK_ENV'] ||= "development"
     end
 
@@ -124,7 +126,11 @@ module Puma
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
       s.listen backlog
-      @proto_env[HTTPS_KEY] = HTTPS
+
+      env = @proto_env.dup
+      env[HTTPS_KEY] = HTTPS
+      @envs[s] = env
+
       @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
       s
     end
@@ -179,8 +185,8 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
-        process_client(client)
+      @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client, env|
+        process_client(client, env)
       end
 
       if @auto_trim_time
@@ -200,7 +206,7 @@ module Puma
                 if sock == check
                   break if handle_check
                 else
-                  pool << sock.accept
+                  pool << [sock.accept, @envs.fetch(sock, @proto_env)]
                 end
               end
             rescue Errno::ECONNABORTED
@@ -248,7 +254,7 @@ module Puma
     # indicates that it supports keep alive, wait for another request before
     # returning.
     #
-    def process_client(client)
+    def process_client(client, proto_env)
       parser = HttpParser.new
       close_socket = true
 
@@ -256,7 +262,7 @@ module Puma
         while true
           parser.reset
 
-          env = @proto_env.dup
+          env = proto_env.dup
           data = client.readpartial(CHUNK_SIZE)
           nparsed = 0
 
