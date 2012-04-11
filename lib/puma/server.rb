@@ -134,11 +134,12 @@ module Puma
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
+      ssl = OpenSSL::SSL::SSLServer.new(s, ctx)
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS
-      @envs[s] = env
+      @envs[ssl] = env
 
-      @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
+      @ios << ssl
       s
     end
 
