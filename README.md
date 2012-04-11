@@ -108,6 +108,12 @@ No code is shared between the current and restarted process, so it should be saf
 
 If the new process is unable to load, it will simply exit. You should therefore run puma under a supervisor when using it in production.
 
+### Cleanup Code
+
+Puma isn't able to understand all the resources that your app may use, so it provides a hook in the configuration file you pass to `-C` call `on_restart`. The block passed to `on_restart` will be called, unsurprisingly, just before puma restarts itself.
+
+You should place code to close global log files, redis connections, etc in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restart many times.
+
 ## pumactl
 
 If you start puma with `-S some/path` then you can pass that same path to the `pumactl` program to control your server. For instance:
