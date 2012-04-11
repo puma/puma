@@ -63,7 +63,12 @@ module Puma
         "rack.multiprocess".freeze => false,
         "rack.run_once".freeze => true,
         "SCRIPT_NAME".freeze => "",
-        "CONTENT_TYPE".freeze => "",
+
+        # Rack blows up if this is an empty string, and Rack::Lint
+        # blows up if it's nil. So 'text/plain' seems like the most
+        # sensible default value.
+        "CONTENT_TYPE".freeze => "text/plain",
+
         "QUERY_STRING".freeze => "",
         SERVER_PROTOCOL => HTTP_11,
         SERVER_SOFTWARE => PUMA_VERSION,
