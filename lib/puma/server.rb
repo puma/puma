@@ -605,7 +605,7 @@ module Puma
     # A fallback rack response if +@app+ raises as exception.
     #
     def lowlevel_error(e)
-      [500, {}, ["Puma caught this error:\n#{e.backtrace.join("\n")}"]]
+      [500, {}, ["Puma caught this error: #{e}\n#{e.backtrace.join("\n")}"]]
     end
 
     # Wait for all outstanding requests to finish.
