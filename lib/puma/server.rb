@@ -110,43 +110,26 @@ module Puma
     # allow to accumulate before returning connection refused.
     #
     def add_tcp_listener(host, port, optimize_for_latency=true, backlog=1024)
-      s = TCPServer.new(host, port)
-      if optimize_for_latency
-        s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
-      end
-      s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
-      s.listen backlog
-      @ios << s
-      s
-    end
-
-    def inherit_tcp_listener(host, port, fd)
-      s = TCPServer.for_fd(fd)
-      @ios << s
-      s
+      add_listener tcp_socket(host, port, optimize_for_latency, backlog)
     end
 
     def add_ssl_listener(host, port, ctx, optimize_for_latency=true, backlog=1024)
-      s = TCPServer.new(host, port)
-      if optimize_for_latency
-        s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
-      end
-      s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
-      s.listen backlog
-
+      s = tcp_socket(host, port, optimize_for_latency, backlog)
       ssl = OpenSSL::SSL::SSLServer.new(s, ctx)
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS
       @envs[ssl] = env
 
-      @ios << ssl
-      s
+      add_listener ssl
+    end
+
+    def inherit_tcp_listener(host, port, fd)
+      add_listener TCPServer.for_fd(fd)
     end
 
     def inherited_ssl_listener(fd, ctx)
       s = TCPServer.for_fd(fd)
-      @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
-      s
+      add_listener OpenSSL::SSL::SSLServer.new(s, ctx)
     end
 
     # Tell the server to listen on +path+ as a UNIX domain socket.
@@ -157,24 +140,15 @@ module Puma
       # Let anyone connect by default
       umask ||= 0
 
-      begin
-        old_mask = File.umask(umask)
-        s = UNIXServer.new(path)
-        @ios << s
-      ensure
-        File.umask old_mask
-      end
-
-      s
+      old_mask = File.umask(umask)
+      add_listener UNIXServer.new(path)
+    ensure
+      File.umask old_mask
     end
 
     def inherit_unix_listener(path, fd)
       @unix_paths << path
-
-      s = UNIXServer.for_fd fd
-      @ios << s
-
-      s
+      add_listener UNIXServer.for_fd(fd)
     end
 
     def backlog
@@ -239,7 +213,7 @@ module Puma
 
     # :nodoc:
     def handle_check
-      cmd = @check.read(1) 
+      cmd = @check.read(1)
 
       case cmd
       when STOP_COMMAND
@@ -276,7 +250,7 @@ module Puma
 
           # Assumption: nparsed will always be less since data will get filled
           # with more after each parsing.  If it doesn't get more then there was
-          # a problem with the read operation on the client socket. 
+          # a problem with the read operation on the client socket.
           # Effect is to stop processing when the socket can't fill the buffer
           # for further parsing.
           while nparsed < data.length
@@ -635,5 +609,25 @@ module Puma
       @persistent_wakeup.close
       @notify << RESTART_COMMAND
     end
+
+
+    protected
+
+
+    def tcp_socket(host, port, optimize_for_latency, backlog)
+      s = TCPServer.new(host, port)
+      if optimize_for_latency
+        s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+      end
+      s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
+      s.listen backlog
+      s
+    end
+
+    def add_listener(socket)
+      @ios << socket
+      socket
+    end
+
   end
 end
