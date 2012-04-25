@@ -155,6 +155,7 @@ module Puma
         :min_threads => 0,
         :max_threads => 16,
         :quiet => false,
+        :deamon => false,
         :binds => []
       }
 
@@ -180,6 +181,10 @@ module Puma
           @options[:quiet] = true
         end
 
+        o.on "-d", "--deamon", "Run as deamon, requires ruby >= 1.9" do
+          @options[:deamon] = true
+        end
+        
         o.on "-S", "--state PATH", "Where to store the state details" do |arg|
           @options[:state] = arg
         end
@@ -277,11 +282,19 @@ module Puma
     #
     def run
       parse_options
-
+      
       app = @config.app
 
       write_pid
       write_state
+      
+      if @options[:deamon]
+        unless Process.respond_to?('daemon')
+          abort "Process.deamon requires ruby >= 1.9"
+        else
+          Process.daemon(true)
+        end
+      end
 
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
