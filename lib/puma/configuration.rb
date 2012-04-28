@@ -174,6 +174,12 @@ module Puma
       def quiet
         @options[:quiet] = true
       end
+      
+      # Run as deamon process.
+      #
+      def deamon
+        @options[:deamon] = true
+      end
 
       # Load +path+ as a rackup file.
       #
