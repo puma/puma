@@ -568,11 +568,10 @@ module Puma
       if remain > MAX_BODY
         stream = Tempfile.new(Const::PUMA_TMP_BASE)
         stream.binmode
+        stream.write body
       else
-        stream = StringIO.new
+        stream = StringIO.new body
       end
-
-      stream.write body
 
       # Read an odd sized chunk so we can read even sized ones
       # after this

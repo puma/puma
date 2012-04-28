@@ -75,6 +75,24 @@ class TestRackServer < Test::Unit::TestCase
     end
   end
 
+  def test_large_post_body
+    @checker = ErrorChecker.new ServerLint.new(@simple)
+    @server.app = @checker
+
+    @server.run
+
+    big = "x" * (1024 * 16)
+
+    Net::HTTP.post_form URI.parse('http://localhost:9998/test'),
+                 { "big" => big }
+
+    stop
+
+    if exc = @checker.exception
+      raise exc
+    end
+  end
+
   def test_path_info
     input = nil
     @server.app = lambda { |env| input = env; @simple.call(env) }
@@ -119,4 +137,5 @@ class TestRackServer < Test::Unit::TestCase
 
     assert_match %r!GET /test HTTP/1\.1!, log.string
   end
+
 end
