@@ -1,3 +1,12 @@
+=== 1.2.2 / 2012-04-28
+
+* 4 bug fixes:
+
+  * Report a lowlevel error to stderr
+  * Set a fallback SERVER_NAME and SERVER_PORT
+  * Keep the encoding of the body correct. Fixes #79
+  * show error.to_s along with backtrace for low-level error
+
 === 1.2.1 / 2012-04-11
 
  1 bug fix:
