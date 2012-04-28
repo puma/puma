@@ -53,6 +53,8 @@ module Puma
       remove.each do |k|
         ENV.delete k
       end
+
+      ENV['RACK_ENV'] ||= "development"
     end
 
     def restart_on_stop!
