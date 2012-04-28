@@ -356,6 +356,9 @@ module Puma
           env[SERVER_NAME] = host
           env[SERVER_PORT] = PORT_80
         end
+      else
+        env[SERVER_NAME] = LOCALHOST
+        env[SERVER_PORT] = PORT_80
       end
 
       unless env[REQUEST_PATH]
