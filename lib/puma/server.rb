@@ -425,6 +425,8 @@ module Puma
             return :async
           end
         rescue => e
+          @events.unknown_error self, e, "Rack app"
+
           status, headers, res_body = lowlevel_error(e)
         end
 
