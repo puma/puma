@@ -1,4 +1,5 @@
 require 'test/unit'
+require 'rack'
 require 'puma/app/status'
 
 class TestAppStatus < Test::Unit::TestCase
@@ -27,6 +28,12 @@ class TestAppStatus < Test::Unit::TestCase
     @app.auth_token = nil
   end
 
+  def lint(env)
+    app = Rack::Lint.new @app
+    mock_env = Rack::MockRequest.env_for env['PATH_INFO']
+    app.call mock_env
+  end
+
   def test_bad_token
     @app.auth_token = "abcdef"
 
@@ -35,6 +42,7 @@ class TestAppStatus < Test::Unit::TestCase
     status, _, _ = @app.call env
 
     assert_equal 403, status
+    lint(env)
   end
 
   def test_good_token
@@ -48,6 +56,7 @@ class TestAppStatus < Test::Unit::TestCase
     status, _, _ = @app.call env
 
     assert_equal 404, status
+    lint(env)
   end
 
   def test_unsupported
@@ -56,6 +65,7 @@ class TestAppStatus < Test::Unit::TestCase
     status, _, _ = @app.call env
 
     assert_equal 404, status
+    lint(env)
   end
 
   def test_stop
@@ -66,6 +76,7 @@ class TestAppStatus < Test::Unit::TestCase
     assert_equal :stop, @server.status
     assert_equal 200, status
     assert_equal ['{ "status": "ok" }'], body
+    lint(env)
   end
 
   def test_halt
@@ -76,6 +87,7 @@ class TestAppStatus < Test::Unit::TestCase
     assert_equal :halt, @server.status
     assert_equal 200, status
     assert_equal ['{ "status": "ok" }'], body
+    lint(env)
   end
 
   def test_stats
@@ -88,6 +100,7 @@ class TestAppStatus < Test::Unit::TestCase
 
     assert_equal 200, status
     assert_equal ['{ "backlog": 1, "running": 9 }'], body
+    lint(env)
   end
 
 end
