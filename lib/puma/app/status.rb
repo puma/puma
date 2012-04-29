@@ -6,6 +6,7 @@ module Puma
         @cli = cli
         @auth_token = nil
       end
+      OK_STATUS = '{ "status": "ok" }'.freeze
 
       attr_accessor :auth_token
 
@@ -16,34 +17,39 @@ module Puma
 
       def call(env)
         unless authenticate(env)
-          return [403, {}, ["Invalid auth token"]]
+          return rack_response(403, "Invalid auth token")
         end
 
         case env['PATH_INFO']
         when "/stop"
           @server.stop
-          return [200, {}, ['{ "status": "ok" }']]
+          return rack_response(200, OK_STATUS)
 
         when "/halt"
           @server.halt
-          return [200, {}, ['{ "status": "ok" }']]
+          return rack_response(200, OK_STATUS)
 
         when "/restart"
           if @cli and @cli.restart_on_stop!
             @server.begin_restart
 
-            return [200, {}, ['{ "status": "ok" }']]
+            return rack_response(200, OK_STATUS)
           else
-            return [200, {}, ['{ "status": "not configured" }']]
+            return rack_response(200, '{ "status": "not configured" }')
           end
 
         when "/stats"
           b = @server.backlog
           r = @server.running
-          return [200, {}, ["{ \"backlog\": #{b}, \"running\": #{r} }"]]
+            return rack_response(200, %Q!{ "backlog": #{b}, "running": #{r} }!)
         end
 
-        [404, {}, ["Unsupported action"]]
+        rack_response 404, "Unsupported action"
+      end
+
+      private
+      def rack_response(status, body)
+        [status, { 'Content-Type' => 'text/plain', 'Content-Length' => body.length.to_s }, [body]]
       end
     end
   end
