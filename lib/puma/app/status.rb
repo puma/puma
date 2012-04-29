@@ -17,7 +17,7 @@ module Puma
 
       def call(env)
         unless authenticate(env)
-          return rack_response(403, "Invalid auth token")
+          return rack_response(403, 'Invalid auth token', 'text/plain')
         end
 
         case env['PATH_INFO']
@@ -44,12 +44,12 @@ module Puma
             return rack_response(200, %Q!{ "backlog": #{b}, "running": #{r} }!)
         end
 
-        rack_response 404, "Unsupported action"
+        rack_response 404, "Unsupported action", 'text/plain'
       end
 
       private
-      def rack_response(status, body)
-        [status, { 'Content-Type' => 'text/plain', 'Content-Length' => body.length.to_s }, [body]]
+      def rack_response(status, body, content_type='application/json')
+        [status, { 'Content-Type' => content_type, 'Content-Length' => body.length.to_s }, [body]]
       end
     end
   end
