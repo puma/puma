@@ -9,12 +9,13 @@ Hoe.plugin :git
 HOE = Hoe.spec "puma" do
   self.rubyforge_name = 'puma'
   self.readme_file    = "README.md"
-  self.urls = %w!http://puma.io http://github.com/puma/puma!
+  self.urls = %w!http://puma.io https://github.com/puma/puma!
 
   developer 'Evan Phoenix', 'evan@phx.io'
 
   spec_extras[:extensions]  = ["ext/puma_http11/extconf.rb"]
   spec_extras[:executables] = ['puma', 'pumactl']
+  spec_extras[:homepage] = self.urls.first
 
   require_ruby_version ">= 1.8.7"
 
