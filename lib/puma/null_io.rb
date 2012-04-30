@@ -4,7 +4,6 @@ module Puma
   # Used as the value for rack.input when the request has no body.
   #
   class NullIO
-
     # Always returns nil
     #
     def gets
@@ -16,10 +15,10 @@ module Puma
     def each
     end
 
-    # Always returns nil
+    # Mimics IO#read with no data
     #
-    def read(count)
-      nil
+    def read(count=nil,buffer=nil)
+      (count && count > 0) ? nil : ""
     end
 
     # Does nothing
