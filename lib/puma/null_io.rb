@@ -1,10 +1,10 @@
+require 'stringio'
 module Puma
 
   # Provides an IO-like object that always appears to contain no data.
   # Used as the value for rack.input when the request has no body.
   #
   class NullIO
-
     # Always returns nil
     #
     def gets
@@ -16,10 +16,10 @@ module Puma
     def each
     end
 
-    # Always returns nil
+    # Mimics IO#read with no data
     #
-    def read(count)
-      nil
+    def read(*args)
+      StringIO.new('').read(*args)
     end
 
     # Does nothing
