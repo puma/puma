@@ -1,4 +1,3 @@
-require 'stringio'
 module Puma
 
   # Provides an IO-like object that always appears to contain no data.
@@ -18,8 +17,8 @@ module Puma
 
     # Mimics IO#read with no data
     #
-    def read(*args)
-      StringIO.new('').read(*args)
+    def read(count=nil,buffer=nil)
+      (count && count > 0) ? nil : ""
     end
 
     # Does nothing
