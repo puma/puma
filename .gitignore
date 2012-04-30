@@ -9,3 +9,4 @@ log
 pkg
 tmp
 .rbx/
+Gemfile.lock
