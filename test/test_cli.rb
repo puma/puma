@@ -109,4 +109,20 @@ class TestCLI < Test::Unit::TestCase
     assert_equal Process.pid, data["pid"]
     assert_equal url, data["config"].options[:control_url]
   end
+
+  def test_load_path
+    cli = Puma::CLI.new ["--include", 'foo/bar']
+    cli.parse_options
+
+    assert_equal 'foo/bar', $LOAD_PATH[0]
+    $LOAD_PATH.shift
+
+    cli = Puma::CLI.new ["--include", 'foo/bar:baz/qux']
+    cli.parse_options
+
+    assert_equal 'foo/bar', $LOAD_PATH[0]
+    $LOAD_PATH.shift
+    assert_equal 'baz/qux', $LOAD_PATH[0]
+    $LOAD_PATH.shift
+  end
 end
