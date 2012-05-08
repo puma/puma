@@ -425,7 +425,8 @@ module Puma
       end
 
       Signal.trap "SIGTERM" do
-        graceful_stop server
+        log " - Gracefully stopping, waiting for requests to finish"
+        server.stop false
       end
 
       log "Use Ctrl-C to stop"
