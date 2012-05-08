@@ -1,12 +1,16 @@
-=== HEAD
+=== 1.3.0 / 2012-05-08
 
-1 minor feature:
+* 2 minor features:
+  * Return valid Rack responses (passes Lint) from status server
+  * Add -I option to specify $LOAD_PATH directories
 
-  Return valid Rack responses (passes Lint) from status
-  server.
+* 4 bug fixes:
+  * Don't join the server thread inside the signal handle. Fixes #94
+  * Make NullIO#read mimic IO#read
+  * Only stop the status server if it's started. Fixes #84
+  * Set RACK_ENV early in cli also. Fixes #78
 
-1 new contributer:
-
+* 1 new contributer:
   * Jesse Cooke
 
 === 1.2.2 / 2012-04-28

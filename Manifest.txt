@@ -1,3 +1,4 @@
+.travis.yml
 COPYING
 Gemfile
 History.txt
@@ -56,6 +57,7 @@ test/test_config.rb
 test/test_http10.rb
 test/test_http11.rb
 test/test_integration.rb
+test/test_null_io.rb
 test/test_persistent.rb
 test/test_puma_server.rb
 test/test_rack_handler.rb
