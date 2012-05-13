@@ -25,10 +25,5 @@ module Puma
     #
     def rewind
     end
-
-    # Does nothing
-    #
-    def close
-    end
   end
 end
