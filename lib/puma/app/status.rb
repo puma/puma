@@ -49,7 +49,7 @@ module Puma
 
       private
       def rack_response(status, body, content_type='application/json')
-        [status, { 'Content-Type' => content_type, 'Content-Length' => body.length.to_s }, [body]]
+        [status, { 'Content-Type' => content_type, 'Content-Length' => body.bytesize.to_s }, [body]]
       end
     end
   end
