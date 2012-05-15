@@ -53,4 +53,27 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal "https", body
   end
+
+  def test_proper_stringio_body
+    data = nil
+
+    @server.app = proc do |env|
+      data = env['rack.input'].read
+      [200, {}, ["ok"]]
+    end
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    fifteen = "1" * 15
+
+    sock = TCPSocket.new @host, @port
+    sock << "PUT / HTTP/1.0\r\nContent-Length: 30\r\n\r\n#{fifteen}"
+    sleep 0.1 # important so that the previous data is sent as a packet
+    sock << fifteen
+
+    sock.read
+
+    assert_equal "#{fifteen}#{fifteen}", data
+  end
 end

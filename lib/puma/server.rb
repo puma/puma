@@ -573,10 +573,13 @@ module Puma
       if remain > MAX_BODY
         stream = Tempfile.new(Const::PUMA_TMP_BASE)
         stream.binmode
-        stream.write body
       else
-        stream = StringIO.new body
+        # The body[0,0] trick is to get an empty string in the same
+        # encoding as body.
+        stream = StringIO.new body[0,0]
       end
+
+      stream.write body
 
       # Read an odd sized chunk so we can read even sized ones
       # after this
