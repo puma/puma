@@ -23,7 +23,7 @@ class TestPumaServer < Test::Unit::TestCase
   end
 
   def teardown
-    @server.stop
+    @server.stop(true)
   end
 
   def test_url_scheme_for_https
