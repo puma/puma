@@ -1,3 +1,9 @@
+=== 1.3.1 / 2012-05-15
+
+* 2 bug fixes:
+  * use #bytesize instead of #length for Content-Length header
+  * Use StringIO properly. Fixes #98
+
 === 1.3.0 / 2012-05-08
 
 * 2 minor features:
