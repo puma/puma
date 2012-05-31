@@ -120,7 +120,7 @@ If you start puma with `-S some/path` then you can pass that same path to the `p
 
     $ pumactl -S some/path restart
 
-will cause the server to perform a restart. `pumactl` is a simple CLI frontend to the contro/status app described above.
+will cause the server to perform a restart. `pumactl` is a simple CLI frontend to the control/status app described above.
 
 ## License
 
