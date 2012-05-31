@@ -157,12 +157,17 @@ module Puma
         :min_threads => 0,
         :max_threads => 16,
         :quiet => false,
-        :binds => []
+        :binds => [],
+        :daemonize => false
       }
 
       @parser = OptionParser.new do |o|
         o.on "-b", "--bind URI", "URI to bind to (tcp:// and unix:// only)" do |arg|
           @options[:binds] << arg
+        end
+
+        o.on "-d", "--daemonize", "Daemonize." do
+          @options[:daemonize] = true
         end
 
         o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
@@ -286,6 +291,7 @@ module Puma
 
       app = @config.app
 
+      daemonize if @options[:daemonize]
       write_pid
       write_state
 
@@ -449,5 +455,22 @@ module Puma
     def stop
       @server.stop(true) if @server
     end
+
+    private
+
+    def daemonize
+      if RUBY_VERSION < "1.9"
+        exit if fork
+        Process.setsid
+        exit if fork
+        Dir.chdir "/"
+        STDIN.reopen "/dev/null"
+        STDOUT.reopen "/dev/null", "a"
+        STDERR.reopen "/dev/null", "a"
+      else
+        Process.daemon
+      end
+    end
+
   end
 end
