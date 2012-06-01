@@ -5,14 +5,17 @@ module Rack
   module Handler
     module Puma
       DEFAULT_OPTIONS = {
-        :Host => '0.0.0.0',
-        :Port => 8080,
         :Threads => '0:16',
         :Verbose => false
       }
 
+      DEFAULT_TCP_OPTIONS = {
+        :Host => '0.0.0.0',
+        :Port => 8080
+      }
+
       def self.run(app, options = {})
-        options  = DEFAULT_OPTIONS.merge(options)
+        options = DEFAULT_OPTIONS.merge(options)
 
         if options[:Verbose]
           app = Rack::CommonLogger.new(app, STDOUT)
@@ -23,9 +26,29 @@ module Rack
 
         puts "Puma #{::Puma::Const::PUMA_VERSION} starting..."
         puts "* Min threads: #{min}, max threads: #{max}"
-        puts "* Listening on tcp://#{options[:Host]}:#{options[:Port]}"
 
-        server.add_tcp_listener options[:Host], options[:Port]
+        if options[:Host] && options[:Host].start_with?('unix://')
+          puts "* Listening on #{options[:Host]}"
+          uri = URI.parse options[:Host]
+          path = "#{uri.host}#{uri.path}"
+
+          umask = nil
+
+          if uri.query
+            params = Utils.parse_query uri.query
+            if u = params['umask']
+              # Use Integer() to respect the 0 prefix as octal
+              umask = Integer(u)
+            end
+          end
+
+          server.add_unix_listener path, umask
+        else
+          options = DEFAULT_TCP_OPTIONS.merge(options)
+          puts "* Listening on tcp://#{options[:Host]}:#{options[:Port]}"
+          server.add_tcp_listener options[:Host], options[:Port]
+        end
+
         server.min_threads = Integer(min)
         server.max_threads = Integer(max)
         yield server if block_given?
