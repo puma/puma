@@ -62,7 +62,7 @@ module Puma
         "rack.multithread".freeze => true,
         "rack.multiprocess".freeze => false,
         "rack.run_once".freeze => true,
-        "SCRIPT_NAME".freeze => "",
+        "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
         # Rack blows up if this is an empty string, and Rack::Lint
         # blows up if it's nil. So 'text/plain' seems like the most
