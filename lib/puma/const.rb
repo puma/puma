@@ -103,6 +103,7 @@ module Puma
     RACK_INPUT = "rack.input".freeze
     RACK_URL_SCHEME = "rack.url_scheme".freeze
     RACK_AFTER_REPLY = "rack.after_reply".freeze
+    PUMA_SOCKET = "puma.socket".freeze
 
     HTTP = "http".freeze
     HTTPS = "https".freeze

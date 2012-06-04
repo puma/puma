@@ -398,6 +398,8 @@ module Puma
     def handle_request(env, client, body, cl)
       normalize_env env, client
 
+      env[PUMA_SOCKET] = client
+
       if cl
         body = read_body env, client, body, cl
         return false unless body

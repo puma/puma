@@ -76,4 +76,25 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal "#{fifteen}#{fifteen}", data
   end
+
+  def test_puma_socket
+    body = "HTTP/1.1 750 Upgraded to Awesome\r\nDone: Yep!\r\n"
+    @server.app = proc do |env|
+      io = env['puma.socket']
+
+      io.write body
+
+      io.close
+
+      [-1, {}, []]
+    end
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "PUT / HTTP/1.0\r\n\r\nHello"
+
+    assert_equal body, sock.read
+  end
 end
