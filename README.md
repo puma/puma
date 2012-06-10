@@ -45,7 +45,7 @@ First, make sure Puma is in your Gemfile:
 
 Then start your server with the `rails` command:
 
-    $ rails s puma
+    $ rails s Puma
 
 ### Rackup
 
