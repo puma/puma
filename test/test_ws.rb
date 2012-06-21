@@ -37,7 +37,7 @@ class WebServerTest < Test::Unit::TestCase
   end
 
   def test_simple_server
-    hit(['http://localhost:9998/test'])
+    hit(['http://127.0.0.1:9998/test'])
     assert @tester.ran_test, "Handler didn't really run"
   end
 
