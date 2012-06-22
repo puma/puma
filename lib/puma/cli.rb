@@ -419,14 +419,22 @@ module Puma
         @status = status
       end
 
-      Signal.trap "SIGUSR2" do
-        @restart = true
-        server.begin_restart
+      begin
+        Signal.trap "SIGUSR2" do
+          @restart = true
+          server.begin_restart
+        end
+      rescue Exception
+        log "*** Sorry signal SIGUSR2 not implemented, restart feature disabled!"
       end
 
-      Signal.trap "SIGTERM" do
-        log " - Gracefully stopping, waiting for requests to finish"
-        server.stop false
+      begin
+        Signal.trap "SIGTERM" do
+          log " - Gracefully stopping, waiting for requests to finish"
+          server.stop false
+        end
+      rescue Exception
+        log "*** Sorry signal SIGTERM not implemented, gracefully stopping feature disabled!"
       end
 
       log "Use Ctrl-C to stop"

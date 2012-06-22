@@ -66,7 +66,7 @@ class TestRackServer < Test::Unit::TestCase
 
     @server.run
 
-    hit(['http://localhost:9998/test'])
+    hit(['http://127.0.0.1:9998/test'])
 
     stop
 
@@ -83,7 +83,7 @@ class TestRackServer < Test::Unit::TestCase
 
     big = "x" * (1024 * 16)
 
-    Net::HTTP.post_form URI.parse('http://localhost:9998/test'),
+    Net::HTTP.post_form URI.parse('http://127.0.0.1:9998/test'),
                  { "big" => big }
 
     stop
@@ -98,7 +98,7 @@ class TestRackServer < Test::Unit::TestCase
     @server.app = lambda { |env| input = env; @simple.call(env) }
     @server.run
 
-    hit(['http://localhost:9998/test/a/b/c'])
+    hit(['http://127.0.0.1:9998/test/a/b/c'])
 
     stop
 
@@ -115,7 +115,7 @@ class TestRackServer < Test::Unit::TestCase
 
     @server.run
 
-    hit(['http://localhost:9998/test'])
+    hit(['http://127.0.0.1:9998/test'])
 
     stop
 
@@ -131,7 +131,7 @@ class TestRackServer < Test::Unit::TestCase
 
     @server.run
 
-    hit(['http://localhost:9998/test'])
+    hit(['http://127.0.0.1:9998/test'])
 
     stop
 
