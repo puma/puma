@@ -185,10 +185,12 @@ module Puma
       @thread_pool and @thread_pool.spawned
     end
 
-    # Runs the server.  It returns the thread used so you can join it.
-    # The thread is always available via #thread to be join'd
+    # Runs the server. By default, this returns the thread used so 
+    # you can join it -- this thread is always available via #thread 
+    # to be join'd. Alternately, if you wish to run the server in the 
+    # current thread, you can 
     #
-    def run
+    def run(opts = {:in_thread => true})
       BasicSocket.do_not_reverse_lookup = true
 
       @status = :run
@@ -201,7 +203,7 @@ module Puma
         @thread_pool.auto_trim!(@auto_trim_time)
       end
 
-      @thread = Thread.new do
+      runtime = proc do
         begin
           check = @check
           sockets = @ios
@@ -234,7 +236,11 @@ module Puma
         end
       end
 
-      return @thread
+      if opts[:in_thread]
+        @thread = Thread.new &runtime
+        return @thread
+      end
+      
     end
 
     # :nodoc:
