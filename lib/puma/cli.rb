@@ -57,12 +57,7 @@ module Puma
     end
 
     def restart_on_stop!
-      if @restart_argv
-        @restart = true
-        return true
-      else
-        return false
-      end
+      @restart = true
     end
 
     def generate_restart_data
