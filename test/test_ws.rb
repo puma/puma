@@ -25,15 +25,11 @@ class WebServerTest < Test::Unit::TestCase
     @server = Server.new @tester, Events.strings
     @server.add_tcp_listener "127.0.0.1", 9998
 
-    redirect_test_io do
-      @server.run 
-    end
+    @server.run
   end
 
   def teardown
-    redirect_test_io do
-      @server.stop(true)
-    end
+    @server.stop(true)
   end
 
   def test_simple_server
@@ -73,17 +69,13 @@ class WebServerTest < Test::Unit::TestCase
   end
 
   def test_bad_client
-    redirect_test_io do
-      do_test("GET /test HTTP/BAD", 3)
-    end
+    do_test("GET /test HTTP/BAD", 3)
   end
 
   def test_header_is_too_long
-    redirect_test_io do
-      long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
-      assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
-        do_test(long, long.length/2, 10)
-      end
+    long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
+    assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
+      do_test(long, long.length/2, 10)
     end
   end
 
