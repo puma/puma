@@ -5,6 +5,7 @@ require 'tempfile'
 
 class TestCLI < Test::Unit::TestCase
   def setup
+    @environment = 'production'
     @tmp_file = Tempfile.new("puma-test")
     @tmp_path = @tmp_file.path
     @tmp_file.close!
@@ -155,5 +156,13 @@ class TestCLI < Test::Unit::TestCase
     $LOAD_PATH.shift
     assert_equal 'baz/qux', $LOAD_PATH[0]
     $LOAD_PATH.shift
+  end
+
+  def test_environment
+    cli = Puma::CLI.new ["--environment", @environment]
+    cli.parse_options
+    cli.set_rack_environment
+
+    assert_equal ENV['RACK_ENV'], @environment 
   end
 end
