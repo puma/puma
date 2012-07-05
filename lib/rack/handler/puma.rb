@@ -18,11 +18,16 @@ module Rack
           app = Rack::CommonLogger.new(app, STDOUT)
         end
 
+        if options[:environment]
+          ENV['RACK_ENV'] = options[:environment].to_s
+        end
+
         server   = ::Puma::Server.new(app)
         min, max = options[:Threads].split(':', 2)
 
         puts "Puma #{::Puma::Const::PUMA_VERSION} starting..."
         puts "* Min threads: #{min}, max threads: #{max}"
+        puts "* Environment: #{ENV['RACK_ENV']}"
         puts "* Listening on tcp://#{options[:Host]}:#{options[:Port]}"
 
         server.add_tcp_listener options[:Host], options[:Port]
