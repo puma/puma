@@ -1,3 +1,27 @@
+=== 1.5.0 / 2012-07-19
+
+* 7 contributers to this release:
+  * Christian Mayer
+  * Darío Javier Cravero
+  * Dirkjan Bussink
+  * Gianluca Padovani
+  * Santiago Pastorino
+  * Thibault Jouan
+  * tomykaira
+
+* 6 bug fixes:
+  * Define RSTRING_NOT_MODIFIED for Rubinius
+  * Convert status to integer. Fixes #123
+  * Delete pidfile when stopping the server
+  * Allow compilation with -Werror=format-security option
+  * Fix wrong HTTP version for a HTTP/1.0 request
+  * Use String#bytesize instead of String#length
+
+* 3 minor features:
+  * Added support for setting RACK_ENV via the CLI, config file, and rack app
+  * Allow Server#run to run sync. Fixes #111
+  * Puma can now run on windows
+
 === 1.4.0 / 2012-06-04
 
 * 1 bug fix:
