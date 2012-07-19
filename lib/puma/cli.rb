@@ -242,6 +242,12 @@ module Puma
       ENV['RACK_ENV'] = @options[:environment] || ENV['RACK_ENV'] || 'development'
     end
 
+    def delete_pidfile
+      if path = @options[:pidfile]
+        File.unlink path
+      end
+    end
+
     def write_state
       require 'yaml'
 
@@ -274,6 +280,7 @@ module Puma
     def graceful_stop(server)
       log " - Gracefully stopping, waiting for requests to finish"
       server.stop(true)
+      delete_pidfile
       log " - Goodbye!"
     end
 
@@ -456,6 +463,7 @@ module Puma
 
     def stop
       @server.stop(true) if @server
+      delete_pidfile
     end
   end
 end
