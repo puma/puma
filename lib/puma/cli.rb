@@ -131,17 +131,16 @@ module Puma
       end
     end
 
-    # Write +str+ to +@stdout+
+    # Delegate +log+ to +@events+
     #
     def log(str)
-      @stdout.puts str
+      @events.log str
     end
 
-    # Write +str+ to +@stderr+
+    # Delegate +error+ to +@events+
     #
     def error(str)
-      @stderr.puts "ERROR: #{str}"
-      exit 1
+      @events.error str
     end
 
     # Build the OptionParser object to handle the available options.
