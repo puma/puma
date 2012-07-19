@@ -41,7 +41,7 @@ module Puma
         when "/stats"
           b = @server.backlog
           r = @server.running
-            return rack_response(200, %Q!{ "backlog": #{b}, "running": #{r} }!)
+          return rack_response(200, %Q!{ "backlog": #{b}, "running": #{r} }!)
         end
 
         rack_response 404, "Unsupported action", 'text/plain'

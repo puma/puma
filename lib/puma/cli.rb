@@ -238,8 +238,12 @@ module Puma
     end
 
     def set_rack_environment 
-      # Try the user option first, then the environment variable, finally default to development
-      ENV['RACK_ENV'] = @options[:environment] || ENV['RACK_ENV'] || 'development'
+      # Try the user option first, then the environment variable,
+      # finally default to development
+
+      ENV['RACK_ENV'] = @options[:environment] ||
+                        ENV['RACK_ENV'] ||
+                        'development'
     end
 
     def delete_pidfile
