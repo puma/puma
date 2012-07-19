@@ -239,7 +239,7 @@ module Puma
 
     # :nodoc:
     def handle_check
-      cmd = @check.read(1) 
+      cmd = @check.read(1)
 
       case cmd
       when STOP_COMMAND
@@ -276,7 +276,7 @@ module Puma
 
           # Assumption: nparsed will always be less since data will get filled
           # with more after each parsing.  If it doesn't get more then there was
-          # a problem with the read operation on the client socket. 
+          # a problem with the read operation on the client socket.
           # Effect is to stop processing when the socket can't fill the buffer
           # for further parsing.
           while nparsed < data.bytesize
@@ -432,6 +432,7 @@ module Puma
           status, headers, res_body = lowlevel_error(e)
         end
 
+        status = status.to_i
         content_length = nil
         no_body = false
 
