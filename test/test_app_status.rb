@@ -28,79 +28,57 @@ class TestAppStatus < Test::Unit::TestCase
     @app.auth_token = nil
   end
 
-  def lint(env)
+  def lint(uri)
     app = Rack::Lint.new @app
-    mock_env = Rack::MockRequest.env_for env['PATH_INFO']
+    mock_env = Rack::MockRequest.env_for uri
     app.call mock_env
   end
 
   def test_bad_token
     @app.auth_token = "abcdef"
 
-    env = { 'PATH_INFO' => "/whatever" }
-
-    status, _, _ = @app.call env
+    status, _, _ = lint('/whatever')
 
     assert_equal 403, status
-    lint(env)
   end
 
   def test_good_token
     @app.auth_token = "abcdef"
 
-    env = {
-      'PATH_INFO' => "/whatever",
-      'QUERY_STRING' => "token=abcdef"
-    }
-
-    status, _, _ = @app.call env
+    status, _, _ = lint('/whatever?token=abcdef')
 
     assert_equal 404, status
-    lint(env)
   end
 
   def test_unsupported
-    env = { 'PATH_INFO' => "/not-real" }
-
-    status, _, _ = @app.call env
+    status, _, _ = lint('/not-real')
 
     assert_equal 404, status
-    lint(env)
   end
 
   def test_stop
-    env = { 'PATH_INFO' => "/stop" }
-
-    status, _ , body = @app.call env
+    status, _ , app = lint('/stop')
 
     assert_equal :stop, @server.status
     assert_equal 200, status
-    assert_equal ['{ "status": "ok" }'], body
-    lint(env)
+    assert_equal ['{ "status": "ok" }'], app.enum_for.to_a
   end
 
   def test_halt
-    env = { 'PATH_INFO' => "/halt" }
-
-    status, _ , body = @app.call env
+    status, _ , app = lint('/halt')
 
     assert_equal :halt, @server.status
     assert_equal 200, status
-    assert_equal ['{ "status": "ok" }'], body
-    lint(env)
+    assert_equal ['{ "status": "ok" }'], app.enum_for.to_a
   end
 
   def test_stats
-    env = { 'PATH_INFO' => "/stats" }
-
     @server.backlog = 1
     @server.running = 9
 
-    status, _ , body = @app.call env
+    status, _ , app = lint('/stats')
 
     assert_equal 200, status
-    assert_equal ['{ "backlog": 1, "running": 9 }'], body
-    lint(env)
+    assert_equal ['{ "backlog": 1, "running": 9 }'], app.enum_for.to_a
   end
-
 end
