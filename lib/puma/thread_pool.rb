@@ -53,15 +53,17 @@ module Puma
       @spawned += 1
 
       th = Thread.new do
-        todo = @todo
+        todo  = @todo
         block = @block
+        mutex = @mutex
+        cond  = @cond
 
         while true
           work = nil
 
           continue = true
 
-          @mutex.synchronize do
+          mutex.synchronize do
             while todo.empty?
               if @trim_requested > 0
                 @trim_requested -= 1
@@ -75,7 +77,7 @@ module Puma
               end
 
               @waiting += 1
-              @cond.wait @mutex
+              cond.wait mutex
               @waiting -= 1
 
               if @shutdown
@@ -92,7 +94,7 @@ module Puma
           block.call work
         end
 
-        @mutex.synchronize do
+        mutex.synchronize do
           @spawned -= 1
           @workers.delete th
         end
