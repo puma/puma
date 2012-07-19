@@ -41,7 +41,7 @@ static VALUE global_request_path;
 #define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " # length " allowed length."
 
 /** Validates the max length of given input and throws an HttpParserError exception if over. */
-#define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, MAX_##N##_LENGTH_ERR); }
+#define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, "%s", MAX_##N##_LENGTH_ERR); }
 
 /** Defines global strings in the init method. */
 #define DEF_GLOBAL(N, val)   global_##N = rb_str_new2(val); rb_global_variable(&global_##N)
@@ -380,7 +380,7 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
 
   if(from >= dlen) {
     rb_free_chars(dptr);
-    rb_raise(eHttpParserError, "Requested start is after data buffer end.");
+    rb_raise(eHttpParserError, "%s", "Requested start is after data buffer end.");
   } else {
     http->request = req_hash;
     http_parser_execute(http, dptr, dlen, from);
@@ -389,7 +389,7 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
     VALIDATE_MAX_LENGTH(http_parser_nread(http), HEADER);
 
     if(http_parser_has_error(http)) {
-      rb_raise(eHttpParserError, "Invalid HTTP format, parsing fails.");
+      rb_raise(eHttpParserError, "%s", "Invalid HTTP format, parsing fails.");
     } else {
       return INT2FIX(http_parser_nread(http));
     }
