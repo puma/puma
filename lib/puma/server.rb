@@ -418,6 +418,7 @@ module Puma
       begin
         begin
           status, headers, res_body = @app.call(env)
+          status = status.to_i
 
           if status == -1
             unless headers.empty? and res_body == []
