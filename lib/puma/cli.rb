@@ -52,8 +52,6 @@ module Puma
       remove.each do |k|
         ENV.delete k
       end
-
-      ENV['RACK_ENV'] ||= "development"
     end
 
     def restart_on_stop!
@@ -213,6 +211,11 @@ module Puma
              "Default: inferred" do |cmd|
           @options[:restart_cmd] = cmd
         end
+
+        o.on "-e", "--environment ENVIRONMENT",
+             "The environment to run the Rack app on (default development)" do |arg|
+          @options[:environment] = arg
+        end
       end
 
       @parser.banner = "puma <options> <rackup file>"
@@ -232,6 +235,11 @@ module Puma
           f.puts Process.pid
         end
       end
+    end
+
+    def set_rack_environment 
+      # Try the user option first, then the environment variable, finally default to development
+      ENV['RACK_ENV'] = @options[:environment] || ENV['RACK_ENV'] || 'development'
     end
 
     def write_state
@@ -275,6 +283,8 @@ module Puma
     def run
       parse_options
 
+      set_rack_environment
+
       app = @config.app
 
       write_pid
@@ -289,6 +299,7 @@ module Puma
 
       log "Puma #{Puma::Const::PUMA_VERSION} starting..."
       log "* Min threads: #{min_t}, max threads: #{max_t}"
+      log "* Environment: #{ENV['RACK_ENV']}"
 
       @options[:binds].each do |str|
         uri = URI.parse str
