@@ -31,7 +31,6 @@ module Puma
       @status = nil
 
       @restart = false
-      @temp_status_path = nil
 
       @listeners = []
 
@@ -58,12 +57,7 @@ module Puma
     end
 
     def restart_on_stop!
-      if @restart_argv
-        @restart = true
-        return true
-      else
-        return false
-      end
+      @restart = true
     end
 
     def generate_restart_data
@@ -268,8 +262,6 @@ module Puma
 
       @config = Puma::Configuration.new @options
       @config.load
-
-      @temp_status_path = @options[:control_path_temp]
     end
 
     def graceful_stop(server)
@@ -444,8 +436,6 @@ module Puma
       rescue Interrupt
         graceful_stop server
       end
-
-      File.unlink @temp_status_path if @temp_status_path
 
       if @restart
         log "* Restarting..."
