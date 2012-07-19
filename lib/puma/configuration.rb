@@ -208,6 +208,11 @@ module Puma
       def state_path(path)
         @options[:state] = path.to_s
       end
+
+      # Set the environment in which the Rack's app will run.
+      def environment(environment)
+        @options[:environment] = environment
+      end
     end
   end
 end
