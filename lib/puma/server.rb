@@ -471,7 +471,7 @@ module Puma
           if status == 200
             client.write HTTP_10_200
           else
-            client.write "HTTP/1.1 "
+            client.write "HTTP/1.0 "
             client.write status.to_s
             client.write " "
             client.write HTTP_STATUS_CODES[status]
