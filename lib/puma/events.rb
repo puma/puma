@@ -20,6 +20,19 @@ module Puma
 
     attr_reader :stdout, :stderr
 
+    # Write +str+ to +@stdout+
+    #
+    def log(str)
+      @stdout.puts str
+    end
+
+    # Write +str+ to +@stderr+
+    #
+    def error(str)
+      @stderr.puts "ERROR: #{str}"
+      exit 1
+    end
+
     # An HTTP parse error has occured.
     # +server+ is the Server object, +env+ the request, and +error+ a
     # parsing exception.
