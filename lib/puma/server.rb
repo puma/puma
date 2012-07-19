@@ -279,7 +279,7 @@ module Puma
           # a problem with the read operation on the client socket. 
           # Effect is to stop processing when the socket can't fill the buffer
           # for further parsing.
-          while nparsed < data.length
+          while nparsed < data.bytesize
             nparsed = parser.execute(env, data, nparsed)
 
             if parser.finished?
@@ -313,7 +313,7 @@ module Puma
               return if !chunk or chunk.length == 0  # read failed, stop processing
 
               data << chunk
-              if data.length >= MAX_HEADER
+              if data.bytesize >= MAX_HEADER
                 raise HttpParserError,
                   "HEADER is longer than allowed, aborting client early."
               end
