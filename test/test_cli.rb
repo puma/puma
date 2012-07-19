@@ -26,6 +26,9 @@ class TestCLI < Test::Unit::TestCase
     cli.write_pid
 
     assert_equal File.read(@tmp_path).strip.to_i, Process.pid
+
+    cli.stop
+    assert !File.exist?(@tmp_path), "Pid file shouldn't exist anymore"
   end
 
   def test_control_for_tcp
