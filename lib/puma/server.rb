@@ -185,10 +185,13 @@ module Puma
       @thread_pool and @thread_pool.spawned
     end
 
-    # Runs the server.  It returns the thread used so you can join it.
-    # The thread is always available via #thread to be join'd
+    # Runs the server.
     #
-    def run
+    # If +background+ is true (the default) then a thread is spun
+    # up in the background to handle requests. Otherwise requests
+    # are handled synchronously.
+    #
+    def run(background=true)
       BasicSocket.do_not_reverse_lookup = true
 
       @status = :run
@@ -201,40 +204,45 @@ module Puma
         @thread_pool.auto_trim!(@auto_trim_time)
       end
 
-      @thread = Thread.new do
-        begin
-          check = @check
-          sockets = @ios
-          pool = @thread_pool
+      if background
+        @thread = Thread.new { handle_servers }
+        return @thread
+      else
+        handle_servers
+      end
+    end
 
-          while @status == :run
-            begin
-              ios = IO.select sockets
-              ios.first.each do |sock|
-                if sock == check
-                  break if handle_check
-                else
-                  pool << [sock.accept, @envs.fetch(sock, @proto_env)]
-                end
+    def handle_servers
+      begin
+        check = @check
+        sockets = @ios
+        pool = @thread_pool
+
+        while @status == :run
+          begin
+            ios = IO.select sockets
+            ios.first.each do |sock|
+              if sock == check
+                break if handle_check
+              else
+                pool << [sock.accept, @envs.fetch(sock, @proto_env)]
               end
-            rescue Errno::ECONNABORTED
-              # client closed the socket even before accept
-              client.close rescue nil
-            rescue Object => e
-              @events.unknown_error self, e, "Listen loop"
             end
-          end
-
-          graceful_shutdown if @status == :stop
-        ensure
-          unless @status == :restart
-            @ios.each { |i| i.close }
-            @unix_paths.each { |i| File.unlink i }
+          rescue Errno::ECONNABORTED
+            # client closed the socket even before accept
+            client.close rescue nil
+          rescue Object => e
+            @events.unknown_error self, e, "Listen loop"
           end
         end
-      end
 
-      return @thread
+        graceful_shutdown if @status == :stop
+      ensure
+        unless @status == :restart
+          @ios.each { |i| i.close }
+          @unix_paths.each { |i| File.unlink i }
+        end
+      end
     end
 
     # :nodoc:
