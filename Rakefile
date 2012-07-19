@@ -30,7 +30,7 @@ HOE.spec.files -= [".gemtest"]
 
 # puma.gemspec
 
-file "#{HOE.spec.name}.gemspec" => ['Rakefile'] do |t|
+file "#{HOE.spec.name}.gemspec" => ['Rakefile', "lib/puma/const.rb"] do |t|
   puts "Generating #{t.name}"
   File.open(t.name, 'wb') { |f| f.write HOE.spec.to_ruby }
 end
