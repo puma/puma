@@ -6,6 +6,8 @@ require 'puma/const'
 require 'puma/events'
 require 'puma/null_io'
 require 'puma/compat'
+require 'puma/reactor'
+require 'puma/client'
 
 require 'puma/puma_http11'
 
@@ -196,9 +198,13 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client, env|
-        process_client(client, env)
+      @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
+        process_client(client)
       end
+
+      @reactor = Reactor.new @events, @thread_pool
+
+      @reactor.run_in_thread
 
       if @auto_trim_time
         @thread_pool.auto_trim!(@auto_trim_time)
@@ -225,7 +231,8 @@ module Puma
               if sock == check
                 break if handle_check
               else
-                pool << [sock.accept, @envs.fetch(sock, @proto_env)]
+                c = Client.new sock.accept, @envs.fetch(sock, @proto_env)
+                @reactor.add c
               end
             end
           rescue Errno::ECONNABORTED
@@ -270,61 +277,23 @@ module Puma
     # indicates that it supports keep alive, wait for another request before
     # returning.
     #
-    def process_client(client, proto_env)
-      parser = HttpParser.new
-      close_socket = true
-
+    def process_client(client)
       begin
+        close_socket = true
+
         while true
-          parser.reset
-
-          env = proto_env.dup
-          data = client.readpartial(CHUNK_SIZE)
-          nparsed = 0
-
-          # Assumption: nparsed will always be less since data will get filled
-          # with more after each parsing.  If it doesn't get more then there was
-          # a problem with the read operation on the client socket. 
-          # Effect is to stop processing when the socket can't fill the buffer
-          # for further parsing.
-          while nparsed < data.bytesize
-            nparsed = parser.execute(env, data, nparsed)
-
-            if parser.finished?
-              cl = env[CONTENT_LENGTH]
-
-              case handle_request(env, client, parser.body, cl)
-              when false
-                return
-              when :async
-                close_socket = false
-                return
-              end
-
-              nparsed += parser.body.bytesize if cl
-
-              if data.bytesize > nparsed
-                data.slice!(0, nparsed)
-                parser.reset
-                env = @proto_env.dup
-                nparsed = 0
-              else
-                unless ret = IO.select([client, @persistent_check], nil, nil, @persistent_timeout)
-                  raise EOFError, "Timed out persistent connection"
-                end
-
-                return if ret.first.include? @persistent_check
-              end
-            else
-              # Parser is not done, queue up more data to read and continue parsing
-              chunk = client.readpartial(CHUNK_SIZE)
-              return if !chunk or chunk.length == 0  # read failed, stop processing
-
-              data << chunk
-              if data.bytesize >= MAX_HEADER
-                raise HttpParserError,
-                  "HEADER is longer than allowed, aborting client early."
-              end
+          case handle_request(client)
+          when false
+            return
+          when :async
+            close_socket = false
+            return
+          when true
+            unless client.reset
+              close_socket = false
+              client.set_timeout @persistent_timeout
+              @reactor.add client
+              return
             end
           end
         end
@@ -335,7 +304,7 @@ module Puma
 
       # The client doesn't know HTTP well
       rescue HttpParserError => e
-        @events.parse_error self, env, e
+        @events.parse_error self, client.env, e
 
       # Server error
       rescue StandardError => e
@@ -403,17 +372,15 @@ module Puma
     # was one. This is an optimization to keep from having to look
     # it up again.
     #
-    def handle_request(env, client, body, cl)
+    def handle_request(req)
+      env = req.env
+      client = req.io
+
       normalize_env env, client
 
       env[PUMA_SOCKET] = client
 
-      if cl
-        body = read_body env, client, body, cl
-        return false unless body
-      else
-        body = EmptyBody
-      end
+      body = req.body
 
       env[RACK_INPUT] = body
       env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
