@@ -199,7 +199,11 @@ module Puma
       @status = :run
 
       @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
-        process_client(client)
+        if client.eagerly_finish
+          process_client client
+        else
+          @reactor.add client
+        end
       end
 
       @reactor = Reactor.new @events, @thread_pool
@@ -232,7 +236,7 @@ module Puma
                 break if handle_check
               else
                 c = Client.new sock.accept, @envs.fetch(sock, @proto_env)
-                @reactor.add c
+                @thread_pool << c
               end
             end
           rescue Errno::ECONNABORTED

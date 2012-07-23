@@ -11,13 +11,15 @@ module Puma
       @parser = HttpParser.new
       @parsed_bytes = 0
       @read_header = true
+      @ready = false
+
       @body = nil
       @buffer = nil
 
       @timeout_at = nil
     end
 
-    attr_reader :env, :to_io, :body, :io, :timeout_at
+    attr_reader :env, :to_io, :body, :io, :timeout_at, :ready
 
     def set_timeout(val)
       @timeout_at = Time.now + val
@@ -29,6 +31,7 @@ module Puma
       @env = @proto_env.dup
       @body = nil
       @parsed_bytes = 0
+      @ready = false
 
       if @buffer
         @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
@@ -57,6 +60,7 @@ module Puma
       unless cl
         @buffer = body.empty? ? nil : body
         @body = EmptyBody
+        @ready = true
         return true
       end
 
@@ -64,6 +68,7 @@ module Puma
 
       if remain <= 0
         @body = StringIO.new(body)
+        @ready = true
         return true
       end
 
@@ -108,6 +113,12 @@ module Puma
       false
     end
 
+    def eagerly_finish
+      return true if @ready
+      return false unless IO.select([@to_io], nil, nil, 0)
+      try_to_finish
+    end
+
     def read_body
       # Read an odd sized chunk so we can read even sized ones
       # after this
@@ -124,6 +135,7 @@ module Puma
       # No chunk means a closed socket
       unless chunk
         @body.close
+        @ready = true
         raise EOFError
       end
 
@@ -131,6 +143,7 @@ module Puma
 
       if remain <= 0
         @body.rewind
+        @ready = true
         return true
       end
 
