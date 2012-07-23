@@ -22,8 +22,12 @@ class TestPersistent < Test::Unit::TestCase
       [status, @headers, @body]
     end
 
+    @host = "127.0.0.1"
+    @port = 9988
+
     @server = Puma::Server.new @simple
     @server.add_tcp_listener "127.0.0.1", 9988
+    @server.max_threads = 1
     @server.run
 
     @client = TCPSocket.new "127.0.0.1", 9988
@@ -212,7 +216,23 @@ class TestPersistent < Test::Unit::TestCase
 
     assert_kind_of Puma::NullIO, @inputs[0]
     assert_kind_of Puma::NullIO, @inputs[1]
+  end
 
+  def test_keepalive_doesnt_starve_clients
+    sz = @body[0].size.to_s
+
+    @client << @valid_request
+
+    c2 = TCPSocket.new @host, @port
+    c2 << @valid_request
+
+    out = IO.select([c2], nil, nil, 1)
+
+    assert out, "select returned nil"
+    assert_equal c2, out.first.first
+
+    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4, c2)
+    assert_equal "Hello", c2.read(5)
   end
 
 end
