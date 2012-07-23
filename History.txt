@@ -1,3 +1,9 @@
+=== 1.6.0 / 2012-07-23
+
+* 1 major bug fix:
+  * Prevent slow clients from starving the server by introducing a
+    dedicated IO reactor thread. Credit for reporting goes to @meh.
+
 === 1.5.0 / 2012-07-19
 
 * 7 contributers to this release:
