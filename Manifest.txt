@@ -33,6 +33,7 @@ ext/puma_http11/puma_http11.c
 lib/puma.rb
 lib/puma/app/status.rb
 lib/puma/cli.rb
+lib/puma/client.rb
 lib/puma/compat.rb
 lib/puma/configuration.rb
 lib/puma/const.rb
@@ -41,12 +42,14 @@ lib/puma/events.rb
 lib/puma/jruby_restart.rb
 lib/puma/null_io.rb
 lib/puma/rack_patch.rb
+lib/puma/reactor.rb
 lib/puma/server.rb
 lib/puma/thread_pool.rb
 lib/rack/handler/puma.rb
 puma.gemspec
 test/ab_rs.rb
 test/config/app.rb
+test/hello-post.ru
 test/hello.ru
 test/lobster.ru
 test/mime.yaml
