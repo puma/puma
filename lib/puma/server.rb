@@ -199,14 +199,25 @@ module Puma
       @status = :run
 
       @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
-        if client.eagerly_finish
-          process_client client
+
+        process_now = false
+
+        begin
+          process_now = client.eagerly_finish
+        rescue HttpParserError => e
+          @events.parse_error self, client.env, e
+        rescue EOFError
+          client.close
         else
-          @reactor.add client
+          if process_now
+            process_client client
+          else
+            @reactor.add client
+          end
         end
       end
 
-      @reactor = Reactor.new @events, @thread_pool
+      @reactor = Reactor.new self, @thread_pool
 
       @reactor.run_in_thread
 
