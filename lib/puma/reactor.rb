@@ -2,8 +2,9 @@ module Puma
   class Reactor
     DefaultSleepFor = 5
 
-    def initialize(events, app_pool)
-      @events = events
+    def initialize(server, app_pool)
+      @server = server
+      @events = server.events
       @app_pool = app_pool
 
       @mutex = Mutex.new
@@ -35,7 +36,7 @@ module Puma
                 end
               # The client doesn't know HTTP well
               rescue HttpParserError => e
-                @events.parse_error self, c.env, e
+                @events.parse_error @server, c.env, e
 
               rescue EOFError
                 c.close

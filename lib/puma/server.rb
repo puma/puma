@@ -374,10 +374,6 @@ module Puma
       env[REMOTE_ADDR] = client.peeraddr.last
     end
 
-    # The object used for a request with no body. All requests with
-    # no body share this one object since it has no state.
-    EmptyBody = NullIO.new
-
     # Given the request +env+ from +client+ and a partial request body
     # in +body+, finish reading the body if there is one and invoke
     # the rack app. Then construct the response and write it back to
