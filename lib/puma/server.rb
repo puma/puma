@@ -205,6 +205,7 @@ module Puma
         begin
           process_now = client.eagerly_finish
         rescue HttpParserError => e
+          client.close
           @events.parse_error self, client.env, e
         rescue EOFError
           client.close

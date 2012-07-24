@@ -36,6 +36,9 @@ module Puma
                 end
               # The client doesn't know HTTP well
               rescue HttpParserError => e
+                c.close
+                sockets.delete c
+
                 @events.parse_error @server, c.env, e
 
               rescue EOFError
