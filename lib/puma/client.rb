@@ -70,6 +70,7 @@ module Puma
 
       if remain <= 0
         @body = StringIO.new(body)
+        @buffer = nil
         @ready = true
         return true
       end
@@ -137,6 +138,7 @@ module Puma
       # No chunk means a closed socket
       unless chunk
         @body.close
+        @buffer = nil
         @ready = true
         raise EOFError
       end
@@ -145,6 +147,7 @@ module Puma
 
       if remain <= 0
         @body.rewind
+        @buffer = nil
         @ready = true
         return true
       end
