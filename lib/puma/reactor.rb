@@ -78,7 +78,13 @@ module Puma
         if c.timeout_at
           @timeouts << c
           @timeouts.sort! { |a,b| a.timeout_at <=> b.timeout_at }
-          @sleep_for = @timeouts.first.timeout_at.to_f - Time.now.to_f
+          diff = @timeouts.first.timeout_at.to_f - Time.now.to_f
+
+          if diff < 0.0
+            @sleep_for = 0
+          else
+            @sleep_for = diff
+          end
         end
       end
     end
