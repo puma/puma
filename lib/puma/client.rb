@@ -48,7 +48,10 @@ module Puma
     end
 
     def close
-      @io.close
+      begin
+        @io.close
+      rescue IOError
+      end
     end
 
     # The object used for a request with no body. All requests with
