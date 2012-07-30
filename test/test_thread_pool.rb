@@ -113,11 +113,11 @@ class TestThreadPool < Test::Unit::TestCase
     pool.trim
     pool.trim
 
+    assert_equal 0, pool.trim_requested
+
     finish = true
 
     pause
-
-    assert_equal 2, pool.spawned
   end
 
   def test_autotrim
