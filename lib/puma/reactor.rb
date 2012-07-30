@@ -29,6 +29,13 @@ module Puma
                 @input.clear
               end
             else
+              # We have to be sure to remove it from the timeout
+              # list or we'll accidentally close the socket when
+              # it's in use!
+              if c.timeout_at
+                @timeouts.delete c
+              end
+
               begin
                 if c.try_to_finish
                   @app_pool << c
@@ -57,17 +64,30 @@ module Puma
             sockets.delete c
             c.close
 
-            if @timeouts.empty?
-              @sleep_for = DefaultSleepFor
-              break
-            end
+            break if @timeouts.empty?
           end
+
+          calculate_sleep
         end
       end
     end
 
     def run_in_thread
       @thread = Thread.new { run }
+    end
+
+    def calculate_sleep
+      if @timeouts.empty?
+        @sleep_for = DefaultSleepFor
+      else
+        diff = @timeouts.first.timeout_at.to_f - Time.now.to_f
+
+        if diff < 0.0
+          @sleep_for = 0
+        else
+          @sleep_for = diff
+        end
+      end
     end
 
     def add(c)
@@ -78,13 +98,8 @@ module Puma
         if c.timeout_at
           @timeouts << c
           @timeouts.sort! { |a,b| a.timeout_at <=> b.timeout_at }
-          diff = @timeouts.first.timeout_at.to_f - Time.now.to_f
 
-          if diff < 0.0
-            @sleep_for = 0
-          else
-            @sleep_for = diff
-          end
+          calculate_sleep
         end
       end
     end
