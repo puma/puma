@@ -26,6 +26,10 @@ module Puma
       @stdout.puts str
     end
 
+    def write(str)
+      @stdout.write str
+    end
+
     # Write +str+ to +@stderr+
     #
     def error(str)

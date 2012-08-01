@@ -123,7 +123,12 @@ module Puma
     end
 
     def inherit_tcp_listener(host, port, fd)
-      s = TCPServer.for_fd(fd)
+      if fd.kind_of? TCPServer
+        s = fd
+      else
+        s = TCPServer.for_fd(fd)
+      end
+
       @ios << s
       s
     end
@@ -247,8 +252,14 @@ module Puma
               if sock == check
                 break if handle_check
               else
-                c = Client.new sock.accept, @envs.fetch(sock, @proto_env)
-                @thread_pool << c
+                begin
+                  if io = sock.accept_nonblock
+                    c = Client.new io, @envs.fetch(sock, @proto_env)
+                    @thread_pool << c
+                  end
+                rescue SystemCallError => e
+                  p e
+                end
               end
             end
           rescue Errno::ECONNABORTED

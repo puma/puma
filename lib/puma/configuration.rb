@@ -68,7 +68,8 @@ module Puma
       end
 
       unless @options[:quiet]
-        app = Rack::CommonLogger.new(app, STDOUT)
+        logger = @options[:logger] || STDOUT
+        app = Rack::CommonLogger.new(app, logger)
       end
 
       return app

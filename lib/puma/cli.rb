@@ -21,6 +21,7 @@ module Puma
     # this object will report status on.
     #
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
+      @debug = false
       @argv = argv
       @stdout = stdout
       @stderr = stderr
@@ -141,6 +142,12 @@ module Puma
       @events.error str
     end
 
+    def debug(str)
+      if @debug
+        @events.log "- #{str}"
+      end
+    end
+
     # Build the OptionParser object to handle the available options.
     #
     def setup_options
@@ -152,7 +159,7 @@ module Puma
       }
 
       @parser = OptionParser.new do |o|
-        o.on "-b", "--bind URI", "URI to bind to (tcp:// and unix:// only)" do |arg|
+        o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
           @options[:binds] << arg
         end
 
