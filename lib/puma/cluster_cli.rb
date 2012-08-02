@@ -1,40 +1,21 @@
 require 'puma/cli'
+require 'puma/binder'
+
 require 'posix/spawn'
 
 module Puma
   class ClusterCLI < CLI
     def setup_options
-      @options = {
-        :workers => 2,
-        :min_threads => 0,
-        :max_threads => 16,
-        :quiet => false,
-        :binds => []
-      }
+      super
 
-      @parser = OptionParser.new do |o|
-        o.on "-w", "--workers COUNT",
-             "How many worker processes to create" do |arg|
-          @options[:workers] = arg.to_i
-        end
+      @options[:workers] = 2
 
-        o.on "-b", "--bind URI",
-             "URI to bind to (tcp://, unix://, ssl://)" do |arg|
-          @options[:binds] << arg
-        end
-
-        o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
-          min, max = arg.split(":")
-          if max
-            @options[:min_threads] = min.to_i
-            @options[:max_threads] = max.to_i
-          else
-            @options[:min_threads] = 0
-            @options[:max_threads] = arg.to_i
-          end
-        end
-
+      @parser.on "-w", "--workers COUNT",
+                 "How many worker processes to create" do |arg|
+        @options[:workers] = arg.to_i
       end
+
+      @parser.banner = "puma cluster <options> <rackup file>"
     end
 
     class PidEvents < Events
@@ -54,16 +35,21 @@ module Puma
     def worker
       Signal.trap "SIGINT", "IGNORE"
 
+      @suicide_pipe.close
+
+      Thread.new do
+        IO.select [@check_pipe]
+        log "! Detected parent died, dieing"
+        exit! 1
+      end
+
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
       server = Puma::Server.new @config.app, @events
       server.min_threads = min_t
       server.max_threads = max_t
-
-      @ios.each do |fd, uri|
-        server.inherit_tcp_listener uri.host, uri.port, fd
-      end
+      server.binder = @binder
 
       Signal.trap "SIGTERM" do
         server.stop
@@ -73,7 +59,16 @@ module Puma
     end
 
     def stop_workers
+      log "- Gracefully shutting down workers..."
       @workers.each { |x| x.term }
+
+      begin
+        Process.waitall
+      rescue Interrupt
+        log "! Cancelled waiting for workers"
+      else
+        log "- Goodbye!"
+      end
     end
 
     class Worker
@@ -113,9 +108,8 @@ module Puma
     end
 
     def run
-      @debug = true
-
       @workers = []
+
       @events = PidEvents.new STDOUT, STDERR
 
       @options[:logger] = @events
@@ -124,27 +118,15 @@ module Puma
 
       set_rack_environment
 
-      @ios = []
-
-      @options[:binds].each do |str|
-        uri = URI.parse str
-        case uri.scheme
-        when "tcp"
-          s = TCPServer.new(uri.host, uri.port)
-          s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
-          s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
-          s.listen 1024
-
-          @ios << [s, uri]
-        else
-          raise "bad bind uri - #{str}"
-        end
-      end
+      write_pid
+      write_state
 
       log "Puma #{Puma::Const::PUMA_VERSION} starting in cluster mode..."
       log "* Process workers: #{@options[:workers]}"
       log "* Min threads: #{@options[:min_threads]}, max threads: #{@options[:max_threads]}"
       log "* Environment: #{ENV['RACK_ENV']}"
+
+      @binder.parse @options[:binds], self
 
       read, write = IO.pipe
 
@@ -152,7 +134,16 @@ module Puma
         write.write "!"
       end
 
+      # Used by the workers to detect if the master process dies.
+      # If select says that @check_pipe is ready, it's because the
+      # master has exited and @suicide_pipe has been automatically
+      # closed.
+      #
+      @check_pipe, @suicide_pipe = IO.pipe
+
       spawn_workers
+
+      log "Use Ctrl-C to stop"
 
       begin
         while true
@@ -161,7 +152,8 @@ module Puma
         end
       rescue Interrupt
         stop_workers
-        p Process.waitall
+      ensure
+        delete_pidfile
       end
     end
   end

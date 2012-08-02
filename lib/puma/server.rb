@@ -8,6 +8,9 @@ require 'puma/null_io'
 require 'puma/compat'
 require 'puma/reactor'
 require 'puma/client'
+require 'puma/binder'
+require 'puma/delegation'
+require 'puma/accept_nonblock'
 
 require 'puma/puma_http11'
 
@@ -19,6 +22,7 @@ module Puma
   class Server
 
     include Puma::Const
+    extend  Puma::Delegation
 
     attr_reader :thread
     attr_reader :events
@@ -42,7 +46,6 @@ module Puma
       @events = events
 
       @check, @notify = IO.pipe
-      @ios = [@check]
 
       @status = :stop
 
@@ -56,31 +59,16 @@ module Puma
       @persistent_timeout = PERSISTENT_TIMEOUT
       @persistent_check, @persistent_wakeup = IO.pipe
 
-      @unix_paths = []
-
-      @proto_env = {
-        "rack.version".freeze => Rack::VERSION,
-        "rack.errors".freeze => events.stderr,
-        "rack.multithread".freeze => true,
-        "rack.multiprocess".freeze => false,
-        "rack.run_once".freeze => true,
-        "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
-
-        # Rack blows up if this is an empty string, and Rack::Lint
-        # blows up if it's nil. So 'text/plain' seems like the most
-        # sensible default value.
-        "CONTENT_TYPE".freeze => "text/plain",
-
-        "QUERY_STRING".freeze => "",
-        SERVER_PROTOCOL => HTTP_11,
-        SERVER_SOFTWARE => PUMA_VERSION,
-        GATEWAY_INTERFACE => CGI_VER
-      }
-
-      @envs = {}
+      @binder = Binder.new(events)
 
       ENV['RACK_ENV'] ||= "development"
     end
+
+    attr_accessor :binder
+
+    forward :add_tcp_listener,  :@binder
+    forward :add_ssl_listener,  :@binder
+    forward :add_unix_listener, :@binder
 
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
@@ -102,86 +90,6 @@ module Puma
 
       def uncork_socket(socket)
       end
-    end
-
-    # Tell the server to listen on host +host+, port +port+.
-    # If +optimize_for_latency+ is true (the default) then clients connecting
-    # will be optimized for latency over throughput.
-    #
-    # +backlog+ indicates how many unaccepted connections the kernel should
-    # allow to accumulate before returning connection refused.
-    #
-    def add_tcp_listener(host, port, optimize_for_latency=true, backlog=1024)
-      s = TCPServer.new(host, port)
-      if optimize_for_latency
-        s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
-      end
-      s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
-      s.listen backlog
-      @ios << s
-      s
-    end
-
-    def inherit_tcp_listener(host, port, fd)
-      if fd.kind_of? TCPServer
-        s = fd
-      else
-        s = TCPServer.for_fd(fd)
-      end
-
-      @ios << s
-      s
-    end
-
-    def add_ssl_listener(host, port, ctx, optimize_for_latency=true, backlog=1024)
-      s = TCPServer.new(host, port)
-      if optimize_for_latency
-        s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
-      end
-      s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
-      s.listen backlog
-
-      ssl = OpenSSL::SSL::SSLServer.new(s, ctx)
-      env = @proto_env.dup
-      env[HTTPS_KEY] = HTTPS
-      @envs[ssl] = env
-
-      @ios << ssl
-      s
-    end
-
-    def inherited_ssl_listener(fd, ctx)
-      s = TCPServer.for_fd(fd)
-      @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
-      s
-    end
-
-    # Tell the server to listen on +path+ as a UNIX domain socket.
-    #
-    def add_unix_listener(path, umask=nil)
-      @unix_paths << path
-
-      # Let anyone connect by default
-      umask ||= 0
-
-      begin
-        old_mask = File.umask(umask)
-        s = UNIXServer.new(path)
-        @ios << s
-      ensure
-        File.umask old_mask
-      end
-
-      s
-    end
-
-    def inherit_unix_listener(path, fd)
-      @unix_paths << path
-
-      s = UNIXServer.for_fd fd
-      @ios << s
-
-      s
     end
 
     def backlog
@@ -242,7 +150,7 @@ module Puma
     def handle_servers
       begin
         check = @check
-        sockets = @ios
+        sockets = [check] + @binder.ios
         pool = @thread_pool
 
         while @status == :run
@@ -254,11 +162,10 @@ module Puma
               else
                 begin
                   if io = sock.accept_nonblock
-                    c = Client.new io, @envs.fetch(sock, @proto_env)
+                    c = Client.new io, @binder.env(sock)
                     @thread_pool << c
                   end
                 rescue SystemCallError => e
-                  p e
                 end
               end
             end
@@ -273,8 +180,8 @@ module Puma
         graceful_shutdown if @status == :stop
       ensure
         unless @status == :restart
-          @ios.each { |i| i.close }
-          @unix_paths.each { |i| File.unlink i }
+          @check.close
+          @binder.close
         end
       end
     end

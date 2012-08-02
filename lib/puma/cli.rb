@@ -4,6 +4,7 @@ require 'uri'
 require 'puma/server'
 require 'puma/const'
 require 'puma/configuration'
+require 'puma/binder'
 
 require 'rack/commonlogger'
 require 'rack/utils'
@@ -33,26 +34,12 @@ module Puma
 
       @restart = false
 
-      @listeners = []
-
       setup_options
 
       generate_restart_data
 
-      @inherited_fds = {}
-      remove = []
-
-      ENV.each do |k,v|
-        if k =~ /PUMA_INHERIT_\d+/
-          fd, url = v.split(":", 2)
-          @inherited_fds[url] = fd.to_i
-          remove << k
-        end
-      end
-
-      remove.each do |k|
-        ENV.delete k
-      end
+      @binder = Binder.new(@events)
+      @binder.import_from_env
     end
 
     def restart_on_stop!
@@ -101,7 +88,7 @@ module Puma
       end
 
       if IS_JRUBY
-        @listeners.each_with_index do |(str,io),i|
+        @binder.listeners.each_with_index do |(str,io),i|
           io.close
 
           # We have to unlink a unix socket path that's not being used
@@ -115,7 +102,7 @@ module Puma
         require 'puma/jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, Gem.ruby, *@restart_argv)
       else
-        @listeners.each_with_index do |(l,io),i|
+        @binder.listeners.each_with_index do |(l,io),i|
           ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
         end
 
@@ -143,7 +130,7 @@ module Puma
     end
 
     def debug(str)
-      if @debug
+      if @options[:debug]
         @events.log "- #{str}"
       end
     end
@@ -155,6 +142,7 @@ module Puma
         :min_threads => 0,
         :max_threads => 16,
         :quiet => false,
+        :debug => false,
         :binds => []
       }
 
@@ -182,6 +170,10 @@ module Puma
 
         o.on "-q", "--quiet", "Quiet down the output" do
           @options[:quiet] = true
+        end
+
+        o.on "--debug", "Log lowlevel debugging information" do
+          @options[:debug] = true
         end
 
         o.on "-S", "--state PATH", "Where to store the state details" do |arg|
@@ -312,6 +304,7 @@ module Puma
       max_t = @options[:max_threads]
 
       server = Puma::Server.new app, @events
+      server.binder = @binder
       server.min_threads = min_t
       server.max_threads = max_t
 
@@ -319,91 +312,7 @@ module Puma
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
 
-      @options[:binds].each do |str|
-        uri = URI.parse str
-        case uri.scheme
-        when "tcp"
-          if fd = @inherited_fds.delete(str)
-            log "* Inherited #{str}"
-            io = server.inherit_tcp_listener uri.host, uri.port, fd
-          else
-            log "* Listening on #{str}"
-            io = server.add_tcp_listener uri.host, uri.port
-          end
-
-          @listeners << [str, io]
-        when "unix"
-          if fd = @inherited_fds.delete(str)
-            log "* Inherited #{str}"
-            io = server.inherit_unix_listener uri.path, fd
-          else
-            log "* Listening on #{str}"
-            path = "#{uri.host}#{uri.path}"
-
-            umask = nil
-
-            if uri.query
-              params = Rack::Utils.parse_query uri.query
-              if u = params['umask']
-                # Use Integer() to respect the 0 prefix as octal
-                umask = Integer(u)
-              end
-            end
-
-            io = server.add_unix_listener path, umask
-          end
-
-          @listeners << [str, io]
-        when "ssl"
-          params = Rack::Utils.parse_query uri.query
-          require 'openssl'
-
-          ctx = OpenSSL::SSL::SSLContext.new
-          unless params['key']
-            error "Please specify the SSL key via 'key='"
-          end
-
-          ctx.key = OpenSSL::PKey::RSA.new File.read(params['key'])
-
-          unless params['cert']
-            error "Please specify the SSL cert via 'cert='"
-          end
-
-          ctx.cert = OpenSSL::X509::Certificate.new File.read(params['cert'])
-
-          ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
-
-          if fd = @inherited_fds.delete(str)
-            log "* Inherited #{str}"
-            io = server.inherited_ssl_listener fd, ctx
-          else
-            log "* Listening on #{str}"
-            io = server.add_ssl_listener uri.host, uri.port, ctx
-          end
-
-          @listeners << [str, io]
-        else
-          error "Invalid URI: #{str}"
-        end
-      end
-
-      # If we inherited fds but didn't use them (because of a
-      # configuration change), then be sure to close them.
-      @inherited_fds.each do |str, fd|
-        log "* Closing unused inherited connection: #{str}"
-
-        begin
-          IO.for_fd(fd).close
-        rescue SystemCallError
-        end
-
-        # We have to unlink a unix socket path that's not being used
-        uri = URI.parse str
-        if uri.scheme == "unix"
-          path = "#{uri.host}#{uri.path}"
-          File.unlink path
-        end
-      end
+      @binder.parse @options[:binds], self
 
       @server = server
 
