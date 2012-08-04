@@ -156,6 +156,11 @@ module Puma
         @options[:binds] << url
       end
 
+      # Set the environment in which the Rack's app will run.
+      def environment(environment)
+        @options[:environment] = environment
+      end
+
       # Code to run before doing a restart. This code should
       # close logfiles, database connections, etc.
       #
@@ -210,9 +215,10 @@ module Puma
         @options[:state] = path.to_s
       end
 
-      # Set the environment in which the Rack's app will run.
-      def environment(environment)
-        @options[:environment] = environment
+      # *Cluster mode only* How many worker processes to run.
+      #
+      def workers(count)
+        @options[:workers] = count.to_i
       end
     end
   end

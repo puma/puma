@@ -18,21 +18,13 @@ module Puma
       @parser.banner = "puma cluster <options> <rackup file>"
     end
 
-    class PidEvents < Events
-      def log(str)
-        super "[#{$$}] #{str}"
-      end
-
-      def write(str)
-        super "[#{$$}] #{str}"
-      end
-
-      def error(str)
-        super "[#{$$}] #{str}"
-      end
+    def parse_options
+      @argv.shift if @argv.first == "cluster"
+      super
     end
 
     def worker
+      $0 = "puma cluster worker"
       Signal.trap "SIGINT", "IGNORE"
 
       @suicide_pipe.close
@@ -134,6 +126,25 @@ module Puma
         write.write "!"
       end
 
+      stop = false
+
+      begin
+        Signal.trap "SIGUSR2" do
+          @restart = true
+          stop = true
+          write.write "!"
+        end
+      rescue Exception
+      end
+
+      begin
+        Signal.trap "SIGTERM" do
+          stop = true
+          write.write "!"
+        end
+      rescue Exception
+      end
+
       # Used by the workers to detect if the master process dies.
       # If select says that @check_pipe is ready, it's because the
       # master has exited and @suicide_pipe has been automatically
@@ -143,17 +154,26 @@ module Puma
 
       spawn_workers
 
-      log "Use Ctrl-C to stop"
+      log "* Use Ctrl-C to stop"
 
       begin
-        while true
-          IO.select([read], nil, nil, 5)
-          check_workers
+        while !stop
+          begin
+            IO.select([read], nil, nil, 5)
+            check_workers
+          rescue Interrupt
+            stop = true
+          end
         end
-      rescue Interrupt
+
         stop_workers
       ensure
         delete_pidfile
+      end
+
+      if @restart
+        log "* Restarting..."
+        restart!
       end
     end
   end

@@ -7,7 +7,6 @@ require 'puma/cli'
 require 'puma/cluster_cli'
 
 if ARGV[0] == "cluster"
-  ARGV.shift
   cli = Puma::ClusterCLI.new ARGV
 else
   cli = Puma::CLI.new ARGV

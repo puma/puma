@@ -68,4 +68,18 @@ module Puma
       Events.new StringIO.new, StringIO.new
     end
   end
+
+  class PidEvents < Events
+    def log(str)
+      super "[#{$$}] #{str}"
+    end
+
+    def write(str)
+      super "[#{$$}] #{str}"
+    end
+
+    def error(str)
+      super "[#{$$}] #{str}"
+    end
+  end
 end
