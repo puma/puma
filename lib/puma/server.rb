@@ -56,6 +56,8 @@ module Puma
       @persistent_timeout = PERSISTENT_TIMEOUT
       @persistent_check, @persistent_wakeup = IO.pipe
 
+      @first_data_timeout = FIRST_DATA_TIMEOUT
+
       @unix_paths = []
 
       @proto_env = {
@@ -199,7 +201,6 @@ module Puma
       @status = :run
 
       @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
-
         process_now = false
 
         begin
@@ -213,6 +214,7 @@ module Puma
           if process_now
             process_client client
           else
+            client.set_timeout @first_data_timeout
             @reactor.add client
           end
         end
@@ -315,7 +317,7 @@ module Puma
         end
 
       # The client disconnected while we were reading data
-      rescue EOFError, SystemCallError
+      rescue EOFError, SystemCallError => e
         # Swallow them. The ensure tries to close +client+ down
 
       # The client doesn't know HTTP well

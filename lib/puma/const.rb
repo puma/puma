@@ -31,6 +31,10 @@ module Puma
     # session.
     PERSISTENT_TIMEOUT = 20
 
+    # The default number of seconds to wait until we get the first data
+    # for the request
+    FIRST_DATA_TIMEOUT = 30
+
     DATE = "Date".freeze
 
     SCRIPT_NAME = "SCRIPT_NAME".freeze

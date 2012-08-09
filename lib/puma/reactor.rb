@@ -46,11 +46,19 @@ module Puma
                 c.close
                 sockets.delete c
 
+                if c.timeout_at
+                  @timeouts.delete c
+                end
+
                 @events.parse_error @server, c.env, e
 
-              rescue EOFError
+              rescue EOFError => e
                 c.close
                 sockets.delete c
+
+                if c.timeout_at
+                  @timeouts.delete c
+                end
               end
             end
           end
@@ -73,7 +81,15 @@ module Puma
     end
 
     def run_in_thread
-      @thread = Thread.new { run }
+      @thread = Thread.new {
+        begin
+          run
+        rescue Exception => e
+          puts "MAJOR ERROR DETECTED"
+          p e
+          puts e.backtrace
+        end
+      }
     end
 
     def calculate_sleep
