@@ -57,7 +57,7 @@ DEF_MAX_LENGTH(QUERY_STRING, (1024 * 10));
 DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
 
 struct common_field {
-	const signed long len;
+	const size_t len;
 	const char *name;
   int raw;
 	VALUE value;
@@ -127,7 +127,7 @@ static int common_field_cmp(const void *a, const void *b)
 
 static void init_common_fields(void)
 {
-  int i;
+  unsigned i;
   struct common_field *cf = common_http_fields;
   char tmp[256]; /* MAX_FIELD_NAME_LENGTH */
   memcpy(tmp, HTTP_PREFIX, HTTP_PREFIX_LEN);
@@ -163,7 +163,7 @@ static VALUE find_common_field_value(const char *field, size_t flen)
                                          common_field_cmp);
   return found ? found->value : Qnil;
 #else /* !HAVE_QSORT_BSEARCH */
-  int i;
+  unsigned i;
   struct common_field *cf = common_http_fields;
   for(i = 0; i < ARRAY_SIZE(common_http_fields); i++, cf++) {
     if (cf->len == flen && !memcmp(cf->name, field, flen))
@@ -460,6 +460,7 @@ void Init_puma_http11()
 {
 
   VALUE mPuma = rb_define_module("Puma");
+  VALUE cHttpParser = rb_define_class_under(mPuma, "HttpParser", rb_cObject);
 
   DEF_GLOBAL(request_method, "REQUEST_METHOD");
   DEF_GLOBAL(request_uri, "REQUEST_URI");
@@ -471,7 +472,6 @@ void Init_puma_http11()
   eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eIOError);
   rb_global_variable(&eHttpParserError);
 
-  VALUE cHttpParser = rb_define_class_under(mPuma, "HttpParser", rb_cObject);
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
   rb_define_method(cHttpParser, "initialize", HttpParser_init, 0);
   rb_define_method(cHttpParser, "reset", HttpParser_reset, 0);
