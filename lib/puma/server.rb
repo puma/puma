@@ -261,6 +261,7 @@ module Puma
           end
         end
 
+        @reactor.shutdown
         graceful_shutdown if @status == :stop
       ensure
         unless @status == :restart

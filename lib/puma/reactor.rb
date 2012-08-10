@@ -24,9 +24,13 @@ module Puma
           reads.each do |c|
             if c == @ready
               @mutex.synchronize do
-                @ready.read(1) # drain
-                sockets += @input
-                @input.clear
+                case @ready.read(1)
+                when "*"
+                  sockets += @input
+                  @input.clear
+                when "!"
+                  return
+                end
               end
             else
               # We have to be sure to remove it from the timeout
@@ -109,7 +113,7 @@ module Puma
     def add(c)
       @mutex.synchronize do
         @input << c
-        @trigger << "!"
+        @trigger << "*"
 
         if c.timeout_at
           @timeouts << c
@@ -118,6 +122,10 @@ module Puma
           calculate_sleep
         end
       end
+    end
+
+    def shutdown
+      @trigger << "!"
     end
   end
 end
