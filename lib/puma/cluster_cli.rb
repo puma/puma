@@ -1,8 +1,6 @@
 require 'puma/cli'
 require 'puma/binder'
 
-require 'posix/spawn'
-
 module Puma
   class ClusterCLI < CLI
     def setup_options
