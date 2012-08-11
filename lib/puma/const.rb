@@ -27,6 +27,8 @@ module Puma
 
     PUMA_VERSION = VERSION = "1.6.0".freeze
 
+    FAST_TRACK_KA_TIMEOUT = 0.2
+
     # The default number of seconds for another request within a persistent
     # session.
     PERSISTENT_TIMEOUT = 20
