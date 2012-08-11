@@ -47,6 +47,8 @@ You can change those if you want but you'll have to adapt the script for it to w
 
 * Here's what a minimal app's config file should have:
 
-    pidfile "/path/to/app/tmp/puma/pid"
-    state_path "/path/to/app/tmp/puma/state"
-    activate_control_app
+```
+pidfile "/path/to/app/tmp/puma/pid"
+state_path "/path/to/app/tmp/puma/state"
+activate_control_app
+```
