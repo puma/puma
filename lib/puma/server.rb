@@ -60,6 +60,7 @@ module Puma
       @persistent_check, @persistent_wakeup = IO.pipe
 
       @binder = Binder.new(events)
+      @first_data_timeout = FIRST_DATA_TIMEOUT
 
       ENV['RACK_ENV'] ||= "development"
     end
@@ -112,7 +113,6 @@ module Puma
       @status = :run
 
       @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
-
         process_now = false
 
         begin
@@ -120,12 +120,13 @@ module Puma
         rescue HttpParserError => e
           client.close
           @events.parse_error self, client.env, e
-        rescue EOFError
+        rescue IOError
           client.close
         else
           if process_now
             process_client client
           else
+            client.set_timeout @first_data_timeout
             @reactor.add client
           end
         end
@@ -163,7 +164,7 @@ module Puma
                 begin
                   if io = sock.accept_nonblock
                     c = Client.new io, @binder.env(sock)
-                    @thread_pool << c
+                    pool << c
                   end
                 rescue SystemCallError => e
                 end
@@ -177,6 +178,7 @@ module Puma
           end
         end
 
+        @reactor.shutdown
         graceful_shutdown if @status == :stop
       ensure
         unless @status == :restart
@@ -233,7 +235,7 @@ module Puma
         end
 
       # The client disconnected while we were reading data
-      rescue EOFError, SystemCallError
+      rescue IOError, SystemCallError => e
         # Swallow them. The ensure tries to close +client+ down
 
       # The client doesn't know HTTP well
