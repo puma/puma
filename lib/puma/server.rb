@@ -250,7 +250,7 @@ module Puma
                 break if handle_check
               else
                 c = Client.new sock.accept, @envs.fetch(sock, @proto_env)
-                @thread_pool << c
+                pool << c
               end
             end
           rescue Errno::ECONNABORTED
