@@ -208,7 +208,7 @@ module Puma
         rescue HttpParserError => e
           client.close
           @events.parse_error self, client.env, e
-        rescue EOFError
+        rescue IOError
           client.close
         else
           if process_now
@@ -318,7 +318,7 @@ module Puma
         end
 
       # The client disconnected while we were reading data
-      rescue EOFError, SystemCallError => e
+      rescue IOError, SystemCallError => e
         # Swallow them. The ensure tries to close +client+ down
 
       # The client doesn't know HTTP well

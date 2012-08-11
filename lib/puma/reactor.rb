@@ -45,24 +45,17 @@ module Puma
                   @app_pool << c
                   sockets.delete c
                 end
+
               # The client doesn't know HTTP well
               rescue HttpParserError => e
                 c.close
                 sockets.delete c
 
-                if c.timeout_at
-                  @timeouts.delete c
-                end
-
                 @events.parse_error @server, c.env, e
 
-              rescue EOFError => e
+              rescue IOError => e
                 c.close
                 sockets.delete c
-
-                if c.timeout_at
-                  @timeouts.delete c
-                end
               end
             end
           end
