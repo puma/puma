@@ -2,8 +2,8 @@ require 'openssl'
 
 module OpenSSL
   module SSL
-    if RUBY_VERSION < "1.9"
-      class SSLServer
+    class SSLServer
+      unless public_method_defined? :accept_nonblock
         def accept_nonblock
           sock = @svr.accept_nonblock
 

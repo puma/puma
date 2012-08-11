@@ -112,7 +112,9 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(@min_threads, @max_threads) do |client|
+      @thread_pool = ThreadPool.new(@min_threads,
+                                    @max_threads,
+                                    IOBuffer) do |client, buffer|
         process_now = false
 
         begin
@@ -124,7 +126,7 @@ module Puma
           client.close
         else
           if process_now
-            process_client client
+            process_client client, buffer
           else
             client.set_timeout @first_data_timeout
             @reactor.add client
@@ -166,7 +168,7 @@ module Puma
                     c = Client.new io, @binder.env(sock)
                     pool << c
                   end
-                rescue SystemCallError => e
+                rescue SystemCallError
                 end
               end
             end
@@ -213,18 +215,20 @@ module Puma
     # indicates that it supports keep alive, wait for another request before
     # returning.
     #
-    def process_client(client)
+    def process_client(client, buffer)
       begin
         close_socket = true
 
         while true
-          case handle_request(client)
+          case handle_request(client, buffer)
           when false
             return
           when :async
             close_socket = false
             return
           when true
+            buffer.reset
+
             unless client.reset
               close_socket = false
               client.set_timeout @persistent_timeout
@@ -304,7 +308,7 @@ module Puma
     # was one. This is an optimization to keep from having to look
     # it up again.
     #
-    def handle_request(req)
+    def handle_request(req, lines)
       env = req.env
       client = req.io
 
@@ -349,6 +353,9 @@ module Puma
 
         cork_socket client
 
+        line_ending = LINE_END
+        colon = COLON
+
         if env[HTTP_VERSION] == HTTP_11
           allow_chunked = true
           keep_alive = env[HTTP_CONNECTION] != CLOSE
@@ -359,13 +366,10 @@ module Puma
           # the response header.
           #
           if status == 200
-            client.write HTTP_11_200
+            lines << HTTP_11_200
           else
-            client.write "HTTP/1.1 "
-            client.write status.to_s
-            client.write " "
-            client.write HTTP_STATUS_CODES[status]
-            client.write "\r\n"
+            lines.append "HTTP/1.1 ", status.to_s, " ",
+                         HTTP_STATUS_CODES[status], line_ending
 
             no_body = status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
@@ -377,22 +381,14 @@ module Puma
           # Same optimization as above for HTTP/1.1
           #
           if status == 200
-            client.write HTTP_10_200
+            lines << HTTP_10_200
           else
-            client.write "HTTP/1.0 "
-            client.write status.to_s
-            client.write " "
-            client.write HTTP_STATUS_CODES[status]
-            client.write "\r\n"
+            lines.append "HTTP/1.0 ", status.to_s, " ",
+                         HTTP_STATUS_CODES[status], line_ending
 
             no_body = status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
         end
-
-        colon = COLON
-        line_ending = LINE_END
-
-        lines = []
 
         headers.each do |k, vs|
           case k
@@ -407,50 +403,49 @@ module Puma
           end
 
           vs.split(NEWLINE).each do |v|
-            lines << (k + colon + v + line_ending)
+            lines.append k, colon, v, line_ending
           end
         end
 
-        client.write lines.join
-
         if no_body
-          client.write line_ending
+          lines << line_ending
+          client.syswrite lines.to_s
           return keep_alive
         end
 
         if include_keepalive_header
-          client.write CONNECTION_KEEP_ALIVE
+          lines << CONNECTION_KEEP_ALIVE
         elsif !keep_alive
-          client.write CONNECTION_CLOSE
+          lines << CONNECTION_CLOSE
         end
 
         if content_length
-          client.write CONTENT_LENGTH_S
-          client.write content_length.to_s
-          client.write line_ending
+          lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
           chunked = false
         elsif allow_chunked
-          client.write TRANSFER_ENCODING_CHUNKED
+          lines << TRANSFER_ENCODING_CHUNKED
           chunked = true
         end
 
-        client.write line_ending
+        lines << line_ending
+
+        client.syswrite lines.to_s
 
         res_body.each do |part|
           if chunked
-            client.write part.bytesize.to_s(16)
-            client.write line_ending
-            client.write part
-            client.write line_ending
+            client.syswrite part.bytesize.to_s(16)
+            client.syswrite line_ending
+            client.syswrite part
+            client.syswrite line_ending
           else
-            client.write part
+            client.syswrite part
           end
 
           client.flush
         end
 
         if chunked
-          client.write CLOSE_CHUNKED
+          client.syswrite CLOSE_CHUNKED
           client.flush
         end
 

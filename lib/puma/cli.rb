@@ -209,7 +209,6 @@ module Puma
 
         o.on "-w", "--workers COUNT",
                    "Activate cluster mode: How many worker processes to create" do |arg|
-          p :here => arg
           @options[:workers] = arg.to_i
         end
 
