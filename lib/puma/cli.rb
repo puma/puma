@@ -4,6 +4,7 @@ require 'uri'
 require 'puma/server'
 require 'puma/const'
 require 'puma/configuration'
+require 'puma/detect'
 
 require 'rack/commonlogger'
 require 'rack/utils'
@@ -12,8 +13,6 @@ module Puma
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI
-    IS_JRUBY = defined?(JRUBY_VERSION)
-
     # Create a new CLI object using +argv+ as the command line
     # arguments.
     #
