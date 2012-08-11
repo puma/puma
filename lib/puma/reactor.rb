@@ -24,9 +24,13 @@ module Puma
           reads.each do |c|
             if c == @ready
               @mutex.synchronize do
-                @ready.read(1) # drain
-                sockets += @input
-                @input.clear
+                case @ready.read(1)
+                when "*"
+                  sockets += @input
+                  @input.clear
+                when "!"
+                  return
+                end
               end
             else
               # We have to be sure to remove it from the timeout
@@ -46,11 +50,19 @@ module Puma
                 c.close
                 sockets.delete c
 
+                if c.timeout_at
+                  @timeouts.delete c
+                end
+
                 @events.parse_error @server, c.env, e
 
-              rescue EOFError
+              rescue EOFError => e
                 c.close
                 sockets.delete c
+
+                if c.timeout_at
+                  @timeouts.delete c
+                end
               end
             end
           end
@@ -73,7 +85,15 @@ module Puma
     end
 
     def run_in_thread
-      @thread = Thread.new { run }
+      @thread = Thread.new {
+        begin
+          run
+        rescue Exception => e
+          puts "MAJOR ERROR DETECTED"
+          p e
+          puts e.backtrace
+        end
+      }
     end
 
     def calculate_sleep
@@ -93,7 +113,7 @@ module Puma
     def add(c)
       @mutex.synchronize do
         @input << c
-        @trigger << "!"
+        @trigger << "*"
 
         if c.timeout_at
           @timeouts << c
@@ -102,6 +122,10 @@ module Puma
           calculate_sleep
         end
       end
+    end
+
+    def shutdown
+      @trigger << "!"
     end
   end
 end

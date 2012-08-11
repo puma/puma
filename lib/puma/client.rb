@@ -1,3 +1,20 @@
+class IO
+  # We need to use this for a jruby work around on both 1.8 and 1.9.
+  # So this either creates the constant (on 1.8), or harmlessly
+  # reopens it (on 1.9).
+  module WaitReadable
+  end
+end
+
+require 'puma/detect'
+
+if Puma::IS_JRUBY
+  # We have to work around some OpenSSL buffer/io-readiness bugs
+  # so we pull it in regardless of if the user is binding
+  # to an SSL socket
+  require 'openssl'
+end
+
 module Puma
   class Client
     include Puma::Const
@@ -17,9 +34,15 @@ module Puma
       @buffer = nil
 
       @timeout_at = nil
+
+      @requests_served = 0
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready
+
+    def inspect
+      "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"
+    end
 
     def set_timeout(val)
       @timeout_at = Time.now + val
@@ -65,6 +88,7 @@ module Puma
       unless cl
         @buffer = body.empty? ? nil : body
         @body = EmptyBody
+        @requests_served += 1
         @ready = true
         return true
       end
@@ -74,6 +98,7 @@ module Puma
       if remain <= 0
         @body = StringIO.new(body)
         @buffer = nil
+        @requests_served += 1
         @ready = true
         return true
       end
@@ -119,11 +144,54 @@ module Puma
       false
     end
 
-    def eagerly_finish
-      return true if @ready
-      return false unless IO.select([@to_io], nil, nil, 0)
-      try_to_finish
-    end
+    if IS_JRUBY
+      def jruby_start_try_to_finish
+        return read_body unless @read_header
+
+        begin
+          data = @io.sysread_nonblock(CHUNK_SIZE)
+        rescue OpenSSL::SSL::SSLError => e
+          return false if e.kind_of? IO::WaitReadable
+          raise e
+        end
+
+        if @buffer
+          @buffer << data
+        else
+          @buffer = data
+        end
+
+        @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
+
+        if @parser.finished?
+          return setup_body
+        elsif @parsed_bytes >= MAX_HEADER
+          raise HttpParserError,
+            "HEADER is longer than allowed, aborting client early."
+        end
+
+        false
+      end
+
+      def eagerly_finish
+        return true if @ready
+
+        if @io.kind_of? OpenSSL::SSL::SSLSocket
+          return true if jruby_start_try_to_finish
+        end
+
+        return false unless IO.select([@to_io], nil, nil, 0)
+        try_to_finish
+      end
+
+    else
+
+      def eagerly_finish
+        return true if @ready
+        return false unless IO.select([@to_io], nil, nil, 0)
+        try_to_finish
+      end
+    end # IS_JRUBY
 
     def read_body
       # Read an odd sized chunk so we can read even sized ones
@@ -142,6 +210,7 @@ module Puma
       unless chunk
         @body.close
         @buffer = nil
+        @requests_served += 1
         @ready = true
         raise EOFError
       end
@@ -151,6 +220,7 @@ module Puma
       if remain <= 0
         @body.rewind
         @buffer = nil
+        @requests_served += 1
         @ready = true
         return true
       end
