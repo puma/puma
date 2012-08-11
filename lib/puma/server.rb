@@ -390,6 +390,8 @@ module Puma
         colon = COLON
         line_ending = LINE_END
 
+        lines = []
+
         headers.each do |k, vs|
           case k
           when CONTENT_LENGTH2
@@ -403,12 +405,11 @@ module Puma
           end
 
           vs.split(NEWLINE).each do |v|
-            client.write k
-            client.write colon
-            client.write v
-            client.write line_ending
+            lines << (k + colon + v + line_ending)
           end
         end
+
+        client.write lines.join
 
         if no_body
           client.write line_ending
