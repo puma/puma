@@ -9,7 +9,7 @@ class TestIOBuffer < Test::Unit::TestCase
 
   def test_initial_size
     assert_equal 0, iobuf.used
-    assert iobuf.capacity > 0
+    assert iobuf.capacity >= 0
   end
 
   def test_append_op
