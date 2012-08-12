@@ -1,3 +1,8 @@
+=== 1.6.1 / 2012-07-23
+
+* 1 packaging bug fixed:
+  * Include missing files
+
 === 1.6.0 / 2012-07-23
 
 * 1 major bug fix:

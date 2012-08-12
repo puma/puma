@@ -25,7 +25,7 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "1.6.0".freeze
+    PUMA_VERSION = VERSION = "1.6.1".freeze
 
     # The default number of seconds for another request within a persistent
     # session.
