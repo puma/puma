@@ -124,7 +124,7 @@ will cause the server to perform a restart. `pumactl` is a simple CLI frontend t
 
 ## Managing multiple Pumas / init.d script 
 
-If you want an easy way to manage multiple scripts at once check "tools/jungle" for an init.d script.
+If you want an easy way to manage multiple scripts at once check [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for an init.d script.
 
 ## License
 
