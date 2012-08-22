@@ -136,7 +136,8 @@ module Puma
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
-      ssl = OpenSSL::SSL::SSLServer.new(s, ctx)
+      # ssl = OpenSSL::SSL::SSLServer.new(s, ctx)
+      ssl = MiniSSL::Server.new s, ctx
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS
       @envs[ssl] = env
@@ -147,7 +148,8 @@ module Puma
 
     def inherited_ssl_listener(fd, ctx)
       s = TCPServer.for_fd(fd)
-      @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
+      # @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
+      @ios << MiniSSL::Server.new(s, ctx)
       s
     end
 

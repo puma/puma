@@ -349,22 +349,24 @@ module Puma
           @listeners << [str, io]
         when "ssl"
           params = Rack::Utils.parse_query uri.query
-          require 'openssl'
+          require 'minissl'
 
-          ctx = OpenSSL::SSL::SSLContext.new
+          # ctx = OpenSSL::SSL::SSLContext.new
           unless params['key']
             error "Please specify the SSL key via 'key='"
           end
 
-          ctx.key = OpenSSL::PKey::RSA.new File.read(params['key'])
+          # ctx.key = OpenSSL::PKey::RSA.new File.read(params['key'])
 
           unless params['cert']
             error "Please specify the SSL cert via 'cert='"
           end
 
-          ctx.cert = OpenSSL::X509::Certificate.new File.read(params['cert'])
+          # ctx.cert = OpenSSL::X509::Certificate.new File.read(params['cert'])
 
-          ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+          # ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+          #
+          ctx = { :key => params['key'], :cert => params['cert'] }
 
           if fd = @inherited_fds.delete(str)
             log "* Inherited #{str}"
