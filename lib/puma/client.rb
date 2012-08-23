@@ -99,7 +99,11 @@ module Puma
     def try_to_finish
       return read_body unless @read_header
 
-      data = @io.readpartial(CHUNK_SIZE)
+      begin
+        data = @io.read_nonblock(CHUNK_SIZE)
+      rescue Errno::EAGAIN
+        return false
+      end
 
       if @buffer
         @buffer << data
@@ -136,7 +140,11 @@ module Puma
         want = remain
       end
 
-      chunk = @io.readpartial(want)
+      begin
+        chunk = @io.read_nonblock(want)
+      rescue Errno::EAGAIN
+        return false
+      end
 
       # No chunk means a closed socket
       unless chunk

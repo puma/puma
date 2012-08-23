@@ -26,6 +26,24 @@ module Puma::MiniSSL
       end
     end
 
+    def read_nonblock(size)
+      while true
+        output = @engine.read
+        return output if output
+
+        data = @socket.read_nonblock(size)
+
+        @engine.inject(data)
+        output = @engine.read
+
+        return output if output
+
+        while neg_data = @engine.extract
+          @socket.write neg_data
+        end
+      end
+    end
+
     def write(data)
       need = data.size
 

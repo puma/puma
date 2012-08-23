@@ -94,11 +94,10 @@ static VALUE eError;
 
 void raise_error(SSL* ssl, int result) {
   int error = SSL_get_error(ssl, result);
-  char buffer[256];
+  char* msg = ERR_error_string(error, NULL);
 
-  ERR_error_string_n(error, buffer, sizeof(buffer));
-
-  rb_raise(eError, "OpenSSL error: %s", buffer);
+  ERR_clear_error();
+  rb_raise(eError, "OpenSSL error: %s - %d", msg, error);
 }
 
 VALUE engine_read(VALUE self) {
@@ -115,6 +114,10 @@ VALUE engine_read(VALUE self) {
   }
 
   if(SSL_want_read(conn->ssl)) return Qnil;
+
+  if(SSL_get_error(conn->ssl, bytes) == SSL_ERROR_ZERO_RETURN) {
+    rb_eof_error();
+  }
 
   raise_error(conn->ssl, bytes);
 }
