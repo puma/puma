@@ -129,7 +129,7 @@ module Puma
     end
 
     def add_ssl_listener(host, port, ctx, optimize_for_latency=true, backlog=1024)
-      require 'minissl'
+      require 'puma/minissl'
 
       s = TCPServer.new(host, port)
       if optimize_for_latency
@@ -138,7 +138,6 @@ module Puma
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
-      # ssl = OpenSSL::SSL::SSLServer.new(s, ctx)
       ssl = MiniSSL::Server.new s, ctx
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS
@@ -150,7 +149,6 @@ module Puma
 
     def inherited_ssl_listener(fd, ctx)
       s = TCPServer.for_fd(fd)
-      # @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
       @ios << MiniSSL::Server.new(s, ctx)
       s
     end

@@ -349,7 +349,7 @@ module Puma
           @listeners << [str, io]
         when "ssl"
           params = Rack::Utils.parse_query uri.query
-          require 'minissl'
+          require 'puma/minissl'
 
           ctx = MiniSSL::Context.new
           unless params['key']

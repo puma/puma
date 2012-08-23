@@ -1,4 +1,4 @@
-module MiniSSL
+module Puma::MiniSSL
   class Socket
     def initialize(socket, engine)
       @socket = socket

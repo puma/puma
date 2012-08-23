@@ -159,13 +159,13 @@ VALUE engine_extract(VALUE self) {
   return Qnil;
 }
 
-void Init_mini_ssl() {
+void Init_mini_ssl(VALUE puma) {
   SSL_library_init();
   OpenSSL_add_ssl_algorithms();
   SSL_load_error_strings();
   ERR_load_crypto_strings();
   
-  VALUE mod = rb_define_module("MiniSSL");
+  VALUE mod = rb_define_module_under(puma, "MiniSSL");
   VALUE eng = rb_define_class_under(mod, "Engine", rb_cObject);
 
   eError = rb_define_class_under(mod, "SSLError", rb_eStandardError);
