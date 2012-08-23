@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include <rubyio.h>
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -120,6 +121,8 @@ VALUE engine_read(VALUE self) {
   }
 
   raise_error(conn->ssl, bytes);
+
+  return Qnil;
 }
 
 VALUE engine_write(VALUE self, VALUE str) {
@@ -139,6 +142,8 @@ VALUE engine_write(VALUE self, VALUE str) {
   if(SSL_want_write(conn->ssl)) return Qnil;
 
   raise_error(conn->ssl, bytes);
+
+  return Qnil;
 }
 
 VALUE engine_extract(VALUE self) {
