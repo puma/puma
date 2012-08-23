@@ -10,40 +10,17 @@ module MiniSSL
     end
 
     def readpartial(size)
-
-      p :start
-      p :a1 => @engine.read
-
-      p :w1 => @engine.output
-
-      data = @socket.readpartial(size)
-
-      p :data => data
-
-      @engine.input data
-
-      p :a2 => @engine.read
-      p :w1 => @engine.output
-
-      return
-
       while true
         output = @engine.read
         return output if output
 
-        if IO.select([@socket], nil, nil, 1)
-          data = @socket.readpartial(size)
-          p :rp => [size, data.size, data]
-          p :in => @engine.input(data)
-        end
+        data = @socket.readpartial(size)
+        @engine.inject(data)
         output = @engine.read
-        p :read => output
+
         return output if output
 
-        neg_data = @engine.output
-        p :neg => neg_data
-
-        if neg_data
+        while neg_data = @engine.extract
           @socket.write neg_data
         end
       end
@@ -54,7 +31,7 @@ module MiniSSL
 
       while true
         wrote = @engine.write data
-        enc = @engine.output
+        enc = @engine.extract
 
         if enc
           @socket.write enc
@@ -71,7 +48,22 @@ module MiniSSL
     def flush
       @socket.flush
     end
+
+    def close
+      @socket.close
+    end
+
+    def peeraddr
+      @socket.peeraddr
+    end
   end
+
+  class Context
+    attr_accessor :key, :cert, :verify_mode
+  end
+
+  VERIFY_NONE = 0
+  VERIFY_PEER = 1
 
   class Server
     def initialize(socket, ctx)
@@ -85,9 +77,13 @@ module MiniSSL
 
     def accept
       io = @socket.accept
-      engine = Engine.server @ctx[:key], @ctx[:cert]
+      engine = Engine.server @ctx.key, @ctx.cert
 
       Socket.new io, engine
+    end
+
+    def close
+      @socket.close
     end
   end
 end

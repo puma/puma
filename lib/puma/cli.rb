@@ -351,22 +351,20 @@ module Puma
           params = Rack::Utils.parse_query uri.query
           require 'minissl'
 
-          # ctx = OpenSSL::SSL::SSLContext.new
+          ctx = MiniSSL::Context.new
           unless params['key']
             error "Please specify the SSL key via 'key='"
           end
 
-          # ctx.key = OpenSSL::PKey::RSA.new File.read(params['key'])
+          ctx.key = params['key']
 
           unless params['cert']
             error "Please specify the SSL cert via 'cert='"
           end
 
-          # ctx.cert = OpenSSL::X509::Certificate.new File.read(params['cert'])
+          ctx.cert = params['cert']
 
-          # ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
-          #
-          ctx = { :key => params['key'], :cert => params['cert'] }
+          ctx.verify_mode = MiniSSL::VERIFY_NONE
 
           if fd = @inherited_fds.delete(str)
             log "* Inherited #{str}"

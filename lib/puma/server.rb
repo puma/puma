@@ -129,6 +129,8 @@ module Puma
     end
 
     def add_ssl_listener(host, port, ctx, optimize_for_latency=true, backlog=1024)
+      require 'minissl'
+
       s = TCPServer.new(host, port)
       if optimize_for_latency
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)

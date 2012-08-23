@@ -41,18 +41,17 @@ VALUE engine_init_server(VALUE self, VALUE key, VALUE cert) {
   StringValue(key);
   StringValue(cert);
 
-  SSL_CTX* ctx = SSL_CTX_new(DTLSv1_method());
+  SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
   conn->ctx = ctx;
 
-  SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
-  SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
   SSL_CTX_use_certificate_file(ctx, RSTRING_PTR(cert), SSL_FILETYPE_PEM);
-  SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE);
+  SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
+  /* SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE); */
 
   SSL* ssl =  SSL_new(ctx);
   conn->ssl = ssl;
 
-  SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL);
+  /* SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL); */
 
   SSL_set_bio(ssl, conn->read, conn->write);
 
@@ -74,7 +73,7 @@ VALUE engine_init_client(VALUE klass) {
   return obj;
 }
 
-VALUE engine_input(VALUE self, VALUE str) {
+VALUE engine_inject(VALUE self, VALUE str) {
   ms_conn* conn;
   long used;
 
@@ -97,10 +96,6 @@ void raise_error(SSL* ssl, int result) {
   int error = SSL_get_error(ssl, result);
   char buffer[256];
 
-  if(error == SSL_ERROR_WANT_READ) {
-    printf("OpenSSL WANT READ!\n");
-  }
-
   ERR_error_string_n(error, buffer, sizeof(buffer));
 
   rb_raise(eError, "OpenSSL error: %s", buffer);
@@ -112,24 +107,12 @@ VALUE engine_read(VALUE self) {
   int bytes, n;
 
   Data_Get_Struct(self, ms_conn, conn);
-  printf("pre_read: %d\n", BIO_pending(conn->read));
-
-  if(!SSL_is_init_finished(conn->ssl)) {
-    n = SSL_accept(conn->ssl);
-    printf("SSL_accept: %d\n", n);
-    if(n < 0) {
-      if(SSL_want_read(conn->ssl)) return Qnil;
-      raise_error(conn->ssl, n);
-    }
-  }
 
   bytes = SSL_read(conn->ssl, (void*)buf, sizeof(buf));
-  printf("ssl_read: %d => %d\n", BIO_pending(conn->read), bytes);
 
   if(bytes > 0) {
     return rb_str_new(buf, bytes);
   }
-  raise_error(conn->ssl, bytes);
 
   if(SSL_want_read(conn->ssl)) return Qnil;
 
@@ -155,7 +138,7 @@ VALUE engine_write(VALUE self, VALUE str) {
   raise_error(conn->ssl, bytes);
 }
 
-VALUE engine_output(VALUE self) {
+VALUE engine_extract(VALUE self) {
   ms_conn* conn;
   int bytes;
   size_t pending;
@@ -177,6 +160,11 @@ VALUE engine_output(VALUE self) {
 }
 
 void Init_mini_ssl() {
+  SSL_library_init();
+  OpenSSL_add_ssl_algorithms();
+  SSL_load_error_strings();
+  ERR_load_crypto_strings();
+  
   VALUE mod = rb_define_module("MiniSSL");
   VALUE eng = rb_define_class_under(mod, "Engine", rb_cObject);
 
@@ -185,9 +173,9 @@ void Init_mini_ssl() {
   rb_define_singleton_method(eng, "server", engine_init_server, 2);
   rb_define_singleton_method(eng, "client", engine_init_client, 0);
 
-  rb_define_method(eng, "input", engine_input, 1);
+  rb_define_method(eng, "inject", engine_inject, 1);
   rb_define_method(eng, "read",  engine_read, 0);
 
   rb_define_method(eng, "write",  engine_write, 1);
-  rb_define_method(eng, "output", engine_output, 0);
+  rb_define_method(eng, "extract", engine_extract, 0);
 }

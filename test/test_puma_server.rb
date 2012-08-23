@@ -3,6 +3,7 @@ require 'test/unit'
 require 'socket'
 require 'openssl'
 
+require 'minissl'
 require 'puma/server'
 
 require 'net/https'
@@ -27,20 +28,19 @@ class TestPumaServer < Test::Unit::TestCase
   end
 
   def test_url_scheme_for_https
-    ctx = OpenSSL::SSL::SSLContext.new
+    ctx = MiniSSL::Context.new
 
-    ctx.key = OpenSSL::PKey::RSA.new File.read(@ssl_key)
+    ctx.key = @ssl_key
+    ctx.cert = @ssl_cert
 
-    ctx.cert = OpenSSL::X509::Certificate.new File.read(@ssl_cert)
-
-    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    ctx.verify_mode = MiniSSL::VERIFY_NONE
 
     @server.add_ssl_listener @host, @port, ctx
     @server.run
 
     http = Net::HTTP.new @host, @port
     http.use_ssl = true
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    http.verify_mode = MiniSSL::VERIFY_NONE
 
     body = nil
     http.start do
