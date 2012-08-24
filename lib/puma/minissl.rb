@@ -83,13 +83,13 @@ module Puma::MiniSSL
   VERIFY_NONE = 0
   VERIFY_PEER = 1
 
-  if defined?(JRUBY_VERSION)
-    class Engine
-      def self.server(key, cert)
-        new(key, cert)
-      end
-    end
-  end
+  #if defined?(JRUBY_VERSION)
+    #class Engine
+      #def self.server(key, cert)
+        #new(key, cert)
+      #end
+    #end
+  #end
 
   class Server
     def initialize(socket, ctx)
