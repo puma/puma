@@ -10,6 +10,7 @@ import org.jruby.RubyString;
 
 import org.jruby.anno.JRubyMethod;
 
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -58,6 +59,16 @@ public class MiniSSL extends RubyObject {
     super(runtime, klass);
 
     this.runtime = runtime;
+  }
+
+  @JRubyMethod(meta = true)
+  public static IRubyObject server(ThreadContext context, IRubyObject recv, IRubyObject key, IRubyObject cert) {
+      RubyClass klass = (RubyClass) recv;
+      IRubyObject newInstance = klass.newInstance(context,
+          new IRubyObject[] { key, cert },
+          Block.NULL_BLOCK);
+
+      return newInstance;
   }
 
   @JRubyMethod
