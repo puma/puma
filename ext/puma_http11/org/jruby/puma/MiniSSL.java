@@ -85,11 +85,15 @@ public class MiniSSL extends RubyObject {
     KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
     KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
 
-    ks.load(new FileInputStream(key.convertToString().asJavaString()), null);
-    ts.load(new FileInputStream(cert.convertToString().asJavaString()), null);
+    char[] pass = "blahblah".toCharArray();
+
+    ks.load(new FileInputStream(key.convertToString().asJavaString()),
+                                pass);
+    ts.load(new FileInputStream(cert.convertToString().asJavaString()),
+            pass);
 
     KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-    kmf.init(ks, null);
+    kmf.init(ks, pass);
 
     TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
     tmf.init(ts);
@@ -111,6 +115,11 @@ public class MiniSSL extends RubyObject {
     peerNetData.limit(0);
     peerAppData.limit(0);
     netData.limit(0);
+
+    peerNetData.clear();
+    peerAppData.clear();
+    netData.clear();
+
     dummy = ByteBuffer.allocate(0);
     
     return this;
@@ -118,15 +127,29 @@ public class MiniSSL extends RubyObject {
 
   @JRubyMethod
   public IRubyObject inject(IRubyObject arg) {
-    peerNetData.put(arg.convertToString().getBytes());
+    byte[] bytes = arg.convertToString().getBytes();
+
+    peerNetData.limit(peerNetData.limit() + bytes.length);
+
+    log("capacity: " + peerNetData.capacity() + " limit: " + peerNetData.limit());
+
+    peerNetData.put(bytes);
+
+    log("netData: " + peerNetData.position() + "/" + peerAppData.limit());
     return this;
   }
 
   @JRubyMethod
-  public IRubyObject read() throws javax.net.ssl.SSLException {
+  public IRubyObject read() throws javax.net.ssl.SSLException, Exception {
     peerAppData.clear();
     peerNetData.flip();
     SSLEngineResult res;
+
+    log("available read: " + peerNetData.position() + "/ " + peerNetData.limit());
+
+    if(!peerNetData.hasRemaining()) {
+      return getRuntime().getNil();
+    }
 
     do {
       res = engine.unwrap(peerNetData, peerAppData);
@@ -134,14 +157,50 @@ public class MiniSSL extends RubyObject {
         res.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_UNWRAP &&
         res.bytesProduced() == 0);
 
-    if(peerAppData.position() == 0 && 
-        res.getStatus() == SSLEngineResult.Status.OK &&
-        peerNetData.hasRemaining()) {
-      res = engine.unwrap(peerNetData, peerAppData);
+    log("read: ", res);
+
+    if(peerNetData.hasRemaining()) {
+      log("STILL HAD peerNetData!");
     }
 
-    peerNetData.compact();
-    peerAppData.flip();
+    peerNetData.position(0);
+    peerNetData.limit(0);
+
+    HandshakeStatus hsStatus = runDelegatedTasks(res, engine);
+
+    if(res.getStatus() == SSLEngineResult.Status.BUFFER_UNDERFLOW) {
+      return getRuntime().getNil();
+    }
+
+    if(hsStatus == HandshakeStatus.NEED_WRAP) {
+      netData.clear();
+      log("netData: " + netData.limit());
+      engine.wrap(dummy, netData);
+      return getRuntime().getNil();
+    }
+
+    if(hsStatus == HandshakeStatus.NEED_UNWRAP) {
+      return getRuntime().getNil();
+
+      // log("peerNet: " + peerNetData.position() + "/" + peerNetData.limit());
+      // log("peerApp: " + peerAppData.position() + "/" + peerAppData.limit());
+
+      // peerNetData.compact();
+
+      // log("peerNet: " + peerNetData.position() + "/" + peerNetData.limit());
+        // do {
+          // res = engine.unwrap(peerNetData, peerAppData);
+        // } while(res.getStatus() == SSLEngineResult.Status.OK &&
+            // res.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_UNWRAP &&
+            // res.bytesProduced() == 0);
+      // return getRuntime().getNil();
+    }
+
+    // if(peerAppData.position() == 0 && 
+        // res.getStatus() == SSLEngineResult.Status.OK &&
+        // peerNetData.hasRemaining()) {
+      // res = engine.unwrap(peerNetData, peerAppData);
+    // }
 
     byte[] bss = new byte[peerAppData.limit()];
 
@@ -153,8 +212,54 @@ public class MiniSSL extends RubyObject {
     return str;
   }
 
+  private static HandshakeStatus runDelegatedTasks(SSLEngineResult result,
+      SSLEngine engine) throws Exception {
+
+    HandshakeStatus hsStatus = result.getHandshakeStatus();
+
+    if(hsStatus == HandshakeStatus.NEED_TASK) {
+      Runnable runnable;
+      while ((runnable = engine.getDelegatedTask()) != null) {
+        log("\trunning delegated task...");
+        runnable.run();
+      }
+      hsStatus = engine.getHandshakeStatus();
+      if (hsStatus == HandshakeStatus.NEED_TASK) {
+        throw new Exception(
+            "handshake shouldn't need additional tasks");
+      }
+      log("\tnew HandshakeStatus: " + hsStatus);
+    }
+
+    return hsStatus;
+  }
+  
+
+  private static void log(String str, SSLEngineResult result) {
+    System.out.println("The format of the SSLEngineResult is: \n" +
+        "\t\"getStatus() / getHandshakeStatus()\" +\n" +
+        "\t\"bytesConsumed() / bytesProduced()\"\n");
+
+    HandshakeStatus hsStatus = result.getHandshakeStatus();
+    log(str +
+        result.getStatus() + "/" + hsStatus + ", " +
+        result.bytesConsumed() + "/" + result.bytesProduced() +
+        " bytes");
+    if (hsStatus == HandshakeStatus.FINISHED) {
+      log("\t...ready for application data");
+    }
+  }
+
+  private static void log(String str) {
+    System.out.println(str);
+  }
+  
+  
+
   @JRubyMethod
   public IRubyObject write(IRubyObject arg) throws javax.net.ssl.SSLException {
+    log("write from: " + netData.position());
+
     byte[] bls = arg.convertToString().getBytes();
     ByteBuffer src = ByteBuffer.wrap(bls);
 
@@ -166,6 +271,10 @@ public class MiniSSL extends RubyObject {
   @JRubyMethod
   public IRubyObject extract() {
     netData.flip();
+
+    if(!netData.hasRemaining()) {
+      return getRuntime().getNil();
+    }
 
     byte[] bss = new byte[netData.limit()];
 

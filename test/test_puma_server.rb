@@ -19,8 +19,13 @@ class TestPumaServer < Test::Unit::TestCase
     @events = Puma::Events.new STDOUT, STDERR
     @server = Puma::Server.new @app, @events
 
-    @ssl_key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
-    @ssl_cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+    if defined?(JRUBY_VERSION)
+      @ssl_key =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
+      @ssl_cert = @ssl_key
+    else
+      @ssl_key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+      @ssl_cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+    end
   end
 
   def teardown
