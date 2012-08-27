@@ -12,10 +12,12 @@ module Puma
       @input = []
       @sleep_for = DefaultSleepFor
       @timeouts = []
+
+      @sockets = [@ready]
     end
 
     def run
-      sockets = [@ready]
+      sockets = @sockets
 
       while true
         ready = IO.select sockets, nil, nil, @sleep_for
@@ -53,7 +55,7 @@ module Puma
 
                 @events.parse_error @server, c.env, e
 
-              rescue IOError => e
+              rescue StandardError => e
                 c.close
                 sockets.delete c
               end
@@ -79,12 +81,14 @@ module Puma
 
     def run_in_thread
       @thread = Thread.new {
-        begin
-          run
-        rescue Exception => e
-          puts "MAJOR ERROR DETECTED"
-          p e
-          puts e.backtrace
+        while true
+          begin
+            run
+            break
+          rescue StandardError => e
+            STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
+            puts e.backtrace
+          end
         end
       }
     end
