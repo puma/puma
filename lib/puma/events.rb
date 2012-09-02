@@ -1,3 +1,4 @@
+require 'puma/const'
 require 'stringio'
 
 module Puma
@@ -8,6 +9,8 @@ module Puma
   #
   class Events
 
+    include Const
+     
     # Create an Events object that prints to +stdout+ and +stderr+.
     #
     def initialize(stdout, stderr)
@@ -35,7 +38,7 @@ module Puma
     # parsing exception.
     #
     def parse_error(server, env, error)
-      @stderr.puts "#{Time.now}: HTTP parse error, malformed request (#{env[Const::HTTP_X_FORWARDED_FOR] || env[Const::REMOTE_ADDR]}): #{error.inspect}"
+      @stderr.puts "#{Time.now}: HTTP parse error, malformed request (#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]}): #{error.inspect}"
       @stderr.puts "#{Time.now}: ENV: #{env.inspect}\n---\n"
     end
 
