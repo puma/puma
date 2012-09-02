@@ -1,4 +1,3 @@
-require 'puma/const'
 require 'stringio'
 
 module Puma
