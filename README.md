@@ -118,9 +118,15 @@ You should place code to close global log files, redis connections, etc in this 
 
 If you start puma with `-S some/path` then you can pass that same path to the `pumactl` program to control your server. For instance:
 
-    $ pumactl -S some/path restart
+    $ pumactl -S some/path command
+
+or 
+
+    $ pumactl -C url -T token command
 
 will cause the server to perform a restart. `pumactl` is a simple CLI frontend to the control/status app described above.
+
+Allowed commands: status, restart, halt, stop
 
 ## Managing multiple Pumas / init.d script 
 
