@@ -5,7 +5,8 @@ require 'yaml'
 module Puma
   class ControlCLI
 
-    def initialize(argv)
+    def initialize(argv, stdout=STDOUT)
+      @stdout = stdout
       @options = {}
       OptionParser.new do |option|
         option.banner = "Usage: pumactl (options) (status|stop|restart)"
@@ -16,7 +17,7 @@ module Puma
           @options[:quiet_flag] = true
         end
         option.on_tail("-H", "--help", "Show this message") do
-          puts option
+          @stdout.puts option
           exit
         end
         option.on_tail("-V", "--version", "Show version") do
@@ -39,7 +40,7 @@ module Puma
 
     def message msg
       unless @options[:quiet_flag]
-        puts msg
+        @stdout.puts msg
       end
     end
 
