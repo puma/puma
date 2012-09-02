@@ -1,127 +1,77 @@
 require 'optparse'
-
 require 'puma/const'
 require 'puma/configuration'
-
 require 'yaml'
-require 'uri'
-
-require 'socket'
-
 module Puma
   class ControlCLI
 
-    def initialize(argv, stdout=STDOUT)
-      @argv = argv
-      @stdout = stdout
-    end
-
-    def setup_options
-      @parser = OptionParser.new do |o|
-        o.on "-S", "--state PATH", "Where the state file to use is" do |arg|
-          @path = arg
+    def initialize(argv)
+      @options = {}
+      OptionParser.new do |option|
+        option.banner = "Usage: pumactl (options) (status|stop|restart)"
+        option.on "-S", "--state PATH", "Where the state file to use is" do |arg|
+          @options[:status_path] = arg
         end
+        option.on "-Q", "--quiet", "Not display messages" do |arg|
+          @options[:quiet_flag] = true
+        end
+        option.on_tail("-H", "--help", "Show this message") do
+          puts option
+          exit
+        end
+        option.on_tail("-V", "--version", "Show version") do
+          puts Const::PUMA_VERSION
+          exit
+        end
+      end.parse!(argv)
+      command = argv.shift
+      @options[:command] = command if command
+    end
+    
+    def puma_started?
+      begin
+        Process.getpgid( @configuretion["pid"] )
+        true
+      rescue Errno::ESRCH
+        false
       end
     end
 
-    def connect
-      if str = @config.options[:control_url]
-        uri = URI.parse str
-        case uri.scheme
-        when "tcp"
-          return TCPSocket.new uri.host, uri.port
-        when "unix"
-          path = "#{uri.host}#{uri.path}"
-          return UNIXSocket.new path
-        else
-          raise "Invalid URI: #{str}"
-        end
+    def message msg
+      unless @options[:quiet_flag]
+        puts msg
       end
+    end
 
-      raise "No status address configured"
+    def signal s
+      Process.kill(s, @configuretion["pid"])
+      message "Signal #{s}" 
     end
 
     def run
-      setup_options
-
-      @parser.parse! @argv
-
-      @state = YAML.load File.read(@path)
-      @config = @state['config']
-
-      cmd = @argv.shift
-
-      meth = "command_#{cmd}"
-
-      if respond_to?(meth)
-        __send__(meth)
+      if @options.has_key? :command
+        raise "Status path not set, use -S option" unless @options.has_key? :status_path
+        raise "File not found: #{@options[:status_path]} " unless File.exist? @options[:status_path]
+        @configuretion = YAML.load File.read(@options[:status_path])
+        
+        if puma_started?
+          case @options[:command]
+          when "status" then
+            message "Puma is started" 
+          when "stop" then
+            signal "SIGTERM"
+          when "restart" then
+            signal "SIGUSR2"
+          else
+            message "Use -H for help"
+          end
+        else
+          message "Puma not started" 
+          exit 1
+        end
       else
-        raise "Unknown command: #{cmd}"
+        message "Use -H for help"
       end
-    end
-
-    def request(sock, url)
-      token = @config.options[:control_auth_token]
-      if token
-        url = "#{url}?token=#{token}"
-      end
-
-      sock << "GET #{url} HTTP/1.0\r\n\r\n"
-
-      rep = sock.read.split("\r\n")
-
-      m = %r!HTTP/1.\d (\d+)!.match(rep.first)
-      if m[1] == "403"
-        raise "Unauthorized access to server (wrong auth token)"
-      elsif m[1] != "200"
-        raise "Bad response code from server: #{m[1]}"
-      end
-
-      return rep.last
-    end
-
-    def command_pid
-      @stdout.puts "#{@state['pid']}"
-    end
-
-    def command_stop
-      sock = connect
-      body = request sock, "/stop"
-
-      if body != '{ "status": "ok" }'
-        raise "Invalid response: '#{body}'"
-      else
-        @stdout.puts "Requested stop from server"
-      end
-    end
-
-    def command_halt
-      sock = connect
-      body = request sock, "/halt"
-
-      if body != '{ "status": "ok" }'
-        raise "Invalid response: '#{body}'"
-      else
-        @stdout.puts "Requested halt from server"
-      end
-    end
-
-    def command_restart
-      sock = connect
-      body = request sock, "/restart"
-
-      if body != '{ "status": "ok" }'
-        raise "Invalid response: '#{body}'"
-      else
-        @stdout.puts "Requested restart from server"
-      end
-    end
-
-    def command_stats
-      sock = connect
-      body = request sock, "/stats"
-
-      @stdout.puts body
     end
   end
-end
+end  
