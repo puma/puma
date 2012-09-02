@@ -10,7 +10,7 @@ module Puma
   class Events
 
     include Const
-
+     
     # Create an Events object that prints to +stdout+ and +stderr+.
     #
     def initialize(stdout, stderr)
