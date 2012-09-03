@@ -10,16 +10,10 @@ module Puma
     COMMANDS = %w{status restart stop halt}
 
     def initialize(argv, stdout=STDOUT)
+      
       @stdout = stdout
-      @argv = argv
       @options = {}
-    end
-    
-    def message msg
-      @stdout.puts msg unless @options[:quiet_flag]
-    end
-
-    def run
+      @configuration = {}
       
       OptionParser.new do |option|
         option.banner = "Usage: pumactl (-S status_file | -C url -T token) (#{COMMANDS.join("|")})"
@@ -43,29 +37,67 @@ module Puma
           puts Const::PUMA_VERSION
           exit
         end
-      end.parse!(@argv)
+      end.parse!(argv)
       
-      command = @argv.shift
+      command = argv.shift
       @options[:command] = command if command
-      raise "Invalid command: #{@options[:command]}" unless COMMANDS.include? @options[:command]
+      
+      # check present of command
+      unless @options[:command]
+        raise "Available commands: #{COMMANDS.join(", ")}"
+      end      
+      unless COMMANDS.include? @options[:command]
+        raise "Invalid command: #{@options[:command]}" 
+      end
 
-      if @options.has_key? :command
-        configuretion ||= {}
-        if @options.has_key?(:control_url)
-         configuration[:control_url] = @options[:control_url]
-         configuration[:control_auth_token] = @options[:control_auth_token]
+    rescue => e
+      @stdout.puts e.message
+      exit 1
+    end
+    
+    def message msg
+      @stdout.puts msg unless @options[:quiet_flag]
+    end
+
+    def prepare_configuration
+      if @options.has_key?(:control_url)
+       @configuration[:control_url] = @options[:control_url]
+       @configuration[:control_auth_token] = @options[:control_auth_token]
+      else
+        raise "Status path not set, use -S option" unless @options.has_key? :status_path
+        raise "File not found: #{@options[:status_path]} " unless File.exist? @options[:status_path]
+        status = YAML.load File.read(@options[:status_path])
+        if status.has_key? "config"
+          @configuration = status["config"].options
         else
-          raise "Status path not set, use -S option" unless @options.has_key? :status_path
-          raise "File not found: #{@options[:status_path]} " unless File.exist? @options[:status_path]
-          status = YAML.load File.read(@options[:status_path])
-          if status.has_key? "config"
-            configuration = status["config"].options
-          else
-            raise "Invalid status file: #{@options[:status_path]}"
-          end
+          raise "Invalid status file: #{@options[:status_path]}"
         end
-        if configuration[:control_url]
-          uri = URI.parse configuration[:control_url]
+      end
+    end
+
+    def send_command
+      url = "/#{@options[:command]}"
+      if @configuration.has_key?(:control_auth_token)
+        url = url + "?token=#{@configuration[:control_auth_token]}"
+      end
+      @server << "GET #{url} HTTP/1.0\r\n\r\n"
+      response = @server.read.split("\r\n")
+      (@http,@code,@message) = response.first.split(" ")
+      if @code == "403"
+        raise "Unauthorized access to server (wrong auth token)"
+      elsif @code != "200"
+        raise "Bad response from server: #{@code}"
+      end
+      message "Command #{@options[:command]} sent success"
+    end
+
+    def run
+        prepare_configuration
+  
+        if @configuration[:control_url]
+          uri = URI.parse @configuration[:control_url]
+          
+          # create server object by scheme
           @server = case uri.scheme
           when "tcp"
             TCPSocket.new uri.host, uri.port
@@ -74,31 +106,17 @@ module Puma
           else
             raise "Invalid scheme: #{uri.scheme}"
           end
+          
           unless @options[:command] == "status"
-            url = "/#{@options[:command]}"
-            if configuration.has_key?(:control_auth_token)
-              url = url + "?token=#{configuration[:control_auth_token]}"
-            end
-            @server << "GET #{url} HTTP/1.0\r\n\r\n"
-            response = @server.read.split("\r\n")
-            (@http,@code,@message) = response.first.split(" ")
-            if @code == "403"
-              raise "Unauthorized access to server (wrong auth token)"
-            elsif @code != "200"
-              raise "Bad response from server: #{@code}"
-            end
-            message "Command #{@options[:command]} sent success"
+            send_command
           else
             message "Puma is started"
           end
+          
           @server.close
         else
           raise "Invalid URL"
         end
-      else
-        message "Command not specified, use -H for help."
-      end
-      
     rescue => e
       message e.message
       exit 1
