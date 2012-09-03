@@ -80,6 +80,8 @@ class TestIntegration < Test::Unit::TestCase
     s.readpartial(20)
     signal :USR2
 
+    sleep 3
+
     s.write "GET / HTTP/1.1\r\n\r\n"
 
     assert_raises Errno::ECONNRESET do
