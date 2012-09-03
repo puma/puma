@@ -16,6 +16,9 @@ module Puma
     def initialize(stdout, stderr)
       @stdout = stdout
       @stderr = stderr
+
+      @stdout.sync = true
+      @stderr.sync = true
     end
 
     attr_reader :stdout, :stderr

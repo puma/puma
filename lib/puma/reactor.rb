@@ -30,6 +30,15 @@ module Puma
                 when "*"
                   sockets += @input
                   @input.clear
+                when "c"
+                  sockets.delete_if do |s|
+                    if s == @ready
+                      false
+                    else
+                      s.close
+                      true
+                    end
+                  end
                 when "!"
                   return
                 end
@@ -121,8 +130,14 @@ module Puma
       end
     end
 
+    # Close all watched sockets and clear them from being watched
+    def clear!
+      @trigger << "c"
+    end
+
     def shutdown
       @trigger << "!"
+      @thread.join
     end
   end
 end
