@@ -2,6 +2,7 @@ require "rbconfig"
 require 'test/unit'
 require 'socket'
 require 'timeout'
+require 'net/http'
 
 require 'puma/cli'
 require 'puma/control_cli'
@@ -33,8 +34,7 @@ class TestIntegration < Test::Unit::TestCase
     cmd = "#{core} --restart-cmd '#{core}' -b tcp://127.0.0.1:#{@tcp_port} #{opts}"
     @server = IO.popen(cmd, "r")
 
-    true until @server.gets =~ /Ctrl-C/
-
+    sleep 1
     @server
   end
 
@@ -79,8 +79,6 @@ class TestIntegration < Test::Unit::TestCase
 
     s.readpartial(20)
     signal :USR2
-
-    true until @server.gets =~ /Ctrl-C/
 
     s.write "GET / HTTP/1.1\r\n\r\n"
 
