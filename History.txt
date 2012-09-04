@@ -1,3 +1,9 @@
+=== 1.6.3 / 2012-09-04
+
+* 1 bug fix:
+  * Close sockets waiting in the reactor when a hot restart is performed
+    so that browsers reconnect on the next request
+
 === 1.6.2 / 2012-08-27
 
 * 1 bug fix:
