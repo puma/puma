@@ -3,6 +3,7 @@ require 'test/unit'
 require 'socket'
 require 'timeout'
 require 'net/http'
+require 'tempfile'
 
 require 'puma/cli'
 require 'puma/control_cli'
@@ -15,6 +16,7 @@ class TestIntegration < Test::Unit::TestCase
     @tcp_port = 9998
 
     @server = nil
+    @script = nil
   end
 
   def teardown
@@ -27,14 +29,27 @@ class TestIntegration < Test::Unit::TestCase
       Process.wait @server.pid
       @server.close
     end
+
+    if @script
+      @script.close!
+    end
   end
 
   def server(opts)
     core = "#{Gem.ruby} -rubygems -Ilib bin/puma"
     cmd = "#{core} --restart-cmd '#{core}' -b tcp://127.0.0.1:#{@tcp_port} #{opts}"
-    @server = IO.popen(cmd, "r")
+    tf = Tempfile.new "puma-test"
+    tf.puts "exec #{cmd}"
+    tf.close
+
+    @script = tf
+
+    @server = IO.popen("sh #{tf.path}", "r")
+
+    true while @server.gets =~ /Ctrl-C/
 
     sleep 1
+
     @server
   end
 
@@ -80,7 +95,8 @@ class TestIntegration < Test::Unit::TestCase
     s.readpartial(20)
     signal :USR2
 
-    sleep 3
+    true while @server.gets =~ /Ctrl-C/
+    sleep 1
 
     s.write "GET / HTTP/1.1\r\n\r\n"
 
@@ -93,5 +109,14 @@ class TestIntegration < Test::Unit::TestCase
     s = TCPSocket.new "localhost", @tcp_port
     s << "GET / HTTP/1.0\r\n\r\n"
     assert_equal "Hello World", s.read.split("\r\n").last
+  end
+
+  def test_bad_query_string_outputs_400
+    server "-q test/hello.ru 2>&1"
+
+    s = TCPSocket.new "localhost", @tcp_port
+    s << "GET /?h=% HTTP/1.0\r\n\r\n"
+    data = s.read
+    assert_equal "HTTP/1.1 400 Bad Request\r\n\r\n", data
   end
 end

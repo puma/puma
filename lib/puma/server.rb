@@ -206,7 +206,9 @@ module Puma
         begin
           process_now = client.eagerly_finish
         rescue HttpParserError => e
+          client.write_400
           client.close
+
           @events.parse_error self, client.env, e
         rescue IOError
           client.close
@@ -325,10 +327,14 @@ module Puma
 
       # The client doesn't know HTTP well
       rescue HttpParserError => e
+        client.write_400
+
         @events.parse_error self, client.env, e
 
       # Server error
       rescue StandardError => e
+        client.write_500
+
         @events.unknown_error self, e, "Read"
 
       ensure
