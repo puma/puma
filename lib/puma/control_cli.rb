@@ -9,11 +9,14 @@ module Puma
 
     COMMANDS = %w{status restart stop halt}
 
+    def is_windows?
+      RUBY_PLATFORM =~ /(win|w)32$/ ? true : false
+    end
+
     def initialize(argv, stdout=STDOUT)
       
       @stdout = stdout
       @options = {}
-      @configuration = {}
       
       OptionParser.new do |option|
         option.banner = "Usage: pumactl (-S status_file | -C url -T token) (#{COMMANDS.join("|")})"
@@ -22,6 +25,9 @@ module Puma
         end
         option.on "-Q", "--quiet", "Not display messages" do |arg|
           @options[:quiet_flag] = true
+        end
+        option.on "-P", "--pidfile PATH", "Pid file" do |arg|
+          @options[:pid_file] = arg
         end
         option.on "-C", "--control-url URL", "The bind url to use for the control server" do |arg|
           @options[:control_url] = arg
@@ -49,7 +55,7 @@ module Puma
       unless COMMANDS.include? @options[:command]
         raise "Invalid command: #{@options[:command]}" 
       end
-
+      
     rescue => e
       @stdout.puts e.message
       exit 1
@@ -60,63 +66,89 @@ module Puma
     end
 
     def prepare_configuration
-      if @options.has_key?(:control_url)
-       @configuration[:control_url] = @options[:control_url]
-       @configuration[:control_auth_token] = @options[:control_auth_token]
-      else
-        raise "Status path not set, use -S option" unless @options.has_key? :status_path
-        raise "File not found: #{@options[:status_path]} " unless File.exist? @options[:status_path]
+      if @options.has_key? :status_path
+        raise "Status file not found: #{@options[:status_path]} " unless File.exist? @options[:status_path]
         status = YAML.load File.read(@options[:status_path])
         if status.has_key? "config"
-          @configuration = status["config"].options
+          # get control_url
+          if status["config"].options.has_key?(:control_url)
+            @options[:control_url] = status["config"].options[:control_url]
+          end
+          # get control_auth_token
+          if status["config"].options.has_key?(:control_auth_token)
+            @options[:control_auth_token] = status["config"].options[:control_auth_token]
+          end
+          # get pid
+          @options[:pid] = status["pid"].to_i
         else
           raise "Invalid status file: #{@options[:status_path]}"
         end
+      elsif @options.has_key? :pid_file
+        # get pid from pid_file
+        @options[:pid] = File.open(@options[:pid_file]).gets.to_i
       end
+      
     end
 
-    def send_command
-      url = "/#{@options[:command]}"
-      if @configuration.has_key?(:control_auth_token)
-        url = url + "?token=#{@configuration[:control_auth_token]}"
+    def send_request
+      uri = URI.parse @options[:control_url]
+      
+      # create server object by scheme
+      @server = case uri.scheme
+      when "tcp"
+        TCPSocket.new uri.host, uri.port
+      when "unix"
+        UNIXSocket.new "#{uri.host}#{uri.path}"
+      else
+        raise "Invalid scheme: #{uri.scheme}"
       end
-      @server << "GET #{url} HTTP/1.0\r\n\r\n"
-      response = @server.read.split("\r\n")
-      (@http,@code,@message) = response.first.split(" ")
-      if @code == "403"
-        raise "Unauthorized access to server (wrong auth token)"
-      elsif @code != "200"
-        raise "Bad response from server: #{@code}"
+      
+      unless @options[:command] == "status"
+        url = "/#{@options[:command]}"
+        if @options.has_key?(:control_auth_token)
+          url = url + "?token=#{@options[:control_auth_token]}"
+        end
+        @server << "GET #{url} HTTP/1.0\r\n\r\n"
+        response = @server.read.split("\r\n")
+        (@http,@code,@message) = response.first.split(" ")
+        if @code == "403"
+          raise "Unauthorized access to server (wrong auth token)"
+        elsif @code != "200"
+          raise "Bad response from server: #{@code}"
+        end
+        message "Command #{@options[:command]} sent success"
+      else
+        message "Puma is started"
+      end
+      
+      @server.close
+    end
+
+    def send_signal
+      Process.getpgid(@options[:pid])
+      case @options[:command]
+      when "restart"
+        Process.kill("SIGUSR2", @options[:pid])
+      when "halt"
+        Process.kill("QUIT", @options[:pid])
+      when "stop"
+        Process.kill("SIGTERM", @options[:pid])
+      else
+        message "Puma is started"
+        return
       end
       message "Command #{@options[:command]} sent success"
     end
 
     def run
-        prepare_configuration
-  
-        if @configuration[:control_url]
-          uri = URI.parse @configuration[:control_url]
-          
-          # create server object by scheme
-          @server = case uri.scheme
-          when "tcp"
-            TCPSocket.new uri.host, uri.port
-          when "unix"
-            UNIXSocket.new "#{uri.host}#{uri.path}"
-          else
-            raise "Invalid scheme: #{uri.scheme}"
-          end
-          
-          unless @options[:command] == "status"
-            send_command
-          else
-            message "Puma is started"
-          end
-          
-          @server.close
-        else
-          raise "Invalid URL"
-        end
+      prepare_configuration
+    
+      if is_windows?
+        send_request
+      else
+        @options.has_key?(:control_url) ? send_request : send_signal
+      end
+
     rescue => e
       message e.message
       exit 1
