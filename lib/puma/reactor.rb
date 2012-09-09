@@ -12,10 +12,12 @@ module Puma
       @input = []
       @sleep_for = DefaultSleepFor
       @timeouts = []
+
+      @sockets = [@ready]
     end
 
     def run
-      sockets = [@ready]
+      sockets = @sockets
 
       while true
         ready = IO.select sockets, nil, nil, @sleep_for
@@ -28,6 +30,15 @@ module Puma
                 when "*"
                   sockets += @input
                   @input.clear
+                when "c"
+                  sockets.delete_if do |s|
+                    if s == @ready
+                      false
+                    else
+                      s.close
+                      true
+                    end
+                  end
                 when "!"
                   return
                 end
@@ -48,13 +59,16 @@ module Puma
 
               # The client doesn't know HTTP well
               rescue HttpParserError => e
+                c.write_400
                 c.close
+
                 sockets.delete c
 
                 @events.parse_error @server, c.env, e
-
-              rescue IOError => e
+              rescue StandardError => e
+                c.write_500
                 c.close
+
                 sockets.delete c
               end
             end
@@ -79,12 +93,14 @@ module Puma
 
     def run_in_thread
       @thread = Thread.new {
-        begin
-          run
-        rescue Exception => e
-          puts "MAJOR ERROR DETECTED"
-          p e
-          puts e.backtrace
+        while true
+          begin
+            run
+            break
+          rescue StandardError => e
+            STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
+            puts e.backtrace
+          end
         end
       }
     end
@@ -117,8 +133,14 @@ module Puma
       end
     end
 
+    # Close all watched sockets and clear them from being watched
+    def clear!
+      @trigger << "c"
+    end
+
     def shutdown
       @trigger << "!"
+      @thread.join
     end
   end
 end

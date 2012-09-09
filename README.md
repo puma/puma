@@ -122,6 +122,10 @@ If you start puma with `-S some/path` then you can pass that same path to the `p
 
 will cause the server to perform a restart. `pumactl` is a simple CLI frontend to the control/status app described above.
 
+## Managing multiple Pumas / init.d script 
+
+If you want an easy way to manage multiple scripts at once check [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for an init.d script.
+
 ## License
 
 Puma is copyright 2011 Evan Phoenix and contributors. It is licensed under the BSD license. See the include LICENSE file for details.

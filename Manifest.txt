@@ -1,6 +1,6 @@
-.travis.yml
 COPYING
 Gemfile
+Gemfile.lock
 History.txt
 LICENSE
 Manifest.txt
@@ -38,6 +38,7 @@ lib/puma/compat.rb
 lib/puma/configuration.rb
 lib/puma/const.rb
 lib/puma/control_cli.rb
+lib/puma/detect.rb
 lib/puma/events.rb
 lib/puma/jruby_restart.rb
 lib/puma/null_io.rb

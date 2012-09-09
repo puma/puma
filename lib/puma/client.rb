@@ -231,5 +231,19 @@ module Puma
 
       false
     end
+
+    def write_400
+      begin
+        @io << ERROR_400_RESPONSE
+      rescue StandardError
+      end
+    end
+
+    def write_500
+      begin
+        @io << ERROR_500_RESPONSE
+      rescue StandardError
+      end
+    end
   end
 end
