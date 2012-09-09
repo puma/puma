@@ -75,12 +75,13 @@ module Puma
 
           @listeners << [str, io]
         when "unix"
+          path = "#{uri.host}#{uri.path}"
+
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
-            io = inherit_unix_listener uri.path, fd
+            io = inherit_unix_listener path, fd
           else
             logger.log "* Listening on #{str}"
-            path = "#{uri.host}#{uri.path}"
 
             umask = nil
 
