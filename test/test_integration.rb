@@ -111,6 +111,32 @@ class TestIntegration < Test::Unit::TestCase
     assert_equal "Hello World", s.read.split("\r\n").last
   end
 
+  def test_restart_closes_keepalive_sockets_workers
+    server("-q -w 2 test/hello.ru")
+
+    s = TCPSocket.new "localhost", @tcp_port
+    s << "GET / HTTP/1.1\r\n\r\n"
+    true until s.gets == "\r\n"
+
+    s.readpartial(20)
+    signal :USR2
+
+    true while @server.gets =~ /Ctrl-C/
+    sleep 1
+
+    s.write "GET / HTTP/1.1\r\n\r\n"
+
+    assert_raises Errno::ECONNRESET do
+      Timeout.timeout(2) do
+        s.read(2)
+      end
+    end
+
+    s = TCPSocket.new "localhost", @tcp_port
+    s << "GET / HTTP/1.0\r\n\r\n"
+    assert_equal "Hello World", s.read.split("\r\n").last
+  end
+
   def test_bad_query_string_outputs_400
     server "-q test/hello.ru 2>&1"
 
