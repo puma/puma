@@ -60,6 +60,8 @@ file 'ext/puma_http11/org/jruby/puma/Http11Parser.java' => ['ext/puma_http11/htt
 end
 task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
 
+if !IS_JRUBY
+
 # compile extensions using rake-compiler
 # C (MRI, Rubinius)
 Rake::ExtensionTask.new("puma_http11", HOE.spec) do |ext|
@@ -77,9 +79,13 @@ Rake::ExtensionTask.new("puma_http11", HOE.spec) do |ext|
   CLEAN.include "lib/puma/puma_http11.rb"
 end
 
+else
+
 # Java (JRuby)
 Rake::JavaExtensionTask.new("puma_http11", HOE.spec) do |ext|
   ext.lib_dir = "lib/puma"
+end
+
 end
 
 # the following is a fat-binary stub that will be used when

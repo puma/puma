@@ -99,22 +99,22 @@ module Puma
           @listeners << [str, io]
         when "ssl"
           params = Rack::Utils.parse_query uri.query
-          require 'openssl'
+          require 'puma/minissl'
 
-          ctx = OpenSSL::SSL::SSLContext.new
+          ctx = MiniSSL::Context.new
           unless params['key']
-            logger.error "Please specify the SSL key via 'key='"
+            error "Please specify the SSL key via 'key='"
           end
 
-          ctx.key = OpenSSL::PKey::RSA.new File.read(params['key'])
+          ctx.key = params['key']
 
           unless params['cert']
-            logger.error "Please specify the SSL cert via 'cert='"
+            error "Please specify the SSL cert via 'cert='"
           end
 
-          ctx.cert = OpenSSL::X509::Certificate.new File.read(params['cert'])
+          ctx.cert = params['cert']
 
-          ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+          ctx.verify_mode = MiniSSL::VERIFY_NONE
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
@@ -181,6 +181,8 @@ module Puma
 
     def add_ssl_listener(host, port, ctx,
                          optimize_for_latency=true, backlog=1024)
+      require 'puma/minissl'
+
       s = TCPServer.new(host, port)
       if optimize_for_latency
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
@@ -188,7 +190,7 @@ module Puma
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
-      ssl = OpenSSL::SSL::SSLServer.new(s, ctx)
+      ssl = MiniSSL::Server.new s, ctx
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS
       @envs[ssl] = env
@@ -199,7 +201,7 @@ module Puma
 
     def inherited_ssl_listener(fd, ctx)
       s = TCPServer.for_fd(fd)
-      @ios << OpenSSL::SSL::SSLServer.new(s, ctx)
+      @ios << MiniSSL::Server.new(s, ctx)
       s
     end
 

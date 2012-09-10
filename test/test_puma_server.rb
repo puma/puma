@@ -3,6 +3,7 @@ require 'test/unit'
 require 'socket'
 require 'openssl'
 
+require 'puma/minissl'
 require 'puma/server'
 
 require 'net/https'
@@ -18,8 +19,13 @@ class TestPumaServer < Test::Unit::TestCase
     @events = Puma::Events.new STDOUT, STDERR
     @server = Puma::Server.new @app, @events
 
-    @ssl_key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
-    @ssl_cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+    if defined?(JRUBY_VERSION)
+      @ssl_key =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
+      @ssl_cert = @ssl_key
+    else
+      @ssl_key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+      @ssl_cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+    end
   end
 
   def teardown
@@ -27,13 +33,12 @@ class TestPumaServer < Test::Unit::TestCase
   end
 
   def test_url_scheme_for_https
-    ctx = OpenSSL::SSL::SSLContext.new
+    ctx = Puma::MiniSSL::Context.new
 
-    ctx.key = OpenSSL::PKey::RSA.new File.read(@ssl_key)
+    ctx.key = @ssl_key
+    ctx.cert = @ssl_cert
 
-    ctx.cert = OpenSSL::X509::Certificate.new File.read(@ssl_cert)
-
-    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
     @server.add_ssl_listener @host, @port, ctx
     @server.run
