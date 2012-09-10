@@ -237,7 +237,7 @@ module Puma
           when true
             buffer.reset
 
-            unless client.reset
+            unless client.reset(@status == :run)
               close_socket = false
               client.set_timeout @persistent_timeout
               @reactor.add client

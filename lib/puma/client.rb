@@ -48,7 +48,7 @@ module Puma
       @timeout_at = Time.now + val
     end
 
-    def reset
+    def reset(fast_check=true)
       @parser.reset
       @read_header = true
       @env = @proto_env.dup
@@ -67,7 +67,8 @@ module Puma
         end
 
         return false
-      elsif IO.select([@to_io], nil, nil, FAST_TRACK_KA_TIMEOUT)
+      elsif fast_check &&
+            IO.select([@to_io], nil, nil, FAST_TRACK_KA_TIMEOUT)
         return try_to_finish
       end
     end
