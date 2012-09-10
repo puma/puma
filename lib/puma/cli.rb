@@ -402,7 +402,7 @@ module Puma
     end
 
     def worker
-      $0 = "puma cluster worker"
+      $0 = "puma: cluster worker: #{@master_pid}"
       Signal.trap "SIGINT", "IGNORE"
 
       @suicide_pipe.close
@@ -482,6 +482,8 @@ module Puma
       log "* Process workers: #{@options[:workers]}"
       log "* Min threads: #{@options[:min_threads]}, max threads: #{@options[:max_threads]}"
       log "* Environment: #{ENV['RACK_ENV']}"
+
+      @master_pid = Process.pid
 
       read, write = IO.pipe
 
