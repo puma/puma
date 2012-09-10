@@ -52,7 +52,7 @@ module Puma::MiniSSL
         enc = @engine.extract
 
         if enc
-          @socket.write enc
+          @socket.syswrite enc
         end
 
         need -= wrote
@@ -62,6 +62,8 @@ module Puma::MiniSSL
         data = data[need..-1]
       end
     end
+
+    alias_method :syswrite, :write
 
     def flush
       @socket.flush
@@ -103,6 +105,13 @@ module Puma::MiniSSL
 
     def accept
       io = @socket.accept
+      engine = Engine.server @ctx.key, @ctx.cert
+
+      Socket.new io, engine
+    end
+
+    def accept_nonblock
+      io = @socket.accept_nonblock
       engine = Engine.server @ctx.key, @ctx.cert
 
       Socket.new io, engine
