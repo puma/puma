@@ -1,6 +1,9 @@
 require 'rack'
 
 module Puma
+  class UnsupportedOption < RuntimeError
+  end
+
 
   # Every standard HTTP code mapped to the appropriate message.  These are
   # used so frequently that they are placed directly in Puma for easy

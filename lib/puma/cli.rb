@@ -88,7 +88,7 @@ module Puma
         blk.call self
       end
 
-      if IS_JRUBY
+      if jruby?
         @binder.listeners.each_with_index do |(str,io),i|
           io.close
 
@@ -134,6 +134,20 @@ module Puma
       if @options[:debug]
         @events.log "- #{str}"
       end
+    end
+
+    def jruby?
+      IS_JRUBY
+    end
+
+    def windows?
+      RUBY_PLATFORM =~ /mswin32|ming32/
+    end
+
+    def unsupported(str, cond=true)
+      return unless cond
+      @events.error str
+      raise UnsupportedOption
     end
 
     # Build the OptionParser object to handle the available options.
@@ -186,8 +200,8 @@ module Puma
                               "Use 'auto' to use temp unix server" do |arg|
           if arg
             @options[:control_url] = arg
-          elsif IS_JRUBY
-            raise NotImplementedError, "No default url available on JRuby"
+          elsif jruby?
+            unsupported "No default url available on JRuby"
           end
         end
 
@@ -209,6 +223,9 @@ module Puma
 
         o.on "-w", "--workers COUNT",
                    "Activate cluster mode: How many worker processes to create" do |arg|
+          unsupported "-w not supported on JRuby and Windows",
+                      jruby? || windows?
+
           @options[:workers] = arg.to_i
         end
 
@@ -298,7 +315,11 @@ module Puma
     # for it to finish.
     #
     def run
-      parse_options
+      begin
+        parse_options
+      rescue UnsupportedOption
+        exit 1
+      end
 
       clustered = @options[:workers] > 0
 

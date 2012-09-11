@@ -98,18 +98,23 @@ module Puma
 
           @listeners << [str, io]
         when "ssl"
+          if IS_JRUBY
+            @events.error "SSL not supported on JRuby"
+            raise UnsupportedOption
+          end
+
           params = Rack::Utils.parse_query uri.query
           require 'puma/minissl'
 
           ctx = MiniSSL::Context.new
           unless params['key']
-            error "Please specify the SSL key via 'key='"
+            @events.error "Please specify the SSL key via 'key='"
           end
 
           ctx.key = params['key']
 
           unless params['cert']
-            error "Please specify the SSL cert via 'cert='"
+            @events.error "Please specify the SSL cert via 'cert='"
           end
 
           ctx.cert = params['cert']
@@ -181,6 +186,11 @@ module Puma
 
     def add_ssl_listener(host, port, ctx,
                          optimize_for_latency=true, backlog=1024)
+      if IS_JRUBY
+        @events.error "SSL not supported on JRuby"
+        raise UnsupportedOption
+      end
+
       require 'puma/minissl'
 
       s = TCPServer.new(host, port)
@@ -200,6 +210,12 @@ module Puma
     end
 
     def inherited_ssl_listener(fd, ctx)
+      if IS_JRUBY
+        @events.error "SSL not supported on JRuby"
+        raise UnsupportedOption
+      end
+
+      require 'puma/minissl'
       s = TCPServer.for_fd(fd)
       @ios << MiniSSL::Server.new(s, ctx)
       s
