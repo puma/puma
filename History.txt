@@ -1,4 +1,4 @@
-=== 2.0.0-b1 / 2012-09-11
+=== 2.0.0.b1 / 2012-09-11
 
 * 1 major feature:
   * Optional worker process mode (-w) to allow for process scaling in
