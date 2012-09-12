@@ -1,3 +1,16 @@
+=== 2.0.0-b1 / 2012-09-11
+
+* 1 major feature:
+  * Optional worker process mode (-w) to allow for process scaling in
+    addition to thread scaling
+
+* 1 bug fix:
+  * Introduce Puma::MiniSSL to be able to properly control doing
+    nonblocking SSL
+
+NOTE: SSL support in JRuby is not supported at present. Support will
+be added back in a future date when a java Puma::MiniSSL is added.
+
 === 1.6.3 / 2012-09-04
 
 * 1 bug fix:
