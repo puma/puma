@@ -46,14 +46,17 @@ static VALUE buf_append(VALUE self, VALUE str) {
   if(new_size > b->size) {
     size_t n = b->size + (b->size / 2);
     uint8_t* top;
+    uint8_t* old;
 
     new_size = (n > new_size ? n : new_size + BUF_TOLERANCE);
 
     top = malloc(new_size);
-    memcpy(top, b->top, used);
+    old = b->top;
+    memcpy(top, old, used);
     b->top = top;
     b->cur = top + used;
     b->size = new_size;
+    free(old);
   }
 
   memcpy(b->cur, RSTRING_PTR(str), str_len);
@@ -84,14 +87,17 @@ static VALUE buf_append2(int argc, VALUE* argv, VALUE self) {
   if(new_size > b->size) {
     size_t n = b->size + (b->size / 2);
     uint8_t* top;
+    uint8_t* old;
 
     new_size = (n > new_size ? n : new_size + BUF_TOLERANCE);
 
     top = malloc(new_size);
-    memcpy(top, b->top, used);
+    old = b->top;
+    memcpy(top, old, used);
     b->top = top;
     b->cur = top + used;
     b->size = new_size;
+    free(old);
   }
 
   for(i = 0; i < argc; i++) {
