@@ -173,13 +173,36 @@ module Puma
           @options[:config_file] = arg
         end
 
+        o.on "--control URL", "The bind url to use for the control server",
+                              "Use 'auto' to use temp unix server" do |arg|
+          if arg
+            @options[:control_url] = arg
+          elsif jruby?
+            unsupported "No default url available on JRuby"
+          end
+        end
+
+        o.on "--control-token TOKEN",
+             "The token to use as authentication for the control server" do |arg|
+          @options[:control_auth_token] = arg
+        end
+
         o.on "-d", "--daemon", "Daemonize the server into the background" do
           @options[:daemon] = true
           @options[:quiet] = true
         end
 
+        o.on "--debug", "Log lowlevel debugging information" do
+          @options[:debug] = true
+        end
+
         o.on "--dir DIR", "Change to DIR before starting" do |d|
           @options[:directory] = d.to_s
+        end
+
+        o.on "-e", "--environment ENVIRONMENT",
+             "The environment to run the Rack app on (default development)" do |arg|
+          @options[:environment] = arg
         end
 
         o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
@@ -199,26 +222,14 @@ module Puma
           @options[:quiet] = true
         end
 
-        o.on "--debug", "Log lowlevel debugging information" do
-          @options[:debug] = true
+        o.on "--restart-cmd CMD",
+             "The puma command to run during a hot restart",
+             "Default: inferred" do |cmd|
+          @options[:restart_cmd] = cmd
         end
 
         o.on "-S", "--state PATH", "Where to store the state details" do |arg|
           @options[:state] = arg
-        end
-
-        o.on "--control URL", "The bind url to use for the control server",
-                              "Use 'auto' to use temp unix server" do |arg|
-          if arg
-            @options[:control_url] = arg
-          elsif jruby?
-            unsupported "No default url available on JRuby"
-          end
-        end
-
-        o.on "--control-token TOKEN",
-             "The token to use as authentication for the control server" do |arg|
-          @options[:control_auth_token] = arg
         end
 
         o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
@@ -240,16 +251,6 @@ module Puma
           @options[:workers] = arg.to_i
         end
 
-        o.on "--restart-cmd CMD",
-             "The puma command to run during a hot restart",
-             "Default: inferred" do |cmd|
-          @options[:restart_cmd] = cmd
-        end
-
-        o.on "-e", "--environment ENVIRONMENT",
-             "The environment to run the Rack app on (default development)" do |arg|
-          @options[:environment] = arg
-        end
       end
 
       @parser.banner = "puma <options> <rackup file>"
