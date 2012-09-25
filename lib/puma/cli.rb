@@ -6,6 +6,7 @@ require 'puma/const'
 require 'puma/configuration'
 require 'puma/binder'
 require 'puma/detect'
+require 'puma/daemon_ext'
 
 require 'rack/commonlogger'
 require 'rack/utils'
@@ -159,7 +160,8 @@ module Puma
         :quiet => false,
         :debug => false,
         :binds => [],
-        :workers => 0
+        :workers => 0,
+        :daemon => false
       }
 
       @parser = OptionParser.new do |o|
@@ -169,6 +171,15 @@ module Puma
 
         o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
           @options[:config_file] = arg
+        end
+
+        o.on "-d", "--daemon", "Daemonize the server into the background" do
+          @options[:daemon] = true
+          @options[:quiet] = true
+        end
+
+        o.on "--dir DIR", "Change to DIR before starting" do |d|
+          @options[:directory] = d.to_s
         end
 
         o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
@@ -321,6 +332,10 @@ module Puma
         exit 1
       end
 
+      if dir = @options[:directory]
+        Dir.chdir dir
+      end
+
       clustered = @options[:workers] > 0
 
       if clustered
@@ -407,7 +422,11 @@ module Puma
         log "*** Sorry signal SIGTERM not implemented, gracefully stopping feature disabled!"
       end
 
-      log "Use Ctrl-C to stop"
+      if @options[:daemon]
+        Process.daemon(true)
+      else
+        log "Use Ctrl-C to stop"
+      end
 
       begin
         server.run.join
@@ -538,9 +557,15 @@ module Puma
       #
       @check_pipe, @suicide_pipe = IO.pipe
 
-      spawn_workers
+      if @options[:daemon]
+        Process.daemon(true)
+        STDOUT.reopen "/tmp/puma.out", "a"
+        STDOUT.reopen "/tmp/puma.err", "a"
+      else
+        log "Use Ctrl-C to stop"
+      end
 
-      log "* Use Ctrl-C to stop"
+      spawn_workers
 
       begin
         while !stop

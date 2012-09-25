@@ -156,6 +156,12 @@ module Puma
         @options[:binds] << url
       end
 
+      # Daemonize the server into the background. Highly suggest that
+      # this be combined with +pidfile+ and +stdout_redirect+.
+      def daemonize(which=true)
+        @options[:daemon] = which
+      end
+
       # Set the environment in which the Rack's app will run.
       def environment(environment)
         @options[:environment] = environment
@@ -185,6 +191,17 @@ module Puma
       #
       def rackup(path)
         @options[:rackup] = path.to_s
+      end
+
+      # Redirect STDOUT and STDERR to files specified.
+      def stdout_redirect(stdout=nil, stderr=nil, append=false)
+        if stdout
+          STDOUT.reopen stdout, (append ? "a" : "w")
+        end
+
+        if stderr
+          STDOUT.reopen stderr, (append ? "a" : "w")
+        end
       end
 
       # Configure +min+ to be the minimum number of threads to use to answer
@@ -219,6 +236,11 @@ module Puma
       #
       def workers(count)
         @options[:workers] = count.to_i
+      end
+
+      # The directory to operate out of.
+      def directory(dir)
+        @options[:directory] = dir.to_s
       end
     end
   end
