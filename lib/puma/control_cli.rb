@@ -11,9 +11,12 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    def initialize(argv, stdout=STDOUT)
+    def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @argv = argv
       @stdout = stdout
+      @stderr = stderr
+      @path = nil
+      @config = nil
     end
 
     def setup_options
@@ -44,10 +47,12 @@ module Puma
     def run
       setup_options
 
-      @parser.parse! @argv
+      @parser.order!(@argv) { |a| @parser.terminate a }
 
-      @state = YAML.load File.read(@path)
-      @config = @state['config']
+      if @path
+        @state = YAML.load File.read(@path)
+        @config = @state['config']
+      end
 
       cmd = @argv.shift
 
@@ -82,6 +87,13 @@ module Puma
 
     def command_pid
       @stdout.puts "#{@state['pid']}"
+    end
+
+    def command_start
+      require 'puma/cli'
+
+      cli = Puma::CLI.new @argv, @stdout, @stderr
+      cli.run
     end
 
     def command_stop
