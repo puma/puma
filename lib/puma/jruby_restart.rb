@@ -10,7 +10,7 @@ module Puma
 
     def self.chdir_exec(dir, cmd, *argv)
       chdir(dir)
-      argv.unshift(cmd)
+      argv.unshift(cmd) unless argv.first == cmd
       argv = ([:string] * argv.size).zip(argv).flatten
       argv <<:int
       argv << 0
