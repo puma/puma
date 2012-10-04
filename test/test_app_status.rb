@@ -75,10 +75,14 @@ class TestAppStatus < Test::Unit::TestCase
   def test_stats
     @server.backlog = 1
     @server.running = 9
-
     status, _ , app = lint('/stats')
 
     assert_equal 200, status
     assert_equal ['{ "backlog": 1, "running": 9 }'], app.enum_for.to_a
+  end
+
+  def test_alternate_location
+    status, _ , app = lint('__alternatE_location_/stats')
+    assert_equal 200, status
   end
 end
