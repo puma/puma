@@ -82,11 +82,6 @@ module Puma
               @waiting += 1
               cond.wait mutex
               @waiting -= 1
-
-              if @shutdown
-                continue = false
-                break
-              end
             end
 
             work = todo.pop if continue
