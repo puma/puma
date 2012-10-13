@@ -21,15 +21,15 @@ module Puma
         end
 
         case env['PATH_INFO']
-        when "/stop"
+        when /\/stop$/
           @server.stop
           return rack_response(200, OK_STATUS)
 
-        when "/halt"
+        when /\/halt$/
           @server.halt
           return rack_response(200, OK_STATUS)
 
-        when "/restart"
+        when /\/restart$/
           if @cli and @cli.restart_on_stop!
             @server.begin_restart
 
@@ -38,7 +38,7 @@ module Puma
             return rack_response(200, '{ "status": "not configured" }')
           end
 
-        when "/stats"
+        when /\/stats$/
           b = @server.backlog
           r = @server.running
           return rack_response(200, %Q!{ "backlog": #{b}, "running": #{r} }!)
