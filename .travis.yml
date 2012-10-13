@@ -1,5 +1,5 @@
 language: ruby
-
+script: "rake test:all"
 jdk:
   - oraclejdk7
 
