@@ -104,3 +104,14 @@ if IS_JRUBY
 else
   task :test => [:compile]
 end
+
+namespace :test do
+  desc "Run the integration tests"
+  task :integration do
+    sh "cd test/shell; sh run.sh"
+  end
+
+  desc "Run all tests"
+  task :all => [:test, "test:integration"]
+end
+

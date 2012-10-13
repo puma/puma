@@ -323,6 +323,20 @@ module Puma
       log " - Goodbye!"
     end
 
+    def redirect_io
+      stdout = @options[:redirect_stdout]
+      stderr = @options[:redirect_stderr]
+      append = @options[:redirect_append]
+
+      if stdout
+        STDOUT.reopen stdout, (append ? "a" : "w")
+      end
+
+      if stderr
+        STDOUT.reopen stderr, (append ? "a" : "w")
+      end
+    end
+
     # Parse the options, load the rackup, start the server and wait
     # for it to finish.
     #
@@ -349,8 +363,6 @@ module Puma
       write_pid
       write_state
 
-      @binder.parse @options[:binds], self
-
       if clustered
         run_cluster
       else
@@ -362,14 +374,16 @@ module Puma
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
+      log "Puma #{Puma::Const::PUMA_VERSION} starting..."
+      log "* Min threads: #{min_t}, max threads: #{max_t}"
+      log "* Environment: #{ENV['RACK_ENV']}"
+
+      @binder.parse @options[:binds], self
+
       server = Puma::Server.new @config.app, @events
       server.binder = @binder
       server.min_threads = min_t
       server.max_threads = max_t
-
-      log "Puma #{Puma::Const::PUMA_VERSION} starting..."
-      log "* Min threads: #{min_t}, max threads: #{max_t}"
-      log "* Environment: #{ENV['RACK_ENV']}"
 
       @server = server
 
@@ -428,6 +442,8 @@ module Puma
       else
         log "Use Ctrl-C to stop"
       end
+
+      redirect_io
 
       begin
         server.run.join
@@ -524,6 +540,8 @@ module Puma
       log "* Min threads: #{@options[:min_threads]}, max threads: #{@options[:max_threads]}"
       log "* Environment: #{ENV['RACK_ENV']}"
 
+      @binder.parse @options[:binds], self
+
       @master_pid = Process.pid
 
       read, write = IO.pipe
@@ -560,11 +578,11 @@ module Puma
 
       if @options[:daemon]
         Process.daemon(true)
-        STDOUT.reopen "/tmp/puma.out", "a"
-        STDOUT.reopen "/tmp/puma.err", "a"
       else
         log "Use Ctrl-C to stop"
       end
+
+      redirect_io
 
       spawn_workers
 

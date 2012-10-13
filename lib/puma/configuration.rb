@@ -195,13 +195,9 @@ module Puma
 
       # Redirect STDOUT and STDERR to files specified.
       def stdout_redirect(stdout=nil, stderr=nil, append=false)
-        if stdout
-          STDOUT.reopen stdout, (append ? "a" : "w")
-        end
-
-        if stderr
-          STDOUT.reopen stderr, (append ? "a" : "w")
-        end
+        @options[:redirect_stdout] = stdout
+        @options[:redirect_stderr] = stderr
+        @options[:redirect_append] = append
       end
 
       # Configure +min+ to be the minimum number of threads to use to answer
