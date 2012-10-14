@@ -102,7 +102,7 @@ class TestIntegration < Test::Unit::TestCase
 
     assert_raises Errno::ECONNRESET do
       Timeout.timeout(2) do
-        s.read(2)
+        raise Errno::ECONNRESET unless s.read(2)
       end
     end
 
@@ -128,7 +128,7 @@ class TestIntegration < Test::Unit::TestCase
 
     assert_raises Errno::ECONNRESET do
       Timeout.timeout(2) do
-        s.read(2)
+        raise Errno::ECONNRESET unless s.read(2)
       end
     end
 
