@@ -7,13 +7,14 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{status stats restart stop halt}
+    COMMANDS = %w{halt restart start stats status stop}
 
     def is_windows?
       RUBY_PLATFORM =~ /(win|w)32$/ ? true : false
     end
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
+      @argv = argv
       @stdout = stdout
       @stderr = stderr
       @options = {}
@@ -42,7 +43,7 @@ module Puma
         end
 
         o.on_tail("-H", "--help", "Show this message") do
-          @stdout.puts option
+          @stdout.puts o
           exit
         end
 
@@ -52,7 +53,7 @@ module Puma
         end
       end
 
-      opts.parse!(argv)
+      opts.order!(argv) { |a| opts.terminate a }
       
       command = argv.shift
       @options[:command] = command if command
@@ -171,6 +172,14 @@ module Puma
     end
 
     def run
+      if @options[:command] == "start"
+        require 'puma/cli'
+
+        cli = Puma::CLI.new @argv, @stdout, @stderr
+        cli.run
+        return
+      end
+
       prepare_configuration
     
       if is_windows?
