@@ -67,7 +67,7 @@ module Puma
         end
       end
 
-      unless @options[:quiet]
+      if !@options[:quiet] and @options[:environment] == "development"
         logger = @options[:logger] || STDOUT
         app = Rack::CommonLogger.new(app, logger)
       end

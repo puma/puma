@@ -161,7 +161,8 @@ module Puma
         :debug => false,
         :binds => [],
         :workers => 0,
-        :daemon => false
+        :daemon => false,
+        :environment => "development"
       }
 
       @parser = OptionParser.new do |o|
