@@ -1,3 +1,8 @@
+=== 2.0.0.b2 / 2012-10-17
+* 1 minor feature:
+  * Now Puma is bundled with an capistrano recipe. Just require
+     'puma/capistrano' in you deploy.rb
+
 === 2.0.0.b1 / 2012-09-11
 
 * 1 major feature:
