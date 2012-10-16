@@ -8,7 +8,8 @@ Capistrano::Configuration.instance.load do
   namespace :puma do
     desc "Start puma"
     task :start, :roles => lambda { fetch(:puma_role) }, :on_no_matching_servers => :continue do
-      run "cd #{current_path} && RAILS_ENV=#{stage} #{fetch(:bundle_cmd, "bundle")} exec puma -b 'unix://#{shared_path}/sockets/puma.sock' -S #{shared_path}/sockets/puma.state --control 'unix://#{shared_path}/sockets/pumactl.sock' >> #{shared_path}/log/puma-#{stage}.log 2>&1 &", :pty => false
+      puma_env = fetch(:stage, "production")
+      run "cd #{current_path} && #{fetch(:bundle_cmd, "bundle")} exec puma -e #{puma_env} -b 'unix://#{shared_path}/sockets/puma.sock' -S #{shared_path}/sockets/puma.state --control 'unix://#{shared_path}/sockets/pumactl.sock' >> #{shared_path}/log/puma-#{stage}.log 2>&1 &", :pty => false
     end
 
     desc "Stop puma"
