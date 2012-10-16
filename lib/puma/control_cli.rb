@@ -20,7 +20,7 @@ module Puma
       @options = {}
       
       opts = OptionParser.new do |o|
-        o.banner = "Usage: pumactl (-S status_file | -C url -T token) (#{COMMANDS.join("|")})"
+        o.banner = "Usage: pumactl (-p PID | -P pidfile | -S status_file | -C url -T token) (#{COMMANDS.join("|")})"
 
         o.on "-S", "--state PATH", "Where the state file to use is" do |arg|
           @options[:status_path] = arg
@@ -32,6 +32,10 @@ module Puma
 
         o.on "-P", "--pidfile PATH", "Pid file" do |arg|
           @options[:pid_file] = arg
+        end
+
+        o.on "-p", "--pid PID", "Pid" do |arg|
+          @options[:pid] = arg.to_i
         end
 
         o.on "-C", "--control-url URL", "The bind url to use for the control server" do |arg|
@@ -115,13 +119,13 @@ module Puma
       
       # create server object by scheme
       @server = case uri.scheme
-      when "tcp"
-        TCPSocket.new uri.host, uri.port
-      when "unix"
-        UNIXSocket.new "#{uri.host}#{uri.path}"
-      else
-        raise "Invalid scheme: #{uri.scheme}"
-      end
+                when "tcp"
+                  TCPSocket.new uri.host, uri.port
+                when "unix"
+                  UNIXSocket.new "#{uri.host}#{uri.path}"
+                else
+                  raise "Invalid scheme: #{uri.scheme}"
+                end
 
       if @options[:command] == "status"
         message "Puma is started"
@@ -151,17 +155,29 @@ module Puma
     end
 
     def send_signal
-      Process.getpgid(@options[:pid])
+      unless pid = @options[:pid]
+        raise "Neither pid nor control url available"
+      end
+
+      begin
+        Process.getpgid pid
+      rescue SystemCallError
+        raise "No pid '#{pid}' found"
+      end
 
       case @options[:command]
       when "restart"
-        Process.kill("SIGUSR2", @options[:pid])
+        Process.kill "SIGUSR2", pid
 
       when "halt"
-        Process.kill("QUIT", @options[:pid])
+        Process.kill "QUIT", pid
 
       when "stop"
-        Process.kill("SIGTERM", @options[:pid])
+        Process.kill "SIGTERM", pid
+
+      when "stats"
+        puts "Stats not available via pid only"
+        return
 
       else
         message "Puma is started"
