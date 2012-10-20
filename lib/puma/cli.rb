@@ -36,6 +36,8 @@ module Puma
 
       @restart = false
 
+      ENV['NEWRELIC_DISPATCHER'] ||= "puma"
+
       setup_options
 
       generate_restart_data

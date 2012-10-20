@@ -58,3 +58,9 @@ module Rack
     register :puma, Puma
   end
 end
+
+# This is to trick newrelic into enabling the agent automatically.
+module Mongrel
+  class HttpServer
+  end
+end
