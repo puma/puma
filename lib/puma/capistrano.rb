@@ -8,7 +8,7 @@ Capistrano::Configuration.instance.load do
   namespace :puma do
     desc "Start puma"
     task :start, :roles => lambda { fetch(:puma_role) }, :on_no_matching_servers => :continue do
-      puma_env = fetch(:stage, "production")
+      puma_env = fetch(:rack_env, fetch(:rails_env, "production"))
       run "cd #{current_path} && #{fetch(:bundle_cmd, "bundle")} exec puma -d -e #{puma_env} -b 'unix://#{shared_path}/sockets/puma.sock' -S #{shared_path}/sockets/puma.state --control 'unix://#{shared_path}/sockets/pumactl.sock'", :pty => false
     end
 
