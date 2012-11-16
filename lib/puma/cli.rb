@@ -448,6 +448,13 @@ module Puma
 
       redirect_io
 
+      if jruby?
+        Signal.trap("INT") do
+          graceful_stop server
+          exit
+        end
+      end
+
       begin
         server.run.join
       rescue Interrupt
@@ -588,6 +595,11 @@ module Puma
       redirect_io
 
       spawn_workers
+
+      Signal.trap "SIGINT" do
+        stop = true
+        write.write "!"
+      end
 
       begin
         while !stop
