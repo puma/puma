@@ -263,6 +263,8 @@ module Puma
         @events.unknown_error self, e, "Read"
 
       ensure
+        buffer.reset
+
         begin
           client.close if close_socket
         rescue IOError, SystemCallError
