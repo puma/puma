@@ -1,7 +1,20 @@
-=== 2.0.0.b2 / 2012-10-17
-* 1 minor feature:
+=== 2.0.0.b2 / 2012-11-18
+* 5 minor feature:
   * Now Puma is bundled with an capistrano recipe. Just require
      'puma/capistrano' in you deploy.rb
+  * Only inject CommonLogger in development mode
+  * Add -p option to pumactl
+  * Add ability to use pumactl to start a server
+  * Add options to daemonize puma
+
+* 7 bug fixes:
+  * Reset the IOBuffer properly. Fixes #148
+  * Shutdown gracefully on JRuby with Ctrl-C
+  * Various methods to get newrelic to start. Fixes #128
+  * fixing syntax error at capistrano recipe
+  * Force ECONNRESET when read returns nil
+  * Be sure to empty the drain the todo before shutting down. Fixes #155
+  * allow for alternate locations for status app
 
 === 2.0.0.b1 / 2012-09-11
 

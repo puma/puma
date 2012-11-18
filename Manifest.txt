@@ -1,6 +1,5 @@
 COPYING
 Gemfile
-Gemfile.lock
 History.txt
 LICENSE
 Manifest.txt
