@@ -1,3 +1,8 @@
+=== 2.0.0.b3 / 2012-11-22
+
+* 1 bug fix:
+  * Package right files in gem
+
 === 2.0.0.b2 / 2012-11-18
 * 5 minor feature:
   * Now Puma is bundled with an capistrano recipe. Just require
