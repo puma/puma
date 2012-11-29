@@ -569,8 +569,15 @@ module Puma
       # Fast path.
       return if n == str.bytesize
 
-      # Otherwise go into slow path and use ruby's builtin write logic
-      io.write str[n..-1]
+      pos = n
+      left = str.bytesize - n
+
+      until left == 0
+       n = io.syswrite str.byteslice(pos..-1)
+
+       pos += n
+       left -= n
+      end
     end
     private :fast_write
   end
