@@ -37,19 +37,22 @@ ms_conn* engine_alloc(VALUE klass, VALUE* obj) {
 
 VALUE engine_init_server(VALUE self, VALUE key, VALUE cert) {
   VALUE obj;
+  SSL_CTX* ctx;
+  SSL* ssl;
+
   ms_conn* conn = engine_alloc(self, &obj);
 
   StringValue(key);
   StringValue(cert);
 
-  SSL_CTX* ctx = SSL_CTX_new(SSLv23_server_method());
+  ctx = SSL_CTX_new(SSLv23_server_method());
   conn->ctx = ctx;
 
   SSL_CTX_use_certificate_file(ctx, RSTRING_PTR(cert), SSL_FILETYPE_PEM);
   SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
   /* SSL_CTX_set_options(ctx, SSL_OP_SINGLE_DH_USE); */
 
-  SSL* ssl =  SSL_new(ctx);
+  ssl =  SSL_new(ctx);
   conn->ssl = ssl;
 
   /* SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL); */
@@ -82,7 +85,7 @@ VALUE engine_inject(VALUE self, VALUE str) {
 
   StringValue(str);
 
-  used = BIO_write(conn->read, RSTRING_PTR(str), RSTRING_LEN(str));
+  used = BIO_write(conn->read, RSTRING_PTR(str), (int)RSTRING_LEN(str));
 
   if(used == 0 || used == -1) {
     return Qfalse;
@@ -134,7 +137,7 @@ VALUE engine_write(VALUE self, VALUE str) {
 
   StringValue(str);
 
-  bytes = SSL_write(conn->ssl, (void*)RSTRING_PTR(str), RSTRING_LEN(str));
+  bytes = SSL_write(conn->ssl, (void*)RSTRING_PTR(str), (int)RSTRING_LEN(str));
   if(bytes > 0) {
     return INT2FIX(bytes);
   }
@@ -168,13 +171,15 @@ VALUE engine_extract(VALUE self) {
 }
 
 void Init_mini_ssl(VALUE puma) {
+  VALUE mod, eng;
+
   SSL_library_init();
   OpenSSL_add_ssl_algorithms();
   SSL_load_error_strings();
   ERR_load_crypto_strings();
   
-  VALUE mod = rb_define_module_under(puma, "MiniSSL");
-  VALUE eng = rb_define_class_under(mod, "Engine", rb_cObject);
+  mod = rb_define_module_under(puma, "MiniSSL");
+  eng = rb_define_class_under(mod, "Engine", rb_cObject);
 
   eError = rb_define_class_under(mod, "SSLError", rb_eStandardError);
 
