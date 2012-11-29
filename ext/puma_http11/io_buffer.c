@@ -107,6 +107,8 @@ static VALUE buf_append2(int argc, VALUE* argv, VALUE self) {
     memcpy(b->cur, RSTRING_PTR(str), str_len);
     b->cur += str_len;
   }
+
+  return self;
 }
 
 static VALUE buf_to_str(VALUE self) {
