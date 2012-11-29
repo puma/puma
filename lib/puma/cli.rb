@@ -321,6 +321,7 @@ module Puma
 
     def graceful_stop(server)
       log " - Gracefully stopping, waiting for requests to finish"
+      @status.stop(true) if @status
       server.stop(true)
       delete_pidfile
       log " - Goodbye!"
@@ -623,6 +624,7 @@ module Puma
     end
 
     def stop
+      @status.stop(true) if @status
       @server.stop(true) if @server
       delete_pidfile
     end
