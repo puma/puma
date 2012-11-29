@@ -57,7 +57,7 @@ class TestPumaServer < Test::Unit::TestCase
     end
 
     assert_equal "https", body
-  end
+  end unless defined? JRUBY_VERSION
 
   def test_proper_stringio_body
     data = nil
