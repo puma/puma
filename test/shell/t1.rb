@@ -1,4 +1,4 @@
-system "ruby -I../../lib ../../bin/puma -p 10102 -C t1_conf.rb ../hello.ru &"
+system "ruby -rubygems -I../../lib ../../bin/puma -p 10102 -C t1_conf.rb ../hello.ru &"
 sleep 5
 system "curl http://localhost:10102/"
 

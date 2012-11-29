@@ -1,4 +1,4 @@
-if ruby t1.rb > /dev/null 2>&1; then
+if ruby -rubygems t1.rb > /dev/null 2>&1; then
   echo "t1 OK"
   exit 0
 else
