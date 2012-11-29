@@ -112,6 +112,10 @@ namespace :test do
   end
 
   desc "Run all tests"
-  task :all => [:test, "test:integration"]
+  if defined?(JRUBY_VERSION) and ENV['TRAVIS']
+    task :all => :test
+  else
+    task :all => [:test, "test:integration"]
+  end
 end
 
