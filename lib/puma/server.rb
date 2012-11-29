@@ -423,7 +423,7 @@ module Puma
 
         if no_body
           lines << line_ending
-          client.syswrite lines.to_s
+          fast_write client, lines.to_s
           return keep_alive
         end
 
@@ -443,16 +443,16 @@ module Puma
 
         lines << line_ending
 
-        client.syswrite lines.to_s
+        fast_write client, lines.to_s
 
         res_body.each do |part|
           if chunked
             client.syswrite part.bytesize.to_s(16)
             client.syswrite line_ending
-            client.syswrite part
+            fast_write client, part
             client.syswrite line_ending
           else
-            client.syswrite part
+            fast_write client, part
           end
 
           client.flush
@@ -562,5 +562,16 @@ module Puma
       @persistent_wakeup.close
       @notify << RESTART_COMMAND
     end
+
+    def fast_write(io, str)
+      n = io.syswrite str
+
+      # Fast path.
+      return if n == str.bytesize
+
+      # Otherwise go into slow path and use ruby's builtin write logic
+      io.write str[n..-1]
+    end
+    private :fast_write
   end
 end

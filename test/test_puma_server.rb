@@ -102,4 +102,27 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal body, sock.read
   end
+
+  def test_very_large_return
+    giant = "x" * 2056610
+
+    @server.app = proc do |env|
+      [200, {}, [giant]]
+    end
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\n\r\n"
+
+    while true
+      line = sock.gets
+      break if line == "\r\n"
+    end
+
+    out = sock.read
+
+    assert_equal giant.bytesize, out.bytesize
+  end
 end
