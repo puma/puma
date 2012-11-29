@@ -8,6 +8,8 @@ require 'tempfile'
 require 'puma/cli'
 require 'puma/control_cli'
 
+# These don't run on travis because they're too fragile
+
 class TestIntegration < Test::Unit::TestCase
   def setup
     @state_path = "test/test_puma.state"
@@ -145,4 +147,4 @@ class TestIntegration < Test::Unit::TestCase
     data = s.read
     assert_equal "HTTP/1.1 400 Bad Request\r\n\r\n", data
   end
-end
+end unless ENV['TRAVIS']
