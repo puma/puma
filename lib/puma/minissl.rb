@@ -79,7 +79,20 @@ module Puma::MiniSSL
   end
 
   class Context
-    attr_accessor :key, :cert, :verify_mode
+    attr_accessor :verify_mode
+
+    attr_reader :key
+    attr_reader :cert
+
+    def key=(key)
+      raise ArgumentError, "No such key file '#{key}'" unless File.exist? key
+      @key = key
+    end
+
+    def cert=(cert)
+      raise ArgumentError, "No such cert file '#{cert}'" unless File.exist? cert
+      @cert = cert
+    end
   end
 
   VERIFY_NONE = 0
