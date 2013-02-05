@@ -337,10 +337,12 @@ module Puma
 
       if stdout
         STDOUT.reopen stdout, (append ? "a" : "w")
+        STDOUT.puts "=== puma startup: #{Time.now} ==="
       end
 
       if stderr
-        STDOUT.reopen stderr, (append ? "a" : "w")
+        STDERR.reopen stderr, (append ? "a" : "w")
+        STDERR.puts "=== puma startup: #{Time.now} ==="
       end
     end
 
