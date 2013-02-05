@@ -606,7 +606,11 @@ module Puma
       begin
         while !stop
           begin
-            IO.select([read], nil, nil, 5)
+            res = IO.select([read], nil, nil, 5)
+
+            # drain read
+            read.read_nonblock(255) if res
+
             check_workers
           rescue Interrupt
             stop = true
