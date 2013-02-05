@@ -7,6 +7,7 @@ require 'puma/configuration'
 require 'puma/binder'
 require 'puma/detect'
 require 'puma/daemon_ext'
+require 'puma/util'
 
 require 'rack/commonlogger'
 require 'rack/utils'
@@ -555,7 +556,7 @@ module Puma
 
       @master_pid = Process.pid
 
-      read, write = IO.pipe
+      read, write = Puma::Util.pipe
 
       Signal.trap "SIGCHLD" do
         write.write "!"
@@ -585,7 +586,7 @@ module Puma
       # master has exited and @suicide_pipe has been automatically
       # closed.
       #
-      @check_pipe, @suicide_pipe = IO.pipe
+      @check_pipe, @suicide_pipe = Puma::Util.pipe
 
       if @options[:daemon]
         Process.daemon(true)
@@ -615,6 +616,8 @@ module Puma
         stop_workers
       ensure
         delete_pidfile
+        @check_pipe.close
+        @suicide_pipe.close
       end
 
       if @restart

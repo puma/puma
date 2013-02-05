@@ -11,6 +11,7 @@ require 'puma/client'
 require 'puma/binder'
 require 'puma/delegation'
 require 'puma/accept_nonblock'
+require 'puma/util'
 
 require 'puma/puma_http11'
 
@@ -49,7 +50,7 @@ module Puma
       @app = app
       @events = events
 
-      @check, @notify = IO.pipe
+      @check, @notify = Puma::Util.pipe
 
       @status = :stop
 
@@ -61,7 +62,6 @@ module Puma
       @thread_pool = nil
 
       @persistent_timeout = PERSISTENT_TIMEOUT
-      @persistent_check, @persistent_wakeup = IO.pipe
 
       @binder = Binder.new(events)
       @first_data_timeout = FIRST_DATA_TIMEOUT
@@ -191,8 +191,10 @@ module Puma
 
         @reactor.shutdown
       ensure
+        @check.close
+        @notify.close
+
         unless @status == :restart
-          @check.close
           @binder.close
         end
       end
@@ -545,21 +547,18 @@ module Puma
     # off the request queue before finally exiting.
     #
     def stop(sync=false)
-      @persistent_wakeup.close
       @notify << STOP_COMMAND
 
       @thread.join if @thread && sync
     end
 
     def halt(sync=false)
-      @persistent_wakeup.close
       @notify << HALT_COMMAND
 
       @thread.join if @thread && sync
     end
 
     def begin_restart
-      @persistent_wakeup.close
       @notify << RESTART_COMMAND
     end
 

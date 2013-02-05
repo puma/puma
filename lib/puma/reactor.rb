@@ -1,3 +1,5 @@
+require 'puma/util'
+
 module Puma
   class Reactor
     DefaultSleepFor = 5
@@ -8,7 +10,7 @@ module Puma
       @app_pool = app_pool
 
       @mutex = Mutex.new
-      @ready, @trigger = IO.pipe
+      @ready, @trigger = Puma::Util.pipe
       @input = []
       @sleep_for = DefaultSleepFor
       @timeouts = []
@@ -89,6 +91,9 @@ module Puma
           calculate_sleep
         end
       end
+    ensure
+      @trigger.close
+      @ready.close
     end
 
     def run_in_thread
@@ -135,11 +140,18 @@ module Puma
 
     # Close all watched sockets and clear them from being watched
     def clear!
-      @trigger << "c"
+      begin
+        @trigger << "c"
+      rescue IOError
+      end
     end
 
     def shutdown
-      @trigger << "!"
+      begin
+        @trigger << "!"
+      rescue IOError
+      end
+
       @thread.join
     end
   end
