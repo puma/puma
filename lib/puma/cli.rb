@@ -618,6 +618,8 @@ module Puma
         delete_pidfile
         @check_pipe.close
         @suicide_pipe.close
+        read.close
+        write.close
       end
 
       if @restart
