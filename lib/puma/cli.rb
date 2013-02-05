@@ -292,6 +292,8 @@ module Puma
     end
 
     def write_state
+      write_pid
+
       require 'yaml'
 
       if path = @options[:state]
@@ -365,9 +367,6 @@ module Puma
 
       set_rack_environment
 
-      write_pid
-      write_state
-
       if clustered
         run_cluster
       else
@@ -376,6 +375,8 @@ module Puma
     end
 
     def run_single
+      write_state
+
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
@@ -595,6 +596,8 @@ module Puma
       end
 
       redirect_io
+
+      write_state
 
       spawn_workers
 
