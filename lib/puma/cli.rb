@@ -388,6 +388,10 @@ module Puma
 
       @binder.parse @options[:binds], self
 
+      if @options[:daemon]
+        Process.daemon(true, true)
+      end
+
       server = Puma::Server.new @config.app, @events
       server.binder = @binder
       server.min_threads = min_t
@@ -445,9 +449,7 @@ module Puma
         log "*** Sorry signal SIGTERM not implemented, gracefully stopping feature disabled!"
       end
 
-      if @options[:daemon]
-        Process.daemon(true)
-      else
+      unless @options[:daemon]
         log "Use Ctrl-C to stop"
       end
 
@@ -592,7 +594,7 @@ module Puma
       @check_pipe, @suicide_pipe = Puma::Util.pipe
 
       if @options[:daemon]
-        Process.daemon(true)
+        Process.daemon(true, true)
       else
         log "Use Ctrl-C to stop"
       end
