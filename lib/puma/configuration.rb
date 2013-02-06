@@ -176,6 +176,14 @@ module Puma
         @options[:on_restart] << blk
       end
 
+      # Command to use to restart puma. This should be just how to
+      # load puma itself (ie. 'ruby -Ilib bin/puma'), not the arguments
+      # to puma, as those are the same as the original process.
+      #
+      def restart_command(cmd)
+        @options[:request_cmd] = cmd
+      end
+
       # Store the pid of the server in the file at +path+.
       def pidfile(path)
         @options[:pidfile] = path
