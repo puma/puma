@@ -11,6 +11,6 @@ class TestConfigFile < Test::Unit::TestCase
 
     app = conf.app
 
-    assert_equal [200, {}, ["embedded app"]], app.call(nil)
+    assert_equal [200, {}, ["embedded app"]], app.call({})
   end
 end

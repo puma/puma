@@ -71,22 +71,22 @@ module Puma
     # the rackup file, and set @app.
     #
     def app
-      if app = @options[:app]
-        return app
-      end
+      app = @options[:app]
 
-      path = @options[:rackup] || DefaultRackup
+      unless app
+        path = @options[:rackup] || DefaultRackup
 
-      unless File.exists?(path)
-        raise "Missing rackup file '#{path}'"
-      end
+        unless File.exists?(path)
+          raise "Missing rackup file '#{path}'"
+        end
 
-      app, options = Rack::Builder.parse_file path
-      @options.merge! options
+        app, options = Rack::Builder.parse_file path
+        @options.merge! options
 
-      options.each do |key,val|
-        if key.to_s[0,4] == "bind"
-          @options[:binds] << val
+        options.each do |key,val|
+          if key.to_s[0,4] == "bind"
+            @options[:binds] << val
+          end
         end
       end
 
