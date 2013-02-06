@@ -1,4 +1,14 @@
 module Puma
+
+  # The CLI exports it's Configuration object here to allow
+  # apps to pick it up. An app needs to use it conditionally though
+  # since it is not set if the app is launched via another
+  # mechanism than the CLI class.
+
+  class << self
+    attr_accessor :cli_config
+  end
+
   class Configuration
     DefaultRackup = "config.ru"
 
@@ -44,6 +54,19 @@ module Puma
       end
     end
 
+    # Injects the Configuration object into the env
+    class ConfigMiddleware
+      def initialize(config, app)
+        @config = config
+        @app = app
+      end
+
+      def call(env)
+        env[Const::PUMA_CONFIG] = @config
+        @app.call(env)
+      end
+    end
+
     # Load the specified rackup file, pull an options from
     # the rackup file, and set @app.
     #
@@ -72,7 +95,7 @@ module Puma
         app = Rack::CommonLogger.new(app, logger)
       end
 
-      return app
+      return ConfigMiddleware.new(self, app)
     end
 
     def setup_random_token

@@ -327,6 +327,10 @@ module Puma
       end
 
       @config = Puma::Configuration.new @options
+
+      # Advertise the Configuration
+      Puma.cli_config = @config
+
       @config.load
     end
 
