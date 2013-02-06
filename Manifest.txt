@@ -48,6 +48,7 @@ lib/puma/rack_patch.rb
 lib/puma/reactor.rb
 lib/puma/server.rb
 lib/puma/thread_pool.rb
+lib/puma/util.rb
 lib/rack/handler/puma.rb
 puma.gemspec
 tools/jungle/README.md

@@ -1,3 +1,20 @@
+=== 2.0.0.b5 / 2013-02-05
+
+* 2 major features:
+  * Add phased worker upgrade
+  * Add support for the rack hijack protocol
+
+* 2 minor features:
+  * Add -R to specify the restart command
+  * Add config file option to specify the restart command
+
+* 5 bug fixes:
+  * Cleanup pipes properly. Fixes #182
+  * Daemonize earlier so that we don't lose app threads. Fixes #183
+  * Drain the notification pipe. Fixes #176, thanks @cryo28
+  * Move write_pid to after we daemonize. Fixes #180
+  * Redirect IO properly and emit message for checkpointing
+
 === 2.0.0.b4 / 2012-12-12
 
 * 4 bug fixes:
