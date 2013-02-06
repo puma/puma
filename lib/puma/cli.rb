@@ -83,6 +83,10 @@ module Puma
           arg0 = [Gem.ruby, "-S", $0]
         end
 
+        # Detect and reinject -Ilib from the command line
+        lib = File.expand_path "lib"
+        arg0[1,0] = ["-I", lib] if $:[0] == lib
+
         @restart_argv = arg0 + ARGV
       end
     end
