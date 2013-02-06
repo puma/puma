@@ -332,6 +332,9 @@ module Puma
 
       env[PUMA_SOCKET] = client
 
+      env[HIJACK_P] = true
+      env[HIJACK] = req
+
       body = req.body
 
       env[RACK_INPUT] = body
@@ -345,6 +348,9 @@ module Puma
       begin
         begin
           status, headers, res_body = @app.call(env)
+
+          return :async if req.hijacked
+
           status = status.to_i
 
           if status == -1
@@ -406,6 +412,8 @@ module Puma
           end
         end
 
+        response_hijack = nil
+
         headers.each do |k, vs|
           case k
           when CONTENT_LENGTH2
@@ -416,6 +424,9 @@ module Puma
             content_length = nil
           when CONTENT_TYPE
             next if no_body
+          when HIJACK
+            response_hijack = vs
+            next
           end
 
           vs.split(NEWLINE).each do |v|
@@ -435,17 +446,24 @@ module Puma
           lines << CONNECTION_CLOSE
         end
 
-        if content_length
-          lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
-          chunked = false
-        elsif allow_chunked
-          lines << TRANSFER_ENCODING_CHUNKED
-          chunked = true
+        unless response_hijack
+          if content_length
+            lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+            chunked = false
+          elsif allow_chunked
+            lines << TRANSFER_ENCODING_CHUNKED
+            chunked = true
+          end
         end
 
         lines << line_ending
 
         fast_write client, lines.to_s
+
+        if response_hijack
+          response_hijack.call client
+          return :async
+        end
 
         res_body.each do |part|
           if chunked

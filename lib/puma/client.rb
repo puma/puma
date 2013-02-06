@@ -36,12 +36,20 @@ module Puma
       @timeout_at = nil
 
       @requests_served = 0
+      @hijacked = false
     end
 
-    attr_reader :env, :to_io, :body, :io, :timeout_at, :ready
+    attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked
 
     def inspect
       "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"
+    end
+
+    # For the hijack protocol (allows us to just put the Client object
+    # into the env)
+    def call
+      @hijacked = true
+      env[HIJACK_IO] ||= @io
     end
 
     def set_timeout(val)

@@ -147,5 +147,9 @@ module Puma
     COLON = ": ".freeze
 
     NEWLINE = "\n".freeze
+
+    HIJACK_P = "rack.hijack?".freeze
+    HIJACK = "rack.hijack".freeze
+    HIJACK_IO = "rack.hijack_io".freeze
   end
 end
