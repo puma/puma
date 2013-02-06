@@ -226,7 +226,7 @@ module Puma
           @options[:quiet] = true
         end
 
-        o.on "--restart-cmd CMD",
+        o.on "-R", "--restart-cmd CMD",
              "The puma command to run during a hot restart",
              "Default: inferred" do |cmd|
           @options[:restart_cmd] = cmd
