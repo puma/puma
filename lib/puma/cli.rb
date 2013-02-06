@@ -63,6 +63,7 @@ module Puma
 
         if s_env.ino == s_pwd.ino and s_env.dev == s_pwd.dev
           @restart_dir = dir
+          @options[:worker_directory] = dir
         end
       end
 
@@ -208,6 +209,7 @@ module Puma
 
         o.on "--dir DIR", "Change to DIR before starting" do |d|
           @options[:directory] = d.to_s
+          @options[:worker_directory] = d.to_s
         end
 
         o.on "-e", "--environment ENVIRONMENT",
@@ -481,7 +483,7 @@ module Puma
       end
     end
 
-    def worker
+    def worker(upgrade)
       $0 = "puma: cluster worker: #{@master_pid}"
       Signal.trap "SIGINT", "IGNORE"
 
@@ -492,6 +494,15 @@ module Puma
         IO.select [@check_pipe]
         log "! Detected parent died, dieing"
         exit! 1
+      end
+
+      # Be sure to change the directory again before loading
+      # the app. This way we can pick up new code.
+      if upgrade
+        if dir = @options[:worker_directory]
+          log "+ Changing to #{dir}"
+          Dir.chdir dir
+        end
       end
 
       min_t = @options[:min_threads]
@@ -560,8 +571,10 @@ module Puma
     def spawn_workers
       diff = @options[:workers] - @workers.size
 
+      upgrade = (@phased_state == :waiting)
+
       diff.times do
-        pid = fork { worker }
+        pid = fork { worker(upgrade) }
         debug "Spawned worker: #{pid}"
         @workers << Worker.new(pid, @phase)
       end
