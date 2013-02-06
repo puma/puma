@@ -496,7 +496,7 @@ module Puma
 
       Thread.new do
         IO.select [@check_pipe]
-        log "! Detected parent died, dieing"
+        log "! Detected parent died, dying"
         exit! 1
       end
 
