@@ -265,6 +265,15 @@ module Puma
         @options[:workers] = count.to_i
       end
 
+      # *Cluster mode only* Code to run when a worker boots to setup
+      # the process before booting the app.
+      #
+      # This can be called multiple times to add hooks.
+      #
+      def on_worker_boot(&block)
+        @options[:worker_boot] << block
+      end
+
       # The directory to operate out of.
       def directory(dir)
         @options[:directory] = dir.to_s

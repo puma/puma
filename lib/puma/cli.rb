@@ -172,6 +172,7 @@ module Puma
         :binds => [],
         :workers => 0,
         :daemon => false,
+        :worker_boot => [],
         :environment => "development"
       }
 
@@ -509,6 +510,11 @@ module Puma
         end
       end
 
+      # Invoke any worker boot hooks so they can get
+      # things in shape before booting the app.
+      hooks = @options[:worker_boot]
+      hooks.each { |h| h.call }
+
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
@@ -697,7 +703,7 @@ module Puma
 
               if req == "b"
                 pid = read.gets.to_i
-                w = @workers.find { |w| w.pid == pid }
+                w = @workers.find { |x| x.pid == pid }
                 if w
                   w.boot!
                   log "- Worker #{pid} booted, phase: #{w.phase}"
