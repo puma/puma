@@ -599,7 +599,7 @@ module Puma
     end
 
     def check_workers
-      while true
+      while @workers.any?
         pid = Process.waitpid(-1, Process::WNOHANG)
         break unless pid
 
