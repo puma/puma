@@ -1,3 +1,14 @@
+=== 2.0.0.b6 / 2013-02-06
+
+* 2 minor enhancements:
+
+  * Add hook for running when a worker boots
+  * Advertise the Configuration object for apps to use.
+
+* 1 bug fix:
+
+  * Change directory in working during upgrade. Fixes #185
+
 === 2.0.0.b5 / 2013-02-05
 
 * 2 major features:
