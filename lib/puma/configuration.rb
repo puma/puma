@@ -277,6 +277,7 @@ module Puma
       # The directory to operate out of.
       def directory(dir)
         @options[:directory] = dir.to_s
+        @options[:worker_directory] = dir.to_s
       end
     end
   end
