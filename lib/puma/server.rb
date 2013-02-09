@@ -64,6 +64,8 @@ module Puma
       @persistent_timeout = PERSISTENT_TIMEOUT
 
       @binder = Binder.new(events)
+      @own_binder = true
+
       @first_data_timeout = FIRST_DATA_TIMEOUT
 
       ENV['RACK_ENV'] ||= "development"
@@ -74,6 +76,11 @@ module Puma
     forward :add_tcp_listener,  :@binder
     forward :add_ssl_listener,  :@binder
     forward :add_unix_listener, :@binder
+
+    def inherit_binder(bind)
+      @binder = bind
+      @own_binder = false
+    end
 
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
@@ -194,7 +201,7 @@ module Puma
         @check.close
         @notify.close
 
-        unless @status == :restart
+        if @status != :restart and @own_binder
           @binder.close
         end
       end

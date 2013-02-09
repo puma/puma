@@ -526,7 +526,7 @@ module Puma
       server = Puma::Server.new @config.app, @events
       server.min_threads = min_t
       server.max_threads = max_t
-      server.binder = @binder
+      server.inherit_binder @binder
 
       Signal.trap "SIGTERM" do
         server.stop
