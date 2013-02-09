@@ -395,8 +395,6 @@ module Puma
     end
 
     def run_single
-      write_state
-
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
@@ -409,6 +407,8 @@ module Puma
       if @options[:daemon]
         Process.daemon(true, true)
       end
+
+      write_state
 
       server = Puma::Server.new @config.app, @events
       server.binder = @binder
