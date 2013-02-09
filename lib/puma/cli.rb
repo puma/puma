@@ -636,8 +636,6 @@ module Puma
 
       @binder.parse @options[:binds], self
 
-      @master_pid = Process.pid
-
       read, write = Puma::Util.pipe
 
       Signal.trap "SIGCHLD" do
@@ -685,6 +683,8 @@ module Puma
       else
         log "Use Ctrl-C to stop"
       end
+
+      @master_pid = Process.pid
 
       redirect_io
 
