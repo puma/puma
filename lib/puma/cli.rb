@@ -256,6 +256,11 @@ module Puma
           end
         end
 
+        o.on "-V", "--version", "Print the version information" do
+          puts "puma version #{Puma::Const::VERSION}"
+          exit 1
+        end
+
         o.on "-w", "--workers COUNT",
                    "Activate cluster mode: How many worker processes to create" do |arg|
           unsupported "-w not supported on JRuby and Windows",
