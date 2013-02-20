@@ -294,11 +294,11 @@ module Puma
           env[SERVER_PORT] = host[colon+1, host.bytesize]
         else
           env[SERVER_NAME] = host
-          env[SERVER_PORT] = default_server_host_port(env)
+          env[SERVER_PORT] = default_server_port(env)
         end
       else
         env[SERVER_NAME] = LOCALHOST
-        env[SERVER_PORT] = default_server_host_port(env)
+        env[SERVER_PORT] = default_server_port(env)
       end
 
       unless env[REQUEST_PATH]
@@ -322,7 +322,7 @@ module Puma
       env[REMOTE_ADDR] = client.peeraddr.last
     end
 
-    def default_server_host_port(env)
+    def default_server_port(env)
       env['HTTP_X_FORWARDED_PROTO'] == 'https' ? PORT_443 : PORT_80
     end
 
