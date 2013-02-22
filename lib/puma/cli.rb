@@ -39,6 +39,9 @@ module Puma
       @restart = false
       @phased_state = :idle
 
+      @io_redirected = false
+
+
       ENV['NEWRELIC_DISPATCHER'] ||= "puma"
 
       setup_options
@@ -314,7 +317,8 @@ module Puma
         state = { "pid" => Process.pid }
 
         cfg = @config.dup
-        cfg.options.delete :on_restart
+        
+        [ :logger, :worker_boot, :on_restart ].each { |o| cfg.options.delete o }
 
         state["config"] = cfg
 
@@ -354,6 +358,7 @@ module Puma
       append = @options[:redirect_append]
 
       if stdout
+        @io_redirected = true
         STDOUT.reopen stdout, (append ? "a" : "w")
         STDOUT.puts "=== puma startup: #{Time.now} ==="
       end
@@ -405,7 +410,7 @@ module Puma
       @binder.parse @options[:binds], self
 
       if @options[:daemon]
-        Process.daemon(true, true)
+        Process.daemon(true, @io_redirected)
       end
 
       write_state
@@ -679,7 +684,7 @@ module Puma
       @check_pipe, @suicide_pipe = Puma::Util.pipe
 
       if @options[:daemon]
-        Process.daemon(true, true)
+        Process.daemon(true, @io_redirected)
       else
         log "Use Ctrl-C to stop"
       end
