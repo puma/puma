@@ -99,6 +99,10 @@ This directs puma to start the control server on localhost port 9293. Additional
 
 You can also provide a configuration file which puma will use:
 
+    $ puma --config /path/to/config
+
+or
+
     $ puma -C /path/to/config
 
 Take the following sample configuration as inspiration:
@@ -247,7 +251,7 @@ Take the following sample configuration as inspiration:
 
 # Start the puma control rack application on “url”. This application can
 # be communicated with to control the main server. Additionally, you can
-# provide an authentication token so all requests to the control server
+# provide an authentication token, so all requests to the control server
 # will need to include that token as a query parameter. This allows for
 # simple authentication.
 #
