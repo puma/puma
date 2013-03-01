@@ -82,7 +82,7 @@
 # ssl_bind '127.0.0.1', '9292', { key: path_to_key, cert: path_to_cert }
 
 # Code to run before doing a restart. This code should
-# close logfiles, database connections, etc.
+# close log files, database connections, etc.
 #
 # This can be called multiple times to add code each time.
 #
