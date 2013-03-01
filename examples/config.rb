@@ -2,6 +2,8 @@
 
 # The directory to operate out of.
 #
+# The default is the current directory.
+#
 # directory '/u/apps/lolcat'
 
 # Use a object or block as the rack application. This allows the
@@ -17,14 +19,20 @@
 
 # Load “path” as a rackup file.
 #
-# rackup '/u/apps/lolcat.ru'
+# The default is “config.ru”.
+#
+# rackup '/u/apps/lolcat/config.ru'
 
 # Set the environment in which the rack's app will run.
+#
+# The default is “development”.
 #
 # environment = :production
 
 # Daemonize the server into the background. Highly suggest that
 # this be combined with “pidfile” and “stdout_redirect”.
+#
+# The default is “false”.
 #
 # daemonize
 # daemonize false
@@ -38,22 +46,30 @@
 #
 # state_path '/u/apps/lolcat/tmp/pids/puma.state'
 
-# Redirect STDOUT and STDERR to files specified.
+# Redirect STDOUT and STDERR to files specified. The 3rd parameter
+# (“append”) specifies whether the output is appended, the default is
+# “false”.
 #
 # stdout_redirect '/u/apps/lolcat/log/stdout', '/u/apps/lolcat/log/stderr'
 # stdout_redirect '/u/apps/lolcat/log/stdout', '/u/apps/lolcat/log/stderr', true
 
 # Disable request logging.
 #
+# The default is “false”.
+#
 # quiet
 
 # Configure “min” to be the minimum number of threads to use to answer
 # requests and “max” the maximum.
 #
+# The default is “0, 16”.
+#
 # threads 0, 16
 
 # Bind the server to “url”. “tcp://”, “unix://” and “ssl://” are the only
 # accepted protocols.
+#
+# The default is “tcp://0.0.0.0:9292”.
 #
 # bind 'tcp://0.0.0.0:9292'
 # bind 'unix:///var/run/puma.sock'
@@ -83,6 +99,8 @@
 # === Cluster mode ===
 
 # How many worker processes to run.
+#
+# The default is “0”.
 #
 # workers 2
 
