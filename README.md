@@ -66,7 +66,7 @@ Puma provides numerous options for controlling the operation of the server. Cons
 Puma utilizes a dynamic thread pool which you can modify. You can set the minimum and maximum number of threads that are available in the pool with the `-t` (or `--threads`) flag:
 
     $ puma -t 8:32
-    
+
 Puma will automatically scale the number of threads based on how much traffic is present. The current default is `0:16`. Feel free to experiment, but be careful not to set the number of maximum threads to a very large number, as you may exhaust resources on the system (or hit resource limits).
 
 ### Binding TCP / Sockets
@@ -95,6 +95,18 @@ Puma comes with a builtin status/control app that can be used query and control 
 
 This directs puma to start the control server on localhost port 9293. Additionally, all requests to the control server will need to include `token=foo` as a query parameter. This allows for simple authentication. Check out https://github.com/puma/puma/blob/master/lib/puma/app/status.rb to see what the app has available.
 
+### Configuration file
+
+You can also provide a configuration file which puma will use:
+
+    $ puma --config /path/to/config
+
+or
+
+    $ puma -C /path/to/config
+
+Take the following [sample configuration](https://github.com/puma/puma/blob/master/examples/config.rb) as inspiration or check out [configuration.rb](https://github.com/puma/puma/blob/master/lib/puma/configuration.rb#L138) to see all available options.
+
 ## Restart
 
 Puma includes the ability to restart itself, allowing for new versions to be easily upgraded to. When available (currently anywhere but JRuby), puma performs a "hot restart". This is the same functionality available in *unicorn* and *nginx* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
@@ -120,7 +132,7 @@ If you start puma with `-S some/path` then you can pass that same path to the `p
 
     $ pumactl -S some/path command
 
-or 
+or
 
     $ pumactl -C url -T token command
 
@@ -128,7 +140,7 @@ will cause the server to perform a restart. `pumactl` is a simple CLI frontend t
 
 Allowed commands: status, restart, halt, stop
 
-## Managing multiple Pumas / init.d script 
+## Managing multiple Pumas / init.d script
 
 If you want an easy way to manage multiple scripts at once check [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for an init.d script.
 
