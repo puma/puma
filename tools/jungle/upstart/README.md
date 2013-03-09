@@ -35,8 +35,6 @@ Everything is logged by upstart, defaulting to `/var/log/upstart`.
 
 Each puma instance is named after its directory, so for an app called `/home/apps/my-app` the log file would be `/var/log/upstart/puma-_home_apps_my-app.log`.
 
-* log: /path/to/app/*config/puma.log*
-
 ## Conventions 
 
 * The script expects:
