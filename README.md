@@ -132,6 +132,25 @@ Allowed commands: status, restart, halt, stop
 
 If you want an easy way to manage multiple scripts at once check [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for an init.d script.
 
+## Capistrano deployment
+
+Puma has included Capistrano [deploy script](https://github.com/plentz/puma/blob/master/lib/puma/capistrano.rb), you just need require that:
+
+config/deploy.rb
+
+```ruby
+require 'puma/capistrano'
+```
+
+and then
+
+```bash
+$ bunde exec cap puma:start
+$ bunde exec cap puma:restart 
+$ bunde exec cap puma:stop
+```
+
+
 ## License
 
 Puma is copyright 2011 Evan Phoenix and contributors. It is licensed under the BSD license. See the include LICENSE file for details.
