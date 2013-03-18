@@ -117,8 +117,10 @@ module Puma
         require 'puma/jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, Gem.ruby, *@restart_argv)
       else
+        redirects = {}
         @binder.listeners.each_with_index do |(l,io),i|
           ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+          redirects[io.to_i] = io.to_i
         end
 
         if cmd = @options[:restart_cmd]
@@ -128,6 +130,8 @@ module Puma
         end
 
         Dir.chdir @restart_dir
+
+        argv += [redirects] unless RUBY_VERSION < '1.9'
         Kernel.exec(*argv)
       end
     end
