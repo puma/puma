@@ -15,7 +15,7 @@ module Puma
         "rack.errors".freeze => events.stderr,
         "rack.multithread".freeze => true,
         "rack.multiprocess".freeze => false,
-        "rack.run_once".freeze => true,
+        "rack.run_once".freeze => false,
         "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
         # Rack blows up if this is an empty string, and Rack::Lint
