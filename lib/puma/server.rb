@@ -588,19 +588,17 @@ module Puma
     end
 
     def fast_write(io, str)
-      n = io.syswrite str
+      n = 0
+      loop do
+        begin
+          n = io.syswrite str
+        rescue Errno::EAGAIN, Errno::EWOULDBLOCK
+          IO.select(nil, [io], nil, 1)
+          retry
+        end
 
-      # Fast path.
-      return if n == str.bytesize
-
-      pos = n
-      left = str.bytesize - n
-
-      until left == 0
-       n = io.syswrite str.byteslice(pos..-1)
-
-       pos += n
-       left -= n
+        return if n == str.bytesize
+        str = str.byteslice(n..-1)
       end
     end
     private :fast_write
