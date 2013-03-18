@@ -127,7 +127,9 @@ module Puma
         end
 
         Dir.chdir @restart_dir
-        Kernel.exec(*argv, redirects)
+
+        argv += [redirects] unless RUBY_VERSION < '1.9'
+        Kernel.exec(*argv)
       end
     end
 
