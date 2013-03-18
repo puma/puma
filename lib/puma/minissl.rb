@@ -1,137 +1,139 @@
-module Puma::MiniSSL
-  class Socket
-    def initialize(socket, engine)
-      @socket = socket
-      @engine = engine
-    end
+module Puma
+  module MiniSSL
+    class Socket
+      def initialize(socket, engine)
+        @socket = socket
+        @engine = engine
+      end
 
-    def to_io
-      @socket
-    end
+      def to_io
+        @socket
+      end
 
-    def readpartial(size)
-      while true
-        output = @engine.read
-        return output if output
+      def readpartial(size)
+        while true
+          output = @engine.read
+          return output if output
 
-        data = @socket.readpartial(size)
-        @engine.inject(data)
-        output = @engine.read
+          data = @socket.readpartial(size)
+          @engine.inject(data)
+          output = @engine.read
 
-        return output if output
+          return output if output
 
-        while neg_data = @engine.extract
-          @socket.write neg_data
+          while neg_data = @engine.extract
+            @socket.write neg_data
+          end
         end
+      end
+
+      def read_nonblock(size)
+        while true
+          output = @engine.read
+          return output if output
+
+          data = @socket.read_nonblock(size)
+
+          @engine.inject(data)
+          output = @engine.read
+
+          return output if output
+
+          while neg_data = @engine.extract
+            @socket.write neg_data
+          end
+        end
+      end
+
+      def write(data)
+        need = data.size
+
+        while true
+          wrote = @engine.write data
+          enc = @engine.extract
+
+          if enc
+            @socket.syswrite enc
+          end
+
+          need -= wrote
+
+          return data.size if need == 0
+
+          data = data[need..-1]
+        end
+      end
+
+      alias_method :syswrite, :write
+
+      def flush
+        @socket.flush
+      end
+
+      def close
+        @socket.close
+      end
+
+      def peeraddr
+        @socket.peeraddr
       end
     end
 
-    def read_nonblock(size)
-      while true
-        output = @engine.read
-        return output if output
+    class Context
+      attr_accessor :verify_mode
 
-        data = @socket.read_nonblock(size)
+      attr_reader :key
+      attr_reader :cert
 
-        @engine.inject(data)
-        output = @engine.read
+      def key=(key)
+        raise ArgumentError, "No such key file '#{key}'" unless File.exist? key
+        @key = key
+      end
 
-        return output if output
-
-        while neg_data = @engine.extract
-          @socket.write neg_data
-        end
+      def cert=(cert)
+        raise ArgumentError, "No such cert file '#{cert}'" unless File.exist? cert
+        @cert = cert
       end
     end
 
-    def write(data)
-      need = data.size
+    VERIFY_NONE = 0
+    VERIFY_PEER = 1
 
-      while true
-        wrote = @engine.write data
-        enc = @engine.extract
-
-        if enc
-          @socket.syswrite enc
-        end
-
-        need -= wrote
-
-        return data.size if need == 0
-
-        data = data[need..-1]
-      end
-    end
-
-    alias_method :syswrite, :write
-
-    def flush
-      @socket.flush
-    end
-
-    def close
-      @socket.close
-    end
-
-    def peeraddr
-      @socket.peeraddr
-    end
-  end
-
-  class Context
-    attr_accessor :verify_mode
-
-    attr_reader :key
-    attr_reader :cert
-
-    def key=(key)
-      raise ArgumentError, "No such key file '#{key}'" unless File.exist? key
-      @key = key
-    end
-
-    def cert=(cert)
-      raise ArgumentError, "No such cert file '#{cert}'" unless File.exist? cert
-      @cert = cert
-    end
-  end
-
-  VERIFY_NONE = 0
-  VERIFY_PEER = 1
-
-  #if defined?(JRUBY_VERSION)
+    #if defined?(JRUBY_VERSION)
     #class Engine
-      #def self.server(key, cert)
-        #new(key, cert)
-      #end
+    #def self.server(key, cert)
+    #new(key, cert)
     #end
-  #end
+    #end
+    #end
 
-  class Server
-    def initialize(socket, ctx)
-      @socket = socket
-      @ctx = ctx
-    end
+    class Server
+      def initialize(socket, ctx)
+        @socket = socket
+        @ctx = ctx
+      end
 
-    def to_io
-      @socket
-    end
+      def to_io
+        @socket
+      end
 
-    def accept
-      io = @socket.accept
-      engine = Engine.server @ctx.key, @ctx.cert
+      def accept
+        io = @socket.accept
+        engine = Engine.server @ctx.key, @ctx.cert
 
-      Socket.new io, engine
-    end
+        Socket.new io, engine
+      end
 
-    def accept_nonblock
-      io = @socket.accept_nonblock
-      engine = Engine.server @ctx.key, @ctx.cert
+      def accept_nonblock
+        io = @socket.accept_nonblock
+        engine = Engine.server @ctx.key, @ctx.cert
 
-      Socket.new io, engine
-    end
+        Socket.new io, engine
+      end
 
-    def close
-      @socket.close
+      def close
+        @socket.close
+      end
     end
   end
 end
