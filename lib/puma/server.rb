@@ -197,6 +197,9 @@ module Puma
         @reactor.clear! if @status == :restart
 
         @reactor.shutdown
+      rescue Exception => e
+        STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
+        STDERR.puts e.backtrace
       ensure
         @check.close
         @notify.close
