@@ -101,6 +101,7 @@ module Puma
     SERVER_PORT = "SERVER_PORT".freeze
     HTTP_HOST = "HTTP_HOST".freeze
     PORT_80 = "80".freeze
+    PORT_443 = "443".freeze
     LOCALHOST = "localhost".freeze
 
     SERVER_PROTOCOL = "SERVER_PROTOCOL".freeze
