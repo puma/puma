@@ -125,4 +125,41 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal giant.bytesize, out.bytesize
   end
+
+  def test_respect_x_forwarded_proto
+    @server.app = proc do |env|
+      [200, {}, [env['SERVER_PORT']]]
+    end
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    req = Net::HTTP::Get.new("/")
+    req['HOST'] = "example.com"
+    req['X_FORWARDED_PROTO'] = "https"
+
+    res = Net::HTTP.start @host, @port do |http|
+      http.request(req)
+    end
+
+    assert_equal "443", res.body
+  end
+
+  def test_default_server_port
+    @server.app = proc do |env|
+      [200, {}, [env['SERVER_PORT']]]
+    end
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    req = Net::HTTP::Get.new("/")
+    req['HOST'] = "example.com"
+
+    res = Net::HTTP.start @host, @port do |http|
+      http.request(req)
+    end
+
+    assert_equal "80", res.body
+  end
 end

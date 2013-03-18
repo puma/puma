@@ -39,6 +39,9 @@ module Puma
       @restart = false
       @phased_state = :idle
 
+      @io_redirected = false
+
+
       ENV['NEWRELIC_DISPATCHER'] ||= "puma"
 
       setup_options
@@ -114,8 +117,10 @@ module Puma
         require 'puma/jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, Gem.ruby, *@restart_argv)
       else
+        redirects = {}
         @binder.listeners.each_with_index do |(l,io),i|
           ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+          redirects[io.to_i] = io.to_i
         end
 
         if cmd = @options[:restart_cmd]
@@ -125,6 +130,8 @@ module Puma
         end
 
         Dir.chdir @restart_dir
+
+        argv += [redirects] unless RUBY_VERSION < '1.9'
         Kernel.exec(*argv)
       end
     end
@@ -314,7 +321,8 @@ module Puma
         state = { "pid" => Process.pid }
 
         cfg = @config.dup
-        cfg.options.delete :on_restart
+        
+        [ :logger, :worker_boot, :on_restart ].each { |o| cfg.options.delete o }
 
         state["config"] = cfg
 
@@ -354,6 +362,7 @@ module Puma
       append = @options[:redirect_append]
 
       if stdout
+        @io_redirected = true
         STDOUT.reopen stdout, (append ? "a" : "w")
         STDOUT.puts "=== puma startup: #{Time.now} ==="
       end
@@ -405,7 +414,7 @@ module Puma
       @binder.parse @options[:binds], self
 
       if @options[:daemon]
-        Process.daemon(true, true)
+        Process.daemon(true, @io_redirected)
       end
 
       write_state
@@ -679,7 +688,7 @@ module Puma
       @check_pipe, @suicide_pipe = Puma::Util.pipe
 
       if @options[:daemon]
-        Process.daemon(true, true)
+        Process.daemon(true, @io_redirected)
       else
         log "Use Ctrl-C to stop"
       end
