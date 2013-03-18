@@ -596,7 +596,7 @@ module Puma
 
     def fast_write(io, str)
       n = 0
-      loop do
+      while true
         begin
           n = io.syswrite str
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
