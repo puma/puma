@@ -50,7 +50,9 @@ module Puma
               # list or we'll accidentally close the socket when
               # it's in use!
               if c.timeout_at
-                @timeouts.delete c
+                @mutex.synchronize do
+                  @timeouts.delete c
+                end
               end
 
               begin
@@ -78,17 +80,19 @@ module Puma
         end
 
         unless @timeouts.empty?
-          now = Time.now
+          @mutex.synchronize do
+            now = Time.now
 
-          while @timeouts.first.timeout_at < now
-            c = @timeouts.shift
-            sockets.delete c
-            c.close
+            while @timeouts.first.timeout_at < now
+              c = @timeouts.shift
+              sockets.delete c
+              c.close
 
-            break if @timeouts.empty?
+              break if @timeouts.empty?
+            end
+
+            calculate_sleep
           end
-
-          calculate_sleep
         end
       end
     ensure
