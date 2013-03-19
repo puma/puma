@@ -44,6 +44,7 @@ lib/puma/java_io_buffer.rb
 lib/puma/jruby_restart.rb
 lib/puma/minissl.rb
 lib/puma/null_io.rb
+lib/puma/rack_default.rb
 lib/puma/rack_patch.rb
 lib/puma/reactor.rb
 lib/puma/server.rb
@@ -51,6 +52,9 @@ lib/puma/thread_pool.rb
 lib/puma/util.rb
 lib/rack/handler/puma.rb
 puma.gemspec
-tools/jungle/README.md
-tools/jungle/puma
-tools/jungle/run-puma
+tools/jungle/init.d/README.md
+tools/jungle/init.d/puma
+tools/jungle/init.d/run-puma
+tools/jungle/upstart/README.md
+tools/jungle/upstart/puma-manager.conf
+tools/jungle/upstart/puma.conf
