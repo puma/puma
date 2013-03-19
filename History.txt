@@ -1,3 +1,28 @@
+=== 2.0.0.b7 / 2013-03-18
+
+* 5 minor enhancements:
+
+  * Add -q option for :start
+  * Add -V, --version
+  * Add default Rack handler helper
+  * Upstart support
+  * Set worker directory from configuration file
+
+* 12 bug fixes:
+
+  * Close the binder in the right place. Fixes #192
+  * Handle early term in workers. Fixes #206
+  * Make sure that the default port is 80 when the request doesn't include HTTP_X_FORWARDED_PROTO.
+  * Prevent Errno::EBADF errors on restart when running ruby 2.0 
+  * Record the proper @master_pid
+  * Respect the header HTTP_X_FORWARDED_PROTO when the host doesn't include a port number.
+  * Retry EAGAIN/EWOULDBLOCK during syswrite
+  * Run exec properly to restart. Fixes #154
+  * Set Rack run_once to false
+  * Syncronize all access to @timeouts. Fixes #208
+  * Write out the state post-daemonize. Fixes #189
+  * Prevent crash when all workers are gone
+
 === 2.0.0.b6 / 2013-02-06
 
 * 2 minor enhancements:
