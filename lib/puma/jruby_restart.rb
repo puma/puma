@@ -8,12 +8,12 @@ module Puma
     attach_function :execlp, [:string, :varargs], :int
     attach_function :chdir, [:string], :int
 
-    def self.chdir_exec(dir, cmd, *argv)
+    def self.chdir_exec(dir, argv)
       chdir(dir)
-      argv.unshift(cmd)
+      cmd = argv.first
       argv = ([:string] * argv.size).zip(argv).flatten
-      argv <<:int
-      argv << 0
+      argv << :string
+      argv << nil
       execlp(cmd, *argv)
       raise SystemCallError.new(FFI.errno)
     end

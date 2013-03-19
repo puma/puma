@@ -115,7 +115,7 @@ module Puma
         end
 
         require 'puma/jruby_restart'
-        JRubyRestart.chdir_exec(@restart_dir, Gem.ruby, *@restart_argv)
+        JRubyRestart.chdir_exec(@restart_dir, @restart_argv)
       else
         redirects = {}
         @binder.listeners.each_with_index do |(l,io),i|
