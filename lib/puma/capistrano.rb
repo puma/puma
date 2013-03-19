@@ -17,12 +17,12 @@ Capistrano::Configuration.instance.load do
 
     desc 'Stop puma'
     task :stop, :roles => lambda { fetch(:puma_role) }, :on_no_matching_servers => :continue do
-      run "cd #{current_path} && #{fetch(:pumactl_cmd)} -S fetch(:puma_state) stop"
+      run "cd #{current_path} && #{fetch(:pumactl_cmd)} -S #{fetch(:puma_state)} stop"
     end
 
     desc 'Restart puma'
     task :restart, :roles => lambda { fetch(:puma_role) }, :on_no_matching_servers => :continue do
-      run "cd #{current_path} && #{fetch(:pumactl_cmd)} -S fetch(:puma_state) restart"
+      run "cd #{current_path} && #{fetch(:pumactl_cmd)} -S #{fetch(:puma_state)} restart"
     end
   end
 end
