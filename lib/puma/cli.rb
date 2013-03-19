@@ -662,10 +662,20 @@ module Puma
       rescue Exception
       end
 
+      master_pid = Process.pid
+
       begin
         Signal.trap "SIGTERM" do
-          stop = true
-          write.write "!"
+          # The worker installs there own SIGTERM when booted.
+          # Until then, this is run by the worker and the worker
+          # should just exit if they get it.
+          if Process.pid != master_pid
+            log "Early termination of worker"
+            exit! 0
+          else
+            stop = true
+            write.write "!"
+          end
         end
       rescue Exception
       end
