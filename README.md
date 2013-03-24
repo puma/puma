@@ -146,7 +146,7 @@ If you want an easy way to manage multiple scripts at once check [tools/jungle](
 
 ## Capistrano deployment
 
-Puma has included Capistrano [deploy script](https://github.com/plentz/puma/blob/master/lib/puma/capistrano.rb), you just need require that:
+Puma has included Capistrano [deploy script](https://github.com/puma/puma/blob/master/lib/puma/capistrano.rb), you just need require that:
 
 config/deploy.rb
 
@@ -157,9 +157,9 @@ require 'puma/capistrano'
 and then
 
 ```bash
-$ bunde exec cap puma:start
-$ bunde exec cap puma:restart 
-$ bunde exec cap puma:stop
+$ bundle exec cap puma:start
+$ bundle exec cap puma:restart 
+$ bundle exec cap puma:stop
 ```
 
 
