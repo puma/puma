@@ -68,6 +68,8 @@ module Puma
             end
             @inherited_fds[url] = sock
           end
+          ENV.delete k
+          ENV.delete 'LISTEN_PID'
         end
       end
 
