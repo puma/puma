@@ -179,8 +179,7 @@ module Puma
         :binds => [],
         :workers => 0,
         :daemon => false,
-        :worker_boot => [],
-        :environment => "development"
+        :worker_boot => []
       }
 
       @parser = OptionParser.new do |o|
@@ -301,9 +300,12 @@ module Puma
       # Try the user option first, then the environment variable,
       # finally default to development
 
-      ENV['RACK_ENV'] = @options[:environment] ||
-                        ENV['RACK_ENV'] ||
-                        'development'
+      env = @options[:environment] ||
+                   ENV['RACK_ENV'] ||
+                     'development'
+
+      @options[:environment] = env
+      ENV['RACK_ENV'] = env
     end
 
     def delete_pidfile
