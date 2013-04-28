@@ -51,7 +51,7 @@ Then start your server with the `rails` command:
 
 You can pass it as an option to `rackup`:
 
-    $ rackup -s puma
+    $ rackup -s Puma
 
 Alternatively, you can modify your `config.ru` to choose Puma by default, by adding the following as the first line:
 
