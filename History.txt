@@ -1,3 +1,20 @@
+=== 2.0.0 / 2013-04-29
+
+RailsConf 2013 edition!
+
+* 2 doc changes:
+  * Start with rackup -s Puma, NOT rackup -s puma.
+  * Minor doc fixes in the README.md, Capistrano section
+
+* 2 bug fixes:
+  * Fix reading RACK_ENV properly. Fixes #234
+  * Make cap recipe handle tmp/sockets; fixes #228
+
+* 3 minor changes:
+  * Fix capistrano recipe
+  * Fix stdout/stderr logs to sync outputs
+  * allow binding to IPv6 addresses
+
 === 2.0.0.b7 / 2013-03-18
 
 * 5 minor enhancements:
