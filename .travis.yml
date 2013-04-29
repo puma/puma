@@ -2,11 +2,14 @@ language: ruby
 script: "TESTOPTS=-v rake test:all"
 jdk:
   - oraclejdk7
-
 rvm:
   - 1.8.7
   - 1.9.3
+  - 2.0.0
   - rbx-18mode
   - rbx-19mode
   - jruby-18mode
   - jruby-19mode
+matrix:
+  allow_failures:
+    - rvm: 2.0.0
