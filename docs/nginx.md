@@ -53,7 +53,7 @@ server {
     # rewite the url to have explicit .html on the end
     # and then send it on its way to the next config rule.
     # if there is no file on the fs then it sets all the
-    # necessary headers and proxies to our upstream mongrels
+    # necessary headers and proxies to our upstream pumas
     if (-f $request_filename.html) {
       rewrite (.*) $1.html break;
     }
@@ -66,12 +66,7 @@ server {
 
   # Now this supposedly should work as it gets the filenames with querystrings that Rails provides.
   # BUT there's a chance it could break the ajax calls.
-  location ~* \.(ico|css|gif|jpe?g|png)(\?[0-9]+)?$ {
-     expires max;
-     break;
-  }
-
-  location ~ ^/javascripts/.*\.js(\?[0-9]+)?$ {
+  location ~* \.(ico|css|gif|jpe?g|png|js)(\?[0-9]+)?$ {
      expires max;
      break;
   }
