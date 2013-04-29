@@ -366,11 +366,13 @@ module Puma
       if stdout
         @io_redirected = true
         STDOUT.reopen stdout, (append ? "a" : "w")
+        STDOUT.sync = true
         STDOUT.puts "=== puma startup: #{Time.now} ==="
       end
 
       if stderr
         STDERR.reopen stderr, (append ? "a" : "w")
+        STDERR.sync = true
         STDERR.puts "=== puma startup: #{Time.now} ==="
       end
     end
