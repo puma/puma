@@ -269,9 +269,6 @@ module Puma
 
         o.on "-w", "--workers COUNT",
                    "Activate cluster mode: How many worker processes to create" do |arg|
-          unsupported "-w not supported on JRuby and Windows",
-                      jruby? || windows?
-
           @options[:workers] = arg.to_i
         end
 
@@ -348,6 +345,11 @@ module Puma
       Puma.cli_config = @config
 
       @config.load
+
+      if @options[:workers]
+        unsupported "worker mode not supported on JRuby and Windows",
+                    jruby? || windows?
+      end
     end
 
     def graceful_stop(server)
