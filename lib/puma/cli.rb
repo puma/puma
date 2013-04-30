@@ -346,7 +346,7 @@ module Puma
 
       @config.load
 
-      if @options[:workers]
+      if @options[:workers] > 0
         unsupported "worker mode not supported on JRuby and Windows",
                     jruby? || windows?
       end
