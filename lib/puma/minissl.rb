@@ -46,7 +46,7 @@ module Puma
       end
 
       def write(data)
-        need = data.size
+        need = data.bytesize
 
         while true
           wrote = @engine.write data
@@ -58,7 +58,7 @@ module Puma
 
           need -= wrote
 
-          return data.size if need == 0
+          return data.bytesize if need == 0
 
           data = data[need..-1]
         end
