@@ -75,14 +75,19 @@ Puma 2 offers clustered mode, allowing you to use forked processes to handle mul
 
     $ puma -t 8:32 -w 3
     
-On a ruby implementation that offers native threads, you should tune this number to match the number of cores available. Additionally, you can specify a block in your configuration that will be run on boot of each worker:
+On a ruby implementation that offers native threads, you should tune this number to match the number of cores available. 
+Note that threads are still used in clustered mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will be 32 threads.
+
+Additionally, you can specify a block in your configuration that will be run on boot of each worker:
 
     # config/puma.rb
     on_worker_boot do
       # configuration here
     end
 
-be sure to specify the location of your configuration file:
+This code can be used to setup the process before booting the application. This can be called multiple times to add hooks.
+
+Be sure to specify the location of your configuration file:
 
     $ puma -t 8:32 -w 3 -C config/puma.rb
 
