@@ -117,7 +117,7 @@ module Puma
         require 'puma/jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, @restart_argv)
       else
-        redirects = {}
+        redirects = {:close_others => true}
         @binder.listeners.each_with_index do |(l,io),i|
           ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
           redirects[io.to_i] = io.to_i
