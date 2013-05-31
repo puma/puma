@@ -53,6 +53,24 @@ module Puma
           @inherited_fds[url] = fd.to_i
           remove << k
         end
+        if k =~ /LISTEN_FDS/ && ENV['LISTEN_PID'].to_i == $$
+          v.to_i.times do |num|
+            fd = num + 3
+            sock = TCPServer.for_fd(fd)
+            begin
+              url = "unix://" + Socket.unpack_sockaddr_un(sock.getsockname)
+            rescue ArgumentError
+              port, addr = Socket.unpack_sockaddr_in(sock.getsockname)
+              if addr =~ /\:/
+                addr = "[#{addr}]"
+              end
+              url = "tcp://#{addr}:#{port}"
+            end
+            @inherited_fds[url] = sock
+          end
+          ENV.delete k
+          ENV.delete 'LISTEN_PID'
+        end
       end
 
       remove.each do |k|
@@ -141,7 +159,12 @@ module Puma
         logger.log "* Closing unused inherited connection: #{str}"
 
         begin
-          IO.for_fd(fd).close
+          if fd.kind_of? TCPServer
+            fd.close
+          else
+            IO.for_fd(fd).close
+          end
+
         rescue SystemCallError
         end
 
@@ -244,7 +267,11 @@ module Puma
     def inherit_unix_listener(path, fd)
       @unix_paths << path
 
-      s = UNIXServer.for_fd fd
+      if fd.kind_of? TCPServer
+        s = fd
+      else
+        s = UNIXServer.for_fd fd
+      end
       @ios << s
 
       s
