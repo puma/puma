@@ -165,4 +165,4 @@ $ bundle exec cap puma:stop
 
 ## License
 
-Puma is copyright 2011 Evan Phoenix and contributors. It is licensed under the BSD license. See the include LICENSE file for details.
+Puma is copyright 2013 Evan Phoenix and contributors. It is licensed under the BSD license. See the include LICENSE file for details.
