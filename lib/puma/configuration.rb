@@ -67,6 +67,17 @@ module Puma
       end
     end
 
+    # Indicate if there is a properly configured app
+    #
+    def app_configured?
+      return true if @options[:app]
+      if path = @options[:rackup]
+        return File.exists?(path)
+      end
+
+      false
+    end
+
     # Load the specified rackup file, pull an options from
     # the rackup file, and set @app.
     #

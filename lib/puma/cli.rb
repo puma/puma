@@ -419,6 +419,11 @@ module Puma
 
       @binder.parse @options[:binds], self
 
+      unless @config.app_configured?
+        error "No application configured, nothing to run"
+        exit 1
+      end
+
       if @options[:daemon]
         Process.daemon(true, @io_redirected)
       end
@@ -650,6 +655,11 @@ module Puma
       log "* Environment: #{ENV['RACK_ENV']}"
 
       @binder.parse @options[:binds], self
+
+      unless @config.app_configured?
+        error "No application configured, nothing to run"
+        exit 1
+      end
 
       read, write = Puma::Util.pipe
 
