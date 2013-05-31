@@ -579,19 +579,31 @@ module Puma
     # off the request queue before finally exiting.
     #
     def stop(sync=false)
-      @notify << STOP_COMMAND
+      begin
+        @notify << STOP_COMMAND
+      rescue IOError
+        # The server, in another thread, is shutting down
+      end
 
       @thread.join if @thread && sync
     end
 
     def halt(sync=false)
-      @notify << HALT_COMMAND
+      begin
+        @notify << HALT_COMMAND
+      rescue IOError
+        # The server, in another thread, is shutting down
+      end
 
       @thread.join if @thread && sync
     end
 
     def begin_restart
-      @notify << RESTART_COMMAND
+      begin
+        @notify << RESTART_COMMAND
+      rescue IOError
+        # The server, in another thread, is shutting down
+      end
     end
 
     def fast_write(io, str)
