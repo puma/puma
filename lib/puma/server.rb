@@ -259,7 +259,7 @@ module Puma
         end
 
       # The client disconnected while we were reading data
-      rescue IOError, SystemCallError => e
+      rescue ConnectionError
         # Swallow them. The ensure tries to close +client+ down
 
       # The client doesn't know HTTP well
