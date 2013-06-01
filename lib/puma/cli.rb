@@ -552,7 +552,12 @@ module Puma
         server.stop
       end
 
-      @worker_write << "b#{Process.pid}\n"
+      begin
+        @worker_write << "b#{Process.pid}\n"
+      rescue SystemCallError, IOError
+        STDERR.puts "Master seems to have exitted, exitting."
+        return
+      end
 
       server.run.join
 
@@ -648,6 +653,13 @@ module Puma
       end
     end
 
+    def wakeup!
+      begin
+        @wakeup.write "!" unless @wakeup.closed?
+      rescue SystemCallError, IOError
+      end
+    end
+
     def run_cluster
       log "Puma #{Puma::Const::PUMA_VERSION} starting in cluster mode..."
       log "* Process workers: #{@options[:workers]}"
@@ -661,10 +673,10 @@ module Puma
         exit 1
       end
 
-      read, write = Puma::Util.pipe
+      read, @wakeup = Puma::Util.pipe
 
       Signal.trap "SIGCHLD" do
-        write.write "!"
+        wakeup!
       end
 
       stop = false
@@ -673,7 +685,7 @@ module Puma
         Signal.trap "SIGUSR2" do
           @restart = true
           stop = true
-          write.write "!"
+          wakeup!
         end
       rescue Exception
       end
@@ -690,7 +702,7 @@ module Puma
             exit! 0
           else
             stop = true
-            write.write "!"
+            wakeup!
           end
         end
       rescue Exception
@@ -701,7 +713,7 @@ module Puma
       begin
         Signal.trap "SIGUSR1" do
           phased_restart = true
-          write.write "!"
+          wakeup!
         end
       rescue Exception
       end
@@ -725,12 +737,12 @@ module Puma
 
       write_state
 
-      @master_read, @worker_write = read, write
+      @master_read, @worker_write = read, @wakeup
       spawn_workers
 
       Signal.trap "SIGINT" do
         stop = true
-        write.write "!"
+        wakeup!
       end
 
       begin
@@ -771,7 +783,7 @@ module Puma
         @check_pipe.close
         @suicide_pipe.close
         read.close
-        write.close
+        @wakeup.close
       end
 
       if @restart
