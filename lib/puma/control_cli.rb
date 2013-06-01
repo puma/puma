@@ -138,7 +138,15 @@ module Puma
 
         @server << "GET #{url} HTTP/1.0\r\n\r\n"
 
-        response = @server.read.split("\r\n")
+        unless data = @server.read
+          raise "Server closed connection before responding"
+        else
+
+        response = data.split("\r\n")
+
+        if response.empty?
+          raise "Server sent empty response"
+        end
 
         (@http,@code,@message) = response.first.split(" ")
 
