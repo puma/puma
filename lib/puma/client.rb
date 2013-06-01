@@ -16,6 +16,9 @@ if Puma::IS_JRUBY
 end
 
 module Puma
+
+  class ConnectionError < RuntimeError; end
+
   class Client
     include Puma::Const
 
@@ -139,6 +142,8 @@ module Puma
         data = @io.read_nonblock(CHUNK_SIZE)
       rescue Errno::EAGAIN
         return false
+      rescue SystemCallError, IOError
+        raise ConnectionError, "Connection error detected during read"
       end
 
       if @buffer
@@ -223,6 +228,8 @@ module Puma
         chunk = @io.read_nonblock(want)
       rescue Errno::EAGAIN
         return false
+      rescue SystemCallError, IOError
+        raise ConnectionError, "Connection error detected during read"
       end
 
       # No chunk means a closed socket
