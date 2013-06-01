@@ -140,7 +140,7 @@ module Puma
 
         unless data = @server.read
           raise "Server closed connection before responding"
-        else
+        end
 
         response = data.split("\r\n")
 
