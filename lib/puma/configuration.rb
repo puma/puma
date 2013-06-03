@@ -70,12 +70,11 @@ module Puma
     # Indicate if there is a properly configured app
     #
     def app_configured?
-      return true if @options[:app]
-      if path = @options[:rackup]
-        return File.exists?(path)
-      end
+      @options[:app] || File.exists?(rackup)
+    end
 
-      false
+    def rackup
+      @options[:rackup] || DefaultRackup
     end
 
     # Load the specified rackup file, pull an options from
@@ -85,13 +84,11 @@ module Puma
       app = @options[:app]
 
       unless app
-        path = @options[:rackup] || DefaultRackup
-
-        unless File.exists?(path)
-          raise "Missing rackup file '#{path}'"
+        unless File.exists?(rackup)
+          raise "Missing rackup file '#{rackup}'"
         end
 
-        app, options = Rack::Builder.parse_file path
+        app, options = Rack::Builder.parse_file rackup
         @options.merge! options
 
         options.each do |key,val|
