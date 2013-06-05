@@ -694,7 +694,7 @@ module Puma
 
       begin
         Signal.trap "SIGTERM" do
-          # The worker installs there own SIGTERM when booted.
+          # The worker installs their own SIGTERM when booted.
           # Until then, this is run by the worker and the worker
           # should just exit if they get it.
           if Process.pid != master_pid
