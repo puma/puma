@@ -85,7 +85,10 @@ Additionally, you can specify a block in your configuration that will be run on 
       # configuration here
     end
 
-This code can be used to setup the process before booting the application. This can be called multiple times to add hooks.
+This code can be used to setup the process before booting the application, allowing 
+you to do some puma-specific things that you don't want to embed in your application. 
+For instance, you could fire a log notification that a worker booted or send something to statsd. 
+This can be called multiple times to add hooks.
 
 Be sure to specify the location of your configuration file:
 
