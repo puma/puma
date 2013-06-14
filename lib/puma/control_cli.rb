@@ -157,6 +157,7 @@ module Puma
         end
 
         message "Command #{@options[:command]} sent success"
+        message response.last if @options[:command] == "stats"
       end
       
       @server.close
