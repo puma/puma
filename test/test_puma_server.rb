@@ -162,4 +162,46 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal "80", res.body
   end
+
+  def test_HEAD_has_no_body
+    @server.app = proc { |env| [200, {"Foo" => "Bar"}, ["hello"]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 200 OK\r\nFoo: Bar\r\n\r\n", data
+  end
+
+  def test_GET_with_empty_body_has_sane_chunking
+    @server.app = proc { |env| [200, {}, [""]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 200 OK\r\n\r\n", data
+  end
+
+  def test_GET_with_no_body_has_sane_chunking
+    @server.app = proc { |env| [200, {}, [""]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 200 OK\r\n\r\n", data
+  end
 end

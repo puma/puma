@@ -354,6 +354,8 @@ module Puma
 
       body = req.body
 
+      head = env[REQUEST_METHOD] == HEAD
+
       env[RACK_INPUT] = body
       env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
 
@@ -384,7 +386,7 @@ module Puma
         end
 
         content_length = nil
-        no_body = false
+        no_body = head
 
         if res_body.kind_of? Array and res_body.size == 1
           content_length = res_body[0].bytesize
@@ -410,7 +412,7 @@ module Puma
             lines.append "HTTP/1.1 ", status.to_s, " ",
                          HTTP_STATUS_CODES[status], line_ending
 
-            no_body = status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
+            no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
         else
           allow_chunked = false
@@ -425,7 +427,7 @@ module Puma
             lines.append "HTTP/1.0 ", status.to_s, " ",
                          HTTP_STATUS_CODES[status], line_ending
 
-            no_body = status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
+            no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
         end
 
