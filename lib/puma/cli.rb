@@ -417,6 +417,8 @@ module Puma
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
 
+      app = @config.app
+
       @binder.parse @options[:binds], self
 
       unless @config.app_configured?
@@ -430,7 +432,7 @@ module Puma
 
       write_state
 
-      server = Puma::Server.new @config.app, @events
+      server = Puma::Server.new app, @events
       server.binder = @binder
       server.min_threads = min_t
       server.max_threads = max_t
