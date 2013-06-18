@@ -82,7 +82,7 @@ class TestAppStatus < Test::Unit::TestCase
   end
 
   def test_alternate_location
-    status, _ , app = lint('__alternatE_location_/stats')
+    status, _ , _ = lint('__alternatE_location_/stats')
     assert_equal 200, status
   end
 end
