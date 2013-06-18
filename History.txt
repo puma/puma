@@ -1,3 +1,32 @@
+=== 2.1.0 / 2013-06-18
+
+* 3 minor features:
+  * Allow listening socket to be configured via Capistrano variable
+  * Output results from 'stat's command when using pumactl
+  * Support systemd socket activation
+
+* 15 bug fixes:
+  * Deal with pipes closing while stopping. Fixes #270
+  * Error out early if there is no app configured
+  * Handle ConnectionError rather than the lowlevel exceptions
+  * tune with `-C` config file and `on_worker_boot`
+  * use `-w`
+  * Fixed some typos in upstart scripts
+  * Make sure to use bytesize instead of size (MiniSSL write)
+  * Fix an error in puma-manager.conf
+  * fix: stop leaking sockets on restart (affects ruby 1.9.3 or before)
+  * Ignore errors on the cross-thread pipe. Fixes #246
+  * Ignore errors while uncorking the socket (it might already be closed)
+  * Ignore the body on a HEAD request. Fixes #278
+  * Handle all engine data when possible. Fixes #251.
+  * Handle all read exceptions properly. Fixes #252
+  * Handle errors from the server better
+
+* 3 doc changes:
+  * Add note about on_worker_boot hook
+  * Add some documentation for Clustered mode
+  * Added quotes to /etc/puma.conf
+
 === 2.0.1 / 2013-04-30
 
 * 1 bug fix:
