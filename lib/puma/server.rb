@@ -94,7 +94,10 @@ module Puma
       end
 
       def uncork_socket(socket)
-        socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
+        begin
+          socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
+        rescue IOError
+        end
       end
     else
       def cork_socket(socket)
