@@ -52,8 +52,9 @@ module Puma
           wrote = @engine.write data
           enc = @engine.extract
 
-          if enc
-            @socket.syswrite enc
+          while enc
+            @socket.write enc
+            enc = @engine.extract
           end
 
           need -= wrote
