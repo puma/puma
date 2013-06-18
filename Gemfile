@@ -5,6 +5,6 @@ gem "rdoc"
 gem "rake-compiler"
 gem "rack"
 
-gem 'minitest'
+gem 'minitest', '~> 4.0'
 
 gem "jruby-openssl", :platform => "jruby"
