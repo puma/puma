@@ -1,5 +1,5 @@
 language: ruby
-script: "TESTOPTS=-v rake test:all"
+script: "TESTOPTS=-v rake test"
 jdk:
   - oraclejdk7
 rvm:
