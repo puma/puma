@@ -28,7 +28,11 @@ class TestIntegration < Test::Unit::TestCase
 
     if @server
       Process.kill "INT", @server.pid
-      Process.wait @server.pid
+      begin
+        Process.wait @server.pid
+      rescue Errno::ECHILD
+      end
+
       @server.close
     end
 

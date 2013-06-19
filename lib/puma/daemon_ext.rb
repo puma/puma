@@ -9,7 +9,7 @@ module Process
     Dir.chdir "/" unless nochdir     # Release old working directory.
 
     if !noclose
-      null = File.open "/dev/null"
+      null = File.open "/dev/null", "w+"
       STDIN.reopen null
       STDOUT.reopen null
       STDERR.reopen null

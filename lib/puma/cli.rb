@@ -39,9 +39,6 @@ module Puma
       @restart = false
       @phased_state = :idle
 
-      @io_redirected = false
-
-
       ENV['NEWRELIC_DISPATCHER'] ||= "puma"
 
       setup_options
@@ -366,7 +363,6 @@ module Puma
       append = @options[:redirect_append]
 
       if stdout
-        @io_redirected = true
         STDOUT.reopen stdout, (append ? "a" : "w")
         STDOUT.sync = true
         STDOUT.puts "=== puma startup: #{Time.now} ==="
@@ -409,31 +405,72 @@ module Puma
       end
     end
 
-    def run_single
+    def daemon?
+      @options[:daemon]
+    end
+
+    def jruby_daemon?
+      daemon? and jruby?
+    end
+
+    def output_header
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
       log "Puma #{Puma::Const::PUMA_VERSION} starting..."
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
+    end
 
-      @binder.parse @options[:binds], self
+    def run_single
+      already_daemon = false
+
+      if jruby_daemon?
+        require 'puma/jruby_restart'
+
+        if JRubyRestart.daemon?
+          # Bind before redirecting IO so binding errors show up on stdout/stderr
+          @binder.parse @options[:binds], self
+        end
+
+        already_daemon = JRubyRestart.daemon_init
+      end
+
+      output_header
+
+      if !jruby_daemon?
+        @binder.parse @options[:binds], self
+      end
 
       unless @config.app_configured?
         error "No application configured, nothing to run"
         exit 1
       end
 
-      if @options[:daemon]
-        Process.daemon(true, @io_redirected)
+      if jruby_daemon?
+        unless already_daemon
+          require 'puma/jruby_restart'
+
+          pid = nil
+
+          Signal.trap "SIGUSR2" do
+            log "* Started new process #{pid} as daemon..."
+            exit
+          end
+
+          pid = JRubyRestart.daemon_start(@restart_dir, @restart_argv)
+          sleep
+        end
+      elsif daemon?
+        Process.daemon(true)
       end
 
       write_state
 
       server = Puma::Server.new @config.app, @events
       server.binder = @binder
-      server.min_threads = min_t
-      server.max_threads = max_t
+      server.min_threads = @options[:min_threads]
+      server.max_threads = @options[:max_threads]
 
       @server = server
 
@@ -726,7 +763,7 @@ module Puma
       @check_pipe, @suicide_pipe = Puma::Util.pipe
 
       if @options[:daemon]
-        Process.daemon(true, @io_redirected)
+        Process.daemon(true)
       else
         log "Use Ctrl-C to stop"
       end
