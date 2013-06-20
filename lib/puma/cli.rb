@@ -422,6 +422,38 @@ module Puma
       log "* Environment: #{ENV['RACK_ENV']}"
     end
 
+    def start_control(server, str)
+      require 'puma/app/status'
+
+      uri = URI.parse str
+
+      app = Puma::App::Status.new server, self
+
+      if token = @options[:control_auth_token]
+        app.auth_token = token unless token.empty? or token == :none
+      end
+
+      status = Puma::Server.new app, @events
+      status.min_threads = 0
+      status.max_threads = 1
+
+      case uri.scheme
+      when "tcp"
+        log "* Starting status server on #{str}"
+        status.add_tcp_listener uri.host, uri.port
+      when "unix"
+        log "* Starting status server on #{str}"
+        path = "#{uri.host}#{uri.path}"
+
+        status.add_unix_listener path
+      else
+        error "Invalid status URI: #{str}"
+      end
+
+      status.run
+      @status = status
+    end
+
     def run_single
       already_daemon = false
 
@@ -447,6 +479,14 @@ module Puma
         exit 1
       end
 
+      # Load the app before we daemonize.
+      begin
+        app = @config.app
+      rescue Exception => e
+        log "! Unable to load application"
+        raise e
+      end
+
       if jruby_daemon?
         unless already_daemon
           require 'puma/jruby_restart'
@@ -467,7 +507,7 @@ module Puma
 
       write_state
 
-      server = Puma::Server.new @config.app, @events
+      server = Puma::Server.new app, @events
       server.binder = @binder
       server.min_threads = @options[:min_threads]
       server.max_threads = @options[:max_threads]
@@ -475,35 +515,7 @@ module Puma
       @server = server
 
       if str = @options[:control_url]
-        require 'puma/app/status'
-
-        uri = URI.parse str
-
-        app = Puma::App::Status.new server, self
-
-        if token = @options[:control_auth_token]
-          app.auth_token = token unless token.empty? or token == :none
-        end
-
-        status = Puma::Server.new app, @events
-        status.min_threads = 0
-        status.max_threads = 1
-
-        case uri.scheme
-        when "tcp"
-          log "* Starting status server on #{str}"
-          status.add_tcp_listener uri.host, uri.port
-        when "unix"
-          log "* Starting status server on #{str}"
-          path = "#{uri.host}#{uri.path}"
-
-          status.add_unix_listener path
-        else
-          error "Invalid status URI: #{str}"
-        end
-
-        status.run
-        @status = status
+        start_control server, str
       end
 
       begin
