@@ -1,3 +1,10 @@
+=== 2.1.1 / 2013-06-20
+
+* 2 minor bug fixes:
+
+  * Fix daemonization on jruby
+  * Load the application before daemonizing. Fixes #285
+
 === 2.1.0 / 2013-06-18
 
 * 3 minor features:
