@@ -140,7 +140,7 @@ Take the following [sample configuration](https://github.com/puma/puma/blob/mast
 
 Puma includes the ability to restart itself, allowing for new versions to be easily upgraded to. When available (MRI, Rubinius, JRuby), puma performs a "hot restart". This is the same functionality available in *unicorn* and *nginx* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
 
-To perform a restart, there are 2 builtin mechanism:
+To perform a restart, there are 2 builtin mechanisms:
 
   * Send the puma process the `SIGUSR2` signal
   * Use the status server and issue `/restart`
