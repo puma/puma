@@ -458,26 +458,7 @@ module Puma
       @status = status
     end
 
-    def run_single
-      already_daemon = false
-
-      if jruby_daemon?
-        require 'puma/jruby_restart'
-
-        if JRubyRestart.daemon?
-          # Bind before redirecting IO so binding errors show up on stdout/stderr
-          @binder.parse @options[:binds], self
-        end
-
-        already_daemon = JRubyRestart.daemon_init
-      end
-
-      output_header
-
-      if !jruby_daemon?
-        @binder.parse @options[:binds], self
-      end
-
+    def load_and_bind
       unless @config.app_configured?
         error "No application configured, nothing to run"
         exit 1
@@ -485,11 +466,30 @@ module Puma
 
       # Load the app before we daemonize.
       begin
-        app = @config.app
+        @app = @config.app
       rescue Exception => e
         log "! Unable to load application"
         raise e
       end
+
+      @binder.parse @options[:binds], self
+    end
+
+    def run_single
+      already_daemon = false
+
+      if jruby_daemon?
+        require 'puma/jruby_restart'
+
+        if JRubyRestart.daemon?
+          # load and bind before redirecting IO so errors show up on stdout/stderr
+          load_and_bind
+        end
+
+        already_daemon = JRubyRestart.daemon_init
+      end
+
+      output_header
 
       if jruby_daemon?
         unless already_daemon
@@ -505,13 +505,14 @@ module Puma
           pid = JRubyRestart.daemon_start(@restart_dir, @restart_argv)
           sleep
         end
-      elsif daemon?
-        Process.daemon(true)
+      else
+        load_and_bind
+        Process.daemon(true) if daemon?
       end
 
       write_state
 
-      server = Puma::Server.new app, @events
+      server = Puma::Server.new @app, @events
       server.binder = @binder
       server.min_threads = @options[:min_threads]
       server.max_threads = @options[:max_threads]
