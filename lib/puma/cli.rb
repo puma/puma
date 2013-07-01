@@ -302,6 +302,10 @@ module Puma
       ENV['RACK_ENV'] = env
     end
 
+    def development?
+      @options[:environment] == "development"
+    end
+
     def delete_pidfile
       if path = @options[:pidfile]
         File.unlink path
@@ -512,6 +516,10 @@ module Puma
       server.min_threads = @options[:min_threads]
       server.max_threads = @options[:max_threads]
 
+      unless development?
+        server.leak_stack_on_error = false
+      end
+
       @server = server
 
       if str = @options[:control_url]
@@ -596,6 +604,10 @@ module Puma
       server.min_threads = min_t
       server.max_threads = max_t
       server.inherit_binder @binder
+
+      unless development?
+        server.leak_stack_on_error = false
+      end
 
       Signal.trap "SIGTERM" do
         server.stop

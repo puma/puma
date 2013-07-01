@@ -204,4 +204,21 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal "HTTP/1.0 200 OK\r\n\r\n", data
   end
+
+  def test_doesnt_print_backtrace_in_production
+    @events = Puma::Events.strings
+    @server = Puma::Server.new @app, @events
+
+    @server.app = proc { |e| raise "don't leak me bro" }
+    @server.leak_stack_on_error = false
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    assert_not_match(/don't leak me bro/, data)
+  end
 end

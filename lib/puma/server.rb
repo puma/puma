@@ -68,10 +68,12 @@ module Puma
 
       @first_data_timeout = FIRST_DATA_TIMEOUT
 
+      @leak_stack_on_error = true
+
       ENV['RACK_ENV'] ||= "development"
     end
 
-    attr_accessor :binder
+    attr_accessor :binder, :leak_stack_on_error
 
     forward :add_tcp_listener,  :@binder
     forward :add_ssl_listener,  :@binder
@@ -379,7 +381,7 @@ module Puma
 
             return :async
           end
-        rescue => e
+        rescue StandardError => e
           @events.unknown_error self, e, "Rack app"
 
           status, headers, res_body = lowlevel_error(e)
@@ -571,7 +573,11 @@ module Puma
     # A fallback rack response if +@app+ raises as exception.
     #
     def lowlevel_error(e)
-      [500, {}, ["Puma caught this error: #{e}\n#{e.backtrace.join("\n")}"]]
+      if @leak_stack_on_error
+        [500, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
+      else
+        [500, {}, ["A really lowlevel plumbing error occured. Please contact your local Maytag(tm) repair man.\n"]]
+      end
     end
 
     # Wait for all outstanding requests to finish.
