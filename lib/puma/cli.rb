@@ -39,6 +39,8 @@ module Puma
       @restart = false
       @phased_state = :idle
 
+      @app = nil
+
       ENV['NEWRELIC_DISPATCHER'] ||= "puma"
 
       setup_options
@@ -601,7 +603,11 @@ module Puma
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
-      server = Puma::Server.new @config.app, @events
+      # If preload is used, then @app is set to the preloaded
+      # application. Otherwise load it now via the config.
+      app = @app || @config.app
+
+      server = Puma::Server.new app, @events
       server.min_threads = min_t
       server.max_threads = max_t
       server.inherit_binder @binder
@@ -728,11 +734,18 @@ module Puma
       log "* Min threads: #{@options[:min_threads]}, max threads: #{@options[:max_threads]}"
       log "* Environment: #{ENV['RACK_ENV']}"
 
-      @binder.parse @options[:binds], self
+      if @options[:preload_app]
+        log "* Preloading application"
+        load_and_bind
+      else
+        log "* Phased restart available"
 
-      unless @config.app_configured?
-        error "No application configured, nothing to run"
-        exit 1
+        unless @config.app_configured?
+          error "No application configured, nothing to run"
+          exit 1
+        end
+
+        @binder.parse @options[:binds], self
       end
 
       read, @wakeup = Puma::Util.pipe
@@ -773,9 +786,16 @@ module Puma
       phased_restart = false
 
       begin
-        Signal.trap "SIGUSR1" do
-          phased_restart = true
-          wakeup!
+        if @options[:preload_app]
+          Signal.trap "SIGUSR1" do
+            log "App preloaded, phased restart unavailable"
+          end
+        else
+          Signal.trap "SIGUSR1" do
+            phased_restart = true
+            @wakeup << "!"
+            wakeup!
+          end
         end
       rescue Exception
       end

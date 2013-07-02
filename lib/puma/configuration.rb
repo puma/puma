@@ -287,6 +287,14 @@ module Puma
         @options[:directory] = dir.to_s
         @options[:worker_directory] = dir.to_s
       end
+
+      # *Cluster mode only* Preload the application before starting
+      # the workers and setting up the listen ports. This conflicts
+      # with using the phased restart feature, you can't use both.
+      #
+      def preload_app!(answer=true)
+        @options[:preload_app] = answer
+      end
     end
   end
 end
