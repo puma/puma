@@ -1,3 +1,13 @@
+=== 2.2.1 / 2013-07-02
+
+* 1 minor feature:
+
+  * Introduce preload flag
+
+* 1 bug fix:
+
+  * Pass custom restart command in JRuby
+
 === 2.2.0 / 2013-07-01
 
 * 1 major feature:
