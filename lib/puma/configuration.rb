@@ -212,7 +212,7 @@ module Puma
       # to puma, as those are the same as the original process.
       #
       def restart_command(cmd)
-        @options[:request_cmd] = cmd
+        @options[:restart_cmd] = cmd
       end
 
       # Store the pid of the server in the file at +path+.
