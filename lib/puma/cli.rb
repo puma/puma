@@ -236,6 +236,10 @@ module Puma
           @options[:pidfile] = arg
         end
 
+        o.on "--preload", "Preload the app. Cluster mode only" do
+          @options[:preload_app] = true
+        end
+
         o.on "-q", "--quiet", "Quiet down the output" do
           @options[:quiet] = true
         end
@@ -292,7 +296,7 @@ module Puma
       end
     end
 
-    def set_rack_environment 
+    def set_rack_environment
       # Try the user option first, then the environment variable,
       # finally default to development
 
@@ -323,7 +327,7 @@ module Puma
         state = { "pid" => Process.pid }
 
         cfg = @config.dup
-        
+
         [ :logger, :worker_boot, :on_restart ].each { |o| cfg.options.delete o }
 
         state["config"] = cfg
