@@ -96,6 +96,14 @@ module Puma
       end
     end
 
+    def restart_args
+      if cmd = @options[:restart_cmd]
+        cmd.split(' ') + @original_argv
+      else
+        @restart_argv
+      end
+    end
+
     def restart!
       @options[:on_restart].each do |blk|
         blk.call self
@@ -114,7 +122,7 @@ module Puma
         end
 
         require 'puma/jruby_restart'
-        JRubyRestart.chdir_exec(@restart_dir, @restart_argv)
+        JRubyRestart.chdir_exec(@restart_dir, restart_args)
       else
         redirects = {:close_others => true}
         @binder.listeners.each_with_index do |(l,io),i|
@@ -122,11 +130,7 @@ module Puma
           redirects[io.to_i] = io.to_i
         end
 
-        if cmd = @options[:restart_cmd]
-          argv = cmd.split(' ') + @original_argv
-        else
-          argv = @restart_argv
-        end
+        argv = restart_args
 
         Dir.chdir @restart_dir
 
@@ -508,7 +512,7 @@ module Puma
             exit
           end
 
-          pid = JRubyRestart.daemon_start(@restart_dir, @restart_argv)
+          pid = JRubyRestart.daemon_start(@restart_dir, restart_args)
           sleep
         end
       else
