@@ -1,3 +1,9 @@
+=== 2.2.2 / 2013-07-02
+
+* 1 bug fix:
+
+  * Fix restart_command in the config
+
 === 2.2.1 / 2013-07-02
 
 * 1 minor feature:

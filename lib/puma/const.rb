@@ -28,7 +28,7 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "2.2.1".freeze
+    PUMA_VERSION = VERSION = "2.2.2".freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2
 
