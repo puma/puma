@@ -1,3 +1,14 @@
+=== 2.2.0 / 2013-07-01
+
+* 1 major feature:
+
+  * Add ability to preload rack app
+
+* 2 minor bugfixes:
+
+  * Don't leak info when not in development. Fixes #256
+  * Load the app, then bind the ports
+
 === 2.1.1 / 2013-06-20
 
 * 2 minor bug fixes:
