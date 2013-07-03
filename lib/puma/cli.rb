@@ -105,8 +105,8 @@ module Puma
     end
 
     def restart!
-      @options[:on_restart].each do |blk|
-        blk.call self
+      @options[:on_restart].each do |block|
+        block.call self
       end
 
       if jruby?
