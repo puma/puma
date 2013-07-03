@@ -8,9 +8,9 @@ class TestThreadPool < Test::Unit::TestCase
     @pool.shutdown if @pool
   end
 
-  def new_pool(min, max, &blk)
-    blk = proc { } unless blk
-    @pool = Puma::ThreadPool.new(min, max, &blk)
+  def new_pool(min, max, &block)
+    block = proc { } unless block
+    @pool = Puma::ThreadPool.new(min, max, &block)
   end
 
   def pause
