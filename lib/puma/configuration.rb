@@ -203,8 +203,8 @@ module Puma
       #
       # This can be called multiple times to add code each time.
       #
-      def on_restart(&blk)
-        @options[:on_restart] << blk
+      def on_restart(&block)
+        @options[:on_restart] << block
       end
 
       # Command to use to restart puma. This should be just how to

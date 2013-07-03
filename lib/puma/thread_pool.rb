@@ -11,7 +11,7 @@ module Puma
     # The block passed is the work that will be performed in each
     # thread.
     #
-    def initialize(min, max, *extra, &blk)
+    def initialize(min, max, *extra, &block)
       @cond = ConditionVariable.new
       @mutex = Mutex.new
 
@@ -22,7 +22,7 @@ module Puma
 
       @min = min
       @max = max
-      @block = blk
+      @block = block
       @extra = extra
 
       @shutdown = false
