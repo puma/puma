@@ -82,21 +82,41 @@ Puma 2 offers clustered mode, allowing you to use forked processes to handle mul
 On a ruby implementation that offers native threads, you should tune this number to match the number of cores available. 
 Note that threads are still used in clustered mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will be 32 threads.
 
+This code can be used to setup the process before booting the application, allowing 
+you to do some puma-specific things that you don't want to embed in your application. 
+For instance, you could fire a log notification that a worker booted or send something to statsd. 
+This can be called multiple times to add hooks.
+
+If you're running in Clustered Mode you can optionally choose to preload your application before starting up the workers. To do this simply specify the `--preload` flag in invocation:
+
+    # CLI invocation
+    $ puma -t 8:32 -w 3 --preload
+    
+If you're using a configuration file, use the `preload_app!` method, and be sure to specify your config file's location with the `-C` flag:
+
+    $ puma -C config/puma.rb
+    
+    # config/puma.rb
+    threads 8,32
+    workers 3
+    preload_app! 
+
+
 Additionally, you can specify a block in your configuration that will be run on boot of each worker:
 
     # config/puma.rb
     on_worker_boot do
       # configuration here
     end
+        
+If you're preloading your application and using ActiveRecord, it's recommend you setup your connection pool here: 
 
-This code can be used to setup the process before booting the application, allowing 
-you to do some puma-specific things that you don't want to embed in your application. 
-For instance, you could fire a log notification that a worker booted or send something to statsd. 
-This can be called multiple times to add hooks.
-
-Be sure to specify the location of your configuration file:
-
-    $ puma -t 8:32 -w 3 -C config/puma.rb
+    # config/puma.rb
+    on_worker_boot do
+      ActiveSupport.on_load(:active_record) do
+        ActiveRecord::Base.establish_connection
+      end
+    end
 
 ### Binding TCP / Sockets
 
