@@ -255,6 +255,18 @@ module Puma
 
       begin
         old_mask = File.umask(umask)
+
+        if File.exists? path
+          begin
+            old = UNIXSocket.new path
+          rescue SystemCallError
+            File.unlink path
+          else
+            old.close
+            raise "There is already a server bound to: #{path}"
+          end
+        end
+
         s = UNIXServer.new(path)
         @ios << s
       ensure
