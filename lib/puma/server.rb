@@ -412,7 +412,7 @@ module Puma
             lines << HTTP_11_200
           else
             lines.append "HTTP/1.1 ", status.to_s, " ",
-                         HTTP_STATUS_CODES[status], line_ending
+                         fetch_status_code(status), line_ending
 
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
@@ -427,7 +427,7 @@ module Puma
             lines << HTTP_10_200
           else
             lines.append "HTTP/1.0 ", status.to_s, " ",
-                         HTTP_STATUS_CODES[status], line_ending
+                         fetch_status_code(status), line_ending
 
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
@@ -515,6 +515,11 @@ module Puma
 
       return keep_alive
     end
+
+    def fetch_status_code(status)
+      HTTP_STATUS_CODES.fetch(status) { 'CUSTOM' }
+    end
+    private :fetch_status_code
 
     # Given the requset +env+ from +client+ and the partial body +body+
     # plus a potential Content-Length value +cl+, finish reading
