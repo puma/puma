@@ -335,6 +335,11 @@ module Puma
       end
     end
 
+    def jruby_daemon_start
+      require 'puma/jruby_restart'
+      JRubyRestart.daemon_start(@restart_dir, restart_args)
+    end
+
     def restart!
       @options[:on_restart].each do |block|
         block.call self
@@ -431,7 +436,6 @@ module Puma
 
       begin
         Signal.trap "SIGTERM" do
-          log " - Gracefully stopping, waiting for requests to finish"
           @runner.stop
         end
       rescue Exception

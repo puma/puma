@@ -47,8 +47,6 @@ module Puma
 
       if jruby_daemon?
         unless already_daemon
-          require 'puma/jruby_restart'
-
           pid = nil
 
           Signal.trap "SIGUSR2" do
@@ -56,7 +54,7 @@ module Puma
             exit
           end
 
-          pid = JRubyRestart.daemon_start(@restart_dir, restart_args)
+          pid = @cli.jruby_daemon_start
           sleep
         end
       else
