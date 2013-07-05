@@ -1,8 +1,7 @@
 module Puma
   module App
     class Status
-      def initialize(server, cli)
-        @server = server
+      def initialize(cli)
         @cli = cli
         @auth_token = nil
       end
@@ -15,6 +14,15 @@ module Puma
         env['QUERY_STRING'].to_s.split(/&;/).include?("token=#{@auth_token}")
       end
 
+      def rack_response(status, body, content_type='application/json')
+        headers = {
+          'Content-Type' => content_type,
+          'Content-Length' => body.bytesize.to_s
+        }
+
+        [status, headers, [body]]
+      end
+
       def call(env)
         unless authenticate(env)
           return rack_response(403, 'Invalid auth token', 'text/plain')
@@ -22,34 +30,29 @@ module Puma
 
         case env['PATH_INFO']
         when /\/stop$/
-          @server.stop
+          @cli.stop
           return rack_response(200, OK_STATUS)
 
         when /\/halt$/
-          @server.halt
+          @cli.halt
           return rack_response(200, OK_STATUS)
 
         when /\/restart$/
-          if @cli and @cli.restart_on_stop!
-            @server.begin_restart
+          @cli.restart
+          return rack_response(200, OK_STATUS)
 
-            return rack_response(200, OK_STATUS)
+        when /\/phased-restart$/
+          if !@cli.phased_restart
+            return rack_response(404, '{ "error": "phased resart not available" }')
           else
-            return rack_response(200, '{ "status": "not configured" }')
+            return rack_response(200, OK_STATUS)
           end
 
         when /\/stats$/
-          b = @server.backlog
-          r = @server.running
-          return rack_response(200, %Q!{ "backlog": #{b}, "running": #{r} }!)
+          return rack_response(200, @cli.stats)
+        else
+          rack_response 404, "Unsupported action", 'text/plain'
         end
-
-        rack_response 404, "Unsupported action", 'text/plain'
-      end
-
-      private
-      def rack_response(status, body, content_type='application/json')
-        [status, { 'Content-Type' => content_type, 'Content-Length' => body.bytesize.to_s }, [body]]
       end
     end
   end

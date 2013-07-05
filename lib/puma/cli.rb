@@ -8,6 +8,8 @@ require 'puma/binder'
 require 'puma/detect'
 require 'puma/daemon_ext'
 require 'puma/util'
+require 'puma/single'
+require 'puma/cluster'
 
 require 'rack/commonlogger'
 require 'rack/utils'
@@ -28,116 +30,33 @@ module Puma
       @stdout = stdout
       @stderr = stderr
 
-      @phase = 0
-      @workers = []
-
       @events = Events.new @stdout, @stderr
 
-      @server = nil
       @status = nil
+      @runner = nil
 
-      @restart = false
-      @phased_state = :idle
-
-      @app = nil
+      @config = nil
 
       ENV['NEWRELIC_DISPATCHER'] ||= "puma"
 
       setup_options
-
       generate_restart_data
 
       @binder = Binder.new(@events)
       @binder.import_from_env
     end
 
-    def restart_on_stop!
-      @restart = true
-    end
+    # The Binder object containing the sockets bound to.
+    attr_reader :binder
 
-    def generate_restart_data
-      # Use the same trick as unicorn, namely favor PWD because
-      # it will contain an unresolved symlink, useful for when
-      # the pwd is /data/releases/current.
-      if dir = ENV['PWD']
-        s_env = File.stat(dir)
-        s_pwd = File.stat(Dir.pwd)
+    # The Configuration object used.
+    attr_reader :config
 
-        if s_env.ino == s_pwd.ino and s_env.dev == s_pwd.dev
-          @restart_dir = dir
-          @options[:worker_directory] = dir
-        end
-      end
+    # The Hash of options used to configure puma.
+    attr_reader :options
 
-      @restart_dir ||= Dir.pwd
-
-      @original_argv = ARGV.dup
-
-      if defined? Rubinius::OS_ARGV
-        @restart_argv = Rubinius::OS_ARGV
-      else
-        require 'rubygems'
-
-        # if $0 is a file in the current directory, then restart
-        # it the same, otherwise add -S on there because it was
-        # picked up in PATH.
-        #
-        if File.exists?($0)
-          arg0 = [Gem.ruby, $0]
-        else
-          arg0 = [Gem.ruby, "-S", $0]
-        end
-
-        # Detect and reinject -Ilib from the command line
-        lib = File.expand_path "lib"
-        arg0[1,0] = ["-I", lib] if $:[0] == lib
-
-        @restart_argv = arg0 + ARGV
-      end
-    end
-
-    def restart_args
-      if cmd = @options[:restart_cmd]
-        cmd.split(' ') + @original_argv
-      else
-        @restart_argv
-      end
-    end
-
-    def restart!
-      @options[:on_restart].each do |block|
-        block.call self
-      end
-
-      if jruby?
-        @binder.listeners.each_with_index do |(str,io),i|
-          io.close
-
-          # We have to unlink a unix socket path that's not being used
-          uri = URI.parse str
-          if uri.scheme == "unix"
-            path = "#{uri.host}#{uri.path}"
-            File.unlink path
-          end
-        end
-
-        require 'puma/jruby_restart'
-        JRubyRestart.chdir_exec(@restart_dir, restart_args)
-      else
-        redirects = {:close_others => true}
-        @binder.listeners.each_with_index do |(l,io),i|
-          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-          redirects[io.to_i] = io.to_i
-        end
-
-        argv = restart_args
-
-        Dir.chdir @restart_dir
-
-        argv += [redirects] unless RUBY_VERSION < '1.9'
-        Kernel.exec(*argv)
-      end
-    end
+    # The Events object used to output information.
+    attr_reader :events
 
     # Delegate +log+ to +@events+
     #
@@ -289,39 +208,6 @@ module Puma
       end
     end
 
-    # If configured, write the pid of the current process out
-    # to a file.
-    #
-    def write_pid
-      if path = @options[:pidfile]
-        File.open(path, "w") do |f|
-          f.puts Process.pid
-        end
-      end
-    end
-
-    def set_rack_environment
-      # Try the user option first, then the environment variable,
-      # finally default to development
-
-      env = @options[:environment] ||
-                   ENV['RACK_ENV'] ||
-                     'development'
-
-      @options[:environment] = env
-      ENV['RACK_ENV'] = env
-    end
-
-    def development?
-      @options[:environment] == "development"
-    end
-
-    def delete_pidfile
-      if path = @options[:pidfile]
-        File.unlink path
-      end
-    end
-
     def write_state
       write_pid
 
@@ -339,6 +225,37 @@ module Puma
         File.open(path, "w") do |f|
           f.write state.to_yaml
         end
+      end
+    end
+
+    # If configured, write the pid of the current process out
+    # to a file.
+    #
+    def write_pid
+      if path = @options[:pidfile]
+        File.open(path, "w") do |f|
+          f.puts Process.pid
+        end
+
+        at_exit { delete_pidfile }
+      end
+    end
+
+    def set_rack_environment
+      # Try the user option first, then the environment variable,
+      # finally default to development
+
+      env = @options[:environment] ||
+                   ENV['RACK_ENV'] ||
+                     'development'
+
+      @options[:environment] = env
+      ENV['RACK_ENV'] = env
+    end
+
+    def delete_pidfile
+      if path = @options[:pidfile]
+        File.unlink path if File.exists? path
       end
     end
 
@@ -363,32 +280,95 @@ module Puma
       end
     end
 
-    def graceful_stop(server)
-      log " - Gracefully stopping, waiting for requests to finish"
-      @status.stop(true) if @status
-      server.stop(true)
-      delete_pidfile
-      log " - Goodbye!"
+    def graceful_stop
+      @control.stop(true) if @control
+      @runner.stop_blocked
+      log "- Goodbye!"
     end
 
-    def redirect_io
-      stdout = @options[:redirect_stdout]
-      stderr = @options[:redirect_stderr]
-      append = @options[:redirect_append]
+    def generate_restart_data
+      # Use the same trick as unicorn, namely favor PWD because
+      # it will contain an unresolved symlink, useful for when
+      # the pwd is /data/releases/current.
+      if dir = ENV['PWD']
+        s_env = File.stat(dir)
+        s_pwd = File.stat(Dir.pwd)
 
-      if stdout
-        STDOUT.reopen stdout, (append ? "a" : "w")
-        STDOUT.sync = true
-        STDOUT.puts "=== puma startup: #{Time.now} ==="
+        if s_env.ino == s_pwd.ino and s_env.dev == s_pwd.dev
+          @restart_dir = dir
+          @options[:worker_directory] = dir
+        end
       end
 
-      if stderr
-        STDERR.reopen stderr, (append ? "a" : "w")
-        STDERR.sync = true
-        STDERR.puts "=== puma startup: #{Time.now} ==="
+      @restart_dir ||= Dir.pwd
+
+      @original_argv = ARGV.dup
+
+      if defined? Rubinius::OS_ARGV
+        @restart_argv = Rubinius::OS_ARGV
+      else
+        require 'rubygems'
+
+        # if $0 is a file in the current directory, then restart
+        # it the same, otherwise add -S on there because it was
+        # picked up in PATH.
+        #
+        if File.exists?($0)
+          arg0 = [Gem.ruby, $0]
+        else
+          arg0 = [Gem.ruby, "-S", $0]
+        end
+
+        # Detect and reinject -Ilib from the command line
+        lib = File.expand_path "lib"
+        arg0[1,0] = ["-I", lib] if $:[0] == lib
+
+        @restart_argv = arg0 + ARGV
       end
     end
 
+    def restart_args
+      if cmd = @options[:restart_cmd]
+        cmd.split(' ') + @original_argv
+      else
+        @restart_argv
+      end
+    end
+
+    def restart!
+      @options[:on_restart].each do |block|
+        block.call self
+      end
+
+      if jruby?
+        @binder.listeners.each_with_index do |(str,io),i|
+          io.close
+
+          # We have to unlink a unix socket path that's not being used
+          uri = URI.parse str
+          if uri.scheme == "unix"
+            path = "#{uri.host}#{uri.path}"
+            File.unlink path
+          end
+        end
+
+        require 'puma/jruby_restart'
+        JRubyRestart.chdir_exec(@restart_dir, restart_args)
+      else
+        redirects = {:close_others => true}
+        @binder.listeners.each_with_index do |(l,io),i|
+          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+          redirects[io.to_i] = io.to_i
+        end
+
+        argv = restart_args
+
+        Dir.chdir @restart_dir
+
+        argv += [redirects] unless RUBY_VERSION < '1.9'
+        Kernel.exec(*argv)
+      end
+    end
     # Parse the options, load the rackup, start the server and wait
     # for it to finish.
     #
@@ -413,479 +393,113 @@ module Puma
       set_rack_environment
 
       if clustered
-        run_cluster
+        @runner = Cluster.new(self)
       else
-        run_single
+        @runner = Single.new(self)
+      end
+
+      setup_signals
+
+      if cont = @options[:control_url]
+        start_control cont
+      end
+
+      @status = :run
+
+      @runner.run
+
+      case @status
+      when :halt
+        log "* Stopping immediately!"
+      when :run, :stop
+        graceful_stop
+      when :restart
+        log "* Restarting..."
+        @control.stop true if @control
+        restart!
       end
     end
 
-    def daemon?
-      @options[:daemon]
-    end
-
-    def jruby_daemon?
-      daemon? and jruby?
-    end
-
-    def output_header
-      min_t = @options[:min_threads]
-      max_t = @options[:max_threads]
-
-      log "Puma #{Puma::Const::PUMA_VERSION} starting..."
-      log "* Min threads: #{min_t}, max threads: #{max_t}"
-      log "* Environment: #{ENV['RACK_ENV']}"
-    end
-
-    def start_control(server, str)
-      require 'puma/app/status'
-
-      uri = URI.parse str
-
-      app = Puma::App::Status.new server, self
-
-      if token = @options[:control_auth_token]
-        app.auth_token = token unless token.empty? or token == :none
-      end
-
-      status = Puma::Server.new app, @events
-      status.min_threads = 0
-      status.max_threads = 1
-
-      case uri.scheme
-      when "tcp"
-        log "* Starting status server on #{str}"
-        status.add_tcp_listener uri.host, uri.port
-      when "unix"
-        log "* Starting status server on #{str}"
-        path = "#{uri.host}#{uri.path}"
-
-        status.add_unix_listener path
-      else
-        error "Invalid status URI: #{str}"
-      end
-
-      status.run
-      @status = status
-    end
-
-    def load_and_bind
-      unless @config.app_configured?
-        error "No application configured, nothing to run"
-        exit 1
-      end
-
-      # Load the app before we daemonize.
-      begin
-        @app = @config.app
-      rescue Exception => e
-        log "! Unable to load application"
-        raise e
-      end
-
-      @binder.parse @options[:binds], self
-    end
-
-    def run_single
-      already_daemon = false
-
-      if jruby_daemon?
-        require 'puma/jruby_restart'
-
-        if JRubyRestart.daemon?
-          # load and bind before redirecting IO so errors show up on stdout/stderr
-          load_and_bind
-        end
-
-        already_daemon = JRubyRestart.daemon_init
-      end
-
-      output_header
-
-      if jruby_daemon?
-        unless already_daemon
-          require 'puma/jruby_restart'
-
-          pid = nil
-
-          Signal.trap "SIGUSR2" do
-            log "* Started new process #{pid} as daemon..."
-            exit
-          end
-
-          pid = JRubyRestart.daemon_start(@restart_dir, restart_args)
-          sleep
-        end
-      else
-        load_and_bind
-        Process.daemon(true) if daemon?
-      end
-
-      write_state
-
-      server = Puma::Server.new @app, @events
-      server.binder = @binder
-      server.min_threads = @options[:min_threads]
-      server.max_threads = @options[:max_threads]
-
-      unless development?
-        server.leak_stack_on_error = false
-      end
-
-      @server = server
-
-      if str = @options[:control_url]
-        start_control server, str
-      end
-
+    def setup_signals
       begin
         Signal.trap "SIGUSR2" do
-          @restart = true
-          server.begin_restart
+          restart
         end
       rescue Exception
-        log "*** Sorry signal SIGUSR2 not implemented, restart feature disabled!"
+        log "*** SIGUSR2 not implemented, signal based restart unavailable!"
       end
 
       begin
         Signal.trap "SIGTERM" do
           log " - Gracefully stopping, waiting for requests to finish"
-          server.stop false
+          @runner.stop
         end
       rescue Exception
-        log "*** Sorry signal SIGTERM not implemented, gracefully stopping feature disabled!"
+        log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"
       end
-
-      unless @options[:daemon]
-        log "Use Ctrl-C to stop"
-      end
-
-      redirect_io
 
       if jruby?
         Signal.trap("INT") do
-          graceful_stop server
+          graceful_stop
           exit
         end
       end
-
-      begin
-        server.run.join
-      rescue Interrupt
-        graceful_stop server
-      end
-
-      if @restart
-        log "* Restarting..."
-        @status.stop true if @status
-        restart!
-      end
     end
 
-    def worker(upgrade)
-      $0 = "puma: cluster worker: #{@master_pid}"
-      Signal.trap "SIGINT", "IGNORE"
+    def start_control(str)
+      require 'puma/app/status'
 
-      @master_read.close
-      @suicide_pipe.close
+      uri = URI.parse str
 
-      Thread.new do
-        IO.select [@check_pipe]
-        log "! Detected parent died, dying"
-        exit! 1
+      app = Puma::App::Status.new self
+
+      if token = @options[:control_auth_token]
+        app.auth_token = token unless token.empty? or token == :none
       end
 
-      # Be sure to change the directory again before loading
-      # the app. This way we can pick up new code.
-      if upgrade
-        if dir = @options[:worker_directory]
-          log "+ Changing to #{dir}"
-          Dir.chdir dir
-        end
-      end
+      control = Puma::Server.new app, @events
+      control.min_threads = 0
+      control.max_threads = 1
 
-      # Invoke any worker boot hooks so they can get
-      # things in shape before booting the app.
-      hooks = @options[:worker_boot]
-      hooks.each { |h| h.call }
+      case uri.scheme
+      when "tcp"
+        log "* Starting control server on #{str}"
+        control.add_tcp_listener uri.host, uri.port
+      when "unix"
+        log "* Starting control server on #{str}"
+        path = "#{uri.host}#{uri.path}"
 
-      min_t = @options[:min_threads]
-      max_t = @options[:max_threads]
-
-      # If preload is used, then @app is set to the preloaded
-      # application. Otherwise load it now via the config.
-      app = @app || @config.app
-
-      server = Puma::Server.new app, @events
-      server.min_threads = min_t
-      server.max_threads = max_t
-      server.inherit_binder @binder
-
-      unless development?
-        server.leak_stack_on_error = false
-      end
-
-      Signal.trap "SIGTERM" do
-        server.stop
-      end
-
-      begin
-        @worker_write << "b#{Process.pid}\n"
-      rescue SystemCallError, IOError
-        STDERR.puts "Master seems to have exitted, exitting."
-        return
-      end
-
-      server.run.join
-
-    ensure
-      @worker_write.close
-    end
-
-    def stop_workers
-      log "- Gracefully shutting down workers..."
-      @workers.each { |x| x.term }
-
-      begin
-        Process.waitall
-      rescue Interrupt
-        log "! Cancelled waiting for workers"
+        control.add_unix_listener path
       else
-        log "- Goodbye!"
-      end
-    end
-
-    def start_phased_restart
-      @phase += 1
-      log "- Starting phased worker restart, phase: #{@phase}"
-    end
-
-    class Worker
-      def initialize(pid, phase)
-        @pid = pid
-        @phase = phase
-        @stage = :started
+        error "Invalid control URI: #{str}"
       end
 
-      attr_reader :pid, :phase
-
-      def booted?
-        @stage == :booted
-      end
-
-      def boot!
-        @stage = :booted
-      end
-
-      def term
-        begin
-          Process.kill "TERM", @pid
-        rescue Errno::ESRCH
-        end
-      end
-    end
-
-    def spawn_workers
-      diff = @options[:workers] - @workers.size
-
-      upgrade = (@phased_state == :waiting)
-
-      diff.times do
-        pid = fork { worker(upgrade) }
-        debug "Spawned worker: #{pid}"
-        @workers << Worker.new(pid, @phase)
-      end
-
-      if diff > 0
-        @phased_state = :idle
-      end
-    end
-
-    def all_workers_booted?
-      @workers.count { |w| !w.booted? } == 0
-    end
-
-    def check_workers
-      while @workers.any?
-        pid = Process.waitpid(-1, Process::WNOHANG)
-        break unless pid
-
-        @workers.delete_if { |w| w.pid == pid }
-      end
-
-      spawn_workers
-
-      if @phased_state == :idle && all_workers_booted?
-        # If we're running at proper capacity, check to see if
-        # we need to phase any workers out (which will restart
-        # in the right phase).
-        #
-        w = @workers.find { |x| x.phase != @phase }
-
-        if w
-          @phased_state = :waiting
-          log "- Stopping #{w.pid} for phased upgrade..."
-          w.term
-        end
-      end
-    end
-
-    def wakeup!
-      begin
-        @wakeup.write "!" unless @wakeup.closed?
-      rescue SystemCallError, IOError
-      end
-    end
-
-    def run_cluster
-      log "Puma #{Puma::Const::PUMA_VERSION} starting in cluster mode..."
-      log "* Process workers: #{@options[:workers]}"
-      log "* Min threads: #{@options[:min_threads]}, max threads: #{@options[:max_threads]}"
-      log "* Environment: #{ENV['RACK_ENV']}"
-
-      if @options[:preload_app]
-        log "* Preloading application"
-        load_and_bind
-      else
-        log "* Phased restart available"
-
-        unless @config.app_configured?
-          error "No application configured, nothing to run"
-          exit 1
-        end
-
-        @binder.parse @options[:binds], self
-      end
-
-      read, @wakeup = Puma::Util.pipe
-
-      Signal.trap "SIGCHLD" do
-        wakeup!
-      end
-
-      stop = false
-
-      begin
-        Signal.trap "SIGUSR2" do
-          @restart = true
-          stop = true
-          wakeup!
-        end
-      rescue Exception
-      end
-
-      master_pid = Process.pid
-
-      begin
-        Signal.trap "SIGTERM" do
-          # The worker installs their own SIGTERM when booted.
-          # Until then, this is run by the worker and the worker
-          # should just exit if they get it.
-          if Process.pid != master_pid
-            log "Early termination of worker"
-            exit! 0
-          else
-            stop = true
-            wakeup!
-          end
-        end
-      rescue Exception
-      end
-
-      phased_restart = false
-
-      begin
-        if @options[:preload_app]
-          Signal.trap "SIGUSR1" do
-            log "App preloaded, phased restart unavailable"
-          end
-        else
-          Signal.trap "SIGUSR1" do
-            phased_restart = true
-            @wakeup << "!"
-            wakeup!
-          end
-        end
-      rescue Exception
-      end
-
-      # Used by the workers to detect if the master process dies.
-      # If select says that @check_pipe is ready, it's because the
-      # master has exited and @suicide_pipe has been automatically
-      # closed.
-      #
-      @check_pipe, @suicide_pipe = Puma::Util.pipe
-
-      if @options[:daemon]
-        Process.daemon(true)
-      else
-        log "Use Ctrl-C to stop"
-      end
-
-      @master_pid = Process.pid
-
-      redirect_io
-
-      write_state
-
-      @master_read, @worker_write = read, @wakeup
-      spawn_workers
-
-      Signal.trap "SIGINT" do
-        stop = true
-        wakeup!
-      end
-
-      begin
-        while !stop
-          begin
-            res = IO.select([read], nil, nil, 5)
-
-            if res
-              req = read.read_nonblock(1)
-
-              if req == "b"
-                pid = read.gets.to_i
-                w = @workers.find { |x| x.pid == pid }
-                if w
-                  w.boot!
-                  log "- Worker #{pid} booted, phase: #{w.phase}"
-                else
-                  log "! Out-of-sync worker list, no #{pid} worker"
-                end
-              end
-            end
-
-            check_workers
-
-            if phased_restart
-              start_phased_restart
-              phased_restart = false
-            end
-
-          rescue Interrupt
-            stop = true
-          end
-        end
-
-        stop_workers
-      ensure
-        delete_pidfile
-        @check_pipe.close
-        @suicide_pipe.close
-        read.close
-        @wakeup.close
-      end
-
-      if @restart
-        log "* Restarting..."
-        restart!
-      end
+      control.run
+      @control = control
     end
 
     def stop
-      @status.stop(true) if @status
-      @server.stop(true) if @server
-      delete_pidfile
+      @status = :stop
+      @runner.stop
+    end
+
+    def restart
+      @status = :restart
+      @runner.restart
+    end
+
+    def phased_restart
+      return false unless @runner.respond_to? :phased_restart
+      @runner.phased_restart
+    end
+
+    def stats
+      @runner.stats
+    end
+
+    def halt
+      @status = :halt
+      @runner.halt
     end
   end
 end

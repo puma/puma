@@ -20,11 +20,15 @@ class TestAppStatus < Test::Unit::TestCase
     def halt
       @status = :halt
     end
+
+    def stats
+      "{}"
+    end
   end
 
   def setup
     @server = FakeServer.new
-    @app = Puma::App::Status.new(@server, @server)
+    @app = Puma::App::Status.new(@server)
     @app.auth_token = nil
   end
 
@@ -78,7 +82,7 @@ class TestAppStatus < Test::Unit::TestCase
     status, _ , app = lint('/stats')
 
     assert_equal 200, status
-    assert_equal ['{ "backlog": 1, "running": 9 }'], app.enum_for.to_a
+    assert_equal ['{}'], app.enum_for.to_a
   end
 
   def test_alternate_location

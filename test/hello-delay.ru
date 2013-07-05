@@ -1,3 +1,3 @@
-sleep 5
+sleep 10
 
 run lambda { |env| [200, {"Content-Type" => "text/plain"}, ["Hello World"]] }

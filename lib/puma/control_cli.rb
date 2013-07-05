@@ -7,7 +7,7 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart start stats status stop}
+    COMMANDS = %w{halt restart phased-restart start stats status stop}
 
     def is_windows?
       RUBY_PLATFORM =~ /(win|w)32$/ ? true : false
@@ -148,10 +148,12 @@ module Puma
           raise "Server sent empty response"
         end
 
-        (@http,@code,@message) = response.first.split(" ")
+        (@http,@code,@message) = response.first.split(" ",3)
 
         if @code == "403"
           raise "Unauthorized access to server (wrong auth token)"
+        elsif @code == "404"
+          raise "Command error: #{response.last}"
         elsif @code != "200"
           raise "Bad response from server: #{@code}"
         end
@@ -187,6 +189,9 @@ module Puma
       when "stats"
         puts "Stats not available via pid only"
         return
+
+      when "phased-restart"
+        Process.kill "SIGUSR1", pid
 
       else
         message "Puma is started"
