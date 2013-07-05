@@ -81,6 +81,8 @@ module Puma
 
       redirect_io
 
+      @cli.events.fire_on_booted!
+
       begin
         server.run.join
       rescue Interrupt

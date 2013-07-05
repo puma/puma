@@ -277,6 +277,8 @@ module Puma
         wakeup!
       end
 
+      @cli.events.fire_on_booted!
+
       begin
         while @status == :run
           begin

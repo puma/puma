@@ -24,13 +24,11 @@ module Puma
     # +stdout+ and +stderr+ can be set to IO-like objects which
     # this object will report status on.
     #
-    def initialize(argv, stdout=STDOUT, stderr=STDERR)
+    def initialize(argv, events=Events.stdio)
       @debug = false
       @argv = argv
-      @stdout = stdout
-      @stderr = stderr
 
-      @events = Events.new @stdout, @stderr
+      @events = events
 
       @status = nil
       @runner = nil

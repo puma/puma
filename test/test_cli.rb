@@ -14,11 +14,23 @@ class TestCLI < Test::Unit::TestCase
 
     File.unlink @tmp_path if File.exist? @tmp_path
     File.unlink @tmp_path2 if File.exist? @tmp_path2
+
+    @wait, @ready = IO.pipe
+
+    @events = Events.strings
+    @events.on_booted { @ready << "!" }
+  end
+
+  def wait_booted
+    @wait.sysread 1
   end
 
   def teardown
     File.unlink @tmp_path if File.exist? @tmp_path
     File.unlink @tmp_path2 if File.exist? @tmp_path2
+
+    @wait.close
+    @ready.close
   end
 
   def test_pid_file
@@ -31,12 +43,11 @@ class TestCLI < Test::Unit::TestCase
 
   def test_control_for_tcp
     url = "tcp://127.0.0.1:9877/"
-    sin = StringIO.new
-    sout = StringIO.new
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:9876",
                          "--control", url,
                          "--control-token", "",
-                         "test/lobster.ru"], sin, sout
+                         "test/lobster.ru"], @events
+
     cli.parse_options
 
     thread_exception = nil
@@ -48,7 +59,7 @@ class TestCLI < Test::Unit::TestCase
       end
     end 
 
-    sleep 1
+    wait_booted
 
     s = TCPSocket.new "127.0.0.1", 9877
     s << "GET /stats HTTP/1.0\r\n\r\n"
@@ -64,18 +75,15 @@ class TestCLI < Test::Unit::TestCase
   def test_control
     url = "unix://#{@tmp_path}"
 
-    sin = StringIO.new
-    sout = StringIO.new
-
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control", url,
                          "--control-token", "",
-                         "test/lobster.ru"], sin, sout
+                         "test/lobster.ru"], @events
     cli.parse_options
 
     t = Thread.new { cli.run }
 
-    sleep 1
+    wait_booted
 
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
@@ -90,18 +98,15 @@ class TestCLI < Test::Unit::TestCase
   def test_control_stop
     url = "unix://#{@tmp_path}"
 
-    sin = StringIO.new
-    sout = StringIO.new
-
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control", url,
                          "--control-token", "",
-                         "test/lobster.ru"], sin, sout
+                         "test/lobster.ru"], @events
     cli.parse_options
 
     t = Thread.new { cli.run }
 
-    sleep 1
+    wait_booted
 
     s = UNIXSocket.new @tmp_path
     s << "GET /stop HTTP/1.0\r\n\r\n"

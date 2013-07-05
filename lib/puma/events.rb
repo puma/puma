@@ -19,6 +19,8 @@ module Puma
 
       @stdout.sync = true
       @stderr.sync = true
+
+      @on_booted = []
     end
 
     attr_reader :stdout, :stderr
@@ -62,6 +64,14 @@ module Puma
       end
     end
 
+    def on_booted(&b)
+      @on_booted << b
+    end
+
+    def fire_on_booted!
+      @on_booted.each { |b| b.call }
+    end
+
     DEFAULT = new(STDOUT, STDERR)
 
     # Returns an Events object which writes it's status to 2 StringIO
@@ -69,6 +79,10 @@ module Puma
     #
     def self.strings
       Events.new StringIO.new, StringIO.new
+    end
+
+    def self.stdio
+      Events.new $stdout, $stderr
     end
   end
 

@@ -46,7 +46,7 @@ module Puma
     # Server#run returns a thread that you can join on to wait for the server
     # to do it's work.
     #
-    def initialize(app, events=Events::DEFAULT)
+    def initialize(app, events=Events.stdio)
       @app = app
       @events = events
 
