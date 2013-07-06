@@ -88,7 +88,7 @@ module Puma
 
         status = YAML.load File.read(@options[:status_path])
 
-        if status.has_key? "config"
+        if status.kind_of?(Hash) && status.has_key?("config")
 
           conf = status["config"]
 
