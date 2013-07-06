@@ -488,22 +488,26 @@ module Puma
           return :async
         end
 
-        res_body.each do |part|
-          if chunked
-            client.syswrite part.bytesize.to_s(16)
-            client.syswrite line_ending
-            fast_write client, part
-            client.syswrite line_ending
-          else
-            fast_write client, part
+        begin
+          res_body.each do |part|
+            if chunked
+              client.syswrite part.bytesize.to_s(16)
+              client.syswrite line_ending
+              fast_write client, part
+              client.syswrite line_ending
+            else
+              fast_write client, part
+            end
+
+            client.flush
           end
 
-          client.flush
-        end
-
-        if chunked
-          client.syswrite CLOSE_CHUNKED
-          client.flush
+          if chunked
+            client.syswrite CLOSE_CHUNKED
+            client.flush
+          end
+        rescue SystemCallError, IOError
+          raise ConnectionError, "Connection error detected during write"
         end
 
       ensure
