@@ -69,5 +69,21 @@ module Puma
     def app
       @app ||= @cli.config.app
     end
+
+    def start_server
+      min_t = @options[:min_threads]
+      max_t = @options[:max_threads]
+
+      server = Puma::Server.new app, @cli.events
+      server.min_threads = min_t
+      server.max_threads = max_t
+      server.inherit_binder @cli.binder
+
+      unless development?
+        server.leak_stack_on_error = false
+      end
+
+      server
+    end
   end
 end

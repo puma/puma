@@ -272,7 +272,7 @@ module Puma
 
       @config.load
 
-      if @options[:workers] > 0
+      if clustered?
         unsupported "worker mode not supported on JRuby and Windows",
                     jruby? || windows?
       end
@@ -280,7 +280,10 @@ module Puma
       if @options[:daemon] and windows?
         unsupported "daemon mode not supported on Windows"
       end
+    end
 
+    def clustered?
+      @options[:workers] > 0
     end
 
     def graceful_stop
@@ -377,6 +380,7 @@ module Puma
         Kernel.exec(*argv)
       end
     end
+
     # Parse the options, load the rackup, start the server and wait
     # for it to finish.
     #
@@ -391,16 +395,12 @@ module Puma
         Dir.chdir dir
       end
 
-      clustered = @options[:workers] > 0
-
-      if clustered
-        @events = PidEvents.new STDOUT, STDERR
-        @options[:logger] = @events
-      end
-
       set_rack_environment
 
-      if clustered
+      if clustered?
+        @events = PidEvents.new STDOUT, STDERR
+        @options[:logger] = @events
+
         @runner = Cluster.new(self)
       else
         @runner = Single.new(self)
@@ -439,7 +439,7 @@ module Puma
 
       begin
         Signal.trap "SIGTERM" do
-          @runner.stop
+          stop
         end
       rescue Exception
         log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"

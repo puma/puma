@@ -9,6 +9,7 @@ module Puma
       @workers = []
 
       @phased_state = :idle
+      @phased_restart = false
     end
 
     def stop_workers
@@ -57,8 +58,10 @@ module Puma
 
       upgrade = (@phased_state == :waiting)
 
+      master = Process.pid
+
       diff.times do
-        pid = fork { worker(upgrade) }
+        pid = fork { worker(upgrade, master) }
         @cli.debug "Spawned worker: #{pid}"
         @workers << Worker.new(pid, @phase)
       end
@@ -104,8 +107,8 @@ module Puma
       end
     end
 
-    def worker(upgrade)
-      $0 = "puma: cluster worker: #{@master_pid}"
+    def worker(upgrade, master)
+      $0 = "puma: cluster worker: #{master}"
       Signal.trap "SIGINT", "IGNORE"
 
       @master_read.close
@@ -131,17 +134,7 @@ module Puma
       hooks = @options[:worker_boot]
       hooks.each { |h| h.call }
 
-      min_t = @options[:min_threads]
-      max_t = @options[:max_threads]
-
-      server = Puma::Server.new app, @cli.events
-      server.min_threads = min_t
-      server.max_threads = max_t
-      server.inherit_binder @cli.binder
-
-      unless development?
-        server.leak_stack_on_error = false
-      end
+      server = start_server
 
       Signal.trap "SIGTERM" do
         server.stop
@@ -162,8 +155,7 @@ module Puma
 
     def restart
       @restart = true
-      @status = :stop
-      wakeup!
+      stop
     end
 
     def phased_restart
@@ -195,6 +187,10 @@ module Puma
       %Q!{ "workers": #{@workers.size}, "phase": #{@phase} }!
     end
 
+    def preload?
+      @options[:preload_app]
+    end
+
     def run
       @status = :run
 
@@ -202,7 +198,7 @@ module Puma
 
       log "* Process workers: #{@options[:workers]}"
 
-      if @options[:preload_app]
+      if preload?
         log "* Preloading application"
         load_and_bind
       else
@@ -232,14 +228,11 @@ module Puma
           log "Early termination of worker"
           exit! 0
         else
-          @status = :stop
-          wakeup!
+          stop
         end
       end
 
-      @phased_restart = false
-
-      if @options[:preload_app]
+      if preload?
         Signal.trap "SIGUSR1" do
           log "App preloaded, phased restart unavailable"
         end
@@ -263,8 +256,6 @@ module Puma
         log "Use Ctrl-C to stop"
       end
 
-      @master_pid = Process.pid
-
       redirect_io
 
       @cli.write_state
@@ -273,8 +264,7 @@ module Puma
       spawn_workers
 
       Signal.trap "SIGINT" do
-        @status = :stop
-        wakeup!
+        stop
       end
 
       @cli.events.fire_on_booted!
@@ -299,12 +289,12 @@ module Puma
               end
             end
 
-            check_workers
-
             if @phased_restart
               start_phased_restart
               @phased_restart = false
             end
+
+            check_workers
 
           rescue Interrupt
             @status = :stop

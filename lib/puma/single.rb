@@ -59,6 +59,7 @@ module Puma
         end
       else
         load_and_bind
+
         if daemon?
           log "* Daemonizing..."
           Process.daemon(true)
@@ -67,16 +68,7 @@ module Puma
 
       @cli.write_state
 
-      server = Puma::Server.new @app, @cli.events
-      server.binder = @cli.binder
-      server.min_threads = @options[:min_threads]
-      server.max_threads = @options[:max_threads]
-
-      unless development?
-        server.leak_stack_on_error = false
-      end
-
-      @server = server
+      @server = server = start_server
 
       unless @options[:daemon]
         log "Use Ctrl-C to stop"
