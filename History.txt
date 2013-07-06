@@ -1,3 +1,13 @@
+=== 2.3.1 / 2013-07-06
+
+* 2 bug fixes:
+
+  * Include the right files in the Manifest.
+  * Disable inheriting connections on restart on windows. Fixes #166
+
+* 1 doc change:
+  * Better document some platform constraints
+
 === 2.3.0 / 2013-07-05
 
 * 1 major bug fix:
