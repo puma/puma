@@ -1,3 +1,22 @@
+=== 2.3.0 / 2013-07-05
+
+* 1 major bug fix:
+
+  * Stabilize control server, add support in cluster mode
+
+* 5 minor bug fixes:
+
+  * Add ability to cleanup stale unix sockets
+  * Check status data better. Fixes #292
+  * Convert raw IO errors to ConnectionError. Fixes #274
+  * Fix sending Content-Type and Content-Length for no body status. Fixes #304
+  * Pass state path through to `pumactl start`. Fixes #287
+
+* 2 internal changes:
+
+  * Refactored modes into seperate classes that CLI uses
+  * Changed CLI to take an Events object instead of stdout/stderr (API change)
+
 === 2.2.2 / 2013-07-02
 
 * 1 bug fix:

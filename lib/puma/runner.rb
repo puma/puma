@@ -26,7 +26,8 @@ module Puma
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
-      log "Puma #{Puma::Const::PUMA_VERSION} starting in #{mode} mode..."
+      log "Puma starting in #{mode} mode..."
+      log "* Version #{Puma::Const::PUMA_VERSION}, codename: #{Puma::Const::CODE_NAME}"
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
     end

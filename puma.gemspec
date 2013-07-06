@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |s|
   s.name = "puma"
-  s.version = "2.2.2"
+  s.version = "2.3.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Evan Phoenix"]
-  s.date = "2013-07-02"
+  s.date = "2013-07-06"
   s.description = "Puma is a simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications. Puma is intended for use in both development and production environments. In order to get the best throughput, it is highly recommended that you use a  Ruby implementation with real threads like Rubinius or JRuby."
   s.email = ["evan@phx.io"]
   s.executables = ["puma", "pumactl"]
