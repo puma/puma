@@ -221,4 +221,32 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_not_match(/don't leak me bro/, data)
   end
+
+  def test_custom_http_codes_10
+    @server.app = proc { |env| [449, {}, [""]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 449 CUSTOM\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+  end
+
+  def test_custom_http_codes_11
+    @server.app = proc { |env| [449, {}, [""]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.1\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 449 CUSTOM\r\nContent-Length: 0\r\n\r\n", data
+  end
 end
