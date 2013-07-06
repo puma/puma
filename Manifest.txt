@@ -31,6 +31,7 @@ lib/puma/binder.rb
 lib/puma/capistrano.rb
 lib/puma/cli.rb
 lib/puma/client.rb
+lib/puma/cluster.rb
 lib/puma/compat.rb
 lib/puma/configuration.rb
 lib/puma/const.rb
@@ -47,14 +48,18 @@ lib/puma/null_io.rb
 lib/puma/rack_default.rb
 lib/puma/rack_patch.rb
 lib/puma/reactor.rb
+lib/puma/runner.rb
 lib/puma/server.rb
+lib/puma/single.rb
 lib/puma/thread_pool.rb
 lib/puma/util.rb
 lib/rack/handler/puma.rb
 puma.gemspec
+tools/jungle/README.md
 tools/jungle/init.d/README.md
 tools/jungle/init.d/puma
 tools/jungle/init.d/run-puma
 tools/jungle/upstart/README.md
 tools/jungle/upstart/puma-manager.conf
 tools/jungle/upstart/puma.conf
+tools/trickletest.rb
