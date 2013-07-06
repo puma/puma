@@ -174,7 +174,7 @@ class TestPumaServer < Test::Unit::TestCase
 
     data = sock.read
 
-    assert_equal "HTTP/1.0 200 OK\r\nFoo: Bar\r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nFoo: Bar\r\nContent-Length: 5\r\n\r\n", data
   end
 
   def test_GET_with_empty_body_has_sane_chunking
@@ -188,11 +188,11 @@ class TestPumaServer < Test::Unit::TestCase
 
     data = sock.read
 
-    assert_equal "HTTP/1.0 200 OK\r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_GET_with_no_body_has_sane_chunking
-    @server.app = proc { |env| [200, {}, [""]] }
+    @server.app = proc { |env| [200, {}, []] }
 
     @server.add_tcp_listener @host, @port
     @server.run
@@ -229,6 +229,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.run
 
     sock = TCPSocket.new @host, @port
+
     sock << "GET / HTTP/1.0\r\n\r\n"
 
     data = sock.read
@@ -248,5 +249,21 @@ class TestPumaServer < Test::Unit::TestCase
     data = sock.read
 
     assert_equal "HTTP/1.1 449 CUSTOM\r\nContent-Length: 0\r\n\r\n", data
+  end
+
+  def test_HEAD_returns_content_headers
+    @server.app = proc { |env| [200, {"Content-Type" => "application/pdf",
+                                      "Content-Length" => "4242"}, []] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Type: application/pdf\r\nContent-Length: 4242\r\n\r\n", data
   end
 end

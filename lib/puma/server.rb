@@ -443,8 +443,6 @@ module Puma
           when TRANSFER_ENCODING
             allow_chunked = false
             content_length = nil
-          when CONTENT_TYPE
-            next if no_body
           when HIJACK
             response_hijack = vs
             next
@@ -456,6 +454,10 @@ module Puma
         end
 
         if no_body
+          if content_length and status != 204
+            lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+          end
+
           lines << line_ending
           fast_write client, lines.to_s
           return keep_alive
