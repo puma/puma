@@ -5,6 +5,7 @@ require "rake/javaextensiontask"
 IS_JRUBY = defined?(RUBY_ENGINE) ? RUBY_ENGINE == "jruby" : false
 
 Hoe.plugin :git
+Hoe.plugin :ignore
 
 HOE = Hoe.spec "puma" do
   self.rubyforge_name = 'puma'
@@ -23,6 +24,8 @@ HOE = Hoe.spec "puma" do
 
   extra_dev_deps << ["rake-compiler", "~> 0.8.0"]
 end
+
+task :prerelease => [:clobber, :check_manifest, :test]
 
 # hoe/test and rake-compiler don't seem to play well together, so disable
 # hoe/test's .gemtest touch file thingy for now
