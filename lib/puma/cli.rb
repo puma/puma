@@ -276,6 +276,11 @@ module Puma
         unsupported "worker mode not supported on JRuby and Windows",
                     jruby? || windows?
       end
+
+      if @options[:daemon] and windows?
+        unsupported "daemon mode not supported on Windows"
+      end
+
     end
 
     def graceful_stop

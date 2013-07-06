@@ -43,7 +43,7 @@ module Puma
         already_daemon = JRubyRestart.daemon_init
       end
 
-      output_header
+      output_header "single"
 
       if jruby_daemon?
         unless already_daemon
@@ -59,7 +59,10 @@ module Puma
         end
       else
         load_and_bind
-        Process.daemon(true) if daemon?
+        if daemon?
+          log "* Daemonizing..."
+          Process.daemon(true)
+        end
       end
 
       @cli.write_state

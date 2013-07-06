@@ -198,10 +198,9 @@ module Puma
     def run
       @status = :run
 
-      log "Puma #{Puma::Const::PUMA_VERSION} starting in cluster mode..."
+      output_header "cluster"
+
       log "* Process workers: #{@options[:workers]}"
-      log "* Min threads: #{@options[:min_threads]}, max threads: #{@options[:max_threads]}"
-      log "* Environment: #{ENV['RACK_ENV']}"
 
       if @options[:preload_app]
         log "* Preloading application"
@@ -257,7 +256,8 @@ module Puma
       #
       @check_pipe, @suicide_pipe = Puma::Util.pipe
 
-      if @options[:daemon]
+      if daemon?
+        log "* Daemonizing..."
         Process.daemon(true)
       else
         log "Use Ctrl-C to stop"

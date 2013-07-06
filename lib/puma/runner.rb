@@ -22,11 +22,11 @@ module Puma
       @cli.error str
     end
 
-    def output_header
+    def output_header(mode)
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
-      log "Puma #{Puma::Const::PUMA_VERSION} starting..."
+      log "Puma #{Puma::Const::PUMA_VERSION} starting in #{mode} mode..."
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
     end
