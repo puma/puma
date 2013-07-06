@@ -365,6 +365,26 @@ module Puma
 
         require 'puma/jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, restart_args)
+
+      elsif windows?
+        @binder.listeners.each_with_index do |(str,io),i|
+          io.close
+
+          # We have to unlink a unix socket path that's not being used
+          uri = URI.parse str
+          if uri.scheme == "unix"
+            path = "#{uri.host}#{uri.path}"
+            File.unlink path
+          end
+        end
+
+        argv = restart_args
+
+        Dir.chdir @restart_dir
+
+        argv += [redirects] unless RUBY_VERSION < '1.9'
+        Kernel.exec(*argv)
+
       else
         redirects = {:close_others => true}
         @binder.listeners.each_with_index do |(l,io),i|
