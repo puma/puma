@@ -175,6 +175,14 @@ Puma isn't able to understand all the resources that your app may use, so it pro
 
 You should place code to close global log files, redis connections, etc in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restart many times.
 
+### Platform Constaints
+
+Because of various platforms not being implement certain things, the following differences occur when puma is used on different platforms:
+
+  * On JRuby and Windows, server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to ruby.
+  * On Windows, daemon mode is not supported due to a lack of fork(2).
+  * On JRuby and Windows, cluster mode is not supported due to a lack of fork(2).
+
 ## pumactl
 
 If you start puma with `-S some/path` then you can pass that same path to the `pumactl` program to control your server. For instance:
