@@ -205,7 +205,14 @@ module Puma
       if @options[:command] == "start"
         require 'puma/cli'
 
-        cli = Puma::CLI.new @argv, @stdout, @stderr
+        run_args = @argv
+        if path = @options[:status_path]
+          run_args = ["-S", path] + run_args
+        end
+
+        events = Puma::Events.new @stdout, @stderr
+
+        cli = Puma::CLI.new run_args, events
         cli.run
         return
       end
