@@ -327,7 +327,13 @@ module Puma
       # server; that client may be a proxy, gateway, or other
       # intermediary acting on behalf of the actual source client."
       #
-      env[REMOTE_ADDR] = client.peeraddr.last
+
+      addr = client.peeraddr.last
+
+      # Set unix socket addrs to localhost
+      addr = "127.0.0.1" if addr.empty?
+
+      env[REMOTE_ADDR] = addr
     end
 
     def default_server_port(env)
