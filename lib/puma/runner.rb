@@ -4,6 +4,7 @@ module Puma
       @cli = cli
       @options = cli.options
       @app = nil
+      @control = nil
     end
 
     def daemon?
@@ -20,6 +21,45 @@ module Puma
 
     def error(str)
       @cli.error str
+    end
+
+    def before_restart
+      @control.stop(true) if @control
+    end
+
+    def start_control
+      str = @options[:control_url]
+      return unless str
+
+      require 'puma/app/status'
+
+      uri = URI.parse str
+
+      app = Puma::App::Status.new @cli
+
+      if token = @options[:control_auth_token]
+        app.auth_token = token unless token.empty? or token == :none
+      end
+
+      control = Puma::Server.new app, @cli.events
+      control.min_threads = 0
+      control.max_threads = 1
+
+      case uri.scheme
+      when "tcp"
+        log "* Starting control server on #{str}"
+        control.add_tcp_listener uri.host, uri.port
+      when "unix"
+        log "* Starting control server on #{str}"
+        path = "#{uri.host}#{uri.path}"
+
+        control.add_unix_listener path
+      else
+        error "Invalid control URI: #{str}"
+      end
+
+      control.run
+      @control = control
     end
 
     def output_header(mode)

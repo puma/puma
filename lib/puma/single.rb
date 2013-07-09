@@ -22,6 +22,7 @@ module Puma
 
     def stop_blocked
       log "- Gracefully stopping, waiting for requests to finish"
+      @control.stop(true) if @control
       @server.stop(true)
     end
 
@@ -67,6 +68,8 @@ module Puma
       end
 
       @cli.write_state
+
+      start_control
 
       @server = server = start_server
 

@@ -175,6 +175,7 @@ module Puma
     def stop_blocked
       @status = :stop if @status == :run
       wakeup!
+      @control.stop(true) if @control
       Process.waitall
     end
 
@@ -257,6 +258,8 @@ module Puma
       end
 
       redirect_io
+
+      start_control
 
       @cli.write_state
 

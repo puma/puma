@@ -287,7 +287,6 @@ module Puma
     end
 
     def graceful_stop
-      @control.stop(true) if @control
       @runner.stop_blocked
       log "- Goodbye!"
     end
@@ -428,10 +427,6 @@ module Puma
 
       setup_signals
 
-      if cont = @options[:control_url]
-        start_control cont
-      end
-
       @status = :run
 
       @runner.run
@@ -443,8 +438,10 @@ module Puma
         graceful_stop
       when :restart
         log "* Restarting..."
-        @control.stop true if @control
+        @runner.before_restart
         restart!
+      when :exit
+        # nothing
       end
     end
 
@@ -467,42 +464,11 @@ module Puma
 
       if jruby?
         Signal.trap("INT") do
+          @status = :exit
           graceful_stop
           exit
         end
       end
-    end
-
-    def start_control(str)
-      require 'puma/app/status'
-
-      uri = URI.parse str
-
-      app = Puma::App::Status.new self
-
-      if token = @options[:control_auth_token]
-        app.auth_token = token unless token.empty? or token == :none
-      end
-
-      control = Puma::Server.new app, @events
-      control.min_threads = 0
-      control.max_threads = 1
-
-      case uri.scheme
-      when "tcp"
-        log "* Starting control server on #{str}"
-        control.add_tcp_listener uri.host, uri.port
-      when "unix"
-        log "* Starting control server on #{str}"
-        path = "#{uri.host}#{uri.path}"
-
-        control.add_unix_listener path
-      else
-        error "Invalid control URI: #{str}"
-      end
-
-      control.run
-      @control = control
     end
 
     def stop
