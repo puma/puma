@@ -174,7 +174,7 @@ Puma isn't able to understand all the resources that your app may use, so it pro
 
 You should place code to close global log files, redis connections, etc in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restart many times.
 
-### Platform Constaints
+### Platform Constraints
 
 Because of various platforms not being implement certain things, the following differences occur when puma is used on different platforms:
 
