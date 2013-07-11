@@ -19,6 +19,7 @@ module Puma
       @options = options
       @options[:binds] ||= []
       @options[:on_restart] ||= []
+      @options[:worker_boot] ||= []
     end
 
     attr_reader :options
