@@ -55,6 +55,11 @@ module Puma
             exit
           end
 
+          Signal.trap "SIGCHLD" do
+            log "! Error starting new process as daemon, exitting"
+            exit 1
+          end
+
           pid = @cli.jruby_daemon_start
           sleep
         end
