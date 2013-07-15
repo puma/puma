@@ -46,7 +46,7 @@ module Puma
     # Server#run returns a thread that you can join on to wait for the server
     # to do it's work.
     #
-    def initialize(app, events=Events.stdio)
+    def initialize(app, events=Events.stdio, options={})
       @app = app
       @events = events
 
@@ -69,6 +69,8 @@ module Puma
       @first_data_timeout = FIRST_DATA_TIMEOUT
 
       @leak_stack_on_error = true
+
+      @options = options
 
       ENV['RACK_ENV'] ||= "development"
     end
@@ -600,6 +602,28 @@ module Puma
     # Wait for all outstanding requests to finish.
     #
     def graceful_shutdown
+      if @options[:drain_on_shutdown]
+        count = 0
+
+        while true
+          ios = IO.select @binder.ios, nil, nil, 0
+          break unless ios
+
+          ios.first.each do |sock|
+            begin
+              if io = sock.accept_nonblock
+                count += 1
+                c = Client.new io, @binder.env(sock)
+                @thread_pool << c
+              end
+            rescue SystemCallError
+            end
+          end
+        end
+
+        @events.debug "Drained #{count} additional connections."
+      end
+
       @thread_pool.shutdown if @thread_pool
     end
 

@@ -194,6 +194,14 @@ module Puma
         @options[:daemon] = which
       end
 
+      # When shutting down, drain the accept socket of pending
+      # connections and proces them. This loops over the accept
+      # socket until there are no more read events and then stops
+      # looking and waits for the requests to finish.
+      def drain_on_shutdown(which=true)
+        @options[:drain_on_shutdown] = which
+      end
+
       # Set the environment in which the Rack's app will run.
       def environment(environment)
         @options[:environment] = environment

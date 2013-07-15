@@ -20,6 +20,8 @@ module Puma
       @stdout.sync = true
       @stderr.sync = true
 
+      @debug = ENV.key? 'PUMA_DEBUG'
+
       @on_booted = []
     end
 
@@ -33,6 +35,10 @@ module Puma
 
     def write(str)
       @stdout.write str
+    end
+
+    def debug(str)
+      log("% #{str}") if @debug
     end
 
     # Write +str+ to +@stderr+
