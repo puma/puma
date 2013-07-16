@@ -145,11 +145,7 @@ This directs puma to start the control server on localhost port 9293. Additional
 
 ### Configuration file
 
-You can also provide a configuration file which puma will use:
-
-    $ puma --config /path/to/config
-
-or
+You can also provide a configuration file which puma will use with the `-C` (or `--config`) flag:
 
     $ puma -C /path/to/config
 
