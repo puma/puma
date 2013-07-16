@@ -188,6 +188,12 @@ module Puma
         @options[:binds] << url
       end
 
+      # Define the TCP port to bind to. Use +bind+ for more advanced options.
+      #
+      def port(port)
+        @options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{port}"
+      end
+
       # Daemonize the server into the background. Highly suggest that
       # this be combined with +pidfile+ and +stdout_redirect+.
       def daemonize(which=true)
