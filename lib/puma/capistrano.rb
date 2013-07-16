@@ -47,13 +47,17 @@ Capistrano::Configuration.instance.load do
   def config_file
     @_config_file ||= begin
       file = fetch(:puma_config_file, nil)
-      file = "./config/puma/#{puma_env}.rb" if !file && File.exists?("./config/puma/#{puma_env}.rb")
+      file = "./config/puma/#{puma_stage}.rb" if !file && File.exists?("./config/puma/#{puma_stage}.rb")
       file
     end
   end
 
   def puma_env
     fetch(:rack_env, fetch(:rails_env, 'production'))
+  end
+  
+  def puma_stage
+    fetch(:stage, 'production')
   end
 
   def state_path
