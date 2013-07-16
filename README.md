@@ -166,7 +166,7 @@ If the new process is unable to load, it will simply exit. You should therefore 
 
 ### Cleanup Code
 
-Puma isn't able to understand all the resources that your app may use, so it provides a hook in the configuration file you pass to `-C` call `on_restart`. The block passed to `on_restart` will be called, unsurprisingly, just before puma restarts itself.
+Puma isn't able to understand all the resources that your app may use, so it provides a hook in the configuration file you pass to `-C` called `on_restart`. The block passed to `on_restart` will be called, unsurprisingly, just before puma restarts itself.
 
 You should place code to close global log files, redis connections, etc in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restart many times.
 
