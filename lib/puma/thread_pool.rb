@@ -20,8 +20,8 @@ module Puma
       @spawned = 0
       @waiting = 0
 
-      @min = min
-      @max = max
+      @min = Integer(min)
+      @max = Integer(max)
       @block = block
       @extra = extra
 
@@ -34,7 +34,7 @@ module Puma
       @auto_trim = nil
 
       @mutex.synchronize do
-        min.times { spawn_thread }
+        @min.times { spawn_thread }
       end
     end
 
