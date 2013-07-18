@@ -13,6 +13,8 @@ require 'puma/delegation'
 require 'puma/accept_nonblock'
 require 'puma/util'
 
+require 'puma/rack_patch'
+
 require 'puma/puma_http11'
 
 unless Puma.const_defined? "IOBuffer"
