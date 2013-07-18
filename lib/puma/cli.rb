@@ -235,7 +235,13 @@ module Puma
           f.puts Process.pid
         end
 
-        at_exit { delete_pidfile }
+        cur = Process.pid
+
+        at_exit do
+          if cur == Process.pid
+            delete_pidfile
+          end
+        end
       end
     end
 
@@ -443,6 +449,9 @@ module Puma
       when :exit
         # nothing
       end
+
+    ensure
+      delete_pidfile
     end
 
     def setup_signals
