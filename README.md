@@ -141,15 +141,11 @@ Puma comes with a builtin status/control app that can be used query and control 
 
     $ puma --control tcp://127.0.0.1:9293 --control-token foo
 
-This directs puma to start the control server on localhost port 9293. Additionally, all requests to the control server will need to include `token=foo` as a query parameter. This allows for simple authentication. Check out https://github.com/puma/puma/blob/master/lib/puma/app/status.rb to see what the app has available.
+This directs puma to start the control server on localhost port 9293. Additionally, all requests to the control server will need to include `token=foo` as a query parameter. This allows for simple authentication. Check out [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the app has available.
 
 ### Configuration file
 
-You can also provide a configuration file which puma will use:
-
-    $ puma --config /path/to/config
-
-or
+You can also provide a configuration file which puma will use with the `-C` (or `--config`) flag:
 
     $ puma -C /path/to/config
 
@@ -157,7 +153,7 @@ Take the following [sample configuration](https://github.com/puma/puma/blob/mast
 
 ## Restart
 
-Puma includes the ability to restart itself, allowing for new versions to be easily upgraded to. When available (MRI, Rubinius, JRuby), puma performs a "hot restart". This is the same functionality available in *unicorn* and *nginx* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
+Puma includes the ability to restart itself allowing easy upgrades to new versions. When available (MRI, Rubinius, JRuby), puma performs a "hot restart". This is the same functionality available in *unicorn* and *nginx* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
 
 To perform a restart, there are 2 builtin mechanisms:
 
@@ -170,7 +166,7 @@ If the new process is unable to load, it will simply exit. You should therefore 
 
 ### Cleanup Code
 
-Puma isn't able to understand all the resources that your app may use, so it provides a hook in the configuration file you pass to `-C` call `on_restart`. The block passed to `on_restart` will be called, unsurprisingly, just before puma restarts itself.
+Puma isn't able to understand all the resources that your app may use, so it provides a hook in the configuration file you pass to `-C` called `on_restart`. The block passed to `on_restart` will be called, unsurprisingly, just before puma restarts itself.
 
 You should place code to close global log files, redis connections, etc in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restart many times.
 
@@ -194,7 +190,7 @@ or
 
 will cause the server to perform a restart. `pumactl` is a simple CLI frontend to the control/status app described above.
 
-Allowed commands: status, restart, halt, stop
+Allowed commands: `status`, `restart`, `halt`, `stop`
 
 ## Managing multiple Pumas / init.d / upstart scripts
 
