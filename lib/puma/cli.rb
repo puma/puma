@@ -178,11 +178,11 @@ module Puma
         o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
           min, max = arg.split(":")
           if max
-            @options[:min_threads] = min.to_i
-            @options[:max_threads] = max.to_i
+            @options[:min_threads] = min
+            @options[:max_threads] = max
           else
             @options[:min_threads] = 0
-            @options[:max_threads] = arg.to_i
+            @options[:max_threads] = arg
           end
         end
 

@@ -31,8 +31,8 @@ module Rack
         puts "* Listening on tcp://#{options[:Host]}:#{options[:Port]}"
 
         server.add_tcp_listener options[:Host], options[:Port]
-        server.min_threads = Integer(min)
-        server.max_threads = Integer(max)
+        server.min_threads = min
+        server.max_threads = max
         yield server if block_given?
 
         begin

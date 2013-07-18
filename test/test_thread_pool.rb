@@ -32,6 +32,16 @@ class TestThreadPool < Test::Unit::TestCase
     assert_equal 1, pool.spawned
   end
 
+  def test_converts_pool_sizes
+    pool = new_pool('0', '1')
+
+    assert_equal 0, pool.spawned
+
+    pool << 1
+
+    assert_equal 1, pool.spawned
+  end
+
   def test_append_queues_on_max
     finish = false
     pool = new_pool(0, 1) { Thread.pass until finish }
