@@ -36,21 +36,21 @@ static void snake_upcase_char(char *c)
 /** Data **/
 
 #line 39 "ext/http11/http11_parser.c"
-static const int http_parser_start = 1;
-static const int http_parser_first_final = 57;
-static const int http_parser_error = 0;
+static const int puma_parser_start = 1;
+static const int puma_parser_first_final = 57;
+static const int puma_parser_error = 0;
 
-static const int http_parser_en_main = 1;
+static const int puma_parser_en_main = 1;
 
 
 #line 82 "ext/http11/http11_parser.rl"
 
-int http_parser_init(http_parser *parser)  {
+int puma_parser_init(puma_parser *parser)  {
   int cs = 0;
   
 #line 52 "ext/http11/http11_parser.c"
 	{
-	cs = http_parser_start;
+	cs = puma_parser_start;
 	}
 
 #line 86 "ext/http11/http11_parser.rl"
@@ -69,7 +69,7 @@ int http_parser_init(http_parser *parser)  {
 
 
 /** exec **/
-size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, size_t off)  {
+size_t puma_parser_execute(puma_parser *parser, const char *buffer, size_t len, size_t off)  {
   const char *p, *pe;
   int cs = parser->cs;
 
@@ -1191,7 +1191,7 @@ case 56:
 
 #line 114 "ext/http11/http11_parser.rl"
 
-  if (!http_parser_has_error(parser))
+  if (!puma_parser_has_error(parser))
     parser->cs = cs;
   parser->nread += p - (buffer + off);
 
@@ -1205,21 +1205,21 @@ case 56:
   return(parser->nread);
 }
 
-int http_parser_finish(http_parser *parser)
+int puma_parser_finish(puma_parser *parser)
 {
-  if (http_parser_has_error(parser) ) {
+  if (puma_parser_has_error(parser) ) {
     return -1;
-  } else if (http_parser_is_finished(parser) ) {
+  } else if (puma_parser_is_finished(parser) ) {
     return 1;
   } else {
     return 0;
   }
 }
 
-int http_parser_has_error(http_parser *parser) {
-  return parser->cs == http_parser_error;
+int puma_parser_has_error(puma_parser *parser) {
+  return parser->cs == puma_parser_error;
 }
 
-int http_parser_is_finished(http_parser *parser) {
-  return parser->cs >= http_parser_first_final;
+int puma_parser_is_finished(puma_parser *parser) {
+  return parser->cs >= puma_parser_first_final;
 }

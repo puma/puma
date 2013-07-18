@@ -29,7 +29,7 @@ static void snake_upcase_char(char *c)
 
 %%{
   
-  machine http_parser;
+  machine puma_parser;
 
   action mark { MARK(mark, fpc); }
 
@@ -73,14 +73,14 @@ static void snake_upcase_char(char *c)
     fbreak;
   }
 
-  include http_parser_common "http11_parser_common.rl";
+  include puma_parser_common "http11_parser_common.rl";
 
 }%%
 
 /** Data **/
 %% write data;
 
-int http_parser_init(http_parser *parser)  {
+int puma_parser_init(puma_parser *parser)  {
   int cs = 0;
   %% write init;
   parser->cs = cs;
@@ -98,7 +98,7 @@ int http_parser_init(http_parser *parser)  {
 
 
 /** exec **/
-size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, size_t off)  {
+size_t puma_parser_execute(puma_parser *parser, const char *buffer, size_t len, size_t off)  {
   const char *p, *pe;
   int cs = parser->cs;
 
@@ -112,7 +112,7 @@ size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, 
 
   %% write exec;
 
-  if (!http_parser_has_error(parser))
+  if (!puma_parser_has_error(parser))
     parser->cs = cs;
   parser->nread += p - (buffer + off);
 
@@ -126,21 +126,21 @@ size_t http_parser_execute(http_parser *parser, const char *buffer, size_t len, 
   return(parser->nread);
 }
 
-int http_parser_finish(http_parser *parser)
+int puma_parser_finish(puma_parser *parser)
 {
-  if (http_parser_has_error(parser) ) {
+  if (puma_parser_has_error(parser) ) {
     return -1;
-  } else if (http_parser_is_finished(parser) ) {
+  } else if (puma_parser_is_finished(parser) ) {
     return 1;
   } else {
     return 0;
   }
 }
 
-int http_parser_has_error(http_parser *parser) {
-  return parser->cs == http_parser_error;
+int puma_parser_has_error(puma_parser *parser) {
+  return parser->cs == puma_parser_error;
 }
 
-int http_parser_is_finished(http_parser *parser) {
-  return parser->cs >= http_parser_first_final;
+int puma_parser_is_finished(puma_parser *parser) {
+  return parser->cs >= puma_parser_first_final;
 }

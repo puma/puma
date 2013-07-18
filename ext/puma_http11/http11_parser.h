@@ -16,16 +16,16 @@
 
 #define BUFFER_LEN 1024
 
-struct http_parser;
+struct puma_parser;
 
-typedef void (*element_cb)(struct http_parser* hp,
+typedef void (*element_cb)(struct puma_parser* hp,
                            const char *at, size_t length);
 
-typedef void (*field_cb)(struct http_parser* hp,
+typedef void (*field_cb)(struct puma_parser* hp,
                          const char *field, size_t flen,
                          const char *value, size_t vlen);
 
-typedef struct http_parser { 
+typedef struct puma_parser {
   int cs;
   size_t body_start;
   int content_len;
@@ -49,15 +49,15 @@ typedef struct http_parser {
 
   char buf[BUFFER_LEN];
   
-} http_parser;
+} puma_parser;
 
-int http_parser_init(http_parser *parser);
-int http_parser_finish(http_parser *parser);
-size_t http_parser_execute(http_parser *parser, const char *data,
+int puma_parser_init(puma_parser *parser);
+int puma_parser_finish(puma_parser *parser);
+size_t puma_parser_execute(puma_parser *parser, const char *data,
                            size_t len, size_t off);
-int http_parser_has_error(http_parser *parser);
-int http_parser_is_finished(http_parser *parser);
+int puma_parser_has_error(puma_parser *parser);
+int puma_parser_is_finished(puma_parser *parser);
 
-#define http_parser_nread(parser) (parser)->nread 
+#define puma_parser_nread(parser) (parser)->nread
 
 #endif

@@ -38,10 +38,10 @@ static VALUE global_http_version;
 static VALUE global_request_path;
 
 /** Defines common length and error messages for input length validation. */
-#define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " # length " allowed length."
+#define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " # length " allowed length (was %d)"
 
 /** Validates the max length of given input and throws an HttpParserError exception if over. */
-#define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, "%s", MAX_##N##_LENGTH_ERR); }
+#define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, MAX_##N##_LENGTH_ERR, len); }
 
 /** Defines global strings in the init method. */
 #define DEF_GLOBAL(N, val)   global_##N = rb_str_new2(val); rb_global_variable(&global_##N)
@@ -173,7 +173,7 @@ static VALUE find_common_field_value(const char *field, size_t flen)
 #endif /* !HAVE_QSORT_BSEARCH */
 }
 
-void http_field(http_parser* hp, const char *field, size_t flen,
+void http_field(puma_parser* hp, const char *field, size_t flen,
                                  const char *value, size_t vlen)
 {
   VALUE v = Qnil;
@@ -204,7 +204,7 @@ void http_field(http_parser* hp, const char *field, size_t flen,
   rb_hash_aset(hp->request, f, v);
 }
 
-void request_method(http_parser* hp, const char *at, size_t length)
+void request_method(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -212,7 +212,7 @@ void request_method(http_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_request_method, val);
 }
 
-void request_uri(http_parser* hp, const char *at, size_t length)
+void request_uri(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -222,7 +222,7 @@ void request_uri(http_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_request_uri, val);
 }
 
-void fragment(http_parser* hp, const char *at, size_t length)
+void fragment(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -232,7 +232,7 @@ void fragment(http_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_fragment, val);
 }
 
-void request_path(http_parser* hp, const char *at, size_t length)
+void request_path(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -242,7 +242,7 @@ void request_path(http_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_request_path, val);
 }
 
-void query_string(http_parser* hp, const char *at, size_t length)
+void query_string(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -252,7 +252,7 @@ void query_string(http_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_query_string, val);
 }
 
-void http_version(http_parser* hp, const char *at, size_t length)
+void http_version(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = rb_str_new(at, length);
   rb_hash_aset(hp->request, global_http_version, val);
@@ -261,7 +261,7 @@ void http_version(http_parser* hp, const char *at, size_t length)
 /** Finalizes the request header to have a bunch of stuff that's
   needed. */
 
-void header_done(http_parser* hp, const char *at, size_t length)
+void header_done(puma_parser* hp, const char *at, size_t length)
 {
   hp->body = rb_str_new(at, length);
 }
@@ -275,14 +275,14 @@ void HttpParser_free(void *data) {
   }
 }
 
-void HttpParser_mark(http_parser* hp) {
+void HttpParser_mark(puma_parser* hp) {
   if(hp->request) rb_gc_mark(hp->request);
   if(hp->body) rb_gc_mark(hp->body);
 }
 
 VALUE HttpParser_alloc(VALUE klass)
 {
-  http_parser *hp = ALLOC_N(http_parser, 1);
+  puma_parser *hp = ALLOC_N(puma_parser, 1);
   TRACE();
   hp->http_field = http_field;
   hp->request_method = request_method;
@@ -294,7 +294,7 @@ VALUE HttpParser_alloc(VALUE klass)
   hp->header_done = header_done;
   hp->request = Qnil;
 
-  http_parser_init(hp);
+  puma_parser_init(hp);
 
   return Data_Wrap_Struct(klass, HttpParser_mark, HttpParser_free, hp);
 }
@@ -307,9 +307,9 @@ VALUE HttpParser_alloc(VALUE klass)
  */
 VALUE HttpParser_init(VALUE self)
 {
-  http_parser *http = NULL;
-  DATA_GET(self, http_parser, http);
-  http_parser_init(http);
+  puma_parser *http = NULL;
+  DATA_GET(self, puma_parser, http);
+  puma_parser_init(http);
 
   return self;
 }
@@ -324,9 +324,9 @@ VALUE HttpParser_init(VALUE self)
  */
 VALUE HttpParser_reset(VALUE self)
 {
-  http_parser *http = NULL;
-  DATA_GET(self, http_parser, http);
-  http_parser_init(http);
+  puma_parser *http = NULL;
+  DATA_GET(self, puma_parser, http);
+  puma_parser_init(http);
 
   return Qnil;
 }
@@ -341,11 +341,11 @@ VALUE HttpParser_reset(VALUE self)
  */
 VALUE HttpParser_finish(VALUE self)
 {
-  http_parser *http = NULL;
-  DATA_GET(self, http_parser, http);
-  http_parser_finish(http);
+  puma_parser *http = NULL;
+  DATA_GET(self, puma_parser, http);
+  puma_parser_finish(http);
 
-  return http_parser_is_finished(http) ? Qtrue : Qfalse;
+  return puma_parser_is_finished(http) ? Qtrue : Qfalse;
 }
 
 
@@ -368,12 +368,12 @@ VALUE HttpParser_finish(VALUE self)
  */
 VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
 {
-  http_parser *http = NULL;
+  puma_parser *http = NULL;
   int from = 0;
   char *dptr = NULL;
   long dlen = 0;
 
-  DATA_GET(self, http_parser, http);
+  DATA_GET(self, puma_parser, http);
 
   from = FIX2INT(start);
   dptr = rb_extract_chars(data, &dlen);
@@ -383,15 +383,15 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
     rb_raise(eHttpParserError, "%s", "Requested start is after data buffer end.");
   } else {
     http->request = req_hash;
-    http_parser_execute(http, dptr, dlen, from);
+    puma_parser_execute(http, dptr, dlen, from);
 
     rb_free_chars(dptr);
-    VALIDATE_MAX_LENGTH(http_parser_nread(http), HEADER);
+    VALIDATE_MAX_LENGTH(puma_parser_nread(http), HEADER);
 
-    if(http_parser_has_error(http)) {
+    if(puma_parser_has_error(http)) {
       rb_raise(eHttpParserError, "%s", "Invalid HTTP format, parsing fails.");
     } else {
-      return INT2FIX(http_parser_nread(http));
+      return INT2FIX(puma_parser_nread(http));
     }
   }
 }
@@ -406,10 +406,10 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
  */
 VALUE HttpParser_has_error(VALUE self)
 {
-  http_parser *http = NULL;
-  DATA_GET(self, http_parser, http);
+  puma_parser *http = NULL;
+  DATA_GET(self, puma_parser, http);
 
-  return http_parser_has_error(http) ? Qtrue : Qfalse;
+  return puma_parser_has_error(http) ? Qtrue : Qfalse;
 }
 
 
@@ -421,10 +421,10 @@ VALUE HttpParser_has_error(VALUE self)
  */
 VALUE HttpParser_is_finished(VALUE self)
 {
-  http_parser *http = NULL;
-  DATA_GET(self, http_parser, http);
+  puma_parser *http = NULL;
+  DATA_GET(self, puma_parser, http);
 
-  return http_parser_is_finished(http) ? Qtrue : Qfalse;
+  return puma_parser_is_finished(http) ? Qtrue : Qfalse;
 }
 
 
@@ -437,8 +437,8 @@ VALUE HttpParser_is_finished(VALUE self)
  */
 VALUE HttpParser_nread(VALUE self)
 {
-  http_parser *http = NULL;
-  DATA_GET(self, http_parser, http);
+  puma_parser *http = NULL;
+  DATA_GET(self, puma_parser, http);
 
   return INT2FIX(http->nread);
 }
@@ -450,8 +450,8 @@ VALUE HttpParser_nread(VALUE self)
  * If the request included a body, returns it.
  */
 VALUE HttpParser_body(VALUE self) {
-  http_parser *http = NULL;
-  DATA_GET(self, http_parser, http);
+  puma_parser *http = NULL;
+  DATA_GET(self, puma_parser, http);
 
   return http->body;
 }
