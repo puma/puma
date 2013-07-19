@@ -464,6 +464,14 @@ module Puma
       end
 
       begin
+        Signal.trap "SIGUSR1" do
+          phased_restart
+        end
+      rescue Exception
+        log "*** SIGUSR1 not implemented, signal based restart unavailable!"
+      end
+
+      begin
         Signal.trap "SIGTERM" do
           stop
         end
@@ -491,8 +499,8 @@ module Puma
     end
 
     def phased_restart
-      return false unless @runner.respond_to? :phased_restart
-      @runner.phased_restart
+      return restart unless @runner.respond_to? :phased_restart
+      return restart unless @runner.phased_restart
     end
 
     def stats

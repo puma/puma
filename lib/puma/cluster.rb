@@ -233,16 +233,6 @@ module Puma
         end
       end
 
-      if preload?
-        Signal.trap "SIGUSR1" do
-          log "App preloaded, phased restart unavailable"
-        end
-      else
-        Signal.trap "SIGUSR1" do
-          phased_restart
-        end
-      end
-
       # Used by the workers to detect if the master process dies.
       # If select says that @check_pipe is ready, it's because the
       # master has exited and @suicide_pipe has been automatically
