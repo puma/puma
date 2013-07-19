@@ -20,10 +20,10 @@ module Puma
       @options = {}
       
       opts = OptionParser.new do |o|
-        o.banner = "Usage: pumactl (-p PID | -P pidfile | -S status_file | -C url -T token) (#{COMMANDS.join("|")})"
+        o.banner = "Usage: pumactl (-p PID | -P pidfile | -S status_file | -C url -T token | -F config.rb) (#{COMMANDS.join("|")})"
 
         o.on "-S", "--state PATH", "Where the state file to use is" do |arg|
-          @options[:status_path] = arg
+          @options[:state] = arg
         end
 
         o.on "-Q", "--quiet", "Not display messages" do |arg|
@@ -31,7 +31,7 @@ module Puma
         end
 
         o.on "-P", "--pidfile PATH", "Pid file" do |arg|
-          @options[:pid_file] = arg
+          @options[:pidfile] = arg
         end
 
         o.on "-p", "--pid PID", "Pid" do |arg|
@@ -44,6 +44,10 @@ module Puma
 
         o.on "-T", "--control-token TOKEN", "The token to use as authentication for the control server" do |arg|
           @options[:control_auth_token] = arg
+        end
+
+        o.on "-F", "--config-file PATH", "Puma config script" do |arg|
+          @options[:config_file] = arg
         end
 
         o.on_tail("-H", "--help", "Show this message") do
@@ -61,6 +65,8 @@ module Puma
       
       command = argv.shift
       @options[:command] = command if command
+
+      Puma::Configuration.new(@options).load if @options[:config_file]
 
       # check present of command
       unless @options[:command]
@@ -81,12 +87,12 @@ module Puma
     end
 
     def prepare_configuration
-      if @options.has_key? :status_path
-        unless File.exist? @options[:status_path]
-          raise "Status file not found: #{@options[:status_path]}"
+      if @options.has_key? :state
+        unless File.exist? @options[:state]
+          raise "Status file not found: #{@options[:state]}"
         end
 
-        status = YAML.load File.read(@options[:status_path])
+        status = YAML.load File.read(@options[:state])
 
         if status.kind_of?(Hash) && status.has_key?("config")
 
@@ -105,12 +111,12 @@ module Puma
           # get pid
           @options[:pid] = status["pid"].to_i
         else
-          raise "Invalid status file: #{@options[:status_path]}"
+          raise "Invalid status file: #{@options[:state]}"
         end
 
-      elsif @options.has_key? :pid_file
+      elsif @options.has_key? :pidfile
         # get pid from pid_file
-        @options[:pid] = File.open(@options[:pid_file]).gets.to_i
+        @options[:pid] = File.open(@options[:pidfile]).gets.to_i
       end
     end
 
@@ -206,8 +212,11 @@ module Puma
         require 'puma/cli'
 
         run_args = @argv
-        if path = @options[:status_path]
+        if path = @options[:state]
           run_args = ["-S", path] + run_args
+        end
+        if path = @options[:config_file]
+          run_args = ["-C", path] + run_args
         end
 
         events = Puma::Events.new @stdout, @stderr

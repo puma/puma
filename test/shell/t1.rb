@@ -8,8 +8,8 @@ sleep 1
 
 log = File.read("t1-stdout")
 
-File.unlink "t1-stdout"
-File.unlink "t1-pid"
+File.unlink "t1-stdout" if File.file? "t1-stdout"
+File.unlink "t1-pid" if File.file? "t1-pid"
 
 if log =~ %r!GET / HTTP/1\.1!
   exit 0
