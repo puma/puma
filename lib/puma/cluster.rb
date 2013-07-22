@@ -254,6 +254,12 @@ module Puma
       @cli.write_state
 
       @master_read, @worker_write = read, @wakeup
+
+      # Invoke any pre-boot hooks so they can get
+      # things in shape before spawning any workers
+      hooks = @options[:before_boot]
+      hooks.each { |h| h.call }
+
       spawn_workers
 
       Signal.trap "SIGINT" do
