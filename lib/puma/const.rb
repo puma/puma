@@ -28,8 +28,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "2.3.2".freeze
-    CODE_NAME = "Delicious Thin Mints"
+    PUMA_VERSION = VERSION = "2.4.0".freeze
+    CODE_NAME = "Crunchy Munchy Lunchy"
 
     FAST_TRACK_KA_TIMEOUT = 0.2
 

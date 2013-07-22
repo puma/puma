@@ -1,3 +1,26 @@
+=== 2.4.0 / 2013-07-22
+
+* 5 minor features:
+  * Add PUMA_JRUBY_DAEMON_OPTS to get around agent starting twice
+  * Add ability to drain accept socket on shutdown
+  * Add port to DSL
+  * Adds support for using puma config file in capistrano deploys.
+  * Make phased_restart fallback to restart if not available
+
+* 10 bug fixes:
+
+  * Be sure to only delete the pid in the master. Fixes #334
+  * Call out -C/--config flags
+  * Change parser symbol names to avoid clash. Fixes #179
+  * Convert thread pool sizes to integers
+  * Detect when the jruby daemon child doesn't start properly
+  * Fix typo in CLI help
+  * Improve the logging output when hijack is used. Fixes #332
+  * Remove unnecessary thread pool size conversions
+  * Setup :worker_boot as an Array. Fixes #317
+  * Use 127.0.0.1 as REMOTE_ADDR of unix client. Fixes #309
+
+
 === 2.3.2 / 2013-07-08
 
 * 1 bug fix:
