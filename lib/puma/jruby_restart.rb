@@ -44,6 +44,10 @@ module Puma
     def self.daemon_start(dir, argv)
       ENV['PUMA_DAEMON_RESTART'] = Process.pid.to_s
 
+      if k = ENV['PUMA_JRUBY_DAEMON_OPTS']
+        ENV['JRUBY_OPTS'] = k
+      end
+
       cmd = argv.first
       argv = ([:string] * argv.size).zip(argv).flatten
       argv << :string
