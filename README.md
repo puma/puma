@@ -190,7 +190,7 @@ or
 
 will cause the server to perform a restart. `pumactl` is a simple CLI frontend to the control/status app described above.
 
-Allowed commands: `status`, `restart`, `halt`, `stop`
+Allowed commands: `status`, `restart`, `halt`, `stop`, `phased-restart`
 
 ## Managing multiple Pumas / init.d / upstart scripts
 
