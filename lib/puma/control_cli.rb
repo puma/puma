@@ -18,7 +18,7 @@ module Puma
       @stdout = stdout
       @stderr = stderr
       @options = {}
-      
+
       opts = OptionParser.new do |o|
         o.banner = "Usage: pumactl (-p PID | -P pidfile | -S status_file | -C url -T token) (#{COMMANDS.join("|")})"
 
@@ -58,7 +58,7 @@ module Puma
       end
 
       opts.order!(argv) { |a| opts.terminate a }
-      
+
       command = argv.shift
       @options[:command] = command if command
 
@@ -68,14 +68,14 @@ module Puma
       end
 
       unless COMMANDS.include? @options[:command]
-        raise "Invalid command: #{@options[:command]}" 
+        raise "Invalid command: #{@options[:command]}"
       end
 
     rescue => e
       @stdout.puts e.message
       exit 1
     end
-    
+
     def message(msg)
       @stdout.puts msg unless @options[:quiet_flag]
     end
@@ -116,7 +116,7 @@ module Puma
 
     def send_request
       uri = URI.parse @options[:control_url]
-      
+
       # create server object by scheme
       @server = case uri.scheme
                 when "tcp"
@@ -161,7 +161,7 @@ module Puma
         message "Command #{@options[:command]} sent success"
         message response.last if @options[:command] == "stats"
       end
-      
+
       @server.close
     end
 
@@ -173,7 +173,12 @@ module Puma
       begin
         Process.getpgid pid
       rescue SystemCallError
-        raise "No pid '#{pid}' found"
+        if @options[:command] == "restart"
+          @options.delete(:command)
+          start
+        else
+          raise "No pid '#{pid}' found"
+        end
       end
 
       case @options[:command]
@@ -202,23 +207,10 @@ module Puma
     end
 
     def run
-      if @options[:command] == "start"
-        require 'puma/cli'
-
-        run_args = @argv
-        if path = @options[:status_path]
-          run_args = ["-S", path] + run_args
-        end
-
-        events = Puma::Events.new @stdout, @stderr
-
-        cli = Puma::CLI.new run_args, events
-        cli.run
-        return
-      end
+      start if @options[:command] == "start"
 
       prepare_configuration
-    
+
       if is_windows?
         send_request
       else
@@ -229,5 +221,21 @@ module Puma
       message e.message
       exit 1
     end
+
+  private
+    def start
+      require 'puma/cli'
+
+      run_args = @argv
+      if path = @options[:status_path]
+        run_args = ["-S", path] + run_args
+      end
+
+      events = Puma::Events.new @stdout, @stderr
+
+      cli = Puma::CLI.new run_args, events
+      cli.run
+      return
+    end
   end
-end  
+end
