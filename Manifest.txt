@@ -51,6 +51,7 @@ lib/puma/reactor.rb
 lib/puma/runner.rb
 lib/puma/server.rb
 lib/puma/single.rb
+lib/puma/tcp_logger.rb
 lib/puma/thread_pool.rb
 lib/puma/util.rb
 lib/rack/handler/puma.rb

@@ -70,6 +70,10 @@ module Puma
       log "* Version #{Puma::Const::PUMA_VERSION}, codename: #{Puma::Const::CODE_NAME}"
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
+
+      if @options[:mode] == :tcp
+        log "* Mode: Lopez Express (tcp)"
+      end
     end
 
     def redirect_io
@@ -119,6 +123,10 @@ module Puma
       server.min_threads = min_t
       server.max_threads = max_t
       server.inherit_binder @cli.binder
+
+      if @options[:mode] == :tcp
+        server.tcp_mode!
+      end
 
       unless development?
         server.leak_stack_on_error = false

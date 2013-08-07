@@ -17,6 +17,7 @@ module Puma
 
     def initialize(options)
       @options = options
+      @options[:mode] ||= :http
       @options[:binds] ||= []
       @options[:on_restart] ||= []
       @options[:worker_boot] ||= []
@@ -97,6 +98,13 @@ module Puma
             @options[:binds] << val
           end
         end
+      end
+
+      if @options[:mode] == :tcp
+        require 'puma/tcp_logger'
+
+        logger = @options[:logger] || STDOUT
+        return TCPLogger.new(logger, app, @options[:quiet])
       end
 
       if !@options[:quiet] and @options[:environment] == "development"
@@ -301,6 +309,11 @@ module Puma
       def directory(dir)
         @options[:directory] = dir.to_s
         @options[:worker_directory] = dir.to_s
+      end
+
+      # Run the app as a raw TCP app instead of an HTTP rack app
+      def tcp_mode
+        @options[:mode] = :tcp
       end
 
       # *Cluster mode only* Preload the application before starting

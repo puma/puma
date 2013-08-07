@@ -22,11 +22,15 @@ module Puma
   class Client
     include Puma::Const
 
-    def initialize(io, env)
+    def initialize(io, env=nil)
       @io = io
       @to_io = io.to_io
       @proto_env = env
-      @env = env.dup
+      if !env
+        @env = nil
+      else
+        @env = env.dup
+      end
 
       @parser = HttpParser.new
       @parsed_bytes = 0

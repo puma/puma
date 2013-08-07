@@ -186,6 +186,10 @@ module Puma
           end
         end
 
+        o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
+          @options[:mode] = :tcp
+        end
+
         o.on "-V", "--version", "Print the version information" do
           puts "puma version #{Puma::Const::VERSION}"
           exit 1

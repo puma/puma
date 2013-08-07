@@ -75,6 +75,8 @@ module Puma
       @options = options
 
       ENV['RACK_ENV'] ||= "development"
+
+      @mode = :http
     end
 
     attr_accessor :binder, :leak_stack_on_error
@@ -86,6 +88,10 @@ module Puma
     def inherit_binder(bind)
       @binder = bind
       @own_binder = false
+    end
+
+    def tcp_mode!
+      @mode = :tcp
     end
 
     # On Linux, use TCP_CORK to better control how the TCP stack
@@ -121,6 +127,87 @@ module Puma
       @thread_pool and @thread_pool.spawned
     end
 
+    # Lopez Mode == raw tcp apps
+
+    def run_lopez_mode(background=true)
+      @thread_pool = ThreadPool.new(@min_threads,
+                                    @max_threads,
+                                    Hash) do |client, tl|
+
+        io = client.to_io
+        addr = io.peeraddr.last
+
+        if addr.empty?
+          # Set unix socket addrs to localhost
+          addr = "127.0.0.1:0"
+        else
+          addr = "#{addr}:#{io.peeraddr[1]}"
+        end
+
+        env = { 'thread' => tl, REMOTE_ADDR => addr }
+
+        begin
+          @app.call env, client.to_io
+        rescue Object => e
+          STDERR.puts "! Detected exception at toplevel: #{e.message} (#{e.class})"
+          STDERR.puts e.backtrace
+        end
+
+        client.close unless env['detach']
+      end
+
+      if background
+        @thread = Thread.new { handle_servers_lopez_mode }
+        return @thread
+      else
+        handle_lopez_servers
+      end
+    end
+
+    def handle_servers_lopez_mode
+      begin
+        check = @check
+        sockets = [check] + @binder.ios
+        pool = @thread_pool
+
+        while @status == :run
+          begin
+            ios = IO.select sockets
+            ios.first.each do |sock|
+              if sock == check
+                break if handle_check
+              else
+                begin
+                  if io = sock.accept_nonblock
+                    c = Client.new io, nil
+                    pool << c
+                  end
+                rescue SystemCallError
+                end
+              end
+            end
+          rescue Errno::ECONNABORTED
+            # client closed the socket even before accept
+            client.close rescue nil
+          rescue Object => e
+            @events.unknown_error self, e, "Listen loop"
+          end
+        end
+
+        graceful_shutdown if @status == :stop || @status == :restart
+
+      rescue Exception => e
+        STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
+        STDERR.puts e.backtrace
+      ensure
+        @check.close
+        @notify.close
+
+        if @status != :restart and @own_binder
+          @binder.close
+        end
+      end
+    end
     # Runs the server.
     #
     # If +background+ is true (the default) then a thread is spun
@@ -131,6 +218,10 @@ module Puma
       BasicSocket.do_not_reverse_lookup = true
 
       @status = :run
+
+      if @mode == :tcp
+        return run_lopez_mode(background)
+      end
 
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
