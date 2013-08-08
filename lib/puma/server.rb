@@ -458,8 +458,12 @@ module Puma
             next
           end
 
-          vs.split(NEWLINE).each do |v|
-            lines.append k, colon, v, line_ending
+          if vs.respond_to?(:to_s)
+            vs.to_s.split(NEWLINE).each do |v|
+              lines.append k, colon, v, line_ending
+            end
+          else
+            lines.append k, colon, line_ending
           end
         end
 
