@@ -75,16 +75,6 @@ task "changelog" do
   puts
 end
 
-# puma.gemspec
-
-file "#{HOE.spec.name}.gemspec" => ['Rakefile', "lib/puma/const.rb"] do |t|
-  puts "Generating #{t.name}"
-  File.open(t.name, 'wb') { |f| f.write HOE.spec.to_ruby }
-end
-
-desc "Generate or update the standalone gemspec file for the project"
-task :gemspec => ["#{HOE.spec.name}.gemspec"]
-
 # generate extension code using Ragel (C and Java)
 desc "Generate extension code (C and Java) using Ragel"
 task :ragel
