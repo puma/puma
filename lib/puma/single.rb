@@ -52,7 +52,11 @@ module Puma
 
           Signal.trap "SIGUSR2" do
             log "* Started new process #{pid} as daemon..."
-            exit
+
+            # Must use exit! so we don't unwind and run the ensures
+            # that will be run by the new child (such as deleting the
+            # pidfile)
+            exit!
           end
 
           Signal.trap "SIGCHLD" do
