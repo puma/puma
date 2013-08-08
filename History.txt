@@ -1,3 +1,25 @@
+=== 2.5.0 / 2013-08-08
+
+* 2 minor features:
+  * Allow configuring pumactl with config.rb
+  * make `pumactl restart` start puma if not running
+
+* 6 bug fixes:
+  * Autodetect ruby managers and home directory in upstart script
+  * Convert header values to string before sending.
+  * Correctly report phased-restart availability
+  * Fix pidfile creation/deletion race on jruby daemonization
+  * Use integers when comparing thread counts
+  * Fix typo in using lopez express (raw tcp) mode
+
+* 6 misc changes:
+  * Fix typo in phased-restart response
+  * Uncomment setuid/setgid by default in upstart
+  * Use Puma::Const::PUMA_VERSION in gemspec
+  * Update upstart comments to reflect new commandline
+  * Remove obsolete pumactl instructions; refer to pumactl for details
+  * Make Bundler used puma.gemspec version agnostic
+
 === 2.4.1 / 2013-08-07
 
 * 1 experimental feature:
