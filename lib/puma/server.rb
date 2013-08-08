@@ -160,7 +160,7 @@ module Puma
         @thread = Thread.new { handle_servers_lopez_mode }
         return @thread
       else
-        handle_lopez_servers
+        handle_servers_lopez_mode
       end
     end
 
