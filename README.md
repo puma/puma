@@ -180,17 +180,7 @@ Because of various platforms not being implement certain things, the following d
 
 ## pumactl
 
-If you start puma with `-S some/path` then you can pass that same path to the `pumactl` program to control your server. For instance:
-
-    $ pumactl -S some/path command
-
-or
-
-    $ pumactl -C url -T token command
-
-will cause the server to perform a restart. `pumactl` is a simple CLI frontend to the control/status app described above.
-
-Allowed commands: `status`, `restart`, `halt`, `stop`
+`pumactl` is a simple CLI frontend to the control/status app described above.  Please refer to `pumactl --help` for available commands.
 
 ## Managing multiple Pumas / init.d / upstart scripts
 
