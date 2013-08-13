@@ -1,3 +1,10 @@
+=== 2.5.1 / 2013-08-13
+
+* 2 bug fixes:
+
+  * Keep jruby daemon mode from retrying on a hot restart
+  * Extract version from const.rb in gemspec
+
 === 2.5.0 / 2013-08-08
 
 * 2 minor features:
