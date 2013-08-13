@@ -3,9 +3,16 @@
 # This is only used when puma is a git dep from Bundler, so it's a little
 # weird.
 
+d = File.read(File.expand_path("../lib/puma/const.rb", __FILE__))
+if d =~ /VERSION = "(\d+\.\d+\.\d+)"/
+  version = $1
+else
+  version = "0.0.1"
+end
+
 Gem::Specification.new do |s|
   s.name = "puma"
-  s.version = Puma::Const::PUMA_VERSION
+  s.version = version
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Evan Phoenix"]
