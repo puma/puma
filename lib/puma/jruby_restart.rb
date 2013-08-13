@@ -21,15 +21,34 @@ module Puma
       raise SystemCallError.new(FFI.errno)
     end
 
+    PermKey = 'PUMA_DAEMON_PERM'
+    RestartKey = 'PUMA_DAEMON_RESTART'
+
+    # Called to tell things "Your now always in daemon mode,
+    # don't try to reenter it."
+    #
+    def self.perm_daemonize
+      ENV[PermKey] = "1"
+    end
+
     def self.daemon?
-      ENV.key? 'PUMA_DAEMON_RESTART'
+      ENV.key?(PermKey) || ENV.key?(RestartKey)
     end
 
     def self.daemon_init
-      return false unless ENV.key? 'PUMA_DAEMON_RESTART'
+      return true if ENV.key?(PermKey)
 
-      master = ENV['PUMA_DAEMON_RESTART']
-      Process.kill "SIGUSR2", master.to_i
+      return false unless ENV.key? RestartKey
+
+      master = ENV[RestartKey]
+
+      # In case the master disappears early
+      begin
+        Process.kill "SIGUSR2", master.to_i
+      rescue SystemCallError => e
+      end
+
+      ENV[RestartKey] = ""
 
       setsid
 

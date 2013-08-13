@@ -47,7 +47,9 @@ module Puma
       output_header "single"
 
       if jruby_daemon?
-        unless already_daemon
+        if already_daemon
+          JRubyRestart.perm_daemonize
+        else
           pid = nil
 
           Signal.trap "SIGUSR2" do
