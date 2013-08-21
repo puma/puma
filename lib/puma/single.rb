@@ -58,7 +58,7 @@ module Puma
             # Must use exit! so we don't unwind and run the ensures
             # that will be run by the new child (such as deleting the
             # pidfile)
-            exit!
+            exit!(true)
           end
 
           Signal.trap "SIGCHLD" do
