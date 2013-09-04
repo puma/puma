@@ -1,3 +1,4 @@
+#define RSTRING_NOT_MODIFIED 1
 #include <ruby.h>
 #include <rubyio.h>
 #include <openssl/bio.h>

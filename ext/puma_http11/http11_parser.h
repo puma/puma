@@ -6,6 +6,7 @@
 #ifndef http11_parser_h
 #define http11_parser_h
 
+#define RSTRING_NOT_MODIFIED 1
 #include "ruby.h"
 
 #include <sys/types.h>
