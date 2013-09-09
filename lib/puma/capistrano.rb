@@ -1,7 +1,7 @@
 Capistrano::Configuration.instance.load do
   after 'deploy:stop', 'puma:stop'
   after 'deploy:start', 'puma:start'
-  after 'deploy:restart', 'puma:restart'
+  after 'deploy:restart', 'puma:phased_restart'
 
   # Ensure the tmp/sockets directory is created by the deploy:setup task and
   # symlinked in by the deploy:update task. This is not handled by Capistrano
@@ -29,6 +29,11 @@ Capistrano::Configuration.instance.load do
     task :restart, :roles => lambda { fetch(:puma_role) }, :on_no_matching_servers => :continue do
       run "cd #{current_path} && #{fetch(:pumactl_cmd)} -S #{state_path} restart"
     end
+    
+    desc 'Restart puma (phased restart)'
+    task :phased_restart, :roles => lambda { fetch(:puma_role) }, :on_no_matching_servers => :continue do
+      run "cd #{current_path} && #{pumactl_cmd} -S #{puma_state} phased-restart"
+    end
   end
 
   def start_options
@@ -42,13 +47,17 @@ Capistrano::Configuration.instance.load do
   def config_file
     @_config_file ||= begin
       file = fetch(:puma_config_file, nil)
-      file = "./config/puma/#{puma_env}.rb" if !file && File.exists?("./config/puma/#{puma_env}.rb")
+      file = "./config/puma/#{puma_stage}.rb" if !file && File.exists?("./config/puma/#{puma_stage}.rb")
       file
     end
   end
 
   def puma_env
     fetch(:rack_env, fetch(:rails_env, 'production'))
+  end
+  
+  def puma_stage
+    fetch(:stage, 'production')
   end
 
   def state_path
