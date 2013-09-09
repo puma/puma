@@ -33,9 +33,10 @@ module Puma
         @pid = pid
         @phase = phase
         @stage = :started
+        @signal = "TERM"
       end
 
-      attr_reader :pid, :phase
+      attr_reader :pid, :phase, :signal
 
       def booted?
         @stage == :booted
@@ -47,7 +48,13 @@ module Puma
 
       def term
         begin
-          Process.kill "TERM", @pid
+          if @first_term_sent && (Time.new - @first_term_sent) > 30
+            @signal = "KILL"
+          else
+            @first_term_sent ||= Time.new
+          end
+
+          Process.kill @signal, @pid
         rescue Errno::ESRCH
         end
       end
@@ -85,7 +92,7 @@ module Puma
 
       spawn_workers
 
-      if @phased_state == :idle && all_workers_booted?
+      if all_workers_booted?
         # If we're running at proper capacity, check to see if
         # we need to phase any workers out (which will restart
         # in the right phase).
@@ -93,9 +100,13 @@ module Puma
         w = @workers.find { |x| x.phase != @phase }
 
         if w
-          @phased_state = :waiting
-          log "- Stopping #{w.pid} for phased upgrade..."
+          if @phased_state == :idle
+            @phased_state = :waiting
+            log "- Stopping #{w.pid} for phased upgrade..."
+          end
+
           w.term
+          log "- #{w.signal} sent to #{w.pid}..."
         end
       end
     end
