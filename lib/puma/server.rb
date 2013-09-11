@@ -763,6 +763,8 @@ module Puma
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
           IO.select(nil, [io], nil, 1)
           retry
+        rescue  Errno::EPIPE, SystemCallError, IOError
+          return false
         end
 
         return if n == str.bytesize
