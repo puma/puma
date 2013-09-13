@@ -1,3 +1,16 @@
+=== 2.6.0 / 2013-09-13
+
+* 2 minor features:
+  * Add support for event hooks
+  ** Add a hook for state transitions
+  * Add phased restart to capistrano recipe.
+
+* 4 bug fixes:
+  * Convince workers to stop by SIGKILL after timeout
+  * Define RSTRING_NOT_MODIFIED for Rubinius performance
+  * Handle BrokenPipe, StandardError and IOError in fat_wrote and break out
+  * Return success status to the invoking environment
+
 === 2.5.1 / 2013-08-13
 
 * 2 bug fixes:
