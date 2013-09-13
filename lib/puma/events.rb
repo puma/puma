@@ -23,9 +23,31 @@ module Puma
       @debug = ENV.key? 'PUMA_DEBUG'
 
       @on_booted = []
+
+      @hooks = Hash.new { |h,k| h[k] = [] }
     end
 
     attr_reader :stdout, :stderr
+
+    # Fire callbacks for the named hook
+    #
+    def fire(hook, *args)
+      @hooks[hook].each { |t| t.call(*args) }
+    end
+
+    # Register a callbock for a given hook
+    #
+    def register(hook, obj=nil, &blk)
+      if obj and blk
+        raise "Specify either an object or a block, not both"
+      end
+
+      h = obj || blk
+
+      @hooks[hook] << h
+
+      h
+    end
 
     # Write +str+ to +@stdout+
     #

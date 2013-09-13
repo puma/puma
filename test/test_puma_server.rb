@@ -266,4 +266,27 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Type: application/pdf\r\nContent-Length: 4242\r\n\r\n", data
   end
+
+  def test_status_hook_fires_when_server_changes_states
+
+    states = []
+
+    @events.register(:state) { |s| states << s }
+
+    @server.app = proc { |env| [200, {}, [""]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    sock.read
+
+    assert_equal [:booting, :running], states
+
+    @server.stop(true)
+
+    assert_equal [:booting, :running, :stop, :done], states
+  end
 end

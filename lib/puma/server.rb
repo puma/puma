@@ -156,6 +156,8 @@ module Puma
         client.close unless env['detach']
       end
 
+      @events.fire :state, :running
+
       if background
         @thread = Thread.new { handle_servers_lopez_mode }
         return @thread
@@ -194,6 +196,8 @@ module Puma
           end
         end
 
+        @events.fire :state, @status
+
         graceful_shutdown if @status == :stop || @status == :restart
 
       rescue Exception => e
@@ -207,6 +211,8 @@ module Puma
           @binder.close
         end
       end
+
+      @events.fire :state, :done
     end
     # Runs the server.
     #
@@ -216,6 +222,8 @@ module Puma
     #
     def run(background=true)
       BasicSocket.do_not_reverse_lookup = true
+
+      @events.fire :state, :booting
 
       @status = :run
 
@@ -255,6 +263,8 @@ module Puma
         @thread_pool.auto_trim!(@auto_trim_time)
       end
 
+      @events.fire :state, :running
+
       if background
         @thread = Thread.new { handle_servers }
         return @thread
@@ -293,6 +303,8 @@ module Puma
           end
         end
 
+        @events.fire :state, @status
+
         graceful_shutdown if @status == :stop || @status == :restart
         @reactor.clear! if @status == :restart
 
@@ -308,6 +320,8 @@ module Puma
           @binder.close
         end
       end
+
+      @events.fire :state, :done
     end
 
     # :nodoc:
