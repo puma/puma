@@ -283,7 +283,7 @@ module Puma
       @config.load
 
       if clustered?
-        unsupported "worker mode not supported on JRuby and Windows",
+        unsupported "worker mode not supported on JRuby or Windows",
                     jruby? || windows?
       end
 
