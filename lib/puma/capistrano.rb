@@ -21,19 +21,11 @@ Capistrano::Configuration.instance.load do
       run "cd #{current_path} && #{puma_cmd} #{start_options}", :pty => false
     end
 
-    desc 'Stop puma'
-    task :stop, :roles => lambda { puma_role }, :on_no_matching_servers => :continue do
-      run "cd #{current_path} && #{pumactl_cmd} -S #{state_path} stop"
-    end
-
-    desc 'Restart puma'
-    task :restart, :roles => lambda { puma_role }, :on_no_matching_servers => :continue do
-      run "cd #{current_path} && #{pumactl_cmd} -S #{state_path} restart"
-    end
-
-    desc 'Restart puma (phased restart)'
-    task :phased_restart, :roles => lambda { puma_role }, :on_no_matching_servers => :continue do
-      run "cd #{current_path} && #{pumactl_cmd} -S #{state_path} phased-restart"
+    %w[stop restart phased-restart].each do |command|
+      desc "#{command.capitalize} puma"
+      task command, :roles => lambda { puma_role }, :on_no_matching_servers => :continue do
+        run "cd #{current_path} && #{pumactl_cmd} -S #{state_path} #{command}"
+      end
     end
 
   end
