@@ -6,6 +6,13 @@ class String
   end
 
   unless method_defined? :byteslice
-    alias_method :byteslice, :[]
+    if RUBY_VERSION < '1.9'
+      alias_method :byteslice, :[]
+    else
+      def byteslice(*arg)
+        enc = self.encoding
+        self.dup.force_encoding(Encoding::ASCII_8BIT).slice(*arg).force_encoding(enc)
+      end
+    end
   end
 end
