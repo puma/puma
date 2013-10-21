@@ -6,7 +6,7 @@
 #
 # directory '/u/apps/lolcat'
 
-# Use a object or block as the rack application. This allows the
+# Use an object or block as the rack application. This allows the
 # config file to be the application itself.
 #
 # app do |env|
