@@ -98,16 +98,13 @@ module Puma
     # packetizes our stream. This improves both latency and throughput.
     #
     if RUBY_PLATFORM =~ /linux/
-      # 6 == Socket::IPPROTO_TCP
-      # 3 == TCP_CORK
-      # 1/0 == turn on/off
       def cork_socket(socket)
-        socket.setsockopt(6, 3, 1) if socket.kind_of? TCPSocket
+        socket.setsockopt(:IPPROTO_TCP, :CORK, true) if socket.kind_of? TCPSocket
       end
 
       def uncork_socket(socket)
         begin
-          socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
+          socket.setsockopt(:IPPROTO_TCP, :CORK, false) if socket.kind_of? TCPSocket
         rescue IOError
         end
       end
@@ -326,7 +323,7 @@ module Puma
 
     # :nodoc:
     def handle_check
-      cmd = @check.read(1) 
+      cmd = @check.read(1)
 
       case cmd
       when STOP_COMMAND
