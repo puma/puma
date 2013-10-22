@@ -17,7 +17,7 @@ require 'puma/rack_patch'
 
 require 'puma/puma_http11'
 
-unless Puma.const_defined? "IOBuffer"
+unless Puma.const_defined?("IOBuffer", false)
   require 'puma/io_buffer'
 end
 
