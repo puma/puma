@@ -24,7 +24,18 @@ module Puma
       sockets = @sockets
 
       while true
-        ready = IO.select sockets, nil, nil, @sleep_for
+        begin
+          ready = IO.select sockets, nil, nil, @sleep_for
+        rescue IOError => e
+          if sockets.any?(&:closed?)
+            STDERR.puts "Error in select: #{e.message} (#{e.class})"
+            STDERR.puts e.backtrace
+            sockets = sockets.reject(&:closed)
+            retry
+          else
+            raise
+          end
+        end
 
         if ready and reads = ready[0]
           reads.each do |c|
