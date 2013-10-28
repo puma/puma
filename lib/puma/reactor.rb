@@ -18,7 +18,9 @@ module Puma
       @sockets = [@ready]
     end
 
-    def run
+    private
+
+    def run_internal
       sockets = @sockets
 
       while true
@@ -95,6 +97,12 @@ module Puma
           end
         end
       end
+    end
+
+    public
+
+    def run
+      run_internal
     ensure
       @trigger.close
       @ready.close
@@ -104,7 +112,7 @@ module Puma
       @thread = Thread.new {
         while true
           begin
-            run
+            run_internal
             break
           rescue StandardError => e
             STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
