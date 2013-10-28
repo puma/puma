@@ -109,17 +109,18 @@ module Puma
     end
 
     def run_in_thread
-      @thread = Thread.new {
-        while true
-          begin
-            run_internal
-            break
-          rescue StandardError => e
-            STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
-            puts e.backtrace
-          end
+      @thread = Thread.new do
+        begin
+          run_internal
+        rescue StandardError => e
+          STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
+          STDERR.puts e.backtrace
+          retry
+        ensure
+          @trigger.close
+          @ready.close
         end
-      }
+      end
     end
 
     def calculate_sleep
