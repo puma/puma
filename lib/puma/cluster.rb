@@ -230,6 +230,17 @@ module Puma
         wakeup!
       end
 
+      Signal.trap "TTIN" do
+        @options[:workers] += 1
+        wakeup!
+      end
+
+      Signal.trap "TTOU" do
+        @options[:workers] -= 1 if @options[:workers] >= 2
+        @workers.last.term
+        wakeup!
+      end
+
       master_pid = Process.pid
 
       Signal.trap "SIGTERM" do
