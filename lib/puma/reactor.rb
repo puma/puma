@@ -27,10 +27,10 @@ module Puma
         begin
           ready = IO.select sockets, nil, nil, @sleep_for
         rescue IOError => e
-          if sockets.any?(&:closed?)
+          if sockets.any? { |socket| socket.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
             STDERR.puts e.backtrace
-            sockets = sockets.reject(&:closed)
+            sockets = sockets.reject { |socket| socket.closed? }
             retry
           else
             raise
