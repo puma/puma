@@ -18,11 +18,24 @@ module Puma
       @sockets = [@ready]
     end
 
-    def run
+    private
+
+    def run_internal
       sockets = @sockets
 
       while true
-        ready = IO.select sockets, nil, nil, @sleep_for
+        begin
+          ready = IO.select sockets, nil, nil, @sleep_for
+        rescue IOError => e
+          if sockets.any? { |socket| socket.closed? }
+            STDERR.puts "Error in select: #{e.message} (#{e.class})"
+            STDERR.puts e.backtrace
+            sockets = sockets.reject { |socket| socket.closed? }
+            retry
+          else
+            raise
+          end
+        end
 
         if ready and reads = ready[0]
           reads.each do |c|
@@ -95,23 +108,30 @@ module Puma
           end
         end
       end
+    end
+
+    public
+
+    def run
+      run_internal
     ensure
       @trigger.close
       @ready.close
     end
 
     def run_in_thread
-      @thread = Thread.new {
-        while true
-          begin
-            run
-            break
-          rescue StandardError => e
-            STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
-            puts e.backtrace
-          end
+      @thread = Thread.new do
+        begin
+          run_internal
+        rescue StandardError => e
+          STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
+          STDERR.puts e.backtrace
+          retry
+        ensure
+          @trigger.close
+          @ready.close
         end
-      }
+      end
     end
 
     def calculate_sleep
