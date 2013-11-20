@@ -1,4 +1,8 @@
 module Process
+
+  # This overrides the default version because it is broken if it
+  # exists.
+
   def self.daemon(nochdir=false, noclose=false)
     exit if fork                     # Parent exits, child continues.
 
@@ -16,5 +20,5 @@ module Process
     end
 
     0
-  end unless respond_to?(:daemon)
+  end
 end
