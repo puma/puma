@@ -27,15 +27,23 @@ module Puma
         end
       end
 
+      def engine_read_all
+        output = @engine.read
+        while output and additional_output = @engine.read
+          output << additional_output
+        end
+        output
+      end
+
       def read_nonblock(size)
         while true
-          output = @engine.read
+          output = engine_read_all
           return output if output
 
           data = @socket.read_nonblock(size)
 
           @engine.inject(data)
-          output = @engine.read
+          output = engine_read_all
 
           return output if output
 
