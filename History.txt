@@ -1,3 +1,20 @@
+=== 2.7.0 / 2013-12-03
+
+* 1 minor feature:
+  * Adding TTIN and TTOU to increment/decrement workers
+
+* N bug fixes:
+  * Always use our Process.daemon because it's not busted
+  * Add capistrano restart failback to start.
+  * Change position of `cd` so that rvm gemset is loaded
+  * Clarify some platform specifics
+  * Do not close the pipe sockets when retrying
+  * Fix String#byteslice for Ruby 1.9.1, 1.9.2
+  * Fix compatibility with 1.8.7.
+  * Handle IOError closed stream in IO.select
+  * Increase the max URI path length to 2048 chars from 1024 chars
+  * Upstart jungle use config/puma.rb instead
+
 === 2.6.0 / 2013-09-13
 
 * 2 minor features:
