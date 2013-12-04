@@ -21,7 +21,7 @@ class Http11ParserTest < Test::Unit::TestCase
     assert_equal '/', req['REQUEST_PATH']
     assert_equal 'HTTP/1.1', req['HTTP_VERSION']
     assert_equal '/', req['REQUEST_URI']
-    assert_equal 'GET', req['REQUEST_METHOD']    
+    assert_equal 'GET', req['REQUEST_METHOD']
     assert_nil req['FRAGMENT']
     assert_nil req['QUERY_STRING']
     
@@ -81,7 +81,26 @@ class Http11ParserTest < Test::Unit::TestCase
 
     return res
   end
-  
+
+  def test_max_uri_path_length
+    parser = HttpParser.new
+    req = {}
+
+    # Support URI path length to a max of 2048
+    path = "/" + rand_data(1000, 100)
+    http = "GET #{path} HTTP/1.1\r\n\r\n"
+    parser.execute(req, http, 0)
+    assert_equal path, req['REQUEST_PATH']
+    parser.reset
+
+    # Raise exception if URI path length > 2048
+    path = "/" + rand_data(2048, 100)
+    http = "GET #{path} HTTP/1.1\r\n\r\n"
+    assert_raises Puma::HttpParserError do
+      parser.execute(req, http, 0)
+      parser.reset
+    end
+  end
 
   def test_horrible_queries
     parser = HttpParser.new
