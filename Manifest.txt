@@ -5,7 +5,6 @@ LICENSE
 Manifest.txt
 README.md
 Rakefile
-TODO
 bin/puma
 bin/pumactl
 docs/config.md
