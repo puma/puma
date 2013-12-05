@@ -13,10 +13,11 @@ module Process
     Dir.chdir "/" unless nochdir     # Release old working directory.
 
     if !noclose
-      null = File.open "/dev/null", "w+"
-      STDIN.reopen null
-      STDOUT.reopen null
-      STDERR.reopen null
+      STDIN.reopen File.open("/dev/null", "r")
+
+      null_out = File.open "/dev/null", "w"
+      STDOUT.reopen null_out
+      STDERR.reopen null_out
     end
 
     0
