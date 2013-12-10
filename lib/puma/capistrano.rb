@@ -1,19 +1,23 @@
 Capistrano::Configuration.instance.load do
-  after 'deploy:stop', 'puma:stop'
-  after 'deploy:start', 'puma:start'
-  after 'deploy:restart', 'puma:restart'
 
   # Ensure the tmp/sockets directory is created by the deploy:setup task and
   # symlinked in by the deploy:update task. This is not handled by Capistrano
   # v2 but is fixed in v3.
   shared_children.push('tmp/sockets')
 
+  _cset(:puma_default_hooks)    { true }
   _cset(:puma_cmd)    { "#{fetch(:bundle_cmd, 'bundle')} exec puma" }
   _cset(:pumactl_cmd) { "#{fetch(:bundle_cmd, 'bundle')} exec pumactl" }
   _cset(:puma_env)    { fetch(:rack_env, fetch(:rails_env, 'production')) }
   _cset(:puma_state)  { "#{shared_path}/sockets/puma.state" }
   _cset(:puma_socket) { "unix://#{shared_path}/sockets/puma.sock" }
   _cset(:puma_role)   { :app }
+
+  if fetch(:puma_default_hooks)
+    after 'deploy:stop', 'puma:stop'
+    after 'deploy:start', 'puma:start'
+    after 'deploy:restart', 'puma:restart'
+  end
 
   namespace :puma do
     desc 'Start puma'
