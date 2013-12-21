@@ -23,6 +23,7 @@ Gem::Specification.new do |s|
   s.extensions = ["ext/puma_http11/extconf.rb"]
   s.files = `git ls-files`.split($/)
   s.homepage = "http://puma.io"
+  s.license = 'MIT'
   s.rdoc_options = ["--main", "README.md"]
   s.require_paths = ["lib"]
   s.required_ruby_version = Gem::Requirement.new(">= 1.8.7")
