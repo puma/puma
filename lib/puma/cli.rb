@@ -267,6 +267,27 @@ module Puma
       end
     end
 
+    def find_config
+      if cfg = @options[:config_file]
+        # Allow - to disable config finding
+        if cfg == "-"
+          @options[:config_file] = nil
+          return
+        end
+
+        return
+      end
+
+      pos = []
+
+      if env = (@options[:environment] || ENV['RACK_ENV'])
+        pos << "config/puma/#{env}.rb"
+      end
+
+      pos << "config/puma.rb"
+      @options[:config_file] = pos.find { |f| File.exists? f }
+    end
+
     # :nodoc:
     def parse_options
       @parser.parse! @argv
@@ -274,6 +295,8 @@ module Puma
       if @argv.last
         @options[:rackup] = @argv.shift
       end
+
+      find_config
 
       @config = Puma::Configuration.new @options
 
