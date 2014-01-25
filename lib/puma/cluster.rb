@@ -7,6 +7,7 @@ module Puma
 
       @phase = 0
       @workers = []
+      @worker_index = 0
 
       @phased_state = :idle
       @phased_restart = false
@@ -29,14 +30,15 @@ module Puma
     end
 
     class Worker
-      def initialize(pid, phase)
+      def initialize(idx, pid, phase)
+        @index = idx
         @pid = pid
         @phase = phase
         @stage = :started
         @signal = "TERM"
       end
 
-      attr_reader :pid, :phase, :signal
+      attr_reader :index, :pid, :phase, :signal
 
       def booted?
         @stage == :booted
@@ -68,14 +70,22 @@ module Puma
       master = Process.pid
 
       diff.times do
-        pid = fork { worker(upgrade, master) }
+        idx = next_worker_index
+
+        pid = fork { worker(idx, upgrade, master) }
         @cli.debug "Spawned worker: #{pid}"
-        @workers << Worker.new(pid, @phase)
+        @workers << Worker.new(idx, pid, @phase)
       end
 
       if diff > 0
         @phased_state = :idle
       end
+    end
+
+    def next_worker_index
+      i = @worker_index
+      @worker_index += 1
+      i
     end
 
     def all_workers_booted?
@@ -118,8 +128,8 @@ module Puma
       end
     end
 
-    def worker(upgrade, master)
-      $0 = "puma: cluster worker: #{master}"
+    def worker(index, upgrade, master)
+      $0 = "puma: cluster worker #{index}: #{master}"
       Signal.trap "SIGINT", "IGNORE"
 
       @master_read.close
@@ -143,7 +153,7 @@ module Puma
       # Invoke any worker boot hooks so they can get
       # things in shape before booting the app.
       hooks = @options[:worker_boot]
-      hooks.each { |h| h.call }
+      hooks.each { |h| h.call(index) }
 
       server = start_server
 
@@ -297,7 +307,7 @@ module Puma
                 w = @workers.find { |x| x.pid == pid }
                 if w
                   w.boot!
-                  log "- Worker #{pid} booted, phase: #{w.phase}"
+                  log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
                 else
                   log "! Out-of-sync worker list, no #{pid} worker"
                 end
