@@ -10,3 +10,8 @@ gem "rack"
 gem 'minitest', '~> 4.0'
 
 gem "jruby-openssl", :platform => "jruby"
+
+platforms :rbx do
+  gem 'rubysl', '~> 2.0'
+end
+
