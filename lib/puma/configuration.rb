@@ -21,6 +21,7 @@ module Puma
       @options[:binds] ||= []
       @options[:on_restart] ||= []
       @options[:worker_boot] ||= []
+      @options[:before_boot] ||= []
     end
 
     attr_reader :options
@@ -305,6 +306,14 @@ module Puma
       #
       def on_worker_boot(&block)
         @options[:worker_boot] << block
+      end
+      
+      # *Cluster mode only* Code to run before workers are spawned. 
+      #
+      # This can be called multiple times to add hooks.
+      #
+      def before_boot(&block)
+        @options[:before_boot] << block
       end
 
       # The directory to operate out of.
