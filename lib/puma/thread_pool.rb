@@ -84,7 +84,7 @@ module Puma
               @waiting -= 1
             end
 
-            work = todo.pop if continue
+            work = todo.shift if continue
           end
 
           break unless continue
