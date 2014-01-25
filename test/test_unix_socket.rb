@@ -21,7 +21,7 @@ unless defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
   
     def teardown
       @server.stop(true)
-      File.unlink Path if File.exists? Path
+      File.unlink Path if File.exist? Path
     end
   
     def test_server

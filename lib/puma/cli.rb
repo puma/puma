@@ -263,7 +263,7 @@ module Puma
 
     def delete_pidfile
       if path = @options[:pidfile]
-        File.unlink path if File.exists? path
+        File.unlink path if File.exist? path
       end
     end
 
@@ -285,7 +285,7 @@ module Puma
       end
 
       pos << "config/puma.rb"
-      @options[:config_file] = pos.find { |f| File.exists? f }
+      @options[:config_file] = pos.find { |f| File.exist? f }
     end
 
     # :nodoc:
@@ -351,7 +351,7 @@ module Puma
         # it the same, otherwise add -S on there because it was
         # picked up in PATH.
         #
-        if File.exists?($0)
+        if File.exist?($0)
           arg0 = [Gem.ruby, $0]
         else
           arg0 = [Gem.ruby, "-S", $0]

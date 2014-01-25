@@ -256,7 +256,7 @@ module Puma
       begin
         old_mask = File.umask(umask)
 
-        if File.exists? path
+        if File.exist? path
           begin
             old = UNIXSocket.new path
           rescue SystemCallError

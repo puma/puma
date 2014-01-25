@@ -72,7 +72,7 @@ module Puma
     # Indicate if there is a properly configured app
     #
     def app_configured?
-      @options[:app] || File.exists?(rackup)
+      @options[:app] || File.exist?(rackup)
     end
 
     def rackup
@@ -86,7 +86,7 @@ module Puma
       app = @options[:app]
 
       unless app
-        unless File.exists?(rackup)
+        unless File.exist?(rackup)
           raise "Missing rackup file '#{rackup}'"
         end
 
@@ -127,7 +127,7 @@ module Puma
 
       if defined? OpenSSL::Random
         bytes = OpenSSL::Random.random_bytes(count)
-      elsif File.exists?("/dev/urandom")
+      elsif File.exist?("/dev/urandom")
         File.open("/dev/urandom") do |f|
           bytes = f.read(count)
         end
