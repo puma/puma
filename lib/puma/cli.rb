@@ -476,9 +476,6 @@ module Puma
       when :exit
         # nothing
       end
-
-    ensure
-      delete_pidfile
     end
 
     def setup_signals
