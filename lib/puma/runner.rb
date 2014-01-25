@@ -62,12 +62,20 @@ module Puma
       @control = control
     end
 
+    def ruby_engine
+      if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
+        "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
+      else
+        "#{RUBY_ENGINE} #{RUBY_VERSION}"
+      end
+    end
+
     def output_header(mode)
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
       log "Puma starting in #{mode} mode..."
-      log "* Version #{Puma::Const::PUMA_VERSION}, codename: #{Puma::Const::CODE_NAME}"
+      log "* Version #{Puma::Const::PUMA_VERSION} (#{ruby_engine}), codename: #{Puma::Const::CODE_NAME}"
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
 
