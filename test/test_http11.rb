@@ -94,7 +94,7 @@ class Http11ParserTest < Test::Unit::TestCase
     parser.reset
 
     # Raise exception if URI path length > 2048
-    path = "/" + rand_data(2048, 100)
+    path = "/" + rand_data(2049, 100)
     http = "GET #{path} HTTP/1.1\r\n\r\n"
     assert_raises Puma::HttpParserError do
       parser.execute(req, http, 0)
