@@ -264,7 +264,7 @@ module Puma
         if File.exist? path
           begin
             old = UNIXSocket.new path
-          rescue SystemCallError
+          rescue SystemCallError, IOError
             File.unlink path
           else
             old.close
