@@ -8,6 +8,7 @@ module Puma
       @phase = 0
       @workers = []
       @worker_index = 0
+      @next_check = nil
 
       @phased_state = :idle
       @phased_restart = false
@@ -36,16 +37,26 @@ module Puma
         @phase = phase
         @stage = :started
         @signal = "TERM"
+        @last_checkin = Time.now
       end
 
-      attr_reader :index, :pid, :phase, :signal
+      attr_reader :index, :pid, :phase, :signal, :last_checkin
 
       def booted?
         @stage == :booted
       end
 
       def boot!
+        @last_checkin = Time.now
         @stage = :booted
+      end
+
+      def ping!
+        @last_checkin = Time.now
+      end
+
+      def ping_timeout?(which)
+        Time.now - @last_checkin > which
       end
 
       def term
@@ -59,6 +70,11 @@ module Puma
           Process.kill @signal, @pid
         rescue Errno::ESRCH
         end
+      end
+
+      def kill
+        Process.kill "KILL", @pid
+      rescue Errno::ESRCH
       end
     end
 
@@ -93,6 +109,24 @@ module Puma
     end
 
     def check_workers
+      return if @next_check && @next_check >= Time.now
+
+      @next_check = Time.now + 5
+
+      any = false
+
+      @workers.each do |w|
+        if w.ping_timeout?(@options[:worker_timeout])
+          log "! Terminating timed out worker: #{w.pid}"
+          w.kill
+          any = true
+        end
+      end
+
+      # If we killed any timed out workers, try to catch them
+      # during this loop by giving the kernel time to kill them.
+      sleep 1 if any
+
       while @workers.any?
         pid = Process.waitpid(-1, Process::WNOHANG)
         break unless pid
@@ -166,6 +200,15 @@ module Puma
       rescue SystemCallError, IOError
         STDERR.puts "Master seems to have exitted, exitting."
         return
+      end
+
+      Thread.new(@worker_write) do |io|
+        payload = "p#{Process.pid}\n"
+
+        while true
+          sleep 5
+          io << payload
+        end
       end
 
       server.run.join
@@ -302,15 +345,20 @@ module Puma
             if res
               req = read.read_nonblock(1)
 
-              if req == "b"
-                pid = read.gets.to_i
-                w = @workers.find { |x| x.pid == pid }
-                if w
+              next if !req || req == "!"
+
+              pid = read.gets.to_i
+
+              if w = @workers.find { |x| x.pid == pid }
+                case req
+                when "b"
                   w.boot!
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
-                else
-                  log "! Out-of-sync worker list, no #{pid} worker"
+                when "p"
+                  w.ping!
                 end
+              else
+                log "! Out-of-sync worker list, no #{pid} worker"
               end
             end
 

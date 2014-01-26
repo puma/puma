@@ -14,6 +14,7 @@ module Puma
 
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 9292
+    DefaultWorkerTimeout = 60
 
     def initialize(options)
       @options = options
@@ -21,6 +22,7 @@ module Puma
       @options[:binds] ||= []
       @options[:on_restart] ||= []
       @options[:worker_boot] ||= []
+      @options[:worker_timeout] ||= DefaultWorkerTimeout
     end
 
     attr_reader :options
