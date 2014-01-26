@@ -87,8 +87,13 @@ module Puma
             logger.log "* Inherited #{str}"
             io = inherit_tcp_listener uri.host, uri.port, fd
           else
+            params = Rack::Utils.parse_query uri.query
+
+            opt = params.key?('low_latency')
+            bak = params.fetch('backlog', 1024).to_i
+
             logger.log "* Listening on #{str}"
-            io = add_tcp_listener uri.host, uri.port
+            io = add_tcp_listener uri.host, uri.port, opt, bak
           end
 
           @listeners << [str, io]
