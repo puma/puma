@@ -14,4 +14,11 @@ else
   ERROR=2
 fi
 
+if ruby -rubygems t3.rb > /dev/null 2>&1; then
+  echo "t3 OK"
+else
+  echo "t3 FAIL"
+  ERROR=3
+fi
+
 exit $ERROR
