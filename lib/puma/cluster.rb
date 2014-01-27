@@ -7,7 +7,6 @@ module Puma
 
       @phase = 0
       @workers = []
-      @worker_index = 0
       @next_check = nil
 
       @phased_state = :idle
@@ -99,9 +98,10 @@ module Puma
     end
 
     def next_worker_index
-      i = @worker_index
-      @worker_index += 1
-      i
+      all_positions =  0...@options[:workers] 
+      occupied_positions = @workers.map { |w| w.index }
+      available_positions = all_positions.to_a - occupied_positions 
+      available_positions.first
     end
 
     def all_workers_booted?
