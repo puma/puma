@@ -59,6 +59,10 @@ module Puma
       env[HIJACK_IO] ||= @io
     end
 
+    def in_data_phase
+      !@read_header
+    end
+
     def set_timeout(val)
       @timeout_at = Time.now + val
     end
@@ -100,6 +104,7 @@ module Puma
     EmptyBody = NullIO.new
 
     def setup_body
+      @in_data_phase = true
       body = @parser.body
       cl = @env[CONTENT_LENGTH]
 
