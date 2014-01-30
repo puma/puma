@@ -98,8 +98,9 @@ module Puma
 
             while @timeouts.first.timeout_at < now
               c = @timeouts.shift
-              sockets.delete c
+              c.write_408
               c.close
+              sockets.delete c
 
               break if @timeouts.empty?
             end

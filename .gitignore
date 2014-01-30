@@ -11,3 +11,4 @@ pkg
 tmp
 .rbx/
 Gemfile.lock
+.idea/

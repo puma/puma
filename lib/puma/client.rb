@@ -267,6 +267,13 @@ module Puma
       end
     end
 
+    def write_408
+      begin
+        @io << ERROR_408_RESPONSE
+      rescue StandardError
+      end
+    end
+
     def write_500
       begin
         @io << ERROR_500_RESPONSE
