@@ -289,4 +289,18 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal [:booting, :running, :stop, :done], states
   end
+
+  def test_timeout_in_data_phase
+    @server.first_data_timeout = 2
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    client = TCPSocket.new @host, @port
+
+    client << "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
+
+    data = client.gets
+
+    assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
+  end
 end
