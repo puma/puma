@@ -779,10 +779,13 @@ module Puma
         begin
           n = io.syswrite str
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
-          IO.select(nil, [io], nil, 1)
+          if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
+            raise ConnectionError, "Socket timeout writing data"
+          end
+
           retry
         rescue  Errno::EPIPE, SystemCallError, IOError
-          return false
+          raise ConnectionError, "Socket timeout writing data"
         end
 
         return if n == str.bytesize

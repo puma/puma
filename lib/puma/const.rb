@@ -41,6 +41,10 @@ module Puma
     # for the request
     FIRST_DATA_TIMEOUT = 30
 
+    # How long to wait when getting some write blocking on the socket when
+    # sending data back
+    WRITE_TIMEOUT = 10
+
     DATE = "Date".freeze
 
     SCRIPT_NAME = "SCRIPT_NAME".freeze
