@@ -39,6 +39,7 @@ module Puma
     attr_accessor :max_threads
     attr_accessor :persistent_timeout
     attr_accessor :auto_trim_time
+    attr_accessor :first_data_timeout
 
     # Create a server for the rack app +app+.
     #
