@@ -127,11 +127,12 @@ module Puma
       # during this loop by giving the kernel time to kill them.
       sleep 1 if any
 
-      while @workers.any?
-        pid = Process.waitpid(-1, Process::WNOHANG)
-        break unless pid
-
-        @workers.delete_if { |w| w.pid == pid }
+      @workers.delete_if do |w|
+        begin
+          Process.waitpid(w.pid, Process::WNOHANG)
+        rescue Errno::ECHILD
+          true
+        end
       end
 
       spawn_workers
