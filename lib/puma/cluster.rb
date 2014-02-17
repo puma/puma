@@ -27,6 +27,13 @@ module Puma
     def start_phased_restart
       @phase += 1
       log "- Starting phased worker restart, phase: #{@phase}"
+
+      # Be sure to change the directory again before loading
+      # the app. This way we can pick up new code.
+      if dir = @options[:worker_directory]
+        log "+ Changing to #{dir}"
+        Dir.chdir dir
+      end
     end
 
     class Worker
@@ -80,14 +87,12 @@ module Puma
     def spawn_workers
       diff = @options[:workers] - @workers.size
 
-      upgrade = (@phased_state == :waiting)
-
       master = Process.pid
 
       diff.times do
         idx = next_worker_index
 
-        pid = fork { worker(idx, upgrade, master) }
+        pid = fork { worker(idx, master) }
         @cli.debug "Spawned worker: #{pid}"
         @workers << Worker.new(idx, pid, @phase)
         @options[:after_worker_boot].each { |h| h.call }
@@ -163,7 +168,7 @@ module Puma
       end
     end
 
-    def worker(index, upgrade, master)
+    def worker(index, master)
       $0 = "puma: cluster worker #{index}: #{master}"
       Signal.trap "SIGINT", "IGNORE"
 
@@ -174,15 +179,6 @@ module Puma
         IO.select [@check_pipe]
         log "! Detected parent died, dying"
         exit! 1
-      end
-
-      # Be sure to change the directory again before loading
-      # the app. This way we can pick up new code.
-      if upgrade
-        if dir = @options[:worker_directory]
-          log "+ Changing to #{dir}"
-          Dir.chdir dir
-        end
       end
 
       # If we're not running under a Bundler context, then
