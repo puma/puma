@@ -327,6 +327,15 @@ module Puma
       def preload_app!(answer=true)
         @options[:preload_app] = answer
       end
+
+      # Use +obj+ or +block+ as the low lever error handler. This allows a config file to
+      # change the default error on the server.
+      #
+      def lowlevel_error_handler(obj=nil, &block)
+        obj ||= block
+        raise "Provide either a #call'able or a block" unless obj
+        @options[:lowlevel_error_handler] = obj
+      end
     end
   end
 end

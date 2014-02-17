@@ -330,7 +330,7 @@ module Puma
 
     # :nodoc:
     def handle_check
-      cmd = @check.read(1) 
+      cmd = @check.read(1)
 
       case cmd
       when STOP_COMMAND
@@ -707,6 +707,10 @@ module Puma
     # A fallback rack response if +@app+ raises as exception.
     #
     def lowlevel_error(e)
+      if handler = @options[:lowlevel_error_handler]
+        return handler.call(e)
+      end
+
       if @leak_stack_on_error
         [500, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
       else
