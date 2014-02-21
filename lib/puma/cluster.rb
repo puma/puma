@@ -249,7 +249,7 @@ module Puma
     end
 
     def stats
-      %Q!{ "workers": #{@workers.size}, "phase": #{@phase} }!
+      %Q!{ "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{@workers.count{|w| w.booted?}} }!
     end
 
     def preload?
