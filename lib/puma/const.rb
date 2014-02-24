@@ -30,6 +30,7 @@ module Puma
 
     PUMA_VERSION = VERSION = "2.7.1".freeze
     CODE_NAME = "Earl of Sandwich Partition"
+    
 
     FAST_TRACK_KA_TIMEOUT = 0.2
 
@@ -58,7 +59,7 @@ module Puma
     PUMA_TMP_BASE = "puma".freeze
 
     # Indicate that we couldn't parse the request
-    ERROR_400_RESPONSE = "HTTP/1.1 400 Bad Request\r\n\r\n"
+    ERROR_400_RESPONSE = "HTTP/1.1 400 Bad Request\r\n\r\n".freeze
 
     # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
     ERROR_404_RESPONSE = "HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\nNOT FOUND".freeze
