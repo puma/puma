@@ -1,8 +1,8 @@
-The [unix signal](http://en.wikipedia.org/wiki/Unix_signal) is a method of sending messages between [processes](http://en.wikipedia.org/wiki/Process_(computing)). When a signal is sent, the operating system interrupts the target process's normal flow of execution. There are standard signals that are used used to stop a process but there are also custom signals that can be used for other purposes. This document is an attempt to list all supported signals that Puma will respond to. In general, signals need only be sent to the master process of a cluster.
+The [unix signal](http://en.wikipedia.org/wiki/Unix_signal) is a method of sending messages between [processes](http://en.wikipedia.org/wiki/Process_(computing)). When a signal is sent, the operating system interrupts the target process's normal flow of execution. There are standard signals that are used to stop a process but there are also custom signals that can be used for other purposes. This document is an attempt to list all supported signals that Puma will respond to. In general, signals need only be sent to the master process of a cluster.
 
 ## Sending Signals
 
-If you are new to signals it can be useful to see how they can be used. When a process is created in a *nix like operating sytem it will have a [PID - or process identifier](http://en.wikipedia.org/wiki/Process_identifier) is returned that can be used to send signals to the process. For demonstration we will create an infinatly running process by tailing a file:
+If you are new to signals it can be useful to see how they can be used. When a process is created in a *nix like operating system it will have a [PID - or process identifier](http://en.wikipedia.org/wiki/Process_identifier) that can be used to send signals to the process. For demonstration we will create an infinitely running process by tailing a file:
 
 ```sh
 $ echo "foo" >> my.log
@@ -27,7 +27,7 @@ Process.detach(pid) # http://ruby-doc.org/core-2.1.1/Process.html#method-c-detac
 Process.kill("TERM", pid)
 ```
 
-Now you will see via `ps` that there is no more `tail` process. Sometimes when refering to signals the `SIG` prefix will be used for instance `SIGTERM` is equivalent to sending `TERM` via `Process.kill`.
+Now you will see via `ps` that there is no more `tail` process. Sometimes when referring to signals the `SIG` prefix will be used for instance `SIGTERM` is equivalent to sending `TERM` via `Process.kill`.
 
 ## Puma Signals
 
