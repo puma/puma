@@ -1,0 +1,42 @@
+The [unix signal](http://en.wikipedia.org/wiki/Unix_signal) is a method of sending messages between [processes](http://en.wikipedia.org/wiki/Process_(computing)). When a signal is sent, the operating system interrupts the target process's normal flow of execution. There are standard signals that are used used to stop a process but there are also custom signals that can be used for other purposes. This document is an attempt to list all supported signals that Puma will respond to. In general, signals need only be sent to the master process of a cluster.
+
+## Sending Signals
+
+If you are new to signals it can be useful to see how they can be used. When a process is created in a *nix like operating sytem it will have a [PID - or process identifier](http://en.wikipedia.org/wiki/Process_identifier) is returned that can be used to send signals to the process. For demonstration we will create an infinatly running process by tailing a file:
+
+```sh
+$ echo "foo" >> my.log
+$ irb
+> pid = Process.spawn 'tail -f my.log'
+```
+
+From here we can see that the tail process is running by using the `ps` command:
+
+```sh
+$ ps aux | grep tail
+schneems        87152   0.0  0.0  2432772    492 s032  S+   12:46PM   0:00.00 tail -f my.log
+```
+
+You can send a signal in Ruby using the [Process module](http://www.ruby-doc.org/core-2.1.1/Process.html#kill-method):
+
+```
+$ irb
+> puts pid
+=> 87152
+Process.detach(pid) # http://ruby-doc.org/core-2.1.1/Process.html#method-c-detach
+Process.kill("TERM", pid)
+```
+
+Now you will see via `ps` that there is no more `tail` process. Sometimes when refering to signals the `SIG` prefix will be used for instance `SIGTERM` is equivalent to sending `TERM` via `Process.kill`.
+
+## Puma Signals
+
+Puma cluster responds to these signals:
+
+- `TTIN` increment the worker count by 1
+- `TTOU` decrement the worker count by 1
+- `TERM` send `TERM` to worker. Worker will attempt to finish then exit.
+- `USR2` restart workers
+- `USR1` restart workers in phases, a rolling restart.
+- `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
+- `CHLD`
