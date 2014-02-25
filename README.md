@@ -205,6 +205,14 @@ $ bundle exec cap puma:stop
 $ bundle exec cap puma:phased_restart
 ```
 
+## Contributing
+
+To run the test suite:
+
+```bash
+$ bundle install
+$ bundle exec rake
+```
 
 ## License
 
