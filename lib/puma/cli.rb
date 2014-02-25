@@ -522,6 +522,10 @@ module Puma
       @runner.restart
     end
 
+    def reload_worker_directory
+      @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
+    end
+
     def phased_restart
       unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
         log "* phased-restart called but not available, restarting normally."

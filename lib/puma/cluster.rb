@@ -98,9 +98,9 @@ module Puma
     end
 
     def next_worker_index
-      all_positions =  0...@options[:workers] 
+      all_positions =  0...@options[:workers]
       occupied_positions = @workers.map { |w| w.index }
-      available_positions = all_positions.to_a - occupied_positions 
+      available_positions = all_positions.to_a - occupied_positions
       available_positions.first
     end
 
@@ -246,6 +246,13 @@ module Puma
     def halt
       @status = :halt
       wakeup!
+    end
+
+    def reload_worker_directory
+      if dir = @options[:worker_directory]
+        log "+ Changing to #{dir}"
+        Dir.chdir dir
+      end
     end
 
     def stats

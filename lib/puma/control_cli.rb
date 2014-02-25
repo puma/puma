@@ -7,7 +7,7 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop}
+    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory}
 
     def is_windows?
       RUBY_PLATFORM =~ /(win|w)32$/ ? true : false
@@ -199,6 +199,10 @@ module Puma
 
       when "stats"
         puts "Stats not available via pid only"
+        return
+
+      when "reload-worker-directory"
+        puts "reload-worker-directory not available via pid only"
         return
 
       when "phased-restart"
