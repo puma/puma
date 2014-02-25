@@ -707,9 +707,11 @@ module Puma
     # A fallback rack response if +@app+ raises as exception.
     #
     def lowlevel_error(e)
+      message = "Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"
       if @leak_stack_on_error
-        [500, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
+        [500, {}, [message]]
       else
+        puts message
         [500, {}, ["A really lowlevel plumbing error occured. Please contact your local Maytag(tm) repair man.\n"]]
       end
     end
