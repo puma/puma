@@ -90,6 +90,7 @@ module Puma
         pid = fork { worker(idx, upgrade, master) }
         @cli.debug "Spawned worker: #{pid}"
         @workers << Worker.new(idx, pid, @phase)
+        @options[:after_worker_boot].each { |h| h.call }
       end
 
       if diff > 0
@@ -186,7 +187,7 @@ module Puma
 
       # Invoke any worker boot hooks so they can get
       # things in shape before booting the app.
-      hooks = @options[:worker_boot]
+      hooks = @options[:before_worker_boot]
       hooks.each { |h| h.call(index) }
 
       server = start_server

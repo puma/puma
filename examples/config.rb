@@ -113,6 +113,15 @@
 #   puts 'On worker boot...'
 # end
 
+# Code to run when a worker boots to setup the process after booting
+# the app.
+#
+# This can be called multiple times to add hooks.
+#
+# after_worker_boot do
+#   puts 'On worker boot...'
+# end
+
 # === Puma control rack application ===
 
 # Start the puma control rack application on “url”. This application can
