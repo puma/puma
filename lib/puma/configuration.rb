@@ -21,7 +21,8 @@ module Puma
       @options[:mode] ||= :http
       @options[:binds] ||= []
       @options[:on_restart] ||= []
-      @options[:worker_boot] ||= []
+      @options[:before_worker_boot] ||= []
+      @options[:after_worker_boot] ||= []
       @options[:worker_timeout] ||= DefaultWorkerTimeout
     end
 
@@ -306,7 +307,16 @@ module Puma
       # This can be called multiple times to add hooks.
       #
       def on_worker_boot(&block)
-        @options[:worker_boot] << block
+        @options[:before_worker_boot] << block
+      end
+
+      # *Cluster mode only* Code to run when a worker boots to setup
+      # the process after booting the app.
+      #
+      # This can be called multiple times to add hooks.
+      #
+      def after_worker_boot(&block)
+        @options[:after_worker_boot] << block
       end
 
       # The directory to operate out of.

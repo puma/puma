@@ -99,7 +99,8 @@ module Puma
         :binds => [],
         :workers => 0,
         :daemon => false,
-        :worker_boot => []
+        :before_worker_boot => [],
+        :after_worker_boot => []
       }
 
       @parser = OptionParser.new do |o|
@@ -220,7 +221,7 @@ module Puma
 
         cfg = @config.dup
 
-        [ :logger, :worker_boot, :on_restart ].each { |o| cfg.options.delete o }
+        [ :logger, :before_worker_boot, :after_worker_boot, :on_restart ].each { |o| cfg.options.delete o }
 
         state["config"] = cfg
 
