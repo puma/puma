@@ -201,6 +201,9 @@ module Puma
           @options[:workers] = arg.to_i
         end
 
+        o.on "--tag NAME", "Additional text to display in process listing" do |arg|
+          @options[:tag] = arg
+        end
       end
 
       @parser.banner = "puma <options> <rackup file>"
@@ -460,6 +463,7 @@ module Puma
       end
 
       setup_signals
+      set_process_title
 
       @status = :run
 
@@ -538,6 +542,17 @@ module Puma
     def halt
       @status = :halt
       @runner.halt
+    end
+
+  private
+    def title
+      buffer = "puma #{Puma::Const::VERSION} (#{@options[:binds].join(',')})"
+      buffer << " [#{@options[:tag]}]" if @options[:tag]
+      buffer
+    end
+
+    def set_process_title
+      Process.respond_to?(:setproctitle) ? Process.setproctitle(title) : $0 = title
     end
   end
 end
