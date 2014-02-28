@@ -9,6 +9,7 @@ bin/puma
 bin/pumactl
 docs/config.md
 docs/nginx.md
+docs/signals.md
 ext/puma_http11/PumaHttp11Service.java
 ext/puma_http11/ext_help.h
 ext/puma_http11/extconf.rb
