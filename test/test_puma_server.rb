@@ -220,6 +220,23 @@ class TestPumaServer < Test::Unit::TestCase
     data = sock.read
 
     assert_not_match(/don't leak me bro/, data)
+    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+  end
+
+  def test_prints_custom_error
+    @events = Puma::Events.strings
+    re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
+    @server = Puma::Server.new @app, @events, {lowlevel_error_handler: re}
+
+    @server.app = proc { |e| raise "don't leak me bro" }
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+    assert_match(/HTTP\/1.0 302 Found/, data)
   end
 
   def test_custom_http_codes_10
