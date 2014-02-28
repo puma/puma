@@ -1,7 +1,7 @@
 # Copyright (c) 2011 Evan Phoenix
-# Copyright (c) 2005 Zed A. Shaw 
+# Copyright (c) 2005 Zed A. Shaw
 
-require 'test/testhelp'
+require 'testhelp'
 
 include Puma
 
@@ -24,11 +24,11 @@ class Http11ParserTest < Test::Unit::TestCase
     assert_equal 'GET', req['REQUEST_METHOD']
     assert_nil req['FRAGMENT']
     assert_nil req['QUERY_STRING']
-    
+
     parser.reset
     assert parser.nread == 0, "Number read after reset should be 0"
   end
- 
+
   def test_parse_dumbfuck_headers
     parser = HttpParser.new
     req = {}
@@ -38,7 +38,7 @@ class Http11ParserTest < Test::Unit::TestCase
     assert parser.finished?
     assert !parser.error?
   end
-  
+
   def test_parse_error
     parser = HttpParser.new
     req = {}
@@ -72,7 +72,7 @@ class Http11ParserTest < Test::Unit::TestCase
   def rand_data(min, max, readable=true)
     count = min + ((rand(max)+1) *10).to_i
     res = count.to_s + "/"
-    
+
     if readable
       res << Digest::SHA1.hexdigest(rand(count * 100).to_s) * (count / 40)
     else
@@ -142,4 +142,3 @@ class Http11ParserTest < Test::Unit::TestCase
 
   end
 end
-
