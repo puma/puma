@@ -1,3 +1,46 @@
+=== 2.8.0 / 2014-02-28
+
+* 8 minor features:
+  * Add ability to autoload a config file. Fixes #438
+  * Add ability to detect and terminate hung workers. Fixes #333
+  * Add booted_workers to stats response
+  * Add config to customize the default error message
+  * Add prune_bundler option
+  * Add worker indexes, expose them via on_worker_boot. Fixes #440
+  * Add pretty process name
+  * Show the ruby version in use
+
+* 7 bug fixes:
+  * Added 408 status on timeout.
+  * Be more hostile with sockets that write block. Fixes #449
+  * Expect at_exit to exclusively remove the pidfile. Fixes #444
+  * Expose latency and listen backlog via bind query. Fixes #370
+  * JRuby raises IOError if the socket is there. Fixes #377
+  * Process requests fairly. Fixes #406
+  * Rescue SystemCallError as well. Fixes #425
+
+* 4 doc changes:
+  * Add 2.1.0 to the matrix
+  * Add Code Climate badge to README
+  * Create signals.md
+  * Set the license to BSD. Fixes #432
+
+* 14 PRs merged:
+  * Merge pull request #428 from alexeyfrank/capistrano_default_hooks
+  * Merge pull request #429 from namusyaka/revert-const_defined
+  * Merge pull request #431 from mrb/master
+  * Merge pull request #433 from alepore/process-name
+  * Merge pull request #437 from ibrahima/master
+  * Merge pull request #446 from sudara/master
+  * Merge pull request #451 from pwiebe/status_408
+  * Merge pull request #453 from joevandyk/patch-1
+  * Merge pull request #470 from arthurnn/fix_458
+  * Merge pull request #472 from rubencaro/master
+  * Merge pull request #480 from jjb/docs-on-running-test-suite
+  * Merge pull request #481 from schneems/master
+  * Merge pull request #482 from prathamesh-sonpatki/signals-doc-cleanup
+  * Merge pull request #483 from YotpoLtd/master
+
 === 2.7.1 / 2013-12-05
 
 * 1 bug fix:
