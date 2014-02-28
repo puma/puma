@@ -346,6 +346,22 @@ module Puma
         raise "Provide either a #call'able or a block" unless obj
         @options[:lowlevel_error_handler] = obj
       end
+
+      # This option is used to allow your app and it's gems to be
+      # properly reloaded when not using preload.
+      #
+      # When set, if puma detects that it's been invoked in the
+      # context of Bundler, it will cleanup the environment and
+      # re-run itself outside the Bundler environment, but directly
+      # using the files that Bundler has setup.
+      #
+      # This means that puma is now decoupled from your Bundler
+      # context and when each worker loads, it will be loading a
+      # new Bundler context and thus can float around as the release
+      # dictates.
+      def prune_bundler(answer=true)
+        @options[:prune_bundler] = answer
+      end
     end
   end
 end

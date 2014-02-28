@@ -162,6 +162,10 @@ module Puma
           @options[:preload_app] = true
         end
 
+        o.on "--prune-bundler", "Prune out the bundler env if possible" do
+          @options[:prune_bundler] = true
+        end
+
         o.on "-q", "--quiet", "Quiet down the output" do
           @options[:quiet] = true
         end
@@ -437,6 +441,10 @@ module Puma
       end
     end
 
+    def prune_bundler?
+      @options[:prune_bundler] && clustered? && !@options[:preload_app]
+    end
+
     # Parse the options, load the rackup, start the server and wait
     # for it to finish.
     #
@@ -445,6 +453,21 @@ module Puma
         parse_options
       rescue UnsupportedOption
         exit 1
+      end
+
+      if prune_bundler? && defined?(Bundler)
+        puma_lib_dir = $:.detect { |d| File.exist? File.join(d, "puma", "const.rb") }
+
+        if puma_lib_dir
+          log "* Pruning Bundler environment"
+          Bundler.with_clean_env do
+            Kernel.exec(Gem.ruby, "-I", puma_lib_dir,
+                        File.expand_path(puma_lib_dir + "/../bin/puma"),
+                        *@original_argv)
+          end
+        end
+
+        log "! Unable to prune Bundler environment, continuing"
       end
 
       if dir = @options[:directory]
