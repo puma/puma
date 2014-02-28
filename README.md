@@ -82,7 +82,7 @@ Puma 2 offers clustered mode, allowing you to use forked processes to handle mul
 On a ruby implementation that offers native threads, you should tune this number to match the number of cores available.
 Note that threads are still used in clustered mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will be 32 threads.
 
-If you're running in Clustered Mode you can optionally choose to preload your application before starting up the workers. This is necessary in order to take advantate of the [Copy on Write](http://en.wikipedia.org/wiki/Copy-on-write) feature introduced in [MRI Ruby 2.0](https://blog.heroku.com/archives/2013/3/6/matz_highlights_ruby_2_0_at_waza). To do this simply specify the `--preload` flag in invocation:
+If you're running in Clustered Mode you can optionally choose to preload your application before starting up the workers. This is necessary in order to take advantage of the [Copy on Write](http://en.wikipedia.org/wiki/Copy-on-write) feature introduced in [MRI Ruby 2.0](https://blog.heroku.com/archives/2013/3/6/matz_highlights_ruby_2_0_at_waza). To do this simply specify the `--preload` flag in invocation:
 
     # CLI invocation
     $ puma -t 8:32 -w 3 --preload
