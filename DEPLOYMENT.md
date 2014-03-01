@@ -17,7 +17,7 @@ Welcome back!
 
 ## Single vs Cluster mode
 
-Puma was originall concieved as a thread-only webserver, but grew the ability to
+Puma was originally concieved as a thread-only webserver, but grew the ability to
 also use processes in version 2.
 
 Here are some rules of thumb:
@@ -43,7 +43,7 @@ Here are some rules of thumb:
 **How do you know if you're got enough (or too many workers)?**
 
 A good question. Due to MRI's GIL, only one thread can be executing at a time.
-But since so many apps are waiting on IO from DBs, etc, they can utilize threads
+But since so many apps are waiting on IO from DBs, etc., they can utilize threads
 to make better use of the process.
 
 The rule of thumb is you never want processes that are pegged all the time. This
