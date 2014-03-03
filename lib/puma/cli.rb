@@ -456,13 +456,20 @@ module Puma
       end
 
       if prune_bundler? && defined?(Bundler)
-        puma_lib_dir = $:.detect { |d| File.exist? File.join(d, "puma", "const.rb") }
+        puma = Bundler.rubygems.loaded_specs("puma")
+        puma_lib_dir = File.join(puma.full_gem_path, puma.require_paths.first)
+
+        deps = puma.runtime_dependencies.map { |d|
+          spec = Bundler.rubygems.loaded_specs(d.name)
+          "#{d.name}:#{spec.version.to_s}"
+        }.join(",")
 
         if puma_lib_dir
           log "* Pruning Bundler environment"
           Bundler.with_clean_env do
             Kernel.exec(Gem.ruby, "-I", puma_lib_dir,
-                        File.expand_path(puma_lib_dir + "/../bin/puma"),
+                        File.expand_path(puma_lib_dir + "/../bin/puma-wild"),
+                        deps,
                         *@original_argv)
           end
         end
