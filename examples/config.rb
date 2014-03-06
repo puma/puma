@@ -125,12 +125,12 @@
 # Allow workers to reload bundler context when master process is issued
 # a USR1 signal. This allows proper reloading of gems while the master
 # is preserved across a phased-restart. (incompatible with preload_app)
-# (default if false)
+# (off by default)
 
 # prune_bundler
 
 # Preload the application before starting the workers; this conflicts with
-# phased restart feature. (default if false)
+# phased restart feature. (off by default)
 
 # preload_app
 
