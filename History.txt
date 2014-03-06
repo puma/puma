@@ -1,3 +1,19 @@
+=== 2.8.1 / 2014-03-06
+
+* 1 bug fixes:
+  * Run puma-wild with proper deps for prune_bundler
+
+* 2 doc changes:
+  * Described the configuration file finding behavior added in 2.8.0 and how to disable it.
+  * Start the deployment doc
+
+* 6 PRs merged:
+  * Merge pull request #471 from arthurnn/fix_test
+  * Merge pull request #485 from joneslee85/patch-9
+  * Merge pull request #486 from joshwlewis/patch-1
+  * Merge pull request #490 from tobinibot/patch-1
+  * Merge pull request #491 from brianknight10/clarify-no-config
+
 === 2.8.0 / 2014-02-28
 
 * 8 minor features:

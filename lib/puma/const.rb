@@ -28,7 +28,7 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "2.8.0".freeze
+    PUMA_VERSION = VERSION = "2.8.1".freeze
     CODE_NAME = "Sir Edmund Percival Hillary".freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2
