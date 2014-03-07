@@ -564,7 +564,7 @@ module Puma
     end
 
     def phased_restart
-      unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
+      unless @runner.respond_to?(:phased_restart?) && @runner.phased_restart?
         log "* phased-restart called but not available, restarting normally."
         return restart
       end

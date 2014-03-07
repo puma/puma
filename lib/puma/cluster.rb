@@ -229,7 +229,7 @@ module Puma
       stop
     end
 
-    def phased_restart
+    def phased_restart?
       return false if @options[:preload_app]
 
       @phased_restart = true
