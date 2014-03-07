@@ -134,6 +134,10 @@
 
 # preload_app
 
+# Additional text to display in process listing
+#
+# tag 'app name'
+
 
 # === Puma control rack application ===
 
