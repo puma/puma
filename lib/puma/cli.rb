@@ -318,7 +318,7 @@ module Puma
                     jruby? || windows?
       end
 
-      if @options[:daemon] and windows?
+      if @options[:daemon] && windows?
         unsupported "daemon mode not supported on Windows"
       end
     end
@@ -340,7 +340,7 @@ module Puma
         s_env = File.stat(dir)
         s_pwd = File.stat(Dir.pwd)
 
-        if s_env.ino == s_pwd.ino and s_env.dev == s_pwd.dev
+        if s_env.ino == s_pwd.ino && s_env.dev == s_pwd.dev
           @restart_dir = dir
           @options[:worker_directory] = dir
         end
@@ -564,7 +564,7 @@ module Puma
     end
 
     def phased_restart
-      unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
+      unless @runner.respond_to?(:phased_restart) && @runner.phased_restart
         log "* phased-restart called but not available, restarting normally."
         return restart
       end
