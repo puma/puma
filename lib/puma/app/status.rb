@@ -42,7 +42,7 @@ module Puma
           return rack_response(200, OK_STATUS)
 
         when /\/phased-restart$/
-          if !@cli.phased_restart
+          if !@cli.phased_restart?
             return rack_response(404, '{ "error": "phased restart not available" }')
           else
             return rack_response(200, OK_STATUS)
