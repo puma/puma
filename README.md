@@ -194,12 +194,21 @@ If you want an easy way to manage multiple scripts at once check [tools/jungle](
 
 ## Capistrano deployment
 
-Puma has included Capistrano [deploy script](https://github.com/puma/puma/blob/master/lib/puma/capistrano.rb), you just need require that:
-
-config/deploy.rb
+Puma has support for Capistrano3 with an [external gem](https://github.com/seuros/capistrano-puma), you just need require that in Gemfile:
 
 ```ruby
-require 'puma/capistrano'
+gem 'capistrano3-puma'
+```
+And then execute:
+
+```bash
+bundle
+```
+
+Then add to Capfile
+
+```ruby
+require 'capistrano/puma'
 ```
 
 and then
