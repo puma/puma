@@ -367,6 +367,11 @@ module Puma
       def tag(string)
         @options[:tag] = string
       end
+
+      # *Cluster mode only* Set the timeout for workers
+      def worker_timeout(timeout)
+        @options[:worker_timeout] = timeout
+      end
     end
   end
 end

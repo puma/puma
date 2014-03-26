@@ -138,6 +138,9 @@
 #
 # tag 'app name'
 
+# Change the default timeout of workers
+#
+# worker_timeout 60
 
 # === Puma control rack application ===
 
