@@ -8,8 +8,8 @@ Hoe.plugin :git
 Hoe.plugin :ignore
 
 HOE = Hoe.spec "puma" do
-  self.rubyforge_name = 'puma'
-  self.readme_file    = "README.md"
+  self.group_name  = 'puma'
+  self.readme_file = "README.md"
   self.urls = %w!http://puma.io https://github.com/puma/puma!
 
   license "BSD"
