@@ -362,6 +362,11 @@ module Puma
       def prune_bundler(answer=true)
         @options[:prune_bundler] = answer
       end
+
+      # Additional text to display in process listing
+      def tag(string)
+        @options[:tag] = string
+      end
     end
   end
 end
