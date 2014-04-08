@@ -257,14 +257,13 @@ module Puma
       end
     end
 
-    def set_rack_environment
+    def env
       # Try the user option first, then the environment variable,
       # finally default to development
+      @options[:environment] || ENV['RACK_ENV'] || 'development'
+    end
 
-      env = @options[:environment] ||
-                   ENV['RACK_ENV'] ||
-                     'development'
-
+    def set_rack_environment
       @options[:environment] = env
       ENV['RACK_ENV'] = env
     end
@@ -286,13 +285,7 @@ module Puma
         return
       end
 
-      pos = []
-
-      if env = (@options[:environment] || ENV['RACK_ENV'])
-        pos << "config/puma/#{env}.rb"
-      end
-
-      pos << "config/puma.rb"
+      pos = ["config/puma/#{env}.rb", "config/puma.rb"]
       @options[:config_file] = pos.find { |f| File.exist? f }
     end
 
