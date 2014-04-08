@@ -286,13 +286,7 @@ module Puma
         return
       end
 
-      pos = []
-
-      if env = (@options[:environment] || ENV['RACK_ENV'])
-        pos << "config/puma/#{env}.rb"
-      end
-
-      pos << "config/puma.rb"
+      pos = ["config/puma/#{@options[:environment]}.rb", "config/puma.rb"]
       @options[:config_file] = pos.find { |f| File.exist? f }
     end
 
@@ -449,6 +443,8 @@ module Puma
     # for it to finish.
     #
     def run
+      set_rack_environment
+
       begin
         parse_options
       rescue UnsupportedOption
@@ -486,8 +482,6 @@ module Puma
       if dir = @options[:directory]
         Dir.chdir dir
       end
-
-      set_rack_environment
 
       if clustered?
         @events = PidEvents.new STDOUT, STDERR
