@@ -132,7 +132,7 @@
 # Preload the application before starting the workers; this conflicts with
 # phased restart feature. (off by default)
 
-# preload_app
+# preload_app!
 
 # Additional text to display in process listing
 #
