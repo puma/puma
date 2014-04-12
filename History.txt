@@ -1,3 +1,30 @@
+=== 2.8.2 / 2014-04-12
+
+* 4 bug fixes:
+  * During upgrade, change directory in main process instead of workers.
+  * Close the client properly on error
+  * Capistrano: fallback from phased restart to start when not started
+  * Allow tag option in conf file
+
+* 4 doc fixes:
+  * Fix Puma daemon service README typo
+  * `preload_app!` instead of `preload_app`
+  * add preload_app and prune_bundler to example config
+  * allow changing of worker_timeout in config file
+
+* 11 PRs merged:
+  * Merge pull request #487 from ckuttruff/master
+  * Merge pull request #492 from ckuttruff/master
+  * Merge pull request #493 from alepore/config_tag
+  * Merge pull request #503 from mariuz/patch-1
+  * Merge pull request #505 from sammcj/patch-1
+  * Merge pull request #506 from FlavourSys/config_worker_timeout
+  * Merge pull request #510 from momer/rescue-block-handle-servers-fix
+  * Merge pull request #511 from macool/patch-1
+  * Merge pull request #514 from edogawaconan/refactor_env
+  * Merge pull request #517 from misfo/patch-1
+  * Merge pull request #518 from LongMan/master
+
 === 2.8.1 / 2014-03-06
 
 * 1 bug fixes:
