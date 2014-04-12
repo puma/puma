@@ -42,7 +42,12 @@ Capistrano::Configuration.instance.load do
 
     desc 'Restart puma (phased restart)'
     task :phased_restart, :roles => lambda { puma_role }, :on_no_matching_servers => :continue do
-      run "cd #{current_path} && #{pumactl_cmd} -S #{state_path} phased-restart"
+      begin
+        run "cd #{current_path} && #{pumactl_cmd} -S #{state_path} phased-restart"
+      rescue Capistrano::CommandError => ex
+        puts "Failed to restart puma: #{ex}\nAssuming not started."
+        start
+      end
     end
 
   end
