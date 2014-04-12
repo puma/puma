@@ -31,7 +31,7 @@ You can add an instance by editing the file or running the following command:
 The config and log paths are optional parameters and default to:
 
 * config: /path/to/app/*config/puma.rb*
-* log: /path/to/app/*config/puma.log*
+* log: /path/to/app/*log/puma.log*
 
 To remove an app, simply delete the line from the config file or run:
 
