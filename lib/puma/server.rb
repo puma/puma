@@ -185,8 +185,8 @@ module Puma
               else
                 begin
                   if io = sock.accept_nonblock
-                    c = Client.new io, nil
-                    pool << c
+                    client = Client.new io, nil
+                    pool << client
                   end
                 rescue SystemCallError
                 end
@@ -292,8 +292,8 @@ module Puma
               else
                 begin
                   if io = sock.accept_nonblock
-                    c = Client.new io, @binder.env(sock)
-                    pool << c
+                    client = Client.new io, @binder.env(sock)
+                    pool << client
                   end
                 rescue SystemCallError
                 end
@@ -732,8 +732,8 @@ module Puma
             begin
               if io = sock.accept_nonblock
                 count += 1
-                c = Client.new io, @binder.env(sock)
-                @thread_pool << c
+                client = Client.new io, @binder.env(sock)
+                @thread_pool << client
               end
             rescue SystemCallError
             end
