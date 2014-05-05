@@ -2,29 +2,34 @@ package org.jruby.puma;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
-import org.jruby.RubyHash;
 import org.jruby.RubyModule;
-import org.jruby.RubyNumeric;
 import org.jruby.RubyObject;
 import org.jruby.RubyString;
-
 import org.jruby.anno.JRubyMethod;
-
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-
-import org.jruby.exceptions.RaiseException;
-
 import org.jruby.util.ByteList;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLSession;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 
-import javax.net.ssl.*;
-import javax.net.ssl.SSLEngineResult.*;
-import java.io.*;
-import java.security.*;
-import java.nio.*;
+import static javax.net.ssl.SSLEngineResult.Status;
+import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 public class MiniSSL extends RubyObject {
   private static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -33,9 +38,12 @@ public class MiniSSL extends RubyObject {
     }
   };
 
+  // set to true to switch on our low-fi trace logging
+  private static boolean DEBUG = false;
+
   public static void createMiniSSL(Ruby runtime) {
     RubyModule mPuma = runtime.defineModule("Puma");
-    RubyModule ssl =   mPuma.defineModuleUnder("MiniSSL");
+    RubyModule ssl = mPuma.defineModuleUnder("MiniSSL");
 
     mPuma.defineClassUnder("SSLError",
                            runtime.getClass("IOError"),
@@ -45,245 +53,329 @@ public class MiniSSL extends RubyObject {
     eng.defineAnnotatedMethods(MiniSSL.class);
   }
 
-  private Ruby runtime;
-  private SSLContext sslc;
+  /**
+   * Fairly transparent wrapper around {@link java.nio.ByteBuffer} which adds the enhancements we need
+   */
+  private static class MiniSSLBuffer {
+    ByteBuffer buffer;
 
-  private SSLEngine  engine;
+    private MiniSSLBuffer(int capacity) { buffer = ByteBuffer.allocate(capacity); }
+    private MiniSSLBuffer(byte[] initialContents) { buffer = ByteBuffer.wrap(initialContents); }
 
-  private ByteBuffer peerAppData;
-  private ByteBuffer peerNetData;
-  private ByteBuffer netData;
-  private ByteBuffer dummy;
-  
+    public void clear() { buffer.clear(); }
+    public void compact() { buffer.compact(); }
+    public void flip() { buffer.flip(); }
+    public boolean hasRemaining() { return buffer.hasRemaining(); }
+    public int position() { return buffer.position(); }
+
+    public ByteBuffer getRawBuffer() {
+      return buffer;
+    }
+
+    /**
+     * Writes bytes to the buffer after ensuring there's room
+     */
+    public void put(byte[] bytes) {
+      if (buffer.remaining() < bytes.length) {
+        resize(buffer.limit() + bytes.length);
+      }
+      buffer.put(bytes);
+    }
+
+    /**
+     * Ensures that newCapacity bytes can be written to this buffer, only re-allocating if necessary
+     */
+    public void resize(int newCapacity) {
+      if (newCapacity > buffer.capacity()) {
+        ByteBuffer dstTmp = ByteBuffer.allocate(newCapacity);
+        buffer.flip();
+        dstTmp.put(buffer);
+        buffer = dstTmp;
+      } else {
+        buffer.limit(newCapacity);
+      }
+    }
+
+    /**
+     * Drains the buffer to a ByteList, or returns null for an empty buffer
+     */
+    public ByteList asByteList() {
+      buffer.flip();
+      if (!buffer.hasRemaining()) {
+        buffer.clear();
+        return null;
+      }
+
+      byte[] bss = new byte[buffer.limit()];
+
+      buffer.get(bss);
+      buffer.clear();
+      return new ByteList(bss);
+    }
+
+    @Override
+    public String toString() { return buffer.toString(); }
+  }
+
+  private SSLEngine engine;
+  private MiniSSLBuffer inboundNetData;
+  private MiniSSLBuffer outboundAppData;
+  private MiniSSLBuffer outboundNetData;
+
   public MiniSSL(Ruby runtime, RubyClass klass) {
     super(runtime, klass);
-
-    this.runtime = runtime;
   }
 
   @JRubyMethod(meta = true)
-  public static IRubyObject server(ThreadContext context, IRubyObject recv, IRubyObject key, IRubyObject cert) {
-      RubyClass klass = (RubyClass) recv;
-      IRubyObject newInstance = klass.newInstance(context,
-          new IRubyObject[] { key, cert },
-          Block.NULL_BLOCK);
+  public static IRubyObject server(ThreadContext context, IRubyObject recv, IRubyObject miniSSLContext) {
+    RubyClass klass = (RubyClass) recv;
 
-      return newInstance;
+    return klass.newInstance(context,
+        new IRubyObject[] { miniSSLContext },
+        Block.NULL_BLOCK);
   }
 
   @JRubyMethod
-  public IRubyObject initialize(IRubyObject key, IRubyObject cert) 
-      throws java.security.KeyStoreException,
-             java.io.FileNotFoundException,
-             java.io.IOException,
-             java.io.FileNotFoundException,
-             java.security.NoSuchAlgorithmException,
-             java.security.KeyManagementException,
-             java.security.cert.CertificateException,
-             java.security.UnrecoverableKeyException
-  {
+  public IRubyObject initialize(ThreadContext threadContext, IRubyObject miniSSLContext)
+      throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException {
     KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-    KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
 
-    char[] pass = "blahblah".toCharArray();
-
-    ks.load(new FileInputStream(key.convertToString().asJavaString()),
-                                pass);
-    ts.load(new FileInputStream(cert.convertToString().asJavaString()),
-            pass);
+    char[] password = miniSSLContext.callMethod(threadContext, "keystore_pass").convertToString().asJavaString().toCharArray();
+    ks.load(new FileInputStream(miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString()),
+        password);
 
     KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-    kmf.init(ks, pass);
-
-    TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-    tmf.init(ts);
+    kmf.init(ks, password);
 
     SSLContext sslCtx = SSLContext.getInstance("TLS");
 
-    sslCtx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-
-    sslc = sslCtx;
-
-    engine = sslc.createSSLEngine();
+    sslCtx.init(kmf.getKeyManagers(), null, null);
+    engine = sslCtx.createSSLEngine();
     engine.setUseClientMode(false);
-    // engine.setNeedClientAuth(true);
 
     SSLSession session = engine.getSession();
-    peerNetData = ByteBuffer.allocate(session.getPacketBufferSize());
-    peerAppData = ByteBuffer.allocate(session.getApplicationBufferSize());		
-    netData = ByteBuffer.allocate(session.getPacketBufferSize());
-    peerNetData.limit(0);
-    peerAppData.limit(0);
-    netData.limit(0);
+    inboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
+    outboundAppData = new MiniSSLBuffer(session.getApplicationBufferSize());
+    outboundAppData.flip();
+    outboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
 
-    peerNetData.clear();
-    peerAppData.clear();
-    netData.clear();
-
-    dummy = ByteBuffer.allocate(0);
-    
     return this;
   }
 
   @JRubyMethod
   public IRubyObject inject(IRubyObject arg) {
-    byte[] bytes = arg.convertToString().getBytes();
+    try {
+      byte[] bytes = arg.convertToString().getBytes();
 
-    peerNetData.limit(peerNetData.limit() + bytes.length);
+      log("Net Data post pre-inject: " + inboundNetData);
+      inboundNetData.put(bytes);
+      log("Net Data post post-inject: " + inboundNetData);
 
-    log("capacity: " + peerNetData.capacity() + " limit: " + peerNetData.limit());
+      log("inject(): " + bytes.length + " encrypted bytes from request");
+      return this;
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
 
-    peerNetData.put(bytes);
+  private enum SSLOperation {
+    WRAP,
+    UNWRAP
+  }
 
-    log("netData: " + peerNetData.position() + "/" + peerAppData.limit());
-    return this;
+  private SSLEngineResult doOp(SSLOperation sslOp, MiniSSLBuffer src, MiniSSLBuffer dst) throws SSLException {
+    SSLEngineResult res = null;
+    boolean retryOp = true;
+    while (retryOp) {
+      switch (sslOp) {
+        case WRAP:
+          res = engine.wrap(src.getRawBuffer(), dst.getRawBuffer());
+          break;
+        case UNWRAP:
+          res = engine.unwrap(src.getRawBuffer(), dst.getRawBuffer());
+          break;
+        default:
+          throw new IllegalStateException("Unknown SSLOperation: " + sslOp);
+      }
+
+      switch (res.getStatus()) {
+        case BUFFER_OVERFLOW:
+          log("SSLOp#doRun(): overflow");
+          log("SSLOp#doRun(): dst data at overflow: " + dst);
+          // increase the buffer size to accommodate the overflowing data
+          int newSize = Math.max(engine.getSession().getPacketBufferSize(), engine.getSession().getApplicationBufferSize());
+          dst.resize(newSize + dst.position());
+          // retry the operation
+          retryOp = true;
+          break;
+        case BUFFER_UNDERFLOW:
+          log("SSLOp#doRun(): underflow");
+          log("SSLOp#doRun(): src data at underflow: " + src);
+          // need to wait for more data to come in before we retry
+          retryOp = false;
+          break;
+        default:
+          // other cases are OK and CLOSED.  We're done here.
+          retryOp = false;
+      }
+    }
+
+    // after each op, run any delegated tasks if needed
+    if(engine.getHandshakeStatus() == HandshakeStatus.NEED_TASK) {
+      Runnable runnable;
+      while ((runnable = engine.getDelegatedTask()) != null) {
+        runnable.run();
+      }
+    }
+
+    return res;
   }
 
   @JRubyMethod
-  public IRubyObject read() throws javax.net.ssl.SSLException, Exception {
-    peerAppData.clear();
-    peerNetData.flip();
-    SSLEngineResult res;
+  public IRubyObject read() throws Exception {
+    try {
+      inboundNetData.flip();
 
-    log("available read: " + peerNetData.position() + "/ " + peerNetData.limit());
+      if(!inboundNetData.hasRemaining()) {
+        return getRuntime().getNil();
+      }
 
-    if(!peerNetData.hasRemaining()) {
-      return getRuntime().getNil();
+      log("read(): inboundNetData prepped for read: " + inboundNetData);
+
+      MiniSSLBuffer inboundAppData = new MiniSSLBuffer(engine.getSession().getApplicationBufferSize());
+      SSLEngineResult res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
+      log("read(): after initial unwrap", engine, res);
+
+      log("read(): Net Data post unwrap: " + inboundNetData);
+
+      HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
+      boolean done = false;
+      while (!done) {
+        switch (handshakeStatus) {
+          case NEED_WRAP:
+            res = doOp(SSLOperation.WRAP, inboundAppData, outboundNetData);
+            log("read(): after handshake wrap", engine, res);
+            break;
+          case NEED_UNWRAP:
+            res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
+            log("read(): after handshake unwrap", engine, res);
+            if (res.getStatus() == Status.BUFFER_UNDERFLOW) {
+              // need more data before we can shake more hands
+              done = true;
+            }
+            break;
+          default:
+            done = true;
+        }
+        handshakeStatus = engine.getHandshakeStatus();
+      }
+
+      if (inboundNetData.hasRemaining()) {
+        log("Net Data post pre-compact: " + inboundNetData);
+        inboundNetData.compact();
+        log("Net Data post post-compact: " + inboundNetData);
+      } else {
+        log("Net Data post pre-reset: " + inboundNetData);
+        inboundNetData.clear();
+        log("Net Data post post-reset: " + inboundNetData);
+      }
+
+      ByteList appDataByteList = inboundAppData.asByteList();
+      if (appDataByteList == null) {
+        return getRuntime().getNil();
+      }
+
+      RubyString str = getRuntime().newString("");
+      str.setValue(appDataByteList);
+
+      logPlain("\n");
+      log("read(): begin dump of request data >>>>\n");
+      if (str.asJavaString().getBytes().length < 1000) {
+        logPlain(str.asJavaString() + "\n");
+      }
+      logPlain("Num bytes: " + str.asJavaString().getBytes().length + "\n");
+      log("read(): end dump of request data   <<<<\n");
+      return str;
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
-
-    do {
-      res = engine.unwrap(peerNetData, peerAppData);
-    } while(res.getStatus() == SSLEngineResult.Status.OK &&
-        res.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_UNWRAP &&
-        res.bytesProduced() == 0);
-
-    log("read: ", res);
-
-    if(peerNetData.hasRemaining()) {
-      log("STILL HAD peerNetData!");
-    }
-
-    peerNetData.position(0);
-    peerNetData.limit(0);
-
-    HandshakeStatus hsStatus = runDelegatedTasks(res, engine);
-
-    if(res.getStatus() == SSLEngineResult.Status.BUFFER_UNDERFLOW) {
-      return getRuntime().getNil();
-    }
-
-    if(hsStatus == HandshakeStatus.NEED_WRAP) {
-      netData.clear();
-      log("netData: " + netData.limit());
-      engine.wrap(dummy, netData);
-      return getRuntime().getNil();
-    }
-
-    if(hsStatus == HandshakeStatus.NEED_UNWRAP) {
-      return getRuntime().getNil();
-
-      // log("peerNet: " + peerNetData.position() + "/" + peerNetData.limit());
-      // log("peerApp: " + peerAppData.position() + "/" + peerAppData.limit());
-
-      // peerNetData.compact();
-
-      // log("peerNet: " + peerNetData.position() + "/" + peerNetData.limit());
-        // do {
-          // res = engine.unwrap(peerNetData, peerAppData);
-        // } while(res.getStatus() == SSLEngineResult.Status.OK &&
-            // res.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_UNWRAP &&
-            // res.bytesProduced() == 0);
-      // return getRuntime().getNil();
-    }
-
-    // if(peerAppData.position() == 0 && 
-        // res.getStatus() == SSLEngineResult.Status.OK &&
-        // peerNetData.hasRemaining()) {
-      // res = engine.unwrap(peerNetData, peerAppData);
-    // }
-
-    byte[] bss = new byte[peerAppData.limit()];
-
-    peerAppData.get(bss);
-
-    RubyString str = getRuntime().newString("");
-    str.setValue(new ByteList(bss));
-
-    return str;
   }
 
-  private static HandshakeStatus runDelegatedTasks(SSLEngineResult result,
-      SSLEngine engine) throws Exception {
-
-    HandshakeStatus hsStatus = result.getHandshakeStatus();
-
-    if(hsStatus == HandshakeStatus.NEED_TASK) {
-      Runnable runnable;
-      while ((runnable = engine.getDelegatedTask()) != null) {
-        log("\trunning delegated task...");
-        runnable.run();
-      }
-      hsStatus = engine.getHandshakeStatus();
-      if (hsStatus == HandshakeStatus.NEED_TASK) {
-        throw new Exception(
-            "handshake shouldn't need additional tasks");
-      }
-      log("\tnew HandshakeStatus: " + hsStatus);
-    }
-
-    return hsStatus;
-  }
-  
-
-  private static void log(String str, SSLEngineResult result) {
-    System.out.println("The format of the SSLEngineResult is: \n" +
-        "\t\"getStatus() / getHandshakeStatus()\" +\n" +
-        "\t\"bytesConsumed() / bytesProduced()\"\n");
-
-    HandshakeStatus hsStatus = result.getHandshakeStatus();
-    log(str +
-        result.getStatus() + "/" + hsStatus + ", " +
-        result.bytesConsumed() + "/" + result.bytesProduced() +
-        " bytes");
-    if (hsStatus == HandshakeStatus.FINISHED) {
-      log("\t...ready for application data");
+  private static void log(String str, SSLEngine engine, SSLEngineResult result) {
+    if (DEBUG) {
+      log(str + " " + result.getStatus() + "/" + engine.getHandshakeStatus() +
+          "---bytes consumed: " + result.bytesConsumed() +
+          ", bytes produced: " + result.bytesProduced());
     }
   }
 
   private static void log(String str) {
-    System.out.println(str);
-  }
-  
-  
-
-  @JRubyMethod
-  public IRubyObject write(IRubyObject arg) throws javax.net.ssl.SSLException {
-    log("write from: " + netData.position());
-
-    byte[] bls = arg.convertToString().getBytes();
-    ByteBuffer src = ByteBuffer.wrap(bls);
-
-    SSLEngineResult res = engine.wrap(src, netData);
-
-    return getRuntime().newFixnum(res.bytesConsumed());
-  }
-
-  @JRubyMethod
-  public IRubyObject extract() {
-    netData.flip();
-
-    if(!netData.hasRemaining()) {
-      return getRuntime().getNil();
+    if (DEBUG) {
+      System.out.println("MiniSSL.java: " + str);
     }
+  }
 
-    byte[] bss = new byte[netData.limit()];
+  private static void logPlain(String str) {
+    if (DEBUG) {
+      System.out.println(str);
+    }
+  }
 
-    netData.get(bss);
-    netData.clear();
+  @JRubyMethod
+  public IRubyObject write(IRubyObject arg) {
+    try {
+      log("write(): begin dump of response data >>>>\n");
+      logPlain("\n");
+      if (arg.asJavaString().getBytes().length < 1000) {
+        logPlain(arg.asJavaString() + "\n");
+      }
+      logPlain("Num bytes: " + arg.asJavaString().getBytes().length + "\n");
+      log("write(): end dump of response data   <<<<\n");
 
-    RubyString str = getRuntime().newString("");
-    str.setValue(new ByteList(bss));
+      byte[] bls = arg.convertToString().getBytes();
+      outboundAppData = new MiniSSLBuffer(bls);
 
-    return str;
+      return getRuntime().newFixnum(bls.length);
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  @JRubyMethod
+  public IRubyObject extract() throws SSLException {
+    try {
+      ByteList dataByteList = outboundNetData.asByteList();
+      if (dataByteList != null) {
+        RubyString str = getRuntime().newString("");
+        str.setValue(dataByteList);
+        return str;
+      }
+
+      if (!outboundAppData.hasRemaining()) {
+        return getRuntime().getNil();
+      }
+
+      outboundNetData.clear();
+      SSLEngineResult res = doOp(SSLOperation.WRAP, outboundAppData, outboundNetData);
+      log("extract(): bytes consumed: " + res.bytesConsumed() + "\n");
+      log("extract(): bytes produced: " + res.bytesProduced() + "\n");
+      dataByteList = outboundNetData.asByteList();
+      if (dataByteList == null) {
+        return getRuntime().getNil();
+      }
+
+      RubyString str = getRuntime().newString("");
+      str.setValue(dataByteList);
+
+      log("extract(): " + dataByteList.getRealSize() + " encrypted bytes for response");
+
+      return str;
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 }

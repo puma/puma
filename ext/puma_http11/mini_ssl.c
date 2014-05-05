@@ -36,15 +36,18 @@ ms_conn* engine_alloc(VALUE klass, VALUE* obj) {
   return conn;
 }
 
-VALUE engine_init_server(VALUE self, VALUE key, VALUE cert) {
+VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   VALUE obj;
   SSL_CTX* ctx;
   SSL* ssl;
 
   ms_conn* conn = engine_alloc(self, &obj);
 
-  StringValue(key);
-  StringValue(cert);
+  ID sym_key = rb_intern("key");
+  VALUE key = rb_funcall(mini_ssl_ctx, sym_key, 0);
+
+  ID sym_cert = rb_intern("cert");
+  VALUE cert = rb_funcall(mini_ssl_ctx, sym_cert, 0);
 
   ctx = SSL_CTX_new(SSLv23_server_method());
   conn->ctx = ctx;
@@ -184,7 +187,7 @@ void Init_mini_ssl(VALUE puma) {
 
   eError = rb_define_class_under(mod, "SSLError", rb_eStandardError);
 
-  rb_define_singleton_method(eng, "server", engine_init_server, 2);
+  rb_define_singleton_method(eng, "server", engine_init_server, 1);
   rb_define_singleton_method(eng, "client", engine_init_client, 0);
 
   rb_define_method(eng, "inject", engine_inject, 1);
