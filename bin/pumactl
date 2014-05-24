@@ -2,7 +2,7 @@
 
 require 'puma/control_cli'
 
-cli = Puma::ControlCLI.new ARGV
+cli = Puma::ControlCLI.new ARGV.dup
 
 begin
   cli.run
