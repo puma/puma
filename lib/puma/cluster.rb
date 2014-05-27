@@ -183,7 +183,7 @@ module Puma
 
       # If we're not running under a Bundler context, then
       # report the info about the context we will be using
-      if !ENV['BUNDLER_GEMFILE'] and File.exist?("Gemfile")
+      if !ENV['BUNDLE_GEMFILE'] and File.exist?("Gemfile")
         log "+ Gemfile in context: #{File.expand_path("Gemfile")}"
       end
 
