@@ -11,7 +11,7 @@ HOE = Hoe.spec "puma" do
   self.readme_file    = "README.md"
   self.urls = %w!http://puma.io https://github.com/puma/puma!
 
-  license "BSD"
+  license "BSD-3-Clause"
   developer 'Evan Phoenix', 'evan@phx.io'
 
   spec_extras[:extensions]  = ["ext/puma_http11/extconf.rb"]
