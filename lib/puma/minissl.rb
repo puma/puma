@@ -69,7 +69,7 @@ module Puma
 
           return data.bytesize if need == 0
 
-          data = data[need..-1]
+          data = data[wrote..-1]
         end
       end
 
@@ -91,30 +91,34 @@ module Puma
     class Context
       attr_accessor :verify_mode
 
-      attr_reader :key
-      attr_reader :cert
+      if defined?(JRUBY_VERSION)
+        # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
+        attr_reader :keystore
+        attr_accessor :keystore_pass
 
-      def key=(key)
-        raise ArgumentError, "No such key file '#{key}'" unless File.exist? key
-        @key = key
-      end
+        def keystore=(keystore)
+          raise ArgumentError, "No such keystore file '#{keystore}'" unless File.exist? keystore
+          @keystore = keystore
+        end
+      else
+        # non-jruby Context properties
+        attr_reader :key
+        attr_reader :cert
 
-      def cert=(cert)
-        raise ArgumentError, "No such cert file '#{cert}'" unless File.exist? cert
-        @cert = cert
+        def key=(key)
+          raise ArgumentError, "No such key file '#{key}'" unless File.exist? key
+          @key = key
+        end
+
+        def cert=(cert)
+          raise ArgumentError, "No such cert file '#{cert}'" unless File.exist? cert
+          @cert = cert
+        end
       end
     end
 
     VERIFY_NONE = 0
     VERIFY_PEER = 1
-
-    #if defined?(JRUBY_VERSION)
-    #class Engine
-    #def self.server(key, cert)
-    #new(key, cert)
-    #end
-    #end
-    #end
 
     class Server
       def initialize(socket, ctx)
@@ -128,14 +132,14 @@ module Puma
 
       def accept
         io = @socket.accept
-        engine = Engine.server @ctx.key, @ctx.cert
+        engine = Engine.server @ctx
 
         Socket.new io, engine
       end
 
       def accept_nonblock
         io = @socket.accept_nonblock
-        engine = Engine.server @ctx.key, @ctx.cert
+        engine = Engine.server @ctx
 
         Socket.new io, engine
       end

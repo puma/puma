@@ -121,26 +121,36 @@ module Puma
 
           @listeners << [str, io]
         when "ssl"
-          if IS_JRUBY
-            @events.error "SSL not supported on JRuby"
-            raise UnsupportedOption
-          end
-
           params = Rack::Utils.parse_query uri.query
           require 'puma/minissl'
 
           ctx = MiniSSL::Context.new
-          unless params['key']
-            @events.error "Please specify the SSL key via 'key='"
+
+          if defined?(JRUBY_VERSION)
+            unless params['keystore']
+              @events.error "Please specify the Java keystore via 'keystore='"
+            end
+
+            ctx.keystore = params['keystore']
+
+            unless params['keystore-pass']
+              @events.error "Please specify the Java keystore password  via 'keystore-pass='"
+            end
+
+            ctx.keystore_pass = params['keystore-pass']
+          else
+            unless params['key']
+              @events.error "Please specify the SSL key via 'key='"
+            end
+
+            ctx.key = params['key']
+
+            unless params['cert']
+              @events.error "Please specify the SSL cert via 'cert='"
+            end
+
+            ctx.cert = params['cert']
           end
-
-          ctx.key = params['key']
-
-          unless params['cert']
-            @events.error "Please specify the SSL cert via 'cert='"
-          end
-
-          ctx.cert = params['cert']
 
           ctx.verify_mode = MiniSSL::VERIFY_NONE
 
@@ -215,11 +225,6 @@ module Puma
 
     def add_ssl_listener(host, port, ctx,
                          optimize_for_latency=true, backlog=1024)
-      if IS_JRUBY
-        @events.error "SSL not supported on JRuby"
-        raise UnsupportedOption
-      end
-
       require 'puma/minissl'
 
       s = TCPServer.new(host, port)
@@ -239,11 +244,6 @@ module Puma
     end
 
     def inherited_ssl_listener(fd, ctx)
-      if IS_JRUBY
-        @events.error "SSL not supported on JRuby"
-        raise UnsupportedOption
-      end
-
       require 'puma/minissl'
       s = TCPServer.for_fd(fd)
       @ios << MiniSSL::Server.new(s, ctx)
