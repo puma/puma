@@ -42,7 +42,7 @@ Here are some rules of thumb:
 
 **How do you know if you're got enough (or too many workers)?**
 
-A good question. Due to MRI's GIL, only one thread can be executing at a time.
+A good question. Due to MRI's GIL, only one thread can be executing Ruby code at a time.
 But since so many apps are waiting on IO from DBs, etc., they can utilize threads
 to make better use of the process.
 
