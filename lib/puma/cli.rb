@@ -322,6 +322,7 @@ module Puma
 
     def graceful_stop
       @runner.stop_blocked
+      log "=== puma shutdown: #{Time.now} ==="
       log "- Goodbye!"
     end
 
