@@ -117,7 +117,7 @@ If you're preloading your application and using ActiveRecord, it's recommend you
       end
     end
     
-When you use preload_app, your new code goes all in the master process, and is then copied in the workers (meaning it’s only compatible with cluster mode). General rule is to use preload_app when your workers die often and need fast starts. If you don’t have many workers, you should probably don’t use preload_app.
+When you use preload_app, your new code goes all in the master process, and is then copied in the workers (meaning it’s only compatible with cluster mode). General rule is to use preload_app when your workers die often and need fast starts. If you don’t have many workers, you probably should not use preload_app.
 
 Note that preload_app can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preload_app is all about copying the code of master into the workers.
 
