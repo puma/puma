@@ -1,3 +1,27 @@
+=== 2.9.0 / 2014-07-12
+
+* 1 minor feature:
+  * Add SSL support for JRuby
+
+* 3 bug fixes:
+  * Typo BUNDLER_GEMFILE -> BUNDLE_GEMFILE
+  * Use fast_write because we can't trust syswrite
+  * pumactl - do not modify original ARGV
+
+* 4 doc fixes:
+  * BSD-3-Clause over BSD to avoid confusion
+  * Deploy doc: clarification of the GIL
+  * Fix typo in DEPLOYMENT.md
+  * Update README.md
+
+* 6 PRs merged:
+  * Merge pull request #520 from misfo/patch-2
+  * Merge pull request #530 from looker/jruby-ssl
+  * Merge pull request #537 from vlmonk/patch-1
+  * Merge pull request #540 from allaire/patch-1
+  * Merge pull request #544 from chulkilee/bsd-3-clause
+  * Merge pull request #551 from jcxplorer/patch-1
+
 === 2.8.2 / 2014-04-12
 
 * 4 bug fixes:
