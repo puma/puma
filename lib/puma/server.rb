@@ -614,10 +614,10 @@ module Puma
         begin
           res_body.each do |part|
             if chunked
-              client.syswrite part.bytesize.to_s(16)
-              client.syswrite line_ending
+              fast_write client, part.bytesize.to_s(16)
+              fast_write client, line_ending
               fast_write client, part
-              client.syswrite line_ending
+              fast_write client, line_ending
             else
               fast_write client, part
             end
@@ -626,7 +626,7 @@ module Puma
           end
 
           if chunked
-            client.syswrite CLOSE_CHUNKED
+            fast_write client, CLOSE_CHUNKED
             client.flush
           end
         rescue SystemCallError, IOError

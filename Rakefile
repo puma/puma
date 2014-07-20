@@ -22,7 +22,7 @@ HOE = Hoe.spec "puma" do
 
   dependency "rack", [">= 1.1", "< 2.0"]
 
-  extra_dev_deps << ["rake-compiler", "~> 0.8.0"]
+  extra_dev_deps << ["rake-compiler", "~> 0.8"]
 end
 
 task :prerelease => [:clobber, :check_manifest, :test]
