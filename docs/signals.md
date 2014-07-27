@@ -38,5 +38,6 @@ Puma cluster responds to these signals:
 - `TERM` send `TERM` to worker. Worker will attempt to finish then exit.
 - `USR2` restart workers
 - `USR1` restart workers in phases, a rolling restart.
+- `HUP`  reopen log files defined in stdout_redirect configuration parameter
 - `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
 - `CHLD`
