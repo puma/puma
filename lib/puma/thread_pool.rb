@@ -176,7 +176,9 @@ module Puma
 
       # Use this instead of #each so that we don't stop in the middle
       # of each and see a mutated object mid #each
-      @workers.first.join until @workers.empty?
+	  if !@workers.empty?
+	      @workers.first.join until @workers.empty?
+	  end
 
       @spawned = 0
       @workers = []
