@@ -216,6 +216,11 @@ module Puma
 
       server.run.join
 
+      # Invoke any worker shutdown hooks so they can prevent the worker
+	  # exiting until any background operations are completed
+      hooks = @options[:before_worker_shutdown]
+      hooks.each { |h| h.call(index) }
+
     ensure
       @worker_write.close
     end
