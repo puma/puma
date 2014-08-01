@@ -303,9 +303,9 @@ module Puma
       end
 
       # *Cluster mode only* Code to run immediately before a worker shuts
-	  # down (after it has finished processing HTTP requests). These hooks
-	  # can block if necessary to wait for background operations unknown
-	  # to puma to finish before the process terminates.
+      # down (after it has finished processing HTTP requests). These hooks
+      # can block if necessary to wait for background operations unknown
+      # to puma to finish before the process terminates.
       #
       # This can be called multiple times to add hooks.
       #

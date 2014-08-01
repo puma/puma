@@ -99,7 +99,7 @@ module Puma
         :binds => [],
         :workers => 0,
         :daemon => false,
-		:before_worker_shutdown => [],
+        :before_worker_shutdown => [],
         :before_worker_boot => [],
         :after_worker_boot => []
       }
