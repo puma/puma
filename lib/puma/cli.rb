@@ -537,6 +537,14 @@ module Puma
         log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"
       end
 
+      begin
+        Signal.trap "SIGHUP" do
+          redirect_io
+        end
+      rescue Exception
+        log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
+      end
+
       if jruby?
         Signal.trap("INT") do
           @status = :exit
@@ -562,6 +570,10 @@ module Puma
         return restart
       end
       true
+    end
+
+    def redirect_io
+      @runner.redirect_io
     end
 
     def stats

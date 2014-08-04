@@ -36,6 +36,12 @@ module Puma
       end
     end
 
+    def redirect_io
+      super
+
+      @workers.each { |x| x.hup }
+    end
+
     class Worker
       def initialize(idx, pid, phase)
         @index = idx
@@ -82,6 +88,11 @@ module Puma
         Process.kill "KILL", @pid
       rescue Errno::ESRCH
       end
+
+      def hup
+        Process.kill "HUP", @pid
+      rescue Errno::ESRCH
+      end
     end
 
     def spawn_workers
@@ -104,9 +115,9 @@ module Puma
     end
 
     def next_worker_index
-      all_positions =  0...@options[:workers] 
+      all_positions =  0...@options[:workers]
       occupied_positions = @workers.map { |w| w.index }
-      available_positions = all_positions.to_a - occupied_positions 
+      available_positions = all_positions.to_a - occupied_positions
       available_positions.first
     end
 
@@ -172,6 +183,7 @@ module Puma
       $0 = "puma: cluster worker #{index}: #{master}"
       Signal.trap "SIGINT", "IGNORE"
 
+      @workers = []
       @master_read.close
       @suicide_pipe.close
 
