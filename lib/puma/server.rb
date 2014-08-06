@@ -756,7 +756,7 @@ module Puma
         # The server, in another thread, is shutting down
       end
 
-      (@thread.join and @thread = nil) if @thread && sync
+      @thread.join if @thread && sync
     end
 
     def halt(sync=false)
@@ -766,7 +766,7 @@ module Puma
         # The server, in another thread, is shutting down
       end
 
-      (@thread.join and @thread = nil) if @thread && sync
+      @thread.join if @thread && sync
     end
 
     def begin_restart

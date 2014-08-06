@@ -15,6 +15,7 @@ module Puma
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 9292
     DefaultWorkerTimeout = 60
+    DefaultWorkerShutdownTimeout = 30
 
     def initialize(options)
       @options = options
@@ -25,6 +26,7 @@ module Puma
       @options[:before_worker_boot] ||= []
       @options[:after_worker_boot] ||= []
       @options[:worker_timeout] ||= DefaultWorkerTimeout
+      @options[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
     end
 
     attr_reader :options
@@ -383,6 +385,11 @@ module Puma
       # *Cluster mode only* Set the timeout for workers
       def worker_timeout(timeout)
         @options[:worker_timeout] = timeout
+      end
+
+      # *Cluster mode only* Set the timeout for worker shutdown
+      def worker_shutdown_timeout(timeout)
+        @options[:worker_shutdown_timeout] = timeout
       end
     end
   end

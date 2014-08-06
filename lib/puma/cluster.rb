@@ -67,7 +67,7 @@ module Puma
 
       def term
         begin
-          if @first_term_sent && (Time.new - @first_term_sent) > 30
+          if @first_term_sent && (Time.new - @first_term_sent) > @options[:worker_shutdown_timeout]
             @signal = "KILL"
           else
             @first_term_sent ||= Time.new
@@ -195,9 +195,7 @@ module Puma
       server = start_server
 
       Signal.trap "SIGTERM" do
-        STDERR.puts "Got SIGTERM in worker"
         server.stop
-        STDERR.puts "Finished processing SIGTERM in worker"
       end
 
       begin
