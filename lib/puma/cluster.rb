@@ -195,7 +195,9 @@ module Puma
       server = start_server
 
       Signal.trap "SIGTERM" do
+        STDERR.puts "Got SIGTERM in worker"
         server.stop
+        STDERR.puts "Finished processing SIGTERM in worker"
       end
 
       begin
