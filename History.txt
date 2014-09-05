@@ -1,3 +1,15 @@
+=== 2.9.1 / 2014-09-05
+
+* 4 bug fixes:
+  * Cleanup the SSL related structures properly, fixes memory leak
+  * Fix thread spawning edge case.
+  * Force a worker check after a worker boots, don't wait 5sec. Fixes #574
+  * Implement SIGHUP for logs reopening
+
+* 2 PRs merged:
+  * Merge pull request #561 from theoldreader/sighup
+  * Merge pull request #570 from havenwood/spawn-thread-edge-case
+
 === 2.9.0 / 2014-07-12
 
 * 1 minor feature:
