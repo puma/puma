@@ -125,8 +125,8 @@ module Puma
       @workers.count { |w| !w.booted? } == 0
     end
 
-    def check_workers
-      return if @next_check && @next_check >= Time.now
+    def check_workers(force=false)
+      return if !force && @next_check && @next_check >= Time.now
 
       @next_check = Time.now + 5
 
@@ -357,6 +357,8 @@ module Puma
           begin
             res = IO.select([read], nil, nil, 5)
 
+            force_check = false
+
             if res
               req = read.read_nonblock(1)
 
@@ -369,6 +371,7 @@ module Puma
                 when "b"
                   w.boot!
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
+                  force_check = true
                 when "p"
                   w.ping!
                 end
@@ -382,7 +385,7 @@ module Puma
               @phased_restart = false
             end
 
-            check_workers
+            check_workers force_check
 
           rescue Interrupt
             @status = :stop
