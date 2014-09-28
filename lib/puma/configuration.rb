@@ -168,7 +168,11 @@ module Puma
       end
 
       def _load_from(path)
-        instance_eval File.read(path), path, 1
+        if path == '-'
+          instance_eval STDIN.read, 'STDIN', 0
+        else
+          instance_eval File.read(path), path, 1
+        end
       end
 
       # Use +obj+ or +block+ as the Rack app. This allows a config file to
