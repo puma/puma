@@ -114,7 +114,7 @@ module Puma
 
         @todo << work
 
-        if @waiting == 0 and @spawned < @max
+        if @waiting < @todo.size and @spawned < @max
           spawn_thread
         end
 

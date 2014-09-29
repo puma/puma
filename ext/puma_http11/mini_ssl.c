@@ -13,8 +13,8 @@ typedef struct {
 } ms_conn;
 
 void engine_free(ms_conn* conn) {
-  BIO_free(conn->read);
-  BIO_free(conn->write);
+  SSL_free(conn->ssl);
+  SSL_CTX_free(conn->ctx);
 
   free(conn);
 }

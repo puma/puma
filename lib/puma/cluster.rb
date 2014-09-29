@@ -36,6 +36,12 @@ module Puma
       end
     end
 
+    def redirect_io
+      super
+
+      @workers.each { |x| x.hup }
+    end
+
     class Worker
       def initialize(idx, pid, phase)
         @index = idx
@@ -82,6 +88,11 @@ module Puma
         Process.kill "KILL", @pid
       rescue Errno::ESRCH
       end
+
+      def hup
+        Process.kill "HUP", @pid
+      rescue Errno::ESRCH
+      end
     end
 
     def spawn_workers
@@ -104,9 +115,9 @@ module Puma
     end
 
     def next_worker_index
-      all_positions =  0...@options[:workers] 
+      all_positions =  0...@options[:workers]
       occupied_positions = @workers.map { |w| w.index }
-      available_positions = all_positions.to_a - occupied_positions 
+      available_positions = all_positions.to_a - occupied_positions
       available_positions.first
     end
 
@@ -114,8 +125,8 @@ module Puma
       @workers.count { |w| !w.booted? } == 0
     end
 
-    def check_workers
-      return if @next_check && @next_check >= Time.now
+    def check_workers(force=false)
+      return if !force && @next_check && @next_check >= Time.now
 
       @next_check = Time.now + 5
 
@@ -172,6 +183,7 @@ module Puma
       $0 = "puma: cluster worker #{index}: #{master}"
       Signal.trap "SIGINT", "IGNORE"
 
+      @workers = []
       @master_read.close
       @suicide_pipe.close
 
@@ -349,6 +361,8 @@ module Puma
           begin
             res = IO.select([read], nil, nil, 5)
 
+            force_check = false
+
             if res
               req = read.read_nonblock(1)
 
@@ -361,6 +375,7 @@ module Puma
                 when "b"
                   w.boot!
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
+                  force_check = true
                 when "p"
                   w.ping!
                 end
@@ -374,7 +389,7 @@ module Puma
               @phased_restart = false
             end
 
-            check_workers
+            check_workers force_check
 
           rescue Interrupt
             @status = :stop
