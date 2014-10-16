@@ -112,7 +112,7 @@ module Puma
       begin
         @app = @cli.config.app
       rescue Exception => e
-        log "! Unable to load application"
+        log "! Unable to load application: #{e.class}: #{e.message}"
         raise e
       end
 
