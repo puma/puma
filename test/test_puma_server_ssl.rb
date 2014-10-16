@@ -16,21 +16,21 @@ class TestPumaServerSSL < Test::Unit::TestCase
 
     @app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    ctx = Puma::MiniSSL::Context.new
+    @ctx = Puma::MiniSSL::Context.new
 
     if defined?(JRUBY_VERSION)
-      ctx.keystore =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
-      ctx.keystore_pass = 'blahblah'
+      @ctx.keystore =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
+      @ctx.keystore_pass = 'blahblah'
     else
-      ctx.key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
-      ctx.cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+      @ctx.key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+      @ctx.cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
     end
 
-    ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
+    @ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
     @events = Puma::Events.new STDOUT, STDERR
     @server = Puma::Server.new @app, @events
-    @server.add_ssl_listener @host, @port, ctx
+    @server.add_ssl_listener @host, @port, @ctx
     @server.run
 
     @http = Net::HTTP.new @host, @port
@@ -86,6 +86,52 @@ class TestPumaServerSSL < Test::Unit::TestCase
     end
 
     assert_equal "https", body
+  end
+
+  if defined?(JRUBY_VERSION)
+    def test_ssl_v3_support_disabled_by_default
+      @http.ssl_version='SSLv3'
+      assert_raises(OpenSSL::SSL::SSLError) do
+        @http.start do
+          Net::HTTP::Get.new '/'
+        end
+      end
+    end
+
+    def test_enabling_ssl_v3_support
+      @server.stop(true)
+      @ctx.enable_SSLv3 = true
+      @server = Puma::Server.new @app, @events
+      @server.add_ssl_listener @host, @port, @ctx
+      @server.run
+      @http.ssl_version='SSLv3'
+
+      body = nil
+      @http.start do
+        req = Net::HTTP::Get.new "/", {}
+
+        @http.request(req) do |rep|
+          body = rep.body
+        end
+      end
+
+      assert_equal "https", body
+    end
+
+    def test_enabling_ssl_v3_support_requires_true
+      @server.stop(true)
+      @ctx.enable_SSLv3 = "truthy but not true"
+      @server = Puma::Server.new @app, @events
+      @server.add_ssl_listener @host, @port, @ctx
+      @server.run
+      @http.ssl_version='SSLv3'
+
+      assert_raises(OpenSSL::SSL::SSLError) do
+        @http.start do
+          Net::HTTP::Get.new '/'
+        end
+      end
+    end
   end
 
 end
