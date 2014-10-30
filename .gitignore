@@ -9,6 +9,7 @@ doc
 log
 pkg
 tmp
+t/
 .rbx/
 Gemfile.lock
 .idea/

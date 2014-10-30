@@ -2,6 +2,7 @@
 .gitignore
 .travis.yml
 .git/
+t/
 tmp/
 scratch/
 test/
