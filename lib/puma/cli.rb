@@ -363,7 +363,11 @@ module Puma
         lib = File.expand_path "lib"
         arg0[1,0] = ["-I", lib] if $:[0] == lib
 
-        @restart_argv = arg0 + ARGV
+        if defined? Puma::WILD_ARGS
+          @restart_argv = arg0 + Puma::WILD_ARGS + ARGV
+        else
+          @restart_argv = arg0 + ARGV
+        end
       end
     end
 
@@ -431,6 +435,7 @@ module Puma
         Dir.chdir @restart_dir
 
         argv += [redirects] unless RUBY_VERSION < '1.9'
+
         Kernel.exec(*argv)
       end
     end
@@ -467,8 +472,9 @@ module Puma
 
             wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
 
-            args = [Gem.ruby] + dirs.map { |x| ["-I", x] }.flatten +
-                   [wild, deps] + @original_argv
+            wild_loadpath = dirs.join(":")
+
+            args = [Gem.ruby] + [wild, "-I", wild_loadpath, deps] + @original_argv
 
             Kernel.exec(*args)
           end
