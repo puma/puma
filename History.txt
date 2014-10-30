@@ -1,3 +1,23 @@
+=== 2.9.2 / 1024-10-25
+
+* 8 bug fixes:
+  * Fix puma-wild handling a restart properly. Fixes #550
+  * JRuby SSL POODLE update
+  * Keep deprecated features warnings
+  * Log the current time when Puma shuts down.
+  * Fix cross-platform extension library detection
+  * Use the correct Windows names for OpenSSL.
+  * Better error logging during startup
+  * Fixing sexist error messages
+
+* 6 PRs merged:
+  * Merge pull request #549 from bsnape/log-shutdown-time
+  * Merge pull request #553 from lowjoel/master
+  * Merge pull request #568 from mariuz/patch-1
+  * Merge pull request #578 from danielbuechele/patch-1
+  * Merge pull request #581 from alexch/slightly-better-logging
+  * Merge pull request #590 from looker/jruby_disable_sslv3
+
 === 2.9.1 / 2014-09-05
 
 * 4 bug fixes:
