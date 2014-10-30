@@ -1,4 +1,4 @@
-=== 2.9.2 / 1024-10-25
+=== 2.9.2 / 2014-10-25
 
 * 8 bug fixes:
   * Fix puma-wild handling a restart properly. Fixes #550
