@@ -153,4 +153,28 @@ class TestThreadPool < Test::Unit::TestCase
 
     assert_equal 1, pool.spawned
   end
+
+  def test_cleanliness
+    values = []
+    n = 100
+    mutex = Mutex.new
+
+    finished = false
+
+    pool = new_pool(1,1) {
+      mutex.synchronize { values.push Thread.current[:foo] }
+      Thread.current[:foo] = :hai
+      Thread.pass until finished
+    }
+
+    n.times { pool << 1 }
+
+    finished = true
+
+    pause
+
+    assert_equal n,  values.length
+
+    assert_equal [], values.compact
+  end
 end
