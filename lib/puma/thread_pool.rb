@@ -89,6 +89,10 @@ module Puma
 
           break unless continue
 
+          Thread.current.keys.each do |key|
+            Thread.current[key] = nil unless key == :__recursive_key__
+          end
+
           block.call(work, *extra)
         end
 
