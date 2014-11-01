@@ -1,6 +1,6 @@
 module Puma
 
-  # The CLI exports it's Configuration object here to allow
+  # The CLI exports its Configuration object here to allow
   # apps to pick it up. An app needs to use it conditionally though
   # since it is not set if the app is launched via another
   # mechanism than the CLI class.
@@ -82,7 +82,7 @@ module Puma
       @options[:rackup] || DefaultRackup
     end
 
-    # Load the specified rackup file, pull an options from
+    # Load the specified rackup file, pull options from
     # the rackup file, and set @app.
     #
     def app
@@ -338,7 +338,7 @@ module Puma
         @options[:preload_app] = answer
       end
 
-      # Use +obj+ or +block+ as the low lever error handler. This allows a config file to
+      # Use +obj+ or +block+ as the low level error handler. This allows a config file to
       # change the default error on the server.
       #
       def lowlevel_error_handler(obj=nil, &block)
@@ -347,7 +347,7 @@ module Puma
         @options[:lowlevel_error_handler] = obj
       end
 
-      # This option is used to allow your app and it's gems to be
+      # This option is used to allow your app and its gems to be
       # properly reloaded when not using preload.
       #
       # When set, if puma detects that it's been invoked in the
