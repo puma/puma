@@ -26,7 +26,7 @@ Puma apps are held in /etc/puma.conf by default. It's mainly a CSV file and ever
 
 You can add an instance by editing the file or running the following command:
 
-    sudo /etc/init.d/puma add /path/to/app user /path/to/app/config/puma.rb /path/to/app/config/log/puma.log
+    sudo /etc/init.d/puma add /path/to/app user /path/to/app/config/puma.rb /path/to/app/log/puma.log
 
 The config and log paths are optional parameters and default to:
 
