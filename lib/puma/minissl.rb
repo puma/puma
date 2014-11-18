@@ -1,9 +1,39 @@
+if Puma::IS_JRUBY
+  require 'java'
+  java_import 'java.lang.RuntimeException'
+  require 'puma/delegation'
+end
+
+
 module Puma
   module MiniSSL
+    class EngineWrapper
+      extend Puma::Delegation
+
+      %w(inject extract write).each do |action|
+        forward action, :@engine
+      end
+
+      def initialize(engine)
+        @engine=engine
+      end
+
+      if Puma::IS_JRUBY
+        def read
+          begin
+            @engine.read
+          rescue RuntimeException=>e
+            raise IOError.new("Unable to read from engine, #{e.message}")
+          end
+        end
+      else
+        forward :read, :@engine 
+      end
+    end
     class Socket
       def initialize(socket, engine)
         @socket = socket
-        @engine = engine
+        @engine = EngineWrapper.new(engine)
       end
 
       def to_io
