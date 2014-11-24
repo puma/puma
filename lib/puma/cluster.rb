@@ -287,12 +287,14 @@ module Puma
         after = Thread.list
 
         if after.size > before.size
-          log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot:"
           threads = (after - before)
           if threads.first.respond_to? :backtrace
+            log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot:"
             threads.each do |t|
               log "! #{t.inspect} - #{t.backtrace.first}"
             end
+          else
+            log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot"
           end
         end
       else
