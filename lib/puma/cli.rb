@@ -99,6 +99,7 @@ module Puma
         :binds => [],
         :workers => 0,
         :daemon => false,
+        :before_worker_shutdown => [],
         :before_worker_boot => [],
         :after_worker_boot => []
       }
@@ -228,7 +229,7 @@ module Puma
 
         cfg = @config.dup
 
-        [ :logger, :before_worker_boot, :after_worker_boot, :on_restart ].each { |o| cfg.options.delete o }
+        [ :logger, :before_worker_shutdown, :before_worker_boot, :after_worker_boot, :on_restart ].each { |o| cfg.options.delete o }
 
         state["config"] = cfg
 

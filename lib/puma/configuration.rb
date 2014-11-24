@@ -15,15 +15,18 @@ module Puma
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 9292
     DefaultWorkerTimeout = 60
+    DefaultWorkerShutdownTimeout = 30
 
     def initialize(options)
       @options = options
       @options[:mode] ||= :http
       @options[:binds] ||= []
       @options[:on_restart] ||= []
+      @options[:before_worker_shutdown] ||= []
       @options[:before_worker_boot] ||= []
       @options[:after_worker_boot] ||= []
       @options[:worker_timeout] ||= DefaultWorkerTimeout
+      @options[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
     end
 
     attr_reader :options
@@ -305,6 +308,17 @@ module Puma
         @options[:workers] = count.to_i
       end
 
+      # *Cluster mode only* Code to run immediately before a worker shuts
+      # down (after it has finished processing HTTP requests). These hooks
+      # can block if necessary to wait for background operations unknown
+      # to puma to finish before the process terminates.
+      #
+      # This can be called multiple times to add hooks.
+      #
+      def on_worker_shutdown(&block)
+        @options[:before_worker_shutdown] << block
+      end
+
       # *Cluster mode only* Code to run when a worker boots to setup
       # the process before booting the app.
       #
@@ -375,6 +389,11 @@ module Puma
       # *Cluster mode only* Set the timeout for workers
       def worker_timeout(timeout)
         @options[:worker_timeout] = timeout
+      end
+
+      # *Cluster mode only* Set the timeout for worker shutdown
+      def worker_shutdown_timeout(timeout)
+        @options[:worker_shutdown_timeout] = timeout
       end
     end
   end

@@ -73,7 +73,7 @@ module Puma
 
       def term
         begin
-          if @first_term_sent && (Time.new - @first_term_sent) > 30
+          if @first_term_sent && (Time.new - @first_term_sent) > @options[:worker_shutdown_timeout]
             @signal = "KILL"
           else
             @first_term_sent ||= Time.new
@@ -228,6 +228,10 @@ module Puma
 
       server.run.join
 
+      # Invoke any worker shutdown hooks so they can prevent the worker
+      # exiting until any background operations are completed
+      hooks = @options[:before_worker_shutdown]
+      hooks.each { |h| h.call(index) }
     ensure
       @worker_write.close
     end
