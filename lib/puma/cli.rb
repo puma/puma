@@ -454,6 +454,10 @@ module Puma
         exit 1
       end
 
+      if dir = @options[:directory]
+        Dir.chdir dir
+      end
+
       if prune_bundler? && defined?(Bundler)
         puma = Bundler.rubygems.loaded_specs("puma")
 
@@ -481,10 +485,6 @@ module Puma
         end
 
         log "! Unable to prune Bundler environment, continuing"
-      end
-
-      if dir = @options[:directory]
-        Dir.chdir dir
       end
 
       set_rack_environment
