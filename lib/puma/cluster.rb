@@ -278,9 +278,23 @@ module Puma
 
       log "* Process workers: #{@options[:workers]}"
 
+      before = Thread.list
+
       if preload?
         log "* Preloading application"
         load_and_bind
+
+        after = Thread.list
+
+        if after.size > before.size
+          log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot:"
+          threads = (after - before)
+          if threads.first.respond_to? :backtrace
+            threads.each do |t|
+              log "! #{t.inspect} - #{t.backtrace.first}"
+            end
+          end
+        end
       else
         log "* Phased restart available"
 
