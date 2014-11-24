@@ -1,3 +1,14 @@
+=== 2.10.1 / 2014-11-14
+
+* 1 bug fix:
+  * Load the app after daemonizing because the app might start threads.
+
+  This change means errors loading the app are now reported only in the redirected
+  stdout/stderr.
+
+  If you're app has problems starting up, start it without daemon mode initially
+  to test.
+
 === 2.10.0 / 2014-11-23
 
 * 3 minor features:
