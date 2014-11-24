@@ -92,7 +92,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   SSL_CTX_use_certificate_file(ctx, RSTRING_PTR(cert), SSL_FILETYPE_PEM);
   SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
   
-  SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SSLv2 | SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE);
+  SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
   SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL@STRENGTH");
