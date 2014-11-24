@@ -96,11 +96,15 @@ module Puma
         app, options = Rack::Builder.parse_file rackup
         @options.merge! options
 
+        config_ru_binds = []
+
         options.each do |key,val|
           if key.to_s[0,4] == "bind"
-            @options[:binds] << val
+            config_ru_binds << val
           end
         end
+
+        @options[:binds] = config_ru_binds unless config_ru_binds.empty?
       end
 
       if @options[:mode] == :tcp
