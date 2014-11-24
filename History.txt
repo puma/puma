@@ -1,3 +1,32 @@
+=== 2.10.0 / 2014-11-23
+
+* 3 minor features:
+  * Added on_worker_shutdown hook mechanism
+  * Allow binding to ipv6 addresses for ssl URIs
+  * Warn about any threads started during app preload
+
+* 5 bug fixes:
+  * Clean out a threads local data before doing work
+  * Disable SSLv3. Fixes #591
+  * First change the directory to use the correct Gemfile.
+  * Only use config.ru binds if specified. Fixes #606
+  * Strongish cipher suite with FS support for some browsers
+
+* 2 doc changes:
+  * Change umask examples to more permissive values
+  * fix typo in README.md
+
+* 9 Merged PRs:
+  * Merge pull request #560 from raskhadafi/prune_bundler-bug
+  * Merge pull request #566 from sheltond/master
+  * Merge pull request #593 from andruby/patch-1
+  * Merge pull request #594 from hassox/thread-cleanliness
+  * Merge pull request #596 from burningTyger/patch-1
+  * Merge pull request #601 from sorentwo/friendly-umask
+  * Merge pull request #602 from 1334/patch-1
+  * Merge pull request #608 from Gu1/master
+  * Merge remote-tracking branch 'origin/pr/538'
+
 === 2.9.2 / 2014-10-25
 
 * 8 bug fixes:
