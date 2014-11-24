@@ -70,12 +70,12 @@ module Puma
           sleep
         end
       else
-        load_and_bind
-
         if daemon?
           log "* Daemonizing..."
           Process.daemon(true)
         end
+
+        load_and_bind
       end
 
       @cli.write_state
