@@ -1,4 +1,4 @@
-=== 2.10.1 / 2014-11-14
+=== 2.10.1 / 2014-11-24
 
 * 1 bug fix:
   * Load the app after daemonizing because the app might start threads.
