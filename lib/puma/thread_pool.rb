@@ -36,9 +36,12 @@ module Puma
       @mutex.synchronize do
         @min.times { spawn_thread }
       end
+
+      @clean_thread_locals = false
     end
 
     attr_reader :spawned, :trim_requested
+    attr_accessor :clean_thread_locals
 
     # How many objects have yet to be processed by the pool?
     #
@@ -89,8 +92,10 @@ module Puma
 
           break unless continue
 
-          Thread.current.keys.each do |key|
-            Thread.current[key] = nil unless key == :__recursive_key__
+          if @clean_thread_locals
+            Thread.current.keys.each do |key|
+              Thread.current[key] = nil unless key == :__recursive_key__
+            end
           end
 
           block.call(work, *extra)

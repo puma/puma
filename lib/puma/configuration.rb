@@ -212,6 +212,13 @@ module Puma
         @options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{port}"
       end
 
+      # Work around leaky apps that leave garbage in Thread locals
+      # across requests
+      #
+      def clean_thread_locals(which=true)
+        @options[:clean_thread_locals] = which
+      end
+
       # Daemonize the server into the background. Highly suggest that
       # this be combined with +pidfile+ and +stdout_redirect+.
       def daemonize(which=true)

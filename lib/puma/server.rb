@@ -259,6 +259,8 @@ module Puma
         end
       end
 
+      @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
+
       @reactor = Reactor.new self, @thread_pool
 
       @reactor.run_in_thread
