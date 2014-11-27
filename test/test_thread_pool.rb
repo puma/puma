@@ -167,6 +167,8 @@ class TestThreadPool < Test::Unit::TestCase
       Thread.pass until finished
     }
 
+    pool.clean_thread_locals = true
+
     n.times { pool << 1 }
 
     finished = true
