@@ -1,3 +1,11 @@
+=== 2.10.2 / 2014-11-26
+
+* 1 bug fix:
+  * Conditionalize thread local cleaning, fixes perf degradation fix
+    The code to clean out all Thread locals adds pretty significant
+    overhead to a each request, so it has to be turned on explicitly
+    if a user needs it.
+
 === 2.10.1 / 2014-11-24
 
 * 1 bug fix:
