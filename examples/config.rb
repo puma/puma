@@ -122,6 +122,13 @@
 #   puts 'On worker boot...'
 # end
 
+# Code to run when a worker shutdown.
+#
+#
+# on_worker_shutdown do
+#   puts 'On worker boot...'
+# end
+
 # Allow workers to reload bundler context when master process is issued
 # a USR1 signal. This allows proper reloading of gems while the master
 # is preserved across a phased-restart. (incompatible with preload_app)
