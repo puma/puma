@@ -250,6 +250,14 @@ module Puma
             client.finish
             process_now = true
           end
+        rescue MiniSSL::SSLError => e
+          ssl_socket = client.io
+          addr = ssl_socket.peeraddr.last
+          cert = ssl_socket.peercert
+
+          client.close
+
+          @events.ssl_error self, addr, cert, e
         rescue HttpParserError => e
           client.write_400
           client.close
@@ -395,6 +403,16 @@ module Puma
       rescue ConnectionError
         # Swallow them. The ensure tries to close +client+ down
 
+      # SSL handshake error
+      rescue MiniSSL::SSLError => e
+        ssl_socket = client.io
+        addr = ssl_socket.peeraddr.last
+        cert = ssl_socket.peercert
+
+        close_socket = true
+
+        @events.ssl_error self, addr, cert, e
+
       # The client doesn't know HTTP well
       rescue HttpParserError => e
         client.write_400
@@ -467,6 +485,7 @@ module Puma
     end
 
     def default_server_port(env)
+      return PORT_443 if env[HTTPS_KEY] == 'on' || env[HTTPS_KEY] == 'https'
       env['HTTP_X_FORWARDED_PROTO'] == 'https' ? PORT_443 : PORT_80
     end
 
@@ -486,6 +505,10 @@ module Puma
       normalize_env env, client
 
       env[PUMA_SOCKET] = client
+
+      if env[HTTPS_KEY] && client.peercert
+        env[PUMA_PEERCERT] = client.peercert
+      end
 
       env[HIJACK_P] = true
       env[HIJACK] = req

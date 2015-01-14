@@ -8,6 +8,16 @@ require 'puma/server'
 
 require 'net/https'
 
+class SSLEventsHelper < ::Puma::Events
+  attr_accessor :addr, :cert, :error
+
+  def ssl_error(server, peeraddr, peercert, error)
+    self.addr = peeraddr
+    self.cert = peercert
+    self.error = error
+  end
+end
+
 class TestPumaServerSSL < Test::Unit::TestCase
 
   def setup
@@ -28,7 +38,7 @@ class TestPumaServerSSL < Test::Unit::TestCase
 
     @ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
-    @events = Puma::Events.new STDOUT, STDERR
+    @events = SSLEventsHelper.new STDOUT, STDERR
     @server = Puma::Server.new @app, @events
     @server.add_ssl_listener @host, @port, @ctx
     @server.run
@@ -95,6 +105,94 @@ class TestPumaServerSSL < Test::Unit::TestCase
         Net::HTTP::Get.new '/'
       end
     end
+    unless defined?(JRUBY_VERSION)
+      assert_match("wrong version number", @events.error.message) if @events.error
+    end
   end
 
+end
+
+# client-side TLS authentication tests
+unless defined?(JRUBY_VERSION)
+  class TestPumaServerSSLClient < Test::Unit::TestCase
+
+    def assert_ssl_client_error_match(error, subject=nil, &blk)
+      @port = 3212
+      @host = "127.0.0.1"
+
+      @app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
+
+      @ctx = Puma::MiniSSL::Context.new
+      @ctx.key = File.expand_path "../../examples/puma/client-certs/server.key", __FILE__
+      @ctx.cert = File.expand_path "../../examples/puma/client-certs/server.crt", __FILE__
+      @ctx.ca = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      @ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER | Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
+
+      events = SSLEventsHelper.new STDOUT, STDERR
+      @server = Puma::Server.new @app, events
+      @server.add_ssl_listener @host, @port, @ctx
+      @server.run
+
+      @http = Net::HTTP.new @host, @port
+      @http.use_ssl = true
+      @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+      blk.call(@http)
+
+      client_error = false
+      begin
+        @http.start do
+          req = Net::HTTP::Get.new "/", {}
+          @http.request(req)
+        end
+      rescue OpenSSL::SSL::SSLError
+        client_error = true
+      end
+
+      sleep 0.1
+      assert_equal !!error, client_error
+      assert_match error, events.error.message if error
+      assert_equal @host, events.addr if error
+      assert_equal subject, events.cert.subject.to_s if subject
+    ensure
+      @server.stop(true)
+    end
+
+    def test_verify_fail_if_no_client_cert
+      assert_ssl_client_error_match 'peer did not return a certificate' do |http|
+        # nothing
+      end
+    end
+
+    def test_verify_fail_if_client_unknown_ca
+      assert_ssl_client_error_match('self signed certificate in certificate chain', '/DC=net/DC=puma/CN=ca-unknown') do |http|
+        key = File.expand_path "../../examples/puma/client-certs/client_unknown.key", __FILE__
+        crt = File.expand_path "../../examples/puma/client-certs/client_unknown.crt", __FILE__
+        http.key = OpenSSL::PKey::RSA.new File.read(key)
+        http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+        http.ca_file = File.expand_path "../../examples/puma/client-certs/unknown_ca.crt", __FILE__
+      end
+    end
+
+    def test_verify_fail_if_client_expired_cert
+      assert_ssl_client_error_match('certificate has expired', '/DC=net/DC=puma/CN=client-expired') do |http|
+        key = File.expand_path "../../examples/puma/client-certs/client_expired.key", __FILE__
+        crt = File.expand_path "../../examples/puma/client-certs/client_expired.crt", __FILE__
+        http.key = OpenSSL::PKey::RSA.new File.read(key)
+        http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+        http.ca_file = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      end
+    end
+
+    def test_verify_client_cert
+      assert_ssl_client_error_match(nil) do |http|
+        key = File.expand_path "../../examples/puma/client-certs/client.key", __FILE__
+        crt = File.expand_path "../../examples/puma/client-certs/client.crt", __FILE__
+        http.key = OpenSSL::PKey::RSA.new File.read(key)
+        http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+        http.ca_file = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+      end
+    end
+  end
 end

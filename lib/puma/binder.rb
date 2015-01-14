@@ -155,9 +155,28 @@ module Puma
             end
 
             ctx.cert = params['cert']
-          end
 
-          ctx.verify_mode = MiniSSL::VERIFY_NONE
+            if ['peer', 'force_peer'].include?(params['verify_mode'])
+              unless params['ca']
+                @events.error "Please specify the SSL ca via 'ca='"
+              end
+              ctx.ca = params['ca']
+            end
+
+            if  params['verify_mode']
+              ctx.verify_mode = case params['verify_mode']
+                                when "peer"
+                                  MiniSSL::VERIFY_PEER
+                                when "force_peer"
+                                  MiniSSL::VERIFY_PEER | MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
+                                when "none"
+                                  MiniSSL::VERIFY_NONE
+                                else
+                                  @events.error "Please specify a valid verify_mode="
+                                  MiniSSL::VERIFY_NONE
+                                end
+            end
+          end
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
