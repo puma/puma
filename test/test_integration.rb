@@ -102,6 +102,47 @@ class TestIntegration < Test::Unit::TestCase
     assert_kind_of Thread, t.join(1), "server didn't stop"
   end
 
+  def test_phased_restart_via_pumactl
+    if defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
+      assert true
+      return
+    end
+
+    cli = Puma::CLI.new %W!-q -S #{@state_path} -b unix://#{@bind_path} --control unix://#{@control_path} -w 2 test/hello-stuck.ru!, @events
+    cli.options[:worker_shutdown_timeout] = 1
+
+    t = Thread.new do
+      cli.run
+    end
+
+    wait_booted
+
+    # Make both workers stuck
+    s1 = UNIXSocket.new @bind_path
+    s1 << "GET / HTTP/1.0\r\n\r\n"
+    s2 = UNIXSocket.new @bind_path
+    s2 << "GET / HTTP/1.0\r\n\r\n"
+
+    sout = StringIO.new
+
+    # Phased restart
+    ccli = Puma::ControlCLI.new %W!-S #{@state_path} phased-restart!, sout
+    ccli.run
+    sleep 20
+    @events.stdout.rewind
+    log = @events.stdout.readlines.join("")
+    assert_match(/TERM sent/, log)
+    assert_match(/KILL sent/, log)
+    assert_match(/Worker 0 \(pid: \d+\) booted, phase: 1/, log)
+    assert_match(/Worker 1 \(pid: \d+\) booted, phase: 1/, log)
+
+    # Stop
+    ccli = Puma::ControlCLI.new %W!-S #{@state_path} stop!, sout
+    ccli.run
+
+    assert_kind_of Thread, t.join(5), "server didn't stop"
+  end
+
   def notest_restart_closes_keepalive_sockets
     server("-q test/hello.ru")
 

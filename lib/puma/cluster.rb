@@ -43,12 +43,14 @@ module Puma
     end
 
     class Worker
-      def initialize(idx, pid, phase)
+      def initialize(idx, pid, phase, options)
         @index = idx
         @pid = pid
         @phase = phase
         @stage = :started
         @signal = "TERM"
+        @options = options
+        @first_term_sent = nil
         @last_checkin = Time.now
       end
 
@@ -105,7 +107,7 @@ module Puma
 
         pid = fork { worker(idx, master) }
         @cli.debug "Spawned worker: #{pid}"
-        @workers << Worker.new(idx, pid, @phase)
+        @workers << Worker.new(idx, pid, @phase, @options)
         @options[:after_worker_boot].each { |h| h.call }
       end
 
