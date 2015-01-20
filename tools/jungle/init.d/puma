@@ -135,7 +135,7 @@ do_restart_one() {
   
   if [ -e $PIDFILE ]; then
     log_daemon_msg "--> About to restart puma $1"
-    pumactl --state $dir/tmp/puma/state restart
+    pumactl --state $dir/tmp/puma/state phased-restart
     # kill -s USR2 `cat $PIDFILE`
     # TODO Check if process exist
   else
