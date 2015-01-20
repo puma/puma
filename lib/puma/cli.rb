@@ -335,7 +335,7 @@ module Puma
         s_env = File.stat(dir)
         s_pwd = File.stat(Dir.pwd)
 
-        if s_env.ino == s_pwd.ino and s_env.dev == s_pwd.dev
+        if s_env.ino == s_pwd.ino and (jruby? or s_env.dev == s_pwd.dev)
           @restart_dir = dir
           @options[:worker_directory] = dir
         end
