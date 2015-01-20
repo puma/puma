@@ -288,6 +288,10 @@ module Puma
         File.chmod mode, path
       end
 
+      env = @proto_env.dup
+      env[REMOTE_ADDR] = "127.0.0.1"
+      @envs[s] = env
+
       s
     end
 
@@ -300,6 +304,10 @@ module Puma
         s = UNIXServer.for_fd fd
       end
       @ios << s
+
+      env = @proto_env.dup
+      env[REMOTE_ADDR] = "127.0.0.1"
+      @envs[s] = env
 
       s
     end

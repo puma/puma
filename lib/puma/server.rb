@@ -456,12 +456,14 @@ module Puma
       # intermediary acting on behalf of the actual source client."
       #
 
-      addr = client.peeraddr.last
+      unless env.key?(REMOTE_ADDR)
+        addr = client.peeraddr.last
 
-      # Set unix socket addrs to localhost
-      addr = "127.0.0.1" if addr.empty?
+        # Set unix socket addrs to localhost
+        addr = "127.0.0.1" if addr.empty?
 
-      env[REMOTE_ADDR] = addr
+        env[REMOTE_ADDR] = addr
+      end
     end
 
     def default_server_port(env)
