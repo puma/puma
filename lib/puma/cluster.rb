@@ -269,6 +269,13 @@ module Puma
       wakeup!
     end
 
+    def reload_worker_directory
+      if dir = @options[:worker_directory]
+        log "+ Changing to #{dir}"
+        Dir.chdir dir
+      end
+    end
+
     def stats
       %Q!{ "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{@workers.count{|w| w.booted?}} }!
     end

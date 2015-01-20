@@ -48,6 +48,13 @@ module Puma
             return rack_response(200, OK_STATUS)
           end
 
+        when /\/reload-worker-directory$/
+          if !@cli.reload_worker_directory
+            return rack_response(404, '{ "error": "reload_worker_directory not available" }')
+          else
+            return rack_response(200, OK_STATUS)
+          end
+
         when /\/stats$/
           return rack_response(200, @cli.stats)
         else
