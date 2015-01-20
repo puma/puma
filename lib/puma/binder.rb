@@ -252,7 +252,14 @@ module Puma
     def inherited_ssl_listener(fd, ctx)
       require 'puma/minissl'
       s = TCPServer.for_fd(fd)
-      @ios << MiniSSL::Server.new(s, ctx)
+      ssl = MiniSSL::Server.new(s, ctx)
+
+      env = @proto_env.dup
+      env[HTTPS_KEY] = HTTPS
+      @envs[ssl] = env
+
+      @ios << ssl
+
       s
     end
 
