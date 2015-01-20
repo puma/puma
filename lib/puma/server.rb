@@ -236,13 +236,15 @@ module Puma
         return run_lopez_mode(background)
       end
 
+      queue_requests = @queue_requests
+
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
                                     IOBuffer) do |client, buffer|
         process_now = false
 
         begin
-          if @queue_requests
+          if queue_requests
             process_now = client.eagerly_finish
           else
             client.finish
@@ -267,7 +269,7 @@ module Puma
 
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
-      if @queue_requests
+      if queue_requests
         @reactor = Reactor.new self, @thread_pool
         @reactor.run_in_thread
       end
@@ -291,6 +293,7 @@ module Puma
         check = @check
         sockets = [check] + @binder.ios
         pool = @thread_pool
+        queue_requests = @queue_requests
 
         while @status == :run
           begin
@@ -303,7 +306,7 @@ module Puma
                   if io = sock.accept_nonblock
                     client = Client.new io, @binder.env(sock)
                     pool << client
-                    pool.wait_until_not_full unless @queue_requests
+                    pool.wait_until_not_full unless queue_requests
                   end
                 rescue SystemCallError
                 end
@@ -320,7 +323,7 @@ module Puma
         @events.fire :state, @status
 
         graceful_shutdown if @status == :stop || @status == :restart
-        if @queue_requests
+        if queue_requests
           @reactor.clear! if @status == :restart
           @reactor.shutdown
         end
