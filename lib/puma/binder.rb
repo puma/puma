@@ -107,6 +107,7 @@ module Puma
             logger.log "* Listening on #{str}"
 
             umask = nil
+            mode = nil
 
             if uri.query
               params = Rack::Utils.parse_query uri.query
@@ -114,9 +115,13 @@ module Puma
                 # Use Integer() to respect the 0 prefix as octal
                 umask = Integer(u)
               end
+
+              if u = params['mode']
+                mode = Integer('0'+u)
+              end
             end
 
-            io = add_unix_listener path, umask
+            io = add_unix_listener path, umask, mode
           end
 
           @listeners << [str, io]
@@ -253,7 +258,7 @@ module Puma
 
     # Tell the server to listen on +path+ as a UNIX domain socket.
     #
-    def add_unix_listener(path, umask=nil)
+    def add_unix_listener(path, umask=nil, mode=nil)
       @unix_paths << path
 
       # Let anyone connect by default
@@ -277,6 +282,10 @@ module Puma
         @ios << s
       ensure
         File.umask old_mask
+      end
+
+      if mode
+        File.chmod mode, path
       end
 
       s
