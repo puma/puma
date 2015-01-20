@@ -102,7 +102,7 @@ class TestIntegration < Test::Unit::TestCase
     assert_kind_of Thread, t.join(1), "server didn't stop"
   end
 
-  def test_phased_restart_via_pumactl
+  def notest_phased_restart_via_pumactl
     if defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
       assert true
       return
