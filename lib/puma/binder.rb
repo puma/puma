@@ -98,7 +98,7 @@ module Puma
 
           @listeners << [str, io]
         when "unix"
-          path = URI.unescape "#{uri.host}#{uri.path}"
+          path = "#{uri.host}#{uri.path}".gsub("%20", " ")
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
