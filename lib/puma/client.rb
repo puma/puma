@@ -222,6 +222,14 @@ module Puma
       end
     end # IS_JRUBY
 
+    def finish
+      return true if @ready
+      until try_to_finish
+        IO.select([@to_io], nil, nil)
+      end
+      true
+    end
+
     def read_body
       # Read an odd sized chunk so we can read even sized ones
       # after this

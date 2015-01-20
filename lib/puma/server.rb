@@ -241,7 +241,12 @@ module Puma
         process_now = false
 
         begin
-          process_now = client.eagerly_finish
+          if @options[:queue_requests]
+            process_now = client.eagerly_finish
+          else
+            client.finish
+            process_now = true
+          end
         rescue HttpParserError => e
           client.write_400
           client.close
@@ -261,9 +266,10 @@ module Puma
 
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
-      @reactor = Reactor.new self, @thread_pool
-
-      @reactor.run_in_thread
+      if @options[:queue_requests]
+        @reactor = Reactor.new self, @thread_pool
+        @reactor.run_in_thread
+      end
 
       if @auto_trim_time
         @thread_pool.auto_trim!(@auto_trim_time)
@@ -296,6 +302,7 @@ module Puma
                   if io = sock.accept_nonblock
                     client = Client.new io, @binder.env(sock)
                     pool << client
+                    pool.wait_until_not_full unless @options[:queue_requests]
                   end
                 rescue SystemCallError
                 end
@@ -312,9 +319,10 @@ module Puma
         @events.fire :state, @status
 
         graceful_shutdown if @status == :stop || @status == :restart
-        @reactor.clear! if @status == :restart
-
-        @reactor.shutdown
+        if @options[:queue_requests]
+          @reactor.clear! if @status == :restart
+          @reactor.shutdown
+        end
       rescue Exception => e
         STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
@@ -367,6 +375,7 @@ module Puma
             close_socket = false
             return
           when true
+            return unless @options[:queue_requests]
             buffer.reset
 
             unless client.reset(@status == :run)
