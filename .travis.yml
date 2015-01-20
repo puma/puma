@@ -7,6 +7,7 @@ rvm:
   - 2.0.0
   - 2.1.0
   - 2.1.1
+  - 2.2
   - rbx-2
   - jruby-19mode
 matrix:
@@ -14,4 +15,3 @@ matrix:
   allow_failures:
     - rvm: jruby-19mode
     - rvm: rbx-2
-
