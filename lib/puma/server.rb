@@ -74,6 +74,7 @@ module Puma
       @leak_stack_on_error = true
 
       @options = options
+      @queue_requests = options[:queue_requests].nil? ? true : options[:queue_requests]
 
       ENV['RACK_ENV'] ||= "development"
 
@@ -241,7 +242,7 @@ module Puma
         process_now = false
 
         begin
-          if @options[:queue_requests]
+          if @queue_requests
             process_now = client.eagerly_finish
           else
             client.finish
@@ -266,7 +267,7 @@ module Puma
 
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
-      if @options[:queue_requests]
+      if @queue_requests
         @reactor = Reactor.new self, @thread_pool
         @reactor.run_in_thread
       end
@@ -302,7 +303,7 @@ module Puma
                   if io = sock.accept_nonblock
                     client = Client.new io, @binder.env(sock)
                     pool << client
-                    pool.wait_until_not_full unless @options[:queue_requests]
+                    pool.wait_until_not_full unless @queue_requests
                   end
                 rescue SystemCallError
                 end
@@ -319,7 +320,7 @@ module Puma
         @events.fire :state, @status
 
         graceful_shutdown if @status == :stop || @status == :restart
-        if @options[:queue_requests]
+        if @queue_requests
           @reactor.clear! if @status == :restart
           @reactor.shutdown
         end
@@ -375,7 +376,7 @@ module Puma
             close_socket = false
             return
           when true
-            return unless @options[:queue_requests]
+            return unless @queue_requests
             buffer.reset
 
             unless client.reset(@status == :run)

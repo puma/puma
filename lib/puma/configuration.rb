@@ -27,7 +27,6 @@ module Puma
       @options[:after_worker_boot] ||= []
       @options[:worker_timeout] ||= DefaultWorkerTimeout
       @options[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
-      @options[:queue_requests] ||= true
     end
 
     attr_reader :options
