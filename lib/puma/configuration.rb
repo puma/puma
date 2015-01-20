@@ -60,6 +60,14 @@ module Puma
       unless @options[:control_auth_token]
         setup_random_token
       end
+
+      unless @options[:tag]
+        @options[:tag] = infer_tag
+      end
+    end
+
+    def infer_tag
+      File.basename Dir.getwd
     end
 
     # Injects the Configuration object into the env
