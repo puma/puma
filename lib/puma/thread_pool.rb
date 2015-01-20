@@ -87,9 +87,9 @@ module Puma
               @waiting += 1
               not_full.signal
               not_empty.wait mutex
+              @waiting -= 1
             end
 
-            @waiting -= 1
             work = todo.shift if continue
           end
 
@@ -128,7 +128,6 @@ module Puma
 
         if @waiting < @todo.size and @spawned < @max
           spawn_thread
-          @waiting+=1
         end
 
         @not_empty.signal
