@@ -491,7 +491,7 @@ module Puma
       set_rack_environment
 
       if clustered?
-        @events = PidEvents.new STDOUT, STDERR
+        @events.formatter = Events::PidFormatter.new
         @options[:logger] = @events
 
         @runner = Cluster.new(self)
