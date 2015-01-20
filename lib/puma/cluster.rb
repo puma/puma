@@ -182,7 +182,10 @@ module Puma
     end
 
     def worker(index, master)
-      $0 = "puma: cluster worker #{index}: #{master}"
+      title = "puma: cluster worker #{index}: #{master}"
+      title << " [#{@options[:tag]}]" if @options[:tag]
+      $0 = title
+
       Signal.trap "SIGINT", "IGNORE"
 
       @workers = []
