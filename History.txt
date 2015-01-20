@@ -1,3 +1,36 @@
+=== 2.11.0 / 2015-01-20
+
+* 9 bug fixes:
+  * Add mode as an additional bind option to unix sockets. Fixes #630
+  * Advertise HTTPS properly after a hot restart
+  * Don't write lowlevel_error_handler to state
+  * Fix phased restart with stuck requests
+  * Handle spaces in the path properly. Fixes #622
+  * Set a default REMOTE_ADDR to avoid using peeraddr on unix sockets. Fixes #583
+  * Skip device number checking on jruby. Fixes #586
+  * Update extconf.rb to compile correctly on OS X
+  * redirect io right after daemonizing so startup errors are shown. Fixes #359
+
+* 6 minor features:
+  * Add a configuration option that prevents puma from queueing requests.
+  * Add reload_worker_directory
+  * Add the ability to pass environment variables to the init script (for Jungle).
+  * Add the proctitle tag to the worker. Fixes #633
+  * Infer a proctitle tag based on the directory
+  * Update lowlevel error message to be more meaningful.
+
+* 10 PRs merged:
+  * Merge pull request #478 from rubencaro/master
+  * Merge pull request #610 from kwilczynski/master
+  * Merge pull request #611 from jasonl/better-lowlevel-message
+  * Merge pull request #616 from jc00ke/master
+  * Merge pull request #623 from raldred/patch-1
+  * Merge pull request #628 from rdpoor/master
+  * Merge pull request #634 from deepj/master
+  * Merge pull request #637 from raskhadafi/patch-1
+  * Merge pull request #639 from ebeigarts/fix-phased-restarts
+  * Merge pull request #640 from codehotter/issue-612-dependent-requests-deadlock
+
 === 2.10.2 / 2014-11-26
 
 * 1 bug fix:
