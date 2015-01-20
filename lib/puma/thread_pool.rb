@@ -12,7 +12,8 @@ module Puma
     # thread.
     #
     def initialize(min, max, *extra, &block)
-      @cond = ConditionVariable.new
+      @not_empty = ConditionVariable.new
+      @not_full = ConditionVariable.new
       @mutex = Mutex.new
 
       @todo = []
@@ -60,7 +61,8 @@ module Puma
         todo  = @todo
         block = @block
         mutex = @mutex
-        cond  = @cond
+        not_empty = @not_empty
+        not_full = @not_full
 
         extra = @extra.map { |i| i.new }
 
@@ -83,7 +85,8 @@ module Puma
               end
 
               @waiting += 1
-              cond.wait mutex
+              not_full.signal
+              not_empty.wait mutex
               @waiting -= 1
             end
 
@@ -127,7 +130,15 @@ module Puma
           spawn_thread
         end
 
-        @cond.signal
+        @not_empty.signal
+      end
+    end
+
+    def wait_until_not_full
+      @mutex.synchronize do
+        until @todo.size - @waiting < @max - @spawned or @shutdown
+          @not_full.wait @mutex
+        end
       end
     end
 
@@ -139,7 +150,7 @@ module Puma
       @mutex.synchronize do
         if (force or @waiting > 0) and @spawned - @trim_requested > @min
           @trim_requested += 1
-          @cond.signal
+          @not_empty.signal
         end
       end
     end
@@ -178,7 +189,8 @@ module Puma
     def shutdown
       @mutex.synchronize do
         @shutdown = true
-        @cond.broadcast
+        @not_empty.broadcast
+        @not_full.broadcast
 
         @auto_trim.stop if @auto_trim
       end

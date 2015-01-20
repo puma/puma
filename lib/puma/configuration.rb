@@ -402,6 +402,23 @@ module Puma
       def worker_shutdown_timeout(timeout)
         @options[:worker_shutdown_timeout] = timeout
       end
+
+      # When set to true (the default), workers accept all requests
+      # and queue them before passing them to the handlers.
+      # When set to false, each worker process accepts exactly as
+      # many requests as it is configured to simultaneously handle.
+      #
+      # Queueing requests generally improves performance. In some
+      # cases, such as a single threaded application, it may be
+      # better to ensure requests get balanced across workers.
+      #
+      # Note that setting this to false disables HTTP keepalive and
+      # slow clients will occupy a handler thread while the request
+      # is being sent. A reverse proxy, such as nginx, can handle
+      # slow clients and queue requests before they reach puma.
+      def queue_requests(answer=true)
+        @options[:queue_requests] = answer
+      end
     end
   end
 end
