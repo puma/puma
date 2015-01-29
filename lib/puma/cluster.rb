@@ -307,7 +307,7 @@ module Puma
           if threads.first.respond_to? :backtrace
             log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot:"
             threads.each do |t|
-              log "! #{t.inspect} - #{t.backtrace.first}"
+              log "! #{t.inspect} - #{t.backtrace ? t.backtrace.first : ''}"
             end
           else
             log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot"
