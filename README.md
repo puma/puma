@@ -1,6 +1,6 @@
 # Puma: A Ruby Web Server Built For Concurrency
 
-[![Build Status](https://secure.travis-ci.org/puma/puma.png)](http://travis-ci.org/puma/puma) [![Dependency Status](https://gemnasium.com/puma/puma.png)](https://gemnasium.com/puma/puma) <a href="https://codeclimate.com/github/puma/puma"><img src="https://codeclimate.com/github/puma/puma.png" /></a>
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) [![Build Status](https://secure.travis-ci.org/puma/puma.png)](http://travis-ci.org/puma/puma) [![Dependency Status](https://gemnasium.com/puma/puma.png)](https://gemnasium.com/puma/puma) <a href="https://codeclimate.com/github/puma/puma"><img src="https://codeclimate.com/github/puma/puma.png" /></a>
 
 ## Description
 
