@@ -473,7 +473,12 @@ module Puma
 
         if puma_lib_dir
           log "* Pruning Bundler environment"
+
+          home = ENV['GEM_HOME']
+
           Bundler.with_clean_env do
+
+            ENV['GEM_HOME'] = home
 
             wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
 
