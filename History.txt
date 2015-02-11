@@ -1,3 +1,13 @@
+=== 2.11.1 / 2015-02-11
+
+* 2 bug fixes:
+  * Avoid crash in strange restart conditions
+  * Inject the GEM_HOME that bundler into puma-wild's env. Fixes #653
+
+* 2 PRs merged:
+  * Merge pull request #644 from bpaquet/master
+  * Merge pull request #646 from mkonecny/master
+
 === 2.11.0 / 2015-01-20
 
 * 9 bug fixes:
