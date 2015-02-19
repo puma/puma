@@ -216,7 +216,7 @@ class TestPumaServer < Test::Unit::TestCase
 
     data = sock.read
 
-    assert_equal "HTTP/1.0 449 CUSTOM\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal "HTTP/1.0 449 CUSTOM\r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_custom_http_codes_11
@@ -284,5 +284,117 @@ class TestPumaServer < Test::Unit::TestCase
     data = client.gets
 
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
+  end
+
+  def test_http_11_keep_alive_with_body
+    @server.app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Type: plain/text\r\nContent-Length: 5\r\n\r\nhello", data
+  end
+
+  def test_http_11_close_with_body
+    @server.app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Type: plain/text\r\nConnection: close\r\nContent-Length: 5\r\n\r\nhello", data
+  end
+
+  def test_http_11_keep_alive_without_body
+    @server.app = proc { |env| [204, {}, []] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 204 No Content\r\n\r\n", data
+  end
+
+  def test_http_11_close_without_body
+    @server.app = proc { |env| [204, {}, []] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n", data
+  end
+
+  def test_http_10_keep_alive_with_body
+    @server.app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Type: plain/text\r\nConnection: Keep-Alive\r\nContent-Length: 5\r\n\r\nhello", data
+  end
+
+  def test_http_10_close_with_body
+    @server.app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Type: plain/text\r\nContent-Length: 5\r\n\r\nhello", data
+  end
+
+  def test_http_10_keep_alive_without_body
+    @server.app = proc { |env| [204, {}, []] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 204 No Content\r\nConnection: Keep-Alive\r\n\r\n", data
+  end
+
+  def test_http_10_close_without_body
+    @server.app = proc { |env| [204, {}, []] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 204 No Content\r\n\r\n", data
   end
 end
