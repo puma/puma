@@ -64,6 +64,8 @@ module Puma
       unless @options[:tag]
         @options[:tag] = infer_tag
       end
+
+      @options[:binds].uniq!
     end
 
     def infer_tag

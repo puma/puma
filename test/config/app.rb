@@ -1,3 +1,5 @@
+port ENV['PORT'] if ENV['PORT']
+
 app do |env|
   [200, {}, ["embedded app"]]
 end
