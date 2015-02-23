@@ -35,7 +35,7 @@ module Puma
 
       @config = nil
 
-      ENV['NEWRELIC_DISPATCHER'] ||= "puma"
+      ENV['NEWRELIC_DISPATCHER'] ||= "Puma"
 
       setup_options
       generate_restart_data
