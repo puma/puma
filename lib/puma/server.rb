@@ -535,7 +535,7 @@ module Puma
         line_ending = LINE_END
         colon = COLON
 
-        if env[HTTP_VERSION] == HTTP_11
+        http_11 = if env[HTTP_VERSION] == HTTP_11
           allow_chunked = true
           keep_alive = env[HTTP_CONNECTION] != CLOSE
           include_keepalive_header = false
@@ -552,6 +552,7 @@ module Puma
 
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
+          true
         else
           allow_chunked = false
           keep_alive = env[HTTP_CONNECTION] == KEEP_ALIVE
@@ -567,6 +568,7 @@ module Puma
 
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
+          false
         end
 
         response_hijack = nil
@@ -593,6 +595,12 @@ module Puma
           end
         end
 
+        if include_keepalive_header
+          lines << CONNECTION_KEEP_ALIVE
+        elsif http_11 && !keep_alive
+          lines << CONNECTION_CLOSE
+        end
+
         if no_body
           if content_length and status != 204
             lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
@@ -601,12 +609,6 @@ module Puma
           lines << line_ending
           fast_write client, lines.to_s
           return keep_alive
-        end
-
-        if include_keepalive_header
-          lines << CONNECTION_KEEP_ALIVE
-        elsif !keep_alive
-          lines << CONNECTION_CLOSE
         end
 
         unless response_hijack
