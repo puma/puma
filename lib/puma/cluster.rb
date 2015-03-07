@@ -104,6 +104,7 @@ module Puma
 
       diff.times do
         idx = next_worker_index
+        @options[:before_worker_fork].each { |h| h.call(idx) }
 
         pid = fork { worker(idx, master) }
         @cli.debug "Spawned worker: #{pid}"

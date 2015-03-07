@@ -24,6 +24,7 @@ module Puma
       @options[:on_restart] ||= []
       @options[:before_worker_shutdown] ||= []
       @options[:before_worker_boot] ||= []
+      @options[:before_worker_fork] ||= []
       @options[:after_worker_boot] ||= []
       @options[:worker_timeout] ||= DefaultWorkerTimeout
       @options[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
@@ -343,6 +344,15 @@ module Puma
       #
       def on_worker_boot(&block)
         @options[:before_worker_boot] << block
+      end
+
+      # *Cluster mode only* Code to run when a master process is
+      # about to create the worker by forking itself.
+      #
+      # This can be called multiple times to add hooks.
+      #
+      def on_worker_fork(&block)
+        @options[:before_worker_fork] << block
       end
 
       # *Cluster mode only* Code to run when a worker boots to setup
