@@ -210,13 +210,13 @@ module Puma
         o.on "--tag NAME", "Additional text to display in process listing" do |arg|
           @options[:tag] = arg
         end
-      end
 
-      @parser.banner = "puma <options> <rackup file>"
+        o.banner = "puma <options> <rackup file>"
 
-      @parser.on_tail "-h", "--help", "Show help" do
-        log @parser
-        exit 1
+        o.on_tail "-h", "--help", "Show help" do
+          log o
+          exit 1
+        end
       end
     end
 
