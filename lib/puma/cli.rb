@@ -96,138 +96,6 @@ module Puma
       raise UnsupportedOption
     end
 
-    # Build the OptionParser object to handle the available options.
-    #
-    def setup_options
-      @options = {
-        :min_threads => 0,
-        :max_threads => 16,
-        :quiet => false,
-        :debug => false,
-        :binds => [],
-        :workers => 0,
-        :daemon => false,
-        :before_worker_shutdown => [],
-        :before_worker_boot => [],
-        :before_worker_fork => [],
-        :after_worker_boot => []
-      }
-
-      @parser = OptionParser.new do |o|
-        o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
-          @options[:binds] << arg
-        end
-
-        o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
-          @options[:config_file] = arg
-        end
-
-        o.on "--control URL", "The bind url to use for the control server",
-                              "Use 'auto' to use temp unix server" do |arg|
-          if arg
-            @options[:control_url] = arg
-          elsif jruby?
-            unsupported "No default url available on JRuby"
-          end
-        end
-
-        o.on "--control-token TOKEN",
-             "The token to use as authentication for the control server" do |arg|
-          @options[:control_auth_token] = arg
-        end
-
-        o.on "-d", "--daemon", "Daemonize the server into the background" do
-          @options[:daemon] = true
-          @options[:quiet] = true
-        end
-
-        o.on "--debug", "Log lowlevel debugging information" do
-          @options[:debug] = true
-        end
-
-        o.on "--dir DIR", "Change to DIR before starting" do |d|
-          @options[:directory] = d.to_s
-          @options[:worker_directory] = d.to_s
-        end
-
-        o.on "-e", "--environment ENVIRONMENT",
-             "The environment to run the Rack app on (default development)" do |arg|
-          @options[:environment] = arg
-        end
-
-        o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
-          $LOAD_PATH.unshift(*arg.split(':'))
-        end
-
-        o.on "-p", "--port PORT", "Define the TCP port to bind to",
-                                  "Use -b for more advanced options" do |arg|
-          @options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
-        end
-
-        o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
-          @options[:pidfile] = arg
-        end
-
-        o.on "--preload", "Preload the app. Cluster mode only" do
-          @options[:preload_app] = true
-        end
-
-        o.on "--prune-bundler", "Prune out the bundler env if possible" do
-          @options[:prune_bundler] = true
-        end
-
-        o.on "-q", "--quiet", "Quiet down the output" do
-          @options[:quiet] = true
-        end
-
-        o.on "-R", "--restart-cmd CMD",
-             "The puma command to run during a hot restart",
-             "Default: inferred" do |cmd|
-          @options[:restart_cmd] = cmd
-        end
-
-        o.on "-S", "--state PATH", "Where to store the state details" do |arg|
-          @options[:state] = arg
-        end
-
-        o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
-          min, max = arg.split(":")
-          if max
-            @options[:min_threads] = min
-            @options[:max_threads] = max
-          else
-            @options[:min_threads] = 0
-            @options[:max_threads] = arg
-          end
-        end
-
-        o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
-          @options[:mode] = :tcp
-        end
-
-        o.on "-V", "--version", "Print the version information" do
-          puts "puma version #{Puma::Const::VERSION}"
-          exit 1
-        end
-
-        o.on "-w", "--workers COUNT",
-                   "Activate cluster mode: How many worker processes to create" do |arg|
-          @options[:workers] = arg.to_i
-        end
-
-        o.on "--tag NAME", "Additional text to display in process listing" do |arg|
-          @options[:tag] = arg
-        end
-
-        o.banner = "puma <options> <rackup file>"
-
-        o.on_tail "-h", "--help", "Show help" do
-          log o
-          exit 1
-        end
-      end
-    end
-
     def write_state
       write_pid
 
@@ -273,22 +141,9 @@ module Puma
       @options[:environment] || ENV['RACK_ENV'] || 'development'
     end
 
-    def set_rack_environment
-      @options[:environment] = env
-      ENV['RACK_ENV'] = env
-    end
-
     def delete_pidfile
       if path = @options[:pidfile]
         File.unlink path if File.exist? path
-      end
-    end
-
-    def find_config
-      if @options[:config_file] == '-'
-        @options[:config_file] = nil
-      else
-        @options[:config_file] ||= %W(config/puma/#{env}.rb config/puma.rb).find { |f| File.exist?(f) }
       end
     end
 
@@ -327,51 +182,6 @@ module Puma
       @runner.stop_blocked
       log "=== puma shutdown: #{Time.now} ==="
       log "- Goodbye!"
-    end
-
-    def generate_restart_data
-      # Use the same trick as unicorn, namely favor PWD because
-      # it will contain an unresolved symlink, useful for when
-      # the pwd is /data/releases/current.
-      if dir = ENV['PWD']
-        s_env = File.stat(dir)
-        s_pwd = File.stat(Dir.pwd)
-
-        if s_env.ino == s_pwd.ino and (jruby? or s_env.dev == s_pwd.dev)
-          @restart_dir = dir
-          @options[:worker_directory] = dir
-        end
-      end
-
-      @restart_dir ||= Dir.pwd
-
-      @original_argv = ARGV.dup
-
-      if defined? Rubinius::OS_ARGV
-        @restart_argv = Rubinius::OS_ARGV
-      else
-        require 'rubygems'
-
-        # if $0 is a file in the current directory, then restart
-        # it the same, otherwise add -S on there because it was
-        # picked up in PATH.
-        #
-        if File.exist?($0)
-          arg0 = [Gem.ruby, $0]
-        else
-          arg0 = [Gem.ruby, "-S", $0]
-        end
-
-        # Detect and reinject -Ilib from the command line
-        lib = File.expand_path "lib"
-        arg0[1,0] = ["-I", lib] if $:[0] == lib
-
-        if defined? Puma::WILD_ARGS
-          @restart_argv = arg0 + Puma::WILD_ARGS + ARGV
-        else
-          @restart_argv = arg0 + ARGV
-        end
-      end
     end
 
     def restart_args
@@ -527,48 +337,6 @@ module Puma
       end
     end
 
-    def setup_signals
-      begin
-        Signal.trap "SIGUSR2" do
-          restart
-        end
-      rescue Exception
-        log "*** SIGUSR2 not implemented, signal based restart unavailable!"
-      end
-
-      begin
-        Signal.trap "SIGUSR1" do
-          phased_restart
-        end
-      rescue Exception
-        log "*** SIGUSR1 not implemented, signal based restart unavailable!"
-      end
-
-      begin
-        Signal.trap "SIGTERM" do
-          stop
-        end
-      rescue Exception
-        log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"
-      end
-
-      begin
-        Signal.trap "SIGHUP" do
-          redirect_io
-        end
-      rescue Exception
-        log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
-      end
-
-      if jruby?
-        Signal.trap("INT") do
-          @status = :exit
-          graceful_stop
-          exit
-        end
-      end
-    end
-
     def stop
       @status = :stop
       @runner.stop
@@ -613,6 +381,238 @@ module Puma
 
     def set_process_title
       Process.respond_to?(:setproctitle) ? Process.setproctitle(title) : $0 = title
+    end
+
+    def find_config
+      if @options[:config_file] == '-'
+        @options[:config_file] = nil
+      else
+        @options[:config_file] ||= %W(config/puma/#{env}.rb config/puma.rb).find { |f| File.exist?(f) }
+      end
+    end
+
+    # Build the OptionParser object to handle the available options.
+    #
+    def setup_options
+      @options = {
+        :min_threads => 0,
+        :max_threads => 16,
+        :quiet => false,
+        :debug => false,
+        :binds => [],
+        :workers => 0,
+        :daemon => false,
+        :before_worker_shutdown => [],
+        :before_worker_boot => [],
+        :before_worker_fork => [],
+        :after_worker_boot => []
+      }
+
+      @parser = OptionParser.new do |o|
+        o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
+          @options[:binds] << arg
+        end
+
+        o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
+          @options[:config_file] = arg
+        end
+
+        o.on "--control URL", "The bind url to use for the control server",
+                              "Use 'auto' to use temp unix server" do |arg|
+          if arg
+            @options[:control_url] = arg
+          elsif jruby?
+            unsupported "No default url available on JRuby"
+          end
+        end
+
+        o.on "--control-token TOKEN",
+             "The token to use as authentication for the control server" do |arg|
+          @options[:control_auth_token] = arg
+        end
+
+        o.on "-d", "--daemon", "Daemonize the server into the background" do
+          @options[:daemon] = true
+          @options[:quiet] = true
+        end
+
+        o.on "--debug", "Log lowlevel debugging information" do
+          @options[:debug] = true
+        end
+
+        o.on "--dir DIR", "Change to DIR before starting" do |d|
+          @options[:directory] = d.to_s
+          @options[:worker_directory] = d.to_s
+        end
+
+        o.on "-e", "--environment ENVIRONMENT",
+             "The environment to run the Rack app on (default development)" do |arg|
+          @options[:environment] = arg
+        end
+
+        o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
+          $LOAD_PATH.unshift(*arg.split(':'))
+        end
+
+        o.on "-p", "--port PORT", "Define the TCP port to bind to",
+                                  "Use -b for more advanced options" do |arg|
+          @options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
+        end
+
+        o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
+          @options[:pidfile] = arg
+        end
+
+        o.on "--preload", "Preload the app. Cluster mode only" do
+          @options[:preload_app] = true
+        end
+
+        o.on "--prune-bundler", "Prune out the bundler env if possible" do
+          @options[:prune_bundler] = true
+        end
+
+        o.on "-q", "--quiet", "Quiet down the output" do
+          @options[:quiet] = true
+        end
+
+        o.on "-R", "--restart-cmd CMD",
+             "The puma command to run during a hot restart",
+             "Default: inferred" do |cmd|
+          @options[:restart_cmd] = cmd
+        end
+
+        o.on "-S", "--state PATH", "Where to store the state details" do |arg|
+          @options[:state] = arg
+        end
+
+        o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
+          min, max = arg.split(":")
+          if max
+            @options[:min_threads] = min
+            @options[:max_threads] = max
+          else
+            @options[:min_threads] = 0
+            @options[:max_threads] = arg
+          end
+        end
+
+        o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
+          @options[:mode] = :tcp
+        end
+
+        o.on "-V", "--version", "Print the version information" do
+          puts "puma version #{Puma::Const::VERSION}"
+          exit 1
+        end
+
+        o.on "-w", "--workers COUNT",
+                   "Activate cluster mode: How many worker processes to create" do |arg|
+          @options[:workers] = arg.to_i
+        end
+
+        o.on "--tag NAME", "Additional text to display in process listing" do |arg|
+          @options[:tag] = arg
+        end
+
+        o.banner = "puma <options> <rackup file>"
+
+        o.on_tail "-h", "--help", "Show help" do
+          log o
+          exit 1
+        end
+      end
+    end
+
+    def generate_restart_data
+      # Use the same trick as unicorn, namely favor PWD because
+      # it will contain an unresolved symlink, useful for when
+      # the pwd is /data/releases/current.
+      if dir = ENV['PWD']
+        s_env = File.stat(dir)
+        s_pwd = File.stat(Dir.pwd)
+
+        if s_env.ino == s_pwd.ino and (jruby? or s_env.dev == s_pwd.dev)
+          @restart_dir = dir
+          @options[:worker_directory] = dir
+        end
+      end
+
+      @restart_dir ||= Dir.pwd
+
+      @original_argv = ARGV.dup
+
+      if defined? Rubinius::OS_ARGV
+        @restart_argv = Rubinius::OS_ARGV
+      else
+        require 'rubygems'
+
+        # if $0 is a file in the current directory, then restart
+        # it the same, otherwise add -S on there because it was
+        # picked up in PATH.
+        #
+        if File.exist?($0)
+          arg0 = [Gem.ruby, $0]
+        else
+          arg0 = [Gem.ruby, "-S", $0]
+        end
+
+        # Detect and reinject -Ilib from the command line
+        lib = File.expand_path "lib"
+        arg0[1,0] = ["-I", lib] if $:[0] == lib
+
+        if defined? Puma::WILD_ARGS
+          @restart_argv = arg0 + Puma::WILD_ARGS + ARGV
+        else
+          @restart_argv = arg0 + ARGV
+        end
+      end
+    end
+
+    def set_rack_environment
+      @options[:environment] = env
+      ENV['RACK_ENV'] = env
+    end
+
+    def setup_signals
+      begin
+        Signal.trap "SIGUSR2" do
+          restart
+        end
+      rescue Exception
+        log "*** SIGUSR2 not implemented, signal based restart unavailable!"
+      end
+
+      begin
+        Signal.trap "SIGUSR1" do
+          phased_restart
+        end
+      rescue Exception
+        log "*** SIGUSR1 not implemented, signal based restart unavailable!"
+      end
+
+      begin
+        Signal.trap "SIGTERM" do
+          stop
+        end
+      rescue Exception
+        log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"
+      end
+
+      begin
+        Signal.trap "SIGHUP" do
+          redirect_io
+        end
+      rescue Exception
+        log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
+      end
+
+      if jruby?
+        Signal.trap("INT") do
+          @status = :exit
+          graceful_stop
+          exit
+        end
+      end
     end
   end
 end

@@ -57,7 +57,7 @@ class TestCLI < Test::Unit::TestCase
       rescue Exception => e
         thread_exception = e
       end
-    end 
+    end
 
     wait_booted
 
@@ -166,8 +166,8 @@ class TestCLI < Test::Unit::TestCase
   def test_environment
     cli = Puma::CLI.new ["--environment", @environment]
     cli.parse_options
-    cli.set_rack_environment
+    cli.send(:set_rack_environment)
 
-    assert_equal ENV['RACK_ENV'], @environment 
+    assert_equal ENV['RACK_ENV'], @environment
   end
 end
