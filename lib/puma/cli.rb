@@ -277,18 +277,11 @@ module Puma
     end
 
     def find_config
-      if cfg = @options[:config_file]
-        # Allow - to disable config finding
-        if cfg == "-"
-          @options[:config_file] = nil
-          return
-        end
-
-        return
+      if @options[:config_file] == '-'
+        @options[:config_file] = nil
+      else
+        @options[:config_file] ||= %W(config/puma/#{env}.rb config/puma.rb).find { |f| File.exist?(f) }
       end
-
-      pos = ["config/puma/#{env}.rb", "config/puma.rb"]
-      @options[:config_file] = pos.find { |f| File.exist? f }
     end
 
     # :nodoc:
