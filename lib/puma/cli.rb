@@ -15,6 +15,14 @@ require 'rack/commonlogger'
 require 'rack/utils'
 
 module Puma
+  class << self
+    # The CLI exports its Puma::Configuration object here to allow
+    # apps to pick it up. An app needs to use it conditionally though
+    # since it is not set if the app is launched via another
+    # mechanism than the CLI class.
+    attr_accessor :cli_config
+  end
+
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI

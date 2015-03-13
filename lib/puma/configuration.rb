@@ -1,14 +1,4 @@
 module Puma
-
-  # The CLI exports its Configuration object here to allow
-  # apps to pick it up. An app needs to use it conditionally though
-  # since it is not set if the app is launched via another
-  # mechanism than the CLI class.
-
-  class << self
-    attr_accessor :cli_config
-  end
-
   class Configuration
     DefaultRackup = "config.ru"
 
