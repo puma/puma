@@ -57,7 +57,7 @@ class TestCLI < Test::Unit::TestCase
       rescue Exception => e
         thread_exception = e
       end
-    end 
+    end
 
     wait_booted
 
@@ -168,6 +168,66 @@ class TestCLI < Test::Unit::TestCase
     cli.parse_options
     cli.set_rack_environment
 
-    assert_equal ENV['RACK_ENV'], @environment 
+    assert_equal ENV['RACK_ENV'], @environment
+  end
+
+  def test_default
+    cli = Puma::CLI.new []
+    cli.parse_options
+
+    assert_equal 0, cli.options[:min_threads]
+    assert_equal 16, cli.options[:max_threads]
+  end
+
+  def test_threads
+    cli = Puma::CLI.new ['-t', '1']
+    cli.parse_options
+
+    assert_equal 0, cli.options[:min_threads]
+    assert_equal '1', cli.options[:max_threads]
+  end
+
+  def test_dsl_over_cli
+    cli = Puma::CLI.new ['-t', '2:3', '-C', 'test/config/puma.rb']
+    cli.parse_options
+
+    assert_equal 1, cli.options[:min_threads]
+    assert_equal 2, cli.options[:max_threads]
+  end
+
+  def test_cli_over_dsl
+    cli = Puma::CLI.new ['--cli-opts-over-file', '-t', '2:3', '-C', 'test/config/puma.rb']
+    cli.parse_options
+
+    assert_equal '2', cli.options[:min_threads]
+    assert_equal '3', cli.options[:max_threads]
+
+    assert_equal %w(tcp://0.0.0.0:9292), cli.options[:binds]
+  end
+
+  def test_binds_concat
+    cli = Puma::CLI.new ['-b', 'tcp://0.0.0.0:9080', '-b', 'tcp://0.0.0.0:9081', '-C', 'test/config/puma.rb']
+    cli.parse_options
+
+    expected = %w(
+      tcp://0.0.0.0:9080
+      tcp://0.0.0.0:9081
+      tcp://0.0.0.0:9290
+      tcp://0.0.0.0:9291
+    )
+
+    assert_equal expected.sort, cli.options[:binds].sort
+  end
+
+  def test_binds_replace
+    cli = Puma::CLI.new ['--cli-opts-over-file', '-b', 'tcp://0.0.0.0:9080', '-b', 'tcp://0.0.0.0:9081', '-C', 'test/config/puma.rb']
+    cli.parse_options
+
+    expected = %w(
+      tcp://0.0.0.0:9080
+      tcp://0.0.0.0:9081
+    )
+
+    assert_equal expected.sort, cli.options[:binds].sort
   end
 end

@@ -37,9 +37,7 @@ module Puma
     end
 
     def load
-      if path = @options[:config_file]
-        DSL.new(@options)._load_from path
-      end
+      DSL.load(@options, @options[:config_file])
 
       # Rakeup default option support
       if host = @options[:Host]
@@ -174,12 +172,20 @@ module Puma
     # The methods that are available for use inside the config file.
     #
     class DSL
+      def self.load(options, path)
+        new(options).tap do |obj|
+          obj._load_from(path)
+        end
+
+        options
+      end
+
       def initialize(options)
         @options = options
       end
 
       def _load_from(path)
-        instance_eval File.read(path), path, 1
+        instance_eval(File.read(path), path, 1) if path
       end
 
       # Use +obj+ or +block+ as the Rack app. This allows a config file to

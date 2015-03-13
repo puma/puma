@@ -34,10 +34,10 @@ module Puma
       @runner = nil
 
       @config = nil
+      @options = default_options
 
       ENV['NEWRELIC_DISPATCHER'] ||= "Puma"
 
-      setup_options
       generate_restart_data
 
       @binder = Binder.new(@events)
@@ -88,36 +88,37 @@ module Puma
       raise UnsupportedOption
     end
 
-    # Build the OptionParser object to handle the available options.
-    #
-    def setup_options
-      @options = {
-        :min_threads => 0,
-        :max_threads => 16,
-        :quiet => false,
-        :debug => false,
-        :binds => [],
-        :workers => 0,
-        :daemon => false,
-        :before_worker_shutdown => [],
-        :before_worker_boot => [],
-        :before_worker_fork => [],
-        :after_worker_boot => []
+    def default_options
+      {
+        min_threads: 0,
+        max_threads: 16,
+        quiet: false,
+        debug: false,
+        binds: [],
+        workers: 0,
+        daemon: false,
+        before_worker_shutdown: [],
+        before_worker_boot: [],
+        before_worker_fork: [],
+        after_worker_boot: []
       }
+    end
 
-      @parser = OptionParser.new do |o|
+    def parse_argv(argv)
+      parsed = { binds: [] }
+      parser = OptionParser.new do |o|
         o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
-          @options[:binds] << arg
+          parsed[:binds] << arg
         end
 
         o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
-          @options[:config_file] = arg
+          parsed[:config_file] = arg
         end
 
         o.on "--control URL", "The bind url to use for the control server",
                               "Use 'auto' to use temp unix server" do |arg|
           if arg
-            @options[:control_url] = arg
+            parsed[:control_url] = arg
           elsif jruby?
             unsupported "No default url available on JRuby"
           end
@@ -125,26 +126,26 @@ module Puma
 
         o.on "--control-token TOKEN",
              "The token to use as authentication for the control server" do |arg|
-          @options[:control_auth_token] = arg
+          parsed[:control_auth_token] = arg
         end
 
         o.on "-d", "--daemon", "Daemonize the server into the background" do
-          @options[:daemon] = true
-          @options[:quiet] = true
+          parsed[:daemon] = true
+          parsed[:quiet] = true
         end
 
         o.on "--debug", "Log lowlevel debugging information" do
-          @options[:debug] = true
+          parsed[:debug] = true
         end
 
         o.on "--dir DIR", "Change to DIR before starting" do |d|
-          @options[:directory] = d.to_s
-          @options[:worker_directory] = d.to_s
+          parsed[:directory] = d.to_s
+          parsed[:worker_directory] = d.to_s
         end
 
         o.on "-e", "--environment ENVIRONMENT",
              "The environment to run the Rack app on (default development)" do |arg|
-          @options[:environment] = arg
+          parsed[:environment] = arg
         end
 
         o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
@@ -153,48 +154,48 @@ module Puma
 
         o.on "-p", "--port PORT", "Define the TCP port to bind to",
                                   "Use -b for more advanced options" do |arg|
-          @options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
+          parsed[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
         end
 
         o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
-          @options[:pidfile] = arg
+          parsed[:pidfile] = arg
         end
 
         o.on "--preload", "Preload the app. Cluster mode only" do
-          @options[:preload_app] = true
+          parsed[:preload_app] = true
         end
 
         o.on "--prune-bundler", "Prune out the bundler env if possible" do
-          @options[:prune_bundler] = true
+          parsed[:prune_bundler] = true
         end
 
         o.on "-q", "--quiet", "Quiet down the output" do
-          @options[:quiet] = true
+          parsed[:quiet] = true
         end
 
         o.on "-R", "--restart-cmd CMD",
              "The puma command to run during a hot restart",
              "Default: inferred" do |cmd|
-          @options[:restart_cmd] = cmd
+          parsed[:restart_cmd] = cmd
         end
 
         o.on "-S", "--state PATH", "Where to store the state details" do |arg|
-          @options[:state] = arg
+          parsed[:state] = arg
         end
 
         o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
           min, max = arg.split(":")
           if max
-            @options[:min_threads] = min
-            @options[:max_threads] = max
+            parsed[:min_threads] = min
+            parsed[:max_threads] = max
           else
-            @options[:min_threads] = 0
-            @options[:max_threads] = arg
+            parsed[:min_threads] = 0
+            parsed[:max_threads] = arg
           end
         end
 
         o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
-          @options[:mode] = :tcp
+          parsed[:mode] = :tcp
         end
 
         o.on "-V", "--version", "Print the version information" do
@@ -204,20 +205,26 @@ module Puma
 
         o.on "-w", "--workers COUNT",
                    "Activate cluster mode: How many worker processes to create" do |arg|
-          @options[:workers] = arg.to_i
+          parsed[:workers] = arg.to_i
         end
 
         o.on "--tag NAME", "Additional text to display in process listing" do |arg|
-          @options[:tag] = arg
+          parsed[:tag] = arg
+        end
+
+        o.on '--cli-opts-over-file', 'Use CLI options over config file (default: config file supersedes cli options)' do
+          parsed[:cli_opts_over_file] = true
+        end
+
+        o.banner = "puma <options> <rackup file>"
+
+        o.on_tail "-h", "--help", "Show help" do
+          log o
+          exit 1
         end
       end
-
-      @parser.banner = "puma <options> <rackup file>"
-
-      @parser.on_tail "-h", "--help", "Show help" do
-        log @parser
-        exit 1
-      end
+      parser.parse!(argv)
+      parsed
     end
 
     def write_state
@@ -277,29 +284,23 @@ module Puma
     end
 
     def find_config
-      if cfg = @options[:config_file]
-        # Allow - to disable config finding
-        if cfg == "-"
-          @options[:config_file] = nil
-          return
-        end
-
-        return
+      if @options[:config_file] == '-'
+        @options[:config_file] = nil
+      else
+        @options[:config_file] ||= %W(config/puma/#{env}.rb config/puma.rb).find { |f| File.exist?(f) }
       end
-
-      pos = ["config/puma/#{env}.rb", "config/puma.rb"]
-      @options[:config_file] = pos.find { |f| File.exist? f }
     end
 
     # :nodoc:
     def parse_options
-      @parser.parse! @argv
-
-      if @argv.last
-        @options[:rackup] = @argv.shift
-      end
-
       find_config
+      Puma::Configuration::DSL.load(@options, @options[:config_file])
+
+      parse_argv(@argv).each_pair { |k, v| @options[k] = v }
+      @options[:rackup] = @argv.shift if @argv.last
+
+      # prevent Configuration reload from config file
+      @options.delete(:config_file) if @options.delete(:cli_opts_over_file)
 
       @config = Puma::Configuration.new @options
 
