@@ -80,6 +80,14 @@ module Puma
       @events.log "- #{str}" if @options[:debug]
     end
 
+    def clustered?
+      @options[:workers] > 0
+    end
+
+    def prune_bundler?
+      @options[:prune_bundler] && clustered? && !@options[:preload_app]
+    end
+
     def jruby?
       IS_JRUBY
     end
@@ -88,10 +96,8 @@ module Puma
       RUBY_PLATFORM =~ /mswin32|ming32/
     end
 
-    def unsupported(str, cond=true)
-      return unless cond
-      @events.error str
-      raise UnsupportedOption
+    def env
+      @options[:environment] || ENV['RACK_ENV'] || 'development'
     end
 
     def write_state
@@ -129,57 +135,15 @@ module Puma
       end
     end
 
-    def env
-      # Try the user option first, then the environment variable,
-      # finally default to development
-      @options[:environment] || ENV['RACK_ENV'] || 'development'
-    end
-
     def delete_pidfile
       path = @options[:pidfile]
       File.unlink(path) if path && File.exist?(path)
-    end
-
-    # :nodoc:
-    def parse_options
-      @parser.parse! @argv
-
-      @options[:rackup] = @argv.shift if @argv.last
-
-      find_config
-
-      @config = Puma::Configuration.new @options
-
-      # Advertise the Configuration
-      Puma.cli_config = @config
-
-      @config.load
-
-      if clustered? && (jruby? || windows?)
-        unsupported 'worker mode not supported on JRuby or Windows'
-      end
-
-      if @options[:daemon] && windows?
-        unsupported 'daemon mode not supported on Windows'
-      end
-    end
-
-    def clustered?
-      @options[:workers] > 0
     end
 
     def graceful_stop
       @runner.stop_blocked
       log "=== puma shutdown: #{Time.now} ==="
       log "- Goodbye!"
-    end
-
-    def restart_args
-      if cmd = @options[:restart_cmd]
-        cmd.split(' ') + @original_argv
-      else
-        @restart_argv
-      end
     end
 
     def jruby_daemon_start
@@ -216,10 +180,6 @@ module Puma
         argv += [redirects] if RUBY_VERSION >= '1.9'
         Kernel.exec(*argv)
       end
-    end
-
-    def prune_bundler?
-      @options[:prune_bundler] && clustered? && !@options[:preload_app]
     end
 
     # Parse the options, load the rackup, start the server and wait
@@ -309,6 +269,20 @@ module Puma
       buffer = "puma #{Puma::Const::VERSION} (#{@options[:binds].join(',')})"
       buffer << " [#{@options[:tag]}]" if @options[:tag]
       buffer
+    end
+
+    def unsupported(str)
+      @events.error(str)
+      raise UnsupportedOption
+    end
+
+    def restart_args
+      cmd = @options[:restart_cmd]
+      if cmd
+        cmd.split(' ') + @original_argv
+      else
+        @restart_argv
+      end
     end
 
     def set_process_title
@@ -556,6 +530,29 @@ module Puma
       end
     end
 
+    def parse_options
+      @parser.parse! @argv
+
+      @options[:rackup] = @argv.shift if @argv.last
+
+      find_config
+
+      @config = Puma::Configuration.new @options
+
+      # Advertise the Configuration
+      Puma.cli_config = @config
+
+      @config.load
+
+      if clustered? && (jruby? || windows?)
+        unsupported 'worker mode not supported on JRuby or Windows'
+      end
+
+      if @options[:daemon] && windows?
+        unsupported 'daemon mode not supported on Windows'
+      end
+    end
+
     def prune_bundler
       return unless defined?(Bundler)
       puma = Bundler.rubygems.loaded_specs("puma")
@@ -577,7 +574,7 @@ module Puma
       Bundler.with_clean_env do
         ENV['GEM_HOME'] = home
         wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
-        args = [Gem.ruby, wild, '-I', dirs.join(":"), deps.join(',')] + @original_argv
+        args = [Gem.ruby, wild, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         Kernel.exec(*args)
       end
     end

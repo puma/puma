@@ -31,36 +31,9 @@ module Puma
     def load
       DSL.load(@options, @options[:config_file])
 
-      # Rakeup default option support
-      if host = @options[:Host]
-        port = @options[:Port] || DefaultTCPPort
-
-        @options[:binds] << "tcp://#{host}:#{port}"
-      end
-
-      if @options[:binds].empty?
-        @options[:binds] << "tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"
-      end
-
-      if @options[:control_url] == "auto"
-        path = Configuration.temp_path
-        @options[:control_url] = "unix://#{path}"
-        @options[:control_url_temp] = path
-      end
-
-      unless @options[:control_auth_token]
-        setup_random_token
-      end
-
-      unless @options[:tag]
-        @options[:tag] = infer_tag
-      end
-
-      @options[:binds].uniq!
-    end
-
-    def infer_tag
-      File.basename Dir.getwd
+      setup_binds
+      setup_control
+      @options[:tag] ||= infer_tag
     end
 
     # Injects the Configuration object into the env
@@ -90,40 +63,73 @@ module Puma
     # the rackup file, and set @app.
     #
     def app
-      app = @options[:app]
-
-      unless app
-        unless File.exist?(rackup)
-          raise "Missing rackup file '#{rackup}'"
-        end
-
-        app, options = Rack::Builder.parse_file rackup
-        @options.merge! options
-
-        config_ru_binds = []
-
-        options.each do |key,val|
-          if key.to_s[0,4] == "bind"
-            config_ru_binds << val
-          end
-        end
-
-        @options[:binds] = config_ru_binds unless config_ru_binds.empty?
-      end
+      found = options[:app] || load_rackup
 
       if @options[:mode] == :tcp
         require 'puma/tcp_logger'
 
         logger = @options[:logger] || STDOUT
-        return TCPLogger.new(logger, app, @options[:quiet])
+        return TCPLogger.new(logger, found, @options[:quiet])
       end
 
       if !@options[:quiet] and @options[:environment] == "development"
         logger = @options[:logger] || STDOUT
-        app = Rack::CommonLogger.new(app, logger)
+        found = Rack::CommonLogger.new(found, logger)
       end
 
-      return ConfigMiddleware.new(self, app)
+      ConfigMiddleware.new(self, found)
+    end
+
+    def self.temp_path
+      require 'tmpdir'
+
+      t = (Time.now.to_f * 1000).to_i
+      "#{Dir.tmpdir}/puma-status-#{t}-#{$$}"
+    end
+
+    private
+
+    def infer_tag
+      File.basename(Dir.getwd)
+    end
+
+    def load_rackup
+      raise "Missing rackup file '#{rackup}'" unless File.exist?(rackup)
+
+      rack_app, rack_options = Rack::Builder.parse_file(rackup)
+      @options.merge!(rack_options)
+
+      config_ru_binds = rack_options.each_with_object([]) do |(k, v), b|
+        b << v if k.start_with?('bind')
+      end
+      @options[:binds] = config_ru_binds unless config_ru_binds.empty?
+
+      rack_app
+    end
+
+    def setup_binds
+      # Rakeup default option support
+      host = @options[:Host]
+      if host
+        port = @options[:Port] || DefaultTCPPort
+        @options[:binds] << "tcp://#{host}:#{port}"
+      end
+
+      if @options[:binds].empty?
+        @options[:binds] << "tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"
+      end
+
+      @options[:binds].uniq!
+    end
+
+    def setup_control
+      if @options[:control_url] == 'auto'
+        path = Configuration.temp_path
+        @options[:control_url] = "unix://#{path}"
+        @options[:control_url_temp] = path
+      end
+
+      setup_random_token unless @options[:control_auth_token]
     end
 
     def setup_random_token
@@ -139,9 +145,7 @@ module Puma
       if defined? OpenSSL::Random
         bytes = OpenSSL::Random.random_bytes(count)
       elsif File.exist?("/dev/urandom")
-        File.open("/dev/urandom") do |f|
-          bytes = f.read(count)
-        end
+        File.open('/dev/urandom') { |f| bytes = f.read(count) }
       end
 
       if bytes
@@ -153,13 +157,5 @@ module Puma
 
       @options[:control_auth_token] = token
     end
-
-    def self.temp_path
-      require 'tmpdir'
-
-      t = (Time.now.to_f * 1000).to_i
-      "#{Dir.tmpdir}/puma-status-#{t}-#{$$}"
-    end
-
   end
 end
