@@ -77,9 +77,7 @@ module Puma
     end
 
     def debug(str)
-      if @options[:debug]
-        @events.log "- #{str}"
-      end
+      @events.log "- #{str}" if @options[:debug]
     end
 
     def jruby?
@@ -99,39 +97,35 @@ module Puma
     def write_state
       write_pid
 
+      path = @options[:state]
+      return unless path
+
+      state = { 'pid' => Process.pid }
+      cfg = @config.dup
+
+      [
+        :logger,
+        :before_worker_shutdown, :before_worker_boot, :before_worker_fork,
+        :after_worker_boot,
+        :on_restart, :lowlevel_error_handler
+      ].each { |k| cfg.options.delete(k) }
+      state['config'] = cfg
+
       require 'yaml'
-
-      if path = @options[:state]
-        state = { "pid" => Process.pid }
-
-        cfg = @config.dup
-
-        [ :logger, :before_worker_shutdown, :before_worker_boot, :before_worker_fork, :after_worker_boot, :on_restart, :lowlevel_error_handler ].each { |o| cfg.options.delete o }
-
-        state["config"] = cfg
-
-        File.open(path, "w") do |f|
-          f.write state.to_yaml
-        end
-      end
+      File.open(path, 'w') { |f| f.write state.to_yaml }
     end
 
     # If configured, write the pid of the current process out
     # to a file.
     #
     def write_pid
-      if path = @options[:pidfile]
-        File.open(path, "w") do |f|
-          f.puts Process.pid
-        end
+      path = @options[:pidfile]
+      return unless path
 
-        cur = Process.pid
-
-        at_exit do
-          if cur == Process.pid
-            delete_pidfile
-          end
-        end
+      File.open(path, 'w') { |f| f.puts Process.pid }
+      cur = Process.pid
+      at_exit do
+        delete_pidfile if cur == Process.pid
       end
     end
 
@@ -142,18 +136,15 @@ module Puma
     end
 
     def delete_pidfile
-      if path = @options[:pidfile]
-        File.unlink path if File.exist? path
-      end
+      path = @options[:pidfile]
+      File.unlink(path) if path && File.exist?(path)
     end
 
     # :nodoc:
     def parse_options
       @parser.parse! @argv
 
-      if @argv.last
-        @options[:rackup] = @argv.shift
-      end
+      @options[:rackup] = @argv.shift if @argv.last
 
       find_config
 
@@ -164,13 +155,12 @@ module Puma
 
       @config.load
 
-      if clustered?
-        unsupported "worker mode not supported on JRuby or Windows",
-                    jruby? || windows?
+      if clustered? && (jruby? || windows?)
+        unsupported 'worker mode not supported on JRuby or Windows'
       end
 
-      if @options[:daemon] and windows?
-        unsupported "daemon mode not supported on Windows"
+      if @options[:daemon] && windows?
+        unsupported 'daemon mode not supported on Windows'
       end
     end
 
@@ -203,52 +193,27 @@ module Puma
       end
 
       if jruby?
-        @binder.listeners.each_with_index do |(str,io),i|
-          io.close
-
-          # We have to unlink a unix socket path that's not being used
-          uri = URI.parse str
-          if uri.scheme == "unix"
-            path = "#{uri.host}#{uri.path}"
-            File.unlink path
-          end
-        end
+        close_binder_listeners
 
         require 'puma/jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, restart_args)
-
       elsif windows?
-        @binder.listeners.each_with_index do |(str,io),i|
-          io.close
-
-          # We have to unlink a unix socket path that's not being used
-          uri = URI.parse str
-          if uri.scheme == "unix"
-            path = "#{uri.host}#{uri.path}"
-            File.unlink path
-          end
-        end
+        close_binder_listeners
 
         argv = restart_args
-
-        Dir.chdir @restart_dir
-
-        argv += [redirects] unless RUBY_VERSION < '1.9'
+        Dir.chdir(@restart_dir)
+        argv += [redirects] if RUBY_VERSION >= '1.9'
         Kernel.exec(*argv)
-
       else
         redirects = {:close_others => true}
-        @binder.listeners.each_with_index do |(l,io),i|
+        @binder.listeners.each_with_index do |(l, io), i|
           ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
           redirects[io.to_i] = io.to_i
         end
 
         argv = restart_args
-
-        Dir.chdir @restart_dir
-
-        argv += [redirects] unless RUBY_VERSION < '1.9'
-
+        Dir.chdir(@restart_dir)
+        argv += [redirects] if RUBY_VERSION >= '1.9'
         Kernel.exec(*argv)
       end
     end
@@ -267,43 +232,10 @@ module Puma
         exit 1
       end
 
-      if dir = @options[:directory]
-        Dir.chdir dir
-      end
+      dir = @options[:directory]
+      Dir.chdir(dir) if dir
 
-      if prune_bundler? && defined?(Bundler)
-        puma = Bundler.rubygems.loaded_specs("puma")
-
-        dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
-
-        puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, "../bin/puma-wild") }
-
-        deps = puma.runtime_dependencies.map { |d|
-          spec = Bundler.rubygems.loaded_specs(d.name)
-          "#{d.name}:#{spec.version.to_s}"
-        }.join(",")
-
-        if puma_lib_dir
-          log "* Pruning Bundler environment"
-
-          home = ENV['GEM_HOME']
-
-          Bundler.with_clean_env do
-
-            ENV['GEM_HOME'] = home
-
-            wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
-
-            wild_loadpath = dirs.join(":")
-
-            args = [Gem.ruby] + [wild, "-I", wild_loadpath, deps] + @original_argv
-
-            Kernel.exec(*args)
-          end
-        end
-
-        log "! Unable to prune Bundler environment, continuing"
-      end
+      prune_bundler if prune_bundler?
 
       set_rack_environment
 
@@ -612,6 +544,41 @@ module Puma
           graceful_stop
           exit
         end
+      end
+    end
+
+    def close_binder_listeners
+      @binder.listeners.each do |l, io|
+        io.close
+        uri = URI.parse(l)
+        next unless uri.scheme == 'unix'
+        File.unlink("#{uri.host}#{uri.path}")
+      end
+    end
+
+    def prune_bundler
+      return unless defined?(Bundler)
+      puma = Bundler.rubygems.loaded_specs("puma")
+      dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
+      puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
+
+      unless puma_lib_dir
+        log "! Unable to prune Bundler environment, continuing"
+        return
+      end
+
+      deps = puma.runtime_dependencies.map do |d|
+        spec = Bundler.rubygems.loaded_specs(d.name)
+        "#{d.name}:#{spec.version.to_s}"
+      end
+
+      log '* Pruning Bundler environment'
+      home = ENV['GEM_HOME']
+      Bundler.with_clean_env do
+        ENV['GEM_HOME'] = home
+        wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
+        args = [Gem.ruby, wild, '-I', dirs.join(":"), deps.join(',')] + @original_argv
+        Kernel.exec(*args)
       end
     end
   end
