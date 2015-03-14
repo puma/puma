@@ -36,13 +36,10 @@ module Puma
       @options[:control_url] = url
 
       if opts
-        if tok = opts[:auth_token]
-          @options[:control_auth_token] = tok
-        end
+        auth_token = opts[:auth_token]
+        @options[:control_auth_token] = auth_token if auth_token
 
-        if opts[:no_token]
-          @options[:control_auth_token] = :none
-        end
+        @options[:control_auth_token] = :none if opts[:no_token]
       end
     end
 
@@ -141,12 +138,7 @@ module Puma
     end
 
     def ssl_bind(host, port, opts)
-      o = [
-        "cert=#{opts[:cert]}",
-        "key=#{opts[:key]}"
-      ]
-
-      @options[:binds] << "ssl://#{host}:#{port}?#{o.join('&')}"
+      @options[:binds] << "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}"
     end
 
     # Use +path+ as the file to store the server info state. This is
