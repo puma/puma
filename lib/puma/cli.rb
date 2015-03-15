@@ -15,6 +15,14 @@ require 'rack/commonlogger'
 require 'rack/utils'
 
 module Puma
+  class << self
+    # The CLI exports its Puma::Configuration object here to allow
+    # apps to pick it up. An app needs to use it conditionally though
+    # since it is not set if the app is launched via another
+    # mechanism than the CLI class.
+    attr_accessor :cli_config
+  end
+
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI
@@ -69,9 +77,15 @@ module Puma
     end
 
     def debug(str)
-      if @options[:debug]
-        @events.log "- #{str}"
-      end
+      @events.log "- #{str}" if @options[:debug]
+    end
+
+    def clustered?
+      @options[:workers] > 0
+    end
+
+    def prune_bundler?
+      @options[:prune_bundler] && clustered? && !@options[:preload_app]
     end
 
     def jruby?
@@ -82,10 +96,205 @@ module Puma
       RUBY_PLATFORM =~ /mswin32|ming32/
     end
 
-    def unsupported(str, cond=true)
-      return unless cond
-      @events.error str
+    def env
+      @options[:environment] || ENV['RACK_ENV'] || 'development'
+    end
+
+    def write_state
+      write_pid
+
+      path = @options[:state]
+      return unless path
+
+      state = { 'pid' => Process.pid }
+      cfg = @config.dup
+
+      [
+        :logger,
+        :before_worker_shutdown, :before_worker_boot, :before_worker_fork,
+        :after_worker_boot,
+        :on_restart, :lowlevel_error_handler
+      ].each { |k| cfg.options.delete(k) }
+      state['config'] = cfg
+
+      require 'yaml'
+      File.open(path, 'w') { |f| f.write state.to_yaml }
+    end
+
+    # If configured, write the pid of the current process out
+    # to a file.
+    #
+    def write_pid
+      path = @options[:pidfile]
+      return unless path
+
+      File.open(path, 'w') { |f| f.puts Process.pid }
+      cur = Process.pid
+      at_exit do
+        delete_pidfile if cur == Process.pid
+      end
+    end
+
+    def delete_pidfile
+      path = @options[:pidfile]
+      File.unlink(path) if path && File.exist?(path)
+    end
+
+    def graceful_stop
+      @runner.stop_blocked
+      log "=== puma shutdown: #{Time.now} ==="
+      log "- Goodbye!"
+    end
+
+    def jruby_daemon_start
+      require 'puma/jruby_restart'
+      JRubyRestart.daemon_start(@restart_dir, restart_args)
+    end
+
+    def restart!
+      @options[:on_restart].each do |block|
+        block.call self
+      end
+
+      if jruby?
+        close_binder_listeners
+
+        require 'puma/jruby_restart'
+        JRubyRestart.chdir_exec(@restart_dir, restart_args)
+      elsif windows?
+        close_binder_listeners
+
+        argv = restart_args
+        Dir.chdir(@restart_dir)
+        argv += [redirects] if RUBY_VERSION >= '1.9'
+        Kernel.exec(*argv)
+      else
+        redirects = {:close_others => true}
+        @binder.listeners.each_with_index do |(l, io), i|
+          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+          redirects[io.to_i] = io.to_i
+        end
+
+        argv = restart_args
+        Dir.chdir(@restart_dir)
+        argv += [redirects] if RUBY_VERSION >= '1.9'
+        Kernel.exec(*argv)
+      end
+    end
+
+    # Parse the options, load the rackup, start the server and wait
+    # for it to finish.
+    #
+    def run
+      begin
+        parse_options
+      rescue UnsupportedOption
+        exit 1
+      end
+
+      dir = @options[:directory]
+      Dir.chdir(dir) if dir
+
+      prune_bundler if prune_bundler?
+
+      set_rack_environment
+
+      if clustered?
+        @events.formatter = Events::PidFormatter.new
+        @options[:logger] = @events
+
+        @runner = Cluster.new(self)
+      else
+        @runner = Single.new(self)
+      end
+
+      setup_signals
+      set_process_title
+
+      @status = :run
+
+      @runner.run
+
+      case @status
+      when :halt
+        log "* Stopping immediately!"
+      when :run, :stop
+        graceful_stop
+      when :restart
+        log "* Restarting..."
+        @runner.before_restart
+        restart!
+      when :exit
+        # nothing
+      end
+    end
+
+    def stop
+      @status = :stop
+      @runner.stop
+    end
+
+    def restart
+      @status = :restart
+      @runner.restart
+    end
+
+    def reload_worker_directory
+      @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
+    end
+
+    def phased_restart
+      unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
+        log "* phased-restart called but not available, restarting normally."
+        return restart
+      end
+      true
+    end
+
+    def redirect_io
+      @runner.redirect_io
+    end
+
+    def stats
+      @runner.stats
+    end
+
+    def halt
+      @status = :halt
+      @runner.halt
+    end
+
+  private
+    def title
+      buffer = "puma #{Puma::Const::VERSION} (#{@options[:binds].join(',')})"
+      buffer << " [#{@options[:tag]}]" if @options[:tag]
+      buffer
+    end
+
+    def unsupported(str)
+      @events.error(str)
       raise UnsupportedOption
+    end
+
+    def restart_args
+      cmd = @options[:restart_cmd]
+      if cmd
+        cmd.split(' ') + @original_argv
+      else
+        @restart_argv
+      end
+    end
+
+    def set_process_title
+      Process.respond_to?(:setproctitle) ? Process.setproctitle(title) : $0 = title
+    end
+
+    def find_config
+      if @options[:config_file] == '-'
+        @options[:config_file] = nil
+      else
+        @options[:config_file] ||= %W(config/puma/#{env}.rb config/puma.rb).find { |f| File.exist?(f) }
+      end
     end
 
     # Build the OptionParser object to handle the available options.
@@ -210,122 +419,14 @@ module Puma
         o.on "--tag NAME", "Additional text to display in process listing" do |arg|
           @options[:tag] = arg
         end
-      end
 
-      @parser.banner = "puma <options> <rackup file>"
+        o.banner = "puma <options> <rackup file>"
 
-      @parser.on_tail "-h", "--help", "Show help" do
-        log @parser
-        exit 1
-      end
-    end
-
-    def write_state
-      write_pid
-
-      require 'yaml'
-
-      if path = @options[:state]
-        state = { "pid" => Process.pid }
-
-        cfg = @config.dup
-
-        [ :logger, :before_worker_shutdown, :before_worker_boot, :before_worker_fork, :after_worker_boot, :on_restart, :lowlevel_error_handler ].each { |o| cfg.options.delete o }
-
-        state["config"] = cfg
-
-        File.open(path, "w") do |f|
-          f.write state.to_yaml
+        o.on_tail "-h", "--help", "Show help" do
+          log o
+          exit 1
         end
       end
-    end
-
-    # If configured, write the pid of the current process out
-    # to a file.
-    #
-    def write_pid
-      if path = @options[:pidfile]
-        File.open(path, "w") do |f|
-          f.puts Process.pid
-        end
-
-        cur = Process.pid
-
-        at_exit do
-          if cur == Process.pid
-            delete_pidfile
-          end
-        end
-      end
-    end
-
-    def env
-      # Try the user option first, then the environment variable,
-      # finally default to development
-      @options[:environment] || ENV['RACK_ENV'] || 'development'
-    end
-
-    def set_rack_environment
-      @options[:environment] = env
-      ENV['RACK_ENV'] = env
-    end
-
-    def delete_pidfile
-      if path = @options[:pidfile]
-        File.unlink path if File.exist? path
-      end
-    end
-
-    def find_config
-      if cfg = @options[:config_file]
-        # Allow - to disable config finding
-        if cfg == "-"
-          @options[:config_file] = nil
-          return
-        end
-
-        return
-      end
-
-      pos = ["config/puma/#{env}.rb", "config/puma.rb"]
-      @options[:config_file] = pos.find { |f| File.exist? f }
-    end
-
-    # :nodoc:
-    def parse_options
-      @parser.parse! @argv
-
-      if @argv.last
-        @options[:rackup] = @argv.shift
-      end
-
-      find_config
-
-      @config = Puma::Configuration.new @options
-
-      # Advertise the Configuration
-      Puma.cli_config = @config
-
-      @config.load
-
-      if clustered?
-        unsupported "worker mode not supported on JRuby or Windows",
-                    jruby? || windows?
-      end
-
-      if @options[:daemon] and windows?
-        unsupported "daemon mode not supported on Windows"
-      end
-    end
-
-    def clustered?
-      @options[:workers] > 0
-    end
-
-    def graceful_stop
-      @runner.stop_blocked
-      log "=== puma shutdown: #{Time.now} ==="
-      log "- Goodbye!"
     end
 
     def generate_restart_data
@@ -373,157 +474,9 @@ module Puma
       end
     end
 
-    def restart_args
-      if cmd = @options[:restart_cmd]
-        cmd.split(' ') + @original_argv
-      else
-        @restart_argv
-      end
-    end
-
-    def jruby_daemon_start
-      require 'puma/jruby_restart'
-      JRubyRestart.daemon_start(@restart_dir, restart_args)
-    end
-
-    def restart!
-      @options[:on_restart].each do |block|
-        block.call self
-      end
-
-      if jruby?
-        @binder.listeners.each_with_index do |(str,io),i|
-          io.close
-
-          # We have to unlink a unix socket path that's not being used
-          uri = URI.parse str
-          if uri.scheme == "unix"
-            path = "#{uri.host}#{uri.path}"
-            File.unlink path
-          end
-        end
-
-        require 'puma/jruby_restart'
-        JRubyRestart.chdir_exec(@restart_dir, restart_args)
-
-      elsif windows?
-        @binder.listeners.each_with_index do |(str,io),i|
-          io.close
-
-          # We have to unlink a unix socket path that's not being used
-          uri = URI.parse str
-          if uri.scheme == "unix"
-            path = "#{uri.host}#{uri.path}"
-            File.unlink path
-          end
-        end
-
-        argv = restart_args
-
-        Dir.chdir @restart_dir
-
-        argv += [redirects] unless RUBY_VERSION < '1.9'
-        Kernel.exec(*argv)
-
-      else
-        redirects = {:close_others => true}
-        @binder.listeners.each_with_index do |(l,io),i|
-          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-          redirects[io.to_i] = io.to_i
-        end
-
-        argv = restart_args
-
-        Dir.chdir @restart_dir
-
-        argv += [redirects] unless RUBY_VERSION < '1.9'
-
-        Kernel.exec(*argv)
-      end
-    end
-
-    def prune_bundler?
-      @options[:prune_bundler] && clustered? && !@options[:preload_app]
-    end
-
-    # Parse the options, load the rackup, start the server and wait
-    # for it to finish.
-    #
-    def run
-      begin
-        parse_options
-      rescue UnsupportedOption
-        exit 1
-      end
-
-      if dir = @options[:directory]
-        Dir.chdir dir
-      end
-
-      if prune_bundler? && defined?(Bundler)
-        puma = Bundler.rubygems.loaded_specs("puma")
-
-        dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
-
-        puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, "../bin/puma-wild") }
-
-        deps = puma.runtime_dependencies.map { |d|
-          spec = Bundler.rubygems.loaded_specs(d.name)
-          "#{d.name}:#{spec.version.to_s}"
-        }.join(",")
-
-        if puma_lib_dir
-          log "* Pruning Bundler environment"
-
-          home = ENV['GEM_HOME']
-
-          Bundler.with_clean_env do
-
-            ENV['GEM_HOME'] = home
-
-            wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
-
-            wild_loadpath = dirs.join(":")
-
-            args = [Gem.ruby] + [wild, "-I", wild_loadpath, deps] + @original_argv
-
-            Kernel.exec(*args)
-          end
-        end
-
-        log "! Unable to prune Bundler environment, continuing"
-      end
-
-      set_rack_environment
-
-      if clustered?
-        @events.formatter = Events::PidFormatter.new
-        @options[:logger] = @events
-
-        @runner = Cluster.new(self)
-      else
-        @runner = Single.new(self)
-      end
-
-      setup_signals
-      set_process_title
-
-      @status = :run
-
-      @runner.run
-
-      case @status
-      when :halt
-        log "* Stopping immediately!"
-      when :run, :stop
-        graceful_stop
-      when :restart
-        log "* Restarting..."
-        @runner.before_restart
-        restart!
-      when :exit
-        # nothing
-      end
+    def set_rack_environment
+      @options[:environment] = env
+      ENV['RACK_ENV'] = env
     end
 
     def setup_signals
@@ -568,50 +521,62 @@ module Puma
       end
     end
 
-    def stop
-      @status = :stop
-      @runner.stop
-    end
-
-    def restart
-      @status = :restart
-      @runner.restart
-    end
-
-    def reload_worker_directory
-      @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
-    end
-
-    def phased_restart
-      unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
-        log "* phased-restart called but not available, restarting normally."
-        return restart
+    def close_binder_listeners
+      @binder.listeners.each do |l, io|
+        io.close
+        uri = URI.parse(l)
+        next unless uri.scheme == 'unix'
+        File.unlink("#{uri.host}#{uri.path}")
       end
-      true
     end
 
-    def redirect_io
-      @runner.redirect_io
+    def parse_options
+      @parser.parse! @argv
+
+      @options[:rackup] = @argv.shift if @argv.last
+
+      find_config
+
+      @config = Puma::Configuration.new @options
+
+      # Advertise the Configuration
+      Puma.cli_config = @config
+
+      @config.load
+
+      if clustered? && (jruby? || windows?)
+        unsupported 'worker mode not supported on JRuby or Windows'
+      end
+
+      if @options[:daemon] && windows?
+        unsupported 'daemon mode not supported on Windows'
+      end
     end
 
-    def stats
-      @runner.stats
-    end
+    def prune_bundler
+      return unless defined?(Bundler)
+      puma = Bundler.rubygems.loaded_specs("puma")
+      dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
+      puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
 
-    def halt
-      @status = :halt
-      @runner.halt
-    end
+      unless puma_lib_dir
+        log "! Unable to prune Bundler environment, continuing"
+        return
+      end
 
-  private
-    def title
-      buffer = "puma #{Puma::Const::VERSION} (#{@options[:binds].join(',')})"
-      buffer << " [#{@options[:tag]}]" if @options[:tag]
-      buffer
-    end
+      deps = puma.runtime_dependencies.map do |d|
+        spec = Bundler.rubygems.loaded_specs(d.name)
+        "#{d.name}:#{spec.version.to_s}"
+      end
 
-    def set_process_title
-      Process.respond_to?(:setproctitle) ? Process.setproctitle(title) : $0 = title
+      log '* Pruning Bundler environment'
+      home = ENV['GEM_HOME']
+      Bundler.with_clean_env do
+        ENV['GEM_HOME'] = home
+        wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
+        args = [Gem.ruby, wild, '-I', dirs.join(':'), deps.join(',')] + @original_argv
+        Kernel.exec(*args)
+      end
     end
   end
 end

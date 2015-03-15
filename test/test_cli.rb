@@ -35,7 +35,7 @@ class TestCLI < Test::Unit::TestCase
 
   def test_pid_file
     cli = Puma::CLI.new ["--pidfile", @tmp_path]
-    cli.parse_options
+    cli.send(:parse_options)
     cli.write_pid
 
     assert_equal File.read(@tmp_path).strip.to_i, Process.pid
@@ -48,7 +48,7 @@ class TestCLI < Test::Unit::TestCase
                          "--control-token", "",
                          "test/lobster.ru"], @events
 
-    cli.parse_options
+    cli.send(:parse_options)
 
     thread_exception = nil
     t = Thread.new do
@@ -57,7 +57,7 @@ class TestCLI < Test::Unit::TestCase
       rescue Exception => e
         thread_exception = e
       end
-    end 
+    end
 
     wait_booted
 
@@ -79,7 +79,7 @@ class TestCLI < Test::Unit::TestCase
                          "--control", url,
                          "--control-token", "",
                          "test/lobster.ru"], @events
-    cli.parse_options
+    cli.send(:parse_options)
 
     t = Thread.new { cli.run }
 
@@ -102,7 +102,7 @@ class TestCLI < Test::Unit::TestCase
                          "--control", url,
                          "--control-token", "",
                          "test/lobster.ru"], @events
-    cli.parse_options
+    cli.send(:parse_options)
 
     t = Thread.new { cli.run }
 
@@ -120,7 +120,7 @@ class TestCLI < Test::Unit::TestCase
   def test_tmp_control
     url = "tcp://127.0.0.1:8232"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", "auto"]
-    cli.parse_options
+    cli.send(:parse_options)
     cli.write_state
 
     data = YAML.load File.read(@tmp_path)
@@ -138,7 +138,7 @@ class TestCLI < Test::Unit::TestCase
   def test_state
     url = "tcp://127.0.0.1:8232"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
-    cli.parse_options
+    cli.send(:parse_options)
     cli.write_state
 
     data = YAML.load File.read(@tmp_path)
@@ -149,13 +149,13 @@ class TestCLI < Test::Unit::TestCase
 
   def test_load_path
     cli = Puma::CLI.new ["--include", 'foo/bar']
-    cli.parse_options
+    cli.send(:parse_options)
 
     assert_equal 'foo/bar', $LOAD_PATH[0]
     $LOAD_PATH.shift
 
     cli = Puma::CLI.new ["--include", 'foo/bar:baz/qux']
-    cli.parse_options
+    cli.send(:parse_options)
 
     assert_equal 'foo/bar', $LOAD_PATH[0]
     $LOAD_PATH.shift
@@ -165,9 +165,9 @@ class TestCLI < Test::Unit::TestCase
 
   def test_environment
     cli = Puma::CLI.new ["--environment", @environment]
-    cli.parse_options
-    cli.set_rack_environment
+    cli.send(:parse_options)
+    cli.send(:set_rack_environment)
 
-    assert_equal ENV['RACK_ENV'], @environment 
+    assert_equal ENV['RACK_ENV'], @environment
   end
 end

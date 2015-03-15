@@ -41,6 +41,7 @@ lib/puma/control_cli.rb
 lib/puma/daemon_ext.rb
 lib/puma/delegation.rb
 lib/puma/detect.rb
+lib/puma/dsl.rb
 lib/puma/events.rb
 lib/puma/io_buffer.rb
 lib/puma/java_io_buffer.rb
