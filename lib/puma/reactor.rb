@@ -25,7 +25,7 @@ module Puma
 
       while true
         begin
-          ready = IO.select sockets, nil, nil, @sleep_for
+          ready = IO.select sockets.map(&:to_io), nil, nil, @sleep_for
         rescue IOError => e
           if sockets.any? { |socket| socket.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
@@ -39,7 +39,8 @@ module Puma
 
         if ready and reads = ready[0]
           reads.each do |c|
-            if c == @ready
+            client = sockets.detect{|socket| socket.to_io == c }
+            if client == @ready
               @mutex.synchronize do
                 case @ready.read(1)
                 when "*"
@@ -62,31 +63,31 @@ module Puma
               # We have to be sure to remove it from the timeout
               # list or we'll accidentally close the socket when
               # it's in use!
-              if c.timeout_at
+              if client.timeout_at
                 @mutex.synchronize do
-                  @timeouts.delete c
+                  @timeouts.delete client
                 end
               end
 
               begin
-                if c.try_to_finish
-                  @app_pool << c
-                  sockets.delete c
+                if client.try_to_finish
+                  @app_pool << client
+                  sockets.delete client
                 end
 
               # The client doesn't know HTTP well
               rescue HttpParserError => e
-                c.write_400
-                c.close
+                client.write_400
+                client.close
 
-                sockets.delete c
+                sockets.delete client
 
-                @events.parse_error @server, c.env, e
+                @events.parse_error @server, client.env, e
               rescue StandardError => e
-                c.write_500
-                c.close
+                client.write_500
+                client.close
 
-                sockets.delete c
+                sockets.delete client
               end
             end
           end
