@@ -1,3 +1,26 @@
+=== 2.11.2 / 2015-04-11
+
+* 2 minor features:
+  * Add `on_worker_fork` hook, which allows to mimic Unicorn's behavior
+  * Add shutdown_debug config option
+
+* 4 bug fixes:
+  * Fix the Config constants not being available in the DSL. Fixes #683
+  * Ignore multiple port declarations
+  * Proper 'Connection' header handling compatible with HTTP 1.[01] protocols
+  * Use "Puma" instead of "puma" to reporting to New Relic
+
+* 1 doc fixes:
+  * Add Gitter badge.
+
+* 6 PRs merged:
+  * Merge pull request #657 from schneems/schneems/puma-once-port
+  * Merge pull request #658 from Tomohiro/newrelic-dispatcher-default-update
+  * Merge pull request #662 from basecrm/connection-compatibility
+  * Merge pull request #664 from fxposter/on-worker-fork
+  * Merge pull request #667 from JuanitoFatas/doc/gemspec
+  * Merge pull request #672 from chulkilee/refactor
+
 === 2.11.1 / 2015-02-11
 
 * 2 bug fixes:
