@@ -267,5 +267,12 @@ module Puma
     def queue_requests(answer=true)
       @options[:queue_requests] = answer
     end
+
+    # When a shutdown is requested, the backtraces of all the
+    # threads will be written to $stdout. This can help figure
+    # out why shutdown is hanging.
+    def shutdown_debug(val=true)
+      @options[:shutdown_debug] = val
+    end
   end
 end

@@ -740,6 +740,20 @@ module Puma
     # Wait for all outstanding requests to finish.
     #
     def graceful_shutdown
+      if @options[:shutdown_debug]
+        threads = Thread.list
+        total = threads.size
+
+        $stdout.puts "=== Begin thread backtrace dump ==="
+
+        threads.each_with_index do |t,i|
+          $stdout.puts "Thread #{i+1}/#{total}: #{t.inspect}"
+          $stdout.puts(*t.backtrace)
+          $stdout.puts ""
+        end
+        $stdout.puts "=== End thread backtrace dump ==="
+      end
+
       if @options[:drain_on_shutdown]
         count = 0
 
