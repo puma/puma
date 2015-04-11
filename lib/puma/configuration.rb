@@ -1,13 +1,16 @@
-require 'puma/dsl'
-
 module Puma
-  class Configuration
+
+  module ConfigDefault
     DefaultRackup = "config.ru"
 
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 9292
     DefaultWorkerTimeout = 60
     DefaultWorkerShutdownTimeout = 30
+  end
+
+  class Configuration
+    include ConfigDefault
 
     def initialize(options)
       @options = options
@@ -159,3 +162,5 @@ module Puma
     end
   end
 end
+
+require 'puma/dsl'

@@ -2,6 +2,8 @@ module Puma
   # The methods that are available for use inside the config file.
   #
   class DSL
+    include ConfigDefault
+
     def self.load(options, path)
       new(options).tap do |obj|
         obj._load_from(path)
