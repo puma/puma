@@ -744,14 +744,15 @@ module Puma
         threads = Thread.list
         total = threads.size
 
-        $stdout.puts "=== Begin thread backtrace dump ==="
+        pid = Process.pid
+
+        $stdout.syswrite "#{pid}: === Begin thread backtrace dump ===\n"
 
         threads.each_with_index do |t,i|
-          $stdout.puts "Thread #{i+1}/#{total}: #{t.inspect}"
-          $stdout.puts(*t.backtrace)
-          $stdout.puts ""
+          $stdout.syswrite "#{pid}: Thread #{i+1}/#{total}: #{t.inspect}\n"
+          $stdout.syswrite "#{pid}: #{t.backtrace.join("\n#{pid}: ")}\n\n"
         end
-        $stdout.puts "=== End thread backtrace dump ==="
+        $stdout.syswrite "#{pid}: === End thread backtrace dump ===\n"
       end
 
       if @options[:drain_on_shutdown]
