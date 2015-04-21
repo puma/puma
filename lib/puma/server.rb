@@ -656,6 +656,7 @@ module Puma
         uncork_socket client
 
         body.close
+        req.tempfile.unlink if req.tempfile
         res_body.close if res_body.respond_to? :close
 
         after_reply.each { |o| o.call }
