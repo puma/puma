@@ -4,6 +4,16 @@ require 'puma'
 require 'puma/configuration'
 
 class TestConfigFile < Test::Unit::TestCase
+  def test_app_from_rackup
+    opts = {:rackup => "test/hello-bind.ru"}
+    conf = Puma::Configuration.new opts
+    conf.load
+
+    conf.app
+
+    assert_equal ["tcp://127.0.0.1:9292"], conf.options[:binds]
+  end
+
   def test_app_from_app_DSL
     opts = { :config_file => "test/config/app.rb" }
     conf = Puma::Configuration.new opts
