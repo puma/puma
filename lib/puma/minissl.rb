@@ -95,11 +95,6 @@ module Puma
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
         attr_reader :keystore
         attr_accessor :keystore_pass
-        attr_accessor :enable_SSLv3
-
-        def initialize
-          @enable_SSLv3 = false
-        end
 
         def keystore=(keystore)
           raise ArgumentError, "No such keystore file '#{keystore}'" unless File.exist? keystore
