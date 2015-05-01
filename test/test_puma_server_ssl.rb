@@ -88,16 +88,16 @@ class TestPumaServerSSL < Test::Unit::TestCase
     assert_equal "https", body
   end
 
-  if defined?(JRUBY_VERSION)
-    def test_ssl_v3_support_disabled_by_default
-      @http.ssl_version='SSLv3'
-      assert_raises(OpenSSL::SSL::SSLError) do
-        @http.start do
-          Net::HTTP::Get.new '/'
-        end
+  def test_ssl_v3_rejection
+    @http.ssl_version='SSLv3'
+    assert_raises(OpenSSL::SSL::SSLError) do
+      @http.start do
+        Net::HTTP::Get.new '/'
       end
     end
+  end
 
+  if defined?(JRUBY_VERSION)
     def test_enabling_ssl_v3_support
       @server.stop(true)
       @ctx.enable_SSLv3 = true

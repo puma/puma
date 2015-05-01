@@ -308,8 +308,10 @@ public class MiniSSL extends RubyObject {
       log("read(): end dump of request data   <<<<\n");
       return str;
     } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
+      if (DEBUG) {
+        e.printStackTrace();
+      }
+      throw getRuntime().newEOFError(e.getMessage());
     }
   }
 
