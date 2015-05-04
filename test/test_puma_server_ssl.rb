@@ -88,48 +88,11 @@ class TestPumaServerSSL < Test::Unit::TestCase
     assert_equal "https", body
   end
 
-  if defined?(JRUBY_VERSION)
-    def test_ssl_v3_support_disabled_by_default
-      @http.ssl_version='SSLv3'
-      assert_raises(OpenSSL::SSL::SSLError) do
-        @http.start do
-          Net::HTTP::Get.new '/'
-        end
-      end
-    end
-
-    def test_enabling_ssl_v3_support
-      @server.stop(true)
-      @ctx.enable_SSLv3 = true
-      @server = Puma::Server.new @app, @events
-      @server.add_ssl_listener @host, @port, @ctx
-      @server.run
-      @http.ssl_version='SSLv3'
-
-      body = nil
+  def test_ssl_v3_rejection
+    @http.ssl_version='SSLv3'
+    assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
-        req = Net::HTTP::Get.new "/", {}
-
-        @http.request(req) do |rep|
-          body = rep.body
-        end
-      end
-
-      assert_equal "https", body
-    end
-
-    def test_enabling_ssl_v3_support_requires_true
-      @server.stop(true)
-      @ctx.enable_SSLv3 = "truthy but not true"
-      @server = Puma::Server.new @app, @events
-      @server.add_ssl_listener @host, @port, @ctx
-      @server.run
-      @http.ssl_version='SSLv3'
-
-      assert_raises(OpenSSL::SSL::SSLError) do
-        @http.start do
-          Net::HTTP::Get.new '/'
-        end
+        Net::HTTP::Get.new '/'
       end
     end
   end

@@ -161,7 +161,7 @@ void raise_error(SSL* ssl, int result) {
 VALUE engine_read(VALUE self) {
   ms_conn* conn;
   char buf[512];
-  int bytes, n;
+  int bytes, n, error;
 
   Data_Get_Struct(self, ms_conn, conn);
 
@@ -173,7 +173,8 @@ VALUE engine_read(VALUE self) {
 
   if(SSL_want_read(conn->ssl)) return Qnil;
 
-  if(SSL_get_error(conn->ssl, bytes) == SSL_ERROR_ZERO_RETURN) {
+  error = SSL_get_error(conn->ssl, bytes);
+  if(error == SSL_ERROR_ZERO_RETURN || error == SSL_ERROR_SSL) {
     rb_eof_error();
   }
 
