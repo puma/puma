@@ -307,6 +307,7 @@ module Puma
         :debug => false,
         :binds => [],
         :workers => 0,
+        :phased_restart_batch_count => nil, # default is one-after-one
         :daemon => false,
         :before_worker_shutdown => [],
         :before_worker_boot => [],

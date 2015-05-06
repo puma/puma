@@ -11,6 +11,10 @@ module Puma
 
       @phased_state = :idle
       @phased_restart = false
+      @phased_restart_batch_size =
+        (1.0 * @options[:workers] /
+         (@options[:phased_restart_batch_count] || @options[:workers]))
+        .ceil
     end
 
     def stop_workers
@@ -161,9 +165,11 @@ module Puma
         # we need to phase any workers out (which will restart
         # in the right phase).
         #
-        w = @workers.find { |x| x.phase != @phase }
+        ws = @workers
+             .select { |x| x.phase != @phase }
+             .take(@phased_restart_batch_size)
 
-        if w
+        for w in ws
           if @phased_state == :idle
             @phased_state = :waiting
             log "- Stopping #{w.pid} for phased upgrade..."

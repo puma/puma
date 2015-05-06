@@ -156,6 +156,13 @@ module Puma
       @options[:workers] = count.to_i
     end
 
+    # *Cluster mode only* How many worker processes to restart at a time,
+    # when doing a phased restart.
+    #
+    def phased_restart_batch_count(count)
+      @options[:phased_restart_batch_count] = count.to_i
+    end
+
     # *Cluster mode only* Code to run immediately before a worker shuts
     # down (after it has finished processing HTTP requests). These hooks
     # can block if necessary to wait for background operations unknown
