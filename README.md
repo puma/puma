@@ -195,7 +195,7 @@ You should place code to close global log files, redis connections, etc in this 
 
 ### Platform Constraints
 
-Because of various platforms not being implement certain things, the following differences occur when Puma is used on different platforms:
+Because of various platforms not being able to implement certain things, the following differences occur when Puma is used on different platforms:
 
   * **JRuby**, **Windows**: server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to ruby
   * **JRuby**, **Windows**: cluster mode is not supported due to a lack of  fork(2)
@@ -248,4 +248,4 @@ $ bundle exec rake
 
 ## License
 
-Puma is copyright 2014 Evan Phoenix and contributors. It is licensed under the BSD 3-Clause license. See the include LICENSE file for details.
+Puma is copyright 2014 Evan Phoenix and contributors. It is licensed under the BSD 3-Clause license. See the included LICENSE file for details.
