@@ -1,3 +1,14 @@
+=== 2.11.3 / 2015-05-18
+
+* 5 bug fixes:
+  * Be sure to unlink tempfiles after a request. Fixes #690
+  * Coerce the key to a string before checking. (thar be symbols). Fixes #684
+  * Fix hang on bad SSL handshake
+  * Remove `enable_SSLv3` support from JRuby
+
+* 1 PR merged:
+  * Merge pull request #698 from looker/hang-handshake
+
 === 2.11.2 / 2015-04-11
 
 * 2 minor features:
@@ -483,7 +494,7 @@ RailsConf 2013 edition!
   * Close the binder in the right place. Fixes #192
   * Handle early term in workers. Fixes #206
   * Make sure that the default port is 80 when the request doesn't include HTTP_X_FORWARDED_PROTO.
-  * Prevent Errno::EBADF errors on restart when running ruby 2.0 
+  * Prevent Errno::EBADF errors on restart when running ruby 2.0
   * Record the proper @master_pid
   * Respect the header HTTP_X_FORWARDED_PROTO when the host doesn't include a port number.
   * Retry EAGAIN/EWOULDBLOCK during syswrite
