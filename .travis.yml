@@ -8,10 +8,12 @@ rvm:
   - 2.1.0
   - 2.1.1
   - 2.2
-  - rbx-2
   - jruby-19mode
+  - jruby-head
+  - rbx-2
 matrix:
   fast_finish: true
   allow_failures:
     - rvm: jruby-19mode
+    - rvm: jruby-head
     - rvm: rbx-2
