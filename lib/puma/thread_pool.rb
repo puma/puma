@@ -33,6 +33,7 @@ module Puma
       @workers = []
 
       @auto_trim = nil
+      @reaper = nil
 
       @mutex.synchronize do
         @min.times { spawn_thread }
@@ -155,6 +156,21 @@ module Puma
       end
     end
 
+    # If there are dead threads in the pool make them go away while decreasing
+    # spwaned counter so that new healty threads could be created again.
+    def reap
+      @mutex.synchronize do
+        dead_workers = @workers.reject(&:alive?)
+
+        dead_workers.each do |worker|
+          worker.kill
+          @spawned -= 1
+        end
+
+        @workers -= dead_workers
+      end
+    end
+
     class AutoTrim
       def initialize(pool, timeout)
         @pool = pool
@@ -184,6 +200,35 @@ module Puma
       @auto_trim.start!
     end
 
+    class Reaper
+      def initialize(pool, timeout)
+        @pool = pool
+        @timeout = timeout
+        @running = false
+      end
+
+      def start!
+        @running = true
+
+        @thread = Thread.new do
+          while @running
+            @pool.reap
+            sleep @timeout
+          end
+        end
+      end
+
+      def stop
+        @running = false
+        @thread.wakeup
+      end
+    end
+
+    def auto_reap!(timeout=5)
+      @reaper = Reaper.new(self, timeout)
+      @reaper.start!
+    end
+
     # Tell all threads in the pool to exit and wait for them to finish.
     #
     def shutdown
@@ -193,6 +238,7 @@ module Puma
         @not_full.broadcast
 
         @auto_trim.stop if @auto_trim
+        @reaper.stop if @reaper
       end
 
       # Use this instead of #each so that we don't stop in the middle
