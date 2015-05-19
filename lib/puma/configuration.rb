@@ -1,3 +1,5 @@
+require 'rack/builder'
+
 module Puma
 
   module ConfigDefault
