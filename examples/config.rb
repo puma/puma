@@ -119,14 +119,14 @@
 # This can be called multiple times to add hooks.
 #
 # after_worker_boot do
-#   puts 'On worker boot...'
+#   puts 'After worker boot...'
 # end
 
 # Code to run when a worker shutdown.
 #
 #
 # on_worker_shutdown do
-#   puts 'On worker boot...'
+#   puts 'On worker shutdown...'
 # end
 
 # Allow workers to reload bundler context when master process is issued
