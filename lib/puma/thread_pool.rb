@@ -102,7 +102,10 @@ module Puma
             end
           end
 
-          block.call(work, *extra)
+          begin
+            block.call(work, *extra)
+          rescue Exception
+          end
         end
 
         mutex.synchronize do
