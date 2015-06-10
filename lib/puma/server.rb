@@ -643,7 +643,7 @@ module Puma
         if content_length
           lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
           chunked = false
-        elsif allow_chunked
+        elsif !response_hijack and allow_chunked
           lines << TRANSFER_ENCODING_CHUNKED
           chunked = true
         end
