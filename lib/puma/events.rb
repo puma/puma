@@ -96,6 +96,15 @@ module Puma
       @stderr.puts "#{Time.now}: ENV: #{env.inspect}\n---\n"
     end
 
+    # An SSL error has occured.
+    # +server+ is the Server object, +peeraddr+ peer address, +peercert+
+    # any peer certificate (if present), and +error+ an exception object.
+    #
+    def ssl_error(server, peeraddr, peercert, error)
+      subject = peercert ? peercert.subject : nil
+      @stderr.puts "#{Time.now}: SSL error, peer: #{peeraddr}, peer cert: #{subject}, #{error.inspect}"
+    end
+
     # An unknown error has occured.
     # +server+ is the Server object, +env+ the request, +error+ an exception
     # object, and +kind+ some additional info.

@@ -129,6 +129,7 @@ module Puma
     RACK_AFTER_REPLY = "rack.after_reply".freeze
     PUMA_SOCKET = "puma.socket".freeze
     PUMA_CONFIG = "puma.config".freeze
+    PUMA_PEERCERT = "puma.peercert".freeze
 
     HTTP = "http".freeze
     HTTPS = "https".freeze

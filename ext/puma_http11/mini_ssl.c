@@ -5,6 +5,7 @@
 #include <openssl/ssl.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
+#include <openssl/x509.h>
 
 typedef struct {
   BIO* read;
@@ -13,7 +14,17 @@ typedef struct {
   SSL_CTX* ctx;
 } ms_conn;
 
+typedef struct {
+  unsigned char* buf;
+  int bytes;
+} ms_cert_buf;
+
 void engine_free(ms_conn* conn) {
+  ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
+  if(cert_buf) {
+    OPENSSL_free(cert_buf->buf);
+    free(cert_buf);
+  }
   SSL_free(conn->ssl);
   SSL_CTX_free(conn->ctx);
 
@@ -73,6 +84,32 @@ DH *get_dh1024() {
   return dh;
 }
 
+static int engine_verify_callback(int preverify_ok, X509_STORE_CTX* ctx) {
+  X509* err_cert;
+  SSL* ssl;
+  int bytes;
+  unsigned char* buf = NULL;
+
+  if(!preverify_ok) {
+    err_cert = X509_STORE_CTX_get_current_cert(ctx);
+    if(err_cert) {
+      /*
+       * Save the failed certificate for inspection/logging.
+       */
+      bytes = i2d_X509(err_cert, &buf);
+      if(bytes > 0) {
+        ms_cert_buf* cert_buf = (ms_cert_buf*)malloc(sizeof(ms_cert_buf));
+        cert_buf->buf = buf;
+        cert_buf->bytes = bytes;
+        ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+        SSL_set_app_data(ssl, cert_buf);
+      }
+    }
+  }
+
+  return preverify_ok;
+}
+
 VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   VALUE obj;
   SSL_CTX* ctx;
@@ -86,11 +123,21 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   ID sym_cert = rb_intern("cert");
   VALUE cert = rb_funcall(mini_ssl_ctx, sym_cert, 0);
 
+  ID sym_ca = rb_intern("ca");
+  VALUE ca = rb_funcall(mini_ssl_ctx, sym_ca, 0);
+
+  ID sym_verify_mode = rb_intern("verify_mode");
+  VALUE verify_mode = rb_funcall(mini_ssl_ctx, sym_verify_mode, 0);
+
   ctx = SSL_CTX_new(SSLv23_server_method());
   conn->ctx = ctx;
 
   SSL_CTX_use_certificate_file(ctx, RSTRING_PTR(cert), SSL_FILETYPE_PEM);
   SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
+
+  if (!NIL_P(ca)) {
+    SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL);
+  }
   
   SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
@@ -106,10 +153,15 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
     EC_KEY_free(ecdh);
   }
 
-  ssl =  SSL_new(ctx);
+  ssl = SSL_new(ctx);
   conn->ssl = ssl;
+  SSL_set_app_data(ssl, NULL);
 
-  /* SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL); */
+  if (NIL_P(verify_mode)) {
+    /* SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL); */
+  } else {
+    SSL_set_verify(ssl, NUM2INT(verify_mode), engine_verify_callback);
+  }
 
   SSL_set_bio(ssl, conn->read, conn->write);
 
@@ -123,6 +175,7 @@ VALUE engine_init_client(VALUE klass) {
 
   conn->ctx = SSL_CTX_new(DTLSv1_method());
   conn->ssl = SSL_new(conn->ctx);
+  SSL_set_app_data(conn->ssl, NULL);
   SSL_set_verify(conn->ssl, SSL_VERIFY_NONE, NULL);
 
   SSL_set_bio(conn->ssl, conn->read, conn->write);
@@ -151,11 +204,36 @@ VALUE engine_inject(VALUE self, VALUE str) {
 static VALUE eError;
 
 void raise_error(SSL* ssl, int result) {
-  int error = SSL_get_error(ssl, result);
-  char* msg = ERR_error_string(error, NULL);
+  char buf[512];
+  char msg[512];
+  const char* err_str;
+  int err = errno;
+  int ssl_err = SSL_get_error(ssl, result);
+  int verify_err = SSL_get_verify_result(ssl);
+
+  if(SSL_ERROR_SYSCALL == ssl_err) {
+    strerror_r(err, buf, sizeof(buf));
+    snprintf(msg, sizeof(msg), "System error: %s - %d", buf, err);
+
+  } else if(SSL_ERROR_SSL == ssl_err) {
+    if(X509_V_OK != verify_err) {
+      err_str = X509_verify_cert_error_string(verify_err);
+      snprintf(msg, sizeof(msg),
+               "OpenSSL certificate verification error: %s - %d",
+               err_str, verify_err);
+
+    } else {
+      err = ERR_get_error();
+      ERR_error_string_n(err, buf, sizeof(buf));
+      snprintf(msg, sizeof(msg), "OpenSSL error: %s - %d", buf, err);
+
+    }
+  } else {
+    snprintf(msg, sizeof(msg), "Unknown OpenSSL error: %d", ssl_err);
+  }
 
   ERR_clear_error();
-  rb_raise(eError, "OpenSSL error: %s - %d", msg, error);
+  rb_raise(eError, msg);
 }
 
 VALUE engine_read(VALUE self) {
@@ -164,6 +242,8 @@ VALUE engine_read(VALUE self) {
   int bytes, n, error;
 
   Data_Get_Struct(self, ms_conn, conn);
+
+  ERR_clear_error();
 
   bytes = SSL_read(conn->ssl, (void*)buf, sizeof(buf));
 
@@ -174,23 +254,25 @@ VALUE engine_read(VALUE self) {
   if(SSL_want_read(conn->ssl)) return Qnil;
 
   error = SSL_get_error(conn->ssl, bytes);
-  if(error == SSL_ERROR_ZERO_RETURN || error == SSL_ERROR_SSL) {
-    rb_eof_error();
-  }
 
-  raise_error(conn->ssl, bytes);
+  if(error == SSL_ERROR_ZERO_RETURN) {
+    rb_eof_error();
+  } else {
+    raise_error(conn->ssl, bytes);
+  }
 
   return Qnil;
 }
 
 VALUE engine_write(VALUE self, VALUE str) {
   ms_conn* conn;
-  char buf[512];
   int bytes;
 
   Data_Get_Struct(self, ms_conn, conn);
 
   StringValue(str);
+
+  ERR_clear_error();
 
   bytes = SSL_write(conn->ssl, (void*)RSTRING_PTR(str), (int)RSTRING_LEN(str));
   if(bytes > 0) {
@@ -225,6 +307,45 @@ VALUE engine_extract(VALUE self) {
   return Qnil;
 }
 
+VALUE engine_peercert(VALUE self) {
+  ms_conn* conn;
+  X509* cert;
+  int bytes;
+  unsigned char* buf = NULL;
+  ms_cert_buf* cert_buf = NULL;
+  VALUE rb_cert_buf;
+
+  Data_Get_Struct(self, ms_conn, conn);
+
+  cert = SSL_get_peer_certificate(conn->ssl);
+  if(!cert) {
+    /*
+     * See if there was a failed certificate associated with this client.
+     */
+    cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
+    if(!cert_buf) {
+      return Qnil;
+    }
+    buf = cert_buf->buf;
+    bytes = cert_buf->bytes;
+
+  } else {
+    bytes = i2d_X509(cert, &buf);
+    X509_free(cert);
+
+    if(bytes < 0) {
+      return Qnil;
+    }
+  }
+
+  rb_cert_buf = rb_str_new(buf, bytes);
+  if(!cert_buf) {
+    OPENSSL_free(buf);
+  }
+
+  return rb_cert_buf;
+}
+
 void Init_mini_ssl(VALUE puma) {
   VALUE mod, eng;
 
@@ -246,4 +367,6 @@ void Init_mini_ssl(VALUE puma) {
 
   rb_define_method(eng, "write",  engine_write, 1);
   rb_define_method(eng, "extract", engine_extract, 0);
+
+  rb_define_method(eng, "peercert", engine_peercert, 0);
 }
