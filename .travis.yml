@@ -1,12 +1,10 @@
 language: ruby
-script: "TESTOPTS=-v rake test"
-jdk:
-  - oraclejdk7
+cache: bundler
+script: "TESTOPTS=-v bundle exec rake test"
 rvm:
   - 1.9.3
   - 2.0.0
-  - 2.1.0
-  - 2.1.1
+  - 2.1
   - 2.2
   - jruby-19mode
   - jruby-head

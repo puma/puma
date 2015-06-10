@@ -1,3 +1,5 @@
+require 'rack/builder'
+
 module Puma
 
   module ConfigDefault
@@ -103,7 +105,7 @@ module Puma
       @options.merge!(rack_options)
 
       config_ru_binds = rack_options.each_with_object([]) do |(k, v), b|
-        b << v if k.to_s[0,4] == "bind"
+        b << v if k.to_s.start_with?("bind")
       end
       @options[:binds] = config_ru_binds unless config_ru_binds.empty?
 

@@ -39,6 +39,7 @@ module Puma
     attr_accessor :max_threads
     attr_accessor :persistent_timeout
     attr_accessor :auto_trim_time
+    attr_accessor :reaping_time
     attr_accessor :first_data_timeout
 
     # Create a server for the rack app +app+.
@@ -60,6 +61,7 @@ module Puma
       @min_threads = 0
       @max_threads = 16
       @auto_trim_time = 1
+      @reaping_time = 1
 
       @thread = nil
       @thread_pool = nil
@@ -250,6 +252,14 @@ module Puma
             client.finish
             process_now = true
           end
+        rescue MiniSSL::SSLError => e
+          ssl_socket = client.io
+          addr = ssl_socket.peeraddr.last
+          cert = ssl_socket.peercert
+
+          client.close
+
+          @events.ssl_error self, addr, cert, e
         rescue HttpParserError => e
           client.write_400
           client.close
@@ -272,6 +282,10 @@ module Puma
       if queue_requests
         @reactor = Reactor.new self, @thread_pool
         @reactor.run_in_thread
+      end
+
+      if @reaping_time
+        @thread_pool.auto_reap!(@reaping_time)
       end
 
       if @auto_trim_time
@@ -395,6 +409,16 @@ module Puma
       rescue ConnectionError
         # Swallow them. The ensure tries to close +client+ down
 
+      # SSL handshake error
+      rescue MiniSSL::SSLError => e
+        ssl_socket = client.io
+        addr = ssl_socket.peeraddr.last
+        cert = ssl_socket.peercert
+
+        close_socket = true
+
+        @events.ssl_error self, addr, cert, e
+
       # The client doesn't know HTTP well
       rescue HttpParserError => e
         client.write_400
@@ -467,6 +491,7 @@ module Puma
     end
 
     def default_server_port(env)
+      return PORT_443 if env[HTTPS_KEY] == 'on' || env[HTTPS_KEY] == 'https'
       env['HTTP_X_FORWARDED_PROTO'] == 'https' ? PORT_443 : PORT_80
     end
 
@@ -486,6 +511,10 @@ module Puma
       normalize_env env, client
 
       env[PUMA_SOCKET] = client
+
+      if env[HTTPS_KEY] && client.peercert
+        env[PUMA_PEERCERT] = client.peercert
+      end
 
       env[HIJACK_P] = true
       env[HIJACK] = req
