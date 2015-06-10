@@ -445,32 +445,28 @@ module Puma
 
       @restart_dir ||= Dir.pwd
 
-      @original_argv = ARGV.dup
+      @original_argv = @argv.dup
 
-      if defined? Rubinius::OS_ARGV
-        @restart_argv = Rubinius::OS_ARGV
+      require 'rubygems'
+
+      # if $0 is a file in the current directory, then restart
+      # it the same, otherwise add -S on there because it was
+      # picked up in PATH.
+      #
+      if File.exist?($0)
+        arg0 = [Gem.ruby, $0]
       else
-        require 'rubygems'
+        arg0 = [Gem.ruby, "-S", $0]
+      end
 
-        # if $0 is a file in the current directory, then restart
-        # it the same, otherwise add -S on there because it was
-        # picked up in PATH.
-        #
-        if File.exist?($0)
-          arg0 = [Gem.ruby, $0]
-        else
-          arg0 = [Gem.ruby, "-S", $0]
-        end
+      # Detect and reinject -Ilib from the command line
+      lib = File.expand_path "lib"
+      arg0[1,0] = ["-I", lib] if $:[0] == lib
 
-        # Detect and reinject -Ilib from the command line
-        lib = File.expand_path "lib"
-        arg0[1,0] = ["-I", lib] if $:[0] == lib
-
-        if defined? Puma::WILD_ARGS
-          @restart_argv = arg0 + Puma::WILD_ARGS + ARGV
-        else
-          @restart_argv = arg0 + ARGV
-        end
+      if defined? Puma::WILD_ARGS
+        @restart_argv = arg0 + Puma::WILD_ARGS + @original_argv
+      else
+        @restart_argv = arg0 + @original_argv
       end
     end
 
