@@ -369,7 +369,30 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Type: plain/text\r\nContent-Length: 5\r\n\r\nhello", data
   end
+  
+  def test_http_10_partial_hijack_with_content_length
+    body_parts = ['abc', 'de']
+    
+    @server.app = proc do |env| 
+      hijack_lambda = proc do | io |
+        io.write(body_parts[0])
+        io.write(body_parts[1])
+        io.close
+      end
+      [200, {"Content-Length" => "5", 'rack.hijack' => hijack_lambda}, nil]
+    end
 
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @port
+    sock << "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
+  end
+  
   def test_http_10_keep_alive_without_body
     @server.app = proc { |env| [204, {}, []] }
 
