@@ -225,31 +225,7 @@ If you want an easy way to manage multiple scripts at once check [tools/jungle](
 
 ## Capistrano deployment
 
-Puma has support for Capistrano3 with an [external gem](https://github.com/seuros/capistrano-puma), you just need require that in Gemfile:
-
-```ruby
-gem 'capistrano3-puma'
-```
-And then execute:
-
-```bash
-bundle
-```
-
-Then add to Capfile
-
-```ruby
-require 'capistrano/puma'
-```
-
-and then
-
-```bash
-$ bundle exec cap puma:start
-$ bundle exec cap puma:restart
-$ bundle exec cap puma:stop
-$ bundle exec cap puma:phased_restart
-```
+To manage puma process with capistrano, use [capistrano3-puma](https://github.com/seuros/capistrano-puma).
 
 ## Contributing
 
