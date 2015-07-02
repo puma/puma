@@ -457,10 +457,16 @@ module Puma
       #
 
       unless env.key?(REMOTE_ADDR)
-        addr = client.peeraddr.last
+        begin
+          addr = client.peeraddr.last
+        rescue Errno::ENOTCONN
+          # Client disconnects can result in an inability to get the
+          # peeraddr from the socket; default to localhost.
+          addr = LOCALHOST_IP
+        end
 
         # Set unix socket addrs to localhost
-        addr = "127.0.0.1" if addr.empty?
+        addr = LOCALHOST_IP if addr.empty?
 
         env[REMOTE_ADDR] = addr
       end
