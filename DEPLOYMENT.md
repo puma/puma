@@ -76,8 +76,7 @@ puma to start running that new code. Minimizing the amount of time the server
 is unavailable would be nice as well. Here's how to do it:
 
 1. Don't use `preload!`. This dirties the master process and means it will have
-to shutdown all the workers and re-exec itself to get your new code, which means
-much higher waiting around for things to load.
+to shutdown all the workers and re-exec itself to get your new code. It is not compatible with phased-restart and `prune_bundler` as well.
 
 1. Use `prune_bundler`. This makes it so that the cluster master will detach itself
 from a Bundler context on start. This allows the cluster workers to load your app
