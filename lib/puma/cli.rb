@@ -407,7 +407,7 @@ module Puma
 
         o.on "-V", "--version", "Print the version information" do
           puts "puma version #{Puma::Const::VERSION}"
-          exit 1
+          exit 0
         end
 
         o.on "-w", "--workers COUNT",
@@ -423,7 +423,7 @@ module Puma
 
         o.on_tail "-h", "--help", "Show help" do
           log o
-          exit 1
+          exit 0
         end
       end
     end
