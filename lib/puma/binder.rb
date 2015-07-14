@@ -20,10 +20,10 @@ module Puma
         "rack.run_once".freeze => false,
         "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
-        # Rack blows up if this is an empty string, and Rack::Lint
-        # blows up if it's nil. So 'text/plain' seems like the most
-        # sensible default value.
-        "CONTENT_TYPE".freeze => "text/plain",
+        # I'd like to set a default CONTENT_TYPE here but some things
+        # depend on their not being a default set and infering
+        # it from the content. And so if i set it here, it won't
+        # infer properly.
 
         "QUERY_STRING".freeze => "",
         SERVER_PROTOCOL => HTTP_11,
