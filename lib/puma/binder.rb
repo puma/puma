@@ -4,6 +4,8 @@ module Puma
   class Binder
     include Puma::Const
 
+    RACK_VERSION = [1,3].freeze
+
     def initialize(events)
       @events = events
       @listeners = []
@@ -11,7 +13,7 @@ module Puma
       @unix_paths = []
 
       @proto_env = {
-        "rack.version".freeze => Rack::VERSION,
+        "rack.version".freeze => RACK_VERSION,
         "rack.errors".freeze => events.stderr,
         "rack.multithread".freeze => true,
         "rack.multiprocess".freeze => false,
@@ -87,7 +89,7 @@ module Puma
             logger.log "* Inherited #{str}"
             io = inherit_tcp_listener uri.host, uri.port, fd
           else
-            params = Rack::Utils.parse_query uri.query
+            params = Util.parse_query uri.query
 
             opt = params.key?('low_latency')
             bak = params.fetch('backlog', 1024).to_i
@@ -110,7 +112,7 @@ module Puma
             mode = nil
 
             if uri.query
-              params = Rack::Utils.parse_query uri.query
+              params = Util.parse_query uri.query
               if u = params['umask']
                 # Use Integer() to respect the 0 prefix as octal
                 umask = Integer(u)
@@ -126,7 +128,7 @@ module Puma
 
           @listeners << [str, io]
         when "ssl"
-          params = Rack::Utils.parse_query uri.query
+          params = Util.parse_query uri.query
           require 'puma/minissl'
 
           ctx = MiniSSL::Context.new

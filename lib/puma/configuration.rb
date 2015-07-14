@@ -1,4 +1,4 @@
-require 'rack/builder'
+require 'puma/rack/builder'
 
 module Puma
 
@@ -79,7 +79,7 @@ module Puma
 
       if !@options[:quiet] and @options[:environment] == "development"
         logger = @options[:logger] || STDOUT
-        found = Rack::CommonLogger.new(found, logger)
+        found = CommonLogger.new(found, logger)
       end
 
       ConfigMiddleware.new(self, found)
@@ -101,7 +101,7 @@ module Puma
     def load_rackup
       raise "Missing rackup file '#{rackup}'" unless File.exist?(rackup)
 
-      rack_app, rack_options = Rack::Builder.parse_file(rackup)
+      rack_app, rack_options = Puma::Rack::Builder.parse_file(rackup)
       @options.merge!(rack_options)
 
       config_ru_binds = rack_options.each_with_object([]) do |(k, v), b|

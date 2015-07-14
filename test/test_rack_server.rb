@@ -2,8 +2,7 @@ require 'test/unit'
 require 'puma'
 require 'rack/lint'
 require 'test/testhelp'
-require 'rack/commonlogger'
-require 'puma/rack_patch'
+require 'puma/commonlogger'
 
 class TestRackServer < Test::Unit::TestCase
 

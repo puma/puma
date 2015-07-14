@@ -20,7 +20,7 @@ HOE = Hoe.spec "puma" do
 
   require_ruby_version ">= 1.8.7"
 
-  dependency "rack", [">= 1.1", "< 2.0"]
+  dependency "rack", [">= 1.1", "< 2.0"], :development
 
   extra_dev_deps << ["rake-compiler", "~> 0.8"]
 end

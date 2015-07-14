@@ -1,6 +1,6 @@
-require 'rack/commonlogger'
+require 'puma/rack/commonlogger'
 
-module Rack
+module Puma::Rack
   # Patch CommonLogger to use after_reply.
   #
   # Simply request this file and CommonLogger will be a bit more 

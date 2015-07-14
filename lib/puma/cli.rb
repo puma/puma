@@ -11,8 +11,7 @@ require 'puma/util'
 require 'puma/single'
 require 'puma/cluster'
 
-require 'rack/commonlogger'
-require 'rack/utils'
+require 'puma/commonlogger'
 
 module Puma
   class << self
