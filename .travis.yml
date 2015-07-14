@@ -1,9 +1,7 @@
 sudo: false
 language: ruby
 cache: bundler
-script:
-  - gem install rack
-  - "TESTOPTS=-v bundle exec rake test"
+script: "TESTOPTS=-v bundle exec rake test"
 rvm:
   - 1.9.3
   - 2.0.0
