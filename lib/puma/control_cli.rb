@@ -66,7 +66,15 @@ module Puma
       command = argv.shift
       @options[:command] = command if command
 
-      Puma::Configuration.new(@options).load if @options[:config_file]
+      unless @options[:config_file] == '-'
+        if @options[:config_file].nil? and File.exist?('config/puma.rb')
+          @options[:config_file] = 'config/puma.rb'
+        end
+
+        if @options[:config_file]
+          Puma::Configuration.new(@options).load
+        end
+      end
 
       # check present of command
       unless @options[:command]
