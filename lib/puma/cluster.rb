@@ -176,6 +176,8 @@ module Puma
     end
 
     def wakeup!
+      return unless @wakeup
+
       begin
         @wakeup.write "!" unless @wakeup.closed?
       rescue SystemCallError, IOError
