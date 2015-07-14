@@ -1,3 +1,52 @@
+=== 2.12.0 / 2015-07-14
+
+* X bug fixes:
+  * Add thread reaping to thread pool
+  * Do not automatically use chunked responses when hijacked
+  * Do not suppress Content-Length on partial hijack
+  * Don't allow any exceptions to terminate a thread
+  * Handle ENOTCONN client disconnects when setting REMOTE_ADDR
+  * Handle very early exit of cluster mode. Fixes #722
+  * Install rack when running tests on travis to use rack/lint
+  * Make puma -v and -h return success exit code
+  * Make pumactl load config/puma.rb by default
+  * Pass options from pumactl properly when pruning. Fixes #694
+  * Remove rack dependency. Fixes #705
+  * Remove the default Content-Type: text/plain
+  * Add Client Side Certificate Auth
+
+* X doc/test changes:
+  * Added example sourcing of environment vars
+  * Added tests for bind configuration on rackup file
+  * Fix example config text
+  * Update DEPLOYMENT.md
+  * Update Readme with example of custom error handler
+  * ci: Improve Travis settings
+  * ci: Start running tests against JRuby 9k on Travis
+  * ci: Convert to container infrastructure for travisci
+
+* X ops changes:
+  * Check for system-wide rbenv
+  * capistrano: Add additional env when start rails
+
+* X PRs merged:
+  * Merge pull request #686 from jjb/patch-2
+  * Merge pull request #693 from rob-murray/update-example-config
+  * Merge pull request #697 from spk/tests-bind-on-rackup-file
+  * Merge pull request #699 from deees/fix/require_rack_builder
+  * Merge pull request #701 from deepj/master
+  * Merge pull request #702 from Jimdo/thread-reaping
+  * Merge pull request #703 from deepj/travis
+  * Merge pull request #704 from grega/master
+  * Merge pull request #709 from lian/master
+  * Merge pull request #711 from julik/master
+  * Merge pull request #712 from yakara-ltd/pumactl-default-config
+  * Merge pull request #715 from RobotJiang/master
+  * Merge pull request #725 from rwz/master
+  * Merge pull request #726 from strenuus/handle-client-disconnect
+  * Merge pull request #729 from allaire/patch-1
+  * Merge pull request #730 from iamjarvo/container-infrastructure
+
 === 2.11.3 / 2015-05-18
 
 * 5 bug fixes:
