@@ -212,8 +212,7 @@ void raise_error(SSL* ssl, int result) {
   int verify_err = SSL_get_verify_result(ssl);
 
   if(SSL_ERROR_SYSCALL == ssl_err) {
-    strerror_r(err, buf, sizeof(buf));
-    snprintf(msg, sizeof(msg), "System error: %s - %d", buf, err);
+    snprintf(msg, sizeof(msg), "System error: %s - %d", strerror(err), err);
 
   } else if(SSL_ERROR_SSL == ssl_err) {
     if(X509_V_OK != verify_err) {
