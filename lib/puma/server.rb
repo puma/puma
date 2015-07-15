@@ -764,7 +764,7 @@ module Puma
       if @leak_stack_on_error
         [500, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
       else
-        [500, {}, ["An unhandled lowlevel error occured. The application logs may have details.\n"]]
+        [500, {}, ["An unhandled lowlevel error occurred. The application logs may have details.\n"]]
       end
     end
 

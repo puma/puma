@@ -131,7 +131,7 @@ error-tracking service (in this example, [rollbar](http://rollbar.com)):
 ```ruby
 lowlevel_error_handler do |e|
   Rollbar.critical(e)
-  [500, {}, ["An error has occured, and engineers have been informed. Please reload the page. If you continue to have problems, contact support@example.com\n"]]
+  [500, {}, ["An error has occurred, and engineers have been informed. Please reload the page. If you continue to have problems, contact support@example.com\n"]]
 end
 ```
 

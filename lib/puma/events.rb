@@ -87,7 +87,7 @@ module Puma
       formatter.call(str)
     end
 
-    # An HTTP parse error has occured.
+    # An HTTP parse error has occurred.
     # +server+ is the Server object, +env+ the request, and +error+ a
     # parsing exception.
     #
@@ -96,7 +96,7 @@ module Puma
       @stderr.puts "#{Time.now}: ENV: #{env.inspect}\n---\n"
     end
 
-    # An SSL error has occured.
+    # An SSL error has occurred.
     # +server+ is the Server object, +peeraddr+ peer address, +peercert+
     # any peer certificate (if present), and +error+ an exception object.
     #
@@ -105,7 +105,7 @@ module Puma
       @stderr.puts "#{Time.now}: SSL error, peer: #{peeraddr}, peer cert: #{subject}, #{error.inspect}"
     end
 
-    # An unknown error has occured.
+    # An unknown error has occurred.
     # +server+ is the Server object, +env+ the request, +error+ an exception
     # object, and +kind+ some additional info.
     #
