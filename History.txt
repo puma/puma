@@ -1,6 +1,18 @@
+=== 2.12.1 / 2015-07-16
+
+* 2 bug fixes:
+  * Use a constant format. Fixes #737
+  * Use strerror for Windows sake. Fixes #733
+
+* 1 doc change:
+  * typo fix: occured -> occurred
+
+* 1 PR merged:
+  * Merge pull request #736 from paulanunda/paulanunda/typo-fix
+
 === 2.12.0 / 2015-07-14
 
-* X bug fixes:
+* 13 bug fixes:
   * Add thread reaping to thread pool
   * Do not automatically use chunked responses when hijacked
   * Do not suppress Content-Length on partial hijack
@@ -15,7 +27,7 @@
   * Remove the default Content-Type: text/plain
   * Add Client Side Certificate Auth
 
-* X doc/test changes:
+* 8 doc/test changes:
   * Added example sourcing of environment vars
   * Added tests for bind configuration on rackup file
   * Fix example config text
@@ -25,11 +37,11 @@
   * ci: Start running tests against JRuby 9k on Travis
   * ci: Convert to container infrastructure for travisci
 
-* X ops changes:
+* 2 ops changes:
   * Check for system-wide rbenv
   * capistrano: Add additional env when start rails
 
-* X PRs merged:
+* 16 PRs merged:
   * Merge pull request #686 from jjb/patch-2
   * Merge pull request #693 from rob-murray/update-example-config
   * Merge pull request #697 from spk/tests-bind-on-rackup-file
