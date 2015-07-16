@@ -232,7 +232,7 @@ void raise_error(SSL* ssl, int result) {
   }
 
   ERR_clear_error();
-  rb_raise(eError, msg);
+  rb_raise(eError, "%s", msg);
 }
 
 VALUE engine_read(VALUE self) {
