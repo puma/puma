@@ -1,4 +1,5 @@
 require 'puma/util'
+require 'puma/minissl'
 
 module Puma
   class Reactor
