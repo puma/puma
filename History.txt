@@ -1,7 +1,8 @@
 === 2.12.2 / 2015-07-17
 
-* 1 bug fix:
+* 2 bug fix:
   * Pull over and use Rack::URLMap. Fixes #741
+  * Stub out peercert on JRuby for now. Fixes #739
 
 === 2.12.1 / 2015-07-16
 

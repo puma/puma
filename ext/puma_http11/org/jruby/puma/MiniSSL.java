@@ -384,4 +384,9 @@ public class MiniSSL extends RubyObject {
       throw new RuntimeException(e);
     }
   }
+
+  @JRubyMethod
+  public IRubyObject peercert() {
+    return getRuntime().getNil();
+  }
 }
