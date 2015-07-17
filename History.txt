@@ -1,3 +1,8 @@
+=== 2.12.2 / 2015-07-17
+
+* 1 bug fix:
+  * Pull over and use Rack::URLMap. Fixes #741
+
 === 2.12.1 / 2015-07-16
 
 * 2 bug fixes:

@@ -53,6 +53,7 @@ lib/puma/rack/backports/uri/common_18.rb
 lib/puma/rack/backports/uri/common_192.rb
 lib/puma/rack/backports/uri/common_193.rb
 lib/puma/rack/builder.rb
+lib/puma/rack/urlmap.rb
 lib/puma/rack_default.rb
 lib/puma/reactor.rb
 lib/puma/runner.rb
