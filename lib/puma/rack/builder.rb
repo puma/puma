@@ -290,6 +290,8 @@ module Puma::Rack
     private
 
     def generate_map(default_app, mapping)
+      require 'puma/rack/urlmap'
+
       mapped = default_app ? {'/' => default_app} : {}
       mapping.each { |r,b| mapped[r] = self.class.new(default_app, &b).to_app }
       URLMap.new(mapped)
