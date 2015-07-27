@@ -82,6 +82,7 @@ Capistrano::Configuration.instance.load do
   end
 
   def configuration
+    require 'puma'
     require 'puma/configuration'
 
     config = Puma::Configuration.new(:config_file => config_file)
