@@ -191,7 +191,7 @@ class TestPumaServer < Test::Unit::TestCase
   def test_prints_custom_error
     @events = Puma::Events.strings
     re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
-    @server = Puma::Server.new @app, @events, {lowlevel_error_handler: re}
+    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
 
     @server.app = proc { |e| raise "don't leak me bro" }
     @server.add_tcp_listener @host, @port
