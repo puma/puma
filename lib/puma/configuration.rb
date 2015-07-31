@@ -104,8 +104,9 @@ module Puma
       rack_app, rack_options = Puma::Rack::Builder.parse_file(rackup)
       @options.merge!(rack_options)
 
-      config_ru_binds = rack_options.each_with_object([]) do |(k, v), b|
-        b << v if k.to_s.start_with?("bind")
+      config_ru_binds = []
+      rack_options.each do |k, v|
+        config_ru_binds << v if k.to_s.start_with?("bind")
       end
       @options[:binds] = config_ru_binds unless config_ru_binds.empty?
 

@@ -25,7 +25,7 @@ class TestConfigFile < Test::Unit::TestCase
   end
 
   def test_double_bind_port
-    port = rand(30_000..40_000).to_s
+    port = (rand(10_000) + 30_000).to_s
     with_env("PORT" => port) do
       opts = { :binds => ["tcp://#{Configuration::DefaultTCPHost}:#{port}"], :config_file => "test/config/app.rb"}
       conf = Puma::Configuration.new opts
