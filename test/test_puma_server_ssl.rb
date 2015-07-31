@@ -98,15 +98,17 @@ class TestPumaServerSSL < Test::Unit::TestCase
     assert_equal "https", body
   end
 
-  def test_ssl_v3_rejection
-    @http.ssl_version='SSLv3'
-    assert_raises(OpenSSL::SSL::SSLError) do
-      @http.start do
-        Net::HTTP::Get.new '/'
+  unless RUBY_VERSION =~ /^1.8/
+    def test_ssl_v3_rejection
+      @http.ssl_version='SSLv3'
+      assert_raises(OpenSSL::SSL::SSLError) do
+        @http.start do
+          Net::HTTP::Get.new '/'
+        end
       end
-    end
-    unless defined?(JRUBY_VERSION)
-      assert_match("wrong version number", @events.error.message) if @events.error
+      unless defined?(JRUBY_VERSION)
+        assert_match("wrong version number", @events.error.message) if @events.error
+      end
     end
   end
 
