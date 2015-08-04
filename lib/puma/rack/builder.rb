@@ -1,16 +1,3 @@
-module PumaRackCompat
-  BINDING = binding
-
-  def self.const_missing(cm)
-    if cm == :Rack
-      require 'rack'
-      Rack
-    else
-      raise NameError, "constant undefined: #{cm}"
-    end
-  end
-end
-
 module Puma::Rack
   class Options
     def parse!(args)
@@ -181,11 +168,19 @@ module Puma::Rack
 
     def self.new_from_string(builder_script, file="(rackup)")
       eval "Puma::Rack::Builder.new {\n" + builder_script + "\n}.to_app",
-        PumaRackCompat::BINDING, file, 0
+        TOPLEVEL_BINDING, file, 0
     end
 
     def initialize(default_app = nil,&block)
       @use, @map, @run, @warmup = [], nil, default_app, nil
+
+      # Conditionally load rack now, so that any rack middlewares,
+      # etc are available.
+      begin
+        require 'rack'
+      rescue LoadError
+      end
+
       instance_eval(&block) if block_given?
     end
 
