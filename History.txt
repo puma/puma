@@ -1,3 +1,24 @@
+=== 2.12.3 / 2015-08-03
+
+* 8 minor bugs fixed:
+  * Fix Capistrano 'uninitialized constant Puma' error.
+  * Fix some ancient and incorrect error handling code
+  * Fix uninitialized constant error
+  * Remove toplevel rack interspection, require rack on load instead
+  * Skip empty parts when chunking
+  * Switch from inject to each in config_ru_binds iteration
+  * Wrap SSLv3 spec in version guard.
+  * ruby 1.8.7 compatibility patches
+
+* 4 PRs merged:
+  * Merge pull request #742 from deivid-rodriguez/fix_missing_require
+  * Merge pull request #743 from matthewd/skip-empty-chunks
+  * Merge pull request #749 from huacnlee/fix-cap-uninitialized-puma-error
+  * Merge pull request #751 from costi/compat_1_8_7
+
+* 1 test fix:
+  * Add 1.8.7, rbx-1 (allow failures) to Travis.
+
 === 2.12.2 / 2015-07-17
 
 * 2 bug fix:
