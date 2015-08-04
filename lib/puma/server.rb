@@ -189,12 +189,13 @@ module Puma
                     pool << client
                   end
                 rescue SystemCallError
+                  # nothing
+                rescue Errno::ECONNABORTED
+                  # client closed the socket even before accept
+                  io.close rescue nil
                 end
               end
             end
-          rescue Errno::ECONNABORTED
-            # client closed the socket even before accept
-            client.close rescue nil
           rescue Object => e
             @events.unknown_error self, e, "Listen loop"
           end
@@ -320,12 +321,13 @@ module Puma
                     pool.wait_until_not_full unless queue_requests
                   end
                 rescue SystemCallError
+                  # nothing
+                rescue Errno::ECONNABORTED
+                  # client closed the socket even before accept
+                  io.close rescue nil
                 end
               end
             end
-          rescue Errno::ECONNABORTED
-            # client closed the socket even before accept
-            client.close rescue nil
           rescue Object => e
             @events.unknown_error self, e, "Listen loop"
           end
