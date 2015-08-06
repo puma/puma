@@ -379,6 +379,10 @@ module Puma
       @cli.write_state
 
       @master_read, @worker_write = read, @wakeup
+
+      hooks = @options[:before_fork]
+      hooks.each { |h| h.call }
+
       spawn_workers
 
       Signal.trap "SIGINT" do

@@ -156,6 +156,19 @@ module Puma
       @options[:workers] = count.to_i
     end
 
+    # *Cluster mode only* Code to run immediately before master process
+    # forks workers (once on boot). These hooks can block if necessary
+    # to wait for background operations unknown to puma to finish before
+    # the process terminates.
+    # This can be used to close any connections to remote servers (database, redis, ...)
+    # that were opened when preloading the code
+    #
+    # This can be called multiple times to add hooks.
+    #
+    def before_fork(&block)
+      @options[:before_fork] << block
+    end
+
     # *Cluster mode only* Code to run immediately before a worker shuts
     # down (after it has finished processing HTTP requests). These hooks
     # can block if necessary to wait for background operations unknown
