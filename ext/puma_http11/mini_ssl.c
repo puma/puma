@@ -147,11 +147,13 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   DH *dh = get_dh1024();
   SSL_CTX_set_tmp_dh(ctx, dh);
 
+#ifndef OPENSSL_NO_ECDH
   EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_secp521r1);
   if (ecdh) {
     SSL_CTX_set_tmp_ecdh(ctx, ecdh);
     EC_KEY_free(ecdh);
   }
+#endif
 
   ssl = SSL_new(ctx);
   conn->ssl = ssl;
