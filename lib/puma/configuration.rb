@@ -15,27 +15,50 @@ module Puma
     include ConfigDefault
 
     def initialize(options)
-      @options = options
-      @options[:mode] ||= :http
-      @options[:binds] ||= []
-      @options[:on_restart] ||= []
-      @options[:before_fork] ||= []
-      @options[:before_worker_shutdown] ||= []
-      @options[:before_worker_boot] ||= []
-      @options[:before_worker_fork] ||= []
-      @options[:after_worker_boot] ||= []
-      @options[:worker_timeout] ||= DefaultWorkerTimeout
-      @options[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
+      @cli_options = options
+
+      @conf = {}
+      @conf[:mode] ||= :http
+      @conf[:binds] ||= []
+      @conf[:on_restart] ||= []
+      @conf[:before_fork] ||= []
+      @conf[:before_worker_shutdown] ||= []
+      @conf[:before_worker_boot] ||= []
+      @conf[:before_worker_fork] ||= []
+      @conf[:after_worker_boot] ||= []
+      @conf[:worker_timeout] ||= DefaultWorkerTimeout
+      @conf[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
+
+      @options = {}
     end
 
     attr_reader :options
 
     def initialize_copy(other)
-      @options = @options.dup
+      @conf = @conf.dup
+    end
+
+    def default_options
+      {
+        :min_threads => 0,
+        :max_threads => 16,
+        :quiet => false,
+        :debug => false,
+        :binds => [],
+        :workers => 0,
+        :daemon => false,
+      }
     end
 
     def load
-      DSL.load(@options, @options[:config_file])
+      DSL.load(@conf, @cli_options[:config_file])
+
+      # Load the options in the right priority
+      #
+      @options = {}
+      @options.merge! default_options
+      @options.merge! @conf
+      @options.merge! @cli_options
 
       setup_binds
       setup_control

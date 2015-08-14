@@ -96,7 +96,7 @@ module Puma
     end
 
     def env
-      @options[:environment] || ENV['RACK_ENV'] || 'development'
+      @cli_options[:environment] || ENV['RACK_ENV'] || 'development'
     end
 
     def write_state
@@ -289,43 +289,34 @@ module Puma
     end
 
     def find_config
-      if @options[:config_file] == '-'
-        @options[:config_file] = nil
+      if @cli_options[:config_file] == '-'
+        @cli_options[:config_file] = nil
       else
-        @options[:config_file] ||= %W(config/puma/#{env}.rb config/puma.rb).find { |f| File.exist?(f) }
+        @cli_options[:config_file] ||= %W(config/puma/#{env}.rb config/puma.rb).find { |f| File.exist?(f) }
       end
     end
 
     # Build the OptionParser object to handle the available options.
     #
+
     def setup_options
-      @options = {
-        :min_threads => 0,
-        :max_threads => 16,
-        :quiet => false,
-        :debug => false,
-        :binds => [],
-        :workers => 0,
-        :daemon => false,
-        :before_worker_shutdown => [],
-        :before_worker_boot => [],
-        :before_worker_fork => [],
-        :after_worker_boot => []
+      @cli_options = {
+        :binds => []
       }
 
       @parser = OptionParser.new do |o|
         o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
-          @options[:binds] << arg
+          @cli_options[:binds] << arg
         end
 
         o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
-          @options[:config_file] = arg
+          @cli_options[:config_file] = arg
         end
 
         o.on "--control URL", "The bind url to use for the control server",
                               "Use 'auto' to use temp unix server" do |arg|
           if arg
-            @options[:control_url] = arg
+            @cli_options[:control_url] = arg
           elsif jruby?
             unsupported "No default url available on JRuby"
           end
@@ -333,26 +324,26 @@ module Puma
 
         o.on "--control-token TOKEN",
              "The token to use as authentication for the control server" do |arg|
-          @options[:control_auth_token] = arg
+          @cli_options[:control_auth_token] = arg
         end
 
         o.on "-d", "--daemon", "Daemonize the server into the background" do
-          @options[:daemon] = true
-          @options[:quiet] = true
+          @cli_options[:daemon] = true
+          @cli_options[:quiet] = true
         end
 
         o.on "--debug", "Log lowlevel debugging information" do
-          @options[:debug] = true
+          @cli_options[:debug] = true
         end
 
         o.on "--dir DIR", "Change to DIR before starting" do |d|
-          @options[:directory] = d.to_s
-          @options[:worker_directory] = d.to_s
+          @cli_options[:directory] = d.to_s
+          @cli_options[:worker_directory] = d.to_s
         end
 
         o.on "-e", "--environment ENVIRONMENT",
              "The environment to run the Rack app on (default development)" do |arg|
-          @options[:environment] = arg
+          @cli_options[:environment] = arg
         end
 
         o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
@@ -361,48 +352,48 @@ module Puma
 
         o.on "-p", "--port PORT", "Define the TCP port to bind to",
                                   "Use -b for more advanced options" do |arg|
-          @options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
+          @cli_options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
         end
 
         o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
-          @options[:pidfile] = arg
+          @cli_options[:pidfile] = arg
         end
 
         o.on "--preload", "Preload the app. Cluster mode only" do
-          @options[:preload_app] = true
+          @cli_options[:preload_app] = true
         end
 
         o.on "--prune-bundler", "Prune out the bundler env if possible" do
-          @options[:prune_bundler] = true
+          @cli_options[:prune_bundler] = true
         end
 
         o.on "-q", "--quiet", "Quiet down the output" do
-          @options[:quiet] = true
+          @cli_options[:quiet] = true
         end
 
         o.on "-R", "--restart-cmd CMD",
              "The puma command to run during a hot restart",
              "Default: inferred" do |cmd|
-          @options[:restart_cmd] = cmd
+          @cli_options[:restart_cmd] = cmd
         end
 
         o.on "-S", "--state PATH", "Where to store the state details" do |arg|
-          @options[:state] = arg
+          @cli_options[:state] = arg
         end
 
         o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
           min, max = arg.split(":")
           if max
-            @options[:min_threads] = min
-            @options[:max_threads] = max
+            @cli_options[:min_threads] = min
+            @cli_options[:max_threads] = max
           else
-            @options[:min_threads] = 0
-            @options[:max_threads] = arg
+            @cli_options[:min_threads] = 0
+            @cli_options[:max_threads] = arg
           end
         end
 
         o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
-          @options[:mode] = :tcp
+          @cli_options[:mode] = :tcp
         end
 
         o.on "-V", "--version", "Print the version information" do
@@ -412,11 +403,11 @@ module Puma
 
         o.on "-w", "--workers COUNT",
                    "Activate cluster mode: How many worker processes to create" do |arg|
-          @options[:workers] = arg.to_i
+          @cli_options[:workers] = arg.to_i
         end
 
         o.on "--tag NAME", "Additional text to display in process listing" do |arg|
-          @options[:tag] = arg
+          @cli_options[:tag] = arg
         end
 
         o.banner = "puma <options> <rackup file>"
@@ -438,7 +429,7 @@ module Puma
 
         if s_env.ino == s_pwd.ino and (jruby? or s_env.dev == s_pwd.dev)
           @restart_dir = dir
-          @options[:worker_directory] = dir
+          @cli_options[:worker_directory] = dir
         end
       end
 
@@ -528,16 +519,18 @@ module Puma
     def parse_options
       @parser.parse! @argv
 
-      @options[:rackup] = @argv.shift if @argv.last
+      @cli_options[:rackup] = @argv.shift if @argv.last
 
       find_config
 
-      @config = Puma::Configuration.new @options
+      @config = Puma::Configuration.new @cli_options
 
       # Advertise the Configuration
       Puma.cli_config = @config
 
       @config.load
+
+      @options = @config.options
 
       if clustered? && (jruby? || windows?)
         unsupported 'worker mode not supported on JRuby or Windows'
