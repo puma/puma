@@ -1,7 +1,6 @@
 package org.jruby.puma;
 
 import org.jruby.Ruby;
-import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
 import org.jruby.RubyObject;
@@ -38,9 +37,6 @@ public class MiniSSL extends RubyObject {
       return new MiniSSL(runtime, klass);
     }
   };
-
-  // set to true to switch on our low-fi trace logging
-  private static boolean DEBUG = false;
 
   public static void createMiniSSL(Ruby runtime) {
     RubyModule mPuma = runtime.defineModule("Puma");
@@ -170,12 +166,7 @@ public class MiniSSL extends RubyObject {
   public IRubyObject inject(IRubyObject arg) {
     try {
       byte[] bytes = arg.convertToString().getBytes();
-
-      log("Net Data post pre-inject: " + inboundNetData);
       inboundNetData.put(bytes);
-      log("Net Data post post-inject: " + inboundNetData);
-
-      log("inject(): " + bytes.length + " encrypted bytes from request");
       return this;
     } catch (Exception e) {
       e.printStackTrace();
@@ -205,8 +196,6 @@ public class MiniSSL extends RubyObject {
 
       switch (res.getStatus()) {
         case BUFFER_OVERFLOW:
-          log("SSLOp#doRun(): overflow");
-          log("SSLOp#doRun(): dst data at overflow: " + dst);
           // increase the buffer size to accommodate the overflowing data
           int newSize = Math.max(engine.getSession().getPacketBufferSize(), engine.getSession().getApplicationBufferSize());
           dst.resize(newSize + dst.position());
@@ -214,8 +203,6 @@ public class MiniSSL extends RubyObject {
           retryOp = true;
           break;
         case BUFFER_UNDERFLOW:
-          log("SSLOp#doRun(): underflow");
-          log("SSLOp#doRun(): src data at underflow: " + src);
           // need to wait for more data to come in before we retry
           retryOp = false;
           break;
@@ -245,25 +232,18 @@ public class MiniSSL extends RubyObject {
         return getRuntime().getNil();
       }
 
-      log("read(): inboundNetData prepped for read: " + inboundNetData);
-
       MiniSSLBuffer inboundAppData = new MiniSSLBuffer(engine.getSession().getApplicationBufferSize());
-      SSLEngineResult res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
-      log("read(): after initial unwrap", engine, res);
-
-      log("read(): Net Data post unwrap: " + inboundNetData);
+      doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
 
       HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
       boolean done = false;
       while (!done) {
         switch (handshakeStatus) {
           case NEED_WRAP:
-            res = doOp(SSLOperation.WRAP, inboundAppData, outboundNetData);
-            log("read(): after handshake wrap", engine, res);
+            doOp(SSLOperation.WRAP, inboundAppData, outboundNetData);
             break;
           case NEED_UNWRAP:
-            res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
-            log("read(): after handshake unwrap", engine, res);
+            SSLEngineResult res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
             if (res.getStatus() == Status.BUFFER_UNDERFLOW) {
               // need more data before we can shake more hands
               done = true;
@@ -276,13 +256,9 @@ public class MiniSSL extends RubyObject {
       }
 
       if (inboundNetData.hasRemaining()) {
-        log("Net Data post pre-compact: " + inboundNetData);
         inboundNetData.compact();
-        log("Net Data post post-compact: " + inboundNetData);
       } else {
-        log("Net Data post pre-reset: " + inboundNetData);
         inboundNetData.clear();
-        log("Net Data post post-reset: " + inboundNetData);
       }
 
       ByteList appDataByteList = inboundAppData.asByteList();
@@ -292,54 +268,15 @@ public class MiniSSL extends RubyObject {
 
       RubyString str = getRuntime().newString("");
       str.setValue(appDataByteList);
-
-      logPlain("\n");
-      log("read(): begin dump of request data >>>>\n");
-      if (str.asJavaString().getBytes().length < 1000) {
-        logPlain(str.asJavaString() + "\n");
-      }
-      logPlain("Num bytes: " + str.asJavaString().getBytes().length + "\n");
-      log("read(): end dump of request data   <<<<\n");
       return str;
     } catch (Exception e) {
-      if (DEBUG) {
-        e.printStackTrace();
-      }
       throw getRuntime().newEOFError(e.getMessage());
-    }
-  }
-
-  private static void log(String str, SSLEngine engine, SSLEngineResult result) {
-    if (DEBUG) {
-      log(str + " " + result.getStatus() + "/" + engine.getHandshakeStatus() +
-          "---bytes consumed: " + result.bytesConsumed() +
-          ", bytes produced: " + result.bytesProduced());
-    }
-  }
-
-  private static void log(String str) {
-    if (DEBUG) {
-      System.out.println("MiniSSL.java: " + str);
-    }
-  }
-
-  private static void logPlain(String str) {
-    if (DEBUG) {
-      System.out.println(str);
     }
   }
 
   @JRubyMethod
   public IRubyObject write(IRubyObject arg) {
     try {
-      log("write(): begin dump of response data >>>>\n");
-      logPlain("\n");
-      if (arg.asJavaString().getBytes().length < 1000) {
-        logPlain(arg.asJavaString() + "\n");
-      }
-      logPlain("Num bytes: " + arg.asJavaString().getBytes().length + "\n");
-      log("write(): end dump of response data   <<<<\n");
-
       byte[] bls = arg.convertToString().getBytes();
       outboundAppData = new MiniSSLBuffer(bls);
 
@@ -365,9 +302,7 @@ public class MiniSSL extends RubyObject {
       }
 
       outboundNetData.clear();
-      SSLEngineResult res = doOp(SSLOperation.WRAP, outboundAppData, outboundNetData);
-      log("extract(): bytes consumed: " + res.bytesConsumed() + "\n");
-      log("extract(): bytes produced: " + res.bytesProduced() + "\n");
+      doOp(SSLOperation.WRAP, outboundAppData, outboundNetData);
       dataByteList = outboundNetData.asByteList();
       if (dataByteList == null) {
         return getRuntime().getNil();
@@ -375,8 +310,6 @@ public class MiniSSL extends RubyObject {
 
       RubyString str = getRuntime().newString("");
       str.setValue(dataByteList);
-
-      log("extract(): " + dataByteList.getRealSize() + " encrypted bytes for response");
 
       return str;
     } catch (Exception e) {
