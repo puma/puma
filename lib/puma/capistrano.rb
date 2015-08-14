@@ -1,3 +1,5 @@
+$stderr.puts "DEPRECATED: To manage puma with capistrano, use https://github.com/seuros/capistrano-puma"
+
 Capistrano::Configuration.instance.load do
 
   # Ensure the tmp/sockets directory is created by the deploy:setup task and
