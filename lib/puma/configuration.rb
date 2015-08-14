@@ -19,6 +19,7 @@ module Puma
       @options[:mode] ||= :http
       @options[:binds] ||= []
       @options[:on_restart] ||= []
+      @options[:before_fork] ||= []
       @options[:before_worker_shutdown] ||= []
       @options[:before_worker_boot] ||= []
       @options[:before_worker_fork] ||= []
