@@ -300,13 +300,11 @@ module Puma
     #
 
     def setup_options
-      @cli_options = {
-        :binds => []
-      }
+      @cli_options = {}
 
       @parser = OptionParser.new do |o|
         o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
-          @cli_options[:binds] << arg
+          (@cli_options[:binds] ||= []) << arg
         end
 
         o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
