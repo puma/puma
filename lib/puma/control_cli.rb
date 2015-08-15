@@ -17,37 +17,37 @@ module Puma
       @argv = argv
       @stdout = stdout
       @stderr = stderr
-      @options = {}
+      @cli_options = {}
 
       opts = OptionParser.new do |o|
         o.banner = "Usage: pumactl (-p PID | -P pidfile | -S status_file | -C url -T token | -F config.rb) (#{COMMANDS.join("|")})"
 
         o.on "-S", "--state PATH", "Where the state file to use is" do |arg|
-          @options[:state] = arg
+          @cli_options[:state] = arg
         end
 
         o.on "-Q", "--quiet", "Not display messages" do |arg|
-          @options[:quiet_flag] = true
+          @cli_options[:quiet_flag] = true
         end
 
         o.on "-P", "--pidfile PATH", "Pid file" do |arg|
-          @options[:pidfile] = arg
+          @cli_options[:pidfile] = arg
         end
 
         o.on "-p", "--pid PID", "Pid" do |arg|
-          @options[:pid] = arg.to_i
+          @cli_options[:pid] = arg.to_i
         end
 
         o.on "-C", "--control-url URL", "The bind url to use for the control server" do |arg|
-          @options[:control_url] = arg
+          @cli_options[:control_url] = arg
         end
 
         o.on "-T", "--control-token TOKEN", "The token to use as authentication for the control server" do |arg|
-          @options[:control_auth_token] = arg
+          @cli_options[:control_auth_token] = arg
         end
 
         o.on "-F", "--config-file PATH", "Puma config script" do |arg|
-          @options[:config_file] = arg
+          @cli_options[:config_file] = arg
         end
 
         o.on_tail("-H", "--help", "Show this message") do
@@ -64,17 +64,23 @@ module Puma
       opts.order!(argv) { |a| opts.terminate a }
 
       command = argv.shift
-      @options[:command] = command if command
+      @cli_options[:command] = command if command
 
-      unless @options[:config_file] == '-'
-        if @options[:config_file].nil? and File.exist?('config/puma.rb')
-          @options[:config_file] = 'config/puma.rb'
+      @options = nil
+
+      unless @cli_options[:config_file] == '-'
+        if @cli_options[:config_file].nil? and File.exist?('config/puma.rb')
+          @cli_options[:config_file] = 'config/puma.rb'
         end
 
-        if @options[:config_file]
-          Puma::Configuration.new(@options).load
+        if @cli_options[:config_file]
+          config = Puma::Configuration.new(@cli_options)
+          config.load
+          @options = config.options
         end
       end
+
+      @options ||= @cli_options
 
       # check present of command
       unless @options[:command]
