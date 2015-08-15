@@ -1,7 +1,8 @@
 === 2.13.1 / 2015-08-15
 
-* 1 bug fix:
+* 2 bug fixes:
   * Fix binds being masked in config files. Fixes #765
+  * Use options from the config file properly in pumactl. Fixes #764
 
 === 2.13.0 / 2015-08-14
 
