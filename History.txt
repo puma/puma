@@ -1,3 +1,10 @@
+=== 2.13.2 / 2015-08-15
+
+The "clearly I don't have enough tests for the config" release.
+
+* 1 bug fix:
+  * Fix another place binds wasn't initialized. Fixes #767
+
 === 2.13.1 / 2015-08-15
 
 * 2 bug fixes:
