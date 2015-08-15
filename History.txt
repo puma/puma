@@ -1,3 +1,8 @@
+=== 2.13.1 / 2015-08-15
+
+* 1 bug fix:
+  * Fix binds being masked in config files. Fixes #765
+
 === 2.13.0 / 2015-08-14
 
 * 1 minor feature:
