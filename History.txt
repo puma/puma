@@ -1,3 +1,22 @@
+=== 2.13.0 / 2015-08-14
+
+* 1 minor feature:
+  * Add before_fork hooks option.
+
+* 3 bug fixes:
+  * Check for OPENSSL_NO_ECDH before using ECDH
+  * Eliminate logging overhead from JRuby SSL
+  * Prefer cli options over config file ones. Fixes #669
+
+* 1 deprecation:
+  * Add deprecation warning to capistrano.rb. Fixes #673
+
+* 4 PRs merged:
+  * Merge pull request #668 from kcollignon/patch-1
+  * Merge pull request #754 from nathansamson/before_boot
+  * Merge pull request #759 from BenV/fix-centos6-build
+  * Merge pull request #761 from looker/no-log
+
 === 2.12.3 / 2015-08-03
 
 * 8 minor bugs fixed:
