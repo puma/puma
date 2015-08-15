@@ -117,6 +117,25 @@ If you're preloading your application and using ActiveRecord, it's recommend you
       end
     end
 
+On top of that, you can specify a block in your configuration file that will be run before workers are forked
+
+    # config/puma.rb
+    before_fork do
+      # configuration here
+    end
+
+This code can be used to clean up before forking to clients, allowing
+you to do some Puma-specific things that you don't want to embed in your application.
+
+If you're preloading your application and using ActiveRecord, it's recommend you close any connections to the database here to prevent connection leakage:
+
+    # config/puma.rb
+    before_fork do
+      ActiveRecord::Base.connection_pool.disconnect!
+    end
+
+This rule applies to any connections to external services (Redis, databases, memcache, ...) that might be started automatically by the framework.
+
 When you use preload_app, your new code goes all in the master process, and is then copied in the workers (meaning it’s only compatible with cluster mode). General rule is to use preload_app when your workers die often and need fast starts. If you don’t have many workers, you probably should not use preload_app.
 
 Note that preload_app can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preload_app is all about copying the code of master into the workers.
