@@ -1,3 +1,9 @@
+=== 2.13.4 / 2015-08-16
+
+* 1 bug fix:
+  * Use the environment possible set by the config early and from
+    the config file later (if set).
+
 === 2.13.3 / 2015-08-15
 
 Seriously, I need to revamp config with tests.
