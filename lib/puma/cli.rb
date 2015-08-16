@@ -96,7 +96,7 @@ module Puma
     end
 
     def env
-      @cli_options[:environment] || ENV['RACK_ENV'] || 'development'
+      @options[:environment] || @cli_options[:environment] || ENV['RACK_ENV'] || 'development'
     end
 
     def write_state
@@ -301,6 +301,7 @@ module Puma
 
     def setup_options
       @cli_options = {}
+      @options = {}
 
       @parser = OptionParser.new do |o|
         o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
