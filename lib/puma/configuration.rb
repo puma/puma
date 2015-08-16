@@ -35,7 +35,9 @@ module Puma
     attr_reader :options
 
     def initialize_copy(other)
-      @conf = @conf.dup
+      @conf = nil
+      @cli_options = nil
+      @options = @options.dup
     end
 
     def default_options
@@ -55,7 +57,6 @@ module Puma
 
       # Load the options in the right priority
       #
-      @options = {}
       @options.merge! default_options
       @options.merge! @conf
       @options.merge! @cli_options
