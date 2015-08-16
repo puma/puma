@@ -99,7 +99,7 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "2.13.2".freeze
+    PUMA_VERSION = VERSION = "2.13.3".freeze
     CODE_NAME = "A Midsummer Code's Dream".freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2

@@ -1,3 +1,10 @@
+=== 2.13.3 / 2015-08-15
+
+Seriously, I need to revamp config with tests.
+
+* 1 bug fix:
+  * Fix preserving options before cleaning for state. Fixes #769
+
 === 2.13.2 / 2015-08-15
 
 The "clearly I don't have enough tests for the config" release.
