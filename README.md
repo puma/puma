@@ -167,7 +167,7 @@ You can also provide a configuration file which Puma will use with the `-C` (or 
 
     $ puma -C /path/to/config
 
-By default, if no configuration file is specifed, Puma will look for a configuration file at config/puma.rb. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` environment variable, the default file location will be config/puma/environment_name.rb.
+By default, if no configuration file is specified, Puma will look for a configuration file at config/puma.rb. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` environment variable, the default file location will be config/puma/environment_name.rb.
 
 If you want to prevent Puma from looking for a configuration file in those locations, provide a dash as the argument to the `-C` (or `--config`) flag:
 
