@@ -105,7 +105,11 @@ do_stop_one() {
       log_daemon_msg "---> Puma $1 isn't running."
     else
       log_daemon_msg "---> About to kill PID `cat $PIDFILE`"
-      pumactl --state $STATEFILE stop
+      if config_bundler; then
+        cd $1 && bundle exec pumactl --state $STATEFILE stop
+      else
+        pumactl --state $STATEFILE stop
+      fi
       # Many daemons don't delete their pidfiles when they exit.
       rm -f $PIDFILE $STATEFILE
     fi
@@ -135,7 +139,11 @@ do_restart_one() {
   
   if [ -e $PIDFILE ]; then
     log_daemon_msg "--> About to restart puma $1"
-    pumactl --state $dir/tmp/puma/state restart
+    if config_bundler; then
+      cd $1 && bundle exec pumactl --state $dir/tmp/puma/state restart
+    else
+      pumactl --state $dir/tmp/puma/state restart
+    fi
     # kill -s USR2 `cat $PIDFILE`
     # TODO Check if process exist
   else
@@ -175,7 +183,11 @@ do_status_one() {
   
   if [ -e $PIDFILE ]; then
     log_daemon_msg "--> About to status puma $1"
-    pumactl --state $dir/tmp/puma/state stats
+    if config_bundler; then
+      cd $1 && bundle exec pumactl --state $dir/tmp/puma/state stats
+    else
+      pumactl --state $dir/tmp/puma/state stats
+    fi
     # kill -s USR2 `cat $PIDFILE`
     # TODO Check if process exist
   else
@@ -239,6 +251,33 @@ do_remove() {
     sed -i "\\:^$1:d" $CONFIG
     log_daemon_msg "Removed a Puma from the jungle: $1."
   fi
+}
+
+config_bundler() {
+  HOME="$(eval echo ~$(id -un))"
+  if [ -d "/usr/local/rbenv/bin" ]; then
+    PATH="/usr/local/rbenv/bin:/usr/local/rbenv/shims:$PATH"
+    return 0
+  elif [ -d "$HOME/.rbenv/bin" ]; then
+    PATH="$HOME/.rbenv/bin:$HOME/.rbenv/shims:$PATH"
+    return 0
+  # TODO: test rvm
+  # elif [ -f  /etc/profile.d/rvm.sh ]; then
+  #   source /etc/profile.d/rvm.sh
+  # elif [ -f /usr/local/rvm/scripts/rvm ]; then
+  #   source /etc/profile.d/rvm.sh
+  # elif [ -f "$HOME/.rvm/scripts/rvm" ]; then
+  #   source "$HOME/.rvm/scripts/rvm"
+  # TODO: don't know what to do with chruby
+  # elif [ -f /usr/local/share/chruby/chruby.sh ]; then
+  #   source /usr/local/share/chruby/chruby.sh
+  #   if [ -f /usr/local/share/chruby/auto.sh ]; then
+  #     source /usr/local/share/chruby/auto.sh
+  #   fi
+  # if you aren't using auto, set your version here
+  # chruby 2.0.0
+  fi
+  return 1
 }
 
 case "$1" in
