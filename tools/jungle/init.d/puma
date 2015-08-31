@@ -36,6 +36,7 @@ RUNPUMA=/usr/local/bin/run-puma
 #
 do_start() {
   log_daemon_msg "=> Running the jungle..."
+  config_bundler # `/usr/local/bin/run-puma also need correct PATH to run bundle`
   for i in $JUNGLE; do
     dir=`echo $i | cut -d , -f 1`
     user=`echo $i | cut -d , -f 2`
