@@ -123,10 +123,24 @@ module Puma
       File.basename(Dir.getwd)
     end
 
+    # Load and use the normal Rack builder if we can, otherwise
+    # fallback to our minimal version.
+    def rack_builder
+      begin
+        require 'rack'
+        require 'rack/builder'
+      rescue LoadError
+        # ok, use builtin version
+        return Puma::Rack::Builder
+      else
+        return ::Rack::Builder
+      end
+    end
+
     def load_rackup
       raise "Missing rackup file '#{rackup}'" unless File.exist?(rackup)
 
-      rack_app, rack_options = Puma::Rack::Builder.parse_file(rackup)
+      rack_app, rack_options = rack_builder.parse_file(rackup)
       @options.merge!(rack_options)
 
       config_ru_binds = []
