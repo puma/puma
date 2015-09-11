@@ -1,7 +1,7 @@
 # Deployment engineering for puma
 
 Puma is software that is expected to be run in a deployed environment eventually.
-You can centainly use it as your dev server only, but most people look to use
+You can certainly use it as your dev server only, but most people look to use
 it in their production deployments as well.
 
 To that end, this is meant to serve as a foundation of wisdom how to do that
@@ -17,7 +17,7 @@ Welcome back!
 
 ## Single vs Cluster mode
 
-Puma was originally concieved as a thread-only webserver, but grew the ability to
+Puma was originally conceived as a thread-only webserver, but grew the ability to
 also use processes in version 2.
 
 Here are some rules of thumb:
