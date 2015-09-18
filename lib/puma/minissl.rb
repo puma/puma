@@ -102,6 +102,8 @@ module Puma
       class SSLError < StandardError
         # Define this for jruby even though it isn't used.
       end
+
+      def self.check; end
     end
 
     class Context

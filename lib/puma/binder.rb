@@ -128,6 +128,8 @@ module Puma
 
           @listeners << [str, io]
         when "ssl"
+          MiniSSL.check
+
           params = Util.parse_query uri.query
           require 'puma/minissl'
 
@@ -253,6 +255,8 @@ module Puma
                          optimize_for_latency=true, backlog=1024)
       require 'puma/minissl'
 
+      MiniSSL.check
+
       host = host[1..-2] if host[0..0] == '['
       s = TCPServer.new(host, port)
       if optimize_for_latency
@@ -272,6 +276,8 @@ module Puma
 
     def inherited_ssl_listener(fd, ctx)
       require 'puma/minissl'
+      MiniSSL.check
+
       s = TCPServer.for_fd(fd)
       ssl = MiniSSL::Server.new(s, ctx)
 

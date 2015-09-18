@@ -1,6 +1,10 @@
 #define RSTRING_NOT_MODIFIED 1
+
 #include <ruby.h>
 #include <rubyio.h>
+
+#ifdef HAVE_OPENSSL_BIO_H
+
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/dh.h>
@@ -347,6 +351,10 @@ VALUE engine_peercert(VALUE self) {
   return rb_cert_buf;
 }
 
+VALUE noop(VALUE self) {
+  return Qnil;
+}
+
 void Init_mini_ssl(VALUE puma) {
   VALUE mod, eng;
 
@@ -357,6 +365,8 @@ void Init_mini_ssl(VALUE puma) {
   
   mod = rb_define_module_under(puma, "MiniSSL");
   eng = rb_define_class_under(mod, "Engine", rb_cObject);
+
+  rb_define_singleton_method(mod, "check", noop, 0);
 
   eError = rb_define_class_under(mod, "SSLError", rb_eStandardError);
 
@@ -371,3 +381,20 @@ void Init_mini_ssl(VALUE puma) {
 
   rb_define_method(eng, "peercert", engine_peercert, 0);
 }
+
+#else
+
+VALUE raise_error(VALUE self) {
+  rb_raise(rb_eStandardError, "SSL not available in this build");
+  return Qnil;
+}
+
+void Init_mini_ssl(VALUE puma) {
+  VALUE mod, eng;
+
+  mod = rb_define_module_under(puma, "MiniSSL");
+  rb_define_class_under(mod, "SSLError", rb_eStandardError);
+
+  rb_define_singleton_method(mod, "check", raise_error, 0);
+}
+#endif
