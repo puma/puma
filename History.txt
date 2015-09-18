@@ -1,3 +1,11 @@
+=== 2.14.0 / 2015-09-18
+
+* 1 minor feature:
+  * Make building with SSL support optional
+
+* 1 bug fix:
+  * Use Rack::Builder if available. Fixes #735
+
 === 2.13.4 / 2015-08-16
 
 * 1 bug fix:
