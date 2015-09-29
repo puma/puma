@@ -23,6 +23,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 CONFIG=/etc/puma.conf
 JUNGLE=`cat $CONFIG`
 RUNPUMA=/usr/local/bin/run-puma
+USE_LOCAL_BUNDLE=0
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
@@ -36,7 +37,6 @@ RUNPUMA=/usr/local/bin/run-puma
 #
 do_start() {
   log_daemon_msg "=> Running the jungle..."
-  config_bundler # `/usr/local/bin/run-puma also need correct PATH to run bundle`
   for i in $JUNGLE; do
     dir=`echo $i | cut -d , -f 1`
     user=`echo $i | cut -d , -f 2`
@@ -106,7 +106,7 @@ do_stop_one() {
       log_daemon_msg "---> Puma $1 isn't running."
     else
       log_daemon_msg "---> About to kill PID `cat $PIDFILE`"
-      if config_bundler; then
+      if [ "$USE_LOCAL_BUNDLE" -eq 1 ]; then
         cd $1 && bundle exec pumactl --state $STATEFILE stop
       else
         pumactl --state $STATEFILE stop
@@ -140,7 +140,7 @@ do_restart_one() {
   
   if [ -e $PIDFILE ]; then
     log_daemon_msg "--> About to restart puma $1"
-    if config_bundler; then
+    if [ "$USE_LOCAL_BUNDLE" -eq 1 ]; then
       cd $1 && bundle exec pumactl --state $dir/tmp/puma/state restart
     else
       pumactl --state $dir/tmp/puma/state restart
@@ -184,7 +184,7 @@ do_status_one() {
   
   if [ -e $PIDFILE ]; then
     log_daemon_msg "--> About to status puma $1"
-    if config_bundler; then
+    if [ "$USE_LOCAL_BUNDLE" -eq 1 ]; then
       cd $1 && bundle exec pumactl --state $dir/tmp/puma/state stats
     else
       pumactl --state $dir/tmp/puma/state stats
@@ -258,9 +258,12 @@ config_bundler() {
   HOME="$(eval echo ~$(id -un))"
   if [ -d "/usr/local/rbenv/bin" ]; then
     PATH="/usr/local/rbenv/bin:/usr/local/rbenv/shims:$PATH"
+    USE_LOCAL_BUNDLE=1
     return 0
   elif [ -d "$HOME/.rbenv/bin" ]; then
     PATH="$HOME/.rbenv/bin:$HOME/.rbenv/shims:$PATH"
+    eval "$(rbenv init -)"
+    USE_LOCAL_BUNDLE=1
     return 0
   # TODO: test rvm
   # elif [ -f  /etc/profile.d/rvm.sh ]; then
@@ -278,8 +281,11 @@ config_bundler() {
   # if you aren't using auto, set your version here
   # chruby 2.0.0
   fi
+
   return 1
 }
+
+config_bundler
 
 case "$1" in
   start)
