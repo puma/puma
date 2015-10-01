@@ -144,6 +144,9 @@
 # Additional text to display in process listing
 #
 # tag 'app name'
+#
+# If you do not specify a tag, Puma will infer it. If you do not want Puma
+# to add a tag, use an empty string.
 
 # Change the default timeout of workers
 #
