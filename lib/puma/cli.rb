@@ -429,7 +429,7 @@ module Puma
 
         if s_env.ino == s_pwd.ino and (jruby? or s_env.dev == s_pwd.dev)
           @restart_dir = dir
-          @cli_options[:worker_directory] = dir
+          @options[:worker_directory] = dir
         end
       end
 
