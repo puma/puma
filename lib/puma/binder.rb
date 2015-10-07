@@ -164,8 +164,9 @@ module Puma
               unless params['ca']
                 @events.error "Please specify the SSL ca via 'ca='"
               end
-              ctx.ca = params['ca']
             end
+            
+            ctx.ca = params['ca']
 
             if  params['verify_mode']
               ctx.verify_mode = case params['verify_mode']
