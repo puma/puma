@@ -132,7 +132,7 @@ module Puma
       min = Integer(min)
       max = Integer(max)
       if min > max
-        raise "The minimum (#{min}) number of threads must be less than the max (#{max})"
+        raise "The minimum (#{min}) number of threads must be less than or equal to the max (#{max})"
       end
 
       @options[:min_threads] = min
