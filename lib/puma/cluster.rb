@@ -221,7 +221,7 @@ module Puma
       begin
         @worker_write << "b#{Process.pid}\n"
       rescue SystemCallError, IOError
-        STDERR.puts "Master seems to have exitted, exitting."
+        STDERR.puts "Master seems to have exited, exiting."
         return
       end
 
