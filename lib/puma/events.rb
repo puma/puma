@@ -128,7 +128,7 @@ module Puma
 
     DEFAULT = new(STDOUT, STDERR)
 
-    # Returns an Events object which writes it's status to 2 StringIO
+    # Returns an Events object which writes its status to 2 StringIO
     # objects.
     #
     def self.strings
