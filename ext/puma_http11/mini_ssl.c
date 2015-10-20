@@ -136,7 +136,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   ctx = SSL_CTX_new(SSLv23_server_method());
   conn->ctx = ctx;
 
-  SSL_CTX_use_certificate_file(ctx, RSTRING_PTR(cert), SSL_FILETYPE_PEM);
+  SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
   SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
 
   if (!NIL_P(ca)) {
