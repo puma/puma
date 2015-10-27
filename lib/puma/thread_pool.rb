@@ -160,7 +160,7 @@ module Puma
     end
 
     # If there are dead threads in the pool make them go away while decreasing
-    # spwaned counter so that new healty threads could be created again.
+    # spawned counter so that new healthy threads could be created again.
     def reap
       @mutex.synchronize do
         dead_workers = @workers.reject(&:alive?)
