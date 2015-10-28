@@ -262,6 +262,10 @@ module Puma
 
       events = Puma::Events.new @stdout, @stderr
 
+      # replace $0 because puma use it to generate restart command
+      puma_cmd = $0.gsub /pumactl$/, 'puma'
+      $0 = puma_cmd if File.exist?(puma_cmd)
+
       cli = Puma::CLI.new run_args, events
       cli.run
     end
