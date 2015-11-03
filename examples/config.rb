@@ -148,7 +148,9 @@
 # If you do not specify a tag, Puma will infer it. If you do not want Puma
 # to add a tag, use an empty string.
 
-# Change the default timeout of workers
+# Verifies that all workers have checked in to the master process within
+# the given timeout. If not the worker process will be restarted. Default
+# value is 60 seconds.
 #
 # worker_timeout 60
 

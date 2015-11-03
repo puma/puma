@@ -256,7 +256,10 @@ module Puma
       @options[:tag] = string
     end
 
-    # *Cluster mode only* Set the timeout for workers
+    # *Cluster mode only* Set the timeout for workers in seconds
+    # When set the master process will terminate any workers
+    # that have not checked in within the given +timeout+.
+    # This mitigates hung processes. Default value is 60 seconds.
     def worker_timeout(timeout)
       @options[:worker_timeout] = timeout
     end
