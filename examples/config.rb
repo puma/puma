@@ -154,6 +154,12 @@
 #
 # worker_timeout 60
 
+# Change the default worker timeout for booting
+#
+# If unspecified, this defaults to the value of worker_timeout.
+#
+# worker_boot_timeout 60
+
 # === Puma control rack application ===
 
 # Start the puma control rack application on "url". This application can

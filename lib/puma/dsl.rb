@@ -264,6 +264,11 @@ module Puma
       @options[:worker_timeout] = timeout
     end
 
+    # *Cluster mode only* Set the timeout for workers to boot
+    def worker_boot_timeout(timeout)
+      @options[:worker_boot_timeout] = timeout
+    end
+
     # *Cluster mode only* Set the timeout for worker shutdown
     def worker_shutdown_timeout(timeout)
       @options[:worker_shutdown_timeout] = timeout
