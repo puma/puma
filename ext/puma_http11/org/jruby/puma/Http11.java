@@ -82,11 +82,11 @@ public class Http11 extends RubyObject {
     private Http11Parser.FieldCB http_field = new Http11Parser.FieldCB() {
             public void call(Object data, int field, int flen, int value, int vlen) {
                 RubyHash req = (RubyHash)data;
-                RubyString v,f;
+                RubyString f;
+                IRubyObject v;
                 validateMaxLength(flen, MAX_FIELD_NAME_LENGTH, MAX_FIELD_NAME_LENGTH_ERR);
                 validateMaxLength(vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
 
-                v = RubyString.newString(runtime, new ByteList(Http11.this.hp.parser.buffer,value,vlen));
                 ByteList b = new ByteList(Http11.this.hp.parser.buffer,field,flen);
                 for(int i = 0,j = b.length();i<j;i++) {
                     if((b.get(i) & 0xFF) == '-') {
@@ -104,7 +104,16 @@ public class Http11 extends RubyObject {
                   f = RubyString.newString(runtime, "HTTP_");
                   f.cat(b);
                 }
-                req.op_aset(req.getRuntime().getCurrentContext(), f,v);
+
+                b = new ByteList(Http11.this.hp.parser.buffer, value, vlen);
+                v = req.op_aref(req.getRuntime().getCurrentContext(), f);
+                if (v.isNil()) {
+                    req.op_aset(req.getRuntime().getCurrentContext(), f, RubyString.newString(runtime, b));
+                } else {
+                    RubyString vs = v.convertToString();
+                    vs.cat(", ");
+                    vs.cat(b);
+                }
             }
         };
 
