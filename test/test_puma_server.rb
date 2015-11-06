@@ -226,11 +226,11 @@ class TestPumaServer < Test::Unit::TestCase
     @server.run
 
     sock = TCPSocket.new @host, @port
-    sock << "GET / HTTP/1.1\r\n\r\n"
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
     data = sock.read
 
-    assert_equal "HTTP/1.1 449 CUSTOM\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal "HTTP/1.1 449 CUSTOM\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_HEAD_returns_content_headers

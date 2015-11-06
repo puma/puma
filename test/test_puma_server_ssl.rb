@@ -18,9 +18,18 @@ class SSLEventsHelper < ::Puma::Events
   end
 end
 
+DISABLE_SSL = begin
+              Puma::MiniSSL.check
+            rescue
+              true
+            else
+              false
+            end
+
 class TestPumaServerSSL < Test::Unit::TestCase
 
   def setup
+    return if DISABLE_SSL
     @port = 3212
     @host = "127.0.0.1"
 
@@ -49,10 +58,13 @@ class TestPumaServerSSL < Test::Unit::TestCase
   end
 
   def teardown
+    return if DISABLE_SSL
     @server.stop(true)
   end
 
   def test_url_scheme_for_https
+    return if DISABLE_SSL
+
     body = nil
     @http.start do
       req = Net::HTTP::Get.new "/", {}
@@ -66,6 +78,8 @@ class TestPumaServerSSL < Test::Unit::TestCase
   end
 
   def test_very_large_return
+    return if DISABLE_SSL
+
     giant = "x" * 2056610
 
     @server.app = proc do
@@ -84,6 +98,8 @@ class TestPumaServerSSL < Test::Unit::TestCase
   end
 
   def test_form_submit
+    return if DISABLE_SSL
+
     body = nil
     @http.start do
       req = Net::HTTP::Post.new '/'
@@ -100,6 +116,7 @@ class TestPumaServerSSL < Test::Unit::TestCase
 
   unless RUBY_VERSION =~ /^1.8/
     def test_ssl_v3_rejection
+      return if DISABLE_SSL
       @http.ssl_version='SSLv3'
       assert_raises(OpenSSL::SSL::SSLError) do
         @http.start do
@@ -161,12 +178,16 @@ unless defined?(JRUBY_VERSION)
     end
 
     def test_verify_fail_if_no_client_cert
+      return if DISABLE_SSL
+
       assert_ssl_client_error_match 'peer did not return a certificate' do |http|
         # nothing
       end
     end
 
     def test_verify_fail_if_client_unknown_ca
+      return if DISABLE_SSL
+
       assert_ssl_client_error_match('self signed certificate in certificate chain', '/DC=net/DC=puma/CN=ca-unknown') do |http|
         key = File.expand_path "../../examples/puma/client-certs/client_unknown.key", __FILE__
         crt = File.expand_path "../../examples/puma/client-certs/client_unknown.crt", __FILE__
@@ -177,6 +198,7 @@ unless defined?(JRUBY_VERSION)
     end
 
     def test_verify_fail_if_client_expired_cert
+      return if DISABLE_SSL
       assert_ssl_client_error_match('certificate has expired', '/DC=net/DC=puma/CN=client-expired') do |http|
         key = File.expand_path "../../examples/puma/client-certs/client_expired.key", __FILE__
         crt = File.expand_path "../../examples/puma/client-certs/client_expired.crt", __FILE__
@@ -187,6 +209,7 @@ unless defined?(JRUBY_VERSION)
     end
 
     def test_verify_client_cert
+      return if DISABLE_SSL
       assert_ssl_client_error_match(nil) do |http|
         key = File.expand_path "../../examples/puma/client-certs/client.key", __FILE__
         crt = File.expand_path "../../examples/puma/client-certs/client.crt", __FILE__
