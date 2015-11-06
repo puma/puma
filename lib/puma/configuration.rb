@@ -27,6 +27,7 @@ module Puma
       @conf[:before_worker_fork] ||= []
       @conf[:after_worker_boot] ||= []
       @conf[:worker_timeout] ||= DefaultWorkerTimeout
+      @conf[:worker_boot_timeout] ||= @conf[:worker_timeout]
       @conf[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
 
       @options = {}

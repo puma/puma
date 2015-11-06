@@ -136,6 +136,7 @@ module Puma
       any = false
 
       @workers.each do |w|
+        next if !w.booted? && !w.ping_timeout?(@options[:worker_boot_timeout])
         if w.ping_timeout?(@options[:worker_timeout])
           log "! Terminating timed out worker: #{w.pid}"
           w.kill
