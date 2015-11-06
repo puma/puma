@@ -166,7 +166,7 @@ module Puma
               end
             end
             
-            ctx.ca = params['ca']
+            ctx.ca = params['ca'] if params['ca']
 
             if  params['verify_mode']
               ctx.verify_mode = case params['verify_mode']
