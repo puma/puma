@@ -40,7 +40,7 @@ server {
     }
 
     # check for index.html for directory index
-    # if its there on the filesystem then rewite
+    # if it's there on the filesystem then rewrite
     # the url to add /index.html to the end of it
     # and then break to send it to the next config rules.
     if (-f $request_filename/index.html) {

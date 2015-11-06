@@ -1,7 +1,7 @@
 # Deployment engineering for puma
 
 Puma is software that is expected to be run in a deployed environment eventually.
-You can centainly use it as your dev server only, but most people look to use
+You can certainly use it as your dev server only, but most people look to use
 it in their production deployments as well.
 
 To that end, this is meant to serve as a foundation of wisdom how to do that
@@ -17,7 +17,7 @@ Welcome back!
 
 ## Single vs Cluster mode
 
-Puma was originally concieved as a thread-only webserver, but grew the ability to
+Puma was originally conceived as a thread-only webserver, but grew the ability to
 also use processes in version 2.
 
 Here are some rules of thumb:
@@ -27,7 +27,7 @@ Here are some rules of thumb:
 * Use cluster mode and set the number of workers to 1.5x the number of cpu cores
   in the machine, minimum 2.
 * Set the number of threads to desired concurrent requests / number of workers.
-  Puma defaults to 8 and thats a decent number.
+  Puma defaults to 8 and that's a decent number.
 
 #### Migrating from Unicorn
 
