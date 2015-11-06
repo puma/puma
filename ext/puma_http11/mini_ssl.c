@@ -11,6 +11,10 @@
 #include <openssl/err.h>
 #include <openssl/x509.h>
 
+#ifndef SSL_OP_NO_COMPRESSION
+#define SSL_OP_NO_COMPRESSION 0
+#endif
+
 typedef struct {
   BIO* read;
   BIO* write;
