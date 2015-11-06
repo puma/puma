@@ -410,6 +410,18 @@ module Puma
           @cli_options[:tag] = arg
         end
 
+        o.on "--redirect-stdout FILE", "Redirect STDOUT to a specific file" do |arg|
+          @cli_options[:redirect_stdout] = arg
+        end
+
+        o.on "--redirect-stderr FILE", "Redirect STDERR to a specific file" do |arg|
+          @cli_options[:redirect_stderr] = arg
+        end
+
+        o.on "--[no-]redirect-append", "Append to redirected files" do |val|
+          @cli_options[:redirect_append] = val
+        end
+
         o.banner = "puma <options> <rackup file>"
 
         o.on_tail "-h", "--help", "Show help" do
