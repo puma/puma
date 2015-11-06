@@ -50,7 +50,7 @@ module Rack
           "Host=HOST"       => "Hostname to listen on (default: localhost)",
           "Port=PORT"       => "Port to listen on (default: 8080)",
           "Threads=MIN:MAX" => "min:max threads to use (default 0:16)",
-          "Quiet"           => "Don't report each request"
+          "Verbose"         => "Don't report each request (default: false)"
         }
       end
     end
