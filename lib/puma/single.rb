@@ -62,7 +62,7 @@ module Puma
           end
 
           Signal.trap "SIGCHLD" do
-            log "! Error starting new process as daemon, exitting"
+            log "! Error starting new process as daemon, exiting"
             exit 1
           end
 
