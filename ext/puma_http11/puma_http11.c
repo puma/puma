@@ -176,13 +176,11 @@ static VALUE find_common_field_value(const char *field, size_t flen)
 void http_field(puma_parser* hp, const char *field, size_t flen,
                                  const char *value, size_t vlen)
 {
-  VALUE v = Qnil;
   VALUE f = Qnil;
+  VALUE v;
 
   VALIDATE_MAX_LENGTH(flen, FIELD_NAME);
   VALIDATE_MAX_LENGTH(vlen, FIELD_VALUE);
-
-  v = rb_str_new(value, vlen);
 
   f = find_common_field_value(field, flen);
 
@@ -201,7 +199,17 @@ void http_field(puma_parser* hp, const char *field, size_t flen,
     f = rb_str_new(hp->buf, new_size);
   }
 
-  rb_hash_aset(hp->request, f, v);
+  /* check for duplicate header */
+  v = rb_hash_aref(hp->request, f);
+
+  if (v == Qnil) {
+      v = rb_str_new(value, vlen);
+      rb_hash_aset(hp->request, f, v);
+  } else {
+      /* if duplicate header, normalize to comma-separated values */
+      rb_str_cat2(v, ", ");
+      rb_str_cat(v, value, vlen);
+  }
 }
 
 void request_method(puma_parser* hp, const char *at, size_t length)
