@@ -160,7 +160,7 @@ module Puma
     end
 
     # If there are dead threads in the pool make them go away while decreasing
-    # spwaned counter so that new healty threads could be created again.
+    # spawned counter so that new healthy threads could be created again.
     def reap
       @mutex.synchronize do
         dead_workers = @workers.reject(&:alive?)
@@ -235,20 +235,18 @@ module Puma
     # Tell all threads in the pool to exit and wait for them to finish.
     #
     def shutdown
-      @mutex.synchronize do
+      threads = @mutex.synchronize do
         @shutdown = true
         @not_empty.broadcast
         @not_full.broadcast
 
         @auto_trim.stop if @auto_trim
         @reaper.stop if @reaper
+        # dup workers so that we join them all safely
+        @workers.dup
       end
 
-      # Use this instead of #each so that we don't stop in the middle
-      # of each and see a mutated object mid #each
-      if !@workers.empty?
-          @workers.first.join until @workers.empty?
-      end
+      threads.each(&:join)
 
       @spawned = 0
       @workers = []
