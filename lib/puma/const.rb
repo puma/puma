@@ -99,8 +99,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "2.14.0".freeze
-    CODE_NAME = "Fuchsia Friday".freeze
+    PUMA_VERSION = VERSION = "2.15.0".freeze
+    CODE_NAME = "Autumn Arbor Airbrush".freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2
 

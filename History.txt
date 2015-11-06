@@ -1,3 +1,52 @@
+=== 2.15.0 / 2015-11-06
+
+* 6 minor features:
+  * Allow setting ca without setting a verify mode
+  * Make jungle for init.d support rbenv
+  * Use SSL_CTX_use_certificate_chain_file for full chain
+  * cluster: add worker_boot_timeout option
+  * configuration: allow empty tags to mean no tag desired
+  * puma/cli: support specifying STD{OUT,ERR} redirections and append mode
+
+* 5 bug fixes:
+  * Disable SSL Compression
+  * Fix bug setting worker_directory when using a symlink directory
+  * Fix error message in DSL that was slightly inaccurate
+  * Pumactl: set correct process name. Fixes #563
+  * thread_pool: fix race condition when shutting down workers
+
+* 10 doc fixes:
+  * Add before_fork explanation in Readme.md
+  * Correct spelling in DEPLOYMENT.md
+  * Correct spelling in docs/nginx.md
+  * Fix spelling errors.
+  * Fix typo in deployment description
+  * Fix typos (it's -> its) in events.rb and server.rb
+  * fixing for typo mentioned in #803
+  * Spelling correction for README
+  * thread_pool: fix typos in comment
+  * More explicit docs for worker_timeout
+
+* 18 PRs merged:
+  * Merge pull request #768 from nathansamson/patch-1
+  * Merge pull request #773 from rossta/spelling_corrections
+  * Merge pull request #774 from snow/master
+  * Merge pull request #781 from sunsations/fix-typo
+  * Merge pull request #791 from unleashed/allow_empty_tags
+  * Merge pull request #793 from robdimarco/fix-working-directory-symlink-bug
+  * Merge pull request #794 from peterkeen/patch-1
+  * Merge pull request #795 from unleashed/redirects-from-cmdline
+  * Merge pull request #796 from cschneid/fix_dsl_message
+  * Merge pull request #799 from annafw/master
+  * Merge pull request #800 from liamseanbrady/fix_typo
+  * Merge pull request #801 from scottjg/ssl-chain-file
+  * Merge pull request #802 from scottjg/ssl-crimes
+  * Merge pull request #804 from burningTyger/patch-2
+  * Merge pull request #809 from unleashed/threadpool-fix-race-in-shutdown
+  * Merge pull request #810 from vlmonk/fix-pumactl-restart-bug
+  * Merge pull request #814 from schneems/schneems/worker_timeout-docs
+  * Merge pull request #817 from unleashed/worker-boot-timeout
+
 === 2.14.0 / 2015-09-18
 
 * 1 minor feature:
