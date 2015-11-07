@@ -111,7 +111,7 @@ public class Http11 extends RubyObject {
                     req.op_aset(req.getRuntime().getCurrentContext(), f, RubyString.newString(runtime, b));
                 } else {
                     RubyString vs = v.convertToString();
-                    vs.cat(", ");
+                    vs.cat(RubyString.newString(runtime, ", "));
                     vs.cat(b);
                 }
             }
