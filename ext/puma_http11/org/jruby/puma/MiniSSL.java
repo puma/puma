@@ -13,6 +13,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
@@ -136,22 +137,35 @@ public class MiniSSL extends RubyObject {
   public IRubyObject initialize(ThreadContext threadContext, IRubyObject miniSSLContext)
       throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException {
     KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+    KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
 
     char[] password = miniSSLContext.callMethod(threadContext, "keystore_pass").convertToString().asJavaString().toCharArray();
-    ks.load(new FileInputStream(miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString()),
-        password);
+    String keystoreFile = miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString();
+    ks.load(new FileInputStream(keystoreFile), password);
+    ts.load(new FileInputStream(keystoreFile), password);
 
     KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
     kmf.init(ks, password);
 
+    TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+    tmf.init(ts);
+
     SSLContext sslCtx = SSLContext.getInstance("TLS");
 
-    sslCtx.init(kmf.getKeyManagers(), null, null);
+    sslCtx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
     engine = sslCtx.createSSLEngine();
 
     String[] protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" };
     engine.setEnabledProtocols(protocols);
     engine.setUseClientMode(false);
+
+    long verify_mode = miniSSLContext.callMethod(threadContext, "verify_mode").convertToInteger().getLongValue();
+    if ((verify_mode & 0x1) != 0) { // 'peer'
+        engine.setWantClientAuth(true);
+    }
+    if ((verify_mode & 0x2) != 0) { // 'force_peer'
+        engine.setNeedClientAuth(true);
+    }
 
     SSLSession session = engine.getSession();
     inboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
