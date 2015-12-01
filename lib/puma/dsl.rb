@@ -140,7 +140,12 @@ module Puma
     end
 
     def ssl_bind(host, port, opts)
-      @options[:binds] << "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}"
+      if defined?(JRUBY_VERSION)
+        keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
+        @options[:binds] << "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}"
+      else
+        @options[:binds] << "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}"
+      end
     end
 
     # Use +path+ as the file to store the server info state. This is
