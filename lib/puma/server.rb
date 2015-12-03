@@ -644,7 +644,7 @@ module Puma
           fast_write client, lines.to_s
           return keep_alive
         end
-        
+
         if content_length
           lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
           chunked = false
