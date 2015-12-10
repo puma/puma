@@ -25,6 +25,12 @@ module Puma
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI
+    KEYS_NOT_TO_PERSIST_IN_STATE = [
+      :logger, :lowlevel_error_handler,
+      :before_worker_shutdown, :before_worker_boot, :before_worker_fork,
+      :after_worker_boot, :before_fork, :on_restart
+    ]
+
     # Create a new CLI object using +argv+ as the command line
     # arguments.
     #
@@ -108,12 +114,7 @@ module Puma
       state = { 'pid' => Process.pid }
       cfg = @config.dup
 
-      [
-        :logger,
-        :before_worker_shutdown, :before_worker_boot, :before_worker_fork,
-        :after_worker_boot,
-        :on_restart, :lowlevel_error_handler
-      ].each { |k| cfg.options.delete(k) }
+      KEYS_NOT_TO_PERSIST_IN_STATE.each { |k| cfg.options.delete(k) }
       state['config'] = cfg
 
       require 'yaml'
