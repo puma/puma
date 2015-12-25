@@ -54,6 +54,7 @@ module Puma
     end
 
     def load
+      @conf.merge! @cli_options
       DSL.load(@conf, @cli_options[:config_file])
 
       # Load the options in the right priority
