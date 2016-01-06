@@ -45,10 +45,17 @@ module Puma
 
       @requests_served = 0
       @hijacked = false
+
+      @peerip = nil
+      @remote_addr_header = nil
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
                 :tempfile
+
+    attr_writer :peerip
+
+    attr_accessor :remote_addr_header
 
     def inspect
       "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"
@@ -296,6 +303,18 @@ module Puma
         @io << ERROR_500_RESPONSE
       rescue StandardError
       end
+    end
+
+    def peerip
+      return @peerip if @peerip
+
+      if @remote_addr_header
+        hdr = @env[@remote_addr_header] || LOCALHOST_ADDR
+        @peerip = hdr
+        return hdr
+      end
+
+      @peerip ||= @io.peeraddr.last
     end
   end
 end

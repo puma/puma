@@ -307,6 +307,16 @@ module Puma
         pool = @thread_pool
         queue_requests = @queue_requests
 
+        remote_addr_value = nil
+        remote_addr_header = nil
+
+        case @options[:remote_address]
+        when :value
+          remote_addr_value = @options[:remote_address_value]
+        when :header
+          remote_addr_header = @options[:remote_address_header]
+        end
+
         while @status == :run
           begin
             ios = IO.select sockets
@@ -317,6 +327,12 @@ module Puma
                 begin
                   if io = sock.accept_nonblock
                     client = Client.new io, @binder.env(sock)
+                    if remote_addr_value
+                      client.peerip = remote_addr_value
+                    elsif remote_addr_header
+                      client.remote_addr_header = remote_addr_header
+                    end
+
                     pool << client
                     pool.wait_until_not_full unless queue_requests
                   end
@@ -481,7 +497,7 @@ module Puma
 
       unless env.key?(REMOTE_ADDR)
         begin
-          addr = client.peeraddr.last
+          addr = client.peerip
         rescue Errno::ENOTCONN
           # Client disconnects can result in an inability to get the
           # peeraddr from the socket; default to localhost.
@@ -513,7 +529,7 @@ module Puma
       env = req.env
       client = req.io
 
-      normalize_env env, client
+      normalize_env env, req
 
       env[PUMA_SOCKET] = client
 

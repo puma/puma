@@ -29,6 +29,7 @@ module Puma
       @conf[:worker_timeout] ||= DefaultWorkerTimeout
       @conf[:worker_boot_timeout] ||= @conf[:worker_timeout]
       @conf[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
+      @conf[:remote_address] ||= :socket
 
       @options = {}
     end

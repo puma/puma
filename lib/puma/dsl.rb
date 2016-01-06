@@ -297,5 +297,43 @@ module Puma
     def shutdown_debug(val=true)
       @options[:shutdown_debug] = val
     end
+
+    # Control how the remote address of the connection is set. This
+    # is configurable because to calculate the true socket peer address
+    # a kernel syscall is required which for very fast rack handlers
+    # slows down the handling significantly.
+    #
+    # There are 4 possible values:
+    #
+    # * :socket (the default) - read the peername from the socket using the
+    #           syscall. This is the normal behavior.
+    # * :localhost - set the remote address to "127.0.0.1"
+    # * header: http_header - set the remote address to the value of the
+    #                          provided http header. For instance:
+    #                          `set_remote_address header: "X-Real-IP"`
+    # * Any string - this allows you to hardcode remote address to any value
+    #                you wish. Because puma never uses this field anyway, it's
+    #                format is entirely in your hands.
+    def set_remote_address(val=:socket)
+      case val
+      when :socket
+        @options[:remote_address] = val
+      when :localhost
+        @options[:remote_address] = :value
+        @options[:remote_address_value] = "127.0.0.1".freeze
+      when String
+        @options[:remote_address] = :value
+        @options[:remote_address_value] = val
+      when Hash
+        if hdr = val[:header]
+          @options[:remote_address] = :header
+          @options[:remote_address_header] = "HTTP_" + hdr.upcase.gsub("-", "_")
+        else
+          raise "Invalid value for set_remote_address - #{val.inspect}"
+        end
+      else
+        raise "Invalid value for set_remote_address - #{val}"
+      end
+    end
   end
 end
