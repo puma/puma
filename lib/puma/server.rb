@@ -571,7 +571,7 @@ module Puma
 
         http_11 = if env[HTTP_VERSION] == HTTP_11
           allow_chunked = true
-          keep_alive = env[HTTP_CONNECTION] != CLOSE
+          keep_alive = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
           include_keepalive_header = false
 
           # An optimization. The most common response is 200, so we can
@@ -589,7 +589,7 @@ module Puma
           true
         else
           allow_chunked = false
-          keep_alive = env[HTTP_CONNECTION] == KEEP_ALIVE
+          keep_alive = env.fetch(HTTP_CONNECTION, "").downcase == KEEP_ALIVE
           include_keepalive_header = keep_alive
 
           # Same optimization as above for HTTP/1.1
@@ -608,7 +608,7 @@ module Puma
         response_hijack = nil
 
         headers.each do |k, vs|
-          case k
+          case k.downcase
           when CONTENT_LENGTH2
             content_length = vs
             next
@@ -644,7 +644,7 @@ module Puma
           fast_write client, lines.to_s
           return keep_alive
         end
-        
+
         if content_length
           lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
           chunked = false

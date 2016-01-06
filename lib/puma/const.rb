@@ -215,11 +215,11 @@ module Puma
     HTTP_10_200 = "HTTP/1.0 200 OK\r\n".freeze
 
     CLOSE = "close".freeze
-    KEEP_ALIVE = "Keep-Alive".freeze
+    KEEP_ALIVE = "keep-alive".freeze
 
-    CONTENT_LENGTH2 = "Content-Length".freeze
+    CONTENT_LENGTH2 = "content-length".freeze
     CONTENT_LENGTH_S = "Content-Length: ".freeze
-    TRANSFER_ENCODING = "Transfer-Encoding".freeze
+    TRANSFER_ENCODING = "transfer-encoding".freeze
 
     CONNECTION_CLOSE = "Connection: close\r\n".freeze
     CONNECTION_KEEP_ALIVE = "Connection: Keep-Alive\r\n".freeze
