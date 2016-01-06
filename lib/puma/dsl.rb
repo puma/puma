@@ -311,7 +311,7 @@ module Puma
     # * header: http_header - set the remote address to the value of the
     #                          provided http header. For instance:
     #                          `set_remote_address header: "X-Real-IP"`.
-    #                          Only the first word (as separated by spaces)
+    #                          Only the first word (as separated by spaces or comma)
     #                          is used, allowing headers such as X-Forwarded-For
     #                          to be used as well.
     # * Any string - this allows you to hardcode remote address to any value
