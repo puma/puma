@@ -309,7 +309,7 @@ module Puma
       return @peerip if @peerip
 
       if @remote_addr_header
-        hdr = @env[@remote_addr_header] || LOCALHOST_ADDR
+        hdr = (@env[@remote_addr_header] || LOCALHOST_ADDR).split(" ").first
         @peerip = hdr
         return hdr
       end

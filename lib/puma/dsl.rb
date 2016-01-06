@@ -310,7 +310,10 @@ module Puma
     # * :localhost - set the remote address to "127.0.0.1"
     # * header: http_header - set the remote address to the value of the
     #                          provided http header. For instance:
-    #                          `set_remote_address header: "X-Real-IP"`
+    #                          `set_remote_address header: "X-Real-IP"`.
+    #                          Only the first word (as separated by spaces)
+    #                          is used, allowing headers such as X-Forwarded-For
+    #                          to be used as well.
     # * Any string - this allows you to hardcode remote address to any value
     #                you wish. Because puma never uses this field anyway, it's
     #                format is entirely in your hands.
