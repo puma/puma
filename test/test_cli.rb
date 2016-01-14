@@ -82,6 +82,7 @@ class TestCLI < Test::Unit::TestCase
     cli.send(:parse_options)
 
     t = Thread.new { cli.run }
+    t.abort_on_exception = true
 
     wait_booted
 
@@ -105,6 +106,7 @@ class TestCLI < Test::Unit::TestCase
     cli.send(:parse_options)
 
     t = Thread.new { cli.run }
+    t.abort_on_exception = true
 
     wait_booted
 
