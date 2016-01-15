@@ -136,7 +136,7 @@ module Puma
       @workers.count { |w| !w.booted? } == 0
     end
 
-    def check_workers(force)
+    def check_workers(force=false)
       return if !force && @next_check && @next_check >= Time.now
 
       @next_check = Time.now + 5
