@@ -65,6 +65,14 @@ module Puma
         @stage = :booted
       end
 
+      def dead?
+        @dead
+      end
+
+      def dead!
+        @dead = true
+      end
+
       def ping!
         @last_checkin = Time.now
       end
@@ -128,7 +136,7 @@ module Puma
       @workers.count { |w| !w.booted? } == 0
     end
 
-    def check_workers(force=false)
+    def check_workers(force)
       return if !force && @next_check && @next_check >= Time.now
 
       @next_check = Time.now + 5
@@ -154,6 +162,8 @@ module Puma
 
         @workers.delete_if { |w| w.pid == pid }
       end
+
+      @workers.delete_if(&:dead?)
 
       spawn_workers
 
@@ -242,6 +252,7 @@ module Puma
       hooks = @options[:before_worker_shutdown]
       hooks.each { |h| h.call(index) }
     ensure
+      @worker_write << "t#{Process.pid}\n" rescue nil
       @worker_write.close
     end
 
@@ -411,6 +422,9 @@ module Puma
                 when "b"
                   w.boot!
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
+                  force_check = true
+                when "t"
+                  w.dead!
                   force_check = true
                 when "p"
                   w.ping!
