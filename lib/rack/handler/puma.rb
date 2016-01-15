@@ -8,7 +8,8 @@ module Rack
         :Host => '0.0.0.0',
         :Port => 8080,
         :Threads => '0:16',
-        :Verbose => false
+        :Verbose => false,
+        :Silent => false
       }
 
       def self.run(app, options = {})
@@ -22,13 +23,16 @@ module Rack
           ENV['RACK_ENV'] = options[:environment].to_s
         end
 
-        server   = ::Puma::Server.new(app)
+        events_hander = options[:Silent] ? ::Puma::Events.strings : ::Puma::Events.stdio
+        server   = ::Puma::Server.new(app, events_hander)
         min, max = options[:Threads].split(':', 2)
 
-        puts "Puma #{::Puma::Const::PUMA_VERSION} starting..."
-        puts "* Min threads: #{min}, max threads: #{max}"
-        puts "* Environment: #{ENV['RACK_ENV']}"
-        puts "* Listening on tcp://#{options[:Host]}:#{options[:Port]}"
+        log = events_hander.stdout
+
+        log.puts "Puma #{::Puma::Const::PUMA_VERSION} starting..."
+        log.puts "* Min threads: #{min}, max threads: #{max}"
+        log.puts "* Environment: #{ENV['RACK_ENV']}"
+        log.puts "* Listening on tcp://#{options[:Host]}:#{options[:Port]}"
 
         server.add_tcp_listener options[:Host], options[:Port]
         server.min_threads = min
@@ -38,9 +42,9 @@ module Rack
         begin
           server.run.join
         rescue Interrupt
-          puts "* Gracefully stopping, waiting for requests to finish"
+          log.puts "* Gracefully stopping, waiting for requests to finish"
           server.stop(true)
-          puts "* Goodbye!"
+          log.puts "* Goodbye!"
         end
 
       end
