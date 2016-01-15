@@ -40,7 +40,7 @@ class TestPersistent < Test::Unit::TestCase
 
   def lines(count, s=@client)
     str = ""
-    timeout(5) do
+    Timeout.timeout(5) do
       count.times { str << s.gets }
     end
     str
