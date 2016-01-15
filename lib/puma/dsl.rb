@@ -42,6 +42,7 @@ module Puma
         @options[:control_auth_token] = auth_token if auth_token
 
         @options[:control_auth_token] = :none if opts[:no_token]
+        @options[:control_url_umask] = opts[:umask] if opts[:umask]
       end
     end
 

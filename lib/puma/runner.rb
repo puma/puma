@@ -52,8 +52,9 @@ module Puma
       when "unix"
         log "* Starting control server on #{str}"
         path = "#{uri.host}#{uri.path}"
+        mask = @options[:control_url_umask]
 
-        control.add_unix_listener path
+        control.add_unix_listener path, mask
       else
         error "Invalid control URI: #{str}"
       end
