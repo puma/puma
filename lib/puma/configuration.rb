@@ -128,6 +128,8 @@ module Puma
     # Load and use the normal Rack builder if we can, otherwise
     # fallback to our minimal version.
     def rack_builder
+      ensure_bundler_rack_on_load_path
+
       begin
         require 'rack'
         require 'rack/builder'
@@ -136,6 +138,23 @@ module Puma
         return Puma::Rack::Builder
       else
         return ::Rack::Builder
+      end
+    end
+
+    def ensure_bundler_rack_on_load_path
+      begin
+        require 'bundler'
+      rescue LoadError
+        return
+      end
+
+      begin
+        rack_spec = Bundler.definition.specs['rack'].first
+
+        if rack_spec
+          $LOAD_PATH.unshift File.join(rack_spec.full_gem_path, 'lib')
+        end
+      rescue Bundler::BundlerError
       end
     end
 
