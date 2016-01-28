@@ -128,6 +128,15 @@ module Puma
     # Load and use the normal Rack builder if we can, otherwise
     # fallback to our minimal version.
     def rack_builder
+      # Load bundler now if we can so that we can pickup rack from
+      # a Gemfile
+      if ENV.key? 'PUMA_BUNDLER_PRUNED'
+        begin
+          require 'bundler/setup'
+        rescue LoadError
+        end
+      end
+
       begin
         require 'rack'
         require 'rack/builder'
