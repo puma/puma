@@ -1,3 +1,43 @@
+=== 2.16.0 / 2016-01-27
+
+* 7 minor features:
+
+  * Add 'set_remote_address' config option
+  * Allow to run puma in silent mode
+  * Expose cli options in DSL
+  * Support passing JRuby keystore info in ssl_bind DSL
+  * Allow umask for unix:/// style control urls
+  * Expose `old_worker_count` in stats url
+  * Support TLS client auth (verify_mode) in jruby
+
+* 7 bug fixes:
+
+  * Don't persist before_fork hook in state file
+  * Reload bundler before pulling in rack. Fixes #859
+  * Remove NEWRELIC_DISPATCHER env variable
+  * Cleanup C code
+  * Use Timeout.timeout instead of Object.timeout
+  * Make phased restarts faster
+  * Ignore the case of certain headers, because HTTP
+
+* 1 doc changes:
+
+  * Test against the latest Ruby 2.1, 2.2, 2.3, head and JRuby 9.0.4.0 on Travis
+
+* 12 merged PRs
+  * Merge pull request #822 from kwugirl/remove_NEWRELIC_DISPATCHER
+  * Merge pull request #833 from joemiller/jruby-client-tls-auth
+  * Merge pull request #837 from YuriSolovyov/ssl-keystore-jruby
+  * Merge pull request #839 from mezuka/master
+  * Merge pull request #845 from deepj/timeout-deprecation
+  * Merge pull request #846 from sriedel/strip_before_fork
+  * Merge pull request #850 from deepj/travis
+  * Merge pull request #853 from Jeffrey6052/patch-1
+  * Merge pull request #857 from zendesk/faster_phased_restarts
+  * Merge pull request #858 from mlarraz/fix_some_warnings
+  * Merge pull request #860 from zendesk/expose_old_worker_count
+  * Merge pull request #861 from zendesk/allow_control_url_umask
+
 === 2.15.3 / 2015-11-07
 
 * 1 bug fix:
