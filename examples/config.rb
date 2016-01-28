@@ -79,7 +79,13 @@
 # Instead of "bind 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'" you
 # can also use the "ssl_bind" option.
 #
-# ssl_bind '127.0.0.1', '9292', { key: path_to_key, cert: path_to_cert }
+# ssl_bind '127.0.0.1', '9292', {
+#   key: path_to_key,
+#   cert: path_to_cert
+# }
+# for JRuby additional keys are required:
+# keystore: path_to_keystore,
+# keystore_pass: password
 
 # Code to run before doing a restart. This code should
 # close log files, database connections, etc.
