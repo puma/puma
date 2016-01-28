@@ -133,19 +133,6 @@ class TestCLI < Test::Unit::TestCase
 
     assert m, "'#{url}' is not a URL"
   end
-  end # JRUBY or Windows
-
-  def test_state
-    url = "tcp://127.0.0.1:8232"
-    cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
-    cli.send(:parse_options)
-    cli.write_state
-
-    data = YAML.load File.read(@tmp_path)
-
-    assert_equal Process.pid, data["pid"]
-    assert_equal url, data["config"].options[:control_url]
-  end
 
   def test_state_file_callback_filtering
     cli = Puma::CLI.new [ "--config", "test/config/state_file_testing_config.rb", 
@@ -160,6 +147,20 @@ class TestCLI < Test::Unit::TestCase
 
     keys_not_stripped = data.keys & Puma::CLI::KEYS_NOT_TO_PERSIST_IN_STATE
     assert_empty keys_not_stripped
+  end
+
+  end # JRUBY or Windows
+
+  def test_state
+    url = "tcp://127.0.0.1:8232"
+    cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
+    cli.send(:parse_options)
+    cli.write_state
+
+    data = YAML.load File.read(@tmp_path)
+
+    assert_equal Process.pid, data["pid"]
+    assert_equal url, data["config"].options[:control_url]
   end
 
   def test_load_path
