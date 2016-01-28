@@ -248,7 +248,7 @@ void raise_error(SSL* ssl, int result) {
 VALUE engine_read(VALUE self) {
   ms_conn* conn;
   char buf[512];
-  int bytes, n, error;
+  int bytes, error;
 
   Data_Get_Struct(self, ms_conn, conn);
 
