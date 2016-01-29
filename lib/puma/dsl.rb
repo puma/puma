@@ -136,6 +136,10 @@ module Puma
         raise "The minimum (#{min}) number of threads must be less than or equal to the max (#{max})"
       end
 
+      if max < 1
+        raise "The maximum number of threads (#{max}) must be greater than 0"
+      end
+
       @options[:min_threads] = min
       @options[:max_threads] = max
     end
