@@ -11,16 +11,14 @@ rvm:
   - 2.3.0
   - ruby-head
   - jruby-19mode
-  - jruby-9.0.4.0
+  - jruby-9.0.5.0
   - jruby-head
   - rbx-2
-  - rbx-1
 matrix:
   fast_finish: true
   allow_failures:
     - rvm: jruby-19mode
     - rvm: jruby-head
     - rvm: rbx-2
-    - rvm: rbx-1
     - rvm: 1.8.7
     - rvm: ruby-head
