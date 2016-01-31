@@ -7,8 +7,8 @@ public class Http11Parser {
 /** Machine **/
 
 %%{
-  
-  machine http_parser;
+
+  machine puma_parser;
 
   action mark {parser.mark = fpc; }
 
@@ -60,7 +60,7 @@ public class Http11Parser {
     fbreak;
   }
 
-  include http_parser_common "http11_parser_common.rl";
+  include puma_parser_common "http11_parser_common.rl";
 
 }%%
 
@@ -152,10 +152,10 @@ public class Http11Parser {
   }
 
   public boolean has_error() {
-    return parser.cs == http_parser_error;
+    return parser.cs == puma_parser_error;
   }
 
   public boolean is_finished() {
-    return parser.cs == http_parser_first_final;
+    return parser.cs == puma_parser_first_final;
   }
 }
