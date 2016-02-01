@@ -495,7 +495,7 @@ module Puma
       # intermediary acting on behalf of the actual source client."
       #
 
-      unless env.key?(REMOTE_ADDR)
+      if !env.key?(REMOTE_ADDR) || @options[:remote_address_header] || @options[:remote_address_value]
         begin
           addr = client.peerip
         rescue Errno::ENOTCONN
