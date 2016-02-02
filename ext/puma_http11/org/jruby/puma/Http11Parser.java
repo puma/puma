@@ -15,7 +15,7 @@ public class Http11Parser {
 /** Data **/
 
 // line 18 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
-private static byte[] init__http_parser_actions_0()
+private static byte[] init__puma_parser_actions_0()
 {
 	return new byte [] {
 	    0,    1,    0,    1,    2,    1,    3,    1,    4,    1,    5,    1,
@@ -25,10 +25,10 @@ private static byte[] init__http_parser_actions_0()
 	};
 }
 
-private static final byte _http_parser_actions[] = init__http_parser_actions_0();
+private static final byte _puma_parser_actions[] = init__puma_parser_actions_0();
 
 
-private static short[] init__http_parser_key_offsets_0()
+private static short[] init__puma_parser_key_offsets_0()
 {
 	return new short [] {
 	    0,    0,    8,   17,   27,   29,   30,   31,   32,   33,   34,   36,
@@ -39,10 +39,10 @@ private static short[] init__http_parser_key_offsets_0()
 	};
 }
 
-private static final short _http_parser_key_offsets[] = init__http_parser_key_offsets_0();
+private static final short _puma_parser_key_offsets[] = init__puma_parser_key_offsets_0();
 
 
-private static char[] init__http_parser_trans_keys_0()
+private static char[] init__puma_parser_trans_keys_0()
 {
 	return new char [] {
 	   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,
@@ -80,10 +80,10 @@ private static char[] init__http_parser_trans_keys_0()
 	};
 }
 
-private static final char _http_parser_trans_keys[] = init__http_parser_trans_keys_0();
+private static final char _puma_parser_trans_keys[] = init__puma_parser_trans_keys_0();
 
 
-private static byte[] init__http_parser_single_lengths_0()
+private static byte[] init__puma_parser_single_lengths_0()
 {
 	return new byte [] {
 	    0,    2,    3,    4,    2,    1,    1,    1,    1,    1,    0,    1,
@@ -94,10 +94,10 @@ private static byte[] init__http_parser_single_lengths_0()
 	};
 }
 
-private static final byte _http_parser_single_lengths[] = init__http_parser_single_lengths_0();
+private static final byte _puma_parser_single_lengths[] = init__puma_parser_single_lengths_0();
 
 
-private static byte[] init__http_parser_range_lengths_0()
+private static byte[] init__puma_parser_range_lengths_0()
 {
 	return new byte [] {
 	    0,    3,    3,    3,    0,    0,    0,    0,    0,    0,    1,    1,
@@ -108,10 +108,10 @@ private static byte[] init__http_parser_range_lengths_0()
 	};
 }
 
-private static final byte _http_parser_range_lengths[] = init__http_parser_range_lengths_0();
+private static final byte _puma_parser_range_lengths[] = init__puma_parser_range_lengths_0();
 
 
-private static short[] init__http_parser_index_offsets_0()
+private static short[] init__puma_parser_index_offsets_0()
 {
 	return new short [] {
 	    0,    0,    6,   13,   21,   24,   26,   28,   30,   32,   34,   36,
@@ -122,10 +122,10 @@ private static short[] init__http_parser_index_offsets_0()
 	};
 }
 
-private static final short _http_parser_index_offsets[] = init__http_parser_index_offsets_0();
+private static final short _puma_parser_index_offsets[] = init__puma_parser_index_offsets_0();
 
 
-private static byte[] init__http_parser_indicies_0()
+private static byte[] init__puma_parser_indicies_0()
 {
 	return new byte [] {
 	    0,    0,    0,    0,    0,    1,    2,    3,    3,    3,    3,    3,
@@ -158,10 +158,10 @@ private static byte[] init__http_parser_indicies_0()
 	};
 }
 
-private static final byte _http_parser_indicies[] = init__http_parser_indicies_0();
+private static final byte _puma_parser_indicies[] = init__puma_parser_indicies_0();
 
 
-private static byte[] init__http_parser_trans_targs_0()
+private static byte[] init__puma_parser_trans_targs_0()
 {
 	return new byte [] {
 	    2,    0,    3,   38,    4,   24,   28,   25,    5,   20,    6,    7,
@@ -174,10 +174,10 @@ private static byte[] init__http_parser_trans_targs_0()
 	};
 }
 
-private static final byte _http_parser_trans_targs[] = init__http_parser_trans_targs_0();
+private static final byte _puma_parser_trans_targs[] = init__puma_parser_trans_targs_0();
 
 
-private static byte[] init__http_parser_trans_actions_0()
+private static byte[] init__puma_parser_trans_actions_0()
 {
 	return new byte [] {
 	    1,    0,   11,    0,    1,    1,    1,    1,   13,   13,    1,    0,
@@ -190,14 +190,14 @@ private static byte[] init__http_parser_trans_actions_0()
 	};
 }
 
-private static final byte _http_parser_trans_actions[] = init__http_parser_trans_actions_0();
+private static final byte _puma_parser_trans_actions[] = init__puma_parser_trans_actions_0();
 
 
-static final int http_parser_start = 1;
-static final int http_parser_first_final = 57;
-static final int http_parser_error = 0;
+static final int puma_parser_start = 1;
+static final int puma_parser_first_final = 57;
+static final int puma_parser_error = 0;
 
-static final int http_parser_en_main = 1;
+static final int puma_parser_en_main = 1;
 
 
 // line 69 "ext/puma_http11/http11_parser.java.rl"
@@ -238,7 +238,7 @@ static final int http_parser_en_main = 1;
           
 // line 240 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
-	cs = http_parser_start;
+	cs = puma_parser_start;
 	}
 
 // line 104 "ext/puma_http11/http11_parser.java.rl"
@@ -290,9 +290,9 @@ static final int http_parser_en_main = 1;
 	}
 case 1:
 	_match: do {
-	_keys = _http_parser_key_offsets[cs];
-	_trans = _http_parser_index_offsets[cs];
-	_klen = _http_parser_single_lengths[cs];
+	_keys = _puma_parser_key_offsets[cs];
+	_trans = _puma_parser_index_offsets[cs];
+	_klen = _puma_parser_single_lengths[cs];
 	if ( _klen > 0 ) {
 		int _lower = _keys;
 		int _mid;
@@ -302,9 +302,9 @@ case 1:
 				break;
 
 			_mid = _lower + ((_upper-_lower) >> 1);
-			if ( data[p] < _http_parser_trans_keys[_mid] )
+			if ( data[p] < _puma_parser_trans_keys[_mid] )
 				_upper = _mid - 1;
-			else if ( data[p] > _http_parser_trans_keys[_mid] )
+			else if ( data[p] > _puma_parser_trans_keys[_mid] )
 				_lower = _mid + 1;
 			else {
 				_trans += (_mid - _keys);
@@ -315,7 +315,7 @@ case 1:
 		_trans += _klen;
 	}
 
-	_klen = _http_parser_range_lengths[cs];
+	_klen = _puma_parser_range_lengths[cs];
 	if ( _klen > 0 ) {
 		int _lower = _keys;
 		int _mid;
@@ -325,9 +325,9 @@ case 1:
 				break;
 
 			_mid = _lower + (((_upper-_lower) >> 1) & ~1);
-			if ( data[p] < _http_parser_trans_keys[_mid] )
+			if ( data[p] < _puma_parser_trans_keys[_mid] )
 				_upper = _mid - 2;
-			else if ( data[p] > _http_parser_trans_keys[_mid+1] )
+			else if ( data[p] > _puma_parser_trans_keys[_mid+1] )
 				_lower = _mid + 2;
 			else {
 				_trans += ((_mid - _keys)>>1);
@@ -338,15 +338,15 @@ case 1:
 	}
 	} while (false);
 
-	_trans = _http_parser_indicies[_trans];
-	cs = _http_parser_trans_targs[_trans];
+	_trans = _puma_parser_indicies[_trans];
+	cs = _puma_parser_trans_targs[_trans];
 
-	if ( _http_parser_trans_actions[_trans] != 0 ) {
-		_acts = _http_parser_trans_actions[_trans];
-		_nacts = (int) _http_parser_actions[_acts++];
+	if ( _puma_parser_trans_actions[_trans] != 0 ) {
+		_acts = _puma_parser_trans_actions[_trans];
+		_nacts = (int) _puma_parser_actions[_acts++];
 		while ( _nacts-- > 0 )
 	{
-			switch ( _http_parser_actions[_acts++] )
+			switch ( _puma_parser_actions[_acts++] )
 			{
 	case 0:
 // line 13 "ext/puma_http11/http11_parser.java.rl"
@@ -479,10 +479,10 @@ case 5:
   }
 
   public boolean has_error() {
-    return parser.cs == http_parser_error;
+    return parser.cs == puma_parser_error;
   }
 
   public boolean is_finished() {
-    return parser.cs == http_parser_first_final;
+    return parser.cs == puma_parser_first_final;
   }
 }
