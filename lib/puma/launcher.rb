@@ -1,9 +1,16 @@
+require 'puma/binder'
+
 module Puma
   class Launcher
-    def initialize(cli_options = {})
+    def initialize(cli_options = {}, launcher_options = {})
       @cli_options = cli_options
       @runner      = nil
+      @events      = launcher_options[:events] or raise "must provide :events key"
+      @binder      = Binder.new(@events)
+      @binder.import_from_env
     end
+
+    attr_reader :binder, :events
 
     ## THIS STUFF IS NEEDED FOR RUNNER
 
@@ -28,10 +35,6 @@ module Puma
 
     def binder
       @binder
-    end
-
-    def events
-      @events
     end
 
     # Delegate +error+ to +@events+
@@ -84,7 +87,7 @@ module Puma
       end
     end
 
-    attr_accessor :options, :binder, :config, :events, :argv
+    attr_accessor :options, :binder, :config, :argv
     ## THIS STUFF IS NEEDED FOR RUNNER
 
 

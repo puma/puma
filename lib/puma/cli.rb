@@ -51,9 +51,6 @@ module Puma
 
       setup_options
 
-      @binder = Binder.new(@events)
-      @binder.import_from_env
-
       begin
         @parser.parse! @argv
         @cli_options[:rackup] = @argv.shift if @argv.last
@@ -61,11 +58,9 @@ module Puma
         exit 1
       end
 
-      @launcher = Puma::Launcher.new(@cli_options)
+      @launcher = Puma::Launcher.new(@cli_options, events: @events)
 
-      @launcher.events  = self.events
       @launcher.config  = self.config
-      @launcher.binder  = self.binder
       @launcher.argv    = @argv
 
       @launcher.setup(@options)
@@ -119,7 +114,9 @@ module Puma
     ## BACKWARDS COMPAT FOR TESTS
 
     # The Binder object containing the sockets bound to.
-    attr_reader :binder
+    def binder
+      @launcher.binder
+    end
 
     # The Configuration object used.
     attr_reader :config
