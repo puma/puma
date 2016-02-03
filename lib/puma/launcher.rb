@@ -1,12 +1,12 @@
-require 'puma/binder'
+ require 'puma/binder'
 
 module Puma
   class Launcher
 
-    def initialize(cli_options = {}, launcher_options = {})
+    def initialize(input_options, launcher_args = {})
       @runner        = nil
-      @events        = launcher_options[:events] or raise "must provide :events key"
-      @argv          = launcher_options[:argv] || "puma"
+      @events        = launcher_args[:events] or raise "must provide :events key"
+      @argv          = launcher_args[:argv] || "puma"
       @original_argv = @argv.dup
       @config        = nil
 
@@ -14,19 +14,19 @@ module Puma
       @binder.import_from_env
 
       # Final internal representation of options is stored here
-      # cli_options will be parsed
+      # input_options will be parsed to populate this hash.
       @options       = {}
       generate_restart_data
 
       @env = @options[:environment] || ENV['RACK_ENV'] || 'development'
 
-      if cli_options[:config_file] == '-'
-        cli_options[:config_file] = nil
+      if input_options[:config_file] == '-'
+        input_options[:config_file] = nil
       else
-        cli_options[:config_file] ||= %W(config/puma/#{@env}.rb config/puma.rb).find { |f| File.exist?(f) }
+        input_options[:config_file] ||= %W(config/puma/#{@env}.rb config/puma.rb).find { |f| File.exist?(f) }
       end
 
-      @config = Puma::Configuration.new(cli_options)
+      @config = Puma::Configuration.new(input_options)
 
       # Advertise the Configuration
       Puma.cli_config = @config
