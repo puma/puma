@@ -47,8 +47,6 @@ module Puma
       @status = nil
       @runner = nil
 
-      @config = nil
-
       setup_options
 
       begin
@@ -59,11 +57,6 @@ module Puma
       end
 
       @launcher = Puma::Launcher.new(@cli_options, events: @events, argv: @argv)
-
-      @launcher.config  = self.config
-
-      @launcher.setup(@options)
-
     end
 
     ## BACKWARDS COMPAT FOR TESTS
@@ -118,10 +111,14 @@ module Puma
     end
 
     # The Configuration object used.
-    attr_reader :config
+    def config
+      @launcher.config
+    end
 
     # The Hash of options used to configure puma.
-    attr_reader :options
+    def options
+      @launcher.options
+    end
 
     # The Events object used to output information.
     attr_reader :events
@@ -139,54 +136,10 @@ module Puma
       Puma.windows?
     end
 
-<<<<<<< HEAD
     def env
-      @options[:environment] || @cli_options[:environment] || ENV['RACK_ENV'] || 'development'
+      @launcher.env
     end
 
-    def write_state
-      write_pid
-
-      path = @options[:state]
-      return unless path
-
-      state = { 'pid' => Process.pid }
-      cfg = @config.dup
-
-      KEYS_NOT_TO_PERSIST_IN_STATE.each { |k| cfg.options.delete(k) }
-      state['config'] = cfg
-
-      require 'yaml'
-      File.open(path, 'w') { |f| f.write state.to_yaml }
-    end
-
-    # If configured, write the pid of the current process out
-    # to a file.
-    #
-    def write_pid
-      path = @options[:pidfile]
-      return unless path
-
-      File.open(path, 'w') { |f| f.puts Process.pid }
-      cur = Process.pid
-      at_exit do
-        delete_pidfile if cur == Process.pid
-      end
-    end
-
-    def delete_pidfile
-      path = @options[:pidfile]
-      File.unlink(path) if path && File.exist?(path)
-    end
-
-    def graceful_stop
-      @runner.stop_blocked
-      log "=== puma shutdown: #{Time.now} ==="
-      log "- Goodbye!"
-    end
-
-=======
->>>>>>> Initial Seperation of CLI and Server Launcher work
     def jruby_daemon_start
       @launcher.jruby_daemon_start
     end
@@ -233,7 +186,6 @@ module Puma
 
     def setup_options
       @cli_options = {}
-      @options = {}
 
       @parser = OptionParser.new do |o|
         o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|

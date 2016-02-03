@@ -2,18 +2,68 @@ require 'puma/binder'
 
 module Puma
   class Launcher
+
     def initialize(cli_options = {}, launcher_options = {})
-      @cli_options   = cli_options
       @runner        = nil
       @events        = launcher_options[:events] or raise "must provide :events key"
       @argv          = launcher_options[:argv] || "puma"
       @original_argv = @argv.dup
+      @config        = nil
 
       @binder        = Binder.new(@events)
       @binder.import_from_env
+
+      # Final internal representation of options is stored here
+      # cli_options will be parsed
+      @options       = {}
+      generate_restart_data
+
+      @env = @options[:environment] || ENV['RACK_ENV'] || 'development'
+
+      if cli_options[:config_file] == '-'
+        cli_options[:config_file] = nil
+      else
+        cli_options[:config_file] ||= %W(config/puma/#{@env}.rb config/puma.rb).find { |f| File.exist?(f) }
+      end
+
+      @config = Puma::Configuration.new(cli_options)
+
+      # Advertise the Configuration
+      Puma.cli_config = @config
+
+      @config.load
+
+      @options = @config.options
+
+      if clustered? && (jruby? || windows?)
+        unsupported 'worker mode not supported on JRuby or Windows'
+      end
+
+      if @options[:daemon] && windows?
+        unsupported 'daemon mode not supported on Windows'
+      end
+
+      dir = @options[:directory]
+      Dir.chdir(dir) if dir
+
+      prune_bundler if prune_bundler?
+
+      @env = @options[:environment] if @options[:environment]
+      set_rack_environment
+
+      if clustered?
+        @events.formatter = Events::PidFormatter.new
+        @options[:logger] = @events
+
+        @runner = Cluster.new(self)
+      else
+        @runner = Single.new(self)
+      end
+
+      @status = :run
     end
 
-    attr_reader :binder, :events
+    attr_reader :binder, :events, :config, :options
 
     ## THIS STUFF IS NEEDED FOR RUNNER
 
@@ -21,10 +71,6 @@ module Puma
     #
     def log(str)
       @events.log str
-    end
-
-    def config
-      @config
     end
 
     def stats
@@ -92,33 +138,6 @@ module Puma
 
     attr_accessor :options, :binder, :config
     ## THIS STUFF IS NEEDED FOR RUNNER
-
-
-    def setup(options)
-      @options = options
-      generate_restart_data
-
-      parse_options
-
-      dir = @options[:directory]
-      Dir.chdir(dir) if dir
-
-      prune_bundler if prune_bundler?
-
-      set_rack_environment
-
-      if clustered?
-        @events.formatter = Events::PidFormatter.new
-        @options[:logger] = @events
-
-        @runner = Cluster.new(self)
-      else
-        @runner = Single.new(self)
-      end
-
-      @status = :run
-    end
-
 
     attr_accessor :runner
 
@@ -258,38 +277,13 @@ module Puma
 
 
   private
+    def parse_options
+      # backwards compat with CLI (private) interface
+    end
+
     def unsupported(str)
       @events.error(str)
       raise UnsupportedOption
-    end
-
-    def parse_options
-      find_config
-
-      @config = Puma::Configuration.new @cli_options
-
-      # Advertise the Configuration
-      Puma.cli_config = @config
-
-      @config.load
-
-      @options = @config.options
-
-      if clustered? && (jruby? || windows?)
-        unsupported 'worker mode not supported on JRuby or Windows'
-      end
-
-      if @options[:daemon] && windows?
-        unsupported 'daemon mode not supported on Windows'
-      end
-    end
-
-    def find_config
-      if @cli_options[:config_file] == '-'
-        @cli_options[:config_file] = nil
-      else
-        @cli_options[:config_file] ||= %W(config/puma/#{env}.rb config/puma.rb).find { |f| File.exist?(f) }
-      end
     end
 
     def graceful_stop
@@ -314,10 +308,7 @@ module Puma
     end
 
     def env
-      @options[:environment]       ||
-        @cli_options[:environment] ||
-        ENV['RACK_ENV']            ||
-        'development'
+      @env
     end
 
     def prune_bundler?
