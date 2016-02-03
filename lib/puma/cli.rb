@@ -58,10 +58,9 @@ module Puma
         exit 1
       end
 
-      @launcher = Puma::Launcher.new(@cli_options, events: @events)
+      @launcher = Puma::Launcher.new(@cli_options, events: @events, argv: @argv)
 
       @launcher.config  = self.config
-      @launcher.argv    = @argv
 
       @launcher.setup(@options)
 

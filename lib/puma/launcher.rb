@@ -3,10 +3,13 @@ require 'puma/binder'
 module Puma
   class Launcher
     def initialize(cli_options = {}, launcher_options = {})
-      @cli_options = cli_options
-      @runner      = nil
-      @events      = launcher_options[:events] or raise "must provide :events key"
-      @binder      = Binder.new(@events)
+      @cli_options   = cli_options
+      @runner        = nil
+      @events        = launcher_options[:events] or raise "must provide :events key"
+      @argv          = launcher_options[:argv] || "puma"
+      @original_argv = @argv.dup
+
+      @binder        = Binder.new(@events)
       @binder.import_from_env
     end
 
@@ -87,7 +90,7 @@ module Puma
       end
     end
 
-    attr_accessor :options, :binder, :config, :argv
+    attr_accessor :options, :binder, :config
     ## THIS STUFF IS NEEDED FOR RUNNER
 
 
@@ -346,8 +349,6 @@ module Puma
       end
 
       @restart_dir ||= Dir.pwd
-
-      @original_argv = @argv.nil? ? "puma" : @argv.dup
 
       require 'rubygems'
 
