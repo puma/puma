@@ -1,8 +1,29 @@
  require 'puma/binder'
 
 module Puma
+  # Puam::Launcher is the single entry point for starting a Puma server based on user
+  # configuration. It is responsible for taking user supplied arguments and resolving them
+  # with configuration in `config/puma.rb` or `config/puma/<env>.rb`.
+  #
+  # It is responsible for either launching a cluster of Puma workers or a single
+  # puma server.
   class Launcher
-
+    # Returns an instance of Launcher
+    #
+    # +input_options+ A Hash of options that is supplied by a user, typically through
+    # a CLI. These options are evaluated and merged with other configuration such as
+    # `config/puma.rb` file to generate the configuration options needed to run a Puma server.
+    #
+    # +launcher_args+ A Hash that currently has one required key `:events`, this is expected to
+    # hold an object similar to an `Puma::Events.stdio`, this object will be responsible for
+    # broadcasting Puma's internal state to a logging destination. An optional key `:argv` can
+    # be supplied, this should be an array of strings, these arguments are re-used when restarting
+    # the puma server.
+    #
+    # Examples:
+    #
+    #   options = { min_threads: 1, max_threads: 10 }
+    #   Puma::Launcher.new(options, argv: Puma::Events.stdio).run
     def initialize(input_options, launcher_args = {})
       @runner        = nil
       @events        = launcher_args[:events] or raise "must provide :events key"
