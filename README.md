@@ -71,7 +71,7 @@ Puma utilizes a dynamic thread pool which you can modify. You can set the minimu
 
     $ puma -t 8:32
 
-Puma will automatically scale the number of threads based on how much traffic is present. The current default is `0:16`. Feel free to experiment, but be careful not to set the number of maximum threads to a very large number, as you may exhaust resources on the system (or hit resource limits).
+Puma will automatically scale the number of threads, from the minimum until it caps out at the maximum, based on how much traffic is present. The current default is `0:16`. Feel free to experiment, but be careful not to set the number of maximum threads to a very large number, as you may exhaust resources on the system (or hit resource limits).
 
 ### Clustered mode
 
@@ -108,7 +108,7 @@ you to do some Puma-specific things that you don't want to embed in your applica
 For instance, you could fire a log notification that a worker booted or send something to statsd.
 This can be called multiple times to add hooks.
 
-If you're preloading your application and using ActiveRecord, it's recommend you setup your connection pool here:
+If you're preloading your application and using ActiveRecord, it's recommended that you setup your connection pool here:
 
     # config/puma.rb
     on_worker_boot do
@@ -127,7 +127,7 @@ On top of that, you can specify a block in your configuration file that will be 
 This code can be used to clean up before forking to clients, allowing
 you to do some Puma-specific things that you don't want to embed in your application.
 
-If you're preloading your application and using ActiveRecord, it's recommend you close any connections to the database here to prevent connection leakage:
+If you're preloading your application and using ActiveRecord, it's recommended that you close any connections to the database here to prevent connection leakage:
 
     # config/puma.rb
     before_fork do
@@ -136,7 +136,7 @@ If you're preloading your application and using ActiveRecord, it's recommend you
 
 This rule applies to any connections to external services (Redis, databases, memcache, ...) that might be started automatically by the framework.
 
-When you use preload_app, your new code goes all in the master process, and is then copied in the workers (meaning it’s only compatible with cluster mode). General rule is to use preload_app when your workers die often and need fast starts. If you don’t have many workers, you probably should not use preload_app.
+When you use preload_app, all of your new code goes into the master process, and is then copied into the workers (meaning it’s only compatible with cluster mode). General rule is to use preload_app when your workers die often and need fast starts. If you don’t have many workers, you probably should not use preload_app.
 
 Note that preload_app can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preload_app is all about copying the code of master into the workers.
 
@@ -174,7 +174,7 @@ Need a bit of security? Use SSL sockets!
 
 ### Control/Status Server
 
-Puma comes with a builtin status/control app that can be used query and control Puma itself. Here is an example of starting Puma with the control server:
+Puma comes with a builtin status/control app that can be used to query and control Puma itself. Here is an example of starting Puma with the control server:
 
     $ puma --control tcp://127.0.0.1:9293 --control-token foo
 
@@ -209,26 +209,26 @@ If the new process is unable to load, it will simply exit. You should therefore 
 
 ### Normal vs Hot vs Phased Restart
 
-A hot restart means that no requests while deploying your new code will be lost, since the server socket is kept open between restarts.
+A hot restart means that no requests will be lost while deploying your new code, since the server socket is kept open between restarts.
 
 But beware, hot restart does not mean that the incoming requests won’t hang for multiple seconds while your new code has not fully deployed. If you need a zero downtime and zero hanging requests deploy, you must use phased restart.
 
-When you run pumactl phased-restart, Puma kills workers one-by-one, meaning that at least another worker is still available to serve requests, which lead in zero hanging request (yay!).
+When you run pumactl phased-restart, Puma kills workers one-by-one, meaning that at least another worker is still available to serve requests, which lead to zero hanging requests (yay!).
 
 But again beware, upgrading an application sometimes involves upgrading the database schema. With phased restart, there may be a moment during the deployment where processes belonging to the previous version and processes belonging to the new version both exist at the same time. Any database schema upgrades you perform must therefore be backwards-compatible with the old application version.
 
-if you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (pumactl restart). That way, no code is shared while deploying (in that case, preload_app might help for quicker deployment, see below).
+If you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (pumactl restart). That way, no code is shared while deploying (in that case, preload_app might help for quicker deployment, see below).
 
 
 ### Cleanup Code
 
 Puma isn't able to understand all the resources that your app may use, so it provides a hook in the configuration file you pass to `-C` called `on_restart`. The block passed to `on_restart` will be called, unsurprisingly, just before Puma restarts itself.
 
-You should place code to close global log files, redis connections, etc in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restart many times.
+You should place code to close global log files, redis connections, etc in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restarted many times.
 
 ### Platform Constraints
 
-Because of various platforms not being implement certain things, the following differences occur when Puma is used on different platforms:
+Because of various platforms not being able to implement certain things, the following differences occur when Puma is used on different platforms:
 
   * **JRuby**, **Windows**: server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to ruby
   * **JRuby**, **Windows**: cluster mode is not supported due to a lack of  fork(2)
@@ -240,7 +240,7 @@ Because of various platforms not being implement certain things, the following d
 
 ## Managing multiple Pumas / init.d / upstart scripts
 
-If you want an easy way to manage multiple scripts at once check [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for init.d and upstart scripts.
+If you want an easy way to manage multiple scripts at once, check [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for init.d and upstart scripts.
 
 ## Capistrano deployment
 
