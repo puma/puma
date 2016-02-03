@@ -34,6 +34,16 @@ module Puma
       @events
     end
 
+    # Delegate +error+ to +@events+
+    #
+    def error(str)
+      @events.error str
+    end
+
+    def debug(str)
+      @events.log "- #{str}" if @options[:debug]
+    end
+
     def write_state
       write_pid
 
@@ -74,11 +84,14 @@ module Puma
       end
     end
 
-    attr_accessor :options, :binder, :config, :events
+    attr_accessor :options, :binder, :config, :events, :argv
     ## THIS STUFF IS NEEDED FOR RUNNER
+
 
     def setup(options)
       @options = options
+      generate_restart_data
+
       parse_options
 
       dir = @options[:directory]
@@ -99,7 +112,6 @@ module Puma
 
       @status = :run
     end
-
 
 
     attr_accessor :runner
@@ -139,13 +151,11 @@ module Puma
     end
 
     def jruby?
-      # remove eventually
-      IS_JRUBY
+      Puma.jruby?
     end
 
     def windows?
-      # remove eventually
-      RUBY_PLATFORM =~ /mswin32|ming32/
+      Puma.windows?
     end
 
 
@@ -175,6 +185,71 @@ module Puma
         Kernel.exec(*args)
       end
     end
+
+    def redirect_io
+      @runner.redirect_io
+    end
+
+    def phased_restart
+      unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
+        log "* phased-restart called but not available, restarting normally."
+        return restart
+      end
+      true
+    end
+
+    private
+    def restart_args
+      cmd = @options[:restart_cmd]
+      if cmd
+        cmd.split(' ') + @original_argv
+      else
+        @restart_argv
+      end
+    end
+    public
+
+
+    def jruby_daemon_start
+      require 'puma/jruby_restart'
+      JRubyRestart.daemon_start(@restart_dir, restart_args)
+    end
+
+    def reload_worker_directory
+      @launcher.reload_worker_directory
+    end
+
+    def restart!
+        @options[:on_restart].each do |block|
+          block.call self
+        end
+
+        if jruby?
+          close_binder_listeners
+
+          require 'puma/jruby_restart'
+          JRubyRestart.chdir_exec(@restart_dir, restart_args)
+        elsif windows?
+          close_binder_listeners
+
+          argv = restart_args
+          Dir.chdir(@restart_dir)
+          argv += [redirects] if RUBY_VERSION >= '1.9'
+          Kernel.exec(*argv)
+        else
+          redirects = {:close_others => true}
+          @binder.listeners.each_with_index do |(l, io), i|
+            ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+            redirects[io.to_i] = io.to_i
+          end
+
+          argv = restart_args
+          Dir.chdir(@restart_dir)
+          argv += [redirects] if RUBY_VERSION >= '1.9'
+          Kernel.exec(*argv)
+        end
+    end
+
 
   private
     def unsupported(str)
@@ -241,6 +316,57 @@ module Puma
 
     def prune_bundler?
       @options[:prune_bundler] && clustered? && !@options[:preload_app]
+    end
+
+    def close_binder_listeners
+      @binder.listeners.each do |l, io|
+        io.close
+        uri = URI.parse(l)
+        next unless uri.scheme == 'unix'
+        File.unlink("#{uri.host}#{uri.path}")
+      end
+    end
+
+
+    def generate_restart_data
+      # Use the same trick as unicorn, namely favor PWD because
+      # it will contain an unresolved symlink, useful for when
+      # the pwd is /data/releases/current.
+      if dir = ENV['PWD']
+        s_env = File.stat(dir)
+        s_pwd = File.stat(Dir.pwd)
+
+        if s_env.ino == s_pwd.ino and (jruby? or s_env.dev == s_pwd.dev)
+          @restart_dir = dir
+          @options[:worker_directory] = dir
+        end
+      end
+
+      @restart_dir ||= Dir.pwd
+
+      @original_argv = @argv.nil? ? "puma" : @argv.dup
+
+      require 'rubygems'
+
+      # if $0 is a file in the current directory, then restart
+      # it the same, otherwise add -S on there because it was
+      # picked up in PATH.
+      #
+      if File.exist?($0)
+        arg0 = [Gem.ruby, $0]
+      else
+        arg0 = [Gem.ruby, "-S", $0]
+      end
+
+      # Detect and reinject -Ilib from the command line
+      lib = File.expand_path "lib"
+      arg0[1,0] = ["-I", lib] if $:[0] == lib
+
+      if defined? Puma::WILD_ARGS
+        @restart_argv = arg0 + Puma::WILD_ARGS + @original_argv
+      else
+        @restart_argv = arg0 + @original_argv
+      end
     end
 
     def setup_signals

@@ -17,7 +17,7 @@ class TestCLI < Test::Unit::TestCase
 
     @wait, @ready = IO.pipe
 
-    @events = Events.strings
+    @events = Puma::Events.strings
     @events.on_booted { @ready << "!" }
   end
 

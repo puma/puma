@@ -50,7 +50,6 @@ module Puma
       @config = nil
 
       setup_options
-      generate_restart_data
 
       @binder = Binder.new(@events)
       @binder.import_from_env
@@ -67,11 +66,21 @@ module Puma
       @launcher.events  = self.events
       @launcher.config  = self.config
       @launcher.binder  = self.binder
+      @launcher.argv    = @argv
+
       @launcher.setup(@options)
 
     end
 
     ## BACKWARDS COMPAT FOR TESTS
+
+    def error(str)
+      @launcher.error(str)
+    end
+
+    def debug(str)
+      @launcher.debug(str)
+    end
 
     def delete_pidfile
       @launcher.delete_pidfile
@@ -121,29 +130,17 @@ module Puma
     # The Events object used to output information.
     attr_reader :events
 
-    # Delegate +error+ to +@events+
-    #
-    def error(str)
-      @events.error str
-    end
-
-    def debug(str)
-      @events.log "- #{str}" if @options[:debug]
-    end
 
     def clustered?
-      # remove eventually
-      @options[:workers] > 0
+      @launcher.clustered?
     end
 
     def jruby?
-      # remove eventually
-      IS_JRUBY
+      Puma.jruby?
     end
 
     def windows?
-      # remove eventually
-      RUBY_PLATFORM =~ /mswin32|ming32/
+      Puma.windows?
     end
 
 <<<<<<< HEAD
@@ -195,63 +192,30 @@ module Puma
 =======
 >>>>>>> Initial Seperation of CLI and Server Launcher work
     def jruby_daemon_start
-      require 'puma/jruby_restart'
-      JRubyRestart.daemon_start(@restart_dir, restart_args)
+      @launcher.jruby_daemon_start
     end
 
     def restart!
-      @options[:on_restart].each do |block|
-        block.call self
-      end
-
-      if jruby?
-        close_binder_listeners
-
-        require 'puma/jruby_restart'
-        JRubyRestart.chdir_exec(@restart_dir, restart_args)
-      elsif windows?
-        close_binder_listeners
-
-        argv = restart_args
-        Dir.chdir(@restart_dir)
-        argv += [redirects] if RUBY_VERSION >= '1.9'
-        Kernel.exec(*argv)
-      else
-        redirects = {:close_others => true}
-        @binder.listeners.each_with_index do |(l, io), i|
-          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-          redirects[io.to_i] = io.to_i
-        end
-
-        argv = restart_args
-        Dir.chdir(@restart_dir)
-        argv += [redirects] if RUBY_VERSION >= '1.9'
-        Kernel.exec(*argv)
-      end
+      @launcher.restart!
     end
 
     # Parse the options, load the rackup, start the server and wait
     # for it to finish.
     #
     def run
-      @runner = @launcher.runner
       @launcher.run
     end
 
     def reload_worker_directory
-      @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
+      @launcher.reload_worker_directory
     end
 
     def phased_restart
-      unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
-        log "* phased-restart called but not available, restarting normally."
-        return restart
-      end
-      true
+      @launcher.phased_restart
     end
 
     def redirect_io
-      @runner.redirect_io
+      @launcher.redirect_io
     end
 
     def stats
@@ -259,23 +223,13 @@ module Puma
     end
 
     def halt
-      @status = :halt
-      @runner.halt
+      @launcher.halt
     end
 
   private
     def unsupported(str)
       @events.error(str)
       raise UnsupportedOption
-    end
-
-    def restart_args
-      cmd = @options[:restart_cmd]
-      if cmd
-        cmd.split(' ') + @original_argv
-      else
-        @restart_argv
-      end
     end
 
     # Build the OptionParser object to handle the available options.
@@ -410,56 +364,6 @@ module Puma
           log o
           exit 0
         end
-      end
-    end
-
-    def generate_restart_data
-      # Use the same trick as unicorn, namely favor PWD because
-      # it will contain an unresolved symlink, useful for when
-      # the pwd is /data/releases/current.
-      if dir = ENV['PWD']
-        s_env = File.stat(dir)
-        s_pwd = File.stat(Dir.pwd)
-
-        if s_env.ino == s_pwd.ino and (jruby? or s_env.dev == s_pwd.dev)
-          @restart_dir = dir
-          @options[:worker_directory] = dir
-        end
-      end
-
-      @restart_dir ||= Dir.pwd
-
-      @original_argv = @argv.dup
-
-      require 'rubygems'
-
-      # if $0 is a file in the current directory, then restart
-      # it the same, otherwise add -S on there because it was
-      # picked up in PATH.
-      #
-      if File.exist?($0)
-        arg0 = [Gem.ruby, $0]
-      else
-        arg0 = [Gem.ruby, "-S", $0]
-      end
-
-      # Detect and reinject -Ilib from the command line
-      lib = File.expand_path "lib"
-      arg0[1,0] = ["-I", lib] if $:[0] == lib
-
-      if defined? Puma::WILD_ARGS
-        @restart_argv = arg0 + Puma::WILD_ARGS + @original_argv
-      else
-        @restart_argv = arg0 + @original_argv
-      end
-    end
-
-    def close_binder_listeners
-      @binder.listeners.each do |l, io|
-        io.close
-        uri = URI.parse(l)
-        next unless uri.scheme == 'unix'
-        File.unlink("#{uri.host}#{uri.path}")
       end
     end
   end
