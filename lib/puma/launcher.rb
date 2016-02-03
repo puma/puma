@@ -27,7 +27,7 @@ module Puma
     def initialize(input_options, launcher_args = {})
       @runner        = nil
       @events        = launcher_args[:events] or raise "must provide :events key"
-      @argv          = launcher_args[:argv] || "puma"
+      @argv          = launcher_args[:argv] || []
       @original_argv = @argv.dup
       @config        = nil
 
