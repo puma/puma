@@ -45,7 +45,6 @@ module Puma
       @events = events
 
       @status = nil
-      @runner = nil
 
       setup_options
 

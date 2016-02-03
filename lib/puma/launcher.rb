@@ -139,8 +139,6 @@ module Puma
     attr_accessor :options, :binder, :config
     ## THIS STUFF IS NEEDED FOR RUNNER
 
-    attr_accessor :runner
-
     def stop
       @status = :stop
       @runner.stop
