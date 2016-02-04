@@ -33,14 +33,16 @@ class TestPathHandler < Test::Unit::TestCase
 
     # Wait for server to boot
     Timeout.timeout(10) do
-      until @server && @server.running
-        sleep 0.01
+      until @server
+        sleep 1
       end
     end
+    sleep 1
+
     yield @server
   ensure
-    @server.stop(true) if @server
-    thread.join if thread
+    @server.stop if @server
+    thread.join  if thread
   end
 
 
