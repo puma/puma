@@ -1,5 +1,5 @@
 # Copyright (c) 2011 Evan Phoenix
-# Copyright (c) 2005 Zed A. Shaw 
+# Copyright (c) 2005 Zed A. Shaw
 
 require 'test/testhelp'
 
@@ -19,11 +19,11 @@ class WebServerTest < Test::Unit::TestCase
 
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
-    
+
     @tester = TestHandler.new
 
     @server = Server.new @tester, Events.strings
-    @server.add_tcp_listener "127.0.0.1", 9998
+    @server.add_tcp_listener "127.0.0.1", 0
 
     @server.run
   end
@@ -33,14 +33,14 @@ class WebServerTest < Test::Unit::TestCase
   end
 
   def test_simple_server
-    hit(['http://127.0.0.1:9998/test'])
+    hit(["http://127.0.0.1:#{ @server.connected_port }/test"])
     assert @tester.ran_test, "Handler didn't really run"
   end
 
 
   def do_test(string, chunk, close_after=nil, shutdown_delay=0)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", 9998);
+    socket = TCPSocket.new("127.0.0.1", @server.connected_port);
     request = StringIO.new(string)
     chunks_out = 0
 
