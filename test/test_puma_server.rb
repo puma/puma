@@ -59,7 +59,7 @@ class TestPumaServer < Test::Unit::TestCase
       [-1, {}, []]
     end
 
-    @server.add_tcp_listener @host, @server.connected_port
+    @server.add_tcp_listener @host, @port
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -75,7 +75,7 @@ class TestPumaServer < Test::Unit::TestCase
       [200, {}, [giant]]
     end
 
-    @server.add_tcp_listener @host, @server.connected_port
+    @server.add_tcp_listener @host, @port
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -96,7 +96,7 @@ class TestPumaServer < Test::Unit::TestCase
       [200, {}, [env['SERVER_PORT']]]
     end
 
-    @server.add_tcp_listener @host, @server.connected_port
+    @server.add_tcp_listener @host, @port
     @server.run
 
     req = Net::HTTP::Get.new("/")
@@ -115,7 +115,7 @@ class TestPumaServer < Test::Unit::TestCase
       [200, {}, [env['SERVER_PORT']]]
     end
 
-    @server.add_tcp_listener @host, @server.connected_port
+    @server.add_tcp_listener @host, @port
     @server.run
 
     req = Net::HTTP::Get.new("/")
@@ -159,7 +159,7 @@ class TestPumaServer < Test::Unit::TestCase
   def test_GET_with_no_body_has_sane_chunking
     @server.app = proc { |env| [200, {}, []] }
 
-    @server.add_tcp_listener @host, @server.connected_port
+    @server.add_tcp_listener @host, @port
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
