@@ -29,7 +29,7 @@ module Rack
         options[:app] = app
         events        = options.delete(:Silent) ? ::Puma::Events.strings : ::Puma::Events.stdio
 
-        launcher = ::Puma::Launcher.new(options, events: events)
+        launcher = ::Puma::Launcher.new(options, :events => events)
 
         yield launcher if block_given?
         begin

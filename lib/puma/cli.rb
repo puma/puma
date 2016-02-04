@@ -51,7 +51,7 @@ module Puma
         exit 1
       end
 
-      @launcher = Puma::Launcher.new(@cli_options, events: @events, argv: @argv)
+      @launcher = Puma::Launcher.new(@cli_options, :events => @events, :argv => @argv)
     end
 
     ## BACKWARDS COMPAT FOR TESTS
