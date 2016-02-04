@@ -23,6 +23,7 @@ module Puma
     # Examples:
     #
     #   options = { min_threads: 1, max_threads: 10 }
+    #   options[:app] = ->(env) { [200, {}, ["hello world"]] }
     #   Puma::Launcher.new(options, argv: Puma::Events.stdio).run
     def initialize(input_options, launcher_args = {})
       @runner        = nil
