@@ -26,11 +26,7 @@ module Puma
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI
-    KEYS_NOT_TO_PERSIST_IN_STATE = [
-      :logger, :lowlevel_error_handler,
-      :before_worker_shutdown, :before_worker_boot, :before_worker_fork,
-      :after_worker_boot, :before_fork, :on_restart
-    ]
+    KEYS_NOT_TO_PERSIST_IN_STATE = Launcher::KEYS_NOT_TO_PERSIST_IN_STATE
 
     # Create a new CLI object using +argv+ as the command line
     # arguments.

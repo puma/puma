@@ -137,7 +137,7 @@ class TestCLI < Test::Unit::TestCase
   end
 
   def test_state_file_callback_filtering
-    cli = Puma::CLI.new [ "--config", "test/config/state_file_testing_config.rb", 
+    cli = Puma::CLI.new [ "--config", "test/config/state_file_testing_config.rb",
                           "--state", @tmp_path ]
     cli.send( :parse_options )
     cli.write_state
