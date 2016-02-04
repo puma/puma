@@ -176,6 +176,10 @@ module Puma
       @runner.stop
     end
 
+    def connected_port
+      @binder.connected_port
+    end
+
     def restart
       @status = :restart
       @runner.restart

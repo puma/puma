@@ -22,33 +22,33 @@ class TestPathHandler < Test::Unit::TestCase
   end
 
   def in_handler(app, options = {})
-    options[:Port] ||= 9998
-    @server = nil
+    options[:Port] ||= 0
+    @launcher = nil
     thread = Thread.new do
-      Rack::Handler::Puma.run(app, options) do |s|
-        @server = s
+      Rack::Handler::Puma.run(app, options) do |s, p|
+        @launcher = s
       end
     end
     thread.abort_on_exception = true
 
-    # Wait for server to boot
+    # Wait for launcher to boot
     Timeout.timeout(10) do
-      until @server
+      until @launcher
         sleep 1
       end
     end
     sleep 1
 
-    yield @server
+    yield @launcher
   ensure
-    @server.stop if @server
+    @launcher.stop if @launcher
     thread.join  if thread
   end
 
 
   def test_handler_boots
-    in_handler(app) do |server|
-      hit(["http://0.0.0.0:9998/test"])
+    in_handler(app) do |launcher|
+      hit(["http://0.0.0.0:#{ launcher.connected_port }/test"])
       assert_equal("/test", @input["PATH_INFO"])
     end
   end
