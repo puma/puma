@@ -5,11 +5,8 @@ module Rack
   module Handler
     module Puma
       DEFAULT_OPTIONS = {
-        :Host    => '0.0.0.0',
-        :Port    => 8080,
-        :Threads => '0:16',
         :Verbose => false,
-        :Silent => false
+        :Silent  => false
       }
 
       def self.run(app, options = {})
@@ -23,9 +20,9 @@ module Rack
           ENV['RACK_ENV'] = options[:environment].to_s
         end
 
-        options[:binds] ||= []
-        options[:binds] << "tcp://#{ options.delete(:Host) }:#{ options.delete(:Port) }"
-        options[:min_threads], options[:max_threads] = options.delete(:Threads).split(':', 2)
+        if options[:Threads]
+          options[:min_threads], options[:max_threads] = options.delete(:Threads).split(':', 2)
+        end
         options[:app] = app
         events        = options.delete(:Silent) ? ::Puma::Events.strings : ::Puma::Events.stdio
 

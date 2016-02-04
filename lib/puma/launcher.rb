@@ -1,4 +1,14 @@
- require 'puma/binder'
+require 'puma/server'
+require 'puma/const'
+require 'puma/configuration'
+require 'puma/binder'
+require 'puma/detect'
+require 'puma/daemon_ext'
+require 'puma/util'
+require 'puma/single'
+require 'puma/cluster'
+
+require 'puma/commonlogger'
 
 module Puma
   # Puam::Launcher is the single entry point for starting a Puma server based on user
@@ -56,7 +66,7 @@ module Puma
       @config = Puma::Configuration.new(input_options)
 
       # Advertise the Configuration
-      Puma.cli_config = @config
+      Puma.cli_config = @config if defined?(Puma.cli_config)
 
       @config.load
 

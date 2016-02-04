@@ -1,17 +1,6 @@
 require 'optparse'
 require 'uri'
 
-require 'puma/server'
-require 'puma/const'
-require 'puma/configuration'
-require 'puma/binder'
-require 'puma/detect'
-require 'puma/daemon_ext'
-require 'puma/util'
-require 'puma/single'
-require 'puma/cluster'
-
-require 'puma/commonlogger'
 require 'puma/launcher'
 
 module Puma
