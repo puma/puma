@@ -85,6 +85,7 @@ module Puma
     forward :add_tcp_listener,  :@binder
     forward :add_ssl_listener,  :@binder
     forward :add_unix_listener, :@binder
+    forward :connected_port,    :@binder
 
     def inherit_binder(bind)
       @binder = bind

@@ -11,7 +11,7 @@ require 'net/https'
 class TestPumaServer < Test::Unit::TestCase
 
   def setup
-    @port = 3212
+    @port = 0
     @host = "127.0.0.1"
 
     @app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
@@ -37,7 +37,7 @@ class TestPumaServer < Test::Unit::TestCase
 
     fifteen = "1" * 15
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "PUT / HTTP/1.0\r\nContent-Length: 30\r\n\r\n#{fifteen}"
     sleep 0.1 # important so that the previous data is sent as a packet
     sock << fifteen
@@ -59,10 +59,10 @@ class TestPumaServer < Test::Unit::TestCase
       [-1, {}, []]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.add_tcp_listener @host, @server.connected_port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "PUT / HTTP/1.0\r\n\r\nHello"
 
     assert_equal body, sock.read
@@ -75,10 +75,10 @@ class TestPumaServer < Test::Unit::TestCase
       [200, {}, [giant]]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.add_tcp_listener @host, @server.connected_port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.0\r\n\r\n"
 
     while true
@@ -96,14 +96,14 @@ class TestPumaServer < Test::Unit::TestCase
       [200, {}, [env['SERVER_PORT']]]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.add_tcp_listener @host, @server.connected_port
     @server.run
 
     req = Net::HTTP::Get.new("/")
     req['HOST'] = "example.com"
     req['X_FORWARDED_PROTO'] = "https"
 
-    res = Net::HTTP.start @host, @port do |http|
+    res = Net::HTTP.start @host, @server.connected_port do |http|
       http.request(req)
     end
 
@@ -115,13 +115,13 @@ class TestPumaServer < Test::Unit::TestCase
       [200, {}, [env['SERVER_PORT']]]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.add_tcp_listener @host, @server.connected_port
     @server.run
 
     req = Net::HTTP::Get.new("/")
     req['HOST'] = "example.com"
 
-    res = Net::HTTP.start @host, @port do |http|
+    res = Net::HTTP.start @host, @server.connected_port do |http|
       http.request(req)
     end
 
@@ -134,7 +134,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "HEAD / HTTP/1.0\r\n\r\n"
 
     data = sock.read
@@ -148,7 +148,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "HEAD / HTTP/1.0\r\n\r\n"
 
     data = sock.read
@@ -159,10 +159,10 @@ class TestPumaServer < Test::Unit::TestCase
   def test_GET_with_no_body_has_sane_chunking
     @server.app = proc { |env| [200, {}, []] }
 
-    @server.add_tcp_listener @host, @port
+    @server.add_tcp_listener @host, @server.connected_port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "HEAD / HTTP/1.0\r\n\r\n"
 
     data = sock.read
@@ -179,7 +179,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.0\r\n\r\n"
 
     data = sock.read
@@ -197,7 +197,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.0\r\n\r\n"
 
     data = sock.read
@@ -210,7 +210,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
 
     sock << "GET / HTTP/1.0\r\n\r\n"
 
@@ -225,7 +225,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
     data = sock.read
@@ -240,7 +240,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
 
     sock << "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -260,7 +260,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "HEAD / HTTP/1.0\r\n\r\n"
 
     sock.read
@@ -277,7 +277,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    client = TCPSocket.new @host, @port
+    client = TCPSocket.new @host, @server.connected_port
 
     client << "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
 
@@ -292,7 +292,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
     data = sock.read
@@ -306,7 +306,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
     data = sock.read
@@ -320,7 +320,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
     data = sock.read
@@ -334,7 +334,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
     data = sock.read
@@ -348,7 +348,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
     data = sock.read
@@ -362,18 +362,18 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
     data = sock.read
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Type: plain/text\r\nContent-Length: 5\r\n\r\nhello", data
   end
-  
+
   def test_http_10_partial_hijack_with_content_length
     body_parts = ['abc', 'de']
-    
-    @server.app = proc do |env| 
+
+    @server.app = proc do |env|
       hijack_lambda = proc do | io |
         io.write(body_parts[0])
         io.write(body_parts[1])
@@ -385,21 +385,21 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
     data = sock.read
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
   end
-  
+
   def test_http_10_keep_alive_without_body
     @server.app = proc { |env| [204, {}, []] }
 
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
     data = sock.read
@@ -413,7 +413,7 @@ class TestPumaServer < Test::Unit::TestCase
     @server.add_tcp_listener @host, @port
     @server.run
 
-    sock = TCPSocket.new @host, @port
+    sock = TCPSocket.new @host, @server.connected_port
     sock << "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
     data = sock.read

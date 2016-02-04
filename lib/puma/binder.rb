@@ -237,9 +237,13 @@ module Puma
       end
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
+      @connected_port = s.addr[1]
+
       @ios << s
       s
     end
+
+    attr_reader :connected_port
 
     def inherit_tcp_listener(host, port, fd)
       if fd.kind_of? TCPServer
