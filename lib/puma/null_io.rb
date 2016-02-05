@@ -30,5 +30,11 @@ module Puma
     #
     def close
     end
+
+    # Always zero
+    #
+    def size
+      0
+    end
   end
 end

@@ -28,4 +28,8 @@ class TestNullIO < Test::Unit::TestCase
     assert_nil nio.read(1,buf)
     assert_equal "", buf
   end
+
+  def test_size
+    assert_equal 0, nio.size
+  end
 end
