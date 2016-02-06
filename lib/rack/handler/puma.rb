@@ -5,17 +5,14 @@ module Rack
   module Handler
     module Puma
       DEFAULT_OPTIONS = {
-        :Host => '0.0.0.0',
-        :Port => 8080,
-        :Threads => '0:16',
         :Verbose => false,
-        :Silent => false
+        :Silent  => false
       }
 
       def self.run(app, options = {})
         options  = DEFAULT_OPTIONS.merge(options)
 
-        if options[:Verbose]
+        if options.delete(:Verbose)
           app = Rack::CommonLogger.new(app, STDOUT)
         end
 
@@ -23,30 +20,22 @@ module Rack
           ENV['RACK_ENV'] = options[:environment].to_s
         end
 
-        events_hander = options[:Silent] ? ::Puma::Events.strings : ::Puma::Events.stdio
-        server   = ::Puma::Server.new(app, events_hander)
-        min, max = options[:Threads].split(':', 2)
-
-        log = events_hander.stdout
-
-        log.puts "Puma #{::Puma::Const::PUMA_VERSION} starting..."
-        log.puts "* Min threads: #{min}, max threads: #{max}"
-        log.puts "* Environment: #{ENV['RACK_ENV']}"
-        log.puts "* Listening on tcp://#{options[:Host]}:#{options[:Port]}"
-
-        server.add_tcp_listener options[:Host], options[:Port]
-        server.min_threads = min
-        server.max_threads = max
-        yield server if block_given?
-
-        begin
-          server.run.join
-        rescue Interrupt
-          log.puts "* Gracefully stopping, waiting for requests to finish"
-          server.stop(true)
-          log.puts "* Goodbye!"
+        if options[:Threads]
+          options[:min_threads], options[:max_threads] = options.delete(:Threads).split(':', 2)
         end
+        options[:app] = app
+        events        = options.delete(:Silent) ? ::Puma::Events.strings : ::Puma::Events.stdio
 
+        launcher = ::Puma::Launcher.new(options, :events => events)
+
+        yield launcher if block_given?
+        begin
+          launcher.run
+        rescue Interrupt
+          puts "* Gracefully stopping, waiting for requests to finish"
+          launcher.stop
+          puts "* Goodbye!"
+        end
       end
 
       def self.valid_options
