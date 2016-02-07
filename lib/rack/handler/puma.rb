@@ -12,21 +12,31 @@ module Rack
       def self.run(app, options = {})
         options  = DEFAULT_OPTIONS.merge(options)
 
-        if options.delete(:Verbose)
-          app = Rack::CommonLogger.new(app, STDOUT)
+        conf = ::Puma::Configuration.new do |c|
+          if options.delete(:Verbose)
+            app = Rack::CommonLogger.new(app, STDOUT)
+          end
+
+          if options[:environment]
+            c.environment options[:environment]
+          end
+
+          if options[:Threads]
+            min, max = options.delete(:Threads).split(':', 2)
+            c.threads min, max
+          end
+
+          host = options[:Host] || ::Puma::Configuration::DefaultTCPHost
+          port = options[:Port] || ::Puma::Configuration::DefaultTCPPort
+
+          c.port port, host
+
+          c.app app
         end
 
-        if options[:environment]
-          ENV['RACK_ENV'] = options[:environment].to_s
-        end
+        events = options.delete(:Silent) ? ::Puma::Events.strings : ::Puma::Events.stdio
 
-        if options[:Threads]
-          options[:min_threads], options[:max_threads] = options.delete(:Threads).split(':', 2)
-        end
-        options[:app] = app
-        events        = options.delete(:Silent) ? ::Puma::Events.strings : ::Puma::Events.stdio
-
-        launcher = ::Puma::Launcher.new(options, :events => events)
+        launcher = ::Puma::Launcher.new(conf, :events => events)
 
         yield launcher if block_given?
         begin

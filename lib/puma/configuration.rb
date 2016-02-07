@@ -11,27 +11,112 @@ module Puma
     DefaultWorkerShutdownTimeout = 30
   end
 
+  class LeveledOptions
+    def initialize
+      @cur = {}
+      @set = [@cur]
+    end
+
+    def initialize_copy(other)
+      @set = @set.map { |o| o.dup }
+      @cur = @set.last
+    end
+
+    def shift
+      @cur = {}
+      @set << @cur
+    end
+
+    def [](key)
+      @set.each do |o|
+        if o.key? key
+          return o[key]
+        end
+      end
+
+      nil
+    end
+
+    attr_reader :cur
+
+    def all_of(key)
+      all = []
+
+      @set.each do |o|
+        if v = o[key]
+          if v.kind_of? Array
+            all += v
+          else
+            all << v
+          end
+        end
+      end
+
+      all
+    end
+
+    def []=(key, val)
+      @cur[key] = val
+    end
+
+    def key?(key)
+      @set.each do |o|
+        if o.key? key
+          return true
+        end
+      end
+
+      false
+    end
+
+    def merge!(o)
+      o.each do |k,v|
+        @cur[k]= v
+      end
+    end
+
+    def flatten
+      options = {}
+
+      @set.each do |o|
+        o.each do |k,v|
+          options[k] ||= v
+        end
+      end
+
+      options
+    end
+  end
+
   class Configuration
     include ConfigDefault
 
-    def initialize(options)
-      @cli_options = options
+    def self.from_file(path)
+      cfg = new
 
-      @conf = {}
-      @conf[:mode] ||= :http
-      @conf[:binds] ||= []
-      @conf[:on_restart] ||= []
-      @conf[:before_fork] ||= []
-      @conf[:before_worker_shutdown] ||= []
-      @conf[:before_worker_boot] ||= []
-      @conf[:before_worker_fork] ||= []
-      @conf[:after_worker_boot] ||= []
-      @conf[:worker_timeout] ||= DefaultWorkerTimeout
-      @conf[:worker_boot_timeout] ||= @conf[:worker_timeout]
-      @conf[:worker_shutdown_timeout] ||= DefaultWorkerShutdownTimeout
-      @conf[:remote_address] ||= :socket
+      DSL.new(cfg.options)._load_from path
 
-      @options = {}
+      return cfg
+    end
+
+    def initialize(options={})
+      @options = LeveledOptions.new
+
+      # options.each do |k,v|
+        # @options[k] = v
+      # end
+
+      if block_given?
+        @options.shift
+        d = DSL.new(@options)
+        yield d
+      end
+    end
+
+    def configure
+      @options.shift
+      d = DSL.new(@options)
+      yield d
     end
 
     attr_reader :options
@@ -42,30 +127,61 @@ module Puma
       @options = @options.dup
     end
 
+    def flatten
+      dup.flatten!
+    end
+
+    def flatten!
+      @options = @options.flatten
+      self
+    end
+
     def default_options
       {
         :min_threads => 0,
         :max_threads => 16,
         :quiet => false,
         :debug => false,
-        :binds => [],
+        :binds => ["tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"],
         :workers => 0,
         :daemon => false,
+        :mode => :http,
+        :worker_timeout => DefaultWorkerTimeout,
+        :worker_boot_timeout => DefaultWorkerTimeout,
+        :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
+        :remote_address => :socket
       }
     end
 
     def load
-      @conf.merge! @cli_options
-      DSL.load(@conf, @cli_options[:config_file])
+      files = @options.all_of(:config_files)
 
-      # Load the options in the right priority
-      #
-      @options.merge! default_options
-      @options.merge! @conf
-      @options.merge! @cli_options
+      if files.empty?
+        imp = %W(config/puma/#{@options[:environment]}.rb config/puma.rb).find { |f|
+          File.exist?(f)
+        }
 
-      setup_binds
-      setup_control
+        files << imp
+      elsif files == ["-"]
+        files = []
+      end
+
+      files.each do |f|
+        @options.shift
+
+        DSL.load @options, f
+      end
+    end
+
+    # Call once all configuration (included from rackup files)
+    # is loaded to flesh out any defaults
+    def clamp
+      @options.shift
+
+      default_options.each do |k,v|
+        @options[k] = v
+      end
+
       @options[:tag] ||= infer_tag
     end
 
@@ -113,6 +229,11 @@ module Puma
       ConfigMiddleware.new(self, found)
     end
 
+    # Return which environment we're running in
+    def environment
+      @options[:environment] || ENV['RACK_ENV'] || 'development'
+    end
+
     def self.temp_path
       require 'tmpdir'
 
@@ -152,6 +273,8 @@ module Puma
     def load_rackup
       raise "Missing rackup file '#{rackup}'" unless File.exist?(rackup)
 
+      @options.shift
+
       rack_app, rack_options = rack_builder.parse_file(rackup)
       @options.merge!(rack_options)
 
@@ -159,37 +282,13 @@ module Puma
       rack_options.each do |k, v|
         config_ru_binds << v if k.to_s.start_with?("bind")
       end
+
       @options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
     end
 
-    def setup_binds
-      # Rakeup default option support
-      host = @options[:Host]
-      if host
-        port = @options[:Port] || DefaultTCPPort
-        @options[:binds] << "tcp://#{host}:#{port}"
-      end
-
-      if @options[:binds].empty?
-        @options[:binds] << "tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"
-      end
-
-      @options[:binds].uniq!
-    end
-
-    def setup_control
-      if @options[:control_url] == 'auto'
-        path = Configuration.temp_path
-        @options[:control_url] = "unix://#{path}"
-        @options[:control_url_temp] = path
-      end
-
-      setup_random_token unless @options[:control_auth_token]
-    end
-
-    def setup_random_token
+    def self.random_token
       begin
         require 'openssl'
       rescue LoadError
@@ -212,7 +311,7 @@ module Puma
         token = (0..count).to_a.map { rand(255).to_s(16) }.join
       end
 
-      @options[:control_auth_token] = token
+      return token
     end
   end
 end

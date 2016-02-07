@@ -3,6 +3,12 @@ module Process
   # This overrides the default version because it is broken if it
   # exists.
 
+  if respond_to? :daemon
+    class << self
+      remove_method :daemon
+    end
+  end
+
   def self.daemon(nochdir=false, noclose=false)
     exit if fork                     # Parent exits, child continues.
 

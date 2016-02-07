@@ -15,6 +15,7 @@ class TestIntegration < Test::Unit::TestCase
     @state_path = "test/test_puma.state"
     @bind_path = "test/test_server.sock"
     @control_path = "test/test_control.sock"
+    @token = "xxyyzz"
     @tcp_port = 9998
 
     @server = nil
@@ -81,10 +82,19 @@ class TestIntegration < Test::Unit::TestCase
       return
     end
 
-    cli = Puma::CLI.new %W!-q -S #{@state_path} -b unix://#{@bind_path} --control unix://#{@control_path} test/hello.ru!, @events
+    conf = Puma::Configuration.new do |c|
+      c.quiet
+      c.state_path @state_path
+      c.bind "unix://#{@bind_path}"
+      c.activate_control_app "unix://#{@control_path}", :auth_token => @token
+      c.rackup "test/hello.ru"
+    end
+
+    l = Puma::Launcher.new conf, :events => @events
 
     t = Thread.new do
-      cli.run
+      Thread.current.abort_on_exception = true
+      l.run
     end
 
     wait_booted
@@ -102,17 +112,29 @@ class TestIntegration < Test::Unit::TestCase
     assert_kind_of Thread, t.join(1), "server didn't stop"
   end
 
-  def notest_phased_restart_via_pumactl
+  def test_phased_restart_via_pumactl
     if defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
       assert true
       return
     end
 
-    cli = Puma::CLI.new %W!-q -S #{@state_path} -b unix://#{@bind_path} --control unix://#{@control_path} -w 2 test/hello-stuck.ru!, @events
-    cli.options[:worker_shutdown_timeout] = 1
+    conf = Puma::Configuration.new do |c|
+      c.quiet
+      c.state_path @state_path
+      c.bind "unix://#{@bind_path}"
+      c.activate_control_app "unix://#{@control_path}", :auth_token => @token
+      c.workers 2
+      c.worker_shutdown_timeout 1
+      c.rackup "test/hello-stuck.ru"
+    end
+
+    l = Puma::Launcher.new conf, :events => @events
+
+    Thread.abort_on_exception = true
 
     t = Thread.new do
-      cli.run
+      Thread.current.abort_on_exception = true
+      l.run
     end
 
     wait_booted
@@ -143,7 +165,7 @@ class TestIntegration < Test::Unit::TestCase
     assert_kind_of Thread, t.join(5), "server didn't stop"
   end
 
-  def notest_restart_closes_keepalive_sockets
+  def test_restart_closes_keepalive_sockets
     server("-q test/hello.ru")
 
     s = TCPSocket.new "localhost", @tcp_port
@@ -169,7 +191,7 @@ class TestIntegration < Test::Unit::TestCase
     assert_equal "Hello World", s.read.split("\r\n").last
   end
 
-  def notest_restart_closes_keepalive_sockets_workers
+  def test_restart_closes_keepalive_sockets_workers
     server("-q -w 2 test/hello.ru")
 
     s = TCPSocket.new "localhost", @tcp_port
@@ -203,4 +225,4 @@ class TestIntegration < Test::Unit::TestCase
     data = s.read
     assert_equal "HTTP/1.1 400 Bad Request\r\n\r\n", data
   end
-end unless ENV['TRAVIS']
+end # unless ENV['TRAVIS']

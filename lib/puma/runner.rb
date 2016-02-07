@@ -1,7 +1,8 @@
 module Puma
   class Runner
-    def initialize(cli)
-      @cli = cli
+    def initialize(cli, events)
+      @launcher = cli
+      @events = events
       @options = cli.options
       @app = nil
       @control = nil
@@ -16,15 +17,19 @@ module Puma
     end
 
     def log(str)
-      @cli.log str
-    end
-
-    def error(str)
-      @cli.error str
+      @events.log str
     end
 
     def before_restart
       @control.stop(true) if @control
+    end
+
+    def error(str)
+      @events.error str
+    end
+
+    def debug(str)
+      @events.log "- #{str}" if @options[:debug]
     end
 
     def start_control
@@ -35,13 +40,13 @@ module Puma
 
       uri = URI.parse str
 
-      app = Puma::App::Status.new @cli
+      app = Puma::App::Status.new @launcher
 
       if token = @options[:control_auth_token]
         app.auth_token = token unless token.empty? or token == :none
       end
 
-      control = Puma::Server.new app, @cli.events
+      control = Puma::Server.new app, @launcher.events
       control.min_threads = 0
       control.max_threads = 1
 
@@ -104,34 +109,34 @@ module Puma
     end
 
     def load_and_bind
-      unless @cli.config.app_configured?
+      unless @launcher.config.app_configured?
         error "No application configured, nothing to run"
         exit 1
       end
 
       # Load the app before we daemonize.
       begin
-        @app = @cli.config.app
+        @app = @launcher.config.app
       rescue Exception => e
         log "! Unable to load application: #{e.class}: #{e.message}"
         raise e
       end
 
-      @cli.binder.parse @options[:binds], self
+      @launcher.binder.parse @options[:binds], self
     end
 
     def app
-      @app ||= @cli.config.app
+      @app ||= @launcher.config.app
     end
 
     def start_server
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
-      server = Puma::Server.new app, @cli.events, @options
+      server = Puma::Server.new app, @launcher.events, @options
       server.min_threads = min_t
       server.max_threads = max_t
-      server.inherit_binder @cli.binder
+      server.inherit_binder @launcher.binder
 
       if @options[:mode] == :tcp
         server.tcp_mode!

@@ -27,7 +27,12 @@ module Puma
     end
 
     def jruby_daemon?
-      daemon? and @cli.jruby?
+      daemon? and Puma.jruby?
+    end
+
+    def jruby_daemon_start
+      require 'puma/jruby_restart'
+      JRubyRestart.daemon_start(@restart_dir, restart_args)
     end
 
     def run
@@ -66,7 +71,7 @@ module Puma
             exit 1
           end
 
-          pid = @cli.jruby_daemon_start
+          pid = jruby_daemon_start
           sleep
         end
       else
@@ -79,7 +84,7 @@ module Puma
         load_and_bind
       end
 
-      @cli.write_state
+      @launcher.write_state
 
       start_control
 
@@ -90,7 +95,7 @@ module Puma
         redirect_io
       end
 
-      @cli.events.fire_on_booted!
+      @launcher.events.fire_on_booted!
 
       begin
         server.run.join

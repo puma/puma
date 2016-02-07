@@ -49,7 +49,7 @@ module Puma
           end
 
         when /\/reload-worker-directory$/
-          if !@cli.reload_worker_directory
+          if !@cli.send(:reload_worker_directory)
             return rack_response(404, '{ "error": "reload_worker_directory not available" }')
           else
             return rack_response(200, OK_STATUS)

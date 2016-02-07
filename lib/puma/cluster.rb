@@ -2,8 +2,8 @@ require 'puma/runner'
 
 module Puma
   class Cluster < Runner
-    def initialize(cli)
-      super cli
+    def initialize(cli, events)
+      super cli, events
 
       @phase = 0
       @workers = []
@@ -52,6 +52,7 @@ module Puma
         @options = options
         @first_term_sent = nil
         @last_checkin = Time.now
+        @dead = false
       end
 
       attr_reader :index, :pid, :phase, :signal, :last_checkin
@@ -112,12 +113,12 @@ module Puma
 
       diff.times do
         idx = next_worker_index
-        @options[:before_worker_fork].each { |h| h.call(idx) }
+        (@options[:before_worker_fork] || []).each { |h| h.call(idx) }
 
         pid = fork { worker(idx, master) }
-        @cli.debug "Spawned worker: #{pid}"
+        debug "Spawned worker: #{pid}"
         @workers << Worker.new(idx, pid, @phase, @options)
-        @options[:after_worker_boot].each { |h| h.call }
+        (@options[:after_worker_boot] || []).each { |h| h.call }
       end
 
       if diff > 0
@@ -220,7 +221,7 @@ module Puma
 
       # Invoke any worker boot hooks so they can get
       # things in shape before booting the app.
-      hooks = @options[:before_worker_boot]
+      hooks = @options[:before_worker_boot] || []
       hooks.each { |h| h.call(index) }
 
       server = start_server
@@ -241,7 +242,11 @@ module Puma
 
         while true
           sleep 5
-          io << payload
+          begin
+            io << payload
+          rescue IOError
+            break
+          end
         end
       end
 
@@ -249,7 +254,7 @@ module Puma
 
       # Invoke any worker shutdown hooks so they can prevent the worker
       # exiting until any background operations are completed
-      hooks = @options[:before_worker_shutdown]
+      hooks = @options[:before_worker_shutdown] || []
       hooks.each { |h| h.call(index) }
     ensure
       @worker_write << "t#{Process.pid}\n" rescue nil
@@ -333,12 +338,12 @@ module Puma
       else
         log "* Phased restart available"
 
-        unless @cli.config.app_configured?
+        unless @launcher.config.app_configured?
           error "No application configured, nothing to run"
           exit 1
         end
 
-        @cli.binder.parse @options[:binds], self
+        @launcher.binder.parse @options[:binds], self
       end
 
       read, @wakeup = Puma::Util.pipe
@@ -390,11 +395,11 @@ module Puma
 
       start_control
 
-      @cli.write_state
+      @launcher.write_state
 
       @master_read, @worker_write = read, @wakeup
 
-      hooks = @options[:before_fork]
+      hooks = @options[:before_fork] || []
       hooks.each { |h| h.call }
 
       spawn_workers
@@ -403,7 +408,7 @@ module Puma
         stop
       end
 
-      @cli.events.fire_on_booted!
+      @launcher.events.fire_on_booted!
 
       begin
         while @status == :run

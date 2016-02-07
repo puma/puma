@@ -7,6 +7,7 @@ require 'puma/daemon_ext'
 require 'puma/util'
 require 'puma/single'
 require 'puma/cluster'
+require 'puma/state_file'
 
 require 'puma/commonlogger'
 
@@ -25,45 +26,37 @@ module Puma
      ]
     # Returns an instance of Launcher
     #
-    # +input_options+ A Hash of options that is supplied by a user, typically through
-    # a CLI. These options are evaluated and merged with other configuration such as
-    # `config/puma.rb` file to generate the configuration options needed to run a Puma server.
+    # +conf+ A Puma::Configuration object indicating how to run the server.
     #
-    # +launcher_args+ A Hash that currently has one required key `:events`, this is expected to
-    # hold an object similar to an `Puma::Events.stdio`, this object will be responsible for
-    # broadcasting Puma's internal state to a logging destination. An optional key `:argv` can
-    # be supplied, this should be an array of strings, these arguments are re-used when restarting
-    # the puma server.
+    # +launcher_args+ A Hash that currently has one required key `:events`,
+    # this is expected to hold an object similar to an `Puma::Events.stdio`,
+    # this object will be responsible for broadcasting Puma's internal state
+    # to a logging destination. An optional key `:argv` can be supplied,
+    # this should be an array of strings, these arguments are re-used when
+    # restarting the puma server.
     #
     # Examples:
     #
-    #   options = { min_threads: 1, max_threads: 10 }
-    #   options[:app] = ->(env) { [200, {}, ["hello world"]] }
-    #   Puma::Launcher.new(options, argv: Puma::Events.stdio).run
-    def initialize(input_options, launcher_args = {})
+    #   conf = Puma::Configuration.new do |c|
+    #     c.threads 1, 10
+    #     c.app do |env|
+    #       [200, {}, ["hello world"]]
+    #     end
+    #   end
+    #   Puma::Launcher.new(conf, argv: Puma::Events.stdio).run
+    def initialize(conf, launcher_args={})
       @runner        = nil
-      @events        = launcher_args[:events] or raise "must provide :events key"
+      @events        = launcher_args[:events] || Events::DEFAULT
       @argv          = launcher_args[:argv] || []
       @original_argv = @argv.dup
-      @config        = nil
+      @config        = conf
 
       @binder        = Binder.new(@events)
       @binder.import_from_env
 
-      # Final internal representation of options is stored here
-      # input_options will be parsed to populate this hash.
-      @options       = {}
       generate_restart_data
 
-      @env = @options[:environment] || ENV['RACK_ENV'] || 'development'
-
-      if input_options[:config_file] == '-'
-        input_options[:config_file] = nil
-      else
-        input_options[:config_file] ||= %W(config/puma/#{@env}.rb config/puma.rb).find { |f| File.exist?(f) }
-      end
-
-      @config = Puma::Configuration.new(input_options)
+      @environment = conf.environment
 
       # Advertise the Configuration
       Puma.cli_config = @config if defined?(Puma.cli_config)
@@ -72,11 +65,11 @@ module Puma
 
       @options = @config.options
 
-      if clustered? && (jruby? || windows?)
+      if clustered? && (Puma.jruby? || Puma.windows?)
         unsupported 'worker mode not supported on JRuby or Windows'
       end
 
-      if @options[:daemon] && windows?
+      if @options[:daemon] && Puma.windows?
         unsupported 'daemon mode not supported on Windows'
       end
 
@@ -85,16 +78,16 @@ module Puma
 
       prune_bundler if prune_bundler?
 
-      @env = @options[:environment] if @options[:environment]
+      @environment = @options[:environment] if @options[:environment]
       set_rack_environment
 
       if clustered?
         @events.formatter = Events::PidFormatter.new
         @options[:logger] = @events
 
-        @runner = Cluster.new(self)
+        @runner = Cluster.new(self, @events)
       else
-        @runner = Single.new(self)
+        @runner = Single.new(self, @events)
       end
 
       @status = :run
@@ -102,53 +95,28 @@ module Puma
 
     attr_reader :binder, :events, :config, :options
 
-    ## THIS STUFF IS NEEDED FOR RUNNER
-
-    # Delegate +log+ to +@events+
-    #
-    def log(str)
-      @events.log str
-    end
-
+    # Return stats about the server
     def stats
       @runner.stats
     end
 
-    def halt
-      @status = :halt
-      @runner.halt
-    end
-
-    def binder
-      @binder
-    end
-
-    # Delegate +error+ to +@events+
-    #
-    def error(str)
-      @events.error str
-    end
-
-    def debug(str)
-      @events.log "- #{str}" if @options[:debug]
-    end
-
+    # Write a state file that can be used by pumactl to control
+    # the server
     def write_state
       write_pid
 
       path = @options[:state]
       return unless path
 
-      state = { 'pid' => Process.pid }
-      cfg = @config.dup
+      sf = StateFile.new
+      sf.pid = Process.pid
+      sf.control_url = @options[:control_url]
+      sf.control_auth_token = @options[:control_auth_token]
 
-      KEYS_NOT_TO_PERSIST_IN_STATE.each { |k| cfg.options.delete(k) }
-      state['config'] = cfg
-
-      require 'yaml'
-      File.open(path, 'w') { |f| f.write state.to_yaml }
+      sf.save path
     end
 
+    # Delete the configured pidfile
     def delete_pidfile
       path = @options[:pidfile]
       File.unlink(path) if path && File.exist?(path)
@@ -156,7 +124,6 @@ module Puma
 
     # If configured, write the pid of the current process out
     # to a file.
-    #
     def write_pid
       path = @options[:pidfile]
       return unless path
@@ -168,24 +135,37 @@ module Puma
       end
     end
 
-    attr_accessor :options, :binder, :config
-    ## THIS STUFF IS NEEDED FOR RUNNER
+    # Begin async shutdown of the server
+    def halt
+      @status = :halt
+      @runner.halt
+    end
 
+    # Begin async shutdown of the server gracefully
     def stop
       @status = :stop
       @runner.stop
     end
 
-    def connected_port
-      @binder.connected_port
-    end
-
+    # Begin async restart of the server
     def restart
       @status = :restart
       @runner.restart
     end
 
+    # Begin a phased restart if supported
+    def phased_restart
+      unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
+        log "* phased-restart called but not available, restarting normally."
+        return restart
+      end
+      true
+    end
+
+    # Run the server. This blocks until the server is stopped
     def run
+      @config.clamp
+
       setup_signals
       set_process_title
       @runner.run
@@ -204,19 +184,47 @@ module Puma
       end
     end
 
-
-    def clustered?
-      @options[:workers] > 0
+    # Return which tcp port the launcher is using, if it's using TCP
+    def connected_port
+      @binder.connected_port
     end
 
-    def jruby?
-      Puma.jruby?
+    private
+
+    def reload_worker_directory
+      @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
     end
 
-    def windows?
-      Puma.windows?
-    end
+    def restart!
+      (@options[:on_restart] || []).each do |block|
+        block.call self
+      end
 
+      if Puma.jruby?
+        close_binder_listeners
+
+        require 'puma/jruby_restart'
+        JRubyRestart.chdir_exec(@restart_dir, restart_args)
+      elsif Puma.windows?
+        close_binder_listeners
+
+        argv = restart_args
+        Dir.chdir(@restart_dir)
+        Kernel.exec(*argv)
+      else
+        redirects = {:close_others => true}
+        @binder.listeners.each_with_index do |(l, io), i|
+        ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+        redirects[io.to_i] = io.to_i
+        end
+
+        argv = restart_args
+        p argv
+        Dir.chdir(@restart_dir)
+        argv += [redirects] if RUBY_VERSION >= '1.9'
+        Kernel.exec(*argv)
+      end
+    end
 
     def prune_bundler
       return unless defined?(Bundler)
@@ -245,19 +253,14 @@ module Puma
       end
     end
 
-    def redirect_io
-      @runner.redirect_io
+    def log(str)
+      @events.log str
     end
 
-    def phased_restart
-      unless @runner.respond_to?(:phased_restart) and @runner.phased_restart
-        log "* phased-restart called but not available, restarting normally."
-        return restart
-      end
-      true
+    def clustered?
+      (@options[:workers] || 0) > 0
     end
 
-    private
     def restart_args
       cmd = @options[:restart_cmd]
       if cmd
@@ -265,54 +268,6 @@ module Puma
       else
         @restart_argv
       end
-    end
-    public
-
-
-    def jruby_daemon_start
-      require 'puma/jruby_restart'
-      JRubyRestart.daemon_start(@restart_dir, restart_args)
-    end
-
-    def reload_worker_directory
-      @launcher.reload_worker_directory
-    end
-
-    def restart!
-        @options[:on_restart].each do |block|
-          block.call self
-        end
-
-        if jruby?
-          close_binder_listeners
-
-          require 'puma/jruby_restart'
-          JRubyRestart.chdir_exec(@restart_dir, restart_args)
-        elsif windows?
-          close_binder_listeners
-
-          argv = restart_args
-          Dir.chdir(@restart_dir)
-          argv += [redirects] if RUBY_VERSION >= '1.9'
-          Kernel.exec(*argv)
-        else
-          redirects = {:close_others => true}
-          @binder.listeners.each_with_index do |(l, io), i|
-            ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-            redirects[io.to_i] = io.to_i
-          end
-
-          argv = restart_args
-          Dir.chdir(@restart_dir)
-          argv += [redirects] if RUBY_VERSION >= '1.9'
-          Kernel.exec(*argv)
-        end
-    end
-
-
-  private
-    def parse_options
-      # backwards compat with CLI (private) interface
     end
 
     def unsupported(str)
@@ -337,12 +292,12 @@ module Puma
     end
 
     def set_rack_environment
-      @options[:environment] = env
-      ENV['RACK_ENV'] = env
+      @options[:environment] = environment
+      ENV['RACK_ENV'] = environment
     end
 
-    def env
-      @env
+    def environment
+      @environment
     end
 
     def prune_bundler?
@@ -367,9 +322,9 @@ module Puma
         s_env = File.stat(dir)
         s_pwd = File.stat(Dir.pwd)
 
-        if s_env.ino == s_pwd.ino and (jruby? or s_env.dev == s_pwd.dev)
+        if s_env.ino == s_pwd.ino and (Puma.jruby? or s_env.dev == s_pwd.dev)
           @restart_dir = dir
-          @options[:worker_directory] = dir
+          @config.configure { |c| c.worker_directory dir }
         end
       end
 
@@ -425,13 +380,13 @@ module Puma
 
       begin
         Signal.trap "SIGHUP" do
-          redirect_io
+          @runner.redirect_io
         end
       rescue Exception
         log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
       end
 
-      if jruby?
+      if Puma.jruby?
         Signal.trap("INT") do
           @status = :exit
           graceful_stop

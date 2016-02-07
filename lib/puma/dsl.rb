@@ -34,29 +34,43 @@ module Puma
     # Start the Puma control rack app on +url+. This app can be communicated
     # with to control the main server.
     #
-    def activate_control_app(url="auto", opts=nil)
-      @options[:control_url] = url
-
-      if opts
-        auth_token = opts[:auth_token]
-        @options[:control_auth_token] = auth_token if auth_token
-
-        @options[:control_auth_token] = :none if opts[:no_token]
-        @options[:control_url_umask] = opts[:umask] if opts[:umask]
+    def activate_control_app(url="auto", opts={})
+      if url == "auto"
+        path = Configuration.temp_path
+        @options[:control_url] = "unix://#{path}"
+        @options[:control_url_temp] = path
+      else
+        @options[:control_url] = url
       end
+
+      if opts[:no_token]
+        auth_token = :none
+      else
+        auth_token = opts[:auth_token]
+        auth_token ||= Configuration.random_token
+      end
+
+      @options[:control_auth_token] = auth_token
+      @options[:control_url_umask] = opts[:umask] if opts[:umask]
+    end
+
+    # Load additional configuration from a file
+    def load(file)
+      (@options[:config_files] ||= []) << file
     end
 
     # Bind the server to +url+. tcp:// and unix:// are the only accepted
     # protocols.
     #
     def bind(url)
-      @options[:binds] << url
+      (@options.cur[:binds] ||= []) << url
     end
 
     # Define the TCP port to bind to. Use +bind+ for more advanced options.
     #
-    def port(port)
-      @options[:binds] << "tcp://#{Configuration::DefaultTCPHost}:#{port}"
+    def port(port, host=nil)
+      host ||= Configuration::DefaultTCPHost
+      bind "tcp://#{host}:#{port}"
     end
 
     # Work around leaky apps that leave garbage in Thread locals
@@ -91,7 +105,7 @@ module Puma
     # This can be called multiple times to add code each time.
     #
     def on_restart(&block)
-      @options[:on_restart] << block
+      (@options.cur[:on_restart] ||= []) << block
     end
 
     # Command to use to restart puma. This should be just how to
@@ -99,12 +113,12 @@ module Puma
     # to puma, as those are the same as the original process.
     #
     def restart_command(cmd)
-      @options[:restart_cmd] = cmd
+      @options[:restart_cmd] = cmd.to_s
     end
 
     # Store the pid of the server in the file at +path+.
     def pidfile(path)
-      @options[:pidfile] = path
+      @options[:pidfile] = path.to_s
     end
 
     # Disable request logging.
@@ -113,10 +127,22 @@ module Puma
       @options[:quiet] = true
     end
 
+    # Show debugging info
+    #
+    def debug
+      @options[:debug] = true
+    end
+
     # Load +path+ as a rackup file.
     #
     def rackup(path)
       @options[:rackup] = path.to_s
+    end
+
+    # Run Puma in TCP mode
+    #
+    def tcp_mode!
+      @options[:mode] = :tcp
     end
 
     # Redirect STDOUT and STDERR to files specified.
@@ -147,9 +173,9 @@ module Puma
     def ssl_bind(host, port, opts)
       if defined?(JRUBY_VERSION)
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-        @options[:binds] << "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}"
       else
-        @options[:binds] << "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}"
       end
     end
 
@@ -176,7 +202,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def before_fork(&block)
-      @options[:before_fork] << block
+      (@options.cur[:before_fork] ||= []) << block
     end
 
     # *Cluster mode only* Code to run immediately before a worker shuts
@@ -187,7 +213,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_shutdown(&block)
-      @options[:before_worker_shutdown] << block
+      (@options[:before_worker_shutdown] ||= []) << block
     end
 
     # *Cluster mode only* Code to run when a worker boots to setup
@@ -196,7 +222,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_boot(&block)
-      @options[:before_worker_boot] << block
+      (@options.cur[:before_worker_boot] ||= []) << block
     end
 
     # *Cluster mode only* Code to run when a master process is
@@ -205,7 +231,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_fork(&block)
-      @options[:before_worker_fork] << block
+      (@options[:before_worker_fork] ||= []) << block
     end
 
     # *Cluster mode only* Code to run when a worker boots to setup
@@ -214,12 +240,18 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def after_worker_boot(&block)
-      @options[:after_worker_boot] << block
+      (@options[:after_worker_boot] ||= []) << block
     end
 
     # The directory to operate out of.
     def directory(dir)
       @options[:directory] = dir.to_s
+
+      worker_directory dir
+    end
+
+    # Set the directory for workers to start in
+    def worker_directory(dir)
       @options[:worker_directory] = dir.to_s
     end
 
@@ -263,7 +295,7 @@ module Puma
 
     # Additional text to display in process listing
     def tag(string)
-      @options[:tag] = string
+      @options[:tag] = string.to_s
     end
 
     # *Cluster mode only* Set the timeout for workers in seconds

@@ -5,8 +5,9 @@ require 'puma/configuration'
 
 class TestConfigFile < Test::Unit::TestCase
   def test_app_from_rackup
-    opts = {:rackup => "test/hello-bind.ru"}
-    conf = Puma::Configuration.new opts
+    conf = Puma::Configuration.new do |c|
+      c.rackup "test/hello-bind.ru"
+    end
     conf.load
 
     conf.app
@@ -15,8 +16,9 @@ class TestConfigFile < Test::Unit::TestCase
   end
 
   def test_app_from_app_DSL
-    opts = { :config_file => "test/config/app.rb" }
-    conf = Puma::Configuration.new opts
+    conf = Puma::Configuration.new do |c|
+      c.load "test/config/app.rb"
+    end
     conf.load
 
     app = conf.app
@@ -27,8 +29,11 @@ class TestConfigFile < Test::Unit::TestCase
   def test_double_bind_port
     port = (rand(10_000) + 30_000).to_s
     with_env("PORT" => port) do
-      opts = { :binds => ["tcp://#{Configuration::DefaultTCPHost}:#{port}"], :config_file => "test/config/app.rb"}
-      conf = Puma::Configuration.new opts
+      conf = Puma::Configuration.new do |c|
+        c.bind "tcp://#{Puma::Configuration::DefaultTCPHost}:#{port}"
+        c.load "test/config/app.rb"
+      end
+
       conf.load
 
       assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
@@ -36,8 +41,9 @@ class TestConfigFile < Test::Unit::TestCase
   end
 
   def test_lowleve_error_handler_DSL
-    opts = { :config_file => "test/config/app.rb" }
-    conf = Puma::Configuration.new opts
+    conf = Puma::Configuration.new do |c|
+      c.load "test/config/app.rb"
+    end
     conf.load
 
     app = conf.options[:lowlevel_error_handler]

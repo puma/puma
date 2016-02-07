@@ -9,12 +9,17 @@ module Puma
 
     COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory}
 
-    def is_windows?
-      RUBY_PLATFORM =~ /(win|w)32$/ ? true : false
-    end
-
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
-      @argv = argv
+      @state = nil
+      @quiet = false
+      @pidfile = nil
+      @pid = nil
+      @control_url = nil
+      @control_auth_token = nil
+      @config_file = nil
+      @command = nil
+
+      @argv = argv.dup
       @stdout = stdout
       @stderr = stderr
       @cli_options = {}
@@ -23,31 +28,31 @@ module Puma
         o.banner = "Usage: pumactl (-p PID | -P pidfile | -S status_file | -C url -T token | -F config.rb) (#{COMMANDS.join("|")})"
 
         o.on "-S", "--state PATH", "Where the state file to use is" do |arg|
-          @cli_options[:state] = arg
+          @state = arg
         end
 
         o.on "-Q", "--quiet", "Not display messages" do |arg|
-          @cli_options[:quiet_flag] = true
+          @quiet = true
         end
 
         o.on "-P", "--pidfile PATH", "Pid file" do |arg|
-          @cli_options[:pidfile] = arg
+          @pidfile = arg
         end
 
         o.on "-p", "--pid PID", "Pid" do |arg|
-          @cli_options[:pid] = arg.to_i
+          @pid = arg.to_i
         end
 
         o.on "-C", "--control-url URL", "The bind url to use for the control server" do |arg|
-          @cli_options[:control_url] = arg
+          @control_url = arg
         end
 
         o.on "-T", "--control-token TOKEN", "The token to use as authentication for the control server" do |arg|
-          @cli_options[:control_auth_token] = arg
+          @control_auth_token = arg
         end
 
         o.on "-F", "--config-file PATH", "Puma config script" do |arg|
-          @cli_options[:config_file] = arg
+          @config_file = arg
         end
 
         o.on_tail("-H", "--help", "Show this message") do
@@ -63,32 +68,29 @@ module Puma
 
       opts.order!(argv) { |a| opts.terminate a }
 
-      command = argv.shift
-      @cli_options[:command] = command if command
+      @command = argv.shift
 
-      @options = nil
-
-      unless @cli_options[:config_file] == '-'
-        if @cli_options[:config_file].nil? and File.exist?('config/puma.rb')
-          @cli_options[:config_file] = 'config/puma.rb'
+      unless @config_file == '-'
+        if @config_file.nil? and File.exist?('config/puma.rb')
+          @config_file = 'config/puma.rb'
         end
 
-        if @cli_options[:config_file]
-          config = Puma::Configuration.new(@cli_options)
-          config.load
-          @options = config.options
+        if @config_file
+          config = Puma::Configuration.from_file @config_file
+          @state ||= config.options[:state]
+          @control_url ||= config.options[:control_url]
+          @control_auth_token ||= config.options[:control_auth_token]
+          @pidfile ||= config.options[:pidfile]
         end
       end
 
-      @options ||= @cli_options
-
       # check present of command
-      unless @options[:command]
+      unless @command
         raise "Available commands: #{COMMANDS.join(", ")}"
       end
 
-      unless COMMANDS.include? @options[:command]
-        raise "Invalid command: #{@options[:command]}"
+      unless COMMANDS.include? @command
+        raise "Invalid command: #{@command}"
       end
 
     rescue => e
@@ -97,45 +99,29 @@ module Puma
     end
 
     def message(msg)
-      @stdout.puts msg unless @options[:quiet_flag]
+      @stdout.puts msg unless @quiet
     end
 
     def prepare_configuration
-      if @options.has_key? :state
-        unless File.exist? @options[:state]
-          raise "Status file not found: #{@options[:state]}"
+      if @state
+        unless File.exist? @state
+          raise "State file not found: #{@state}"
         end
 
-        status = YAML.load File.read(@options[:state])
+        sf = StateFile.new
+        sf.load @state
 
-        if status.kind_of?(Hash) && status.has_key?("config")
-
-          conf = status["config"]
-
-          # get control_url
-          if url = conf.options[:control_url]
-            @options[:control_url] = url
-          end
-
-          # get control_auth_token
-          if token = conf.options[:control_auth_token]
-            @options[:control_auth_token] = token
-          end
-
-          # get pid
-          @options[:pid] = status["pid"].to_i
-        else
-          raise "Invalid status file: #{@options[:state]}"
-        end
-
-      elsif @options.has_key? :pidfile
+        @control_url = sf.control_url
+        @control_auth_token = sf.control_auth_token
+        @pid = sf.pid
+      elsif @pidfile
         # get pid from pid_file
-        @options[:pid] = File.open(@options[:pidfile]).gets.to_i
+        @pid = File.open(@pidfile).gets.to_i
       end
     end
 
     def send_request
-      uri = URI.parse @options[:control_url]
+      uri = URI.parse @control_url
 
       # create server object by scheme
       @server = case uri.scheme
@@ -147,13 +133,13 @@ module Puma
                   raise "Invalid scheme: #{uri.scheme}"
                 end
 
-      if @options[:command] == "status"
+      if @command == "status"
         message "Puma is started"
       else
-        url = "/#{@options[:command]}"
+        url = "/#{@command}"
 
-        if @options.has_key?(:control_auth_token)
-          url = url + "?token=#{@options[:control_auth_token]}"
+        if @control_auth_token
+          url = url + "?token=#{@control_auth_token}"
         end
 
         @server << "GET #{url} HTTP/1.0\r\n\r\n"
@@ -178,30 +164,29 @@ module Puma
           raise "Bad response from server: #{@code}"
         end
 
-        message "Command #{@options[:command]} sent success"
-        message response.last if @options[:command] == "stats"
+        message "Command #{@command} sent success"
+        message response.last if @command == "stats"
       end
 
       @server.close
     end
 
     def send_signal
-      unless pid = @options[:pid]
+      unless @pid
         raise "Neither pid nor control url available"
       end
 
       begin
         Process.getpgid pid
       rescue SystemCallError
-        if @options[:command] == "restart"
-          @options.delete(:command)
+        if @command == "restart"
           start
         else
           raise "No pid '#{pid}' found"
         end
       end
 
-      case @options[:command]
+      case @command
       when "restart"
         Process.kill "SIGUSR2", pid
 
@@ -227,18 +212,18 @@ module Puma
         return
       end
 
-      message "Command #{@options[:command]} sent success"
+      message "Command #{@command} sent success"
     end
 
     def run
-      start if @options[:command] == "start"
+      start if @command == "start"
 
       prepare_configuration
 
-      if is_windows?
+      if Puma.windows?
         send_request
       else
-        @options.has_key?(:control_url) ? send_request : send_signal
+        @control_url ? send_request : send_signal
       end
 
     rescue => e
@@ -252,11 +237,11 @@ module Puma
 
       run_args = @argv
 
-      if path = @options[:state]
+      if path = @state
         run_args = ["-S", path] + run_args
       end
 
-      if path = @options[:config_file]
+      if path = @config_file
         run_args = ["-C", path] + run_args
       end
 

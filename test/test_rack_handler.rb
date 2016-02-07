@@ -23,6 +23,8 @@ class TestPathHandler < Test::Unit::TestCase
 
   def in_handler(app, options = {})
     options[:Port] ||= 0
+    options[:Silent] = true
+
     @launcher = nil
     thread = Thread.new do
       Rack::Handler::Puma.run(app, options) do |s, p|
