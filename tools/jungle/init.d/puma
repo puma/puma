@@ -137,15 +137,49 @@ do_restart_one() {
   PIDFILE=$1/tmp/puma/pid
   i=`grep $1 $CONFIG`
   dir=`echo $i | cut -d , -f 1`
-  
+
   if [ -e $PIDFILE ]; then
     log_daemon_msg "--> About to restart puma $1"
-    if [ "$USE_LOCAL_BUNDLE" -eq 1 ]; then
-      cd $1 && bundle exec pumactl --state $dir/tmp/puma/state restart
-    else
-      pumactl --state $dir/tmp/puma/state restart
+    kill -s USR2 `cat $PIDFILE`
+    # TODO Check if process exist
+  else
+    log_daemon_msg "--> Your puma was never playing... Let's get it out there first"
+    user=`echo $i | cut -d , -f 2`
+    config_file=`echo $i | cut -d , -f 3`
+    if [ "$config_file" = "" ]; then
+      config_file="$dir/config/puma.rb"
     fi
-    # kill -s USR2 `cat $PIDFILE`
+    log_file=`echo $i | cut -d , -f 4`
+    if [ "$log_file" = "" ]; then
+      log_file="$dir/log/puma.log"
+    fi
+    environment=`echo $i | cut -d , -f 5`
+    do_start_one $dir $user $config_file $log_file $environment
+  fi
+	return 0
+}
+
+#
+# Function that phased restarts the jungle
+#
+do_phased_restart() {
+  for i in $JUNGLE; do
+    dir=`echo $i | cut -d , -f 1`
+    do_restart_one $dir
+  done
+}
+
+#
+# Function that sends a SIGUSR1 to the daemon/service
+#
+do_phased_restart_one() {
+  PIDFILE=$1/tmp/puma/pid
+  i=`grep $1 $CONFIG`
+  dir=`echo $i | cut -d , -f 1`
+
+  if [ -e $PIDFILE ]; then
+    log_daemon_msg "--> About to restart puma $1"
+    kill -s USR1 `cat $PIDFILE`
     # TODO Check if process exist
   else
     log_daemon_msg "--> Your puma was never playing... Let's get it out there first" 
@@ -355,6 +389,20 @@ case "$1" in
       2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
     esac
   ;;
+  phased-restart)
+    log_daemon_msg "Restarting (phased) $DESC" "$NAME"
+    if [ "$#" -eq 1 ]; then
+      do_phased_restart
+    else
+      i=`grep $2 $CONFIG`
+      dir=`echo $i | cut -d , -f 1`
+      do_phased_restart_one $dir
+    fi
+    case "$?" in
+      0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+      2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+    esac
+  ;;
   add)
     if [ "$#" -lt 3 ]; then
       echo "Please, specifiy the app's directory and the user that will run it at least."
@@ -383,7 +431,7 @@ case "$1" in
   ;;
   *)
     echo "Usage:" >&2
-    echo "  Run the jungle: $SCRIPTNAME {start|stop|status|restart}" >&2
+    echo "  Run the jungle: $SCRIPTNAME {start|stop|status|restart|phased-restart}" >&2
     echo "  Add a Puma: $SCRIPTNAME add /path/to/app user /path/to/app/config/puma.rb /path/to/app/config/log/puma.log"
     echo "    config and log are optionals."
     echo "  Remove a Puma: $SCRIPTNAME remove /path/to/app"
