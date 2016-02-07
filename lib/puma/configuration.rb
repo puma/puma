@@ -1,4 +1,5 @@
 require 'puma/rack/builder'
+require 'puma/plugin_loader'
 
 module Puma
 
@@ -94,13 +95,14 @@ module Puma
     def self.from_file(path)
       cfg = new
 
-      DSL.new(cfg.options)._load_from path
+      DSL.new(cfg.options, cfg)._load_from path
 
       return cfg
     end
 
     def initialize(options={})
       @options = LeveledOptions.new
+      @plugins = PluginLoader.new
 
       # options.each do |k,v|
         # @options[k] = v
@@ -108,18 +110,18 @@ module Puma
 
       if block_given?
         @options.shift
-        d = DSL.new(@options)
+        d = DSL.new(@options, self)
         yield d
       end
     end
 
+    attr_reader :options, :plugins
+
     def configure
       @options.shift
-      d = DSL.new(@options)
+      d = DSL.new(@options, self)
       yield d
     end
-
-    attr_reader :options
 
     def initialize_copy(other)
       @conf = nil
@@ -169,7 +171,7 @@ module Puma
       files.each do |f|
         @options.shift
 
-        DSL.load @options, f
+        DSL.load @options, self, f
       end
     end
 
@@ -232,6 +234,10 @@ module Puma
     # Return which environment we're running in
     def environment
       @options[:environment] || ENV['RACK_ENV'] || 'development'
+    end
+
+    def load_plugin(name)
+      @plugins.create name
     end
 
     def self.temp_path

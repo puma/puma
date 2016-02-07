@@ -1,4 +1,5 @@
 require 'puma/const'
+require 'uri'
 
 module Puma
   class Binder

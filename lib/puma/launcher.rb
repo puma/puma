@@ -166,6 +166,8 @@ module Puma
     def run
       @config.clamp
 
+      @config.plugins.fire_starts self
+
       setup_signals
       set_process_title
       @runner.run
@@ -219,7 +221,6 @@ module Puma
         end
 
         argv = restart_args
-        p argv
         Dir.chdir(@restart_dir)
         argv += [redirects] if RUBY_VERSION >= '1.9'
         Kernel.exec(*argv)

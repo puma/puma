@@ -4,15 +4,16 @@ module Puma
   class DSL
     include ConfigDefault
 
-    def self.load(options, path)
-      new(options).tap do |obj|
+    def self.load(options, cfg, path)
+      new(options, cfg).tap do |obj|
         obj._load_from(path)
       end
 
       options
     end
 
-    def initialize(options)
+    def initialize(config, options)
+      @config = config
       @options = options
     end
 
@@ -379,6 +380,12 @@ module Puma
       else
         raise "Invalid value for set_remote_address - #{val}"
       end
+    end
+
+    # Load the named plugin for use by this configuration
+    #
+    def plugin(name)
+      @config.load_plugin name
     end
   end
 end
