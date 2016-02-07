@@ -12,7 +12,7 @@ module Puma
       options
     end
 
-    def initialize(config, options)
+    def initialize(options, config)
       @config = config
       @options = options
     end
@@ -385,7 +385,11 @@ module Puma
     # Load the named plugin for use by this configuration
     #
     def plugin(name)
-      @config.load_plugin name
+      plugin = @config.load_plugin name
+
+      if plugin.respond_to? :config
+        plugin.config self
+      end
     end
   end
 end

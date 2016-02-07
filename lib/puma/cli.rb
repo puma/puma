@@ -204,7 +204,7 @@ module Puma
           o.banner = "puma <options> <rackup file>"
 
           o.on_tail "-h", "--help", "Show help" do
-            log o
+            $stdout.puts o
             exit 0
           end
         end

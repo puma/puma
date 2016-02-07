@@ -1,3 +1,5 @@
+require 'puma/plugin'
+
 module Puma
   class UnknownPlugin < RuntimeError; end
 

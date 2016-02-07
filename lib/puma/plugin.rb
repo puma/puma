@@ -26,5 +26,10 @@ module Puma
     def in_background(&blk)
       Thread.new(&blk)
     end
+
+    def workers_supported?
+      return false if Puma.jruby? || Puma.windows?
+      true
+    end
   end
 end
