@@ -5,20 +5,52 @@ module Puma
     include ConfigDefault
 
     def self.load(options, cfg, path)
-      new(options, cfg).tap do |obj|
-        obj._load_from(path)
-      end
+      d = new(options, cfg)
+      d._load_from(path)
 
       options
+    ensure
+      d._offer_plugins
     end
 
     def initialize(options, config)
       @config = config
       @options = options
+
+      @plugins = []
     end
 
     def _load_from(path)
       instance_eval(File.read(path), path, 1) if path
+    ensure
+      _offer_plugins
+    end
+
+    def _offer_plugins
+      @plugins.each do |o|
+        if o.respond_to? :config
+          @options.shift
+          o.config self
+        end
+      end
+
+      @plugins.clear
+    end
+
+    def _run(&blk)
+      blk.call self
+    ensure
+      _offer_plugins
+    end
+
+    def inject(&blk)
+      instance_eval(&blk)
+    end
+
+    # Load the named plugin for use by this configuration
+    #
+    def plugin(name)
+      @plugins << @config.load_plugin(name)
     end
 
     # Use +obj+ or +block+ as the Rack app. This allows a config file to
@@ -57,14 +89,14 @@ module Puma
 
     # Load additional configuration from a file
     def load(file)
-      (@options[:config_files] ||= []) << file
+      _ary(:config_files) << file
     end
 
     # Bind the server to +url+. tcp:// and unix:// are the only accepted
     # protocols.
     #
     def bind(url)
-      (@options.cur[:binds] ||= []) << url
+      _ary(:binds) << url
     end
 
     # Define the TCP port to bind to. Use +bind+ for more advanced options.
@@ -106,7 +138,7 @@ module Puma
     # This can be called multiple times to add code each time.
     #
     def on_restart(&block)
-      (@options.cur[:on_restart] ||= []) << block
+      _ary(:on_restart) << block
     end
 
     # Command to use to restart puma. This should be just how to
@@ -203,7 +235,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def before_fork(&block)
-      (@options.cur[:before_fork] ||= []) << block
+      _ary(:before_fork) << block
     end
 
     # *Cluster mode only* Code to run immediately before a worker shuts
@@ -214,7 +246,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_shutdown(&block)
-      (@options[:before_worker_shutdown] ||= []) << block
+      _ary(:before_worker_shutdown) << block
     end
 
     # *Cluster mode only* Code to run when a worker boots to setup
@@ -223,7 +255,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_boot(&block)
-      (@options.cur[:before_worker_boot] ||= []) << block
+      _ary(:before_worker_boot) << block
     end
 
     # *Cluster mode only* Code to run when a master process is
@@ -232,7 +264,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_fork(&block)
-      (@options[:before_worker_fork] ||= []) << block
+      _ary(:before_worker_fork) << block
     end
 
     # *Cluster mode only* Code to run when a worker boots to setup
@@ -241,7 +273,7 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def after_worker_boot(&block)
-      (@options[:after_worker_boot] ||= []) << block
+      _ary(:after_worker_fork) << block
     end
 
     # The directory to operate out of.
@@ -382,14 +414,10 @@ module Puma
       end
     end
 
-    # Load the named plugin for use by this configuration
-    #
-    def plugin(name)
-      plugin = @config.load_plugin name
+    private
 
-      if plugin.respond_to? :config
-        plugin.config self
-      end
+    def _ary(key)
+      (@options.cur[key] ||= [])
     end
   end
 end

@@ -1,5 +1,5 @@
 require 'puma/rack/builder'
-require 'puma/plugin_loader'
+require 'puma/plugin'
 
 module Puma
 
@@ -87,6 +87,18 @@ module Puma
 
       options
     end
+
+    def explain
+      indent = ""
+
+      @set.each do |o|
+        o.keys.sort.each do |k|
+          puts "#{indent}#{k}: #{o[k].inspect}"
+        end
+
+        indent = "  #{indent}"
+      end
+    end
   end
 
   class Configuration
@@ -100,7 +112,7 @@ module Puma
       return cfg
     end
 
-    def initialize(options={})
+    def initialize(options={}, &blk)
       @options = LeveledOptions.new
       @plugins = PluginLoader.new
 
@@ -108,19 +120,16 @@ module Puma
         # @options[k] = v
       # end
 
-      if block_given?
-        @options.shift
-        d = DSL.new(@options, self)
-        yield d
+      if blk
+        configure(&blk)
       end
     end
 
     attr_reader :options, :plugins
 
-    def configure
+    def configure(&blk)
       @options.shift
-      d = DSL.new(@options, self)
-      yield d
+      DSL.new(@options, self)._run(&blk)
     end
 
     def initialize_copy(other)
@@ -238,6 +247,10 @@ module Puma
 
     def load_plugin(name)
       @plugins.create name
+    end
+
+    def run_hooks(key, arg)
+      @options.all_of(key).each { |b| b.call arg }
     end
 
     def self.temp_path

@@ -15,7 +15,7 @@ module Puma
 
     cfg.clamp
 
-    events = Puma::Events.strings
+    events = Puma::Events.null
 
     launcher = Puma::Launcher.new cfg, :events => events
     launcher.run

@@ -36,5 +36,14 @@ module Puma
     def size
       0
     end
+
+    def sync=(v)
+    end
+
+    def puts(*ary)
+    end
+
+    def write(*ary)
+    end
   end
 end

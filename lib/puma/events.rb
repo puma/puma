@@ -138,5 +138,10 @@ module Puma
     def self.stdio
       Events.new $stdout, $stderr
     end
+
+    def self.null
+      n = NullIO.new
+      Events.new n, n
+    end
   end
 end

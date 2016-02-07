@@ -113,12 +113,13 @@ module Puma
 
       diff.times do
         idx = next_worker_index
-        (@options[:before_worker_fork] || []).each { |h| h.call(idx) }
+        @launcher.config.run_hooks :before_worker_fork, idx
 
         pid = fork { worker(idx, master) }
         debug "Spawned worker: #{pid}"
         @workers << Worker.new(idx, pid, @phase, @options)
-        (@options[:after_worker_boot] || []).each { |h| h.call }
+
+        @launcher.config.run_hooks :after_worker_fork, idx
       end
 
       if diff > 0
@@ -221,8 +222,7 @@ module Puma
 
       # Invoke any worker boot hooks so they can get
       # things in shape before booting the app.
-      hooks = @options[:before_worker_boot] || []
-      hooks.each { |h| h.call(index) }
+      @launcher.config.run_hooks :before_worker_boot, index
 
       server = start_server
 
@@ -254,8 +254,7 @@ module Puma
 
       # Invoke any worker shutdown hooks so they can prevent the worker
       # exiting until any background operations are completed
-      hooks = @options[:before_worker_shutdown] || []
-      hooks.each { |h| h.call(index) }
+      @launcher.config.run_hooks :before_worker_shutdown, index
     ensure
       @worker_write << "t#{Process.pid}\n" rescue nil
       @worker_write.close
@@ -399,8 +398,7 @@ module Puma
 
       @master_read, @worker_write = read, @wakeup
 
-      hooks = @options[:before_fork] || []
-      hooks.each { |h| h.call }
+      @launcher.config.run_hooks :before_fork, nil
 
       spawn_workers
 
