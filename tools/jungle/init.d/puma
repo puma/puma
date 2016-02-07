@@ -165,7 +165,7 @@ do_restart_one() {
 do_phased_restart() {
   for i in $JUNGLE; do
     dir=`echo $i | cut -d , -f 1`
-    do_restart_one $dir
+    do_phased_restart_one $dir
   done
 }
 
