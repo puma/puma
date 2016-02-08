@@ -77,6 +77,7 @@ module Puma
               if @trim_requested > 0
                 @trim_requested -= 1
                 continue = false
+                not_full.signal
                 break
               end
 
