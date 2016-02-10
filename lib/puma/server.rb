@@ -529,7 +529,8 @@ module Puma
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
       #
-      after_reply = env[RACK_AFTER_REPLY] = []
+      # (This is already initialized in `handle_request`, just getting here)
+      after_reply = env[RACK_AFTER_REPLY]
 
       begin
         content_length = nil
