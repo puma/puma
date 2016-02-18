@@ -52,10 +52,11 @@ module Puma
         @options = options
         @first_term_sent = nil
         @last_checkin = Time.now
+        @last_status = '{}'
         @dead = false
       end
 
-      attr_reader :index, :pid, :phase, :signal, :last_checkin
+      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status
 
       def booted?
         @stage == :booted
@@ -74,8 +75,9 @@ module Puma
         @dead = true
       end
 
-      def ping!
+      def ping!(status)
         @last_checkin = Time.now
+        @last_status = status
       end
 
       def ping_timeout?(which)
@@ -238,11 +240,14 @@ module Puma
       end
 
       Thread.new(@worker_write) do |io|
-        payload = "p#{Process.pid}\n"
+        base_payload = "p#{Process.pid}"
 
         while true
           sleep 5
           begin
+            b = server.backlog
+            r = server.running
+            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r} }\n!
             io << payload
           rescue IOError
             break
@@ -301,7 +306,8 @@ module Puma
     def stats
       old_worker_count = @workers.count { |w| w.phase != @phase }
       booted_worker_count = @workers.count { |w| w.booted? }
-      %Q!{ "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{booted_worker_count}, "old_workers": #{old_worker_count} }!
+      worker_status = '[' + @workers.map{ |w| %Q!{ "pid": #{w.pid}, "index": #{w.index}, "phase": #{w.phase}, "booted": #{w.booted?}, "last_checkin": "#{w.last_checkin.utc.iso8601}", "last_status": #{w.last_status} }!}.join(",") + ']'
+      %Q!{ "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{booted_worker_count}, "old_workers": #{old_worker_count}, "worker_status": #{worker_status} }!
     end
 
     def preload?
@@ -420,7 +426,8 @@ module Puma
 
               next if !req || req == "!"
 
-              pid = read.gets.to_i
+              result = read.gets
+              pid = result.to_i
 
               if w = @workers.find { |x| x.pid == pid }
                 case req
@@ -432,7 +439,7 @@ module Puma
                   w.dead!
                   force_check = true
                 when "p"
-                  w.ping!
+                  w.ping!(result.sub(/^\d+/,'').chomp)
                 end
               else
                 log "! Out-of-sync worker list, no #{pid} worker"
