@@ -13,9 +13,10 @@ module Puma
   end
 
   class LeveledOptions
-    def initialize
+    def initialize(default={})
       @cur = {}
       @set = [@cur]
+      @defaults = default
     end
 
     def initialize_copy(other)
@@ -35,7 +36,12 @@ module Puma
         end
       end
 
-      nil
+      v = @defaults[key]
+      if v.respond_to? :call
+        v.call
+      else
+        v
+      end
     end
 
     attr_reader :cur
@@ -67,7 +73,7 @@ module Puma
         end
       end
 
-      false
+      @default.key? key
     end
 
     def merge!(o)
@@ -113,7 +119,7 @@ module Puma
     end
 
     def initialize(options={}, &blk)
-      @options = LeveledOptions.new
+      @options = LeveledOptions.new(default_options)
       @plugins = PluginLoader.new
 
       # options.each do |k,v|
@@ -160,7 +166,11 @@ module Puma
         :worker_timeout => DefaultWorkerTimeout,
         :worker_boot_timeout => DefaultWorkerTimeout,
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
-        :remote_address => :socket
+        :remote_address => :socket,
+        :tag => method(:infer_tag),
+        :environment => lambda { ENV['RACK_ENV'] || "development" },
+        :rackup => DefaultRackup,
+        :logger => STDOUT
       }
     end
 
@@ -188,12 +198,6 @@ module Puma
     # is loaded to flesh out any defaults
     def clamp
       @options.shift
-
-      default_options.each do |k,v|
-        @options[k] = v
-      end
-
-      @options[:tag] ||= infer_tag
     end
 
     # Injects the Configuration object into the env
@@ -216,7 +220,7 @@ module Puma
     end
 
     def rackup
-      @options[:rackup] || DefaultRackup
+      @options[:rackup]
     end
 
     # Load the specified rackup file, pull options from
@@ -228,12 +232,12 @@ module Puma
       if @options[:mode] == :tcp
         require 'puma/tcp_logger'
 
-        logger = @options[:logger] || STDOUT
+        logger = @options[:logger]
         return TCPLogger.new(logger, found, @options[:quiet])
       end
 
       if !@options[:quiet] and @options[:environment] == "development"
-        logger = @options[:logger] || STDOUT
+        logger = @options[:logger]
         found = CommonLogger.new(found, logger)
       end
 
@@ -242,7 +246,7 @@ module Puma
 
     # Return which environment we're running in
     def environment
-      @options[:environment] || ENV['RACK_ENV'] || 'development'
+      @options[:environment]
     end
 
     def load_plugin(name)
