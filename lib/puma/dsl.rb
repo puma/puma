@@ -47,6 +47,10 @@ module Puma
       instance_eval(&blk)
     end
 
+    def get(key,default=nil)
+      @options[key.to_sym] || default
+    end
+
     # Load the named plugin for use by this configuration
     #
     def plugin(name)
