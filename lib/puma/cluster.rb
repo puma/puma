@@ -84,10 +84,10 @@ module Puma
 
       def term
         begin
-          if @first_term_sent && (Time.new - @first_term_sent) > @options[:worker_shutdown_timeout]
+          if @first_term_sent && (Time.now - @first_term_sent) > @options[:worker_shutdown_timeout]
             @signal = "KILL"
           else
-            @first_term_sent ||= Time.new
+            @first_term_sent ||= Time.now
           end
 
           Process.kill @signal, @pid
