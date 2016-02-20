@@ -142,8 +142,6 @@ class TestIntegration < Test::Unit::TestCase
     # Make both workers stuck
     s1 = UNIXSocket.new @bind_path
     s1 << "GET / HTTP/1.0\r\n\r\n"
-    s2 = UNIXSocket.new @bind_path
-    s2 << "GET / HTTP/1.0\r\n\r\n"
 
     sout = StringIO.new
 
@@ -154,9 +152,7 @@ class TestIntegration < Test::Unit::TestCase
     @events.stdout.rewind
     log = @events.stdout.readlines.join("")
     assert_match(/TERM sent/, log)
-    assert_match(/KILL sent/, log)
-    assert_match(/Worker 0 \(pid: \d+\) booted, phase: 1/, log)
-    assert_match(/Worker 1 \(pid: \d+\) booted, phase: 1/, log)
+    assert_match(/Worker \d \(pid: \d+\) booted, phase: 1/, log)
 
     # Stop
     ccli = Puma::ControlCLI.new %W!-S #{@state_path} stop!, sout
