@@ -39,6 +39,7 @@ lib/puma/compat.rb
 lib/puma/configuration.rb
 lib/puma/const.rb
 lib/puma/control_cli.rb
+lib/puma/convenient.rb
 lib/puma/daemon_ext.rb
 lib/puma/delegation.rb
 lib/puma/detect.rb
@@ -47,8 +48,11 @@ lib/puma/events.rb
 lib/puma/io_buffer.rb
 lib/puma/java_io_buffer.rb
 lib/puma/jruby_restart.rb
+lib/puma/launcher.rb
 lib/puma/minissl.rb
 lib/puma/null_io.rb
+lib/puma/plugin.rb
+lib/puma/plugin/tmp_restart.rb
 lib/puma/rack/backports/uri/common_18.rb
 lib/puma/rack/backports/uri/common_192.rb
 lib/puma/rack/backports/uri/common_193.rb
@@ -59,6 +63,7 @@ lib/puma/reactor.rb
 lib/puma/runner.rb
 lib/puma/server.rb
 lib/puma/single.rb
+lib/puma/state_file.rb
 lib/puma/tcp_logger.rb
 lib/puma/thread_pool.rb
 lib/puma/util.rb
