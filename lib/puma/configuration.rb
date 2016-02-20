@@ -16,7 +16,7 @@ module Puma
     def initialize(default={})
       @cur = {}
       @set = [@cur]
-      @defaults = default
+      @defaults = default.dup
     end
 
     def initialize_copy(other)
@@ -103,6 +103,14 @@ module Puma
         end
 
         indent = "  #{indent}"
+      end
+    end
+
+    def force_defaults
+      @defaults.each do |k,v|
+        if v.respond_to? :call
+          @defaults[k] = v.call
+        end
       end
     end
   end
@@ -198,6 +206,7 @@ module Puma
     # is loaded to flesh out any defaults
     def clamp
       @options.shift
+      @options.force_defaults
     end
 
     # Injects the Configuration object into the env
