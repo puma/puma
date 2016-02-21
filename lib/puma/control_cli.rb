@@ -1,9 +1,9 @@
 require 'optparse'
 require 'puma/const'
 require 'puma/configuration'
-require 'yaml'
 require 'uri'
 require 'socket'
+
 module Puma
   class ControlCLI
 
