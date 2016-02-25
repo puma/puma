@@ -147,8 +147,12 @@ module Puma
             c.prune_bundler
           end
 
-          o.on "-q", "--quiet", "Quiet down the output" do
+          o.on "-q", "--quiet", "Do not log requests internally (default true)" do
             c.quiet
+          end
+
+          o.on "-v", "--log-requests", "Log requests as they occur" do
+            c.log_requests
           end
 
           o.on "-R", "--restart-cmd CMD",

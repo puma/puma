@@ -165,7 +165,7 @@ module Puma
       {
         :min_threads => 0,
         :max_threads => 16,
-        :quiet => false,
+        :log_requests => false,
         :debug => false,
         :binds => ["tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"],
         :workers => 0,
@@ -242,10 +242,10 @@ module Puma
         require 'puma/tcp_logger'
 
         logger = @options[:logger]
-        return TCPLogger.new(logger, found, @options[:quiet])
+        return TCPLogger.new(logger, found, @options[:log_requests])
       end
 
-      if !@options[:quiet] and @options[:environment] == "development"
+      if @options[:log_requests]
         logger = @options[:logger]
         found = CommonLogger.new(found, logger)
       end

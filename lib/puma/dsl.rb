@@ -160,8 +160,14 @@ module Puma
 
     # Disable request logging.
     #
-    def quiet
-      @options[:quiet] = true
+    def quiet(which=true)
+      @options[:log_requests] = !which
+    end
+
+    # Enable request logging
+    #
+    def log_requests(which=true)
+      @options[:log_requests] = which
     end
 
     # Show debugging info

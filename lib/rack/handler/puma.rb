@@ -13,6 +13,8 @@ module Rack
         options  = DEFAULT_OPTIONS.merge(options)
 
         conf = ::Puma::Configuration.new do |c|
+          c.quiet
+
           if options.delete(:Verbose)
             app = Rack::CommonLogger.new(app, STDOUT)
           end
