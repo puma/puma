@@ -222,6 +222,15 @@ But again beware, upgrading an application sometimes involves upgrading the data
 
 If you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (pumactl restart). That way, no code is shared while deploying (in that case, preload_app might help for quicker deployment, see below).
 
+### Release Directory
+
+If you symlink releases into a common working directory (i.e., `/current` from Capistrano), Puma won't pick up your new changes when running phased restarts without additional configuration. You should set your working directory within Puma's config to specify the directory it should use. This is a change from earlier versions of Puma (< 2.15) that would infer the directory for you.
+
+```ruby
+# config/puma.rb
+
+directory '/var/www/current'
+```
 
 ### Cleanup Code
 
