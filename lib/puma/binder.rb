@@ -111,6 +111,7 @@ module Puma
 
             umask = nil
             mode = nil
+            backlog = nil
 
             if uri.query
               params = Util.parse_query uri.query
@@ -122,9 +123,13 @@ module Puma
               if u = params['mode']
                 mode = Integer('0'+u)
               end
+
+              if u = params['backlog']
+                backlog = Integer(u)
+              end
             end
 
-            io = add_unix_listener path, umask, mode
+            io = add_unix_listener path, umask, mode, backlog
           end
 
           @listeners << [str, io]
@@ -298,7 +303,7 @@ module Puma
 
     # Tell the server to listen on +path+ as a UNIX domain socket.
     #
-    def add_unix_listener(path, umask=nil, mode=nil)
+    def add_unix_listener(path, umask=nil, mode=nil, backlog=nil)
       @unix_paths << path
 
       # Let anyone connect by default
@@ -319,6 +324,7 @@ module Puma
         end
 
         s = UNIXServer.new(path)
+        s.listen backlog if backlog
         @ios << s
       ensure
         File.umask old_mask
