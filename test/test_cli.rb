@@ -69,6 +69,38 @@ class TestCLI < Test::Unit::TestCase
   end
 
   unless defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
+  def test_control_clustered
+    url = "unix://#{@tmp_path}"
+
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
+                         "-t", "2:2",
+                         "-w", "2",
+                         "--control", url,
+                         "--control-token", "",
+                         "test/lobster.ru"], @events
+
+    t = Thread.new { cli.run }
+    t.abort_on_exception = true
+
+    wait_booted
+
+    s = UNIXSocket.new @tmp_path
+    s << "GET /stats HTTP/1.0\r\n\r\n"
+    body = s.read
+
+    assert_match(/\{ "workers": 2, "phase": 0, "booted_workers": 0, "old_workers": 0, "worker_status": \[\{ "pid": \d+, "index": 0, "phase": 0, "booted": false, "last_checkin": "[^"]+", "last_status": \{\} \},\{ "pid": \d+, "index": 1, "phase": 0, "booted": false, "last_checkin": "[^"]+", "last_status": \{\} \}\] \}/, body.split("\r\n").last)
+
+    # wait until the first status ping has come through
+    sleep 6
+    s = UNIXSocket.new @tmp_path
+    s << "GET /stats HTTP/1.0\r\n\r\n"
+    body = s.read
+    assert_match(/\{ "workers": 2, "phase": 0, "booted_workers": 2, "old_workers": 0, "worker_status": \[\{ "pid": \d+, "index": 0, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2 \} \},\{ "pid": \d+, "index": 1, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2 \} \}\] \}/, body.split("\r\n").last)
+
+    cli.launcher.stop
+    t.join
+  end
+
   def test_control
     url = "unix://#{@tmp_path}"
 
