@@ -1,3 +1,53 @@
+=== 3.0.0 / 2016-02-25
+
+* 2 major changes:
+
+  * Ruby pre-2.0 is no longer supported. We'll do our best to not add
+    features that break those rubies but will no longer be testing
+    with them.
+  * Don't log requests by default. Fixes #852
+
+* 2 major features:
+
+  * Plugin support! Plugins can interact with configuration as well
+    as provide augment server functionality!
+  * Experimental env['async.callback'] support
+
+* 4 minor features:
+
+  * Listen to unix socket with provided backlog if any
+  * Improves the clustered stats to report worker stats
+  * Pass the env to the lowlevel_error handler. Fixes #854
+  * Treat path-like hosts as unix sockets. Fixes #824
+
+* 5 bug fixes:
+
+  * Clean thread locals when using keepalive. Fixes #823
+  * Cleanup compiler warnings. Fixes #815
+  * Expose closed? for use by the reactor. Fixes #835
+  * Move signal handlers to separate method to prevent space leak. Fixes #798
+  * Signal not full on worker exit #876
+
+* 5 doc fixes:
+
+  * Update README.md with various grammar fixes
+  * Use newest version of Minitest
+  * Add directory configuration docs, fix typo [ci skip]
+  * Remove old COPYING notice. Fixes #849
+
+* 10 merged PRs:
+
+  * Merge pull request #871 from deepj/travis
+  * Merge pull request #874 from wallclockbuilder/master
+  * Merge pull request #883 from dadah89/igor/trim_only_worker
+  * Merge pull request #884 from uistudio/async-callback
+  * Merge pull request #888 from mlarraz/tick_minitest
+  * Merge pull request #890 from todd/directory_docs
+  * Merge pull request #891 from ctaintor/improve_clustered_status
+  * Merge pull request #893 from spastorino/add_missing_require
+  * Merge pull request #897 from zendesk/master
+  * Merge pull request #899 from kch/kch-readme-fixes
+
 === 2.16.0 / 2016-01-27
 
 * 7 minor features:
