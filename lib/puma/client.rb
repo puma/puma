@@ -21,6 +21,7 @@ module Puma
 
   class Client
     include Puma::Const
+    extend  Puma::Delegation
 
     def initialize(io, env=nil)
       @io = io
@@ -56,6 +57,8 @@ module Puma
     attr_writer :peerip
 
     attr_accessor :remote_addr_header
+
+    forward :closed?, :@io
 
     def inspect
       "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"
