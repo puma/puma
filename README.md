@@ -293,4 +293,4 @@ $ bundle exec rake
 
 ## License
 
-Puma is copyright 2014 Evan Phoenix and contributors. It is licensed under the BSD 3-Clause license. See the include LICENSE file for details.
+Puma is copyright 2014 Evan Phoenix and contributors. It is licensed under the BSD 3-Clause license. See the included LICENSE file for details.
