@@ -1,4 +1,3 @@
-COPYING
 DEPLOYMENT.md
 Gemfile
 History.txt
