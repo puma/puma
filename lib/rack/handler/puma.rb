@@ -28,10 +28,16 @@ module Rack
             c.threads min, max
           end
 
-          host = options[:Host] || ::Puma::Configuration::DefaultTCPHost
-          port = options[:Port] || ::Puma::Configuration::DefaultTCPPort
+          host = options[:Host]
 
-          c.port port, host
+          if host && (host[0,1] == '.' || host[0,1] == '/')
+            c.bind "unix://#{host}"
+          else
+            host ||= ::Puma::Configuration::DefaultTCPHost
+            port = options[:Port] || ::Puma::Configuration::DefaultTCPPort
+
+            c.port port, host
+          end
 
           c.app app
         end
