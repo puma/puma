@@ -740,7 +740,7 @@ module Puma
       rescue StandardError => e
         @events.unknown_error self, e, "Rack app"
 
-        status, headers, res_body = lowlevel_error(e)
+        status, headers, res_body = lowlevel_error(e, env)
       end
 
       return handle_app_response(req, lines, env, status, headers, res_body)
@@ -807,9 +807,9 @@ module Puma
 
     # A fallback rack response if +@app+ raises as exception.
     #
-    def lowlevel_error(e)
+    def lowlevel_error(e, env)
       if handler = @options[:lowlevel_error_handler]
-        return handler.call(e)
+        return handler.call(e, env)
       end
 
       if @leak_stack_on_error
