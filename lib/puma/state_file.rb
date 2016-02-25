@@ -1,3 +1,5 @@
+require 'yaml'
+
 module Puma
   class StateFile
     def initialize
