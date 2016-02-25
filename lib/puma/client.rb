@@ -7,6 +7,7 @@ class IO
 end
 
 require 'puma/detect'
+require 'puma/delegation'
 
 if Puma::IS_JRUBY
   # We have to work around some OpenSSL buffer/io-readiness bugs
