@@ -116,7 +116,7 @@ static VALUE buf_to_str(VALUE self) {
   struct buf_int* b;
   Data_Get_Struct(self, struct buf_int, b);
 
-  return rb_str_new(b->top, b->cur - b->top);
+  return rb_str_new((const char*)(b->top), b->cur - b->top);
 }
 
 static VALUE buf_used(VALUE self) {

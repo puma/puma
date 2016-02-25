@@ -1,7 +1,13 @@
 #define RSTRING_NOT_MODIFIED 1
 
 #include <ruby.h>
+#include <ruby/version.h>
+
+#if RUBY_API_VERSION_MAJOR == 1
 #include <rubyio.h>
+#else
+#include <ruby/io.h>
+#endif
 
 #ifdef HAVE_OPENSSL_BIO_H
 
@@ -347,7 +353,7 @@ VALUE engine_peercert(VALUE self) {
     }
   }
 
-  rb_cert_buf = rb_str_new(buf, bytes);
+  rb_cert_buf = rb_str_new((const char*)(buf), bytes);
   if(!cert_buf) {
     OPENSSL_free(buf);
   }
