@@ -45,6 +45,12 @@ module Puma
     attr_reader :spawned, :trim_requested
     attr_accessor :clean_thread_locals
 
+    def self.clean_thread_locals
+      Thread.current.keys.each do |key|
+        Thread.current[key] = nil unless key == :__recursive_key__
+      end
+    end
+
     # How many objects have yet to be processed by the pool?
     #
     def backlog
@@ -98,9 +104,7 @@ module Puma
           break unless continue
 
           if @clean_thread_locals
-            Thread.current.keys.each do |key|
-              Thread.current[key] = nil unless key == :__recursive_key__
-            end
+            ThreadPool.clean_thread_locals
           end
 
           begin

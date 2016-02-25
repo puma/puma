@@ -399,6 +399,7 @@ module Puma
     #
     def process_client(client, buffer)
       begin
+        clean_thread_locals = @options[:clean_thread_locals]
         close_socket = true
 
         while true
@@ -411,6 +412,8 @@ module Puma
           when true
             return unless @queue_requests
             buffer.reset
+
+            ThreadPool.clean_thread_locals if clean_thread_locals
 
             unless client.reset(@status == :run)
               close_socket = false
