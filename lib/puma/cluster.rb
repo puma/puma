@@ -314,6 +314,39 @@ module Puma
       @options[:preload_app]
     end
 
+    # We do this in a separate method to keep the lambad scope
+    # of the signals handlers as small as possible.
+    def setup_signals
+      Signal.trap "SIGCHLD" do
+        wakeup!
+      end
+
+      Signal.trap "TTIN" do
+        @options[:workers] += 1
+        wakeup!
+      end
+
+      Signal.trap "TTOU" do
+        @options[:workers] -= 1 if @options[:workers] >= 2
+        @workers.last.term
+        wakeup!
+      end
+
+      master_pid = Process.pid
+
+      Signal.trap "SIGTERM" do
+        # The worker installs their own SIGTERM when booted.
+        # Until then, this is run by the worker and the worker
+        # should just exit if they get it.
+        if Process.pid != master_pid
+          log "Early termination of worker"
+          exit! 0
+        else
+          stop
+        end
+      end
+    end
+
     def run
       @status = :run
 
@@ -353,34 +386,7 @@ module Puma
 
       read, @wakeup = Puma::Util.pipe
 
-      Signal.trap "SIGCHLD" do
-        wakeup!
-      end
-
-      Signal.trap "TTIN" do
-        @options[:workers] += 1
-        wakeup!
-      end
-
-      Signal.trap "TTOU" do
-        @options[:workers] -= 1 if @options[:workers] >= 2
-        @workers.last.term
-        wakeup!
-      end
-
-      master_pid = Process.pid
-
-      Signal.trap "SIGTERM" do
-        # The worker installs their own SIGTERM when booted.
-        # Until then, this is run by the worker and the worker
-        # should just exit if they get it.
-        if Process.pid != master_pid
-          log "Early termination of worker"
-          exit! 0
-        else
-          stop
-        end
-      end
+      setup_signals
 
       # Used by the workers to detect if the master process dies.
       # If select says that @check_pipe is ready, it's because the
