@@ -804,7 +804,11 @@ module Puma
     #
     def lowlevel_error(e, env)
       if handler = @options[:lowlevel_error_handler]
-        return handler.call(e, env)
+        if handler.arity == 1
+          return handler.call(e)
+        else
+          return handler.call(e, env)
+        end
       end
 
       if @leak_stack_on_error

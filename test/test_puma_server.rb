@@ -215,6 +215,26 @@ class TestPumaServer < Test::Unit::TestCase
     assert_match(/HTTP\/1.0 302 Found/, data)
   end
 
+  def test_leh_gets_env_as_well
+    @events = Puma::Events.strings
+    re = lambda { |err,env|
+      env['REQUEST_PATH'] || raise("where is env?")
+      [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
+    }
+
+    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
+
+    @server.app = proc { |e| raise "don't leak me bro" }
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+    assert_match(/HTTP\/1.0 302 Found/, data)
+  end
+
   def test_custom_http_codes_10
     @server.app = proc { |env| [449, {}, [""]] }
 
