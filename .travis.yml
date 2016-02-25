@@ -3,23 +3,17 @@ language: ruby
 cache: bundler
 script: "TESTOPTS=-v bundle exec rake test"
 rvm:
-  - 1.8.7
-  - 1.9.3
-  - 2.0.0
   - 2.1.8
   - 2.2.4
   - 2.3.0
   - ruby-head
-  - jruby-19mode
   - jruby-9.0.5.0
   - jruby-head
   - rbx-2
 matrix:
   fast_finish: true
   allow_failures:
-    - rvm: jruby-19mode
     - rvm: jruby-head
     - rvm: jruby-9.0.4.0
     - rvm: rbx-2
-    - rvm: 1.8.7
     - rvm: ruby-head
