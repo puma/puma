@@ -520,20 +520,63 @@ module Puma
       env['HTTP_X_FORWARDED_PROTO'] == 'https' ? PORT_443 : PORT_80
     end
 
-    def handle_app_response(req, lines, env, status, headers, res_body)
+    # Given the request +env+ from +client+ and a partial request body
+    # in +body+, finish reading the body if there is one and invoke
+    # the rack app. Then construct the response and write it back to
+    # +client+
+    #
+    # +cl+ is the previously fetched Content-Length header if there
+    # was one. This is an optimization to keep from having to look
+    # it up again.
+    #
+    def handle_request(req, lines)
+      env = req.env
       client = req.io
+
+      normalize_env env, req
+
+      env[PUMA_SOCKET] = client
+
+      if env[HTTPS_KEY] && client.peercert
+        env[PUMA_PEERCERT] = client.peercert
+      end
+
+      env[HIJACK_P] = true
+      env[HIJACK] = req
 
       body = req.body
 
       head = env[REQUEST_METHOD] == HEAD
 
+      env[RACK_INPUT] = body
+      env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
+
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
       #
-      # (This is already initialized in `handle_request`, just getting here)
-      after_reply = env[RACK_AFTER_REPLY]
+      after_reply = env[RACK_AFTER_REPLY] = []
 
       begin
+        begin
+          status, headers, res_body = @app.call(env)
+
+          return :async if req.hijacked
+
+          status = status.to_i
+
+          if status == -1
+            unless headers.empty? and res_body == []
+              raise "async response must have empty headers and body"
+            end
+
+            return :async
+          end
+        rescue StandardError => e
+          @events.unknown_error self, e, "Rack app"
+
+          status, headers, res_body = lowlevel_error(e, env)
+        end
+
         content_length = nil
         no_body = head
 
@@ -673,75 +716,6 @@ module Puma
       end
 
       return keep_alive
-    end
-
-    # Given the request +env+ from +client+ and a partial request body
-    # in +body+, finish reading the body if there is one and invoke
-    # the rack app. Then construct the response and write it back to
-    # +client+
-    #
-    # +cl+ is the previously fetched Content-Length header if there
-    # was one. This is an optimization to keep from having to look
-    # it up again.
-    #
-    def handle_request(req, lines)
-      env = req.env
-      client = req.io
-
-      normalize_env env, req
-
-      env[PUMA_SOCKET] = client
-
-      if env[HTTPS_KEY] && client.peercert
-        env[PUMA_PEERCERT] = client.peercert
-      end
-
-      env[HIJACK_P] = true
-      env[HIJACK] = req
-
-      env['async.callback'] = lambda { |__response|
-        _status, _headers, _res_body = __response
-        # Faye websocket gem also calls this (when available)
-        # with status=101, and res_body being a stream
-        # but calling here just finishes the response
-        # that's why we only response if the request is not
-        # hijacked. not sure if this is a correct solution
-        # but working. for now.
-        unless req.hijacked
-          handle_app_response(req, lines, env, _status, _headers, _res_body)
-        end
-      }
-
-      body = req.body
-
-      env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
-
-      env[RACK_AFTER_REPLY] = []
-
-      begin
-        status, headers, res_body = @app.call(env)
-
-        return :async if req.hijacked
-
-        status = status.to_i
-
-        if status == -1
-          # unless headers.empty? and res_body == []
-          #   puts "HEADERS: ".white.on_green + headers.inspect
-          #   puts "BODY: ".white.on_green + res_body.inspect
-          #   raise "async response must have empty headers and body"
-          # end
-
-          return :async
-        end
-      rescue StandardError => e
-        @events.unknown_error self, e, "Rack app"
-
-        status, headers, res_body = lowlevel_error(e, env)
-      end
-
-      return handle_app_response(req, lines, env, status, headers, res_body)
     end
 
     def fetch_status_code(status)
