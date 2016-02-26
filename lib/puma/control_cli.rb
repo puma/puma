@@ -1,5 +1,6 @@
 require 'optparse'
 require 'puma/const'
+require 'puma/detect'
 require 'puma/configuration'
 require 'uri'
 require 'socket'
