@@ -1,3 +1,11 @@
+=== 3.0.1 / 2016-02-25
+
+* 1 bug fix:
+
+  * Removed the experimental support for async.callback as it broke
+    websockets entirely. Seems no server has both hijack and async.callback
+    and thus faye is totally confused what to do and doesn't work.
+
 === 3.0.0 / 2016-02-25
 
 * 2 major changes:
