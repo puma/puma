@@ -1,4 +1,5 @@
 require 'optparse'
+require 'puma'
 require 'puma/const'
 require 'puma/configuration'
 require 'uri'
@@ -108,7 +109,7 @@ module Puma
           raise "State file not found: #{@state}"
         end
 
-        sf = StateFile.new
+        sf = Puma::StateFile.new
         sf.load @state
 
         @control_url = sf.control_url
