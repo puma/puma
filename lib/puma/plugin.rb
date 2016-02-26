@@ -58,8 +58,21 @@ module Puma
   Plugins = PluginRegistry.new
 
   class Plugin
+    # Matches
+    #  "C:/Ruby22/lib/ruby/gems/2.2.0/gems/puma-3.0.1/lib/puma/plugin/tmp_restart.rb:3:in `<top (required)>'"
+    #  AS
+    #  C:/Ruby22/lib/ruby/gems/2.2.0/gems/puma-3.0.1/lib/puma/plugin/tmp_restart.rb
+    CALLER_FILE = /
+      \A       # start of string
+      .+       # file path (one or more characters)
+      (?=      # stop previous match when
+        :\d+     # a colon is followed by one or more digits
+        :in      # followed by a colon followed by in
+      )
+    /x
+
     def self.extract_name(ary)
-      path = ary.first.split(":").first
+      path = ary.first[CALLER_FILE]
 
       m = %r!puma/plugin/([^/]*)\.rb$!.match(path)
       return m[1]
