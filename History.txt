@@ -1,3 +1,19 @@
+=== 3.0.2 / 2016-02-26
+
+* 5 bug fixes:
+
+  * Fix 'undefined local variable or method `pid` for #<Puma::ControlCLI:0x007f185fcef968>' when execute pumactl with `--pid` option.
+  * Fix 'undefined method `windows?` for Puma:Module' when execute pumactl.
+  * Harden tmp_restart against errors related to the restart file
+  * Make `plugin :tmp_restart` behavior correct in Windows.
+  * fix uninitialized constant Puma::ControlCLI::StateFile
+
+* 3 PRs merged:
+
+  * Merge pull request #901 from mitto/fix-pumactl-uninitialized-constant-statefile
+  * Merge pull request #902 from corrupt952/fix_undefined_method_and_variable_when_execute_pumactl
+  * Merge pull request #905 from Eric-Guo/master
+
 === 3.0.1 / 2016-02-25
 
 * 1 bug fix:
