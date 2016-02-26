@@ -178,24 +178,24 @@ module Puma
       end
 
       begin
-        Process.getpgid pid
+        Process.getpgid @pid
       rescue SystemCallError
         if @command == "restart"
           start
         else
-          raise "No pid '#{pid}' found"
+          raise "No pid '#{@pid}' found"
         end
       end
 
       case @command
       when "restart"
-        Process.kill "SIGUSR2", pid
+        Process.kill "SIGUSR2", @pid
 
       when "halt"
-        Process.kill "QUIT", pid
+        Process.kill "QUIT", @pid
 
       when "stop"
-        Process.kill "SIGTERM", pid
+        Process.kill "SIGTERM", @pid
 
       when "stats"
         puts "Stats not available via pid only"
@@ -206,7 +206,7 @@ module Puma
         return
 
       when "phased-restart"
-        Process.kill "SIGUSR1", pid
+        Process.kill "SIGUSR1", @pid
 
       else
         message "Puma is started"
