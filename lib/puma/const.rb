@@ -101,7 +101,8 @@ module Puma
 
     PUMA_VERSION = VERSION = "3.0.2".freeze
     CODE_NAME = "Plethora of Penguin Pinatas".freeze
-
+    PUMA_RACK_SERVER_SIGNATURE = [:puma, PUMA_VERSION, CODE_NAME].join(' ').freeze
+    
     FAST_TRACK_KA_TIMEOUT = 0.2
 
     # The default number of seconds for another request within a persistent
