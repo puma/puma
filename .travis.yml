@@ -10,10 +10,12 @@ rvm:
   - jruby-9.0.5.0
   - jruby-head
   - rbx-2
+  - rbx-3
 matrix:
   fast_finish: true
   allow_failures:
     - rvm: jruby-head
     - rvm: jruby-9.0.4.0
     - rvm: rbx-2
+    - rvm: rbx-3
     - rvm: ruby-head
