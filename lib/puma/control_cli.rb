@@ -237,15 +237,14 @@ module Puma
     def start
       require 'puma/cli'
 
-      run_args = @argv
+      run_args = []
 
-      if path = @state
-        run_args = ["-S", path] + run_args
-      end
-
-      if path = @config_file
-        run_args = ["-C", path] + run_args
-      end
+      run_args += ["-S", @state]  if @state
+      run_args += ["-q"] if @quiet
+      run_args += ["--pidfile", @pidfile] if @pidfile
+      run_args += ["--control", @control_url] if @control_url
+      run_args += ["--control-token", @control_auth_token] if @control_auth_token
+      run_args += ["-C", @config_file] if @config_file
 
       events = Puma::Events.new @stdout, @stderr
 
