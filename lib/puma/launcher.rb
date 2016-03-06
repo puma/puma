@@ -361,12 +361,14 @@ module Puma
         log "*** SIGUSR2 not implemented, signal based restart unavailable!"
       end
 
-      begin
-        Signal.trap "SIGUSR1" do
-          phased_restart
+      unless Puma.jruby?
+        begin
+          Signal.trap "SIGUSR1" do
+            phased_restart
+          end
+        rescue Exception
+          log "*** SIGUSR1 not implemented, signal based restart unavailable!"
         end
-      rescue Exception
-        log "*** SIGUSR1 not implemented, signal based restart unavailable!"
       end
 
       begin
