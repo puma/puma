@@ -44,6 +44,12 @@ module Puma
       end
     end
 
+    def fetch(key, default=nil)
+      val = self[key]
+      return val if val
+      default
+    end
+
     attr_reader :cur
 
     def all_of(key)
