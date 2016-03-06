@@ -72,7 +72,11 @@ module Puma
       if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
         "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
       else
-        "#{RUBY_ENGINE} #{RUBY_VERSION}"
+        if defined?(RUBY_ENGINE_VERSION)
+          "#{RUBY_ENGINE} #{RUBY_ENGINE_VERSION} - ruby #{RUBY_VERSION}"
+        else
+          "#{RUBY_ENGINE} #{RUBY_VERSION}"
+        end
       end
     end
 
