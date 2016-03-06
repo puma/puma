@@ -101,7 +101,8 @@ module Puma
 
     PUMA_VERSION = VERSION = "3.1.0".freeze
     CODE_NAME = "El Niño Winter Wonderland".freeze
-
+    PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
+    
     FAST_TRACK_KA_TIMEOUT = 0.2
 
     # The default number of seconds for another request within a persistent
