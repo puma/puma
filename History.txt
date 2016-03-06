@@ -1,3 +1,14 @@
+=== 3.1.0 / 2016-03-05
+
+* 1 minor feature:
+  * Add 'import' directive to config file. Fixes #916
+
+* 5 bug fixes:
+  * Add 'fetch' to options. Fixes #913
+  * Fix jruby daemonization. Fixes #918
+  * Recreate the proper args manually. Fixes #910
+  * Require 'time' to get iso8601. Fixes #914
+
 === 3.0.2 / 2016-02-26
 
 * 5 bug fixes:
