@@ -1,4 +1,5 @@
 require 'puma/runner'
+require 'time'
 
 module Puma
   class Cluster < Runner
