@@ -32,7 +32,7 @@ module Puma
 
     def jruby_daemon_start
       require 'puma/jruby_restart'
-      JRubyRestart.daemon_start(@restart_dir, restart_args)
+      JRubyRestart.daemon_start(@restart_dir, @launcher.restart_args)
     end
 
     def run

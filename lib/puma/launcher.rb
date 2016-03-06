@@ -191,6 +191,15 @@ module Puma
       @binder.connected_port
     end
 
+    def restart_args
+      cmd = @options[:restart_cmd]
+      if cmd
+        cmd.split(' ') + @original_argv
+      else
+        @restart_argv
+      end
+    end
+
     private
 
     def reload_worker_directory
@@ -258,15 +267,6 @@ module Puma
 
     def clustered?
       (@options[:workers] || 0) > 0
-    end
-
-    def restart_args
-      cmd = @options[:restart_cmd]
-      if cmd
-        cmd.split(' ') + @original_argv
-      else
-        @restart_argv
-      end
     end
 
     def unsupported(str)
