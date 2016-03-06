@@ -7,6 +7,7 @@ require 'tempfile'
 
 require 'puma/cli'
 require 'puma/control_cli'
+require 'puma/detect'
 
 # These don't run on travis because they're too fragile
 
@@ -61,7 +62,9 @@ class TestIntegration < Test::Unit::TestCase
 
     @server = IO.popen("sh #{tf.path}", "r")
 
-    true while @server.gets =~ /Ctrl-C/
+    while (l = @server.gets) !~ /Ctrl-C/
+      # nothing
+    end
 
     sleep 1
 
@@ -77,7 +80,7 @@ class TestIntegration < Test::Unit::TestCase
   end
 
   def test_stop_via_pumactl
-    if defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
+    if Puma.jruby? || Puma.windows?
       assert true
       return
     end
@@ -113,7 +116,7 @@ class TestIntegration < Test::Unit::TestCase
   end
 
   def test_phased_restart_via_pumactl
-    if defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
+    if Puma.jruby? || Puma.windows?
       assert true
       return
     end
@@ -171,23 +174,33 @@ class TestIntegration < Test::Unit::TestCase
     s.readpartial(20)
     signal :USR2
 
-    true while @server.gets =~ /Ctrl-C/
     sleep 1
 
     s.write "GET / HTTP/1.1\r\n\r\n"
 
-    assert_raises Errno::ECONNRESET do
+    e = assert_raises Errno::ECONNRESET do
       Timeout.timeout(2) do
         raise Errno::ECONNRESET unless s.read(2)
       end
     end
 
-    s = TCPSocket.new "localhost", @tcp_port
+    while (l = @server.gets) !~ /Ctrl-C/
+      # nothing
+    end
+
+    sleep 5 if Puma.jruby?
+
+    s = TCPSocket.new "127.0.0.1", @tcp_port
     s << "GET / HTTP/1.0\r\n\r\n"
     assert_equal "Hello World", s.read.split("\r\n").last
   end
 
   def test_restart_closes_keepalive_sockets_workers
+    if Puma.jruby?
+      assert true
+      return
+    end
+
     server("-q -w 2 test/hello.ru")
 
     s = TCPSocket.new "localhost", @tcp_port
@@ -221,4 +234,4 @@ class TestIntegration < Test::Unit::TestCase
     data = s.read
     assert_equal "HTTP/1.1 400 Bad Request\r\n\r\n", data
   end
-end # unless ENV['TRAVIS']
+end
