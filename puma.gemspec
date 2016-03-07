@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 # This is only used when puma is a git dep from Bundler, so it's a little
 # weird.
 
@@ -14,7 +12,6 @@ Gem::Specification.new do |s|
   s.name = "puma"
   s.version = version
 
-  s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Evan Phoenix"]
   s.date = `git log --pretty="%ai" -n 1`.split(" ").first
   s.description = "Puma is a simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications. Puma is intended for use in both development and production environments. It's great for highly concurrent Ruby implementations such as Rubinius and JRuby as well as as providing process worker support to support CRuby well."
@@ -26,9 +23,8 @@ Gem::Specification.new do |s|
   s.license = "BSD-3-Clause"
   s.rdoc_options = ["--main", "README.md"]
   s.require_paths = ["lib"]
-  s.required_ruby_version = Gem::Requirement.new(">= 1.8.7")
+  s.required_ruby_version = Gem::Requirement.new(">= 2.1")
   s.rubyforge_project = "puma"
-  s.rubygems_version = "1.8.25"
   s.summary = "Puma is a simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications"
   s.test_files = s.files.grep(/^test/)
 
