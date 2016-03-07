@@ -1,3 +1,4 @@
+#encoding: utf-8
 module Puma
   class UnsupportedOption < RuntimeError
   end
