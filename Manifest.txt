@@ -29,7 +29,6 @@ lib/puma.rb
 lib/puma/accept_nonblock.rb
 lib/puma/app/status.rb
 lib/puma/binder.rb
-lib/puma/capistrano.rb
 lib/puma/cli.rb
 lib/puma/client.rb
 lib/puma/cluster.rb
