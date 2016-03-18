@@ -1,3 +1,16 @@
+=== 3.1.1 / 2016-03-17
+
+* 4 bug fixes:
+  * Disable USR1 usage on JRuby
+  * Fixes #922 - Correctly define file encoding as UTF-8
+  * Set a more explicit SERVER_SOFTWARE Rack variable
+  * Show RUBY_ENGINE_VERSION if available. Fixes #923
+
+* 3 PRs merged:
+  * Merge pull request #912 from tricknotes/fix-allow-failures-in-travis-yml
+  * Merge pull request #921 from swrobel/patch-1
+  * Merge pull request #924 from tbrisker/patch-1
+
 === 3.1.0 / 2016-03-05
 
 * 1 minor feature:
