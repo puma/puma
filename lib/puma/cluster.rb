@@ -424,11 +424,20 @@ module Puma
       @launcher.events.fire_on_booted!
 
       begin
+        force_check = false
+
         while @status == :run
           begin
-            res = IO.select([read], nil, nil, 5)
+            if @phased_restart
+              start_phased_restart
+              @phased_restart = false
+            end
+
+            check_workers force_check
 
             force_check = false
+
+            res = IO.select([read], nil, nil, 5)
 
             if res
               req = read.read_nonblock(1)
@@ -454,13 +463,6 @@ module Puma
                 log "! Out-of-sync worker list, no #{pid} worker"
               end
             end
-
-            if @phased_restart
-              start_phased_restart
-              @phased_restart = false
-            end
-
-            check_workers force_check
 
           rescue Interrupt
             @status = :stop
