@@ -54,8 +54,6 @@ module Puma
       @binder        = Binder.new(@events)
       @binder.import_from_env
 
-      generate_restart_data
-
       @environment = conf.environment
 
       # Advertise the Configuration
@@ -65,6 +63,8 @@ module Puma
 
       @options = @config.options
 
+      generate_restart_data
+
       if clustered? && (Puma.jruby? || Puma.windows?)
         unsupported 'worker mode not supported on JRuby or Windows'
       end
@@ -73,8 +73,7 @@ module Puma
         unsupported 'daemon mode not supported on Windows'
       end
 
-      dir = @options[:directory]
-      Dir.chdir(dir) if dir
+      Dir.chdir(@restart_dir)
 
       prune_bundler if prune_bundler?
 
@@ -93,7 +92,7 @@ module Puma
       @status = :run
     end
 
-    attr_reader :binder, :events, :config, :options
+    attr_reader :binder, :events, :config, :options, :restart_dir
 
     # Return stats about the server
     def stats
@@ -314,16 +313,18 @@ module Puma
 
 
     def generate_restart_data
-      # Use the same trick as unicorn, namely favor PWD because
-      # it will contain an unresolved symlink, useful for when
-      # the pwd is /data/releases/current.
-      if dir = ENV['PWD']
+      if dir = @options[:directory]
+        @restart_dir = dir
+
+        # Use the same trick as unicorn, namely favor PWD because
+        # it will contain an unresolved symlink, useful for when
+        # the pwd is /data/releases/current.
+      elsif dir = ENV['PWD']
         s_env = File.stat(dir)
         s_pwd = File.stat(Dir.pwd)
 
         if s_env.ino == s_pwd.ino and (Puma.jruby? or s_env.dev == s_pwd.dev)
           @restart_dir = dir
-          @config.configure { |c| c.worker_directory dir }
         end
       end
 

@@ -31,10 +31,9 @@ module Puma
 
       # Be sure to change the directory again before loading
       # the app. This way we can pick up new code.
-      if dir = @options[:worker_directory]
-        log "+ Changing to #{dir}"
-        Dir.chdir dir
-      end
+      dir = @launcher.restart_dir
+      log "+ Changing to #{dir}"
+      Dir.chdir dir
     end
 
     def redirect_io
@@ -302,10 +301,9 @@ module Puma
     end
 
     def reload_worker_directory
-      if dir = @options[:worker_directory]
-        log "+ Changing to #{dir}"
-        Dir.chdir dir
-      end
+      dir = @launcher.restart_dir
+      log "+ Changing to #{dir}"
+      Dir.chdir dir
     end
 
     def stats
