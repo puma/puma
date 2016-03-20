@@ -1,3 +1,17 @@
+=== 3.2.0 / 2016-03-20
+
+* 1 deprecation removal:
+  * Delete capistrano.rb
+
+* 3 bug fixes:
+  * Detect gems.rb as well as Gemfile
+  * Simplify and fix logic for directory to use when restarting for all phases
+  * Speed up phased-restart start
+
+* 2 PRs merged:
+  * Merge pull request #927 from jlecour/gemfile_variants
+  * Merge pull request #931 from joneslee85/patch-10
+
 === 3.1.1 / 2016-03-17
 
 * 4 bug fixes:
