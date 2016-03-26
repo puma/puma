@@ -12,7 +12,7 @@ module Rack
       def self.run(app, options = {})
         options  = DEFAULT_OPTIONS.merge(options)
 
-        conf = ::Puma::Configuration.new do |c|
+        conf = ::Puma::Configuration.new(options) do |c|
           c.quiet
 
           if options.delete(:Verbose)
@@ -69,4 +69,3 @@ module Rack
     register :puma, Puma
   end
 end
-

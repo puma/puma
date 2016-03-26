@@ -13,10 +13,10 @@ module Puma
   end
 
   class LeveledOptions
-    def initialize(default={})
-      @cur = {}
+    def initialize(default_options, user_options)
+      @cur = user_options
       @set = [@cur]
-      @defaults = default.dup
+      @defaults = default_options.dup
     end
 
     def initialize_copy(other)
@@ -133,12 +133,9 @@ module Puma
     end
 
     def initialize(options={}, &blk)
-      @options = LeveledOptions.new(default_options)
-      @plugins = PluginLoader.new
+      @options = LeveledOptions.new(default_options, options)
 
-      # options.each do |k,v|
-        # @options[k] = v
-      # end
+      @plugins = PluginLoader.new
 
       if blk
         configure(&blk)
