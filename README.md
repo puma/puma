@@ -265,8 +265,7 @@ Puma cluster responds to these signals:
 - `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
 - `CHLD`
 
-A detailed guide to using UNIX signals with Puma can be found [here](https://github.com/puma/puma/blob/master/docs/signals.md)
-
+A detailed guide to using UNIX signals with Puma can be found in the [signals documentation](https://github.com/puma/puma/blob/master/docs/signals.md).
 
 ### Release Directory
 
