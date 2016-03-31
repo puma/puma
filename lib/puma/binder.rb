@@ -70,6 +70,7 @@ module Puma
               url = "tcp://#{addr}:#{port}"
             end
             @inherited_fds[url] = sock
+            @events.debug "Registered #{url} for inheriting from LISTEN_FDS"
           end
           ENV.delete k
           ENV.delete 'LISTEN_PID'
