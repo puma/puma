@@ -55,8 +55,7 @@ module Puma
           fd, url = v.split(":", 2)
           @inherited_fds[url] = fd.to_i
           remove << k
-        end
-        if k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
+        elsif k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
           v.to_i.times do |num|
             fd = num + 3
             sock = TCPServer.for_fd(fd)
@@ -72,8 +71,7 @@ module Puma
             @inherited_fds[url] = sock
             @events.debug "Registered #{url} for inheriting from LISTEN_FDS"
           end
-          ENV.delete k
-          ENV.delete 'LISTEN_PID'
+          remove << k << 'LISTEN_PID'
         end
       end
 
