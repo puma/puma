@@ -56,7 +56,7 @@ module Puma
           @inherited_fds[url] = fd.to_i
           remove << k
         end
-        if k =~ /LISTEN_FDS/ && ENV['LISTEN_PID'].to_i == $$
+        if k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
           v.to_i.times do |num|
             fd = num + 3
             sock = TCPServer.for_fd(fd)
