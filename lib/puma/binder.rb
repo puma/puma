@@ -288,7 +288,11 @@ module Puma
       require 'puma/minissl'
       MiniSSL.check
 
-      s = TCPServer.for_fd(fd)
+      if fd.kind_of? TCPServer
+        s = fd
+      else
+        s = TCPServer.for_fd(fd)
+      end
       ssl = MiniSSL::Server.new(s, ctx)
 
       env = @proto_env.dup
