@@ -51,6 +51,12 @@ class TestConfigFile < Test::Unit::TestCase
     assert_equal [200, {}, ["error page"]], app.call({})
   end
 
+  def test_allow_users_to_override_default_options
+    conf = Puma::Configuration.new(restart_cmd: 'bin/rails server')
+
+    assert_equal 'bin/rails server', conf.options[:restart_cmd]
+  end
+
   private
 
     def with_env(env = {})
