@@ -11,6 +11,7 @@ module Puma
       @events = events
       @listeners = []
       @inherited_fds = {}
+      @activated_sockets = {}
       @unix_paths = []
 
       @proto_env = {
@@ -60,16 +61,16 @@ module Puma
             fd = num + 3
             sock = TCPServer.for_fd(fd)
             begin
-              url = "unix://" + Socket.unpack_sockaddr_un(sock.getsockname)
+              key = [ :unix, Socket.unpack_sockaddr_un(sock.getsockname) ]
             rescue ArgumentError
               port, addr = Socket.unpack_sockaddr_in(sock.getsockname)
               if addr =~ /\:/
                 addr = "[#{addr}]"
               end
-              url = "tcp://#{addr}:#{port}"
+              key = [ :tcp, addr, port ]
             end
-            @inherited_fds[url] = sock
-            @events.debug "Registered #{url} for inheriting from LISTEN_FDS"
+            @activated_sockets[key] = sock
+            @events.debug "Registered #{key.join ':'} for activation from LISTEN_FDS"
           end
           remove << k << 'LISTEN_PID'
         end
@@ -88,6 +89,9 @@ module Puma
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
             io = inherit_tcp_listener uri.host, uri.port, fd
+          elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
+            logger.log "* Activated #{str}"
+            io = inherit_tcp_listener uri.host, uri.port, sock
           else
             params = Util.parse_query uri.query
 
@@ -105,6 +109,9 @@ module Puma
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
             io = inherit_unix_listener path, fd
+          elsif sock = @activated_sockets.delete([ :unix, path ])
+            logger.log "* Activated #{str}"
+            io = inherit_unix_listener path, sock
           else
             logger.log "* Listening on #{str}"
 
@@ -191,6 +198,9 @@ module Puma
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
             io = inherit_ssl_listener fd, ctx
+          elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
+            logger.log "* Activated #{str}"
+            io = inherit_ssl_listener sock, ctx
           else
             logger.log "* Listening on #{str}"
             io = add_ssl_listener uri.host, uri.port, ctx
@@ -208,12 +218,7 @@ module Puma
         logger.log "* Closing unused inherited connection: #{str}"
 
         begin
-          if fd.kind_of? TCPServer
-            fd.close
-          else
-            IO.for_fd(fd).close
-          end
-
+          IO.for_fd(fd).close
         rescue SystemCallError
         end
 
@@ -223,6 +228,17 @@ module Puma
           path = "#{uri.host}#{uri.path}"
           File.unlink path
         end
+      end
+
+      # Also close any unsued activated sockets
+      @activated_sockets.each do |key, sock|
+        logger.log "* Closing unused activated socket: #{key.join ':'}"
+        begin
+          sock.close
+        rescue SystemCallError
+        end
+        # We have to unlink a unix socket path that's not being used
+        File.unlink key[1] if key[0] == :unix
       end
 
     end
