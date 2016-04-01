@@ -190,7 +190,7 @@ module Puma
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
-            io = inherited_ssl_listener fd, ctx
+            io = inherit_ssl_listener fd, ctx
           else
             logger.log "* Listening on #{str}"
             io = add_ssl_listener uri.host, uri.port, ctx
@@ -284,7 +284,7 @@ module Puma
       s
     end
 
-    def inherited_ssl_listener(fd, ctx)
+    def inherit_ssl_listener(fd, ctx)
       require 'puma/minissl'
       MiniSSL.check
 
