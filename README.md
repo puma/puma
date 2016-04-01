@@ -252,6 +252,21 @@ But again beware, upgrading an application sometimes involves upgrading the data
 
 If you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (pumactl restart). That way, no code is shared while deploying (in that case, preload_app might help for quicker deployment, see below).
 
+### Puma Signals
+
+Puma cluster responds to these signals:
+
+- `TTIN` increment the worker count by 1
+- `TTOU` decrement the worker count by 1
+- `TERM` send `TERM` to worker. Worker will attempt to finish then exit.
+- `USR2` restart workers
+- `USR1` restart workers in phases, a rolling restart.
+- `HUP`  reopen log files defined in stdout_redirect configuration parameter
+- `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
+- `CHLD`
+
+A detailed guide to using UNIX signals with Puma can be found in the [signals documentation](https://github.com/puma/puma/blob/master/docs/signals.md).
+
 ### Release Directory
 
 If you symlink releases into a common working directory (i.e., `/current` from Capistrano), Puma won't pick up your new changes when running phased restarts without additional configuration. You should set your working directory within Puma's config to specify the directory it should use. This is a change from earlier versions of Puma (< 2.15) that would infer the directory for you.
