@@ -1,3 +1,18 @@
+=== 3.3.0 / 2016-04-05
+
+* 2 minor features:
+  * Allow overriding options of Configuration object
+  * Rename to inherit_ssl_listener like inherit_tcp|unix
+
+* 2 doc fixes:
+  * Add docs/systemd.md (with socket activation sub-section)
+  * Document UNIX signals with cluster on README.md
+
+* 3 PRs merged:
+  * Merge pull request #936 from prathamesh-sonpatki/allow-overriding-config-options
+  * Merge pull request #940 from kyledrake/signalsdoc
+  * Merge pull request #942 from dekellum/socket-activate-improve
+
 === 3.2.0 / 2016-03-20
 
 * 1 deprecation removal:

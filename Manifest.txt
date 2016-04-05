@@ -11,6 +11,7 @@ bin/pumactl
 docs/config.md
 docs/nginx.md
 docs/signals.md
+docs/systemd.md
 ext/puma_http11/PumaHttp11Service.java
 ext/puma_http11/ext_help.h
 ext/puma_http11/extconf.rb
