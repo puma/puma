@@ -10,7 +10,7 @@ class Http11ParserTest < Test::Unit::TestCase
   def test_parse_simple
     parser = HttpParser.new
     req = {}
-    http = "GET / HTTP/1.1\r\n\r\n"
+    http = "GET /?a=1 HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
 
     assert nread == http.length, "Failed to parse the full HTTP request"
@@ -20,13 +20,37 @@ class Http11ParserTest < Test::Unit::TestCase
 
     assert_equal '/', req['REQUEST_PATH']
     assert_equal 'HTTP/1.1', req['HTTP_VERSION']
-    assert_equal '/', req['REQUEST_URI']
+    assert_equal '/?a=1', req['REQUEST_URI']
     assert_equal 'GET', req['REQUEST_METHOD']
+    assert_nil req['FRAGMENT']
+    assert_equal "a=1", req['QUERY_STRING']
+
+    parser.reset
+    assert parser.nread == 0, "Number read after reset should be 0"
+  end
+
+  def test_parse_absolute_uri
+    parser = HttpParser.new
+    req = {}
+    http = "GET http://192.168.1.96:3000/api/v1/matches/test?1=1 HTTP/1.1\r\n\r\n"
+    nread = parser.execute(req, http, 0)
+
+    assert nread == http.length, "Failed to parse the full HTTP request"
+    assert parser.finished?, "Parser didn't finish"
+    assert !parser.error?, "Parser had error"
+    assert nread == parser.nread, "Number read returned from execute does not match"
+
+    assert_equal "GET", req['REQUEST_METHOD']
+    assert_equal 'http://192.168.1.96:3000/api/v1/matches/test?1=1', req['REQUEST_URI']
+    assert_equal 'HTTP/1.1', req['HTTP_VERSION']
+
+    assert_nil req['REQUEST_PATH']
     assert_nil req['FRAGMENT']
     assert_nil req['QUERY_STRING']
 
     parser.reset
     assert parser.nread == 0, "Number read after reset should be 0"
+
   end
 
   def test_parse_dumbfuck_headers
