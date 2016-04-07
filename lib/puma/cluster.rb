@@ -118,6 +118,12 @@ module Puma
         @launcher.config.run_hooks :before_worker_fork, idx
 
         pid = fork { worker(idx, master) }
+        if !pid
+          log "! Complete inability to spawn new workers detected"
+          log "! Seppuku is the only choice."
+          exit! 1
+        end
+
         debug "Spawned worker: #{pid}"
         @workers << Worker.new(idx, pid, @phase, @options)
 
