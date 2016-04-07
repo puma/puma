@@ -238,7 +238,7 @@ To perform a restart, there are 2 builtin mechanisms:
 
 No code is shared between the current and restarted process, so it should be safe to issue a restart any place where you would manually stop Puma and start it again.
 
-If the new process is unable to load, it will simply exit. You should therefore run Puma under a supervisor when using it in production.
+If the new process is unable to load, it will simply exit. You should therefore run Puma under a process monitor (see below) when using it in production.
 
 ### Normal vs Hot vs Phased Restart
 
@@ -295,9 +295,15 @@ Because of various platforms not being able to implement certain things, the fol
 
 `pumactl` is a simple CLI frontend to the control/status app described above.  Please refer to `pumactl --help` for available commands.
 
-## Managing multiple Pumas / init.d / upstart scripts
+## Process Monitors
 
-If you want an easy way to manage multiple scripts at once, check [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for init.d and upstart scripts.
+Process monitors or supervisors will at minimum provide start of Puma
+on system boot. Modern process monitors like systemd or upstart
+further provide continous monitoring and restarts for increased
+reliability in production environments:
+
+* [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
+* [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
 ## Capistrano deployment
 
