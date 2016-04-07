@@ -299,7 +299,7 @@ Because of various platforms not being able to implement certain things, the fol
 
 Process monitors or supervisors will at minimum provide start of Puma
 on system boot. Modern process monitors like systemd or upstart
-further provide continous monitoring and restarts for increased
+further provide continuous monitoring and restarts for increased
 reliability in production environments:
 
 * [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart

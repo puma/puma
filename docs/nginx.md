@@ -34,7 +34,7 @@ server {
     proxy_set_header Host $http_host;
 
     # If the file exists as a static file serve it directly without
-    # running all the other rewite tests on it
+    # running all the other rewrite tests on it
     if (-f $request_filename) {
       break;
     }
@@ -50,7 +50,7 @@ server {
     # this is the meat of the rack page caching config
     # it adds .html to the end of the url and then checks
     # the filesystem for that file. If it exists, then we
-    # rewite the url to have explicit .html on the end
+    # rewrite the url to have explicit .html on the end
     # and then send it on its way to the next config rule.
     # if there is no file on the fs then it sets all the
     # necessary headers and proxies to our upstream pumas
