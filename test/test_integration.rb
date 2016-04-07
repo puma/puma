@@ -62,7 +62,7 @@ class TestIntegration < Test::Unit::TestCase
 
     @server = IO.popen("sh #{tf.path}", "r")
 
-    while (l = @server.gets) !~ /Ctrl-C/
+    while (@server.gets) !~ /Ctrl-C/
       # nothing
     end
 
@@ -178,13 +178,13 @@ class TestIntegration < Test::Unit::TestCase
 
     s.write "GET / HTTP/1.1\r\n\r\n"
 
-    e = assert_raises Errno::ECONNRESET do
+    assert_raises Errno::ECONNRESET do
       Timeout.timeout(2) do
         raise Errno::ECONNRESET unless s.read(2)
       end
     end
 
-    while (l = @server.gets) !~ /Ctrl-C/
+    while (@server.gets) !~ /Ctrl-C/
       # nothing
     end
 
