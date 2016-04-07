@@ -291,6 +291,15 @@ module Puma
       _ary(:before_fork) << block
     end
 
+    # *Cluster mode only* Code to run in a worker when it boots to setup
+    # the process before booting the app.
+    #
+    # This can be called multiple times to add hooks.
+    #
+    def on_worker_boot(&block)
+      _ary(:before_worker_boot) << block
+    end
+
     # *Cluster mode only* Code to run immediately before a worker shuts
     # down (after it has finished processing HTTP requests). These hooks
     # can block if necessary to wait for background operations unknown
@@ -302,16 +311,7 @@ module Puma
       _ary(:before_worker_shutdown) << block
     end
 
-    # *Cluster mode only* Code to run when a worker boots to setup
-    # the process before booting the app.
-    #
-    # This can be called multiple times to add hooks.
-    #
-    def on_worker_boot(&block)
-      _ary(:before_worker_boot) << block
-    end
-
-    # *Cluster mode only* Code to run when a master process is
+    # *Cluster mode only* Code to run in the master when it is
     # about to create the worker by forking itself.
     #
     # This can be called multiple times to add hooks.
@@ -320,14 +320,16 @@ module Puma
       _ary(:before_worker_fork) << block
     end
 
-    # *Cluster mode only* Code to run when a worker boots to setup
-    # the process after booting the app.
+    # *Cluster mode only* Code to run in the master after it starts
+    # a worker.
     #
     # This can be called multiple times to add hooks.
     #
-    def after_worker_boot(&block)
+    def after_worker_fork(&block)
       _ary(:after_worker_fork) << block
     end
+
+    alias_method :after_worker_boot, :after_worker_fork
 
     # The directory to operate out of.
     def directory(dir)

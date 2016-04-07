@@ -110,29 +110,44 @@
 #
 # workers 2
 
-# Code to run when a worker boots to setup the process before booting
-# the app.
+# Code to run immediately before the masters starts workers.
 #
-# This can be called multiple times to add hooks.
+# before_fork do
+#   puts "Starting workers..."
+# end
+
+# Code to run in a worker before it starts serving requests.
+#
+# This is called everytime a worker is to be started.
 #
 # on_worker_boot do
 #   puts 'On worker boot...'
 # end
 
-# Code to run when a worker boots to setup the process after booting
-# the app.
+# Code to run in a worker right before it exits.
 #
-# This can be called multiple times to add hooks.
-#
-# after_worker_boot do
-#   puts 'After worker boot...'
-# end
-
-# Code to run when a worker shutdown.
-#
+# This is called everytime a worker is to be started.
 #
 # on_worker_shutdown do
 #   puts 'On worker shutdown...'
+# end
+
+# Code to run in the master right before a worker is started. The worker's
+# index is passed as an argument.
+#
+# This is called everytime a worker is to be started.
+#
+# on_worker_fork do
+#   puts 'Before worker fork...'
+# end
+
+# Code to run in the master after a worker has been started. The worker's
+# index is passed an an argument.
+#
+# This is called everytime a worker is to be started.
+#
+# after_worker_fork do
+#   puts 'After worker fork...'
 # end
 
 # Allow workers to reload bundler context when master process is issued
