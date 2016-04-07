@@ -1,3 +1,26 @@
+=== 3.4.0 / 2016-04-07
+
+* 2 minor features:
+  * Add ability to force threads to stop on shutdown. Fixes #938
+  * Detect and commit seppuku when fork(2) fails. Fixes #529
+
+* 3 unknowns:
+  * Ignore errors trying to update the backport tables. Fixes #788
+  * Invoke the lowlevel_error in more places to allow for exception tracking. Fixes #894
+  * Update the query string when an absolute URI is used. Fixes #937
+
+* 5 doc fixes:
+  * Add Process Monitors section to top-level README
+  * Better document the hooks. Fixes #840
+  * docs/system.md sample config refinements and elaborations
+  * Fix typos at couple of places.
+  * Cleanup warnings
+
+* 3 PRs merged:
+  * Merge pull request #945 from dekellum/systemd-docs-refined
+  * Merge pull request #946 from vipulnsward/rm-pid
+  * Merge pull request #947 from vipulnsward/housekeeping-typos
+
 === 3.3.0 / 2016-04-05
 
 * 2 minor features:
