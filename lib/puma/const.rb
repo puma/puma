@@ -130,6 +130,7 @@ module Puma
     # The original URI requested by the client.
     REQUEST_URI= 'REQUEST_URI'.freeze
     REQUEST_PATH = 'REQUEST_PATH'.freeze
+    QUERY_STRING = 'QUERY_STRING'.freeze
 
     PATH_INFO = 'PATH_INFO'.freeze
 
