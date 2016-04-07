@@ -71,7 +71,7 @@ module Puma
             exit 1
           end
 
-          pid = jruby_daemon_start
+          jruby_daemon_start
           sleep
         end
       else
