@@ -430,6 +430,8 @@ module Puma
 
       # SSL handshake error
       rescue MiniSSL::SSLError => e
+        lowlevel_error(e, client.env)
+
         ssl_socket = client.io
         addr = ssl_socket.peeraddr.last
         cert = ssl_socket.peercert
@@ -440,12 +442,16 @@ module Puma
 
       # The client doesn't know HTTP well
       rescue HttpParserError => e
+        lowlevel_error(e, client.env)
+
         client.write_400
 
         @events.parse_error self, client.env, e
 
       # Server error
       rescue StandardError => e
+        lowlevel_error(e, client.env)
+
         client.write_500
 
         @events.unknown_error self, e, "Read"
