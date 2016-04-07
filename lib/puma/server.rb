@@ -571,6 +571,14 @@ module Puma
 
             return :async
           end
+        rescue ThreadPool::ForceShutdown => e
+          @events.log "Detected force shutdown of a thread, returning 503"
+          @events.unknown_error self, e, "Rack app"
+
+          status = 503
+          headers = {}
+          res_body = ["Request was internally terminated early\n"]
+
         rescue StandardError => e
           @events.unknown_error self, e, "Rack app"
 
@@ -835,7 +843,13 @@ module Puma
         @events.debug "Drained #{count} additional connections."
       end
 
-      @thread_pool.shutdown if @thread_pool
+      if @thread_pool
+        if timeout = @options[:force_shutdown_after]
+          @thread_pool.shutdown timeout.to_i
+        else
+          @thread_pool.shutdown
+        end
+      end
     end
 
     # Stops the acceptor thread and then causes the worker threads to finish

@@ -118,6 +118,11 @@ module Puma
     # sending data back
     WRITE_TIMEOUT = 10
 
+    # How long, after raising the ForceShutdown of a thread during
+    # forced shutdown mode, to wait for the thread to try and finish
+    # up it's work before leaving the thread to die on the vine.
+    SHUTDOWN_GRACE_TIME = 5 # seconds
+
     DATE = "Date".freeze
 
     SCRIPT_NAME = "SCRIPT_NAME".freeze

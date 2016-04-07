@@ -159,6 +159,26 @@ module Puma
       @options[:environment] = environment
     end
 
+    # How long to wait for threads to stop when shutting them
+    # down. Defaults to :forever. Specifying :immediately will cause
+    # Puma to kill the threads immediately.  Otherwise the value
+    # is the number of seconds to wait.
+    #
+    # Puma always waits a few seconds after killing a thread for it to try
+    # to finish up it's work, even in :immediately mode.
+    def force_shutdown_after(val=:forever)
+      i = case val
+          when :forever
+            -1
+          when :immediately
+            0
+          else
+            Integer(val)
+          end
+
+      @options[:force_shutdown_after] = i
+    end
+
     # Code to run before doing a restart. This code should
     # close logfiles, database connections, etc.
     #
