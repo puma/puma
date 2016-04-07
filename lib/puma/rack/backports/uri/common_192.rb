@@ -17,17 +17,20 @@
 require 'uri/common'
 
 module URI
-  TBLDECWWWCOMP_ = {} unless const_defined?(:TBLDECWWWCOMP_)  #:nodoc:
-  if TBLDECWWWCOMP_.empty?
-    256.times do |i|
-      h, l = i>>4, i&15
-      TBLDECWWWCOMP_['%%%X%X' % [h, l]] = i.chr
-      TBLDECWWWCOMP_['%%%x%X' % [h, l]] = i.chr
-      TBLDECWWWCOMP_['%%%X%x' % [h, l]] = i.chr
-      TBLDECWWWCOMP_['%%%x%x' % [h, l]] = i.chr
+  begin
+    TBLDECWWWCOMP_ = {} unless const_defined?(:TBLDECWWWCOMP_)  #:nodoc:
+    if TBLDECWWWCOMP_.empty?
+      256.times do |i|
+        h, l = i>>4, i&15
+        TBLDECWWWCOMP_['%%%X%X' % [h, l]] = i.chr
+        TBLDECWWWCOMP_['%%%x%X' % [h, l]] = i.chr
+        TBLDECWWWCOMP_['%%%X%x' % [h, l]] = i.chr
+        TBLDECWWWCOMP_['%%%x%x' % [h, l]] = i.chr
+      end
+      TBLDECWWWCOMP_['+'] = ' '
+      TBLDECWWWCOMP_.freeze
     end
-    TBLDECWWWCOMP_['+'] = ' '
-    TBLDECWWWCOMP_.freeze
+  rescue Exception
   end
 
   def self.decode_www_form(str, enc=Encoding::UTF_8)
