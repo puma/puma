@@ -739,7 +739,7 @@ module Puma
     end
     private :fetch_status_code
 
-    # Given the requset +env+ from +client+ and the partial body +body+
+    # Given the request +env+ from +client+ and the partial body +body+
     # plus a potential Content-Length value +cl+, finish reading
     # the body and return it.
     #

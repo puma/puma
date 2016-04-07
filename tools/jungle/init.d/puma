@@ -357,7 +357,7 @@ case "$1" in
   ;;
   add)
     if [ "$#" -lt 3 ]; then
-      echo "Please, specifiy the app's directory and the user that will run it at least."
+      echo "Please, specify the app's directory and the user that will run it at least."
       echo "  Usage: $SCRIPTNAME add /path/to/app user /path/to/app/config/puma.rb /path/to/app/config/log/puma.log"
       echo "    config and log are optionals."
       exit 1

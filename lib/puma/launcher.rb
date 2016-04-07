@@ -12,7 +12,7 @@ require 'puma/state_file'
 require 'puma/commonlogger'
 
 module Puma
-  # Puam::Launcher is the single entry point for starting a Puma server based on user
+  # Puma::Launcher is the single entry point for starting a Puma server based on user
   # configuration. It is responsible for taking user supplied arguments and resolving them
   # with configuration in `config/puma.rb` or `config/puma/<env>.rb`.
   #

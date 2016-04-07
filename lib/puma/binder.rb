@@ -23,7 +23,7 @@ module Puma
         "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
         # I'd like to set a default CONTENT_TYPE here but some things
-        # depend on their not being a default set and infering
+        # depend on their not being a default set and inferring
         # it from the content. And so if i set it here, it won't
         # infer properly.
 
@@ -230,7 +230,7 @@ module Puma
         end
       end
 
-      # Also close any unsued activated sockets
+      # Also close any unused activated sockets
       @activated_sockets.each do |key, sock|
         logger.log "* Closing unused activated socket: #{key.join ':'}"
         begin

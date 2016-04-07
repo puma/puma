@@ -980,7 +980,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 
 === 1.5.0 / 2012-07-19
 
-* 7 contributers to this release:
+* 7 contributors to this release:
   * Christian Mayer
   * Darío Javier Cravero
   * Dirkjan Bussink
@@ -1028,7 +1028,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
   * Only stop the status server if it's started. Fixes #84
   * Set RACK_ENV early in cli also. Fixes #78
 
-* 1 new contributer:
+* 1 new contributor:
   * Jesse Cooke
 
 === 1.2.2 / 2012-04-28
@@ -1064,9 +1064,9 @@ be added back in a future date when a java Puma::MiniSSL is added.
     * Fix reporting https only on a true SSL connection
     * Set the default content type to 'text/plain'. Fixes #63
     * Use REUSEADDR. Fixes #60
-    * Shutdown gracefull on SIGTERM. Fixes #53
+    * Shutdown gracefully on SIGTERM. Fixes #53
 
- 2 new contributers:
+ 2 new contributors:
 
    * Seamus Abshere
    * Steve Richert
