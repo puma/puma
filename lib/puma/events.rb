@@ -106,8 +106,8 @@ module Puma
     end
 
     # An unknown error has occurred.
-    # +server+ is the Server object, +env+ the request, +error+ an exception
-    # object, and +kind+ some additional info.
+    # +server+ is the Server object, +error+ an exception object, and
+    # +kind+ some additional info.
     #
     def unknown_error(server, error, kind="Unknown")
       if error.respond_to? :render
