@@ -110,7 +110,7 @@
 #
 # workers 2
 
-# Code to run immediately before the masters starts workers.
+# Code to run immediately before the master starts workers.
 #
 # before_fork do
 #   puts "Starting workers..."
@@ -126,7 +126,7 @@
 
 # Code to run in a worker right before it exits.
 #
-# This is called everytime a worker is to be started.
+# This is called everytime a worker is to about to shutdown.
 #
 # on_worker_shutdown do
 #   puts 'On worker shutdown...'
