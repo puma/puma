@@ -106,15 +106,21 @@ module Puma
     end
 
     # An unknown error has occurred.
-    # +server+ is the Server object, +error+ an exception object, and
-    # +kind+ some additional info.
+    # +server+ is the Server object, +error+ an exception object,
+    # +kind+ some additional info, and +env+ the request.
     #
-    def unknown_error(server, error, kind="Unknown")
+    def unknown_error(server, error, kind="Unknown", env=nil)
       if error.respond_to? :render
         error.render "#{Time.now}: #{kind} error", @stderr
       else
-        @stderr.puts "#{Time.now}: #{kind} error: #{error.inspect}"
-        @stderr.puts error.backtrace.join("\n")
+        if env
+          string_block = [ "#{Time.now}: #{kind} error handling request { #{env['REQUEST_METHOD']} #{env['PATH_INFO']} }" ]
+          string_block << error.inspect
+        else
+          string_block = [ "#{Time.now}: #{kind} error: #{error.inspect}" ]
+        end
+        string_block << error.backtrace
+        @stderr.puts string_block.join("\n")
       end
     end
 
