@@ -588,7 +588,7 @@ module Puma
           res_body = ["Request was internally terminated early\n"]
 
         rescue StandardError => e
-          @events.unknown_error self, e, "Rack app"
+          @events.unknown_error self, e, "Rack app", env
 
           status, headers, res_body = lowlevel_error(e, env)
         end
