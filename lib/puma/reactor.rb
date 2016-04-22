@@ -75,6 +75,15 @@ module Puma
                   sockets.delete c
                 end
 
+              # Don't report these to the lowlevel_error handler, otherwise
+              # will be flooding them with errors when persistent connections
+              # are closed.
+              rescue ConnectionError
+                c.write_500
+                c.close
+
+                sockets.delete c
+
               # SSL handshake failure
               rescue MiniSSL::SSLError => e
                 @server.lowlevel_error(e, c.env)
