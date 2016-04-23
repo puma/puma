@@ -29,6 +29,24 @@ class Http11ParserTest < Test::Unit::TestCase
     assert parser.nread == 0, "Number read after reset should be 0"
   end
 
+  def test_parse_escaping_in_query
+    parser = HttpParser.new
+    req = {}
+    http = "GET /admin/users?search=%27%%27 HTTP/1.1\r\n\r\n"
+    nread = parser.execute(req, http, 0)
+
+    assert nread == http.length, "Failed to parse the full HTTP request"
+    assert parser.finished?, "Parser didn't finish"
+    assert !parser.error?, "Parser had error"
+    assert nread == parser.nread, "Number read returned from execute does not match"
+
+    assert_equal '/admin/users?search=%27%%27', req['REQUEST_URI']
+    assert_equal "search=%27%%27", req['QUERY_STRING']
+
+    parser.reset
+    assert parser.nread == 0, "Number read after reset should be 0"
+  end
+
   def test_parse_absolute_uri
     parser = HttpParser.new
     req = {}
