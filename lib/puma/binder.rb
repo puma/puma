@@ -194,7 +194,7 @@ module Puma
                                 MiniSSL::VERIFY_NONE
                               end
           else
-            ctx.verify_mode = MiniSSL::VERIFY_NONE
+            ctx.verify_mode = MiniSSL::VERIFY_PEER
           end
 
           if fd = @inherited_fds.delete(str)

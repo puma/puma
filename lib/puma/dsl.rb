@@ -259,9 +259,9 @@ module Puma
     def ssl_bind(host, port, opts)
       if defined?(JRUBY_VERSION)
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{opts[:verify_mode] || 'none'}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{opts[:verify_mode] || 'peer'}"
       else
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&verify_mode=#{opts[:verify_mode] || 'none'}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&verify_mode=#{opts[:verify_mode] || 'peer'}"
       end
     end
 
