@@ -290,16 +290,25 @@ do_remove() {
 
 config_bundler() {
   HOME="$(eval echo ~$(id -un))"
-  if [ -d "/usr/local/rbenv/bin" ]; then
+
+  if [ -d "$1/.rbenv/bin" ]; then
+    PATH="$1/.rbenv/bin:$1/.rbenv/shims:$1"
+    eval "$(rbenv init -)"
+    USE_LOCAL_BUNDLE=1
+    return 0
+
+  elif [ -d "/usr/local/rbenv/bin" ]; then
     PATH="/usr/local/rbenv/bin:/usr/local/rbenv/shims:$PATH"
     eval "$(rbenv init -)"
     USE_LOCAL_BUNDLE=1
     return 0
+
   elif [ -d "$HOME/.rbenv/bin" ]; then
     PATH="$HOME/.rbenv/bin:$HOME/.rbenv/shims:$PATH"
     eval "$(rbenv init -)"
     USE_LOCAL_BUNDLE=1
     return 0
+
   # TODO: test rvm
   # elif [ -f  /etc/profile.d/rvm.sh ]; then
   #   source /etc/profile.d/rvm.sh
