@@ -19,9 +19,11 @@ class TestThreadPool < Test::Unit::TestCase
 
   def test_append_spawns
     saw = []
+    thread_name = nil
 
     pool = new_pool(0, 1) do |work|
       saw << work
+      thread_name = Thread.current.name if Thread.current.respond_to?(:name)
     end
 
     pool << 1
@@ -30,6 +32,8 @@ class TestThreadPool < Test::Unit::TestCase
 
     assert_equal [1], saw
     assert_equal 1, pool.spawned
+    # Thread name is new in Ruby 2.3
+    assert_equal('puma 001', thread_name) if Thread.current.respond_to?(:name)
   end
 
   def test_converts_pool_sizes
