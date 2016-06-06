@@ -245,7 +245,8 @@ module Puma
         require 'puma/tcp_logger'
 
         logger = @options[:logger]
-        return TCPLogger.new(logger, found, @options[:log_requests])
+        quiet = !@options[:log_requests]
+        return TCPLogger.new(logger, found, quiet)
       end
 
       if @options[:log_requests]
