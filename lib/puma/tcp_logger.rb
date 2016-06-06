@@ -11,7 +11,14 @@ module Puma
     def log(who, str)
       now = Time.now.strftime("%d/%b/%Y %H:%M:%S")
 
-      @logger.puts "#{now} - #{who} - #{str}"
+      log_str = "#{now} - #{who} - #{str}"
+
+      case @logger
+      when IO
+        @logger.puts log_str
+      when Events
+        @logger.log log_str
+      end
     end
 
     def call(env, socket)
