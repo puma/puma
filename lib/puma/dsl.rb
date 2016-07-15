@@ -133,6 +133,13 @@ module Puma
       bind "tcp://#{host}:#{port}"
     end
 
+    # Define how long persistent connections can be idle before puma closes
+    # them
+    #
+    def persistent_timeout(seconds)
+      @options[:persistent_timeout] = seconds
+    end
+
     # Work around leaky apps that leave garbage in Thread locals
     # across requests
     #
