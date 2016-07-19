@@ -181,7 +181,8 @@ module Puma
         :tag => method(:infer_tag),
         :environment => lambda { ENV['RACK_ENV'] || "development" },
         :rackup => DefaultRackup,
-        :logger => STDOUT
+        :logger => STDOUT,
+        :persistent_timeout => Const::PERSISTENT_TIMEOUT
       }
     end
 
