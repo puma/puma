@@ -63,7 +63,7 @@ module Puma
       @thread = nil
       @thread_pool = nil
 
-      @persistent_timeout = options[:persistent_timeout]
+      @persistent_timeout = options.fetch(:persistent_timeout, PERSISTENT_TIMEOUT)
 
       @binder = Binder.new(events)
       @own_binder = true
