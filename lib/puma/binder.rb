@@ -242,7 +242,11 @@ module Puma
         # We have to unlink a unix socket path that's not being used
         File.unlink key[1] if key[0] == :unix
       end
+    end
 
+    def localhost_addresses
+      addrs = TCPSocket.gethostbyname "localhost"
+      addrs[3..-1]
     end
 
     # Tell the server to listen on host +host+, port +port+.
@@ -253,6 +257,13 @@ module Puma
     # allow to accumulate before returning connection refused.
     #
     def add_tcp_listener(host, port, optimize_for_latency=true, backlog=1024)
+      if host == "localhost"
+        localhost_addresses.each do |addr|
+          add_tcp_listener addr, port, optimize_for_latency, backlog
+        end
+        return
+      end
+
       host = host[1..-2] if host and host[0..0] == '['
       s = TCPServer.new(host, port)
       if optimize_for_latency
@@ -284,6 +295,13 @@ module Puma
       require 'puma/minissl'
 
       MiniSSL.check
+
+      if host == "localhost"
+        localhost_addresses.each do |addr|
+          add_ssl_listener addr, port, optimize_for_latency, backlog
+        end
+        return
+      end
 
       host = host[1..-2] if host[0..0] == '['
       s = TCPServer.new(host, port)
