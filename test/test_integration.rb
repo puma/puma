@@ -225,13 +225,4 @@ class TestIntegration < Test::Unit::TestCase
     s << "GET / HTTP/1.0\r\n\r\n"
     assert_equal "Hello World", s.read.split("\r\n").last
   end
-
-  def test_bad_query_string_outputs_400
-    server "-q test/hello.ru 2>&1"
-
-    s = TCPSocket.new "localhost", @tcp_port
-    s << "GET /?h=% HTTP/1.0\r\n\r\n"
-    data = s.read
-    assert_equal "HTTP/1.1 400 Bad Request\r\n\r\n", data
-  end
 end
