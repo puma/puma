@@ -323,7 +323,7 @@ module Puma
       @options[:preload_app]
     end
 
-    # We do this in a separate method to keep the lambad scope
+    # We do this in a separate method to keep the lambda scope
     # of the signals handlers as small as possible.
     def setup_signals
       Signal.trap "SIGCHLD" do
