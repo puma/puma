@@ -1,3 +1,42 @@
+=== 3.5.0 / 2016-07-18
+
+* 1 minor features:
+  * Allow persistent_timeout to be configured via the dsl.
+
+* 9 bug fixes:
+  * Allow a bare % in a query string. Fixes #958
+  * Explicitly listen on all localhost addresses. Fixes #782
+  * Fix `TCPLogger` log error in tcp cluster mode.
+  * Fix puma/puma#968 Cannot bind SSL port due to missing verify_mode option
+  * Fix puma/puma#968 Default verify_mode to peer
+  * Log any exceptions in ThreadPool. Fixes #1010
+  * Silence connection errors in the reactor. Fixes #959
+  * Tiny fixes in hook documentation for #840
+  * It should not log requests if we want it to be quiet
+
+* 5 doc fixes:
+  * Add How to stop Puma on Heroku using plugins to the example directory
+  * Provide both hot and phased restart in jungle script
+  * Update reference to the instances management script
+  * Update default number of threads
+  * Fix typo in example config
+
+* 14 PRs merged:
+  * Merge pull request #1007 from willnet/patch-1
+  * Merge pull request #1014 from jeznet/patch-1
+  * Merge pull request #1015 from bf4/patch-1
+  * Merge pull request #1017 from jorihardman/configurable_persistent_timeout
+  * Merge pull request #954 from jf/master
+  * Merge pull request #955 from jf/add-request-info-to-standard-error-rescue
+  * Merge pull request #956 from maxkwallace/master
+  * Merge pull request #960 from kmayer/kmayer-plugins-heroku-restart
+  * Merge pull request #969 from frankwong15/master
+  * Merge pull request #970 from willnet/delete-blank-document
+  * Merge pull request #974 from rocketjob/feature/name_threads
+  * Merge pull request #977 from snow/master
+  * Merge pull request #981 from zach-chai/patch-1
+  * Merge pull request #993 from scorix/master
+
 === 3.4.0 / 2016-04-07
 
 * 2 minor features:
