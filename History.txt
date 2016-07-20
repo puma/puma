@@ -1,3 +1,8 @@
+=== 3.5.1 / 2016-07-20
+
+* 1 bug fix:
+  * Be sure to only listen on host:port combos once. Fixes #1022
+
 === 3.5.0 / 2016-07-18
 
 * 1 minor features:
