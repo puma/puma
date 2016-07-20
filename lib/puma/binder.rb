@@ -246,7 +246,7 @@ module Puma
 
     def localhost_addresses
       addrs = TCPSocket.gethostbyname "localhost"
-      addrs[3..-1]
+      addrs[3..-1].uniq
     end
 
     # Tell the server to listen on host +host+, port +port+.
