@@ -261,6 +261,10 @@ module Puma
         localhost_addresses.each do |addr|
           add_tcp_listener addr, port, optimize_for_latency, backlog
         end
+        network_address = Socket.ip_address_list.detect do |intf|
+          intf.ipv4? and !intf.ipv4_loopback? and !intf.ipv4_multicast? and intf.ipv4_private?
+        end.inspect_sockaddr
+        add_tcp_listener network_address, port, optimize_for_latency, backlog
         return
       end
 
