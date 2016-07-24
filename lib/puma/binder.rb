@@ -181,7 +181,7 @@ module Puma
             ctx.ca = params['ca'] if params['ca']
           end
 
-          if  params['verify_mode']
+          if params['verify_mode']
             ctx.verify_mode = case params['verify_mode']
                               when "peer"
                                 MiniSSL::VERIFY_PEER
@@ -193,8 +193,6 @@ module Puma
                                 @events.error "Please specify a valid verify_mode="
                                 MiniSSL::VERIFY_NONE
                               end
-          else
-            ctx.verify_mode = MiniSSL::VERIFY_PEER
           end
 
           if fd = @inherited_fds.delete(str)
