@@ -170,7 +170,7 @@ module Puma
             if max
               c.threads min, max
             else
-              c.threads 0, max
+              c.threads min, min
             end
           end
 
