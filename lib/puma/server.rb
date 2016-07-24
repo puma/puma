@@ -242,6 +242,10 @@ module Puma
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
                                     IOBuffer) do |client, buffer|
+
+        # Advertise this server into the thread
+        Thread.current[ThreadLocalKey] = self
+
         process_now = false
 
         begin
@@ -911,5 +915,15 @@ module Puma
       end
     end
     private :fast_write
+
+    ThreadLocalKey = :puma_server
+
+    def self.current
+      Thread.current[ThreadLocalKey]
+    end
+
+    def shutting_down?
+      @status == :stop || @status == :restart
+    end
   end
 end
