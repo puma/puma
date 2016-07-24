@@ -316,6 +316,11 @@ module Puma
       if dir = @options[:directory]
         @restart_dir = dir
 
+      elsif Puma.windows?
+        # I guess the value of PWD is garbage on windows so don't bother
+        # using it.
+        @restart_dir = Dir.pwd
+
         # Use the same trick as unicorn, namely favor PWD because
         # it will contain an unresolved symlink, useful for when
         # the pwd is /data/releases/current.

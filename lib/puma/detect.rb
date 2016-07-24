@@ -6,6 +6,6 @@ module Puma
   end
 
   def self.windows?
-    RUBY_PLATFORM =~ /mswin32|ming32/
+    RUBY_PLATFORM =~ /mswin|ming|cygwin/
   end
 end
