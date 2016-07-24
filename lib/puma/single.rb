@@ -44,6 +44,7 @@ module Puma
         if JRubyRestart.daemon?
           # load and bind before redirecting IO so errors show up on stdout/stderr
           load_and_bind
+          redirect_io
         end
 
         already_daemon = JRubyRestart.daemon_init
