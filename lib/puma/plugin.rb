@@ -28,6 +28,7 @@ module Puma
   class PluginRegistry
     def initialize
       @plugins = {}
+      @background = []
     end
 
     def register(name, cls)
@@ -52,6 +53,16 @@ module Puma
       end
 
       raise UnknownPlugin, "file failed to register a plugin"
+    end
+
+    def add_background(blk)
+      @background << blk
+    end
+
+    def fire_background
+      @background.each do |b|
+        Thread.new(&b)
+      end
     end
   end
 
@@ -93,7 +104,7 @@ module Puma
     end
 
     def in_background(&blk)
-      Thread.new(&blk)
+      Plugins.add_background blk
     end
 
     def workers_supported?

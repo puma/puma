@@ -85,6 +85,8 @@ module Puma
         load_and_bind
       end
 
+      Plugins.fire_background
+
       @launcher.write_state
 
       start_control

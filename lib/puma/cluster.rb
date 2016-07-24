@@ -413,9 +413,11 @@ module Puma
 
       redirect_io
 
-      start_control
+      Plugins.fire_background
 
       @launcher.write_state
+
+      start_control
 
       @master_read, @worker_write = read, @wakeup
 
