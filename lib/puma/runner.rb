@@ -94,6 +94,10 @@ module Puma
       end
     end
 
+    def redirected_io?
+      @options[:redirect_stdout] || @options[:redirect_stderr]
+    end
+
     def redirect_io
       stdout = @options[:redirect_stdout]
       stderr = @options[:redirect_stderr]
