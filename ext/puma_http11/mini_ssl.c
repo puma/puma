@@ -134,8 +134,12 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   ID sym_key = rb_intern("key");
   VALUE key = rb_funcall(mini_ssl_ctx, sym_key, 0);
 
+  StringValue(key);
+
   ID sym_cert = rb_intern("cert");
   VALUE cert = rb_funcall(mini_ssl_ctx, sym_cert, 0);
+
+  StringValue(cert);
 
   ID sym_ca = rb_intern("ca");
   VALUE ca = rb_funcall(mini_ssl_ctx, sym_ca, 0);
@@ -150,6 +154,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
 
   if (!NIL_P(ca)) {
+    StringValue(ca);
     SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL);
   }
   

@@ -118,6 +118,11 @@ module Puma
           raise ArgumentError, "No such keystore file '#{keystore}'" unless File.exist? keystore
           @keystore = keystore
         end
+
+        def check
+          raise "Keystore not configured" unless @keystore
+        end
+
       else
         # non-jruby Context properties
         attr_reader :key
@@ -138,6 +143,11 @@ module Puma
           raise ArgumentError, "No such ca file '#{ca}'" unless File.exist? ca
           @ca = ca
         end
+
+        def check
+          raise "Key not configured" unless @key
+          raise "Cert not configured" unless @cert
+        end
       end
     end
 
@@ -156,6 +166,7 @@ module Puma
       end
 
       def accept
+        @ctx.check
         io = @socket.accept
         engine = Engine.server @ctx
 
@@ -163,6 +174,7 @@ module Puma
       end
 
       def accept_nonblock
+        @ctx.check
         io = @socket.accept_nonblock
         engine = Engine.server @ctx
 
