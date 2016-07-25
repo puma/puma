@@ -403,6 +403,11 @@ module Puma
     #
     def process_client(client, buffer)
       begin
+
+        if client.env['HTTP_EXPECT'] == "100-continue"
+          client.io << "HTTP/1.1 100 Continue\r\n\r\n"
+        end
+
         clean_thread_locals = @options[:clean_thread_locals]
         close_socket = true
 

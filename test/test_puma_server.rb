@@ -467,4 +467,19 @@ class TestPumaServer < Test::Unit::TestCase
 
     assert_equal "HTTP/1.0 204 No Content\r\n\r\n", data
   end
+
+  def test_Expect_100
+    @server.app = proc { |env| [200, {}, [""]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+  end
+
 end
