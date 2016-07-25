@@ -155,7 +155,8 @@ module Puma
           len = line.strip.to_i(16)
           if len == 0
             @body.rewind
-            @buffer = nil
+            rest = io.read
+            @buffer = rest.empty? ? nil : rest
             @requests_served += 1
             @ready = true
             return true
