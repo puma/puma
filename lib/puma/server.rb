@@ -404,8 +404,8 @@ module Puma
     def process_client(client, buffer)
       begin
 
-        if client.env['HTTP_EXPECT'] == "100-continue"
-          client.io << "HTTP/1.1 100 Continue\r\n\r\n"
+        if client.env[HTTP_EXPECT] == CONTINUE
+          client.io << HTTP_11_100
         end
 
         clean_thread_locals = @options[:clean_thread_locals]

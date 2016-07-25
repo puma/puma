@@ -219,7 +219,10 @@ module Puma
 
     HTTP_VERSION = "HTTP_VERSION".freeze
     HTTP_CONNECTION = "HTTP_CONNECTION".freeze
+    HTTP_EXPECT = "HTTP_EXPECT".freeze
+    CONTINUE = "100-continue".freeze
 
+    HTTP_11_100 = "HTTP/1.1 100 Continue\r\n\r\n".freeze
     HTTP_11_200 = "HTTP/1.1 200 OK\r\n".freeze
     HTTP_10_200 = "HTTP/1.0 200 OK\r\n".freeze
 
