@@ -8,6 +8,7 @@ end
 
 require 'puma/detect'
 require 'puma/delegation'
+require 'tempfile'
 
 if Puma::IS_JRUBY
   # We have to work around some OpenSSL buffer/io-readiness bugs
@@ -117,9 +118,116 @@ module Puma
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new
 
+    def setup_chunked_body(body)
+      @chunked_body = true
+      @partial_part_left = 0
+      @prev_chunk = ""
+
+      @body = Tempfile.new(Const::PUMA_TMP_BASE)
+      @body.binmode
+      @tempfile = @body
+
+      return decode_chunk(body)
+    end
+
+    def decode_chunk(chunk)
+      if @partial_part_left > 0
+        if @partial_part_left <= chunk.size
+          @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+          chunk = chunk[@partial_part_left..-1]
+        else
+          @body << chunk
+          @partial_part_left -= chunk.size
+          return false
+        end
+      end
+
+      if @prev_chunk.empty?
+        io = StringIO.new(chunk)
+      else
+        io = StringIO.new(@prev_chunk+chunk)
+        @prev_chunk = ""
+      end
+
+      while !io.eof?
+        line = io.gets
+        if line.end_with?("\r\n")
+          len = line.strip.to_i(16)
+          if len == 0
+            @body.rewind
+            @buffer = nil
+            @requests_served += 1
+            @ready = true
+            return true
+          end
+
+          len += 2
+
+          part = io.read(len)
+
+          unless part
+            @partial_part_left = len
+            next
+          end
+
+          got = part.size
+
+          case
+          when got == len
+            @body << part[0..-3] # to skip the ending \r\n
+          when got <= len - 2
+            @body << part
+            @partial_part_left = len - part.size
+          when got == len - 1 # edge where we get just \r but not \n
+            @body << part[0..-2]
+            @partial_part_left = len - part.size
+          end
+        else
+          @prev_chunk = line
+          return false
+        end
+      end
+
+      return false
+    end
+
+    def read_chunked_body
+      while true
+        begin
+          chunk = @io.read_nonblock(4096)
+        rescue Errno::EAGAIN
+          return false
+        rescue SystemCallError, IOError
+          raise ConnectionError, "Connection error detected during read"
+        end
+
+        # No chunk means a closed socket
+        unless chunk
+          @body.close
+          @buffer = nil
+          @requests_served += 1
+          @ready = true
+          raise EOFError
+        end
+
+        return true if decode_chunk(chunk)
+      end
+    end
+
     def setup_body
       @in_data_phase = true
+      @read_header = false
+
       body = @parser.body
+
+      te = @env[TRANSFER_ENCODING2]
+
+      if te == CHUNKED
+        return setup_chunked_body(body)
+      end
+
+      @chunked_body = false
+
       cl = @env[CONTENT_LENGTH]
 
       unless cl
@@ -153,8 +261,6 @@ module Puma
       @body.write body
 
       @body_remain = remain
-
-      @read_header = false
 
       return false
     end
@@ -246,6 +352,10 @@ module Puma
     end
 
     def read_body
+      if @chunked_body
+        return read_chunked_body
+      end
+
       # Read an odd sized chunk so we can read even sized ones
       # after this
       remain = @body_remain

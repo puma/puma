@@ -229,12 +229,15 @@ module Puma
     CONTENT_LENGTH2 = "content-length".freeze
     CONTENT_LENGTH_S = "Content-Length: ".freeze
     TRANSFER_ENCODING = "transfer-encoding".freeze
+    TRANSFER_ENCODING2 = "HTTP_TRANSFER_ENCODING".freeze
 
     CONNECTION_CLOSE = "Connection: close\r\n".freeze
     CONNECTION_KEEP_ALIVE = "Connection: Keep-Alive\r\n".freeze
 
     TRANSFER_ENCODING_CHUNKED = "Transfer-Encoding: chunked\r\n".freeze
     CLOSE_CHUNKED = "0\r\n\r\n".freeze
+
+    CHUNKED = "chunked".freeze
 
     COLON = ": ".freeze
 
