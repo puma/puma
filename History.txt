@@ -1,3 +1,19 @@
+=== 3.6.0 / 2016-07-24
+
+* 12 bug fixes:
+  * Add ability to detect a shutting down server. Fixes #932
+  * Add support for Expect: 100-continue. Fixes #519
+  * Check SSLContext better. Fixes #828
+  * Clarify behavior of '-t <num>'. Fixes #984
+  * Don't default to VERIFY_PEER. Fixes #1028
+  * Don't use ENV['PWD'] on windows. Fixes #1023
+  * Enlarge the scope of catching app exceptions. Fixes #1027
+  * Execute background hooks after daemonizing. Fixes #925
+  * Handle HUP as a stop unless there is IO redirection. Fixes #911
+  * Implement chunked request handling. Fixes #620
+  * Just rescue exception to return a 500. Fixes #1027
+  * Redirect IO in the jruby daemon mode. Fixes #778
+
 === 3.5.2 / 2016-07-20
 
 * 1 bug fix:
