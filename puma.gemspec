@@ -26,7 +26,7 @@ Gem::Specification.new do |s|
   s.license = "BSD-3-Clause"
   s.rdoc_options = ["--main", "README.md"]
   s.require_paths = ["lib"]
-  s.required_ruby_version = Gem::Requirement.new(">= 1.8.7")
+  s.required_ruby_version = Gem::Requirement.new(">= 1.9.3")
   s.rubyforge_project = "puma"
   s.rubygems_version = "1.8.25"
   s.summary = "Puma is a simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications"
