@@ -66,7 +66,7 @@ task "changelog" do
     $changes[code] << line
   end
 
-  puts "=== #{ENV['VERSION'] || 'NEXT'} / #{now}"
+  puts "## #{ENV['VERSION'] || 'NEXT'} / #{now}"
   puts
   changelog_section :major
   changelog_section :minor

@@ -4,7 +4,7 @@
   * Add ability to detect a shutting down server. Fixes #932
   * Add support for Expect: 100-continue. Fixes #519
   * Check SSLContext better. Fixes #828
-  * Clarify behavior of '-t <num>'. Fixes #984
+  * Clarify behavior of '-t num'. Fixes #984
   * Don't default to VERIFY_PEER. Fixes #1028
   * Don't use ENV['PWD'] on windows. Fixes #1023
   * Enlarge the scope of catching app exceptions. Fixes #1027
