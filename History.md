@@ -1,4 +1,4 @@
-=== 3.6.0 / 2016-07-24
+## 3.6.0 / 2016-07-24
 
 * 12 bug fixes:
   * Add ability to detect a shutting down server. Fixes #932
@@ -14,7 +14,7 @@
   * Just rescue exception to return a 500. Fixes #1027
   * Redirect IO in the jruby daemon mode. Fixes #778
 
-=== 3.5.2 / 2016-07-20
+## 3.5.2 / 2016-07-20
 
 * 1 bug fix:
   * Don't let persistent_timeout be nil
@@ -22,12 +22,12 @@
 * 1 PR merged:
   * Merge pull request #1021 from benzrf/patch-1
 
-=== 3.5.1 / 2016-07-20
+## 3.5.1 / 2016-07-20
 
 * 1 bug fix:
   * Be sure to only listen on host:port combos once. Fixes #1022
 
-=== 3.5.0 / 2016-07-18
+## 3.5.0 / 2016-07-18
 
 * 1 minor features:
   * Allow persistent_timeout to be configured via the dsl.
@@ -66,7 +66,7 @@
   * Merge pull request #981 from zach-chai/patch-1
   * Merge pull request #993 from scorix/master
 
-=== 3.4.0 / 2016-04-07
+## 3.4.0 / 2016-04-07
 
 * 2 minor features:
   * Add ability to force threads to stop on shutdown. Fixes #938
@@ -89,7 +89,7 @@
   * Merge pull request #946 from vipulnsward/rm-pid
   * Merge pull request #947 from vipulnsward/housekeeping-typos
 
-=== 3.3.0 / 2016-04-05
+## 3.3.0 / 2016-04-05
 
 * 2 minor features:
   * Allow overriding options of Configuration object
@@ -104,7 +104,7 @@
   * Merge pull request #940 from kyledrake/signalsdoc
   * Merge pull request #942 from dekellum/socket-activate-improve
 
-=== 3.2.0 / 2016-03-20
+## 3.2.0 / 2016-03-20
 
 * 1 deprecation removal:
   * Delete capistrano.rb
@@ -118,7 +118,7 @@
   * Merge pull request #927 from jlecour/gemfile_variants
   * Merge pull request #931 from joneslee85/patch-10
 
-=== 3.1.1 / 2016-03-17
+## 3.1.1 / 2016-03-17
 
 * 4 bug fixes:
   * Disable USR1 usage on JRuby
@@ -131,7 +131,7 @@
   * Merge pull request #921 from swrobel/patch-1
   * Merge pull request #924 from tbrisker/patch-1
 
-=== 3.1.0 / 2016-03-05
+## 3.1.0 / 2016-03-05
 
 * 1 minor feature:
   * Add 'import' directive to config file. Fixes #916
@@ -142,7 +142,7 @@
   * Recreate the proper args manually. Fixes #910
   * Require 'time' to get iso8601. Fixes #914
 
-=== 3.0.2 / 2016-02-26
+## 3.0.2 / 2016-02-26
 
 * 5 bug fixes:
 
@@ -158,7 +158,7 @@
   * Merge pull request #902 from corrupt952/fix_undefined_method_and_variable_when_execute_pumactl
   * Merge pull request #905 from Eric-Guo/master
 
-=== 3.0.1 / 2016-02-25
+## 3.0.1 / 2016-02-25
 
 * 1 bug fix:
 
@@ -166,7 +166,7 @@
     websockets entirely. Seems no server has both hijack and async.callback
     and thus faye is totally confused what to do and doesn't work.
 
-=== 3.0.0 / 2016-02-25
+## 3.0.0 / 2016-02-25
 
 * 2 major changes:
 
@@ -216,7 +216,7 @@
   * Merge pull request #897 from zendesk/master
   * Merge pull request #899 from kch/kch-readme-fixes
 
-=== 2.16.0 / 2016-01-27
+## 2.16.0 / 2016-01-27
 
 * 7 minor features:
 
@@ -256,13 +256,13 @@
   * Merge pull request #860 from zendesk/expose_old_worker_count
   * Merge pull request #861 from zendesk/allow_control_url_umask
 
-=== 2.15.3 / 2015-11-07
+## 2.15.3 / 2015-11-07
 
 * 1 bug fix:
 
   * Fix JRuby parser
 
-=== 2.15.2 / 2015-11-06
+## 2.15.2 / 2015-11-06
 
 * 2 bug fixes:
   * ext/puma_http11: handle duplicate headers as per RFC
@@ -272,13 +272,13 @@
   * Merge pull request #818 from unleashed/support-duplicate-headers
   * Merge pull request #819 from VictorLowther/fix-ca-and-verify_null-exception
 
-=== 2.15.1 / 2015-11-06
+## 2.15.1 / 2015-11-06
 
 * 1 bug fix:
 
   * Allow older openssl versions
 
-=== 2.15.0 / 2015-11-06
+## 2.15.0 / 2015-11-06
 
 * 6 minor features:
   * Allow setting ca without setting a verify mode
@@ -327,7 +327,7 @@
   * Merge pull request #814 from schneems/schneems/worker_timeout-docs
   * Merge pull request #817 from unleashed/worker-boot-timeout
 
-=== 2.14.0 / 2015-09-18
+## 2.14.0 / 2015-09-18
 
 * 1 minor feature:
   * Make building with SSL support optional
@@ -335,33 +335,33 @@
 * 1 bug fix:
   * Use Rack::Builder if available. Fixes #735
 
-=== 2.13.4 / 2015-08-16
+## 2.13.4 / 2015-08-16
 
 * 1 bug fix:
   * Use the environment possible set by the config early and from
     the config file later (if set).
 
-=== 2.13.3 / 2015-08-15
+## 2.13.3 / 2015-08-15
 
 Seriously, I need to revamp config with tests.
 
 * 1 bug fix:
   * Fix preserving options before cleaning for state. Fixes #769
 
-=== 2.13.2 / 2015-08-15
+## 2.13.2 / 2015-08-15
 
 The "clearly I don't have enough tests for the config" release.
 
 * 1 bug fix:
   * Fix another place binds wasn't initialized. Fixes #767
 
-=== 2.13.1 / 2015-08-15
+## 2.13.1 / 2015-08-15
 
 * 2 bug fixes:
   * Fix binds being masked in config files. Fixes #765
   * Use options from the config file properly in pumactl. Fixes #764
 
-=== 2.13.0 / 2015-08-14
+## 2.13.0 / 2015-08-14
 
 * 1 minor feature:
   * Add before_fork hooks option.
@@ -380,7 +380,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #759 from BenV/fix-centos6-build
   * Merge pull request #761 from looker/no-log
 
-=== 2.12.3 / 2015-08-03
+## 2.12.3 / 2015-08-03
 
 * 8 minor bugs fixed:
   * Fix Capistrano 'uninitialized constant Puma' error.
@@ -401,13 +401,13 @@ The "clearly I don't have enough tests for the config" release.
 * 1 test fix:
   * Add 1.8.7, rbx-1 (allow failures) to Travis.
 
-=== 2.12.2 / 2015-07-17
+## 2.12.2 / 2015-07-17
 
 * 2 bug fix:
   * Pull over and use Rack::URLMap. Fixes #741
   * Stub out peercert on JRuby for now. Fixes #739
 
-=== 2.12.1 / 2015-07-16
+## 2.12.1 / 2015-07-16
 
 * 2 bug fixes:
   * Use a constant format. Fixes #737
@@ -419,7 +419,7 @@ The "clearly I don't have enough tests for the config" release.
 * 1 PR merged:
   * Merge pull request #736 from paulanunda/paulanunda/typo-fix
 
-=== 2.12.0 / 2015-07-14
+## 2.12.0 / 2015-07-14
 
 * 13 bug fixes:
   * Add thread reaping to thread pool
@@ -468,7 +468,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #729 from allaire/patch-1
   * Merge pull request #730 from iamjarvo/container-infrastructure
 
-=== 2.11.3 / 2015-05-18
+## 2.11.3 / 2015-05-18
 
 * 5 bug fixes:
   * Be sure to unlink tempfiles after a request. Fixes #690
@@ -479,7 +479,7 @@ The "clearly I don't have enough tests for the config" release.
 * 1 PR merged:
   * Merge pull request #698 from looker/hang-handshake
 
-=== 2.11.2 / 2015-04-11
+## 2.11.2 / 2015-04-11
 
 * 2 minor features:
   * Add `on_worker_fork` hook, which allows to mimic Unicorn's behavior
@@ -502,7 +502,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #667 from JuanitoFatas/doc/gemspec
   * Merge pull request #672 from chulkilee/refactor
 
-=== 2.11.1 / 2015-02-11
+## 2.11.1 / 2015-02-11
 
 * 2 bug fixes:
   * Avoid crash in strange restart conditions
@@ -512,7 +512,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #644 from bpaquet/master
   * Merge pull request #646 from mkonecny/master
 
-=== 2.11.0 / 2015-01-20
+## 2.11.0 / 2015-01-20
 
 * 9 bug fixes:
   * Add mode as an additional bind option to unix sockets. Fixes #630
@@ -545,7 +545,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #639 from ebeigarts/fix-phased-restarts
   * Merge pull request #640 from codehotter/issue-612-dependent-requests-deadlock
 
-=== 2.10.2 / 2014-11-26
+## 2.10.2 / 2014-11-26
 
 * 1 bug fix:
   * Conditionalize thread local cleaning, fixes perf degradation fix
@@ -553,7 +553,7 @@ The "clearly I don't have enough tests for the config" release.
     overhead to a each request, so it has to be turned on explicitly
     if a user needs it.
 
-=== 2.10.1 / 2014-11-24
+## 2.10.1 / 2014-11-24
 
 * 1 bug fix:
   * Load the app after daemonizing because the app might start threads.
@@ -564,7 +564,7 @@ The "clearly I don't have enough tests for the config" release.
   If you're app has problems starting up, start it without daemon mode initially
   to test.
 
-=== 2.10.0 / 2014-11-23
+## 2.10.0 / 2014-11-23
 
 * 3 minor features:
   * Added on_worker_shutdown hook mechanism
@@ -593,7 +593,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #608 from Gu1/master
   * Merge remote-tracking branch 'origin/pr/538'
 
-=== 2.9.2 / 2014-10-25
+## 2.9.2 / 2014-10-25
 
 * 8 bug fixes:
   * Fix puma-wild handling a restart properly. Fixes #550
@@ -613,7 +613,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #581 from alexch/slightly-better-logging
   * Merge pull request #590 from looker/jruby_disable_sslv3
 
-=== 2.9.1 / 2014-09-05
+## 2.9.1 / 2014-09-05
 
 * 4 bug fixes:
   * Cleanup the SSL related structures properly, fixes memory leak
@@ -625,7 +625,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #561 from theoldreader/sighup
   * Merge pull request #570 from havenwood/spawn-thread-edge-case
 
-=== 2.9.0 / 2014-07-12
+## 2.9.0 / 2014-07-12
 
 * 1 minor feature:
   * Add SSL support for JRuby
@@ -649,7 +649,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #544 from chulkilee/bsd-3-clause
   * Merge pull request #551 from jcxplorer/patch-1
 
-=== 2.8.2 / 2014-04-12
+## 2.8.2 / 2014-04-12
 
 * 4 bug fixes:
   * During upgrade, change directory in main process instead of workers.
@@ -676,7 +676,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #517 from misfo/patch-1
   * Merge pull request #518 from LongMan/master
 
-=== 2.8.1 / 2014-03-06
+## 2.8.1 / 2014-03-06
 
 * 1 bug fixes:
   * Run puma-wild with proper deps for prune_bundler
@@ -692,7 +692,7 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #490 from tobinibot/patch-1
   * Merge pull request #491 from brianknight10/clarify-no-config
 
-=== 2.8.0 / 2014-02-28
+## 2.8.0 / 2014-02-28
 
 * 8 minor features:
   * Add ability to autoload a config file. Fixes #438
@@ -735,13 +735,13 @@ The "clearly I don't have enough tests for the config" release.
   * Merge pull request #482 from prathamesh-sonpatki/signals-doc-cleanup
   * Merge pull request #483 from YotpoLtd/master
 
-=== 2.7.1 / 2013-12-05
+## 2.7.1 / 2013-12-05
 
 * 1 bug fix:
 
   * Keep STDOUT/STDERR the right mode. Fixes #422
 
-=== 2.7.0 / 2013-12-03
+## 2.7.0 / 2013-12-03
 
 * 1 minor feature:
   * Adding TTIN and TTOU to increment/decrement workers
@@ -758,7 +758,7 @@ The "clearly I don't have enough tests for the config" release.
   * Increase the max URI path length to 2048 chars from 1024 chars
   * Upstart jungle use config/puma.rb instead
 
-=== 2.6.0 / 2013-09-13
+## 2.6.0 / 2013-09-13
 
 * 2 minor features:
   * Add support for event hooks
@@ -771,14 +771,14 @@ The "clearly I don't have enough tests for the config" release.
   * Handle BrokenPipe, StandardError and IOError in fat_wrote and break out
   * Return success status to the invoking environment
 
-=== 2.5.1 / 2013-08-13
+## 2.5.1 / 2013-08-13
 
 * 2 bug fixes:
 
   * Keep jruby daemon mode from retrying on a hot restart
   * Extract version from const.rb in gemspec
 
-=== 2.5.0 / 2013-08-08
+## 2.5.0 / 2013-08-08
 
 * 2 minor features:
   * Allow configuring pumactl with config.rb
@@ -800,12 +800,12 @@ The "clearly I don't have enough tests for the config" release.
   * Remove obsolete pumactl instructions; refer to pumactl for details
   * Make Bundler used puma.gemspec version agnostic
 
-=== 2.4.1 / 2013-08-07
+## 2.4.1 / 2013-08-07
 
 * 1 experimental feature:
   * Support raw tcp servers (aka Lopez Express mode)
 
-=== 2.4.0 / 2013-07-22
+## 2.4.0 / 2013-07-22
 
 * 5 minor features:
   * Add PUMA_JRUBY_DAEMON_OPTS to get around agent starting twice
@@ -828,13 +828,13 @@ The "clearly I don't have enough tests for the config" release.
   * Use 127.0.0.1 as REMOTE_ADDR of unix client. Fixes #309
 
 
-=== 2.3.2 / 2013-07-08
+## 2.3.2 / 2013-07-08
 
 * 1 bug fix:
 
   * Move starting control server to after daemonization.
 
-=== 2.3.1 / 2013-07-06
+## 2.3.1 / 2013-07-06
 
 * 2 bug fixes:
 
@@ -844,7 +844,7 @@ The "clearly I don't have enough tests for the config" release.
 * 1 doc change:
   * Better document some platform constraints
 
-=== 2.3.0 / 2013-07-05
+## 2.3.0 / 2013-07-05
 
 * 1 major bug fix:
 
@@ -863,13 +863,13 @@ The "clearly I don't have enough tests for the config" release.
   * Refactored modes into seperate classes that CLI uses
   * Changed CLI to take an Events object instead of stdout/stderr (API change)
 
-=== 2.2.2 / 2013-07-02
+## 2.2.2 / 2013-07-02
 
 * 1 bug fix:
 
   * Fix restart_command in the config
 
-=== 2.2.1 / 2013-07-02
+## 2.2.1 / 2013-07-02
 
 * 1 minor feature:
 
@@ -879,7 +879,7 @@ The "clearly I don't have enough tests for the config" release.
 
   * Pass custom restart command in JRuby
 
-=== 2.2.0 / 2013-07-01
+## 2.2.0 / 2013-07-01
 
 * 1 major feature:
 
@@ -890,14 +890,14 @@ The "clearly I don't have enough tests for the config" release.
   * Don't leak info when not in development. Fixes #256
   * Load the app, then bind the ports
 
-=== 2.1.1 / 2013-06-20
+## 2.1.1 / 2013-06-20
 
 * 2 minor bug fixes:
 
   * Fix daemonization on jruby
   * Load the application before daemonizing. Fixes #285
 
-=== 2.1.0 / 2013-06-18
+## 2.1.0 / 2013-06-18
 
 * 3 minor features:
   * Allow listening socket to be configured via Capistrano variable
@@ -926,13 +926,13 @@ The "clearly I don't have enough tests for the config" release.
   * Add some documentation for Clustered mode
   * Added quotes to /etc/puma.conf
 
-=== 2.0.1 / 2013-04-30
+## 2.0.1 / 2013-04-30
 
 * 1 bug fix:
 
   * Fix not starting on JRuby properly
 
-=== 2.0.0 / 2013-04-29
+## 2.0.0 / 2013-04-29
 
 RailsConf 2013 edition!
 
@@ -949,7 +949,7 @@ RailsConf 2013 edition!
   * Fix stdout/stderr logs to sync outputs
   * allow binding to IPv6 addresses
 
-=== 2.0.0.b7 / 2013-03-18
+## 2.0.0.b7 / 2013-03-18
 
 * 5 minor enhancements:
 
@@ -974,7 +974,7 @@ RailsConf 2013 edition!
   * Write out the state post-daemonize. Fixes #189
   * Prevent crash when all workers are gone
 
-=== 2.0.0.b6 / 2013-02-06
+## 2.0.0.b6 / 2013-02-06
 
 * 2 minor enhancements:
 
@@ -985,7 +985,7 @@ RailsConf 2013 edition!
 
   * Change directory in working during upgrade. Fixes #185
 
-=== 2.0.0.b5 / 2013-02-05
+## 2.0.0.b5 / 2013-02-05
 
 * 2 major features:
   * Add phased worker upgrade
@@ -1002,7 +1002,7 @@ RailsConf 2013 edition!
   * Move write_pid to after we daemonize. Fixes #180
   * Redirect IO properly and emit message for checkpointing
 
-=== 2.0.0.b4 / 2012-12-12
+## 2.0.0.b4 / 2012-12-12
 
 * 4 bug fixes:
   * Properly check #syswrite's value for variable sized buffers. Fixes #170
@@ -1010,12 +1010,12 @@ RailsConf 2013 edition!
   * Handle char vs byte and mixing syswrite with write properly
   * made MiniSSL validate key/cert file existence
 
-=== 2.0.0.b3 / 2012-11-22
+## 2.0.0.b3 / 2012-11-22
 
 * 1 bug fix:
   * Package right files in gem
 
-=== 2.0.0.b2 / 2012-11-18
+## 2.0.0.b2 / 2012-11-18
 * 5 minor feature:
   * Now Puma is bundled with an capistrano recipe. Just require
      'puma/capistrano' in you deploy.rb
@@ -1033,7 +1033,7 @@ RailsConf 2013 edition!
   * Be sure to empty the drain the todo before shutting down. Fixes #155
   * allow for alternate locations for status app
 
-=== 2.0.0.b1 / 2012-09-11
+## 2.0.0.b1 / 2012-09-11
 
 * 1 major feature:
   * Optional worker process mode (-w) to allow for process scaling in
@@ -1046,30 +1046,30 @@ RailsConf 2013 edition!
 NOTE: SSL support in JRuby is not supported at present. Support will
 be added back in a future date when a java Puma::MiniSSL is added.
 
-=== 1.6.3 / 2012-09-04
+## 1.6.3 / 2012-09-04
 
 * 1 bug fix:
   * Close sockets waiting in the reactor when a hot restart is performed
     so that browsers reconnect on the next request
 
-=== 1.6.2 / 2012-08-27
+## 1.6.2 / 2012-08-27
 
 * 1 bug fix:
   * Rescue StandardError instead of IOError to handle SystemCallErrors
     as well as other application exceptions inside the reactor.
 
-=== 1.6.1 / 2012-07-23
+## 1.6.1 / 2012-07-23
 
 * 1 packaging bug fixed:
   * Include missing files
 
-=== 1.6.0 / 2012-07-23
+## 1.6.0 / 2012-07-23
 
 * 1 major bug fix:
   * Prevent slow clients from starving the server by introducing a
     dedicated IO reactor thread. Credit for reporting goes to @meh.
 
-=== 1.5.0 / 2012-07-19
+## 1.5.0 / 2012-07-19
 
 * 7 contributors to this release:
   * Christian Mayer
@@ -1093,7 +1093,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
   * Allow Server#run to run sync. Fixes #111
   * Puma can now run on windows
 
-=== 1.4.0 / 2012-06-04
+## 1.4.0 / 2012-06-04
 
 * 1 bug fix:
   * SCRIPT_NAME should be passed from env to allow mounting apps
@@ -1101,13 +1101,13 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * 1 experimental feature:
   * Add puma.socket key for direct socket access
 
-=== 1.3.1 / 2012-05-15
+## 1.3.1 / 2012-05-15
 
 * 2 bug fixes:
   * use #bytesize instead of #length for Content-Length header
   * Use StringIO properly. Fixes #98
 
-=== 1.3.0 / 2012-05-08
+## 1.3.0 / 2012-05-08
 
 * 2 minor features:
   * Return valid Rack responses (passes Lint) from status server
@@ -1122,7 +1122,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * 1 new contributor:
   * Jesse Cooke
 
-=== 1.2.2 / 2012-04-28
+## 1.2.2 / 2012-04-28
 
 * 4 bug fixes:
 
@@ -1131,13 +1131,13 @@ be added back in a future date when a java Puma::MiniSSL is added.
   * Keep the encoding of the body correct. Fixes #79
   * show error.to_s along with backtrace for low-level error
 
-=== 1.2.1 / 2012-04-11
+## 1.2.1 / 2012-04-11
 
  1 bug fix:
 
    * Fix rack.url_scheme for SSL servers. Fixes #65
 
-=== 1.2.0 / 2012-04-11
+## 1.2.0 / 2012-04-11
 
  1 major feature:
 
@@ -1162,13 +1162,13 @@ be added back in a future date when a java Puma::MiniSSL is added.
    * Seamus Abshere
    * Steve Richert
 
-=== 1.1.1 / 2012-03-30
+## 1.1.1 / 2012-03-30
 
  1 bugfix:
 
    * Include puma/compat.rb in the gem (oops!)
 
-=== 1.1.0 / 2012-03-30
+## 1.1.0 / 2012-03-30
 
  1 bugfix:
 
@@ -1178,6 +1178,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 
    * Add umask param to the unix:// bind to set the umask
 
-=== 1.0.0 / 2012-03-29
+## 1.0.0 / 2012-03-29
 
 * Released!
