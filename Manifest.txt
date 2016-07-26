@@ -1,6 +1,6 @@
 DEPLOYMENT.md
 Gemfile
-History.txt
+History.rdoc
 LICENSE
 Manifest.txt
 README.md
