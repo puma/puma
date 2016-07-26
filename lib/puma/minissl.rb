@@ -81,7 +81,38 @@ module Puma
       end
 
       def close
-        @socket.close
+        begin
+          # Try to setup (so that we can then close them) any
+          # partially initialized sockets.
+          while @engine.init?
+            # Don't let this socket hold this loop forever.
+            # If it can't send more packets within 1s, then
+            # give up.
+            return unless IO.select([@socket], nil, nil, 1)
+            begin
+              read_nonblock(1024)
+            rescue Errno::EAGAIN
+            end
+          end
+
+          done = @engine.shutdown
+
+          while true
+            enc = @engine.extract
+            @socket.write enc
+
+            notify = @socket.sysread(1024)
+
+            @engine.inject notify
+            done = @engine.shutdown
+
+            break if done
+          end
+        rescue IOError, SystemCallError
+          # nothing
+        ensure
+          @socket.close
+        end
       end
 
       def peeraddr

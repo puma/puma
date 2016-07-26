@@ -327,6 +327,33 @@ VALUE engine_extract(VALUE self) {
   return Qnil;
 }
 
+VALUE engine_shutdown(VALUE self) {
+  ms_conn* conn;
+  int ok, err;
+  char buf[512];
+
+  Data_Get_Struct(self, ms_conn, conn);
+
+  ERR_clear_error();
+
+  ok = SSL_shutdown(conn->ssl);
+  if (ok == 0) {
+    return Qfalse;
+  }
+
+  return Qtrue;
+}
+
+VALUE engine_init(VALUE self) {
+  ms_conn* conn;
+  int ok, err;
+  char buf[512];
+
+  Data_Get_Struct(self, ms_conn, conn);
+
+  return SSL_in_init(conn->ssl) ? Qtrue : Qfalse;
+}
+
 VALUE engine_peercert(VALUE self) {
   ms_conn* conn;
   X509* cert;
@@ -393,6 +420,10 @@ void Init_mini_ssl(VALUE puma) {
 
   rb_define_method(eng, "write",  engine_write, 1);
   rb_define_method(eng, "extract", engine_extract, 0);
+
+  rb_define_method(eng, "shutdown", engine_shutdown, 0);
+
+  rb_define_method(eng, "init?", engine_init, 0);
 
   rb_define_method(eng, "peercert", engine_peercert, 0);
 }

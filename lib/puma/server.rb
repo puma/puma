@@ -358,7 +358,7 @@ module Puma
 
         graceful_shutdown if @status == :stop || @status == :restart
         if queue_requests
-          @reactor.clear! if @status == :restart
+          @reactor.clear!
           @reactor.shutdown
         end
       rescue Exception => e
