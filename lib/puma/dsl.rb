@@ -264,11 +264,13 @@ module Puma
     end
 
     def ssl_bind(host, port, opts)
+      verify = opts.fetch(:verify_mode, 'none')
+
       if defined?(JRUBY_VERSION)
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{opts[:verify_mode] || 'peer'}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}"
       else
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&verify_mode=#{opts[:verify_mode] || 'peer'}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&verify_mode=#{verify}"
       end
     end
 
