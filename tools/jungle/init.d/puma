@@ -444,7 +444,7 @@ case "$1" in
     echo "  Add a Puma: $SCRIPTNAME add /path/to/app user /path/to/app/config/puma.rb /path/to/app/config/log/puma.log"
     echo "    config and log are optionals."
     echo "  Remove a Puma: $SCRIPTNAME remove /path/to/app"
-    echo "  On a Puma: $SCRIPTNAME {start|stop|status|restart} PUMA-NAME" >&2
+    echo "  On a Puma: $SCRIPTNAME {start|stop|status|restart|phased-restart} PUMA-NAME" >&2
     exit 3
   ;;
 esac
