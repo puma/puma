@@ -22,16 +22,21 @@ Init script to manage multiple Puma servers on the same box using start-stop-dae
 
 Puma apps are held in /etc/puma.conf by default. It's mainly a CSV file and every line represents one app. Here's the syntax:
 
-    app-path,user,config-file-path,log-file-path
+    app-path,user,config-file-path,log-file-path,environment-variables
 
 You can add an instance by editing the file or running the following command:
 
     sudo /etc/init.d/puma add /path/to/app user /path/to/app/config/puma.rb /path/to/app/log/puma.log
 
-The config and log paths are optional parameters and default to:
+The config and log paths, as well as the environment variables, are optional parameters and default to:
 
 * config: /path/to/app/*config/puma.rb*
 * log: /path/to/app/*log/puma.log*
+* environment: (empty)
+
+Multiple environment variables need to be separated by a semicolon, e.g.
+
+    FOO=1;BAR=2
 
 To remove an app, simply delete the line from the config file or run:
 
