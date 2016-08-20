@@ -10,6 +10,8 @@ gem "rack", "< 3.0"
 gem "minitest", "~> 5.11"
 gem "minitest-retry"
 
+gem "websocket-driver"
+
 gem "jruby-openssl", :platform => "jruby"
 
 gem "rubocop", "~> 0.58.0"
