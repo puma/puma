@@ -596,6 +596,9 @@ module Puma
       # Detect and advertise websocket upgrade ability
       if Websocket.detect?(env)
         env[WEBSOCKET_P] = true
+        env[WEBSOCKET] = proc { |handler, options|
+          client.websocket_upgrade = Websocket.start(client, handler, options || {})
+        }
       end
     end
 
@@ -693,8 +696,14 @@ module Puma
           status, headers, res_body = lowlevel_error(e, env)
         end
 
-        if status == 101 && env[WEBSOCKET_P] && handler = env[WEBSOCKET]
-          return Websocket.start(req, headers, handler, @reactor)
+        if req.websocket_upgrade
+          begin
+            req.websocket_upgrade._activate headers, @reactor, @thread_pool
+          rescue Exception => e
+            @events.unknown_error self, e, "Websocket Activation", env
+            return false
+          end
+          return :async
         end
 
         content_length = nil

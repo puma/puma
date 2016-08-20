@@ -7,9 +7,10 @@ module Puma
     end
 
     class Connection
-      def initialize(ws, handler)
+      def initialize(ws, handler, req)
         @ws = ws
         @handler = handler
+        @req = req
       end
 
       def write(str)
@@ -18,6 +19,24 @@ module Puma
 
       def close
         @ws.close
+      end
+
+      def _activate(headers, reactor, pool)
+        headers.each do |k,vs|
+          if vs.respond_to?(:to_s)
+            @ws.set_header(k, vs.to_s)
+          end
+        end
+
+        rec = Reactor.new(@handler, @ws, self, @req)
+
+        @ws.start
+
+        if rec.read_more
+          pool << rec
+        end
+
+        reactor.add rec
       end
     end
 
@@ -61,7 +80,7 @@ module Puma
         begin
           data = @io.read_nonblock(1024)
         rescue Errno::EAGAIN
-          return false
+          # ok, no biggy.
         rescue SystemCallError, IOError
           @ws.emit(:close,
                    ::WebSocket::Driver::CloseEvent.new(
@@ -135,27 +154,16 @@ module Puma
       end
     end
 
-    def self.start(req, headers, handler, reactor)
-      ws = ::WebSocket::Driver.rack(WS.new(req))
+    def self.start(req, handler, options={})
+      ws = ::WebSocket::Driver.rack(WS.new(req), options)
 
-      headers.each do |k,v|
-        if vs.respond_to?(:to_s)
-          ws.set_header(k, vs.to_s)
-        end
-      end
-
-      conn = Connection.new ws, handler
-      rec = Reactor.new handler, ws, conn, req
+      conn = Connection.new ws, handler, req
 
       ws.on :ping do |ev|
         ws.pong ev
       end
 
-      ws.start
-
-      reactor.add rec
-
-      :async
+      conn
     end
   end
 end
