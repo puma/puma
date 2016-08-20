@@ -62,7 +62,7 @@ module Puma
           data = @io.read_nonblock(1024)
         rescue Errno::EAGAIN
           return false
-        rescue SystemCallError, IOError => e
+        rescue SystemCallError, IOError
           @ws.emit(:close,
                    ::WebSocket::Driver::CloseEvent.new(
                      "remote closed connection", 1011))
