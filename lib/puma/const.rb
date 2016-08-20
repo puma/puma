@@ -103,7 +103,7 @@ module Puma
     PUMA_VERSION = VERSION = "3.6.0".freeze
     CODE_NAME = "Sleepy Sunday Serenity".freeze
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
-    
+
     FAST_TRACK_KA_TIMEOUT = 0.2
 
     # The default number of seconds for another request within a persistent
@@ -249,5 +249,8 @@ module Puma
     HIJACK_P = "rack.hijack?".freeze
     HIJACK = "rack.hijack".freeze
     HIJACK_IO = "rack.hijack_io".freeze
+
+    WEBSOCKET_P = "upgrade.websocket?".freeze
+    WEBSOCKET = "upgrade.websocket".freeze
   end
 end

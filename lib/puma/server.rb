@@ -14,6 +14,8 @@ require 'puma/util'
 
 require 'puma/puma_http11'
 
+require 'puma/websocket'
+
 unless Puma.const_defined? "IOBuffer"
   require 'puma/io_buffer'
 end
@@ -242,6 +244,11 @@ module Puma
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
                                     IOBuffer) do |client, buffer|
+
+        if client.websocket?
+          client.churn @thread_pool
+          next
+        end
 
         # Advertise this server into the thread
         Thread.current[ThreadLocalKey] = self
@@ -530,6 +537,11 @@ module Puma
 
         env[REMOTE_ADDR] = addr
       end
+
+      # Detect and advertise websocket upgrade ability
+      if Websocket.detect?(env)
+        env[WEBSOCKET_P] = true
+      end
     end
 
     def default_server_port(env)
@@ -600,6 +612,10 @@ module Puma
           @events.unknown_error self, e, "Rack app", env
 
           status, headers, res_body = lowlevel_error(e, env)
+        end
+
+        if status == 101 && env[WEBSOCKET_P] && handler = env[WEBSOCKET]
+          return Websocket.start(req, headers, handler, @reactor)
         end
 
         content_length = nil
