@@ -6,7 +6,7 @@ class DoublePong
 
   def call(env)
     if env['upgrade.websocket?']
-      env['upgrade.websocket'] = self
+      env['upgrade.websocket'].call self
       [101, {}, []]
     else
       [404, {}, ["call as a websocket"]]
