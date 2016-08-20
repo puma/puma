@@ -216,9 +216,19 @@ module Puma
               end
 
               begin
-                if c.try_to_finish
-                  @app_pool << c
-                  clear_monitor mon
+                if c.respond_to? :try_to_finish
+                  if c.try_to_finish
+                    @app_pool << c
+                    clear_monitor mon
+                  end
+                else
+                  if c.read_more
+                    @app_pool << c
+                  end
+
+                  if c.closed?
+                    clear_monitor mon
+                  end
                 end
 
               # Don't report these to the lowlevel_error handler, otherwise

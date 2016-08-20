@@ -70,6 +70,10 @@ module Puma
       @body_remain = 0
     end
 
+    def websocket?
+      false
+    end
+
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
                 :tempfile
 
