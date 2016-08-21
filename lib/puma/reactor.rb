@@ -173,6 +173,7 @@ module Puma
           STDERR.puts e.backtrace
           retry
         ensure
+          @selector.close
           @trigger.close
           @ready.close
         end
