@@ -1,5 +1,6 @@
 require 'puma/util'
 require 'puma/minissl'
+require 'nio'
 
 module Puma
   class Reactor
@@ -16,17 +17,44 @@ module Puma
       @sleep_for = DefaultSleepFor
       @timeouts = []
 
-      @sockets = [@ready]
+      @selector = NIO::Selector.new
+      @selector.register(@ready, :r).value = nil
+
+      @sockets = []
     end
 
     private
+
+    def update
+      @mutex.synchronize do
+        case @ready.read(1)
+        when "*"
+          @input.each do |c|
+            m = @selector.register c, :r
+            m.value = c
+          end
+          @sockets += @input
+          @input.clear
+        when "c"
+          @sockets.each do |s|
+            @selector.deregister s
+            s.close
+          end
+          @sockets.clear
+        when "!"
+          return false
+        end
+      end
+
+      true
+    end
 
     def run_internal
       sockets = @sockets
 
       while true
         begin
-          ready = IO.select sockets, nil, nil, @sleep_for
+          ready = @selector.select @sleep_for
         rescue IOError => e
           if sockets.any? { |socket| socket.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
@@ -38,84 +66,72 @@ module Puma
           end
         end
 
-        if ready and reads = ready[0]
-          reads.each do |c|
-            if c == @ready
-              @mutex.synchronize do
-                case @ready.read(1)
-                when "*"
-                  sockets += @input
-                  @input.clear
-                when "c"
-                  sockets.delete_if do |s|
-                    if s == @ready
-                      false
-                    else
-                      s.close
-                      true
-                    end
-                  end
-                when "!"
-                  return
-                end
-              end
-            else
-              # We have to be sure to remove it from the timeout
-              # list or we'll accidentally close the socket when
-              # it's in use!
-              if c.timeout_at
-                @mutex.synchronize do
-                  @timeouts.delete c
-                end
-              end
+        (ready || []).each do |m|
+          c = m.value
+          if !c
+            return unless update
+            next
+          end
 
-              begin
-                if c.try_to_finish
-                  @app_pool << c
-                  sockets.delete c
-                end
-
-              # Don't report these to the lowlevel_error handler, otherwise
-              # will be flooding them with errors when persistent connections
-              # are closed.
-              rescue ConnectionError
-                c.write_500
-                c.close
-
-                sockets.delete c
-
-              # SSL handshake failure
-              rescue MiniSSL::SSLError => e
-                @server.lowlevel_error(e, c.env)
-
-                ssl_socket = c.io
-                addr = ssl_socket.peeraddr.last
-                cert = ssl_socket.peercert
-
-                c.close
-                sockets.delete c
-
-                @events.ssl_error @server, addr, cert, e
-
-              # The client doesn't know HTTP well
-              rescue HttpParserError => e
-                @server.lowlevel_error(e, c.env)
-
-                c.write_400
-                c.close
-
-                sockets.delete c
-
-                @events.parse_error @server, c.env, e
-              rescue StandardError => e
-                @server.lowlevel_error(e, c.env)
-
-                c.write_500
-                c.close
-
-                sockets.delete c
-              end
+          # We have to be sure to remove it from the timeout
+          # list or we'll accidentally close the socket when
+          # it's in use!
+          if c.timeout_at
+            @mutex.synchronize do
+              @timeouts.delete c
             end
+          end
+
+          begin
+            if c.try_to_finish
+              @app_pool << c
+              sockets.delete c
+              @selector.deregister m.io
+            end
+
+            # Don't report these to the lowlevel_error handler, otherwise
+            # will be flooding them with errors when persistent connections
+            # are closed.
+          rescue ConnectionError
+            c.write_500
+            c.close
+
+            sockets.delete c
+            @selector.deregister m.io
+
+            # SSL handshake failure
+          rescue MiniSSL::SSLError => e
+            @server.lowlevel_error(e, c.env)
+
+            ssl_socket = c.io
+            addr = ssl_socket.peeraddr.last
+            cert = ssl_socket.peercert
+
+            c.close
+            sockets.delete c
+            @selector.deregister m.io
+
+            @events.ssl_error @server, addr, cert, e
+
+            # The client doesn't know HTTP well
+          rescue HttpParserError => e
+            @server.lowlevel_error(e, c.env)
+
+            c.write_400
+            c.close
+
+            sockets.delete c
+            @selector.deregister m.io
+
+            @events.parse_error @server, c.env, e
+          rescue StandardError => e
+            @server.lowlevel_error(e, c.env)
+
+            c.write_500
+            c.close
+
+            sockets.delete c
+            @selector.deregister m.io
           end
         end
 
@@ -128,6 +144,7 @@ module Puma
               c.write_408 if c.in_data_phase
               c.close
               sockets.delete c
+              @selector.deregister c
 
               break if @timeouts.empty?
             end
