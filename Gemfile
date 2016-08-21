@@ -10,6 +10,6 @@ gem "test-unit", "~> 3.0"
 gem "rack", "< 2.0"
 gem 'minitest', '~> 5.8'
 
-gem "nio"
+gem "nio4r"
 
 gem "jruby-openssl", :platform => "jruby"
