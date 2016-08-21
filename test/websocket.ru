@@ -1,7 +1,7 @@
 class DoublePong
-  def on_message(conn, message)
+  def on_message(message)
     p message
-    conn.write(message * 2)
+    write(message * 2)
   end
 
   def call(env)
