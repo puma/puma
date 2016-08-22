@@ -693,7 +693,7 @@ module Puma
 
         if handler = env[WEBSOCKET]
           begin
-            Websocket.start(req, handler, headers, @reactor, @thread_pool)
+            Websocket.start(req, handler, headers, @reactor, @thread_pool, @events)
           rescue Exception => e
             @events.unknown_error self, e, "Websocket Activation", env
             return false

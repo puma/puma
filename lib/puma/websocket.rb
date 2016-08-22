@@ -24,7 +24,7 @@ module Puma
     end
 
     class Reactor
-      def initialize(handler, ws, conn, req)
+      def initialize(handler, ws, conn, req, events)
         @handler = handler
         @ws = ws
         @conn = conn
@@ -33,6 +33,7 @@ module Puma
 
         @lock = Mutex.new
 
+        @server = events
         @events = []
 
         if handler.respond_to? :on_open
@@ -92,15 +93,19 @@ module Puma
       end
 
       def dispatch(event)
-        case event
-        when ::WebSocket::Driver::OpenEvent
-          @handler.on_open @conn
-        when ::WebSocket::Driver::CloseEvent
-          @handler.on_close @conn
-        when ::WebSocket::Driver::MessageEvent
-          @handler.on_message @conn, event.data
-        else
-          STDERR.puts "Received unknown event for websockets: #{event.class}"
+        begin
+          case event
+          when ::WebSocket::Driver::OpenEvent
+            @handler.on_open
+          when ::WebSocket::Driver::CloseEvent
+            @handler.on_close
+          when ::WebSocket::Driver::MessageEvent
+            @handler.on_message event.data
+          else
+            STDERR.puts "Received unknown event for websockets: #{event.class}"
+          end
+        rescue Exception => e
+          @server.unknown_error self, e, "websocket handler"
         end
       end
 
@@ -137,7 +142,17 @@ module Puma
       end
     end
 
-    def self.start(req, handler, headers, reactor, pool)
+    module WebsocketMixin
+      def write(msg)
+        @__puma_ws.write msg
+      end
+
+      def close
+        @__puma_ws.close
+      end
+    end
+
+    def self.start(req, handler, headers, reactor, pool, events)
       ws = ::WebSocket::Driver.rack(WS.new(req))
 
       conn = Connection.new ws, handler, req
@@ -152,15 +167,16 @@ module Puma
         end
       end
 
-      rec = Reactor.new(handler, ws, conn, req)
+      handler.extend WebsocketMixin
+      handler.instance_variable_set :@__puma_ws, conn
+
+      rec = Reactor.new(handler, ws, conn, req, events)
 
       ws.start
 
       if rec.read_more
         pool << rec
       end
-
-      p :started
 
       reactor.add rec
     end
