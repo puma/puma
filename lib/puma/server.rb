@@ -539,12 +539,7 @@ module Puma
       end
 
       # Detect and advertise websocket upgrade ability
-      if Websocket.detect?(env)
-        env[WEBSOCKET_P] = true
-        env[WEBSOCKET] = proc { |handler, options|
-          client.websocket_upgrade = Websocket.start(client, handler, options || {})
-        }
-      end
+      env[WEBSOCKET_P] = Websocket.detect?(env)
     end
 
     def default_server_port(env)
@@ -617,9 +612,9 @@ module Puma
           status, headers, res_body = lowlevel_error(e, env)
         end
 
-        if req.websocket_upgrade
+        if handler = env[WEBSOCKET]
           begin
-            req.websocket_upgrade._activate headers, @reactor, @thread_pool
+            Websocket.start(req, handler, headers, @reactor, @thread_pool)
           rescue Exception => e
             @events.unknown_error self, e, "Websocket Activation", env
             return false

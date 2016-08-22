@@ -21,33 +21,6 @@ module Puma
         @ws.close
       end
 
-      def _activate(headers, reactor, pool)
-        headers.each do |k,vs|
-          if vs.respond_to?(:to_s)
-            @ws.set_header(k, vs.to_s)
-          end
-        end
-
-        rec = Reactor.new(@handler, @ws, self, @req)
-
-        @ws.start
-
-        if rec.read_more
-          pool << rec
-        end
-
-        reactor.add rec
-      end
-    end
-
-    module WriteMixin
-      def write(msg)
-        @_ws.text msg
-      end
-
-      def close
-        @_ws.close
-      end
     end
 
     class Reactor
@@ -121,11 +94,11 @@ module Puma
       def dispatch(event)
         case event
         when ::WebSocket::Driver::OpenEvent
-          @handler.on_open
+          @handler.on_open @conn
         when ::WebSocket::Driver::CloseEvent
-          @handler.on_close
+          @handler.on_close @conn
         when ::WebSocket::Driver::MessageEvent
-          @handler.on_message event.data
+          @handler.on_message @conn, event.data
         else
           STDERR.puts "Received unknown event for websockets: #{event.class}"
         end
@@ -164,8 +137,8 @@ module Puma
       end
     end
 
-    def self.start(req, handler, options={})
-      ws = ::WebSocket::Driver.rack(WS.new(req), options)
+    def self.start(req, handler, headers, reactor, pool)
+      ws = ::WebSocket::Driver.rack(WS.new(req))
 
       conn = Connection.new ws, handler, req
 
@@ -173,10 +146,23 @@ module Puma
         ws.pong ev
       end
 
-      handler.extend WriteMixin
-      handler.instance_variable_set :@_ws, ws
+      headers.each do |k,vs|
+        if vs.respond_to?(:to_s)
+          @ws.set_header(k, vs.to_s)
+        end
+      end
 
-      conn
+      rec = Reactor.new(handler, ws, conn, req)
+
+      ws.start
+
+      if rec.read_more
+        pool << rec
+      end
+
+      p :started
+
+      reactor.add rec
     end
   end
 end
