@@ -148,7 +148,7 @@ module Puma
 
       headers.each do |k,vs|
         if vs.respond_to?(:to_s)
-          @ws.set_header(k, vs.to_s)
+          ws.set_header(k, vs.to_s)
         end
       end
 
