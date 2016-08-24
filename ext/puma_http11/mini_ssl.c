@@ -22,22 +22,24 @@
 #endif
 
 typedef struct {
-  BIO* read;
-  BIO* write;
-  SSL* ssl;
-  SSL_CTX* ctx;
-} ms_conn;
-
-typedef struct {
   unsigned char* buf;
   int bytes;
 } ms_cert_buf;
 
+typedef struct {
+  BIO* read;
+  BIO* write;
+  SSL* ssl;
+  SSL_CTX* ctx;
+  VALUE rb_mini_ssl_ctx;
+  ms_cert_buf* failed_cert;
+} ms_conn;
+
+
 void engine_free(ms_conn* conn) {
-  ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
-  if(cert_buf) {
-    OPENSSL_free(cert_buf->buf);
-    free(cert_buf);
+  if (conn->failed_cert) {
+    OPENSSL_free(conn->failed_cert->buf);
+    free(conn->failed_cert);
   }
   SSL_free(conn->ssl);
   SSL_CTX_free(conn->ctx);
@@ -58,6 +60,8 @@ ms_conn* engine_alloc(VALUE klass, VALUE* obj) {
 
   conn->ssl = 0;
   conn->ctx = 0;
+  conn->rb_mini_ssl_ctx = Qnil;
+  conn->failed_cert = 0;
 
   return conn;
 }
@@ -98,26 +102,72 @@ DH *get_dh1024() {
   return dh;
 }
 
-static int engine_verify_callback(int preverify_ok, X509_STORE_CTX* ctx) {
-  X509* err_cert;
-  SSL* ssl;
-  int bytes;
-  unsigned char* buf = NULL;
+/* retrieves the ms_conn* and copies the failed cert.  Returns 0, a value
+ * suitable for returning from the verify callback.  if x509_error is not -1,
+ * that error state is set on the context.
+ */
+static int engine_verify_failed(X509_STORE_CTX* ctx, int x509_error)
+{
+  SSL* ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+  ms_conn* conn = SSL_get_app_data(ssl);
+  X509* cert = X509_STORE_CTX_get_current_cert(ctx);
 
-  if(!preverify_ok) {
-    err_cert = X509_STORE_CTX_get_current_cert(ctx);
-    if(err_cert) {
-      /*
-       * Save the failed certificate for inspection/logging.
-       */
-      bytes = i2d_X509(err_cert, &buf);
-      if(bytes > 0) {
-        ms_cert_buf* cert_buf = (ms_cert_buf*)malloc(sizeof(ms_cert_buf));
-        cert_buf->buf = buf;
-        cert_buf->bytes = bytes;
-        ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-        SSL_set_app_data(ssl, cert_buf);
-      }
+  if (x509_error != -1) {
+    X509_STORE_CTX_set_error(ctx, x509_error);
+  }
+
+  if (cert) {
+    unsigned char* buf = NULL;
+    int bytes = i2d_X509(cert, &buf);
+    if (bytes > 0) {
+      conn->failed_cert = (ms_cert_buf*) malloc(sizeof(ms_cert_buf));
+      conn->failed_cert->buf = buf;
+      conn->failed_cert->bytes = bytes;
+    }
+  }
+
+  return 0;
+}
+
+static int engine_verify_callback(int preverify_ok, X509_STORE_CTX* ctx) {
+  int depth = X509_STORE_CTX_get_error_depth(ctx);
+  X509* cert = X509_STORE_CTX_get_current_cert(ctx);
+  SSL* ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+  ms_conn* conn = SSL_get_app_data(ssl);
+
+  ID sym_verify_name = rb_intern("verify_name");
+  VALUE verify_name = rb_funcall(conn->rb_mini_ssl_ctx, sym_verify_name, 0);
+
+  if (!preverify_ok || !cert || !ssl || !conn) {
+    return engine_verify_failed(ctx, -1);
+  }
+
+  /* We only want to do explicit name validation on the leaf cert.  It allows
+   * more opportunities to fail, but none to succeed.
+   */
+  if (depth == 0 && !NIL_P(verify_name)) {
+    /* To keep this simple, we're explicitly only checking the first
+     * commonName, and not walking subjectAlternateNames
+     */
+    char cname_buf[256];
+    int entry;
+    VALUE peer_common_name;
+
+    X509_NAME* subject_name = X509_get_subject_name(cert);
+
+    if (! subject_name) {
+      return engine_verify_failed(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
+    }
+
+    entry = X509_NAME_get_text_by_NID(subject_name, NID_commonName,
+                                      cname_buf, sizeof(cname_buf));
+    if (entry == -1) {
+      return engine_verify_failed(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
+    }
+
+    peer_common_name = rb_str_new_cstr(cname_buf);
+    if (! rb_equal(verify_name, peer_common_name)) {
+      return engine_verify_failed(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
     }
   }
 
@@ -130,6 +180,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   SSL* ssl;
 
   ms_conn* conn = engine_alloc(self, &obj);
+  conn->rb_mini_ssl_ctx = mini_ssl_ctx;
 
   ID sym_key = rb_intern("key");
   VALUE key = rb_funcall(mini_ssl_ctx, sym_key, 0);
@@ -147,6 +198,9 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   ID sym_verify_mode = rb_intern("verify_mode");
   VALUE verify_mode = rb_funcall(mini_ssl_ctx, sym_verify_mode, 0);
 
+  ID sym_verify_name = rb_intern("verify_name");
+  VALUE verify_name = rb_funcall(mini_ssl_ctx, sym_verify_name, 0);
+
   ctx = SSL_CTX_new(SSLv23_server_method());
   conn->ctx = ctx;
 
@@ -157,7 +211,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
     StringValue(ca);
     SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL);
   }
-  
+
   SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_COMPRESSION);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
@@ -176,12 +230,18 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
 
   ssl = SSL_new(ctx);
   conn->ssl = ssl;
-  SSL_set_app_data(ssl, NULL);
+  SSL_set_app_data(ssl, conn);
 
-  if (NIL_P(verify_mode)) {
-    /* SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL); */
-  } else {
-    SSL_set_verify(ssl, NUM2INT(verify_mode), engine_verify_callback);
+  int effective_verify_mode = NIL_P(verify_mode) ? SSL_VERIFY_NONE
+                                                 : NUM2INT(verify_mode);
+
+  /* Setting verify_name implies a required peer certificate */
+  if (! NIL_P(verify_name)) {
+    effective_verify_mode |= (SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT);
+  }
+
+  if (effective_verify_mode != SSL_VERIFY_NONE) {
+    SSL_set_verify(ssl, effective_verify_mode, engine_verify_callback);
   }
 
   SSL_set_bio(ssl, conn->read, conn->write);
@@ -196,7 +256,7 @@ VALUE engine_init_client(VALUE klass) {
 
   conn->ctx = SSL_CTX_new(DTLSv1_method());
   conn->ssl = SSL_new(conn->ctx);
-  SSL_set_app_data(conn->ssl, NULL);
+  SSL_set_app_data(conn->ssl, conn);
   SSL_set_verify(conn->ssl, SSL_VERIFY_NONE, NULL);
 
   SSL_set_bio(conn->ssl, conn->read, conn->write);
@@ -230,7 +290,7 @@ void raise_error(SSL* ssl, int result) {
   const char* err_str;
   int err = errno;
   int ssl_err = SSL_get_error(ssl, result);
-  int verify_err = SSL_get_verify_result(ssl);
+  long verify_err = SSL_get_verify_result(ssl);
 
   if(SSL_ERROR_SYSCALL == ssl_err) {
     snprintf(msg, sizeof(msg), "System error: %s - %d", strerror(err), err);
@@ -239,13 +299,13 @@ void raise_error(SSL* ssl, int result) {
     if(X509_V_OK != verify_err) {
       err_str = X509_verify_cert_error_string(verify_err);
       snprintf(msg, sizeof(msg),
-               "OpenSSL certificate verification error: %s - %d",
+               "OpenSSL certificate verification error: %s - %ld",
                err_str, verify_err);
 
     } else {
-      err = ERR_get_error();
-      ERR_error_string_n(err, buf, sizeof(buf));
-      snprintf(msg, sizeof(msg), "OpenSSL error: %s - %d", buf, err);
+      unsigned long ssl_err = ERR_get_error();
+      ERR_error_string_n(ssl_err, buf, sizeof(buf));
+      snprintf(msg, sizeof(msg), "OpenSSL error: %s - %lu", buf, ssl_err);
 
     }
   } else {
@@ -329,8 +389,7 @@ VALUE engine_extract(VALUE self) {
 
 VALUE engine_shutdown(VALUE self) {
   ms_conn* conn;
-  int ok, err;
-  char buf[512];
+  int ok;
 
   Data_Get_Struct(self, ms_conn, conn);
 
@@ -346,8 +405,6 @@ VALUE engine_shutdown(VALUE self) {
 
 VALUE engine_init(VALUE self) {
   ms_conn* conn;
-  int ok, err;
-  char buf[512];
 
   Data_Get_Struct(self, ms_conn, conn);
 
@@ -369,7 +426,7 @@ VALUE engine_peercert(VALUE self) {
     /*
      * See if there was a failed certificate associated with this client.
      */
-    cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
+    cert_buf = conn->failed_cert;
     if(!cert_buf) {
       return Qnil;
     }
@@ -404,7 +461,7 @@ void Init_mini_ssl(VALUE puma) {
   OpenSSL_add_ssl_algorithms();
   SSL_load_error_strings();
   ERR_load_crypto_strings();
-  
+
   mod = rb_define_module_under(puma, "MiniSSL");
   eng = rb_define_class_under(mod, "Engine", rb_cObject);
 
