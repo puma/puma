@@ -6,7 +6,7 @@ require 'socket'
 require 'puma/server'
 require 'puma/events'
 
-class TestTCPLogger < Minitest::Unit::TestCase
+class TestTCPLogger < Test::Unit::TestCase
 
   def setup
     @events = Puma::Events.new STDOUT, STDERR
