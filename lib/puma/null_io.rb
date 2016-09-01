@@ -4,6 +4,12 @@ module Puma
   # Used as the value for rack.input when the request has no body.
   #
   class NullIO
+    # Always returns true
+    #
+    def nil?
+      true
+    end
+
     # Always returns nil
     #
     def gets
