@@ -7,7 +7,7 @@ gem "rdoc"
 gem "rake-compiler"
 gem "test-unit", "~> 3.0"
 
-gem "rack", "< 2.0"
+gem "rack", "< 3.0"
 gem 'minitest', '~> 5.8'
 
 gem "jruby-openssl", :platform => "jruby"
