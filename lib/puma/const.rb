@@ -73,10 +73,6 @@ module Puma
     511 => 'Network Authentication Required'
   }
 
-  SYMBOL_TO_STATUS_CODE = Hash[*HTTP_STATUS_CODES.map { |code, message|
-    [message.downcase.gsub(/\s|-|'/, '_').to_sym, code]
-  }.flatten]
-
   # For some HTTP status codes the client only expects headers.
   #
 
@@ -103,7 +99,7 @@ module Puma
     PUMA_VERSION = VERSION = "3.6.0".freeze
     CODE_NAME = "Sleepy Sunday Serenity".freeze
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
-    
+
     FAST_TRACK_KA_TIMEOUT = 0.2
 
     # The default number of seconds for another request within a persistent
@@ -122,10 +118,6 @@ module Puma
     # forced shutdown mode, to wait for the thread to try and finish
     # up it's work before leaving the thread to die on the vine.
     SHUTDOWN_GRACE_TIME = 5 # seconds
-
-    DATE = "Date".freeze
-
-    SCRIPT_NAME = "SCRIPT_NAME".freeze
 
     # The original URI requested by the client.
     REQUEST_URI= 'REQUEST_URI'.freeze
@@ -168,21 +160,12 @@ module Puma
 
     CONTENT_TYPE = "Content-Type".freeze
 
-    LAST_MODIFIED = "Last-Modified".freeze
-    ETAG = "ETag".freeze
-    SLASH = "/".freeze
     REQUEST_METHOD = "REQUEST_METHOD".freeze
-    GET = "GET".freeze
     HEAD = "HEAD".freeze
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
-    ETAG_FORMAT = "\"%x-%x-%x\"".freeze
     LINE_END = "\r\n".freeze
     REMOTE_ADDR = "REMOTE_ADDR".freeze
     HTTP_X_FORWARDED_FOR = "HTTP_X_FORWARDED_FOR".freeze
-    HTTP_IF_MODIFIED_SINCE = "HTTP_IF_MODIFIED_SINCE".freeze
-    HTTP_IF_NONE_MATCH = "HTTP_IF_NONE_MATCH".freeze
-    REDIRECT = "HTTP/1.1 302 Found\r\nLocation: %s\r\nConnection: close\r\n\r\n".freeze
-    HOST = "HOST".freeze
 
     SERVER_NAME = "SERVER_NAME".freeze
     SERVER_PORT = "SERVER_PORT".freeze
