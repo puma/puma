@@ -76,12 +76,11 @@ module Puma
   # For some HTTP status codes the client only expects headers.
   #
 
-  no_body = {}
-  ((100..199).to_a << 204 << 205 << 304).each do |code|
-    no_body[code] = true
-  end
-
-  STATUS_WITH_NO_ENTITY_BODY = no_body
+  STATUS_WITH_NO_ENTITY_BODY = {
+    204 => true,
+    205 => true,
+    304 => true
+  }
 
   # Frequently used constants when constructing requests or responses.  Many times
   # the constant just refers to a string with the same contents.  Using these constants
