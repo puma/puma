@@ -1,10 +1,6 @@
 major, minor, patch = RUBY_VERSION.split('.').map { |v| v.to_i }
 
-if major == 1 && minor < 9
-  require 'puma/rack/backports/uri/common_18'
-elsif major == 1 && minor == 9 && patch == 2 && RUBY_PATCHLEVEL <= 328 && RUBY_ENGINE != 'jruby'
-  require 'puma/rack/backports/uri/common_192'
-elsif major == 1 && minor == 9 && patch == 3 && RUBY_PATCHLEVEL < 125
+if major == 1 && minor == 9 && patch == 3 && RUBY_PATCHLEVEL < 125
   require 'puma/rack/backports/uri/common_193'
 else
   require 'uri/common'
