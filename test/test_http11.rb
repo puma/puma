@@ -1,7 +1,7 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-require 'testhelp'
+require 'test/testhelp'
 
 include Puma
 
