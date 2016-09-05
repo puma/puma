@@ -209,7 +209,7 @@ module Puma
       end
     end
 
-    def auto_trim!(timeout=5)
+    def auto_trim!(timeout=30)
       @auto_trim = AutoTrim.new(self, timeout)
       @auto_trim.start!
     end
