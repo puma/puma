@@ -47,13 +47,9 @@ class TestCLI < Test::Unit::TestCase
                          "--control-token", "",
                          "test/lobster.ru"], @events
 
-    thread_exception = nil
     t = Thread.new do
-      begin
-        cli.run
-      rescue Exception => e
-        thread_exception = e
-      end
+      Thread.current.abort_on_exception = true
+      cli.run
     end
 
     wait_booted
@@ -65,7 +61,6 @@ class TestCLI < Test::Unit::TestCase
 
     cli.launcher.stop
     t.join
-    assert_equal nil, thread_exception
   end
 
   unless defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
@@ -84,11 +79,16 @@ class TestCLI < Test::Unit::TestCase
 
     wait_booted
 
+    sleep 2
+
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
 
-    assert_match(/\{ "workers": 2, "phase": 0, "booted_workers": 0, "old_workers": 0, "worker_status": \[\{ "pid": \d+, "index": 0, "phase": 0, "booted": false, "last_checkin": "[^"]+", "last_status": \{\} \},\{ "pid": \d+, "index": 1, "phase": 0, "booted": false, "last_checkin": "[^"]+", "last_status": \{\} \}\] \}/, body.split("\r\n").last)
+    require 'json'
+    status = JSON.parse(body.split("\n").last)
+
+    assert_equal 2, status["workers"]
 
     # wait until the first status ping has come through
     sleep 6
