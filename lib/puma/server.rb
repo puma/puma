@@ -57,7 +57,7 @@ module Puma
 
       @min_threads = 0
       @max_threads = 16
-      @auto_trim_time = 1
+      @auto_trim_time = 30
       @reaping_time = 1
 
       @thread = nil
