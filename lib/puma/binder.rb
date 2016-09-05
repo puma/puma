@@ -1,5 +1,8 @@
-require 'puma/const'
 require 'uri'
+require 'socket'
+
+require 'puma/const'
+require 'puma/util'
 
 module Puma
   class Binder
@@ -140,10 +143,10 @@ module Puma
 
           @listeners << [str, io]
         when "ssl"
-          MiniSSL.check
-
           params = Util.parse_query uri.query
           require 'puma/minissl'
+
+          MiniSSL.check
 
           ctx = MiniSSL::Context.new
 

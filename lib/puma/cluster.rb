@@ -1,4 +1,7 @@
 require 'puma/runner'
+require 'puma/util'
+require 'puma/plugin'
+
 require 'time'
 
 module Puma

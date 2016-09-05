@@ -1,3 +1,6 @@
+require 'puma/server'
+require 'puma/const'
+
 module Puma
   class Runner
     def initialize(cli, events)

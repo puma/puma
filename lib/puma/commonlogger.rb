@@ -71,7 +71,6 @@ module Puma
 
     GET  = 'GET'.freeze
     HEAD = 'HEAD'.freeze
-    
 
     def log(env, status, header, began_at)
       now = Time.now

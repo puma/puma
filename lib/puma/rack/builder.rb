@@ -1,3 +1,6 @@
+module Puma
+end
+
 module Puma::Rack
   class Options
     def parse!(args)

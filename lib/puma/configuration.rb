@@ -1,5 +1,6 @@
 require 'puma/rack/builder'
 require 'puma/plugin'
+require 'puma/const'
 
 module Puma
 
@@ -251,6 +252,7 @@ module Puma
       end
 
       if @options[:log_requests]
+        require 'puma/commonlogger'
         logger = @options[:logger]
         found = CommonLogger.new(found, logger)
       end

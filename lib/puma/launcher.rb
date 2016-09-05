@@ -1,15 +1,13 @@
-require 'puma/server'
-require 'puma/const'
-require 'puma/configuration'
-require 'puma/binder'
+require 'puma/events'
 require 'puma/detect'
-require 'puma/daemon_ext'
-require 'puma/util'
-require 'puma/single'
-require 'puma/cluster'
-require 'puma/state_file'
 
-require 'puma/commonlogger'
+require 'puma/cluster'
+require 'puma/single'
+
+require 'puma/const'
+
+require 'puma/binder'
+require 'puma/state_file'
 
 module Puma
   # Puma::Launcher is the single entry point for starting a Puma server based on user

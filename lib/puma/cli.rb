@@ -1,7 +1,10 @@
 require 'optparse'
 require 'uri'
 
+require 'puma/configuration'
 require 'puma/launcher'
+require 'puma/const'
+require 'puma/events'
 
 module Puma
   class << self

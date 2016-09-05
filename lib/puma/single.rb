@@ -1,4 +1,6 @@
 require 'puma/runner'
+require 'puma/detect'
+require 'puma/plugin'
 
 module Puma
   class Single < Runner

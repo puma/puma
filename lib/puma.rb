@@ -9,7 +9,8 @@ require 'stringio'
 
 require 'thread'
 
-# Ruby Puma
-require 'puma/const'
-require 'puma/server'
-require 'puma/launcher'
+module Puma
+  autoload :Const, 'puma/const'
+  autoload :Server, 'puma/server'
+  autoload :Launcher, 'puma/launcher'
+end
