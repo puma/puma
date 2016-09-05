@@ -39,17 +39,7 @@ do_start() {
   log_daemon_msg "=> Running the jungle..."
   for i in $JUNGLE; do
     dir=`echo $i | cut -d , -f 1`
-    user=`echo $i | cut -d , -f 2`
-    config_file=`echo $i | cut -d , -f 3`
-    if [ "$config_file" = "" ]; then
-      config_file="$dir/config/puma.rb"
-    fi
-    log_file=`echo $i | cut -d , -f 4`
-    if [ "$log_file" = "" ]; then
-      log_file="$dir/log/puma.log"
-    fi
-    environment=`echo $i | cut -d , -f 5`
-    do_start_one $dir $user $config_file $log_file $environment
+    do_start_one $dir
   done
 }
 
@@ -59,28 +49,41 @@ do_start_one() {
     PID=`cat $PIDFILE`
     # If the puma isn't running, run it, otherwise restart it.
     if [ "`ps -A -o pid= | grep -c $PID`" -eq 0 ]; then
-      do_start_one_do $1 $2 $3 $4 $5
+      do_start_one_do $1
     else
       do_restart_one $1
     fi
   else
-    do_start_one_do $1 $2 $3 $4 $5
+    do_start_one_do $1
   fi
 }
 
 do_start_one_do() {
-  log_daemon_msg "--> Woke up puma $1"
-  log_daemon_msg "user $2"
-  log_daemon_msg "log to $4"
+  i=`grep $1 $CONFIG`
+  dir=`echo $i | cut -d , -f 1`
+  user=`echo $i | cut -d , -f 2`
+  config_file=`echo $i | cut -d , -f 3`
+  if [ "$config_file" = "" ]; then
+    config_file="$dir/config/puma.rb"
+  fi
+  log_file=`echo $i | cut -d , -f 4`
+  if [ "$log_file" = "" ]; then
+    log_file="$dir/log/puma.log"
+  fi
+  environment=`echo $i | cut -d , -f 5`
 
-  if [ ! -z "$5" ]; then
-    for e in $(echo "$5" | tr ';' '\n'); do
+  log_daemon_msg "--> Woke up puma $dir"
+  log_daemon_msg "user $user"
+  log_daemon_msg "log to $log_file"
+
+  if [ ! -z "$environment" ]; then
+    for e in $(echo "$environment" | tr ';' '\n'); do
         log_daemon_msg "environment $e"
         v=${e%%\=*} ;  eval "$e" ; export $v
     done
   fi
 
-  start-stop-daemon --verbose --start --chdir $1 --chuid $2 --background --exec $RUNPUMA -- $1 $3 $4
+  start-stop-daemon --verbose --start --chdir $dir --chuid $user --background --exec $RUNPUMA -- $dir $config_file $log_file
 }
 
 #
@@ -135,8 +138,6 @@ do_restart() {
 #
 do_restart_one() {
   PIDFILE=$1/tmp/puma/pid
-  i=`grep $1 $CONFIG`
-  dir=`echo $i | cut -d , -f 1`
 
   if [ -e $PIDFILE ]; then
     log_daemon_msg "--> About to restart puma $1"
@@ -144,17 +145,7 @@ do_restart_one() {
     # TODO Check if process exist
   else
     log_daemon_msg "--> Your puma was never playing... Let's get it out there first"
-    user=`echo $i | cut -d , -f 2`
-    config_file=`echo $i | cut -d , -f 3`
-    if [ "$config_file" = "" ]; then
-      config_file="$dir/config/puma.rb"
-    fi
-    log_file=`echo $i | cut -d , -f 4`
-    if [ "$log_file" = "" ]; then
-      log_file="$dir/log/puma.log"
-    fi
-    environment=`echo $i | cut -d , -f 5`
-    do_start_one $dir $user $config_file $log_file $environment
+    do_start_one $1
   fi
 	return 0
 }
@@ -174,26 +165,14 @@ do_phased_restart() {
 #
 do_phased_restart_one() {
   PIDFILE=$1/tmp/puma/pid
-  i=`grep $1 $CONFIG`
-  dir=`echo $i | cut -d , -f 1`
 
   if [ -e $PIDFILE ]; then
     log_daemon_msg "--> About to restart puma $1"
     kill -s USR1 `cat $PIDFILE`
     # TODO Check if process exist
   else
-    log_daemon_msg "--> Your puma was never playing... Let's get it out there first" 
-    user=`echo $i | cut -d , -f 2`
-    config_file=`echo $i | cut -d , -f 3`
-    if [ "$config_file" = "" ]; then
-      config_file="$dir/config/puma.rb"
-    fi
-    log_file=`echo $i | cut -d , -f 4`
-    if [ "$log_file" = "" ]; then
-      log_file="$dir/log/puma.log"
-    fi
-    environment=`echo $i | cut -d , -f 5`
-    do_start_one $dir $user $config_file $log_file $environment
+    log_daemon_msg "--> Your puma was never playing... Let's get it out there first"
+    do_start_one $1
   fi
 	return 0
 }
@@ -339,16 +318,7 @@ case "$1" in
     else
       i=`grep $2 $CONFIG`
       dir=`echo $i | cut -d , -f 1`
-      user=`echo $i | cut -d , -f 2`
-      config_file=`echo $i | cut -d , -f 3`
-      if [ "$config_file" = "" ]; then
-        config_file="$dir/config/puma.rb"
-      fi
-      log_file=`echo $i | cut -d , -f 4`
-      if [ "$log_file" = "" ]; then
-        log_file="$dir/log/puma.log"
-      fi
-      do_start_one $dir $user $config_file $log_file
+      do_start_one $dir
     fi
     case "$?" in
       0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
