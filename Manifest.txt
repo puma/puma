@@ -51,8 +51,6 @@ lib/puma/minissl.rb
 lib/puma/null_io.rb
 lib/puma/plugin.rb
 lib/puma/plugin/tmp_restart.rb
-lib/puma/rack/backports/uri/common_18.rb
-lib/puma/rack/backports/uri/common_192.rb
 lib/puma/rack/backports/uri/common_193.rb
 lib/puma/rack/builder.rb
 lib/puma/rack/urlmap.rb

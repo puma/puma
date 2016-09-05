@@ -291,7 +291,7 @@ module Puma
         raise HttpParserError,
           "HEADER is longer than allowed, aborting client early."
       end
-      
+
       false
     end
 

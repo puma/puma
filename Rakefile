@@ -18,7 +18,7 @@ HOE = Hoe.spec "puma" do
   spec_extras[:executables] = ['puma', 'pumactl']
   spec_extras[:homepage] = self.urls.first
 
-  require_ruby_version ">= 1.8.7"
+  require_ruby_version ">= 1.9.3"
 
   dependency "rack", [">= 1.1", "< 3.0"], :development
 
@@ -155,4 +155,3 @@ namespace :test do
     task :all => [:test, "test:integration"]
   end
 end
-
