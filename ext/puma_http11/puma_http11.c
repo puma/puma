@@ -1,6 +1,7 @@
 /**
  * Copyright (c) 2005 Zed A. Shaw
  * You can redistribute it and/or modify it under the same terms as Ruby.
+ * License 3-clause BSD
  */
 
 #define RSTRING_NOT_MODIFIED 1
