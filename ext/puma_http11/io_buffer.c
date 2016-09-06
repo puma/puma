@@ -14,8 +14,8 @@ struct buf_int {
 #define BUF_TOLERANCE 32
 
 static void buf_free(struct buf_int* internal) {
-  free(internal->top);
-  free(internal);
+  xfree(internal->top);
+  xfree(internal);
 }
 
 static VALUE buf_alloc(VALUE self) {
@@ -25,7 +25,7 @@ static VALUE buf_alloc(VALUE self) {
   buf = Data_Make_Struct(self, struct buf_int, 0, buf_free, internal);
 
   internal->size = BUF_DEFAULT_SIZE;
-  internal->top = malloc(BUF_DEFAULT_SIZE);
+  internal->top = ALLOC_N(uint8_t, BUF_DEFAULT_SIZE);
   internal->cur = internal->top;
 
   return buf;
@@ -51,13 +51,13 @@ static VALUE buf_append(VALUE self, VALUE str) {
 
     new_size = (n > new_size ? n : new_size + BUF_TOLERANCE);
 
-    top = malloc(new_size);
+    top = ALLOC_N(uint8_t, new_size);
     old = b->top;
     memcpy(top, old, used);
     b->top = top;
     b->cur = top + used;
     b->size = new_size;
-    free(old);
+    xfree(old);
   }
 
   memcpy(b->cur, RSTRING_PTR(str), str_len);
@@ -92,13 +92,13 @@ static VALUE buf_append2(int argc, VALUE* argv, VALUE self) {
 
     new_size = (n > new_size ? n : new_size + BUF_TOLERANCE);
 
-    top = malloc(new_size);
+    top = ALLOC_N(uint8_t, new_size);
     old = b->top;
     memcpy(top, old, used);
     b->top = top;
     b->cur = top + used;
     b->size = new_size;
-    free(old);
+    xfree(old);
   }
 
   for(i = 0; i < argc; i++) {
