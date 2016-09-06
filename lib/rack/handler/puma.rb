@@ -1,5 +1,4 @@
 require 'rack/handler'
-require 'puma'
 
 module Rack
   module Handler
@@ -10,6 +9,11 @@ module Rack
       }
 
       def self.run(app, options = {})
+        require 'puma/configuration'
+        require 'puma/commonlogger'
+        require 'puma/events'
+        require 'puma/launcher'
+
         options  = DEFAULT_OPTIONS.merge(options)
 
         conf = ::Puma::Configuration.new(options) do |c|
