@@ -3,7 +3,6 @@ language: ruby
 cache: bundler
 script: "TESTOPTS=-v bundle exec rake test"
 rvm:
-  - 2.1.9
   - 2.2.5
   - 2.3.1
   - ruby-head
@@ -11,6 +10,9 @@ rvm:
   - jruby-head
   - rbx
 matrix:
+  include:
+    - rvm: 2.1
+      gemfile: gemfiles/2.1-Gemfile
   fast_finish: true
   allow_failures:
     - rvm: jruby-head
