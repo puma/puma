@@ -54,8 +54,7 @@ module Puma
     def log_hijacking(env, status, header, began_at)
       now = Time.now
 
-      logger = @logger || env['rack.errors']
-      logger.write HIJACK_FORMAT % [
+      msg = HIJACK_FORMAT % [
         env['HTTP_X_FORWARDED_FOR'] || env["REMOTE_ADDR"] || "-",
         env["REMOTE_USER"] || "-",
         now.strftime("%d/%b/%Y %H:%M:%S"),
@@ -64,6 +63,8 @@ module Puma
         env[QUERY_STRING].empty? ? "" : "?#{env[QUERY_STRING]}",
         env["HTTP_VERSION"],
         now - began_at ]
+
+      write(msg)
     end
 
     def log(env, status, header, began_at)
@@ -82,7 +83,12 @@ module Puma
         length,
         now - began_at ]
 
+      write(msg)
+    end
+
+    def write(msg)
       logger = @logger || env['rack.errors']
+
       # Standard library logger doesn't support write but it supports << which actually
       # calls to write on the log device without formatting
       if logger.respond_to?(:write)
