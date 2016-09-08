@@ -21,6 +21,13 @@ module Puma
     #   %{%s - %s [%s] "%s %s%s %s" %d %s\n} %
     FORMAT = %{%s - %s [%s] "%s %s%s %s" %d %s %0.4f\n}
 
+    HIJACK_FORMAT = %{%s - %s [%s] "%s %s%s %s" HIJACKED -1 %0.4f\n}
+
+    CONTENT_LENGTH = 'Content-Length'.freeze
+    PATH_INFO      = 'PATH_INFO'.freeze
+    QUERY_STRING   = 'QUERY_STRING'.freeze
+    REQUEST_METHOD = 'REQUEST_METHOD'.freeze
+
     def initialize(app, logger=nil)
       @app = app
       @logger = logger
@@ -42,8 +49,6 @@ module Puma
       [status, header, body]
     end
 
-    HIJACK_FORMAT = %{%s - %s [%s] "%s %s%s %s" HIJACKED -1 %0.4f\n}
-
     private
 
     def log_hijacking(env, status, header, began_at)
@@ -54,23 +59,12 @@ module Puma
         env['HTTP_X_FORWARDED_FOR'] || env["REMOTE_ADDR"] || "-",
         env["REMOTE_USER"] || "-",
         now.strftime("%d/%b/%Y %H:%M:%S"),
-        env["REQUEST_METHOD"],
-        env["PATH_INFO"],
-        env["QUERY_STRING"].empty? ? "" : "?"+env["QUERY_STRING"],
+        env[REQUEST_METHOD],
+        env[PATH_INFO],
+        env[QUERY_STRING].empty? ? "" : "?#{env[QUERY_STRING]}",
         env["HTTP_VERSION"],
         now - began_at ]
     end
-
-    PATH_INFO      = 'PATH_INFO'.freeze
-    REQUEST_METHOD = 'REQUEST_METHOD'.freeze
-    SCRIPT_NAME    = 'SCRIPT_NAME'.freeze
-    QUERY_STRING   = 'QUERY_STRING'.freeze
-    CACHE_CONTROL  = 'Cache-Control'.freeze
-    CONTENT_LENGTH = 'Content-Length'.freeze
-    CONTENT_TYPE   = 'Content-Type'.freeze
-
-    GET  = 'GET'.freeze
-    HEAD = 'HEAD'.freeze
 
     def log(env, status, header, began_at)
       now = Time.now
@@ -82,7 +76,7 @@ module Puma
         now.strftime("%d/%b/%Y:%H:%M:%S %z"),
         env[REQUEST_METHOD],
         env[PATH_INFO],
-        env[QUERY_STRING].empty? ? "" : "?"+env[QUERY_STRING],
+        env[QUERY_STRING].empty? ? "" : "?#{env[QUERY_STRING]}",
         env["HTTP_VERSION"],
         status.to_s[0..3],
         length,
