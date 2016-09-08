@@ -7,7 +7,6 @@ require 'puma/single'
 require 'puma/const'
 
 require 'puma/binder'
-require 'puma/state_file'
 
 module Puma
   # Puma::Launcher is the single entry point for starting a Puma server based on user
@@ -104,6 +103,8 @@ module Puma
 
       path = @options[:state]
       return unless path
+
+      require 'puma/state_file'
 
       sf = StateFile.new
       sf.pid = Process.pid

@@ -2,6 +2,7 @@ require "rbconfig"
 require 'test/unit'
 require 'puma/cli'
 require 'tempfile'
+require 'yaml'
 
 class TestCLI < Test::Unit::TestCase
   def setup
