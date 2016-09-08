@@ -181,7 +181,9 @@ module Puma
           @spawned -= 1
         end
 
-        @workers -= dead_workers
+        @workers.delete_if do |w|
+          dead_workers.include?(w)
+        end
       end
     end
 
