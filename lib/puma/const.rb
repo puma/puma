@@ -154,11 +154,6 @@ module Puma
     # Maximum request body size before it is moved out of memory and into a tempfile for reading.
     MAX_BODY = MAX_HEADER
 
-    # A frozen format for this is about 15% faster
-    STATUS_FORMAT = "HTTP/1.1 %d %s\r\nConnection: close\r\n".freeze
-
-    CONTENT_TYPE = "Content-Type".freeze
-
     REQUEST_METHOD = "REQUEST_METHOD".freeze
     HEAD = "HEAD".freeze
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
@@ -177,7 +172,6 @@ module Puma
 
     SERVER_PROTOCOL = "SERVER_PROTOCOL".freeze
     HTTP_11 = "HTTP/1.1".freeze
-    HTTP_10 = "HTTP/1.0".freeze
 
     SERVER_SOFTWARE = "SERVER_SOFTWARE".freeze
     GATEWAY_INTERFACE = "GATEWAY_INTERFACE".freeze
