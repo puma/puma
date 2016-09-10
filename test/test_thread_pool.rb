@@ -230,4 +230,21 @@ class TestThreadPool < Test::Unit::TestCase
 
     assert_equal 0, pool.spawned
   end
+
+  def test_force_shutdown_immediately
+    pool = new_pool(1, 1) {
+      begin
+        sleep 1
+      rescue Puma::ThreadPool::ForceShutdown
+      end
+    }
+
+    pool << 1
+
+    sleep 0.1
+
+    pool.shutdown(0)
+
+    assert_equal 0, pool.spawned
+  end
 end

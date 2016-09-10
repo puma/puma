@@ -263,18 +263,12 @@ module Puma
         @workers.dup
       end
 
-      case timeout
-      when -1
+      if timeout == -1
+        # Wait for threads to finish without force shutdown.
         threads.each(&:join)
-      when 0
-        threads.each do |t|
-          t.raise ForceShutdown
-        end
-
-        threads.each do |t|
-          t.join SHUTDOWN_GRACE_TIME
-        end
       else
+        # Wait for threads to finish after n attempts (+timeout+).
+        # If threads are still running, it will forcefully kill them.
         timeout.times do
           threads.delete_if do |t|
             t.join 1
