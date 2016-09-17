@@ -75,6 +75,7 @@ module Puma
       end
 
       alias_method :syswrite, :write
+      alias_method :<<, :write
 
       def flush
         @socket.flush
