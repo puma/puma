@@ -275,7 +275,7 @@ A detailed guide to using UNIX signals with Puma can be found in the [signals do
 
 ### Release Directory
 
-If you symlink releases into a common working directory (i.e., `/current` from Capistrano), Puma won't pick up your new changes when running phased restarts without additional configuration. You should set your working directory within Puma's config to specify the directory it should use. This is a change from earlier versions of Puma (< 2.15) that would infer the directory for you.
+If your symlink releases into a common working directory (i.e., `/current` from Capistrano), Puma won't pick up your new changes when running phased restarts without additional configuration. You should set your working directory within Puma's config to specify the directory it should use. This is a change from earlier versions of Puma (< 2.15) that would infer the directory for you.
 
 ```ruby
 # config/puma.rb
