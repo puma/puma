@@ -1,12 +1,6 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw 
 
-
-%w(lib test).each do |d|
-  dir = File.expand_path("../../#{d}", __FILE__)
-  $LOAD_PATH.unshift dir unless $LOAD_PATH.include?(dir)
-end
-
 require 'rubygems'
 require 'test/unit'
 require 'net/http'
