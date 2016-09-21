@@ -5,9 +5,9 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Example initscript
-# Description:       This file should be used to construct scripts to be
-#                    placed in /etc/init.d.
+# Short-Description: Puma web server
+# Description:       A ruby web server built for concurrency http://puma.io
+#                    initscript to be placed in /etc/init.d.
 ### END INIT INFO
 
 # Author: Darío Javier Cravero <dario@exordo.com>
