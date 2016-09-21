@@ -1,5 +1,5 @@
 require 'test/unit'
-require 'test/testhelp'
+require 'testhelp'
 require 'puma'
 require 'rack/handler/puma'
 

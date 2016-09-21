@@ -1,4 +1,4 @@
-require 'test/testhelp'
+require 'testhelp'
 
 class Http10ParserTest < Test::Unit::TestCase
   include Puma
