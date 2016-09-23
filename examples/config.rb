@@ -104,7 +104,8 @@
 
 # === Cluster mode ===
 
-# How many worker processes to run.
+# How many worker processes to run.  Typically this is set to
+# to the number of available cores.
 #
 # The default is "0".
 #
