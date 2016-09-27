@@ -601,6 +601,21 @@ module Puma
       @options[:raise_exception_on_sigterm] = answer
     end
 
+    # When using prune_bundler, if extra runtime dependencies need to be loaded to
+    # initialize your app, then this setting can be used.
+    #
+    # For each gem's name passed, that gem will be loaded when the environment
+    # is pruned.
+    # Only applies if prune_bundler is used.
+    #
+    # @example
+    #   extra_runtime_dependencies ['gem_name_1', 'gem_name_2']
+    # @example
+    #   extra_runtime_dependencies ['puma_worker_killer']
+    def extra_runtime_dependencies(answer = [])
+      @options[:extra_runtime_dependencies] = Array(answer)
+    end
+
     # Additional text to display in process listing.
     #
     # If you do not specify a tag, Puma will infer it. If you do not want Puma
