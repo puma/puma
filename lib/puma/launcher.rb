@@ -280,6 +280,7 @@ module Puma
           spec = Bundler.rubygems.loaded_specs(d_name) rescue nil
           if spec
             deps << "#{d_name}:#{spec.version.to_s}"
+            dirs += spec.require_paths.map { |x| File.join(spec.full_gem_path, x) }
           else
             log "* Couldn't to load extra dependency: #{d_name}"
           end
