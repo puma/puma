@@ -275,12 +275,14 @@ module Puma
         "#{d.name}:#{spec.version.to_s}"
       end
 
-      @options[:extra_runtime_dependencies].each do |d_name|
-        spec = Bundler.rubygems.loaded_specs(d_name) rescue nil
-        if spec
-          deps << "#{d_name}:#{spec.version.to_s}"
-        else
-          log "* Couldn't to load extra dependency: #{d_name}"
+      if @options[:extra_runtime_dependencies]
+        @options[:extra_runtime_dependencies].each do |d_name|
+          spec = Bundler.rubygems.loaded_specs(d_name) rescue nil
+          if spec
+            deps << "#{d_name}:#{spec.version.to_s}"
+          else
+            log "* Couldn't to load extra dependency: #{d_name}"
+          end
         end
       end
 
