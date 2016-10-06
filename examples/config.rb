@@ -171,8 +171,10 @@
 # to add a tag, use an empty string.
 
 # Verifies that all workers have checked in to the master process within
-# the given timeout. If not the worker process will be restarted. Default
-# value is 60 seconds.
+# the given timeout. If not the worker process will be restarted. This is
+# not a request timeout, it is to protect against a hung or dead process.
+# Setting this value will not protect against slow requests.
+# Default value is 60 seconds.
 #
 # worker_timeout 60
 
