@@ -183,7 +183,8 @@ module Puma
         :environment => lambda { ENV['RACK_ENV'] || "development" },
         :rackup => DefaultRackup,
         :logger => STDOUT,
-        :persistent_timeout => Const::PERSISTENT_TIMEOUT
+        :persistent_timeout => Const::PERSISTENT_TIMEOUT,
+        :first_data_timeout => Const::FIRST_DATA_TIMEOUT
       }
     end
 
