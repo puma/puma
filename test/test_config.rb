@@ -57,6 +57,17 @@ class TestConfigFile < Test::Unit::TestCase
     assert_equal 'bin/rails server', conf.options[:restart_cmd]
   end
 
+  def test_overwrite_options
+    conf = Puma::Configuration.new do |c|
+      c.workers 3
+    end
+    conf.load
+
+    assert_equal conf.options[:workers], 3
+    conf.options[:workers] += 1
+    assert_equal conf.options[:workers], 4
+  end
+
   private
 
     def with_env(env = {})
