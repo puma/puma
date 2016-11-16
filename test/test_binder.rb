@@ -1,5 +1,6 @@
 require "rbconfig"
 require 'test/unit'
+require 'testhelp'
 
 require 'puma/binder'
 require 'puma/events'
@@ -12,12 +13,16 @@ class TestBinder < Test::Unit::TestCase
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
+    omit_on_jruby
+
     @binder.parse(["tcp://localhost:10001"], @events)
 
     assert_equal [], @binder.listeners
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
+    omit_on_jruby
+
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
 
