@@ -610,4 +610,23 @@ class TestPumaServer < Test::Unit::TestCase
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
   end
+
+  def test_chunked_request_header_case
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: Chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal "hello", body
+  end
 end
