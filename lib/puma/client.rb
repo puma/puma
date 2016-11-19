@@ -223,7 +223,7 @@ module Puma
 
       te = @env[TRANSFER_ENCODING2]
 
-      if te && te.downcase == CHUNKED
+      if te && CHUNKED.casecmp(te) == 0
         return setup_chunked_body(body)
       end
 
