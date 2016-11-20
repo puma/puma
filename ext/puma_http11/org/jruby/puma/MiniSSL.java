@@ -335,6 +335,10 @@ public class MiniSSL extends RubyObject {
     }
   }
 
+  /**
+   * Returns true if the SSL connection was able to shutdown correctly.
+   * Or false if there were any problems.
+   */
   @JRubyMethod
   public IRubyObject peercert() throws CertificateEncodingException {
     try {
@@ -345,11 +349,14 @@ public class MiniSSL extends RubyObject {
   }
 
   public IRubyObject shutdown() {
-    return getRuntime().getNil(); // TODO: Implement!
+    return getRuntime().getTrue(); // TODO: Implement!
   }
 
+  /**
+   * Returns true if the SSL connection is still in init phase.
+   */
   @JRubyMethod(name = "init?")
   public IRubyObject init_p() {
-    return getRuntime().getNil(); // TODO: Implement!
+    return getRuntime.getFalse(); // TODO: Implement!
   }
 }
