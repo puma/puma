@@ -17,6 +17,10 @@ matrix:
   include:
     - rvm: 2.1
       gemfile: gemfiles/2.1-Gemfile
+    - rvm: jruby-9.1.5.0
+      env: JRUBY_OPTS="--dev -J-Djruby.launch.inproc=true -J-Xmx1024M"      
+    - rvm: jruby-head
+      env: JRUBY_OPTS="--dev -J-Djruby.launch.inproc=true -J-Xmx1024M"      
   fast_finish: true
   allow_failures:
     - rvm: jruby-head
