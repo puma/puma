@@ -6,6 +6,8 @@ before_install:
   # https://github.com/travis-ci/travis-ci/issues/5861
   - gem install bundler
 script: "TESTOPTS=-v bundle exec rake test"
+branches:
+  only: [master]
 rvm:
   - 2.2.6
   - 2.3.2
