@@ -50,7 +50,7 @@ public class MiniSSL extends RubyObject {
                            runtime.getClass("IOError"),
                            runtime.getClass("IOError").getAllocator());
 
-    RubyClass eng = ssl.defineClassUnder("Engine",runtime.getObject(),ALLOCATOR);
+    RubyClass eng = ssl.defineClassUnder("Engine", runtime.getObject(), ALLOCATOR);
     eng.defineAnnotatedMethods(MiniSSL.class);
   }
 
@@ -357,6 +357,6 @@ public class MiniSSL extends RubyObject {
    */
   @JRubyMethod(name = "init?")
   public IRubyObject init_p() {
-    return getRuntime.getFalse(); // TODO: Implement!
+    return getRuntime().getFalse(); // TODO: Implement!
   }
 }
