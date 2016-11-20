@@ -343,4 +343,13 @@ public class MiniSSL extends RubyObject {
       return getRuntime().getNil();
     }
   }
+
+  public IRubyObject shutdown() {
+    return getRuntime().getNil(); // TODO: Implement!
+  }
+
+  @JRubyMethod(name = "init?")
+  public IRubyObject init_p() {
+    return getRuntime().getNil(); // TODO: Implement!
+  }
 }
