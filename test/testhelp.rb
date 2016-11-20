@@ -1,5 +1,5 @@
 # Copyright (c) 2011 Evan Phoenix
-# Copyright (c) 2005 Zed A. Shaw 
+# Copyright (c) 2005 Zed A. Shaw
 
 require 'rubygems'
 require 'test/unit'
@@ -30,3 +30,14 @@ def hit(uris)
 
   return results
 end
+
+module TimeoutEveryTestCase
+  def run(*args)
+    if !!ENV['CI']
+      Timeout.timeout(60) { super }
+    else
+      super
+    end
+  end
+end
+Test::Unit::TestCase.prepend TimeoutEveryTestCase
