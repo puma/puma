@@ -3,8 +3,8 @@ language: ruby
 cache: bundler
 script: "TESTOPTS=-v bundle exec rake test"
 rvm:
-  - 2.2.5
-  - 2.3.1
+  - 2.2.6
+  - 2.3.2
   - ruby-head
   - jruby-9.0.5.0
   - jruby-head
