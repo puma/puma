@@ -1,4 +1,6 @@
+dist: trusty
 sudo: false
+group: beta
 language: ruby
 cache: bundler
 script: "TESTOPTS=-v bundle exec rake test"
