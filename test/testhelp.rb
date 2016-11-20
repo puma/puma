@@ -1,7 +1,6 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-
 %w(lib test).each do |d|
   dir = File.expand_path("../../#{d}", __FILE__)
   $LOAD_PATH.unshift dir unless $LOAD_PATH.include?(dir)
@@ -37,6 +36,17 @@ def hit(uris)
 
   return results
 end
+
+module TimeoutEveryTestCase
+  def run(*args)
+    if !!ENV['CI']
+      Timeout.timeout(60) { super }
+    else
+      super
+    end
+  end
+end
+Test::Unit::TestCase.prepend TimeoutEveryTestCase
 
 module OmitTestsBasedOnRubyEngine
   def omit_on_jruby
