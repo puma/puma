@@ -1,4 +1,6 @@
+dist: trusty
 sudo: false
+group: beta
 language: ruby
 cache: bundler
 script: "TESTOPTS=-v bundle exec rake test"
@@ -9,10 +11,10 @@ rvm:
   - ruby-head
   - jruby-9.0.5.0
   - jruby-head
-  - rbx
+  - rbx-3
 matrix:
   fast_finish: true
   allow_failures:
     - rvm: jruby-head
-    - rvm: rbx
+    - rvm: rbx-3
     - rvm: ruby-head
