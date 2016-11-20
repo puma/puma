@@ -4,9 +4,13 @@ module Puma
   # A simple thread pool management object.
   #
   class ThreadPool
-
     class ForceShutdown < RuntimeError
     end
+
+    # How long, after raising the ForceShutdown of a thread during
+    # forced shutdown mode, to wait for the thread to try and finish
+    # up its work before leaving the thread to die on the vine.
+    SHUTDOWN_GRACE_TIME = 5 # seconds
 
     # Maintain a minimum of +min+ and maximum of +max+ threads
     # in the pool.
@@ -259,18 +263,12 @@ module Puma
         @workers.dup
       end
 
-      case timeout
-      when -1
+      if timeout == -1
+        # Wait for threads to finish without force shutdown.
         threads.each(&:join)
-      when 0
-        threads.each do |t|
-          t.raise ForceShutdown
-        end
-
-        threads.each do |t|
-          t.join Const::SHUTDOWN_GRACE_TIME
-        end
       else
+        # Wait for threads to finish after n attempts (+timeout+).
+        # If threads are still running, it will forcefully kill them.
         timeout.times do
           threads.delete_if do |t|
             t.join 1
@@ -288,7 +286,7 @@ module Puma
         end
 
         threads.each do |t|
-          t.join Const::SHUTDOWN_GRACE_TIME
+          t.join SHUTDOWN_GRACE_TIME
         end
       end
 
