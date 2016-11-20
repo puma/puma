@@ -1,4 +1,6 @@
+dist: trusty
 sudo: false
+group: beta
 language: ruby
 cache: bundler
 before_install:
@@ -14,7 +16,7 @@ rvm:
   - ruby-head
   - jruby-9.1.5.0
   - jruby-head
-  - rbx
+  - rbx-3
 matrix:
   include:
     - rvm: 2.1
@@ -22,5 +24,5 @@ matrix:
   fast_finish: true
   allow_failures:
     - rvm: jruby-head
-    - rvm: rbx
+    - rvm: rbx-3
     - rvm: ruby-head
