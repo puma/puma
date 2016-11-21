@@ -1,10 +1,8 @@
-require "rbconfig"
-require 'test/unit'
-require 'puma/cli'
-require 'tempfile'
-require 'yaml'
+require "test_helper"
 
-class TestCLI < Test::Unit::TestCase
+require "puma/cli"
+
+class TestCLI < Minitest::Test
   def setup
     @environment = 'production'
     @tmp_file = Tempfile.new("puma-test")
@@ -168,10 +166,7 @@ class TestCLI < Test::Unit::TestCase
                           "--state", @tmp_path ]
     cli.launcher.write_state
 
-    data = nil
-    assert_nothing_raised do
-      data = YAML.load_file( @tmp_path )
-    end
+    data = YAML.load_file(@tmp_path)
 
     keys_not_stripped = data.keys & Puma::CLI::KEYS_NOT_TO_PERSIST_IN_STATE
     assert_empty keys_not_stripped
