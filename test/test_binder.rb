@@ -2,6 +2,7 @@ require "test_helper"
 
 require "puma/binder"
 require "puma/events"
+require "puma/puma_http11"
 
 class TestBinder < Minitest::Test
 
