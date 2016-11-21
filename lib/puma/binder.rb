@@ -102,7 +102,7 @@ module Puma
             io = add_tcp_listener uri.host, uri.port, opt, bak
           end
 
-          @listeners << [str, io]
+          @listeners << [str, io] if io
         when "unix"
           path = "#{uri.host}#{uri.path}".gsub("%20", " ")
 
@@ -206,7 +206,7 @@ module Puma
             io = add_ssl_listener uri.host, uri.port, ctx
           end
 
-          @listeners << [str, io]
+          @listeners << [str, io] if io
         else
           logger.error "Invalid URI: #{str}"
         end
