@@ -157,7 +157,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
     StringValue(ca);
     SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL);
   }
-  
+
   SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_COMPRESSION);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
@@ -329,8 +329,7 @@ VALUE engine_extract(VALUE self) {
 
 VALUE engine_shutdown(VALUE self) {
   ms_conn* conn;
-  int ok, err;
-  char buf[512];
+  int ok;
 
   Data_Get_Struct(self, ms_conn, conn);
 
@@ -346,8 +345,6 @@ VALUE engine_shutdown(VALUE self) {
 
 VALUE engine_init(VALUE self) {
   ms_conn* conn;
-  int ok, err;
-  char buf[512];
 
   Data_Get_Struct(self, ms_conn, conn);
 
@@ -404,7 +401,7 @@ void Init_mini_ssl(VALUE puma) {
   OpenSSL_add_ssl_algorithms();
   SSL_load_error_strings();
   ERR_load_crypto_strings();
-  
+
   mod = rb_define_module_under(puma, "MiniSSL");
   eng = rb_define_class_under(mod, "Engine", rb_cObject);
 
