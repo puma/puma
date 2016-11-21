@@ -9,6 +9,7 @@ require 'uri'
 require 'stringio'
 
 require 'puma'
+require 'puma/detect'
 
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
@@ -41,3 +42,10 @@ module TimeoutEveryTestCase
   end
 end
 Test::Unit::TestCase.prepend TimeoutEveryTestCase
+
+module OmitTestsBasedOnRubyEngine
+  def omit_on_jruby
+    omit "Omitted on JRuby" if Puma.jruby?
+  end
+end
+Test::Unit::TestCase.prepend OmitTestsBasedOnRubyEngine
