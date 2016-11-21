@@ -1,3 +1,6 @@
+# Copyright (c) 2011 Evan Phoenix
+# Copyright (c) 2005 Zed A. Shaw
+
 require "bundler/setup"
 require "minitest/autorun"
 require "minitest/pride"
@@ -24,3 +27,23 @@ def hit(uris)
 
   return results
 end
+
+module TimeoutEveryTestCase
+  def run(*)
+    if !!ENV['CI']
+      Timeout.timeout(60) { super }
+    else
+      super
+    end
+  end
+end
+
+Minitest::Test.prepend TimeoutEveryTestCase
+
+module SkipTestsBasedOnRubyEngine
+  def skip_on_jruby
+    skip "Skipped on JRuby" if Puma.jruby?
+  end
+end
+
+Minitest::Test.include SkipTestsBasedOnRubyEngine
