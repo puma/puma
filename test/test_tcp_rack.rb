@@ -1,14 +1,8 @@
-require "rbconfig"
-require 'test/unit'
-require 'socket'
-require 'openssl'
+require "test_helper"
 
-require 'puma/minissl'
-require 'puma/server'
+require "puma/server"
 
-require 'net/https'
-
-class TestTCPRack < Test::Unit::TestCase
+class TestTCPRack < Minitest::Test
 
   def setup
     @port = 3212
