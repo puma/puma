@@ -1,8 +1,8 @@
-require 'test/unit'
+require "test_helper"
 
-require 'puma/thread_pool'
+require "puma/thread_pool"
 
-class TestThreadPool < Test::Unit::TestCase
+class TestThreadPool < Minitest::Test
 
   def teardown
     @pool.shutdown if @pool
