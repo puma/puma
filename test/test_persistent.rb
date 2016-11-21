@@ -1,8 +1,9 @@
-require 'puma'
-require 'test/unit'
-require 'timeout'
+require "test_helper"
 
-class TestPersistent < Test::Unit::TestCase
+require "puma/server"
+require "timeout"
+
+class TestPersistent < Minitest::Test
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
     @close_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
