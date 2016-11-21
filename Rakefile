@@ -1,3 +1,4 @@
+require "bundler/setup"
 require "hoe"
 require "rake/extensiontask"
 require "rake/javaextensiontask"
