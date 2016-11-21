@@ -1,7 +1,8 @@
-require 'puma/io_buffer'
-require 'test/unit'
+require "test_helper"
 
-class TestIOBuffer < Test::Unit::TestCase
+require "puma/io_buffer"
+
+class TestIOBuffer < Minitest::Test
   attr_accessor :iobuf
   def setup
     self.iobuf = Puma::IOBuffer.new
@@ -13,7 +14,7 @@ class TestIOBuffer < Test::Unit::TestCase
   end
 
   def test_append_op
-    iobuf << "abc" 
+    iobuf << "abc"
     assert_equal "abc", iobuf.to_s
     iobuf << "123"
     assert_equal "abc123", iobuf.to_s
