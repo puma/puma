@@ -1,6 +1,7 @@
 require "bundler/setup"
 require "minitest/autorun"
 require "minitest/pride"
+require "puma"
 
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
