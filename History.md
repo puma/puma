@@ -1,3 +1,16 @@
+## 3.6.1 / 2016-11-21
+
+* 8 bug fixes:
+
+  * Fix Puma start in init.d script.
+  * Fix default SSL mode back to none. Fixes #1036
+  * Fixed the issue of @listeners getting nil io, fix rails restart (#1120)
+  * More gracefully deal with SSL sessions. Fixes #1002
+  * Prevent short term thread churn.
+  * Provide write as <<. Fixes #1089
+  * Fix access priorities of each level in LeveledOptions - fixes TTIN.
+  * Stub description files updated for init.d.
+
 ## 3.6.0 / 2016-07-24
 
 * 12 bug fixes:
