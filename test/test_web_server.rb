@@ -1,9 +1,9 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-require 'testhelp'
+require "test_helper"
 
-include Puma
+require "puma/server"
 
 class TestHandler
   attr_reader :ran_test
@@ -15,14 +15,14 @@ class TestHandler
   end
 end
 
-class WebServerTest < Test::Unit::TestCase
+class WebServerTest < Minitest::Test
 
   def setup
     @valid_request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
 
     @tester = TestHandler.new
 
-    @server = Server.new @tester, Events.strings
+    @server = Puma::Server.new @tester, Puma::Events.strings
     @server.add_tcp_listener "127.0.0.1", 0
 
     @server.run
@@ -86,4 +86,3 @@ class WebServerTest < Test::Unit::TestCase
   end
 
 end
-
