@@ -1,6 +1,5 @@
 require "test_helper"
 
-require "puma/server"
 require "rack"
 
 class TestRackServer < Minitest::Test

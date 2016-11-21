@@ -1,6 +1,6 @@
 require "test_helper"
 
-require "puma/server"
+require "puma/events"
 
 class SSLEventsHelper < ::Puma::Events
   attr_accessor :addr, :cert, :error

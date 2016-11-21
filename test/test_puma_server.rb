@@ -1,7 +1,5 @@
 require "test_helper"
 
-require "puma/server"
-
 class TestPumaServer < Minitest::Test
 
   def setup

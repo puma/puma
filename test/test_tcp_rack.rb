@@ -1,6 +1,6 @@
 require "test_helper"
 
-require "puma/server"
+require "puma/events"
 
 class TestTCPRack < Minitest::Test
 

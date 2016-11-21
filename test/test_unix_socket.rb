@@ -1,7 +1,5 @@
 require "test_helper"
 
-require "puma/server"
-
 # UNIX sockets are not recommended on JRuby
 # (or Windows)
 unless defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/

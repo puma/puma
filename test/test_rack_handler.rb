@@ -1,6 +1,5 @@
 require "test_helper"
 
-require "puma"
 require "rack/handler/puma"
 
 class TestPumaUnixSocket < Minitest::Test
