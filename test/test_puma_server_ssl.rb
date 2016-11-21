@@ -1,12 +1,6 @@
-require "rbconfig"
-require 'test/unit'
-require 'socket'
-require 'openssl'
+require "test_helper"
 
-require 'puma/minissl'
-require 'puma/server'
-
-require 'net/https'
+require "puma/server"
 
 class SSLEventsHelper < ::Puma::Events
   attr_accessor :addr, :cert, :error
@@ -26,7 +20,7 @@ DISABLE_SSL = begin
               false
             end
 
-class TestPumaServerSSL < Test::Unit::TestCase
+class TestPumaServerSSL < Minitest::Test
 
   def setup
     return if DISABLE_SSL
@@ -130,7 +124,7 @@ class TestPumaServerSSL < Test::Unit::TestCase
 end
 
 # client-side TLS authentication tests
-class TestPumaServerSSLClient < Test::Unit::TestCase
+class TestPumaServerSSLClient < Minitest::Test
 
   def assert_ssl_client_error_match(error, subject=nil, &blk)
     @port = 3212
