@@ -1,9 +1,9 @@
-require 'test/unit'
-require 'testhelp'
-require 'puma'
-require 'rack/handler/puma'
+require "test_helper"
 
-class TestPumaUnixSocket < Test::Unit::TestCase
+require "puma"
+require "rack/handler/puma"
+
+class TestPumaUnixSocket < Minitest::Test
   def test_handler
     handler = Rack::Handler.get(:puma)
     assert_equal Rack::Handler::Puma, handler
@@ -12,7 +12,7 @@ class TestPumaUnixSocket < Test::Unit::TestCase
   end
 end
 
-class TestPathHandler < Test::Unit::TestCase
+class TestPathHandler < Minitest::Test
   def app
     Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
   end
