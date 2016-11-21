@@ -1,14 +1,14 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-require 'testhelp'
+require "test_helper"
 
-include Puma
+require "puma/puma_http11"
 
-class Http11ParserTest < Test::Unit::TestCase
+class Http11ParserTest < Minitest::Test
 
   def test_parse_simple
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
     req = {}
     http = "GET /?a=1 HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
@@ -30,7 +30,7 @@ class Http11ParserTest < Test::Unit::TestCase
   end
 
   def test_parse_escaping_in_query
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
     req = {}
     http = "GET /admin/users?search=%27%%27 HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
@@ -48,7 +48,7 @@ class Http11ParserTest < Test::Unit::TestCase
   end
 
   def test_parse_absolute_uri
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
     req = {}
     http = "GET http://192.168.1.96:3000/api/v1/matches/test?1=1 HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
@@ -72,7 +72,7 @@ class Http11ParserTest < Test::Unit::TestCase
   end
 
   def test_parse_dumbfuck_headers
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
     req = {}
     should_be_good = "GET / HTTP/1.1\r\naaaaaaaaaaaaa:++++++++++\r\n\r\n"
     nread = parser.execute(req, should_be_good, 0)
@@ -82,7 +82,7 @@ class Http11ParserTest < Test::Unit::TestCase
   end
 
   def test_parse_error
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
     req = {}
     bad_http = "GET / SsUTF/1.1"
 
@@ -99,12 +99,12 @@ class Http11ParserTest < Test::Unit::TestCase
   end
 
   def test_fragment_in_uri
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
     req = {}
     get = "GET /forums/1/topics/2375?page=1#posts-17408 HTTP/1.1\r\n\r\n"
-    assert_nothing_raised do
-      parser.execute(req, get, 0)
-    end
+
+    parser.execute(req, get, 0)
+
     assert parser.finished?
     assert_equal '/forums/1/topics/2375?page=1', req['REQUEST_URI']
     assert_equal 'posts-17408', req['FRAGMENT']
@@ -125,7 +125,7 @@ class Http11ParserTest < Test::Unit::TestCase
   end
 
   def test_max_uri_path_length
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
     req = {}
 
     # Support URI path length to a max of 2048
@@ -145,7 +145,7 @@ class Http11ParserTest < Test::Unit::TestCase
   end
 
   def test_horrible_queries
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
 
     # then that large header names are caught
     10.times do |c|
