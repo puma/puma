@@ -1,8 +1,9 @@
-require 'test/unit'
-require 'rack'
-require 'puma/app/status'
+require "test_helper"
 
-class TestAppStatus < Test::Unit::TestCase
+require "puma/app/status"
+require "rack"
+
+class TestAppStatus < Minitest::Test
   class FakeServer
     def initialize
       @status = :running
