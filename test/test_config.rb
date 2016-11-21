@@ -1,9 +1,8 @@
-require 'test/unit'
+require "test_helper"
 
-require 'puma'
-require 'puma/configuration'
+require "puma/configuration"
 
-class TestConfigFile < Test::Unit::TestCase
+class TestConfigFile < Minitest::Test
   def test_app_from_rackup
     conf = Puma::Configuration.new do |c|
       c.rackup "test/hello-bind.ru"
