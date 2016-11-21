@@ -11,6 +11,11 @@
   * Fix access priorities of each level in LeveledOptions - fixes TTIN.
   * Stub description files updated for init.d.
 
+* 2 new project committers:
+
+  * Nate Berkopec (@nateberkopec)
+  * Richard Schneeman (@schneems)
+
 === 3.6.0 / 2016-07-24
 
 * 12 bug fixes:
