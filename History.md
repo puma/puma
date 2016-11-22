@@ -1,4 +1,12 @@
-## 3.6.1 / 2016-11-21
+=== 3.6.2 / 2016-11-22
+
+* 1 bug fix:
+
+  * Revert #1118/Fix access priorities of each level in LeveledOptions. This
+    had an unintentional side effect of changing the importance of command line
+    options, such as -p.
+
+=== 3.6.1 / 2016-11-21
 
 * 8 bug fixes:
 
