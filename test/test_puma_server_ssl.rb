@@ -31,7 +31,7 @@ class TestPumaServerSSL < Minitest::Test
 
     @ctx = Puma::MiniSSL::Context.new
 
-    if defined?(JRUBY_VERSION)
+    if Puma.jruby?
       @ctx.keystore =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
       @ctx.keystore_pass = 'blahblah'
     else
@@ -116,7 +116,7 @@ class TestPumaServerSSL < Minitest::Test
         Net::HTTP::Get.new '/'
       end
     end
-    unless defined?(JRUBY_VERSION)
+    unless Puma.jruby?
       assert_match("wrong version number", @events.error.message) if @events.error
     end
   end
@@ -133,7 +133,7 @@ class TestPumaServerSSLClient < Minitest::Test
     @app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     @ctx = Puma::MiniSSL::Context.new
-    if defined?(JRUBY_VERSION)
+    if Puma.jruby?
       @ctx.keystore =  File.expand_path "../../examples/puma/client-certs/keystore.jks", __FILE__
       @ctx.keystore_pass = 'blahblah'
     else
@@ -168,7 +168,7 @@ class TestPumaServerSSLClient < Minitest::Test
     assert_equal !!error, client_error
     # The JRuby MiniSSL implementation lacks error capturing currently, so we can't inspect the
     # messages here
-    unless defined?(JRUBY_VERSION)
+    unless Puma.jruby?
       assert_match error, events.error.message if error
       assert_equal @host, events.addr if error
       assert_equal subject, events.cert.subject.to_s if subject

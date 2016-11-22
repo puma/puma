@@ -2,7 +2,7 @@ require "test_helper"
 
 # UNIX sockets are not recommended on JRuby
 # (or Windows)
-unless defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
+unless Puma.jruby? || Puma.windows?
   class TestPumaUnixSocket < Minitest::Test
 
     App = lambda { |env| [200, {}, ["Works"]] }
