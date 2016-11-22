@@ -5,7 +5,9 @@ module Puma
     IS_JRUBY
   end
 
+  IS_WINDOWS = RUBY_PLATFORM =~ /mswin|ming|cygwin/
+
   def self.windows?
-    RUBY_PLATFORM =~ /mswin|ming|cygwin/
+    IS_WINDOWS
   end
 end
