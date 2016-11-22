@@ -1,11 +1,10 @@
-require "rbconfig"
-require 'test/unit'
-require 'testhelp'
+require "test_helper"
 
-require 'puma/binder'
-require 'puma/events'
+require "puma/binder"
+require "puma/events"
+require "puma/puma_http11"
 
-class TestBinder < Test::Unit::TestCase
+class TestBinder < Minitest::Test
 
   def setup
     @events = Puma::Events.new(STDOUT, STDERR)
@@ -13,7 +12,7 @@ class TestBinder < Test::Unit::TestCase
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
-    omit_on_jruby
+    skip_on_jruby
 
     @binder.parse(["tcp://localhost:10001"], @events)
 
@@ -21,7 +20,7 @@ class TestBinder < Test::Unit::TestCase
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
-    omit_on_jruby
+    skip_on_jruby
 
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__

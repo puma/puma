@@ -1,7 +1,8 @@
-require 'puma/null_io'
-require 'test/unit'
+require "test_helper"
 
-class TestNullIO < Test::Unit::TestCase
+require "puma/null_io"
+
+class TestNullIO < Minitest::Test
   attr_accessor :nio
   def setup
     self.nio = Puma::NullIO.new

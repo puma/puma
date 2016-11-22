@@ -1,10 +1,7 @@
-require 'minitest/autorun'
-require 'minitest/assertions'
+require "test_helper"
 
-require 'puma/tcp_logger'
-require 'socket'
-require 'puma/server'
-require 'puma/events'
+require "puma/events"
+require "puma/tcp_logger"
 
 class TestTCPLogger < Minitest::Test
 

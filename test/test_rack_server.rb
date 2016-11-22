@@ -1,10 +1,8 @@
-require 'test/unit'
-require 'puma'
-require 'rack/lint'
-require 'testhelp'
-require 'puma/commonlogger'
+require "test_helper"
 
-class TestRackServer < Test::Unit::TestCase
+require "rack"
+
+class TestRackServer < Minitest::Test
 
   class ErrorChecker
     def initialize(app)

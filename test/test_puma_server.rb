@@ -1,14 +1,6 @@
-require "rbconfig"
-require 'test/unit'
-require 'socket'
-require 'openssl'
+require "test_helper"
 
-require 'puma/minissl'
-require 'puma/server'
-
-require 'net/https'
-
-class TestPumaServer < Test::Unit::TestCase
+class TestPumaServer < Minitest::Test
 
   def setup
     @port = 0
@@ -195,7 +187,7 @@ class TestPumaServer < Test::Unit::TestCase
 
     data = sock.read
 
-    assert_not_match(/don't leak me bro/, data)
+    refute_match(/don't leak me bro/, data)
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
   end
 
@@ -304,7 +296,8 @@ class TestPumaServer < Test::Unit::TestCase
   end
 
   def test_timeout_in_data_phase
-    omit("Hangs too often, TODO: fix")
+    skip("Hangs too often, TODO: fix")
+
     @server.first_data_timeout = 2
     @server.add_tcp_listener @host, @port
     @server.run

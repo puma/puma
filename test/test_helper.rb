@@ -1,20 +1,17 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-require 'rubygems'
-require 'test/unit'
-require 'net/http'
-require 'digest/sha1'
-require 'uri'
-require 'stringio'
-
-require 'puma'
-require 'puma/detect'
+require "bundler/setup"
+require "minitest/autorun"
+require "minitest/pride"
+require "puma"
+require "puma/detect"
 
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
 def hit(uris)
   results = []
+
   uris.each do |u|
     res = nil
 
@@ -33,7 +30,7 @@ def hit(uris)
 end
 
 module TimeoutEveryTestCase
-  def run(*args)
+  def run(*)
     if !!ENV['CI']
       Timeout.timeout(60) { super }
     else
@@ -41,11 +38,13 @@ module TimeoutEveryTestCase
     end
   end
 end
-Test::Unit::TestCase.prepend TimeoutEveryTestCase
 
-module OmitTestsBasedOnRubyEngine
-  def omit_on_jruby
-    omit "Omitted on JRuby" if Puma.jruby?
+Minitest::Test.prepend TimeoutEveryTestCase
+
+module SkipTestsBasedOnRubyEngine
+  def skip_on_jruby
+    skip "Skipped on JRuby" if Puma.jruby?
   end
 end
-Test::Unit::TestCase.prepend OmitTestsBasedOnRubyEngine
+
+Minitest::Test.include SkipTestsBasedOnRubyEngine

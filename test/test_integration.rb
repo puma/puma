@@ -1,17 +1,11 @@
-require "rbconfig"
-require 'test/unit'
-require 'socket'
-require 'timeout'
-require 'net/http'
-require 'tempfile'
+require "test_helper"
 
-require 'puma/cli'
-require 'puma/control_cli'
-require 'puma/detect'
+require "puma/cli"
+require "puma/control_cli"
 
 # These don't run on travis because they're too fragile
 
-class TestIntegration < Test::Unit::TestCase
+class TestIntegration < Minitest::Test
   def setup
     @state_path = "test/test_puma.state"
     @bind_path = "test/test_server.sock"
@@ -116,7 +110,8 @@ class TestIntegration < Test::Unit::TestCase
   end
 
   def test_phased_restart_via_pumactl
-    omit("Too finicky, fails 50% of the time on CI.")
+    skip("Too finicky, fails 50% of the time on CI.")
+
     if Puma.jruby? || Puma.windows?
       assert true
       return

@@ -1,10 +1,10 @@
-require 'testhelp'
+require "test_helper"
 
-class Http10ParserTest < Test::Unit::TestCase
-  include Puma
+require "puma/puma_http11"
 
+class Http10ParserTest < Minitest::Test
   def test_parse_simple
-    parser = HttpParser.new
+    parser = Puma::HttpParser.new
     req = {}
     http = "GET / HTTP/1.0\r\n\r\n"
     nread = parser.execute(req, http, 0)
@@ -17,10 +17,10 @@ class Http10ParserTest < Test::Unit::TestCase
     assert_equal '/', req['REQUEST_PATH']
     assert_equal 'HTTP/1.0', req['HTTP_VERSION']
     assert_equal '/', req['REQUEST_URI']
-    assert_equal 'GET', req['REQUEST_METHOD']    
+    assert_equal 'GET', req['REQUEST_METHOD']
     assert_nil req['FRAGMENT']
     assert_nil req['QUERY_STRING']
-    
+
     parser.reset
     assert parser.nread == 0, "Number read after reset should be 0"
   end
