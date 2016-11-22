@@ -1,4 +1,4 @@
-require_relative "test_helper"
+require "test_helper"
 
 require "puma/events"
 require "puma/tcp_logger"
