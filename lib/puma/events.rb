@@ -46,7 +46,7 @@ module Puma
       @hooks[hook].each { |t| t.call(*args) }
     end
 
-    # Register a callbock for a given hook
+    # Register a callback for a given hook
     #
     def register(hook, obj=nil, &blk)
       if obj and blk
