@@ -4,8 +4,17 @@ require "puma/null_io"
 
 class TestNullIO < Minitest::Test
   attr_accessor :nio
+
   def setup
     self.nio = Puma::NullIO.new
+  end
+
+  def test_gets_returns_nil
+    assert_nil nio.gets
+  end
+
+  def test_each_never_yields
+    nio.each { raise "never yield" }
   end
 
   def test_read_with_no_arguments
@@ -26,7 +35,7 @@ class TestNullIO < Minitest::Test
 
   def test_read_with_length_and_buffer
     buf = ""
-    assert_nil nio.read(1,buf)
+    assert_nil nio.read(1, buf)
     assert_equal "", buf
   end
 
