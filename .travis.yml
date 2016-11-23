@@ -6,7 +6,7 @@ cache: bundler
 before_install:
   # bundler installation needed for jruby-head
   # https://github.com/travis-ci/travis-ci/issues/5861
-  - gem install bundler
+  - gem install bundler -v 1.11.2
 script: "TESTOPTS=-v bundle exec rake test"
 branches:
   only: [master]
