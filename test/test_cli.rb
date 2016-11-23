@@ -62,7 +62,7 @@ class TestCLI < Minitest::Test
     t.join
   end
 
-  unless defined?(JRUBY_VERSION) || RbConfig::CONFIG["host_os"] =~ /mingw|mswin/
+  unless Puma.jruby? || Puma.windows?
   def test_control_clustered
     url = "unix://#{@tmp_path}"
 

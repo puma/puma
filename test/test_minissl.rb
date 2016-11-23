@@ -4,7 +4,7 @@ require "puma/minissl"
 
 class TestMiniSSL < Minitest::Test
 
-  if defined?(JRUBY_VERSION)
+  if Puma.jruby?
     def test_raises_with_invalid_keystore_file
       ctx = Puma::MiniSSL::Context.new
 
