@@ -35,8 +35,6 @@ module Puma
 
       @debug = ENV.key? 'PUMA_DEBUG'
 
-      @on_booted = []
-
       @hooks = Hash.new { |h,k| h[k] = [] }
     end
 
@@ -49,7 +47,7 @@ module Puma
       @hooks[hook].each { |t| t.call(*args) }
     end
 
-    # Register a callbock for a given hook
+    # Register a callback for a given hook
     #
     def register(hook, obj=nil, &blk)
       if obj and blk
@@ -125,12 +123,12 @@ module Puma
       end
     end
 
-    def on_booted(&b)
-      @on_booted << b
+    def on_booted(&block)
+      register(:on_booted, &block)
     end
 
     def fire_on_booted!
-      @on_booted.each { |b| b.call }
+      fire(:on_booted)
     end
 
     DEFAULT = new(STDOUT, STDERR)
