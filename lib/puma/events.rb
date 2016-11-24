@@ -1,4 +1,5 @@
 require 'puma/const'
+require "puma/null_io"
 require 'stringio'
 
 module Puma
