@@ -5,9 +5,8 @@ require "puma/events"
 require "puma/puma_http11"
 
 class TestBinder < Minitest::Test
-
   def setup
-    @events = Puma::Events.new(STDOUT, STDERR)
+    @events = Puma::Events.null
     @binder = Puma::Binder.new(@events)
   end
 
@@ -29,5 +28,4 @@ class TestBinder < Minitest::Test
 
     assert_equal [], @binder.listeners
   end
-
 end
