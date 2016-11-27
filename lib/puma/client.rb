@@ -216,7 +216,6 @@ module Puma
     end
 
     def setup_body
-      @in_data_phase = true
       @read_header = false
 
       body = @parser.body
