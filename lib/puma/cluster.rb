@@ -6,6 +6,8 @@ require 'time'
 
 module Puma
   class Cluster < Runner
+    WORKER_CHECK_INTERVAL = 5
+
     def initialize(cli, events)
       super cli, events
 
@@ -152,7 +154,7 @@ module Puma
     def check_workers(force=false)
       return if !force && @next_check && @next_check >= Time.now
 
-      @next_check = Time.now + 5
+      @next_check = Time.now + WORKER_CHECK_INTERVAL
 
       any = false
 
@@ -256,7 +258,7 @@ module Puma
         base_payload = "p#{Process.pid}"
 
         while true
-          sleep 5
+          sleep WORKER_CHECK_INTERVAL
           begin
             b = server.backlog
             r = server.running
@@ -448,7 +450,7 @@ module Puma
 
             force_check = false
 
-            res = IO.select([read], nil, nil, 5)
+            res = IO.select([read], nil, nil, WORKER_CHECK_INTERVAL)
 
             if res
               req = read.read_nonblock(1)
