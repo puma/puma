@@ -141,6 +141,19 @@ module Puma
       end
     end
 
+    def cull_workers
+      diff = @workers.size - @options[:workers]
+      return if diff < 1
+      log "Culling #{diff.inspect} workers"
+
+      workers_to_cull = @workers[-diff,diff]
+      log "Workers to cull: #{workers_to_cull.inspect}"
+      workers_to_cull.each do |worker|
+        log "- Worker #{worker.index} (pid: #{worker.pid}) terminating"
+        worker.term
+      end
+    end
+
     def next_worker_index
       all_positions =  0...@options[:workers]
       occupied_positions = @workers.map { |w| w.index }
@@ -181,6 +194,7 @@ module Puma
 
       @workers.delete_if(&:dead?)
 
+      cull_workers
       spawn_workers
 
       if all_workers_booted?
@@ -343,7 +357,6 @@ module Puma
 
       Signal.trap "TTOU" do
         @options[:workers] -= 1 if @options[:workers] >= 2
-        @workers.last.term
         wakeup!
       end
 
