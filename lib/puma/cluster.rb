@@ -115,6 +115,7 @@ module Puma
 
     def spawn_workers
       diff = @options[:workers] - @workers.size
+      return if diff < 1
 
       master = Process.pid
 
