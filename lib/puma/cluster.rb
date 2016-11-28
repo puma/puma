@@ -144,10 +144,12 @@ module Puma
     def cull_workers
       diff = @workers.size - @options[:workers]
       return if diff < 1
-      log "Culling #{diff.inspect} workers"
+
+      debug "Culling #{diff.inspect} workers"
 
       workers_to_cull = @workers[-diff,diff]
-      log "Workers to cull: #{workers_to_cull.inspect}"
+      debug "Workers to cull: #{workers_to_cull.inspect}"
+
       workers_to_cull.each do |worker|
         log "- Worker #{worker.index} (pid: #{worker.pid}) terminating"
         worker.term
