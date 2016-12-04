@@ -9,6 +9,10 @@ class TestNullIO < Minitest::Test
     self.nio = Puma::NullIO.new
   end
 
+  def test_eof_returns_true
+    assert nio.eof?
+  end
+
   def test_gets_returns_nil
     assert_nil nio.gets
   end
