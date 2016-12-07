@@ -155,13 +155,36 @@ class TestIntegration < Test::Unit::TestCase
     @events.stdout.rewind
     log = @events.stdout.readlines.join("")
     assert_match(/TERM sent/, log)
-    assert_match(/Worker \d \(pid: \d+\) booted, phase: 1/, log)
+    assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
 
     # Stop
     ccli = Puma::ControlCLI.new %W!-S #{@state_path} stop!, sout
     ccli.run
 
     assert_kind_of Thread, t.join(5), "server didn't stop"
+  end
+
+  def test_kill_unknown_via_pumactl
+    if Puma.jruby? || Puma.windows?
+      assert true
+      return
+    end
+
+    # we run ls to get a 'safe' pid to pass off as puma in cli stop
+    # do not want to accidently kill a valid other process
+    io = IO.popen("ls")
+    safe_pid = io.pid
+    Process.wait safe_pid
+
+    sout = StringIO.new
+
+    e = assert_raises SystemExit do
+      ccli = Puma::ControlCLI.new %W!-p #{safe_pid} stop!, sout
+      ccli.run
+    end
+    sout.rewind
+    assert_match(/No pid '\d+' found/, sout.readlines.join(""))
+    assert_equal(1, e.status)
   end
 
   def test_restart_closes_keepalive_sockets
