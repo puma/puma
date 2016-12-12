@@ -26,6 +26,10 @@ module Puma
       0
     end
 
+    def eof?
+      true
+    end
+
     def sync=(v)
     end
 
