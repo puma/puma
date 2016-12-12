@@ -168,3 +168,30 @@ Apr 07 08:40:19 hx puma[28320]: * Activated tcp://0.0.0.0:9233
 Apr 07 08:40:19 hx puma[28320]: * Activated ssl://0.0.0.0:9234?key=key.pem&cert=cert.pem
 Apr 07 08:40:19 hx puma[28320]: Use Ctrl-C to stop
 ~~~~
+
+## Alternative background process configuration
+
+If Capistrano and [capistrano3-puma](https://github.com/seuros/capistrano-puma) tasks are used you can use the following configuration. In this case, you would skip systemd Socket Activation, since Puma handles the socket by itself:
+
+~~~~
+[Service]
+# Background process configuration (use with --daemon in ExecStart)
+Type=forking
+
+# To learn which exact command is to be used to execute at "ExecStart" of this
+# Service, ask Capistrano: `cap <stage> puma:start --dry-run`. Your result
+# may differ from this example, for example if you use a Ruby version
+# manager. `<WD>` is short for "your working directory". Replace it with your
+# path.
+ExecStart=bundle exec puma -C <WD>/shared/puma.rb --daemon
+
+# To learn which exact command is to be used to execute at "ExecStop" of this
+# Service, ask Capistrano: `cap <stage> puma:stop --dry-run`. Your result
+# may differ from this example, for example if you use a Ruby version
+# manager. `<WD>` is short for "your working directory". Replace it with your
+# path.
+ExecStop=bundle exec pumactl -S <WD>/shared/tmp/pids/puma.state stop
+
+# PIDFile setting is required in order to work properly
+PIDFile=<WD>/shared/tmp/pids/puma.pid
+~~~~
