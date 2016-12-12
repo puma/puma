@@ -179,39 +179,39 @@ module Puma
       end
 
       begin
-        Process.getpgid @pid
+
+        case @command
+        when "restart"
+          Process.kill "SIGUSR2", @pid
+
+        when "halt"
+          Process.kill "QUIT", @pid
+
+        when "stop"
+          Process.kill "SIGTERM", @pid
+
+        when "stats"
+          puts "Stats not available via pid only"
+          return
+
+        when "reload-worker-directory"
+          puts "reload-worker-directory not available via pid only"
+          return
+
+        when "phased-restart"
+          Process.kill "SIGUSR1", @pid
+
+        else
+          message "Puma is started"
+          return
+        end
+
       rescue SystemCallError
         if @command == "restart"
           start
         else
           raise "No pid '#{@pid}' found"
         end
-      end
-
-      case @command
-      when "restart"
-        Process.kill "SIGUSR2", @pid
-
-      when "halt"
-        Process.kill "QUIT", @pid
-
-      when "stop"
-        Process.kill "SIGTERM", @pid
-
-      when "stats"
-        puts "Stats not available via pid only"
-        return
-
-      when "reload-worker-directory"
-        puts "reload-worker-directory not available via pid only"
-        return
-
-      when "phased-restart"
-        Process.kill "SIGUSR1", @pid
-
-      else
-        message "Puma is started"
-        return
       end
 
       message "Command #{@command} sent success"
