@@ -1,5 +1,5 @@
 require 'optparse'
-require 'puma'
+require 'puma/state_file'
 require 'puma/const'
 require 'puma/detect'
 require 'puma/configuration'
