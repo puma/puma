@@ -256,7 +256,7 @@ module Puma
         wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
         args = [Gem.ruby, wild, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
-        argv += [{:close_others => false}] if RUBY_VERSION >= '2.0'
+        args += [{:close_others => false}] if RUBY_VERSION >= '2.0'
         Kernel.exec(*args)
       end
     end
