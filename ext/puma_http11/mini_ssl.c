@@ -87,6 +87,8 @@ DH *get_dh1024() {
 
   DH *dh;
   dh = DH_new();
+
+#if OPENSSL_VERSION_NUMBER < 0x10100005L
   dh->p = BN_bin2bn(dh1024_p, sizeof(dh1024_p), NULL);
   dh->g = BN_bin2bn(dh1024_g, sizeof(dh1024_g), NULL);
 
@@ -94,6 +96,18 @@ DH *get_dh1024() {
     DH_free(dh);
     return NULL;
   }
+#else
+  BIGNUM *p, *g;
+  p = BN_bin2bn(dh1024_p, sizeof(dh1024_p), NULL);
+  g = BN_bin2bn(dh1024_g, sizeof(dh1024_g), NULL);
+
+  if (p == NULL || g == NULL || !DH_set0_pqg(dh, p, NULL, g)) {
+    DH_free(dh);
+    BN_free(p);
+    BN_free(g);
+    return NULL;
+  }
+#endif
 
   return dh;
 }
