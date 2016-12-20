@@ -566,7 +566,7 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
 
       env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
+      env[RACK_URL_SCHEME] = (env[HTTPS_KEY] || env['HTTP_X_FORWARDED_PROTO'] == 'https') ? HTTPS : HTTP
 
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
