@@ -107,12 +107,20 @@ module Puma
       append = @options[:redirect_append]
 
       if stdout
+        unless Dir.exists?(File.dirname(stdout))
+          raise "Cannot redirect STDOUT to #{stdout}"
+        end
+
         STDOUT.reopen stdout, (append ? "a" : "w")
         STDOUT.sync = true
         STDOUT.puts "=== puma startup: #{Time.now} ==="
       end
 
       if stderr
+        unless Dir.exists?(File.dirname(stderr))
+          raise "Cannot redirect STDERR to #{stderr}"
+        end
+
         STDERR.reopen stderr, (append ? "a" : "w")
         STDERR.sync = true
         STDERR.puts "=== puma startup: #{Time.now} ==="
