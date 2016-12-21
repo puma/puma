@@ -6,6 +6,8 @@ require 'time'
 
 module Puma
   class Cluster < Runner
+    WORKER_CHECK_INTERVAL = 5
+
     def initialize(cli, events)
       super cli, events
 
@@ -113,6 +115,7 @@ module Puma
 
     def spawn_workers
       diff = @options[:workers] - @workers.size
+      return if diff < 1
 
       master = Process.pid
 
@@ -138,6 +141,21 @@ module Puma
       end
     end
 
+    def cull_workers
+      diff = @workers.size - @options[:workers]
+      return if diff < 1
+
+      debug "Culling #{diff.inspect} workers"
+
+      workers_to_cull = @workers[-diff,diff]
+      debug "Workers to cull: #{workers_to_cull.inspect}"
+
+      workers_to_cull.each do |worker|
+        log "- Worker #{worker.index} (pid: #{worker.pid}) terminating"
+        worker.term
+      end
+    end
+
     def next_worker_index
       all_positions =  0...@options[:workers]
       occupied_positions = @workers.map { |w| w.index }
@@ -152,7 +170,7 @@ module Puma
     def check_workers(force=false)
       return if !force && @next_check && @next_check >= Time.now
 
-      @next_check = Time.now + 5
+      @next_check = Time.now + WORKER_CHECK_INTERVAL
 
       any = false
 
@@ -178,6 +196,7 @@ module Puma
 
       @workers.delete_if(&:dead?)
 
+      cull_workers
       spawn_workers
 
       if all_workers_booted?
@@ -256,7 +275,7 @@ module Puma
         base_payload = "p#{Process.pid}"
 
         while true
-          sleep 5
+          sleep WORKER_CHECK_INTERVAL
           begin
             b = server.backlog
             r = server.running
@@ -340,7 +359,6 @@ module Puma
 
       Signal.trap "TTOU" do
         @options[:workers] -= 1 if @options[:workers] >= 2
-        @workers.last.term
         wakeup!
       end
 
@@ -448,7 +466,7 @@ module Puma
 
             force_check = false
 
-            res = IO.select([read], nil, nil, 5)
+            res = IO.select([read], nil, nil, WORKER_CHECK_INTERVAL)
 
             if res
               req = read.read_nonblock(1)
