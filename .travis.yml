@@ -13,6 +13,7 @@ branches:
 rvm:
   - 2.2.6
   - 2.3.3
+  - 2.4.0
   - ruby-head
   - jruby-9.1.6.0
   - jruby-head
