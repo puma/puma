@@ -860,6 +860,22 @@ module Puma
         @events.debug "Drained #{count} additional connections."
       end
 
+      if @options[:reject_when_shutting_down]
+        Thread.new do
+          while true
+            ios = IO.select @binder.ios
+            ios.first.each do |sock|
+              begin
+                if io = sock.accept_nonblock
+                  io.close
+                end
+              rescue SystemCallError
+              end
+            end
+          end
+        end
+      end
+
       if @thread_pool
         if timeout = @options[:force_shutdown_after]
           @thread_pool.shutdown timeout.to_i

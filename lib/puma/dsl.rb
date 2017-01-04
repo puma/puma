@@ -161,6 +161,13 @@ module Puma
       @options[:drain_on_shutdown] = which
     end
 
+    # Immediately close connections when in graceful shutdown mode rather than
+    # not accepting them. This signals to downstream proxies that requests for
+    # the server should go somewhere else.
+    def reject_when_shutting_down(which=true)
+      @options[:reject_when_shutting_down] = which
+    end
+
     # Set the environment in which the Rack's app will run.
     def environment(environment)
       @options[:environment] = environment
