@@ -1,4 +1,43 @@
-=== 3.6.2 / 2016-11-22
+## 3.7.0 / 2017-01-04
+
+* 6 minor features:
+  * Allow rack handler to accept ssl host. (#1129)
+  * Refactor TTOU processing. TTOU now handles multiple signals at once. (#1165)
+  * Pickup any remaining chunk data as the next request.
+  * Prevent short term thread churn - increased auto trim default to 30 seconds.
+  * Raise error when `stdout` or `stderr` is not writable. (#1175)
+  * Add Rack 2.0 support to gemspec. (#1068)
+
+* 5 refactors:
+  * Compare host and server name only once per call. (#1091)
+  * Minor refactor on Thread pool (#1088)
+  * Removed a ton of unused constants, variables and files.
+  * Use MRI macros when allocating heap memory
+  * Use hooks for on_booted event. (#1160)
+
+* 14 bugfixes:
+  * Add eof? method to NullIO? (#1169)
+  * Fix Puma startup in provided init.d script (#1061)
+  * Fix default SSL mode back to none. (#1036)
+  * Fixed the issue of @listeners getting nil io (#1120)
+  * Make `get_dh1024` compatible with OpenSSL v1.1.0 (#1178)
+  * More gracefully deal with SSL sessions. Fixes #1002
+  * Move puma.rb to just autoloads. Fixes #1063
+  * MiniSSL: Provide write as <<. Fixes #1089
+  * Prune bundler should inherit fds (#1114)
+  * Replace use of Process.getpgid which does not behave as intended on all platforms (#1110)
+  * Transfer encoding header should be downcased before comparison (#1135)
+  * Use same write log logic for hijacked requests. (#1081)
+  * Fix `uninitialized constant Puma::StateFile` (#1138)
+  * Fix access priorities of each level in LeveledOptions (#1118)
+
+* 3 others:
+
+  * Lots of tests added/fixed/improved. Switched to Minitest from Test::Unit. Big thanks to @frodsan.
+  * Lots of documentation added/improved.
+  * Add license indicators to the HTTP extension. (#1075)
+
+## 3.6.2 / 2016-11-22
 
 * 1 bug fix:
 
@@ -6,7 +45,7 @@
     had an unintentional side effect of changing the importance of command line
     options, such as -p.
 
-=== 3.6.1 / 2016-11-21
+## 3.6.1 / 2016-11-21
 
 * 8 bug fixes:
 
