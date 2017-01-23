@@ -299,7 +299,7 @@ module Puma
 
       if host == "localhost"
         localhost_addresses.each do |addr|
-          add_ssl_listener addr, port, optimize_for_latency, backlog
+          add_ssl_listener addr, port, ctx, optimize_for_latency, backlog
         end
         return
       end
