@@ -1,3 +1,5 @@
+.github/
+gemfiles/
 .hoeignore
 .gitignore
 .travis.yml
