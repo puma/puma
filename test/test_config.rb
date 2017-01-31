@@ -67,6 +67,17 @@ class TestConfigFile < Minitest::Test
     assert_equal conf.options[:workers], 4
   end
 
+  def test_parameters_overwrite_files
+    conf = Puma::Configuration.new(config_files: ['test/config/settings.rb']) do |c|
+      c.port 3030
+    end
+    conf.load
+
+    assert_match(/:3030$/, conf.options[:binds].first)
+    assert_equal 3, conf.options[:min_threads]
+    assert_equal 5, conf.options[:max_threads]
+  end
+
   private
 
     def with_env(env = {})
