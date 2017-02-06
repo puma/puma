@@ -875,9 +875,10 @@ module Puma
       rescue IOError
         # The server, in another thread, is shutting down
       rescue RuntimeError => e
-        raise e unless e.message.include?('frozen')
+        raise e unless e.message.include?('IOError')
       end
     end
+    private :notify_safely
 
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.
