@@ -30,6 +30,11 @@ module Puma
       @set << @cur
     end
 
+    def reverse_shift
+      @cur = {}
+      @set.unshift(@cur)
+    end
+
     def [](key)
       @set.each do |o|
         if o.key? key
@@ -201,10 +206,11 @@ module Puma
       end
 
       files.each do |f|
-        @options.shift
+        @options.reverse_shift
 
         DSL.load @options, self, f
       end
+      @options.shift
     end
 
     # Call once all configuration (included from rackup files)
