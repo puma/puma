@@ -898,6 +898,8 @@ module Puma
       rescue IOError
         # The server, in another thread, is shutting down
       rescue RuntimeError => e
+        # The server, in another thread, has been shut down during the system call
+        # https://github.com/puma/puma/pull/1206
         raise e unless e.message.include?('IOError')
       end
     end
