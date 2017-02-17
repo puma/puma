@@ -36,7 +36,7 @@ module Puma
     end
 
     def [](key)
-      @set.reverse_each do |o|
+      @set.each do |o|
         if o.key? key
           return o[key]
         end
