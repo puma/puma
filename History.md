@@ -1,3 +1,9 @@
+## 3.7.1 / 2017-02-20
+
+* 2 bugfixes:
+  * Fix typo which blew up MiniSSL (#1182)
+  * Stop overriding command-line options with the config file (#1203)
+
 ## 3.7.0 / 2017-01-04
 
 * 6 minor features:
