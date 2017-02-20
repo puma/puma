@@ -1,3 +1,4 @@
+.github/issue_template.md
 DEPLOYMENT.md
 Gemfile
 History.md
@@ -25,6 +26,7 @@ ext/puma_http11/org/jruby/puma/Http11.java
 ext/puma_http11/org/jruby/puma/Http11Parser.java
 ext/puma_http11/org/jruby/puma/MiniSSL.java
 ext/puma_http11/puma_http11.c
+gemfiles/2.1-Gemfile
 lib/puma.rb
 lib/puma/accept_nonblock.rb
 lib/puma/app/status.rb
