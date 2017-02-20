@@ -6,6 +6,7 @@ LICENSE
 Manifest.txt
 README.md
 Rakefile
+Release.md
 bin/puma
 bin/puma-wild
 bin/pumactl
