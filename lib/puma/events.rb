@@ -91,8 +91,8 @@ module Puma
     # parsing exception.
     #
     def parse_error(server, env, error)
-      @stderr.puts "#{Time.now}: HTTP parse error, malformed request (#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]}): #{error.inspect}"
-      @stderr.puts "#{Time.now}: ENV: #{env.inspect}\n---\n"
+      debug("#{Time.now}: HTTP parse error, malformed request (#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]}): #{error.inspect}")
+      debug("#{Time.now}: ENV: #{env.inspect}\n---\n")
     end
 
     # An SSL error has occurred.
