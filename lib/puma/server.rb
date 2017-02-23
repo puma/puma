@@ -238,6 +238,7 @@ module Puma
       end
 
       queue_requests = @queue_requests
+      @fast_track_ka_timeout = fast_track_ka_timeout
 
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
@@ -424,7 +425,7 @@ module Puma
 
             ThreadPool.clean_thread_locals if clean_thread_locals
 
-            unless client.reset(@status == :run)
+            unless client.reset(@status == :run && @fast_track_ka_timeout)
               close_socket = false
               client.set_timeout @persistent_timeout
               @reactor.add client
@@ -477,6 +478,16 @@ module Puma
         end
       end
     end
+
+    # Compute maximum time to wait for another request arriving on
+    # a client when keep-alive is enabled.
+    # If the pool we created has a maximum of one worker thread we
+    # can't afford to let it wait for the next request while other
+    # work might be pending.
+    def fast_track_ka_timeout
+      @max_threads > 1 ? FAST_TRACK_KA_TIMEOUT : 0.0
+    end
+    private :fast_track_ka_timeout
 
     # Given a Hash +env+ for the request read from +client+, add
     # and fixup keys to comply with Rack's env guidelines.
