@@ -54,4 +54,42 @@ class TestPathHandler < Minitest::Test
     end
   end
 
+  def test_user_supplied_port_wins_over_config_file
+    user_port = 5001
+    file_port = 6001
+    options = {}
+
+    Tempfile.open("puma.rb") do |f|
+      f.puts "port #{file_port}"
+      f.close
+
+      options[:config_files]          = [f.path]
+      options[:user_supplied_options] = [:Port]
+      options[:Port]                  = user_port
+
+      conf = Rack::Handler::Puma.config(app, options)
+      conf.load
+      assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+    end
+  end
+
+  def test_default_port_loses_to_config_file
+    user_port = 5001
+    file_port = 6001
+    options = {}
+
+    Tempfile.open("puma.rb") do |f|
+      f.puts "port #{file_port}"
+      f.close
+
+      options[:config_files]          = [f.path]
+      options[:user_supplied_options] = []
+      options[:Port]                  = user_port
+
+      conf = Rack::Handler::Puma.config(app, options)
+      conf.load
+      puts conf.options[:binds]
+      assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
+    end
+  end
 end
