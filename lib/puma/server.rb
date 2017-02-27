@@ -100,6 +100,8 @@ module Puma
     # packetizes our stream. This improves both latency and throughput.
     #
     if RUBY_PLATFORM =~ /linux/
+      UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
+
       # 6 == Socket::IPPROTO_TCP
       # 3 == TCP_CORK
       # 1/0 == turn on/off
@@ -116,11 +118,23 @@ module Puma
         rescue IOError, SystemCallError
         end
       end
+
+      def closed_socket?(socket)
+        return false unless socket.kind_of? TCPSocket
+        tcp_info = socket.getsockopt(Socket::SOL_TCP, Socket::TCP_INFO)
+        state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
+        # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
+        (state >= 6 && state <= 9) || state == 11
+      end
     else
       def cork_socket(socket)
       end
 
       def uncork_socket(socket)
+      end
+
+      def closed_socket?(socket)
+        false
       end
     end
 
@@ -549,6 +563,8 @@ module Puma
     def handle_request(req, lines)
       env = req.env
       client = req.io
+
+      return false if closed_socket?(client)
 
       normalize_env env, req
 
