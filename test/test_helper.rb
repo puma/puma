@@ -1,7 +1,12 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-require "bundler/setup"
+begin
+  require "bundler/setup"
+rescue LoadError
+  require "net/http"
+  require "timeout"
+end
 require "minitest/autorun"
 require "minitest/pride"
 require "puma"
