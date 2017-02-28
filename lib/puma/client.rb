@@ -216,6 +216,13 @@ module Puma
     end
 
     def setup_body
+      if @env[HTTP_EXPECT] == CONTINUE
+        # TODO allow a hook here to check the headers before
+        # going forward
+        @io << HTTP_11_100
+        @io.flush
+      end
+
       @read_header = false
 
       body = @parser.body
