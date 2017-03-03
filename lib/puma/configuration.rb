@@ -77,9 +77,10 @@ module Puma
       return cfg
     end
 
-    def initialize(options={}, &blk)
+    def initialize(options={}, default_options = {}, &blk)
+      default_options = self.puma_default_options.merge(default_options)
 
-      @options  = UserFileDefaultOptions.new(options, self.default_options)
+      @options  = UserFileDefaultOptions.new(options, default_options)
       @plugins  = PluginLoader.new
       @user_dsl    = DSL.new(@options.user_options, self)
       @file_dsl    = DSL.new(@options.file_options, self)
@@ -115,7 +116,7 @@ module Puma
       self
     end
 
-    def default_options
+    def puma_default_options
       {
         :min_threads => 0,
         :max_threads => 16,

@@ -13,6 +13,8 @@ require "minitest/pride"
 require "puma"
 require "puma/detect"
 
+$LOAD_PATH << File.expand_path("../../lib", __FILE__)
+
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
 def hit(uris)

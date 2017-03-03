@@ -13,9 +13,20 @@ module Rack
         require 'puma/events'
         require 'puma/launcher'
 
-        options = DEFAULT_OPTIONS.merge(options)
+        default_options = DEFAULT_OPTIONS.dup
 
-        conf = ::Puma::Configuration.new(options) do |user_config, file_config, default_config|
+        # Libraries pass in values such as :Port and there is no way to determine
+        # if it is a default provided by the library or a special value provided
+        # by the user. A special key `user_supplied_options` can be passed. This
+        # contains an array of all explicitly defined user options. We then
+        # know that all other values are defaults
+        if user_supplied_options = options.delete(:user_supplied_options)
+          (options.keys - user_supplied_options).each do |k, v|
+            default_options[k] = options.delete(k)
+          end
+        end
+
+        conf = ::Puma::Configuration.new(options, default_options) do |user_config, file_config, default_config|
           user_config.quiet
 
           if options.delete(:Verbose)
@@ -31,29 +42,15 @@ module Rack
             user_config.threads min, max
           end
 
-          host = options[:Host]
-
-          if host && (host[0,1] == '.' || host[0,1] == '/')
-            user_config.bind "unix://#{host}"
-          elsif host && host =~ /^ssl:\/\//
-            uri = URI.parse(host)
-            uri.port ||= options[:Port] || ::Puma::Configuration::DefaultTCPPort
-            user_config.bind uri.to_s
-          else
-            if host
-              options[:Port] ||= ::Puma::Configuration::DefaultTCPPort
-            end
-
-            if port = options[:Port]
-              host ||= ::Puma::Configuration::DefaultTCPHost
-              user_config.port port, host
-            end
-          end
+          self.set_host_port_to_config(options[:Host], options[:Port], user_config)
+          self.set_host_port_to_config(default_options[:Host], default_options[:Port], default_config)
 
           user_config.app app
         end
         conf
       end
+
+
 
       def self.run(app, options = {})
         conf   = self.config(app, options)
@@ -79,6 +76,26 @@ module Rack
           "Threads=MIN:MAX" => "min:max threads to use (default 0:16)",
           "Verbose"         => "Don't report each request (default: false)"
         }
+      end
+    private
+      def self.set_host_port_to_config(host, port, config)
+        if host && (host[0,1] == '.' || host[0,1] == '/')
+          config.bind "unix://#{host}"
+        elsif host && host =~ /^ssl:\/\//
+          uri = URI.parse(host)
+          uri.port ||= port || ::Puma::Configuration::DefaultTCPPort
+          config.bind uri.to_s
+        else
+
+          if host
+            port ||= ::Puma::Configuration::DefaultTCPPort
+          end
+
+          if port
+            host ||= ::Puma::Configuration::DefaultTCPHost
+            config.port port, host
+          end
+        end
       end
     end
 
