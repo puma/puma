@@ -59,6 +59,7 @@ module Puma
       @config.load
 
       @options = @config.options
+      @config.clamp
 
       generate_restart_data
 

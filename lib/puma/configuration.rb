@@ -151,11 +151,24 @@ module Puma
       user    = user_options[key]
       file    = file_options[key]
       default = default_options[key]
+
       user    = [user]    unless user.is_a?(Array)
       file    = [file]    unless file.is_a?(Array)
       default = [default] unless default.is_a?(Array)
 
+      user.compact!
+      file.compact!
+      default.compact!
+
       user + file + default
+    end
+
+    def force_defaults
+      @default_options.each do |k,v|
+        if v.respond_to? :call
+          @default_options[k] = v.call
+        end
+      end
     end
   end
 
@@ -189,9 +202,9 @@ module Puma
     end
 
     def initialize_copy(other)
-      @conf = nil
+      @conf        = nil
       @cli_options = nil
-      @options = @options.dup
+      @options     = @options.dup
     end
 
     def flatten
@@ -218,7 +231,7 @@ module Puma
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
         :remote_address => :socket,
         :tag => method(:infer_tag),
-        :environment => ENV['RACK_ENV'] || "development",
+        :environment => ->{ ENV['RACK_ENV'] || "development" },
         :rackup => DefaultRackup,
         :logger => STDOUT,
         :persistent_timeout => Const::PERSISTENT_TIMEOUT
@@ -247,7 +260,6 @@ module Puma
     # Call once all configuration (included from rackup files)
     # is loaded to flesh out any defaults
     def clamp
-      @options.shift
       @options.force_defaults
     end
 
@@ -349,17 +361,15 @@ module Puma
     def load_rackup
       raise "Missing rackup file '#{rackup}'" unless File.exist?(rackup)
 
-      @options.shift
-
       rack_app, rack_options = rack_builder.parse_file(rackup)
-      @options.merge!(rack_options)
+      @options.file_options.merge!(rack_options)
 
       config_ru_binds = []
       rack_options.each do |k, v|
         config_ru_binds << v if k.to_s.start_with?("bind")
       end
 
-      @options[:binds] = config_ru_binds unless config_ru_binds.empty?
+      @options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
     end
