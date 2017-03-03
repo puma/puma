@@ -40,10 +40,14 @@ module Rack
             uri.port ||= options[:Port] || ::Puma::Configuration::DefaultTCPPort
             user_config.bind uri.to_s
           else
-            host ||= ::Puma::Configuration::DefaultTCPHost
-            port = options[:Port] || ::Puma::Configuration::DefaultTCPPort
+            if host
+              options[:Port] ||= ::Puma::Configuration::DefaultTCPPort
+            end
 
-            user_config.port port, host
+            if port = options[:Port]
+              host ||= ::Puma::Configuration::DefaultTCPHost
+              user_config.port port, host
+            end
           end
 
           user_config.app app
