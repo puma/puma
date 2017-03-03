@@ -34,10 +34,11 @@ def hit(uris)
   return results
 end
 
+require 'timeout'
 module TimeoutEveryTestCase
   def run(*)
     if !!ENV['CI']
-      Timeout.timeout(60) { super }
+      ::Timeout.timeout(60) { super }
     else
       super
     end
