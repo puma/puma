@@ -13,119 +13,152 @@ module Puma
     DefaultWorkerShutdownTimeout = 30
   end
 
-  class LeveledOptions
-    def initialize(default_options, user_options)
-      @cur = user_options
-      @set = [@cur]
-      @defaults = default_options.dup
+  # class LeveledOptions
+  #   def initialize(default_options, user_options)
+  #     @cur = user_options
+  #     @set = [@cur]
+  #     @defaults = default_options.dup
+  #   end
+
+  #   def initialize_copy(other)
+  #     @set = @set.map { |o| o.dup }
+  #     @cur = @set.last
+  #   end
+
+  #   def shift
+  #     @cur = {}
+  #     @set << @cur
+  #   end
+
+  #   def reverse_shift
+  #     @cur = {}
+  #     @set.unshift(@cur)
+  #   end
+
+  #   def [](key)
+  #     @set.reverse_each do |o|
+  #       if o.key? key
+  #         return o[key]
+  #       end
+  #     end
+
+  #     v = @defaults[key]
+  #     if v.respond_to? :call
+  #       v.call
+  #     else
+  #       v
+  #     end
+  #   end
+
+  #   def fetch(key, default=nil)
+  #     val = self[key]
+  #     return val if val
+  #     default
+  #   end
+
+  #   attr_reader :cur
+
+  #   def all_of(key)
+  #     all = []
+
+  #     @set.each do |o|
+  #       if v = o[key]
+  #         if v.kind_of? Array
+  #           all += v
+  #         else
+  #           all << v
+  #         end
+  #       end
+  #     end
+
+  #     all
+  #   end
+
+  #   def []=(key, val)
+  #     @cur[key] = val
+  #   end
+
+  #   def key?(key)
+  #     @set.each do |o|
+  #       if o.key? key
+  #         return true
+  #       end
+  #     end
+
+  #     @default.key? key
+  #   end
+
+  #   def merge!(o)
+  #     o.each do |k,v|
+  #       @cur[k]= v
+  #     end
+  #   end
+
+  #   def flatten
+  #     options = {}
+
+  #     @set.each do |o|
+  #       o.each do |k,v|
+  #         options[k] ||= v
+  #       end
+  #     end
+
+  #     options
+  #   end
+
+  #   def explain
+  #     indent = ""
+
+  #     @set.each do |o|
+  #       o.keys.sort.each do |k|
+  #         puts "#{indent}#{k}: #{o[k].inspect}"
+  #       end
+
+  #       indent = "  #{indent}"
+  #     end
+  #   end
+
+  #   def force_defaults
+  #     @defaults.each do |k,v|
+  #       if v.respond_to? :call
+  #         @defaults[k] = v.call
+  #       end
+  #     end
+  #   end
+  # end
+
+
+  class UserFileDefaultOptions
+    def initialize(user_options, default_options)
+      @user_options    = user_options
+      @file_options    = {}
+      @default_options = default_options
     end
 
-    def initialize_copy(other)
-      @set = @set.map { |o| o.dup }
-      @cur = @set.last
-    end
-
-    def shift
-      @cur = {}
-      @set << @cur
-    end
-
-    def reverse_shift
-      @cur = {}
-      @set.unshift(@cur)
-    end
+    attr_reader :user_options, :file_options, :default_options
 
     def [](key)
-      @set.reverse_each do |o|
-        if o.key? key
-          return o[key]
-        end
-      end
-
-      v = @defaults[key]
-      if v.respond_to? :call
-        v.call
-      else
-        v
-      end
+      return user_options[key]    if user_options.key?(key)
+      return file_options[key]    if file_options.key?(key)
+      return default_options[key] if default_options.key?(key)
     end
 
-    def fetch(key, default=nil)
-      val = self[key]
-      return val if val
-      default
+    def []=(key, value)
+      user_options[key] = value
     end
-
-    attr_reader :cur
 
     def all_of(key)
-      all = []
+      user    = user_options[key]
+      file    = file_options[key]
+      default = default_options[key]
+      user    = [user]    unless user.is_a?(Array)
+      file    = [file]    unless file.is_a?(Array)
+      default = [default] unless default.is_a?(Array)
 
-      @set.each do |o|
-        if v = o[key]
-          if v.kind_of? Array
-            all += v
-          else
-            all << v
-          end
-        end
-      end
-
-      all
-    end
-
-    def []=(key, val)
-      @cur[key] = val
-    end
-
-    def key?(key)
-      @set.each do |o|
-        if o.key? key
-          return true
-        end
-      end
-
-      @default.key? key
-    end
-
-    def merge!(o)
-      o.each do |k,v|
-        @cur[k]= v
-      end
-    end
-
-    def flatten
-      options = {}
-
-      @set.each do |o|
-        o.each do |k,v|
-          options[k] ||= v
-        end
-      end
-
-      options
-    end
-
-    def explain
-      indent = ""
-
-      @set.each do |o|
-        o.keys.sort.each do |k|
-          puts "#{indent}#{k}: #{o[k].inspect}"
-        end
-
-        indent = "  #{indent}"
-      end
-    end
-
-    def force_defaults
-      @defaults.each do |k,v|
-        if v.respond_to? :call
-          @defaults[k] = v.call
-        end
-      end
+      user + file + default
     end
   end
+
 
   class Configuration
     include ConfigDefault
@@ -133,15 +166,16 @@ module Puma
     def self.from_file(path)
       cfg = new
 
-      DSL.new(cfg.options, cfg)._load_from path
+      @dsl._load_from(path)
 
       return cfg
     end
 
     def initialize(options={}, &blk)
-      @options = LeveledOptions.new(default_options, options)
 
+      @options = UserFileDefaultOptions.new(options, self.default_options)
       @plugins = PluginLoader.new
+      @dsl     = DSL.new(@options.file_options, self)
 
       if blk
         configure(&blk)
@@ -151,8 +185,7 @@ module Puma
     attr_reader :options, :plugins
 
     def configure(&blk)
-      @options.shift
-      DSL.new(@options, self)._run(&blk)
+      @dsl._run(&blk)
     end
 
     def initialize_copy(other)
@@ -185,7 +218,7 @@ module Puma
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
         :remote_address => :socket,
         :tag => method(:infer_tag),
-        :environment => lambda { ENV['RACK_ENV'] || "development" },
+        :environment => ENV['RACK_ENV'] || "development",
         :rackup => DefaultRackup,
         :logger => STDOUT,
         :persistent_timeout => Const::PERSISTENT_TIMEOUT
@@ -206,11 +239,9 @@ module Puma
       end
 
       files.each do |f|
-        @options.reverse_shift
-
-        DSL.load @options, self, f
+        @dsl.load(f)
       end
-      @options.shift
+      @options
     end
 
     # Call once all configuration (included from rackup files)
