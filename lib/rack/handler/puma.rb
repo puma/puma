@@ -15,38 +15,38 @@ module Rack
 
         options = DEFAULT_OPTIONS.merge(options)
 
-        conf = ::Puma::Configuration.new(options) do |c|
-          c.quiet
+        conf = ::Puma::Configuration.new(options) do |user_config, file_config, default_config|
+          user_config.quiet
 
           if options.delete(:Verbose)
             app = Rack::CommonLogger.new(app, STDOUT)
           end
 
           if options[:environment]
-            c.environment options[:environment]
+            user_config.environment options[:environment]
           end
 
           if options[:Threads]
             min, max = options.delete(:Threads).split(':', 2)
-            c.threads min, max
+            user_config.threads min, max
           end
 
           host = options[:Host]
 
           if host && (host[0,1] == '.' || host[0,1] == '/')
-            c.bind "unix://#{host}"
+            user_config.bind "unix://#{host}"
           elsif host && host =~ /^ssl:\/\//
             uri = URI.parse(host)
             uri.port ||= options[:Port] || ::Puma::Configuration::DefaultTCPPort
-            c.bind uri.to_s
+            user_config.bind uri.to_s
           else
             host ||= ::Puma::Configuration::DefaultTCPHost
             port = options[:Port] || ::Puma::Configuration::DefaultTCPPort
 
-            c.port port, host
+            user_config.port port, host
           end
 
-          c.app app
+          user_config.app app
         end
         conf
       end

@@ -16,7 +16,7 @@ module Puma
     end
 
     def initialize(options, config)
-      @config = config
+      @config  = config
       @options = options
 
       @plugins = []
@@ -40,12 +40,6 @@ module Puma
       end
 
       @plugins.clear
-    end
-
-    def _run(&blk)
-      blk.call self
-    ensure
-      _offer_plugins
     end
 
     def inject(&blk)

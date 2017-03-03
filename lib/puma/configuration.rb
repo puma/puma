@@ -13,121 +13,10 @@ module Puma
     DefaultWorkerShutdownTimeout = 30
   end
 
-  # class LeveledOptions
-  #   def initialize(default_options, user_options)
-  #     @cur = user_options
-  #     @set = [@cur]
-  #     @defaults = default_options.dup
-  #   end
-
-  #   def initialize_copy(other)
-  #     @set = @set.map { |o| o.dup }
-  #     @cur = @set.last
-  #   end
-
-  #   def shift
-  #     @cur = {}
-  #     @set << @cur
-  #   end
-
-  #   def reverse_shift
-  #     @cur = {}
-  #     @set.unshift(@cur)
-  #   end
-
-  #   def [](key)
-  #     @set.reverse_each do |o|
-  #       if o.key? key
-  #         return o[key]
-  #       end
-  #     end
-
-  #     v = @defaults[key]
-  #     if v.respond_to? :call
-  #       v.call
-  #     else
-  #       v
-  #     end
-  #   end
-
-  #   def fetch(key, default=nil)
-  #     val = self[key]
-  #     return val if val
-  #     default
-  #   end
-
-  #   attr_reader :cur
-
-  #   def all_of(key)
-  #     all = []
-
-  #     @set.each do |o|
-  #       if v = o[key]
-  #         if v.kind_of? Array
-  #           all += v
-  #         else
-  #           all << v
-  #         end
-  #       end
-  #     end
-
-  #     all
-  #   end
-
-  #   def []=(key, val)
-  #     @cur[key] = val
-  #   end
-
-  #   def key?(key)
-  #     @set.each do |o|
-  #       if o.key? key
-  #         return true
-  #       end
-  #     end
-
-  #     @default.key? key
-  #   end
-
-  #   def merge!(o)
-  #     o.each do |k,v|
-  #       @cur[k]= v
-  #     end
-  #   end
-
-  #   def flatten
-  #     options = {}
-
-  #     @set.each do |o|
-  #       o.each do |k,v|
-  #         options[k] ||= v
-  #       end
-  #     end
-
-  #     options
-  #   end
-
-  #   def explain
-  #     indent = ""
-
-  #     @set.each do |o|
-  #       o.keys.sort.each do |k|
-  #         puts "#{indent}#{k}: #{o[k].inspect}"
-  #       end
-
-  #       indent = "  #{indent}"
-  #     end
-  #   end
-
-  #   def force_defaults
-  #     @defaults.each do |k,v|
-  #       if v.respond_to? :call
-  #         @defaults[k] = v.call
-  #       end
-  #     end
-  #   end
-  # end
-
-
+  # A class used for storing configuration options
+  # Options can be provided directly via the cli i.e. `puma -p 3001`
+  # or via a config file or multiple config files, or set as a default value
+  #
   class UserFileDefaultOptions
     def initialize(user_options, default_options)
       @user_options    = user_options
@@ -147,6 +36,10 @@ module Puma
       user_options[key] = value
     end
 
+    def fetch(key, default_value = nil)
+      self[key] || default_value
+    end
+
     def all_of(key)
       user    = user_options[key]
       file    = file_options[key]
@@ -163,7 +56,7 @@ module Puma
       user + file + default
     end
 
-    def force_defaults
+    def finalize_values
       @default_options.each do |k,v|
         if v.respond_to? :call
           @default_options[k] = v.call
@@ -179,16 +72,18 @@ module Puma
     def self.from_file(path)
       cfg = new
 
-      @dsl._load_from(path)
+      @file_dsl._load_from(path)
 
       return cfg
     end
 
     def initialize(options={}, &blk)
 
-      @options = UserFileDefaultOptions.new(options, self.default_options)
-      @plugins = PluginLoader.new
-      @dsl     = DSL.new(@options.file_options, self)
+      @options  = UserFileDefaultOptions.new(options, self.default_options)
+      @plugins  = PluginLoader.new
+      @user_dsl    = DSL.new(@options.user_options, self)
+      @file_dsl    = DSL.new(@options.file_options, self)
+      @default_dsl = DSL.new(@options.default_options, self)
 
       if blk
         configure(&blk)
@@ -198,7 +93,11 @@ module Puma
     attr_reader :options, :plugins
 
     def configure(&blk)
-      @dsl._run(&blk)
+      blk.call(@user_dsl, @file_dsl, @default_dsl)
+    ensure
+      @user_dsl._offer_plugins
+      @file_dsl._offer_plugins
+      @default_dsl._offer_plugins
     end
 
     def initialize_copy(other)
@@ -252,7 +151,7 @@ module Puma
       end
 
       files.each do |f|
-        @dsl.load(f)
+        @file_dsl.load(f)
       end
       @options
     end
@@ -260,7 +159,7 @@ module Puma
     # Call once all configuration (included from rackup files)
     # is loaded to flesh out any defaults
     def clamp
-      @options.force_defaults
+      @options.finalize_values
     end
 
     # Injects the Configuration object into the env

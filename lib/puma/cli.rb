@@ -47,21 +47,21 @@ module Puma
         @parser.parse! @argv
 
         if file = @argv.shift
-          @conf.configure do |c|
-            c.rackup file
+          @conf.configure do |user_config, file_config|
+            file_config.rackup file
           end
         end
       rescue UnsupportedOption
         exit 1
       end
 
-      @conf.configure do |c|
+      @conf.configure do |user_config, file_config|
         if @stdout || @stderr
-          c.stdout_redirect @stdout, @stderr, @append
+          user_config.stdout_redirect @stdout, @stderr, @append
         end
 
         if @control_url
-          c.activate_control_app @control_url, @control_options
+          user_config.activate_control_app @control_url, @control_options
         end
       end
 
@@ -87,14 +87,14 @@ module Puma
     #
 
     def setup_options
-      @conf = Configuration.new do |c|
+      @conf = Configuration.new do |user_config, file_config|
         @parser = OptionParser.new do |o|
           o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
-            c.bind arg
+            user_config.bind arg
           end
 
           o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
-            c.load arg
+            file_config.load arg
           end
 
           o.on "--control URL", "The bind url to use for the control server",
@@ -112,21 +112,21 @@ module Puma
           end
 
           o.on "-d", "--daemon", "Daemonize the server into the background" do
-            c.daemonize
-            c.quiet
+            user_config.daemonize
+            user_config.quiet
           end
 
           o.on "--debug", "Log lowlevel debugging information" do
-            c.debug
+            user_config.debug
           end
 
           o.on "--dir DIR", "Change to DIR before starting" do |d|
-            c.directory d
+            user_config.directory d
           end
 
           o.on "-e", "--environment ENVIRONMENT",
             "The environment to run the Rack app on (default development)" do |arg|
-            c.environment arg
+            user_config.environment arg
           end
 
           o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
@@ -135,50 +135,50 @@ module Puma
 
           o.on "-p", "--port PORT", "Define the TCP port to bind to",
             "Use -b for more advanced options" do |arg|
-            c.bind "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
+            user_config.bind "tcp://#{Configuration::DefaultTCPHost}:#{arg}"
           end
 
           o.on "--pidfile PATH", "Use PATH as a pidfile" do |arg|
-            c.pidfile arg
+            user_config.pidfile arg
           end
 
           o.on "--preload", "Preload the app. Cluster mode only" do
-            c.preload_app!
+            user_config.preload_app!
           end
 
           o.on "--prune-bundler", "Prune out the bundler env if possible" do
-            c.prune_bundler
+            user_config.prune_bundler
           end
 
           o.on "-q", "--quiet", "Do not log requests internally (default true)" do
-            c.quiet
+            user_config.quiet
           end
 
           o.on "-v", "--log-requests", "Log requests as they occur" do
-            c.log_requests
+            user_config.log_requests
           end
 
           o.on "-R", "--restart-cmd CMD",
             "The puma command to run during a hot restart",
             "Default: inferred" do |cmd|
-            c.restart_command cmd
+            user_config.restart_command cmd
           end
 
           o.on "-S", "--state PATH", "Where to store the state details" do |arg|
-            c.state_path arg
+            user_config.state_path arg
           end
 
           o.on '-t', '--threads INT', "min:max threads to use (default 0:16)" do |arg|
             min, max = arg.split(":")
             if max
-              c.threads min, max
+              user_config.threads min, max
             else
-              c.threads min, min
+              user_config.threads min, min
             end
           end
 
           o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
-            c.tcp_mode!
+            user_config.tcp_mode!
           end
 
           o.on "-V", "--version", "Print the version information" do
@@ -188,11 +188,11 @@ module Puma
 
           o.on "-w", "--workers COUNT",
             "Activate cluster mode: How many worker processes to create" do |arg|
-            c.workers arg
+            user_config.workers arg
           end
 
           o.on "--tag NAME", "Additional text to display in process listing" do |arg|
-            c.tag arg
+            user_config.tag arg
           end
 
           o.on "--redirect-stdout FILE", "Redirect STDOUT to a specific file" do |arg|

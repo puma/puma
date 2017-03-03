@@ -34,9 +34,9 @@ module Puma
     #
     # Examples:
     #
-    #   conf = Puma::Configuration.new do |c|
-    #     c.threads 1, 10
-    #     c.app do |env|
+    #   conf = Puma::Configuration.new do |user_config|
+    #     user_config.threads 1, 10
+    #     user_config.app do |env|
     #       [200, {}, ["hello world"]]
     #     end
     #   end
