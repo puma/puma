@@ -35,26 +35,6 @@ module Puma
       instance_eval(&blk)
     end
 
-    # Load configuration from another named file. If the file name is absolute,
-    # load the file as an absolute path. Otherwise load it relative to the
-    # current config file.
-    #
-    def import(file)
-      if File.extname(file) == ""
-        file += ".rb"
-      end
-
-      if file[0,1] == "/"
-        path = file
-      elsif @path
-        path = File.join File.dirname(@path), file
-      else
-        raise "No original configuration path to import relative to"
-      end
-
-      DSL.new(@options, @config)._load_from(path)
-    end
-
     def get(key,default=nil)
       @options[key.to_sym] || default
     end

@@ -69,14 +69,6 @@ module Puma
   class Configuration
     include ConfigDefault
 
-    def self.from_file(path)
-      cfg = new
-
-      @file_dsl._load_from(path)
-
-      return cfg
-    end
-
     def initialize(options={}, default_options = {}, &blk)
       default_options = self.puma_default_options.merge(default_options)
 
