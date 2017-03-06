@@ -391,7 +391,7 @@ module Puma
 
     # Additional text to display in process listing
     def tag(string)
-      @options[:tag] = string.to_s
+      @options[:tag] = string
     end
 
     # *Cluster mode only* Set the timeout for workers in seconds

@@ -78,6 +78,12 @@ class TestConfigFile < Minitest::Test
     assert_equal 5, conf.options[:max_threads]
   end
 
+  def test_proc_allowed_in_tag
+    conf = Puma::Configuration.new(tag: -> {"a" + "b"})
+
+    assert_equal 'ab', conf.options[:tag].call
+  end
+
   private
 
     def with_env(env = {})
