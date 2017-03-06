@@ -4,17 +4,6 @@ module Puma
   class DSL
     include ConfigDefault
 
-    # _run
-    # _load
-    def self.load(options, cfg, path)
-      d = new(options, cfg)
-      d._load_from(path)
-
-      options
-    ensure
-      d._offer_plugins
-    end
-
     def initialize(options, config)
       @config  = config
       @options = options
