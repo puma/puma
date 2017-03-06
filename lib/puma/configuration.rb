@@ -152,7 +152,7 @@ module Puma
       end
 
       files.each do |f|
-        @file_dsl.load(f)
+        @file_dsl._load_from(f)
       end
       @options
     end

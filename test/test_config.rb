@@ -66,6 +66,13 @@ class TestConfigFile < Minitest::Test
     assert_equal conf.options[:workers], 4
   end
 
+  def test_explicit_config_files
+    conf = Puma::Configuration.new(config_files: ['test/config/settings.rb']) do |c|
+    end
+    conf.load
+    assert_match(/:3000$/, conf.options[:binds].first)
+  end
+
   def test_parameters_overwrite_files
     conf = Puma::Configuration.new(config_files: ['test/config/settings.rb']) do |c|
       c.port 3030
