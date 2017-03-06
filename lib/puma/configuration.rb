@@ -80,8 +80,8 @@ module Puma
     def initialize(options={}, default_options = {}, &blk)
       default_options = self.puma_default_options.merge(default_options)
 
-      @options  = UserFileDefaultOptions.new(options, default_options)
-      @plugins  = PluginLoader.new
+      @options     = UserFileDefaultOptions.new(options, default_options)
+      @plugins     = PluginLoader.new
       @user_dsl    = DSL.new(@options.user_options, self)
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
