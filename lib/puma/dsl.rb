@@ -1,6 +1,30 @@
 module Puma
   # The methods that are available for use inside the config file.
+  # These same methods are used in Puma cli and the rack handler
+  # internally.
   #
+  # Used manually (via CLI class):
+  #
+  #   config = Configuration.new({}) do |user_config|
+  #     user_config.port 3001
+  #   end
+  #   config.load
+  #
+  #   puts config.options[:binds]
+  #   "tcp://127.0.0.1:3001"
+  #
+  # Used to load file:
+  #
+  #   $ cat puma_config.rb
+  #     port 3002
+  #
+  #   config = Configuration.new(config_file: "puma_config.rb")
+  #   config.load
+  #
+  #   puts config.options[:binds]
+  #   # => "tcp://127.0.0.1:3002"
+  #
+  # Detailed docs can be found in `examples/config.rb`
   class DSL
     include ConfigDefault
 

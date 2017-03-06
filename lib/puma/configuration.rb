@@ -13,10 +13,35 @@ module Puma
     DefaultWorkerShutdownTimeout = 30
   end
 
-  # A class used for storing configuration options
-  # Options can be provided directly via the cli i.e. `puma -p 3001`
-  # or via a config file or multiple config files, or set as a default value
+  # A class used for storing "leveled" configuration options.
   #
+  # In this class any "user" specified options take precedence over any
+  # "file" specified options, take precedence over any "default" options.
+  #
+  # User input is prefered over "defaults":
+  #   user_options    = { foo: "bar" }
+  #   default_options = { foo: "zoo" }
+  #   options = UserFileDefaultOptions.new(user_options, default_options)
+  #   puts options[:foo]
+  #   # => "bar"
+  #
+  # All values can be accessed via `all_of`
+  #
+  #   puts options.all_of(:foo)
+  #   # => ["bar", "zoo"]
+  #
+  # A "file" option can be set. This config will be prefered over "default" options
+  # but will defer to any available "user" specified options.
+  #
+  #   user_options    = { foo: "bar" }
+  #   default_options = { rackup: "zoo.rb" }
+  #   options = UserFileDefaultOptions.new(user_options, default_options)
+  #   options.file_options[:rackup] = "sup.rb"
+  #   puts options[:rackup]
+  #   # => "sup.rb"
+  #
+  # The "default" options can be set via procs. These are resolved during runtime
+  # via calls to `finalize_values`
   class UserFileDefaultOptions
     def initialize(user_options, default_options)
       @user_options    = user_options
@@ -65,7 +90,39 @@ module Puma
     end
   end
 
-
+  # The main configuration class of Puma.
+  #
+  # It can be initialized with a set of "user" options and "default" options.
+  # Defaults will be merged with `Configuration.puma_default_options`.
+  #
+  # This class works together with 2 main other classes the `UserFileDefaultOptions`
+  # which stores configuration options in order so the precedence is that user
+  # set configuration wins over "file" based configuration wins over "default"
+  # configuration. These configurations are set via the `DSL` class. This
+  # class powers the Puma config file syntax and does double duty as a configuration
+  # DSL used by the `Puma::CLI` and Puma rack handler.
+  #
+  # It also handles loading plugins.
+  #
+  # > Note: `:port` and `:host` are not valid keys. By they time they make it to the
+  #   configuration options they are expected to be incorporated into a `:binds` key.
+  #   Under the hood the DSL maps `port` and `host` calls to `:binds`
+  #
+  #   config = Configuration.new({}) do |user_config, file_config, default_config|
+  #     user_config.port 3003
+  #   end
+  #   config.load
+  #   puts config.options[:port]
+  #   # => 3003
+  #
+  # It is expected that `load` is called on the configuration instance after setting
+  # config. This method expands any values in `config_file` and puts them into the
+  # correct configuration option hash.
+  #
+  # Once all configuration is complete it is expected that `clamp` will be called
+  # on the instance. This will expand any procs stored under "default" values. This
+  # is done because an environment variable may have been modified while loading
+  # configuration files.
   class Configuration
     include ConfigDefault
 
