@@ -238,7 +238,7 @@ module Puma
       end
 
       queue_requests = @queue_requests
-      @fast_track_ka_timeout = fast_track_ka_timeout
+      ka_timeout = fast_track_ka_timeout
 
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
@@ -273,7 +273,7 @@ module Puma
           client.close
         else
           if process_now
-            process_client client, buffer
+            process_client client, buffer, ka_timeout
           else
             client.set_timeout @first_data_timeout
             @reactor.add client
@@ -402,7 +402,7 @@ module Puma
     # indicates that it supports keep alive, wait for another request before
     # returning.
     #
-    def process_client(client, buffer)
+    def process_client(client, buffer, ka_timeout)
       begin
 
         if client.env[HTTP_EXPECT] == CONTINUE
@@ -425,7 +425,7 @@ module Puma
 
             ThreadPool.clean_thread_locals if clean_thread_locals
 
-            unless client.reset(@status == :run && @fast_track_ka_timeout)
+            unless client.reset(@status == :run && ka_timeout)
               close_socket = false
               client.set_timeout @persistent_timeout
               @reactor.add client
