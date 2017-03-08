@@ -4,9 +4,10 @@
 begin
   require "bundler/setup"
 rescue LoadError
-  require "net/http"
-  require "timeout"
 end
+
+require "net/http"
+require "timeout"
 require "minitest/autorun"
 require "minitest/pride"
 require "puma"
@@ -34,7 +35,6 @@ def hit(uris)
   return results
 end
 
-require 'timeout'
 module TimeoutEveryTestCase
   def run(*)
     if !!ENV['CI']
