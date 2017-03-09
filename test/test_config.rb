@@ -56,17 +56,6 @@ class TestConfigFile < Minitest::Test
     assert_equal 'bin/rails server', conf.options[:restart_cmd]
   end
 
-  def test_overwrite_options
-    conf = Puma::Configuration.new do |c|
-      c.workers 3
-    end
-    conf.load
-
-    assert_equal conf.options[:workers], 3
-    conf.options[:workers] += 1
-    assert_equal conf.options[:workers], 4
-  end
-
   def test_parameters_overwrite_files
     conf = Puma::Configuration.new(config_files: ['test/config/settings.rb']) do |c|
       c.port 3030
