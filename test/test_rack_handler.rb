@@ -111,8 +111,7 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
   end
 
   def test_default_port_when_no_config_file
-    options = {}
-    conf = Rack::Handler::Puma.config(->{}, options)
+    conf = Rack::Handler::Puma.config(->{}, @options)
     conf.load
 
     assert_equal ["tcp://0.0.0.0:9292"], conf.options[:binds]
@@ -120,7 +119,6 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
 
   def test_config_wins_over_default
     file_port = 6001
-    @options = {}
 
     Dir.mktmpdir do |d|
       Dir.chdir(d) do
@@ -147,7 +145,6 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
   def test_user_port_wins_over_config
     user_port = 5001
     file_port = 6001
-    @options = {}
 
     Dir.mktmpdir do |d|
       Dir.chdir(d) do
