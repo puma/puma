@@ -126,7 +126,7 @@ module Puma
   class Configuration
     include ConfigDefault
 
-    def initialize(user_options={}, default_options = {}, &blk)
+    def initialize(user_options={}, default_options = {}, &block)
       default_options = self.puma_default_options.merge(default_options)
 
       @options     = UserFileDefaultOptions.new(user_options, default_options)
@@ -135,15 +135,15 @@ module Puma
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
 
-      if blk
-        configure(&blk)
+      if block
+        configure(&block)
       end
     end
 
     attr_reader :options, :plugins
 
-    def configure(&blk)
-      blk.call(@user_dsl, @file_dsl, @default_dsl)
+    def configure
+      yield @user_dsl, @file_dsl, @default_dsl
     ensure
       @user_dsl._offer_plugins
       @file_dsl._offer_plugins
