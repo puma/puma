@@ -53,5 +53,111 @@ class TestPathHandler < Minitest::Test
       assert_equal("/test", @input["PATH_INFO"])
     end
   end
-
 end
+
+class TestUserSuppliedOptionsPortIsSet < Minitest::Test
+  def setup
+    @options = {}
+    @options[:user_supplied_options] = [:Port]
+  end
+
+  def test_port_wins_over_config
+    user_port = 5001
+    file_port = 6001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
+
+        @options[:Port] = user_port
+        conf = Rack::Handler::Puma.config(->{}, @options)
+        conf.load
+
+        assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+      end
+    end
+  end
+end
+
+class TestUserSuppliedOptionsIsEmpty < Minitest::Test
+  def setup
+    @options = {}
+    @options[:user_supplied_options] = []
+  end
+
+  def test_config_file_wins_over_port
+    user_port = 5001
+    file_port = 6001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
+
+        @options[:Port] = user_port
+        conf = Rack::Handler::Puma.config(->{}, @options)
+        conf.load
+
+        assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
+      end
+    end
+  end
+end
+
+class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
+  def setup
+    @options = {}
+  end
+
+  def test_default_port_when_no_config_file
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal ["tcp://0.0.0.0:9292"], conf.options[:binds]
+  end
+
+  def test_config_wins_over_default
+    file_port = 6001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
+
+        conf = Rack::Handler::Puma.config(-> {}, @options)
+        conf.load
+
+        assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
+      end
+    end
+  end
+
+  def test_user_port_wins_over_default
+    user_port = 5001
+    @options[:Port] = user_port
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+  end
+
+  def test_user_port_wins_over_config
+    user_port = 5001
+    file_port = 6001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
+
+        @options[:Port] = user_port
+        conf = Rack::Handler::Puma.config(->{}, @options)
+        conf.load
+
+        assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+      end
+    end
+  end
+end
+

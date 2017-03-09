@@ -1,20 +1,35 @@
 module Puma
   # The methods that are available for use inside the config file.
+  # These same methods are used in Puma cli and the rack handler
+  # internally.
   #
+  # Used manually (via CLI class):
+  #
+  #   config = Configuration.new({}) do |user_config|
+  #     user_config.port 3001
+  #   end
+  #   config.load
+  #
+  #   puts config.options[:binds]
+  #   "tcp://127.0.0.1:3001"
+  #
+  # Used to load file:
+  #
+  #   $ cat puma_config.rb
+  #     port 3002
+  #
+  #   config = Configuration.new(config_file: "puma_config.rb")
+  #   config.load
+  #
+  #   puts config.options[:binds]
+  #   # => "tcp://127.0.0.1:3002"
+  #
+  # Detailed docs can be found in `examples/config.rb`
   class DSL
     include ConfigDefault
 
-    def self.load(options, cfg, path)
-      d = new(options, cfg)
-      d._load_from(path)
-
-      options
-    ensure
-      d._offer_plugins
-    end
-
     def initialize(options, config)
-      @config = config
+      @config  = config
       @options = options
 
       @plugins = []
@@ -40,34 +55,8 @@ module Puma
       @plugins.clear
     end
 
-    def _run(&blk)
-      blk.call self
-    ensure
-      _offer_plugins
-    end
-
     def inject(&blk)
       instance_eval(&blk)
-    end
-
-    # Load configuration from another named file. If the file name is absolute,
-    # load the file as an absolute path. Otherwise load it relative to the
-    # current config file.
-    #
-    def import(file)
-      if File.extname(file) == ""
-        file += ".rb"
-      end
-
-      if file[0,1] == "/"
-        path = file
-      elsif @path
-        path = File.join File.dirname(@path), file
-      else
-        raise "No original configuration path to import relative to"
-      end
-
-      DSL.new(@options, @config)._load_from(path)
     end
 
     def get(key,default=nil)
@@ -115,15 +104,18 @@ module Puma
     end
 
     # Load additional configuration from a file
+    # Files get loaded later via Configuration#load
     def load(file)
-      _ary(:config_files) << file
+      @options[:config_files] ||= []
+      @options[:config_files] << file
     end
 
     # Bind the server to +url+. tcp:// and unix:// are the only accepted
     # protocols.
     #
     def bind(url)
-      _ary(:binds) << url
+      @options[:binds] ||= []
+      @options[:binds] << url
     end
 
     # Define the TCP port to bind to. Use +bind+ for more advanced options.
@@ -192,7 +184,8 @@ module Puma
     # This can be called multiple times to add code each time.
     #
     def on_restart(&block)
-      _ary(:on_restart) << block
+      @options[:on_restart] ||= []
+      @options[:on_restart] << block
     end
 
     # Command to use to restart puma. This should be just how to
@@ -297,7 +290,8 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def before_fork(&block)
-      _ary(:before_fork) << block
+      @options[:before_fork] ||= []
+      @options[:before_fork] << block
     end
 
     # *Cluster mode only* Code to run in a worker when it boots to setup
@@ -306,7 +300,8 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_boot(&block)
-      _ary(:before_worker_boot) << block
+      @options[:before_worker_boot] ||= []
+      @options[:before_worker_boot] << block
     end
 
     # *Cluster mode only* Code to run immediately before a worker shuts
@@ -317,7 +312,8 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_shutdown(&block)
-      _ary(:before_worker_shutdown) << block
+      @options[:before_worker_shutdown] ||= []
+      @options[:before_worker_shutdown] << block
     end
 
     # *Cluster mode only* Code to run in the master when it is
@@ -326,7 +322,8 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def on_worker_fork(&block)
-      _ary(:before_worker_fork) << block
+      @options[:before_worker_fork] ||= []
+      @options[:before_worker_fork] << block
     end
 
     # *Cluster mode only* Code to run in the master after it starts
@@ -335,7 +332,8 @@ module Puma
     # This can be called multiple times to add hooks.
     #
     def after_worker_fork(&block)
-      _ary(:after_worker_fork) << block
+      @options[:after_worker_fork] ||= []
+      @options[:after_worker_fork] = block
     end
 
     alias_method :after_worker_boot, :after_worker_fork
@@ -477,10 +475,5 @@ module Puma
       end
     end
 
-    private
-
-    def _ary(key)
-      (@options.cur[key] ||= [])
-    end
   end
 end

@@ -13,152 +13,147 @@ module Puma
     DefaultWorkerShutdownTimeout = 30
   end
 
-  class LeveledOptions
-    def initialize(default_options, user_options)
-      @cur = user_options
-      @set = [@cur]
-      @defaults = default_options.dup
+  # A class used for storing "leveled" configuration options.
+  #
+  # In this class any "user" specified options take precedence over any
+  # "file" specified options, take precedence over any "default" options.
+  #
+  # User input is prefered over "defaults":
+  #   user_options    = { foo: "bar" }
+  #   default_options = { foo: "zoo" }
+  #   options = UserFileDefaultOptions.new(user_options, default_options)
+  #   puts options[:foo]
+  #   # => "bar"
+  #
+  # All values can be accessed via `all_of`
+  #
+  #   puts options.all_of(:foo)
+  #   # => ["bar", "zoo"]
+  #
+  # A "file" option can be set. This config will be prefered over "default" options
+  # but will defer to any available "user" specified options.
+  #
+  #   user_options    = { foo: "bar" }
+  #   default_options = { rackup: "zoo.rb" }
+  #   options = UserFileDefaultOptions.new(user_options, default_options)
+  #   options.file_options[:rackup] = "sup.rb"
+  #   puts options[:rackup]
+  #   # => "sup.rb"
+  #
+  # The "default" options can be set via procs. These are resolved during runtime
+  # via calls to `finalize_values`
+  class UserFileDefaultOptions
+    def initialize(user_options, default_options)
+      @user_options    = user_options
+      @file_options    = {}
+      @default_options = default_options
     end
 
-    def initialize_copy(other)
-      @set = @set.map { |o| o.dup }
-      @cur = @set.last
-    end
-
-    def shift
-      @cur = {}
-      @set << @cur
-    end
-
-    def reverse_shift
-      @cur = {}
-      @set.unshift(@cur)
-    end
+    attr_reader :user_options, :file_options, :default_options
 
     def [](key)
-      @set.reverse_each do |o|
-        if o.key? key
-          return o[key]
-        end
-      end
-
-      v = @defaults[key]
-      if v.respond_to? :call
-        v.call
-      else
-        v
-      end
+      return user_options[key]    if user_options.key?(key)
+      return file_options[key]    if file_options.key?(key)
+      return default_options[key] if default_options.key?(key)
     end
 
-    def fetch(key, default=nil)
-      val = self[key]
-      return val if val
-      default
+    def []=(key, value)
+      user_options[key] = value
     end
 
-    attr_reader :cur
+    def fetch(key, default_value = nil)
+      self[key] || default_value
+    end
 
     def all_of(key)
-      all = []
+      user    = user_options[key]
+      file    = file_options[key]
+      default = default_options[key]
 
-      @set.each do |o|
-        if v = o[key]
-          if v.kind_of? Array
-            all += v
-          else
-            all << v
-          end
-        end
-      end
+      user    = [user]    unless user.is_a?(Array)
+      file    = [file]    unless file.is_a?(Array)
+      default = [default] unless default.is_a?(Array)
 
-      all
+      user.compact!
+      file.compact!
+      default.compact!
+
+      user + file + default
     end
 
-    def []=(key, val)
-      @cur[key] = val
-    end
-
-    def key?(key)
-      @set.each do |o|
-        if o.key? key
-          return true
-        end
-      end
-
-      @default.key? key
-    end
-
-    def merge!(o)
-      o.each do |k,v|
-        @cur[k]= v
-      end
-    end
-
-    def flatten
-      options = {}
-
-      @set.each do |o|
-        o.each do |k,v|
-          options[k] ||= v
-        end
-      end
-
-      options
-    end
-
-    def explain
-      indent = ""
-
-      @set.each do |o|
-        o.keys.sort.each do |k|
-          puts "#{indent}#{k}: #{o[k].inspect}"
-        end
-
-        indent = "  #{indent}"
-      end
-    end
-
-    def force_defaults
-      @defaults.each do |k,v|
+    def finalize_values
+      @default_options.each do |k,v|
         if v.respond_to? :call
-          @defaults[k] = v.call
+          @default_options[k] = v.call
         end
       end
     end
   end
 
+  # The main configuration class of Puma.
+  #
+  # It can be initialized with a set of "user" options and "default" options.
+  # Defaults will be merged with `Configuration.puma_default_options`.
+  #
+  # This class works together with 2 main other classes the `UserFileDefaultOptions`
+  # which stores configuration options in order so the precedence is that user
+  # set configuration wins over "file" based configuration wins over "default"
+  # configuration. These configurations are set via the `DSL` class. This
+  # class powers the Puma config file syntax and does double duty as a configuration
+  # DSL used by the `Puma::CLI` and Puma rack handler.
+  #
+  # It also handles loading plugins.
+  #
+  # > Note: `:port` and `:host` are not valid keys. By they time they make it to the
+  #   configuration options they are expected to be incorporated into a `:binds` key.
+  #   Under the hood the DSL maps `port` and `host` calls to `:binds`
+  #
+  #   config = Configuration.new({}) do |user_config, file_config, default_config|
+  #     user_config.port 3003
+  #   end
+  #   config.load
+  #   puts config.options[:port]
+  #   # => 3003
+  #
+  # It is expected that `load` is called on the configuration instance after setting
+  # config. This method expands any values in `config_file` and puts them into the
+  # correct configuration option hash.
+  #
+  # Once all configuration is complete it is expected that `clamp` will be called
+  # on the instance. This will expand any procs stored under "default" values. This
+  # is done because an environment variable may have been modified while loading
+  # configuration files.
   class Configuration
     include ConfigDefault
 
-    def self.from_file(path)
-      cfg = new
+    def initialize(user_options={}, default_options = {}, &block)
+      default_options = self.puma_default_options.merge(default_options)
 
-      DSL.new(cfg.options, cfg)._load_from path
+      @options     = UserFileDefaultOptions.new(user_options, default_options)
+      @plugins     = PluginLoader.new
+      @user_dsl    = DSL.new(@options.user_options, self)
+      @file_dsl    = DSL.new(@options.file_options, self)
+      @default_dsl = DSL.new(@options.default_options, self)
 
-      return cfg
-    end
-
-    def initialize(options={}, &blk)
-      @options = LeveledOptions.new(default_options, options)
-
-      @plugins = PluginLoader.new
-
-      if blk
-        configure(&blk)
+      if block
+        configure(&block)
       end
     end
 
     attr_reader :options, :plugins
 
-    def configure(&blk)
-      @options.shift
-      DSL.new(@options, self)._run(&blk)
+    def configure
+      yield @user_dsl, @file_dsl, @default_dsl
+    ensure
+      @user_dsl._offer_plugins
+      @file_dsl._offer_plugins
+      @default_dsl._offer_plugins
     end
 
     def initialize_copy(other)
-      @conf = nil
+      @conf        = nil
       @cli_options = nil
-      @options = @options.dup
+      @options     = @options.dup
     end
 
     def flatten
@@ -170,7 +165,7 @@ module Puma
       self
     end
 
-    def default_options
+    def puma_default_options
       {
         :min_threads => 0,
         :max_threads => 16,
@@ -185,7 +180,7 @@ module Puma
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
         :remote_address => :socket,
         :tag => method(:infer_tag),
-        :environment => lambda { ENV['RACK_ENV'] || "development" },
+        :environment => ->{ ENV['RACK_ENV'] || "development" },
         :rackup => DefaultRackup,
         :logger => STDOUT,
         :persistent_timeout => Const::PERSISTENT_TIMEOUT
@@ -206,18 +201,15 @@ module Puma
       end
 
       files.each do |f|
-        @options.reverse_shift
-
-        DSL.load @options, self, f
+        @file_dsl._load_from(f)
       end
-      @options.shift
+      @options
     end
 
     # Call once all configuration (included from rackup files)
     # is loaded to flesh out any defaults
     def clamp
-      @options.shift
-      @options.force_defaults
+      @options.finalize_values
     end
 
     # Injects the Configuration object into the env
@@ -318,17 +310,15 @@ module Puma
     def load_rackup
       raise "Missing rackup file '#{rackup}'" unless File.exist?(rackup)
 
-      @options.shift
-
       rack_app, rack_options = rack_builder.parse_file(rackup)
-      @options.merge!(rack_options)
+      @options.file_options.merge!(rack_options)
 
       config_ru_binds = []
       rack_options.each do |k, v|
         config_ru_binds << v if k.to_s.start_with?("bind")
       end
 
-      @options[:binds] = config_ru_binds unless config_ru_binds.empty?
+      @options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
     end

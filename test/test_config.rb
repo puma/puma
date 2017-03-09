@@ -28,13 +28,12 @@ class TestConfigFile < Minitest::Test
   def test_double_bind_port
     port = (rand(10_000) + 30_000).to_s
     with_env("PORT" => port) do
-      conf = Puma::Configuration.new do |c|
-        c.bind "tcp://#{Puma::Configuration::DefaultTCPHost}:#{port}"
-        c.load "test/config/app.rb"
+      conf = Puma::Configuration.new do |user_config, file_config, default_config|
+        user_config.bind "tcp://#{Puma::Configuration::DefaultTCPHost}:#{port}"
+        file_config.load "test/config/app.rb"
       end
 
       conf.load
-
       assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
     end
   end
@@ -65,6 +64,13 @@ class TestConfigFile < Minitest::Test
     assert_equal conf.options[:workers], 3
     conf.options[:workers] += 1
     assert_equal conf.options[:workers], 4
+  end
+
+  def test_explicit_config_files
+    conf = Puma::Configuration.new(config_files: ['test/config/settings.rb']) do |c|
+    end
+    conf.load
+    assert_match(/:3000$/, conf.options[:binds].first)
   end
 
   def test_parameters_overwrite_files

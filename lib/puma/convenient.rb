@@ -3,12 +3,12 @@ require 'puma/configuration'
 
 module Puma
   def self.run(opts={})
-    cfg = Puma::Configuration.new do |c|
+    cfg = Puma::Configuration.new do |user_config|
       if port = opts[:port]
-        c.port port
+        user_config.port port
       end
 
-      c.quiet
+      user_config.quiet
 
       yield c
     end
