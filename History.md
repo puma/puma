@@ -1,3 +1,15 @@
+## 3.8.0 / 2017-03-09
+
+* bugfixes:
+  * Port from rack handler does not take precedence over config file in Rails 5.1.0.beta2+ and 5.0.1.rc3+ (#1234)
+  * The `tmp/restart.txt` plugin no longer restricts the user from running more than one server from the same folder at a time (#1226)
+
+* features:
+  * Closed clients are aborted to save capacity (#1227)
+
+* Refactors
+  * Bundler is no longer a dependency from tests (#1213)
+
 ## 3.7.1 / 2017-02-20
 
 * 2 bugfixes:
