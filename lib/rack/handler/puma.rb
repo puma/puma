@@ -8,7 +8,7 @@ module Rack
         :Silent  => false
       }
 
-      def self.run(app, options = {})
+      def self.config(app, options = {})
         require 'puma/configuration'
         require 'puma/events'
         require 'puma/launcher'
@@ -48,6 +48,11 @@ module Rack
 
           c.app app
         end
+        conf
+      end
+
+      def self.run(app, options = {})
+        conf   = self.config(app, options)
 
         events = options.delete(:Silent) ? ::Puma::Events.strings : ::Puma::Events.stdio
 
