@@ -8,7 +8,7 @@ Puma::Plugin.create do
 
     # If we can't write to the path, then just don't bother with this plugin
     begin
-      File.write path, ""
+      File.write(path, "") unless File.exist?(path)
       orig = File.stat(path).mtime
     rescue SystemCallError
       return
