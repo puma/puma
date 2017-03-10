@@ -78,11 +78,12 @@ module Puma
         end
 
         if @config_file
-          config = Puma::Configuration.from_file @config_file
-          @state ||= config.options[:state]
-          @control_url ||= config.options[:control_url]
+          config = Puma::Configuration.new({ config_files: [@config_file] }, {})
+          config.load
+          @state              ||= config.options[:state]
+          @control_url        ||= config.options[:control_url]
           @control_auth_token ||= config.options[:control_auth_token]
-          @pidfile ||= config.options[:pidfile]
+          @pidfile            ||= config.options[:pidfile]
         end
       end
 
