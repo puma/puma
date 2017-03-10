@@ -97,6 +97,7 @@ module Puma
 
     rescue => e
       @stdout.puts e.message
+      @stdout.puts e.backtrace
       exit 1
     end
 
@@ -230,6 +231,7 @@ module Puma
 
     rescue => e
       message e.message
+      message e.backtrace
       exit 1
     end
 
