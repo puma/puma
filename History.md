@@ -1,3 +1,8 @@
+## 3.8.1 / 2017-03-10
+
+* bugfixes:
+  * Remove method call to method that no longer exists (#1239)
+
 ## 3.8.0 / 2017-03-09
 
 * bugfixes:
