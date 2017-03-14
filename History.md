@@ -1,18 +1,23 @@
+## 3.8.2 / 2017-03-14
+
+* 1 bugfix:
+  * Deal with getsockopt with TCP\_INFO failing for sockets that say they're TCP but aren't really. (#1241)
+
 ## 3.8.1 / 2017-03-10
 
-* bugfixes:
+* 1 bugfix:
   * Remove method call to method that no longer exists (#1239)
 
 ## 3.8.0 / 2017-03-09
 
-* bugfixes:
+* 2 bugfixes:
   * Port from rack handler does not take precedence over config file in Rails 5.1.0.beta2+ and 5.0.1.rc3+ (#1234)
   * The `tmp/restart.txt` plugin no longer restricts the user from running more than one server from the same folder at a time (#1226)
 
-* features:
+* 1 feature:
   * Closed clients are aborted to save capacity (#1227)
 
-* Refactors
+* 1 refactor:
   * Bundler is no longer a dependency from tests (#1213)
 
 ## 3.7.1 / 2017-02-20
@@ -36,7 +41,7 @@
   * Minor refactor on Thread pool (#1088)
   * Removed a ton of unused constants, variables and files.
   * Use MRI macros when allocating heap memory
-  * Use hooks for on_booted event. (#1160)
+  * Use hooks for on\_booted event. (#1160)
 
 * 14 bugfixes:
   * Add eof? method to NullIO? (#1169)
