@@ -78,6 +78,8 @@ module Puma
       ENV['RACK_ENV'] ||= "development"
 
       @mode = :http
+
+      @precheck_closing = true
     end
 
     attr_accessor :binder, :leak_stack_on_error
@@ -121,10 +123,18 @@ module Puma
 
       def closed_socket?(socket)
         return false unless socket.kind_of? TCPSocket
-        tcp_info = socket.getsockopt(Socket::SOL_TCP, Socket::TCP_INFO)
-        state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
-        # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
-        (state >= 6 && state <= 9) || state == 11
+        return false unless @precheck_closing
+
+        begin
+          tcp_info = socket.getsockopt(Socket::SOL_TCP, Socket::TCP_INFO)
+        rescue IOError, SystemCallError
+          @precheck_closing = false
+          false
+        else
+          state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
+          # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
+          (state >= 6 && state <= 9) || state == 11
+        end
       end
     else
       def cork_socket(socket)
