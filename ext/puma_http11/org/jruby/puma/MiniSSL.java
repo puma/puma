@@ -336,7 +336,11 @@ public class MiniSSL extends RubyObject {
   }
 
   @JRubyMethod
-  public IRubyObject peercert() throws SSLPeerUnverifiedException, CertificateEncodingException {
-    return JavaEmbedUtils.javaToRuby(getRuntime(), engine.getSession().getPeerCertificates()[0].getEncoded());
+  public IRubyObject peercert() throws CertificateEncodingException {
+    try {
+      return JavaEmbedUtils.javaToRuby(getRuntime(), engine.getSession().getPeerCertificates()[0].getEncoded());
+    } catch (SSLPeerUnverifiedException ex) {
+      return getRuntime().getNil();
+    }
   }
 }
