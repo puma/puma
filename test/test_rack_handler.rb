@@ -161,3 +161,56 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
   end
 end
 
+class TestServerStops < Minitest::Test
+  def app
+    proc { [200, {}, ['hello world']] }
+  end
+
+  def in_handler(app, options = {})
+    options[:Port] ||= 0
+    options[:Silent] = true
+
+    @launcher = nil
+    thread = Thread.new do
+      Rack::Handler::Puma.run(app, options) do |s, p|
+        @launcher = s
+      end
+    end
+    thread.abort_on_exception = true
+
+    # Wait for launcher to boot
+    Timeout.timeout(10) do
+      until @launcher
+        sleep 1
+      end
+    end
+    sleep 1
+
+    yield @launcher
+  ensure
+    thread.join if thread
+  end
+
+  def test_handler_stops
+    in_handler(app) do |launcher|
+      launcher.stop
+      sleep 2
+      assert_equal port_open?(@launcher.connected_port), false
+    end
+  end
+
+  private
+
+  def port_open?(port, ip = '127.0.0.1', seconds = 1)
+    Timeout.timeout(seconds) do
+      begin
+        TCPSocket.new(ip, port).close
+        true
+      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+        false
+      end
+    end
+  rescue Timeout::Error
+    false
+  end
+end
