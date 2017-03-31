@@ -11,9 +11,9 @@ script: "TESTOPTS=-v bundle exec rake test"
 branches:
   only: [master]
 rvm:
-  - 2.2.6
-  - 2.3.3
-  - 2.4.0
+  - 2.2.7
+  - 2.3.4
+  - 2.4.1
   - ruby-head
   - jruby-9.1.8.0
   - jruby-head
