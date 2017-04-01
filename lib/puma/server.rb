@@ -522,7 +522,7 @@ module Puma
 
         raise "No REQUEST PATH" unless env[REQUEST_PATH]
 
-        env[QUERY_STRING] = uri.query
+        env[QUERY_STRING] = uri.query if uri.query
       end
 
       env[PATH_INFO] = env[REQUEST_PATH]
