@@ -163,6 +163,8 @@ module Puma
 
     # Run the server. This blocks until the server is stopped
     def run
+      env = ENV.to_h
+
       @config.clamp
 
       @config.plugins.fire_starts self
@@ -178,6 +180,7 @@ module Puma
         graceful_stop
       when :restart
         log "* Restarting..."
+        ENV.replace(env)
         @runner.before_restart
         restart!
       when :exit

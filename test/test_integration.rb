@@ -56,11 +56,7 @@ class TestIntegration < Minitest::Test
 
     @server = IO.popen("sh #{tf.path}", "r")
 
-    while (@server.gets) !~ /Ctrl-C/
-      # nothing
-    end
-
-    sleep 1
+    wait_for_server_to_boot
 
     @server
   end
@@ -71,6 +67,35 @@ class TestIntegration < Minitest::Test
 
   def wait_booted
     @wait.sysread 1
+  end
+
+  # reuses an existing connection to make sure that works
+  def restart_server(connection)
+    signal :USR2
+
+    sleep 1
+
+    connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
+
+    assert_raises Errno::ECONNRESET do
+      Timeout.timeout(2) do
+        raise Errno::ECONNRESET unless connection.read(2)
+      end
+    end
+
+    wait_for_server_to_boot
+  end
+
+  def connect
+    s = TCPSocket.new "localhost", @tcp_port
+    s << "GET / HTTP/1.1\r\n\r\n"
+    true until s.gets == "\r\n"
+    s
+  end
+
+  def wait_for_server_to_boot
+    true while @server.gets =~ /Ctrl-C/
+    sleep(Puma.jruby? ? 5 : 1) # TODO: not sure why that is needed ... something deterministic would be better
   end
 
   def test_stop_via_pumactl
@@ -186,28 +211,9 @@ class TestIntegration < Minitest::Test
   def test_restart_closes_keepalive_sockets
     server("-q test/hello.ru")
 
-    s = TCPSocket.new "localhost", @tcp_port
-    s << "GET / HTTP/1.1\r\n\r\n"
-    true until s.gets == "\r\n"
-
-    s.readpartial(20)
-    signal :USR2
-
-    sleep 1
-
-    s.write "GET / HTTP/1.1\r\n\r\n"
-
-    assert_raises Errno::ECONNRESET do
-      Timeout.timeout(2) do
-        raise Errno::ECONNRESET unless s.read(2)
-      end
-    end
-
-    while (@server.gets) !~ /Ctrl-C/
-      # nothing
-    end
-
-    sleep 5 if Puma.jruby?
+    s = connect
+    s.read
+    restart_server(s)
 
     s = TCPSocket.new "127.0.0.1", @tcp_port
     s << "GET / HTTP/1.0\r\n\r\n"
@@ -222,26 +228,29 @@ class TestIntegration < Minitest::Test
 
     server("-q -w 2 test/hello.ru")
 
-    s = TCPSocket.new "localhost", @tcp_port
-    s << "GET / HTTP/1.1\r\n\r\n"
-    true until s.gets == "\r\n"
-
-    s.readpartial(20)
-    signal :USR2
-
-    true while @server.gets =~ /Ctrl-C/
-    sleep 1
-
-    s.write "GET / HTTP/1.1\r\n\r\n"
-
-    assert_raises Errno::ECONNRESET do
-      Timeout.timeout(2) do
-        raise Errno::ECONNRESET unless s.read(2)
-      end
-    end
+    s = connect
+    s.read
+    restart_server s
 
     s = TCPSocket.new "localhost", @tcp_port
     s << "GET / HTTP/1.0\r\n\r\n"
     assert_equal "Hello World", s.read.split("\r\n").last
+  end
+
+  # It does not share environments between multiple generations, which would break Dotenv
+  def test_restart_restores_environment
+    server("-q test/hello-env.ru")
+
+    s = connect
+    initial_reply = s.read
+    restart_server(s)
+
+    s = TCPSocket.new "localhost", @tcp_port
+    s << "GET / HTTP/1.0\r\n\r\n"
+    new_reply = s.read.split("\r\n").last
+
+    assert_includes initial_reply, "Hello RAND"
+    assert_includes new_reply, "Hello RAND"
+    refute_equal initial_reply, new_reply
   end
 end
