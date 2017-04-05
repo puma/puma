@@ -171,9 +171,28 @@ Apr 07 08:40:19 hx puma[28320]: Use Ctrl-C to stop
 
 ## Alternative background process configuration
 
-If Capistrano and [capistrano3-puma](https://github.com/seuros/capistrano-puma) tasks are used you can use the following configuration. In this case, you would skip systemd Socket Activation, since Puma handles the socket by itself:
+If Capistrano and [capistrano3-puma](https://github.com/seuros/capistrano-puma) tasks are used you can use the following configuration. In this case, you would skip systemd Socket Activation, since Puma handles the socket by itself.
+
+First (as root, indicated by commands being prefixed with `#`), create a `puma.service`
+```
+# cd /etc/systemd/system
+# touch puma.service
+# chmod 664 puma.service
+```
+
+then pull that into an editor and insert the following setup. Then replace `<WD>` and do the dry-runs it suggests.
 
 ~~~~
+Unit]
+Description=Puma Rails Application/HTTP Server
+After=network.target
+
+# Preferably configure a non-privileged user (e.g. "deploy" if that's the user that owns the app and under which you want to run Puma)
+User=deploy
+
+# Specify the path to your puma application root
+WorkingDirectory=<WD>/current
+
 [Service]
 # Background process configuration (use with --daemon in ExecStart)
 Type=forking
@@ -194,4 +213,69 @@ ExecStop=bundle exec pumactl -S <WD>/shared/tmp/pids/puma.state stop
 
 # PIDFile setting is required in order to work properly
 PIDFile=<WD>/shared/tmp/pids/puma.pid
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
 ~~~~
+
+Then manually stop Puma (on your local machine, being indicated with the prompt `local$`)
+```
+local$ cap production puma:stop
+```
+
+and confirm it's not running
+```
+# ps aux | grep puma
+```
+
+Then reload systemd and start the service
+```
+# systemctl daemon-reload
+# systemctl start puma.service
+```
+
+if it all looks good,
+```
+# systemctl status puma.service
+# journalctl -u puma.service -f
+```
+NOTE: You may see an error like:
+```
+puma.service: PID file /home/deploy/apps/blog/shared/tmp/pids/puma.pid not readable (yet?) after start: No such file or directory
+```
+I think this is something systemd does if you have a PID file in a non-standard directory (e.g. not in "/var/run/XXXX.pid"), but it doesn't seem to cause any problems.
+https://bbs.archlinux.org/viewtopic.php?pid=1350386#p1350386
+
+then enable it for auto-restart
+```
+# systemctl enable puma.service
+```
+
+and do a reboot
+```
+# reboot
+```
+and verify it comes back up.
+
+and kill the process (as your non-privileged user, indicated by `$` preceding the commands)
+```
+$ ps aux | grep puma
+$ kill [pid of puma]
+```
+
+and look at the logs to ensure it restarted
+```
+# journalctl -u puma.service -f
+```
+
+### Starting/stopping puma
+Since systemd is now managing (and auto-restarting) puma, you can't use the `cap production puma:XYZ` tasks for cleanly starting and stopping it (they'll sort of work, but systemd will just restart things and you'll see backtraces and errors in the journalctl and).
+
+You need to
+```
+$ sudo systemctl stop puma.service
+$ sudo systemctl restart puma.service
+etc
+```
