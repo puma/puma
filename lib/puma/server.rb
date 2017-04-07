@@ -522,6 +522,8 @@ module Puma
 
         raise "No REQUEST PATH" unless env[REQUEST_PATH]
 
+        # A nil env value will cause a LintError (and fatal errors elsewhere),
+        # so only set the env value if there actually is a value.
         env[QUERY_STRING] = uri.query if uri.query
       end
 
