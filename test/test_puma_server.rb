@@ -623,4 +623,19 @@ class TestPumaServer < Minitest::Test
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
   end
+
+  def test_empty_header_values
+    @server.app = proc { |env| [200, {"X-Empty-Header" => ""}, []] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\n\r\n", data
+  end
 end
