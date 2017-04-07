@@ -689,7 +689,7 @@ module Puma
             next
           end
 
-          if vs.respond_to?(:to_s)
+          if vs.respond_to?(:to_s) && !vs.to_s.empty?
             vs.to_s.split(NEWLINE).each do |v|
               lines.append k, colon, v, line_ending
             end
