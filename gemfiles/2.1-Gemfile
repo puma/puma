@@ -8,5 +8,6 @@ gem "rake-compiler"
 
 gem "rack", "~> 1.6"
 gem "minitest", '~> 5.9'
+gem "minitest-rg"
 
 gem "jruby-openssl", :platform => "jruby"
