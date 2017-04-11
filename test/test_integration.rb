@@ -109,7 +109,7 @@ class TestIntegration < Minitest::Test
       c.state_path @state_path
       c.bind "unix://#{@bind_path}"
       c.activate_control_app "unix://#{@control_path}", :auth_token => @token
-      c.rackup "test/hello.ru"
+      c.rackup "test/rackup/hello.ru"
     end
 
     l = Puma::Launcher.new conf, :events => @events
@@ -149,7 +149,7 @@ class TestIntegration < Minitest::Test
       c.activate_control_app "unix://#{@control_path}", :auth_token => @token
       c.workers 2
       c.worker_shutdown_timeout 1
-      c.rackup "test/hello-stuck.ru"
+      c.rackup "test/rackup/hello-stuck.ru"
     end
 
     l = Puma::Launcher.new conf, :events => @events
@@ -209,7 +209,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_restart_closes_keepalive_sockets
-    server("-q test/hello.ru")
+    server("-q test/rackup/hello.ru")
 
     s = connect
     s.read
@@ -226,7 +226,7 @@ class TestIntegration < Minitest::Test
       return
     end
 
-    server("-q -w 2 test/hello.ru")
+    server("-q -w 2 test/rackup/hello.ru")
 
     s = connect
     s.read

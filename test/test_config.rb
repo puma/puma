@@ -5,7 +5,7 @@ require "puma/configuration"
 class TestConfigFile < Minitest::Test
   def test_app_from_rackup
     conf = Puma::Configuration.new do |c|
-      c.rackup "test/hello-bind.ru"
+      c.rackup "test/rackup/hello-bind.ru"
     end
     conf.load
 

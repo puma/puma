@@ -44,7 +44,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:9876",
                          "--control", url,
                          "--control-token", "",
-                         "test/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @events
 
     t = Thread.new do
       Thread.current.abort_on_exception = true
@@ -71,7 +71,7 @@ class TestCLI < Minitest::Test
                          "-w", "2",
                          "--control", url,
                          "--control-token", "",
-                         "test/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @events
 
     t = Thread.new { cli.run }
     t.abort_on_exception = true
@@ -106,7 +106,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control", url,
                          "--control-token", "",
-                         "test/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @events
 
     t = Thread.new { cli.run }
     t.abort_on_exception = true
@@ -129,7 +129,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control", url,
                          "--control-token", "",
-                         "test/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @events
 
     t = Thread.new { cli.run }
     t.abort_on_exception = true
