@@ -1,4 +1,4 @@
-require "test_helper"
+require_relative "helper"
 
 require "puma/app/status"
 require "rack"

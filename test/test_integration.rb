@@ -1,4 +1,4 @@
-require "test_helper"
+require_relative "helper"
 
 require "puma/cli"
 require "puma/control_cli"

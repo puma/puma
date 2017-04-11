@@ -1,4 +1,4 @@
-require "test_helper"
+require_relative "helper"
 
 class TestPersistent < Minitest::Test
   def setup
@@ -32,8 +32,8 @@ class TestPersistent < Minitest::Test
   end
 
   def teardown
-    @client.close
-    @server.stop(true)
+    @client && @client.close
+    @server && @server.stop(true)
   end
 
   def lines(count, s=@client)
