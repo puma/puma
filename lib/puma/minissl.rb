@@ -36,7 +36,9 @@ module Puma
         output
       end
 
-      def read_nonblock(size)
+      def read_nonblock(size, *_)
+        # *_ is to deal with keyword args that were added
+        # at some point (and being used in the wild)
         while true
           output = engine_read_all
           return output if output
