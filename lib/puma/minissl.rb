@@ -86,7 +86,9 @@ module Puma
       # it had already written the data in. So for the time being
       # (and since write blocking is quite rare), go ahead and actually
       # block in write_nonblock.
-      alias_method :write_nonblock, :write
+      def write_nonblock(data, *_)
+        write data
+      end
 
       def flush
         @socket.flush
