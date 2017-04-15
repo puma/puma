@@ -795,6 +795,7 @@ module Puma
         # encoding as body.
         stream = StringIO.new body[0,0]
       end
+      stream.write body
 
       stream.write body
 
