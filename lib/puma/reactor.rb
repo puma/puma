@@ -140,13 +140,6 @@ module Puma
 
     public
 
-    def run
-      run_internal
-    ensure
-      @trigger.close
-      @ready.close
-    end
-
     def run_in_thread
       @thread = Thread.new do
         begin
