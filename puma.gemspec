@@ -10,6 +10,8 @@ else
   version = "0.0.1"
 end
 
+require File.expand_path("../lib/puma/detect.rb", __FILE__)
+
 Gem::Specification.new do |s|
   s.name = "puma"
   s.version = version
@@ -20,8 +22,16 @@ Gem::Specification.new do |s|
   s.description = "Puma is a simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications. Puma is intended for use in both development and production environments. It's great for highly concurrent Ruby implementations such as Rubinius and JRuby as well as as providing process worker support to support CRuby well."
   s.email = ["evan@phx.io"]
   s.executables = ["puma", "pumactl"]
-  s.extensions = ["ext/puma_http11/extconf.rb"]
+
   s.files = `git ls-files`.split($/)
+
+  if Puma::IS_JRUBY
+    s.platform = 'java'
+    s.files << 'lib/puma/puma_http11.jar'
+  else
+    s.extensions = ["ext/puma_http11/extconf.rb"]
+  end
+
   s.homepage = "http://puma.io"
   s.license = "BSD-3-Clause"
   s.rdoc_options = ["--main", "README.md"]
