@@ -6,6 +6,7 @@ import org.jruby.RubyModule;
 import org.jruby.RubyObject;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -18,6 +19,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -27,6 +29,7 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 
 import static javax.net.ssl.SSLEngineResult.Status;
@@ -333,7 +336,11 @@ public class MiniSSL extends RubyObject {
   }
 
   @JRubyMethod
-  public IRubyObject peercert() {
-    return getRuntime().getNil();
+  public IRubyObject peercert() throws CertificateEncodingException {
+    try {
+      return JavaEmbedUtils.javaToRuby(getRuntime(), engine.getSession().getPeerCertificates()[0].getEncoded());
+    } catch (SSLPeerUnverifiedException ex) {
+      return getRuntime().getNil();
+    }
   }
 }
