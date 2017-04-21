@@ -348,6 +348,24 @@ $ bundle install
 $ bundle exec rake
 ```
 
+## Capistrano deployment
+
+Puma (2.0.0 +) has included Capistrano [deploy script](https://github.com/plentz/puma/blob/master/lib/puma/capistrano.rb), you just need require that:
+
+config/deploy.rb
+
+```ruby
+require "puma/capistrano"
+```
+
+and then
+
+```bash
+$ cap deploy:start # to start puma app server
+$ cap deploy:restart 
+$ cap deploy:stop
+```
+
 ## License
 
 Puma is copyright 2014 Evan Phoenix and contributors. It is licensed under the BSD 3-Clause license. See the included LICENSE file for details.
