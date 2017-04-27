@@ -42,7 +42,10 @@ module Rack
             user_config.threads min, max
           end
 
-          self.set_host_port_to_config(options[:Host], options[:Port], user_config)
+          host = options[:Host] || default_options[:Host]
+          port = options[:Port] || default_options[:Port]
+
+          self.set_host_port_to_config(host, port, user_config)
           self.set_host_port_to_config(default_options[:Host], default_options[:Port], default_config)
 
           user_config.app app

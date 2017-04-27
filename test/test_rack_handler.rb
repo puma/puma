@@ -80,6 +80,25 @@ class TestUserSuppliedOptionsPortIsSet < Minitest::Test
   end
 end
 
+class TestUserSuppliedOptionsHostIsSet < Minitest::Test
+  def setup
+    @options = {}
+    @options[:user_supplied_options] = [:Host]
+  end
+
+  def test_host_uses_supplied_port_default
+    user_port = rand(1000..9999)
+    user_host = "123.456.789"
+
+    @options[:Host] = user_host
+    @options[:Port] = user_port
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal ["tcp://#{user_host}:#{user_port}"], conf.options[:binds]
+  end
+end
+
 class TestUserSuppliedOptionsIsEmpty < Minitest::Test
   def setup
     @options = {}
