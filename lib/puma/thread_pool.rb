@@ -155,7 +155,15 @@ module Puma
 
     def wait_until_not_full
       @mutex.synchronize do
-        until @todo.size - @waiting < @max - @spawned or @shutdown
+        while true
+          return if @shutdown
+          return if @waiting > 0
+
+          # If we can still spin up new threads and there
+          # is work queued, then accept more work until we would
+          # spin up the max number of threads.
+          return if @todo.size < @max - @spawned
+
           @not_full.wait @mutex
         end
       end
