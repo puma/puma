@@ -36,7 +36,9 @@ module Puma
         output
       end
 
-      def read_nonblock(size)
+      def read_nonblock(size, *_)
+        # *_ is to deal with keyword args that were added
+        # at some point (and being used in the wild)
         while true
           output = engine_read_all
           return output if output
@@ -76,6 +78,19 @@ module Puma
 
       alias_method :syswrite, :write
       alias_method :<<, :write
+
+      # This is a temporary fix to deal with websockets code using
+      # write_nonblock. The problem with implementing it properly
+      # is that it means we'd have to have the ability to rewind
+      # an engine because after we write+extract, the socket
+      # write_nonblock call might raise an exception and later
+      # code would pass the same data in, but the engine would think
+      # it had already written the data in. So for the time being
+      # (and since write blocking is quite rare), go ahead and actually
+      # block in write_nonblock.
+      def write_nonblock(data, *_)
+        write data
+      end
 
       def flush
         @socket.flush
