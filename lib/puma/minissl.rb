@@ -84,7 +84,7 @@ module Puma
       # is that it means we'd have to have the ability to rewind
       # an engine because after we write+extract, the socket
       # write_nonblock call might raise an exception and later
-      # code would pass the same data in, but the engine would thing
+      # code would pass the same data in, but the engine would think
       # it had already written the data in. So for the time being
       # (and since write blocking is quite rare), go ahead and actually
       # block in write_nonblock.
