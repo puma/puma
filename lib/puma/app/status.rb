@@ -55,6 +55,12 @@ module Puma
             return rack_response(200, OK_STATUS)
           end
 
+	when /\/gc$/
+	  GC.start
+          stats = GC.stat
+          json = "{" + GC.stat.map { |k, v| "\"#{k}\": #{v}" }.join(",") + "}"
+	  return rack_response(200, json)
+
         when /\/stats$/
           return rack_response(200, @cli.stats)
         else
