@@ -9,7 +9,7 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory}
+    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats}
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
@@ -169,7 +169,7 @@ module Puma
         end
 
         message "Command #{@command} sent success"
-        message response.last if @command == "stats"
+        message response.last if @command == "stats" || @command == "gc-stats"
       end
 
       @server.close
