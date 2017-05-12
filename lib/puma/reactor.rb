@@ -60,19 +60,14 @@ module Puma
                 end
               end
             else
-              # We have to be sure to remove it from the timeout
-              # list or we'll accidentally close the socket when
-              # it's in use!
-              if c.timeout_at
-                @mutex.synchronize do
-                  @timeouts.delete c
-                end
-              end
-
               begin
                 if c.try_to_finish
                   @app_pool << c
                   sockets.delete c
+
+                  @mutex.synchronize do
+                    @timeouts.delete c
+                  end
                 end
 
               # Don't report these to the lowlevel_error handler, otherwise
