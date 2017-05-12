@@ -1,4 +1,4 @@
-require_relative "test_helper"
+require_relative "helper"
 
 class TestPersistent < Minitest::Test
   def setup

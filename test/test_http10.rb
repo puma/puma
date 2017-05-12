@@ -1,4 +1,4 @@
-require_relative "test_helper"
+require_relative "helper"
 
 require "puma/puma_http11"
 

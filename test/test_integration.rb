@@ -1,4 +1,4 @@
-require_relative "test_helper"
+require_relative "helper"
 
 require "puma/cli"
 require "puma/control_cli"
@@ -239,7 +239,7 @@ class TestIntegration < Minitest::Test
 
   # It does not share environments between multiple generations, which would break Dotenv
   def test_restart_restores_environment
-    server("-q test/hello-env.ru")
+    server("-q test/rackup/hello-env.ru")
 
     s = connect
     initial_reply = s.read

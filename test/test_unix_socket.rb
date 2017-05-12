@@ -1,4 +1,4 @@
-require_relative "test_helper"
+require_relative "helper"
 
 # UNIX sockets are not recommended on JRuby
 # (or Windows)
