@@ -239,7 +239,7 @@ module Puma
     def prune_bundler
       return unless defined?(Bundler)
       puma = Bundler.rubygems.loaded_specs("puma")
-      dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
+      dirs = puma.require_paths.map { |x| File.join(Pathname(puma.full_gem_path).realpath, x) }
       puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
 
       unless puma_lib_dir
