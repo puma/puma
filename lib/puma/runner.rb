@@ -107,7 +107,7 @@ module Puma
       append = @options[:redirect_append]
 
       if stdout
-        unless Dir.exists?(File.dirname(stdout))
+        unless Dir.exist?(File.dirname(stdout))
           raise "Cannot redirect STDOUT to #{stdout}"
         end
 
@@ -117,7 +117,7 @@ module Puma
       end
 
       if stderr
-        unless Dir.exists?(File.dirname(stderr))
+        unless Dir.exist?(File.dirname(stderr))
           raise "Cannot redirect STDERR to #{stderr}"
         end
 
