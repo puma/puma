@@ -14,6 +14,15 @@ module Puma
       IO.pipe
     end
 
+    def ensure_closed(io)
+      io.close
+    rescue IOError
+    rescue RuntimeError => e
+      # The server, in another thread, has been shut down during the system call
+      # https://github.com/puma/puma/pull/1206
+      raise e unless e.message.include?('IOError')
+    end
+
     # Unescapes a URI escaped string with +encoding+. +encoding+ will be the
     # target encoding of the string returned, and it defaults to UTF-8
     if defined?(::Encoding)
