@@ -24,6 +24,28 @@ module Puma; end
 
 Puma.const_set("WILD_ARGS", ["-I", inc, gems])
 
+# Ensure the bundler installed copy of Rack is on the `$LOAD_PATH` before
+# any globally installed copy of Rack (fixes #859).
+#
+# We cannot fully remove the dependency on Rack because gems such as Sinatra
+# monkey-patch their own extensions onto Rack (see #735). In those cases we
+# must use the real `Rack::Builder` instead of our own `Puma::Rack::Builder`.
+#
+# We cannot determine the Rack path ahead of time and pass it to `puma-wild`
+# from the `#prune_bundler` method because it would prevent Rack refreshing
+# on restart.
+#
+# Instead of shelling out to `bundle show` we could consider loading Bundler
+# and using it to determine the gem path, this would either require loading
+# 'bundler/setup' which is undesirable as it would modify the `$LOAD_PATH`
+# in unexpected ways, or manually implementing just enough of `Bundler.setup`
+# ourselves, which would deeply couple Puma to the internals of Bundler.
+rack_path = `bundle show rack`.chomp
+
+if $?.exitstatus.zero?
+  $LOAD_PATH.unshift File.join(rack_path, 'lib')
+end
+
 require 'puma/cli'
 
 cli = Puma::CLI.new ARGV
