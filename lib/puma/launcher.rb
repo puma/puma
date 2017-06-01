@@ -340,8 +340,6 @@ module Puma
 
       @restart_dir ||= Dir.pwd
 
-      require 'rubygems'
-
       # if $0 is a file in the current directory, then restart
       # it the same, otherwise add -S on there because it was
       # picked up in PATH.
@@ -352,9 +350,10 @@ module Puma
         arg0 = [Gem.ruby, "-S", $0]
       end
 
-      # Detect and reinject -Ilib from the command line
+      # Detect and reinject -Ilib from the command line, used for testing without bundler
+      # cruby has an expanded path, jruby has just "lib"
       lib = File.expand_path "lib"
-      arg0[1,0] = ["-I", lib] if $:[0] == lib
+      arg0[1,0] = ["-I", lib] if [lib, "lib"].include?($LOAD_PATH[0])
 
       if defined? Puma::WILD_ARGS
         @restart_argv = arg0 + Puma::WILD_ARGS + @original_argv
