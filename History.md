@@ -1,3 +1,26 @@
+## 3.9.0 / 2017-06-01
+
+* 2 features:
+  * The ENV is now reset to its original values when Puma restarts via USR1/USR2 (#1260) (MRI only, no JRuby support)
+  * Puma will no longer accept more clients than the maximum number of threads. (#1278)
+
+* 9 bugfixes:
+  * Reduce information leakage by preventing HTTP parse errors from writing environment hashes to STDERR (#1306)
+  * Fix SSL/WebSocket compatibility (#1274)
+  * HTTP headers with empty values are no longer omitted from responses. (#1261)
+  * Fix a Rack env key which was set to nil. (#1259)
+  * peercert has been implemented for JRuby (#1248)
+  * Fix port settings when using rails s (#1277, #1290)
+  * Fix compat w/LibreSSL (#1285)
+  * Fix restarting Puma w/symlinks and a new Gemfile (#1282)
+  * Replace Dir.exists? with Dir.exist? (#1294)
+
+* 1 known issue:
+  * A bug in MRI 2.2+ can result in IOError: stream closed. See #1206. This issue has existed since at least Puma 3.6, and probably further back.
+
+* 1 refactor:
+  * Lots of test fixups from @grosser.
+
 ## 3.8.2 / 2017-03-14
 
 * 1 bugfix:
