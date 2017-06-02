@@ -14,7 +14,6 @@ class TestIntegration < Minitest::Test
     @tcp_port = 9998
 
     @server = nil
-    @script = nil
 
     @wait, @ready = IO.pipe
 
@@ -39,26 +38,23 @@ class TestIntegration < Minitest::Test
 
       @server.close
     end
-
-    if @script
-      @script.close!
-    end
   end
 
-  def server(opts)
-    core = "#{Gem.ruby} -rubygems -Ilib bin/puma"
-    cmd = "#{core} --restart-cmd '#{core}' -b tcp://127.0.0.1:#{@tcp_port} #{opts}"
-    tf = Tempfile.new "puma-test"
-    tf.puts "exec #{cmd}"
-    tf.close
-
-    @script = tf
-
-    @server = IO.popen("sh #{tf.path}", "r")
+  def server(argv)
+    cmd = "#{Gem.ruby} -Ilib bin/puma -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
+    @server = IO.popen(cmd, "r")
 
     wait_for_server_to_boot
 
     @server
+  end
+
+  def restart_server_and_listen(argv)
+    server(argv)
+    s = connect
+    initial_reply = s.read
+    restart_server(s)
+    [initial_reply, connect.read]
   end
 
   def signal(which)
@@ -135,7 +131,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_phased_restart_via_pumactl
-    skip("Too finicky, fails 50% of the time on CI.")
+    skip("Too finicky, fails 50% of the time on CI") if ENV["CI"]
 
     if Puma.jruby? || Puma.windows?
       assert true
@@ -209,15 +205,8 @@ class TestIntegration < Minitest::Test
   end
 
   def test_restart_closes_keepalive_sockets
-    server("-q test/rackup/hello.ru")
-
-    s = connect
-    s.read
-    restart_server(s)
-
-    s = TCPSocket.new "127.0.0.1", @tcp_port
-    s << "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "Hello World", s.read.split("\r\n").last
+    _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
+    assert_equal "Hello World", new_reply
   end
 
   def test_restart_closes_keepalive_sockets_workers
@@ -226,15 +215,8 @@ class TestIntegration < Minitest::Test
       return
     end
 
-    server("-q -w 2 test/rackup/hello.ru")
-
-    s = connect
-    s.read
-    restart_server s
-
-    s = TCPSocket.new "localhost", @tcp_port
-    s << "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "Hello World", s.read.split("\r\n").last
+    _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
+    assert_equal "Hello World", new_reply
   end
 
   # It does not share environments between multiple generations, which would break Dotenv
@@ -246,15 +228,7 @@ class TestIntegration < Minitest::Test
       return
     end
 
-    server("-q test/rackup/hello-env.ru")
-
-    s = connect
-    initial_reply = s.read
-    restart_server(s)
-
-    s = TCPSocket.new "localhost", @tcp_port
-    s << "GET / HTTP/1.0\r\n\r\n"
-    new_reply = s.read.split("\r\n").last
+    initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
 
     assert_includes initial_reply, "Hello RAND"
     assert_includes new_reply, "Hello RAND"
