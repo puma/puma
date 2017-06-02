@@ -8,6 +8,7 @@ IS_JRUBY = defined?(RUBY_ENGINE) ? RUBY_ENGINE == "jruby" : false
 Hoe.plugin :git
 Hoe.plugin :ignore
 
+# Keep in sync with puma/gemspec
 HOE = Hoe.spec "puma" do
   self.readme_file    = "README.md"
   self.urls = %w!http://puma.io https://github.com/puma/puma!
@@ -17,13 +18,9 @@ HOE = Hoe.spec "puma" do
 
   spec_extras[:extensions]  = ["ext/puma_http11/extconf.rb"]
   spec_extras[:executables] = ['puma', 'pumactl']
-  spec_extras[:homepage] = self.urls.first
+  spec_extras[:homepage] = urls.first
 
   require_ruby_version ">= 1.9.3"
-
-  dependency "rack", [">= 1.1", "< 3.0"], :development
-
-  extra_dev_deps << ["rake-compiler", "~> 0.8"]
 end
 
 task :prerelease => [:clobber, :check_manifest, :test]

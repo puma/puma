@@ -355,6 +355,9 @@ module Puma
       lib = File.expand_path "lib"
       arg0[1,0] = ["-I", lib] if [lib, "lib"].include?($LOAD_PATH[0])
 
+      # Detect and reinject any rubyopt that were set and will be removed by ENV reset
+      arg0[1,0] = ENV["RUBYOPT"] if ENV["RUBYOPT"] && defined?(Bundler)
+
       if defined? Puma::WILD_ARGS
         @restart_argv = arg0 + Puma::WILD_ARGS + @original_argv
       else
