@@ -163,7 +163,7 @@ module Puma
 
     # Run the server. This blocks until the server is stopped
     def run
-      previous_env = (defined?(Bundler) ? Bundler.clean_env : ENV.to_h)
+      previous_env = (defined?(Bundler) ? Bundler::ORIGINAL_ENV : ENV.to_h)
 
       @config.clamp
 
