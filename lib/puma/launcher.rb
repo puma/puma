@@ -163,7 +163,12 @@ module Puma
 
     # Run the server. This blocks until the server is stopped
     def run
-      previous_env = (defined?(Bundler) ? Bundler::ORIGINAL_ENV : ENV.to_h)
+      if defined?(Bundler)
+        previous_env = Bundler::ORIGINAL_ENV # forget changed load paths and RUBYOPT
+        previous_env.delete("BUNDLE_GEMFILE") # forget Gemfile location in case we replace a symlinked folder
+      else
+        previous_env = ENV.to_h
+      end
 
       @config.clamp
 
