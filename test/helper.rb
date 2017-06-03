@@ -37,7 +37,7 @@ end
 module TimeoutEveryTestCase
   def run(*)
     if ENV['CI']
-      ::Timeout.timeout(Puma.jruby? ? 120 : 60) { super }
+      ::Timeout.timeout(Puma.jruby? ? 120 : 30) { super }
     else
       super # we want to be able to use debugger
     end
