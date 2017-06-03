@@ -55,7 +55,7 @@ module Puma
       app = Puma::App::Status.new @launcher
 
       if token = @options[:control_auth_token]
-        app.auth_token = token unless token.empty? or token == :none
+        app.auth_token = token unless token.empty?
       end
 
       control = Puma::Server.new app, @launcher.events

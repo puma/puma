@@ -105,7 +105,7 @@ module Puma
       end
 
       if opts[:no_token]
-        auth_token = :none
+        auth_token = ''
       else
         auth_token = opts[:auth_token]
         auth_token ||= Configuration.random_token
