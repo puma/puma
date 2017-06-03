@@ -1,3 +1,9 @@
+## 3.9.1 / 2017-06-03
+
+* 2 bugfixes:
+  * Fixed compatibility with older Bundler versions (#1314)
+  * Some internal test/development cleanup (#1311, #1313)
+
 ## 3.9.0 / 2017-06-01
 
 * 2 features:
