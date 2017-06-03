@@ -36,9 +36,13 @@ def hit(uris)
 end
 
 module TimeoutEveryTestCase
+  # our own subclass so we never confused different timeouts
+  class TestTookTooLong < Timeout::Error
+  end
+
   def run(*)
     if ENV['CI']
-      ::Timeout.timeout(Puma.jruby? ? 120 : 30) { super }
+      ::Timeout.timeout(Puma.jruby? ? 120 : 30, TestTookTooLong) { super }
     else
       super # we want to be able to use debugger
     end

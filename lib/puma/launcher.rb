@@ -163,7 +163,16 @@ module Puma
 
     # Run the server. This blocks until the server is stopped
     def run
-      previous_env = (defined?(Bundler) ? Bundler::ORIGINAL_ENV : ENV.to_h)
+      previous_env =
+        if defined?(Bundler)
+          env = Bundler::ORIGINAL_ENV
+          # add -rbundler/setup so we load from Gemfile when restarting
+          bundle = "-rbundler/setup"
+          env["RUBYOPT"] = [env["RUBYOPT"], bundle].join(" ") unless env["RUBYOPT"].include?(bundle)
+          env
+        else
+          ENV.to_h
+        end
 
       @config.clamp
 
@@ -225,8 +234,8 @@ module Puma
       else
         redirects = {:close_others => true}
         @binder.listeners.each_with_index do |(l, io), i|
-        ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-        redirects[io.to_i] = io.to_i
+          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+          redirects[io.to_i] = io.to_i
         end
 
         argv = restart_args
