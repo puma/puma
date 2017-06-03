@@ -91,7 +91,6 @@ class TestIntegration < Minitest::Test
 
   def wait_for_server_to_boot
     true while @server.gets !~ /Ctrl-C/ # wait for server to say it booted
-    sleep(Puma.jruby? ? 5 : 1) # TODO: not sure why that is needed ... something deterministic would be better
   end
 
   def test_stop_via_pumactl
