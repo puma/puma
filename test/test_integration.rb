@@ -23,7 +23,7 @@ class TestIntegration < Minitest::Test
 
   def teardown
     File.unlink @state_path rescue nil
-    File.unlink @bind_path  rescue nil
+    File.unlink @bind_path rescue nil
     File.unlink @control_path rescue nil
 
     @wait.close
@@ -52,9 +52,9 @@ class TestIntegration < Minitest::Test
   def restart_server_and_listen(argv)
     server(argv)
     s = connect
-    initial_reply = s.read
+    initial_reply = read_body(s)
     restart_server(s)
-    [initial_reply, connect.read]
+    [initial_reply, read_body(connect)]
   end
 
   def signal(which)
@@ -69,15 +69,7 @@ class TestIntegration < Minitest::Test
   def restart_server(connection)
     signal :USR2
 
-    sleep 1
-
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
-
-    assert_raises Errno::ECONNRESET do
-      Timeout.timeout(2) do
-        raise Errno::ECONNRESET unless connection.read(2)
-      end
-    end
 
     wait_for_server_to_boot
   end
@@ -91,6 +83,17 @@ class TestIntegration < Minitest::Test
 
   def wait_for_server_to_boot
     true while @server.gets !~ /Ctrl-C/ # wait for server to say it booted
+  end
+
+  def read_body(connection)
+    Timeout.timeout(10) do
+      loop do
+        response = connection.readpartial(1024)
+        body = response.split("\r\n\r\n", 2).last
+        return body if body && !body.empty?
+        sleep 0.01
+      end
+    end
   end
 
   def test_stop_via_pumactl
@@ -115,7 +118,7 @@ class TestIntegration < Minitest::Test
 
     s = UNIXSocket.new @bind_path
     s << "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "Hello World", s.read.split("\r\n").last
+    assert_equal "Hello World", read_body(s)
 
     sout = StringIO.new
 
