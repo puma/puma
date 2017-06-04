@@ -80,4 +80,3 @@ module Puma
     end
   end
 end
-

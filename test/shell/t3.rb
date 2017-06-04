@@ -9,7 +9,7 @@ sleep 2
 
 worker_index_within_number_of_workers = !File.file?("t3-worker-3-pid")
 
-system "kill `cat t3-pid`" 
+system "kill `cat t3-pid`"
 
 File.unlink "t3-pid" if File.file? "t3-pid"
 File.unlink "t3-worker-0-pid" if File.file? "t3-worker-0-pid"
@@ -22,4 +22,3 @@ if worker_pid_was_present and worker_index_within_number_of_workers
 else
   exit 1
 end
-

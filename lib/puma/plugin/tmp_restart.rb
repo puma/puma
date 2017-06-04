@@ -32,4 +32,3 @@ Puma::Plugin.create do
     end
   end
 end
-

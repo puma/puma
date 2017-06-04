@@ -6,7 +6,7 @@
   CA[:domainname] = domainname
   CA[:CA_dir] = File.join Dir.pwd, "CA"
   CA[:password] = 'puma'
-  
+
   CERTS << {
     :type => 'server',
     :hostname => 'puma'

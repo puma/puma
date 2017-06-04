@@ -16,4 +16,3 @@ if log =~ %r!GET / HTTP/1\.1!
 else
   exit 1
 end
-
