@@ -67,7 +67,6 @@ module Puma
       @first_data_timeout = options.fetch(:first_data_timeout, FIRST_DATA_TIMEOUT)
 
       @binder = Binder.new(events)
-      @own_binder = true
 
       @leak_stack_on_error = true
 
@@ -87,11 +86,6 @@ module Puma
     forward :add_ssl_listener,  :@binder
     forward :add_unix_listener, :@binder
     forward :connected_port,    :@binder
-
-    def inherit_binder(bind)
-      @binder = bind
-      @own_binder = false
-    end
 
     def tcp_mode!
       @mode = :tcp
@@ -236,7 +230,7 @@ module Puma
         @check.close
         @notify.close
 
-        if @status != :restart and @own_binder
+        if @status != :restart
           @binder.close
         end
       end
@@ -391,7 +385,7 @@ module Puma
         @check.close
         @notify.close
 
-        if @status != :restart and @own_binder
+        if @status != :restart
           @binder.close
         end
       end
