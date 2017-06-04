@@ -94,10 +94,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_stop_via_pumactl
-    if Puma.jruby? || Puma.windows?
-      assert true
-      return
-    end
+    skip if Puma.jruby? || Puma.windows?
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -130,12 +127,8 @@ class TestIntegration < Minitest::Test
   end
 
   def test_phased_restart_via_pumactl
-    skip("Too finicky, fails 50% of the time on CI") if ENV["CI"]
-
-    if Puma.jruby? || Puma.windows?
-      assert true
-      return
-    end
+    skip "Too finicky, fails 50% of the time on CI" if ENV["CI"]
+    skip if Puma.jruby? || Puma.windows?
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -181,10 +174,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_kill_unknown_via_pumactl
-    if Puma.jruby? || Puma.windows?
-      assert true
-      return
-    end
+    skip if Puma.jruby? || Puma.windows?
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
     # do not want to accidently kill a valid other process
@@ -209,23 +199,16 @@ class TestIntegration < Minitest::Test
   end
 
   def test_restart_closes_keepalive_sockets_workers
-    if Puma.jruby?
-      assert true
-      return
-    end
-
+    skip_on_jruby
     _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
 
   # It does not share environments between multiple generations, which would break Dotenv
   def test_restart_restores_environment
-    if Puma.jruby?
-      # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
-      # next workers ENV
-      assert true
-      return
-    end
+    # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
+    # next workers ENV
+    skip_on_jruby
 
     initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
 
