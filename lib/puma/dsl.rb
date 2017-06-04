@@ -132,6 +132,12 @@ module Puma
       @options[:persistent_timeout] = seconds
     end
 
+    # Define how long the tcp socket stays open, if no data has been received
+    #
+    def first_data_timeout(seconds)
+      @options[:first_data_timeout] = seconds
+    end
+
     # Work around leaky apps that leave garbage in Thread locals
     # across requests
     #

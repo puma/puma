@@ -64,11 +64,10 @@ module Puma
       @thread_pool = nil
 
       @persistent_timeout = options.fetch(:persistent_timeout, PERSISTENT_TIMEOUT)
+      @first_data_timeout = options.fetch(:first_data_timeout, FIRST_DATA_TIMEOUT)
 
       @binder = Binder.new(events)
       @own_binder = true
-
-      @first_data_timeout = FIRST_DATA_TIMEOUT
 
       @leak_stack_on_error = true
 
