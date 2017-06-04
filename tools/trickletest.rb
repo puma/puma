@@ -31,7 +31,7 @@ st = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\nCon
 puts "length: #{content.length}"
 
 threads = []
-ARGV[1].to_i.times do 
+ARGV[1].to_i.times do
   t = Thread.new do
     size = 100
     puts ">>>> #{size} sized chunks"

@@ -179,4 +179,3 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
     end
   end
 end
-
