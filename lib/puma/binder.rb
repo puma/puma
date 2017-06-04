@@ -47,8 +47,8 @@ module Puma
     end
 
     def close
-      @ios.each { |i| i.close }
-      @unix_paths.each { |i| File.unlink i }
+      @ios.each { |i| i.close rescue nil }
+      @unix_paths.each { |i| File.unlink(i) if File.exist?(i) }
     end
 
     def import_from_env

@@ -66,7 +66,6 @@ module Puma
       @persistent_timeout = options.fetch(:persistent_timeout, PERSISTENT_TIMEOUT)
 
       @binder = Binder.new(events)
-      @own_binder = true
 
       @first_data_timeout = FIRST_DATA_TIMEOUT
 
@@ -88,11 +87,6 @@ module Puma
     forward :add_ssl_listener,  :@binder
     forward :add_unix_listener, :@binder
     forward :connected_port,    :@binder
-
-    def inherit_binder(bind)
-      @binder = bind
-      @own_binder = false
-    end
 
     def tcp_mode!
       @mode = :tcp
@@ -237,7 +231,7 @@ module Puma
         @check.close
         @notify.close
 
-        if @status != :restart and @own_binder
+        if @status != :restart
           @binder.close
         end
       end
@@ -392,7 +386,7 @@ module Puma
         @check.close
         @notify.close
 
-        if @status != :restart and @own_binder
+        if @status != :restart
           @binder.close
         end
       end

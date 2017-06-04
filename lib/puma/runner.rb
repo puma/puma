@@ -155,7 +155,6 @@ module Puma
       server = Puma::Server.new app, @launcher.events, @options
       server.min_threads = min_t
       server.max_threads = max_t
-      server.inherit_binder @launcher.binder
 
       if @options[:mode] == :tcp
         server.tcp_mode!
