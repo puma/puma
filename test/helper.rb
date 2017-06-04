@@ -13,6 +13,7 @@ require "minitest/autorun"
 require "minitest/pride"
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
+Thread.abort_on_exception = true
 
 require "puma"
 require "puma/detect"
