@@ -2,6 +2,10 @@ require "bundler/setup"
 require "hoe"
 require "rake/extensiontask"
 require "rake/javaextensiontask"
+require "rubocop/rake_task"
+
+# Add rubocop task
+RuboCop::RakeTask.new
 
 IS_JRUBY = defined?(RUBY_ENGINE) ? RUBY_ENGINE == "jruby" : false
 
@@ -163,3 +167,5 @@ namespace :test do
     task :all => [:test, "test:integration"]
   end
 end
+
+task :default => [:rubocop, :test]

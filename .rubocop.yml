@@ -5,6 +5,9 @@ AllCops:
   StyleGuideCopsOnly: false
   Exclude:
     - 'tmp/**/*'
+    - 'gemfiles/vendor/**/*'
+    - 'vendor/**/*'
+    - 'Rakefile'
 
 Layout/SpaceAfterColon:
   Enabled: true
