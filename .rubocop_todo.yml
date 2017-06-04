@@ -1,0 +1,86 @@
+inherit_from: "./.rubocop.yml"
+
+# 29 offenses
+Layout/SpaceAroundOperators:
+  Enabled: true
+
+# 21 offenses
+Layout/SpaceInsideBlockBraces:
+  Enabled: true
+
+# 16 offenses
+Layout/SpaceAroundEqualsInParameterDefault:
+  Enabled: true
+  EnforcedStyle: no_space
+
+# 15 offenses
+Layout/SpaceBeforeBlockBraces:
+  Enabled: true
+
+# 15 offenses
+Layout/SpaceInsideHashLiteralBraces:
+  Enabled: true
+  EnforcedStyle: no_space
+
+# 8 offenses
+Layout/EmptyLines:
+  Enabled: true
+
+# 4 offenses
+Layout/EmptyLinesAroundClassBody:
+  Enabled: true
+  Exclude:
+    - 'test/**/*'
+
+# 6 offenses
+Layout/EmptyLinesAroundMethodBody:
+  Enabled: true
+
+# 5 offenses
+Layout/EmptyLinesAroundModuleBody:
+  Enabled: true
+
+# 5 offenses
+Layout/IndentationWidth:
+  Enabled: true
+
+# 3 offenses
+Layout/AccessModifierIndentation:
+  EnforcedStyle: indent
+
+# 2 offenses
+Style/WhileUntilModifier:
+  Enabled: true
+
+# 1 offense
+Style/TernaryParentheses:
+  Enabled: true
+
+# >200 offenses for 80
+# 58 offenses for 100
+# 18 offenses for 120
+Metrics/LineLength:
+  Max: 120
+  AllowHeredoc: true
+  AllowURI: true
+  URISchemes:
+    - http
+    - https
+  IgnoreCopDirectives: false
+  IgnoredPatterns: []
+
+# 1 offense
+Metrics/ParameterLists:
+  Max: 5
+
+# 1 offense
+Performance/RedundantMatch:
+  Enabled: true
+
+# 1 offense
+Performance/RedundantBlockCall:
+  Enabled: true
+
+# 1 offense
+Performance/StringReplacement:
+  Enabled: true

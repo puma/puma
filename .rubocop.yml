@@ -1,0 +1,85 @@
+AllCops:
+  DisabledByDefault: true
+  TargetRubyVersion: 1.9.3
+  DisplayCopNames: true
+  StyleGuideCopsOnly: false
+  Exclude:
+    - 'tmp/**/*'
+
+Layout/SpaceAfterColon:
+  Enabled: true
+
+Layout/SpaceAroundKeyword:
+  Enabled: true
+
+Layout/SpaceBeforeFirstArg:
+  Enabled: true
+
+Layout/SpaceInsideParens:
+  Enabled: true
+
+Layout/Tab:
+  Enabled: true
+
+Layout/TrailingBlankLines:
+  Enabled: true
+
+Layout/TrailingWhitespace:
+  Enabled: true
+
+Lint/Debugger:
+  Enabled: true
+
+Style/MethodDefParentheses:
+  Enabled: true
+
+Style/MethodName:
+  Enabled: true
+  EnforcedStyle: snake_case
+  Exclude:
+    - 'test/**/**'
+
+Style/TrailingCommaInArguments:
+  Enabled: true
+
+Style/VariableName:
+  Enabled: true
+
+Performance/Count:
+  Enabled: true
+
+Performance/Detect:
+  Enabled: true
+
+Performance/EndWith:
+  Enabled: true
+
+Performance/FlatMap:
+  Enabled: true
+
+Performance/HashEachMethods:
+  Enabled: true
+
+Performance/RangeInclude:
+  Enabled: true
+
+Performance/RedundantMerge:
+  Enabled: true
+
+Performance/RedundantSortBy:
+  Enabled: true
+
+Performance/ReverseEach:
+  Enabled: true
+
+Performance/Sample:
+  Enabled: true
+
+Performance/Size:
+  Enabled: true
+
+Performance/StartWith:
+  Enabled: true
+
+Performance/TimesMap:
+  Enabled: true
