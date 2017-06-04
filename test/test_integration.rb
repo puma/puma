@@ -133,23 +133,17 @@ class TestIntegration < Minitest::Test
     skip "Too finicky, fails 50% of the time on CI" if ENV["CI"]
     skip if Puma.jruby? || Puma.windows?
 
-    conf = Puma::Configuration.new do |c|
-      c.quiet
-      c.state_path @state_path
-      c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => @token
-      c.workers 2
-      c.worker_shutdown_timeout 1
-      c.rackup "test/rackup/hello-stuck.ru"
-    end
-
-    l = Puma::Launcher.new conf, :events => @events
-
-    Thread.abort_on_exception = true
-
-    t = Thread.new do
-      Thread.current.abort_on_exception = true
-      l.run
+    launcher_thread = Thread.new do
+      conf = Puma::Configuration.new do |c|
+        c.quiet
+        c.state_path @state_path
+        c.bind "unix://#{@bind_path}"
+        c.activate_control_app "unix://#{@control_path}", :auth_token => @token
+        c.workers 2
+        c.worker_shutdown_timeout 1
+        c.rackup "test/rackup/hello-stuck.ru"
+      end
+      Puma::Launcher.new(conf, :events => @events).run
     end
 
     wait_booted
@@ -161,7 +155,7 @@ class TestIntegration < Minitest::Test
     sout = StringIO.new
 
     # Phased restart
-    ccli = Puma::ControlCLI.new %W!-S #{@state_path} phased-restart!, sout
+    ccli = Puma::ControlCLI.new ["-S", @state_path, "phased-restart"], sout
     ccli.run
     sleep 20
     @events.stdout.rewind
@@ -170,10 +164,10 @@ class TestIntegration < Minitest::Test
     assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
 
     # Stop
-    ccli = Puma::ControlCLI.new %W!-S #{@state_path} stop!, sout
+    ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
     ccli.run
 
-    assert_kind_of Thread, t.join(5), "server didn't stop"
+    assert_kind_of Thread, launcher_thread.join(5), "server didn't stop"
   end
 
   def test_kill_unknown_via_pumactl
