@@ -220,5 +220,8 @@ module Puma
     HIJACK_P = "rack.hijack?".freeze
     HIJACK = "rack.hijack".freeze
     HIJACK_IO = "rack.hijack_io".freeze
+
+    WEBSOCKET_P = "upgrade.websocket?".freeze
+    WEBSOCKET = "upgrade.websocket".freeze
   end
 end

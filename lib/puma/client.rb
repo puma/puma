@@ -53,12 +53,16 @@ module Puma
       @remote_addr_header = nil
     end
 
+    def websocket?
+      false
+    end
+
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
                 :tempfile
 
     attr_writer :peerip
 
-    attr_accessor :remote_addr_header
+    attr_accessor :remote_addr_header, :websocket_upgrade
 
     forward :closed?, :@io
 
