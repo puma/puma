@@ -3,10 +3,21 @@
 [systemd](https://www.freedesktop.org/wiki/Software/systemd/) is a
 commonly available init system (PID 1) on many Linux distributions. It
 offers process monitoring (including automatic restarts) and other
-useful features for running Puma in production. Below is a sample
-puma.service configuration file for systemd:
+useful features for running Puma in production.
 
-~~~~
+## Service Configuration
+
+Below is a sample puma.service configuration file for systemd, which
+can be copied or symlinked to /etc/systemd/system/puma.service, or if
+desired, using an application or instance specific name.
+
+Note that this uses the systemd preferred "simple" type where the
+start command remains running in the foreground (does not fork and
+exit). See also, the
+[Alternative Forking Configuration](#alternative-forking-configuration)
+below.
+
+~~~~ ini
 [Unit]
 Description=Puma HTTP Server
 After=network.target
@@ -21,22 +32,21 @@ Type=simple
 # Preferably configure a non-privileged user
 # User=
 
-# Specify the path to your puma application root
-# WorkingDirectory=
+# The path to the puma application root
+# Also replace the "<WD>" place holders below with this path.
+WorkingDirectory=
 
 # Helpful for debugging socket activation, etc.
 # Environment=PUMA_DEBUG=1
 
-# The command to start Puma
-# Here we are using a binstub generated via:
-# `bundle binstubs puma --path ./sbin`
-# in the WorkingDirectory (replace <WD> below)
-# You can alternatively use `bundle exec --keep-file-descriptors puma`
-# ExecStart=<WD>/sbin/puma -b tcp://0.0.0.0:9292 -b ssl://0.0.0.0:9293?key=key.pem&cert=cert.pem
+# The command to start Puma. This variant uses a binstub generated via
+# `bundle binstubs puma --path ./sbin` in the WorkingDirectory
+# (replace "<WD>" below)
+ExecStart=<WD>/sbin/puma -b tcp://0.0.0.0:9292 -b ssl://0.0.0.0:9293?key=key.pem&cert=cert.pem
 
-# Alternatively with a config file (in WorkingDirectory) and
-# comparable `bind` directives
+# Variant: Use config file with `bind` directives instead:
 # ExecStart=<WD>/sbin/puma -C config.rb
+# Variant: Use `bundle exec --keep-file-descriptors puma` instead of binstub
 
 Restart=always
 
@@ -50,14 +60,16 @@ for additional details.
 ## Socket Activation
 
 systemd and puma also support socket activation, where systemd opens
-the listening socket(s) in advance and provides them to the puma master
-process on startup. Among other advantages, this keeps listening
-sockets open across puma restarts and achieves graceful restarts. To
-use socket activation, configure one or more `ListenStream`
-sockets in a companion `*.socket` systemd config file. Here is a sample
-puma.socket, matching the ports used in the above puma.service:
+the listening socket(s) in advance and provides them to the puma
+master process on startup. Among other advantages, this keeps
+listening sockets open across puma restarts and achieves graceful
+restarts, including when upgraded puma, and is compatible with both
+clustered mode and application preload. To use socket activation,
+configure one or more `ListenStream` sockets in a companion `*.socket`
+systemd config file. Here is a sample puma.socket, matching the ports
+used in the above puma.service:
 
-~~~~
+~~~~ ini
 [Unit]
 Description=Puma HTTP Server Accept Sockets
 
@@ -169,29 +181,51 @@ Apr 07 08:40:19 hx puma[28320]: * Activated ssl://0.0.0.0:9234?key=key.pem&cert=
 Apr 07 08:40:19 hx puma[28320]: Use Ctrl-C to stop
 ~~~~
 
-## Alternative background process configuration
+## Alternative Forking Configuration
 
-If Capistrano and [capistrano3-puma](https://github.com/seuros/capistrano-puma) tasks are used you can use the following configuration. In this case, you would skip systemd Socket Activation, since Puma handles the socket by itself:
+Other systems/tools might expect or need puma to be run as a
+"traditional" forking server, for example so that the `pumactl`
+command can be used directly and outside of systemd for
+stop/start/restart. This use case is incompatible with systemd
+socket activation, so it should not be configured.
 
-~~~~
+~~~~ ini
+[Unit]
+Description=Puma HTTP Forking Server
+After=network.target
+
 [Service]
 # Background process configuration (use with --daemon in ExecStart)
 Type=forking
 
-# To learn which exact command is to be used to execute at "ExecStart" of this
-# Service, ask Capistrano: `cap <stage> puma:start --dry-run`. Your result
-# may differ from this example, for example if you use a Ruby version
-# manager. `<WD>` is short for "your working directory". Replace it with your
-# path.
+# Preferably configure a non-privileged user
+# User=
+
+# The command to start Puma
+# Replace "<WD>" below, with the application root or working directory
 ExecStart=bundle exec puma -C <WD>/shared/puma.rb --daemon
 
-# To learn which exact command is to be used to execute at "ExecStop" of this
-# Service, ask Capistrano: `cap <stage> puma:stop --dry-run`. Your result
-# may differ from this example, for example if you use a Ruby version
-# manager. `<WD>` is short for "your working directory". Replace it with your
-# path.
+# The command to stop Puma
+# Replace "<WD>" below.
 ExecStop=bundle exec pumactl -S <WD>/shared/tmp/pids/puma.state stop
 
-# PIDFile setting is required in order to work properly
+# Path to PID file so that systemd knows which is the master process
 PIDFile=<WD>/shared/tmp/pids/puma.pid
+~~~~
+
+### capistrano3-puma
+
+By default,
+[capistrano3-puma](https://github.com/seuros/capistrano-puma) uses
+`pumactl` for deployment restarts, outside of systemd.  To learn the
+exact commands that this tool would use for `ExecStart` and
+`ExecStop`, use the following `cap` commands in dry-run mode, and
+update from the above forking service configuration accordingly. Note
+also that the configured `User` should likely be the same as the
+capistrano3-puma `:puma_user` option.
+
+~~~~ sh
+stage=production # or different stage, as needed
+cap $stage puma:start --dry-run
+cap $stage puma:stop  --dry-run
 ~~~~
