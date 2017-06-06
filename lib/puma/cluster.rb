@@ -229,7 +229,12 @@ module Puma
 
     def worker(index, master)
       title = "puma: cluster worker #{index}: #{master}"
-      title << " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
+      if @options[:tag] && @options[:tag].respond_to?(:call)
+        title << " [#{@options[:tag].call}]"
+      elsif @options[:tag] && !@options[:tag].empty?
+        title << " [#{@options[:tag]}]"
+      end
+
       $0 = title
 
       Signal.trap "SIGINT", "IGNORE"

@@ -290,7 +290,11 @@ module Puma
 
     def title
       buffer = "puma #{Puma::Const::VERSION} (#{@options[:binds].join(',')})"
-      buffer << " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
+      if @options[:tag] && @options[:tag].respond_to?(:call)
+        buffer << " [#{@options[:tag].call}]"
+      elsif @options[:tag] && !@options[:tag].empty?
+        buffer << " [#{@options[:tag]}]"
+      end
       buffer
     end
 
