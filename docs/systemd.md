@@ -186,8 +186,10 @@ Apr 07 08:40:19 hx puma[28320]: Use Ctrl-C to stop
 Other systems/tools might expect or need puma to be run as a
 "traditional" forking server, for example so that the `pumactl`
 command can be used directly and outside of systemd for
-stop/start/restart. This use case is incompatible with systemd
-socket activation, so it should not be configured.
+stop/start/restart. This use case is incompatible with systemd socket
+activation, so it should not be configured. Below is an alternative
+puma.service config sample, using `Type=forking` and the `--daemon`
+flag in `ExecStart`.
 
 ~~~~ ini
 [Unit]
