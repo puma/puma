@@ -96,18 +96,13 @@ module Puma
             end
           end
 
-          done = @engine.shutdown
-
-          while true
+          until @engine.shutdown
             enc = @engine.extract
             @socket.write enc
 
             notify = @socket.sysread(1024)
 
             @engine.inject notify
-            done = @engine.shutdown
-
-            break if done
           end
         rescue IOError, SystemCallError
           # nothing
