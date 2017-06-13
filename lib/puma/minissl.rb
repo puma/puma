@@ -81,34 +81,20 @@ module Puma
         @socket.flush
       end
 
+      def read_and_drop(timeout = 1)
+        return unless IO.select([@socket], nil, nil, timeout)
+        read_nonblock(1024)
+      rescue Errno::EAGAIN
+        # do nothing
+      end
+
       def close
         begin
-          # Try to setup (so that we can then close them) any
-          # partially initialized sockets.
-          while @engine.init?
-            # Don't let this socket hold this loop forever.
-            # If it can't send more packets within 1s, then
-            # give up.
-            return unless IO.select([@socket], nil, nil, 1)
-            begin
-              read_nonblock(1024)
-            rescue Errno::EAGAIN
-            end
-          end
-
-          done = @engine.shutdown
-
-          while true
-            enc = @engine.extract
-            @socket.write enc
-
-            notify = @socket.sysread(1024)
-
-            @engine.inject notify
-            done = @engine.shutdown
-
-            break if done
-          end
+          # Read any drop any partially initialized sockets and any received bytes during shutdown.
+          # Don't let this socket hold this loop forever.
+          # If it can't send more packets within 1s, then give up.
+          read_and_drop(1) while @engine.init?
+          read_and_drop(1) until @engine.shutdown
         rescue IOError, SystemCallError
           # nothing
         ensure
