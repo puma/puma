@@ -24,25 +24,36 @@ class TestPathHandler < Minitest::Test
     options[:Port] ||= 0
     options[:Silent] = true
 
-    @launcher = nil
+    launcher = nil
+    mutex = Mutex.new # Guard launcher
     thread = Thread.new do
       Rack::Handler::Puma.run(app, options) do |s, p|
-        @launcher = s
+        mutex.synchronize do
+          launcher = s
+        end
       end
     end
     thread.abort_on_exception = true
 
     # Wait for launcher to boot
     Timeout.timeout(10) do
-      until @launcher
+      launcher_is_up = false
+      until launcher_is_up
         sleep 1
+        mutex.synchronize do
+          launcher_is_up = !launcher.nil?
+        end
       end
     end
     sleep 1
 
-    yield @launcher
+    mutex.synchronize do
+      yield launcher
+    end
   ensure
-    @launcher.stop if @launcher
+    mutex.synchronize do
+      launcher.stop if launcher
+    end
     thread.join  if thread
   end
 
