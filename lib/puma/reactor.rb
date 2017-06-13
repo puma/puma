@@ -60,13 +60,11 @@ module Puma
                 end
               end
             else
-              # We have to be sure to remove it from the timeout
-              # list or we'll accidentally close the socket when
+              # We have to be sure to extend the timeout
+              # or we'll accidentally close the socket when
               # it's in use!
               if c.timeout_at
-                @mutex.synchronize do
-                  @timeouts.delete c
-                end
+                c.set_timeout(@server.persistent_timeout)
               end
 
               begin
