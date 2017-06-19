@@ -89,6 +89,13 @@ class TestConfigFile < Minitest::Test
     assert_equal 5, conf.options[:max_threads]
   end
 
+  def test_config_files_default
+    conf = Puma::Configuration.new do
+    end
+
+    assert_equal [nil], conf.config_files
+  end
+
   def test_config_files_with_dash
     conf = Puma::Configuration.new(config_files: ['-']) do
     end
