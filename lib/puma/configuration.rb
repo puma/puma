@@ -200,7 +200,7 @@ module Puma
       files = @options.all_of(:config_files)
 
       if files.empty?
-        imp = %W(config/puma/#{@options[:environment]}.rb config/puma.rb).find { |f|
+        imp = %W(config/puma/#{@options[:environment].call}.rb config/puma.rb).find { |f|
           File.exist?(f)
         }
 
