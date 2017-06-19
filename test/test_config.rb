@@ -84,6 +84,27 @@ class TestConfigFile < Minitest::Test
     assert_equal 5, conf.options[:max_threads]
   end
 
+  def test_config_files_with_dash
+    conf = Puma::Configuration.new(config_files: ['-']) do
+    end
+
+    assert_equal [], conf.config_files
+  end
+
+  def test_config_files_with_existing_path
+    conf = Puma::Configuration.new(config_files: ['test/config/settings.rb']) do
+    end
+
+    assert_equal ['test/config/settings.rb'], conf.config_files
+  end
+
+  def test_config_files_with_non_existing_path
+    conf = Puma::Configuration.new(config_files: ['test/config/typo/settings.rb']) do
+    end
+
+    assert_equal ['test/config/typo/settings.rb'], conf.config_files
+  end
+
   private
 
     def with_env(env = {})

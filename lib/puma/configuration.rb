@@ -189,6 +189,14 @@ module Puma
     end
 
     def load
+      config_files.each do |f|
+        @file_dsl._load_from(f)
+      end
+      @options
+    end
+
+
+    def config_files
       files = @options.all_of(:config_files)
 
       if files.empty?
@@ -201,10 +209,7 @@ module Puma
         files = []
       end
 
-      files.each do |f|
-        @file_dsl._load_from(f)
-      end
-      @options
+      files
     end
 
     # Call once all configuration (included from rackup files)
