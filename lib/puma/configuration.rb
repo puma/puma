@@ -189,27 +189,22 @@ module Puma
     end
 
     def load
-      config_files.each do |f|
-        @file_dsl._load_from(f)
-      end
+      config_files.each { |config_file| @file_dsl._load_from(config_file) }
+
       @options
     end
-
 
     def config_files
       files = @options.all_of(:config_files)
 
-      if files.empty?
-        imp = %W(config/puma/#{@options[:environment].call}.rb config/puma.rb).find { |f|
-          File.exist?(f)
-        }
+      return [] if files == ['-']
+      return files if files.any?
 
-        files << imp
-      elsif files == ["-"]
-        files = []
+      first_default_file = %W(config/puma/#{@options[:environment].call}.rb config/puma.rb).find do |f|
+        File.exist?(f)
       end
 
-      files
+      [first_default_file]
     end
 
     # Call once all configuration (included from rackup files)
