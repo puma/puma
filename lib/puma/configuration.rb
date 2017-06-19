@@ -200,7 +200,7 @@ module Puma
       return [] if files == ['-']
       return files if files.any?
 
-      first_default_file = %W(config/puma/#{@options[:environment].call}.rb config/puma.rb).find do |f|
+      first_default_file = %W(config/puma/#{environment_str}.rb config/puma.rb).find do |f|
         File.exist?(f)
       end
 
@@ -262,6 +262,10 @@ module Puma
     # Return which environment we're running in
     def environment
       @options[:environment]
+    end
+
+    def environment_str
+      environment.respond_to?(:call) ? environment.call : environment
     end
 
     def load_plugin(name)

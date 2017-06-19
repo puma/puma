@@ -126,6 +126,15 @@ class TestConfigFile < Minitest::Test
     end
   end
 
+  def test_config_files_with_specified_environment
+    conf = Puma::Configuration.new do
+    end
+
+    conf.options[:environment] = 'fake-env'
+
+    assert_equal ['config/puma/fake-env.rb'], conf.config_files
+  end
+
   def teardown
     FileUtils.rm_r("config/puma")
   end
