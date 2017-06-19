@@ -3,6 +3,11 @@ require_relative "helper"
 require "puma/configuration"
 
 class TestConfigFile < Minitest::Test
+  def setup
+    FileUtils.mkpath("config/puma")
+    File.write("config/puma/fake-env.rb", "")
+  end
+
   def test_app_from_rackup
     conf = Puma::Configuration.new do |c|
       c.rackup "test/rackup/hello-bind.ru"
@@ -103,6 +108,19 @@ class TestConfigFile < Minitest::Test
     end
 
     assert_equal ['test/config/typo/settings.rb'], conf.config_files
+  end
+
+  def test_config_files_with_rack_env
+    with_env('RACK_ENV' => 'fake-env') do
+      conf = Puma::Configuration.new do
+      end
+
+      assert_equal ['config/puma/fake-env.rb'], conf.config_files
+    end
+  end
+
+  def teardown
+    FileUtils.rm_r("config/puma")
   end
 
   private
