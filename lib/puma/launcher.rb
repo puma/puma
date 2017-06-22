@@ -313,7 +313,7 @@ module Puma
     end
 
     def prune_bundler?
-      @options[:prune_bundler] && clustered? && !@options[:preload_app]
+      @options[:prune_bundler] && !@options[:preload_app]
     end
 
     def close_binder_listeners
