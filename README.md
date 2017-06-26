@@ -339,6 +339,11 @@ $ bundle exec cap puma:stop
 $ bundle exec cap puma:phased-restart
 ```
 
+See
+[docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md),
+including the last section, if using this in conjunction with systemd
+(all recent, major distributions of Linux).
+
 ## Contributing
 
 To run the test suite:
