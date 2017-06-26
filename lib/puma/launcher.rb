@@ -168,7 +168,11 @@ module Puma
           env = Bundler::ORIGINAL_ENV
           # add -rbundler/setup so we load from Gemfile when restarting
           bundle = "-rbundler/setup"
-          env["RUBYOPT"] = [env["RUBYOPT"], bundle].join(" ") unless env["RUBYOPT"].include?(bundle)
+          if env["RUBYOPT"]
+            env["RUBYOPT"] = [env["RUBYOPT"], bundle].join(" ") unless env["RUBYOPT"].include?(bundle)
+          else
+            env["RUBYOPT"] = bundle
+          end
           env
         else
           ENV.to_h
