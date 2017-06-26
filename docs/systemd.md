@@ -192,7 +192,7 @@ puma.service config sample, using `Type=forking` and the `--daemon`
 flag in `ExecStart`. Here systemd is playing a role more equivalent to
 SysV init.d, where it is responsible for starting Puma on boot
 (multi-user.target) and stopping it on shutdown, but is not performing
-continuous restarts. Therfore running Puma in cluster mode, where the
+continuous restarts. Therefore running Puma in cluster mode, where the
 master can restart workers, is highly recommended. See the systemd
 [Restart] directive for details.
 
