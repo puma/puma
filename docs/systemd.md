@@ -189,7 +189,12 @@ command can be used directly and outside of systemd for
 stop/start/restart. This use case is incompatible with systemd socket
 activation, so it should not be configured. Below is an alternative
 puma.service config sample, using `Type=forking` and the `--daemon`
-flag in `ExecStart`.
+flag in `ExecStart`. Here systemd is playing a role more equivalent to
+SysV init.d, where it is responsible for starting Puma on boot
+(multi-user.target) and stopping it on shutdown, but is not performing
+continuous restarts. Therfore running Puma in cluster mode, where the
+master can restart workers, is highly recommended. See the systemd
+[Restart] directive for details.
 
 ~~~~ ini
 [Unit]
@@ -208,11 +213,22 @@ Type=forking
 ExecStart=bundle exec puma -C <WD>/shared/puma.rb --daemon
 
 # The command to stop Puma
-# Replace "<WD>" below.
+# Replace "<WD>" below
 ExecStop=bundle exec pumactl -S <WD>/shared/tmp/pids/puma.state stop
 
 # Path to PID file so that systemd knows which is the master process
 PIDFile=<WD>/shared/tmp/pids/puma.pid
+
+# Should systemd restart puma?
+# Use "no" (the default) to ensure no interference when using
+# stop/start/restart via `pumactl`.  The "on-failure" setting might
+# work better for this purpose, but you must test it.
+# Use "always" if only `systemctl` is used for start/stop/restart, and
+# reconsider if you actually need the forking config.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
 ~~~~
 
 ### capistrano3-puma
@@ -231,3 +247,5 @@ stage=production # or different stage, as needed
 cap $stage puma:start --dry-run
 cap $stage puma:stop  --dry-run
 ~~~~
+
+[Restart]: https://www.freedesktop.org/software/systemd/man/systemd.service.html#Restart=
