@@ -111,7 +111,7 @@ module Puma
       begin
         @io.close
       rescue IOError
-        Thread.current.purge_interrupt_queue
+        Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
       end
     end
 

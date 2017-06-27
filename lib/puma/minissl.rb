@@ -125,7 +125,7 @@ module Puma
             break if done
           end
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue
+          Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
           # nothing
         ensure
           @socket.close
