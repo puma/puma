@@ -12,6 +12,8 @@
 #include <string.h>
 #include "http11_parser.h"
 
+#include "ruby/config.h"
+
 #ifndef MANAGED_STRINGS
 
 #ifndef RSTRING_PTR
@@ -63,6 +65,62 @@ struct common_field {
   int raw;
 	VALUE value;
 };
+
+enum enum4 {
+    status1,
+    status2,
+    status3,
+    status4
+};
+
+// Temporary workaround for https://bugs.ruby-lang.org/issues/13632
+// Can be removed when the fix is ported to all supported versions
+typedef struct half_thread {
+    void *vmlt_node1;
+    void *vmlt_node2;
+    void *self;
+    void *vm;
+    void *ec1;
+    void *ec2;
+    void *ec3;
+    int safe_level;
+    int raised_flag ;
+    void *last_status;
+    int state;
+    void *passed_block_handler;
+    void *passed_bmethod_me;
+    void *calling;
+    void *top_self;
+    void *top_wrapper;
+    void *root_lep;
+    void *root_svar;
+    void *thread_id;
+#ifdef NON_SCALAR_THREAD_ID
+    char thread_id_string[sizeof(void *) * 2 + 3];
+#endif
+    enum enum4 status;
+    int to_kill;
+    int priority;
+    void *ubf_list1;
+    void *ubf_list2;
+    pthread_cond_t cond;
+#ifdef HAVE_CLOCKID_T
+    clockid_t clockid;
+#endif
+    void *blocking_region_buffer;
+
+    void *thgroup;
+    void *value;
+
+    /* temporary place of errinfo */
+    void *errinfo;
+
+    /* async errinfo queue */
+    void *pending_interrupt_queue;
+    void *pending_interrupt_mask_stack;
+    int pending_interrupt_queue_checked;
+} rb_half_thread_t;
+
 
 /*
  * A list of common HTTP headers we expect to receive.
@@ -468,8 +526,18 @@ VALUE HttpParser_body(VALUE self) {
 void Init_io_buffer(VALUE puma);
 void Init_mini_ssl(VALUE mod);
 
+VALUE
+rb_thread_purge_queue(VALUE thread)
+{
+    rb_half_thread_t *th = (rb_half_thread_t*)DATA_PTR(thread);
+    th->pending_interrupt_queue_checked = 0;
+    rb_ary_clear(th->pending_interrupt_queue);
+    return Qnil;
+}
+
 void Init_puma_http11()
 {
+  rb_define_method(rb_cThread, "purge_interrupt_queue", rb_thread_purge_queue, 0);
 
   VALUE mPuma = rb_define_module("Puma");
   VALUE cHttpParser = rb_define_class_under(mPuma, "HttpParser", rb_cObject);

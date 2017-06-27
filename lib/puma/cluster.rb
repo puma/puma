@@ -224,6 +224,7 @@ module Puma
       begin
         @wakeup.write "!" unless @wakeup.closed?
       rescue SystemCallError, IOError
+        Thread.current.purge_interrupt_queue
       end
     end
 
@@ -267,6 +268,7 @@ module Puma
       begin
         @worker_write << "b#{Process.pid}\n"
       rescue SystemCallError, IOError
+        Thread.current.purge_interrupt_queue
         STDERR.puts "Master seems to have exited, exiting."
         return
       end
@@ -282,6 +284,7 @@ module Puma
             payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r} }\n!
             io << payload
           rescue IOError
+            Thread.current.purge_interrupt_queue
             break
           end
         end
