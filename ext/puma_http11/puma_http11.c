@@ -530,7 +530,7 @@ VALUE
 rb_thread_purge_queue(VALUE thread)
 {
     rb_half_thread_t *th = (rb_half_thread_t*)DATA_PTR(thread);
-    th->pending_interrupt_queue_checked = 0;
+    th->pending_interrupt_queue_checked = 1;
     rb_ary_clear(th->pending_interrupt_queue);
     return Qnil;
 }
