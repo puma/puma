@@ -892,35 +892,34 @@ module Puma
       end
     end
 
-    # Stops the acceptor thread and then causes the worker threads to finish
-    # off the request queue before finally exiting.
-    #
-    def stop(sync=false)
+    def notify_safely(message)
       begin
-        @notify << STOP_COMMAND
+        @notify << message
       rescue IOError
         # The server, in another thread, is shutting down
+      rescue RuntimeError => e
+        # The server, in another thread, has been shut down during the system call
+        # https://github.com/puma/puma/pull/1206
+        raise e unless e.message.include?('IOError')
       end
+    end
+    private :notify_safely
 
+    # Stops the acceptor thread and then causes the worker threads to finish
+    # off the request queue before finally exiting.
+
+    def stop(sync=false)
+      notify_safely(STOP_COMMAND)
       @thread.join if @thread && sync
     end
 
     def halt(sync=false)
-      begin
-        @notify << HALT_COMMAND
-      rescue IOError
-        # The server, in another thread, is shutting down
-      end
-
+      notify_safely(HALT_COMMAND)
       @thread.join if @thread && sync
     end
 
     def begin_restart
-      begin
-        @notify << RESTART_COMMAND
-      rescue IOError
-        # The server, in another thread, is shutting down
-      end
+      notify_safely(RESTART_COMMAND)
     end
 
     def fast_write(io, str)
