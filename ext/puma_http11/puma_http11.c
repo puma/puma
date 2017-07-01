@@ -73,12 +73,16 @@ enum enum4 {
     status4
 };
 
-// Temporary workaround for https://bugs.ruby-lang.org/issues/13632
-#if RUBY_VERSION == "2.2.7" || RUBY_VERSION == "2.3.4" || RUBY_VERSION == "2.4.1"
-  #define VERSION_WITH_BUG_13632
+#if defined(_WIN32)
+#include <windows.h>
+typedef HANDLE rb_nativethread_id_t;
+#else
+#include <pthread.h>
+typedef pthread_t rb_nativethread_id_t;
 #endif
 
-#ifdef VERSION_WITH_BUG_13632
+// Temporary workaround for https://bugs.ruby-lang.org/issues/13632
+#ifdef BROKEN_RUBY
 typedef struct half_thread {
     void *vmlt_node1;
     void *vmlt_node2;
@@ -97,7 +101,7 @@ typedef struct half_thread {
     void *passed_ci_or_calling;
     void *top_self;
     void *top_wrapper;
-    #if RUBY_VERSION != "2.4.1"
+    #ifndef VERSION_2_4_1
         void *base_block;
     #endif
     void *root_lep;
@@ -113,7 +117,7 @@ typedef struct half_thread {
     void *interrupt_event;
 #elif defined(HAVE_PTHREAD_H)
     void *ubf_list1_or_signal_thread_list;
-#if RUBY_VERSION != "2.2.7"
+#ifndef VERSION_2_2_7
     void *ubf_list2;
 #endif
     pthread_cond_t cond;
@@ -534,7 +538,7 @@ VALUE HttpParser_body(VALUE self) {
 
 void Init_io_buffer(VALUE puma);
 void Init_mini_ssl(VALUE mod);
-#ifdef VERSION_WITH_BUG_13632
+#ifdef BROKEN_RUBY
 VALUE
 rb_thread_purge_queue(VALUE thread)
 {
@@ -547,7 +551,7 @@ rb_thread_purge_queue(VALUE thread)
 
 void Init_puma_http11()
 {
-#ifdef VERSION_WITH_BUG_13632
+#ifdef BROKEN_RUBY
   rb_define_method(rb_cThread, "purge_interrupt_queue", rb_thread_purge_queue, 0);
 #endif
   VALUE mPuma = rb_define_module("Puma");
