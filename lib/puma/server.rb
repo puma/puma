@@ -905,7 +905,11 @@ module Puma
       rescue RuntimeError => e
         # The server, in another thread, has been shut down during the system call
         # https://github.com/puma/puma/pull/1206
-        raise e unless e.message.include?('IOError')
+        if e.message.include?('IOError')
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+        else
+          raise e
+        end
       end
     end
     private :notify_safely
