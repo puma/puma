@@ -199,7 +199,7 @@ class Http11ParserTest < Minitest::Test
         end
       end
     end
-    pipes.each do |r,w|
+    pipes.each do |r, w|
       w.puts 'test'
       w.close
       r.close
