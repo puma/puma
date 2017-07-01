@@ -188,13 +188,13 @@ class Http11ParserTest < Minitest::Test
     pipes = []
     threads = []
     10.times do
-      r,w = IO.pipe
-      pipes << [r,w]
+      r, w = IO.pipe
+      pipes << [r, w]
       threads << Thread.new do
         while r.gets
         end rescue IOError
         if Thread.current.pending_interrupt?
-          Thread.current.purge_interrupt_queue if 
+          Thread.current.purge_interrupt_queue
           assert !Thread.current.pending_interrupt?
         end
       end
