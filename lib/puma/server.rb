@@ -110,7 +110,7 @@ module Puma
         begin
           socket.setsockopt(6, 3, 1) if socket.kind_of? TCPSocket
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
       end
 
@@ -118,7 +118,7 @@ module Puma
         begin
           socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
       end
 
@@ -129,7 +129,7 @@ module Puma
         begin
           tcp_info = socket.getsockopt(Socket::SOL_TCP, Socket::TCP_INFO)
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           @precheck_closing = false
           false
         else
@@ -493,7 +493,7 @@ module Puma
         begin
           client.close if close_socket
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           # Already closed
         rescue StandardError => e
           @events.unknown_error self, e, "Client"
@@ -903,7 +903,7 @@ module Puma
       begin
         @notify << STOP_COMMAND
       rescue IOError
-        Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
+        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         # The server, in another thread, is shutting down
       end
 
@@ -914,7 +914,7 @@ module Puma
       begin
         @notify << HALT_COMMAND
       rescue IOError
-        Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
+        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         # The server, in another thread, is shutting down
       end
 
@@ -925,7 +925,7 @@ module Puma
       begin
         @notify << RESTART_COMMAND
       rescue IOError
-        Thread.current.purge_interrupt_queue if RUBY_ENGINE == 'ruby'
+        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         # The server, in another thread, is shutting down
       end
     end
