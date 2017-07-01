@@ -13,7 +13,7 @@ unless ENV["DISABLE_SSL"]
 end
 
 BROKEN_VERSIONS = %w(2.2.7 2.3.4 2.4.1)
-if(BROKEN_VERSIONS.include? RUBY_VERSION)
+if (BROKEN_VERSIONS.include? RUBY_VERSION)
   $defs << '-DBROKEN_RUBY'
   $defs << "-DVERSION_#{RUBY_VERSION.gsub('.', '_')}"
 end
