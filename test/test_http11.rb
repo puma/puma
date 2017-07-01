@@ -194,6 +194,7 @@ class Http11ParserTest < Minitest::Test
         while r.gets
         end rescue IOError
         if Thread.current.pending_interrupt?
+          raise "Ruby bug 13632 detected for version #{RUBY_VERSION}, please open a bugreport on Puma!"
           Thread.current.purge_interrupt_queue
           assert !Thread.current.pending_interrupt?
         end
