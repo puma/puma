@@ -74,53 +74,62 @@ enum enum4 {
 };
 
 // Temporary workaround for https://bugs.ruby-lang.org/issues/13632
-// Can be removed when the fix is ported to all supported versions
+#if RUBY_VERSION == "2.2.7" || RUBY_VERSION == "2.3.4" || RUBY_VERSION == "2.4.1"
+  #define VERSION_WITH_BUG_13632
+#endif
+
+#ifdef VERSION_WITH_BUG_13632
 typedef struct half_thread {
     void *vmlt_node1;
     void *vmlt_node2;
     void *self;
     void *vm;
-    void *ec1;
-    void *ec2;
-    void *ec3;
+    void *stack;
+    size_t stack_size;
+    void *cfp;
     int safe_level;
-    int raised_flag ;
+    int raised_flag;
     void *last_status;
     int state;
-    void *passed_block_handler;
+    int waiting_fd;
+    void *passed_block;
     void *passed_bmethod_me;
-    void *calling;
+    void *passed_ci_or_calling;
     void *top_self;
     void *top_wrapper;
+    #if RUBY_VERSION != "2.4.1"
+        void *base_block;
+    #endif
     void *root_lep;
     void *root_svar;
-    void *thread_id;
+    rb_nativethread_id_t thread_id;
 #ifdef NON_SCALAR_THREAD_ID
-    char thread_id_string[sizeof(void *) * 2 + 3];
+    char thread_id_string[sizeof(rb_nativethread_id_t) * 2 + 3];
 #endif
     enum enum4 status;
     int to_kill;
     int priority;
-    void *ubf_list1;
+#if defined(_WIN32)
+    void *interrupt_event;
+#elif defined(HAVE_PTHREAD_H)
+    void *ubf_list1_or_signal_thread_list;
+#if RUBY_VERSION != "2.2.7"
     void *ubf_list2;
+#endif
     pthread_cond_t cond;
 #ifdef HAVE_CLOCKID_T
     clockid_t clockid;
 #endif
+#endif
     void *blocking_region_buffer;
-
     void *thgroup;
     void *value;
-
-    /* temporary place of errinfo */
     void *errinfo;
-
-    /* async errinfo queue */
     void *pending_interrupt_queue;
     void *pending_interrupt_mask_stack;
     int pending_interrupt_queue_checked;
 } rb_half_thread_t;
-
+#endif
 
 /*
  * A list of common HTTP headers we expect to receive.
@@ -525,7 +534,7 @@ VALUE HttpParser_body(VALUE self) {
 
 void Init_io_buffer(VALUE puma);
 void Init_mini_ssl(VALUE mod);
-
+#ifdef VERSION_WITH_BUG_13632
 VALUE
 rb_thread_purge_queue(VALUE thread)
 {
@@ -534,11 +543,13 @@ rb_thread_purge_queue(VALUE thread)
     rb_ary_clear(th->pending_interrupt_queue);
     return Qnil;
 }
+#endif
 
 void Init_puma_http11()
 {
+#ifdef VERSION_WITH_BUG_13632
   rb_define_method(rb_cThread, "purge_interrupt_queue", rb_thread_purge_queue, 0);
-
+#endif
   VALUE mPuma = rb_define_module("Puma");
   VALUE cHttpParser = rb_define_class_under(mPuma, "HttpParser", rb_cObject);
 
