@@ -183,4 +183,30 @@ class Http11ParserTest < Minitest::Test
     end
 
   end
+
+  def test_13632_workaround
+    a = []
+    t = []
+    10.times do
+      r,w = IO.pipe
+      a << [r,w]
+      t << Thread.new do
+        while r.gets
+        end rescue IOError
+        if Thread.current.pending_interrupt?
+          Thread.current.purge_interrupt_queue
+          assert !Thread.current.pending_interrupt?
+        end
+      end
+    end
+    a.each do |r,w|
+      w.puts 'test'
+      w.close
+      r.close
+    end
+    t.each do |th|
+      th.join
+    end
+  end
+
 end
