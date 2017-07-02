@@ -900,11 +900,10 @@ module Puma
       begin
         @notify << message
       rescue IOError
+         # The server, in another thread, is shutting down
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-        # The server, in another thread, is shutting down
       rescue RuntimeError => e
-        # The server, in another thread, has been shut down during the system call
-        # https://github.com/puma/puma/pull/1206
+        # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
         if e.message.include?('IOError')
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         else
