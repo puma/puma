@@ -165,9 +165,11 @@ module Puma
     def run
       previous_env =
         if defined?(Bundler)
-          env = Bundler::ORIGINAL_ENV
+          env = Bundler::ORIGINAL_ENV.dup
           # add -rbundler/setup so we load from Gemfile when restarting
           bundle = "-rbundler/setup"
+          
+          # bundler init ORIGINAL_ENV from ENV before it sets RUBYOPT in ENV, so env["RUBYOPT"] can be nil
           if env["RUBYOPT"]
             env["RUBYOPT"] = [env["RUBYOPT"], bundle].join(" ") unless env["RUBYOPT"].include?(bundle)
           else
