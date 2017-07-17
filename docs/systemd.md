@@ -208,6 +208,10 @@ Type=forking
 # Preferably configure a non-privileged user
 # User=
 
+# The path to the puma application root
+# Also replace the "<WD>" place holders below with this path.
+WorkingDirectory=
+
 # The command to start Puma
 # Replace "<WD>" below, with the application root or working directory
 ExecStart=bundle exec puma -C <WD>/shared/puma.rb --daemon
