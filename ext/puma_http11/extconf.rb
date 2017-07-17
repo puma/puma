@@ -12,10 +12,4 @@ unless ENV["DISABLE_SSL"]
   end
 end
 
-BROKEN_VERSIONS = %w(2.2.7 2.3.4 2.4.1)
-if (BROKEN_VERSIONS.include? RUBY_VERSION)
-  $defs << '-DBROKEN_RUBY'
-  $defs << "-DVERSION_#{RUBY_VERSION.gsub('.', '_')}"
-end
-
 create_makefile("puma/puma_http11")

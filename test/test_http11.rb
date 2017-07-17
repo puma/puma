@@ -183,31 +183,4 @@ class Http11ParserTest < Minitest::Test
     end
 
   end
-
-  def test_13632_workaround
-    pipes = []
-    threads = []
-    10.times do
-      r, w = IO.pipe
-      pipes << [r, w]
-      threads << Thread.new do
-        while r.gets
-        end rescue IOError
-        if Thread.current.pending_interrupt?
-          raise "Ruby bug 13632 detected for version #{RUBY_VERSION}, please open a bugreport for Puma." unless Thread.current.respond_to? :purge_interrupt_queue
-          Thread.current.purge_interrupt_queue
-          assert !Thread.current.pending_interrupt?
-        end
-      end
-    end
-    pipes.each do |r, w|
-      w.puts 'test'
-      w.close
-      r.close
-    end
-    threads.each do |th|
-      th.join
-    end
-  end
-
 end
