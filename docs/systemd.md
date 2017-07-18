@@ -64,10 +64,16 @@ the listening socket(s) in advance and provides them to the puma
 master process on startup. Among other advantages, this keeps
 listening sockets open across puma restarts and achieves graceful
 restarts, including when upgraded puma, and is compatible with both
-clustered mode and application preload. To use socket activation,
-configure one or more `ListenStream` sockets in a companion `*.socket`
-systemd config file. Here is a sample puma.socket, matching the ports
-used in the above puma.service:
+clustered mode and application preload.
+
+**Note:** Socket activation doesn't currently work on jruby. This is
+tracked in [#1367].
+
+To use socket activation, configure one or more `ListenStream` sockets
+in a companion `*.socket` unit file. Also uncomment the associated
+`Requires` directive for the socket unit in the service file (see
+above.) Here is a sample puma.socket, matching the ports used in the
+above puma.service:
 
 ~~~~ ini
 [Unit]
@@ -253,3 +259,4 @@ cap $stage puma:stop  --dry-run
 ~~~~
 
 [Restart]: https://www.freedesktop.org/software/systemd/man/systemd.service.html#Restart=
+[#1367]: https://github.com/puma/puma/issues/1367
