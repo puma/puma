@@ -213,11 +213,11 @@ Type=forking
 WorkingDirectory=
 
 # The command to start Puma
-# Replace "<WD>" below, with the application root or working directory
+# (replace "<WD>" below)
 ExecStart=bundle exec puma -C <WD>/shared/puma.rb --daemon
 
 # The command to stop Puma
-# Replace "<WD>" below
+# (replace "<WD>" below)
 ExecStop=bundle exec pumactl -S <WD>/shared/tmp/pids/puma.state stop
 
 # Path to PID file so that systemd knows which is the master process
