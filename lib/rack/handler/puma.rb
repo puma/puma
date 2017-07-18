@@ -82,7 +82,7 @@ module Rack
           "Verbose"         => "Don't report each request (default: false)"
         }
       end
-    private
+
       def self.set_host_port_to_config(host, port, config)
         if host && (host[0,1] == '.' || host[0,1] == '/')
           config.bind "unix://#{host}"
