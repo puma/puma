@@ -311,6 +311,29 @@ reliability in production environments:
 * [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
 * [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
+## Known bugs
+For MRI versions 2.2.7, 2.3.4 and 2.4.1 you may start erratically get the following exception in places where it should not happen:
+```ruby
+stream closed in another thread (IOError)
+```
+If that's the case then it might be caused by ruby bug https://bugs.ruby-lang.org/issues/13632 and it could be temporary fixed with the gem https://rubygems.org/gems/stopgap_13632.
+Add to gemfile:
+```
+if %w(2.2.7 2.3.4 2.4.1).include? RUBY_VERSION
+  gem "stopgap_13632", "~> 1.0", :platforms => ["mri", "mingw", "x64_mingw"]
+end
+```
+Don't forget to require it:
+```
+require 'stopgap_13632'
+```
+And when an "IOError: stream closed" happens in a thread, accessing a busy IO, catch it and call the following method:
+```
+rescue IOError
+  Thread.current.purge_interrupt_queue
+end
+```
+
 ## Capistrano deployment
 
 Puma has support for Capistrano3 with an [external gem](https://github.com/seuros/capistrano-puma), you just need require that in Gemfile:
