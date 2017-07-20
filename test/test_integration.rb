@@ -194,7 +194,7 @@ class TestIntegration < Minitest::Test
     assert_match(/No pid '\d+' found/, sout.readlines.join(""))
     assert_equal(1, e.status)
   end
-  
+
   def test_restart_closes_keepalive_sockets
     _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
