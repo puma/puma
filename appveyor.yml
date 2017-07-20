@@ -8,9 +8,6 @@ install:
   - bundle --version
   - bundle install
 
-before_deploy:
-  - PowerShell .\InstallSelfSignedCert.ps1
-
 test_script:
   - bundle exec rake
 
