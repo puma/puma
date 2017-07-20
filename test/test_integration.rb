@@ -194,9 +194,8 @@ class TestIntegration < Minitest::Test
     assert_match(/No pid '\d+' found/, sout.readlines.join(""))
     assert_equal(1, e.status)
   end
-
-
-  def test_restart_closes_keepalive_sockets ####??
+  
+  def test_restart_closes_keepalive_sockets
     _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
@@ -207,7 +206,7 @@ class TestIntegration < Minitest::Test
     assert_equal "Hello World", new_reply
   end
 
-      # It does not share environments between multiple generations, which would break Dotenv
+  # It does not share environments between multiple generations, which would break Dotenv
   def test_restart_restores_environment
     # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
     # next workers ENV
