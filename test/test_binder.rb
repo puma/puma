@@ -19,6 +19,7 @@ class TestBinder < Minitest::Test
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
+    skip_on_appveyor
     skip_on_jruby
 
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
