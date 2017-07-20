@@ -59,7 +59,7 @@ module SkipTestsBasedOnRubyEngine
   end
 
   def skip_on_appveyor
-    skip "Skipped on JRuby" if ENV["APPVEYOR"]
+    skip "Skipped on Appveyor" if ENV["APPVEYOR"]
   end
 end
 
