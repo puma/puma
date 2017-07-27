@@ -57,6 +57,10 @@ module SkipTestsBasedOnRubyEngine
   def skip_on_jruby
     skip "Skipped on JRuby" if Puma.jruby?
   end
+
+  def skip_on_appveyor
+    skip "Skipped on Appveyor" if ENV["APPVEYOR"]
+  end
 end
 
 Minitest::Test.include SkipTestsBasedOnRubyEngine

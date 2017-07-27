@@ -54,6 +54,7 @@ class TestIntegration < Minitest::Test
   end
 
   def restart_server_and_listen(argv)
+    skip_on_appveyor
     server(argv)
     s = connect
     initial_reply = read_body(s)

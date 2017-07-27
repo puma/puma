@@ -1,0 +1,29 @@
+install:
+  - set PATH=C:\MinGW\bin;C:\Ruby%ruby_version%\bin;%PATH%
+  - set RAKEOPT=-rdevkit
+  - set DISABLE_SSL=true
+  - set APPVEYOR=true
+  - ruby --version
+  - gem --version
+  - bundle --version
+  - bundle install
+
+test_script:
+  - bundle exec rake
+
+environment:
+  matrix:
+    - ruby_version: "24"
+    - ruby_version: "24-x64"
+    - ruby_version: "23"
+    - ruby_version: "23-x64"
+    - ruby_version: "22"
+    - ruby_version: "22-x64"
+    - ruby_version: "21"
+    - ruby_version: "21-x64"
+
+branches:
+  only:
+    - master
+
+build: off
