@@ -2,6 +2,7 @@
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
 [![Build Status](https://secure.travis-ci.org/puma/puma.svg)](http://travis-ci.org/puma/puma)
+[![AppVeyor](https://img.shields.io/appveyor/ci/nateberkopec/puma.svg)](https://ci.appveyor.com/project/nateberkopec/puma)
 [![Dependency Status](https://gemnasium.com/puma/puma.svg)](https://gemnasium.com/puma/puma)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 
