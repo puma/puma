@@ -153,6 +153,16 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
     end
   end
 
+  def test_user_port_wins_over_default_when_user_supplied_is_blank
+    user_port = 5001
+    @options[:user_supplied_options] = []
+    @options[:Port] = user_port
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+  end
+
   def test_user_port_wins_over_default
     user_port = 5001
     @options[:Port] = user_port
