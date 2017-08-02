@@ -118,6 +118,10 @@ module Puma
       @options[:binds] << url
     end
 
+    def clear_binds!
+      @options[:binds] = []
+    end
+
     # Define the TCP port to bind to. Use +bind+ for more advanced options.
     #
     def port(port, host=nil)
