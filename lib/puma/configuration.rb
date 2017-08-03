@@ -192,11 +192,8 @@ module Puma
       files = @options.all_of(:config_files)
 
       if files.empty?
-        imp = %W(config/puma/#{@options[:environment]}.rb config/puma.rb).find { |f|
-          File.exist?(f)
-        }
-
-        files << imp
+        names = %W(config/puma/#{@options[:environment].call}.rb config/puma.rb)
+        files << names.find { |f| File.exist?(f) }
       elsif files == ["-"]
         files = []
       end
