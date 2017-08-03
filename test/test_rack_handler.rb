@@ -123,6 +123,41 @@ class TestUserSuppliedOptionsIsEmpty < Minitest::Test
       end
     end
   end
+
+  def test_empty_config_file_creates_single_bind
+    user_port = 5001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.write("config/puma.rb", "")
+
+        @options[:Port] = user_port
+        conf = Rack::Handler::Puma.config(->{}, @options)
+        conf.load
+
+        assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+      end
+    end
+  end
+
+  def test_empty_config_file_with_port_and_bind_options_creates_two_binds
+    user_port = 5001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.write("config/puma.rb", "")
+
+        @options[:Port]  = user_port
+        @options[:binds] = ["ssl://foo.com:12345"]
+        conf = Rack::Handler::Puma.config(->{}, @options)
+        conf.load
+
+        assert_equal ["ssl://foo.com:12345", "tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+      end
+    end
+  end
 end
 
 class TestUserSuppliedOptionsIsNotPresent < Minitest::Test

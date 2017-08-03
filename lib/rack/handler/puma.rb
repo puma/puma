@@ -26,6 +26,8 @@ module Rack
           end
         end
 
+        self.set_host_port_to_config(default_options[:Host], default_options[:Port], default_options)
+
         conf = ::Puma::Configuration.new(options, default_options) do |user_config, file_config, default_config|
           user_config.quiet
 
@@ -47,8 +49,6 @@ module Rack
             port = options[:Port] || default_options[:Port]
             self.set_host_port_to_config(host, port, user_config)
           end
-
-          self.set_host_port_to_config(default_options[:Host], default_options[:Port], default_config)
 
           user_config.app app
         end
@@ -82,16 +82,16 @@ module Rack
           "Verbose"         => "Don't report each request (default: false)"
         }
       end
-    private
+
       def self.set_host_port_to_config(host, port, config)
         config.clear_binds! if host || port
 
         if host && (host[0,1] == '.' || host[0,1] == '/')
-          config.bind "unix://#{host}"
+          apply_bind_to_config "unix://#{host}", config
         elsif host && host =~ /^ssl:\/\//
           uri = URI.parse(host)
           uri.port ||= port || ::Puma::Configuration::DefaultTCPPort
-          config.bind uri.to_s
+          apply_bind_to_config uri.to_s, config
         else
 
           if host
@@ -100,8 +100,18 @@ module Rack
 
           if port
             host ||= ::Puma::Configuration::DefaultTCPHost
-            config.port port, host
+            apply_bind_to_config "tcp://#{host}:#{port}", config
           end
+        end
+      end
+
+      def self.apply_bind_to_config(val, config)
+        if config.is_a? ::Puma::DSL
+          config.public_send :bind, val
+        else
+          # Respect any existing :binds value that might already exist
+          config[:binds] ||= []
+          config[:binds]  << val
         end
       end
     end
