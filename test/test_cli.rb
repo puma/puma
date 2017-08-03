@@ -170,7 +170,7 @@ class TestCLI < Minitest::Test
       p =~ /\"([^\"]+)\": ([^,]+)/ || raise("Can't parse #{p.inspect}!")
       gc_stats[$1] = $2
     end
-    gc_count_before = gc_stats[count].to_i
+    gc_count_before = gc_stats["count"].to_i
 
     s << "GET /gc HTTP/1.0\r\n\r\n"
     body = s.read # Ignored
@@ -185,7 +185,7 @@ class TestCLI < Minitest::Test
       p =~ /\"([^\"]+)\": ([^,]+)/ || raise("Can't parse #{p.inspect}!")
       gc_stats[$1] = $2
     end
-    gc_count_after = gc_stats[count].to_i
+    gc_count_after = gc_stats["count"].to_i
 
     # Hitting the /gc route should increment the count by 1
     assert_equal gc_count_before + 1, gc_count_after
