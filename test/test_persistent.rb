@@ -37,7 +37,7 @@ class TestPersistent < Minitest::Test
   end
 
   def lines(count, s=@client)
-    str = ""
+    str = "".dup
     Timeout.timeout(5) do
       count.times { str << s.gets }
     end
@@ -192,7 +192,7 @@ class TestPersistent < Minitest::Test
     @server.persistent_timeout = 3
 
     req = @valid_request.to_s
-    req << "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+    req += "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
 
     @client << req
 
@@ -209,7 +209,7 @@ class TestPersistent < Minitest::Test
     @server.persistent_timeout = 3
 
     req = @valid_request.to_s
-    req << "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+    req += "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
 
     @client << req
 
