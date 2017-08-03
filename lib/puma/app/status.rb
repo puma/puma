@@ -55,14 +55,14 @@ module Puma
             return rack_response(200, OK_STATUS)
           end
 
-	when /\/gc$/
-	  GC.start
-	  return rack_response(200, OK_STATUS)
+        when /\/gc$/
+          GC.start
+          return rack_response(200, OK_STATUS)
 
-	when /\/gc-stats$/
+        when /\/gc-stats$/
           stats = GC.stat
           json = "{" + GC.stat.map { |k, v| "\"#{k}\": #{v}" }.join(",") + "}"
-	  return rack_response(200, json)
+          return rack_response(200, json)
 
         when /\/stats$/
           return rack_response(200, @cli.stats)
