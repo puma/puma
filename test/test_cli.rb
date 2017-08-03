@@ -145,6 +145,54 @@ class TestCLI < Minitest::Test
     t.join
   end
 
+  def test_control_gc_stats
+    url = "unix://#{@tmp_path}"
+
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
+                         "--control", url,
+                         "--control-token", "",
+                         "test/rackup/lobster.ru"], @events
+
+    t = Thread.new { cli.run }
+    t.abort_on_exception = true
+
+    wait_booted
+
+    s = UNIXSocket.new @tmp_path
+    s << "GET /gc-stats HTTP/1.0\r\n\r\n"
+    body = s.read
+
+    lines = body.split("\r\n")
+    json_line = lines.detect { |l| l[0] == "{" }
+    pairs = json_line.scan(/\"[^\"]+\": [^,]+/)
+    gc_stats = {}
+    pairs.each do |p|
+      p =~ /\"([^\"]+)\": ([^,]+)/ || raise("Can't parse #{p.inspect}!")
+      gc_stats[$1] = $2
+    end
+    gc_count_before = gc_stats[count].to_i
+
+    s << "GET /gc HTTP/1.0\r\n\r\n"
+    body = s.read # Ignored
+
+    s << "GET /gc-stats HTTP/1.0\r\n\r\n"
+    body = s.read
+    lines = body.split("\r\n")
+    json_line = lines.detect { |l| l[0] == "{" }
+    pairs = json_line.scan(/\"[^\"]+\": [^,]+/)
+    gc_stats = {}
+    pairs.each do |p|
+      p =~ /\"([^\"]+)\": ([^,]+)/ || raise("Can't parse #{p.inspect}!")
+      gc_stats[$1] = $2
+    end
+    gc_count_after = gc_stats[count].to_i
+
+    # Hitting the /gc route should increment the count by 1
+    assert_equal gc_count_before + 1, gc_count_after
+
+    t.join
+  end
+
   def test_tmp_control
     url = "tcp://127.0.0.1:8232"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", "auto"]
