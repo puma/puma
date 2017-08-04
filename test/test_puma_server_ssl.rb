@@ -219,4 +219,42 @@ class TestPumaServerSSLClient < Minitest::Test
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
   end
+
+  def test_verify_client_cert_with_fixed_cname
+    return if DISABLE_SSL
+    assert_ssl_client_error_match(nil) do |http|
+      @ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER |
+                         Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
+      @ctx.verify_name = 'client-arbitrary'
+
+      key = File.expand_path "../../examples/puma/client-certs/client_arbitrary.key", __FILE__
+      crt = File.expand_path "../../examples/puma/client-certs/client_arbitrary.crt", __FILE__
+
+      http.key = OpenSSL::PKey::RSA.new File.read(key)
+      http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+      http.ca_file = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    end
+  end
+
+  def test_verify_client_cert_fails_with_wrong_fixed_cname
+    return if DISABLE_SSL
+    # This cert is valid, it just doesn't have the CN=arbitrary we want
+    assert_ssl_client_error_match('application verification failure',
+                                  '/DC=net/DC=puma/CN=client') do |http|
+      @ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER |
+                         Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
+      @ctx.verify_name = 'client-arbitrary'
+
+      key = File.expand_path "../../examples/puma/client-certs/client.key", __FILE__
+      crt = File.expand_path "../../examples/puma/client-certs/client.crt", __FILE__
+
+      http.key = OpenSSL::PKey::RSA.new File.read(key)
+      http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+      http.ca_file = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    end
+
+  end
+
 end

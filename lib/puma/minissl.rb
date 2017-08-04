@@ -149,6 +149,7 @@ module Puma
 
     class Context
       attr_accessor :verify_mode
+      attr_accessor :verify_name
 
       if defined?(JRUBY_VERSION)
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair

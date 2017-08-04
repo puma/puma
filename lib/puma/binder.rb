@@ -198,6 +198,8 @@ module Puma
                               end
           end
 
+          ctx.verify_name = params['verify_name'] if params['verify_name']
+
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
             io = inherit_ssl_listener fd, ctx
