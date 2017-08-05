@@ -118,6 +118,7 @@ module Puma
             return if read_and_drop(1) == :timeout
           end
         rescue IOError, SystemCallError
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           # nothing
         ensure
           @socket.close

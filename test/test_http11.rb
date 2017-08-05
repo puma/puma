@@ -166,8 +166,8 @@ class Http11ParserTest < Minitest::Test
     end
 
     # then large headers are rejected too
-    get = "GET /#{rand_data(10,120)} HTTP/1.1\r\n"
-    get << "X-Test: test\r\n" * (80 * 1024)
+    get  = "GET /#{rand_data(10,120)} HTTP/1.1\r\n"
+    get += "X-Test: test\r\n" * (80 * 1024)
     assert_raises Puma::HttpParserError do
       parser.execute({}, get, 0)
       parser.reset

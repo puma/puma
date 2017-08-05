@@ -1,6 +1,8 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
+require 'stopgap_13632' if %w(2.2.7 2.3.4 2.4.1).include? RUBY_VERSION
+
 begin
   require "bundler/setup"
 rescue LoadError
@@ -54,6 +56,10 @@ Minitest::Test.prepend TimeoutEveryTestCase
 module SkipTestsBasedOnRubyEngine
   def skip_on_jruby
     skip "Skipped on JRuby" if Puma.jruby?
+  end
+
+  def skip_on_appveyor
+    skip "Skipped on Appveyor" if ENV["APPVEYOR"]
   end
 end
 

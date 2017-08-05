@@ -71,9 +71,9 @@ module Puma
     def spawn_thread
       @spawned += 1
 
-      th = Thread.new do
+      th = Thread.new(@spawned) do |spawned|
         # Thread name is new in Ruby 2.3
-        Thread.current.name = 'puma %03i' % @spawned if Thread.current.respond_to?(:name=)
+        Thread.current.name = 'puma %03i' % spawned if Thread.current.respond_to?(:name=)
         todo  = @todo
         block = @block
         mutex = @mutex

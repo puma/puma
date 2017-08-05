@@ -48,6 +48,7 @@ class TestPathHandler < Minitest::Test
 
 
   def test_handler_boots
+    skip_on_appveyor
     in_handler(app) do |launcher|
       hit(["http://0.0.0.0:#{ launcher.connected_port }/test"])
       assert_equal("/test", @input["PATH_INFO"])
@@ -150,6 +151,16 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
         assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
       end
     end
+  end
+
+  def test_user_port_wins_over_default_when_user_supplied_is_blank
+    user_port = 5001
+    @options[:user_supplied_options] = []
+    @options[:Port] = user_port
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
   end
 
   def test_user_port_wins_over_default

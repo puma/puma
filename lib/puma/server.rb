@@ -110,6 +110,7 @@ module Puma
         begin
           socket.setsockopt(6, 3, 1) if socket.kind_of? TCPSocket
         rescue IOError, SystemCallError
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
       end
 
@@ -117,6 +118,7 @@ module Puma
         begin
           socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
         rescue IOError, SystemCallError
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
       end
 
@@ -127,6 +129,7 @@ module Puma
         begin
           tcp_info = socket.getsockopt(Socket::SOL_TCP, Socket::TCP_INFO)
         rescue IOError, SystemCallError
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           @precheck_closing = false
           false
         else
@@ -490,6 +493,7 @@ module Puma
         begin
           client.close if close_socket
         rescue IOError, SystemCallError
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           # Already closed
         rescue StandardError => e
           @events.unknown_error self, e, "Client"
@@ -892,35 +896,38 @@ module Puma
       end
     end
 
+    def notify_safely(message)
+      begin
+        @notify << message
+      rescue IOError
+         # The server, in another thread, is shutting down
+        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+      rescue RuntimeError => e
+        # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
+        if e.message.include?('IOError')
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+        else
+          raise e
+        end
+      end
+    end
+    private :notify_safely
+
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.
-    #
-    def stop(sync=false)
-      begin
-        @notify << STOP_COMMAND
-      rescue IOError
-        # The server, in another thread, is shutting down
-      end
 
+    def stop(sync=false)
+      notify_safely(STOP_COMMAND)
       @thread.join if @thread && sync
     end
 
     def halt(sync=false)
-      begin
-        @notify << HALT_COMMAND
-      rescue IOError
-        # The server, in another thread, is shutting down
-      end
-
+      notify_safely(HALT_COMMAND)
       @thread.join if @thread && sync
     end
 
     def begin_restart
-      begin
-        @notify << RESTART_COMMAND
-      rescue IOError
-        # The server, in another thread, is shutting down
-      end
+      notify_safely(RESTART_COMMAND)
     end
 
     def fast_write(io, str)

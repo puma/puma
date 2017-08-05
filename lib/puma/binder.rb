@@ -245,9 +245,10 @@ module Puma
       end
     end
 
-    def localhost_addresses
-      addrs = TCPSocket.gethostbyname "localhost"
-      addrs[3..-1].uniq
+    def loopback_addresses
+      Socket.ip_address_list.select do |addrinfo|
+        addrinfo.ipv6_loopback? || addrinfo.ipv4_loopback?
+      end.map { |addrinfo| addrinfo.ip_address }.uniq
     end
 
     # Tell the server to listen on host +host+, port +port+.
@@ -259,7 +260,7 @@ module Puma
     #
     def add_tcp_listener(host, port, optimize_for_latency=true, backlog=1024)
       if host == "localhost"
-        localhost_addresses.each do |addr|
+        loopback_addresses.each do |addr|
           add_tcp_listener addr, port, optimize_for_latency, backlog
         end
         return
@@ -298,7 +299,7 @@ module Puma
       MiniSSL.check
 
       if host == "localhost"
-        localhost_addresses.each do |addr|
+        loopback_addresses.each do |addr|
           add_ssl_listener addr, port, ctx, optimize_for_latency, backlog
         end
         return

@@ -28,6 +28,7 @@ module Puma
         begin
           ready = IO.select sockets, nil, nil, @sleep_for
         rescue IOError => e
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           if sockets.any? { |socket| socket.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
             STDERR.puts e.backtrace
@@ -195,6 +196,7 @@ module Puma
       begin
         @trigger << "c"
       rescue IOError
+        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
       end
     end
 
@@ -202,6 +204,7 @@ module Puma
       begin
         @trigger << "!"
       rescue IOError
+        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
       end
 
       @thread.join

@@ -84,6 +84,8 @@ module Rack
       end
     private
       def self.set_host_port_to_config(host, port, config)
+        config.clear_binds! if host || port
+
         if host && (host[0,1] == '.' || host[0,1] == '/')
           config.bind "unix://#{host}"
         elsif host && host =~ /^ssl:\/\//

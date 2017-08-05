@@ -36,8 +36,61 @@ Puma cluster responds to these signals:
 - `TTIN` increment the worker count by 1
 - `TTOU` decrement the worker count by 1
 - `TERM` send `TERM` to worker. Worker will attempt to finish then exit.
-- `USR2` restart workers
-- `USR1` restart workers in phases, a rolling restart.
-- `HUP`  reopen log files defined in stdout_redirect configuration parameter
+- `USR2` restart workers. This also reloads puma configuration file, if there is one.
+- `USR1` restart workers in phases, a rolling restart. This will not reload configuration file.
+- `HUP`  reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided it will behave like `INT`
 - `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
 - `CHLD`
+
+## Callbacks order in case of different signals
+
+### Start application
+
+```
+puma configuration file reloaded, if there is one
+* Pruning Bundler environment
+puma configuration file reloaded, if there is one
+
+before_fork
+on_worker_fork
+after_worker_fork
+
+Gemfile in context
+
+on_worker_boot
+
+Code of the app is loaded and running
+```
+
+### Send USR2
+
+```
+on_worker_shutdown
+on_restart
+
+puma configuration file reloaded, if there is one
+
+before_fork
+on_worker_fork
+after_worker_fork
+
+Gemfile in context
+
+on_worker_boot
+
+Code of the app is loaded and running
+```
+
+### Send USR1
+
+```
+on_worker_shutdown
+on_worker_fork
+after_worker_fork
+
+Gemfile in context
+
+on_worker_boot
+
+Code of the app is loaded and running
+```
