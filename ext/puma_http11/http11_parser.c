@@ -71,14 +71,8 @@ size_t puma_parser_execute(puma_parser *parser, const char *buffer, size_t len, 
   const char *p, *pe;
   int cs = parser->cs;
 
-  assert(off <= len && "offset past end of buffer");
-
   p = buffer+off;
   pe = buffer+len;
-
-  /* assert(*pe == '\0' && "pointer does not end on NUL"); */
-  assert((size_t) (pe - p) == len - off && "pointers aren't same distance");
-
 
 #line 87 "ext/puma_http11/http11_parser.c"
 	{
@@ -1035,13 +1029,6 @@ case 46:
   if (!puma_parser_has_error(parser))
     parser->cs = cs;
   parser->nread += p - (buffer + off);
-
-  assert(p <= pe && "buffer overflow after parsing execute");
-  assert(parser->nread <= len && "nread longer than length");
-  assert(parser->body_start <= len && "body starts after buffer end");
-  assert(parser->mark < len && "mark is after buffer end");
-  assert(parser->field_len <= len && "field has length longer than whole buffer");
-  assert(parser->field_start < len && "field starts after buffer end");
 
   return(parser->nread);
 }
