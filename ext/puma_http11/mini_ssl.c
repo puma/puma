@@ -244,7 +244,7 @@ void raise_error(SSL* ssl, int result) {
   const char* err_str;
   int err = errno;
   int ssl_err = SSL_get_error(ssl, result);
-  int verify_err = SSL_get_verify_result(ssl);
+  int verify_err = (int) SSL_get_verify_result(ssl);
 
   if(SSL_ERROR_SYSCALL == ssl_err) {
     snprintf(msg, sizeof(msg), "System error: %s - %d", strerror(err), err);
@@ -257,7 +257,7 @@ void raise_error(SSL* ssl, int result) {
                err_str, verify_err);
 
     } else {
-      err = ERR_get_error();
+      err = (int) ERR_get_error();
       ERR_error_string_n(err, buf, sizeof(buf));
       snprintf(msg, sizeof(msg), "OpenSSL error: %s - %d", buf, err);
 

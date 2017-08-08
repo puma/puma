@@ -182,9 +182,6 @@ static final int puma_parser_start = 1;
 static final int puma_parser_first_final = 47;
 static final int puma_parser_error = 0;
 
-static final int puma_parser_en_main = 1;
-
-
 // line 69 "ext/puma_http11/http11_parser.java.rl"
 
    public static interface ElementCB {
@@ -220,7 +217,7 @@ static final int puma_parser_en_main = 1;
       public void init() {
           cs = 0;
 
-          
+
 // line 225 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	cs = puma_parser_start;
@@ -252,7 +249,7 @@ static final int puma_parser_en_main = 1;
      byte[] data = buffer.bytes();
      parser.buffer = buffer;
 
-     
+
 // line 257 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	int _klen;
@@ -347,7 +344,7 @@ case 1:
 	break;
 	case 3:
 // line 17 "ext/puma_http11/http11_parser.java.rl"
-	{ 
+	{
     parser.field_len = p-parser.field_start;
   }
 	break;
@@ -357,7 +354,7 @@ case 1:
 	break;
 	case 5:
 // line 22 "ext/puma_http11/http11_parser.java.rl"
-	{ 
+	{
     if(parser.http_field != null) {
       parser.http_field.call(parser.data, parser.field_start, parser.field_len, parser.mark, p-parser.mark);
     }
@@ -365,21 +362,21 @@ case 1:
 	break;
 	case 6:
 // line 27 "ext/puma_http11/http11_parser.java.rl"
-	{ 
-    if(parser.request_method != null) 
+	{
+    if(parser.request_method != null)
       parser.request_method.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 7:
 // line 31 "ext/puma_http11/http11_parser.java.rl"
-	{ 
+	{
     if(parser.request_uri != null)
       parser.request_uri.call(parser.data, parser.mark, p-parser.mark);
   }
 	break;
 	case 8:
 // line 35 "ext/puma_http11/http11_parser.java.rl"
-	{ 
+	{
     if(parser.fragment != null)
       parser.fragment.call(parser.data, parser.mark, p-parser.mark);
   }
@@ -390,14 +387,14 @@ case 1:
 	break;
 	case 10:
 // line 41 "ext/puma_http11/http11_parser.java.rl"
-	{ 
+	{
     if(parser.query_string != null)
       parser.query_string.call(parser.data, parser.query_start, p-parser.query_start);
   }
 	break;
 	case 11:
 // line 46 "ext/puma_http11/http11_parser.java.rl"
-	{	
+	{
     if(parser.http_version != null)
       parser.http_version.call(parser.data, parser.mark, p-parser.mark);
   }
@@ -411,8 +408,8 @@ case 1:
 	break;
 	case 13:
 // line 56 "ext/puma_http11/http11_parser.java.rl"
-	{ 
-    parser.body_start = p + 1; 
+	{
+    parser.body_start = p + 1;
     if(parser.header_done != null)
       parser.header_done.call(parser.data, p + 1, pe - p - 1);
     { p += 1; _goto_targ = 5; if (true)  continue _goto;}
@@ -442,7 +439,7 @@ case 5:
 
      parser.cs = cs;
      parser.nread += (p - off);
-     
+
      assert p <= pe                  : "buffer overflow after parsing execute";
      assert parser.nread <= len      : "nread longer than length";
      assert parser.body_start <= len : "body starts after buffer end";

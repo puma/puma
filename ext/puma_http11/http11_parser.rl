@@ -29,7 +29,7 @@ static void snake_upcase_char(char *c)
 /** Machine **/
 
 %%{
-  
+
   machine puma_parser;
 
   action mark { MARK(mark, fpc); }
@@ -37,7 +37,7 @@ static void snake_upcase_char(char *c)
 
   action start_field { MARK(field_start, fpc); }
   action snake_upcase_field { snake_upcase_char((char *)fpc); }
-  action write_field { 
+  action write_field {
     parser->field_len = LEN(field_start, fpc);
   }
 
@@ -45,10 +45,10 @@ static void snake_upcase_char(char *c)
   action write_value {
     parser->http_field(parser, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, fpc));
   }
-  action request_method { 
+  action request_method {
     parser->request_method(parser, PTR_TO(mark), LEN(mark, fpc));
   }
-  action request_uri { 
+  action request_uri {
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, fpc));
   }
   action fragment {
@@ -56,11 +56,11 @@ static void snake_upcase_char(char *c)
   }
 
   action start_query { MARK(query_start, fpc); }
-  action query_string { 
+  action query_string {
     parser->query_string(parser, PTR_TO(query_start), LEN(query_start, fpc));
   }
 
-  action http_version {	
+  action http_version {
     parser->http_version(parser, PTR_TO(mark), LEN(mark, fpc));
   }
 
@@ -68,8 +68,8 @@ static void snake_upcase_char(char *c)
     parser->request_path(parser, PTR_TO(mark), LEN(mark,fpc));
   }
 
-  action done { 
-    parser->body_start = fpc - buffer + 1; 
+  action done {
+    parser->body_start = fpc - buffer + 1;
     parser->header_done(parser, fpc + 1, pe - fpc - 1);
     fbreak;
   }
@@ -109,7 +109,7 @@ size_t puma_parser_execute(puma_parser *parser, const char *buffer, size_t len, 
   pe = buffer+len;
 
   /* assert(*pe == '\0' && "pointer does not end on NUL"); */
-  assert(pe - p == len - off && "pointers aren't same distance");
+  assert((size_t) (pe - p) == len - off && "pointers aren't same distance");
 
   %% write exec;
 
