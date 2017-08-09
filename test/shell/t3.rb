@@ -1,4 +1,4 @@
-system "ruby -rubygems -I../../lib ../../bin/puma -p 10102 -C t3_conf.rb ../hello.ru &"
+system "ruby -rubygems -I../../lib ../../bin/puma -p 10102 -C t3_conf.rb ../rackup/hello.ru &"
 sleep 5
 
 worker_pid_was_present = File.file? "t3-worker-2-pid"
