@@ -13,7 +13,8 @@ Gem::Specification.new do |s|
   s.email = ["evan@phx.io"]
   s.executables = ["puma", "pumactl"]
   s.extensions = ["ext/puma_http11/extconf.rb"]
-  s.files = `git ls-files`.split($/)
+  s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
+            %w[History.md LICENSE README.md]
   s.homepage = "http://puma.io"
   s.license = "BSD-3-Clause"
   s.required_ruby_version = Gem::Requirement.new(">= 1.9.3")
