@@ -146,7 +146,7 @@ class TestIntegration < Minitest::Test
 
     ccli.run
 
-    assert_kind_of Thread, t.join(1), "server didn't stop"
+    assert_kind_of Thread, t.join, "server didn't stop"
   end
 
   def test_phased_restart_via_pumactl
@@ -194,7 +194,7 @@ class TestIntegration < Minitest::Test
     ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
     ccli.run
 
-    assert_kind_of Thread, t.join(5), "server didn't stop"
+    assert_kind_of Thread, t.join, "server didn't stop"
   end
 
   def test_kill_unknown_via_pumactl
