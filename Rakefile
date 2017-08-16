@@ -146,4 +146,4 @@ namespace :test do
   end
 end
 
-task :default => [:rubocop, :test]
+task :default => [:rubocop, "test:all"]
