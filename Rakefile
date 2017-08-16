@@ -1,5 +1,5 @@
 require "bundler/setup"
-require "hoe"
+require "rake/testtask"
 require "rake/extensiontask"
 require "rake/javaextensiontask"
 require "rubocop/rake_task"
@@ -9,31 +9,7 @@ RuboCop::RakeTask.new
 
 IS_JRUBY = defined?(RUBY_ENGINE) ? RUBY_ENGINE == "jruby" : false
 
-Hoe.plugin :git
-Hoe.plugin :ignore
-
-# Keep in sync with puma.gemspec
-HOE = Hoe.spec "puma" do
-  self.readme_file    = "README.md"
-  self.urls = %w!http://puma.io https://github.com/puma/puma!
-
-  license "BSD-3-Clause"
-  developer 'Evan Phoenix', 'evan@phx.io'
-
-  spec_extras[:extensions]  = ["ext/puma_http11/extconf.rb"]
-  spec_extras[:executables] = ['puma', 'pumactl']
-  spec_extras[:homepage] = urls.first
-
-  require_ruby_version ">= 1.9.3"
-end
-
-task :prerelease => [:clobber, :check_manifest, :test]
-
-# hoe/test and rake-compiler don't seem to play well together, so disable
-# hoe/test's .gemtest touch file thingy for now
-HOE.spec.files -= [".gemtest"]
-
-include Hoe::Git
+spec = Gem::Specification.load("puma.gemspec")
 
 desc "Print the current changelog."
 task "changelog" do
@@ -103,7 +79,7 @@ if !IS_JRUBY
 
 # compile extensions using rake-compiler
 # C (MRI, Rubinius)
-Rake::ExtensionTask.new("puma_http11", HOE.spec) do |ext|
+Rake::ExtensionTask.new("puma_http11", spec) do |ext|
   # place extension inside namespace
   ext.lib_dir = "lib/puma"
 
@@ -121,7 +97,7 @@ end
 else
 
 # Java (JRuby)
-Rake::JavaExtensionTask.new("puma_http11", HOE.spec) do |ext|
+Rake::JavaExtensionTask.new("puma_http11", spec) do |ext|
   ext.lib_dir = "lib/puma"
 end
 
@@ -136,6 +112,8 @@ file "lib/puma/puma_http11.rb" do |t|
     f.puts 'require "puma/#{$1}/puma_http11"'
   end
 end
+
+Rake::TestTask.new(:test)
 
 # tests require extension be compiled, but depend on the platform
 if IS_JRUBY
