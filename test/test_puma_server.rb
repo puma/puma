@@ -296,8 +296,6 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_timeout_in_data_phase
-    skip("Hangs too often, TODO: fix")
-
     @server.first_data_timeout = 2
     @server.add_tcp_listener @host, @port
     @server.run

@@ -150,7 +150,6 @@ class TestIntegration < Minitest::Test
   end
 
   def test_phased_restart_via_pumactl
-    skip "Too finicky, fails 50% of the time on CI" if ENV["CI"]
     skip if Puma.jruby? || Puma.windows?
 
     launcher_thread = Thread.new do
