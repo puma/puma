@@ -392,7 +392,9 @@ module Puma
 
       begin
         Signal.trap "SIGTERM" do
-          stop
+          graceful_stop
+
+          raise SignalException, "SIGTERM"
         end
       rescue Exception
         log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"

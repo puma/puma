@@ -375,7 +375,10 @@ module Puma
           log "Early termination of worker"
           exit! 0
         else
+          stop_workers
           stop
+
+          raise SignalException, "SIGTERM"
         end
       end
     end

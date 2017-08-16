@@ -53,6 +53,21 @@ class TestIntegration < Minitest::Test
     @server
   end
 
+  def start_forked_server(argv)
+    pid = fork do
+      exec "#{Gem.ruby} -I lib/ bin/puma -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
+    end
+
+    sleep 5
+    pid
+  end
+
+  def stop_forked_server(pid)
+    Process.kill(:TERM, pid)
+    sleep 1
+    Process.wait2(pid)
+  end
+
   def restart_server_and_listen(argv)
     skip_on_appveyor
     server(argv)
@@ -217,5 +232,23 @@ class TestIntegration < Minitest::Test
     assert_includes initial_reply, "Hello RAND"
     assert_includes new_reply, "Hello RAND"
     refute_equal initial_reply, new_reply
+  end
+
+  def test_term_signal_exit_code_in_single_mode
+    skip if Puma.jruby? || Puma.windows?
+
+    pid = start_forked_server("test/rackup/hello.ru")
+    _, status = stop_forked_server(pid)
+
+    assert_equal 15, status
+  end
+
+  def test_term_signal_exit_code_in_clustered_mode
+    skip if Puma.jruby? || Puma.windows?
+
+    pid = start_forked_server("-w 2 test/rackup/hello.ru")
+    _, status = stop_forked_server(pid)
+
+    assert_equal 15, status
   end
 end
