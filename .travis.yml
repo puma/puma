@@ -9,7 +9,8 @@ before_install:
   - gem install bundler -v 1.11.2
 script: "TESTOPTS=-v bundle exec rake"
 branches:
-  only: [master]
+  only:
+    - "master"
 rvm:
   - 2.2.7
   - 2.3.4
