@@ -399,6 +399,20 @@ module Puma
       end
 
       begin
+        Signal.trap "SIGINT" do
+          if Puma.jruby?
+            @status = :exit
+            graceful_stop
+            exit
+          end
+
+          stop
+        end
+      rescue Exception
+        log "*** SIGINT not implemented, signal based gracefully stopping unavailable!"
+      end
+
+      begin
         Signal.trap "SIGHUP" do
           if @runner.redirected_io?
             @runner.redirect_io
@@ -408,14 +422,6 @@ module Puma
         end
       rescue Exception
         log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
-      end
-
-      if Puma.jruby?
-        Signal.trap("INT") do
-          @status = :exit
-          graceful_stop
-          exit
-        end
       end
     end
   end
