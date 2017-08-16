@@ -150,7 +150,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_phased_restart_via_pumactl
-    skip if Puma.jruby? || Puma.windows?
+    skip if Puma.jruby? || Puma.windows? || ENV['CI']
 
     conf = Puma::Configuration.new do |c|
       c.quiet
