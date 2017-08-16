@@ -18,3 +18,4 @@ Tell us what happens instead ...
 
 **Ruby version**:
 **Rails version**:
+**Puma version**:
