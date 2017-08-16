@@ -3,11 +3,10 @@ require "rake/testtask"
 require "rake/extensiontask"
 require "rake/javaextensiontask"
 require "rubocop/rake_task"
+require 'puma/detect'
 
 # Add rubocop task
 RuboCop::RakeTask.new
-
-IS_JRUBY = defined?(RUBY_ENGINE) ? RUBY_ENGINE == "jruby" : false
 
 spec = Gem::Specification.load("puma.gemspec")
 
@@ -75,32 +74,21 @@ file 'ext/puma_http11/org/jruby/puma/Http11Parser.java' => ['ext/puma_http11/htt
 end
 task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
 
-if !IS_JRUBY
+if !Puma.jruby?
+  # compile extensions using rake-compiler
+  # C (MRI, Rubinius)
+  Rake::ExtensionTask.new("puma_http11", spec) do |ext|
+    # place extension inside namespace
+    ext.lib_dir = "lib/puma"
 
-# compile extensions using rake-compiler
-# C (MRI, Rubinius)
-Rake::ExtensionTask.new("puma_http11", spec) do |ext|
-  # place extension inside namespace
-  ext.lib_dir = "lib/puma"
-
-  ext.cross_compile = true
-  ext.cross_platform = ['i386-mswin32-60', 'i386-mingw32']
-  ext.cross_compiling do |spec|
-    # add fat-binary stub only when cross compiling
-    spec.files << "lib/puma/puma_http11.rb"
-  end
-
-  CLEAN.include "lib/puma/{1.8,1.9}"
-  CLEAN.include "lib/puma/puma_http11.rb"
-end
-
+      CLEAN.include "lib/puma/{1.8,1.9}"
+      CLEAN.include "lib/puma/puma_http11.rb"
+    end
 else
-
-# Java (JRuby)
-Rake::JavaExtensionTask.new("puma_http11", spec) do |ext|
-  ext.lib_dir = "lib/puma"
-end
-
+  # Java (JRuby)
+  Rake::JavaExtensionTask.new("puma_http11", spec) do |ext|
+    ext.lib_dir = "lib/puma"
+  end
 end
 
 # the following is a fat-binary stub that will be used when
@@ -116,7 +104,7 @@ end
 Rake::TestTask.new(:test)
 
 # tests require extension be compiled, but depend on the platform
-if IS_JRUBY
+if Puma.jruby?
   task :test => [:java]
 else
   task :test => [:compile]
@@ -135,15 +123,15 @@ end
 namespace :test do
   desc "Run the integration tests"
   task :integration do
-    sh "cd test/shell; sh run.sh"
+    sh "ruby test/shell/run.rb"
   end
 
   desc "Run all tests"
-  if defined?(JRUBY_VERSION) and ENV['TRAVIS']
+  if (Puma.jruby? && ENV['TRAVIS']) || Puma.windows?
     task :all => :test
   else
     task :all => [:test, "test:integration"]
   end
 end
 
-task :default => [:rubocop, :test]
+task :default => [:rubocop, "test:all"]

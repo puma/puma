@@ -1,7 +1,10 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-require 'stopgap_13632' if %w(2.2.7 2.3.4 2.4.1).include? RUBY_VERSION
+begin
+  require 'stopgap_13632' if %w(2.2.7 2.3.4 2.4.1).include? RUBY_VERSION
+rescue LoadError
+end
 
 begin
   require "bundler/setup"
@@ -43,15 +46,16 @@ module TimeoutEveryTestCase
   end
 
   def run(*)
-    if ENV['CI']
-      ::Timeout.timeout(Puma.jruby? ? 120 : 30, TestTookTooLong) { super }
-    else
-      super # we want to be able to use debugger
-    end
+    ::Timeout.timeout(Puma.jruby? ? 120 : 60, TestTookTooLong) { super }
   end
 end
 
-Minitest::Test.prepend TimeoutEveryTestCase
+if ENV['CI']
+  Minitest::Test.prepend TimeoutEveryTestCase
+
+  require 'minitest/retry'
+  Minitest::Retry.use!
+end
 
 module SkipTestsBasedOnRubyEngine
   def skip_on_jruby

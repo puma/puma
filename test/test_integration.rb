@@ -146,48 +146,54 @@ class TestIntegration < Minitest::Test
 
     ccli.run
 
-    assert_kind_of Thread, t.join(1), "server didn't stop"
+    assert_kind_of Thread, t.join, "server didn't stop"
   end
 
   def test_phased_restart_via_pumactl
-    skip "Too finicky, fails 50% of the time on CI" if ENV["CI"]
-    skip if Puma.jruby? || Puma.windows?
+    skip if Puma.jruby? || Puma.windows? || ENV['CI']
 
-    launcher_thread = Thread.new do
-      conf = Puma::Configuration.new do |c|
-        c.quiet
-        c.state_path @state_path
-        c.bind "unix://#{@bind_path}"
-        c.activate_control_app "unix://#{@control_path}", :auth_token => @token
-        c.workers 2
-        c.worker_shutdown_timeout 1
-        c.rackup "test/rackup/hello-stuck.ru"
-      end
-      Puma::Launcher.new(conf, :events => @events).run
+    conf = Puma::Configuration.new do |c|
+      c.quiet
+      c.state_path @state_path
+      c.bind "unix://#{@bind_path}"
+      c.activate_control_app "unix://#{@control_path}", :auth_token => @token
+      c.workers 2
+      c.worker_shutdown_timeout 1
+      c.rackup "test/rackup/hello-stuck.ru"
+    end
+
+    l = Puma::Launcher.new conf, :events => @events
+
+    t = Thread.new do
+      Thread.current.abort_on_exception = true
+      l.run
     end
 
     wait_booted
 
-    # Make both workers stuck
-    s1 = UNIXSocket.new @bind_path
-    s1 << "GET / HTTP/1.0\r\n\r\n"
+    s = UNIXSocket.new @bind_path
+    s << "GET / HTTP/1.0\r\n\r\n"
 
     sout = StringIO.new
-
     # Phased restart
     ccli = Puma::ControlCLI.new ["-S", @state_path, "phased-restart"], sout
     ccli.run
-    sleep 20
-    @events.stdout.rewind
-    log = @events.stdout.readlines.join("")
-    assert_match(/TERM sent/, log)
-    assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
 
+    done = false
+    until done
+      @events.stdout.rewind
+      log = @events.stdout.readlines.join("")
+      if log.match(/- Worker \d \(pid: \d+\) booted, phase: 1/)
+        assert_match(/TERM sent/, log)
+        assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
+        done = true
+      end
+    end
     # Stop
     ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
     ccli.run
 
-    assert_kind_of Thread, launcher_thread.join(5), "server didn't stop"
+    assert_kind_of Thread, t.join, "server didn't stop"
   end
 
   def test_kill_unknown_via_pumactl
