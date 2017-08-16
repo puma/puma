@@ -43,7 +43,7 @@ module TimeoutEveryTestCase
   end
 
   def run(*)
-    ::Timeout.timeout(Puma.jruby? ? 120 : 30, TestTookTooLong) { super }
+    ::Timeout.timeout(Puma.jruby? ? 120 : 60, TestTookTooLong) { super }
   end
 end
 
