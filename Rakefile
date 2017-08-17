@@ -15,48 +15,6 @@ RuboCop::RakeTask.new
 
 spec = Gem::Specification.load("puma.gemspec")
 
-desc "Print the current changelog."
-task "changelog" do
-  tag   = ENV["FROM"] || git_tags.last
-  range = [tag, "HEAD"].compact.join ".."
-  cmd   = "git log #{range} '--format=tformat:%B|||%aN|||%aE|||'"
-  now   = Time.new.strftime "%Y-%m-%d"
-
-  changes = `#{cmd}`.split(/\|\|\|/).each_slice(3).map { |msg, author, email|
-              msg.split(/\n/).reject { |s| s.empty? }.first
-            }.flatten.compact
-
-  $changes = Hash.new { |h,k| h[k] = [] }
-
-  codes = {
-    "!" => :major,
-    "+" => :minor,
-    "*" => :minor,
-    "-" => :bug,
-    "?" => :unknown,
-  }
-
-  codes_re = Regexp.escape codes.keys.join
-
-  changes.each do |change|
-    if change =~ /^\s*([#{codes_re}])\s*(.*)/ then
-      code, line = codes[$1], $2
-    else
-      code, line = codes["?"], change.chomp
-    end
-
-    $changes[code] << line
-  end
-
-  puts "## #{ENV['VERSION'] || 'NEXT'} / #{now}"
-  puts
-  changelog_section :major
-  changelog_section :minor
-  changelog_section :bug
-  changelog_section :unknown
-  puts
-end
-
 # generate extension code using Ragel (C and Java)
 desc "Generate extension code (C and Java) using Ragel"
 task :ragel
