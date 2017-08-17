@@ -8,365 +8,229 @@
 
 ## Description
 
-Puma is a simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications. Puma is intended for use in both development and production environments. In order to get the best throughput, it is highly recommended that you use a  Ruby implementation with real threads like Rubinius or JRuby.
+Puma is a simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications in development and production.
 
 ## Built For Speed &amp; Concurrency
 
-Puma is a simple, fast, and highly concurrent HTTP 1.1 server for Ruby web applications. It can be used with any application that supports Rack, and is considered the replacement for Webrick and Mongrel. It was designed to be the go-to server for [Rubinius](http://rubini.us), but also works well with JRuby and MRI. Puma is intended for use in both development and production environments.
+Puma is a simple, fast, and highly concurrent HTTP 1.1 server for Ruby web applications. It can be used with any application that supports Rack. It was designed to be the go-to server for [Rubinius](http://rubini.us), but also works well with JRuby and MRI.
 
-Under the hood, Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request in a thread from an internal thread pool (which you can control). This allows Puma to provide real concurrency for your web application!
+Under the hood, Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request in a thread from an internal thread pool. Since each request is served in a separate thread, truly concurrent Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
 
-With Rubinius 2.0, Puma will utilize all cores on your CPU with real threads, meaning you won't have to spawn multiple processes to increase throughput. You can expect to see a similar benefit from JRuby.
-
-On MRI, there is a Global Interpreter Lock (GIL) that ensures only one thread can be run at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing blocking IO to be run concurrently (EventMachine-based servers such as Thin turn off this ability, requiring you to use special libraries). Your mileage may vary. In order to get the best throughput, it is highly recommended that you use a Ruby implementation with real threads like [Rubinius](http://rubini.us) or [JRuby](http://jruby.org).
+On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing blocking IO to be run concurrently.
 
 ## Quick Start
 
-The easiest way to get started with Puma is to install it via RubyGems. You can do this easily:
+```
+$ gem install puma
+$ puma <any rackup (*.ru) file>
+```  
 
-    $ gem install puma
+## Frameworks
 
-Now you should have the `puma` command available in your PATH, so just do the following in the root folder of your Rack application:
+### Rails
 
-    $ puma app.ru
+Puma is the default server for Rails, and should already be included in your Gemfile.
 
-## Plugins
+Then start your server with the `rails` command:
 
-Puma 3.0 added support for plugins that can augment configuration and service operations.
+```
+$ rails s
+```
 
-2 canonical plugins to look to aid in development of further plugins:
+Many configuration options are not available when using `rails s`. It is recommended that you use Puma's executable instead:
 
-* [tmp\_restart](https://github.com/puma/puma/blob/master/lib/puma/plugin/tmp_restart.rb): Restarts the server if the file `tmp/restart.txt` is touched
-* [heroku](https://github.com/puma/puma-heroku/blob/master/lib/puma/plugin/heroku.rb): Packages up the default configuration used by puma on Heroku
-
-Plugins are activated in a puma configuration file (such as `config/puma.rb'`) by adding `plugin "name"`, such as `plugin "heroku"`.
-
-Plugins are activated based simply on path requirements so, activating the `heroku` plugin will simply be doing `require "puma/plugin/heroku"`. This allows gems to provide multiple plugins (as well as unrelated gems to provide puma plugins).
-
-The `tmp_restart` plugin is bundled with puma, so it can always be used.
-
-To use the `heroku` plugin, add `puma-heroku` to your Gemfile or install it.
-
-### API
-
-At present, there are 2 hooks that plugins can use: `start` and `config`.
-
-`start` runs when the server has started and allows the plugin to start other functionality to augment puma.
-
-`config` runs when the server is being configured and is passed a `Puma::DSL` object that can be used to add additional configuration.
-
-Any public methods in `Puma::Plugin` are the public API that any plugin may use.
-
-In the future, more hooks and APIs will be added.
-
-
-## Advanced Setup
+```
+$ bundle exec puma
+```
 
 ### Sinatra
 
 You can run your Sinatra application with Puma from the command line like this:
 
-    $ ruby app.rb -s Puma
+```
+$ ruby app.rb -s Puma
+```
 
 Or you can configure your application to always use Puma:
 
-    require 'sinatra'
-    configure { set :server, :puma }
-
-If you use Bundler, make sure you add Puma to your Gemfile (see below).
-
-### Rails
-
-First, make sure Puma is in your Gemfile:
-
-    gem 'puma'
-
-Then start your server with the `rails` command:
-
-    $ rails s Puma
-
-### Rackup
-
-You can pass it as an option to `rackup`:
-
-    $ rackup -s Puma
-
-Alternatively, you can modify your `config.ru` to choose Puma by default, by adding the following as the first line:
-
-    #\ -s puma
+```ruby
+require 'sinatra'
+configure { set :server, :puma }
+```
 
 ## Configuration
 
-Puma provides numerous options for controlling the operation of the server. Consult `puma -h` (or `puma --help`) for a full list.
+Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
 
 ### Thread Pool
 
-Puma utilizes a dynamic thread pool which you can modify. You can set the minimum and maximum number of threads that are available in the pool with the `-t` (or `--threads`) flag:
+Puma uses a thread pool. You can set the minimum and maximum number of threads that are available in the pool with the `-t` (or `--threads`) flag:
 
-    $ puma -t 8:32
+```
+$ puma -t 8:32
+```
 
-Puma will automatically scale the number of threads, from the minimum until it caps out at the maximum, based on how much traffic is present. The current default is `0:16`. Feel free to experiment, but be careful not to set the number of maximum threads to a very large number, as you may exhaust resources on the system (or hit resource limits).
+Puma will automatically scale the number of threads, from the minimum until it caps out at the maximum, based on how much traffic is present. The current default is `0:16`. Feel free to experiment, but be careful not to set the number of maximum threads to a large number, as you may exhaust resources on the system (or hit resource limits).
 
 ### Clustered mode
 
-Puma 2 offers clustered mode, allowing you to use forked processes to handle multiple incoming requests concurrently, in addition to threads already provided. You can tune the number of workers with the `-w` (or `--workers`) flag:
+Puma also offers "clustered mode". Clustered mode `fork`s workers from a master process. Each child process still has its own thread pool. You can tune the number of workers with the `-w` (or `--workers`) flag:
 
-    $ puma -t 8:32 -w 3
+```
+$ puma -t 8:32 -w 3
+```
 
-On a ruby implementation that offers native threads, you should tune this number to match the number of cores available.
-Note that threads are still used in clustered mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will be 32 threads.
+Note that threads are still used in clustered mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will spawn 32 threads in total.
 
-If you're running in Clustered Mode you can optionally choose to preload your application before starting up the workers. This is necessary in order to take advantage of the [Copy on Write](http://en.wikipedia.org/wiki/Copy-on-write) feature introduced in [MRI Ruby 2.0](https://blog.heroku.com/archives/2013/3/6/matz_highlights_ruby_2_0_at_waza). To do this simply specify the `--preload` flag in invocation:
+In clustered mode, Puma may "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write) (Ruby 2.0+ only). Use the `--preload` flag from the command line:
 
-    # CLI invocation
-    $ puma -t 8:32 -w 3 --preload
+```
+$ puma -w 3 --preload
+```
 
-If you're using a configuration file, use the `preload_app!` method, and be sure to specify your config file's location with the `-C` flag:
+If you're using a configuration file, use the `preload_app!` method:
 
-    $ puma -C config/puma.rb
-
-    # config/puma.rb
-    threads 8,32
-    workers 3
-    preload_app!
+```ruby
+# config/puma.rb
+workers 3
+preload_app!
+```
 
 Additionally, you can specify a block in your configuration file that will be run on boot of each worker:
 
-    # config/puma.rb
-    on_worker_boot do
-      # configuration here
-    end
+```ruby
+# config/puma.rb
+on_worker_boot do
+  # configuration here
+end
+```
 
 This code can be used to setup the process before booting the application, allowing
 you to do some Puma-specific things that you don't want to embed in your application.
 For instance, you could fire a log notification that a worker booted or send something to statsd.
-This can be called multiple times to add hooks.
+This can be called multiple times.
 
 If you're preloading your application and using ActiveRecord, it's recommended that you setup your connection pool here:
 
-    # config/puma.rb
-    on_worker_boot do
-      ActiveSupport.on_load(:active_record) do
-        ActiveRecord::Base.establish_connection
-      end
-    end
-
-On top of that, you can specify a block in your configuration file that will be run before workers are forked
-
-    # config/puma.rb
-    before_fork do
-      # configuration here
-    end
-
-This code can be used to clean up before forking to clients, allowing
-you to do some Puma-specific things that you don't want to embed in your application.
-
-If you're preloading your application and using ActiveRecord, it's recommended that you close any connections to the database here to prevent connection leakage:
-
-    # config/puma.rb
-    before_fork do
-      ActiveRecord::Base.connection_pool.disconnect!
-    end
-
-This rule applies to any connections to external services (Redis, databases, memcache, ...) that might be started automatically by the framework.
-
-When you use preload_app, all of your new code goes into the master process, and is then copied into the workers (meaning it’s only compatible with cluster mode). General rule is to use preload_app when your workers die often and need fast starts. If you don’t have many workers, you probably should not use preload_app.
-
-Note that preload_app can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preload_app is all about copying the code of master into the workers.
-
-### Error handler for low-level errors
-
-If puma encounters an error outside of the context of your application, it will respond with a 500 and a simple
-textual error message (see `lowlevel_error` in [this file](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
-You can specify custom behavior for this scenario. For example, you can report the error to your third-party
-error-tracking service (in this example, [rollbar](http://rollbar.com)):
-
 ```ruby
-lowlevel_error_handler do |e|
-  Rollbar.critical(e)
-  [500, {}, ["An error has occurred, and engineers have been informed. Please reload the page. If you continue to have problems, contact support@example.com\n"]]
+# config/puma.rb
+on_worker_boot do
+  ActiveSupport.on_load(:active_record) do
+    ActiveRecord::Base.establish_connection
+  end
 end
 ```
+
+On top of that, you can specify a block in your configuration file that will be run before workers are forked:
+
+```ruby
+# config/puma.rb
+before_fork do
+  # configuration here
+end
+```
+
+Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preload_app copies the code of master into the workers.
 
 ### Binding TCP / Sockets
 
 In contrast to many other server configs which require multiple flags, Puma simply uses one URI parameter with the `-b` (or `--bind`) flag:
 
-    $ puma -b tcp://127.0.0.1:9292
+```
+$ puma -b tcp://127.0.0.1:9292
+```
 
-Want to use UNIX Sockets instead of TCP (which can provide a 5-10% performance boost)? No problem!
+Want to use UNIX Sockets instead of TCP (which can provide a 5-10% performance boost)?
 
-    $ puma -b unix:///var/run/puma.sock
+```
+$ puma -b unix:///var/run/puma.sock
+```
 
 If you need to change the permissions of the UNIX socket, just add a umask parameter:
 
-    $ puma -b 'unix:///var/run/puma.sock?umask=0111'
+```
+$ puma -b 'unix:///var/run/puma.sock?umask=0111'
+```
 
-Need a bit of security? Use SSL sockets!
+Need a bit of security? Use SSL sockets:
 
-    $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
+```
+$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
+```
 
 ### Control/Status Server
 
-Puma comes with a builtin status/control app that can be used to query and control Puma itself. Here is an example of starting Puma with the control server:
+Puma has a built-in status/control app that can be used to query and control Puma itself.
 
-    $ puma --control tcp://127.0.0.1:9293 --control-token foo
+```
+$ puma --control tcp://127.0.0.1:9293 --control-token foo
+```
 
-This directs Puma to start the control server on localhost port 9293. Additionally, all requests to the control server will need to include `token=foo` as a query parameter. This allows for simple authentication. Check out [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the app has available.
+Puma will start the control server on localhost port 9293. All requests to the control server will need to include `token=foo` as a query parameter. This allows for simple authentication. Check out [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the app has available.
 
-Keep in mind that the status/control server accepts `pumactl` commands. To demonstrate, you can run the following command with the foo `--control-token` as such to restart: 
+You can also interact with the control server via `pumactl`. This command will restart Puma:
 
-    $ pumactl restart --control-token foo
+```
+$ pumactl restart --control-token foo
+```
 
-To see a list of `pumactl` options, please see `pumactl --help` as stated in the [`pumactl`](https://github.com/puma/puma#pumactl) section.
+To see a list of `pumactl` options, use `pumactl --help`.
 
-### Configuration file
+### Configuration File
 
 You can also provide a configuration file which Puma will use with the `-C` (or `--config`) flag:
 
-    $ puma -C /path/to/config
+```
+$ puma -C /path/to/config
+```
 
-By default, if no configuration file is specified, Puma will look for a configuration file at config/puma.rb. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` environment variable, the default file location will be config/puma/environment_name.rb.
+If no configuration file is specified, Puma will look for a configuration file at `config/puma.rb`. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` environment variable, the default file location will be `config/puma/environment_name.rb`.
 
 If you want to prevent Puma from looking for a configuration file in those locations, provide a dash as the argument to the `-C` (or `--config`) flag:
 
-    $ puma -C "-"
+```
+$ puma -C "-"
+```
 
-Take the following [sample configuration](https://github.com/puma/puma/blob/master/examples/config.rb) as inspiration or check out [configuration.rb](https://github.com/puma/puma/blob/master/lib/puma/configuration.rb) to see all available options.
+Take the following [sample configuration](https://github.com/puma/puma/blob/master/examples/config.rb) as inspiration or check out [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
 
 ## Restart
 
-Puma includes the ability to restart itself allowing easy upgrades to new versions. When available (MRI, Rubinius, JRuby), Puma performs a "hot restart". This is the same functionality available in *unicorn* and *nginx* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
+Puma includes the ability to restart itself. When available (MRI, Rubinius, JRuby), Puma performs a "hot restart". This is the same functionality available in *Unicorn* and *NGINX* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
 
-To perform a restart, there are 2 builtin mechanisms:
+For more, see the [restart documentation](https://github.com/puma/puma/blob/master/docs/restart.md).
 
-  * Send the `puma` process the `SIGUSR2` signal
-  * Use the status server and issue `/restart`
+## Signals
 
-No code is shared between the current and restarted process, so it should be safe to issue a restart any place where you would manually stop Puma and start it again.
+Puma responds to several signals. A detailed guide to using UNIX signals with Puma can be found in the [signals documentation](https://github.com/puma/puma/blob/master/docs/signals.md).
 
-If the new process is unable to load, it will simply exit. You should therefore run Puma under a process monitor (see below) when using it in production.
+## Platform Constraints
 
-### Normal vs Hot vs Phased Restart
+Some platforms do not support all Puma features.
 
-A hot restart means that no requests will be lost while deploying your new code, since the server socket is kept open between restarts.
+  * **JRuby**, **Windows**: server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to Ruby. Also, cluster mode is not supported due to a lack of fork(2).
+  * **Windows**: daemon mode is not supported due to a lack of fork(2).
 
-But beware, hot restart does not mean that the incoming requests won’t hang for multiple seconds while your new code has not fully deployed. If you need a zero downtime and zero hanging requests deploy, you must use phased restart.
+## Known Bugs
 
-When you run pumactl phased-restart, Puma kills workers one-by-one, meaning that at least another worker is still available to serve requests, which lead to zero hanging requests (yay!).
-
-But again beware, upgrading an application sometimes involves upgrading the database schema. With phased restart, there may be a moment during the deployment where processes belonging to the previous version and processes belonging to the new version both exist at the same time. Any database schema upgrades you perform must therefore be backwards-compatible with the old application version.
-
-If you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (pumactl restart). That way, no code is shared while deploying (in that case, preload_app might help for quicker deployment, see below).
-
-### Puma Signals
-
-Puma cluster responds to these signals:
-
-- `TTIN` increment the worker count by 1
-- `TTOU` decrement the worker count by 1
-- `TERM` send `TERM` to worker. Worker will attempt to finish then exit.
-- `USR2` restart workers
-- `USR1` restart workers in phases, a rolling restart.
-- `HUP`  reopen log files defined in stdout_redirect configuration parameter
-- `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
-- `CHLD`
-
-A detailed guide to using UNIX signals with Puma can be found in the [signals documentation](https://github.com/puma/puma/blob/master/docs/signals.md).
-
-### Release Directory
-
-If your symlink releases into a common working directory (i.e., `/current` from Capistrano), Puma won't pick up your new changes when running phased restarts without additional configuration. You should set your working directory within Puma's config to specify the directory it should use. This is a change from earlier versions of Puma (< 2.15) that would infer the directory for you.
+For MRI versions 2.2.7, 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
 
 ```ruby
-# config/puma.rb
-
-directory '/var/www/current'
-```
-
-### Cleanup Code
-
-Puma isn't able to understand all the resources that your app may use, so it provides a hook in the configuration file you pass to `-C` called `on_restart`. The block passed to `on_restart` will be called, unsurprisingly, just before Puma restarts itself.
-
-You should place code to close global log files, redis connections, etc in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restarted many times.
-
-### Platform Constraints
-
-Because of various platforms not being able to implement certain things, the following differences occur when Puma is used on different platforms:
-
-  * **JRuby**, **Windows**: server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to ruby
-  * **JRuby**, **Windows**: cluster mode is not supported due to a lack of  fork(2)
-  * **Windows**: daemon mode is not supported due to a lack of fork(2)
-
-## pumactl
-
-`pumactl` is a simple CLI frontend to the control/status app described above.  Please refer to `pumactl --help` for available commands.
-
-## Process Monitors
-
-Process monitors or supervisors will at minimum provide start of Puma
-on system boot. Modern process monitors like systemd or upstart
-further provide continuous monitoring and restarts for increased
-reliability in production environments:
-
-* [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
-* [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
-
-## Known bugs
-For MRI versions 2.2.7, 2.3.4 and 2.4.1 you may start erratically get the following exception in places where it should not happen:
-```ruby
-stream closed in another thread (IOError)
-```
-If that's the case then it might be caused by ruby bug https://bugs.ruby-lang.org/issues/13632 and it could be temporary fixed with the gem https://rubygems.org/gems/stopgap_13632.
-Add to gemfile:
-```
 if %w(2.2.7 2.3.4 2.4.1).include? RUBY_VERSION
   gem "stopgap_13632", "~> 1.0", :platforms => ["mri", "mingw", "x64_mingw"]
 end
 ```
-Don't forget to require it:
-```
-require 'stopgap_13632'
-```
-And when an "IOError: stream closed" happens in a thread, accessing a busy IO, catch it and call the following method:
-```
-rescue IOError
-  Thread.current.purge_interrupt_queue
-end
-```
 
-## Capistrano deployment
+## Deployment
 
-Puma has support for Capistrano3 with an [external gem](https://github.com/seuros/capistrano-puma), you just need require that in Gemfile:
+Puma has support for Capistrano with an [external gem](https://github.com/seuros/capistrano-puma).
 
-```ruby
-gem 'capistrano3-puma'
-```
-And then execute:
+It is common to use process monitors with Puma. Modern process monitors like systemd or upstart
+provide continuous monitoring and restarts for increased
+reliability in production environments:
 
-```bash
-bundle
-```
-
-Then add to Capfile
-
-```ruby
-require 'capistrano/puma'
-```
-
-and then
-
-```bash
-$ bundle exec cap puma:start
-$ bundle exec cap puma:restart
-$ bundle exec cap puma:stop
-$ bundle exec cap puma:phased-restart
-```
-
-See
-[docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md),
-including the last section, if using this in conjunction with systemd
-(all recent, major distributions of Linux).
+* [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
+* [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
 ## Contributing
 
@@ -379,4 +243,4 @@ $ bundle exec rake
 
 ## License
 
-Puma is copyright 2014 Evan Phoenix and contributors. It is licensed under the BSD 3-Clause license. See the included LICENSE file for details.
+Puma is copyright Evan Phoenix and contributors, licensed under the BSD 3-Clause license. See the included LICENSE file for details.
