@@ -1,3 +1,32 @@
+## 3.10.0 / 2017-08-17
+
+* 3 features:
+  * The status server has a new /gc and /gc-status command. (#1384)
+  * The persistent and first data timeouts are now configurable (#1111)
+  * Implemented RFC 2324 (#1392)
+
+* 12 bugfixes:
+  * Not really a Puma bug, but @NickolasVashchenko created a gem to workaround a Ruby bug that some users of Puma may be experiencing. See README for more. (#1347)
+  * Fix hangups with SSL and persistent connections. (#1334)
+  * Fix Rails double-binding to a port (#1383)
+  * Fix incorrect thread names (#1368)
+  * Fix issues with /etc/hosts and JRuby where localhost addresses were not correct. (#1318)
+  * Fix compatibility with RUBYOPT="--enable-frozen-string-literal" (#1376)
+  * Fixed some compiler warnings (#1388)
+  * We actually run the integration tests in CI now (#1390)
+  * No longer shipping unnecessary directories in the gemfile (#1391)
+  * If RUBYOPT is nil, we no longer blow up on restart. (#1385)
+  * Correct response to SIGINT (#1377)
+  * Proper exit code returned when we receive a TERM signal (#1337)
+
+* 3 refactors:
+  * Various test improvements from @grosser
+  * Rubocop (#1325)
+  * Hoe has been removed (#1395)
+
+* 1 known issue:
+  * Socket activation doesn't work in JRuby. Their fault, not ours. (#1367)
+
 ## 3.9.1 / 2017-06-03
 
 * 2 bugfixes:
