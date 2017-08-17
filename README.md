@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="http://puma.io/images/logos/puma-logo-large.png">
+</p>
+
 # Puma: A Ruby Web Server Built For Concurrency
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
@@ -6,15 +10,13 @@
 [![Dependency Status](https://gemnasium.com/puma/puma.svg)](https://gemnasium.com/puma/puma)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 
-## Description
-
-Puma is a simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications in development and production.
+Puma is a **simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications** in development and production.
 
 ## Built For Speed &amp; Concurrency
 
-Puma is a simple, fast, and highly concurrent HTTP 1.1 server for Ruby web applications. It can be used with any application that supports Rack. It was designed to be the go-to server for [Rubinius](http://rubini.us), but also works well with JRuby and MRI.
-
 Under the hood, Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request in a thread from an internal thread pool. Since each request is served in a separate thread, truly concurrent Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
+
+Puma was designed to be the go-to server for [Rubinius](http://rubini.us), but also works well with JRuby and MRI.
 
 On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing blocking IO to be run concurrently.
 
