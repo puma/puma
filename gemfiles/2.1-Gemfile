@@ -2,9 +2,6 @@ source "https://rubygems.org"
 
 gemspec path: ".."
 
-gem "hoe"
-gem "hoe-git"
-gem "hoe-ignore"
 gem "rdoc"
 gem "rake-compiler"
 
