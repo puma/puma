@@ -221,5 +221,7 @@ module Puma
     HIJACK_P = "rack.hijack?".freeze
     HIJACK = "rack.hijack".freeze
     HIJACK_IO = "rack.hijack_io".freeze
+
+    EARLY_HINTS = "rack.early_hints".freeze
   end
 end

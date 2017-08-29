@@ -159,6 +159,61 @@ class TestPumaServer < Minitest::Test
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
 
+  def test_early_hints_works
+    @server.app = proc { |env|
+     env['rack.early_hints'].call("Link" => "</style.css>; rel=preload; as=style\n</script.js>; rel=preload")
+     [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.early_hints = true
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    expected_data = (<<EOF
+HTTP/1.1 103 Early Hints
+Link: </style.css>; rel=preload; as=style
+Link: </script.js>; rel=preload
+
+HTTP/1.0 200 OK
+X-Hello: World
+Content-Length: 12
+EOF
+).split("\n").join("\r\n") + "\r\n\r\n"
+
+    assert_equal true, @server.early_hints
+    assert_equal expected_data, data
+  end
+
+  def test_early_hints_is_off_by_default
+    @server.app = proc { |env|
+     assert_nil env['rack.early_hints']
+     [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    data = sock.read
+
+    expected_data = (<<EOF
+HTTP/1.0 200 OK
+X-Hello: World
+Content-Length: 12
+EOF
+).split("\n").join("\r\n") + "\r\n\r\n"
+
+    assert_nil @server.early_hints
+    assert_equal expected_data, data
+  end
+
   def test_GET_with_no_body_has_sane_chunking
     @server.app = proc { |env| [200, {}, []] }
 

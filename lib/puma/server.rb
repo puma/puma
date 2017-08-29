@@ -81,7 +81,7 @@ module Puma
       @precheck_closing = true
     end
 
-    attr_accessor :binder, :leak_stack_on_error
+    attr_accessor :binder, :leak_stack_on_error, :early_hints
 
     forward :add_tcp_listener,  :@binder
     forward :add_ssl_listener,  :@binder
@@ -594,6 +594,24 @@ module Puma
 
       env[RACK_INPUT] = body
       env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
+
+      if @early_hints
+        env[EARLY_HINTS] = lambda { |headers|
+          fast_write client, "HTTP/1.1 103 Early Hints\r\n".freeze
+
+          headers.each_pair do |k, vs|
+            if vs.respond_to?(:to_s) && !vs.to_s.empty?
+              vs.to_s.split(NEWLINE).each do |v|
+                fast_write client, "#{k}: #{v}\r\n"
+              end
+            else
+              fast_write client, "#{k}: #{v}\r\n"
+            end
+          end
+
+          fast_write client, "\r\n".freeze
+        }
+      end
 
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
