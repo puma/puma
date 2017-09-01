@@ -122,8 +122,11 @@ module Puma
                 @out_of_band_pending = false
               end
               not_full.signal
-              not_empty.wait mutex
-              @waiting -= 1
+              begin
+                not_empty.wait mutex
+              ensure
+                @waiting -= 1
+              end
             end
 
             work = todo.shift
