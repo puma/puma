@@ -447,7 +447,7 @@ VALUE raise_error(VALUE self) {
 }
 
 void Init_mini_ssl(VALUE puma) {
-  VALUE mod, eng;
+  VALUE mod;
 
   mod = rb_define_module_under(puma, "MiniSSL");
   rb_define_class_under(mod, "SSLError", rb_eStandardError);
