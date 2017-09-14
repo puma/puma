@@ -28,3 +28,14 @@ matrix:
     - rvm: jruby-head
     - rvm: rbx-3
     - rvm: ruby-head
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-6
+env:
+  global:
+    - CC=gcc-6
+    - GCC=g++-6
+
