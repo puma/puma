@@ -1,7 +1,5 @@
 require_relative "helper"
 
-require "puma/events"
-
 class TestEvents < Minitest::Test
   def test_null
     events = Puma::Events.null

@@ -1,6 +1,5 @@
 require_relative "helper"
 
-require "puma/events"
 require "puma/tcp_logger"
 
 class TestTCPLogger < Minitest::Test

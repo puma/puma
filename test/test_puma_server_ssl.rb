@@ -1,7 +1,5 @@
 require_relative "helper"
 
-require "puma/events"
-
 class SSLEventsHelper < ::Puma::Events
   attr_accessor :addr, :cert, :error
 
