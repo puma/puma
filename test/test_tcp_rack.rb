@@ -1,7 +1,5 @@
 require_relative "helper"
 
-require "puma/events"
-
 class TestTCPRack < Minitest::Test
 
   def setup

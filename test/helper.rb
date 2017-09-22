@@ -21,6 +21,7 @@ $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
 
 require "puma"
+require "puma/events"
 require "puma/detect"
 
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
