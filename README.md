@@ -74,6 +74,8 @@ $ puma -t 8:32
 
 Puma will automatically scale the number of threads, from the minimum until it caps out at the maximum, based on how much traffic is present. The current default is `0:16`. Feel free to experiment, but be careful not to set the number of maximum threads to a large number, as you may exhaust resources on the system (or hit resource limits).
 
+Be aware that additionally Puma creates threads on its own for internal purposes (e.g. handling slow clients). So even if you specify -t 1:1, expect around 7 threads created in your application.
+
 ### Clustered mode
 
 Puma also offers "clustered mode". Clustered mode `fork`s workers from a master process. Each child process still has its own thread pool. You can tune the number of workers with the `-w` (or `--workers`) flag:
