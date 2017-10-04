@@ -181,6 +181,10 @@ module Puma
             user_config.tcp_mode!
           end
 
+          o.on "--early-hints", "Enable early hints support" do
+            user_config.early_hints
+          end
+
           o.on "-V", "--version", "Print the version information" do
             puts "puma version #{Puma::Const::VERSION}"
             exit 0

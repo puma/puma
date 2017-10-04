@@ -161,6 +161,10 @@ module Puma
         server.tcp_mode!
       end
 
+      if @options[:early_hints]
+        server.early_hints = true
+      end
+
       unless development?
         server.leak_stack_on_error = false
       end

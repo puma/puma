@@ -241,6 +241,10 @@ module Puma
       @options[:mode] = :tcp
     end
 
+    def early_hints(answer=true)
+      @options[:early_hints] = answer
+    end
+
     # Redirect STDOUT and STDERR to files specified.
     def stdout_redirect(stdout=nil, stderr=nil, append=false)
       @options[:redirect_stdout] = stdout
