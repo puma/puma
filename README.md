@@ -175,7 +175,7 @@ Puma will start the control server on localhost port 9293. All requests to the c
 You can also interact with the control server via `pumactl`. This command will restart Puma:
 
 ```
-$ pumactl restart --control-token foo
+$ pumactl -C 'tcp://127.0.0.1:9293' --control-token foo restart
 ```
 
 To see a list of `pumactl` options, use `pumactl --help`.
