@@ -40,7 +40,7 @@ module Puma
     #       [200, {}, ["hello world"]]
     #     end
     #   end
-    #   Puma::Launcher.new(conf, argv: Puma::Events.stdio).run
+    #   Puma::Launcher.new(conf, events: Puma::Events.stdio).run
     def initialize(conf, launcher_args={})
       @runner        = nil
       @events        = launcher_args[:events] || Events::DEFAULT
