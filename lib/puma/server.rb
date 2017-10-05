@@ -62,6 +62,7 @@ module Puma
 
       @thread = nil
       @thread_pool = nil
+      @early_hints = nil
 
       @persistent_timeout = options.fetch(:persistent_timeout, PERSISTENT_TIMEOUT)
       @first_data_timeout = options.fetch(:first_data_timeout, FIRST_DATA_TIMEOUT)
