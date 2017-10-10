@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.email = ["evan@phx.io"]
   s.executables = ["puma", "pumactl"]
   s.extensions = ["ext/puma_http11/extconf.rb"]
-  s.metadata["msys5_mingw_dependencies"] = "openssl"
+  s.metadata["msys2_mingw_dependencies"] = "openssl"
   s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
             %w[History.md LICENSE README.md]
   s.homepage = "http://puma.io"
