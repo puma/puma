@@ -3,6 +3,11 @@ require_relative "helper"
 require "puma/configuration"
 
 class TestConfigFile < Minitest::Test
+  def setup
+    FileUtils.mkpath("config/puma")
+    File.write("config/puma/fake-env.rb", "")
+  end
+
   def test_app_from_rackup
     conf = Puma::Configuration.new do |c|
       c.rackup "test/rackup/hello-bind.ru"
@@ -82,6 +87,56 @@ class TestConfigFile < Minitest::Test
     assert_match(/:3030$/, conf.options[:binds].first)
     assert_equal 3, conf.options[:min_threads]
     assert_equal 5, conf.options[:max_threads]
+  end
+
+  def test_config_files_default
+    conf = Puma::Configuration.new do
+    end
+
+    assert_equal [nil], conf.config_files
+  end
+
+  def test_config_files_with_dash
+    conf = Puma::Configuration.new(config_files: ['-']) do
+    end
+
+    assert_equal [], conf.config_files
+  end
+
+  def test_config_files_with_existing_path
+    conf = Puma::Configuration.new(config_files: ['test/config/settings.rb']) do
+    end
+
+    assert_equal ['test/config/settings.rb'], conf.config_files
+  end
+
+  def test_config_files_with_non_existing_path
+    conf = Puma::Configuration.new(config_files: ['test/config/typo/settings.rb']) do
+    end
+
+    assert_equal ['test/config/typo/settings.rb'], conf.config_files
+  end
+
+  def test_config_files_with_rack_env
+    with_env('RACK_ENV' => 'fake-env') do
+      conf = Puma::Configuration.new do
+      end
+
+      assert_equal ['config/puma/fake-env.rb'], conf.config_files
+    end
+  end
+
+  def test_config_files_with_specified_environment
+    conf = Puma::Configuration.new do
+    end
+
+    conf.options[:environment] = 'fake-env'
+
+    assert_equal ['config/puma/fake-env.rb'], conf.config_files
+  end
+
+  def teardown
+    FileUtils.rm_r("config/puma")
   end
 
   private
