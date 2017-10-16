@@ -43,7 +43,19 @@ module Puma
           output = engine_read_all
           return output if output
 
-          data = @socket.read_nonblock(size)
+          if /mswin|mingw/ !~ RUBY_PLATFORM
+            data = @socket.read_nonblock(size)
+          else
+            begin
+              data = @socket.read_nonblock(size)
+            rescue IO::WaitReadable
+              IO.select([@socket.to_io])
+              retry
+            rescue IO::WaitWritable
+              IO.select(nil, [@socket.to_io])
+              retry
+            end
+          end
 
           @engine.inject(data)
           output = engine_read_all
