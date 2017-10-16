@@ -411,6 +411,11 @@ VALUE noop(VALUE self) {
 void Init_mini_ssl(VALUE puma) {
   VALUE mod, eng;
 
+/* Fake operation for documentation (RDoc, YARD) */
+#if 0 == 1
+  puma = rb_define_module("Puma");
+#endif
+
   SSL_library_init();
   OpenSSL_add_ssl_algorithms();
   SSL_load_error_strings();

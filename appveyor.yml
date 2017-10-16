@@ -1,29 +1,70 @@
+init:
+  - set PATH=C:\ruby%ruby_version%\bin;C:\Program Files\7-Zip;C:\Program Files\AppVeyor\BuildAgent;C:\Program Files\Git\cmd;C:\Windows\system32
+  - if %ruby_version%==_trunk (
+      appveyor DownloadFile https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z -FileName C:\ruby_trunk.7z &
+      7z x C:\ruby_trunk.7z -oC:\ruby_trunk &
+      C:\ruby_trunk\trunk_pkgs.cmd
+    )
+
 install:
-  - set PATH=C:\MinGW\bin;C:\Ruby%ruby_version%\bin;%PATH%
-  - set RAKEOPT=-rdevkit
-  - set DISABLE_SSL=true
-  - set APPVEYOR=true
+  # Download RI OpenSSL Knapsack package
+  # RI DevKit is only installed in Ruby23 and Ruby23-x64 folders
+  # RI2 MSYS2/MinGW OpenSSL package is standard Appveyor item
+  - if "%ri_file%"=="x86" (
+      appveyor DownloadFile https://dl.bintray.com/oneclick/OpenKnapsack/x86/openssl-1.0.2j-x86-windows.tar.lzma &
+      7z e openssl-1.0.2j-x86-windows.tar.lzma &
+      7z x -y openssl-1.0.2j-x86-windows.tar -oC:\ruby23\DevKit\mingw &
+      set b_config="--with-ssl-dir=C:/ruby23/DevKit/mingw --with-opt-include=C:/ruby23/DevKit/mingw/include" &
+      set SSL_CERT_FILE=C:/ruby24-x64/ssl/cert.pem
+    )
+  - if "%ri_file%"=="x64" (
+      appveyor DownloadFile https://dl.bintray.com/oneclick/OpenKnapsack/x64/openssl-1.0.2j-x64-windows.tar.lzma &
+      7z e openssl-1.0.2j-x64-windows.tar.lzma &
+      7z x -y openssl-1.0.2j-x64-windows.tar -oC:\ruby23-x64\DevKit\mingw &
+      set b_config="--with-ssl-dir=C:/ruby23-x64/DevKit/mingw --with-opt-include=C:/ruby23-x64/DevKit/mingw/include" &
+      set SSL_CERT_FILE=C:/ruby24-x64/ssl/cert.pem
+    )
+  - RAKEOPT: 
+  - APPVEYOR: true
   - ruby --version
   - gem --version
   - bundle --version
-  - bundle install
+  - bundle install --without documentation --path av_bundle/%ruby_version%
 
+build_script:
+  - bundle exec rake -rdevkit compile -- %b_config%
+  
 test_script:
-  - bundle exec rake
+  - set OPENSSL_DIR=
+  - bundle exec rake -rdevkit test TESTOPTS="--verbose"
+
+on_finish:
+- ruby -v
 
 environment:
   matrix:
-    - ruby_version: "24"
-    - ruby_version: "24-x64"
-    - ruby_version: "23"
-    - ruby_version: "23-x64"
-    - ruby_version: "22"
-    - ruby_version: "22-x64"
-    - ruby_version: "21"
-    - ruby_version: "21-x64"
+    - ruby_version: _trunk
+      b_config: "--use-system-libraries"
+    - ruby_version: 24
+      b_config: "--use-system-libraries"
+    - ruby_version: 24-x64
+      b_config: "--use-system-libraries"
+    - ruby_version: 23
+      ri_file: x86
+    - ruby_version: 23-x64
+      ri_file: x64
+    - ruby_version: 22
+      ri_file: x86
+    - ruby_version: 22-x64
+      ri_file: x64
+    - ruby_version: 21
+      DISABLE_SSL: true
+    - ruby_version: 21-x64
+      DISABLE_SSL: true
+
+cache:
+  - av_bundle
 
 branches:
   only:
     - master
-
-build: off
