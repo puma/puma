@@ -424,17 +424,17 @@ module Puma
     # that have not checked in within the given +timeout+.
     # This mitigates hung processes. Default value is 60 seconds.
     def worker_timeout(timeout)
-      @options[:worker_timeout] = timeout
+      @options[:worker_timeout] = Integer(timeout)
     end
 
     # *Cluster mode only* Set the timeout for workers to boot
     def worker_boot_timeout(timeout)
-      @options[:worker_boot_timeout] = timeout
+      @options[:worker_boot_timeout] = Integer(timeout)
     end
 
     # *Cluster mode only* Set the timeout for worker shutdown
     def worker_shutdown_timeout(timeout)
-      @options[:worker_shutdown_timeout] = timeout
+      @options[:worker_shutdown_timeout] = Integer(timeout)
     end
 
     # When set to true (the default), workers accept all requests
