@@ -135,6 +135,21 @@ class TestConfigFile < Minitest::Test
     assert_equal ['config/puma/fake-env.rb'], conf.config_files
   end
 
+  def test_config_files_with_integer_convert
+    conf = Puma::Configuration.new(config_files: ['test/config/with_integer_convert.rb']) do
+    end
+    conf.load
+
+    assert_equal 6, conf.options[:persistent_timeout]
+    assert_equal 3, conf.options[:first_data_timeout]
+    assert_equal 2, conf.options[:workers]
+    assert_equal 4, conf.options[:min_threads]
+    assert_equal 8, conf.options[:max_threads]
+    assert_equal 90, conf.options[:worker_timeout]
+    assert_equal 120, conf.options[:worker_boot_timeout]
+    assert_equal 150, conf.options[:worker_shutdown_timeout]
+  end
+
   def teardown
     FileUtils.rm_r("config/puma")
   end
