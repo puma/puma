@@ -32,7 +32,7 @@ module Puma
           if sockets.any? { |socket| socket.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
             STDERR.puts e.backtrace
-            sockets = sockets.reject { |socket| socket.closed? }
+            sockets.delete_if{ |s| s.closed? }
             retry
           else
             raise
@@ -45,7 +45,7 @@ module Puma
               @mutex.synchronize do
                 case @ready.read(1)
                 when "*"
-                  sockets += @input
+                  sockets.concat(@input)
                   @input.clear
                 when "c"
                   sockets.delete_if do |s|
