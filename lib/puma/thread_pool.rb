@@ -103,7 +103,11 @@ module Puma
 
               @waiting += 1
               not_full.signal
-              not_empty.wait mutex
+              begin
+                not_empty.wait mutex
+              rescue IOError
+                Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+              end
               @waiting -= 1
             end
 
