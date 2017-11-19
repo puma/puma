@@ -217,11 +217,14 @@ Some platforms do not support all Puma features.
 
 ## Known Bugs
 
-For MRI versions 2.2.7, 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
+For MRI versions 2.2.7, 2.2.8, 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
 
 ```ruby
-if %w(2.2.7 2.3.4 2.4.1).include? RUBY_VERSION
-  gem "stopgap_13632", "~> 1.0", :platforms => ["mri", "mingw", "x64_mingw"]
+if %w(2.2.7 2.2.8 2.3.4 2.4.1).include? RUBY_VERSION
+  begin
+    require 'stopgap_13632'
+  rescue LoadError
+  end
 end
 ```
 
