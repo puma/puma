@@ -1,3 +1,8 @@
+begin
+  require 'io/wait'
+rescue LoadError
+end
+
 module Puma
   module MiniSSL
     class Socket
@@ -43,19 +48,20 @@ module Puma
           output = engine_read_all
           return output if output
 
-          if /mswin|mingw/ !~ RUBY_PLATFORM
-            data = @socket.read_nonblock(size)
-          else
-            begin
-              data = @socket.read_nonblock(size)
-            rescue IO::WaitReadable
-              IO.select([@socket.to_io])
-              retry
-            rescue IO::WaitWritable
-              IO.select(nil, [@socket.to_io])
-              retry
+          begin
+            data = @socket.read_nonblock(size, exception: false)
+            if data == :wait_readable || data == :wait_writable
+              if @socket.to_io.respond_to?(data)
+                @socket.to_io.__send__(data)
+              elsif data == :wait_readable
+                IO.select([@socket.to_io])
+              else
+                IO.select(nil, [@socket.to_io])
+              end
+            else
+              break
             end
-          end
+          end while true
 
           @engine.inject(data)
           output = engine_read_all
