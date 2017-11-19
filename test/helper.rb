@@ -2,7 +2,7 @@
 # Copyright (c) 2005 Zed A. Shaw
 
 begin
-  require 'stopgap_13632' if %w(2.2.7 2.3.4 2.4.1).include? RUBY_VERSION
+  require 'stopgap_13632' if %w(2.2.8 2.3.4 2.4.1).include? RUBY_VERSION
 rescue LoadError
 end
 
