@@ -24,7 +24,7 @@ module Puma
       @workers.each { |x| x.term }
 
       begin
-        Process.waitall
+        @workers.each { |w| Process.waitpid(w.pid) }
       rescue Interrupt
         log "! Cancelled waiting for workers"
       end
