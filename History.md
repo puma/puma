@@ -1,3 +1,24 @@
+## 3.11.0 / 2017-11-20
+
+* 2 features:
+  * HTTP 203 Early Hints (#1403)
+  * 421/451 status codes now have correct status messages attached (#1435)
+
+* 9 bugfixes:
+  * Environment config files (/config/puma/<ENV>.rb) load correctly (#1340)
+  * Specify windows dependencies correctly (#1434, #1436)
+  * puma/events required in test helper (#1418)
+  * Correct control CLI's option help text (#1416)
+  * Remove a warning for unused variable in mini_ssl (#1409)
+  * Correct pumactl docs argument ordering (#1427)
+  * Fix an uninitialized variable warning in server.rb (#1430)
+  * Fix docs typo/error in Launcher init (#1429)
+  * Deal with leading spaces in RUBYOPT (#1455)
+
+* 2 other:
+  * Add docs about internals (#1425, #1452)
+  * Tons of test fixes from @MSP-Greg (#1439, #1442, #1464)
+
 ## 3.10.0 / 2017-08-17
 
 * 3 features:
