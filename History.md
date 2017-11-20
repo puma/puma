@@ -1,7 +1,7 @@
 ## 3.11.0 / 2017-11-20
 
 * 2 features:
-  * HTTP 203 Early Hints (#1403)
+  * HTTP 103 Early Hints (#1403)
   * 421/451 status codes now have correct status messages attached (#1435)
 
 * 9 bugfixes:
