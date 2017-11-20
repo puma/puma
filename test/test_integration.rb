@@ -41,10 +41,8 @@ class TestIntegration < Minitest::Test
   end
 
   def server(argv)
-    # when we were started with bundler all load-paths and bin-paths are setup correctly
-    # this is what 9X% of users run, so it is what we should test
-    # the other case is solely for package builders or testing 1-off cases where the system puma is used
-    base = (defined?(Bundler) ? "bundle exec puma" : "#{Gem.ruby} -Ilib bin/puma")
+    base = "#{Gem.ruby} -Ilib bin/puma"
+    base.prepend("bundle exec ") if defined?(Bundler)
     cmd = "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
     @server = IO.popen(cmd, "r")
 
