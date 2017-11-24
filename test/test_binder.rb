@@ -23,8 +23,9 @@ class TestBinder < Minitest::Test
 
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+    ssl_cipher_filter = "!aNULL:@STRENGTH"
 
-    @binder.parse(["ssl://localhost:10002?key=#{key}&cert=#{cert}"], @events)
+    @binder.parse(["ssl://localhost:10002?key=#{key}&cert=#{cert}&ssl_cipher_filter=#{ssl_cipher_filter}"], @events)
 
     assert_equal [], @binder.listeners
   end
