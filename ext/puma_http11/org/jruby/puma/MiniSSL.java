@@ -170,6 +170,12 @@ public class MiniSSL extends RubyObject {
         engine.setNeedClientAuth(true);
     }
 
+    IRubyObject sslCipherListObject = miniSSLContext.callMethod(threadContext, "ssl_cipher_list");
+    if (!sslCipherListObject.isNil()) {
+      String[] sslCipherList = sslCipherListObject.convertToString().asJavaString().split(",");
+      engine.setEnabledCipherSuites(sslCipherList);
+    }
+
     SSLSession session = engine.getSession();
     inboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
     outboundAppData = new MiniSSLBuffer(session.getApplicationBufferSize());
