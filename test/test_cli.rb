@@ -56,7 +56,7 @@ class TestCLI < Minitest::Test
     s = TCPSocket.new "127.0.0.1", 9877
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
-    assert_equal '{ "backlog": 0, "running": 0 }', body.split("\r\n").last
+    assert_equal '{ "backlog": 0, "running": 0 }', body.split(/\r?\n/).last
 
     cli.launcher.stop
     t.join
