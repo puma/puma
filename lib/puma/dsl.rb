@@ -110,9 +110,22 @@ module Puma
       @options[:config_files] << file
     end
 
-    # Bind the server to +url+. tcp:// and unix:// are the only accepted
-    # protocols.
+    # Adds a binding for the server to +url+. tcp://, unix://, and ssl:// are the only accepted
+    # protocols. Use query parameters within the url to specify options.
     #
+    # @note multiple urls can be bound to, calling `bind` does not overwrite previous bindings.
+    #
+    # @example Explicitly the socket backlog depth (default is 1024)
+    #   bind('unix:///var/run/puma.sock?backlog=2048')
+    #
+    # @example Set up ssl cert
+    #   bind('ssl://127.0.0.1:9292?key=key.key&cert=cert.pem')
+    #
+    # @example Prefer low-latency over higher throughput (via `Socket::TCP_NODELAY`)
+    #   bind('tcp://0.0.0.0:9292?low_latency=true')
+    #
+    # @example Set socket permissions
+    #   bind('unix:///var/run/puma.sock?umask=0111')
     def bind(url)
       @options[:binds] ||= []
       @options[:binds] << url
