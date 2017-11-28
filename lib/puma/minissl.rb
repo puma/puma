@@ -172,6 +172,7 @@ module Puma
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
         attr_reader :keystore
         attr_accessor :keystore_pass
+        attr_accessor :ssl_cipher_list
 
         def keystore=(keystore)
           raise ArgumentError, "No such keystore file '#{keystore}'" unless File.exist? keystore
@@ -187,6 +188,7 @@ module Puma
         attr_reader :key
         attr_reader :cert
         attr_reader :ca
+        attr_accessor :ssl_cipher_filter
 
         def key=(key)
           raise ArgumentError, "No such key file '#{key}'" unless File.exist? key
