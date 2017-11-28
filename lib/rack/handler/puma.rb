@@ -21,7 +21,7 @@ module Rack
         # contains an array of all explicitly defined user options. We then
         # know that all other values are defaults
         if user_supplied_options = options.delete(:user_supplied_options)
-          (options.keys - user_supplied_options).each do |k, v|
+          (options.keys - user_supplied_options).each do |k|
             default_options[k] = options.delete(k)
           end
         end

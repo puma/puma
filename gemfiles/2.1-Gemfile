@@ -11,4 +11,4 @@ gem "minitest-retry"
 
 gem "jruby-openssl", :platform => "jruby"
 
-gem "rubocop", "~> 0.49.1"
+gem "rubocop", "~> 0.50.0"

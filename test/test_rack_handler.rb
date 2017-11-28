@@ -145,7 +145,7 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
         FileUtils.mkdir("config")
         File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
-        conf = Rack::Handler::Puma.config(-> {}, @options)
+        conf = Rack::Handler::Puma.config(->{}, @options)
         conf.load
 
         assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]

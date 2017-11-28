@@ -53,7 +53,7 @@ module Puma
     attr_accessor :clean_thread_locals
 
     def self.clean_thread_locals
-      Thread.current.keys.each do |key|
+      Thread.current.keys.each do |key| # rubocop: disable Performance/HashEachMethods
         Thread.current[key] = nil unless key == :__recursive_key__
       end
     end

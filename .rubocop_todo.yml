@@ -14,10 +14,6 @@ Layout/SpaceAroundEqualsInParameterDefault:
   EnforcedStyle: no_space
 
 # 15 offenses
-Layout/SpaceBeforeBlockBraces:
-  Enabled: true
-
-# 15 offenses
 Layout/SpaceInsideHashLiteralBraces:
   Enabled: true
   EnforcedStyle: no_space
