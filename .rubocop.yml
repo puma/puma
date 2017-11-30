@@ -15,6 +15,10 @@ Layout/SpaceAfterColon:
 Layout/SpaceAroundKeyword:
   Enabled: true
 
+Layout/SpaceBeforeBlockBraces:
+  EnforcedStyleForEmptyBraces: no_space
+  Enabled: true
+
 Layout/SpaceBeforeFirstArg:
   Enabled: true
 
@@ -33,19 +37,19 @@ Layout/TrailingWhitespace:
 Lint/Debugger:
   Enabled: true
 
-Style/MethodDefParentheses:
-  Enabled: true
-
-Style/MethodName:
+Naming/MethodName:
   Enabled: true
   EnforcedStyle: snake_case
   Exclude:
     - 'test/**/**'
 
-Style/TrailingCommaInArguments:
+Naming/VariableName:
   Enabled: true
 
-Style/VariableName:
+Style/MethodDefParentheses:
+  Enabled: true
+
+Style/TrailingCommaInArguments:
   Enabled: true
 
 Performance/Count:

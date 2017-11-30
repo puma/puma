@@ -43,7 +43,7 @@ when "g"
     ef = OpenSSL::X509::ExtensionFactory.new
     ef.subject_certificate = cert
     ef.issuer_certificate = issuer
-    extensions.each{|oid, value, critical|
+    extensions.each {|oid, value, critical|
       cert.add_extension(ef.create_extension(oid, value, critical))
     }
     cert.sign(issuer_key, digest)
@@ -69,10 +69,10 @@ when "g"
   @svr_cert = issue_cert(@svr, @svr_key, 2, now, now+1800_000, ee_exts, @ca_cert, @ca_key, OpenSSL::Digest::SHA1.new)
   @cli_cert = issue_cert(@cli, @cli_key, 3, now, now+1800_000, ee_exts, @ca_cert, @ca_key, OpenSSL::Digest::SHA1.new)
 
-  File.open("ca.crt","wb"){|f| f.print @ca_cert.to_pem }
-  File.open("ca.key","wb"){|f| f.print @ca_key.to_pem }
-  File.open("server.crt","wb"){|f| f.print @svr_cert.to_pem }
-  File.open("server.key","wb"){|f| f.print @svr_key.to_pem }
-  File.open("client1.crt","wb"){|f| f.print @cli_cert.to_pem }
-  File.open("client1.key","wb"){|f| f.print @cli_key.to_pem }
+  File.open("ca.crt","wb") {|f| f.print @ca_cert.to_pem }
+  File.open("ca.key","wb") {|f| f.print @ca_key.to_pem }
+  File.open("server.crt","wb") {|f| f.print @svr_cert.to_pem }
+  File.open("server.key","wb") {|f| f.print @svr_key.to_pem }
+  File.open("client1.crt","wb") {|f| f.print @cli_cert.to_pem }
+  File.open("client1.key","wb") {|f| f.print @cli_key.to_pem }
 end
