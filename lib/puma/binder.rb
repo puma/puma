@@ -315,6 +315,7 @@ module Puma
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
+
       ssl = MiniSSL::Server.new s, ctx
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS

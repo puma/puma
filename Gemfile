@@ -8,6 +8,7 @@ gem "rake-compiler"
 gem "rack", "< 3.0"
 gem "minitest", "~> 5.9"
 gem "minitest-retry"
+gem "pry-byebug"
 
 gem "jruby-openssl", :platform => "jruby"
 
