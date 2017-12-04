@@ -47,7 +47,7 @@ class TestBinder < Minitest::Test
   def test_binder_parses_jruby_ssl_options
     skip unless Puma.jruby?
 
-    keystore = File.expand_path "../../examples/puma/keystore.jks"
+    keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
     ssl_cipher_list = "TLS_DHE_RSA_WITH_DES_CBC_SHA,TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"
     @binder.parse(["ssl://0.0.0.0?keystore=#{keystore}&ssl_cipher_list=#{ssl_cipher_list}"], @events)
 
