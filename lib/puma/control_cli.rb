@@ -69,6 +69,7 @@ module Puma
       end
 
       opts.order!(argv) { |a| opts.terminate a }
+      opts.parse!
 
       @command = argv.shift
 
