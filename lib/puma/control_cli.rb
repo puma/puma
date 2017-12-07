@@ -205,7 +205,6 @@ module Puma
           Process.kill "SIGUSR1", @pid
 
         else
-          message "Puma is started"
           return
         end
 
