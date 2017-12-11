@@ -5,8 +5,8 @@ require 'puma/plugin'
 module Puma
   class Single < Runner
     def stats
-      b = @server.backlog
-      r = @server.running
+      b = @server.backlog || 0
+      r = @server.running || 0
       %Q!{ "backlog": #{b}, "running": #{r} }!
     end
 

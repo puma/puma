@@ -279,8 +279,8 @@ module Puma
         while true
           sleep WORKER_CHECK_INTERVAL
           begin
-            b = server.backlog
-            r = server.running
+            b = server.backlog || 0
+            r = server.running || 0
             payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r} }\n!
             io << payload
           rescue IOError
