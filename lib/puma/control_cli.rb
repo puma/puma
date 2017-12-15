@@ -220,7 +220,7 @@ module Puma
     end
 
     def run
-      start if @command == "start"
+      return start if @command == "start"
 
       prepare_configuration
 

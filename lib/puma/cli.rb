@@ -84,6 +84,14 @@ module Puma
       raise UnsupportedOption
     end
 
+    def configure_control_url(command_line_arg)
+      if command_line_arg
+        @control_url = command_line_arg
+      elsif Puma.jruby?
+        unsupported "No default url available on JRuby"
+      end
+    end
+
     # Build the OptionParser object to handle the available options.
     #
 
@@ -98,13 +106,13 @@ module Puma
             file_config.load arg
           end
 
-          o.on "--control URL", "The bind url to use for the control server",
-            "Use 'auto' to use temp unix server" do |arg|
-            if arg
-              @control_url = arg
-            elsif Puma.jruby?
-              unsupported "No default url available on JRuby"
-            end
+          o.on "--control-url URL", "The bind url to use for the control server. Use 'auto' to use temp unix server" do |arg|
+            configure_control_url(arg)
+          end
+
+          # alias --control-url for backwards-compatibility
+          o.on "--control URL", "DEPRECATED alias for --control-url" do |arg|
+            configure_control_url(arg)
           end
 
           o.on "--control-token TOKEN",
