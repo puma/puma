@@ -588,8 +588,8 @@ module Puma
     end
 
     def default_server_port(env)
-      return PORT_443 if env[HTTPS_KEY] == 'on' || env[HTTPS_KEY] == 'https'
-      env['HTTP_X_FORWARDED_PROTO'] == 'https' ? PORT_443 : PORT_80
+      return PORT_443 if env[HTTPS_KEY] == 'on' || env[HTTPS_KEY] == HTTPS
+      env[HTTP_X_FORWARDED_PROTO] == HTTPS ? PORT_443 : PORT_80
     end
 
     # Takes the request +req+, invokes the Rack application to construct
@@ -627,7 +627,18 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
 
       env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
+      env[RACK_URL_SCHEME] =
+        if env[HTTPS_KEY]
+          HTTPS
+        elsif env[HTTP_X_FORWARDED_SSL] == 'on'
+          HTTPS
+        elsif env[HTTP_X_FORWARDED_SCHEME]
+          env[HTTP_X_FORWARDED_SCHEME]
+        elsif env[HTTP_X_FORWARDED_PROTO]
+          env[HTTP_X_FORWARDED_PROTO].split(',', 2)[0]
+        else
+          HTTP
+        end
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
