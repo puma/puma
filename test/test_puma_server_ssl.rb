@@ -21,7 +21,7 @@ DISABLE_SSL = begin
 class TestPumaServerSSL < Minitest::Test
 
   def setup
-    return if DISABLE_SSL
+    skip("SSL isn't used.") if DISABLE_SSL
     @port = 3212
     @host = "127.0.0.1"
 
@@ -55,8 +55,6 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_url_scheme_for_https
-    return if DISABLE_SSL
-
     body = nil
     @http.start do
       req = Net::HTTP::Get.new "/", {}
@@ -70,8 +68,6 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_very_large_return
-    return if DISABLE_SSL
-
     giant = "x" * 2056610
 
     @server.app = proc do
@@ -90,8 +86,6 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_form_submit
-    return if DISABLE_SSL
-
     body = nil
     @http.start do
       req = Net::HTTP::Post.new '/'
@@ -107,7 +101,6 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_ssl_v3_rejection
-    return if DISABLE_SSL
     @http.ssl_version='SSLv3'
     assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
