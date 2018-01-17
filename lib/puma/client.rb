@@ -147,6 +147,7 @@ module Puma
         if @partial_part_left <= chunk.size
           @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
           chunk = chunk[@partial_part_left..-1]
+          @partial_part_left = 0
         else
           @body << chunk
           @partial_part_left -= chunk.size
