@@ -385,6 +385,9 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
   DATA_GET(self, puma_parser, http);
 
   from = FIX2INT(start);
+  if (RB_TYPE_P(data, T_NIL)) {
+    return INT2NUM(0);
+  }
   dptr = rb_extract_chars(data, &dlen);
 
   if(from >= dlen) {
