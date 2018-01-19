@@ -57,10 +57,6 @@ environment:
       ri_file: x86
     - ruby_version: 22-x64
       ri_file: x64
-    - ruby_version: 21
-      DISABLE_SSL: true
-    - ruby_version: 21-x64
-      DISABLE_SSL: true
 
 cache:
   - av_bundle
