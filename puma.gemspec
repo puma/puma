@@ -18,5 +18,5 @@ Gem::Specification.new do |s|
             %w[History.md LICENSE README.md]
   s.homepage = "http://puma.io"
   s.license = "BSD-3-Clause"
-  s.required_ruby_version = Gem::Requirement.new(">= 1.9.3")
+  s.required_ruby_version = Gem::Requirement.new(">= 2.2")
 end
