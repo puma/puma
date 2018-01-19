@@ -184,4 +184,8 @@ class Http11ParserTest < Minitest::Test
     end
 
   end
+
+  def test_parse_nil_payload
+    assert_equal 0, Puma::HttpParser.new.execute({}, nil, 0)
+  end
 end
