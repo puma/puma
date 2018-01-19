@@ -3,6 +3,7 @@
 
 require_relative "helper"
 
+require "digest"
 require "puma/puma_http11"
 
 class Http11ParserTest < Minitest::Test
