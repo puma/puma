@@ -1,3 +1,8 @@
+## 3.11.2 / 2018-01-19
+
+* 1 bugfix:
+  * Deal with read\_nonblock returning nil early
+
 ## 3.11.1 / 2018-01-18
 
 * 1 bugfix:
