@@ -58,6 +58,8 @@ module Puma
               else
                 IO.select(nil, [@socket.to_io])
               end
+            elsif !data
+              return nil
             else
               break
             end
