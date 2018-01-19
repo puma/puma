@@ -3,6 +3,7 @@
 
 require_relative "helper"
 
+require "digest"
 require "puma/puma_http11"
 
 class Http11ParserTest < Minitest::Test
@@ -182,5 +183,9 @@ class Http11ParserTest < Minitest::Test
       end
     end
 
+  end
+
+  def test_parse_nil_payload
+    assert_equal 0, Puma::HttpParser.new.execute({}, nil, 0)
   end
 end
