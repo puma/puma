@@ -145,7 +145,9 @@ module Puma
     def decode_chunk(chunk)
       if @partial_part_left > 0
         if @partial_part_left <= chunk.size
-          @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+          if @partial_part_left > 2
+            @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+          end
           chunk = chunk[@partial_part_left..-1]
           @partial_part_left = 0
         else
