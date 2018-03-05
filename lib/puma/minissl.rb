@@ -59,7 +59,7 @@ module Puma
                 IO.select(nil, [@socket.to_io])
               end
             elsif !data
-              return nil
+              raise EOFError
             else
               break
             end
