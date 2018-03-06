@@ -16,6 +16,10 @@ module Puma
         @socket
       end
 
+      def closed?
+        @socket.closed?
+      end
+
       def readpartial(size)
         while true
           output = @engine.read
