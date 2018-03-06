@@ -1,3 +1,10 @@
+## 3.11.3 / 2018-03-05
+
+* 3 bugfixes:
+  * Add closed? to MiniSSL::Socket for use in reactor (#1510)
+  * Handle EOFError at the toplevel of the server threads (#1524) (#1507)
+  * Deal with zero sized bodies when using SSL (#1483)
+
 ## 3.11.2 / 2018-01-19
 
 * 1 bugfix:
