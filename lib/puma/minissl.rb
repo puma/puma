@@ -81,6 +81,8 @@ module Puma
       end
 
       def write(data)
+        return 0 if data.empty?
+
         need = data.bytesize
 
         while true
