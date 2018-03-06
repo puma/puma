@@ -295,7 +295,7 @@ module Puma
           client.close
 
           @events.parse_error self, client.env, e
-        rescue ConnectionError
+        rescue ConnectionError, EOFError
           client.close
         else
           if process_now
