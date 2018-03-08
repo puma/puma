@@ -169,7 +169,7 @@ module Puma
     end
 
     # When shutting down, drain the accept socket of pending
-    # connections and proces them. This loops over the accept
+    # connections and process them. This loops over the accept
     # socket until there are no more read events and then stops
     # looking and waits for the requests to finish.
     def drain_on_shutdown(which=true)
