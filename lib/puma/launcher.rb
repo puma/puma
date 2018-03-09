@@ -414,16 +414,14 @@ module Puma
         log "*** SIGINT not implemented, signal based gracefully stopping unavailable!"
       end
 
-      begin
-        Signal.trap "SIGHUP" do
-          if @runner.redirected_io?
+      if @runner.redirected_io?
+        begin
+          Signal.trap "SIGHUP" do
             @runner.redirect_io
-          else
-            stop
           end
+        rescue Exception
+          log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
         end
-      rescue Exception
-        log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
       end
     end
   end
