@@ -7,6 +7,7 @@ before_install:
   # bundler installation needed for jruby-head
   # https://github.com/travis-ci/travis-ci/issues/5861
   - gem install bundler
+  - gem update --system
 branches:
   only:
     - "master"
@@ -14,6 +15,7 @@ rvm:
   - 2.2.8
   - 2.3.5
   - 2.4.2
+  - 2.5.0
   - ruby-head
   - jruby-9.1.15.0
   - jruby-head
