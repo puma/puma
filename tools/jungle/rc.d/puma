@@ -1,0 +1,40 @@
+#!/bin/sh
+#
+
+# PROVIDE: foo
+# REQUIRE: bar_service_required_to_precede_foo
+
+. /etc/rc.subr
+
+name="puma"
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+restart_cmd="${name}_restart"
+rcvar=puma_enable
+required_files=/usr/local/etc/puma.conf
+
+# load the config file
+. ${required_files}
+
+puma_start()
+{
+    if [ $ruby_env == "rbenv" ]; then
+        su - $user -c "cd $dir && rbenv shell $ruby_version && bundle exec puma -C $dir/config/puma.rb -d"
+    fi
+}
+
+puma_stop()
+{
+    pkill ruby
+}
+
+puma_restart()
+{
+    if [ $ruby_env == "rbenv" ]; then
+        su - $user -c "cd $dir && pkill ruby && rbenv shell $ruby_version && bundle exec puma -C $dir/config/puma.rb -d"
+    fi
+}
+
+load_rc_config $name
+run_rc_command "$1"
+
