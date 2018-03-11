@@ -2,6 +2,10 @@
 
 Manage one (currently) Puma server as a service on one box using FreeBSD's rc.d service.
 
+## Dependencies
+
+* `jq` - a command-line json parser is needed to parse the json in the config file
+
 ## Installation
 
     # Copy the puma script to the rc.d directory (make sure everyone has read/execute perms)
@@ -21,6 +25,14 @@ Start the jungle running:
 
 `service puma start`
 
+You can also stop the jungle (stops ALL puma instances) by running:
+
+`service puma stop`
+
+To restart the jungle:
+
+`service puma restart`
+
 This script will run at boot time.
 
 ## Conventions
@@ -33,10 +45,16 @@ You can always change those defaults by editing the scripts.
 ## Here's what a minimal app's config file should have
 
 ```
-dir="/path/to/rails/project"
-user="user-to-run-puma"
-ruby_version="version.to.run"
-ruby_env="rbenv"
+{
+	"servers" : [
+		{
+			"dir": "/path/to/rails/project",
+			"user": "deploy-user",
+			"ruby_version": "ruby.version",
+			"ruby_env": "rbenv"
+		}
+	]
+}
 ```
 
 ## Before starting...
@@ -47,7 +65,8 @@ You need to customise `puma.conf` to:
 * Set the directory of the app
 * Set the ruby version to execute
 * Set the ruby environment (currently set to rbenv, since that is the only ruby environment currently supported)
+* Add additional server instances following the scheme in the example
 
 ## Notes:
 
-Only rbenv is currently supported because that's what I've been working with. I might try other implementation and/or manage multiple instances
+Only rbenv is currently supported.
