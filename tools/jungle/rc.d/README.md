@@ -25,15 +25,17 @@ Start the jungle running:
 
 `service puma start`
 
+This script will run at boot time.
+
+
 You can also stop the jungle (stops ALL puma instances) by running:
 
 `service puma stop`
 
+
 To restart the jungle:
 
 `service puma restart`
-
-This script will run at boot time.
 
 ## Conventions
 
