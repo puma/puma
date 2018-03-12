@@ -145,6 +145,19 @@ class TestCLI < Minitest::Test
     t.join
   end
 
+  def test_stats
+    cli = Puma::CLI.new ["--pidfile", @tmp_path, "test/rackup/lobster.ru"], @events
+
+    t = Thread.new { cli.run }
+    t.abort_on_exception = true
+    wait_booted
+
+    assert_equal({"backlog" => 0, "running" => 0}, Puma.stats)
+
+    cli.launcher.stop
+    t.join
+  end
+
   def test_control_gc_stats
     url = "unix://#{@tmp_path}"
 
