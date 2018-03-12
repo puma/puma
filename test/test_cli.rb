@@ -240,12 +240,12 @@ class TestCLI < Minitest::Test
   end
 
   def test_load_path
-    cli = Puma::CLI.new ["--include", 'foo/bar']
+    Puma::CLI.new ["--include", 'foo/bar']
 
     assert_equal 'foo/bar', $LOAD_PATH[0]
     $LOAD_PATH.shift
 
-    cli = Puma::CLI.new ["--include", 'foo/bar:baz/qux']
+    Puma::CLI.new ["--include", 'foo/bar:baz/qux']
 
     assert_equal 'foo/bar', $LOAD_PATH[0]
     $LOAD_PATH.shift
