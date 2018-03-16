@@ -22,7 +22,7 @@ class TestPumaServerSSL < Minitest::Test
 
   def setup
     return if DISABLE_SSL
-    port = 3212
+    port = UniquePort.call
     host = "127.0.0.1"
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
