@@ -20,7 +20,7 @@ When you run pumactl phased-restart, Puma kills workers one-by-one, meaning that
 
 But again beware, upgrading an application sometimes involves upgrading the database schema. With phased restart, there may be a moment during the deployment where processes belonging to the previous version and processes belonging to the new version both exist at the same time. Any database schema upgrades you perform must therefore be backwards-compatible with the old application version.
 
-If you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (pumactl restart). That way, no code is shared while deploying (in that case, preload_app might help for quicker deployment, see below).
+If you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (`pumactl restart`). That way, no code is shared while deploying (in that case, `preload_app!` might help for quicker deployment, see ["Clustered Mode" in the README](../README.md#clustered-mode)).
 
 ### Release Directory
 
