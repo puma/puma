@@ -15,4 +15,4 @@ elif [ -f "$HOME/.rvm/scripts/rvm" ]; then
 fi
 
 app=$1; config=$2; log=$3;
-cd $app && exec bundle exec puma -C $config 2>&1 >> $log
+cd $app && exec bundle exec puma -C $config >> $log 2>&1
