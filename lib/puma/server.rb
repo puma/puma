@@ -295,7 +295,7 @@ module Puma
           client.close
 
           @events.parse_error self, client.env, e
-        rescue ConnectionError
+        rescue ConnectionError, EOFError
           client.close
         else
           if process_now
@@ -755,8 +755,8 @@ module Puma
 
         begin
           res_body.each do |part|
+            next if part.bytesize.zero?
             if chunked
-              next if part.bytesize.zero?
               fast_write client, part.bytesize.to_s(16)
               fast_write client, line_ending
               fast_write client, part

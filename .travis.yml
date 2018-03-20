@@ -6,22 +6,20 @@ cache: bundler
 before_install:
   # bundler installation needed for jruby-head
   # https://github.com/travis-ci/travis-ci/issues/5861
-  - gem install bundler
+  - gem update --system
 branches:
   only:
     - "master"
 rvm:
-  - 2.2.8
-  - 2.3.5
-  - 2.4.2
+  - 2.2.9
+  - 2.3.6
+  - 2.4.3
+  - 2.5.0
   - ruby-head
   - jruby-9.1.15.0
   - jruby-head
   - rbx-3
 matrix:
-  include:
-    - rvm: 2.1
-      gemfile: gemfiles/2.1-Gemfile
   fast_finish: true
   allow_failures:
     - rvm: jruby-head

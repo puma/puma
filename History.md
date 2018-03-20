@@ -1,3 +1,20 @@
+## 3.11.3 / 2018-03-05
+
+* 3 bugfixes:
+  * Add closed? to MiniSSL::Socket for use in reactor (#1510)
+  * Handle EOFError at the toplevel of the server threads (#1524) (#1507)
+  * Deal with zero sized bodies when using SSL (#1483)
+
+## 3.11.2 / 2018-01-19
+
+* 1 bugfix:
+  * Deal with read\_nonblock returning nil early
+
+## 3.11.1 / 2018-01-18
+
+* 1 bugfix:
+  * Handle read\_nonblock returning nil when the socket close (#1502)
+
 ## 3.11.0 / 2017-11-20
 
 * 2 features:

@@ -43,7 +43,7 @@ class TestConfigFile < Minitest::Test
     end
   end
 
-  def test_lowleve_error_handler_DSL
+  def test_lowlevel_error_handler_DSL
     conf = Puma::Configuration.new do |c|
       c.load "test/config/app.rb"
     end
@@ -133,6 +133,21 @@ class TestConfigFile < Minitest::Test
     conf.options[:environment] = 'fake-env'
 
     assert_equal ['config/puma/fake-env.rb'], conf.config_files
+  end
+
+  def test_config_files_with_integer_convert
+    conf = Puma::Configuration.new(config_files: ['test/config/with_integer_convert.rb']) do
+    end
+    conf.load
+
+    assert_equal 6, conf.options[:persistent_timeout]
+    assert_equal 3, conf.options[:first_data_timeout]
+    assert_equal 2, conf.options[:workers]
+    assert_equal 4, conf.options[:min_threads]
+    assert_equal 8, conf.options[:max_threads]
+    assert_equal 90, conf.options[:worker_timeout]
+    assert_equal 120, conf.options[:worker_boot_timeout]
+    assert_equal 150, conf.options[:worker_shutdown_timeout]
   end
 
   def teardown

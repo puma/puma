@@ -41,11 +41,14 @@ static const int puma_parser_start = 1;
 static const int puma_parser_first_final = 47;
 static const int puma_parser_error = 0;
 
+static const int puma_parser_en_main = 1;
+
+
 #line 83 "ext/puma_http11/http11_parser.rl"
 
 int puma_parser_init(puma_parser *parser)  {
   int cs = 0;
-
+  
 #line 53 "ext/puma_http11/http11_parser.c"
 	{
 	cs = puma_parser_start;
@@ -71,9 +74,15 @@ size_t puma_parser_execute(puma_parser *parser, const char *buffer, size_t len, 
   const char *p, *pe;
   int cs = parser->cs;
 
+  assert(off <= len && "offset past end of buffer");
+
   p = buffer+off;
   pe = buffer+len;
 
+  /* assert(*pe == '\0' && "pointer does not end on NUL"); */
+  assert((size_t) (pe - p) == len - off && "pointers aren't same distance");
+
+  
 #line 87 "ext/puma_http11/http11_parser.c"
 	{
 	if ( p == pe )
@@ -973,52 +982,52 @@ case 46:
 		goto tr2;
 	goto st0;
 	}
-	_test_eof2: cs = 2; goto _test_eof;
-	_test_eof3: cs = 3; goto _test_eof;
-	_test_eof4: cs = 4; goto _test_eof;
-	_test_eof5: cs = 5; goto _test_eof;
-	_test_eof6: cs = 6; goto _test_eof;
-	_test_eof7: cs = 7; goto _test_eof;
-	_test_eof8: cs = 8; goto _test_eof;
-	_test_eof9: cs = 9; goto _test_eof;
-	_test_eof10: cs = 10; goto _test_eof;
-	_test_eof11: cs = 11; goto _test_eof;
-	_test_eof12: cs = 12; goto _test_eof;
-	_test_eof13: cs = 13; goto _test_eof;
-	_test_eof14: cs = 14; goto _test_eof;
-	_test_eof15: cs = 15; goto _test_eof;
-	_test_eof16: cs = 16; goto _test_eof;
-	_test_eof47: cs = 47; goto _test_eof;
-	_test_eof17: cs = 17; goto _test_eof;
-	_test_eof18: cs = 18; goto _test_eof;
-	_test_eof19: cs = 19; goto _test_eof;
-	_test_eof20: cs = 20; goto _test_eof;
-	_test_eof21: cs = 21; goto _test_eof;
-	_test_eof22: cs = 22; goto _test_eof;
-	_test_eof23: cs = 23; goto _test_eof;
-	_test_eof24: cs = 24; goto _test_eof;
-	_test_eof25: cs = 25; goto _test_eof;
-	_test_eof26: cs = 26; goto _test_eof;
-	_test_eof27: cs = 27; goto _test_eof;
-	_test_eof28: cs = 28; goto _test_eof;
-	_test_eof29: cs = 29; goto _test_eof;
-	_test_eof30: cs = 30; goto _test_eof;
-	_test_eof31: cs = 31; goto _test_eof;
-	_test_eof32: cs = 32; goto _test_eof;
-	_test_eof33: cs = 33; goto _test_eof;
-	_test_eof34: cs = 34; goto _test_eof;
-	_test_eof35: cs = 35; goto _test_eof;
-	_test_eof36: cs = 36; goto _test_eof;
-	_test_eof37: cs = 37; goto _test_eof;
-	_test_eof38: cs = 38; goto _test_eof;
-	_test_eof39: cs = 39; goto _test_eof;
-	_test_eof40: cs = 40; goto _test_eof;
-	_test_eof41: cs = 41; goto _test_eof;
-	_test_eof42: cs = 42; goto _test_eof;
-	_test_eof43: cs = 43; goto _test_eof;
-	_test_eof44: cs = 44; goto _test_eof;
-	_test_eof45: cs = 45; goto _test_eof;
-	_test_eof46: cs = 46; goto _test_eof;
+	_test_eof2: cs = 2; goto _test_eof; 
+	_test_eof3: cs = 3; goto _test_eof; 
+	_test_eof4: cs = 4; goto _test_eof; 
+	_test_eof5: cs = 5; goto _test_eof; 
+	_test_eof6: cs = 6; goto _test_eof; 
+	_test_eof7: cs = 7; goto _test_eof; 
+	_test_eof8: cs = 8; goto _test_eof; 
+	_test_eof9: cs = 9; goto _test_eof; 
+	_test_eof10: cs = 10; goto _test_eof; 
+	_test_eof11: cs = 11; goto _test_eof; 
+	_test_eof12: cs = 12; goto _test_eof; 
+	_test_eof13: cs = 13; goto _test_eof; 
+	_test_eof14: cs = 14; goto _test_eof; 
+	_test_eof15: cs = 15; goto _test_eof; 
+	_test_eof16: cs = 16; goto _test_eof; 
+	_test_eof47: cs = 47; goto _test_eof; 
+	_test_eof17: cs = 17; goto _test_eof; 
+	_test_eof18: cs = 18; goto _test_eof; 
+	_test_eof19: cs = 19; goto _test_eof; 
+	_test_eof20: cs = 20; goto _test_eof; 
+	_test_eof21: cs = 21; goto _test_eof; 
+	_test_eof22: cs = 22; goto _test_eof; 
+	_test_eof23: cs = 23; goto _test_eof; 
+	_test_eof24: cs = 24; goto _test_eof; 
+	_test_eof25: cs = 25; goto _test_eof; 
+	_test_eof26: cs = 26; goto _test_eof; 
+	_test_eof27: cs = 27; goto _test_eof; 
+	_test_eof28: cs = 28; goto _test_eof; 
+	_test_eof29: cs = 29; goto _test_eof; 
+	_test_eof30: cs = 30; goto _test_eof; 
+	_test_eof31: cs = 31; goto _test_eof; 
+	_test_eof32: cs = 32; goto _test_eof; 
+	_test_eof33: cs = 33; goto _test_eof; 
+	_test_eof34: cs = 34; goto _test_eof; 
+	_test_eof35: cs = 35; goto _test_eof; 
+	_test_eof36: cs = 36; goto _test_eof; 
+	_test_eof37: cs = 37; goto _test_eof; 
+	_test_eof38: cs = 38; goto _test_eof; 
+	_test_eof39: cs = 39; goto _test_eof; 
+	_test_eof40: cs = 40; goto _test_eof; 
+	_test_eof41: cs = 41; goto _test_eof; 
+	_test_eof42: cs = 42; goto _test_eof; 
+	_test_eof43: cs = 43; goto _test_eof; 
+	_test_eof44: cs = 44; goto _test_eof; 
+	_test_eof45: cs = 45; goto _test_eof; 
+	_test_eof46: cs = 46; goto _test_eof; 
 
 	_test_eof: {}
 	_out: {}
@@ -1029,6 +1038,13 @@ case 46:
   if (!puma_parser_has_error(parser))
     parser->cs = cs;
   parser->nread += p - (buffer + off);
+
+  assert(p <= pe && "buffer overflow after parsing execute");
+  assert(parser->nread <= len && "nread longer than length");
+  assert(parser->body_start <= len && "body starts after buffer end");
+  assert(parser->mark < len && "mark is after buffer end");
+  assert(parser->field_len <= len && "field has length longer than whole buffer");
+  assert(parser->field_start < len && "field starts after buffer end");
 
   return(parser->nread);
 }

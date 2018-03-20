@@ -16,6 +16,10 @@ module Puma
         @socket
       end
 
+      def closed?
+        @socket.closed?
+      end
+
       def readpartial(size)
         while true
           output = @engine.read
@@ -58,6 +62,8 @@ module Puma
               else
                 IO.select(nil, [@socket.to_io])
               end
+            elsif !data
+              return nil
             else
               break
             end
@@ -75,6 +81,8 @@ module Puma
       end
 
       def write(data)
+        return 0 if data.empty?
+
         need = data.bytesize
 
         while true
@@ -241,7 +249,7 @@ module Puma
       end
 
       def close
-        @socket.close
+        @socket.close unless @socket.closed?       # closed? call is for Windows
       end
     end
   end

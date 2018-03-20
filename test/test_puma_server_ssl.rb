@@ -25,33 +25,41 @@ class TestPumaServerSSL < Minitest::Test
     @port = 3212
     @host = "127.0.0.1"
 
-    @app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    @ctx = Puma::MiniSSL::Context.new
+    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
+
+    ctx = Puma::MiniSSL::Context.new
 
     if Puma.jruby?
-      @ctx.keystore =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
-      @ctx.keystore_pass = 'blahblah'
+      ctx.keystore =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
+      ctx.keystore_pass = 'blahblah'
     else
-      @ctx.key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
-      @ctx.cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+      ctx.key  =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+      ctx.cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
     end
 
-    @ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
+    ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
     @events = SSLEventsHelper.new STDOUT, STDERR
-    @server = Puma::Server.new @app, @events
-    @server.add_ssl_listener @host, @port, @ctx
+    @server = Puma::Server.new app, @events
+    @ssl_listener = @server.add_ssl_listener host, port, ctx
     @server.run
 
-    @http = Net::HTTP.new @host, @port
+    @http = Net::HTTP.new host, port
     @http.use_ssl = true
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    @no_teardown = false
   end
 
   def teardown
-    return if DISABLE_SSL
+    return if DISABLE_SSL || @no_teardown
+    @http.finish if @http.started?
     @server.stop(true)
+  ensure
+    if windows? && @ssl_listener && !@ssl_listener.closed?
+      @ssl_listener.close
+      @ssl_listener = nil
+    end
   end
 
   def test_url_scheme_for_https
@@ -108,7 +116,14 @@ class TestPumaServerSSL < Minitest::Test
       end
     end
     unless Puma.jruby?
-      assert_match("wrong version number", @events.error.message) if @events.error
+      assert_match(/wrong version number|no protocols available/, @events.error.message) if @events.error
+    end
+    if windows?
+      @http.finish if @http.started?
+      @http = nil
+      @server.thread.kill
+      @server = nil
+      @no_teardown = true
     end
   end
 
@@ -118,38 +133,38 @@ end
 class TestPumaServerSSLClient < Minitest::Test
 
   def assert_ssl_client_error_match(error, subject=nil, &blk)
-    @port = 3212
-    @host = "127.0.0.1"
+    port = 3212
+    host = "127.0.0.1"
 
-    @app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
+    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    @ctx = Puma::MiniSSL::Context.new
+    ctx = Puma::MiniSSL::Context.new
     if Puma.jruby?
-      @ctx.keystore =  File.expand_path "../../examples/puma/client-certs/keystore.jks", __FILE__
-      @ctx.keystore_pass = 'blahblah'
+      ctx.keystore =  File.expand_path "../../examples/puma/client-certs/keystore.jks", __FILE__
+      ctx.keystore_pass = 'blahblah'
     else
-      @ctx.key = File.expand_path "../../examples/puma/client-certs/server.key", __FILE__
-      @ctx.cert = File.expand_path "../../examples/puma/client-certs/server.crt", __FILE__
-      @ctx.ca = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      ctx.key = File.expand_path "../../examples/puma/client-certs/server.key", __FILE__
+      ctx.cert = File.expand_path "../../examples/puma/client-certs/server.crt", __FILE__
+      ctx.ca = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
     end
-    @ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER | Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
+    ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER | Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
 
     events = SSLEventsHelper.new STDOUT, STDERR
-    @server = Puma::Server.new @app, events
-    @server.add_ssl_listener @host, @port, @ctx
-    @server.run
+    server = Puma::Server.new app, events
+    ssl_listener = server.add_ssl_listener host, port, ctx
+    server.run
 
-    @http = Net::HTTP.new @host, @port
-    @http.use_ssl = true
-    @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    http = Net::HTTP.new host, port
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-    blk.call(@http)
+    blk.call(http)
 
     client_error = false
     begin
-      @http.start do
+      http.start do
         req = Net::HTTP::Get.new "/", {}
-        @http.request(req)
+        http.request(req)
       end
     rescue OpenSSL::SSL::SSLError
       client_error = true
@@ -161,11 +176,14 @@ class TestPumaServerSSLClient < Minitest::Test
     # messages here
     unless Puma.jruby?
       assert_match error, events.error.message if error
-      assert_equal @host, events.addr if error
+      assert_equal host, events.addr if error
       assert_equal subject, events.cert.subject.to_s if subject
     end
-  ensure
-    @server.stop(true)
+
+    server.stop(true)
+    if windows? && ssl_listener && !ssl_listener.closed?
+      ssl_listener.close
+    end
   end
 
   def test_verify_fail_if_no_client_cert

@@ -33,4 +33,4 @@ Clustered mode is shown/discussed here. Single mode is analogous to having a sin
 The `queue_requests` option is `true` by default, enabling the separate thread used to buffer requests as described above.
 
 If set to `false`, this buffer will not be used for connections while waiting for the request to arrive.
-In this mode, when a connection is accepted, it is added to the "todo" queue immediately, and a worker will syncronously do any waiting necessarry to read the HTTP request from the socket.
+In this mode, when a connection is accepted, it is added to the "todo" queue immediately, and a worker will synchronously do any waiting necessary to read the HTTP request from the socket.

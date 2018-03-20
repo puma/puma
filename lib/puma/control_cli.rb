@@ -69,6 +69,7 @@ module Puma
       end
 
       opts.order!(argv) { |a| opts.terminate a }
+      opts.parse!
 
       @command = argv.shift
 
@@ -204,7 +205,6 @@ module Puma
           Process.kill "SIGUSR1", @pid
 
         else
-          message "Puma is started"
           return
         end
 
