@@ -249,7 +249,7 @@ module Puma
       end
 
       def close
-        @socket.close
+        @socket.close unless @socket.closed?       # closed? call is for Windows
       end
     end
   end
