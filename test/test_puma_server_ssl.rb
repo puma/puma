@@ -22,8 +22,8 @@ class TestPumaServerSSL < Minitest::Test
 
   def setup
     skip("SSL isn't used.") if DISABLE_SSL
-    @port = 3212
-    @host = "127.0.0.1"
+    port = 3212
+    host = "127.0.0.1"
 
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
