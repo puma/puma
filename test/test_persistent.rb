@@ -21,14 +21,14 @@ class TestPersistent < Minitest::Test
     end
 
     @host = "127.0.0.1"
-    @port = 9988
+    @port = UniquePort.call
 
     @server = Puma::Server.new @simple
-    @server.add_tcp_listener "127.0.0.1", 9988
+    @server.add_tcp_listener "127.0.0.1", @port
     @server.max_threads = 1
     @server.run
 
-    @client = TCPSocket.new "127.0.0.1", 9988
+    @client = TCPSocket.new "127.0.0.1", @port
   end
 
   def teardown

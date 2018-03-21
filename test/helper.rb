@@ -43,6 +43,15 @@ def hit(uris)
   end
 end
 
+module UniquePort
+  @port  = 3211
+
+  def self.call
+    @port += 1
+    @port
+  end
+end
+
 module TimeoutEveryTestCase
   # our own subclass so we never confused different timeouts
   class TestTookTooLong < Timeout::Error
