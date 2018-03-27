@@ -3,7 +3,7 @@ require_relative "helper"
 class TestTCPRack < Minitest::Test
 
   def setup
-    @port = 3212
+    @port = UniquePort.call
     @host = "127.0.0.1"
 
     @events = Puma::Events.new STDOUT, STDERR

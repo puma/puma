@@ -102,6 +102,16 @@ for additional configuration details.
 Note that the above configurations will work with Puma in either
 single process or cluster mode.
 
+### Sockets and symlinks
+
+When using releases folders, you should set the socket path using the
+shared folder path (ex. `/srv/projet/shared/tmp/puma.sock`), not the
+release folder path (`/srv/projet/releases/1234/tmp/puma.sock`).
+
+Puma will detect the release path socket as different than the one provided by
+systemd and attempt to bind it again, resulting in the exception
+ `There is already a server bound to:`.
+
 ## Usage
 
 Without socket activation, use `systemctl` as root (e.g. via `sudo`) as

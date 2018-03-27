@@ -86,6 +86,7 @@ module Puma
       else
         @runner = Single.new(self, @events)
       end
+      Puma.stats_object = @runner
 
       @status = :run
     end
