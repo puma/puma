@@ -1,5 +1,7 @@
 # Puma daemon service
 
+Deprecatation Warning : `init.d` was replaced by `systemd` since Debian 8 and Ubuntu 16.04, you should look into [/docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md) unless you are on an older OS. 
+
 Init script to manage multiple Puma servers on the same box using start-stop-daemon.
 
 ## Installation 
