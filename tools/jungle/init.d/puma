@@ -48,7 +48,7 @@ do_start_one() {
   if [ -e $PIDFILE ]; then
     PID=`cat $PIDFILE`
     # If the puma isn't running, run it, otherwise restart it.
-    if [ "`ps -A -o pid= | grep -c $PID`" -eq 0 ]; then
+    if ps -p $PID > /dev/null; then
       do_start_one_do $1
     else
       do_restart_one $1
@@ -105,7 +105,7 @@ do_stop_one() {
   STATEFILE=$1/tmp/puma/state
   if [ -e $PIDFILE ]; then
     PID=`cat $PIDFILE`
-    if [ "`ps -A -o pid= | grep -c $PID`" -eq 0 ]; then
+    if ps -p $PID > /dev/null; then
       log_daemon_msg "---> Puma $1 isn't running."
     else
       log_daemon_msg "---> About to kill PID `cat $PIDFILE`"
