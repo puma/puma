@@ -606,7 +606,7 @@ module Puma
                 fast_write client, "#{k}: #{v}\r\n"
               end
             else
-              fast_write client, "#{k}: #{v}\r\n"
+              fast_write client, "#{k}: #{vs}\r\n"
             end
           end
 
