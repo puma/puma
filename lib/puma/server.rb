@@ -220,7 +220,11 @@ module Puma
                   # nothing
                 rescue Errno::ECONNABORTED
                   # client closed the socket even before accept
-                  io.close rescue nil
+                  begin
+                    io.close
+                  rescue
+                    Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+                  end
                 end
               end
             end
@@ -372,7 +376,11 @@ module Puma
                   # nothing
                 rescue Errno::ECONNABORTED
                   # client closed the socket even before accept
-                  io.close rescue nil
+                  begin
+                    io.close
+                  rescue
+                    Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+                  end
                 end
               end
             end
