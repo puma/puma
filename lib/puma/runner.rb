@@ -19,6 +19,10 @@ module Puma
       @options[:environment] == "development"
     end
 
+    def test?
+      @options[:environment] == "test"
+    end
+
     def log(str)
       @events.log str
     end
@@ -165,7 +169,7 @@ module Puma
         server.early_hints = true
       end
 
-      unless development?
+      unless development? || test?
         server.leak_stack_on_error = false
       end
 
