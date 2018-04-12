@@ -20,6 +20,9 @@ rvm:
   - rbx-3
 matrix:
   fast_finish: true
+  include:
+    - rvm: ruby-head
+      env: RUBYOPT="--jit"
   allow_failures:
     - rvm: jruby-head
     - rvm: rbx-3
