@@ -7,7 +7,7 @@
   * Fix parsing CLI options (#1482)
   * Order of stderr and stdout is made before redirecting to a log file (#1511)
   * Init.d fix of `ps -p` to check if pid exists (#1545)
-  * Early hits bugfix (#1550)
+  * Early hints bugfix (#1550)
   * Purge interrupt queue when closing socket fails (#1553)
 
 ## 3.11.3 / 2018-03-05
