@@ -157,12 +157,12 @@ module Puma
       @mutex.synchronize do
         while true
           return if @shutdown
-          return if @waiting > 0
 
           # If we can still spin up new threads and there
-          # is work queued, then accept more work until we would
+          # is work queued that cannot be handled by waiting
+          # threads, then accept more work until we would
           # spin up the max number of threads.
-          return if @todo.size < @max - @spawned
+          return if @todo.size - @waiting < @max - @spawned
 
           @not_full.wait @mutex
         end
