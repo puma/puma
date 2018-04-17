@@ -285,12 +285,13 @@ module Puma
 
     def ssl_bind(host, port, opts)
       verify = opts.fetch(:verify_mode, 'none')
+      no_tlsv1 = opts.fetch(:no_tlsv1, 'false')
 
       if defined?(JRUBY_VERSION)
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
       else
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&verify_mode=#{verify}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
       end
     end
 

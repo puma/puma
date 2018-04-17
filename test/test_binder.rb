@@ -56,4 +56,46 @@ class TestBinder < Minitest::Test
     assert_equal(keystore, ctx.keystore)
     assert_equal(ssl_cipher_list, ctx.ssl_cipher_list)
   end
+
+  def test_binder_parses_tlsv1_disabled
+    skip_on_appveyor
+    skip_on_jruby
+
+    key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+    cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+
+    @binder.parse(["ssl://0.0.0.0?key=#{key}&cert=#{cert}&no_tlsv1=true"], @events)
+
+    ssl = @binder.instance_variable_get(:@ios).first
+    ctx = ssl.instance_variable_get(:@ctx)
+    assert_equal(true, ctx.no_tlsv1)
+  end
+
+  def test_binder_parses_tlsv1_enabled
+    skip_on_appveyor
+    skip_on_jruby
+
+    key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+    cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+
+    @binder.parse(["ssl://0.0.0.0?key=#{key}&cert=#{cert}&no_tlsv1=false"], @events)
+
+    ssl = @binder.instance_variable_get(:@ios).first
+    ctx = ssl.instance_variable_get(:@ctx)
+    refute(ctx.no_tlsv1)
+  end
+
+  def test_binder_parses_tlsv1_unspecified_defaults_to_enabled
+    skip_on_appveyor
+    skip_on_jruby
+
+    key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+    cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+
+    @binder.parse(["ssl://0.0.0.0?key=#{key}&cert=#{cert}"], @events)
+
+    ssl = @binder.instance_variable_get(:@ios).first
+    ctx = ssl.instance_variable_get(:@ctx)
+    refute(ctx.no_tlsv1)
+  end
 end
