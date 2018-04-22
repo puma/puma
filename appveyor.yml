@@ -43,13 +43,25 @@ install:
   - bundle install --without documentation --path C:/av_bundle
 
   # Download & install current OpenSSL package for later RubyInstaller2 version(s)
-  - set openssl=mingw-w64-x86_64-openssl-1.1.0.g-1-any.pkg.tar.xz
+  - if %ruby_version%==25-x64 (
+      set openssl=mingw-w64-x86_64-openssl-1.1.0.g-1-any.pkg.tar.xz
+    )
+  - if %ruby_version%==25 (
+      set openssl=mingw-w64-i686-openssl-1.1.0.g-1-any.pkg.tar.xz
+    )
   - set  dl_uri=https://dl.bintray.com/msp-greg/ruby_trunk
   - if %ruby_version%==25-x64 (
       C:\msys64\usr\bin\bash -lc "pacman-key -r 77D8FA18 --keyserver na.pool.sks-keyservers.net && pacman-key -f 77D8FA18 && pacman-key --lsign-key 77D8FA18" &
       appveyor DownloadFile %dl_uri%/%openssl%     -FileName C:\%openssl%      &
       appveyor DownloadFile %dl_uri%/%openssl%.sig -FileName C:\%openssl%.sig  &
       C:\msys64\usr\bin\pacman -Rdd --noconfirm mingw-w64-x86_64-openssl &
+      C:\msys64\usr\bin\pacman -Udd --noconfirm --force C:\%openssl%
+    )
+  - if %ruby_version%==25 (
+      C:\msys64\usr\bin\bash -lc "pacman-key -r 77D8FA18 --keyserver na.pool.sks-keyservers.net && pacman-key -f 77D8FA18 && pacman-key --lsign-key 77D8FA18" &
+      appveyor DownloadFile %dl_uri%/%openssl%     -FileName C:\%openssl%      &
+      appveyor DownloadFile %dl_uri%/%openssl%.sig -FileName C:\%openssl%.sig  &
+      C:\msys64\usr\bin\pacman -Rdd --noconfirm mingw-w64-686-openssl &
       C:\msys64\usr\bin\pacman -Udd --noconfirm --force C:\%openssl%
     )
 
@@ -68,6 +80,9 @@ environment:
     - ruby_version: _trunk
       b_config: "--use-system-libraries"
       ri_file: x64_2
+    - ruby_version: 25
+      b_config: "--use-system-libraries"
+      ri_file: x86_2
     - ruby_version: 25-x64
       b_config: "--use-system-libraries"
       ri_file: x64_2
