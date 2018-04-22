@@ -47,18 +47,12 @@ class TestPumaServerSSL < Minitest::Test
     @http = Net::HTTP.new host, port
     @http.use_ssl = true
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-    @no_teardown = false
   end
 
   def teardown
-    return if DISABLE_SSL || @no_teardown
+    return if DISABLE_SSL
     @http.finish if @http.started?
     @server.stop(true)
-  ensure
-    if windows? && @ssl_listener && !@ssl_listener.closed?
-      @ssl_listener.close
-      @ssl_listener = nil
-    end
   end
 
   def test_url_scheme_for_https
@@ -117,13 +111,6 @@ class TestPumaServerSSL < Minitest::Test
     unless Puma.jruby?
       assert_match(/wrong version number|no protocols available/, @events.error.message) if @events.error
     end
-    if windows?
-      @http.finish if @http.started?
-      @http = nil
-      @server.thread.kill
-      @server = nil
-      @no_teardown = true
-    end
   end
 
 end
@@ -180,9 +167,6 @@ class TestPumaServerSSLClient < Minitest::Test
     end
 
     server.stop(true)
-    if windows? && ssl_listener && !ssl_listener.closed?
-      ssl_listener.close
-    end
   end
 
   def test_verify_fail_if_no_client_cert
