@@ -5,7 +5,6 @@ AllCops:
   StyleGuideCopsOnly: false
   Exclude:
     - 'tmp/**/*'
-    - 'gemfiles/vendor/**/*'
     - 'vendor/**/*'
     - 'Rakefile'
 
