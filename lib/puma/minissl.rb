@@ -124,7 +124,7 @@ module Puma
 
       def read_and_drop(timeout = 1)
         return :timeout unless IO.select([@socket], nil, nil, timeout)
-        read_nonblock(1024)
+        return :eof unless read_nonblock(1024)
         :drop
       rescue Errno::EAGAIN
         # do nothing
@@ -141,7 +141,7 @@ module Puma
           # Don't let this socket hold this loop forever.
           # If it can't send more packets within 1s, then give up.
           while should_drop_bytes?
-            return if read_and_drop(1) == :timeout
+            return if [:timeout, :eof].include?(read_and_drop(1))
           end
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
