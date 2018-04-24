@@ -20,6 +20,7 @@ Clustered mode is shown/discussed here. Single mode is analogous to having a sin
 * By default, a single, separate thread is used to receive HTTP requests across the socket.
   * When at least one worker thread is available for work, a connection is accepted and placed in this request buffer
   * This thread waits for entire HTTP requests to be received over the connection
+    * The time spent waiting for the HTTP request body to be received is exposed to the Rack app as `env['puma.request_body_wait']` (milliseconds)
   * Once received, the connection is pushed into the "todo" set
 * Worker threads pop work off the "todo" set for processing
   * The thread processes the request via the rack application (which generates the HTTP response)

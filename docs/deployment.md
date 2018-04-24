@@ -54,6 +54,22 @@ up resources.
 Watching your CPU utilization over time and aim for about 70% on average. This means
 you've got capacity still but aren't starving threads.
 
+**Measuring utilization**
+
+Using a timestamp header from an upstream proxy server (eg. nginx or haproxy), it's
+possible to get an indication of how long requests have been waiting for a Puma
+thread to become available.
+
+* Have your upstream proxy set a header with the time it received the request:
+    * nginx: `proxy_set_header X-Request-Start "${msec}";`
+    * haproxy: `http-request set-header X-Request-Start "%t";`
+* In your Rack middleware, determine the amount of time elapsed since `X-Request-Start`.
+* To improve accuracy, you will want to subtract time spent waiting for slow clients:
+    * `env['puma.request_body_wait']` contains the number of milliseconds Puma spent
+      waiting for the client to send the request body.
+    * haproxy: `%Th` (TLS handshake time) and `%Ti` (idle time before request) can
+      can also be added as headers.
+
 ## Daemonizing
 
 I prefer to not daemonize my servers and use something like `runit` or `upstart` to

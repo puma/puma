@@ -691,4 +691,44 @@ EOF
 
     assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\n\r\n", data
   end
+
+  def test_request_body_wait
+    request_body_wait = nil
+    @server.app = proc { |env|
+      request_body_wait = env['puma.request_body_wait']
+      [204, {}, []]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nh"
+    sleep 1
+    sock << "ello"
+
+    sock.gets
+
+    assert request_body_wait >= 1000
+  end
+
+  def test_request_body_wait_chunked
+    request_body_wait = nil
+    @server.app = proc { |env|
+      request_body_wait = env['puma.request_body_wait']
+      [204, {}, []]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
+    sleep 1
+    sock << "4\r\nello\r\n0\r\n"
+
+    sock.gets
+
+    assert request_body_wait >= 1000
+  end
 end
