@@ -104,10 +104,8 @@ module Puma
     end
 
     # Load additional configuration from a file
-    # Files get loaded later via Configuration#load
     def load(file)
-      @options[:config_files] ||= []
-      @options[:config_files] << file
+      _load_from(file)
     end
 
     # Adds a binding for the server to +url+. tcp://, unix://, and ssl:// are the only accepted
