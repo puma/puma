@@ -2,6 +2,28 @@ require 'puma/util'
 require 'puma/minissl'
 
 module Puma
+  # Internal Docs, Not a public interface.
+  #
+  # The Reactor object is responsible for ensuring that a request has been
+  # completely received before it starts to be processed. This may be known as read buffering.
+  # If this is not done and no other read buffering is performed (such as by an application) server
+  # such as nginx then the application would be subject to a slow client attack.
+  #
+  # For a graphical representation see [architecture.md](https://github.com/puma/puma/blob/master/docs/architecture.md#connection-pipeline).
+  #
+  # A request comes into a `Puma::Server`, it is then passed to the reactor.
+  # The reactor stores the request in an array and calls `IO.select` on the array in a loop.
+  # When the request is written to by the client then the `IO.select` will "wake up" and
+  # return the references to any objects that caused it to "wake". The reactor
+  # then loops through each of these request objects, sees if they're  complete. If they
+  # are complete (have a full header and body) then it passes the request to a thread pool
+  # where a "worker thread" can run the the application's Ruby code against the request.
+  #
+  # If the request is not complete then it stays in the array and the next time any
+  # data is written to it the loop is woken up and it is checked for completeness again.
+  #
+  # A detailed example is given in the docs for `run_internal` which is where the bulk
+  # of this logic lives.
   class Reactor
     DefaultSleepFor = 5
 
