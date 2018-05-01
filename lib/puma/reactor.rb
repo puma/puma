@@ -9,6 +9,9 @@ module Puma
   # If read buffering is not done, and no other read buffering is performed (such as by an application server
   # such as nginx) then the application would be subject to a slow client attack.
   #
+  # Each Puma "worker" process has its own Reactor. For example if you start puma with `$ puma -w 5` then
+  # it will have 5 workers and each worker will have it's own reactor.
+  #
   # For a graphical representation of how the reactor works see [architecture.md](https://github.com/puma/puma/blob/master/docs/architecture.md#connection-pipeline).
   #
   # ## Reactor Flow
