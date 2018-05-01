@@ -30,6 +30,15 @@ module Puma
   class Reactor
     DefaultSleepFor = 5
 
+    # Creates an instance of Puma::Reactor
+    #
+    # The `server` argument is an instance of `Puma::Server`
+    # this is used to write a response for "low level errors"
+    # when there is an exception inside of the reactor.
+    #
+    # The `app_pool` is an instance of `Puma::ThreadPool`.
+    # Once a request is fully formed (header and body are received)
+    # it will be passed to the `app_pool`.
     def initialize(server, app_pool)
       @server = server
       @events = server.events
