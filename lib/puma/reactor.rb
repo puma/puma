@@ -257,6 +257,16 @@ module Puma
       end
     end
 
+    # The `calculate_sleep` sets the value that the `IO.select` will
+    # sleep for in the main reactor loop when no sockets are being written to.
+    #
+    # The values kept in `@timeouts` are sorted so that the first timeout
+    # comes first in the array. When there are no timeouts the default timeout is used.
+    #
+    # Otherwise a sleep value is set that is the same as the amount of time it
+    # would take for the first element to time out.
+    #
+    # If that value is in the past, then a sleep value of zero is used.
     def calculate_sleep
       if @timeouts.empty?
         @sleep_for = DefaultSleepFor
