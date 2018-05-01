@@ -281,6 +281,31 @@ module Puma
       end
     end
 
+    # This method adds a connection to the reactor
+    #
+    # Typically called by `Puma::Server` the value passed in
+    # is usually a `Puma::Client` object that responds like an IO
+    # object.
+    #
+    # The main body of the reactor loop is in `run_internal` and it
+    # will sleep on `IO.select`. When a new connection is added to the
+    # reactor it cannot be added directly to the `sockets` aray, because
+    # the `IO.select` will not be watching for it yet.
+    #
+    # Instead what needs to happen is that `IO.select` needs to be woken up,
+    # the contents of `@input` added to the `sockets` array, and then
+    # another call to `IO.select` needs to happen. Since the `Puma::Client`
+    # object can be read immediately, it does not block, but instead returns
+    # right away.
+    #
+    # This behavior is accomplished by writing to `@trigger` which wakes up
+    # the `IO.select` and then there is logic to detect the value of `*`,
+    # pull the contents from `@input` and add them to the sockets array.
+    #
+    # If the object passed in has a timeout value in `timeout_at` then
+    # it is added to a `@timeouts` array. This array is then re-arranged
+    # so that the first element to timeout will be at the front of the
+    # array. Then a value to sleep for is derived in the call to `calculate_sleep`
     def add(c)
       @mutex.synchronize do
         @input << c
