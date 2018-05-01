@@ -5,6 +5,17 @@ require 'puma/plugin'
 require 'time'
 
 module Puma
+  # This class is instantiated by the `Puma::Launcher` and used
+  # to boot and serve a Ruby application when puma "workers" are needed
+  # i.e. when using multi-processes. For example `$ puma -w 5`
+  #
+  # At the core of this class is running an instance of `Puma::Server` which
+  # gets created via the `start_server` method from the `Puma::Runner` class
+  # that this inherits from.
+  #
+  # An instance of this class will spawn the number of processes passed in
+  # via the `spawn_workers` method call. Each worker will have it's own
+  # instance of a `Puma::Server`.
   class Cluster < Runner
     WORKER_CHECK_INTERVAL = 5
 
