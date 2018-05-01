@@ -23,6 +23,15 @@ require 'socket'
 module Puma
 
   # The HTTP Server itself. Serves out a single Rack app.
+  #
+  # This class is used by the `Puma::Single` and `Puma::Cluster` classes
+  # to generate one or more `Puma::Server` instances capable of handling requests.
+  # Each Puma process will contain one `Puma::Server` instacne.
+  #
+  # The `Puma::Server` instance pulls requests from the socket, adds them to a
+  # `Puma::Reactor` where they get eventually passed to a `Puma::ThreadPool`.
+  #
+  # Each `Puma::Server` will have one reactor and one thread pool.
   class Server
 
     include Puma::Const

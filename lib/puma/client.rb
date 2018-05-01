@@ -21,6 +21,17 @@ module Puma
 
   class ConnectionError < RuntimeError; end
 
+  # An instance of this class represents a unique request from a client.
+  # For example a web request from a browser or from CURL. This
+  #
+  # An instance of `Puma::Client` can be used as if it were an IO object
+  # for example it is passed into `IO.select` inside of the `Puma::Reactor`.
+  # This is accomplished by the `to_io` method which gets called on any
+  # non-IO objects being used with the IO api such as `IO.select.
+  #
+  # Instances of this class are responsible for knowing if
+  # the header and body are fully buffered via the `try_to_finish` method.
+  # They can be used to "time out" a response via the `timeout_at` reader.
   class Client
     include Puma::Const
     extend  Puma::Delegation

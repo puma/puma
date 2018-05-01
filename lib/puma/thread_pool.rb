@@ -1,8 +1,17 @@
 require 'thread'
 
 module Puma
-  # A simple thread pool management object.
+  # Internal Docs for A simple thread pool management object.
   #
+  # Each Puma "worker" has a thread pool to process requests.
+  #
+  # First a connection to a client is made in `Puma::Server`. It is wrapped in a
+  # `Puma::Client` instance and then passed to the `Puma::Reactor` to ensure
+  # the whole request is buffered into memory. Once the request is ready, it is passed into
+  # a thread pool via the `Puma::ThreadPool#<<` operator where it is stored in a `@todo` array.
+  #
+  # Each thread in the pool has an internal loop where it pulls a request from the `@todo` array
+  # and proceses it.
   class ThreadPool
     class ForceShutdown < RuntimeError
     end
@@ -153,6 +162,32 @@ module Puma
       end
     end
 
+    # This method is used by `Puma::Server` to let the server know when
+    # the thread pool can pull more requests from the socket and
+    # pass to the reactor.
+    #
+    # The general idea is that the thread pool can only work on a fixed
+    # number of requests at the same time. If it is already processing that
+    # number of requests then it is at capacity. If another Puma process has
+    # spare capacity, then the request can be left on the socket so the other
+    # worker can pick it up and process it.
+    #
+    # For example: if there are 5 threads, but only 4 working on
+    # requests, this method will not wait and the `Puma::Server`
+    # can pull a request right away.
+    #
+    # If there are 5 threads and all 5 of them are busy, then it will
+    # pause here, and wait until the `not_full` condition variable is
+    # signaled, usually this indicates that a request has been processed.
+    #
+    # It's important to note that even though the server might accept another
+    # request, it might not be added to the `@todo` array right away.
+    # For example if a slow client has only sent a header, but not a body
+    # then the `@todo` array would stay the same size as the reactor works
+    # to try to buffer the request. In tha scenario the next call to this
+    # method would not block and another request would be added into the reactor
+    # by the server. This would continue until a fully bufferend request
+    # makes it through the reactor and can then be processed by the thread pool.
     def wait_until_not_full
       @mutex.synchronize do
         while true
