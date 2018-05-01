@@ -52,39 +52,38 @@ module Puma
     # Until a request is added via the `add` method this method will internally
     # loop, waiting on the `sockets` array objects. The only object in this
     # array at first is the `@ready` IO object, which is the read end of a pipe
-    # connected to `@trigger`. When `@trigger` is written to, then the loop
-    # will break on IO.select and return an array.
+    # connected to `@trigger` object. When `@trigger` is written to, then the loop
+    # will break on `IO.select` and return an array.
     #
     # ## When a request is added:
     #
     # When the `add` method is called, an instance of `Puma::Client` is added to the `@input` array.
     # Next the `@ready` pipe is "woken" by writing a string of `"*"` to `@trigger`.
     #
-    # When that happens the internal while loop stops blocking and returns a reference
-    # to whatever "woke" it up. On the very first loop the only thing in `sockets` is `@ready`.
-    # When `@trigger` is written to the loop "wakes" and the `ready`
-    # variable returns an array of arrays like `[[#<IO:fd 10>], [], []]` where the
+    # When that happens, the internal loop stops blocking at `IO.select` and returns a reference
+    # to whatever "woke" it up. On the very first loop, the only thing in `sockets` is `@ready`.
+    # When `@trigger` is written-to, the loop "wakes" and the `ready`
+    # variable returns an array of arrays that looks like `[[#<IO:fd 10>], [], []]` where the
     # first IO object is the `@ready` object. This first array `[#<IO:fd 10>]`
-    # is saved as a `reads` array.
+    # is saved as a `reads` variable.
     #
-    # The `reads` array is iterated through and read. In the case that the object
+    # The `reads` variable is iterated through. In the case that the object
     # is the same as the `@ready` input pipe, then we know that there was a `trigger` event.
     #
-    #
-    # If there was a trigger event then one byte of `@ready` is read into memory. In this case of the first request
-    # it sees that it's a `"*"` and it adds the contents of `@input` into the `sockets` array.
-    # The while loop continues to iterate again, but now the `sockets` array contains a `Puma::Client` instance in addition
+    # If there was a trigger event, then one byte of `@ready` is read into memory. In the case of the first request,
+    # the reactor sees that it's a `"*"` value and the reactor adds the contents of `@input` into the `sockets` array.
+    # The while then loop continues to iterate again, but now the `sockets` array contains a `Puma::Client` instance in addition
     # to the `@ready` IO object. For example: `[#<IO:fd 10>, #<Puma::Client:0x3fdc1103bee8 @ready=false>]`.
     #
     # Since the `Puma::Client` in this example has data that has not been read yet,
-    # the IO.select is immediately able to "wake" and read from the `Puma::Client`. At this point the
+    # the `IO.select` is immediately able to "wake" and read from the `Puma::Client`. At this point the
     # `ready` output looks like this: `[[#<Puma::Client:0x3fdc1103bee8 @ready=false>], [], []]`.
     #
     # Each element in the first entry is iterated over. The `Puma::Client` object is not
-    # the `@ready` pipe so we check to see if we have the body, or only the header via
+    # the `@ready` pipe, so the reactor checks to see if it has the fully header and body with
     # the `Puma::Client#try_to_finish` method. If the full request has been sent,
-    # then it is passed off to the `@app_pool` thread pool so that a  "worker thread"
-    # can pick up the request and begin to run application logic. This is done
+    # then the request is passed off to the `@app_pool` thread pool so that a "worker thread"
+    # can pick up the request and begin to execute application logic. This is done
     # via `@app_pool << c`. The `Puma::Client` is then removed from the `sockets` array.
     #
     # If the request body is not present then nothing will happen, and the loop will iterate
@@ -92,7 +91,21 @@ module Puma
     # wake up the `IO.select` and it can again be checked to see if it's ready to be
     # passed to the thread pool.
     #
-    # There is some timeout logic as well
+    # ## Time Out Case
+    #
+    # In addition to being woken via a write to one of the sockets the `IO.select` will
+    # periodically "time out" of the sleep. One of the functions of this is to check for
+    # any requests that have "timed out". At the end of the loop it's checked to see if
+    # the first element in the `@timeout` array has exceed it's allowed time. If so,
+    # the client object is removed from the timeout aray, a 408 response is written.
+    # Then it's connection is closed, and the object is removed from the `sockets` array
+    # that watches for new data.
+    #
+    # This behavior loops until all the objects that have timed out have been removed.
+    #
+    # Once all the timeouts have been processed, the next duration of the `IO.select` sleep
+    # will be set to be equal to the amount of time it will take for the next timeout to occur.
+    # This calculation happens in `calculate_sleep`.
     def run_internal
       sockets = @sockets
 
