@@ -292,7 +292,8 @@ module Puma
           begin
             b = server.backlog || 0
             r = server.running || 0
-            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r} }\n!
+            t = server.pool_capacity || 0
+            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity": #{t} }\n!
             io << payload
           rescue IOError
             Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue

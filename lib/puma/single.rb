@@ -14,7 +14,8 @@ module Puma
     def stats
       b = @server.backlog || 0
       r = @server.running || 0
-      %Q!{ "backlog": #{b}, "running": #{r} }!
+      t = @server.pool_capacity || 0
+      %Q!{ "backlog": #{b}, "running": #{r}, "pool_capacity": #{t} }!
     end
 
     def restart
