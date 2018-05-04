@@ -169,8 +169,15 @@ module Puma
     end
 
 
+    # This number represents the number of requests that
+    # the server is capable of taking right now.
+    #
+    # For example if the number is 5 then it means
+    # there are 5 threads sitting idle ready to take
+    # a request. If one request comes in, then the
+    # value would be 4 until it finishes processing.
     def pool_capacity
-      @thread_pool and @thread_pool.waiting
+      @thread_pool and @thread_pool.pool_capacity
     end
 
     # Lopez Mode == raw tcp apps

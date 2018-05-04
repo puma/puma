@@ -73,6 +73,10 @@ module Puma
       @mutex.synchronize { @todo.size }
     end
 
+    def pool_capacity
+      waiting + (@max - spawned)
+    end
+
     # :nodoc:
     #
     # Must be called with @mutex held!
