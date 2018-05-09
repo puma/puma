@@ -250,7 +250,12 @@ module Puma
         STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
       ensure
-        @check.close
+        begin
+          @check.close
+        rescue
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+        end
+
         @notify.close
 
         if @status != :restart and @own_binder
