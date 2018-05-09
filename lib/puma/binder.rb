@@ -162,6 +162,7 @@ module Puma
             end
 
             ctx.keystore_pass = params['keystore-pass']
+            ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
           else
             unless params['key']
               @events.error "Please specify the SSL key via 'key='"
@@ -182,6 +183,7 @@ module Puma
             end
 
             ctx.ca = params['ca'] if params['ca']
+            ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
           end
 
           if params['verify_mode']
@@ -312,6 +314,7 @@ module Puma
       end
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
+
 
       ssl = MiniSSL::Server.new s, ctx
       env = @proto_env.dup
