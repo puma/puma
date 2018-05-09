@@ -4,19 +4,18 @@ group: beta
 language: ruby
 cache: bundler
 before_install:
-  # bundler installation needed for jruby-head
-  # https://github.com/travis-ci/travis-ci/issues/5861
-  - gem update --system
+  # https://github.com/travis-ci/travis-ci/issues/9383#issuecomment-377680108
+  - gem install bundler
 branches:
   only:
     - "master"
 rvm:
-  - 2.2.9
-  - 2.3.6
-  - 2.4.3
-  - 2.5.0
+  - 2.2.10
+  - 2.3.7
+  - 2.4.4
+  - 2.5.1
   - ruby-head
-  - jruby-9.1.15.0
+  - jruby-9.1.17.0
   - jruby-head
   - rbx-3
 matrix:
