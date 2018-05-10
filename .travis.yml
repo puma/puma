@@ -27,6 +27,8 @@ matrix:
     - rvm: jruby-head
     - rvm: rbx-3
     - rvm: ruby-head
+    - rvm: ruby-head
+      env: RUBYOPT="--jit"
 env:
   global:
     - TESTOPTS="-v"
