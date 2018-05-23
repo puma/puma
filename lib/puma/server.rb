@@ -256,7 +256,8 @@ module Puma
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
 
-        @notify.close
+        # Prevent can't modify frozen IOError (RuntimeError)
+        @notify.close rescue nil
 
         if @status != :restart and @own_binder
           @binder.close
