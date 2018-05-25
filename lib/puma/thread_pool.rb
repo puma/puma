@@ -79,8 +79,14 @@ module Puma
     #
     def spawn_thread
       @spawned += 1
+      th = create_thread
+      @threads << th
+    end
 
-      th = Thread.new(@spawned) do |spawned|
+    private :spawn_thread
+
+    def create_thread
+      Thread.new(@spawned) do |spawned|
         # Thread name is new in Ruby 2.3
         Thread.current.name = 'puma %03i' % spawned if Thread.current.respond_to?(:name=)
         todo  = @todo
@@ -137,11 +143,9 @@ module Puma
           @threads.delete th
         end
       end
-
-      @threads << th
     end
 
-    private :spawn_thread
+    private :create_thread
 
     # Add +work+ to the todo list for a Thread to pickup and process.
     def <<(work)
