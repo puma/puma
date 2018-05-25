@@ -13,6 +13,7 @@ Gem::Specification.new do |s|
   s.email = ["evan@phx.io"]
   s.executables = ["puma", "pumactl"]
   s.extensions = ["ext/puma_http11/extconf.rb"]
+  s.add_dependency "concurrent-ruby"
   s.metadata["msys2_mingw_dependencies"] = "openssl"
   s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
             %w[History.md LICENSE README.md]

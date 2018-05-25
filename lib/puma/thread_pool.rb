@@ -46,7 +46,7 @@ module Puma
 
       @trim_requested = 0
 
-      @threads = []
+      @pool = []
 
       @auto_trim = nil
       @reaper = nil
@@ -79,66 +79,17 @@ module Puma
     #
     def spawn_thread
       @spawned += 1
-      th = create_thread
-      @threads << th
+
+      configuration = {block: @block, extra: @extra, clean_thread_locals: @clean_thread_locals}
+      counters = Concurrent::Hash.new(trim_requested: @trim_requested, spawned: @spawned, waiting: @waiting)
+      coordinators = {mutex: @mutex, todo: @todo, not_empty: @not_empty, not_full: @not_full, threads: @pool}
+
+      th = ThreadPoolWorker.new(configuration, counters, coordinators)
+
+      @pool << th
     end
 
     private :spawn_thread
-
-    def create_thread
-      Thread.new(@spawned) do |spawned|
-        # Thread name is new in Ruby 2.3
-        Thread.current.name = 'puma %03i' % spawned if Thread.current.respond_to?(:name=)
-
-        extra = @extra.map { |i| i.new }
-
-        while true
-          work = nil
-
-          continue = true
-
-          @mutex.synchronize do
-            while @todo.empty?
-              if @trim_requested > 0
-                @trim_requested -= 1
-                continue = false
-                @not_full.signal
-              elsif @shutdown
-                continue = false
-              else
-                @waiting += 1
-                @not_full.signal
-                @not_empty.wait @mutex
-                @waiting -= 1
-              end
-
-              break unless continue
-            end
-
-            work = @todo.shift if continue
-          end
-
-          break unless continue
-
-          if @clean_thread_locals
-            ThreadPool.clean_thread_locals
-          end
-
-          begin
-            @block.call(work, *extra)
-          rescue Exception => e
-            STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
-          end
-        end
-
-        @mutex.synchronize do
-          @spawned -= 1
-          @threads.delete th
-        end
-      end
-    end
-
-    private :create_thread
 
     # Add +work+ to the todo list for a Thread to pickup and process.
     def <<(work)
@@ -216,14 +167,14 @@ module Puma
     # spawned counter so that new healthy threads could be created again.
     def reap
       @mutex.synchronize do
-        dead_threads = @threads.reject(&:alive?)
+        dead_threads = @pool.reject(&:alive?)
 
         dead_threads.each do |thread|
           thread.kill
           @spawned -= 1
         end
 
-        @threads.delete_if do |thread|
+        @pool.delete_if do |thread|
           dead_threads.include?(thread)
         end
       end
@@ -290,46 +241,47 @@ module Puma
     # Tell all threads in the pool to exit and wait for them to finish.
     #
     def shutdown(timeout=-1)
-      duped_threads = @mutex.synchronize do
+      duped_pool = @mutex.synchronize do
         @shutdown = true
+        @pool.each { |th| th.shutdown! }
         @not_empty.broadcast
         @not_full.broadcast
 
         @auto_trim.stop if @auto_trim
         @reaper.stop if @reaper
         # dup threads so that we join them all safely
-        @threads.dup
+        @pool.dup
       end
 
       if timeout == -1
         # Wait for threads to finish without force shutdown.
-        duped_threads.each(&:join)
+        duped_pool.each(&:join)
       else
         # Wait for threads to finish after n attempts (+timeout+).
         # If threads are still running, it will forcefully kill them.
         timeout.times do
-          duped_threads.delete_if do |t|
+          duped_pool.delete_if do |t|
             t.join 1
           end
 
-          if duped_threads.empty?
+          if duped_pool.empty?
             break
           else
             sleep 1
           end
         end
 
-        duped_threads.each do |t|
+        duped_pool.each do |t|
           t.raise ForceShutdown
         end
 
-        duped_threads.each do |t|
+        duped_pool.each do |t|
           t.join SHUTDOWN_GRACE_TIME
         end
       end
 
       @spawned = 0
-      @threads = []
+      @pool = []
     end
   end
 end
