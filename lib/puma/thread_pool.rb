@@ -295,7 +295,7 @@ module Puma
     # Tell all threads in the pool to exit and wait for them to finish.
     #
     def shutdown(timeout=-1)
-      threads = @mutex.synchronize do
+      duped_threads = @mutex.synchronize do
         @shutdown = true
         @not_empty.broadcast
         @not_full.broadcast
@@ -308,27 +308,27 @@ module Puma
 
       if timeout == -1
         # Wait for threads to finish without force shutdown.
-        threads.each(&:join)
+        duped_threads.each(&:join)
       else
         # Wait for threads to finish after n attempts (+timeout+).
         # If threads are still running, it will forcefully kill them.
         timeout.times do
-          threads.delete_if do |t|
+          duped_threads.delete_if do |t|
             t.join 1
           end
 
-          if threads.empty?
+          if duped_threads.empty?
             break
           else
             sleep 1
           end
         end
 
-        threads.each do |t|
+        duped_threads.each do |t|
           t.raise ForceShutdown
         end
 
-        threads.each do |t|
+        duped_threads.each do |t|
           t.join SHUTDOWN_GRACE_TIME
         end
       end
