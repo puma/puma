@@ -43,11 +43,7 @@ class ThreadPoolWorker
           ThreadPool.clean_thread_locals
         end
 
-        begin
-          configuration[:block].call(work, *extra)
-        rescue Exception => e
-          STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
-        end
+        do_work(configuration[:block], work, extra)
       end
 
       cleanup
@@ -59,6 +55,12 @@ class ThreadPoolWorker
   end
 
 private
+
+  def do_work(block, work, extra)
+    block.call(work, *extra)
+  rescue Exception => e
+    STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
+  end
 
   def cleanup
     coordinators[:mutex].synchronize do
