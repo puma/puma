@@ -46,7 +46,7 @@ module Puma
 
       @trim_requested = 0
 
-      @workers = []
+      @threads = []
 
       @auto_trim = nil
       @reaper = nil
@@ -134,11 +134,11 @@ module Puma
 
         mutex.synchronize do
           @spawned -= 1
-          @workers.delete th
+          @threads.delete th
         end
       end
 
-      @workers << th
+      @threads << th
 
       th
     end
@@ -221,15 +221,15 @@ module Puma
     # spawned counter so that new healthy threads could be created again.
     def reap
       @mutex.synchronize do
-        dead_workers = @workers.reject(&:alive?)
+        dead_threads = @threads.reject(&:alive?)
 
-        dead_workers.each do |worker|
-          worker.kill
+        dead_threads.each do |thread|
+          thread.kill
           @spawned -= 1
         end
 
-        @workers.delete_if do |w|
-          dead_workers.include?(w)
+        @threads.delete_if do |thread|
+          dead_threads.include?(thread)
         end
       end
     end
@@ -302,8 +302,8 @@ module Puma
 
         @auto_trim.stop if @auto_trim
         @reaper.stop if @reaper
-        # dup workers so that we join them all safely
-        @workers.dup
+        # dup threads so that we join them all safely
+        @threads.dup
       end
 
       if timeout == -1
@@ -334,7 +334,7 @@ module Puma
       end
 
       @spawned = 0
-      @workers = []
+      @threads = []
     end
   end
 end
