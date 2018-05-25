@@ -50,15 +50,21 @@ class ThreadPoolWorker
         end
       end
 
-      coordinators[:mutex].synchronize do
-        counters[:spawned] -= 1
-        coordinators[:threads].delete th
-      end
+      cleanup
     end
   end
 
   def shutdown!
     @shutdown = true
+  end
+
+private
+
+  def cleanup
+    coordinators[:mutex].synchronize do
+      counters[:spawned] -= 1
+      coordinators[:threads].delete th
+    end
   end
 
 end
