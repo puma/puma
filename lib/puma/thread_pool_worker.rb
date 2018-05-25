@@ -5,7 +5,7 @@ class ThreadPoolWorker
   def initialize(configuration, counters, coordinators)
     @shutdown = false
 
-    Thread.new(counters[:spawned]) do |s|
+    @thread = Thread.new(counters[:spawned]) do |s|
       # Thread name is new in Ruby 2.3
       Thread.current.name = 'puma %03i' % s if Thread.current.respond_to?(:name=)
 
@@ -39,9 +39,7 @@ class ThreadPoolWorker
 
         break unless continue
 
-        if configuration[:clean_thread_locals]
-          ThreadPool.clean_thread_locals
-        end
+        clean_thread_locals if configuration[:clean_thread_locals]
 
         do_work(configuration[:block], work, extra)
       end
@@ -66,6 +64,12 @@ private
     coordinators[:mutex].synchronize do
       counters[:spawned] -= 1
       coordinators[:threads].delete th
+    end
+  end
+
+  def clean_thread_locals
+    @thread.keys.each do |key| # rubocop: disable Performance/HashEachMethods
+      @thread[key] = nil unless key == :__recursive_key__
     end
   end
 
