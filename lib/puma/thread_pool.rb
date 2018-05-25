@@ -139,8 +139,6 @@ module Puma
       end
 
       @threads << th
-
-      th
     end
 
     private :spawn_thread
