@@ -89,11 +89,6 @@ module Puma
       Thread.new(@spawned) do |spawned|
         # Thread name is new in Ruby 2.3
         Thread.current.name = 'puma %03i' % spawned if Thread.current.respond_to?(:name=)
-        todo  = @todo
-        block = @block
-        mutex = @mutex
-        not_empty = @not_empty
-        not_full = @not_full
 
         extra = @extra.map { |i| i.new }
 
@@ -102,12 +97,12 @@ module Puma
 
           continue = true
 
-          mutex.synchronize do
-            while todo.empty?
+          @mutex.synchronize do
+            while @todo.empty?
               if @trim_requested > 0
                 @trim_requested -= 1
                 continue = false
-                not_full.signal
+                @not_full.signal
                 break
               end
 
@@ -117,12 +112,12 @@ module Puma
               end
 
               @waiting += 1
-              not_full.signal
-              not_empty.wait mutex
+              @not_full.signal
+              @not_empty.wait @mutex
               @waiting -= 1
             end
 
-            work = todo.shift if continue
+            work = @todo.shift if continue
           end
 
           break unless continue
@@ -132,13 +127,13 @@ module Puma
           end
 
           begin
-            block.call(work, *extra)
+            @block.call(work, *extra)
           rescue Exception => e
             STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
           end
         end
 
-        mutex.synchronize do
+        @mutex.synchronize do
           @spawned -= 1
           @threads.delete th
         end
