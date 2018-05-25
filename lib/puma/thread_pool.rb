@@ -103,18 +103,16 @@ module Puma
                 @trim_requested -= 1
                 continue = false
                 @not_full.signal
-                break
-              end
-
-              if @shutdown
+              elsif @shutdown
                 continue = false
-                break
+              else
+                @waiting += 1
+                @not_full.signal
+                @not_empty.wait @mutex
+                @waiting -= 1
               end
 
-              @waiting += 1
-              @not_full.signal
-              @not_empty.wait @mutex
-              @waiting -= 1
+              break unless continue
             end
 
             work = @todo.shift if continue
