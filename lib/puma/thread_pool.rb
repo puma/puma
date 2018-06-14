@@ -58,7 +58,7 @@ module Puma
       @clean_thread_locals = false
     end
 
-    attr_reader :spawned, :trim_requested
+    attr_reader :spawned, :trim_requested, :waiting
     attr_accessor :clean_thread_locals
 
     def self.clean_thread_locals
@@ -71,6 +71,10 @@ module Puma
     #
     def backlog
       @mutex.synchronize { @todo.size }
+    end
+
+    def pool_capacity
+      waiting + (@max - spawned)
     end
 
     # :nodoc:
