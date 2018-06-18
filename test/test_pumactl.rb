@@ -13,8 +13,10 @@ class TestPumaControlCli < Minitest::Test
   end
 
   def teardown
-    @wait.close
-    @ready.close
+    if @wait && @ready
+      @wait.close
+      @ready.close
+    end
   end
 
   def find_open_port
@@ -32,7 +34,7 @@ class TestPumaControlCli < Minitest::Test
   end
 
   def test_control_url
-    skip if Puma.jruby? || Puma.windows?
+    skip_on(:jruby, :windows)
 
     host = "127.0.0.1"
     port = find_open_port
