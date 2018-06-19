@@ -10,7 +10,7 @@ class TestBinder < Minitest::Test
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
-    skip_on_jruby
+    skip_on(:jruby)
 
     @binder.parse(["tcp://localhost:10001"], @events)
 
@@ -18,8 +18,7 @@ class TestBinder < Minitest::Test
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
-    skip_on_appveyor
-    skip_on_jruby
+    skip_on(:jruby)
 
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
@@ -30,8 +29,7 @@ class TestBinder < Minitest::Test
   end
 
   def test_binder_parses_ssl_cipher_filter
-    skip_on_appveyor
-    skip_on_jruby
+    skip_on(:jruby)
 
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
@@ -45,7 +43,7 @@ class TestBinder < Minitest::Test
   end
 
   def test_binder_parses_jruby_ssl_options
-    skip unless Puma.jruby?
+    skip_unless(:jruby)
 
     keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
     ssl_cipher_list = "TLS_DHE_RSA_WITH_DES_CBC_SHA,TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"

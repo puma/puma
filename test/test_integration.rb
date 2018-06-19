@@ -67,7 +67,7 @@ class TestIntegration < Minitest::Test
   end
 
   def restart_server_and_listen(argv)
-    skip_on_appveyor
+    skip_on(:windows)
     server(argv)
     s = connect
     initial_reply = read_body(s)
@@ -115,7 +115,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_stop_via_pumactl
-    skip if Puma.jruby? || Puma.windows?
+    skip_on(:jruby, :windows)
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -148,7 +148,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_phased_restart_via_pumactl
-    skip if Puma.jruby? || Puma.windows? || ENV['CI']
+    skip_on(:jruby, :windows, :ci)
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -195,7 +195,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_kill_unknown_via_pumactl
-    skip if Puma.jruby? || Puma.windows?
+    skip_on(:jruby, :windows)
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
     # do not want to accidently kill a valid other process
@@ -220,7 +220,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_restart_closes_keepalive_sockets_workers
-    skip_on_jruby
+    skip_on(:jruby)
     _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
@@ -229,7 +229,7 @@ class TestIntegration < Minitest::Test
   def test_restart_restores_environment
     # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
     # next workers ENV
-    skip_on_jruby
+    skip_on(:jruby)
 
     initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
 
@@ -239,7 +239,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_single_mode
-    skip if Puma.jruby? || Puma.windows?
+    skip_on(:jruby, :windows)
 
     pid = start_forked_server("test/rackup/hello.ru")
     _, status = stop_forked_server(pid)
@@ -248,7 +248,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_clustered_mode
-    skip if Puma.jruby? || Puma.windows?
+    skip_on(:jruby, :windows)
 
     pid = start_forked_server("-w 2 test/rackup/hello.ru")
     _, status = stop_forked_server(pid)

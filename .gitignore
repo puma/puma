@@ -16,3 +16,10 @@ Gemfile.lock
 /test/test_puma.state
 /test/test_server.sock
 /test/test_control.sock
+
+# windows folders & files
+*.gem
+./Rakefile_wintest
+lib/puma/puma_http11.rb
+win_gem_test/packages/
+win_gem_test/test_logs/
