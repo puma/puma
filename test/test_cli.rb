@@ -56,8 +56,8 @@ class TestCLI < Minitest::Test
     s = TCPSocket.new "127.0.0.1", 9877
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
-    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16 }', body.split(/\r?\n/).last
-    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16 }', Puma.stats
+    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }', body.split(/\r?\n/).last
+    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }', Puma.stats
 
     cli.launcher.stop
     t.join
@@ -95,7 +95,7 @@ class TestCLI < Minitest::Test
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
-    assert_match(/\{ "workers": 2, "phase": 0, "booted_workers": 2, "old_workers": 0, "worker_status": \[\{ "pid": \d+, "index": 0, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2 \} \},\{ "pid": \d+, "index": 1, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2 \} \}\] \}/, body.split("\r\n").last)
+    assert_match(/\{ "workers": 2, "phase": 0, "booted_workers": 2, "old_workers": 0, "worker_status": \[\{ "pid": \d+, "index": 0, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \},\{ "pid": \d+, "index": 1, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \}\] \}/, body.split("\r\n").last)
 
     cli.launcher.stop
     t.join
@@ -118,7 +118,7 @@ class TestCLI < Minitest::Test
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
 
-    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16 }', body.split("\r\n").last
+    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }', body.split("\r\n").last
 
     cli.launcher.stop
     t.join
