@@ -15,7 +15,8 @@ module Puma
       b = @server.backlog || 0
       r = @server.running || 0
       t = @server.pool_capacity || 0
-      %Q!{ "backlog": #{b}, "running": #{r}, "pool_capacity": #{t} }!
+      m = @server.max_threads || 0
+      %Q!{ "backlog": #{b}, "running": #{r}, "pool_capacity": #{t}, "max_threads": #{m} }!
     end
 
     def restart
