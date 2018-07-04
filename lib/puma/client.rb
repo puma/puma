@@ -171,6 +171,7 @@ module Puma
           if len == 0
             @body.rewind
             rest = io.read
+            rest = rest[2..-1] if rest.start_with?("\r\n")
             @buffer = rest.empty? ? nil : rest
             @requests_served += 1
             @ready = true
