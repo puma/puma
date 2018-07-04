@@ -109,7 +109,7 @@ class TestPumaServerSSL < Minitest::Test
       end
     end
     unless Puma.jruby?
-      assert_match(/wrong version number|no protocols available/, @events.error.message) if @events.error
+      assert_match(/wrong version number|no protocols available|version too low/, @events.error.message) if @events.error
     end
   end
 
