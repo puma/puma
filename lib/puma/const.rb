@@ -98,8 +98,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "3.11.4".freeze
-    CODE_NAME = "Love Song".freeze
+    PUMA_VERSION = VERSION = "3.12.0".freeze
+    CODE_NAME = "Llamas in Pajamas".freeze
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2
