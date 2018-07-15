@@ -1,0 +1,11 @@
+# rake -f Rakefile_wintest -N -R norakelib
+
+require "rake/testtask"
+
+Rake::TestTask.new(:win_test) do |t|
+  t.libs << "test"
+  t.warning = false
+  t.options = '--verbose'
+end
+
+task :default => [:win_test]
