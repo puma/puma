@@ -18,12 +18,10 @@ class TestPumaControlCli < Minitest::Test
   end
 
   def find_open_port
-    begin
-      server = TCPServer.new("127.0.0.1", 0)
-      server.addr[1]
-    ensure
-      server.close
-    end
+    server = TCPServer.new("127.0.0.1", 0)
+    server.addr[1]
+  ensure
+    server.close
   end
 
   def test_config_file
@@ -32,8 +30,6 @@ class TestPumaControlCli < Minitest::Test
   end
 
   def test_control_url
-    skip if Puma.jruby? || Puma.windows?
-
     host = "127.0.0.1"
     port = find_open_port
     url = "tcp://#{host}:#{port}/"

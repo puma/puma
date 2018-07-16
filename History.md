@@ -1,3 +1,16 @@
+## 3.12.0 / 2018-07-13
+
+* 5 features:
+  * You can now specify which SSL ciphers the server should support, default is unchanged (#1478)
+  * The setting for Puma's `max_threads` is now in `Puma.stats` (#1604)
+  * Pool capacity is now in `Puma.stats` (#1579)
+  * Installs restricted to Ruby 2.2+ (#1506)
+  * `--control` is now deprecated in favor of `--control-url` (#1487)
+
+* 2 bugfixes:
+  * Workers will no longer accept more web requests than they have capacity to process. This prevents an issue where one worker would accept lots of requests while starving other workers (#1563)
+  * In a test env puma now emits the stack on an exception (#1557)
+
 ## 3.11.4 / 2018-04-12
 
 * 2 features:
