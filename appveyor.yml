@@ -12,9 +12,9 @@ install:
   # Install ragel
   - ps: >-
       if ($env:ri_file -lt 'x86') {
-        C:\msys64\usr\bin\pacman -S --noconfirm --noprogressbar mingw-w64-x86_64-ragel
+        C:\msys64\usr\bin\pacman -Sy --noconfirm --noprogressbar mingw-w64-x86_64-ragel
       } else {
-        C:\msys64\usr\bin\pacman -S --noconfirm --noprogressbar mingw-w64-i686-ragel
+        C:\msys64\usr\bin\pacman -Sy --noconfirm --noprogressbar mingw-w64-i686-ragel
       }
 
   # For RI builds, set SSL_CERT_FILE & add path for ragel
@@ -58,13 +58,11 @@ install:
           $dl_uri = "https://dl.bintray.com/larskanis/rubyinstaller2-packages/"
           $key = "BE8BF1C5"
         }
-        Appveyor-Retry C:\msys64\usr\bin\bash.exe -lc "pacman-key -r $key --keyserver hkp://pool.sks-keyservers.net && pacman-key -f $key && pacman-key --lsign-key $key" 2> $null
         C:\msys64\usr\bin\pacman.exe -Rdd --noconfirm --noprogressbar $openssl
         $openssl += "-1.1.0.h-1-any.pkg.tar.xz"
         $dl_uri += $openssl
         $wc = $(New-Object System.Net.WebClient)
         $wc.DownloadFile($dl_uri      , "C:\$openssl")
-        $wc.DownloadFile("$dl_uri.sig", "C:\$openssl.sig")
         C:\msys64\usr\bin\pacman.exe -Udd --noconfirm --noprogressbar --force C:\$openssl
         $env:b_config = "--use-system-libraries"
       }
