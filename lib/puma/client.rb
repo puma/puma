@@ -211,7 +211,7 @@ module Puma
       while true
         begin
           chunk = @io.read_nonblock(4096)
-        rescue Errno::EAGAIN
+        rescue IO::WaitReadable
           return false
         rescue SystemCallError, IOError
           raise ConnectionError, "Connection error detected during read"
