@@ -144,7 +144,7 @@ class TestPumaServerSSLClient < Minitest::Test
     http.use_ssl = true
     http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-    blk.call(http)
+    yield(http)
 
     client_error = false
     begin
