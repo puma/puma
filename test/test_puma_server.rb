@@ -677,6 +677,55 @@ EOF
     assert_equal "hello", body
   end
 
+  def test_chunked_keep_alive
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    h = header(sock)
+
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "hello", body
+
+    sock.close
+  end
+
+  def test_chunked_keep_alive_two_back_to_back
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    h = header(sock)
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "hello", body
+
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    sleep 0.1
+
+    h = header(sock)
+
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "goodbye", body
+
+    sock.close
+  end
+
   def test_empty_header_values
     @server.app = proc { |env| [200, {"X-Empty-Header" => ""}, []] }
 
