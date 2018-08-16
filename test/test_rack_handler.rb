@@ -48,7 +48,7 @@ class TestPathHandler < Minitest::Test
 
 
   def test_handler_boots
-    skip_on_appveyor
+    skip_on :windows
     in_handler(app) do |launcher|
       hit(["http://0.0.0.0:#{ launcher.connected_port }/test"])
       assert_equal("/test", @input["PATH_INFO"])
