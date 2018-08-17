@@ -463,6 +463,10 @@ module Puma
       @options[:shutdown_debug] = val
     end
 
+    def reopen_logs(val=true)
+      @options[:reopen_logs] = val
+    end
+
     # Control how the remote address of the connection is set. This
     # is configurable because to calculate the true socket peer address
     # a kernel syscall is required which for very fast rack handlers

@@ -1,4 +1,4 @@
-results = %w[t1 t2 t3].map do |test|
+results = %w[t1 t2 t3 t4].map do |test|
   system("ruby -rrubygems test/shell/#{test}.rb ") # > /dev/null 2>&1
 end
 

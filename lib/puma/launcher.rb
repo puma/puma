@@ -420,6 +420,11 @@ module Puma
       begin
         Signal.trap "SIGHUP" do
           if @runner.redirected_io?
+            begin
+              @runner.reopen_logs if @runner.reopen_logs?
+            rescue Exception => e
+              log "*** SIGHUP: unable to reopen logs: #{e.class.name}:#{e.message}#{e.backtrace.join("\n")}"
+            end
             @runner.redirect_io
           else
             stop
