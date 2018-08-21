@@ -19,6 +19,24 @@ module Puma
       %Q!{ "backlog": #{b}, "running": #{r}, "pool_capacity": #{t}, "max_threads": #{m} }!
     end
 
+    def metrics
+      metrics = <<~METRICS
+        # HELP puma_backlog Number of established but unaccepted connections in the backlog
+        # TYPE puma_backlog gauge
+        puma_backlog #{@server.backlog || 0}
+        # HELP puma_running State of the server
+        # TYPE puma_running gauge
+        puma_running #{@server.running || 0}
+        # HELP puma_pool_capacity Number of allocatable worker threads
+        # TYPE puma_pool_capacity gauge
+        puma_pool_capacity #{@server.pool_capacity || 0}
+        # HELP puma_max_threads Maximum number of worker threads
+        # TYPE puma_max_threads gauge
+        puma_max_threads #{@server.max_threads || 0}
+      METRICS
+      metrics.split("\n")
+    end
+
     def restart
       @server.begin_restart
     end
