@@ -1,6 +1,6 @@
 AllCops:
   DisabledByDefault: true
-  TargetRubyVersion: 1.9.3
+  TargetRubyVersion: 2.2
   DisplayCopNames: true
   StyleGuideCopsOnly: false
   Exclude:
@@ -61,9 +61,6 @@ Performance/EndWith:
   Enabled: true
 
 Performance/FlatMap:
-  Enabled: true
-
-Performance/HashEachMethods:
   Enabled: true
 
 Performance/RangeInclude:
