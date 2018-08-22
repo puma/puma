@@ -433,6 +433,18 @@ void Init_mini_ssl(VALUE puma) {
   mod = rb_define_module_under(puma, "MiniSSL");
   eng = rb_define_class_under(mod, "Engine", rb_cObject);
 
+  // OpenSSL Build / Runtime/Load versions
+
+  /* Version of OpenSSL that Puma was compiled with */
+	rb_define_const(mod, "OPENSSL_VERSION", rb_str_new2(OPENSSL_VERSION_TEXT));
+
+#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000
+	/* Version of OpenSSL that Puma loaded with */
+	rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(OpenSSL_version(OPENSSL_VERSION)));
+#else
+	rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(SSLeay_version(SSLEAY_VERSION)));
+#endif
+
   rb_define_singleton_method(mod, "check", noop, 0);
 
   eError = rb_define_class_under(mod, "SSLError", rb_eStandardError);
