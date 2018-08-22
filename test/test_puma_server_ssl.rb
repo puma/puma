@@ -19,7 +19,7 @@ end
 DISABLE_SSL = begin
               Puma::Server.class
               Puma::MiniSSL.check
-              puts "", RUBY_REVISION
+              puts "", RUBY_DESCRIPTION
               puts "Puma::MiniSSL OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION}",
                    "                      OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION}", ""
             rescue
