@@ -247,6 +247,12 @@ PIDFile=<WD>/shared/tmp/pids/puma.pid
 # reconsider if you actually need the forking config.
 Restart=no
 
+# `puma_ctl restart` wouldn't work without this. It's because `pumactl`
+# changes PID on restart and systemd stops the service afterwards
+# because of the PID change. This option prevents stopping after PID 
+# change.  
+RemainAfterExit=yes
+
 [Install]
 WantedBy=multi-user.target
 ~~~~
