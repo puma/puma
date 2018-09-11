@@ -9,7 +9,7 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats}
+    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats metrics}
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil

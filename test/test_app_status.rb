@@ -25,6 +25,10 @@ class TestAppStatus < Minitest::Test
     def stats
       "{}"
     end
+
+    def metrics
+      ["# HELP puma_metrics Some real metrics"]
+    end
   end
 
   def setup
@@ -84,6 +88,12 @@ class TestAppStatus < Minitest::Test
 
     assert_equal 200, status
     assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  def test_metrics
+    status, _ , app = lint('/metrics')
+    assert_equal 200, status
+    assert_equal ['# HELP puma_metrics Some real metrics'], app.enum_for.to_a
   end
 
   def test_alternate_location

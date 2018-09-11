@@ -124,6 +124,32 @@ class TestCLI < Minitest::Test
     t.join
   end
 
+  def test_metrics
+    url = "unix://#{@tmp_path}"
+
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
+                         "--control", url,
+                         "--control-token", "",
+                         "test/rackup/lobster.ru"], @events
+
+    t = Thread.new { cli.run }
+    t.abort_on_exception = true
+
+    wait_booted
+
+    s = UNIXSocket.new @tmp_path
+    s << "GET /metrics HTTP/1.0\r\n\r\n"
+    body = s.read
+
+    assert body.split("\r\n").include? 'puma_backlog 0'
+    assert body.split("\r\n").include? 'puma_running 0'
+    assert body.split("\r\n").include? 'puma_pool_capacity 16'
+    assert body.split("\r\n").include? 'puma_max_threads 16'
+
+    cli.launcher.stop
+    t.join
+  end
+
   def test_control_stop
     url = "unix://#{@tmp_path}"
 

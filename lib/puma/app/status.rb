@@ -65,6 +65,9 @@ module Puma
 
         when /\/stats$/
           return rack_response(200, @cli.stats)
+
+        when /\/metrics$/
+          return rack_response(200, @cli.metrics.join("\r\n"), 'text/plain')
         else
           rack_response 404, "Unsupported action", 'text/plain'
         end

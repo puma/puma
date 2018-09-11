@@ -98,6 +98,11 @@ module Puma
       @runner.stats
     end
 
+    # Return metrics about the server
+    def metrics
+      @runner.metrics
+    end
+
     # Write a state file that can be used by pumactl to control
     # the server
     def write_state
