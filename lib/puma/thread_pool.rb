@@ -21,6 +21,12 @@ module Puma
     # up its work before leaving the thread to die on the vine.
     SHUTDOWN_GRACE_TIME = 5 # seconds
 
+    # Duration between non-blocking socket polls
+    # when extra threads are available but no work.
+    # This setting helps load-balance work across multiple processes
+    # before balancing across multiple threads.
+    WORK_AVAILABLE_TIMEOUT = 1 # seconds
+
     # Maintain a minimum of +min+ and maximum of +max+ threads
     # in the pool.
     #
@@ -190,20 +196,28 @@ module Puma
     # then the `@todo` array would stay the same size as the reactor works
     # to try to buffer the request. In tha scenario the next call to this
     # method would not block and another request would be added into the reactor
-    # by the server. This would continue until a fully bufferend request
+    # by the server. This would continue until a fully buffered request
     # makes it through the reactor and can then be processed by the thread pool.
-    def wait_until_not_full
+    def wait_until_not_full(sock)
       @mutex.synchronize do
         while true
           return if @shutdown
 
-          # If we can still spin up new threads and there
-          # is work queued that cannot be handled by waiting
-          # threads, then accept more work until we would
-          # spin up the max number of threads.
-          return if @todo.size - @waiting < @max - @spawned
+          busy_threads = @spawned - @waiting + @todo.size
+          threads_available = @max - busy_threads > 0
 
-          @not_full.wait @mutex
+          # Accept more work if no threads are busy,
+          # or if extra threads and non-blocking work are available.
+          return if busy_threads.zero? ||
+            (threads_available && IO.select([sock], nil, nil, 0))
+
+          # If threads are available but no work,
+          # check for work again after a short timeout.
+          # Otherwise if threads are busy, block without timeout
+          # until a thread finishes its work.
+          timeout = threads_available ? WORK_AVAILABLE_TIMEOUT : nil
+
+          @not_full.wait @mutex, timeout
         end
       end
     end
