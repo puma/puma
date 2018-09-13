@@ -365,6 +365,21 @@ module Puma
 
     alias_method :after_worker_boot, :after_worker_fork
 
+    # Code to run out-of-band when the worker is idle.
+    # These hooks run immediately after a request has finished
+    # processing and there are no busy threads on the worker.
+    # The worker doesn't accept new requests until this code finishes.
+    #
+    # This hook is useful for running out-of-band garbage collection
+    # or scheduling asynchronous tasks to execute after a response.
+    #
+    # This can be called multiple times to add hooks.
+    #
+    def out_of_band(&block)
+      @options[:out_of_band] ||= []
+      @options[:out_of_band] << block
+    end
+
     # The directory to operate out of.
     def directory(dir)
       @options[:directory] = dir.to_s
