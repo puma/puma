@@ -1,4 +1,6 @@
 require_relative "helper"
+require "puma/minissl"
+require "puma/puma_http11"
 
 class SSLEventsHelper < ::Puma::Events
   attr_accessor :addr, :cert, :error
