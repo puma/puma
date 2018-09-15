@@ -5,7 +5,8 @@ language: ruby
 cache: bundler
 before_install:
   # https://github.com/travis-ci/travis-ci/issues/9383#issuecomment-377680108
-  - gem install bundler
+  # not needed for RubyGems 2.7.7...
+  #- gem install bundler
 branches:
   only:
     - "master"
