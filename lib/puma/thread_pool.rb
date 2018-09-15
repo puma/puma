@@ -21,11 +21,14 @@ module Puma
     # up its work before leaving the thread to die on the vine.
     SHUTDOWN_GRACE_TIME = 5 # seconds
 
-    # Duration between non-blocking socket polls
+    # Factor that controlls the duration between non-blocking socket polls
     # when extra threads are available but no work.
     # This setting helps load-balance work across multiple processes
     # before balancing across multiple threads.
-    WORK_AVAILABLE_TIMEOUT = 1 # seconds
+    # This value is muliplied by (in_used_threads / max_threads) to find the
+    # wait time. This allows more lighly loaded workers to pick up work
+    # more quickly.
+    WORK_AVAILABLE_TIMEOUT_FACTOR = 1.0
 
     # Maintain a minimum of +min+ and maximum of +max+ threads
     # in the pool.
@@ -206,16 +209,25 @@ module Puma
           busy_threads = @spawned - @waiting + @todo.size
           threads_available = @max - busy_threads > 0
 
-          # Accept more work if no threads are busy,
-          # or if extra threads and non-blocking work are available.
-          return if busy_threads.zero? ||
-            (threads_available && IO.select([sock], nil, nil, 0))
+          timeout = nil
 
-          # If threads are available but no work,
-          # check for work again after a short timeout.
-          # Otherwise if threads are busy, block without timeout
-          # until a thread finishes its work.
-          timeout = threads_available ? WORK_AVAILABLE_TIMEOUT : nil
+          # If the socket is passed in, do a more dynamic busy checked
+          # to load the workers more evenly.
+          if sock
+            # Accept more work if no threads are busy,
+            # or if extra threads and non-blocking work are available.
+            return if busy_threads.zero? ||
+              (threads_available && IO.select([sock], nil, nil, 0))
+
+            # If threads are available but no work,
+            # check for work again after a short timeout, which is a function
+            # of the available threads.
+            # Otherwise if threads are busy, block without timeout
+            # until a thread finishes its work.
+            timeout = if threads_available
+                        (busy_threads.to_f / @max) * WORK_AVAILABLE_TIMEOUT_FACTOR
+                      end
+          end
 
           @not_full.wait @mutex, timeout
         end

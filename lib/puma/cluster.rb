@@ -272,6 +272,9 @@ module Puma
 
       server = start_server
 
+      # Only slow down accept loading if we have more than one worker
+      server.slow_loaded_accepts = @options[:workers] > 1
+
       Signal.trap "SIGTERM" do
         server.stop
       end

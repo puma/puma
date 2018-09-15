@@ -48,6 +48,13 @@ module Puma
     attr_accessor :reaping_time
     attr_accessor :first_data_timeout
 
+    # Controls whether or not the Server, when seeing some threads running but
+    # still some slots available, will slow it's rate of accepts upon
+    # the socket to allow other processes on the same socket the oppertunity
+    # to accept instead. This is used by the worker model to more evenly distribute
+    # load to the workers.
+    attr_accessor :slow_loaded_accepts
+
     # Create a server for the rack app +app+.
     #
     # +events+ is an object which will be called when certain error events occur
@@ -89,6 +96,7 @@ module Puma
       @mode = :http
 
       @precheck_closing = true
+      @slow_loaded_accepts = false
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
@@ -368,6 +376,7 @@ module Puma
         sockets = [check] + @binder.ios
         pool = @thread_pool
         queue_requests = @queue_requests
+        slow_loaded_accepts = @slow_loaded_accepts
 
         remote_addr_value = nil
         remote_addr_header = nil
@@ -396,7 +405,7 @@ module Puma
                     end
 
                     pool << client
-                    pool.wait_until_not_full(sock)
+                    pool.wait_until_not_full(slow_loaded_accepts ? sock : nil)
                   end
                 rescue SystemCallError
                   # nothing
