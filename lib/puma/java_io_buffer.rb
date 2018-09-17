@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'java'
 
 # Conservative native JRuby/Java implementation of IOBuffer

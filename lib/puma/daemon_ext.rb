@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Process
 
   # This overrides the default version because it is broken if it

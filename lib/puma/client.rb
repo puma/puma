@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class IO
   # We need to use this for a jruby work around on both 1.8 and 1.9.
   # So this either creates the constant (on 1.8), or harmlessly

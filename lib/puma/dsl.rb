@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Puma
   # The methods that are available for use inside the config file.
   # These same methods are used in Puma cli and the rack handler
