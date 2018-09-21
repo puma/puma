@@ -493,7 +493,7 @@ module Puma
       when Hash
         if hdr = val[:header]
           @options[:remote_address] = :header
-          @options[:remote_address_header] = "HTTP_" + hdr.upcase.gsub("-", "_")
+          @options[:remote_address_header] = "HTTP_" + hdr.upcase.tr("-", "_")
         else
           raise "Invalid value for set_remote_address - #{val.inspect}"
         end
