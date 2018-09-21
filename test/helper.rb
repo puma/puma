@@ -10,6 +10,8 @@ end
 
 begin
   require "bundler/setup"
+  # bundler/setup may not load bundler
+  require "bundler" unless Bundler.const_defined?(:ORIGINAL_ENV)
 rescue LoadError
   warn "Failed to load bundler ... this should only happen during package building"
 end
@@ -70,12 +72,31 @@ if ENV['CI']
 end
 
 module SkipTestsBasedOnRubyEngine
-  def skip_on_jruby
-    skip "Skipped on JRuby" if Puma.jruby?
+  # called with one or more params, like skip_on :jruby, :windows
+  # optional suffix kwarg is appended to the skip message
+  # optional suffix bt should generally not used
+  def skip_on(*engs, suffix: '', bt: caller)
+    skip_msg = false
+    engs.each do |eng|
+      skip_msg = case eng
+        when :jruby    then "Skipped on JRuby#{suffix}"     if Puma.jruby?
+        when :windows  then "Skipped on Windows#{suffix}"   if Puma.windows?
+        when :appveyor then "Skipped on Appveyor#{suffix}"  if ENV["APPVEYOR"]
+        when :ci       then "Skipped on ENV['CI']#{suffix}" if ENV["CI"]
+        else false
+      end
+      skip skip_msg, bt if skip_msg
+    end
   end
 
-  def skip_on_appveyor
-    skip "Skipped on Appveyor" if ENV["APPVEYOR"]
+  # called with only one param
+  def skip_unless(eng, bt: caller)
+    skip_msg = case eng
+      when :jruby   then "Skip unless JRuby"   unless Puma.jruby?
+      when :windows then "Skip unless Windows" unless Puma.windows?
+      else false
+    end
+    skip skip_msg, bt if skip_msg
   end
 end
 
