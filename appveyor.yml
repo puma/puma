@@ -1,110 +1,20 @@
-init:
-  - set PATH=C:\Ruby%ruby_version%\bin;C:\Program Files\7-Zip;C:\Program Files\AppVeyor\BuildAgent;C:\Program Files\Git\cmd;C:\Windows\system32
-  # Download current trunk, install OpenSSL via trunk_pkgs.cmd file
-  - ps: >-
-      if ($env:ruby_version -eq '_trunk') {
-        $trunk_uri = 'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z'
-        (New-Object Net.WebClient).DownloadFile($trunk_uri, 'C:\ruby_trunk.7z')
-        7z.exe x C:\ruby_trunk.7z -oC:\Ruby_trunk
-      }
-
 install:
-  # Install ragel
+  # download shared script files
   - ps: >-
-      if ($env:ri_file -lt 'x86') {
-        C:\msys64\usr\bin\pacman -S --noconfirm --noprogressbar mingw-w64-x86_64-ragel
-      } else {
-        C:\msys64\usr\bin\pacman -S --noconfirm --noprogressbar mingw-w64-i686-ragel
-      }
-
-  # For RI builds, set SSL_CERT_FILE & add path for ragel
-  - ps: >-
-      if ($env:ruby_version -lt '24') {
-        $env:SSL_CERT_FILE = C:/Ruby25-x64/ssl/cert.pem
-        $env:path += ";C:\msys64\ming32\bin;"
-      }
-
-  # Download RubyInstaller OpenSSL Knapsack packages
-  # DevKit is installed in Ruby23 and Ruby23-x64 folders
-  - ps: >-
-      if ($env:ri_file -eq "x86") {
-        appveyor DownloadFile https://dl.bintray.com/oneclick/OpenKnapsack/x86/openssl-1.0.2j-x86-windows.tar.lzma
-        7z e openssl-1.0.2j-x86-windows.tar.lzma
-        7z x -y openssl-1.0.2j-x86-windows.tar -oC:\ruby23\DevKit\mingw\i686-w64-mingw32
-        # $env:b_config = "--with-ssl-dir=C:/Ruby23/DevKit/mingw --with-opt-include=C:/Ruby23/DevKit/mingw/include"
-      } elseif ($env:ri_file -eq "x64") {
-        appveyor DownloadFile https://dl.bintray.com/oneclick/OpenKnapsack/x64/openssl-1.0.2j-x64-windows.tar.lzma
-        7z e openssl-1.0.2j-x64-windows.tar.lzma
-        7z x -y openssl-1.0.2j-x64-windows.tar -oC:\ruby23-x64\DevKit\mingw\x86_64-w64-mingw32
-        # $env:b_config = "--with-ssl-dir=C:/Ruby23-x64/DevKit/mingw --with-opt-include=C:/Ruby23-x64/DevKit/mingw/include"
-      }
-
-  - RAKEOPT:
-  - APPVEYOR: true
-  - ruby --version
-  - gem --version
-  - bundle --version
-  - bundle install --without documentation --path C:/av_bundle
-
-  # Download & install current OpenSSL package for later RubyInstaller2/MSYS2 versions
-  - ps: >-
-      if ($env:ruby_version -ge '25' -or $env:ruby_version -eq '_trunk') {
-        if ($env:ruby_version -eq '25-x64' -or $env:ruby_version -eq '_trunk') {
-          $openssl = "mingw-w64-x86_64-openssl"
-          $dl_uri = "https://dl.bintray.com/msp-greg/ruby_trunk/"
-          $key = "77D8FA18"
-        } elseif ($env:ruby_version -eq '25') {
-          $openssl = "mingw-w64-i686-openssl"
-          $dl_uri = "https://dl.bintray.com/larskanis/rubyinstaller2-packages/"
-          $key = "BE8BF1C5"
-        }
-        Appveyor-Retry C:\msys64\usr\bin\bash.exe -lc "pacman-key -r $key --keyserver hkp://pool.sks-keyservers.net && pacman-key -f $key && pacman-key --lsign-key $key" 2> $null
-        C:\msys64\usr\bin\pacman.exe -Rdd --noconfirm --noprogressbar $openssl
-        $openssl += "-1.1.0.h-1-any.pkg.tar.xz"
-        $dl_uri += $openssl
-        $wc = $(New-Object System.Net.WebClient)
-        $wc.DownloadFile($dl_uri      , "C:\$openssl")
-        $wc.DownloadFile("$dl_uri.sig", "C:\$openssl.sig")
-        C:\msys64\usr\bin\pacman.exe -Udd --noconfirm --noprogressbar --force C:\$openssl
-        $env:b_config = "--use-system-libraries"
+      if ( !(Test-Path -Path ./shared -PathType Container) ) {
+        $uri = 'https://ci.appveyor.com/api/projects/MSP-Greg/av-gem-build-test/artifacts/shared.7z'
+        $7z  = 'C:\Program Files\7-Zip\7z.exe'
+        $fn = "$env:TEMP\shared.7z"
+        (New-Object System.Net.WebClient).DownloadFile($uri, $fn)
+        &$7z x $fn -owin_gem_test 1> $null
+        Remove-Item  -LiteralPath $fn -Force
+        Write-Host "Downloaded shared files" -ForegroundColor Yellow
       }
 
 build_script:
-  - bundle exec rake -rdevkit compile -- %b_config%
-
-test_script:
-  # clear path to test with ruby packaged dll's
-  - set PATH=C:\Ruby%ruby_version%\bin;C:\Program Files\7-Zip;C:\Program Files\AppVeyor\BuildAgent;C:\Program Files\Git\cmd;C:\Windows\system32
-  - set OPENSSL_DIR=
-  - bundle exec rake test TESTOPTS="--verbose"
-
-on_finish:
-  - ruby -v
+  - ps: .\win_gem_test\puma.ps1 $env:gem_bits
 
 environment:
   matrix:
-    - ruby_version: _trunk
-      ri_file: x64_2
-    - ruby_version: 25
-      ri_file: x86_2
-    - ruby_version: 25-x64
-      ri_file: x64_2
-    - ruby_version: 24
-      ri_file: x86_2
-    - ruby_version: 24-x64
-      ri_file: x64_2
-    - ruby_version: 23
-      ri_file: x86
-    - ruby_version: 23-x64
-      ri_file: x64
-    - ruby_version: 22
-      ri_file: x86
-    - ruby_version: 22-x64
-      ri_file: x64
-
-cache:
-  - C:\av_bundle
-
-branches:
-  only:
-    - master
+    - gem_bits: 64
+    - gem_bits: 32

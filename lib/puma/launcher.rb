@@ -63,8 +63,8 @@ module Puma
 
       generate_restart_data
 
-      if clustered? && (Puma.jruby? || Puma.windows?)
-        unsupported 'worker mode not supported on JRuby or Windows'
+      if clustered? && !Process.respond_to?(:fork)
+        unsupported "worker mode not supported on #{RUBY_ENGINE} on this platform"
       end
 
       if @options[:daemon] && Puma.windows?

@@ -2,7 +2,7 @@ require_relative "helper"
 
 require "rack/handler/puma"
 
-class TestPumaUnixSocket < Minitest::Test
+class TestHandlerGetStrSym < Minitest::Test
   def test_handler
     handler = Rack::Handler.get(:puma)
     assert_equal Rack::Handler::Puma, handler
@@ -46,11 +46,11 @@ class TestPathHandler < Minitest::Test
     thread.join  if thread
   end
 
-
   def test_handler_boots
-    skip_on_appveyor
-    in_handler(app) do |launcher|
-      hit(["http://0.0.0.0:#{ launcher.connected_port }/test"])
+    host = windows? ? "127.0.1.1" : "0.0.0.0"
+    opts = { Host: host }
+    in_handler(app, opts) do |launcher|
+      hit(["http://#{host}:#{ launcher.connected_port }/test"])
       assert_equal("/test", @input["PATH_INFO"])
     end
   end

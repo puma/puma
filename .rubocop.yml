@@ -1,6 +1,6 @@
 AllCops:
   DisabledByDefault: true
-  TargetRubyVersion: 1.9.3
+  TargetRubyVersion: 2.2
   DisplayCopNames: true
   StyleGuideCopsOnly: false
   Exclude:
@@ -51,41 +51,5 @@ Style/MethodDefParentheses:
 Style/TrailingCommaInArguments:
   Enabled: true
 
-Performance/Count:
-  Enabled: true
-
-Performance/Detect:
-  Enabled: true
-
-Performance/EndWith:
-  Enabled: true
-
-Performance/FlatMap:
-  Enabled: true
-
-Performance/HashEachMethods:
-  Enabled: true
-
-Performance/RangeInclude:
-  Enabled: true
-
-Performance/RedundantMerge:
-  Enabled: true
-
-Performance/RedundantSortBy:
-  Enabled: true
-
-Performance/ReverseEach:
-  Enabled: true
-
-Performance/Sample:
-  Enabled: true
-
-Performance/Size:
-  Enabled: true
-
-Performance/StartWith:
-  Enabled: true
-
-Performance/TimesMap:
+Performance:
   Enabled: true
