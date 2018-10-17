@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Puma
   class TCPLogger
     def initialize(logger, app, quiet=false)

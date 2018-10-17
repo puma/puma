@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'puma/runner'
 require 'puma/detect'
 require 'puma/plugin'

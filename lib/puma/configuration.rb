@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'puma/rack/builder'
 require 'puma/plugin'
 require 'puma/const'

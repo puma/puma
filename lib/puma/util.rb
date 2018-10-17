@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 major, minor, patch = RUBY_VERSION.split('.').map { |v| v.to_i }
 
 if major == 1 && minor == 9 && patch == 3 && RUBY_PATCHLEVEL < 125
