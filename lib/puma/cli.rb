@@ -100,6 +100,8 @@ module Puma
     def setup_options
       @conf = Configuration.new do |user_config, file_config|
         @parser = OptionParser.new do |o|
+          o.set_summary_width 38
+
           o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
             user_config.bind arg
           end
@@ -204,6 +206,11 @@ module Puma
           o.on "-w", "--workers COUNT",
             "Activate cluster mode: How many worker processes to create" do |arg|
             user_config.workers arg
+          end
+
+          o.on "--max-worker-terminations COUNT",
+            "Cluster mode: How many worker terminations to allow before terminating the parent process" do |arg|
+            user_config.max_worker_terminations arg
           end
 
           o.on "--tag NAME", "Additional text to display in process listing" do |arg|

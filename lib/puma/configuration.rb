@@ -175,6 +175,7 @@ module Puma
         :debug => false,
         :binds => ["tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"],
         :workers => 0,
+        :max_worker_terminations => nil,
         :daemon => false,
         :mode => :http,
         :worker_timeout => DefaultWorkerTimeout,

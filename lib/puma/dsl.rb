@@ -309,6 +309,13 @@ module Puma
       @options[:workers] = count.to_i
     end
 
+    # *Cluster mode only* The maximum number of worker terminations
+    # before the entire process is terminated.
+    #
+    def max_worker_terminations(count)
+      @options[:max_worker_terminations] = count.to_i
+    end
+
     # *Cluster mode only* Code to run immediately before master process
     # forks workers (once on boot). These hooks can block if necessary
     # to wait for background operations unknown to puma to finish before

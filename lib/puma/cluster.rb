@@ -26,6 +26,7 @@ module Puma
 
       @phase = 0
       @workers = []
+      @worker_terminations = 0
       @next_check = nil
 
       @phased_state = :idle
@@ -504,7 +505,7 @@ module Puma
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
                   force_check = true
                 when "t"
-                  w.dead!
+                  handle_worker_termination(w)
                   force_check = true
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
@@ -526,6 +527,21 @@ module Puma
         read.close
         @wakeup.close
       end
+    end
+
+    private
+
+    def handle_worker_termination(worker)
+      worker.dead!
+
+      return unless @options[:max_worker_terminations]
+
+      if @worker_terminations > @options[:max_worker_terminations]
+        log "! Max worker terminations reached, dying"
+        exit! 1
+      end
+
+      @worker_terminations += 1
     end
   end
 end
