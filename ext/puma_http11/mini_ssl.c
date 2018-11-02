@@ -189,12 +189,18 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   DH *dh = get_dh1024();
   SSL_CTX_set_tmp_dh(ctx, dh);
 
-#ifndef OPENSSL_NO_ECDH
-  EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_secp521r1);
+#if OPENSSL_VERSION_NUMBER < 0x10002000L
+  // Remove this case if OpenSSL 1.0.1 (now EOL) support is no
+  // longer needed.
+  EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
   if (ecdh) {
     SSL_CTX_set_tmp_ecdh(ctx, ecdh);
     EC_KEY_free(ecdh);
   }
+#elif OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+  // Prior to OpenSSL 1.1.0, servers must manually enable server-side ECDH
+  // negotiation.
+  SSL_CTX_set_ecdh_auto(ctx, 1);
 #endif
 
   ssl = SSL_new(ctx);
