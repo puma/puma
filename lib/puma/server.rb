@@ -269,10 +269,6 @@ module Puma
         end
 
         @notify.close
-
-        if @status != :restart
-          @binder.close
-        end
       end
 
       @events.fire :state, :done
@@ -428,10 +424,6 @@ module Puma
       ensure
         @check.close
         @notify.close
-
-        if @status != :restart
-          @binder.close
-        end
       end
 
       @events.fire :state, :done
