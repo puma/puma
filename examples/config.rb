@@ -163,6 +163,12 @@
 
 # preload_app!
 
+# Raise SignalException when Puma receives SIGTERM. This enables to suppress
+# exception in environments where SIGTERM is expected.
+#
+# raise_exception_on_sigterm true
+
+
 # Additional text to display in process listing
 #
 # tag 'app name'

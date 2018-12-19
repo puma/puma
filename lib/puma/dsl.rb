@@ -416,6 +416,16 @@ module Puma
       @options[:prune_bundler] = answer
     end
 
+    # In environments where SIGTERM is something expected, instructing
+    # puma to shutdown gracefully ( for example in Kubernetes, where
+    # rolling restart is guaranteed usually on infrastructure level )
+    # SignalException should not be raised for SIGTERM
+    #
+    # When set to false, if puma process receives SIGTERM, it won't raise SignalException
+    def raise_exception_on_sigterm(answer=true)
+      @options[:raise_exception_on_sigterm] = answer
+    end
+
     # Additional text to display in process listing
     def tag(string)
       @options[:tag] = string.to_s
