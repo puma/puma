@@ -296,13 +296,14 @@ module Puma
     def ssl_bind(host, port, opts)
       verify = opts.fetch(:verify_mode, 'none')
       no_tlsv1 = opts.fetch(:no_tlsv1, 'false')
+      ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
 
       if defined?(JRUBY_VERSION)
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}#{ca_additions}"
       else
         ssl_cipher_filter = "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" if opts[:ssl_cipher_filter]
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}#{ssl_cipher_filter}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}#{ssl_cipher_filter}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}#{ca_additions}"
       end
     end
 
