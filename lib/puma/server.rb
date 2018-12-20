@@ -16,10 +16,6 @@ require 'puma/util'
 
 require 'puma/puma_http11'
 
-unless Puma.const_defined? "IOBuffer"
-  require 'puma/io_buffer'
-end
-
 require 'socket'
 
 module Puma
