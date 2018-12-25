@@ -160,16 +160,23 @@ Need a bit of security? Use SSL sockets:
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 ```
+
 #### Controlling SSL Cipher Suites
-Need to use or avoid specific SSL cipher suites? Use ssl_cipher_filter or ssl_cipher_list options.
-#####Ruby:
+
+Need to use or avoid specific SSL cipher suites? Use `ssl_cipher_filter` or `ssl_cipher_list` options.
+
+##### Ruby:
+
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_cipher_filter=!aNULL:AES+SHA'
 ```
-#####JRuby:
+
+##### JRuby:
+
 ```
 $ puma -b 'ssl://127.0.0.1:9292?keystore=path_to_keystore&keystore-pass=keystore_password&ssl_cipher_list=TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA'
 ```
+
 See https://www.openssl.org/docs/man1.0.2/apps/ciphers.html for cipher filter format and full list of cipher suites.
 
 ### Control/Status Server
