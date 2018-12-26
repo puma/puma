@@ -166,7 +166,7 @@ Need to use or avoid specific SSL cipher suites? Use ssl_cipher_filter or ssl_ci
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_cipher_filter=!aNULL:AES+SHA'
 ```
-#####JRuby:
+##### JRuby:
 ```
 $ puma -b 'ssl://127.0.0.1:9292?keystore=path_to_keystore&keystore-pass=keystore_password&ssl_cipher_list=TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA'
 ```
