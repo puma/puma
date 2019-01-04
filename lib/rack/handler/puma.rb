@@ -16,6 +16,10 @@ module Rack
 
         default_options = DEFAULT_OPTIONS.dup
 
+        if options[:environment] == "development"
+          default_options[:Host] = "localhost"
+        end
+
         # Libraries pass in values such as :Port and there is no way to determine
         # if it is a default provided by the library or a special value provided
         # by the user. A special key `user_supplied_options` can be passed. This

@@ -79,6 +79,16 @@ class TestUserSuppliedOptionsPortIsSet < Minitest::Test
       end
     end
   end
+
+  def test_localhost_is_used_when_environment_is_development
+    user_port = 5001
+    @options[:environment] = "development"
+    @options[:Port] = user_port
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal ["tcp://localhost:#{user_port}"], conf.options[:binds]
+  end
 end
 
 class TestUserSuppliedOptionsHostIsSet < Minitest::Test
