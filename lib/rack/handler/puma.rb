@@ -49,6 +49,9 @@ module Rack
             self.set_host_port_to_config(host, port, user_config)
           end
 
+          if default_options[:Host]
+            file_config.set_default_host(default_options[:Host])
+          end
           self.set_host_port_to_config(default_options[:Host], default_options[:Port], default_config)
 
           user_config.app app
