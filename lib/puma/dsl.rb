@@ -57,6 +57,14 @@ module Puma
       @plugins.clear
     end
 
+    def set_default_host(host)
+      @options[:default_host] = host
+    end
+
+    def default_host
+      @options[:default_host] || Configuration::DefaultTCPHost
+    end
+
     def inject(&blk)
       instance_eval(&blk)
     end
@@ -140,7 +148,7 @@ module Puma
     # Define the TCP port to bind to. Use +bind+ for more advanced options.
     #
     def port(port, host=nil)
-      host ||= Configuration::DefaultTCPHost
+      host ||= default_host
       bind "tcp://#{host}:#{port}"
     end
 

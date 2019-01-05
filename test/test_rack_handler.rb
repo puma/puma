@@ -123,6 +123,44 @@ class TestUserSuppliedOptionsIsEmpty < Minitest::Test
       end
     end
   end
+
+  def test_default_host_when_using_config_file
+    user_port = 5001
+    file_port = 6001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
+
+        @options[:Host] = "localhost"
+        @options[:Port] = user_port
+        conf = Rack::Handler::Puma.config(->{}, @options)
+        conf.load
+
+        assert_equal ["tcp://localhost:#{file_port}"], conf.options[:binds]
+      end
+    end
+  end
+
+  def test_default_host_when_using_config_file_with_explicit_host
+    user_port = 5001
+    file_port = 6001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.open("config/puma.rb", "w") { |f| f << "port #{file_port}, '1.2.3.4'" }
+
+        @options[:Host] = "localhost"
+        @options[:Port] = user_port
+        conf = Rack::Handler::Puma.config(->{}, @options)
+        conf.load
+
+        assert_equal ["tcp://1.2.3.4:#{file_port}"], conf.options[:binds]
+      end
+    end
+  end
 end
 
 class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
