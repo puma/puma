@@ -1,3 +1,18 @@
+## Master
+
+* x features
+
+* x bugfixes
+
+## 3.12.1 / 2019-01-08
+
+* 1 features
+  * Internal strings are frozen (#1649)
+* 3 bugfixes
+  * Fix chunked ending check (#1607)
+  * Rack handler should use provided default host (#1700)
+  * Better support for detecting runtimes that support `fork` (#1630)
+
 ## 3.12.0 / 2018-07-13
 
 * 5 features:
