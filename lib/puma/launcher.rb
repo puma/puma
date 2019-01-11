@@ -367,6 +367,18 @@ module Puma
       lib = File.expand_path "lib"
       arg0[1,0] = ["-I", lib] if [lib, "lib"].include?($LOAD_PATH[0])
 
+      # Ruby 2.6 ships with Bundler 1.17, and we're requiring it early
+      # by putting `-rbundler/setup` in ENV['RUBYOPT']. If an application
+      # is using Bundler 2, the app's Gemfile will cause an error
+      # for Bundler 1.17, something along the lines of "You must use
+      # Bundler 2 or greater with this lockfile. (Bundler::LockfileError)".
+      #
+      # The code below makes sure that the process spawned during a restart
+      # will require the same version of Bundler as is used by the current process.
+      if spec = Gem.loaded_specs['bundler']
+        arg0[1,0] = spec.full_require_paths.flat_map {|p| ['-I', p] }
+      end
+
       if defined? Puma::WILD_ARGS
         @restart_argv = arg0 + Puma::WILD_ARGS + @original_argv
       else
