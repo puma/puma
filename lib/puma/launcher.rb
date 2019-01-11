@@ -376,7 +376,7 @@ module Puma
       # The code below makes sure that the process spawned during a restart
       # will require the same version of Bundler as is used by the current process.
       if spec = Gem.loaded_specs['bundler']
-        arg0[1,0] = spec.full_require_paths.flat_map {|p| ['-I', p] }
+        arg0[1, 0] = spec.full_require_paths.flat_map { |path| ['-I', path] }
       end
 
       if defined? Puma::WILD_ARGS
