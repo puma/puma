@@ -1,11 +1,9 @@
-dist: trusty
-sudo: false
-group: beta
+dist: xenial
 language: ruby
 cache: bundler
 
 before_install:
-  # rubygems 2.7.8 and greater include bundler
+  # rubygems 2.7.8 and greater include bundler, leave 2.6.0 untouched
   - |
     rv="$(ruby -e 'STDOUT.write RUBY_VERSION')";
     if   [ "$rv" \< "2.3" ]; then gem update --system 2.7.8 --no-document
@@ -13,13 +11,21 @@ before_install:
     fi
   - ruby -v && gem --version && bundle version
 
+before_script:
+  - bundle exec rake compile
+
+script:
+  - bundle exec rake
+
 rvm:
   - 2.2.10
   - 2.3.8
   - 2.4.5
   - 2.5.3
+  - 2.6
   - ruby-head
-  - jruby-9.2.0.0
+  - jruby-9.2.5.0
+  - jruby-head
 
 matrix:
   fast_finish: true
@@ -30,15 +36,14 @@ matrix:
       os: osx
     - rvm: 2.5.3
       os: osx
-    - rvm: jruby-head
-    - rvm: rbx-3
-      
+
   allow_failures:
+    - rvm: 2.6
     - rvm: ruby-head
     - rvm: ruby-head
       env: RUBYOPT="--jit"
+    - rvm: jruby-9.2.5.0
     - rvm: jruby-head
-    - rvm: rbx-3
 
 env:
   global:
