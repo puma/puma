@@ -275,6 +275,9 @@ module Puma
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
+      if s.getsockopt Socket::SOL_SOCKET, Socket::SO_REUSEPORT
+        s.setsockopt Socket::SOL_SOCKET, Socket::SO_REUSEPORT, true
+      end
       s.listen backlog
       @connected_port = s.addr[1]
 
