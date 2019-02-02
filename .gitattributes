@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text eol=lf
+# Turn off normalization for PNGs
+*.png binary
