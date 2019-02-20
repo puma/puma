@@ -301,7 +301,8 @@ module Puma
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
         bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
       else
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
+        ssl_cipher_filter = "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" if opts[:ssl_cipher_filter]
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}#{ssl_cipher_filter}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
       end
     end
 

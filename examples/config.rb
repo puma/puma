@@ -80,8 +80,10 @@
 # can also use the "ssl_bind" option.
 #
 # ssl_bind '127.0.0.1', '9292', {
+#   cert: path_to_cert,
 #   key: path_to_key,
-#   cert: path_to_cert
+#   ssl_cipher_filter: cipher_filter, # optional
+#   verify_mode: verify_mode,         # default 'none'
 # }
 # for JRuby additional keys are required:
 # keystore: path_to_keystore,
