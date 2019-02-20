@@ -658,6 +658,83 @@ EOF
     assert_equal "hello", body
   end
 
+  def test_chunked_request_pause_between_cr_lf_after_size_of_second_chunk
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    part1 = 'a' * 4200
+
+    chunked_body = "#{part1.size.to_s(16)}\r\n#{part1}\r\n1\r\nb\r\n0\r\n\r\n"
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "PUT /path HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+    sleep 0.1
+
+    sock << chunked_body[0..-10]
+
+    sleep 0.1
+
+    sock << chunked_body[-9..-1]
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal (part1 + 'b'), body
+  end
+
+  def test_chunked_request_pause_between_closing_cr_lf
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "PUT /path HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r"
+
+    sleep 1
+
+    sock << "\n0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal 'hello', body
+  end
+
+  def test_chunked_request_pause_before_closing_cr_lf
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "PUT /path HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello"
+
+    sleep 1
+
+    sock << "\r\n0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal 'hello', body
+  end
+
   def test_chunked_request_header_case
     body = nil
     @server.app = proc { |env|
@@ -677,6 +754,55 @@ EOF
     assert_equal "hello", body
   end
 
+  def test_chunked_keep_alive
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    h = header(sock)
+
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "hello", body
+
+    sock.close
+  end
+
+  def test_chunked_keep_alive_two_back_to_back
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    h = header(sock)
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "hello", body
+
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    sleep 0.1
+
+    h = header(sock)
+
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "goodbye", body
+
+    sock.close
+  end
+
   def test_empty_header_values
     @server.app = proc { |env| [200, {"X-Empty-Header" => ""}, []] }
 
@@ -690,5 +816,45 @@ EOF
     data = sock.read
 
     assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\n\r\n", data
+  end
+
+  def test_request_body_wait
+    request_body_wait = nil
+    @server.app = proc { |env|
+      request_body_wait = env['puma.request_body_wait']
+      [204, {}, []]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nh"
+    sleep 1
+    sock << "ello"
+
+    sock.gets
+
+    assert request_body_wait >= 1000
+  end
+
+  def test_request_body_wait_chunked
+    request_body_wait = nil
+    @server.app = proc { |env|
+      request_body_wait = env['puma.request_body_wait']
+      [204, {}, []]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
+    sleep 1
+    sock << "4\r\nello\r\n0\r\n"
+
+    sock.gets
+
+    assert request_body_wait >= 1000
   end
 end

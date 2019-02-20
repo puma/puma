@@ -1,109 +1,20 @@
-# cache cleanup 2018-03-16
-
-init:
-  - set PATH=C:\ruby%ruby_version%\bin;C:\Program Files\7-Zip;C:\Program Files\AppVeyor\BuildAgent;C:\Program Files\Git\cmd;C:\Windows\system32
-  # Download current trunk, install OpenSSL via trunk_pkgs.cmd file
-  - if %ruby_version%==_trunk (
-      appveyor DownloadFile https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z -FileName C:\ruby_trunk.7z &
-      7z x C:\ruby_trunk.7z -oC:\ruby_trunk &
-      C:\ruby_trunk\trunk_pkgs.cmd
-    )
-
 install:
-  # Install ragel
-  - if "%ri_file%"=="x64_2" ( C:\msys64\usr\bin\pacman -S --noconfirm mingw-w64-x86_64-ragel )
-  - if "%ri_file%"=="x86_2" ( C:\msys64\usr\bin\pacman -S --noconfirm mingw-w64-i686-ragel   )
-  
-  # Install ragel & download RI OpenSSL Knapsack package
-  # RI DevKit is only installed in Ruby23 and Ruby23-x64 folders
-  # RI2 MSYS2/MinGW OpenSSL package is standard Appveyor item
-  - if "%ri_file%"=="x86" (
-      appveyor DownloadFile https://dl.bintray.com/oneclick/OpenKnapsack/x86/openssl-1.0.2j-x86-windows.tar.lzma &
-      7z e openssl-1.0.2j-x86-windows.tar.lzma &
-      7z x -y openssl-1.0.2j-x86-windows.tar -oC:\ruby23\DevKit\mingw &
-      set b_config="--with-ssl-dir=C:/ruby23/DevKit/mingw --with-opt-include=C:/ruby23/DevKit/mingw/include" &
-      set SSL_CERT_FILE=C:/ruby24-x64/ssl/cert.pem &
-      C:\msys64\usr\bin\pacman -S --noconfirm mingw-w64-i686-ragel &
-      set PATH=%PATH%;C:\msys64\ming32\bin
-    )
-  - if "%ri_file%"=="x64" (
-      appveyor DownloadFile https://dl.bintray.com/oneclick/OpenKnapsack/x64/openssl-1.0.2j-x64-windows.tar.lzma &
-      7z e openssl-1.0.2j-x64-windows.tar.lzma &
-      7z x -y openssl-1.0.2j-x64-windows.tar -oC:\ruby23-x64\DevKit\mingw &
-      set b_config="--with-ssl-dir=C:/ruby23-x64/DevKit/mingw --with-opt-include=C:/ruby23-x64/DevKit/mingw/include" &
-      set SSL_CERT_FILE=C:/ruby24-x64/ssl/cert.pem &
-      C:\msys64\usr\bin\pacman -S --noconfirm mingw-w64-x86_64-ragel &
-      set PATH=%PATH%;C:\msys64\ming64\bin
-    )
-  - RAKEOPT: 
-  - APPVEYOR: true
-  - ruby --version
-  - gem --version
-  - bundle --version
-  - bundle install --without documentation --path C:/av_bundle
-
-  # Download & install current OpenSSL package for later RubyInstaller2 version(s)
-  - if %ruby_version%==25-x64 (
-      set openssl=mingw-w64-x86_64-openssl-1.1.0.g-1-any.pkg.tar.xz
-    )
-  - if %ruby_version%==25 (
-      set openssl=mingw-w64-i686-openssl-1.1.0.g-1-any.pkg.tar.xz
-    )
-  - set  dl_uri=https://dl.bintray.com/msp-greg/ruby_trunk
-  - if %ruby_version%==25-x64 (
-      C:\msys64\usr\bin\bash -lc "pacman-key -r 77D8FA18 --keyserver na.pool.sks-keyservers.net && pacman-key -f 77D8FA18 && pacman-key --lsign-key 77D8FA18" &
-      appveyor DownloadFile %dl_uri%/%openssl%     -FileName C:\%openssl%      &
-      appveyor DownloadFile %dl_uri%/%openssl%.sig -FileName C:\%openssl%.sig  &
-      C:\msys64\usr\bin\pacman -Rdd --noconfirm mingw-w64-x86_64-openssl &
-      C:\msys64\usr\bin\pacman -Udd --noconfirm --force C:\%openssl%
-    )
-  - if %ruby_version%==25 (
-      C:\msys64\usr\bin\bash -lc "pacman-key -r 77D8FA18 --keyserver na.pool.sks-keyservers.net && pacman-key -f 77D8FA18 && pacman-key --lsign-key 77D8FA18" &
-      appveyor DownloadFile %dl_uri%/%openssl%     -FileName C:\%openssl%      &
-      appveyor DownloadFile %dl_uri%/%openssl%.sig -FileName C:\%openssl%.sig  &
-      C:\msys64\usr\bin\pacman -Rdd --noconfirm mingw-w64-686-openssl &
-      C:\msys64\usr\bin\pacman -Udd --noconfirm --force C:\%openssl%
-    )
+  # download shared script files
+  - ps: >-
+      if ( !(Test-Path -Path ./shared -PathType Container) ) {
+        $uri = 'https://ci.appveyor.com/api/projects/MSP-Greg/av-gem-build-test/artifacts/shared.7z'
+        $7z  = 'C:\Program Files\7-Zip\7z.exe'
+        $fn = "$env:TEMP\shared.7z"
+        (New-Object System.Net.WebClient).DownloadFile($uri, $fn)
+        &$7z x $fn -owin_gem_test 1> $null
+        Remove-Item  -LiteralPath $fn -Force
+        Write-Host "Downloaded shared files" -ForegroundColor Yellow
+      }
 
 build_script:
-  - bundle exec rake -rdevkit compile -- %b_config%
-  
-test_script:
-  - set OPENSSL_DIR=
-  - bundle exec rake -rdevkit test TESTOPTS="--verbose"
-
-on_finish:
-- ruby -v
+  - ps: .\win_gem_test\puma.ps1 $env:gem_bits
 
 environment:
   matrix:
-    - ruby_version: _trunk
-      b_config: "--use-system-libraries"
-      ri_file: x64_2
-    - ruby_version: 25
-      b_config: "--use-system-libraries"
-      ri_file: x86_2
-    - ruby_version: 25-x64
-      b_config: "--use-system-libraries"
-      ri_file: x64_2
-    - ruby_version: 24
-      b_config: "--use-system-libraries"
-      ri_file: x86_2
-    - ruby_version: 24-x64
-      b_config: "--use-system-libraries"
-      ri_file: x64_2
-    - ruby_version: 23
-      ri_file: x86
-    - ruby_version: 23-x64
-      ri_file: x64
-    - ruby_version: 22
-      ri_file: x86
-    - ruby_version: 22-x64
-      ri_file: x64
-
-cache:
-  - C:\av_bundle
-
-branches:
-  only:
-    - master
+    - gem_bits: 64
+    - gem_bits: 32

@@ -56,15 +56,15 @@ class TestCLI < Minitest::Test
     s = TCPSocket.new "127.0.0.1", 9877
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
-    assert_equal '{ "backlog": 0, "running": 0 }', body.split(/\r?\n/).last
-    assert_equal '{ "backlog": 0, "running": 0 }', Puma.stats
+    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }', body.split(/\r?\n/).last
+    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }', Puma.stats
 
     cli.launcher.stop
     t.join
   end
 
-  unless Puma.jruby? || Puma.windows?
   def test_control_clustered
+    skip_on :jruby, :windows, suffix: " - Puma::Binder::UNIXServer is not defined"
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -95,13 +95,14 @@ class TestCLI < Minitest::Test
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
-    assert_match(/\{ "workers": 2, "phase": 0, "booted_workers": 2, "old_workers": 0, "worker_status": \[\{ "pid": \d+, "index": 0, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2 \} \},\{ "pid": \d+, "index": 1, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2 \} \}\] \}/, body.split("\r\n").last)
+    assert_match(/\{ "workers": 2, "phase": 0, "booted_workers": 2, "old_workers": 0, "worker_status": \[\{ "pid": \d+, "index": 0, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \},\{ "pid": \d+, "index": 1, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \}\] \}/, body.split("\r\n").last)
 
     cli.launcher.stop
     t.join
   end
 
   def test_control
+    skip_on :jruby, :windows, suffix: " - Puma::Binder::UNIXServer is not defined"
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -118,13 +119,14 @@ class TestCLI < Minitest::Test
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
 
-    assert_equal '{ "backlog": 0, "running": 0 }', body.split("\r\n").last
+    assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }', body.split("\r\n").last
 
     cli.launcher.stop
     t.join
   end
 
   def test_control_stop
+    skip_on :jruby, :windows, suffix: " - Puma::Binder::UNIXServer is not defined"
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -147,6 +149,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_gc_stats
+    skip_on :jruby, :windows, suffix: " - Puma::Binder::UNIXServer is not defined"
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -201,6 +204,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_tmp_control
+    skip_on :jruby
     url = "tcp://127.0.0.1:8232"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", "auto"]
     cli.launcher.write_state
@@ -217,6 +221,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_state_file_callback_filtering
+    skip_on :jruby, :windows, suffix: " - worker mode not supported"
     cli = Puma::CLI.new [ "--config", "test/config/state_file_testing_config.rb",
                           "--state", @tmp_path ]
     cli.launcher.write_state
@@ -226,8 +231,6 @@ class TestCLI < Minitest::Test
     keys_not_stripped = data.keys & Puma::CLI::KEYS_NOT_TO_PERSIST_IN_STATE
     assert_empty keys_not_stripped
   end
-
-  end # JRUBY or Windows
 
   def test_state
     url = "tcp://127.0.0.1:8232"

@@ -2,6 +2,7 @@ require_relative "helper"
 
 require "puma/cli"
 require "puma/control_cli"
+require "open3"
 
 # These don't run on travis because they're too fragile
 
@@ -67,7 +68,7 @@ class TestIntegration < Minitest::Test
   end
 
   def restart_server_and_listen(argv)
-    skip_on_appveyor
+    skip_on :windows
     server(argv)
     s = connect
     initial_reply = read_body(s)
@@ -115,7 +116,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_stop_via_pumactl
-    skip if Puma.jruby? || Puma.windows?
+    skip_on :jruby, :windows
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -148,7 +149,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_phased_restart_via_pumactl
-    skip if Puma.jruby? || Puma.windows? || ENV['CI']
+    skip_on :jruby, :windows, :ci, suffix: " - UNIX sockets are not recommended"
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -181,7 +182,7 @@ class TestIntegration < Minitest::Test
     until done
       @events.stdout.rewind
       log = @events.stdout.readlines.join("")
-      if log.match(/- Worker \d \(pid: \d+\) booted, phase: 1/)
+      if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
         assert_match(/TERM sent/, log)
         assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
         done = true
@@ -195,7 +196,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_kill_unknown_via_pumactl
-    skip if Puma.jruby? || Puma.windows?
+    skip_on :jruby, :windows
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
     # do not want to accidently kill a valid other process
@@ -220,7 +221,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_restart_closes_keepalive_sockets_workers
-    skip_on_jruby
+    skip_on :jruby
     _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
@@ -229,7 +230,7 @@ class TestIntegration < Minitest::Test
   def test_restart_restores_environment
     # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
     # next workers ENV
-    skip_on_jruby
+    skip_on :jruby
 
     initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
 
@@ -239,7 +240,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_single_mode
-    skip if Puma.jruby? || Puma.windows?
+    skip_on :jruby, :windows
 
     pid = start_forked_server("test/rackup/hello.ru")
     _, status = stop_forked_server(pid)
@@ -248,11 +249,38 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_clustered_mode
-    skip if Puma.jruby? || Puma.windows?
+    skip_on :jruby, :windows
 
     pid = start_forked_server("-w 2 test/rackup/hello.ru")
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
+  end
+
+  def test_not_accepts_new_connections_after_term_signal
+    skip_on :jruby, :windows
+
+    server('test/rackup/10seconds.ru')
+
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+    sleep 1 # ensure curl send a request
+
+    Process.kill(:TERM, @server.pid)
+    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
+
+    # Invoke a request which must be rejected
+    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+
+    assert nil != Process.getpgid(@server.pid) # ensure server is still running
+    assert nil != Process.getpgid(rejected_curl_wait_thread[:pid]) # ensure first curl invokation still in progress
+
+    curl_wait_thread.join
+    rejected_curl_wait_thread.join
+
+    assert_match /Hello World/, curl_stdout.read
+    assert_match /Connection refused/, rejected_curl_stderr.read
+
+    Process.wait(@server.pid)
+    @server = nil # prevent `#teardown` from killing already killed server
   end
 end

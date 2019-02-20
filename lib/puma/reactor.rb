@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'puma/util'
 require 'puma/minissl'
 
@@ -21,7 +23,7 @@ module Puma
   #
   # When the request is written to by the client then the `IO.select` will "wake up" and
   # return the references to any objects that caused it to "wake". The reactor
-  # then loops through each of these request objects, and sees if they're  complete. If they
+  # then loops through each of these request objects, and sees if they're complete. If they
   # have a full header and body then the reactor passes the request to a thread pool.
   # Once in a thread pool, a "worker thread" can run the the application's Ruby code against the request.
   #
@@ -36,7 +38,7 @@ module Puma
     # Creates an instance of Puma::Reactor
     #
     # The `server` argument is an instance of `Puma::Server`
-    # this is used to write a response for "low level errors"
+    # that is used to write a response for "low level errors"
     # when there is an exception inside of the reactor.
     #
     # The `app_pool` is an instance of `Puma::ThreadPool`.
@@ -92,7 +94,7 @@ module Puma
     # `ready` output looks like this: `[[#<Puma::Client:0x3fdc1103bee8 @ready=false>], [], []]`.
     #
     # Each element in the first entry is iterated over. The `Puma::Client` object is not
-    # the `@ready` pipe, so the reactor checks to see if it has the fully header and body with
+    # the `@ready` pipe, so the reactor checks to see if it has the full header and body with
     # the `Puma::Client#try_to_finish` method. If the full request has been sent,
     # then the request is passed off to the `@app_pool` thread pool so that a "worker thread"
     # can pick up the request and begin to execute application logic. This is done
@@ -108,9 +110,9 @@ module Puma
     # In addition to being woken via a write to one of the sockets the `IO.select` will
     # periodically "time out" of the sleep. One of the functions of this is to check for
     # any requests that have "timed out". At the end of the loop it's checked to see if
-    # the first element in the `@timeout` array has exceed it's allowed time. If so,
-    # the client object is removed from the timeout aray, a 408 response is written.
-    # Then it's connection is closed, and the object is removed from the `sockets` array
+    # the first element in the `@timeout` array has exceed its allowed time. If so,
+    # the client object is removed from the timeout array, a 408 response is written.
+    # Then its connection is closed, and the object is removed from the `sockets` array
     # that watches for new data.
     #
     # This behavior loops until all the objects that have timed out have been removed.
@@ -292,7 +294,7 @@ module Puma
     #
     # The main body of the reactor loop is in `run_internal` and it
     # will sleep on `IO.select`. When a new connection is added to the
-    # reactor it cannot be added directly to the `sockets` aray, because
+    # reactor it cannot be added directly to the `sockets` array, because
     # the `IO.select` will not be watching for it yet.
     #
     # Instead what needs to happen is that `IO.select` needs to be woken up,

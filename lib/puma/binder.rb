@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'uri'
 require 'socket'
 
@@ -90,19 +92,19 @@ module Puma
         case uri.scheme
         when "tcp"
           if fd = @inherited_fds.delete(str)
-            logger.log "* Inherited #{str}"
             io = inherit_tcp_listener uri.host, uri.port, fd
+            logger.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
-            logger.log "* Activated #{str}"
             io = inherit_tcp_listener uri.host, uri.port, sock
+            logger.log "* Activated #{str}"
           else
             params = Util.parse_query uri.query
 
             opt = params.key?('low_latency')
             bak = params.fetch('backlog', 1024).to_i
 
-            logger.log "* Listening on #{str}"
             io = add_tcp_listener uri.host, uri.port, opt, bak
+            logger.log "* Listening on #{str}"
           end
 
           @listeners << [str, io] if io
@@ -110,14 +112,12 @@ module Puma
           path = "#{uri.host}#{uri.path}".gsub("%20", " ")
 
           if fd = @inherited_fds.delete(str)
-            logger.log "* Inherited #{str}"
             io = inherit_unix_listener path, fd
+            logger.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :unix, path ])
-            logger.log "* Activated #{str}"
             io = inherit_unix_listener path, sock
+            logger.log "* Activated #{str}"
           else
-            logger.log "* Listening on #{str}"
-
             umask = nil
             mode = nil
             backlog = 1024
@@ -139,6 +139,7 @@ module Puma
             end
 
             io = add_unix_listener path, umask, mode, backlog
+            logger.log "* Listening on #{str}"
           end
 
           @listeners << [str, io]
@@ -186,6 +187,8 @@ module Puma
             ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
           end
 
+          ctx.no_tlsv1 = true if params['no_tlsv1'] == 'true'
+
           if params['verify_mode']
             ctx.verify_mode = case params['verify_mode']
                               when "peer"
@@ -204,11 +207,11 @@ module Puma
             logger.log "* Inherited #{str}"
             io = inherit_ssl_listener fd, ctx
           elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
-            logger.log "* Activated #{str}"
             io = inherit_ssl_listener sock, ctx
+            logger.log "* Activated #{str}"
           else
-            logger.log "* Listening on #{str}"
             io = add_ssl_listener uri.host, uri.port, ctx
+            logger.log "* Listening on #{str}"
           end
 
           @listeners << [str, io] if io

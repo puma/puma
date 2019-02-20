@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require 'optparse'
-require 'puma/state_file'
-require 'puma/const'
-require 'puma/detect'
-require 'puma/configuration'
+require_relative 'state_file'
+require_relative 'const'
+require_relative 'detect'
+require_relative 'configuration'
 require 'uri'
 require 'socket'
 
@@ -129,7 +131,7 @@ module Puma
       uri = URI.parse @control_url
 
       # create server object by scheme
-      @server = case uri.scheme
+      server = case uri.scheme
                 when "tcp"
                   TCPSocket.new uri.host, uri.port
                 when "unix"
@@ -147,9 +149,9 @@ module Puma
           url = url + "?token=#{@control_auth_token}"
         end
 
-        @server << "GET #{url} HTTP/1.0\r\n\r\n"
+        server << "GET #{url} HTTP/1.0\r\n\r\n"
 
-        unless data = @server.read
+        unless data = server.read
           raise "Server closed connection before responding"
         end
 
@@ -172,8 +174,8 @@ module Puma
         message "Command #{@command} sent success"
         message response.last if @command == "stats" || @command == "gc-stats"
       end
-
-      @server.close
+    ensure
+      server.close if server && !server.closed?
     end
 
     def send_signal

@@ -1,4 +1,10 @@
 require_relative "helper"
+require "puma/minissl"
+require "puma/puma_http11"
+
+#———————————————————————————————————————————————————————————————————————————————
+#             NOTE: ALL TESTS BYPASSED IF DISABLE_SSL IS TRUE
+#———————————————————————————————————————————————————————————————————————————————
 
 class SSLEventsHelper < ::Puma::Events
   attr_accessor :addr, :cert, :error
@@ -11,7 +17,11 @@ class SSLEventsHelper < ::Puma::Events
 end
 
 DISABLE_SSL = begin
+              Puma::Server.class
               Puma::MiniSSL.check
+              puts "", RUBY_DESCRIPTION
+              puts "Puma::MiniSSL OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION}",
+                   "                      OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION}", ""
             rescue
               true
             else
@@ -102,18 +112,18 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_ssl_v3_rejection
-    @http.ssl_version='SSLv3'
+    @http.ssl_version= :SSLv3
     assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
         Net::HTTP::Get.new '/'
       end
     end
     unless Puma.jruby?
-      assert_match(/wrong version number|no protocols available/, @events.error.message) if @events.error
+      assert_match(/wrong version number|no protocols available|version too low/, @events.error.message) if @events.error
     end
   end
 
-end
+end unless DISABLE_SSL
 
 # client-side TLS authentication tests
 class TestPumaServerSSLClient < Minitest::Test
@@ -137,14 +147,14 @@ class TestPumaServerSSLClient < Minitest::Test
 
     events = SSLEventsHelper.new STDOUT, STDERR
     server = Puma::Server.new app, events
-    ssl_listener = server.add_ssl_listener host, port, ctx
+    server.add_ssl_listener host, port, ctx
     server.run
 
     http = Net::HTTP.new host, port
     http.use_ssl = true
     http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-    blk.call(http)
+    yield http
 
     client_error = false
     begin
@@ -152,7 +162,7 @@ class TestPumaServerSSLClient < Minitest::Test
         req = Net::HTTP::Get.new "/", {}
         http.request(req)
       end
-    rescue OpenSSL::SSL::SSLError
+    rescue OpenSSL::SSL::SSLError, EOFError
       client_error = true
     end
 
@@ -165,7 +175,7 @@ class TestPumaServerSSLClient < Minitest::Test
       assert_equal host, events.addr if error
       assert_equal subject, events.cert.subject.to_s if subject
     end
-
+  ensure
     server.stop(true)
   end
 
@@ -211,4 +221,4 @@ class TestPumaServerSSLClient < Minitest::Test
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
   end
-end
+end unless DISABLE_SSL

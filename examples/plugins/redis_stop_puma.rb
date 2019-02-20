@@ -11,7 +11,7 @@ require 'redis'
 # 1. Add this plugin to your 'lib' directory
 # 2. In the `puma.rb` config file add the following lines
 #    === Plugins ===
-#    require './lib/puma/plugins/redis_stop_puma'
+#    require './lib/puma/plugin/redis_stop_puma'
 #    plugin 'redis_stop_puma'
 # 3. Now, when you set the redis key "puma::restart::web.1", your web.1 dyno
 #    will restart

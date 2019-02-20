@@ -43,6 +43,41 @@ class TestConfigFile < Minitest::Test
     end
   end
 
+  def test_ssl_bind
+    skip_on :jruby
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert",
+        key: "/path/to/key",
+        verify_mode: "the_verify_mode",
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
+  def test_ssl_bind_with_cipher_filter
+    skip_on :jruby
+
+    cipher_filter = "!aNULL:AES+SHA"
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "cert",
+        key: "key",
+        ssl_cipher_filter: cipher_filter,
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert ssl_binding.include?("&ssl_cipher_filter=#{cipher_filter}")
+  end
+
   def test_lowlevel_error_handler_DSL
     conf = Puma::Configuration.new do |c|
       c.load "test/config/app.rb"

@@ -3,27 +3,43 @@ sudo: false
 group: beta
 language: ruby
 cache: bundler
+
 before_install:
-  # https://github.com/travis-ci/travis-ci/issues/9383#issuecomment-377680108
-  - gem install bundler
-branches:
-  only:
-    - "master"
+  # rubygems 2.7.8 and greater include bundler
+  - |
+    rv="$(ruby -e 'STDOUT.write RUBY_VERSION')";
+    if   [ "$rv" \< "2.3" ]; then gem update --system 2.7.8 --no-document
+    elif [ "$rv" \< "2.6" ]; then gem update --system --no-document --conservative
+    fi
+  - ruby -v && gem --version && bundle version
+
 rvm:
   - 2.2.10
-  - 2.3.7
-  - 2.4.4
-  - 2.5.1
+  - 2.3.8
+  - 2.4.5
+  - 2.5.3
   - ruby-head
-  - jruby-9.1.17.0
-  - jruby-head
-  - rbx-3
+  - jruby-9.2.0.0
+
 matrix:
   fast_finish: true
-  allow_failures:
+  include:
+    - rvm: ruby-head
+      env: RUBYOPT="--jit"
+    - rvm: 2.3.8
+      os: osx
+    - rvm: 2.5.3
+      os: osx
     - rvm: jruby-head
     - rvm: rbx-3
+      
+  allow_failures:
     - rvm: ruby-head
+    - rvm: ruby-head
+      env: RUBYOPT="--jit"
+    - rvm: jruby-head
+    - rvm: rbx-3
+
 env:
   global:
     - TESTOPTS="-v"

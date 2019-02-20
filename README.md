@@ -7,8 +7,8 @@
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
 [![Build Status](https://secure.travis-ci.org/puma/puma.svg)](http://travis-ci.org/puma/puma)
 [![AppVeyor](https://img.shields.io/appveyor/ci/nateberkopec/puma.svg)](https://ci.appveyor.com/project/nateberkopec/puma)
-[![Dependency Status](https://gemnasium.com/puma/puma.svg)](https://gemnasium.com/puma/puma)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
+[![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
 
 Puma is a **simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications** in development and production.
 
@@ -25,7 +25,7 @@ On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Rub
 ```
 $ gem install puma
 $ puma <any rackup (*.ru) file>
-```  
+```
 
 ## Frameworks
 
@@ -160,17 +160,30 @@ Need a bit of security? Use SSL sockets:
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 ```
+
 #### Controlling SSL Cipher Suites
-Need to use or avoid specific SSL cipher suites? Use ssl_cipher_filter or ssl_cipher_list options.
-#####Ruby:
+
+Need to use or avoid specific SSL cipher suites? Use `ssl_cipher_filter` or `ssl_cipher_list` options.
+
+##### Ruby:
+
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_cipher_filter=!aNULL:AES+SHA'
 ```
-#####JRuby:
+
+##### JRuby:
+
 ```
 $ puma -b 'ssl://127.0.0.1:9292?keystore=path_to_keystore&keystore-pass=keystore_password&ssl_cipher_list=TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA'
 ```
+
 See https://www.openssl.org/docs/man1.0.2/apps/ciphers.html for cipher filter format and full list of cipher suites.
+
+Don't want to use insecure TLSv1.0 ?
+
+```
+$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&no_tlsv1=true'
+```
 
 ### Control/Status Server
 

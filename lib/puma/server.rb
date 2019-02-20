@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'stringio'
 
 require 'puma/thread_pool'
@@ -13,10 +15,6 @@ require 'puma/accept_nonblock'
 require 'puma/util'
 
 require 'puma/puma_http11'
-
-unless Puma.const_defined? "IOBuffer"
-  require 'puma/io_buffer'
-end
 
 require 'socket'
 
@@ -77,7 +75,6 @@ module Puma
       @first_data_timeout = options.fetch(:first_data_timeout, FIRST_DATA_TIMEOUT)
 
       @binder = Binder.new(events)
-      @own_binder = true
 
       @leak_stack_on_error = true
 
@@ -100,7 +97,6 @@ module Puma
 
     def inherit_binder(bind)
       @binder = bind
-      @own_binder = false
     end
 
     def tcp_mode!
@@ -166,6 +162,18 @@ module Puma
 
     def running
       @thread_pool and @thread_pool.spawned
+    end
+
+
+    # This number represents the number of requests that
+    # the server is capable of taking right now.
+    #
+    # For example if the number is 5 then it means
+    # there are 5 threads sitting idle ready to take
+    # a request. If one request comes in, then the
+    # value would be 4 until it finishes processing.
+    def pool_capacity
+      @thread_pool and @thread_pool.pool_capacity
     end
 
     # Lopez Mode == raw tcp apps
@@ -257,10 +265,10 @@ module Puma
         end
 
         # Prevent can't modify frozen IOError (RuntimeError)
-        @notify.close rescue nil
-
-        if @status != :restart and @own_binder
-          @binder.close
+        begin
+          @notify.close
+        rescue IOError
+          # no biggy
         end
       end
 
@@ -385,7 +393,10 @@ module Puma
                     end
 
                     pool << client
-                    pool.wait_until_not_full
+                    busy_threads = pool.wait_until_not_full
+                    if busy_threads == 0
+                      @options[:out_of_band].each(&:call) if @options[:out_of_band]
+                    end
                   end
                 rescue SystemCallError
                   # nothing
@@ -417,10 +428,6 @@ module Puma
       ensure
         @check.close
         @notify.close
-
-        if @status != :restart and @own_binder
-          @binder.close
-        end
       end
 
       @events.fire :state, :done
@@ -927,6 +934,10 @@ module Puma
         end
 
         @events.debug "Drained #{count} additional connections."
+      end
+
+      if @status != :restart
+        @binder.close
       end
 
       if @thread_pool

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'thread'
 
 module Puma
@@ -58,7 +60,7 @@ module Puma
       @clean_thread_locals = false
     end
 
-    attr_reader :spawned, :trim_requested
+    attr_reader :spawned, :trim_requested, :waiting
     attr_accessor :clean_thread_locals
 
     def self.clean_thread_locals
@@ -71,6 +73,10 @@ module Puma
     #
     def backlog
       @mutex.synchronize { @todo.size }
+    end
+
+    def pool_capacity
+      waiting + (@max - spawned)
     end
 
     # :nodoc:
@@ -188,6 +194,9 @@ module Puma
     # method would not block and another request would be added into the reactor
     # by the server. This would continue until a fully bufferend request
     # makes it through the reactor and can then be processed by the thread pool.
+    #
+    # Returns the current number of busy threads, or +nil+ if shutting down.
+    #
     def wait_until_not_full
       @mutex.synchronize do
         while true
@@ -197,7 +206,8 @@ module Puma
           # is work queued that cannot be handled by waiting
           # threads, then accept more work until we would
           # spin up the max number of threads.
-          return if @todo.size - @waiting < @max - @spawned
+          busy_threads = @spawned - @waiting + @todo.size
+          return busy_threads if @max > busy_threads
 
           @not_full.wait @mutex
         end

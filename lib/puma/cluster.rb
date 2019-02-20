@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'puma/runner'
 require 'puma/util'
 require 'puma/plugin'
@@ -292,7 +294,9 @@ module Puma
           begin
             b = server.backlog || 0
             r = server.running || 0
-            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r} }\n!
+            t = server.pool_capacity || 0
+            m = server.max_threads || 0
+            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m} }\n!
             io << payload
           rescue IOError
             Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
