@@ -158,7 +158,13 @@ public class MiniSSL extends RubyObject {
     sslCtx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
     engine = sslCtx.createSSLEngine();
 
-    String[] protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" };
+    String[] protocols;
+    if(miniSSLContext.callMethod(threadContext, "no_tlsv1").isTrue()) {
+        protocols = new String[] { "TLSv1.1", "TLSv1.2" };
+    } else {
+        protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" };
+    }
+
     engine.setEnabledProtocols(protocols);
     engine.setUseClientMode(false);
 
