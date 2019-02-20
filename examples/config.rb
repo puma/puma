@@ -176,7 +176,8 @@
 # the given timeout. If not the worker process will be restarted. This is
 # not a request timeout, it is to protect against a hung or dead process.
 # Setting this value will not protect against slow requests.
-# Default value is 60 seconds.
+#
+# The minimum value is 6 seconds, the default value is 60 seconds.
 #
 # worker_timeout 60
 
