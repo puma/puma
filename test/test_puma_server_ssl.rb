@@ -1,6 +1,8 @@
 require_relative "helper"
 require "puma/minissl"
 require "puma/puma_http11"
+# net/http (loaded in helper) does not necessarily load OpenSSL
+require "openssl" unless Object.const_defined? :OpenSSL
 
 #———————————————————————————————————————————————————————————————————————————————
 #             NOTE: ALL TESTS BYPASSED IF DISABLE_SSL IS TRUE
@@ -113,13 +115,15 @@ class TestPumaServerSSL < Minitest::Test
 
   def test_ssl_v3_rejection
     @http.ssl_version= :SSLv3
-    assert_raises(OpenSSL::SSL::SSLError) do
+    # Ruby 2.4.5 on Travis raises ArgumentError
+    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
       @http.start do
         Net::HTTP::Get.new '/'
       end
     end
     unless Puma.jruby?
-      assert_match(/wrong version number|no protocols available|version too low/, @events.error.message) if @events.error
+      msg = /wrong version number|no protocols available|version too low|unknown SSL method/
+      assert_match(msg, @events.error.message) if @events.error
     end
   end
 
