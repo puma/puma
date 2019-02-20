@@ -73,16 +73,6 @@ else
   task :test => [:compile]
 end
 
-task :test => [:ensure_no_puma_gem]
-task :ensure_no_puma_gem do
-  Bundler.with_clean_env do
-    out = `gem list puma`.strip
-    if !$?.success? || out != ""
-      abort "No other puma version should be installed to avoid false positives or loading it by accident but found #{out}"
-    end
-  end
-end
-
 namespace :test do
   desc "Run the integration tests"
   task :integration do
