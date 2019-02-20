@@ -179,6 +179,12 @@ $ puma -b 'ssl://127.0.0.1:9292?keystore=path_to_keystore&keystore-pass=keystore
 
 See https://www.openssl.org/docs/man1.0.2/apps/ciphers.html for cipher filter format and full list of cipher suites.
 
+Don't want to use insecure TLSv1.0 ?
+
+```
+$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&no_tlsv1=true'
+```
+
 ### Control/Status Server
 
 Puma has a built-in status/control app that can be used to query and control Puma itself.
