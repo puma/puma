@@ -38,6 +38,10 @@ Here are some rules of thumb:
 * As you grow more confident in the thread safety of your app, you can tune the
   workers down and the threads up.
 
+#### Ubuntu / Systemd (Systemctl) Installation
+
+See [systemd.md](systemd.md)
+
 #### Worker utilization
 
 **How do you know if you've got enough (or too many workers)?**
