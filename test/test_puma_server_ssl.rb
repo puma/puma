@@ -147,7 +147,7 @@ class TestPumaServerSSLClient < Minitest::Test
 
     events = SSLEventsHelper.new STDOUT, STDERR
     server = Puma::Server.new app, events
-    ssl_listener = server.add_ssl_listener host, port, ctx
+    server.add_ssl_listener host, port, ctx
     server.run
 
     http = Net::HTTP.new host, port
