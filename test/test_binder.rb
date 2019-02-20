@@ -56,8 +56,7 @@ class TestBinder < Minitest::Test
   end
 
   def test_binder_parses_tlsv1_disabled
-    skip_on_appveyor
-    skip_on_jruby
+    skip_on :jruby
 
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
@@ -70,8 +69,7 @@ class TestBinder < Minitest::Test
   end
 
   def test_binder_parses_tlsv1_enabled
-    skip_on_appveyor
-    skip_on_jruby
+    skip_on :jruby
 
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
@@ -84,8 +82,7 @@ class TestBinder < Minitest::Test
   end
 
   def test_binder_parses_tlsv1_unspecified_defaults_to_enabled
-    skip_on_appveyor
-    skip_on_jruby
+    skip_on :jruby
 
     key =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
