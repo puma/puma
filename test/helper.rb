@@ -71,7 +71,28 @@ if ENV['CI']
   Minitest::Retry.use!
 end
 
-module SkipTestsBasedOnRubyEngine
+module TestSkips
+
+  @@next_port = 9000
+
+  # usage: skip NO_FORK_MSG unless HAS_FORK
+  # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
+  HAS_FORK = ::Process.respond_to? :fork
+  NO_FORK_MSG = "Kernel.fork isn't available on the #{RUBY_PLATFORM} platform"
+
+  # socket is required by puma
+  # usage: skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+  UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
+  UNIX_SKT_MSG = "UnixSockets aren't available on the #{RUBY_PLATFORM} platform"
+
+  # usage: skip_unless_signal_exist? :USR2
+  def skip_unless_signal_exist?(sig, bt: caller)
+    signal = sig.to_s
+    unless Signal.list.key? signal
+      skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
+    end
+  end
+
   # called with one or more params, like skip_on :jruby, :windows
   # optional suffix kwarg is appended to the skip message
   # optional suffix bt should generally not used
@@ -98,6 +119,10 @@ module SkipTestsBasedOnRubyEngine
     end
     skip skip_msg, bt if skip_msg
   end
+
+  def next_port(incr = 1)
+    @@next_port += incr
+  end
 end
 
-Minitest::Test.include SkipTestsBasedOnRubyEngine
+Minitest::Test.include TestSkips
