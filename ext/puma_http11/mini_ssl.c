@@ -142,6 +142,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   VALUE obj;
   SSL_CTX* ctx;
   SSL* ssl;
+  int ssl_options;
 
   ms_conn* conn = engine_alloc(self, &obj);
 
@@ -164,6 +165,10 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   ID sym_ssl_cipher_filter = rb_intern("ssl_cipher_filter");
   VALUE ssl_cipher_filter = rb_funcall(mini_ssl_ctx, sym_ssl_cipher_filter, 0);
 
+  ID sym_no_tlsv1 = rb_intern("no_tlsv1");
+  VALUE no_tlsv1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1, 0);
+
+
   ctx = SSL_CTX_new(SSLv23_server_method());
   conn->ctx = ctx;
 
@@ -175,7 +180,12 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
     SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL);
   }
 
-  SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_COMPRESSION);
+  ssl_options  = SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_COMPRESSION;
+
+  if(RTEST(no_tlsv1)) {
+    ssl_options |= SSL_OP_NO_TLSv1;
+  }
+  SSL_CTX_set_options(ctx, ssl_options);
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
   if (!NIL_P(ssl_cipher_filter)) {
