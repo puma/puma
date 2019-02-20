@@ -62,7 +62,7 @@ module Puma
       @timeouts = []
 
       mon = @selector.register(@ready, :r)
-      mon.value = :wakeup
+      mon.value = @ready
 
       @sockets = [mon]
     end
@@ -154,19 +154,32 @@ module Puma
 
         if ready
           ready.each do |m|
-            if m.value == :wakeup
+            if m.value == @ready
               @mutex.synchronize do
                 case @ready.read(1)
                 when "*"
-                  sockets += @input.map { |i|
-                    mon = selector.register(i, :r)
-                    mon.value = i
+                  sockets.concat(@input.map { |c|
+                    mon = nil
+                    begin
+                      mon = selector.register(c, :r)
+                    rescue ArgumentError
+                      sockets.delete_if { |sm| sm.value.to_io == c.to_io }
+                      selector.deregister(c)
+                      mon = selector.register(c, :r)
+                    end
+
+                    mon.value = c
+                    @timeouts << mon if c.timeout_at
+                    sockets << mon
                     mon
-                  }
+                  })
                   @input.clear
+
+                  @timeouts.sort! { |a,b| a.value.timeout_at <=> b.value.timeout_at }
+                  calculate_sleep
                 when "c"
                   sockets.delete_if do |sm|
-                    if sm.value == :wakeup
+                    if sm.value == @ready
                       false
                     else
                       sm.value.close
@@ -186,7 +199,7 @@ module Puma
               # it's in use!
               if c.timeout_at
                 @mutex.synchronize do
-                  @timeouts.delete c
+                  @timeouts.delete m
                 end
               end
 
@@ -212,7 +225,12 @@ module Puma
                 @server.lowlevel_error(e, c.env)
 
                 ssl_socket = c.io
-                addr = ssl_socket.peeraddr.last
+                begin
+                  addr = ssl_socket.peeraddr.last
+                rescue IOError
+                  addr = "<unknown>"
+                end
+
                 cert = ssl_socket.peercert
 
                 c.close
@@ -249,7 +267,7 @@ module Puma
           @mutex.synchronize do
             now = Time.now
 
-            while @timeouts.first.timeout_at < now
+            while @timeouts.first.value.timeout_at < now
               m = @timeouts.shift
               c = m.value
               c.write_408 if c.in_data_phase
@@ -305,7 +323,7 @@ module Puma
       if @timeouts.empty?
         @sleep_for = DefaultSleepFor
       else
-        diff = @timeouts.first.timeout_at.to_f - Time.now.to_f
+        diff = @timeouts.first.value.timeout_at.to_f - Time.now.to_f
 
         if diff < 0.0
           @sleep_for = 0
@@ -344,13 +362,6 @@ module Puma
       @mutex.synchronize do
         @input << c
         @trigger << "*"
-
-        if c.timeout_at
-          @timeouts << c
-          @timeouts.sort! { |a,b| a.timeout_at <=> b.timeout_at }
-
-          calculate_sleep
-        end
       end
     end
 
