@@ -2,6 +2,7 @@ require_relative "helper"
 
 require "puma/cli"
 require "puma/control_cli"
+require "open3"
 
 # These don't run on travis because they're too fragile
 
@@ -254,5 +255,32 @@ class TestIntegration < Minitest::Test
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
+  end
+
+  def test_not_accepts_new_connections_after_term_signal
+    skip_on :jruby, :windows
+
+    server('test/rackup/10seconds.ru')
+
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+    sleep 1 # ensure curl send a request
+
+    Process.kill(:TERM, @server.pid)
+    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
+
+    # Invoke a request which must be rejected
+    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+
+    assert nil != Process.getpgid(@server.pid) # ensure server is still running
+    assert nil != Process.getpgid(rejected_curl_wait_thread[:pid]) # ensure first curl invokation still in progress
+
+    curl_wait_thread.join
+    rejected_curl_wait_thread.join
+
+    assert_match /Hello World/, curl_stdout.read
+    assert_match /Connection refused/, rejected_curl_stderr.read
+
+    Process.wait(@server.pid)
+    @server = nil # prevent `#teardown` from killing already killed server
   end
 end
