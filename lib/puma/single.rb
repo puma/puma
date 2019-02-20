@@ -26,7 +26,7 @@ module Puma
     end
 
     def stop
-      @server.stop false
+      @server.stop(false) if @server
     end
 
     def halt
@@ -36,7 +36,7 @@ module Puma
     def stop_blocked
       log "- Gracefully stopping, waiting for requests to finish"
       @control.stop(true) if @control
-      @server.stop(true)
+      @server.stop(true) if @server
     end
 
     def jruby_daemon?

@@ -119,7 +119,7 @@ class TestPumaServerSSL < Minitest::Test
       end
     end
     unless Puma.jruby?
-      assert_match(/wrong version number|no protocols available/, @events.error.message) if @events.error
+      assert_match(/wrong version number|no protocols available|version too low/, @events.error.message) if @events.error
     end
   end
 
@@ -147,7 +147,7 @@ class TestPumaServerSSLClient < Minitest::Test
 
     events = SSLEventsHelper.new STDOUT, STDERR
     server = Puma::Server.new app, events
-    ssl_listener = server.add_ssl_listener host, port, ctx
+    server.add_ssl_listener host, port, ctx
     server.run
 
     http = Net::HTTP.new host, port
