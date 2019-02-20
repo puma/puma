@@ -197,7 +197,7 @@ class TestCLI < Minitest::Test
     gc_count_after = gc_stats["count"].to_i
 
     # Hitting the /gc route should increment the count by 1
-    assert_equal gc_count_before + 1, gc_count_after
+    assert(gc_count_before < gc_count_after, "make sure a gc has happened")
 
     cli.launcher.stop
     t.join

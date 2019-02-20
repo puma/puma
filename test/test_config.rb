@@ -56,7 +56,7 @@ class TestConfigFile < Minitest::Test
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode"
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1=false"
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
