@@ -3,6 +3,8 @@
 require 'puma/util'
 require 'puma/minissl'
 
+require 'nio'
+
 module Puma
   # Internal Docs, Not a public interface.
   #
@@ -49,6 +51,8 @@ module Puma
       @events = server.events
       @app_pool = app_pool
 
+      @selector = NIO::Selector.new
+
       @mutex = Mutex.new
 
       # Read / Write pipes to wake up internal while loop
@@ -57,7 +61,10 @@ module Puma
       @sleep_for = DefaultSleepFor
       @timeouts = []
 
-      @sockets = [@ready]
+      mon = @selector.register(@ready, :r)
+      mon.value = :wakeup
+
+      @sockets = [mon]
     end
 
     private
@@ -122,36 +129,48 @@ module Puma
     # This calculation happens in `calculate_sleep`.
     def run_internal
       sockets = @sockets
+      selector = @selector
 
       while true
         begin
-          ready = IO.select sockets, nil, nil, @sleep_for
+          ready = selector.select @sleep_for
         rescue IOError => e
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-          if sockets.any? { |socket| socket.closed? }
+          if sockets.any? { |socket| m.value.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
             STDERR.puts e.backtrace
-            sockets = sockets.reject { |socket| socket.closed? }
+            sockets = sockets.reject do |socket|
+              if m.value.closed?
+                selector.deregister(socket)
+                true
+              end
+            end
+
             retry
           else
             raise
           end
         end
 
-        if ready and reads = ready[0]
-          reads.each do |c|
-            if c == @ready
+        if ready
+          ready.each do |m|
+            if m.value == :wakeup
               @mutex.synchronize do
                 case @ready.read(1)
                 when "*"
-                  sockets += @input
+                  sockets += @input.map { |i|
+                    mon = selector.register(i, :r)
+                    mon.value = i
+                    mon
+                  }
                   @input.clear
                 when "c"
-                  sockets.delete_if do |s|
-                    if s == @ready
+                  sockets.delete_if do |sm|
+                    if sm.value == :wakeup
                       false
                     else
-                      s.close
+                      sm.value.close
+                      selector.deregister sm
                       true
                     end
                   end
@@ -160,6 +179,8 @@ module Puma
                 end
               end
             else
+              c = m.value
+
               # We have to be sure to remove it from the timeout
               # list or we'll accidentally close the socket when
               # it's in use!
@@ -172,7 +193,8 @@ module Puma
               begin
                 if c.try_to_finish
                   @app_pool << c
-                  sockets.delete c
+                  selector.deregister m
+                  sockets.delete m
                 end
 
               # Don't report these to the lowlevel_error handler, otherwise
@@ -182,7 +204,8 @@ module Puma
                 c.write_500
                 c.close
 
-                sockets.delete c
+                selector.deregister m
+                sockets.delete m
 
               # SSL handshake failure
               rescue MiniSSL::SSLError => e
@@ -193,7 +216,8 @@ module Puma
                 cert = ssl_socket.peercert
 
                 c.close
-                sockets.delete c
+                selector.deregister m
+                sockets.delete m
 
                 @events.ssl_error @server, addr, cert, e
 
@@ -204,7 +228,8 @@ module Puma
                 c.write_400
                 c.close
 
-                sockets.delete c
+                selector.deregister m
+                sockets.delete m
 
                 @events.parse_error @server, c.env, e
               rescue StandardError => e
@@ -213,7 +238,8 @@ module Puma
                 c.write_500
                 c.close
 
-                sockets.delete c
+                selector.deregister m
+                sockets.delete m
               end
             end
           end
@@ -224,10 +250,13 @@ module Puma
             now = Time.now
 
             while @timeouts.first.timeout_at < now
-              c = @timeouts.shift
+              m = @timeouts.shift
+              c = m.value
               c.write_408 if c.in_data_phase
               c.close
-              sockets.delete c
+
+              selector.deregister m
+              sockets.delete m
 
               break if @timeouts.empty?
             end
