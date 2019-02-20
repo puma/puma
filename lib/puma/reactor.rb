@@ -64,7 +64,7 @@ module Puma
       mon = @selector.register(@ready, :r)
       mon.value = @ready
 
-      @sockets = [mon]
+      @monitors = [mon]
     end
 
     private
@@ -128,7 +128,7 @@ module Puma
     # will be set to be equal to the amount of time it will take for the next timeout to occur.
     # This calculation happens in `calculate_sleep`.
     def run_internal
-      sockets = @sockets
+      monitors = @monitors
       selector = @selector
 
       while true
@@ -136,12 +136,13 @@ module Puma
           ready = selector.select @sleep_for
         rescue IOError => e
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-          if sockets.any? { |socket| m.value.closed? }
+          if monitors.any? { |mon| mon.value.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
             STDERR.puts e.backtrace
-            sockets = sockets.reject do |socket|
-              if m.value.closed?
-                selector.deregister(socket)
+
+            monitors.reject! do |mon|
+              if mon.value.closed?
+                selector.deregister mon
                 true
               end
             end
@@ -153,37 +154,43 @@ module Puma
         end
 
         if ready
-          ready.each do |m|
-            if m.value == @ready
+          ready.each do |mon|
+            if mon.value == @ready
               @mutex.synchronize do
                 case @ready.read(1)
                 when "*"
-                  sockets.concat(@input.map { |c|
+                  @input.each do |c|
                     mon = nil
                     begin
-                      mon = selector.register(c, :r)
-                    rescue ArgumentError
-                      sockets.delete_if { |sm| sm.value.to_io == c.to_io }
-                      selector.deregister(c)
-                      mon = selector.register(c, :r)
+                      begin
+                        mon = selector.register(c, :r)
+                      rescue ArgumentError
+                        # There is a bug where we seem to be registering an already registered
+                        # client. This code deals with this situation but I wish we didn't have to.
+                        monitors.delete_if { |submon| submon.value.to_io == c.to_io }
+                        selector.deregister(c)
+                        mon = selector.register(c, :r)
+                      end
+                    rescue IOError
+                      # Means that the io is closed, so we should ignore this request
+                      # entirely
+                    else
+                      mon.value = c
+                      @timeouts << mon if c.timeout_at
+                      monitors << mon
                     end
-
-                    mon.value = c
-                    @timeouts << mon if c.timeout_at
-                    sockets << mon
-                    mon
-                  })
+                  end
                   @input.clear
 
                   @timeouts.sort! { |a,b| a.value.timeout_at <=> b.value.timeout_at }
                   calculate_sleep
                 when "c"
-                  sockets.delete_if do |sm|
-                    if sm.value == @ready
+                  monitors.reject! do |submon|
+                    if submon.value == @ready
                       false
                     else
-                      sm.value.close
-                      selector.deregister sm
+                      submon.value.close
+                      selector.deregister submon
                       true
                     end
                   end
@@ -192,22 +199,21 @@ module Puma
                 end
               end
             else
-              c = m.value
+              c = mon.value
 
               # We have to be sure to remove it from the timeout
               # list or we'll accidentally close the socket when
               # it's in use!
               if c.timeout_at
                 @mutex.synchronize do
-                  @timeouts.delete m
+                  @timeouts.delete mon
                 end
               end
 
               begin
                 if c.try_to_finish
                   @app_pool << c
-                  selector.deregister m
-                  sockets.delete m
+                  clear_monitor mon
                 end
 
               # Don't report these to the lowlevel_error handler, otherwise
@@ -217,8 +223,7 @@ module Puma
                 c.write_500
                 c.close
 
-                selector.deregister m
-                sockets.delete m
+                clear_monitor mon
 
               # SSL handshake failure
               rescue MiniSSL::SSLError => e
@@ -234,8 +239,7 @@ module Puma
                 cert = ssl_socket.peercert
 
                 c.close
-                selector.deregister m
-                sockets.delete m
+                clear_monitor mon
 
                 @events.ssl_error @server, addr, cert, e
 
@@ -246,8 +250,7 @@ module Puma
                 c.write_400
                 c.close
 
-                selector.deregister m
-                sockets.delete m
+                clear_monitor mon
 
                 @events.parse_error @server, c.env, e
               rescue StandardError => e
@@ -256,8 +259,7 @@ module Puma
                 c.write_500
                 c.close
 
-                selector.deregister m
-                sockets.delete m
+                clear_monitor mon
               end
             end
           end
@@ -268,13 +270,12 @@ module Puma
             now = Time.now
 
             while @timeouts.first.value.timeout_at < now
-              m = @timeouts.shift
-              c = m.value
+              mon = @timeouts.shift
+              c = mon.value
               c.write_408 if c.in_data_phase
               c.close
 
-              selector.deregister m
-              sockets.delete m
+              clear_monitor mon
 
               break if @timeouts.empty?
             end
@@ -283,6 +284,11 @@ module Puma
           end
         end
       end
+    end
+
+    def clear_monitor(mon)
+      @selector.deregister mon
+      @monitors.delete mon
     end
 
     public
