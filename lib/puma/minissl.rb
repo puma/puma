@@ -2,7 +2,7 @@
 
 begin
   require 'io/wait'
-  rescue LoadError
+rescue LoadError
 end
 
 module Puma
