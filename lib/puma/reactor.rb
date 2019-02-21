@@ -190,7 +190,12 @@ module Puma
                       false
                     else
                       submon.value.close
-                      selector.deregister submon.value
+                      begin
+                        selector.deregister submon.value
+                      rescue IOError
+                        # nio4r on jruby seems to throw an IOError here if the IO is closed, so
+                        # we need to swallow it.
+                      end
                       true
                     end
                   end
