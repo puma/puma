@@ -40,8 +40,11 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_for_tcp
-    url = "tcp://127.0.0.1:9877/"
-    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:9876",
+    tcp  = next_port
+    cntl = next_port
+    url = "tcp://127.0.0.1:#{cntl}/"
+
+    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
                          "--control", url,
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
@@ -53,18 +56,22 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    s = TCPSocket.new "127.0.0.1", 9877
+    s = TCPSocket.new "127.0.0.1", cntl
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
+    s.close
+
     assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }', body.split(/\r?\n/).last
     assert_equal '{ "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }', Puma.stats
 
+  ensure
     cli.launcher.stop
     t.join
   end
 
   def test_control_clustered
-    skip_on :jruby, :windows, suffix: " - Puma::Binder::UNIXServer is not defined"
+    skip NO_FORK_MSG  unless HAS_FORK
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -102,7 +109,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control
-    skip_on :jruby, :windows, suffix: " - Puma::Binder::UNIXServer is not defined"
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -126,7 +133,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_stop
-    skip_on :jruby, :windows, suffix: " - Puma::Binder::UNIXServer is not defined"
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -148,21 +155,20 @@ class TestCLI < Minitest::Test
     t.join
   end
 
-  def test_control_gc_stats
-    skip_on :jruby, :windows, suffix: " - Puma::Binder::UNIXServer is not defined"
-    url = "unix://#{@tmp_path}"
-
-    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
-                         "--control", url,
+  def control_gc_stats(uri, cntl)
+    cli = Puma::CLI.new ["-b", uri,
+                         "--control", cntl,
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
 
-    t = Thread.new { cli.run }
-    t.abort_on_exception = true
+    t = Thread.new do
+      Thread.current.abort_on_exception = true
+      cli.run
+    end
 
     wait_booted
 
-    s = UNIXSocket.new @tmp_path
+    s = yield
     s << "GET /gc-stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
@@ -177,15 +183,16 @@ class TestCLI < Minitest::Test
     end
     gc_count_before = gc_stats["count"].to_i
 
-    s = UNIXSocket.new @tmp_path
+    s = yield
     s << "GET /gc HTTP/1.0\r\n\r\n"
     body = s.read # Ignored
     s.close
 
-    s = UNIXSocket.new @tmp_path
+    s = yield
     s << "GET /gc-stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
+
     lines = body.split("\r\n")
     json_line = lines.detect { |l| l[0] == "{" }
     pairs = json_line.scan(/\"[^\"]+\": [^,]+/)
@@ -199,13 +206,33 @@ class TestCLI < Minitest::Test
     # Hitting the /gc route should increment the count by 1
     assert(gc_count_before < gc_count_after, "make sure a gc has happened")
 
-    cli.launcher.stop
+  ensure
+    cli.launcher.stop if cli
     t.join
   end
 
+  def test_control_gc_stats_tcp
+    skip_on :jruby, suffix: " - Hitting /gc route does not increment count"
+    uri  = "tcp://127.0.0.1:#{next_port}/"
+    cntl_port = next_port
+    cntl = "tcp://127.0.0.1:#{cntl_port}/"
+
+    control_gc_stats(uri, cntl) { TCPSocket.new "127.0.0.1", cntl_port }
+  end
+
+  def test_control_gc_stats_unix
+    skip_on :jruby, suffix: " - Hitting /gc route does not increment count"
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+
+    uri  = "unix://#{@tmp_path2}"
+    cntl = "unix://#{@tmp_path}"
+
+    control_gc_stats(uri, cntl) { UNIXSocket.new @tmp_path }
+  end
+
   def test_tmp_control
-    skip_on :jruby
-    url = "tcp://127.0.0.1:8232"
+    skip_on :jruby, suffix: " - Unknown issue"
+
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", "auto"]
     cli.launcher.write_state
 
@@ -221,7 +248,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_state_file_callback_filtering
-    skip_on :jruby, :windows, suffix: " - worker mode not supported"
+    skip NO_FORK_MSG unless HAS_FORK
     cli = Puma::CLI.new [ "--config", "test/config/state_file_testing_config.rb",
                           "--state", @tmp_path ]
     cli.launcher.write_state
@@ -233,7 +260,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_state
-    url = "tcp://127.0.0.1:8232"
+    url = "tcp://127.0.0.1:#{next_port}"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
     cli.launcher.write_state
 

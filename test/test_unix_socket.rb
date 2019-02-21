@@ -7,8 +7,7 @@ class TestPumaUnixSocket < Minitest::Test
   Path = "test/puma.sock"
 
   def setup
-    # UNIX sockets are not recommended on JRuby or Windows
-    skip_on :jruby, :windows, suffix: " - UNIX sockets are not recommended"
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     @server = Puma::Server.new App
     @server.add_unix_listener Path
     @server.run
