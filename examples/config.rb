@@ -80,8 +80,10 @@
 # can also use the "ssl_bind" option.
 #
 # ssl_bind '127.0.0.1', '9292', {
+#   cert: path_to_cert,
 #   key: path_to_key,
-#   cert: path_to_cert
+#   ssl_cipher_filter: cipher_filter, # optional
+#   verify_mode: verify_mode,         # default 'none'
 # }
 # for JRuby additional keys are required:
 # keystore: path_to_keystore,
@@ -180,7 +182,8 @@
 # the given timeout. If not the worker process will be restarted. This is
 # not a request timeout, it is to protect against a hung or dead process.
 # Setting this value will not protect against slow requests.
-# Default value is 60 seconds.
+#
+# The minimum value is 6 seconds, the default value is 60 seconds.
 #
 # worker_timeout 60
 

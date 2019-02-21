@@ -32,21 +32,26 @@ Type=simple
 # Preferably configure a non-privileged user
 # User=
 
-# The path to the puma application root
-# Also replace the "<WD>" place holders below with this path.
-WorkingDirectory=
+# The path to the your application code root directory.
+# Also replace the "<YOUR_APP_PATH>" place holders below with this path.
+# Example /home/username/myapp
+WorkingDirectory=<YOUR_APP_PATH>
 
 # Helpful for debugging socket activation, etc.
 # Environment=PUMA_DEBUG=1
 
-# The command to start Puma. This variant uses a binstub generated via
-# `bundle binstubs puma --path ./sbin` in the WorkingDirectory
-# (replace "<WD>" below)
-ExecStart=<WD>/sbin/puma -b tcp://0.0.0.0:9292 -b ssl://0.0.0.0:9293?key=key.pem&cert=cert.pem
+# SystemD will not run puma even if it is in your path. You must specify
+# an absolute URL to puma. For example /usr/local/bin/puma
+# Alternatively, create a binstub with `bundle binstubs puma --path ./sbin` in the WorkingDirectory
+ExecStart=/<FULLPATH>/bin/puma -C <YOUR_APP_PATH>/puma.rb
 
-# Variant: Use config file with `bind` directives instead:
-# ExecStart=<WD>/sbin/puma -C config.rb
+# Variant: Rails start.
+# ExecStart=/<FULLPATH>/bin/puma -C <YOUR_APP_PATH>/config/puma.rb ../config.ru
+
 # Variant: Use `bundle exec --keep-file-descriptors puma` instead of binstub
+# Variant: Specify directives inline.
+# ExecStart=/<FULLPATH>/puma -b tcp://0.0.0.0:9292 -b ssl://0.0.0.0:9293?key=key.pem&cert=cert.pem
+
 
 Restart=always
 
@@ -246,6 +251,12 @@ PIDFile=<WD>/shared/tmp/pids/puma.pid
 # Use "always" if only `systemctl` is used for start/stop/restart, and
 # reconsider if you actually need the forking config.
 Restart=no
+
+# `puma_ctl restart` wouldn't work without this. It's because `pumactl`
+# changes PID on restart and systemd stops the service afterwards
+# because of the PID change. This option prevents stopping after PID 
+# change.  
+RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target

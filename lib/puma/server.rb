@@ -16,10 +16,6 @@ require 'puma/util'
 
 require 'puma/puma_http11'
 
-unless Puma.const_defined? "IOBuffer"
-  require 'puma/io_buffer'
-end
-
 require 'socket'
 
 module Puma
@@ -79,7 +75,6 @@ module Puma
       @first_data_timeout = options.fetch(:first_data_timeout, FIRST_DATA_TIMEOUT)
 
       @binder = Binder.new(events)
-      @own_binder = true
 
       @leak_stack_on_error = true
 
@@ -102,7 +97,6 @@ module Puma
 
     def inherit_binder(bind)
       @binder = bind
-      @own_binder = false
     end
 
     def tcp_mode!
@@ -270,10 +264,11 @@ module Puma
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
 
-        @notify.close
-
-        if @status != :restart and @own_binder
-          @binder.close
+        # Prevent can't modify frozen IOError (RuntimeError)
+        begin
+          @notify.close
+        rescue IOError
+          # no biggy
         end
       end
 
@@ -398,7 +393,10 @@ module Puma
                     end
 
                     pool << client
-                    pool.wait_until_not_full
+                    busy_threads = pool.wait_until_not_full
+                    if busy_threads == 0
+                      @options[:out_of_band].each(&:call) if @options[:out_of_band]
+                    end
                   end
                 rescue SystemCallError
                   # nothing
@@ -430,10 +428,6 @@ module Puma
       ensure
         @check.close
         @notify.close
-
-        if @status != :restart and @own_binder
-          @binder.close
-        end
       end
 
       @events.fire :state, :done
@@ -940,6 +934,10 @@ module Puma
         end
 
         @events.debug "Drained #{count} additional connections."
+      end
+
+      if @status != :restart
+        @binder.close
       end
 
       if @thread_pool

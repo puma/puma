@@ -147,8 +147,11 @@ module Puma
     def decode_chunk(chunk)
       if @partial_part_left > 0
         if @partial_part_left <= chunk.size
-          @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+          if @partial_part_left > 2
+            @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+          end
           chunk = chunk[@partial_part_left..-1]
+          @partial_part_left = 0
         else
           @body << chunk
           @partial_part_left -= chunk.size
@@ -172,8 +175,7 @@ module Puma
             rest = io.read
             rest = rest[2..-1] if rest.start_with?("\r\n")
             @buffer = rest.empty? ? nil : rest
-            @requests_served += 1
-            @ready = true
+            set_ready
             return true
           end
 
@@ -211,7 +213,7 @@ module Puma
       while true
         begin
           chunk = @io.read_nonblock(4096)
-        rescue Errno::EAGAIN
+        rescue IO::WaitReadable
           return false
         rescue SystemCallError, IOError
           raise ConnectionError, "Connection error detected during read"
@@ -221,8 +223,7 @@ module Puma
         unless chunk
           @body.close
           @buffer = nil
-          @requests_served += 1
-          @ready = true
+          set_ready
           raise EOFError
         end
 
@@ -231,6 +232,8 @@ module Puma
     end
 
     def setup_body
+      @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
+
       if @env[HTTP_EXPECT] == CONTINUE
         # TODO allow a hook here to check the headers before
         # going forward
@@ -255,8 +258,7 @@ module Puma
       unless cl
         @buffer = body.empty? ? nil : body
         @body = EmptyBody
-        @requests_served += 1
-        @ready = true
+        set_ready
         return true
       end
 
@@ -265,8 +267,7 @@ module Puma
       if remain <= 0
         @body = StringIO.new(body)
         @buffer = nil
-        @requests_served += 1
-        @ready = true
+        set_ready
         return true
       end
 
@@ -301,8 +302,7 @@ module Puma
       # No data means a closed socket
       unless data
         @buffer = nil
-        @requests_served += 1
-        @ready = true
+        set_ready
         raise EOFError
       end
 
@@ -338,8 +338,7 @@ module Puma
         # No data means a closed socket
         unless data
           @buffer = nil
-          @requests_served += 1
-          @ready = true
+          set_ready
           raise EOFError
         end
 
@@ -416,8 +415,7 @@ module Puma
       unless chunk
         @body.close
         @buffer = nil
-        @requests_served += 1
-        @ready = true
+        set_ready
         raise EOFError
       end
 
@@ -426,14 +424,21 @@ module Puma
       if remain <= 0
         @body.rewind
         @buffer = nil
-        @requests_served += 1
-        @ready = true
+        set_ready
         return true
       end
 
       @body_remain = remain
 
       false
+    end
+
+    def set_ready
+      if @body_read_start
+        @env['puma.request_body_wait'] = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond) - @body_read_start
+      end
+      @requests_served += 1
+      @ready = true
     end
 
     def write_400

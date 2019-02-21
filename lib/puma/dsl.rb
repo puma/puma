@@ -295,12 +295,14 @@ module Puma
 
     def ssl_bind(host, port, opts)
       verify = opts.fetch(:verify_mode, 'none')
+      no_tlsv1 = opts.fetch(:no_tlsv1, 'false')
 
       if defined?(JRUBY_VERSION)
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
       else
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&verify_mode=#{verify}"
+        ssl_cipher_filter = "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" if opts[:ssl_cipher_filter]
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}#{ssl_cipher_filter}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
       end
     end
 
@@ -375,6 +377,21 @@ module Puma
 
     alias_method :after_worker_boot, :after_worker_fork
 
+    # Code to run out-of-band when the worker is idle.
+    # These hooks run immediately after a request has finished
+    # processing and there are no busy threads on the worker.
+    # The worker doesn't accept new requests until this code finishes.
+    #
+    # This hook is useful for running out-of-band garbage collection
+    # or scheduling asynchronous tasks to execute after a response.
+    #
+    # This can be called multiple times to add hooks.
+    #
+    def out_of_band(&block)
+      @options[:out_of_band] ||= []
+      @options[:out_of_band] << block
+    end
+
     # The directory to operate out of.
     def directory(dir)
       @options[:directory] = dir.to_s
@@ -444,6 +461,13 @@ module Puma
     # that have not checked in within the given +timeout+.
     # This mitigates hung processes. Default value is 60 seconds.
     def worker_timeout(timeout)
+      timeout = Integer(timeout)
+      min = Cluster::WORKER_CHECK_INTERVAL
+
+      if timeout <= min
+        raise "The minimum worker_timeout must be greater than the worker reporting interval (#{min})"
+      end
+
       @options[:worker_timeout] = Integer(timeout)
     end
 

@@ -2,16 +2,17 @@ require_relative "helper"
 
 require "puma/cli"
 require "puma/control_cli"
+require "open3"
 
 # These don't run on travis because they're too fragile
 
 class TestIntegration < Minitest::Test
+
   def setup
     @state_path = "test/test_puma.state"
     @bind_path = "test/test_server.sock"
     @control_path = "test/test_control.sock"
     @token = "xxyyzz"
-    @tcp_port = 9998
 
     @server = nil
 
@@ -41,6 +42,7 @@ class TestIntegration < Minitest::Test
   end
 
   def server(argv)
+    @tcp_port = next_port
     base = "#{Gem.ruby} -Ilib bin/puma"
     base.prepend("bundle exec ") if defined?(Bundler)
     cmd = "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
@@ -52,6 +54,7 @@ class TestIntegration < Minitest::Test
   end
 
   def start_forked_server(argv)
+    @tcp_port = next_port
     pid = fork do
       exec "#{Gem.ruby} -I lib/ bin/puma -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
     end
@@ -67,7 +70,6 @@ class TestIntegration < Minitest::Test
   end
 
   def restart_server_and_listen(argv)
-    skip_on :windows
     server(argv)
     s = connect
     initial_reply = read_body(s)
@@ -115,7 +117,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_stop_via_pumactl
-    skip_on :jruby, :windows
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -148,7 +150,10 @@ class TestIntegration < Minitest::Test
   end
 
   def test_phased_restart_via_pumactl
-    skip_on :jruby, :windows, :ci, suffix: " - UNIX sockets are not recommended"
+    skip NO_FORK_MSG unless HAS_FORK
+
+    # hello-stuck-ci uses sleep 10, hello-stuck uses sleep 60
+    rackup = "test/rackup/hello-stuck#{ ENV['CI'] ? '-ci' : '' }.ru"
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -157,7 +162,7 @@ class TestIntegration < Minitest::Test
       c.activate_control_app "unix://#{@control_path}", :auth_token => @token
       c.workers 2
       c.worker_shutdown_timeout 1
-      c.rackup "test/rackup/hello-stuck.ru"
+      c.rackup rackup
     end
 
     l = Puma::Launcher.new conf, :events => @events
@@ -195,11 +200,11 @@ class TestIntegration < Minitest::Test
   end
 
   def test_kill_unknown_via_pumactl
-    skip_on :jruby, :windows
+    skip_on :jruby
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
     # do not want to accidently kill a valid other process
-    io = IO.popen("ls")
+    io = IO.popen(windows? ? "dir" : "ls")
     safe_pid = io.pid
     Process.wait safe_pid
 
@@ -210,17 +215,19 @@ class TestIntegration < Minitest::Test
       ccli.run
     end
     sout.rewind
-    assert_match(/No pid '\d+' found/, sout.readlines.join(""))
+    # windows bad URI(is not URI?)
+    assert_match(/No pid '\d+' found|bad URI\(is not URI\?\)/, sout.readlines.join(""))
     assert_equal(1, e.status)
   end
 
   def test_restart_closes_keepalive_sockets
+    skip_unless_signal_exist? :USR2
     _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
 
   def test_restart_closes_keepalive_sockets_workers
-    skip_on :jruby
+    skip NO_FORK_MSG unless HAS_FORK
     _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
@@ -230,6 +237,7 @@ class TestIntegration < Minitest::Test
     # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
     # next workers ENV
     skip_on :jruby
+    skip_unless_signal_exist? :USR2
 
     initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
 
@@ -239,7 +247,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_single_mode
-    skip_on :jruby, :windows
+    skip NO_FORK_MSG unless HAS_FORK
 
     pid = start_forked_server("test/rackup/hello.ru")
     _, status = stop_forked_server(pid)
@@ -248,11 +256,38 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_clustered_mode
-    skip_on :jruby, :windows
+    skip NO_FORK_MSG unless HAS_FORK
 
     pid = start_forked_server("-w 2 test/rackup/hello.ru")
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
+  end
+
+  def test_not_accepts_new_connections_after_term_signal
+    skip_on :jruby, :windows
+
+    server('test/rackup/10seconds.ru')
+
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+    sleep 1 # ensure curl send a request
+
+    Process.kill(:TERM, @server.pid)
+    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
+
+    # Invoke a request which must be rejected
+    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+
+    assert nil != Process.getpgid(@server.pid) # ensure server is still running
+    assert nil != Process.getpgid(rejected_curl_wait_thread[:pid]) # ensure first curl invokation still in progress
+
+    curl_wait_thread.join
+    rejected_curl_wait_thread.join
+
+    assert_match /Hello World/, curl_stdout.read
+    assert_match /Connection refused/, rejected_curl_stderr.read
+
+    Process.wait(@server.pid)
+    @server = nil # prevent `#teardown` from killing already killed server
   end
 end
