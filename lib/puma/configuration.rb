@@ -186,7 +186,8 @@ module Puma
         :rackup => DefaultRackup,
         :logger => STDOUT,
         :persistent_timeout => Const::PERSISTENT_TIMEOUT,
-        :first_data_timeout => Const::FIRST_DATA_TIMEOUT
+        :first_data_timeout => Const::FIRST_DATA_TIMEOUT,
+        :raise_exception_on_sigterm => true
       }
     end
 
