@@ -185,6 +185,17 @@ class TestConfigFile < Minitest::Test
     assert_equal 150, conf.options[:worker_shutdown_timeout]
   end
 
+  def test_config_raise_exception_on_sigterm
+    conf = Puma::Configuration.new do |c|
+      c.raise_exception_on_sigterm false
+    end
+    conf.load
+
+    assert_equal conf.options[:raise_exception_on_sigterm], false
+    conf.options[:raise_exception_on_sigterm] = true
+    assert_equal conf.options[:raise_exception_on_sigterm], true
+  end
+
   def teardown
     FileUtils.rm_r("config/puma")
   end
