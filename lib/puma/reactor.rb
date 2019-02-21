@@ -142,7 +142,7 @@ module Puma
 
             monitors.reject! do |mon|
               if mon.value.closed?
-                selector.deregister mon
+                selector.deregister mon.value
                 true
               end
             end
@@ -190,7 +190,7 @@ module Puma
                       false
                     else
                       submon.value.close
-                      selector.deregister submon
+                      selector.deregister submon.value
                       true
                     end
                   end
@@ -287,7 +287,7 @@ module Puma
     end
 
     def clear_monitor(mon)
-      @selector.deregister mon
+      @selector.deregister mon.value
       @monitors.delete mon
     end
 
