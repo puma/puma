@@ -42,7 +42,6 @@ matrix:
       sudo: false
 
   allow_failures:
-    - rvm: 2.6
     - rvm: ruby-head
     - rvm: ruby-head
       env: RUBYOPT="--jit"
