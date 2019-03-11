@@ -393,7 +393,8 @@ module Puma
           stop_workers
           stop
 
-          raise SignalException, "SIGTERM"
+          raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
+          exit 0 # Clean exit, workers were stopped
         end
       end
     end
