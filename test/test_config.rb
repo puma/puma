@@ -30,6 +30,22 @@ class TestConfigFile < Minitest::Test
     assert_equal [200, {}, ["embedded app"]], app.call({})
   end
 
+  def test_ssl_configuration_from_DSL
+    conf = Puma::Configuration.new do |config|
+      config.load "test/config/ssl_config.rb"
+    end
+
+    conf.load
+
+    bind_configuration = conf.options.file_options[:binds].first
+    app = conf.app
+
+    assert bind_configuration =~ %r{ca=.*ca.crt}
+    assert bind_configuration =~ /verify_mode=peer/
+
+    assert_equal [200, {}, ["embedded app"]], app.call({})
+  end
+
   def test_double_bind_port
     port = (rand(10_000) + 30_000).to_s
     with_env("PORT" => port) do
