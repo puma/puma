@@ -803,6 +803,39 @@ EOF
     sock.close
   end
 
+  def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
+    body = nil
+    remote_addr =nil
+    @server = Puma::Server.new @app, @events, { remote_address: :header, remote_address_header: 'HTTP_X_FORWARDED_FOR'}
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      remote_addr = env['REMOTE_ADDR']
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    h = header(sock)
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "hello", body
+    assert_equal "127.0.0.1", remote_addr
+
+    sock << "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.2\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    sleep 0.1
+
+    h = header(sock)
+
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "goodbye", body
+    assert_equal "127.0.0.2", remote_addr
+
+    sock.close
+  end
+
   def test_empty_header_values
     @server.app = proc { |env| [200, {"X-Empty-Header" => ""}, []] }
 
