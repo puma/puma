@@ -5,9 +5,12 @@ cache: bundler
 before_install:
   # rubygems 2.7.8 and greater include bundler, leave 2.6.0 untouched
   - |
+    r_eng="$(ruby -e 'STDOUT.write RUBY_ENGINE')";
     rv="$(ruby -e 'STDOUT.write RUBY_VERSION')";
-    if   [ "$rv" \< "2.3" ]; then gem update --system 2.7.8 --no-document
-    elif [ "$rv" \< "2.6" ]; then gem update --system --no-document --conservative
+    if [ "$r_eng" == "ruby" ]; then
+      if   [ "$rv" \< "2.3" ]; then gem update --system 2.7.9 --no-document
+      elif [ "$rv" \< "2.6" ]; then gem update --system --no-document --conservative
+      fi
     fi
   - ruby -v && gem --version && bundle version
 
@@ -34,21 +37,16 @@ matrix:
       os: osx
     - rvm: 2.5.3
       os: osx
-    - rvm: jruby-9.2.5.0
-      dist: trusty
-      sudo: false
+    - rvm: jruby-9.2.6.0
     - rvm: jruby-head
-      dist: trusty
-      sudo: false
 
   allow_failures:
     - rvm: 2.6
     - rvm: ruby-head
     - rvm: ruby-head
       env: RUBYOPT="--jit"
+    - rvm: jruby-9.2.6.0
     - rvm: jruby-head
-      dist: trusty
-      sudo: false
 
 env:
   global:
