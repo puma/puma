@@ -37,7 +37,14 @@ module Puma
       @workers.each { |x| x.term }
 
       begin
-        @workers.each { |w| Process.waitpid(w.pid, Process::WNOHANG) }
+        pids = @workers.map(&:pid)
+        until pids.empty?
+          if pid = Process.waitpid(-1, Process::WNOHANG)
+            pids.delete(pid)
+            sleep 0.5
+            break
+          end
+        end
       rescue Interrupt
         log "! Cancelled waiting for workers"
       end
