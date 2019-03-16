@@ -24,8 +24,8 @@ rvm:
   - 2.2.10
   - 2.3.8
   - 2.4.5
-  - 2.5.3
-  - 2.6
+  - 2.5.5
+  - 2.6.2
   - ruby-head
 
 matrix:
@@ -35,13 +35,13 @@ matrix:
       env: RUBYOPT="--jit"
     - rvm: 2.3.8
       os: osx
-    - rvm: 2.5.3
+    - rvm: 2.5.5
       os: osx
     - rvm: jruby-9.2.6.0
     - rvm: jruby-head
 
   allow_failures:
-    - rvm: 2.6
+    - rvm: 2.6.2
     - rvm: ruby-head
     - rvm: ruby-head
       env: RUBYOPT="--jit"
