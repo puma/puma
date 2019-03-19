@@ -1,8 +1,21 @@
 ## Master
 
 * x features
-
+  * Add support for disabling TLSv1.0 (#1562)
+  * Request body read time metric (#1569)
+  * Add out_of_band hook (#1648)
+  * Re-implement (native) IOBuffer for JRuby (#1691)
+  * Min worker timeout (#1716)
+  * Add option to suppress SignalException on SIGTERM (#1690)
+  * Allow mutual TLS CA to be set using `ssl_bind` DSL (#1689)
 * x bugfixes
+  * Do not accept new requests on shutdown (#1685)
+  * Fix 3 corner cases when request body is chunked (#1508)
+  * Change pid existence check's condition branches (#1650)
+  * Don't call .stop on a server that doesn't exist (#1655)
+  * Implemented NID_X9_62_prime256v1 (P-256) curve over P-521 (#1671)
+  * Fix @notify.close can't modify frozen IOError (RuntimeError) (#1583)
+
 
 ## 3.12.1 / 2019-03-19
 
