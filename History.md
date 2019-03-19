@@ -4,7 +4,7 @@
 
 * x bugfixes
 
-## 3.12.1 / 2019-01-08
+## 3.12.1 / 2019-03-19
 
 * 1 features
   * Internal strings are frozen (#1649)
