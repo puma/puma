@@ -41,7 +41,6 @@ matrix:
     - rvm: jruby-head
 
   allow_failures:
-    - rvm: 2.6.2
     - rvm: ruby-head
     - rvm: ruby-head
       env: RUBYOPT="--jit"
