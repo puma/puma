@@ -12,6 +12,8 @@ module Puma
   autoload :Const, 'puma/const'
   autoload :Server, 'puma/server'
   autoload :Launcher, 'puma/launcher'
+  autoload :Cluster, 'puma/cluster'
+  autoload :Single, 'puma/single'
 
   def self.stats_object=(val)
     @get_stats = val
