@@ -37,7 +37,25 @@ module Puma
       @workers.each { |x| x.term }
 
       begin
-        @workers.each { |w| Process.waitpid(w.pid) }
+        if RUBY_VERSION < '2.6'
+          @workers.each { |w| Process.waitpid(w.pid) }
+        else
+          # below code is for a bug in Ruby 2.6+, above waitpid call hangs
+          t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          pids = @workers.map(&:pid)
+          loop do
+            pids.reject! do |w_pid|
+              if Process.waitpid(w_pid, Process::WNOHANG)
+                log "    worker status: #{$?}"
+                true
+              end
+            end
+            break if pids.empty?
+            sleep 0.5
+          end
+          t_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          log format("    worker shutdown time: %6.2f", t_end - t_st)
+        end
       rescue Interrupt
         log "! Cancelled waiting for workers"
       end
@@ -393,7 +411,8 @@ module Puma
           stop_workers
           stop
 
-          raise SignalException, "SIGTERM"
+          raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
+          exit 0 # Clean exit, workers were stopped
         end
       end
     end

@@ -105,6 +105,7 @@ module Puma
       @parsed_bytes = 0
       @ready = false
       @body_remain = 0
+      @peerip = nil
 
       if @buffer
         @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)

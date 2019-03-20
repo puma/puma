@@ -296,13 +296,14 @@ module Puma
     def ssl_bind(host, port, opts)
       verify = opts.fetch(:verify_mode, 'none')
       no_tlsv1 = opts.fetch(:no_tlsv1, 'false')
+      ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
 
       if defined?(JRUBY_VERSION)
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}#{ca_additions}"
       else
         ssl_cipher_filter = "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" if opts[:ssl_cipher_filter]
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}#{ssl_cipher_filter}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}#{ssl_cipher_filter}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}#{ca_additions}"
       end
     end
 
@@ -439,6 +440,16 @@ module Puma
     # dictates.
     def prune_bundler(answer=true)
       @options[:prune_bundler] = answer
+    end
+
+    # In environments where SIGTERM is something expected, instructing
+    # puma to shutdown gracefully ( for example in Kubernetes, where
+    # rolling restart is guaranteed usually on infrastructure level )
+    # SignalException should not be raised for SIGTERM
+    #
+    # When set to false, if puma process receives SIGTERM, it won't raise SignalException
+    def raise_exception_on_sigterm(answer=true)
+      @options[:raise_exception_on_sigterm] = answer
     end
 
     # Additional text to display in process listing

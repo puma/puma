@@ -30,6 +30,22 @@ class TestConfigFile < Minitest::Test
     assert_equal [200, {}, ["embedded app"]], app.call({})
   end
 
+  def test_ssl_configuration_from_DSL
+    conf = Puma::Configuration.new do |config|
+      config.load "test/config/ssl_config.rb"
+    end
+
+    conf.load
+
+    bind_configuration = conf.options.file_options[:binds].first
+    app = conf.app
+
+    assert bind_configuration =~ %r{ca=.*ca.crt}
+    assert bind_configuration =~ /verify_mode=peer/
+
+    assert_equal [200, {}, ["embedded app"]], app.call({})
+  end
+
   def test_double_bind_port
     port = (rand(10_000) + 30_000).to_s
     with_env("PORT" => port) do
@@ -183,6 +199,17 @@ class TestConfigFile < Minitest::Test
     assert_equal 90, conf.options[:worker_timeout]
     assert_equal 120, conf.options[:worker_boot_timeout]
     assert_equal 150, conf.options[:worker_shutdown_timeout]
+  end
+
+  def test_config_raise_exception_on_sigterm
+    conf = Puma::Configuration.new do |c|
+      c.raise_exception_on_sigterm false
+    end
+    conf.load
+
+    assert_equal conf.options[:raise_exception_on_sigterm], false
+    conf.options[:raise_exception_on_sigterm] = true
+    assert_equal conf.options[:raise_exception_on_sigterm], true
   end
 
   def teardown
