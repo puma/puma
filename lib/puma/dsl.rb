@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'puma/const'
+
 module Puma
   # The methods that are available for use inside the config file.
   # These same methods are used in Puma cli and the rack handler
@@ -463,7 +465,7 @@ module Puma
     # This mitigates hung processes. Default value is 60 seconds.
     def worker_timeout(timeout)
       timeout = Integer(timeout)
-      min = Cluster::WORKER_CHECK_INTERVAL
+      min = Const::WORKER_CHECK_INTERVAL
 
       if timeout <= min
         raise "The minimum worker_timeout must be greater than the worker reporting interval (#{min})"

@@ -19,8 +19,6 @@ module Puma
   # via the `spawn_workers` method call. Each worker will have it's own
   # instance of a `Puma::Server`.
   class Cluster < Runner
-    WORKER_CHECK_INTERVAL = 5
-
     def initialize(cli, events)
       super cli, events
 
@@ -201,7 +199,7 @@ module Puma
     def check_workers(force=false)
       return if !force && @next_check && @next_check >= Time.now
 
-      @next_check = Time.now + WORKER_CHECK_INTERVAL
+      @next_check = Time.now + Const::WORKER_CHECK_INTERVAL
 
       any = false
 
@@ -308,7 +306,7 @@ module Puma
         base_payload = "p#{Process.pid}"
 
         while true
-          sleep WORKER_CHECK_INTERVAL
+          sleep Const::WORKER_CHECK_INTERVAL
           begin
             b = server.backlog || 0
             r = server.running || 0
@@ -506,7 +504,7 @@ module Puma
 
             force_check = false
 
-            res = IO.select([read], nil, nil, WORKER_CHECK_INTERVAL)
+            res = IO.select([read], nil, nil, Const::WORKER_CHECK_INTERVAL)
 
             if res
               req = read.read_nonblock(1)
