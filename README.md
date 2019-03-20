@@ -262,6 +262,13 @@ reliability in production environments:
 * [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
 * [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
+## Community Plugins
+
+* [puma-heroku](https://github.com/evanphx/puma-heroku) — default Puma configuration for running on Heroku
+* [puma-metrics](https://github.com/harmjanblok/puma-metrics) — export Puma metrics to Prometheus
+* [puma-plugin-statsd](https://github.com/yob/puma-plugin-statsd) — send Puma metrics to statsd
+* [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog
+
 ## Contributing
 
 To run the test suite:
