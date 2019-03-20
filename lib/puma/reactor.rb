@@ -3,6 +3,8 @@
 require 'puma/util'
 require 'puma/minissl'
 
+require 'nio'
+
 module Puma
   # Internal Docs, Not a public interface.
   #
@@ -49,6 +51,8 @@ module Puma
       @events = server.events
       @app_pool = app_pool
 
+      @selector = NIO::Selector.new
+
       @mutex = Mutex.new
 
       # Read / Write pipes to wake up internal while loop
@@ -57,7 +61,10 @@ module Puma
       @sleep_for = DefaultSleepFor
       @timeouts = []
 
-      @sockets = [@ready]
+      mon = @selector.register(@ready, :r)
+      mon.value = @ready
+
+      @monitors = [mon]
     end
 
     private
@@ -121,37 +128,74 @@ module Puma
     # will be set to be equal to the amount of time it will take for the next timeout to occur.
     # This calculation happens in `calculate_sleep`.
     def run_internal
-      sockets = @sockets
+      monitors = @monitors
+      selector = @selector
 
       while true
         begin
-          ready = IO.select sockets, nil, nil, @sleep_for
+          ready = selector.select @sleep_for
         rescue IOError => e
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-          if sockets.any? { |socket| socket.closed? }
+          if monitors.any? { |mon| mon.value.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
             STDERR.puts e.backtrace
-            sockets = sockets.reject { |socket| socket.closed? }
+
+            monitors.reject! do |mon|
+              if mon.value.closed?
+                selector.deregister mon.value
+                true
+              end
+            end
+
             retry
           else
             raise
           end
         end
 
-        if ready and reads = ready[0]
-          reads.each do |c|
-            if c == @ready
+        if ready
+          ready.each do |mon|
+            if mon.value == @ready
               @mutex.synchronize do
                 case @ready.read(1)
                 when "*"
-                  sockets += @input
+                  @input.each do |c|
+                    mon = nil
+                    begin
+                      begin
+                        mon = selector.register(c, :r)
+                      rescue ArgumentError
+                        # There is a bug where we seem to be registering an already registered
+                        # client. This code deals with this situation but I wish we didn't have to.
+                        monitors.delete_if { |submon| submon.value.to_io == c.to_io }
+                        selector.deregister(c)
+                        mon = selector.register(c, :r)
+                      end
+                    rescue IOError
+                      # Means that the io is closed, so we should ignore this request
+                      # entirely
+                    else
+                      mon.value = c
+                      @timeouts << mon if c.timeout_at
+                      monitors << mon
+                    end
+                  end
                   @input.clear
+
+                  @timeouts.sort! { |a,b| a.value.timeout_at <=> b.value.timeout_at }
+                  calculate_sleep
                 when "c"
-                  sockets.delete_if do |s|
-                    if s == @ready
+                  monitors.reject! do |submon|
+                    if submon.value == @ready
                       false
                     else
-                      s.close
+                      submon.value.close
+                      begin
+                        selector.deregister submon.value
+                      rescue IOError
+                        # nio4r on jruby seems to throw an IOError here if the IO is closed, so
+                        # we need to swallow it.
+                      end
                       true
                     end
                   end
@@ -160,19 +204,21 @@ module Puma
                 end
               end
             else
+              c = mon.value
+
               # We have to be sure to remove it from the timeout
               # list or we'll accidentally close the socket when
               # it's in use!
               if c.timeout_at
                 @mutex.synchronize do
-                  @timeouts.delete c
+                  @timeouts.delete mon
                 end
               end
 
               begin
                 if c.try_to_finish
                   @app_pool << c
-                  sockets.delete c
+                  clear_monitor mon
                 end
 
               # Don't report these to the lowlevel_error handler, otherwise
@@ -182,18 +228,23 @@ module Puma
                 c.write_500
                 c.close
 
-                sockets.delete c
+                clear_monitor mon
 
               # SSL handshake failure
               rescue MiniSSL::SSLError => e
                 @server.lowlevel_error(e, c.env)
 
                 ssl_socket = c.io
-                addr = ssl_socket.peeraddr.last
+                begin
+                  addr = ssl_socket.peeraddr.last
+                rescue IOError
+                  addr = "<unknown>"
+                end
+
                 cert = ssl_socket.peercert
 
                 c.close
-                sockets.delete c
+                clear_monitor mon
 
                 @events.ssl_error @server, addr, cert, e
 
@@ -204,7 +255,7 @@ module Puma
                 c.write_400
                 c.close
 
-                sockets.delete c
+                clear_monitor mon
 
                 @events.parse_error @server, c.env, e
               rescue StandardError => e
@@ -213,7 +264,7 @@ module Puma
                 c.write_500
                 c.close
 
-                sockets.delete c
+                clear_monitor mon
               end
             end
           end
@@ -223,11 +274,13 @@ module Puma
           @mutex.synchronize do
             now = Time.now
 
-            while @timeouts.first.timeout_at < now
-              c = @timeouts.shift
+            while @timeouts.first.value.timeout_at < now
+              mon = @timeouts.shift
+              c = mon.value
               c.write_408 if c.in_data_phase
               c.close
-              sockets.delete c
+
+              clear_monitor mon
 
               break if @timeouts.empty?
             end
@@ -236,6 +289,11 @@ module Puma
           end
         end
       end
+    end
+
+    def clear_monitor(mon)
+      @selector.deregister mon.value
+      @monitors.delete mon
     end
 
     public
@@ -276,7 +334,7 @@ module Puma
       if @timeouts.empty?
         @sleep_for = DefaultSleepFor
       else
-        diff = @timeouts.first.timeout_at.to_f - Time.now.to_f
+        diff = @timeouts.first.value.timeout_at.to_f - Time.now.to_f
 
         if diff < 0.0
           @sleep_for = 0
@@ -315,13 +373,6 @@ module Puma
       @mutex.synchronize do
         @input << c
         @trigger << "*"
-
-        if c.timeout_at
-          @timeouts << c
-          @timeouts.sort! { |a,b| a.timeout_at <=> b.timeout_at }
-
-          calculate_sleep
-        end
       end
     end
 

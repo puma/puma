@@ -1,7 +1,5 @@
 # -*- encoding: utf-8 -*-
 
-# This is only used when puma is a git dep from Bundler, keep in sync with Rakefile
-
 version = File.read(File.expand_path("../lib/puma/const.rb", __FILE__))[/VERSION = "(\d+\.\d+\.\d+)"/, 1] || raise
 
 Gem::Specification.new do |s|
@@ -13,6 +11,7 @@ Gem::Specification.new do |s|
   s.email = ["evan@phx.io"]
   s.executables = ["puma", "pumactl"]
   s.extensions = ["ext/puma_http11/extconf.rb"]
+  s.add_runtime_dependency "nio4r", "~> 2.0"
   s.metadata["msys2_mingw_dependencies"] = "openssl"
   s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
             %w[History.md LICENSE README.md]
