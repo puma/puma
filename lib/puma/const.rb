@@ -227,5 +227,9 @@ module Puma
     HIJACK_IO = "rack.hijack_io".freeze
 
     EARLY_HINTS = "rack.early_hints".freeze
+
+    # Mininum interval to checks worker health
+    WORKER_CHECK_INTERVAL = 5
+
   end
 end
