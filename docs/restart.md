@@ -2,8 +2,8 @@
 
 To perform a restart, there are 3 builtin mechanisms:
 
-  * Send the `puma` process the `SIGUSR2` signal
-  * Send the `puma` process the `SIGUSR1` signal (rolling restart, cluster mode only)
+  * Send the `puma` process the `SIGUSR2` signal (normal restart)
+  * Send the `puma` process the `SIGUSR1` signal (restart in phases (a "rolling restart"), cluster mode only)
   * Use the status server and issue `/restart`
 
 No code is shared between the current and restarted process, so it should be safe to issue a restart any place where you would manually stop Puma and start it again.
