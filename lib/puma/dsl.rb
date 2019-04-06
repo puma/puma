@@ -37,6 +37,7 @@ module Puma
       @options = options
 
       @plugins = []
+      @plugins_to_load = []
     end
 
     def _load_from(path)
@@ -79,6 +80,11 @@ module Puma
     #
     def plugin(name)
       @plugins << @config.load_plugin(name)
+    end
+
+    # LOAD_PATH for plugins
+    def plugins(plugins_to_load)
+      @plugins_to_load << plugins_to_load
     end
 
     # Use +obj+ or +block+ as the Rack app. This allows a config file to
