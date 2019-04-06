@@ -254,7 +254,8 @@ module Puma
       dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
       puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
 
-      dirs << Bundler.rubygems.loaded_specs('puma-heroku').require_paths.map { |x| File.join(puma.full_gem_path, x) }
+      puma_heroku = Bundler.rubygems.loaded_specs('puma-heroku')
+      dirs << puma_heroku.require_paths.map { |x| File.join(puma_heroku.full_gem_path, x) }
 
       unless puma_lib_dir
         log "! Unable to prune Bundler environment, continuing"
