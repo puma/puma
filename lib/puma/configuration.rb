@@ -133,6 +133,7 @@ module Puma
 
       @options     = UserFileDefaultOptions.new(user_options, default_options)
       @plugins     = PluginLoader.new
+      @plugins_to_load = []
       @user_dsl    = DSL.new(@options.user_options, self)
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
@@ -142,7 +143,12 @@ module Puma
       end
     end
 
-    attr_reader :options, :plugins
+    attr_reader :options, :plugins, :plugins_to_load
+
+    def add_plugins_to_load(plugin)
+      @plugins_to_load << plugin
+      @plugins_to_load.flatten!
+    end
 
     def configure
       yield @user_dsl, @file_dsl, @default_dsl
