@@ -161,6 +161,10 @@ module Puma
             user_config.prune_bundler
           end
 
+          o.on "--plugins PLUGINS", "Add plugins to the $LOAD_PATH" do |arg|
+            user_config.plugins arg.split(':')
+          end
+
           o.on "-q", "--quiet", "Do not log requests internally (default true)" do
             user_config.quiet
           end
