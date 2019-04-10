@@ -12,12 +12,6 @@ class TestPumaControlCli < Minitest::Test
     line = @wait.gets until line =~ /Listening on/
   end
 
-  def wait_pid_file(file)
-    until File.file?(file) && !File.zero?(file)
-      sleep 0.1
-    end
-  end
-
   def teardown
     @wait.close
     @ready.close
@@ -50,9 +44,14 @@ class TestPumaControlCli < Minitest::Test
     t = Thread.new do
       Thread.current.abort_on_exception = true
       control_cli.run
+
+      sleep 3
+      raise control_cli.inspect
     end
 
     wait_booted
+
+    sleep 5
 
     s = TCPSocket.new host, 9292
     s << "GET / HTTP/1.0\r\n\r\n"
@@ -66,70 +65,5 @@ class TestPumaControlCli < Minitest::Test
     # TODO: assert something about the stop command
 
     t.join
-  end
-
-  def test_status_pid_no_file
-    control_cli = Puma::ControlCLI.new ["--config-file", "test/config/app.rb", "status"]
-
-    out, err = capture_subprocess_io do
-      assert_raises(SystemExit) {control_cli.run}
-    end
-
-    assert_match "Neither pid nor control url available", out
-  end
-
-  def test_status_pid_running
-    pid_file = "/tmp/pidfile.pid"
-
-    File.delete(pid_file) if File.file? pid_file
-
-    opts = [
-      "--config-file", "test/config/app.rb",
-      "--pidfile", pid_file
-    ]
-
-    start_cmd = Puma::ControlCLI.new opts + ["start"], @ready, @ready
-
-    pid = Process.fork do
-      start_cmd.run
-    end
-
-    wait_pid_file(pid_file)
-
-    status_cmd = Puma::ControlCLI.new opts + ["status"]
-    out, err = capture_io {status_cmd.run}
-
-    assert_match "Puma is started", out
-
-    shutdown_cmd = Puma::ControlCLI.new(opts + ["halt"])
-    shutdown_cmd.run
-
-    Process.wait(pid)
-  end
-
-  def test_status_pid_not_running
-    pid_file = "/tmp/pidfile.pid"
-
-    File.delete(pid_file) if File.file? pid_file
-
-    temp_pid = Process.fork do
-      # nothing
-    end
-
-    Process.waitpid(temp_pid)
-
-    File.write(pid_file, temp_pid.to_s)
-
-    opts = [
-      "--config-file", "test/config/app.rb",
-      "--pidfile", pid_file
-    ]
-
-    status_cmd = Puma::ControlCLI.new opts + ["status"]
-    out, err = capture_subprocess_io do
-      assert_raises(SystemExit) {status_cmd.run}
-    end
-
-    assert_match "Puma is not running", out
   end
 end
