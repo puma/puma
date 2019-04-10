@@ -121,9 +121,11 @@ module Puma
         @control_url = sf.control_url
         @control_auth_token = sf.control_auth_token
         @pid = sf.pid
-      elsif @pidfile
+      elsif @pidfile && File.readable?(@pidfile)
         # get pid from pid_file
         @pid = File.open(@pidfile).gets.to_i
+      else
+        @pid = nil
       end
     end
 
@@ -205,6 +207,16 @@ module Puma
 
         when "phased-restart"
           Process.kill "SIGUSR1", @pid
+
+        when "status"
+          begin
+            Process.kill 0, @pid
+            puts "Puma is started"
+          rescue Errno::ESRCH
+            raise "Puma is not running"
+          end
+
+          return
 
         else
           return
