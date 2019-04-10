@@ -72,7 +72,7 @@ class TestPumaControlCli < Minitest::Test
     control_cli = Puma::ControlCLI.new ["--config-file", "test/config/app.rb", "status"]
 
     out, err = capture_subprocess_io do
-      assert_raises(SystemExit){control_cli.run}
+      assert_raises(SystemExit) {control_cli.run}
     end
 
     assert_match "Neither pid nor control url available", out
@@ -112,7 +112,10 @@ class TestPumaControlCli < Minitest::Test
 
     File.delete(pid_file) if File.file? pid_file
 
-    temp_pid = Process.fork {}
+    temp_pid = Process.fork do
+      # nothing
+    end
+
     Process.waitpid(temp_pid)
 
     File.write(pid_file, temp_pid.to_s)
@@ -124,7 +127,7 @@ class TestPumaControlCli < Minitest::Test
 
     status_cmd = Puma::ControlCLI.new opts + ["status"]
     out, err = capture_subprocess_io do
-      assert_raises(SystemExit){status_cmd.run}
+      assert_raises(SystemExit) {status_cmd.run}
     end
 
     assert_match "Puma is not running", out
