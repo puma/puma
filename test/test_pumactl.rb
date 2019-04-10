@@ -44,14 +44,9 @@ class TestPumaControlCli < Minitest::Test
     t = Thread.new do
       Thread.current.abort_on_exception = true
       control_cli.run
-
-      sleep 3
-      raise control_cli.inspect
     end
 
     wait_booted
-
-    sleep 5
 
     s = TCPSocket.new host, 9292
     s << "GET / HTTP/1.0\r\n\r\n"
