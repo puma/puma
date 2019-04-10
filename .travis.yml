@@ -37,14 +37,14 @@ matrix:
       os: osx
     - rvm: 2.5.5
       os: osx
-    - rvm: jruby-9.2.6.0
+    - rvm: jruby-9.2.7.0
     - rvm: jruby-head
 
   allow_failures:
     - rvm: ruby-head
     - rvm: ruby-head
       env: RUBYOPT="--jit"
-    - rvm: jruby-9.2.6.0
+    - rvm: jruby-9.2.7.0
     - rvm: jruby-head
 
 env:
