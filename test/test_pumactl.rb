@@ -69,8 +69,7 @@ class TestPumaControlCli < Minitest::Test
     end
 
     out.strip!
-    assert_match(/Neither pid nor control url available.+/m, out)
-    assert_match "/", out
+    assert out.include?('/')
     assert out.lines.length > 1
 
     control_cli = Puma::ControlCLI.new (["stats", "-N"])
@@ -79,7 +78,8 @@ class TestPumaControlCli < Minitest::Test
     end
 
     out.strip!
-    assert_equal "Neither pid nor control url available", out
+    assert !out.include?('/')
+    assert_equal 1, out.lines.length
 
     control_cli = Puma::ControlCLI.new (["stats", "--no-backtrace"])
     out, _err = capture_subprocess_io do
@@ -87,8 +87,8 @@ class TestPumaControlCli < Minitest::Test
     end
 
     out.strip!
-    assert_equal "Neither pid nor control url available", out
-
+    assert !out.include?('/')
+    assert_equal 1, out.lines.length
   end
 
   def test_no_backtraces_init
@@ -97,8 +97,7 @@ class TestPumaControlCli < Minitest::Test
     end
 
     out.strip!
-    assert_match(/Invalid command: badcommand.+/m, out)
-    assert_match "/", out
+    assert out.include?('/')
     assert out.lines.length > 1
 
     out, _err = capture_subprocess_io do
@@ -106,13 +105,15 @@ class TestPumaControlCli < Minitest::Test
     end
 
     out.strip!
-    assert_equal "Invalid command: badcommand", out
+    assert !out.include?('/')
+    assert_equal 1, out.lines.length
 
     out, _err = capture_subprocess_io do
       assert_raises(SystemExit) {Puma::ControlCLI.new (['badcommand', '--no-backtrace'])}
     end
 
     out.strip!
-    assert_equal "Invalid command: badcommand", out
+    assert !out.include?('/')
+    assert_equal 1, out.lines.length
   end
 end
