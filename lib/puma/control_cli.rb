@@ -16,6 +16,7 @@ module Puma
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
       @quiet = false
+      @no_backtrace = false
       @pidfile = nil
       @pid = nil
       @control_url = nil
@@ -37,6 +38,10 @@ module Puma
 
         o.on "-Q", "--quiet", "Not display messages" do |arg|
           @quiet = true
+        end
+
+        o.on "-N", "--no-backtrace", "Suppress internal backtraces" do |arg|
+          @no_backtrace = true
         end
 
         o.on "-P", "--pidfile PATH", "Pid file" do |arg|
@@ -71,7 +76,7 @@ module Puma
       end
 
       opts.order!(argv) { |a| opts.terminate a }
-      opts.parse!
+      opts.parse!(argv)
 
       @command = argv.shift
 
@@ -101,7 +106,7 @@ module Puma
 
     rescue => e
       @stdout.puts e.message
-      @stdout.puts e.backtrace
+      @stdout.puts e.backtrace unless @no_backtrace
       exit 1
     end
 
@@ -234,7 +239,7 @@ module Puma
 
     rescue => e
       message e.message
-      message e.backtrace
+      message e.backtrace unless @no_backtrace
       exit 1
     end
 
