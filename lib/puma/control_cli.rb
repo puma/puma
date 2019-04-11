@@ -124,8 +124,6 @@ module Puma
       elsif @pidfile && File.readable?(@pidfile)
         # get pid from pid_file
         @pid = File.open(@pidfile).gets.to_i
-      else
-        @pid = nil
       end
     end
 
