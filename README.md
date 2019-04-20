@@ -5,8 +5,8 @@
 # Puma: A Ruby Web Server Built For Concurrency
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
-[![Build Status](https://secure.travis-ci.org/puma/puma.svg)](http://travis-ci.org/puma/puma)
-[![Build status](https://ci.appveyor.com/api/projects/status/f3fnx29ybmq9by9x?svg=true)](https://ci.appveyor.com/project/nateberkopec/puma)
+[![Travis Build Status](https://secure.travis-ci.org/puma/puma.svg)](http://travis-ci.org/puma/puma)
+[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/f3fnx29ybmq9by9x?branch=master&svg=true)](https://ci.appveyor.com/project/puma/puma)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
 
