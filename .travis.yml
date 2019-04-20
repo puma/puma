@@ -23,9 +23,9 @@ script:
 rvm:
   - 2.2.10
   - 2.3.8
-  - 2.4.5
+  - 2.4.6
   - 2.5.5
-  - 2.6.2
+  - 2.6.3
   - ruby-head
 
 matrix:
@@ -37,14 +37,15 @@ matrix:
       os: osx
     - rvm: 2.5.5
       os: osx
-    - rvm: jruby-9.2.6.0
+    - rvm: jruby-9.2.7.0
+      env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: jruby-head
 
   allow_failures:
     - rvm: ruby-head
     - rvm: ruby-head
       env: RUBYOPT="--jit"
-    - rvm: jruby-9.2.6.0
+    - rvm: jruby-9.2.7.0
     - rvm: jruby-head
 
 env:
