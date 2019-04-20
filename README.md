@@ -6,7 +6,7 @@
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
 [![Build Status](https://secure.travis-ci.org/puma/puma.svg)](http://travis-ci.org/puma/puma)
-[![AppVeyor](https://img.shields.io/appveyor/ci/nateberkopec/puma.svg)](https://ci.appveyor.com/project/nateberkopec/puma)
+[![Build status](https://ci.appveyor.com/api/projects/status/f3fnx29ybmq9by9x?svg=true)](https://ci.appveyor.com/project/nateberkopec/puma)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
 
