@@ -216,14 +216,9 @@ module Puma
       # during this loop by giving the kernel time to kill them.
       sleep 1 if any
 
-      while @workers.any?
-        pid = Process.waitpid(-1, Process::WNOHANG)
-        break unless pid
+      @workers.reject! { |w| Process.waitpid(w.pid, Process::WNOHANG) }
 
-        @workers.delete_if { |w| w.pid == pid }
-      end
-
-      @workers.delete_if(&:dead?)
+      @workers.reject!(&:dead?)
 
       cull_workers
       spawn_workers
