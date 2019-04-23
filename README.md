@@ -5,8 +5,8 @@
 # Puma: A Ruby Web Server Built For Concurrency
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
-[![Travis Build Status](https://secure.travis-ci.org/puma/puma.svg)](http://travis-ci.org/puma/puma)
-[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/f3fnx29ybmq9by9x?branch=master&svg=true)](https://ci.appveyor.com/project/puma/puma)
+[![Travis Build Status](https://secure.travis-ci.org/puma/puma.svg)](https://travis-ci.org/puma/puma)
+[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/0xnxc7a26u9b2bub/branch/master?svg=true)](https://ci.appveyor.com/project/puma/puma/branch/master)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
 
@@ -16,7 +16,7 @@ Puma is a **simple, fast, threaded, and highly concurrent HTTP 1.1 server for Ru
 
 Under the hood, Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request in a thread from an internal thread pool. Since each request is served in a separate thread, truly concurrent Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
 
-Puma was designed to be the go-to server for [Rubinius](http://rubini.us), but also works well with JRuby and MRI.
+Puma was designed to be the go-to server for [Rubinius](https://rubini.us), but also works well with JRuby and MRI.
 
 On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing blocking IO to be run concurrently.
 
