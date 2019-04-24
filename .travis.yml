@@ -12,6 +12,10 @@ before_install:
       elif [ "$rv" \< "2.6" ]; then gem update --system --no-document --conservative
       fi
     fi
+    if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      brew update
+      brew install ragel
+    fi
   - ruby -v && gem --version && bundle version
 
 before_script:
@@ -33,10 +37,15 @@ matrix:
   include:
     - rvm: ruby-head
       env: RUBYOPT="--jit"
-    - rvm: 2.3.8
+    - rvm: 2.4.6
       os: osx
+      osx_image: xcode10.2
     - rvm: 2.5.5
       os: osx
+      osx_image: xcode10.2
+    - rvm: 2.6.3
+      os: osx
+      osx_image: xcode10.2
     - rvm: jruby-9.2.7.0
       env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: jruby-head
