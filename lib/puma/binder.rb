@@ -50,7 +50,13 @@ module Puma
 
     def close
       @ios.each { |i| i.close }
-      @unix_paths.each { |i| File.unlink i }
+      @unix_paths.each do |i|
+        # Errno::ENOENT is intermittently raised
+        begin
+          File.unlink i
+        rescue Errno::ENOENT
+        end
+      end
     end
 
     def import_from_env

@@ -54,6 +54,7 @@ module Puma
       @ready = false
 
       @body = nil
+      @body_read_start = nil
       @buffer = nil
       @tempfile = nil
 
