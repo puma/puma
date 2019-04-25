@@ -101,7 +101,7 @@ class TestBinder < Minitest::Test
 
     m = %r!tcp://localhost:(\d+)!.match(@events.stdout.string)
 
-    port = m[0].to_i
+    port = m[1].to_i
 
     assert_equal 0, port
   end
