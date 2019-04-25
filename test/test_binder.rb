@@ -14,7 +14,7 @@ class TestBinder < Minitest::Test
 
     @binder.parse(["tcp://localhost:10001"], @events)
 
-    assert_equal [], @binder.listeners
+    assert_equal "tcp://localhost:10001", @binder.listeners.first.first
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
@@ -25,7 +25,8 @@ class TestBinder < Minitest::Test
 
     @binder.parse(["ssl://localhost:10002?key=#{key}&cert=#{cert}"], @events)
 
-    assert_equal [], @binder.listeners
+    assert_equal "ssl://localhost:10002?key=#{key}&cert=#{cert}",
+      @binder.listeners.first.first
   end
 
   def test_binder_parses_ssl_cipher_filter
@@ -103,6 +104,6 @@ class TestBinder < Minitest::Test
 
     port = m[1].to_i
 
-    assert_equal 0, port
+    refute_equal 0, port
   end
 end

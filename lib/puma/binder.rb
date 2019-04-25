@@ -104,7 +104,9 @@ module Puma
             bak = params.fetch('backlog', 1024).to_i
 
             io = add_tcp_listener uri.host, uri.port, opt, bak
-            logger.log "* Listening on #{str}"
+            port = io.local_address.getnameinfo.last
+
+            logger.log "* Listening on tcp://#{uri.host}:#{port}"
           end
 
           @listeners << [str, io] if io
@@ -265,10 +267,11 @@ module Puma
     #
     def add_tcp_listener(host, port, optimize_for_latency=true, backlog=1024)
       if host == "localhost"
+        io = nil
         loopback_addresses.each do |addr|
-          add_tcp_listener addr, port, optimize_for_latency, backlog
+          io = add_tcp_listener addr, port, optimize_for_latency, backlog
         end
-        return
+        return io
       end
 
       host = host[1..-2] if host and host[0..0] == '['
@@ -304,10 +307,11 @@ module Puma
       MiniSSL.check
 
       if host == "localhost"
+        io = nil
         loopback_addresses.each do |addr|
-          add_ssl_listener addr, port, ctx, optimize_for_latency, backlog
+          io = add_ssl_listener addr, port, ctx, optimize_for_latency, backlog
         end
-        return
+        return io
       end
 
       host = host[1..-2] if host[0..0] == '['
