@@ -111,7 +111,16 @@ module Puma
             bak = params.fetch('backlog', 1024).to_i
 
             io = add_tcp_listener uri.host, uri.port, opt, bak
-            logger.log "* Listening on #{str}"
+
+            @ios.each do |i|
+              addr = if i.local_address.ipv6?
+                "[#{i.local_address.ip_unpack[0]}]:#{i.local_address.ip_unpack[1]}"
+              else
+                i.local_address.ip_unpack.join(':')
+              end
+
+              logger.log "* Listening on tcp://#{addr}"
+            end
           end
 
           @listeners << [str, io] if io

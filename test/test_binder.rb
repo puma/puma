@@ -95,4 +95,26 @@ class TestBinderMRI < TestBinderBase
 
     refute ssl_context_for_binder(@binder).no_tlsv1_1
   end
+
+  def test_correct_zero_port
+    @events = Puma::Events.strings
+    @binder = Puma::Binder.new(@events)
+    @binder.parse(["tcp://localhost:0"], @events)
+
+    m = %r!tcp://127.0.0.1:(\d+)!.match(@events.stdout.string)
+    port = m[1].to_i
+
+    refute_equal 0, port
+  end
+
+  def test_logs_all_localhost_bindings
+    @events = Puma::Events.strings
+    @binder = Puma::Binder.new(@events)
+    @binder.parse(["tcp://localhost:0"], @events)
+
+    assert_match %r!tcp://127.0.0.1:(\d+)!, @events.stdout.string
+    if @binder.loopback_addresses.include?("::1")
+      assert_match %r!tcp://\[::1\]:(\d+)!, @events.stdout.string
+    end
+  end
 end
