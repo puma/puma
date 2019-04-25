@@ -99,6 +99,10 @@ class TestBinder < Minitest::Test
     @binder = Puma::Binder.new(@events)
     @binder.parse(["tcp://localhost:0"], @events)
 
-    assert_equal "* Listening on tcp://localhost:0\n", @events.stdout.string
+    m = %r!tcp://localhost:(\d+)!.match(@events.stdout.string)
+
+    port = m[0].to_i
+
+    assert_equal 0, port
   end
 end
