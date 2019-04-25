@@ -93,4 +93,13 @@ class TestBinder < Minitest::Test
     ctx = ssl.instance_variable_get(:@ctx)
     refute(ctx.no_tlsv1)
   end
+
+  def test_correct_zero_port
+    @events = Puma::Events.strings
+    @binder = Puma::Binder.new(@events)
+    @binder.parse(["tcp://localhost:0"], @events)
+
+    p @events.stdout.to_s
+    # assert_equal "* Listening on tcp://localhost:0\n", @events.stdout.read
+  end
 end
