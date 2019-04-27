@@ -452,13 +452,27 @@ void Init_mini_ssl(VALUE puma) {
   // OpenSSL Build / Runtime/Load versions
 
   /* Version of OpenSSL that Puma was compiled with */
-	rb_define_const(mod, "OPENSSL_VERSION", rb_str_new2(OPENSSL_VERSION_TEXT));
+  rb_define_const(mod, "OPENSSL_VERSION", rb_str_new2(OPENSSL_VERSION_TEXT));
 
 #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000
-	/* Version of OpenSSL that Puma loaded with */
-	rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(OpenSSL_version(OPENSSL_VERSION)));
+  /* Version of OpenSSL that Puma loaded with */
+  rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(OpenSSL_version(OPENSSL_VERSION)));
 #else
-	rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(SSLeay_version(SSLEAY_VERSION)));
+  rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(SSLeay_version(SSLEAY_VERSION)));
+#endif
+
+#if defined(OPENSSL_NO_SSL3) || defined(OPENSSL_NO_SSL3_METHOD)
+  /* True if SSL3 is not available */
+  rb_define_const(mod, "OPENSSL_NO_SSL3", Qtrue);
+#else
+  rb_define_const(mod, "OPENSSL_NO_SSL3", Qfalse);
+#endif
+
+#ifdef defined(OPENSSL_NO_TLS1) || defined(OPENSSL_NO_TLS1_METHOD)
+  /* True if TLS1 is not available */
+  rb_define_const(mod, "OPENSSL_NO_TLS1", Qtrue);
+#else
+  rb_define_const(mod, "OPENSSL_NO_TLS1", Qfalse);
 #endif
 
   rb_define_singleton_method(mod, "check", noop, 0);
