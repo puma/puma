@@ -309,8 +309,8 @@ class TestIntegration < Minitest::Test
     curl_wait_thread.join
     rejected_curl_wait_thread.join
 
-    assert_match /Hello World/, curl_stdout.read
-    assert_match /Connection refused/, rejected_curl_stderr.read
+    assert_match(/Hello World/, curl_stdout.read)
+    assert_match(/Connection refused/, rejected_curl_stderr.read)
 
     Process.wait(@server.pid)
     @server = nil # prevent `#teardown` from killing already killed server
