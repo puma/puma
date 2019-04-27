@@ -33,7 +33,17 @@ DISABLE_SSL = begin
 class TestPumaServerSSL < Minitest::Test
 
   def setup
-    return if DISABLE_SSL
+    @http = nil
+    @server = nil
+  end
+
+  def teardown
+    @http.finish if @http && @http.started?
+    @server.stop true if @server
+  end
+
+  # yields ctx for changes in tests
+  def start_server
     port = UniquePort.call
     host = "127.0.0.1"
 
@@ -51,6 +61,8 @@ class TestPumaServerSSL < Minitest::Test
 
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
+    yield ctx if block_given?
+
     @events = SSLEventsHelper.new STDOUT, STDERR
     @server = Puma::Server.new app, @events
     @ssl_listener = @server.add_ssl_listener host, port, ctx
@@ -61,13 +73,8 @@ class TestPumaServerSSL < Minitest::Test
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
 
-  def teardown
-    return if DISABLE_SSL
-    @http.finish if @http.started?
-    @server.stop(true)
-  end
-
   def test_url_scheme_for_https
+    start_server
     body = nil
     @http.start do
       req = Net::HTTP::Get.new "/", {}
@@ -81,6 +88,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_very_large_return
+    start_server
     giant = "x" * 2056610
 
     @server.app = proc do
@@ -99,6 +107,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_form_submit
+    start_server
     body = nil
     @http.start do
       req = Net::HTTP::Post.new '/'
@@ -114,7 +123,9 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_ssl_v3_rejection
-    @http.ssl_version= :SSLv3
+    skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
+    start_server
+    @http.ssl_version = :SSLv3
     # Ruby 2.4.5 on Travis raises ArgumentError
     assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
       @http.start do
@@ -123,6 +134,22 @@ class TestPumaServerSSL < Minitest::Test
     end
     unless Puma.jruby?
       msg = /wrong version number|no protocols available|version too low|unknown SSL method/
+      assert_match(msg, @events.error.message) if @events.error
+    end
+  end
+
+  def test_tls_v1_rejection
+    skip("TLSv1 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_TLS1
+    start_server { |ctx| ctx.no_tlsv1 = true }
+    @http.ssl_version = :TLSv1
+    # Ruby 2.4.5 on Travis raises ArgumentError
+    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+      @http.start do
+        Net::HTTP::Get.new '/'
+      end
+    end
+    unless Puma.jruby?
+      msg = /unknown protocol|unsupported protocol/
       assert_match(msg, @events.error.message) if @events.error
     end
   end
