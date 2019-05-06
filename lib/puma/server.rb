@@ -23,7 +23,7 @@ module Puma
   #
   # This class is used by the `Puma::Single` and `Puma::Cluster` classes
   # to generate one or more `Puma::Server` instances capable of handling requests.
-  # Each Puma process will contain one `Puma::Server` instacne.
+  # Each Puma process will contain one `Puma::Server` instance.
   #
   # The `Puma::Server` instance pulls requests from the socket, adds them to a
   # `Puma::Reactor` where they get eventually passed to a `Puma::ThreadPool`.
