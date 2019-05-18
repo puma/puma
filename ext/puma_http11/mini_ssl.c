@@ -142,7 +142,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   VALUE obj;
   SSL_CTX* ctx;
   SSL* ssl;
-  int ssl_options;
+  int min, ssl_options;
 
   ms_conn* conn = engine_alloc(self, &obj);
 
@@ -168,8 +168,12 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   ID sym_no_tlsv1 = rb_intern("no_tlsv1");
   VALUE no_tlsv1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1, 0);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000 && !defined(LIBRESSL_VERSION_NUMBER)
+  ctx = SSL_CTX_new(TLS_method());
+#else
+  ctx = SSL_CTX_new(SSLv23_method());
+#endif
 
-  ctx = SSL_CTX_new(SSLv23_server_method());
   conn->ctx = ctx;
 
   SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
@@ -180,12 +184,29 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
     SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL);
   }
 
-  ssl_options  = SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_COMPRESSION;
+  ssl_options = SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_COMPRESSION;
 
-  if(RTEST(no_tlsv1)) {
+#ifdef SSL_CTX_set_min_proto_version
+  if (RTEST(no_tlsv1)) {
+    min = TLS1_1_VERSION;
+  }
+  else {
+    min = TLS1_VERSION;
+  }
+  SSL_CTX_set_min_proto_version(ctx, min);
+
+  SSL_CTX_set_options(ctx, ssl_options);
+
+#else
+  /* As of 1.0.2f, SSL_OP_SINGLE_DH_USE key use is always on */
+  ssl_options |= SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE;
+
+  if (RTEST(no_tlsv1)) {
     ssl_options |= SSL_OP_NO_TLSv1;
   }
   SSL_CTX_set_options(ctx, ssl_options);
+#endif
+
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 
   if (!NIL_P(ssl_cipher_filter)) {
