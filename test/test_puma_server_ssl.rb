@@ -32,7 +32,14 @@ DISABLE_SSL = begin
 
 class TestPumaServerSSL < Minitest::Test
 
-  def setup
+  def teardown
+    return if DISABLE_SSL
+    @http.finish if @http.started?
+    @server.stop(true)
+  end
+
+  # yields ctx to block, use for ctx setup & configuration
+  def start_server
     return if DISABLE_SSL
     port = UniquePort.call
     host = "127.0.0.1"
@@ -51,6 +58,8 @@ class TestPumaServerSSL < Minitest::Test
 
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
+    yield ctx if block_given?
+
     @events = SSLEventsHelper.new STDOUT, STDERR
     @server = Puma::Server.new app, @events
     @ssl_listener = @server.add_ssl_listener host, port, ctx
@@ -61,13 +70,8 @@ class TestPumaServerSSL < Minitest::Test
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
 
-  def teardown
-    return if DISABLE_SSL
-    @http.finish if @http.started?
-    @server.stop(true)
-  end
-
   def test_url_scheme_for_https
+    start_server
     body = nil
     @http.start do
       req = Net::HTTP::Get.new "/", {}
@@ -81,6 +85,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_very_large_return
+    start_server
     giant = "x" * 2056610
 
     @server.app = proc do
@@ -99,6 +104,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_form_submit
+    start_server
     body = nil
     @http.start do
       req = Net::HTTP::Post.new '/'
@@ -114,6 +120,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_ssl_v3_rejection
+    start_server
     @http.ssl_version= :SSLv3
     # Ruby 2.4.5 on Travis raises ArgumentError
     assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
@@ -123,6 +130,26 @@ class TestPumaServerSSL < Minitest::Test
     end
     unless Puma.jruby?
       msg = /wrong version number|no protocols available|version too low|unknown SSL method/
+      assert_match(msg, @events.error.message) if @events.error
+    end
+  end
+
+  def test_tls_v1_rejection
+    start_server { |ctx| ctx.no_tlsv1 = true }
+
+    if @http.respond_to? :max_version=
+      @http.max_version = :TLS1
+    else
+      @http.ssl_version = :TLSv1
+    end
+    # Ruby 2.4.5 on Travis raises ArgumentError
+    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+      @http.start do
+        Net::HTTP::Get.new '/'
+      end
+    end
+    unless Puma.jruby?
+      msg = /wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
       assert_match(msg, @events.error.message) if @events.error
     end
   end
