@@ -1,6 +1,7 @@
 require_relative "helper"
 
 require "puma/cli"
+require "json"
 
 class TestCLI < Minitest::Test
   def setup
@@ -195,12 +196,7 @@ class TestCLI < Minitest::Test
 
     lines = body.split("\r\n")
     json_line = lines.detect { |l| l[0] == "{" }
-    pairs = json_line.scan(/\"[^\"]+\": [^,]+/)
-    gc_stats = {}
-    pairs.each do |p|
-      p =~ /\"([^\"]+)\": ([^,]+)/ || raise("Can't parse #{p.inspect}!")
-      gc_stats[$1] = $2
-    end
+    gc_stats = JSON.parse(json_line)
     gc_count_after = gc_stats["count"].to_i
 
     # Hitting the /gc route should increment the count by 1
