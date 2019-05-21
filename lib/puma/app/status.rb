@@ -1,3 +1,5 @@
+require 'json'
+
 module Puma
   module App
     class Status
@@ -60,8 +62,7 @@ module Puma
           return rack_response(200, OK_STATUS)
 
         when /\/gc-stats$/
-          json = "{" + GC.stat.map { |k, v| "\"#{k}\": #{v}" }.join(",") + "}"
-          return rack_response(200, json)
+          return rack_response(200, GC.stat.to_json)
 
         when /\/stats$/
           return rack_response(200, @cli.stats)
