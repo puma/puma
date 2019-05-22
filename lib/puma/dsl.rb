@@ -105,6 +105,11 @@ module Puma
       end
 
       if opts[:no_token]
+        # We need to use 'none' rather than :none because this value will be
+        # passed on to an instance of OptionParser, which doesn't support
+        # symbols as option values.
+        #
+        # See: https://github.com/puma/puma/issues/1193#issuecomment-305995488
         auth_token = 'none'
       else
         auth_token = opts[:auth_token]
