@@ -592,15 +592,19 @@ module Puma
       env['HTTP_X_FORWARDED_PROTO'] == 'https' ? PORT_443 : PORT_80
     end
 
-    # Given the request +env+ from +client+ and a partial request body
-    # in +body+, finish reading the body if there is one and invoke
-    # the rack app. Then construct the response and write it back to
-    # +client+
+    # Takes the request +req+, invokes the Rack application to construct
+    # the response and writes it back to +req.io+.
     #
-    # +cl+ is the previously fetched Content-Length header if there
-    # was one. This is an optimization to keep from having to look
-    # it up again.
+    # The second parameter +lines+ is a IO-like object unique to this thread.
+    # This is normally an instance of Puma::IOBuffer.
     #
+    # It'll return +false+ when the connection is closed, this doesn't mean
+    # that the response wasn't successful.
+    #
+    # It'll return +:async+ if the connection remains open but will be handled
+    # elsewhere, i.e. the connection has been hijacked by the Rack application.
+    #
+    # Finally, it'll return +true+ on keep-alive connections.
     def handle_request(req, lines)
       env = req.env
       client = req.io
