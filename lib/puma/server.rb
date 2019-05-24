@@ -598,6 +598,13 @@ module Puma
     # The second parameter +lines+ is a IO-like object unique to this thread.
     # This is normally an instance of Puma::IOBuffer.
     #
+    # It'll return +false+ when the connection is closed, this doesn't mean
+    # that the response wasn't successful.
+    #
+    # It'll return +:async+ if the connection remains open but will be handled
+    # elsewhere, i.e. the connection has been hijacked by the Rack application.
+    #
+    # Finally, it'll return +true+ on keep-alive connections.
     def handle_request(req, lines)
       env = req.env
       client = req.io
