@@ -29,6 +29,16 @@ class TestPumaControlCli < Minitest::Test
     assert_equal "t3-pid", control_cli.instance_variable_get("@pidfile")
   end
 
+  def test_control_no_token
+    opts = [
+      "--config-file", "test/config/control_no_token.rb",
+      "start"
+    ]
+
+    control_cli = Puma::ControlCLI.new opts, @ready, @ready
+    assert_equal 'none', control_cli.instance_variable_get("@control_auth_token")
+  end
+
   def test_control_url
     host = "127.0.0.1"
     port = find_open_port
