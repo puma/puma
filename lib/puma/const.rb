@@ -231,5 +231,7 @@ module Puma
     # Mininum interval to checks worker health
     WORKER_CHECK_INTERVAL = 5
 
+    UPGRADE_P = "rack.upgrade?".freeze
+    UPGRADE = "rack.upgrade".freeze
   end
 end

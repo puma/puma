@@ -594,7 +594,7 @@ module Puma
       end
 
       # Detect and advertise websocket upgrade ability
-      env[WEBSOCKET_P] = Websocket.detect?(env)
+      env[UPGRADE_P] = :websocket if Websocket.detect?(env)
     end
 
     def default_server_port(env)
@@ -691,7 +691,7 @@ module Puma
           status, headers, res_body = lowlevel_error(e, env)
         end
 
-        if handler = env[WEBSOCKET]
+        if handler = env[UPGRADE]
           begin
             Websocket.start(req, handler, headers, @reactor, @thread_pool, @events)
           rescue Exception => e

@@ -21,6 +21,9 @@ module Puma
         @ws.close
       end
 
+      def open?
+        @ws.state == :open
+      end
     end
 
     class Reactor
@@ -96,11 +99,11 @@ module Puma
         begin
           case event
           when ::WebSocket::Driver::OpenEvent
-            @handler.on_open
+            @handler.on_open @conn
           when ::WebSocket::Driver::CloseEvent
-            @handler.on_close
+            @handler.on_close @conn
           when ::WebSocket::Driver::MessageEvent
-            @handler.on_message event.data
+            @handler.on_message @conn, event.data
           else
             STDERR.puts "Received unknown event for websockets: #{event.class}"
           end
