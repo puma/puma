@@ -36,16 +36,26 @@ module Puma
 
       begin
         if RUBY_VERSION < '2.6'
-          @workers.each { |w| Process.waitpid(w.pid) }
+          @workers.each do |w|
+            begin
+              Process.waitpid(w.pid)
+            rescue Errno::ECHILD
+              # child is already terminated
+            end
+          end
         else
           # below code is for a bug in Ruby 2.6+, above waitpid call hangs
           t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           pids = @workers.map(&:pid)
           loop do
             pids.reject! do |w_pid|
-              if Process.waitpid(w_pid, Process::WNOHANG)
-                log "    worker status: #{$?}"
-                true
+              begin
+                if Process.waitpid(w_pid, Process::WNOHANG)
+                  log "    worker status: #{$?}"
+                  true
+                end
+              rescue Errno::ECHILD
+                true # child is already terminated
               end
             end
             break if pids.empty?
