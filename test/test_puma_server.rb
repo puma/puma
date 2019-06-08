@@ -810,11 +810,23 @@ EOF
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
-    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n"
+
+    last_crlf_written = false
+    last_crlf_writer = Thread.new do
+      sleep 0.1
+      sock << "\r"
+      sleep 0.1
+      sock << "\n"
+      last_crlf_written = true
+    end
 
     h = header(sock)
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "hello", body
+    assert_equal true, last_crlf_written
+
+    last_crlf_writer.join
 
     sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
     sleep 0.1

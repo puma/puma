@@ -68,6 +68,8 @@ module Puma
       @remote_addr_header = nil
 
       @body_remain = 0
+
+      @in_last_chunk = false
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
@@ -108,6 +110,7 @@ module Puma
       @ready = false
       @body_remain = 0
       @peerip = nil
+      @in_last_chunk = false
 
       if @buffer
         @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
@@ -166,7 +169,7 @@ module Puma
           chunk = chunk[@partial_part_left..-1]
           @partial_part_left = 0
         else
-          @body << chunk
+          @body << chunk if @partial_part_left > 2 # don't include the last \r\n
           @partial_part_left -= chunk.size
           return false
         end
@@ -184,12 +187,20 @@ module Puma
         if line.end_with?("\r\n")
           len = line.strip.to_i(16)
           if len == 0
+            @in_last_chunk = true
             @body.rewind
             rest = io.read
-            rest = rest[2..-1] if rest.start_with?("\r\n")
-            @buffer = rest.empty? ? nil : rest
-            set_ready
-            return true
+            last_crlf_size = "\r\n".bytesize
+            if rest.bytesize < last_crlf_size
+              @buffer = nil
+              @partial_part_left = last_crlf_size - rest.bytesize
+              return false
+            else
+              @buffer = rest[last_crlf_size..-1]
+              @buffer = nil if @buffer.empty?
+              set_ready
+              return true
+            end
           end
 
           len += 2
@@ -219,7 +230,12 @@ module Puma
         end
       end
 
-      return false
+      if @in_last_chunk
+        set_ready
+        return true
+      else
+        return false
+      end
     end
 
     def read_chunked_body
