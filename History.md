@@ -9,6 +9,7 @@
   * Add option to suppress SignalException on SIGTERM (#1690)
   * Allow mutual TLS CA to be set using `ssl_bind` DSL (#1689)
   * Reactor now uses nio4r instead of `select` (#1728)
+  * Minimum Ruby version now >= 2.5 (#1813)
 * x bugfixes
   * Do not accept new requests on shutdown (#1685, #1808)
   * Fix 3 corner cases when request body is chunked (#1508)
