@@ -186,7 +186,7 @@ class TestIntegration < Minitest::Test
     until done
       @events.stdout.rewind
       log = @events.stdout.readlines.join("")
-      if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
+      if /- Worker \d \(pid: \d+\) booted, phase: 1/.match?(log)
         assert_match(/TERM sent/, log)
         assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
         done = true

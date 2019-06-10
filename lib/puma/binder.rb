@@ -63,7 +63,7 @@ module Puma
       remove = []
 
       ENV.each do |k,v|
-        if k =~ /PUMA_INHERIT_\d+/
+        if /PUMA_INHERIT_\d+/.match?(k)
           fd, url = v.split(":", 2)
           @inherited_fds[url] = fd.to_i
           remove << k
@@ -75,7 +75,7 @@ module Puma
               key = [ :unix, Socket.unpack_sockaddr_un(sock.getsockname) ]
             rescue ArgumentError
               port, addr = Socket.unpack_sockaddr_in(sock.getsockname)
-              if addr =~ /\:/
+              if /\:/.match?(addr)
                 addr = "[#{addr}]"
               end
               key = [ :tcp, addr, port ]
