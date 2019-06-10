@@ -8,6 +8,7 @@
   * Min worker timeout (#1716)
   * Add option to suppress SignalException on SIGTERM (#1690)
   * Allow mutual TLS CA to be set using `ssl_bind` DSL (#1689)
+  * Add log_formatter configuration
 * x bugfixes
   * Do not accept new requests on shutdown (#1685)
   * Fix 3 corner cases when request body is chunked (#1508)

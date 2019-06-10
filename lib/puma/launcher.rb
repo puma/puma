@@ -50,9 +50,6 @@ module Puma
       @original_argv = @argv.dup
       @config        = conf
 
-      @binder        = Binder.new(@events)
-      @binder.import_from_env
-
       @environment = conf.environment
 
       # Advertise the Configuration
@@ -62,6 +59,11 @@ module Puma
 
       @options = @config.options
       @config.clamp
+
+      @events.formatter = Events::CustomFormatter.new(@options[:log_formatter]) if @options[:log_formatter]
+
+      @binder        = Binder.new(@events)
+      @binder.import_from_env
 
       generate_restart_data
 
@@ -81,7 +83,7 @@ module Puma
       set_rack_environment
 
       if clustered?
-        @events.formatter = Events::PidFormatter.new
+        @events.formatter = Events::PidFormatter.new unless @options[:log_formatter]
         @options[:logger] = @events
 
         @runner = Cluster.new(self, @events)

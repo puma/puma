@@ -144,7 +144,7 @@ class TestEvents < Minitest::Test
   end
 
   def test_custom_log_formatter
-    custom_formatter = proc { |str| "-> #{ str }" }
+    custom_formatter = Puma::Events::CustomFormatter.new(Proc.new { |str| "-> #{str}" })
 
     out, _ = capture_io do
       events = Puma::Events.stdio
