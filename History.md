@@ -8,15 +8,19 @@
   * Min worker timeout (#1716)
   * Add option to suppress SignalException on SIGTERM (#1690)
   * Allow mutual TLS CA to be set using `ssl_bind` DSL (#1689)
+  * Reactor now uses nio4r instead of `select` (#1728)
+  * Minimum Ruby version now >= 2.5 (#1813)
   * Add log_formatter configuration
 * x bugfixes
-  * Do not accept new requests on shutdown (#1685)
+  * Do not accept new requests on shutdown (#1685, #1808)
   * Fix 3 corner cases when request body is chunked (#1508)
   * Change pid existence check's condition branches (#1650)
   * Don't call .stop on a server that doesn't exist (#1655)
   * Implemented NID_X9_62_prime256v1 (P-256) curve over P-521 (#1671)
   * Fix @notify.close can't modify frozen IOError (RuntimeError) (#1583)
-
+  * Fix Java 8 support (#1773)
+  * Fix error `uninitialized constant Puma::Cluster` (#1731)
+  * Fix `not_token` being able to be set to true (#1803)
 
 ## 3.12.1 / 2019-03-19
 
