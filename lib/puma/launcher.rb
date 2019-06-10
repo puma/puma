@@ -214,6 +214,15 @@ module Puma
       end
     end
 
+    def close_binder_listeners
+      @binder.listeners.each do |l, io|
+        io.close
+        uri = URI.parse(l)
+        next unless uri.scheme == 'unix'
+        File.unlink("#{uri.host}#{uri.path}")
+      end
+    end
+
     private
 
     def reload_worker_directory
@@ -318,16 +327,6 @@ module Puma
     def prune_bundler?
       @options[:prune_bundler] && clustered? && !@options[:preload_app]
     end
-
-    def close_binder_listeners
-      @binder.listeners.each do |l, io|
-        io.close
-        uri = URI.parse(l)
-        next unless uri.scheme == 'unix'
-        File.unlink("#{uri.host}#{uri.path}")
-      end
-    end
-
 
     def generate_restart_data
       if dir = @options[:directory]

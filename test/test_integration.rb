@@ -232,6 +232,58 @@ class TestIntegration < Minitest::Test
     assert_equal "Hello World", new_reply
   end
 
+  def test_sigterm_closes_listeners_on_forked_servers
+    skip NO_FORK_MSG unless HAS_FORK
+    pid = start_forked_server("-w 2 -q test/rackup/1second.ru")
+    threads = []
+    initial_reply = nil
+    next_replies = []
+    condition_variable = ConditionVariable.new
+    mutex = Mutex.new
+
+    threads << Thread.new do
+      s = connect
+      mutex.synchronize { condition_variable.broadcast }
+      initial_reply = read_body(s)
+    end
+
+    threads << Thread.new do
+      mutex.synchronize {
+        condition_variable.wait(mutex, 1)
+        Process.kill("SIGTERM", pid)
+      }
+    end
+
+    10.times.each do |i|
+      threads << Thread.new do
+        mutex.synchronize { condition_variable.wait(mutex, 1.5) }
+
+        begin
+          s = connect
+          read_body(s)
+          next_replies << :success
+        rescue Errno::ECONNRESET
+          # connection was accepted but then closed
+          # client would see an empty response
+          next_replies << :connection_reset
+        rescue Errno::ECONNREFUSED
+          # connection was was never accepted
+          # it can therefore be re-tried before the
+          # client receives an empty reponse
+          next_replies << :connection_refused
+        end
+      end
+    end
+
+    threads.map(&:join)
+
+    assert_equal "Hello World", initial_reply
+
+    assert_includes next_replies, :connection_refused
+
+    refute_includes next_replies, :connection_reset
+  end
+
   # It does not share environments between multiple generations, which would break Dotenv
   def test_restart_restores_environment
     # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
