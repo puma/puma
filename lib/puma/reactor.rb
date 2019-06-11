@@ -24,7 +24,7 @@ module Puma
   # which stores it in an array and waits for any of the connections to be ready for reading.
   #
   # The waiting/wake up is performed with nio4r, which will use the apropriate backend (libev, Java NIO or
-  # just plain IO#select). The call to `NIO::Selector#select` (hereinafter `select()`) will "wake up" and
+  # just plain IO#select). The call to `NIO::Selector#select` will "wake up" and
   # return the references to any objects that caused it to "wake". The reactor
   # then loops through each of these request objects, and sees if they're complete. If they
   # have a full header and body then the reactor passes the request to a thread pool.
@@ -74,14 +74,14 @@ module Puma
     # loop, waiting on the `sockets` array objects. The only object in this
     # array at first is the `@ready` IO object, which is the read end of a pipe
     # connected to `@trigger` object. When `@trigger` is written to, then the loop
-    # will break on `select()` and return an array.
+    # will break on `NIO::Selector#select` and return an array.
     #
     # ## When a request is added:
     #
     # When the `add` method is called, an instance of `Puma::Client` is added to the `@input` array.
     # Next the `@ready` pipe is "woken" by writing a string of `"*"` to `@trigger`.
     #
-    # When that happens, the internal loop stops blocking at `select()` and returns a reference
+    # When that happens, the internal loop stops blocking at `NIO::Selector#select` and returns a reference
     # to whatever "woke" it up. On the very first loop, the only thing in `sockets` is `@ready`.
     # When `@trigger` is written-to, the loop "wakes" and the `ready`
     # variable returns an array of arrays that looks like `[[#<IO:fd 10>], [], []]` where the
@@ -97,7 +97,7 @@ module Puma
     # to the `@ready` IO object. For example: `[#<IO:fd 10>, #<Puma::Client:0x3fdc1103bee8 @ready=false>]`.
     #
     # Since the `Puma::Client` in this example has data that has not been read yet,
-    # the `select()` is immediately able to "wake" and read from the `Puma::Client`. At this point the
+    # the `NIO::Selector#select` is immediately able to "wake" and read from the `Puma::Client`. At this point the
     # `ready` output looks like this: `[[#<Puma::Client:0x3fdc1103bee8 @ready=false>], [], []]`.
     #
     # Each element in the first entry is iterated over. The `Puma::Client` object is not
@@ -109,12 +109,12 @@ module Puma
     #
     # If the request body is not present then nothing will happen, and the loop will iterate
     # again. When the client sends more data to the socket the `Puma::Client` object will
-    # wake up the `select()` and it can again be checked to see if it's ready to be
+    # wake up the `NIO::Selector#select` and it can again be checked to see if it's ready to be
     # passed to the thread pool.
     #
     # ## Time Out Case
     #
-    # In addition to being woken via a write to one of the sockets the `select()` will
+    # In addition to being woken via a write to one of the sockets the `NIO::Selector#select` will
     # periodically "time out" of the sleep. One of the functions of this is to check for
     # any requests that have "timed out". At the end of the loop it's checked to see if
     # the first element in the `@timeout` array has exceed its allowed time. If so,
@@ -124,7 +124,7 @@ module Puma
     #
     # This behavior loops until all the objects that have timed out have been removed.
     #
-    # Once all the timeouts have been processed, the next duration of the `select()` sleep
+    # Once all the timeouts have been processed, the next duration of the `NIO::Selector#select` sleep
     # will be set to be equal to the amount of time it will take for the next timeout to occur.
     # This calculation happens in `calculate_sleep`.
     def run_internal
@@ -320,7 +320,7 @@ module Puma
       end
     end
 
-    # The `calculate_sleep` sets the value that the `select()` will
+    # The `calculate_sleep` sets the value that the `NIO::Selector#select` will
     # sleep for in the main reactor loop when no sockets are being written to.
     #
     # The values kept in `@timeouts` are sorted so that the first timeout
@@ -351,18 +351,18 @@ module Puma
     # object.
     #
     # The main body of the reactor loop is in `run_internal` and it
-    # will sleep on `select()`. When a new connection is added to the
+    # will sleep on `NIO::Selector#select`. When a new connection is added to the
     # reactor it cannot be added directly to the `sockets` array, because
-    # the `select()` will not be watching for it yet.
+    # the `NIO::Selector#select` will not be watching for it yet.
     #
-    # Instead what needs to happen is that `select()` needs to be woken up,
+    # Instead what needs to happen is that `NIO::Selector#select` needs to be woken up,
     # the contents of `@input` added to the `sockets` array, and then
-    # another call to `select()` needs to happen. Since the `Puma::Client`
+    # another call to `NIO::Selector#select` needs to happen. Since the `Puma::Client`
     # object can be read immediately, it does not block, but instead returns
     # right away.
     #
     # This behavior is accomplished by writing to `@trigger` which wakes up
-    # the `select()` and then there is logic to detect the value of `*`,
+    # the `NIO::Selector#select` and then there is logic to detect the value of `*`,
     # pull the contents from `@input` and add them to the sockets array.
     #
     # If the object passed in has a timeout value in `timeout_at` then
