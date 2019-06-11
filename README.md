@@ -238,19 +238,6 @@ Some platforms do not support all Puma features.
   * **JRuby**, **Windows**: server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to Ruby. Also, cluster mode is not supported due to a lack of fork(2).
   * **Windows**: daemon mode is not supported due to a lack of fork(2).
 
-## Known Bugs
-
-For MRI versions 2.2.7, 2.2.8, 2.2.9, 2.2.10 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
-
-```ruby
-if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
-  begin
-    require 'stopgap_13632'
-  rescue LoadError
-  end
-end
-```
-
 ## Deployment
 
 Puma has support for Capistrano with an [external gem](https://github.com/seuros/capistrano-puma).
