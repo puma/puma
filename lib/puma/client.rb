@@ -27,9 +27,10 @@ module Puma
   # For example a web request from a browser or from CURL. This
   #
   # An instance of `Puma::Client` can be used as if it were an IO object
-  # for example it is passed into `IO.select` inside of the `Puma::Reactor`.
-  # This is accomplished by the `to_io` method which gets called on any
-  # non-IO objects being used with the IO api such as `IO.select.
+  # by the reactor, that's because the latter is expected to call `#to_io`
+  # on any non-IO objects it polls. For example nio4r internally calls
+  # `IO::try_convert` (which may call `#to_io`) when a new socket is
+  # registered.
   #
   # Instances of this class are responsible for knowing if
   # the header and body are fully buffered via the `try_to_finish` method.
