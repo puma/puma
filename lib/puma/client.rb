@@ -79,7 +79,7 @@ module Puma
 
     attr_writer :peerip
 
-    attr_accessor :remote_addr_header, :websocket_upgrade
+    attr_accessor :remote_addr_header
 
     forward :closed?, :@io
 
