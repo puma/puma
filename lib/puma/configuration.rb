@@ -348,7 +348,7 @@ module Puma
       end
 
       if bytes
-        token = +""
+        token = "".dup
         bytes.each_byte { |b| token << b.to_s(16) }
       else
         token = (0..count).to_a.map { rand(255).to_s(16) }.join

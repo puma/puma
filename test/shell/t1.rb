@@ -11,7 +11,7 @@ log = File.read("t1-stdout")
 File.unlink "t1-stdout" if File.file? "t1-stdout"
 File.unlink "t1-pid" if File.file? "t1-pid"
 
-if %r!GET / HTTP/1\.1!.match?(log)
+if log =~ %r!GET / HTTP/1\.1!
   exit 0
 else
   exit 1
