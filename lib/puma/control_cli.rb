@@ -206,6 +206,16 @@ module Puma
         when "phased-restart"
           Process.kill "SIGUSR1", @pid
 
+        when "status"
+          begin
+            Process.kill 0, @pid
+            puts "Puma is started"
+          rescue Errno::ESRCH
+            raise "Puma is not running"
+          end
+
+          return
+
         else
           return
         end
