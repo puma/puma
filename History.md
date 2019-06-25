@@ -14,7 +14,7 @@ x bugfixes
   * Add option to suppress SignalException on SIGTERM (#1690)
   * Allow mutual TLS CA to be set using `ssl_bind` DSL (#1689)
   * Reactor now uses nio4r instead of `select` (#1728)
-9 x bugfixes
+9 bugfixes
   * Do not accept new requests on shutdown (#1685, #1808)
   * Fix 3 corner cases when request body is chunked (#1508)
   * Change pid existence check's condition branches (#1650)
