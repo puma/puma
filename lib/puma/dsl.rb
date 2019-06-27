@@ -604,8 +604,8 @@ module Puma
     # When using prune_bundler, if extra runtime dependencies need to be loaded to
     # initialize your app, then this setting can be used.
     #
-    # For each gem's name passed, that gem will be loaded when the environment
-    # is pruned.
+    # Before bundler is pruned, the gem names supplied will be looked up in the bundler
+    # context and then loaded again after bundler is pruned.
     # Only applies if prune_bundler is used.
     #
     # @example
