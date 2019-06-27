@@ -261,8 +261,8 @@ module Puma
 
     def prune_bundler
       return unless defined?(Bundler)
-      puma = Bundler.rubygems.loaded_specs("puma")
-      dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
+      puma = spec_for_gem("puma")
+      dirs = require_paths_for_gem(puma)
       puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
 
       unless puma_lib_dir
@@ -271,14 +271,13 @@ module Puma
       end
 
       deps = puma.runtime_dependencies.map do |d|
-        spec = Bundler.rubygems.loaded_specs(d.name)
-        "#{d.name}:#{spec.version.to_s}"
+        "#{d.name}:#{spec_for_gem(d.name).version}"
       end
 
       @options[:extra_runtime_dependencies].each do |d_name|
-        spec = Bundler.rubygems.loaded_specs(d_name)
+        spec = spec_for_gem(d_name)
         if spec
-          dirs += spec.require_paths.map { |x| File.join(spec.full_gem_path, x) }
+          dirs += require_paths_for_gem(spec)
         else
           log "* Could not load extra dependency: #{d_name}"
         end
@@ -295,6 +294,18 @@ module Puma
         args += [{:close_others => false}]
         Kernel.exec(*args)
       end
+    end
+
+    def spec_for_gem(gem_name)
+      Bundler.rubygems.loaded_specs(gem_name)
+    end
+
+    def require_paths_for_gem(gem_spec)
+      # full_require_paths is a RubyGems 2.2+ method
+      return gem_spec.full_require_paths if gem_spec.method_defined?(:full_require_paths)
+
+      # if full_require_paths doesn't exist, fallback to building the paths
+      gem_spec.require_paths.map { |x| File.join(gem_spec.full_gem_path, x) }
     end
 
     def log(str)
