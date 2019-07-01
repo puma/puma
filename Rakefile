@@ -3,7 +3,7 @@ require "rake/testtask"
 require "rake/extensiontask"
 require "rake/javaextensiontask"
 require "rubocop/rake_task"
-require 'puma/detect'
+require_relative 'lib/puma/detect'
 require 'rubygems/package_task'
 require 'bundler/gem_tasks'
 
