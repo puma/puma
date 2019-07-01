@@ -232,8 +232,11 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
 VALUE engine_init_client(VALUE klass) {
   VALUE obj;
   ms_conn* conn = engine_alloc(klass, &obj);
-
+#ifdef HAVE_DTLS_METHOD
   conn->ctx = SSL_CTX_new(DTLS_method());
+#else
+  conn->ctx = SSL_CTX_new(DTLSv1_method());
+#endif        
   conn->ssl = SSL_new(conn->ctx);
   SSL_set_app_data(conn->ssl, NULL);
   SSL_set_verify(conn->ssl, SSL_VERIFY_NONE, NULL);

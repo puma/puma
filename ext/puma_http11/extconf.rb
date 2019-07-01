@@ -9,6 +9,7 @@ unless ENV["DISABLE_SSL"]
       %w'ssl ssleay32'.find {|ssl| have_library(ssl, 'SSL_CTX_new')}
 
     have_header "openssl/bio.h"
+    have_func "DTLS_method"
   end
 end
 
