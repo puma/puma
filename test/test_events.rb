@@ -156,4 +156,25 @@ class TestEvents < Minitest::Test
 
     assert_equal "-> ready", out
   end
+
+  def test_parse_error
+    port = 0
+    host = "127.0.0.1"
+    app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    events = Puma::Events.strings
+    server = Puma::Server.new app, events
+
+    server.add_tcp_listener host, port
+    server.run
+
+    sock = TCPSocket.new host, server.connected_port
+    path = "/"
+    params = "a"*1024*10
+
+    sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
+    sock.read
+    sleep 0.1 # important so that the previous data is sent as a packet
+    assert_match %r!HTTP parse error, malformed request \(#{path}\)!, events.stderr.string
+    server.stop(true)
+  end
 end
