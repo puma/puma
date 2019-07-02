@@ -5,7 +5,7 @@ x bugfixes
 
 ## 4.0.0 / 2019-06-25
 
-* 8 features
+* 9 features
   * Add support for disabling TLSv1.0 (#1562)
   * Request body read time metric (#1569)
   * Add out_of_band hook (#1648)
@@ -14,6 +14,7 @@ x bugfixes
   * Add option to suppress SignalException on SIGTERM (#1690)
   * Allow mutual TLS CA to be set using `ssl_bind` DSL (#1689)
   * Reactor now uses nio4r instead of `select` (#1728)
+  * Add status to pumactl with pidfile (#1824)
 
 * 9 bugfixes
   * Do not accept new requests on shutdown (#1685, #1808)
