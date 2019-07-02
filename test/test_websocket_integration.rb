@@ -4,11 +4,19 @@ require "puma/puma_http11"
 
 class TestWebsocketIntegration < Minitest::Test
   class WebsocketClient
+    attr_reader :messages
+
     def initialize(host, port)
       @url = "ws://#{host}:#{port}"
 
       @host = host
       @port = port
+
+      @messages = []
+    end
+
+    def alive?
+      !@dead
     end
 
     def connect
@@ -23,9 +31,8 @@ class TestWebsocketIntegration < Minitest::Test
       @driver = WebSocket::Driver.client socket
       @driver.start
 
-      # driver.on(:open)    { |event| on_open(event) }
-      # driver.on(:message) { |event| on_message(event) }
-      # driver.on(:close)   { |event| @dead = true; on_close(event) }
+      @driver.on(:message) { |event| @messages << event.data }
+      @driver.on(:close) { |event| @dead = true }
 
       # Wait for server full response
       loop do
@@ -39,7 +46,7 @@ class TestWebsocketIntegration < Minitest::Test
         begin
           until @dead
             byte = socket.read_nonblock 1
-            driver.parse byte
+            @driver.parse byte
           end
         rescue Errno::EAGAIN
           sleep 0.1
@@ -60,10 +67,6 @@ class TestWebsocketIntegration < Minitest::Test
       @dead = true
       @thread.join
     end
-
-    # def on_open(); end
-    # def on_message(); end
-    # def on_close(); end
   end
 
   def setup
@@ -193,5 +196,42 @@ class TestWebsocketIntegration < Minitest::Test
 
     connection, = @server.app.on_close_called
     assert_instance_of Puma::Websocket::Connection, connection
+  end
+
+  def test_write
+    @server.app.instance_eval do
+      def on_open(client)
+        client.write 'I live my life a quarter mile at a time.'
+      end
+    end
+
+    @server.add_tcp_listener @host, @server.connected_port
+    @server.run
+
+    client = WebsocketClient.new @host, @server.connected_port
+    client.connect
+
+    wait_until { client.messages.size > 0 }
+    client.close
+
+    assert_equal client.messages, ['I live my life a quarter mile at a time.']
+  end
+
+  def test_close
+    @server.app.instance_eval do
+      def on_open(client)
+        client.close
+      end
+    end
+
+    @server.add_tcp_listener @host, @server.connected_port
+    @server.run
+
+    client = WebsocketClient.new @host, @server.connected_port
+    client.connect
+
+    wait_until { !client.alive? }
+
+    assert !client.alive?, "Expected server to close the connection"
   end
 end
