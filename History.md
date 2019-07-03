@@ -1,7 +1,9 @@
 ## Master
 
 x features
-x bugfixes
+
+* ? bugfixes
+  * Add extconf tests for DTLS_method & TLS_server_method, use in minissl.rb.  (#1832)
 
 ## 4.0.0 / 2019-06-25
 

@@ -168,8 +168,11 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   ID sym_no_tlsv1 = rb_intern("no_tlsv1");
   VALUE no_tlsv1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1, 0);
 
-
+#ifdef HAVE_TLS_SERVER_METHOD
+  ctx = SSL_CTX_new(TLS_server_method());
+#else
   ctx = SSL_CTX_new(SSLv23_server_method());
+#endif
   conn->ctx = ctx;
 
   SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
@@ -236,7 +239,7 @@ VALUE engine_init_client(VALUE klass) {
   conn->ctx = SSL_CTX_new(DTLS_method());
 #else
   conn->ctx = SSL_CTX_new(DTLSv1_method());
-#endif        
+#endif
   conn->ssl = SSL_new(conn->ctx);
   SSL_set_app_data(conn->ssl, NULL);
   SSL_set_verify(conn->ssl, SSL_VERIFY_NONE, NULL);
