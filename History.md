@@ -1,7 +1,9 @@
 ## Master
 
 x features
-x bugfixes
+
+* 1 bugfixes
+  * Socket removed after reload (#1775)
 
 ## 4.0.0 / 2019-06-25
 
