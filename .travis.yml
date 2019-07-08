@@ -35,6 +35,9 @@ rvm:
 matrix:
   fast_finish: true
   include:
+    - rvm: 2.2 
+      dist: trusty 
+      env: NOTES="Trusty OpenSSL 1.0.1"
     - rvm: ruby-head
       env: RUBYOPT="--jit"
     - rvm: 2.4.6
