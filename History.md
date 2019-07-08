@@ -3,7 +3,7 @@
 x features
 
 * 1 bugfixes
-  * Socket removed after reload (#1775)
+  * Socket removed after reload (#1829)
 
 ## 4.0.0 / 2019-06-25
 
