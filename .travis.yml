@@ -1,4 +1,5 @@
 dist: xenial
+env: OS="Xenial 16.04 OpenSSL 1.0.2"
 language: ruby
 cache: bundler
 
@@ -19,6 +20,7 @@ before_install:
   - ruby -v && gem --version && bundle version
 
 before_script:
+  - if [ "$jit" == "yes" ]; then export RUBYOPT=--jit ; fi ; echo RUBYOPT is $RUBYOPT
   - bundle exec rake compile
 
 script:
@@ -37,18 +39,20 @@ matrix:
   include:
     - rvm: 2.2 
       dist: trusty 
-      env: NOTES="Trusty OpenSSL 1.0.1"
+      env: OS="Trusty 14.04 OpenSSL 1.0.1"
+    - rvm: 2.6
+      dist: bionic
+      env: OS="Bionic 18.04 OpenSSL 1.1.1"
     - rvm: ruby-head
-      env: RUBYOPT="--jit"
+      env: jit=yes
     - rvm: 2.4.6
       os: osx
       osx_image: xcode10.2
+      env: OS="osx xcode10.2"
     - rvm: 2.5.5
       os: osx
       osx_image: xcode10.2
-    - rvm: 2.6.3
-      os: osx
-      osx_image: xcode10.2
+      env: OS="osx xcode10.2"
     - rvm: jruby-9.2.7.0
       env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: jruby-head
@@ -56,7 +60,7 @@ matrix:
   allow_failures:
     - rvm: ruby-head
     - rvm: ruby-head
-      env: RUBYOPT="--jit"
+      env: jit=yes
     - rvm: jruby-9.2.7.0
     - rvm: jruby-head
 
