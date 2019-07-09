@@ -2,7 +2,8 @@
 
 x features
 
-* ? bugfixes
+* 2 bugfixes
+  * Socket removed after reload (#1829)
   * Add extconf tests for DTLS_method & TLS_server_method, use in minissl.rb.  (#1832)
 
 ## 4.0.0 / 2019-06-25

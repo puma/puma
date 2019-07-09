@@ -53,7 +53,8 @@ module Puma
       @unix_paths.each do |i|
         # Errno::ENOENT is intermittently raised
         begin
-          File.unlink i
+          unix_socket = UNIXSocket.new i
+          unix_socket.close
         rescue Errno::ENOENT
         end
       end
