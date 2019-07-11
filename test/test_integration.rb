@@ -186,7 +186,7 @@ class TestIntegration < Minitest::Test
     until done
       @events.stdout.rewind
       log = @events.stdout.readlines.join("")
-      if /- Worker \d \(pid: \d+\) booted, phase: 1/.match?(log)
+      if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
         assert_match(/TERM sent/, log)
         assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
         done = true
@@ -197,6 +197,7 @@ class TestIntegration < Minitest::Test
     ccli.run
 
     assert_kind_of Thread, t.join, "server didn't stop"
+    assert File.exist? @bind_path
   end
 
   def test_kill_unknown_via_pumactl

@@ -8,7 +8,8 @@ before_install:
     r_eng="$(ruby -e 'STDOUT.write RUBY_ENGINE')";
     rv="$(ruby -e 'STDOUT.write RUBY_VERSION')";
     if [ "$r_eng" == "ruby" ]; then
-      if [ "$rv" \< "2.6" ]; then gem update --system --no-document --conservative
+      if   [ "$rv" \< "2.3" ]; then gem update --system 2.7.9 --no-document
+      elif [ "$rv" \< "2.6" ]; then gem update --system --no-document --conservative
       fi
     fi
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
@@ -24,6 +25,9 @@ script:
   - bundle exec rake
 
 rvm:
+  - 2.2.10
+  - 2.3.8
+  - 2.4.6
   - 2.5.5
   - 2.6.3
   - ruby-head
@@ -31,8 +35,14 @@ rvm:
 matrix:
   fast_finish: true
   include:
+    - rvm: 2.2 
+      dist: trusty 
+      env: NOTES="Trusty OpenSSL 1.0.1"
     - rvm: ruby-head
       env: RUBYOPT="--jit"
+    - rvm: 2.4.6
+      os: osx
+      osx_image: xcode10.2
     - rvm: 2.5.5
       os: osx
       osx_image: xcode10.2

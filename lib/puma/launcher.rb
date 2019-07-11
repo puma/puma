@@ -254,7 +254,7 @@ module Puma
 
         argv = restart_args
         Dir.chdir(@restart_dir)
-        argv += [redirects] if RUBY_VERSION >= '1.9'
+        argv += [redirects]
         Kernel.exec(*argv)
       end
     end
@@ -283,7 +283,7 @@ module Puma
         wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
         args = [Gem.ruby, wild, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
-        args += [{:close_others => false}] if RUBY_VERSION >= '2.0'
+        args += [{:close_others => false}]
         Kernel.exec(*args)
       end
     end

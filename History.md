@@ -1,6 +1,17 @@
 ## Master
 
-* x features
+x features
+
+* 2 bugfixes
+  * Socket removed after reload (#1829)
+  * Add extconf tests for DTLS_method & TLS_server_method, use in minissl.rb.  (#1832)
+* 1 feature
+  * Add log_formatter configuration
+
+
+## 4.0.0 / 2019-06-25
+
+* 9 features
   * Add support for disabling TLSv1.0 (#1562)
   * Request body read time metric (#1569)
   * Add out_of_band hook (#1648)
@@ -9,9 +20,9 @@
   * Add option to suppress SignalException on SIGTERM (#1690)
   * Allow mutual TLS CA to be set using `ssl_bind` DSL (#1689)
   * Reactor now uses nio4r instead of `select` (#1728)
-  * Minimum Ruby version now >= 2.5 (#1813)
-  * Add log_formatter configuration
-* x bugfixes
+  * Add status to pumactl with pidfile (#1824)
+
+* 9 bugfixes
   * Do not accept new requests on shutdown (#1685, #1808)
   * Fix 3 corner cases when request body is chunked (#1508)
   * Change pid existence check's condition branches (#1650)
