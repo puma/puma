@@ -57,6 +57,10 @@ module Puma
       raise UnknownPlugin, "file failed to register a plugin"
     end
 
+    def each
+      @plugins.each_value { |plugin| yield plugin }
+    end
+
     def add_background(blk)
       @background << blk
     end

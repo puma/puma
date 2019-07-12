@@ -85,6 +85,19 @@ module Puma
       @mode = :http
 
       @precheck_closing = true
+
+      @on_before_rack = nil
+      @on_after_rack = nil
+      Plugins.each do |plugin|
+        if plugin.respond_to? :on_before_rack
+          @on_before_rack ||= []
+          @on_before_rack << plugin.method(:on_before_rack)
+        end
+        if plugin.respond_to? :on_after_rack
+          @on_after_rack ||= []
+          @on_after_rack << plugin.method(:on_after_rack)
+        end
+      end
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
@@ -295,6 +308,12 @@ module Puma
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
                                     IOBuffer) do |client, buffer|
+
+        if client.respond_to? :churn
+          more_to_churn = client.churn
+          @thread_pool << client if more_to_churn
+          next
+        end
 
         # Advertise this server into the thread
         Thread.current[ThreadLocalKey] = self
@@ -652,6 +671,10 @@ module Puma
       #
       after_reply = env[RACK_AFTER_REPLY] = []
 
+      unless @on_before_rack.nil?
+        @on_before_rack.each { |hook| hook.call(env) }
+      end
+
       begin
         begin
           status, headers, res_body = @app.call(env)
@@ -679,6 +702,30 @@ module Puma
           @events.unknown_error self, e, "Rack app", env
 
           status, headers, res_body = lowlevel_error(e, env)
+        end
+
+        unless @on_after_rack.nil?
+          async_handler = nil
+
+          @on_after_rack.reverse_each do |hook|
+            stream_client = hook.call(env, headers, req.io)
+
+            if stream_client.respond_to?(:stream?) && stream_client.stream?
+              if async_handler.nil?
+                if stream_client.read_more
+                  @thread_pool << stream_client
+                end
+
+                @reactor.add stream_client
+
+                async_handler = stream_client
+              else
+                raise "Only one #on_after_rack hook can take the socket over"
+              end
+            end
+          end
+
+          return :async if async_handler
         end
 
         content_length = nil
