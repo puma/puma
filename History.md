@@ -2,6 +2,7 @@
 
 * Features
   * Your feature goes here (#Github Number)
+  * Instrument started_at in /stats
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)

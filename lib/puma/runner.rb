@@ -14,6 +14,7 @@ module Puma
       @options = cli.options
       @app = nil
       @control = nil
+      @started_at = Time.now
     end
 
     def daemon?

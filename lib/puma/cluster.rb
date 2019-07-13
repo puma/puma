@@ -7,13 +7,13 @@ require 'puma/plugin'
 require 'time'
 
 module Puma
-  # This class is instantiated by the `Puma::Launcher` and used
-  # to boot and serve a Ruby application when puma "workers" are needed
-  # i.e. when using multi-processes. For example `$ puma -w 5`
-  #
-  # At the core of this class is running an instance of `Puma::Server` which
-  # gets created via the `start_server` method from the `Puma::Runner` class
-  # that this inherits from.
+# This class is instantiated by the `Puma::Launcher` and used
+# to boot and serve a Ruby application when puma "workers" are needed
+# i.e. when using multi-processes. For example `$ puma -w 5`
+#
+# At the core of this class is running an instance of `Puma::Server` which
+# gets created via the `start_server` method from the `Puma::Runner` class
+# that this inherits from.
   #
   # An instance of this class will spawn the number of processes passed in
   # via the `spawn_workers` method call. Each worker will have it's own
@@ -95,12 +95,13 @@ module Puma
         @signal = "TERM"
         @options = options
         @first_term_sent = nil
+        @started_at = Time.now
         @last_checkin = Time.now
         @last_status = '{}'
         @dead = false
       end
 
-      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status
+      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
 
       def booted?
         @stage == :booted
@@ -376,8 +377,8 @@ module Puma
     def stats
       old_worker_count = @workers.count { |w| w.phase != @phase }
       booted_worker_count = @workers.count { |w| w.booted? }
-      worker_status = '[' + @workers.map { |w| %Q!{ "pid": #{w.pid}, "index": #{w.index}, "phase": #{w.phase}, "booted": #{w.booted?}, "last_checkin": "#{w.last_checkin.utc.iso8601}", "last_status": #{w.last_status} }!}.join(",") + ']'
-      %Q!{ "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{booted_worker_count}, "old_workers": #{old_worker_count}, "worker_status": #{worker_status} }!
+      worker_status = '[' + @workers.map { |w| %Q!{ "started_at": "#{w.started_at.utc.iso8601}", "pid": #{w.pid}, "index": #{w.index}, "phase": #{w.phase}, "booted": #{w.booted?}, "last_checkin": "#{w.last_checkin.utc.iso8601}", "last_status": #{w.last_status} }!}.join(",") + ']'
+      %Q!{ "started_at": "#{@started_at.utc.iso8601}", "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{booted_worker_count}, "old_workers": #{old_worker_count}, "worker_status": #{worker_status} }!
     end
 
     def preload?
