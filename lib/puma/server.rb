@@ -635,6 +635,7 @@ module Puma
         elsif env[HTTP_X_FORWARDED_SCHEME]
           env[HTTP_X_FORWARDED_SCHEME]
         elsif env[HTTP_X_FORWARDED_PROTO]
+          # The first protocol in the chain, e.g. 'https, http'
           env[HTTP_X_FORWARDED_PROTO].split(',', 2)[0]
         else
           HTTP
