@@ -2,8 +2,12 @@ module Puma
   # This serves as a base class for any plugin that wants to take over the
   # socket and wait on IO.
   #
-  # The subclasses are expected to implement these two methods: `#read_more` &
-  # `#churn`.
+  # The subclasses are expected to implement:
+  #
+  #  1. Methods to respond to changes in the underlying socket. These are
+  #     `#on_read_ready`, `#on_shutdown` & `#on_broken_pipe`.
+  #  2. A `#churn` method that runs within the thread pool, this is what can
+  #     be used to invoke app's logic.
   #
   # The underlying socket is available through `@io`.
   class StreamClient
@@ -15,16 +19,8 @@ module Puma
       @io
     end
 
-    def stream?
-      true
-    end
-
     def timeout_at
       false
-    end
-
-    def close
-      @io.close
     end
 
     def closed?
@@ -35,7 +31,22 @@ module Puma
     # to be read. You can read from `@io` at this time.
     #
     # You can return a truthy value to add this client to the thread pool.
-    def read_more
+    def on_read_ready
+      raise NotImplementedError
+    end
+
+    # This method will be invoked when the underlying connection is broken
+    # for whatever reason (client timeout, abrupt client disconnection, etc.).
+    #
+    # You can return a truthy value to add this client to the thread pool.
+    def on_broken_pipe
+      raise NotImplementedError
+    end
+
+    # This method will be invoked when the server is being stopped.
+    #
+    # It's not possible to run more work on the thread pool at this stage.
+    def on_shutdown
       raise NotImplementedError
     end
 

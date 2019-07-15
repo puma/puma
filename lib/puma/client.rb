@@ -141,6 +141,10 @@ module Puma
       end
     end
 
+    def on_shutdown
+      close
+    end
+
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new

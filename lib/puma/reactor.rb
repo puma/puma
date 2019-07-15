@@ -189,7 +189,7 @@ module Puma
                     if submon.value == @ready
                       false
                     else
-                      submon.value.close
+                      submon.value.on_shutdown
                       begin
                         selector.deregister submon.value
                       rescue IOError
@@ -215,20 +215,22 @@ module Puma
                 end
               end
 
-              begin
-                if c.respond_to?(:stream?) && c.stream?
-                  if c.read_more
-                    @app_pool << c
-                  end
+              if c.is_a? StreamClient
+                if c.on_read_ready
+                  @app_pool << c
+                end
 
-                  if c.closed?
-                    clear_monitor mon
-                  end
-                else
-                  if c.try_to_finish
-                    @app_pool << c
-                    clear_monitor mon
-                  end
+                if c.closed?
+                  clear_monitor mon
+                end
+
+                next
+              end
+
+              begin
+                if c.try_to_finish
+                  @app_pool << c
+                  clear_monitor mon
                 end
 
               # Don't report these to the lowlevel_error handler, otherwise

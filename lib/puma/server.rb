@@ -312,6 +312,7 @@ module Puma
         if client.respond_to? :churn
           more_to_churn = client.churn
           @thread_pool << client if more_to_churn
+
           next
         end
 
@@ -705,27 +706,27 @@ module Puma
         end
 
         unless @on_after_rack.nil?
-          async_handler = nil
+          is_async = false
 
           @on_after_rack.reverse_each do |hook|
             stream_client = hook.call(env, headers, req.io)
 
-            if stream_client.respond_to?(:stream?) && stream_client.stream?
-              if async_handler.nil?
-                if stream_client.read_more
+            if stream_client.is_a? StreamClient
+              if is_async
+                raise "Only one #on_after_rack hook should take over"
+              else
+                if stream_client.on_read_ready
                   @thread_pool << stream_client
                 end
 
                 @reactor.add stream_client
 
-                async_handler = stream_client
-              else
-                raise "Only one #on_after_rack hook can take the socket over"
+                is_async = true
               end
             end
           end
 
-          return :async if async_handler
+          return :async if is_async
         end
 
         content_length = nil
