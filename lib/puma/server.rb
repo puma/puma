@@ -588,8 +588,11 @@ module Puma
     end
 
     def default_server_port(env)
-      return PORT_443 if env[HTTPS_KEY] == 'on' || env[HTTPS_KEY] == HTTPS
-      env[HTTP_X_FORWARDED_PROTO] == HTTPS ? PORT_443 : PORT_80
+      if ['on', HTTPS].include?(env[HTTPS_KEY]) || env[HTTP_X_FORWARDED_PROTO] == HTTPS
+        PORT_443
+      else
+        PORT_80
+      end
     end
 
     # Takes the request +req+, invokes the Rack application to construct
