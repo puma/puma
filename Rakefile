@@ -7,13 +7,11 @@ require_relative 'lib/puma/detect'
 require 'rubygems/package_task'
 require 'bundler/gem_tasks'
 
-gemspec = Gem::Specification.load(Dir['*.gemspec'].first)
+gemspec = Gem::Specification.load("puma.gemspec")
 Gem::PackageTask.new(gemspec).define
 
 # Add rubocop task
 RuboCop::RakeTask.new
-
-spec = Gem::Specification.load("puma.gemspec")
 
 # generate extension code using Ragel (C and Java)
 desc "Generate extension code (C and Java) using Ragel"
@@ -40,16 +38,16 @@ task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
 if !Puma.jruby?
   # compile extensions using rake-compiler
   # C (MRI, Rubinius)
-  Rake::ExtensionTask.new("puma_http11", spec) do |ext|
+  Rake::ExtensionTask.new("puma_http11", gemspec) do |ext|
     # place extension inside namespace
     ext.lib_dir = "lib/puma"
 
-      CLEAN.include "lib/puma/{1.8,1.9}"
-      CLEAN.include "lib/puma/puma_http11.rb"
-    end
+    CLEAN.include "lib/puma/{1.8,1.9}"
+    CLEAN.include "lib/puma/puma_http11.rb"
+  end
 else
   # Java (JRuby)
-  Rake::JavaExtensionTask.new("puma_http11", spec) do |ext|
+  Rake::JavaExtensionTask.new("puma_http11", gemspec) do |ext|
     ext.lib_dir = "lib/puma"
   end
 end
@@ -75,6 +73,7 @@ end
 
 namespace :test do
   desc "Run the integration tests"
+  
   task :integration do
     sh "ruby test/shell/run.rb"
   end
