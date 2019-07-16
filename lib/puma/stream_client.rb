@@ -5,11 +5,13 @@ module Puma
   # The subclasses are expected to implement:
   #
   #  1. Methods to respond to changes in the underlying socket. These are
-  #     `#on_read_ready`, `#on_shutdown` & `#on_broken_pipe`.
+  #     `#on_read_ready`, `#on_broken_pipe` & `#on_shutdown`.
   #  2. A `#churn` method that runs within the thread pool, this is what can
   #     be used to invoke app's logic.
   #
   # The underlying socket is available through `@io`.
+  #
+  # The other methods should never be overriden.
   class StreamClient
     def initialize(io)
       @io = io
