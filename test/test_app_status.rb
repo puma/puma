@@ -6,8 +6,8 @@ require "puma/app/status"
 require "rack"
 
 class TestAppStatus < Minitest::Test
-  parallelize_me! 
-  
+  parallelize_me!
+
   class FakeServer
     def initialize
       @status = :running

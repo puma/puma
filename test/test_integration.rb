@@ -6,7 +6,7 @@ require "open3"
 
 # These don't run on travis because they're too fragile
 
-# TODO: Remove over-utilization of @instance variables 
+# TODO: Remove over-utilization of @instance variables
 # TODO: remove stdout logging, get everything out of my rainbow dots
 
 class TestIntegration < Minitest::Test
@@ -43,7 +43,7 @@ class TestIntegration < Minitest::Test
       @server.close
     end
   end
-  
+
   def server_cmd(argv)
     @tcp_port = next_port
     base = "#{Gem.ruby} -Ilib bin/puma"
