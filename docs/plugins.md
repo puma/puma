@@ -24,7 +24,9 @@ To use the `heroku` plugin, add `puma-heroku` to your Gemfile or install it.
 
 ### API
 
-At present, there are 2 hooks that plugins can use: `start` and `config`.
+## Server-wide hooks
+
+Plugins can use a couple of hooks at server level: `start` and `config`.
 
 `start` runs when the server has started and allows the plugin to start other
 functionality to augment puma.
@@ -34,3 +36,17 @@ object that can be used to add additional configuration.
 
 Any public methods in `Puma::Plugin` are the public API that any plugin may
 use.
+
+## Per request hooks
+
+`#on_before_rack(env)` will be called right before the Rack application is
+invoked. The called hook may modify `env` just like any Rack middleware.
+
+`#on_after_rack(env, headers, io)` will be called after the Rack application
+has completed its execution and before any response content is written to the
+client. A plugin may take over from here by returning an instance of a
+`Puma::StreamClient` descendant. Check out `lib/puma/stream_client.rb` to know
+more about this interface.
+
+If more than one plugin arises interest in taking over, an exception will
+be happen and Puma will serve a 500.
