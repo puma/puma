@@ -1,9 +1,13 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 require "puma/app/status"
 require "rack"
 
 class TestAppStatus < Minitest::Test
+  parallelize_me!
+
   class FakeServer
     def initialize
       @status = :running
