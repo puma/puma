@@ -95,22 +95,27 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_respect_x_forwarded_proto
-    @server.app = proc do |env|
-      [200, {}, [env['SERVER_PORT']]]
-    end
+    env = {}
+    env['HOST'] = "example.com"
+    env['HTTP_X_FORWARDED_PROTO'] = "https,http"
 
-    @server.add_tcp_listener @host, @port
-    @server.run
+    assert_equal "443", @server.default_server_port(env)
+  end
 
-    req = Net::HTTP::Get.new("/")
-    req['HOST'] = "example.com"
-    req['X_FORWARDED_PROTO'] = "https"
+  def test_respect_x_forwarded_ssl_on
+    env = {}
+    env['HOST'] = "example.com"
+    env['HTTP_X_FORWARDED_SSL'] = "on"
 
-    res = Net::HTTP.start @host, @server.connected_port do |http|
-      http.request(req)
-    end
+    assert_equal "443", @server.default_server_port(env)
+  end
 
-    assert_equal "443", res.body
+  def test_respect_x_forwarded_scheme
+    env = {}
+    env['HOST'] = "example.com"
+    env['HTTP_X_FORWARDED_SCHEME'] = "https"
+
+    assert_equal "443", @server.default_server_port(env)
   end
 
   def test_default_server_port
@@ -129,6 +134,25 @@ class TestPumaServer < Minitest::Test
     end
 
     assert_equal "80", res.body
+  end
+
+  def test_default_server_port_respects_x_forwarded_proto
+    @server.app = proc do |env|
+      [200, {}, [env['SERVER_PORT']]]
+    end
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    req = Net::HTTP::Get.new("/")
+    req['HOST'] = "example.com"
+    req['X_FORWARDED_PROTO'] = "https,http"
+
+    res = Net::HTTP.start @host, @server.connected_port do |http|
+      http.request(req)
+    end
+
+    assert_equal "443", res.body
   end
 
   def test_HEAD_has_no_body
