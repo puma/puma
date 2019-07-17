@@ -29,6 +29,10 @@ module Puma
       @io.closed?
     end
 
+    def stream?
+      true
+    end
+
     # This method will be invoked when the IO descriptor has new data pending
     # to be read. You can read from `@io` at this time.
     #

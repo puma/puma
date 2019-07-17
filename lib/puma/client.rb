@@ -145,6 +145,10 @@ module Puma
       close
     end
 
+    def stream?
+      false
+    end
+
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new

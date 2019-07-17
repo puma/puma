@@ -44,9 +44,9 @@ invoked. The called hook may modify `env` just like any Rack middleware.
 
 `#on_after_rack(env, headers, io)` will be called after the Rack application
 has completed its execution and before any response content is written to the
-client. A plugin may take over from here by returning an instance of a
-`Puma::StreamClient` descendant. Check out `lib/puma/stream_client.rb` to know
-more about this interface.
+client. A plugin may take over from here by returning an object that responds
+to `#stream?` with a truthy value. Check out `lib/puma/stream_client.rb` to
+know more about this interface.
 
 If more than one plugin arises interest in taking over, an exception will
 be happen and Puma will serve a 500.

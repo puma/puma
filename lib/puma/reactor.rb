@@ -215,7 +215,7 @@ module Puma
                 end
               end
 
-              if c.is_a? StreamClient
+              if c.stream?
                 if c.on_read_ready
                   @app_pool << c
                 end
