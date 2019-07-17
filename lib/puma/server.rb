@@ -630,19 +630,7 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
 
       env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] =
-        if env[HTTPS_KEY]
-          HTTPS
-        elsif env[HTTP_X_FORWARDED_SSL] == 'on'
-          HTTPS
-        elsif env[HTTP_X_FORWARDED_SCHEME]
-          env[HTTP_X_FORWARDED_SCHEME]
-        elsif env[HTTP_X_FORWARDED_PROTO]
-          # The first protocol in the chain, e.g. 'https, http'
-          env[HTTP_X_FORWARDED_PROTO].split(',', 2)[0]
-        else
-          HTTP
-        end
+      env[RACK_URL_SCHEME] = default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
