@@ -12,8 +12,8 @@ require "open3"
 class TestIntegration < Minitest::Test
 
   def setup
-    @state_path = "test/test_puma.state"
-    @bind_path = "test/test_server.sock"
+    @state_path   = "test/test_puma.state"
+    @bind_path    = "test/test_server.sock"
     @control_path = "test/test_control.sock"
     @token = "xxyyzz"
 
@@ -26,10 +26,6 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    File.unlink @state_path rescue nil
-    File.unlink @bind_path rescue nil
-    File.unlink @control_path rescue nil
-
     @wait.close
     @ready.close
 
@@ -42,6 +38,10 @@ class TestIntegration < Minitest::Test
 
       @server.close
     end
+
+    File.unlink @state_path   if File.exist? @state_path
+    File.unlink @bind_path    if File.exist? @bind_path
+    File.unlink @control_path if File.exist? @control_path
   end
 
   def server_cmd(argv)
@@ -198,6 +198,7 @@ class TestIntegration < Minitest::Test
         done = true
       end
     end
+
     # Stop
     ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
     ccli.run

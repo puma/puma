@@ -12,7 +12,7 @@ class TestCLI < Minitest::Test
 
     @tmp_path2 = "#{@tmp_path}2"
 
-    File.unlink @tmp_path if File.exist? @tmp_path
+    File.unlink @tmp_path  if File.exist? @tmp_path
     File.unlink @tmp_path2 if File.exist? @tmp_path2
 
     @wait, @ready = IO.pipe
@@ -26,9 +26,8 @@ class TestCLI < Minitest::Test
   end
 
   def teardown
-    File.unlink @tmp_path if File.exist? @tmp_path
+    File.unlink @tmp_path  if File.exist? @tmp_path
     File.unlink @tmp_path2 if File.exist? @tmp_path2
-
     @wait.close
     @ready.close
   end
@@ -107,6 +106,7 @@ class TestCLI < Minitest::Test
 
     cli.launcher.stop
     t.join
+    s.close
   end
 
   def test_control
@@ -131,6 +131,7 @@ class TestCLI < Minitest::Test
 
     cli.launcher.stop
     t.join
+    s.close
   end
 
   def test_control_stop
@@ -154,6 +155,7 @@ class TestCLI < Minitest::Test
     assert_equal '{ "status": "ok" }', body.split("\r\n").last
 
     t.join
+    s.close
   end
 
   def control_gc_stats(uri, cntl)

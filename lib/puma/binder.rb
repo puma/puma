@@ -50,12 +50,9 @@ module Puma
 
     def close
       @ios.each { |i| i.close }
-      @unix_paths.each do |i|
-        # Errno::ENOENT is intermittently raised
-        begin
-          unix_socket = UNIXSocket.new i
-          unix_socket.close
-        rescue Errno::ENOENT
+      @unix_paths.uniq.each do |i|
+        if i && !File.socket?(i) && File.exist?(i)
+          File.unlink(i)
         end
       end
     end
@@ -398,7 +395,7 @@ module Puma
     def inherit_unix_listener(path, fd)
       @unix_paths << path
 
-      if fd.kind_of? TCPServer
+      if fd.kind_of? UNIXServer
         s = fd
       else
         s = UNIXServer.for_fd fd
