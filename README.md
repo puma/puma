@@ -286,6 +286,18 @@ To run a single test file, use the `TEST` environment variable:
 $ TEST=test/test_binder.rb bundle exec rake test
 ```
 
+Or use [`m`](https://github.com/qrush/m):
+
+```
+$ bundle exec m test/test_binder.rb
+```
+
+Which can also be used to run a single test case:
+
+```
+$ bundle exec m test/test_binder.rb:37
+```
+
 ## License
 
 Puma is copyright Evan Phoenix and contributors, licensed under the BSD 3-Clause license. See the included LICENSE file for details.
