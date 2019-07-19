@@ -34,8 +34,8 @@ class TestPumaServerSSL < Minitest::Test
 
   def setup
     return if DISABLE_SSL
-    port = UniquePort.call
-    host = "127.0.0.1"
+    @port = UniquePort.call
+    @host = "127.0.0.1"
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
@@ -53,10 +53,10 @@ class TestPumaServerSSL < Minitest::Test
 
     @events = SSLEventsHelper.new STDOUT, STDERR
     @server = Puma::Server.new app, @events
-    @ssl_listener = @server.add_ssl_listener host, port, ctx
+    @ssl_listener = @server.add_ssl_listener @host, @port, ctx
     @server.run
 
-    @http = Net::HTTP.new host, port
+    @http = Net::HTTP.new @host, @port
     @http.use_ssl = true
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
@@ -78,6 +78,25 @@ class TestPumaServerSSL < Minitest::Test
     end
 
     assert_equal "https", body
+  end
+
+  def test_request_wont_block_thread
+    # Open a connection and give enough data to trigger a read, then wait
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, @port), ctx
+    socket.write "x"
+    sleep 0.1
+
+    # Capture the amount of threads being used after connecting and being idle
+    thread_pool = @server.instance_variable_get(:@thread_pool)
+    busy_threads = thread_pool.spawned - thread_pool.waiting
+
+    socket.close
+
+    # The thread pool should be empty since the request would block on read
+    # and our request should have been moved to the reactor.
+    assert busy_threads.zero?, "Our connection is monopolizing a thread"
   end
 
   def test_very_large_return
