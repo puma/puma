@@ -395,7 +395,7 @@ module Puma
     def inherit_unix_listener(path, fd)
       @unix_paths << path
 
-      if fd.kind_of? UNIXServer
+      if fd.kind_of? TCPServer
         s = fd
       else
         s = UNIXServer.for_fd fd
