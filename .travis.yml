@@ -22,7 +22,7 @@ before_script:
   - bundle exec rake compile
 
 script:
-  - bundle exec rake
+  - RUBYOPT=$TEST_RUBYOPT bundle exec rake
 
 rvm:
   - 2.2.10
@@ -39,7 +39,7 @@ matrix:
       dist: trusty 
       env: NOTES="Trusty OpenSSL 1.0.1"
     - rvm: ruby-head
-      env: RUBYOPT="--jit"
+      env: TEST_RUBYOPT="--jit"
     - rvm: 2.4.6
       os: osx
       osx_image: xcode10.2
@@ -56,7 +56,7 @@ matrix:
   allow_failures:
     - rvm: ruby-head
     - rvm: ruby-head
-      env: RUBYOPT="--jit"
+      env: TEST_RUBYOPT="--jit"
     - rvm: jruby-9.2.7.0
     - rvm: jruby-head
 
