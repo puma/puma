@@ -210,7 +210,7 @@ class TestIntegration < Minitest::Test
     skip_on :jruby
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
-    # do not want to accidently kill a valid other process
+    # do not want to accidentally kill a valid other process
     io = IO.popen(windows? ? "dir" : "ls")
     safe_pid = io.pid
     Process.wait safe_pid
@@ -276,7 +276,7 @@ class TestIntegration < Minitest::Test
         rescue Errno::ECONNREFUSED
           # connection was was never accepted
           # it can therefore be re-tried before the
-          # client receives an empty reponse
+          # client receives an empty response
           next_replies << :connection_refused
         end
       end

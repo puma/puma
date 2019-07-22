@@ -20,7 +20,7 @@ module Puma
   # In this class any "user" specified options take precedence over any
   # "file" specified options, take precedence over any "default" options.
   #
-  # User input is prefered over "defaults":
+  # User input is preferred over "defaults":
   #   user_options    = { foo: "bar" }
   #   default_options = { foo: "zoo" }
   #   options = UserFileDefaultOptions.new(user_options, default_options)
@@ -32,7 +32,7 @@ module Puma
   #   puts options.all_of(:foo)
   #   # => ["bar", "zoo"]
   #
-  # A "file" option can be set. This config will be prefered over "default" options
+  # A "file" option can be set. This config will be preferred over "default" options
   # but will defer to any available "user" specified options.
   #
   #   user_options    = { foo: "bar" }
