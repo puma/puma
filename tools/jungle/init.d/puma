@@ -398,7 +398,7 @@ case "$1" in
   ;;
   remove)
     if [ "$#" -lt 2 ]; then
-      echo "Please, specifiy the app's directory to remove."
+      echo "Please, specify the app's directory to remove."
       exit 1
     else
       do_remove $2
