@@ -157,7 +157,7 @@ module Puma
       return if diff < 1
 
       if @options[:restart_workers_in_batch_of]
-        return unless @workers.all?(&:booted?) 
+        return unless @workers.all?(&:booted?)
         diff = [diff, @options[:restart_workers_in_batch_of]].min
       end
 
