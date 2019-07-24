@@ -236,6 +236,13 @@ module Puma
       @options[:restart_cmd] = cmd.to_s
     end
 
+    # In clustered mode, instead of restarting all workers at once,
+    # restart workers in batch of `count`
+    # Usually count is set to the number of processors available
+    def restart_workers_in_batch_of(count)
+      @options[:restart_workers_in_batch_of] = count
+    end
+
     # Store the pid of the server in the file at +path+.
     def pidfile(path)
       @options[:pidfile] = path.to_s

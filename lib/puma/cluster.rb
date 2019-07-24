@@ -156,7 +156,14 @@ module Puma
       diff = @options[:workers] - @workers.size
       return if diff < 1
 
+      if @options[:restart_workers_in_batch_of]
+        return unless @workers.all?(&:booted?) 
+        diff = [diff, @options[:restart_workers_in_batch_of]].min
+      end
+
       master = Process.pid
+
+      log "Booting #{diff} workers"
 
       diff.times do
         idx = next_worker_index
