@@ -189,6 +189,36 @@ EOF
     assert_equal expected_data, data
   end
 
+  def test_early_hints_are_ignored_if_connection_lost
+    # Have a long early hints header so we have time to close connection
+    # before the server sends the whole content.
+    links = Array.new(100) { |n| "</script_#{n}.js>; rel=preload" }.join("\n")
+
+    app = proc { |env|
+      env['rack.early_hints'].call("Link" => links)
+      [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    }
+
+    events = Puma::Events.strings
+    server = Puma::Server.new app, events
+
+    server.add_tcp_listener @host, @port
+    server.early_hints = true
+    server.run
+
+    # Make a request and close the socket immediately, we expect the
+    # connection to be closed while the server is sending the early hints
+    sock = TCPSocket.new @host, server.connected_port
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+    sock.close
+
+    # Let the server fail...
+    sleep 0.1
+
+    # Expect no errors in stderr
+    assert events.stderr.pos.zero?, "Server didn't swallow the connection error"
+  end
+
   def test_early_hints_is_off_by_default
     @server.app = proc { |env|
      assert_nil env['rack.early_hints']
