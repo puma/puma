@@ -232,9 +232,9 @@ module Puma
 
       if @in_last_chunk
         set_ready
-        return true
+        true
       else
-        return false
+        false
       end
     end
 
