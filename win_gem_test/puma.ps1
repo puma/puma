@@ -37,7 +37,7 @@ function Pre-Compile {
 #———————————————————————————————————————————————————————————————— Run-Tests
 function Run-Tests {
   # call with comma separated list of gems to install or update
-  Update-Gems minitest, minitest-retry, rack, rake
+  Update-Gems minitest, minitest-retry, minitest-proveit, rack, rake
   $env:CI = 1
   rake -f Rakefile_wintest -N -R norakelib | Set-Content -Path $log_name -PassThru -Encoding UTF8
   # add info after test results

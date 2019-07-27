@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 class TestPumaUnixSocket < Minitest::Test
@@ -14,8 +16,7 @@ class TestPumaUnixSocket < Minitest::Test
   end
 
   def teardown
-    @server.stop(true) if @server
-    File.unlink Path if File.exist? Path
+    @server.stop(true)
   end
 
   def test_server
@@ -26,7 +27,5 @@ class TestPumaUnixSocket < Minitest::Test
     expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
 
     assert_equal expected, sock.read(expected.size)
-
-    sock.close
   end
 end
