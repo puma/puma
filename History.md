@@ -11,6 +11,8 @@
 * 2 bugfixes
   * Fix socket removed after reload - should fix problems with systemd socket activation. (#1829)
   * Add extconf tests for DTLS_method & TLS_server_method, use in minissl.rb. Should fix "undefined symbol: DTLS_method" when compiling against old OpenSSL versions. (#1832)
+* 1 other
+  * Removed unnecessary RUBY_VERSION checks. (#1827)
 
 
 ## 4.0.0 / 2019-06-25
