@@ -259,7 +259,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_log_formatter_default_clustered
-    skip_on :jruby, :windows
+    skip NO_FORK_MSG unless HAS_FORK
 
     cli = Puma::CLI.new [ "-w 2" ]
     assert_instance_of Puma::Events::PidFormatter, cli.launcher.events.formatter
@@ -271,7 +271,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_log_formatter_custom_clustered
-    skip_on :jruby, :windows
+    skip NO_FORK_MSG unless HAS_FORK
 
     cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb", "-w 2" ]
     assert_instance_of Puma::Events::CustomFormatter, cli.launcher.events.formatter
