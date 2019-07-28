@@ -374,4 +374,27 @@ class TestIntegration < Minitest::Test
     Process.wait(@server.pid)
     @server = nil # prevent `#teardown` from killing already killed server
   end
+
+  def test_no_zombie_children
+    num_workers = 2
+    worker_pids = []
+    server = server("-w #{num_workers} test/rackup/hello.ru")
+    # Get the PIDs of the child workers.
+    while worker_pids.size < num_workers
+      next unless line = server.gets.match(/pid: (\d+)/)
+      worker_pids << line.captures.first.to_i
+    end
+    # Signal the workers to terminate, and wait for them to die.
+    worker_pids.each { |pid| Process.kill :TERM, pid }
+    sleep 1
+    # Check if the process remains in the process table.
+    # The happy path should raise the Errno::ESRCH exception,
+    # indicating the process is dead and has been reaped.
+    zombies = worker_pids.map do |pid|
+      pid if Process.kill 0, pid
+    rescue Errno::ESRCH
+      nil
+    end.compact
+    assert_empty zombies
+  end
 end
