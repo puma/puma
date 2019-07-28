@@ -116,6 +116,7 @@ module Puma
       end
 
       def dead!
+        Process.detach(pid) # to prevent zombies
         @dead = true
       end
 
