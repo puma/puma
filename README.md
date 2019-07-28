@@ -137,6 +137,20 @@ end
 
 Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preload_app copies the code of master into the workers.
 
+### Error handling
+
+If puma encounters an error outside of the context of your application, it will respond with a 500 and a simple
+textual error message (see `lowlevel_error` in [this file](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
+You can specify custom behavior for this scenario. For example, you can report the error to your third-party
+error-tracking service (in this example, [rollbar](http://rollbar.com)):
+
+```ruby
+lowlevel_error_handler do |e|
+  Rollbar.critical(e)
+  [500, {}, ["An error has occurred, and engineers have been informed. Please reload the page. If you continue to have problems, contact support@example.com\n"]]
+end
+```
+
 ### Binding TCP / Sockets
 
 Bind Puma to a socket with the `-b` (or `--bind`) flag:
