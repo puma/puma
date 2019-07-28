@@ -391,9 +391,11 @@ class TestIntegration < Minitest::Test
     # The happy path should raise the Errno::ESRCH exception,
     # indicating the process is dead and has been reaped.
     zombies = worker_pids.map do |pid|
-      pid if Process.kill 0, pid
-    rescue Errno::ESRCH
-      nil
+      begin
+        pid if Process.kill 0, pid
+      rescue Errno::ESRCH
+        nil
+      end
     end.compact
     assert_empty zombies
   end
