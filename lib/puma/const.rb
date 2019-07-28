@@ -100,7 +100,7 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "4.0.0".freeze
+    PUMA_VERSION = VERSION = "4.0.1".freeze
     CODE_NAME = "4 Fast 4 Furious".freeze
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
@@ -160,6 +160,9 @@ module Puma
     LINE_END = "\r\n".freeze
     REMOTE_ADDR = "REMOTE_ADDR".freeze
     HTTP_X_FORWARDED_FOR = "HTTP_X_FORWARDED_FOR".freeze
+    HTTP_X_FORWARDED_SSL = "HTTP_X_FORWARDED_SSL".freeze
+    HTTP_X_FORWARDED_SCHEME = "HTTP_X_FORWARDED_SCHEME".freeze
+    HTTP_X_FORWARDED_PROTO = "HTTP_X_FORWARDED_PROTO".freeze
 
     SERVER_NAME = "SERVER_NAME".freeze
     SERVER_PORT = "SERVER_PORT".freeze

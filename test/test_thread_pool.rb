@@ -5,11 +5,13 @@ require "puma/thread_pool"
 class TestThreadPool < Minitest::Test
 
   def teardown
-    @pool.shutdown if @pool
+    @pool.shutdown(1) if @pool
   end
 
   def new_pool(min, max, &block)
     block = proc { } unless block
+    @work_mutex = Mutex.new
+    @work_done = ConditionVariable.new
     @pool = Puma::ThreadPool.new(min, max, &block)
   end
 
@@ -22,18 +24,21 @@ class TestThreadPool < Minitest::Test
     thread_name = nil
 
     pool = new_pool(0, 1) do |work|
-      saw << work
-      thread_name = Thread.current.name if Thread.current.respond_to?(:name)
+      @work_mutex.synchronize do
+        saw << work
+        thread_name = Thread.current.name if Thread.current.respond_to?(:name)
+        @work_done.signal
+      end
     end
 
     pool << 1
 
-    pause
-
-    assert_equal [1], saw
-    assert_equal 1, pool.spawned
-    # Thread name is new in Ruby 2.3
-    assert_equal('puma 001', thread_name) if Thread.current.respond_to?(:name)
+    @work_mutex.synchronize do
+      @work_done.wait(@work_mutex, 5)
+      assert_equal 1, pool.spawned
+      assert_equal [1], saw
+      assert_equal('puma 001', thread_name) if Thread.current.respond_to?(:name)
+    end
   end
 
   def test_converts_pool_sizes
@@ -47,55 +52,60 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_append_queues_on_max
-    finish = false
-    pool = new_pool(0, 1) { Thread.pass until finish }
+    pool = new_pool(0, 0) do
+      "Hello World!"
+    end
 
     pool << 1
     pool << 2
     pool << 3
 
-    pause
-
-    assert_equal 2, pool.backlog
-
-    finish = true
+    assert_equal 3, pool.backlog
   end
 
   def test_trim
-    pool = new_pool(0, 1)
+    pool = new_pool(0, 1) do |work|
+      @work_mutex.synchronize do
+        @work_done.signal
+      end
+    end
 
     pool << 1
 
-    pause
+    @work_mutex.synchronize do
+      @work_done.wait(@work_mutex, 5)
+      assert_equal 1, pool.spawned
+    end
 
-    assert_equal 1, pool.spawned
     pool.trim
+    pool.instance_variable_get(:@workers).first.join
 
-    pause
     assert_equal 0, pool.spawned
   end
 
   def test_trim_leaves_min
-    finish = false
-    pool = new_pool(1, 2) { Thread.pass until finish }
+    pool = new_pool(1, 2) do |work|
+      @work_mutex.synchronize do
+        @work_done.signal
+      end
+    end
 
     pool << 1
     pool << 2
 
-    finish = true
+    @work_mutex.synchronize do
+      @work_done.wait(@work_mutex, 5)
+      assert_equal 2, pool.spawned
+    end
 
-    pause
-
-    assert_equal 2, pool.spawned
     pool.trim
     pause
-
     assert_equal 1, pool.spawned
+
+
     pool.trim
     pause
-
     assert_equal 1, pool.spawned
-
   end
 
   def test_force_trim_doesnt_overtrim
@@ -215,16 +225,11 @@ class TestThreadPool < Minitest::Test
 
     assert_equal 2, pool.spawned
 
+    # TODO: is there a point to these two lines?
     pool << 1
     pool << 2
 
-    pause
-
-    assert_equal 2, pool.spawned
-
-    pool.auto_reap! 1
-
-    sleep 1
+    pool.auto_reap! 0.1
 
     pause
 
@@ -232,19 +237,22 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_force_shutdown_immediately
-    pool = new_pool(1, 1) {
+    pool = new_pool(0, 1) do |work|
       begin
-        sleep 1
+        @work_mutex.synchronize do
+          @work_done.signal
+        end
+        sleep 10 # TODO: do something here other than sleep
       rescue Puma::ThreadPool::ForceShutdown
       end
-    }
+    end
 
     pool << 1
 
-    sleep 0.1
-
-    pool.shutdown(0)
-
-    assert_equal 0, pool.spawned
+    @work_mutex.synchronize do
+      @work_done.wait(@work_mutex, 5)
+      pool.shutdown(0)
+      assert_equal 0, pool.spawned
+    end
   end
 end

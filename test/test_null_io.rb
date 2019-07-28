@@ -1,8 +1,12 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 require "puma/null_io"
 
 class TestNullIO < Minitest::Test
+  parallelize_me!
+
   attr_accessor :nio
 
   def setup
@@ -18,7 +22,9 @@ class TestNullIO < Minitest::Test
   end
 
   def test_each_never_yields
-    nio.each { raise "never yield" }
+    nio.instance_variable_set(:@foo, :baz)
+    nio.each { @foo = :bar }
+    assert_equal :baz, nio.instance_variable_get(:@foo)
   end
 
   def test_read_with_no_arguments

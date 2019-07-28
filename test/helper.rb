@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
@@ -5,21 +6,16 @@ if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
   begin
     require 'stopgap_13632'
   rescue LoadError
+    puts "For test stability, you must install the stopgap_13632 gem."
+    exit(1)
   end
-end
-
-begin
-  require "bundler/setup"
-  # bundler/setup may not load bundler
-  require "bundler" unless Bundler.const_defined?(:ORIGINAL_ENV)
-rescue LoadError
-  warn "Failed to load bundler ... this should only happen during package building"
 end
 
 require "net/http"
 require "timeout"
 require "minitest/autorun"
 require "minitest/pride"
+require "minitest/proveit"
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
@@ -126,3 +122,10 @@ module TestSkips
 end
 
 Minitest::Test.include TestSkips
+
+class Minitest::Test
+  def self.run(reporter, options = {}) # :nodoc:
+    prove_it!
+    super
+  end
+end

@@ -480,7 +480,7 @@ module Puma
         raise "The minimum worker_timeout must be greater than the worker reporting interval (#{min})"
       end
 
-      @options[:worker_timeout] = Integer(timeout)
+      @options[:worker_timeout] = timeout
     end
 
     # *Cluster mode only* Set the timeout for workers to boot

@@ -1,12 +1,28 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 require "puma/configuration"
 
-class TestConfigFile < Minitest::Test
-  def setup
-    FileUtils.mkpath("config/puma")
-    File.write("config/puma/fake-env.rb", "")
+class TestConfigFileBase < Minitest::Test
+  private
+
+  def with_env(env = {})
+    original_env = {}
+    env.each do |k, v|
+      original_env[k] = ENV[k]
+      ENV[k] = v
+    end
+    yield
+  ensure
+    original_env.each do |k, v|
+      ENV[k] = v
+    end
   end
+end
+
+class TestConfigFile < TestConfigFileBase
+  parallelize_me!
 
   def test_app_from_rackup
     conf = Puma::Configuration.new do |c|
@@ -44,19 +60,6 @@ class TestConfigFile < Minitest::Test
     assert bind_configuration =~ /verify_mode=peer/
 
     assert_equal [200, {}, ["embedded app"]], app.call({})
-  end
-
-  def test_double_bind_port
-    port = (rand(10_000) + 30_000).to_s
-    with_env("PORT" => port) do
-      conf = Puma::Configuration.new do |user_config, file_config, default_config|
-        user_config.bind "tcp://#{Puma::Configuration::DefaultTCPHost}:#{port}"
-        file_config.load "test/config/app.rb"
-      end
-
-      conf.load
-      assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
-    end
   end
 
   def test_ssl_bind
@@ -168,24 +171,6 @@ class TestConfigFile < Minitest::Test
     assert_equal ['test/config/typo/settings.rb'], conf.config_files
   end
 
-  def test_config_files_with_rack_env
-    with_env('RACK_ENV' => 'fake-env') do
-      conf = Puma::Configuration.new do
-      end
-
-      assert_equal ['config/puma/fake-env.rb'], conf.config_files
-    end
-  end
-
-  def test_config_files_with_specified_environment
-    conf = Puma::Configuration.new do
-    end
-
-    conf.options[:environment] = 'fake-env'
-
-    assert_equal ['config/puma/fake-env.rb'], conf.config_files
-  end
-
   def test_config_files_with_integer_convert
     conf = Puma::Configuration.new(config_files: ['test/config/with_integer_convert.rb']) do
     end
@@ -211,23 +196,49 @@ class TestConfigFile < Minitest::Test
     conf.options[:raise_exception_on_sigterm] = true
     assert_equal conf.options[:raise_exception_on_sigterm], true
   end
+end
+
+# Thread unsafe modification of ENV
+class TestEnvModifificationConfig < TestConfigFileBase
+  def test_double_bind_port
+    port = (rand(10_000) + 30_000).to_s
+    with_env("PORT" => port) do
+      conf = Puma::Configuration.new do |user_config, file_config, default_config|
+        user_config.bind "tcp://#{Puma::Configuration::DefaultTCPHost}:#{port}"
+        file_config.load "test/config/app.rb"
+      end
+
+      conf.load
+      assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
+    end
+  end
+end
+
+class TestConfigFileWithFakeEnv < TestConfigFileBase
+  def setup
+    FileUtils.mkpath("config/puma")
+    File.write("config/puma/fake-env.rb", "")
+  end
+
+  def test_config_files_with_rack_env
+    with_env('RACK_ENV' => 'fake-env') do
+      conf = Puma::Configuration.new do
+      end
+
+      assert_equal ['config/puma/fake-env.rb'], conf.config_files
+    end
+  end
+
+  def test_config_files_with_specified_environment
+    conf = Puma::Configuration.new do
+    end
+
+    conf.options[:environment] = 'fake-env'
+
+    assert_equal ['config/puma/fake-env.rb'], conf.config_files
+  end
 
   def teardown
     FileUtils.rm_r("config/puma")
   end
-
-  private
-
-    def with_env(env = {})
-      original_env = {}
-      env.each do |k, v|
-        original_env[k] = ENV[k]
-        ENV[k] = v
-      end
-      yield
-    ensure
-      original_env.each do |k, v|
-        ENV[k] = v
-      end
-    end
 end

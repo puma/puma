@@ -87,8 +87,6 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    sleep 2
-
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read

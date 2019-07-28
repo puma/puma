@@ -1,12 +1,16 @@
 ## Master
 
-x features
+* Features
+  * Add log_formatter configuration (#1816)
+
+* Bugfixes
+  * Your bugfix goes here (#Github Number)
+
+## 4.0.1 / 2019-07-11
 
 * 2 bugfixes
-  * Socket removed after reload (#1829)
-  * Add extconf tests for DTLS_method & TLS_server_method, use in minissl.rb.  (#1832)
-* 1 feature
-  * Add log_formatter configuration
+  * Fix socket removed after reload - should fix problems with systemd socket activation. (#1829)
+  * Add extconf tests for DTLS_method & TLS_server_method, use in minissl.rb. Should fix "undefined symbol: DTLS_method" when compiling against old OpenSSL versions. (#1832)
 
 
 ## 4.0.0 / 2019-06-25
@@ -1439,3 +1443,12 @@ be added back in a future date when a java Puma::MiniSSL is added.
 ## 1.0.0 / 2012-03-29
 
 * Released!
+
+## Ignore - this is for maintainers to copy-paste during release
+## Master
+
+* Features
+  * Your feature goes here (#Github Number)
+
+* Bugfixes
+  * Your bugfix goes here (#Github Number)
