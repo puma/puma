@@ -23,16 +23,6 @@ module Puma
       end
     end
 
-    class CustomFormatter
-      def initialize(formatter)
-        @formatter = formatter
-      end
-
-      def call(str)
-        @formatter.call(str)
-      end
-    end
-
     include Const
 
     # Create an Events object that prints to +stdout+ and +stderr+.
