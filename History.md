@@ -14,7 +14,6 @@
 * 1 other
   * Removed unnecessary RUBY_VERSION checks. (#1827)
 
-
 ## 4.0.0 / 2019-06-25
 
 * 9 features
