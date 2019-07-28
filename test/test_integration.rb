@@ -376,7 +376,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_no_zombie_children
-    skip_on :windows
+    skip_on :jruby, :windows
 
     worker_pids = []
     server = server("-w 2 test/rackup/hello.ru")
