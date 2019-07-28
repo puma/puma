@@ -267,14 +267,16 @@ class TestCLI < Minitest::Test
 
   def test_log_formatter_custom_single
     cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb" ]
-    assert_instance_of Puma::Events::CustomFormatter, cli.launcher.events.formatter
+    assert_instance_of Proc, cli.launcher.events.formatter
+    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.events.format('test'))
   end
 
   def test_log_formatter_custom_clustered
     skip NO_FORK_MSG unless HAS_FORK
 
     cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb", "-w 2" ]
-    assert_instance_of Puma::Events::CustomFormatter, cli.launcher.events.formatter
+    assert_instance_of Proc, cli.launcher.events.formatter
+    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.events.format('test'))
   end
 
   def test_state
