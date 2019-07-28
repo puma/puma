@@ -253,6 +253,26 @@ class TestCLI < Minitest::Test
     assert_empty keys_not_stripped
   end
 
+  def test_log_formatter_default_single
+    cli = Puma::CLI.new [ ]
+    assert_instance_of Puma::Events::DefaultFormatter, cli.launcher.events.formatter
+  end
+
+  def test_log_formatter_default_clustered
+    cli = Puma::CLI.new [ "-w 2" ]
+    assert_instance_of Puma::Events::PidFormatter, cli.launcher.events.formatter
+  end
+
+  def test_log_formatter_custom_single
+    cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb" ]
+    assert_instance_of Puma::Events::CustomFormatter, cli.launcher.events.formatter
+  end
+
+  def test_log_formatter_custom_clustered
+    cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb", "-w 2" ]
+    assert_instance_of Puma::Events::CustomFormatter, cli.launcher.events.formatter
+  end
+
   def test_state
     url = "tcp://127.0.0.1:#{next_port}"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
