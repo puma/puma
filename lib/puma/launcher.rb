@@ -408,7 +408,7 @@ module Puma
         Signal.trap "SIGINT" do
           if Puma.jruby?
             @status = :exit
-            graceful_stop
+            at_exit { graceful_stop }
             exit
           end
 
