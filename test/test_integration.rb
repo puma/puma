@@ -376,11 +376,12 @@ class TestIntegration < Minitest::Test
   end
 
   def test_no_zombie_children
-    num_workers = 2
+    skip_on :windows
+
     worker_pids = []
-    server = server("-w #{num_workers} test/rackup/hello.ru")
+    server = server("-w 2 test/rackup/hello.ru")
     # Get the PIDs of the child workers.
-    while worker_pids.size < num_workers
+    while worker_pids.size < 2
       next unless line = server.gets.match(/pid: (\d+)/)
       worker_pids << line.captures.first.to_i
     end
