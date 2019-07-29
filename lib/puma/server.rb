@@ -711,7 +711,7 @@ module Puma
           @on_after_rack.reverse_each do |hook|
             stream_client = hook.call(env, headers, req.io)
 
-            if stream_client.stream?
+            if stream_client && stream_client.stream?
               if is_async
                 raise "Only one #on_after_rack hook should take over"
               else
