@@ -13,7 +13,7 @@ Make-Const repo_name 'puma'
 Make-Const url_repo  'https://github.com/puma/puma.git'
 
 #———————————————————————————————————————————————————————————————— lowest ruby version
-Make-Const ruby_vers_low 22
+Make-Const ruby_vers_low 23
 # null = don't compile; false = compile, ignore test (allow failure);
 # true = compile & test
 Make-Const trunk     $false ; Make-Const trunk_x64     $false
