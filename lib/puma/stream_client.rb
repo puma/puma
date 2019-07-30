@@ -62,6 +62,9 @@ module Puma
     #
     # You can return a truthy value to add this client to the thread pool
     # again.
+    #
+    # This allows the plugin to process its work on the thread pool as any
+    # other regular HTTP request.
     def churn
       raise NotImplementedError
     end
