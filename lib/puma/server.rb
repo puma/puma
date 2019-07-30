@@ -672,7 +672,7 @@ module Puma
       #
       after_reply = env[RACK_AFTER_REPLY] = []
 
-      unless @on_before_rack.nil?
+      if @on_before_rack
         @on_before_rack.each { |hook| hook.call(env) }
       end
 
@@ -705,7 +705,7 @@ module Puma
           status, headers, res_body = lowlevel_error(e, env)
         end
 
-        unless @on_after_rack.nil?
+        if @on_after_rack
           is_async = false
 
           @on_after_rack.reverse_each do |hook|
