@@ -261,6 +261,9 @@ module Puma
 
     def prune_bundler
       return unless defined?(Bundler)
+
+      require_rubygems_min_version!(Gem::Version.new("2.2"), "prune_bundler")
+
       puma = spec_for_gem("puma")
       dirs = require_paths_for_gem(puma)
       puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
@@ -274,7 +277,7 @@ module Puma
         "#{d.name}:#{spec_for_gem(d.name).version}"
       end
 
-      @options[:extra_runtime_dependencies].each do |d_name|
+      Array(@options[:extra_runtime_dependencies]).each do |d_name|
         spec = spec_for_gem(d_name)
         if spec
           dirs += require_paths_for_gem(spec)
@@ -301,11 +304,7 @@ module Puma
     end
 
     def require_paths_for_gem(gem_spec)
-      # full_require_paths is a RubyGems 2.2+ method
-      return gem_spec.full_require_paths if gem_spec.method_defined?(:full_require_paths)
-
-      # if full_require_paths doesn't exist, fallback to building the paths
-      gem_spec.require_paths.map { |x| File.join(gem_spec.full_gem_path, x) }
+      gem_spec.full_require_paths
     end
 
     def log(str)
@@ -449,6 +448,13 @@ module Puma
       rescue Exception
         log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
       end
+    end
+
+    def require_rubygems_min_version!(min_version, feature)
+      return if min_version <= Gem::Version.new(Gem::VERSION)
+
+      raise "#{feature} is not supported on your version of RubyGems. " \
+              "You must have RubyGems #{min_version}+ to use this feature."
     end
   end
 end

@@ -584,6 +584,7 @@ module Puma
     # dictates.
     #
     # @note This is incompatible with +preload_app!+.
+    # @note This is only supported for RubyGems 2.2+
     def prune_bundler(answer=true)
       @options[:prune_bundler] = answer
     end
