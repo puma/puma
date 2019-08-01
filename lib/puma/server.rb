@@ -634,19 +634,23 @@ module Puma
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
-          fast_write client, "HTTP/1.1 103 Early Hints\r\n".freeze
+          begin
+            fast_write client, "HTTP/1.1 103 Early Hints\r\n".freeze
 
-          headers.each_pair do |k, vs|
-            if vs.respond_to?(:to_s) && !vs.to_s.empty?
-              vs.to_s.split(NEWLINE).each do |v|
-                fast_write client, "#{k}: #{v}\r\n"
+            headers.each_pair do |k, vs|
+              if vs.respond_to?(:to_s) && !vs.to_s.empty?
+                vs.to_s.split(NEWLINE).each do |v|
+                  fast_write client, "#{k}: #{v}\r\n"
+                end
+              else
+                fast_write client, "#{k}: #{vs}\r\n"
               end
-            else
-              fast_write client, "#{k}: #{vs}\r\n"
             end
-          end
 
-          fast_write client, "\r\n".freeze
+            fast_write client, "\r\n".freeze
+          rescue ConnectionError
+            # noop, if we lost the socket we just won't send the early hints
+          end
         }
       end
 
