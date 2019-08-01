@@ -63,6 +63,9 @@ module Puma
       @options = @config.options
       @config.clamp
 
+      @events.formatter = Events::PidFormatter.new if clustered?
+      @events.formatter = options[:log_formatter] if @options[:log_formatter]
+
       generate_restart_data
 
       if clustered? && !Process.respond_to?(:fork)
@@ -81,7 +84,6 @@ module Puma
       set_rack_environment
 
       if clustered?
-        @events.formatter = Events::PidFormatter.new
         @options[:logger] = @events
 
         @runner = Cluster.new(self, @events)

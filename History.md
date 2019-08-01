@@ -1,7 +1,7 @@
 ## Master
 
 * Features
-  * Your feature goes here (#Github Number)
+  * Add log_formatter configuration (#1816)
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)
