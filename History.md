@@ -1,6 +1,7 @@
 ## Master
 
 * Features
+  * Instrument started_at in /stats (#1844)
   * Add log_formatter configuration (#1816)
 
 * Bugfixes
