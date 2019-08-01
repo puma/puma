@@ -23,7 +23,7 @@ module Puma
   # A connection comes into a `Puma::Server` instance, it is then passed to a `Puma::Reactor` instance,
   # which stores it in an array and waits for any of the connections to be ready for reading.
   #
-  # The waiting/wake up is performed with nio4r, which will use the apropriate backend (libev, Java NIO or
+  # The waiting/wake up is performed with nio4r, which will use the appropriate backend (libev, Java NIO or
   # just plain IO#select). The call to `NIO::Selector#select` will "wake up" and
   # return the references to any objects that caused it to "wake". The reactor
   # then loops through each of these request objects, and sees if they're complete. If they

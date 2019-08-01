@@ -6,6 +6,9 @@ require "open3"
 
 # These don't run on travis because they're too fragile
 
+# TODO: Remove over-utilization of @instance variables
+# TODO: remove stdout logging, get everything out of my rainbow dots
+
 class TestIntegration < Minitest::Test
 
   def setup
@@ -41,22 +44,25 @@ class TestIntegration < Minitest::Test
     end
   end
 
-  def server(argv)
+  def server_cmd(argv)
     @tcp_port = next_port
     base = "#{Gem.ruby} -Ilib bin/puma"
-    base.prepend("bundle exec ") if defined?(Bundler)
-    cmd = "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
-    @server = IO.popen(cmd, "r")
+    base = "bundle exec #{base}" if defined?(Bundler)
+    "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
+  end
 
-    wait_for_server_to_boot
+  def server(argv)
+    @server = IO.popen(server_cmd(argv), "r")
+
+    wait_for_server_to_boot(@server)
 
     @server
   end
 
   def start_forked_server(argv)
-    @tcp_port = next_port
+    servercmd = server_cmd(argv)
     pid = fork do
-      exec "#{Gem.ruby} -I lib/ bin/puma -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
+      exec servercmd
     end
 
     sleep 5
@@ -71,9 +77,9 @@ class TestIntegration < Minitest::Test
 
   def restart_server_and_listen(argv)
     server(argv)
-    s = connect
-    initial_reply = read_body(s)
-    restart_server(s)
+    connection = connect
+    initial_reply = read_body(connection)
+    restart_server(@server, connection)
     [initial_reply, read_body(connect)]
   end
 
@@ -86,12 +92,12 @@ class TestIntegration < Minitest::Test
   end
 
   # reuses an existing connection to make sure that works
-  def restart_server(connection)
+  def restart_server(server, connection)
     signal :USR2
 
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
 
-    wait_for_server_to_boot
+    wait_for_server_to_boot(server)
   end
 
   def connect
@@ -101,8 +107,8 @@ class TestIntegration < Minitest::Test
     s
   end
 
-  def wait_for_server_to_boot
-    true while @server.gets !~ /Ctrl-C/ # wait for server to say it booted
+  def wait_for_server_to_boot(server)
+    true while server.gets !~ /Ctrl-C/ # wait for server to say it booted
   end
 
   def read_body(connection)
@@ -204,7 +210,7 @@ class TestIntegration < Minitest::Test
     skip_on :jruby
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
-    # do not want to accidently kill a valid other process
+    # do not want to accidentally kill a valid other process
     io = IO.popen(windows? ? "dir" : "ls")
     safe_pid = io.pid
     Process.wait safe_pid
@@ -270,7 +276,7 @@ class TestIntegration < Minitest::Test
         rescue Errno::ECONNREFUSED
           # connection was was never accepted
           # it can therefore be re-tried before the
-          # client receives an empty reponse
+          # client receives an empty response
           next_replies << :connection_refused
         end
       end

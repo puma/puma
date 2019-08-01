@@ -34,10 +34,19 @@ function Pre-Compile {
   Write-Host Compiling With $env:SSL_VERS
 }
 
+#———————————————————————————————————————————————————————————————— Pre-Gem-Install
+function Pre-Gem-Install {
+  if ($ruby -lt '23') {
+    gem install -N --no-user-install nio4r:2.3.1
+  } else {
+    gem install -N --no-user-install nio4r
+  }
+}
+
 #———————————————————————————————————————————————————————————————— Run-Tests
 function Run-Tests {
   # call with comma separated list of gems to install or update
-  Update-Gems minitest, minitest-retry, rack, rake
+  Update-Gems minitest, minitest-retry, minitest-proveit, rack, rake
   $env:CI = 1
   rake -f Rakefile_wintest -N -R norakelib | Set-Content -Path $log_name -PassThru -Encoding UTF8
   # add info after test results

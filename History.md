@@ -1,8 +1,8 @@
 ## Master
 
 * Features
-  * Your feature goes here (#Github Number)
-  * Instrument started_at in /stats
+  * Instrument started_at in /stats (#1844)
+  * Add log_formatter configuration (#1816)
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)

@@ -282,6 +282,10 @@ module Puma
       @options[:redirect_append] = append
     end
 
+    def log_formatter(&block)
+      @options[:log_formatter] = block
+    end
+
     # Configure +min+ to be the minimum number of threads to use to answer
     # requests and +max+ the maximum.
     #

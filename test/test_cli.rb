@@ -87,8 +87,6 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    sleep 2
-
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
@@ -253,6 +251,32 @@ class TestCLI < Minitest::Test
 
     keys_not_stripped = data.keys & Puma::CLI::KEYS_NOT_TO_PERSIST_IN_STATE
     assert_empty keys_not_stripped
+  end
+
+  def test_log_formatter_default_single
+    cli = Puma::CLI.new [ ]
+    assert_instance_of Puma::Events::DefaultFormatter, cli.launcher.events.formatter
+  end
+
+  def test_log_formatter_default_clustered
+    skip NO_FORK_MSG unless HAS_FORK
+
+    cli = Puma::CLI.new [ "-w 2" ]
+    assert_instance_of Puma::Events::PidFormatter, cli.launcher.events.formatter
+  end
+
+  def test_log_formatter_custom_single
+    cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb" ]
+    assert_instance_of Proc, cli.launcher.events.formatter
+    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.events.format('test'))
+  end
+
+  def test_log_formatter_custom_clustered
+    skip NO_FORK_MSG unless HAS_FORK
+
+    cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb", "-w 2" ]
+    assert_instance_of Proc, cli.launcher.events.formatter
+    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.events.format('test'))
   end
 
   def test_state

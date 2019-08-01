@@ -588,8 +588,11 @@ module Puma
     end
 
     def default_server_port(env)
-      return PORT_443 if env[HTTPS_KEY] == 'on' || env[HTTPS_KEY] == 'https'
-      env['HTTP_X_FORWARDED_PROTO'] == 'https' ? PORT_443 : PORT_80
+      if ['on', HTTPS].include?(env[HTTPS_KEY]) || env[HTTP_X_FORWARDED_PROTO].to_s[0...5] == HTTPS || env[HTTP_X_FORWARDED_SCHEME] == HTTPS || env[HTTP_X_FORWARDED_SSL] == "on"
+        PORT_443
+      else
+        PORT_80
+      end
     end
 
     # Takes the request +req+, invokes the Rack application to construct
@@ -627,23 +630,27 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
 
       env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
+      env[RACK_URL_SCHEME] = default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
-          fast_write client, "HTTP/1.1 103 Early Hints\r\n".freeze
+          begin
+            fast_write client, "HTTP/1.1 103 Early Hints\r\n".freeze
 
-          headers.each_pair do |k, vs|
-            if vs.respond_to?(:to_s) && !vs.to_s.empty?
-              vs.to_s.split(NEWLINE).each do |v|
-                fast_write client, "#{k}: #{v}\r\n"
+            headers.each_pair do |k, vs|
+              if vs.respond_to?(:to_s) && !vs.to_s.empty?
+                vs.to_s.split(NEWLINE).each do |v|
+                  fast_write client, "#{k}: #{v}\r\n"
+                end
+              else
+                fast_write client, "#{k}: #{vs}\r\n"
               end
-            else
-              fast_write client, "#{k}: #{vs}\r\n"
             end
-          end
 
-          fast_write client, "\r\n".freeze
+            fast_write client, "\r\n".freeze
+          rescue ConnectionError
+            # noop, if we lost the socket we just won't send the early hints
+          end
         }
       end
 
