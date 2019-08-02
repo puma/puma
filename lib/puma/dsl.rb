@@ -28,7 +28,8 @@ module Puma
   #   puts config.options[:binds]
   #   # => "tcp://127.0.0.1:3002"
   #
-  # Detailed docs can be found in `examples/config.rb`
+  # You can also find many examples being used by the test suite in
+  # +test/config+.
   class DSL
     include ConfigDefault
 
@@ -81,9 +82,22 @@ module Puma
       @plugins << @config.load_plugin(name)
     end
 
-    # Use +obj+ or +block+ as the Rack app. This allows a config file to
-    # be the app itself.
+    # Use an object or block as the rack application. This allows the
+    # config file to be the application itself.
     #
+    # @example
+    #   app do |env|
+    #     body = 'Hello, World!'
+    #
+    #     [
+    #       200,
+    #       {
+    #         'Content-Type' => 'text/plain',
+    #         'Content-Length' => body.length.to_s
+    #       },
+    #       [body]
+    #     ]
+    #   end
     def app(obj=nil, &block)
       obj ||= block
 
@@ -92,9 +106,20 @@ module Puma
       @options[:app] = obj
     end
 
-    # Start the Puma control rack app on +url+. This app can be communicated
-    # with to control the main server.
+    # Start the Puma control rack application on +url+. This application can
+    # be communicated with to control the main server. Additionally, you can
+    # provide an authentication token, so all requests to the control server
+    # will need to include that token as a query parameter. This allows for
+    # simple authentication.
     #
+    # Check out {Puma::App::Status} to see what the app has available.
+    #
+    # @example
+    #   activate_control_app 'unix:///var/run/pumactl.sock'
+    # @example
+    #   activate_control_app 'unix:///var/run/pumactl.sock', { auth_token: '12345' }
+    # @example
+    #   activate_control_app 'unix:///var/run/pumactl.sock', { no_token: true }
     def activate_control_app(url="auto", opts={})
       if url == "auto"
         path = Configuration.temp_path
@@ -127,22 +152,22 @@ module Puma
       @options[:config_files] << file
     end
 
-    # Adds a binding for the server to +url+. tcp://, unix://, and ssl:// are the only accepted
-    # protocols. Use query parameters within the url to specify options.
+    # Bind the server to "url". "tcp://", "unix://" and "ssl://" are the only
+    # accepted protocols. Multiple urls can be bound to, calling `bind` does
+    # not overwrite previous bindings.
     #
-    # @note multiple urls can be bound to, calling `bind` does not overwrite previous bindings.
+    # The default is "tcp://0.0.0.0:9292".
+    #
+    # You can use query parameters within the url to specify options.
     #
     # @example Explicitly the socket backlog depth (default is 1024)
-    #   bind('unix:///var/run/puma.sock?backlog=2048')
-    #
-    # @example Set up ssl cert
-    #   bind('ssl://127.0.0.1:9292?key=key.key&cert=cert.pem')
-    #
+    #   bind 'unix:///var/run/puma.sock?backlog=2048'
+    # @example Set up SSL cert
+    #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem'
     # @example Prefer low-latency over higher throughput (via `Socket::TCP_NODELAY`)
-    #   bind('tcp://0.0.0.0:9292?low_latency=true')
-    #
+    #   bind 'tcp://0.0.0.0:9292?low_latency=true'
     # @example Set socket permissions
-    #   bind('unix:///var/run/puma.sock?umask=0111')
+    #   bind 'unix:///var/run/puma.sock?umask=0111'
     def bind(url)
       @options[:binds] ||= []
       @options[:binds] << url
@@ -152,35 +177,42 @@ module Puma
       @options[:binds] = []
     end
 
-    # Define the TCP port to bind to. Use +bind+ for more advanced options.
+    # Define the TCP port to bind to. Use "bind" for more advanced options.
     #
+    # @example
+    #   port 9292
     def port(port, host=nil)
       host ||= default_host
       bind "tcp://#{host}:#{port}"
     end
 
-    # Define how long persistent connections can be idle before puma closes
-    # them
-    #
+    # Define how long persistent connections can be idle before Puma closes
+    # them.
     def persistent_timeout(seconds)
       @options[:persistent_timeout] = Integer(seconds)
     end
 
-    # Define how long the tcp socket stays open, if no data has been received
-    #
+    # Define how long the tcp socket stays open, if no data has been received.
     def first_data_timeout(seconds)
       @options[:first_data_timeout] = Integer(seconds)
     end
 
     # Work around leaky apps that leave garbage in Thread locals
-    # across requests
-    #
+    # across requests.
     def clean_thread_locals(which=true)
       @options[:clean_thread_locals] = which
     end
 
-    # Daemonize the server into the background. Highly suggest that
-    # this be combined with +pidfile+ and +stdout_redirect+.
+    # Daemonize the server into the background. It's highly recommended to
+    # use this in combination with "pidfile" and "stdout_redirect".
+    #
+    # The default is "false".
+    #
+    # @example
+    #   daemonize
+    #
+    # @example
+    #   daemonize false
     def daemonize(which=true)
       @options[:daemon] = which
     end
@@ -193,7 +225,13 @@ module Puma
       @options[:drain_on_shutdown] = which
     end
 
-    # Set the environment in which the Rack's app will run.
+    # Set the environment in which the rack's app will run. The value must be
+    # a string.
+    #
+    # The default is "development".
+    #
+    # @example
+    #   environment 'production'
     def environment(environment)
       @options[:environment] = environment
     end
@@ -219,30 +257,41 @@ module Puma
     end
 
     # Code to run before doing a restart. This code should
-    # close logfiles, database connections, etc.
+    # close log files, database connections, etc.
     #
     # This can be called multiple times to add code each time.
     #
+    # @example
+    #   on_restart do
+    #     puts 'On restart...'
+    #   end
     def on_restart(&block)
       @options[:on_restart] ||= []
       @options[:on_restart] << block
     end
 
-    # Command to use to restart puma. This should be just how to
-    # load puma itself (ie. 'ruby -Ilib bin/puma'), not the arguments
-    # to puma, as those are the same as the original process.
+    # Command to use to restart Puma. This should be just how to
+    # load Puma itself (ie. 'ruby -Ilib bin/puma'), not the arguments
+    # to Puma, as those are the same as the original process.
     #
+    # @example
+    #   restart_command '/u/app/lolcat/bin/restart_puma'
     def restart_command(cmd)
       @options[:restart_cmd] = cmd.to_s
     end
 
-    # Store the pid of the server in the file at +path+.
+    # Store the pid of the server in the file at "path".
+    #
+    # @example
+    #   pidfile '/u/apps/lolcat/tmp/pids/puma.pid'
     def pidfile(path)
       @options[:pidfile] = path.to_s
     end
 
-    # Disable request logging.
+    # Disable request logging, if this isn't used it'll be enabled by default.
     #
+    # @example
+    #   quiet
     def quiet(which=true)
       @options[:log_requests] = !which
     end
@@ -259,8 +308,12 @@ module Puma
       @options[:debug] = true
     end
 
-    # Load +path+ as a rackup file.
+    # Load "path" as a rackup file.
     #
+    # The default is "config.ru".
+    #
+    # @example
+    #   rackup '/u/apps/lolcat/config.ru'
     def rackup(path)
       @options[:rackup] = path.to_s
     end
@@ -275,7 +328,14 @@ module Puma
       @options[:early_hints] = answer
     end
 
-    # Redirect STDOUT and STDERR to files specified.
+    # Redirect STDOUT and STDERR to files specified. The 3rd parameter
+    # ("append") specifies whether the output is appended, the default is
+    # "false".
+    #
+    # @example
+    #   stdout_redirect '/app/lolcat/log/stdout', '/app/lolcat/log/stderr'
+    # @example
+    #   stdout_redirect '/app/lolcat/log/stdout', '/app/lolcat/log/stderr', true
     def stdout_redirect(stdout=nil, stderr=nil, append=false)
       @options[:redirect_stdout] = stdout
       @options[:redirect_stderr] = stderr
@@ -289,6 +349,13 @@ module Puma
     # Configure +min+ to be the minimum number of threads to use to answer
     # requests and +max+ the maximum.
     #
+    # Configure "min" to be the minimum number of threads to use to answer
+    # requests and "max" the maximum.
+    #
+    # The default is "0, 16".
+    #
+    # @example
+    #   threads 0, 16
     def threads(min, max)
       min = Integer(min)
       max = Integer(max)
@@ -304,6 +371,25 @@ module Puma
       @options[:max_threads] = max
     end
 
+    # Instead of "bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'" you
+    # can also use the "ssl_bind" option.
+    #
+    # @example
+    #   ssl_bind '127.0.0.1', '9292', {
+    #     cert: path_to_cert,
+    #     key: path_to_key,
+    #     ssl_cipher_filter: cipher_filter, # optional
+    #     verify_mode: verify_mode,         # default 'none'
+    #   }
+    # @example For JRuby additional keys are required: keystore & keystore_pass.
+    #   ssl_bind '127.0.0.1', '9292', {
+    #     cert: path_to_cert,
+    #     key: path_to_key,
+    #     ssl_cipher_filter: cipher_filter, # optional
+    #     verify_mode: verify_mode,         # default 'none'
+    #     keystore: path_to_keystore,
+    #     keystore_pass: password
+    #   }
     def ssl_bind(host, port, opts)
       verify = opts.fetch(:verify_mode, 'none')
       no_tlsv1 = opts.fetch(:no_tlsv1, 'false')
@@ -319,69 +405,95 @@ module Puma
     end
 
     # Use +path+ as the file to store the server info state. This is
-    # used by pumactl to query and control the server.
+    # used by +pumactl+ to query and control the server.
     #
+    # @example
+    #   state_path '/u/apps/lolcat/tmp/pids/puma.state'
     def state_path(path)
       @options[:state] = path.to_s
     end
 
-    # *Cluster mode only* How many worker processes to run.
+    # How many worker processes to run.  Typically this is set to
+    # to the number of available cores.
     #
+    # The default is 0.
+    #
+    # @note Cluster mode only.
     def workers(count)
       @options[:workers] = count.to_i
     end
 
-    # *Cluster mode only* Code to run immediately before master process
+    # Code to run immediately before master process
     # forks workers (once on boot). These hooks can block if necessary
-    # to wait for background operations unknown to puma to finish before
+    # to wait for background operations unknown to Puma to finish before
     # the process terminates.
-    # This can be used to close any connections to remote servers (database, redis, ...)
-    # that were opened when preloading the code
+    # This can be used to close any connections to remote servers (database,
+    # Redis, ...) that were opened when preloading the code.
     #
     # This can be called multiple times to add hooks.
     #
+    # @note Cluster mode only.
+    # @example
+    #   before_fork do
+    #     puts "Starting workers..."
+    #   end
     def before_fork(&block)
       @options[:before_fork] ||= []
       @options[:before_fork] << block
     end
 
-    # *Cluster mode only* Code to run in a worker when it boots to setup
-    # the process before booting the app.
+    # Code to run in the master right before a worker is started. The worker's
+    # index is passed as an argument.
     #
     # This can be called multiple times to add hooks.
     #
+    # @example
+    #   on_worker_fork do
+    #     puts 'Before worker fork...'
+    #   end
     def on_worker_boot(&block)
       @options[:before_worker_boot] ||= []
       @options[:before_worker_boot] << block
     end
 
-    # *Cluster mode only* Code to run immediately before a worker shuts
+    # Code to run immediately before a worker shuts
     # down (after it has finished processing HTTP requests). These hooks
     # can block if necessary to wait for background operations unknown
-    # to puma to finish before the process terminates.
+    # to Puma to finish before the process terminates.
     #
-    # This can be called multiple times to add hooks.
+    # This can be called multiple times to add several hooks.
     #
+    # @note Cluster mode only.
+    # @example
+    #   on_worker_shutdown do
+    #     puts 'On worker shutdown...'
+    #   end
     def on_worker_shutdown(&block)
       @options[:before_worker_shutdown] ||= []
       @options[:before_worker_shutdown] << block
     end
 
-    # *Cluster mode only* Code to run in the master when it is
+    # Code to run in the master when it is
     # about to create the worker by forking itself.
     #
-    # This can be called multiple times to add hooks.
+    # This can be called multiple times to add several hooks.
     #
+    # @note Cluster mode only.
     def on_worker_fork(&block)
       @options[:before_worker_fork] ||= []
       @options[:before_worker_fork] << block
     end
 
-    # *Cluster mode only* Code to run in the master after it starts
-    # a worker.
+    # Code to run in the master after a worker has been started. The worker's
+    # index is passed as an argument.
     #
-    # This can be called multiple times to add hooks.
+    # This is called everytime a worker is to be started.
     #
+    # @note Cluster mode only.
+    # @example
+    #   after_worker_fork do
+    #     puts 'After worker fork...'
+    #   end
     def after_worker_fork(&block)
       @options[:after_worker_fork] ||= []
       @options[:after_worker_fork] = block
@@ -397,14 +509,18 @@ module Puma
     # This hook is useful for running out-of-band garbage collection
     # or scheduling asynchronous tasks to execute after a response.
     #
-    # This can be called multiple times to add hooks.
-    #
+    # This can be called multiple times to add several hooks.
     def out_of_band(&block)
       @options[:out_of_band] ||= []
       @options[:out_of_band] << block
     end
 
     # The directory to operate out of.
+    #
+    # The default is the current directory.
+    #
+    # @example
+    #   directory '/u/apps/lolcat'
     def directory(dir)
       @options[:directory] = dir.to_s
     end
@@ -415,22 +531,28 @@ module Puma
       directory dir
     end
 
-    # Run the app as a raw TCP app instead of an HTTP rack app
+    # Run the app as a raw TCP app instead of an HTTP rack app.
     def tcp_mode
       @options[:mode] = :tcp
     end
 
-    # *Cluster mode only* Preload the application before starting
-    # the workers and setting up the listen ports. This conflicts
-    # with using the phased restart feature, you can't use both.
+    # Preload the application before starting the workers; this conflicts with
+    # phased restart feature. This is off by default.
     #
+    # @note Cluster mode only.
+    # @example
+    #   preload_app!
     def preload_app!(answer=true)
       @options[:preload_app] = answer
     end
 
-    # Use +obj+ or +block+ as the low level error handler. This allows a config file to
-    # change the default error on the server.
+    # Use +obj+ or +block+ as the low level error handler. This allows a config
+    # file to change the default error on the server.
     #
+    # @example
+    #   lowlevel_error_handler do |err|
+    #     [200, {}, ["error page"]]
+    #   end
     def lowlevel_error_handler(obj=nil, &block)
       obj ||= block
       raise "Provide either a #call'able or a block" unless obj
@@ -440,38 +562,58 @@ module Puma
     # This option is used to allow your app and its gems to be
     # properly reloaded when not using preload.
     #
-    # When set, if puma detects that it's been invoked in the
+    # When set, if Puma detects that it's been invoked in the
     # context of Bundler, it will cleanup the environment and
     # re-run itself outside the Bundler environment, but directly
     # using the files that Bundler has setup.
     #
-    # This means that puma is now decoupled from your Bundler
+    # This means that Puma is now decoupled from your Bundler
     # context and when each worker loads, it will be loading a
     # new Bundler context and thus can float around as the release
     # dictates.
+    #
+    # @note This is incompatible with preload_app.
     def prune_bundler(answer=true)
       @options[:prune_bundler] = answer
     end
 
-    # In environments where SIGTERM is something expected, instructing
-    # puma to shutdown gracefully ( for example in Kubernetes, where
-    # rolling restart is guaranteed usually on infrastructure level )
-    # SignalException should not be raised for SIGTERM
+    # By default, Puma will raise SignalException when SIGTERM is received. In
+    # environments where SIGTERM is something expected, you can suppress these
+    # with this option.
     #
-    # When set to false, if puma process receives SIGTERM, it won't raise SignalException
+    # This can be useful for example in Kubernetes, where rolling restart is
+    # guaranteed usually on infrastructure level.
+    #
+    # @example
+    #   raise_exception_on_sigterm false
     def raise_exception_on_sigterm(answer=true)
       @options[:raise_exception_on_sigterm] = answer
     end
 
-    # Additional text to display in process listing
+    # Additional text to display in process listing.
+    #
+    # If you do not specify a tag, Puma will infer it. If you do not want Puma
+    # to add a tag, use an empty string.
+    #
+    # @example
+    #   tag 'app name'
+    # @example
+    #   tag ''
     def tag(string)
       @options[:tag] = string.to_s
     end
 
-    # *Cluster mode only* Set the timeout for workers in seconds
-    # When set the master process will terminate any workers
-    # that have not checked in within the given +timeout+.
-    # This mitigates hung processes. Default value is 60 seconds.
+    # Verifies that all workers have checked in to the master process within
+    # the given timeout. If not the worker process will be restarted. This is
+    # not a request timeout, it is to protect against a hung or dead process.
+    # Setting this value will not protect against slow requests.
+    #
+    # The minimum value is 6 seconds, the default value is 60 seconds.
+    #
+    # @note Cluster mode only.
+    #
+    # @example
+    #   worker_timeout 60
     def worker_timeout(timeout)
       timeout = Integer(timeout)
       min = Const::WORKER_CHECK_INTERVAL
@@ -483,7 +625,14 @@ module Puma
       @options[:worker_timeout] = timeout
     end
 
-    # *Cluster mode only* Set the timeout for workers to boot
+    # Change the default worker timeout for booting.
+    #
+    # If unspecified, this defaults to the value of worker_timeout.
+    #
+    # @note Cluster mode only.
+    #
+    # @example:
+    #   worker_boot_timeout 60
     def worker_boot_timeout(timeout)
       @options[:worker_boot_timeout] = Integer(timeout)
     end
@@ -505,7 +654,7 @@ module Puma
     # Note that setting this to false disables HTTP keepalive and
     # slow clients will occupy a handler thread while the request
     # is being sent. A reverse proxy, such as nginx, can handle
-    # slow clients and queue requests before they reach puma.
+    # slow clients and queue requests before they reach Puma.
     def queue_requests(answer=true)
       @options[:queue_requests] = answer
     end
@@ -534,7 +683,7 @@ module Puma
     #                          is used, allowing headers such as X-Forwarded-For
     #                          to be used as well.
     # * Any string - this allows you to hardcode remote address to any value
-    #                you wish. Because puma never uses this field anyway, it's
+    #                you wish. Because Puma never uses this field anyway, it's
     #                format is entirely in your hands.
     def set_remote_address(val=:socket)
       case val

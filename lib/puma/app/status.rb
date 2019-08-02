@@ -4,6 +4,8 @@ require 'json'
 
 module Puma
   module App
+    # Check out {#call}'s source code to see what actions this web application
+    # can respond to.
     class Status
       def initialize(cli)
         @cli = cli
