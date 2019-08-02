@@ -66,6 +66,9 @@ configure { set :server, :puma }
 
 Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
 
+You can also find several configuration examples as part of the
+[test](test/config) suite.
+
 ### Thread Pool
 
 Puma uses a thread pool. You can set the minimum and maximum number of threads that are available in the pool with the `-t` (or `--threads`) flag:
