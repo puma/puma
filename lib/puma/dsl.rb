@@ -656,7 +656,6 @@ module Puma
     # If unspecified, this defaults to the value of worker_timeout.
     #
     # @note Cluster mode only.
-    #
     # @example:
     #   worker_boot_timeout 60
     def worker_boot_timeout(timeout)
@@ -669,7 +668,9 @@ module Puma
       directory dir
     end
 
-    # *Cluster mode only* Set the timeout for worker shutdown
+    # Set the timeout for worker shutdown
+    #
+    # @note Cluster mode only.
     def worker_shutdown_timeout(timeout)
       @options[:worker_shutdown_timeout] = Integer(timeout)
     end
@@ -682,7 +683,6 @@ module Puma
     # The minimum value is 6 seconds, the default value is 60 seconds.
     #
     # @note Cluster mode only.
-    #
     # @example
     #   worker_timeout 60
     def worker_timeout(timeout)
