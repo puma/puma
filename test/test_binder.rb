@@ -77,9 +77,22 @@ class TestBinderMRI < TestBinderBase
     refute ssl_context_for_binder(@binder).no_tlsv1
   end
 
-  def test_binder_parses_tlsv1_unspecified_defaults_to_enabled
+  def test_binder_parses_tlsv1_tlsv1_1_unspecified_defaults_to_enabled
     @binder.parse(["ssl://0.0.0.0?key=#{@key}&cert=#{@cert}"], @events)
 
     refute ssl_context_for_binder(@binder).no_tlsv1
+    refute ssl_context_for_binder(@binder).no_tlsv1_1
+  end
+
+  def test_binder_parses_tlsv1_1_disabled
+    @binder.parse(["ssl://0.0.0.0?key=#{@key}&cert=#{@cert}&no_tlsv1_1=true"], @events)
+
+    assert ssl_context_for_binder(@binder).no_tlsv1_1
+  end
+
+  def test_binder_parses_tlsv1_1_enabled
+    @binder.parse(["ssl://0.0.0.0?key=#{@key}&cert=#{@cert}&no_tlsv1_1=false"], @events)
+
+    refute ssl_context_for_binder(@binder).no_tlsv1_1
   end
 end
