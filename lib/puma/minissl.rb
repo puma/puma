@@ -54,22 +54,21 @@ module Puma
           output = engine_read_all
           return output if output
 
-          begin
-            data = @socket.read_nonblock(size, exception: false)
-            if data == :wait_readable || data == :wait_writable
-              if @socket.to_io.respond_to?(data)
-                @socket.to_io.__send__(data)
-              elsif data == :wait_readable
-                IO.select([@socket.to_io])
-              else
-                IO.select(nil, [@socket.to_io])
-              end
-            elsif !data
-              return nil
-            else
-              break
-            end
-          end while true
+          data = @socket.read_nonblock(size, exception: false)
+          if data == :wait_readable || data == :wait_writable
+            # It would make more sense to let @socket.read_nonblock raise
+            # EAGAIN if necessary but it seems like it'll misbehave on Windows.
+            # I don't have a Windows machine to debug this so I can't explain
+            # exactly whats happening in that OS. Please let me know if you
+            # find out!
+            #
+            # In the meantime, we can emulate the correct behavior by
+            # capturing :wait_readable & :wait_writable and raising EAGAIN
+            # ourselves.
+            raise IO::EAGAINWaitReadable
+          elsif data.nil?
+            return nil
+          end
 
           @engine.inject(data)
           output = engine_read_all
