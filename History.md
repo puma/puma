@@ -1,12 +1,22 @@
-## Master
+## 4.1.0
 
-* Features
-  * Instrument started_at in /stats (#1844)
-  * Add log_formatter configuration (#1816)
+* x features 
+  * Add REQUEST_PATH on parse error message (#1831)
+  * You can now easily add custom log formatters with the `log_formatter` config option (#1816)
+  * Puma.stats now provides process start times (#1844)
 
-* Bugfixes
-  * Your bugfix goes here (#Github Number)
-
+* x bugfixes
+  * Fix bugs with line-endings and chunked encoding (#1812)
+  * RACK_URL_SCHEME is now set correctly in all conditions (#1491)
+  * We no longer mutate global STDOUT/STDERR, particularly the sync setting (#1837)
+  * SSL read_nonblock no longer blocks (#1857)
+  * Swallow connection errors when sending early hints (#1822)
+  * Backtrace no longer dumped when invalid pumactl commands are run (#1863)
+  
+* x other 
+  * Avoid casting worker_timeout twice (#1838)
+  * README, Rakefile, docs and test cleanups (#1848, #1847, #1846, #1853, #1859, #1850, #1866, #1870, #1872)
+  
 ## 4.0.1 / 2019-07-11
 
 * 2 bugfixes
