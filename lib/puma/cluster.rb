@@ -24,6 +24,7 @@ module Puma
 
       @phase = 0
       @workers = []
+      @dead_workers = []
       @next_check = nil
 
       @phased_state = :idle
@@ -36,14 +37,11 @@ module Puma
 
       begin
         if RUBY_VERSION < '2.6'
-          @workers.each do |w|
-            begin
-              Process.waitpid(w.pid)
-            rescue Errno::ECHILD
-              # child is already terminated
-            end
-          end
+          @workers.each { |w| w.check_pid }
         else
+          # Clean up the list to make sure we only consider running workers
+          @workers.reject! { |w| w.check_pid }
+
           # below code is for a bug in Ruby 2.6+, above waitpid call hangs
           t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           pids = @workers.map(&:pid)
@@ -130,6 +128,7 @@ module Puma
       end
 
       def term
+        return unless @pid
         begin
           if @first_term_sent && (Time.now - @first_term_sent) > @options[:worker_shutdown_timeout]
             @signal = "KILL"
@@ -143,13 +142,31 @@ module Puma
       end
 
       def kill
+        return unless @pid
         Process.kill "KILL", @pid
       rescue Errno::ESRCH
       end
 
       def hup
+        return unless @pid
         Process.kill "HUP", @pid
       rescue Errno::ESRCH
+      end
+
+      def check_pid
+        return :missing unless @pid
+
+        begin
+          if Process.waitpid(@pid, Process::WNOHANG)
+            @pid = nil
+            :dead
+          else
+            nil
+          end
+        rescue Errno::ECHILD
+          @pid = nil
+          :missing
+        end
       end
     end
 
@@ -227,9 +244,10 @@ module Puma
       # during this loop by giving the kernel time to kill them.
       sleep 1 if any
 
-      @workers.reject! { |w| Process.waitpid(w.pid, Process::WNOHANG) }
+      @workers.reject! { |w| w.dead? || w.check_pid }
 
-      @workers.reject!(&:dead?)
+      # Also go through the dead workers list and clean it up to prevent zombies
+      @dead_workers.reject! { |w| w.check_pid }
 
       cull_workers
       spawn_workers
@@ -530,6 +548,7 @@ module Puma
                   force_check = true
                 when "t"
                   w.dead!
+                  @dead_workers << w
                   force_check = true
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
