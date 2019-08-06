@@ -1,11 +1,13 @@
 ## 4.1.0
 
-* x features 
+* 4 features 
   * Add REQUEST_PATH on parse error message (#1831)
   * You can now easily add custom log formatters with the `log_formatter` config option (#1816)
   * Puma.stats now provides process start times (#1844)
+  * Add support for disabling TLSv1.1 (#1836)
 
-* x bugfixes
+* 7 bugfixes
+  * Fix issue where Puma was creating zombie process entries (#1887)
   * Fix bugs with line-endings and chunked encoding (#1812)
   * RACK_URL_SCHEME is now set correctly in all conditions (#1491)
   * We no longer mutate global STDOUT/STDERR, particularly the sync setting (#1837)
@@ -13,9 +15,15 @@
   * Swallow connection errors when sending early hints (#1822)
   * Backtrace no longer dumped when invalid pumactl commands are run (#1863)
   
-* x other 
+* 5 other 
   * Avoid casting worker_timeout twice (#1838)
-  * README, Rakefile, docs and test cleanups (#1848, #1847, #1846, #1853, #1859, #1850, #1866, #1870, #1872)
+  * Removed a call to private that wasn't doing anything (#1882)
+  * README, Rakefile, docs and test cleanups (#1848, #1847, #1846, #1853, #1859, #1850, #1866, #1870, #1872, #1833, #1888)
+  * Puma.io has proper documentation now (https://puma.io/puma/)
+  * Added the Contributor Covenant CoC
+  
+* 1 known issue 
+  * Some users are still experiencing issues surrounding socket activation and Unix sockets (#1842)
   
 ## 4.0.1 / 2019-07-11
 
