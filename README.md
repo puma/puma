@@ -238,7 +238,7 @@ If you want to prevent Puma from looking for a configuration file in those locat
 $ puma -C "-"
 ```
 
-Take the following [sample configuration](https://github.com/puma/puma/blob/master/examples/config.rb) as inspiration or check out [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
+Check out [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
 
 ## Restart
 
