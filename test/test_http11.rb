@@ -7,6 +7,8 @@ require "digest"
 require "puma/puma_http11"
 
 class Http11ParserTest < Minitest::Test
+  
+  parallelize_me!
 
   def test_parse_simple
     parser = Puma::HttpParser.new
