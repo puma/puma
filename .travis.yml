@@ -37,25 +37,27 @@ rvm:
 matrix:
   fast_finish: true
   include:
-    - rvm: 2.2 
-      dist: trusty 
+    - rvm: 2.2.10
+      dist: trusty
       env: OS="Trusty 14.04 OpenSSL 1.0.1"
-    - rvm: 2.6
+    - rvm: 2.6.3
       dist: bionic
       env: OS="Bionic 18.04 OpenSSL 1.1.1"
     - rvm: ruby-head
       env: jit=yes
     - rvm: 2.4.6
       os: osx
-      osx_image: xcode10.2
-      env: OS="osx xcode10.2"
+      osx_image: xcode11
+      env: OS="osx xcode11"
     - rvm: 2.5.5
       os: osx
-      osx_image: xcode10.2
-      env: OS="osx xcode10.2"
+      osx_image: xcode11
+      env: OS="osx xcode11"
     - rvm: jruby-9.2.7.0
       env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: jruby-head
+      dist: bionic
+      env: OS="Bionic 18.04"
 
   allow_failures:
     - rvm: ruby-head
@@ -63,6 +65,8 @@ matrix:
       env: jit=yes
     - rvm: jruby-9.2.7.0
     - rvm: jruby-head
+      dist: bionic
+      env: OS="Bionic 18.04"
 
 env:
   global:
