@@ -374,4 +374,22 @@ class TestIntegration < Minitest::Test
     Process.wait(@server.pid)
     @server = nil # prevent `#teardown` from killing already killed server
   end
+
+  def test_no_zombie_children
+    skip NO_FORK_MSG unless HAS_FORK
+
+    worker_pids = []
+    server = server("-w 2 test/rackup/hello.ru")
+    # Get the PIDs of the child workers.
+    while worker_pids.size < 2
+      next unless line = server.gets.match(/pid: (\d+)/)
+      worker_pids << line.captures.first.to_i
+    end
+    # Signal the workers to terminate, and wait for them to die.
+    worker_pids.each { |pid| Process.kill :TERM, pid }
+    sleep 2
+
+    # Should return nil if Puma has correctly cleaned up
+    assert_nil Process.waitpid(-1, Process::WNOHANG)
+  end
 end
