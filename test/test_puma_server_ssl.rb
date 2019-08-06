@@ -1,8 +1,6 @@
 require_relative "helper"
 require "puma/minissl"
 require "puma/puma_http11"
-# net/http (loaded in helper) does not necessarily load OpenSSL
-require "openssl" unless Object.const_defined? :OpenSSL
 
 #———————————————————————————————————————————————————————————————————————————————
 #             NOTE: ALL TESTS BYPASSED IF DISABLE_SSL IS TRUE
@@ -27,13 +25,25 @@ DISABLE_SSL = begin
             rescue
               true
             else
+              # net/http (loaded in helper) does not necessarily load OpenSSL
+              require "openssl" unless Object.const_defined? :OpenSSL
               false
             end
 
 class TestPumaServerSSL < Minitest::Test
 
   def setup
-    return if DISABLE_SSL
+    @http = nil
+    @server = nil
+  end
+
+  def teardown
+    @http.finish if @http && @http.started?
+    @server.stop(true) if @server
+  end
+
+  # yields ctx to block, use for ctx setup & configuration
+  def start_server
     @port = UniquePort.call
     @host = "127.0.0.1"
 
@@ -51,6 +61,8 @@ class TestPumaServerSSL < Minitest::Test
 
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
+    yield ctx if block_given?
+
     @events = SSLEventsHelper.new STDOUT, STDERR
     @server = Puma::Server.new app, @events
     @ssl_listener = @server.add_ssl_listener @host, @port, ctx
@@ -61,13 +73,8 @@ class TestPumaServerSSL < Minitest::Test
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
 
-  def teardown
-    return if DISABLE_SSL
-    @http.finish if @http.started?
-    @server.stop(true)
-  end
-
   def test_url_scheme_for_https
+    start_server
     body = nil
     @http.start do
       req = Net::HTTP::Get.new "/", {}
@@ -81,6 +88,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_request_wont_block_thread
+    start_server
     # Open a connection and give enough data to trigger a read, then wait
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
@@ -100,6 +108,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_very_large_return
+    start_server
     giant = "x" * 2056610
 
     @server.app = proc do
@@ -118,6 +127,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_form_submit
+    start_server
     body = nil
     @http.start do
       req = Net::HTTP::Post.new '/'
@@ -133,6 +143,8 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_ssl_v3_rejection
+    skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
+    start_server
     @http.ssl_version= :SSLv3
     # Ruby 2.4.5 on Travis raises ArgumentError
     assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
@@ -146,6 +158,46 @@ class TestPumaServerSSL < Minitest::Test
     end
   end
 
+  def test_tls_v1_rejection
+    skip("TLSv1 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_TLS1
+    start_server { |ctx| ctx.no_tlsv1 = true }
+
+    if @http.respond_to? :max_version=
+      @http.max_version = :TLS1
+    else
+      @http.ssl_version = :TLSv1
+    end
+    # Ruby 2.4.5 on Travis raises ArgumentError
+    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+      @http.start do
+        Net::HTTP::Get.new '/'
+      end
+    end
+    unless Puma.jruby?
+      msg = /wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
+      assert_match(msg, @events.error.message) if @events.error
+    end
+  end
+
+  def test_tls_v1_1_rejection
+    start_server { |ctx| ctx.no_tlsv1_1 = true }
+
+    if @http.respond_to? :max_version=
+      @http.max_version = :TLS1_1
+    else
+      @http.ssl_version = :TLSv1_1
+    end
+    # Ruby 2.4.5 on Travis raises ArgumentError
+    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+      @http.start do
+        Net::HTTP::Get.new '/'
+      end
+    end
+    unless Puma.jruby?
+      msg = /wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
+      assert_match(msg, @events.error.message) if @events.error
+    end
+  end
 end unless DISABLE_SSL
 
 # client-side TLS authentication tests
@@ -203,16 +255,12 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_no_client_cert
-    return if DISABLE_SSL
-
     assert_ssl_client_error_match 'peer did not return a certificate' do |http|
       # nothing
     end
   end
 
   def test_verify_fail_if_client_unknown_ca
-    return if DISABLE_SSL
-
     assert_ssl_client_error_match('self signed certificate in certificate chain', '/DC=net/DC=puma/CN=ca-unknown') do |http|
       key = File.expand_path "../../examples/puma/client-certs/client_unknown.key", __FILE__
       crt = File.expand_path "../../examples/puma/client-certs/client_unknown.crt", __FILE__
@@ -223,7 +271,6 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_client_expired_cert
-    return if DISABLE_SSL
     assert_ssl_client_error_match('certificate has expired', '/DC=net/DC=puma/CN=client-expired') do |http|
       key = File.expand_path "../../examples/puma/client-certs/client_expired.key", __FILE__
       crt = File.expand_path "../../examples/puma/client-certs/client_expired.crt", __FILE__
@@ -234,7 +281,6 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_client_cert
-    return if DISABLE_SSL
     assert_ssl_client_error_match(nil) do |http|
       key = File.expand_path "../../examples/puma/client-certs/client.key", __FILE__
       crt = File.expand_path "../../examples/puma/client-certs/client.crt", __FILE__

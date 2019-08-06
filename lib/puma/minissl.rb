@@ -176,10 +176,11 @@ module Puma
 
     class Context
       attr_accessor :verify_mode
-      attr_reader :no_tlsv1
+      attr_reader :no_tlsv1, :no_tlsv1_1
 
       def initialize
-        @no_tlsv1 = false
+        @no_tlsv1   = false
+        @no_tlsv1_1 = false
       end
 
       if defined?(JRUBY_VERSION)
@@ -219,16 +220,22 @@ module Puma
           @ca = ca
         end
 
-
         def check
           raise "Key not configured" unless @key
           raise "Cert not configured" unless @cert
         end
       end
 
+      # disables TLSv1
       def no_tlsv1=(tlsv1)
         raise ArgumentError, "Invalid value of no_tlsv1" unless ['true', 'false', true, false].include?(tlsv1)
         @no_tlsv1 = tlsv1
+      end
+
+      # disables TLSv1 and TLSv1.1.  Overrides `#no_tlsv1=`
+      def no_tlsv1_1=(tlsv1_1)
+        raise ArgumentError, "Invalid value of no_tlsv1" unless ['true', 'false', true, false].include?(tlsv1_1)
+        @no_tlsv1_1 = tlsv1_1
       end
 
     end
