@@ -23,7 +23,18 @@ module Puma
       super cli, events
 
       @phase = 0
+
+      # @workers - array of Workers
+      #   Used to determine when new workers should be spawned.
+      #
+      # @worker_pids - array of Worker pids
+      #   Used with Process.wait loops to make sure there are no zombie processes.
+      #
+      # #check_workers purges both arrays of Workers that have exited according
+      # to Process.wait.  @workers is additionally purged of dead Workers
+      #
       @workers = []
+      @worker_pids = []
       @next_check = nil
 
       @phased_state = :idle
@@ -35,34 +46,16 @@ module Puma
       @workers.each { |x| x.term }
 
       begin
-        if RUBY_VERSION < '2.6'
-          @workers.each do |w|
+        loop do
+          @worker_pids.reject! do |w_pid|
             begin
-              Process.waitpid(w.pid)
+              true if Process.wait(w_pid, Process::WNOHANG)
             rescue Errno::ECHILD
-              # child is already terminated
+              true # child is already terminated
             end
           end
-        else
-          # below code is for a bug in Ruby 2.6+, above waitpid call hangs
-          t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          pids = @workers.map(&:pid)
-          loop do
-            pids.reject! do |w_pid|
-              begin
-                if Process.waitpid(w_pid, Process::WNOHANG)
-                  log "    worker status: #{$?}"
-                  true
-                end
-              rescue Errno::ECHILD
-                true # child is already terminated
-              end
-            end
-            break if pids.empty?
-            sleep 0.5
-          end
-          t_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          log format("    worker shutdown time: %6.2f", t_end - t_st)
+          break if @worker_pids.empty?
+          sleep 0.2
         end
       rescue Interrupt
         log "! Cancelled waiting for workers"
@@ -172,6 +165,7 @@ module Puma
 
         debug "Spawned worker: #{pid}"
         @workers << Worker.new(idx, pid, @phase, @options)
+        @worker_pids << pid
 
         @launcher.config.run_hooks :after_worker_fork, idx
       end
@@ -227,11 +221,19 @@ module Puma
       # during this loop by giving the kernel time to kill them.
       sleep 1 if any
 
-      pids = []
-      while pid = Process.waitpid(-1, Process::WNOHANG) do
-        pids << pid
+      exited = []
+      @worker_pids.reject! do |w_pid|
+        begin
+          if pid = Process.wait(w_pid, Process::WNOHANG)
+            exited << pid
+            true
+          end
+        rescue Errno::ECHILD
+          exited << w_pid  # just in case
+          true             # child is already terminated
+        end
       end
-      @workers.reject! { |w| w.dead? || pids.include?(w.pid) }
+      @workers.reject! { |w| w.dead? || exited.include?(w.pid) }
 
       cull_workers
       spawn_workers
