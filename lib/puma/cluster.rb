@@ -35,34 +35,19 @@ module Puma
       @workers.each { |x| x.term }
 
       begin
-        if RUBY_VERSION < '2.6'
-          @workers.each do |w|
+        pids = @workers.map(&:pid)
+        loop do
+          pids.reject! do |w_pid|
             begin
-              Process.waitpid(w.pid)
-            rescue Errno::ECHILD
-              # child is already terminated
-            end
-          end
-        else
-          # below code is for a bug in Ruby 2.6+, above waitpid call hangs
-          t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          pids = @workers.map(&:pid)
-          loop do
-            pids.reject! do |w_pid|
-              begin
-                if Process.waitpid(w_pid, Process::WNOHANG)
-                  log "    worker status: #{$?}"
-                  true
-                end
-              rescue Errno::ECHILD
-                true # child is already terminated
+              if Process.wait(w_pid, Process::WNOHANG)
+                true
               end
+            rescue Errno::ECHILD
+              true # child is already terminated
             end
-            break if pids.empty?
-            sleep 0.5
           end
-          t_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          log format("    worker shutdown time: %6.2f", t_end - t_st)
+          break if pids.empty?
+          sleep 0.2
         end
       rescue Interrupt
         log "! Cancelled waiting for workers"
@@ -227,11 +212,13 @@ module Puma
       # during this loop by giving the kernel time to kill them.
       sleep 1 if any
 
-      pids = []
-      while pid = Process.waitpid(-1, Process::WNOHANG) do
-        pids << pid
+      @workers.reject! do |w|
+        begin
+          Process.wait(w.pid, Process::WNOHANG)
+        rescue Errno::ECHILD
+          true # child is already terminated
+        end
       end
-      @workers.reject! { |w| w.dead? || pids.include?(w.pid) }
 
       cull_workers
       spawn_workers
