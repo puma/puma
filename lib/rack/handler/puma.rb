@@ -88,7 +88,7 @@ module Rack
           "Verbose"         => "Don't report each request (default: false)"
         }
       end
-    private
+
       def self.set_host_port_to_config(host, port, config)
         config.clear_binds! if host || port
 
