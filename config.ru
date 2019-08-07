@@ -1,1 +1,0 @@
-run(proc{|env| [200, {}, [env['HTTP_FOO'].inspect, "\n"]]})

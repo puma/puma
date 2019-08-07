@@ -7,7 +7,7 @@ require "digest"
 require "puma/puma_http11"
 
 class Http11ParserTest < Minitest::Test
-  
+
   parallelize_me!
 
   def test_parse_simple
@@ -185,7 +185,7 @@ class Http11ParserTest < Minitest::Test
       end
     end
   end
-  
+
   # https://github.com/puma/puma/issues/1890
   def test_trims_whitespace_from_headers
     skip("Known failure, see issue 1890 on GitHub")
@@ -194,7 +194,7 @@ class Http11ParserTest < Minitest::Test
     http = "GET / HTTP/1.1\r\nX-Strip-Me: Strip This       \r\n\r\n"
 
     nread = parser.execute(req, http, 0)
-    
+
     assert_equal "Strip This", req["HTTP_X_STRIP_ME"]
   end
 end
