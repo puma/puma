@@ -12,6 +12,8 @@ tmp
 t/
 .rbx/
 Gemfile.lock
+Gemfile.duplicate
+Gemfile.duplicate.lock
 .idea/
 /test/test_puma.state
 /test/test_server.sock

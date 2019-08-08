@@ -51,8 +51,8 @@ class TestIntegration < Minitest::Test
     "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
   end
 
-  def server(argv)
-    @server = IO.popen(server_cmd(argv), "r")
+  def server(argv, env = {})
+    @server = IO.popen(env, server_cmd(argv), "r")
 
     wait_for_server_to_boot(@server)
 
@@ -75,8 +75,8 @@ class TestIntegration < Minitest::Test
     Process.wait2(pid)
   end
 
-  def restart_server_and_listen(argv)
-    server(argv)
+  def restart_server_and_listen(argv, env = {})
+    server(argv, env)
     connection = connect
     initial_reply = read_body(connection)
     restart_server(@server, connection)
@@ -237,6 +237,18 @@ class TestIntegration < Minitest::Test
     skip NO_FORK_MSG unless HAS_FORK
     _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
+  end
+
+  def test_restart_with_prune_bundler_keeps_bundle_gemfile_env
+    gemfile_path = File.expand_path("../Gemfile", __dir__)
+    duplicate_gemfile_path = gemfile_path + ".duplicate"
+    FileUtils.cp(gemfile_path, gemfile_path + ".duplicate")
+    initial_reply, new_reply = restart_server_and_listen("-q -w 2 --prune-bundler test/rackup/hello-bundler-env.ru", "BUNDLE_GEMFILE" => "Gemfile.duplicate")
+    assert_match(/Hello BUNDLE_GEMFILE.*Gemfile\.duplicate/, initial_reply)
+    assert_match(/Hello BUNDLE_GEMFILE.*Gemfile\.duplicate/, new_reply)
+  ensure
+    FileUtils.rm_f(duplicate_gemfile_path)
+    FileUtils.rm_f(duplicate_gemfile_path + '.lock')
   end
 
   def test_sigterm_closes_listeners_on_forked_servers
