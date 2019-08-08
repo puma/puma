@@ -277,10 +277,8 @@ module Puma
 
       log '* Pruning Bundler environment'
       home = ENV['GEM_HOME']
-      gemfile = ENV['BUNDLE_GEMFILE']
-      Bundler.with_clean_env do
+      Bundler.with_original_env do
         ENV['GEM_HOME'] = home
-        ENV['BUNDLE_GEMFILE'] = gemfile
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
         wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
         args = [Gem.ruby, wild, '-I', dirs.join(':'), deps.join(',')] + @original_argv

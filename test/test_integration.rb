@@ -240,15 +240,9 @@ class TestIntegration < Minitest::Test
   end
 
   def test_restart_with_prune_bundler_keeps_bundle_gemfile_env
-    gemfile_path = File.expand_path("../Gemfile", __dir__)
-    duplicate_gemfile_path = gemfile_path + ".duplicate"
-    FileUtils.cp(gemfile_path, gemfile_path + ".duplicate")
-    initial_reply, new_reply = restart_server_and_listen("-q -w 2 --prune-bundler test/rackup/hello-bundler-env.ru", "BUNDLE_GEMFILE" => "Gemfile.duplicate")
-    assert_match(/Hello BUNDLE_GEMFILE.*Gemfile\.duplicate/, initial_reply)
-    assert_match(/Hello BUNDLE_GEMFILE.*Gemfile\.duplicate/, new_reply)
-  ensure
-    FileUtils.rm_f(duplicate_gemfile_path)
-    FileUtils.rm_f(duplicate_gemfile_path + '.lock')
+    initial_reply, new_reply = restart_server_and_listen("-q -w 2 --prune-bundler test/rackup/hello-bundler-env.ru", "PATH" => "hello-bundler:#{ENV["PATH"]}", "BUNDLER_ORIG_PATH" => nil)
+    assert_match(/Hello PATH.*hello-bundler/, initial_reply)
+    assert_match(/Hello PATH.*hello-bundler/, new_reply)
   end
 
   def test_sigterm_closes_listeners_on_forked_servers
