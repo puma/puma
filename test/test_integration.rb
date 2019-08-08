@@ -239,7 +239,7 @@ class TestIntegration < Minitest::Test
     assert_equal "Hello World", new_reply
   end
 
-  def test_restart_with_prune_bundler_keeps_bundle_gemfile_env
+  def test_restart_with_prune_bundler_keeps_bundler_env
     initial_reply, new_reply = restart_server_and_listen("-q -w 2 --prune-bundler test/rackup/hello-bundler-env.ru", "PATH" => "hello-bundler:#{ENV["PATH"]}", "BUNDLER_ORIG_PATH" => nil)
     assert_match(/Hello PATH.*hello-bundler/, initial_reply)
     assert_match(/Hello PATH.*hello-bundler/, new_reply)
