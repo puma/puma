@@ -55,7 +55,7 @@ module Puma
         begin
           unix_socket = UNIXSocket.new i
           unix_socket.close
-        rescue Errno::ENOENT
+        rescue Errno::ENOENT, Errno::ECONNREFUSED
         end
       end
     end
