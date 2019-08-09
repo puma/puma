@@ -377,6 +377,7 @@ class TestIntegration < Minitest::Test
 
   def test_no_zombie_children
     skip NO_FORK_MSG unless HAS_FORK
+    skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
 
     worker_pids = []
     server = server("-w 2 test/rackup/hello.ru")
@@ -389,7 +390,16 @@ class TestIntegration < Minitest::Test
     worker_pids.each { |pid| Process.kill :TERM, pid }
     sleep 2
 
-    # Should return nil if Puma has correctly cleaned up
-    assert_nil Process.waitpid(-1, Process::WNOHANG)
+    # Check if the worker processes remain in the process table.
+    # Process.kill should raise the Errno::ESRCH exception,
+    # indicating the process is dead and has been reaped.
+    zombies = worker_pids.map do |pid|
+      begin
+        pid if Process.kill 0, pid
+      rescue Errno::ESRCH
+        nil
+      end
+    end.compact
+    assert_empty zombies
   end
 end
