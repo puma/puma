@@ -2,8 +2,8 @@
 
 To perform a restart, there are 3 builtin mechanisms:
 
-  * Send the `puma` process the `SIGUSR2` signal
-  * Send the `puma` process the `SIGUSR1` signal (rolling restart, cluster mode only)
+  * Send the `puma` process the `SIGUSR2` signal (normal restart)
+  * Send the `puma` process the `SIGUSR1` signal (restart in phases (a "rolling restart"), cluster mode only)
   * Use the status server and issue `/restart`
 
 No code is shared between the current and restarted process, so it should be safe to issue a restart any place where you would manually stop Puma and start it again.
@@ -21,6 +21,8 @@ When you run pumactl phased-restart, Puma kills workers one-by-one, meaning that
 But again beware, upgrading an application sometimes involves upgrading the database schema. With phased restart, there may be a moment during the deployment where processes belonging to the previous version and processes belonging to the new version both exist at the same time. Any database schema upgrades you perform must therefore be backwards-compatible with the old application version.
 
 If you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (`pumactl restart`). That way, no code is shared while deploying (in that case, `preload_app!` might help for quicker deployment, see ["Clustered Mode" in the README](../README.md#clustered-mode)).
+
+**Note**: Hot and phased restarts are only available on MRI, not on JRuby. They are also unavailable on Windows servers.
 
 ### Release Directory
 

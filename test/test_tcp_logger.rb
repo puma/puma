@@ -18,6 +18,7 @@ class TestTCPLogger < Minitest::Test
     # in lib/puma/launcher.rb:85
     # Puma::Events is default tcp_logger for cluster mode
     logger = Puma::Events.new(STDOUT, STDERR)
+    logger.instance_variable_set(:@stdout, $stdout) # ensure capture_process_io has access to the loggers output
     out, err = capture_subprocess_io do
       Puma::TCPLogger.new(logger, @server.app).call({}, @socket)
     end

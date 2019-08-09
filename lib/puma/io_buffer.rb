@@ -1,7 +1,4 @@
-require 'puma/detect'
+# frozen_string_literal: true
 
-if Puma.jruby?
-  require 'puma/java_io_buffer'
-else
-  require 'puma/puma_http11'
-end
+require 'puma/detect'
+require 'puma/puma_http11'

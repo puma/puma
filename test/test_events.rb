@@ -6,7 +6,6 @@ class TestEvents < Minitest::Test
 
     assert_instance_of Puma::NullIO, events.stdout
     assert_instance_of Puma::NullIO, events.stderr
-    assert_equal events.stdout, events.stderr
   end
 
   def test_strings
@@ -19,8 +18,17 @@ class TestEvents < Minitest::Test
   def test_stdio
     events = Puma::Events.stdio
 
-    assert_equal STDOUT, events.stdout
-    assert_equal STDERR, events.stderr
+    # events.stdout is a dup, so same file handle, different ruby object, but inspect should show the same file handle
+    assert_equal STDOUT.inspect, events.stdout.inspect
+    assert_equal STDERR.inspect, events.stderr.inspect
+  end
+
+  def test_stdio_respects_sync
+    STDOUT.sync = false
+    events = Puma::Events.stdio
+
+    assert !STDOUT.sync
+    assert events.stdout.sync
   end
 
   def test_register_callback_with_block
@@ -155,5 +163,26 @@ class TestEvents < Minitest::Test
     end
 
     assert_equal "-> ready", out
+  end
+
+  def test_parse_error
+    port = 0
+    host = "127.0.0.1"
+    app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    events = Puma::Events.strings
+    server = Puma::Server.new app, events
+
+    server.add_tcp_listener host, port
+    server.run
+
+    sock = TCPSocket.new host, server.connected_port
+    path = "/"
+    params = "a"*1024*10
+
+    sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
+    sock.read
+    sleep 0.1 # important so that the previous data is sent as a packet
+    assert_match %r!HTTP parse error, malformed request \(#{path}\)!, events.stderr.string
+    server.stop(true)
   end
 end

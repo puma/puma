@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
@@ -5,19 +6,16 @@ if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
   begin
     require 'stopgap_13632'
   rescue LoadError
+    puts "For test stability, you must install the stopgap_13632 gem."
+    exit(1)
   end
-end
-
-begin
-  require "bundler/setup"
-rescue LoadError
-  warn "Failed to load bundler ... this should only happen during package building"
 end
 
 require "net/http"
 require "timeout"
 require "minitest/autorun"
 require "minitest/pride"
+require "minitest/proveit"
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
@@ -69,14 +67,65 @@ if ENV['CI']
   Minitest::Retry.use!
 end
 
-module SkipTestsBasedOnRubyEngine
-  def skip_on_jruby
-    skip "Skipped on JRuby" if Puma.jruby?
+module TestSkips
+
+  @@next_port = 9000
+
+  # usage: skip NO_FORK_MSG unless HAS_FORK
+  # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
+  HAS_FORK = ::Process.respond_to? :fork
+  NO_FORK_MSG = "Kernel.fork isn't available on the #{RUBY_PLATFORM} platform"
+
+  # socket is required by puma
+  # usage: skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+  UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
+  UNIX_SKT_MSG = "UnixSockets aren't available on the #{RUBY_PLATFORM} platform"
+
+  # usage: skip_unless_signal_exist? :USR2
+  def skip_unless_signal_exist?(sig, bt: caller)
+    signal = sig.to_s
+    unless Signal.list.key? signal
+      skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
+    end
   end
 
-  def skip_on_appveyor
-    skip "Skipped on Appveyor" if ENV["APPVEYOR"]
+  # called with one or more params, like skip_on :jruby, :windows
+  # optional suffix kwarg is appended to the skip message
+  # optional suffix bt should generally not used
+  def skip_on(*engs, suffix: '', bt: caller)
+    skip_msg = false
+    engs.each do |eng|
+      skip_msg = case eng
+        when :jruby    then "Skipped on JRuby#{suffix}"     if Puma.jruby?
+        when :windows  then "Skipped on Windows#{suffix}"   if Puma.windows?
+        when :appveyor then "Skipped on Appveyor#{suffix}"  if ENV["APPVEYOR"]
+        when :ci       then "Skipped on ENV['CI']#{suffix}" if ENV["CI"]
+        else false
+      end
+      skip skip_msg, bt if skip_msg
+    end
+  end
+
+  # called with only one param
+  def skip_unless(eng, bt: caller)
+    skip_msg = case eng
+      when :jruby   then "Skip unless JRuby"   unless Puma.jruby?
+      when :windows then "Skip unless Windows" unless Puma.windows?
+      else false
+    end
+    skip skip_msg, bt if skip_msg
+  end
+
+  def next_port(incr = 1)
+    @@next_port += incr
   end
 end
 
-Minitest::Test.include SkipTestsBasedOnRubyEngine
+Minitest::Test.include TestSkips
+
+class Minitest::Test
+  def self.run(reporter, options = {}) # :nodoc:
+    prove_it!
+    super
+  end
+end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'puma/runner'
 require 'puma/util'
 require 'puma/plugin'
@@ -17,8 +19,6 @@ module Puma
   # via the `spawn_workers` method call. Each worker will have it's own
   # instance of a `Puma::Server`.
   class Cluster < Runner
-    WORKER_CHECK_INTERVAL = 5
-
     def initialize(cli, events)
       super cli, events
 
@@ -35,7 +35,35 @@ module Puma
       @workers.each { |x| x.term }
 
       begin
-        @workers.each { |w| Process.waitpid(w.pid) }
+        if RUBY_VERSION < '2.6'
+          @workers.each do |w|
+            begin
+              Process.waitpid(w.pid)
+            rescue Errno::ECHILD
+              # child is already terminated
+            end
+          end
+        else
+          # below code is for a bug in Ruby 2.6+, above waitpid call hangs
+          t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          pids = @workers.map(&:pid)
+          loop do
+            pids.reject! do |w_pid|
+              begin
+                if Process.waitpid(w_pid, Process::WNOHANG)
+                  log "    worker status: #{$?}"
+                  true
+                end
+              rescue Errno::ECHILD
+                true # child is already terminated
+              end
+            end
+            break if pids.empty?
+            sleep 0.5
+          end
+          t_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          log format("    worker shutdown time: %6.2f", t_end - t_st)
+        end
       rescue Interrupt
         log "! Cancelled waiting for workers"
       end
@@ -67,12 +95,13 @@ module Puma
         @signal = "TERM"
         @options = options
         @first_term_sent = nil
+        @started_at = Time.now
         @last_checkin = Time.now
         @last_status = '{}'
         @dead = false
       end
 
-      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status
+      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
 
       def booted?
         @stage == :booted
@@ -181,7 +210,7 @@ module Puma
     def check_workers(force=false)
       return if !force && @next_check && @next_check >= Time.now
 
-      @next_check = Time.now + WORKER_CHECK_INTERVAL
+      @next_check = Time.now + Const::WORKER_CHECK_INTERVAL
 
       any = false
 
@@ -198,14 +227,11 @@ module Puma
       # during this loop by giving the kernel time to kill them.
       sleep 1 if any
 
-      while @workers.any?
-        pid = Process.waitpid(-1, Process::WNOHANG)
-        break unless pid
-
-        @workers.delete_if { |w| w.pid == pid }
+      pids = []
+      while pid = Process.waitpid(-1, Process::WNOHANG) do
+        pids << pid
       end
-
-      @workers.delete_if(&:dead?)
+      @workers.reject! { |w| w.dead? || pids.include?(w.pid) }
 
       cull_workers
       spawn_workers
@@ -291,7 +317,7 @@ module Puma
         base_payload = "p#{Process.pid}"
 
         while true
-          sleep WORKER_CHECK_INTERVAL
+          sleep Const::WORKER_CHECK_INTERVAL
           begin
             b = server.backlog || 0
             r = server.running || 0
@@ -356,8 +382,8 @@ module Puma
     def stats
       old_worker_count = @workers.count { |w| w.phase != @phase }
       booted_worker_count = @workers.count { |w| w.booted? }
-      worker_status = '[' + @workers.map { |w| %Q!{ "pid": #{w.pid}, "index": #{w.index}, "phase": #{w.phase}, "booted": #{w.booted?}, "last_checkin": "#{w.last_checkin.utc.iso8601}", "last_status": #{w.last_status} }!}.join(",") + ']'
-      %Q!{ "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{booted_worker_count}, "old_workers": #{old_worker_count}, "worker_status": #{worker_status} }!
+      worker_status = '[' + @workers.map { |w| %Q!{ "started_at": "#{w.started_at.utc.iso8601}", "pid": #{w.pid}, "index": #{w.index}, "phase": #{w.phase}, "booted": #{w.booted?}, "last_checkin": "#{w.last_checkin.utc.iso8601}", "last_status": #{w.last_status} }!}.join(",") + ']'
+      %Q!{ "started_at": "#{@started_at.utc.iso8601}", "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{booted_worker_count}, "old_workers": #{old_worker_count}, "worker_status": #{worker_status} }!
     end
 
     def preload?
@@ -391,10 +417,13 @@ module Puma
           log "Early termination of worker"
           exit! 0
         else
+          @launcher.close_binder_listeners
+
           stop_workers
           stop
 
-          raise SignalException, "SIGTERM"
+          raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
+          exit 0 # Clean exit, workers were stopped
         end
       end
     end
@@ -488,7 +517,7 @@ module Puma
 
             force_check = false
 
-            res = IO.select([read], nil, nil, WORKER_CHECK_INTERVAL)
+            res = IO.select([read], nil, nil, Const::WORKER_CHECK_INTERVAL)
 
             if res
               req = read.read_nonblock(1)

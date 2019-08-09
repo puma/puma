@@ -29,7 +29,17 @@ class TestPumaControlCli < Minitest::Test
     assert_equal "t3-pid", control_cli.instance_variable_get("@pidfile")
   end
 
-  def test_control_url
+  def test_control_no_token
+    opts = [
+      "--config-file", "test/config/control_no_token.rb",
+      "start"
+    ]
+
+    control_cli = Puma::ControlCLI.new opts, @ready, @ready
+    assert_equal 'none', control_cli.instance_variable_get("@control_auth_token")
+  end
+
+  def test_control_url_and_status
     host = "127.0.0.1"
     port = find_open_port
     url = "tcp://#{host}:#{port}/"
@@ -54,11 +64,18 @@ class TestPumaControlCli < Minitest::Test
     assert_match "200 OK", body
     assert_match "embedded app", body
 
+    status_cmd = Puma::ControlCLI.new(opts + ["status"])
+    out, _ = capture_subprocess_io do
+      status_cmd.run
+    end
+    assert_match "Puma is started\n", out
+
     shutdown_cmd = Puma::ControlCLI.new(opts + ["halt"])
-    shutdown_cmd.run
+    out, _ = capture_subprocess_io do
+      shutdown_cmd.run
+    end
+    assert_match "Command halt sent success\n", out
 
-    # TODO: assert something about the stop command
-
-    t.join
+    assert_kind_of Thread, t.join, "server didn't stop"
   end
 end

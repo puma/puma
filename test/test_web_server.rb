@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
@@ -16,12 +17,10 @@ class TestHandler
 end
 
 class WebServerTest < Minitest::Test
+  VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
 
   def setup
-    @valid_request = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
-
     @tester = TestHandler.new
-
     @server = Puma::Server.new @tester, Puma::Events.strings
     @server.add_tcp_listener "127.0.0.1", 0
 
@@ -33,43 +32,24 @@ class WebServerTest < Minitest::Test
   end
 
   def test_simple_server
-    hit(["http://127.0.0.1:#{ @server.connected_port }/test"])
+    hit(["http://127.0.0.1:#{@server.connected_port}/test"])
     assert @tester.ran_test, "Handler didn't really run"
   end
 
-
-  def do_test(string, chunk, close_after=nil, shutdown_delay=0)
-    # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @server.connected_port);
-    request = StringIO.new(string)
-    chunks_out = 0
-
-    while data = request.read(chunk)
-      chunks_out += socket.write(data)
-      socket.flush
-      sleep 0.2
-      if close_after and chunks_out > close_after
-        socket.close
-        sleep 1
-      end
-    end
-    sleep(shutdown_delay)
-    socket.write(" ") # Some platforms only raise the exception on attempted write
-    socket.flush
-  end
-
   def test_trickle_attack
-    do_test(@valid_request, 3)
+    socket = do_test(VALID_REQUEST, 3)
+    assert_match "hello", socket.read
   end
 
   def test_close_client
     assert_raises IOError do
-      do_test(@valid_request, 10, 20)
+      do_test(VALID_REQUEST, 10, 20)
     end
   end
 
   def test_bad_client
-    do_test("GET /test HTTP/BAD", 3)
+    socket = do_test("GET /test HTTP/BAD", 3)
+    assert_match "Bad Request", socket.read
   end
 
   def test_header_is_too_long
@@ -79,10 +59,30 @@ class WebServerTest < Minitest::Test
     end
   end
 
+  # TODO: Why does this test take exactly 20 seconds?
   def test_file_streamed_request
     body = "a" * (Puma::Const::MAX_BODY * 2)
     long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\n\r\n" + body
-    do_test(long, (Puma::Const::CHUNK_SIZE * 2) - 400)
+    socket = do_test(long, (Puma::Const::CHUNK_SIZE * 2) - 400)
+    assert_match "hello", socket.read
   end
 
+  private
+
+  def do_test(string, chunk, close_after=nil)
+    # Do not use instance variables here, because it needs to be thread safe
+    socket = TCPSocket.new("127.0.0.1", @server.connected_port);
+    request = StringIO.new(string)
+    chunks_out = 0
+
+    while data = request.read(chunk)
+      chunks_out += socket.write(data)
+      socket.flush
+      socket.close if close_after && chunks_out > close_after
+    end
+
+    socket.write(" ") # Some platforms only raise the exception on attempted write
+    socket.flush
+    socket
+  end
 end

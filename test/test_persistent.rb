@@ -152,14 +152,14 @@ class TestPersistent < Minitest::Test
   end
 
   def test_persistent_timeout
-    @server.persistent_timeout = 2
+    @server.persistent_timeout = 1
     @client << @valid_request
     sz = @body[0].size.to_s
 
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
-    sleep 3
+    sleep 2
 
     assert_raises EOFError do
       @client.read_nonblock(1)

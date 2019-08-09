@@ -1,4 +1,6 @@
 #encoding: utf-8
+# frozen_string_literal: true
+
 module Puma
   class UnsupportedOption < RuntimeError
   end
@@ -98,8 +100,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "3.12.0".freeze
-    CODE_NAME = "Llamas in Pajamas".freeze
+    PUMA_VERSION = VERSION = "4.1.0".freeze
+    CODE_NAME = "Fourth and One".freeze
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2
@@ -158,6 +160,9 @@ module Puma
     LINE_END = "\r\n".freeze
     REMOTE_ADDR = "REMOTE_ADDR".freeze
     HTTP_X_FORWARDED_FOR = "HTTP_X_FORWARDED_FOR".freeze
+    HTTP_X_FORWARDED_SSL = "HTTP_X_FORWARDED_SSL".freeze
+    HTTP_X_FORWARDED_SCHEME = "HTTP_X_FORWARDED_SCHEME".freeze
+    HTTP_X_FORWARDED_PROTO = "HTTP_X_FORWARDED_PROTO".freeze
 
     SERVER_NAME = "SERVER_NAME".freeze
     SERVER_PORT = "SERVER_PORT".freeze
@@ -225,5 +230,9 @@ module Puma
     HIJACK_IO = "rack.hijack_io".freeze
 
     EARLY_HINTS = "rack.early_hints".freeze
+
+    # Mininum interval to checks worker health
+    WORKER_CHECK_INTERVAL = 5
+
   end
 end

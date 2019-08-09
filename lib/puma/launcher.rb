@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'puma/events'
 require 'puma/detect'
 
@@ -61,6 +63,9 @@ module Puma
       @options = @config.options
       @config.clamp
 
+      @events.formatter = Events::PidFormatter.new if clustered?
+      @events.formatter = options[:log_formatter] if @options[:log_formatter]
+
       generate_restart_data
 
       if clustered? && !Process.respond_to?(:fork)
@@ -79,7 +84,6 @@ module Puma
       set_rack_environment
 
       if clustered?
-        @events.formatter = Events::PidFormatter.new
         @options[:logger] = @events
 
         @runner = Cluster.new(self, @events)
@@ -212,6 +216,15 @@ module Puma
       end
     end
 
+    def close_binder_listeners
+      @binder.listeners.each do |l, io|
+        io.close
+        uri = URI.parse(l)
+        next unless uri.scheme == 'unix'
+        File.unlink("#{uri.host}#{uri.path}")
+      end
+    end
+
     private
 
     def reload_worker_directory
@@ -241,7 +254,7 @@ module Puma
 
         argv = restart_args
         Dir.chdir(@restart_dir)
-        argv += [redirects] if RUBY_VERSION >= '1.9'
+        argv += [redirects]
         Kernel.exec(*argv)
       end
     end
@@ -270,7 +283,7 @@ module Puma
         wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
         args = [Gem.ruby, wild, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
-        args += [{:close_others => false}] if RUBY_VERSION >= '2.0'
+        args += [{:close_others => false}]
         Kernel.exec(*args)
       end
     end
@@ -316,16 +329,6 @@ module Puma
     def prune_bundler?
       @options[:prune_bundler] && clustered? && !@options[:preload_app]
     end
-
-    def close_binder_listeners
-      @binder.listeners.each do |l, io|
-        io.close
-        uri = URI.parse(l)
-        next unless uri.scheme == 'unix'
-        File.unlink("#{uri.host}#{uri.path}")
-      end
-    end
-
 
     def generate_restart_data
       if dir = @options[:directory]
@@ -395,7 +398,7 @@ module Puma
         Signal.trap "SIGTERM" do
           graceful_stop
 
-          raise SignalException, "SIGTERM"
+          raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
         end
       rescue Exception
         log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"

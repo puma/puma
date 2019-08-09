@@ -1,3 +1,79 @@
+## Master
+
+* Features
+  * Your feature goes here (#Github Number)
+
+* Bugfixes
+  * Your bugfix goes here (#Github Number)
+
+## 4.1.0 / 2019-08-08
+
+* 4 features 
+  * Add REQUEST_PATH on parse error message (#1831)
+  * You can now easily add custom log formatters with the `log_formatter` config option (#1816)
+  * Puma.stats now provides process start times (#1844)
+  * Add support for disabling TLSv1.1 (#1836)
+
+* 7 bugfixes
+  * Fix issue where Puma was creating zombie process entries (#1887)
+  * Fix bugs with line-endings and chunked encoding (#1812)
+  * RACK_URL_SCHEME is now set correctly in all conditions (#1491)
+  * We no longer mutate global STDOUT/STDERR, particularly the sync setting (#1837)
+  * SSL read_nonblock no longer blocks (#1857)
+  * Swallow connection errors when sending early hints (#1822)
+  * Backtrace no longer dumped when invalid pumactl commands are run (#1863)
+  
+* 5 other 
+  * Avoid casting worker_timeout twice (#1838)
+  * Removed a call to private that wasn't doing anything (#1882)
+  * README, Rakefile, docs and test cleanups (#1848, #1847, #1846, #1853, #1859, #1850, #1866, #1870, #1872, #1833, #1888)
+  * Puma.io has proper documentation now (https://puma.io/puma/)
+  * Added the Contributor Covenant CoC
+  
+* 1 known issue 
+  * Some users are still experiencing issues surrounding socket activation and Unix sockets (#1842)
+  
+## 4.0.1 / 2019-07-11
+
+* 2 bugfixes
+  * Fix socket removed after reload - should fix problems with systemd socket activation. (#1829)
+  * Add extconf tests for DTLS_method & TLS_server_method, use in minissl.rb. Should fix "undefined symbol: DTLS_method" when compiling against old OpenSSL versions. (#1832)
+* 1 other
+  * Removed unnecessary RUBY_VERSION checks. (#1827)
+
+## 4.0.0 / 2019-06-25
+
+* 9 features
+  * Add support for disabling TLSv1.0 (#1562)
+  * Request body read time metric (#1569)
+  * Add out_of_band hook (#1648)
+  * Re-implement (native) IOBuffer for JRuby (#1691)
+  * Min worker timeout (#1716)
+  * Add option to suppress SignalException on SIGTERM (#1690)
+  * Allow mutual TLS CA to be set using `ssl_bind` DSL (#1689)
+  * Reactor now uses nio4r instead of `select` (#1728)
+  * Add status to pumactl with pidfile (#1824)
+
+* 9 bugfixes
+  * Do not accept new requests on shutdown (#1685, #1808)
+  * Fix 3 corner cases when request body is chunked (#1508)
+  * Change pid existence check's condition branches (#1650)
+  * Don't call .stop on a server that doesn't exist (#1655)
+  * Implemented NID_X9_62_prime256v1 (P-256) curve over P-521 (#1671)
+  * Fix @notify.close can't modify frozen IOError (RuntimeError) (#1583)
+  * Fix Java 8 support (#1773)
+  * Fix error `uninitialized constant Puma::Cluster` (#1731)
+  * Fix `not_token` being able to be set to true (#1803)
+
+## 3.12.1 / 2019-03-19
+
+* 1 features
+  * Internal strings are frozen (#1649)
+* 3 bugfixes
+  * Fix chunked ending check (#1607)
+  * Rack handler should use provided default host (#1700)
+  * Better support for detecting runtimes that support `fork` (#1630)
+
 ## 3.12.0 / 2018-07-13
 
 * 5 features:
@@ -1395,3 +1471,12 @@ be added back in a future date when a java Puma::MiniSSL is added.
 ## 1.0.0 / 2012-03-29
 
 * Released!
+
+## Ignore - this is for maintainers to copy-paste during release
+## Master
+
+* Features
+  * Your feature goes here (#Github Number)
+
+* Bugfixes
+  * Your bugfix goes here (#Github Number)

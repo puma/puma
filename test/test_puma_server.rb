@@ -95,22 +95,27 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_respect_x_forwarded_proto
-    @server.app = proc do |env|
-      [200, {}, [env['SERVER_PORT']]]
-    end
+    env = {}
+    env['HOST'] = "example.com"
+    env['HTTP_X_FORWARDED_PROTO'] = "https,http"
 
-    @server.add_tcp_listener @host, @port
-    @server.run
+    assert_equal "443", @server.default_server_port(env)
+  end
 
-    req = Net::HTTP::Get.new("/")
-    req['HOST'] = "example.com"
-    req['X_FORWARDED_PROTO'] = "https"
+  def test_respect_x_forwarded_ssl_on
+    env = {}
+    env['HOST'] = "example.com"
+    env['HTTP_X_FORWARDED_SSL'] = "on"
 
-    res = Net::HTTP.start @host, @server.connected_port do |http|
-      http.request(req)
-    end
+    assert_equal "443", @server.default_server_port(env)
+  end
 
-    assert_equal "443", res.body
+  def test_respect_x_forwarded_scheme
+    env = {}
+    env['HOST'] = "example.com"
+    env['HTTP_X_FORWARDED_SCHEME'] = "https"
+
+    assert_equal "443", @server.default_server_port(env)
   end
 
   def test_default_server_port
@@ -129,6 +134,25 @@ class TestPumaServer < Minitest::Test
     end
 
     assert_equal "80", res.body
+  end
+
+  def test_default_server_port_respects_x_forwarded_proto
+    @server.app = proc do |env|
+      [200, {}, [env['SERVER_PORT']]]
+    end
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    req = Net::HTTP::Get.new("/")
+    req['HOST'] = "example.com"
+    req['X_FORWARDED_PROTO'] = "https,http"
+
+    res = Net::HTTP.start @host, @server.connected_port do |http|
+      http.request(req)
+    end
+
+    assert_equal "443", res.body
   end
 
   def test_HEAD_has_no_body
@@ -187,6 +211,32 @@ EOF
 
     assert_equal true, @server.early_hints
     assert_equal expected_data, data
+  end
+
+  def test_early_hints_are_ignored_if_connection_lost
+    app = proc { |env|
+      env['rack.early_hints'].call("Link" => "</script.js>; rel=preload")
+      [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    }
+
+    events = Puma::Events.strings
+    server = Puma::Server.new app, events
+    def server.fast_write(*args)
+      raise Puma::ConnectionError
+    end
+    server.add_tcp_listener @host, @port
+    server.early_hints = true
+    server.run
+
+    # This request will cause the server to try and send early hints
+    sock = TCPSocket.new @host, server.connected_port
+    sock << "HEAD / HTTP/1.0\r\n\r\n"
+
+    # Give the server some time to try to write (and fail)
+    sleep 0.1
+
+    # Expect no errors in stderr
+    assert events.stderr.pos.zero?, "Server didn't swallow the connection error"
   end
 
   def test_early_hints_is_off_by_default
@@ -540,7 +590,7 @@ EOF
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
-    sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n"
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     data = sock.read
 
@@ -562,7 +612,7 @@ EOF
     sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\n"
     sleep 1
 
-    sock << "h\r\n4\r\nello\r\n0\r\n"
+    sock << "h\r\n4\r\nello\r\n0\r\n\r\n"
 
     data = sock.read
 
@@ -584,7 +634,7 @@ EOF
     sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
     sleep 1
 
-    sock << "4\r\nello\r\n0\r\n"
+    sock << "4\r\nello\r\n0\r\n\r\n"
 
     data = sock.read
 
@@ -606,7 +656,7 @@ EOF
     sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r"
     sleep 1
 
-    sock << "\nh\r\n4\r\nello\r\n0\r\n"
+    sock << "\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     data = sock.read
 
@@ -628,7 +678,7 @@ EOF
     sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1"
     sleep 1
 
-    sock << "\r\nh\r\n4\r\nello\r\n0\r\n"
+    sock << "\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     data = sock.read
 
@@ -650,12 +700,89 @@ EOF
     sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\ne"
     sleep 1
 
-    sock << "llo\r\n0\r\n"
+    sock << "llo\r\n0\r\n\r\n"
 
     data = sock.read
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
+  end
+
+  def test_chunked_request_pause_between_cr_lf_after_size_of_second_chunk
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    part1 = 'a' * 4200
+
+    chunked_body = "#{part1.size.to_s(16)}\r\n#{part1}\r\n1\r\nb\r\n0\r\n\r\n"
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "PUT /path HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+    sleep 0.1
+
+    sock << chunked_body[0..-10]
+
+    sleep 0.1
+
+    sock << chunked_body[-9..-1]
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal (part1 + 'b'), body
+  end
+
+  def test_chunked_request_pause_between_closing_cr_lf
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "PUT /path HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r"
+
+    sleep 1
+
+    sock << "\n0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal 'hello', body
+  end
+
+  def test_chunked_request_pause_before_closing_cr_lf
+    body = nil
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "PUT /path HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello"
+
+    sleep 1
+
+    sock << "\r\n0\r\n\r\n"
+
+    data = sock.read
+
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal 'hello', body
   end
 
   def test_chunked_request_header_case
@@ -669,7 +796,7 @@ EOF
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
-    sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: Chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n"
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: Chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     data = sock.read
 
@@ -709,11 +836,23 @@ EOF
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
-    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n"
+
+    last_crlf_written = false
+    last_crlf_writer = Thread.new do
+      sleep 0.1
+      sock << "\r"
+      sleep 0.1
+      sock << "\n"
+      last_crlf_written = true
+    end
 
     h = header(sock)
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "hello", body
+    assert_equal true, last_crlf_written
+
+    last_crlf_writer.join
 
     sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
     sleep 0.1
@@ -722,6 +861,39 @@ EOF
 
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "goodbye", body
+
+    sock.close
+  end
+
+  def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
+    body = nil
+    remote_addr =nil
+    @server = Puma::Server.new @app, @events, { remote_address: :header, remote_address_header: 'HTTP_X_FORWARDED_FOR'}
+    @server.app = proc { |env|
+      body = env['rack.input'].read
+      remote_addr = env['REMOTE_ADDR']
+      [200, {}, [""]]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    h = header(sock)
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "hello", body
+    assert_equal "127.0.0.1", remote_addr
+
+    sock << "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.2\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    sleep 0.1
+
+    h = header(sock)
+
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal "goodbye", body
+    assert_equal "127.0.0.2", remote_addr
 
     sock.close
   end
@@ -739,5 +911,45 @@ EOF
     data = sock.read
 
     assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\n\r\n", data
+  end
+
+  def test_request_body_wait
+    request_body_wait = nil
+    @server.app = proc { |env|
+      request_body_wait = env['puma.request_body_wait']
+      [204, {}, []]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nh"
+    sleep 1
+    sock << "ello"
+
+    sock.gets
+
+    assert request_body_wait >= 1000
+  end
+
+  def test_request_body_wait_chunked
+    request_body_wait = nil
+    @server.app = proc { |env|
+      request_body_wait = env['puma.request_body_wait']
+      [204, {}, []]
+    }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
+
+    sock = TCPSocket.new @host, @server.connected_port
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
+    sleep 1
+    sock << "4\r\nello\r\n0\r\n\r\n"
+
+    sock.gets
+
+    assert request_body_wait >= 1000
   end
 end

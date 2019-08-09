@@ -1,10 +1,6 @@
-major, minor, patch = RUBY_VERSION.split('.').map { |v| v.to_i }
+# frozen_string_literal: true
 
-if major == 1 && minor == 9 && patch == 3 && RUBY_PATCHLEVEL < 125
-  require 'puma/rack/backports/uri/common_193'
-else
-  require 'uri/common'
-end
+require 'uri/common'
 
 module Puma
   module Util

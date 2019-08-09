@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 begin
   require 'io/wait'
-  rescue LoadError
+rescue LoadError
 end
 
 module Puma
@@ -52,22 +54,21 @@ module Puma
           output = engine_read_all
           return output if output
 
-          begin
-            data = @socket.read_nonblock(size, exception: false)
-            if data == :wait_readable || data == :wait_writable
-              if @socket.to_io.respond_to?(data)
-                @socket.to_io.__send__(data)
-              elsif data == :wait_readable
-                IO.select([@socket.to_io])
-              else
-                IO.select(nil, [@socket.to_io])
-              end
-            elsif !data
-              return nil
-            else
-              break
-            end
-          end while true
+          data = @socket.read_nonblock(size, exception: false)
+          if data == :wait_readable || data == :wait_writable
+            # It would make more sense to let @socket.read_nonblock raise
+            # EAGAIN if necessary but it seems like it'll misbehave on Windows.
+            # I don't have a Windows machine to debug this so I can't explain
+            # exactly whats happening in that OS. Please let me know if you
+            # find out!
+            #
+            # In the meantime, we can emulate the correct behavior by
+            # capturing :wait_readable & :wait_writable and raising EAGAIN
+            # ourselves.
+            raise IO::EAGAINWaitReadable
+          elsif data.nil?
+            return nil
+          end
 
           @engine.inject(data)
           output = engine_read_all
@@ -175,6 +176,12 @@ module Puma
 
     class Context
       attr_accessor :verify_mode
+      attr_reader :no_tlsv1, :no_tlsv1_1
+
+      def initialize
+        @no_tlsv1   = false
+        @no_tlsv1_1 = false
+      end
 
       if defined?(JRUBY_VERSION)
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
@@ -218,6 +225,19 @@ module Puma
           raise "Cert not configured" unless @cert
         end
       end
+
+      # disables TLSv1
+      def no_tlsv1=(tlsv1)
+        raise ArgumentError, "Invalid value of no_tlsv1" unless ['true', 'false', true, false].include?(tlsv1)
+        @no_tlsv1 = tlsv1
+      end
+
+      # disables TLSv1 and TLSv1.1.  Overrides `#no_tlsv1=`
+      def no_tlsv1_1=(tlsv1_1)
+        raise ArgumentError, "Invalid value of no_tlsv1" unless ['true', 'false', true, false].include?(tlsv1_1)
+        @no_tlsv1_1 = tlsv1_1
+      end
+
     end
 
     VERIFY_NONE = 0

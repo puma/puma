@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'uri'
 require 'socket'
 
@@ -48,7 +50,14 @@ module Puma
 
     def close
       @ios.each { |i| i.close }
-      @unix_paths.each { |i| File.unlink i }
+      @unix_paths.each do |i|
+        # Errno::ENOENT is intermittently raised
+        begin
+          unix_socket = UNIXSocket.new i
+          unix_socket.close
+        rescue Errno::ENOENT
+        end
+      end
     end
 
     def import_from_env
@@ -184,6 +193,9 @@ module Puma
             ctx.ca = params['ca'] if params['ca']
             ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
           end
+
+          ctx.no_tlsv1 = true if params['no_tlsv1'] == 'true'
+          ctx.no_tlsv1_1 = true if params['no_tlsv1_1'] == 'true'
 
           if params['verify_mode']
             ctx.verify_mode = case params['verify_mode']

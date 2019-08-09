@@ -1,37 +1,31 @@
+# frozen_string_literal: true
 require_relative "helper"
 
 require "rack"
 
 class TestRackServer < Minitest::Test
+  parallelize_me!
 
   class ErrorChecker
     def initialize(app)
       @app = app
       @exception = nil
-      @env = nil
     end
 
     attr_reader :exception, :env
 
     def call(env)
       begin
-        @env = env
-        return @app.call(env)
+        @app.call(env)
       rescue Exception => e
         @exception = e
-
-        [
-          500,
-          { "X-Exception" => e.message, "X-Exception-Class" => e.class.to_s },
-          ["Error detected"]
-        ]
+        [ 500, {}, ["Error detected"] ]
       end
     end
   end
 
   class ServerLint < Rack::Lint
     def call(env)
-      assert("No env given") { env }
       check_env env
 
       @app.call(env)
@@ -39,8 +33,6 @@ class TestRackServer < Minitest::Test
   end
 
   def setup
-    @valid_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
-
     @simple = lambda { |env| [200, { "X-Header" => "Works" }, ["Hello"]] }
     @server = Puma::Server.new @simple
     @server.add_tcp_listener "127.0.0.1", 0
@@ -67,9 +59,7 @@ class TestRackServer < Minitest::Test
 
     stop
 
-    if exc = @checker.exception
-      raise exc
-    end
+    refute @checker.exception, "Checker raised exception"
   end
 
   def test_large_post_body
@@ -85,9 +75,7 @@ class TestRackServer < Minitest::Test
 
     stop
 
-    if exc = @checker.exception
-      raise exc
-    end
+    refute @checker.exception, "Checker raised exception"
   end
 
   def test_path_info
@@ -134,5 +122,4 @@ class TestRackServer < Minitest::Test
 
     assert_match %r!GET /test HTTP/1\.1!, log.string
   end
-
 end

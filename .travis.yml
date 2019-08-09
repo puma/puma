@@ -1,34 +1,73 @@
-dist: trusty
-sudo: false
-group: beta
+dist: xenial
+env: OS="Xenial 16.04 OpenSSL 1.0.2"
 language: ruby
 cache: bundler
+
 before_install:
-  # https://github.com/travis-ci/travis-ci/issues/9383#issuecomment-377680108
-  - gem install bundler
-branches:
-  only:
-    - "master"
+  # rubygems 2.7.8 and greater include bundler, leave 2.6.0 untouched
+  - |
+    r_eng="$(ruby -e 'STDOUT.write RUBY_ENGINE')";
+    rv="$(ruby -e 'STDOUT.write RUBY_VERSION')";
+    if [ "$r_eng" == "ruby" ]; then
+      if   [ "$rv" \< "2.3" ]; then gem update --system 2.7.9 --no-document
+      elif [ "$rv" \< "2.6" ]; then gem update --system --no-document --conservative
+      fi
+    fi
+    if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      brew update
+      brew install ragel
+    fi
+  - ruby -v && gem --version && bundle version
+
+before_script:
+  - if [ "$jit" == "yes" ]; then export RUBYOPT=--jit ; fi ; echo RUBYOPT is $RUBYOPT
+  - bundle exec rake compile
+
+script:
+  - bundle exec rake
+
 rvm:
   - 2.2.10
-  - 2.3.7
-  - 2.4.4
-  - 2.5.1
+  - 2.3.8
+  - 2.4.6
+  - 2.5.5
+  - 2.6.3
   - ruby-head
-  - jruby-9.1.17.0
-  - jruby-head
-  - rbx-3
+
 matrix:
   fast_finish: true
   include:
+    - rvm: 2.2.10
+      dist: trusty
+      env: OS="Trusty 14.04 OpenSSL 1.0.1"
+    - rvm: 2.6.3
+      dist: bionic
+      env: OS="Bionic 18.04 OpenSSL 1.1.1"
     - rvm: ruby-head
-      env: RUBYOPT="--jit"
-  allow_failures:
+      env: jit=yes
+    - rvm: 2.4.6
+      os: osx
+      osx_image: xcode11
+      env: OS="osx xcode11"
+    - rvm: 2.5.5
+      os: osx
+      osx_image: xcode11
+      env: OS="osx xcode11"
+    - rvm: jruby-9.2.7.0
+      env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: jruby-head
-    - rvm: rbx-3
+      dist: bionic
+      env: OS="Bionic 18.04"
+
+  allow_failures:
     - rvm: ruby-head
     - rvm: ruby-head
-      env: RUBYOPT="--jit"
+      env: jit=yes
+    - rvm: jruby-9.2.7.0
+    - rvm: jruby-head
+      dist: bionic
+      env: OS="Bionic 18.04"
+
 env:
   global:
     - TESTOPTS="-v"

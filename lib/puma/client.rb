@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class IO
   # We need to use this for a jruby work around on both 1.8 and 1.9.
   # So this either creates the constant (on 1.8), or harmlessly
@@ -25,9 +27,10 @@ module Puma
   # For example a web request from a browser or from CURL. This
   #
   # An instance of `Puma::Client` can be used as if it were an IO object
-  # for example it is passed into `IO.select` inside of the `Puma::Reactor`.
-  # This is accomplished by the `to_io` method which gets called on any
-  # non-IO objects being used with the IO api such as `IO.select.
+  # by the reactor, that's because the latter is expected to call `#to_io`
+  # on any non-IO objects it polls. For example nio4r internally calls
+  # `IO::try_convert` (which may call `#to_io`) when a new socket is
+  # registered.
   #
   # Instances of this class are responsible for knowing if
   # the header and body are fully buffered via the `try_to_finish` method.
@@ -52,6 +55,7 @@ module Puma
       @ready = false
 
       @body = nil
+      @body_read_start = nil
       @buffer = nil
       @tempfile = nil
 
@@ -62,6 +66,10 @@ module Puma
 
       @peerip = nil
       @remote_addr_header = nil
+
+      @body_remain = 0
+
+      @in_last_chunk = false
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
@@ -100,6 +108,9 @@ module Puma
       @tempfile = nil
       @parsed_bytes = 0
       @ready = false
+      @body_remain = 0
+      @peerip = nil
+      @in_last_chunk = false
 
       if @buffer
         @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
@@ -112,9 +123,16 @@ module Puma
         end
 
         return false
-      elsif fast_check &&
-            IO.select([@to_io], nil, nil, FAST_TRACK_KA_TIMEOUT)
-        return try_to_finish
+      else
+        begin
+          if fast_check &&
+              IO.select([@to_io], nil, nil, FAST_TRACK_KA_TIMEOUT)
+            return try_to_finish
+          end
+        rescue IOError
+          # swallow it
+        end
+
       end
     end
 
@@ -145,10 +163,13 @@ module Puma
     def decode_chunk(chunk)
       if @partial_part_left > 0
         if @partial_part_left <= chunk.size
-          @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+          if @partial_part_left > 2
+            @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+          end
           chunk = chunk[@partial_part_left..-1]
+          @partial_part_left = 0
         else
-          @body << chunk
+          @body << chunk if @partial_part_left > 2 # don't include the last \r\n
           @partial_part_left -= chunk.size
           return false
         end
@@ -166,13 +187,20 @@ module Puma
         if line.end_with?("\r\n")
           len = line.strip.to_i(16)
           if len == 0
+            @in_last_chunk = true
             @body.rewind
             rest = io.read
-            rest = rest[2..-1] if rest.start_with?("\r\n")
-            @buffer = rest.empty? ? nil : rest
-            @requests_served += 1
-            @ready = true
-            return true
+            last_crlf_size = "\r\n".bytesize
+            if rest.bytesize < last_crlf_size
+              @buffer = nil
+              @partial_part_left = last_crlf_size - rest.bytesize
+              return false
+            else
+              @buffer = rest[last_crlf_size..-1]
+              @buffer = nil if @buffer.empty?
+              set_ready
+              return true
+            end
           end
 
           len += 2
@@ -202,14 +230,19 @@ module Puma
         end
       end
 
-      return false
+      if @in_last_chunk
+        set_ready
+        true
+      else
+        false
+      end
     end
 
     def read_chunked_body
       while true
         begin
           chunk = @io.read_nonblock(4096)
-        rescue Errno::EAGAIN
+        rescue IO::WaitReadable
           return false
         rescue SystemCallError, IOError
           raise ConnectionError, "Connection error detected during read"
@@ -219,8 +252,7 @@ module Puma
         unless chunk
           @body.close
           @buffer = nil
-          @requests_served += 1
-          @ready = true
+          set_ready
           raise EOFError
         end
 
@@ -229,6 +261,8 @@ module Puma
     end
 
     def setup_body
+      @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
+
       if @env[HTTP_EXPECT] == CONTINUE
         # TODO allow a hook here to check the headers before
         # going forward
@@ -253,8 +287,7 @@ module Puma
       unless cl
         @buffer = body.empty? ? nil : body
         @body = EmptyBody
-        @requests_served += 1
-        @ready = true
+        set_ready
         return true
       end
 
@@ -263,8 +296,7 @@ module Puma
       if remain <= 0
         @body = StringIO.new(body)
         @buffer = nil
-        @requests_served += 1
-        @ready = true
+        set_ready
         return true
       end
 
@@ -292,15 +324,14 @@ module Puma
         data = @io.read_nonblock(CHUNK_SIZE)
       rescue Errno::EAGAIN
         return false
-      rescue SystemCallError, IOError
+      rescue SystemCallError, IOError, EOFError
         raise ConnectionError, "Connection error detected during read"
       end
 
       # No data means a closed socket
       unless data
         @buffer = nil
-        @requests_served += 1
-        @ready = true
+        set_ready
         raise EOFError
       end
 
@@ -336,8 +367,7 @@ module Puma
         # No data means a closed socket
         unless data
           @buffer = nil
-          @requests_served += 1
-          @ready = true
+          set_ready
           raise EOFError
         end
 
@@ -414,8 +444,7 @@ module Puma
       unless chunk
         @body.close
         @buffer = nil
-        @requests_served += 1
-        @ready = true
+        set_ready
         raise EOFError
       end
 
@@ -424,14 +453,21 @@ module Puma
       if remain <= 0
         @body.rewind
         @buffer = nil
-        @requests_served += 1
-        @ready = true
+        set_ready
         return true
       end
 
       @body_remain = remain
 
       false
+    end
+
+    def set_ready
+      if @body_read_start
+        @env['puma.request_body_wait'] = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond) - @body_read_start
+      end
+      @requests_served += 1
+      @ready = true
     end
 
     def write_400

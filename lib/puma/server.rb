@@ -1,10 +1,11 @@
+# frozen_string_literal: true
+
 require 'stringio'
 
 require 'puma/thread_pool'
 require 'puma/const'
 require 'puma/events'
 require 'puma/null_io'
-require 'puma/compat'
 require 'puma/reactor'
 require 'puma/client'
 require 'puma/binder'
@@ -14,10 +15,6 @@ require 'puma/util'
 
 require 'puma/puma_http11'
 
-unless Puma.const_defined? "IOBuffer"
-  require 'puma/io_buffer'
-end
-
 require 'socket'
 
 module Puma
@@ -26,7 +23,7 @@ module Puma
   #
   # This class is used by the `Puma::Single` and `Puma::Cluster` classes
   # to generate one or more `Puma::Server` instances capable of handling requests.
-  # Each Puma process will contain one `Puma::Server` instacne.
+  # Each Puma process will contain one `Puma::Server` instance.
   #
   # The `Puma::Server` instance pulls requests from the socket, adds them to a
   # `Puma::Reactor` where they get eventually passed to a `Puma::ThreadPool`.
@@ -84,7 +81,6 @@ module Puma
       @first_data_timeout = options.fetch(:first_data_timeout, FIRST_DATA_TIMEOUT)
 
       @binder = Binder.new(events)
-      @own_binder = true
 
       @leak_stack_on_error = true
 
@@ -108,7 +104,6 @@ module Puma
 
     def inherit_binder(bind)
       @binder = bind
-      @own_binder = false
     end
 
     def tcp_mode!
@@ -276,10 +271,11 @@ module Puma
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
 
-        @notify.close
-
-        if @status != :restart and @own_binder
-          @binder.close
+        # Prevent can't modify frozen IOError (RuntimeError)
+        begin
+          @notify.close
+        rescue IOError
+          # no biggy
         end
       end
 
@@ -405,7 +401,10 @@ module Puma
                     end
 
                     pool << client
-                    pool.wait_until_not_full(slow_loaded_accepts ? sock : nil)
+                    busy_threads = pool.wait_until_not_full(slow_loaded_accepts ? sock : nil)
+                    if busy_threads == 0
+                      @options[:out_of_band].each(&:call) if @options[:out_of_band]
+                    end
                   end
                 rescue SystemCallError
                   # nothing
@@ -437,10 +436,6 @@ module Puma
       ensure
         @check.close
         @notify.close
-
-        if @status != :restart and @own_binder
-          @binder.close
-        end
       end
 
       @events.fire :state, :done
@@ -602,19 +597,26 @@ module Puma
     end
 
     def default_server_port(env)
-      return PORT_443 if env[HTTPS_KEY] == 'on' || env[HTTPS_KEY] == 'https'
-      env['HTTP_X_FORWARDED_PROTO'] == 'https' ? PORT_443 : PORT_80
+      if ['on', HTTPS].include?(env[HTTPS_KEY]) || env[HTTP_X_FORWARDED_PROTO].to_s[0...5] == HTTPS || env[HTTP_X_FORWARDED_SCHEME] == HTTPS || env[HTTP_X_FORWARDED_SSL] == "on"
+        PORT_443
+      else
+        PORT_80
+      end
     end
 
-    # Given the request +env+ from +client+ and a partial request body
-    # in +body+, finish reading the body if there is one and invoke
-    # the rack app. Then construct the response and write it back to
-    # +client+
+    # Takes the request +req+, invokes the Rack application to construct
+    # the response and writes it back to +req.io+.
     #
-    # +cl+ is the previously fetched Content-Length header if there
-    # was one. This is an optimization to keep from having to look
-    # it up again.
+    # The second parameter +lines+ is a IO-like object unique to this thread.
+    # This is normally an instance of Puma::IOBuffer.
     #
+    # It'll return +false+ when the connection is closed, this doesn't mean
+    # that the response wasn't successful.
+    #
+    # It'll return +:async+ if the connection remains open but will be handled
+    # elsewhere, i.e. the connection has been hijacked by the Rack application.
+    #
+    # Finally, it'll return +true+ on keep-alive connections.
     def handle_request(req, lines)
       env = req.env
       client = req.io
@@ -637,23 +639,27 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
 
       env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] =  env[HTTPS_KEY] ? HTTPS : HTTP
+      env[RACK_URL_SCHEME] = default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
-          fast_write client, "HTTP/1.1 103 Early Hints\r\n".freeze
+          begin
+            fast_write client, "HTTP/1.1 103 Early Hints\r\n".freeze
 
-          headers.each_pair do |k, vs|
-            if vs.respond_to?(:to_s) && !vs.to_s.empty?
-              vs.to_s.split(NEWLINE).each do |v|
-                fast_write client, "#{k}: #{v}\r\n"
+            headers.each_pair do |k, vs|
+              if vs.respond_to?(:to_s) && !vs.to_s.empty?
+                vs.to_s.split(NEWLINE).each do |v|
+                  fast_write client, "#{k}: #{v}\r\n"
+                end
+              else
+                fast_write client, "#{k}: #{vs}\r\n"
               end
-            else
-              fast_write client, "#{k}: #{vs}\r\n"
             end
-          end
 
-          fast_write client, "\r\n".freeze
+            fast_write client, "\r\n".freeze
+          rescue ConnectionError
+            # noop, if we lost the socket we just won't send the early hints
+          end
         }
       end
 
@@ -947,6 +953,10 @@ module Puma
         end
 
         @events.debug "Drained #{count} additional connections."
+      end
+
+      if @status != :restart
+        @binder.close
       end
 
       if @thread_pool

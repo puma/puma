@@ -1,5 +1,11 @@
+# frozen_string_literal: true
+
+require 'json'
+
 module Puma
   module App
+    # Check out {#call}'s source code to see what actions this web application
+    # can respond to.
     class Status
       def initialize(cli)
         @cli = cli
@@ -60,8 +66,7 @@ module Puma
           return rack_response(200, OK_STATUS)
 
         when /\/gc-stats$/
-          json = "{" + GC.stat.map { |k, v| "\"#{k}\": #{v}" }.join(",") + "}"
-          return rack_response(200, json)
+          return rack_response(200, GC.stat.to_json)
 
         when /\/stats$/
           return rack_response(200, @cli.stats)

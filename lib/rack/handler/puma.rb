@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rack/handler'
 
 module Rack
@@ -49,14 +51,15 @@ module Rack
             self.set_host_port_to_config(host, port, user_config)
           end
 
+          if default_options[:Host]
+            file_config.set_default_host(default_options[:Host])
+          end
           self.set_host_port_to_config(default_options[:Host], default_options[:Port], default_config)
 
           user_config.app app
         end
         conf
       end
-
-
 
       def self.run(app, options = {})
         conf   = self.config(app, options)
@@ -83,7 +86,7 @@ module Rack
           "Verbose"         => "Don't report each request (default: false)"
         }
       end
-    private
+
       def self.set_host_port_to_config(host, port, config)
         config.clear_binds! if host || port
 

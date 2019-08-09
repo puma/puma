@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Standard libraries
 require 'socket'
 require 'tempfile'

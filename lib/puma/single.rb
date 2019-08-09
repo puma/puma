@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'puma/runner'
 require 'puma/detect'
 require 'puma/plugin'
@@ -16,7 +18,7 @@ module Puma
       r = @server.running || 0
       t = @server.pool_capacity || 0
       m = @server.max_threads || 0
-      %Q!{ "backlog": #{b}, "running": #{r}, "pool_capacity": #{t}, "max_threads": #{m} }!
+      %Q!{ "started_at": "#{@started_at.utc.iso8601}", "backlog": #{b}, "running": #{r}, "pool_capacity": #{t}, "max_threads": #{m} }!
     end
 
     def restart
@@ -24,7 +26,7 @@ module Puma
     end
 
     def stop
-      @server.stop false
+      @server.stop(false) if @server
     end
 
     def halt
@@ -34,7 +36,7 @@ module Puma
     def stop_blocked
       log "- Gracefully stopping, waiting for requests to finish"
       @control.stop(true) if @control
-      @server.stop(true)
+      @server.stop(true) if @server
     end
 
     def jruby_daemon?

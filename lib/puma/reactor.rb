@@ -1,5 +1,9 @@
+# frozen_string_literal: true
+
 require 'puma/util'
 require 'puma/minissl'
+
+require 'nio'
 
 module Puma
   # Internal Docs, Not a public interface.
@@ -16,12 +20,13 @@ module Puma
   #
   # ## Reactor Flow
   #
-  # A request comes into a `Puma::Server` instance, it is then passed to a `Puma::Reactor` instance.
-  # The reactor stores the request in an array and calls `IO.select` on the array in a loop.
+  # A connection comes into a `Puma::Server` instance, it is then passed to a `Puma::Reactor` instance,
+  # which stores it in an array and waits for any of the connections to be ready for reading.
   #
-  # When the request is written to by the client then the `IO.select` will "wake up" and
+  # The waiting/wake up is performed with nio4r, which will use the appropriate backend (libev, Java NIO or
+  # just plain IO#select). The call to `NIO::Selector#select` will "wake up" and
   # return the references to any objects that caused it to "wake". The reactor
-  # then loops through each of these request objects, and sees if they're  complete. If they
+  # then loops through each of these request objects, and sees if they're complete. If they
   # have a full header and body then the reactor passes the request to a thread pool.
   # Once in a thread pool, a "worker thread" can run the the application's Ruby code against the request.
   #
@@ -36,7 +41,7 @@ module Puma
     # Creates an instance of Puma::Reactor
     #
     # The `server` argument is an instance of `Puma::Server`
-    # this is used to write a response for "low level errors"
+    # that is used to write a response for "low level errors"
     # when there is an exception inside of the reactor.
     #
     # The `app_pool` is an instance of `Puma::ThreadPool`.
@@ -47,6 +52,8 @@ module Puma
       @events = server.events
       @app_pool = app_pool
 
+      @selector = NIO::Selector.new
+
       @mutex = Mutex.new
 
       # Read / Write pipes to wake up internal while loop
@@ -55,24 +62,26 @@ module Puma
       @sleep_for = DefaultSleepFor
       @timeouts = []
 
-      @sockets = [@ready]
+      mon = @selector.register(@ready, :r)
+      mon.value = @ready
+
+      @monitors = [mon]
     end
 
     private
-
 
     # Until a request is added via the `add` method this method will internally
     # loop, waiting on the `sockets` array objects. The only object in this
     # array at first is the `@ready` IO object, which is the read end of a pipe
     # connected to `@trigger` object. When `@trigger` is written to, then the loop
-    # will break on `IO.select` and return an array.
+    # will break on `NIO::Selector#select` and return an array.
     #
     # ## When a request is added:
     #
     # When the `add` method is called, an instance of `Puma::Client` is added to the `@input` array.
     # Next the `@ready` pipe is "woken" by writing a string of `"*"` to `@trigger`.
     #
-    # When that happens, the internal loop stops blocking at `IO.select` and returns a reference
+    # When that happens, the internal loop stops blocking at `NIO::Selector#select` and returns a reference
     # to whatever "woke" it up. On the very first loop, the only thing in `sockets` is `@ready`.
     # When `@trigger` is written-to, the loop "wakes" and the `ready`
     # variable returns an array of arrays that looks like `[[#<IO:fd 10>], [], []]` where the
@@ -88,11 +97,11 @@ module Puma
     # to the `@ready` IO object. For example: `[#<IO:fd 10>, #<Puma::Client:0x3fdc1103bee8 @ready=false>]`.
     #
     # Since the `Puma::Client` in this example has data that has not been read yet,
-    # the `IO.select` is immediately able to "wake" and read from the `Puma::Client`. At this point the
+    # the `NIO::Selector#select` is immediately able to "wake" and read from the `Puma::Client`. At this point the
     # `ready` output looks like this: `[[#<Puma::Client:0x3fdc1103bee8 @ready=false>], [], []]`.
     #
     # Each element in the first entry is iterated over. The `Puma::Client` object is not
-    # the `@ready` pipe, so the reactor checks to see if it has the fully header and body with
+    # the `@ready` pipe, so the reactor checks to see if it has the full header and body with
     # the `Puma::Client#try_to_finish` method. If the full request has been sent,
     # then the request is passed off to the `@app_pool` thread pool so that a "worker thread"
     # can pick up the request and begin to execute application logic. This is done
@@ -100,56 +109,93 @@ module Puma
     #
     # If the request body is not present then nothing will happen, and the loop will iterate
     # again. When the client sends more data to the socket the `Puma::Client` object will
-    # wake up the `IO.select` and it can again be checked to see if it's ready to be
+    # wake up the `NIO::Selector#select` and it can again be checked to see if it's ready to be
     # passed to the thread pool.
     #
     # ## Time Out Case
     #
-    # In addition to being woken via a write to one of the sockets the `IO.select` will
+    # In addition to being woken via a write to one of the sockets the `NIO::Selector#select` will
     # periodically "time out" of the sleep. One of the functions of this is to check for
     # any requests that have "timed out". At the end of the loop it's checked to see if
-    # the first element in the `@timeout` array has exceed it's allowed time. If so,
-    # the client object is removed from the timeout aray, a 408 response is written.
-    # Then it's connection is closed, and the object is removed from the `sockets` array
+    # the first element in the `@timeout` array has exceed its allowed time. If so,
+    # the client object is removed from the timeout array, a 408 response is written.
+    # Then its connection is closed, and the object is removed from the `sockets` array
     # that watches for new data.
     #
     # This behavior loops until all the objects that have timed out have been removed.
     #
-    # Once all the timeouts have been processed, the next duration of the `IO.select` sleep
+    # Once all the timeouts have been processed, the next duration of the `NIO::Selector#select` sleep
     # will be set to be equal to the amount of time it will take for the next timeout to occur.
     # This calculation happens in `calculate_sleep`.
     def run_internal
-      sockets = @sockets
+      monitors = @monitors
+      selector = @selector
 
       while true
         begin
-          ready = IO.select sockets, nil, nil, @sleep_for
+          ready = selector.select @sleep_for
         rescue IOError => e
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-          if sockets.any? { |socket| socket.closed? }
+          if monitors.any? { |mon| mon.value.closed? }
             STDERR.puts "Error in select: #{e.message} (#{e.class})"
             STDERR.puts e.backtrace
-            sockets = sockets.reject { |socket| socket.closed? }
+
+            monitors.reject! do |mon|
+              if mon.value.closed?
+                selector.deregister mon.value
+                true
+              end
+            end
+
             retry
           else
             raise
           end
         end
 
-        if ready and reads = ready[0]
-          reads.each do |c|
-            if c == @ready
+        if ready
+          ready.each do |mon|
+            if mon.value == @ready
               @mutex.synchronize do
                 case @ready.read(1)
                 when "*"
-                  sockets += @input
+                  @input.each do |c|
+                    mon = nil
+                    begin
+                      begin
+                        mon = selector.register(c, :r)
+                      rescue ArgumentError
+                        # There is a bug where we seem to be registering an already registered
+                        # client. This code deals with this situation but I wish we didn't have to.
+                        monitors.delete_if { |submon| submon.value.to_io == c.to_io }
+                        selector.deregister(c)
+                        mon = selector.register(c, :r)
+                      end
+                    rescue IOError
+                      # Means that the io is closed, so we should ignore this request
+                      # entirely
+                    else
+                      mon.value = c
+                      @timeouts << mon if c.timeout_at
+                      monitors << mon
+                    end
+                  end
                   @input.clear
+
+                  @timeouts.sort! { |a,b| a.value.timeout_at <=> b.value.timeout_at }
+                  calculate_sleep
                 when "c"
-                  sockets.delete_if do |s|
-                    if s == @ready
+                  monitors.reject! do |submon|
+                    if submon.value == @ready
                       false
                     else
-                      s.close
+                      submon.value.close
+                      begin
+                        selector.deregister submon.value
+                      rescue IOError
+                        # nio4r on jruby seems to throw an IOError here if the IO is closed, so
+                        # we need to swallow it.
+                      end
                       true
                     end
                   end
@@ -158,19 +204,21 @@ module Puma
                 end
               end
             else
+              c = mon.value
+
               # We have to be sure to remove it from the timeout
               # list or we'll accidentally close the socket when
               # it's in use!
               if c.timeout_at
                 @mutex.synchronize do
-                  @timeouts.delete c
+                  @timeouts.delete mon
                 end
               end
 
               begin
                 if c.try_to_finish
                   @app_pool << c
-                  sockets.delete c
+                  clear_monitor mon
                 end
 
               # Don't report these to the lowlevel_error handler, otherwise
@@ -180,18 +228,23 @@ module Puma
                 c.write_500
                 c.close
 
-                sockets.delete c
+                clear_monitor mon
 
               # SSL handshake failure
               rescue MiniSSL::SSLError => e
                 @server.lowlevel_error(e, c.env)
 
                 ssl_socket = c.io
-                addr = ssl_socket.peeraddr.last
+                begin
+                  addr = ssl_socket.peeraddr.last
+                rescue IOError
+                  addr = "<unknown>"
+                end
+
                 cert = ssl_socket.peercert
 
                 c.close
-                sockets.delete c
+                clear_monitor mon
 
                 @events.ssl_error @server, addr, cert, e
 
@@ -202,7 +255,7 @@ module Puma
                 c.write_400
                 c.close
 
-                sockets.delete c
+                clear_monitor mon
 
                 @events.parse_error @server, c.env, e
               rescue StandardError => e
@@ -211,7 +264,7 @@ module Puma
                 c.write_500
                 c.close
 
-                sockets.delete c
+                clear_monitor mon
               end
             end
           end
@@ -221,11 +274,13 @@ module Puma
           @mutex.synchronize do
             now = Time.now
 
-            while @timeouts.first.timeout_at < now
-              c = @timeouts.shift
+            while @timeouts.first.value.timeout_at < now
+              mon = @timeouts.shift
+              c = mon.value
               c.write_408 if c.in_data_phase
               c.close
-              sockets.delete c
+
+              clear_monitor mon
 
               break if @timeouts.empty?
             end
@@ -234,6 +289,11 @@ module Puma
           end
         end
       end
+    end
+
+    def clear_monitor(mon)
+      @selector.deregister mon.value
+      @monitors.delete mon
     end
 
     public
@@ -260,7 +320,7 @@ module Puma
       end
     end
 
-    # The `calculate_sleep` sets the value that the `IO.select` will
+    # The `calculate_sleep` sets the value that the `NIO::Selector#select` will
     # sleep for in the main reactor loop when no sockets are being written to.
     #
     # The values kept in `@timeouts` are sorted so that the first timeout
@@ -274,7 +334,7 @@ module Puma
       if @timeouts.empty?
         @sleep_for = DefaultSleepFor
       else
-        diff = @timeouts.first.timeout_at.to_f - Time.now.to_f
+        diff = @timeouts.first.value.timeout_at.to_f - Time.now.to_f
 
         if diff < 0.0
           @sleep_for = 0
@@ -291,18 +351,18 @@ module Puma
     # object.
     #
     # The main body of the reactor loop is in `run_internal` and it
-    # will sleep on `IO.select`. When a new connection is added to the
-    # reactor it cannot be added directly to the `sockets` aray, because
-    # the `IO.select` will not be watching for it yet.
+    # will sleep on `NIO::Selector#select`. When a new connection is added to the
+    # reactor it cannot be added directly to the `sockets` array, because
+    # the `NIO::Selector#select` will not be watching for it yet.
     #
-    # Instead what needs to happen is that `IO.select` needs to be woken up,
+    # Instead what needs to happen is that `NIO::Selector#select` needs to be woken up,
     # the contents of `@input` added to the `sockets` array, and then
-    # another call to `IO.select` needs to happen. Since the `Puma::Client`
+    # another call to `NIO::Selector#select` needs to happen. Since the `Puma::Client`
     # object can be read immediately, it does not block, but instead returns
     # right away.
     #
     # This behavior is accomplished by writing to `@trigger` which wakes up
-    # the `IO.select` and then there is logic to detect the value of `*`,
+    # the `NIO::Selector#select` and then there is logic to detect the value of `*`,
     # pull the contents from `@input` and add them to the sockets array.
     #
     # If the object passed in has a timeout value in `timeout_at` then
@@ -313,13 +373,6 @@ module Puma
       @mutex.synchronize do
         @input << c
         @trigger << "*"
-
-        if c.timeout_at
-          @timeouts << c
-          @timeouts.sort! { |a,b| a.timeout_at <=> b.timeout_at }
-
-          calculate_sleep
-        end
       end
     end
 

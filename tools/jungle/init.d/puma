@@ -47,11 +47,11 @@ do_start_one() {
   PIDFILE=$1/tmp/puma/pid
   if [ -e $PIDFILE ]; then
     PID=`cat $PIDFILE`
-    # If the puma isn't running, run it, otherwise restart it.
+    # If the puma is running, restart it, otherwise run it.
     if ps -p $PID > /dev/null; then
-      do_start_one_do $1
-    else
       do_restart_one $1
+    else
+      do_start_one_do $1
     fi
   else
     do_start_one_do $1
@@ -106,8 +106,6 @@ do_stop_one() {
   if [ -e $PIDFILE ]; then
     PID=`cat $PIDFILE`
     if ps -p $PID > /dev/null; then
-      log_daemon_msg "---> Puma $1 isn't running."
-    else
       log_daemon_msg "---> About to kill PID `cat $PIDFILE`"
       if [ "$USE_LOCAL_BUNDLE" -eq 1 ]; then
         cd $1 && bundle exec pumactl --state $STATEFILE stop
@@ -116,6 +114,8 @@ do_stop_one() {
       fi
       # Many daemons don't delete their pidfiles when they exit.
       rm -f $PIDFILE $STATEFILE
+    else
+      log_daemon_msg "---> Puma $1 isn't running."
     fi
   else
     log_daemon_msg "---> No puma here..."
@@ -398,7 +398,7 @@ case "$1" in
   ;;
   remove)
     if [ "$#" -lt 2 ]; then
-      echo "Please, specifiy the app's directory to remove."
+      echo "Please, specify the app's directory to remove."
       exit 1
     else
       do_remove $2

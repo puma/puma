@@ -23,6 +23,7 @@ import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
@@ -65,7 +66,7 @@ public class MiniSSL extends RubyObject {
 
     public void clear() { buffer.clear(); }
     public void compact() { buffer.compact(); }
-    public void flip() { buffer.flip(); }
+    public void flip() { ((Buffer) buffer).flip(); }
     public boolean hasRemaining() { return buffer.hasRemaining(); }
     public int position() { return buffer.position(); }
 
@@ -89,7 +90,7 @@ public class MiniSSL extends RubyObject {
     public void resize(int newCapacity) {
       if (newCapacity > buffer.capacity()) {
         ByteBuffer dstTmp = ByteBuffer.allocate(newCapacity);
-        buffer.flip();
+        flip();
         dstTmp.put(buffer);
         buffer = dstTmp;
       } else {
@@ -101,7 +102,7 @@ public class MiniSSL extends RubyObject {
      * Drains the buffer to a ByteList, or returns null for an empty buffer
      */
     public ByteList asByteList() {
-      buffer.flip();
+      flip();
       if (!buffer.hasRemaining()) {
         buffer.clear();
         return null;
@@ -158,7 +159,17 @@ public class MiniSSL extends RubyObject {
     sslCtx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
     engine = sslCtx.createSSLEngine();
 
-    String[] protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" };
+    String[] protocols;
+    if(miniSSLContext.callMethod(threadContext, "no_tlsv1").isTrue()) {
+        protocols = new String[] { "TLSv1.1", "TLSv1.2" };
+    } else {
+        protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" };
+    }
+
+    if(miniSSLContext.callMethod(threadContext, "no_tlsv1_1").isTrue()) {
+        protocols = new String[] { "TLSv1.2" };
+    }
+
     engine.setEnabledProtocols(protocols);
     engine.setUseClientMode(false);
 
