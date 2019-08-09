@@ -39,23 +39,25 @@ class WebServerTest < Minitest::Test
   def test_trickle_attack
     socket = do_test(VALID_REQUEST, 3)
     assert_match "hello", socket.read
+    socket.close
   end
 
   def test_close_client
     assert_raises IOError do
-      do_test(VALID_REQUEST, 10, 20)
+      do_test_raise(VALID_REQUEST, 10, 20)
     end
   end
 
   def test_bad_client
     socket = do_test("GET /test HTTP/BAD", 3)
     assert_match "Bad Request", socket.read
+    socket.close
   end
 
   def test_header_is_too_long
     long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
     assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
-      do_test(long, long.length/2, 10)
+      do_test_raise(long, long.length/2, 10)
     end
   end
 
@@ -65,11 +67,25 @@ class WebServerTest < Minitest::Test
     long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\n\r\n" + body
     socket = do_test(long, (Puma::Const::CHUNK_SIZE * 2) - 400)
     assert_match "hello", socket.read
+    socket.close
   end
 
   private
 
-  def do_test(string, chunk, close_after=nil)
+  def do_test(string, chunk)
+    # Do not use instance variables here, because it needs to be thread safe
+    socket = TCPSocket.new("127.0.0.1", @server.connected_port);
+    request = StringIO.new(string)
+    chunks_out = 0
+
+    while data = request.read(chunk)
+      chunks_out += socket.write(data)
+      socket.flush
+    end
+    socket
+  end
+
+  def do_test_raise(string, chunk, close_after = nil)
     # Do not use instance variables here, because it needs to be thread safe
     socket = TCPSocket.new("127.0.0.1", @server.connected_port);
     request = StringIO.new(string)
@@ -84,5 +100,7 @@ class WebServerTest < Minitest::Test
     socket.write(" ") # Some platforms only raise the exception on attempted write
     socket.flush
     socket
+  ensure
+    socket.close unless socket.closed?
   end
 end
