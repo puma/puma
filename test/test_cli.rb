@@ -12,7 +12,7 @@ class TestCLI < Minitest::Test
 
     @tmp_path2 = "#{@tmp_path}2"
 
-    File.unlink @tmp_path if File.exist? @tmp_path
+    File.unlink @tmp_path  if File.exist? @tmp_path
     File.unlink @tmp_path2 if File.exist? @tmp_path2
 
     @wait, @ready = IO.pipe
@@ -62,8 +62,8 @@ class TestCLI < Minitest::Test
     body = s.read
     s.close
 
-    assert_match /{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split(/\r?\n/).last
-    assert_match /{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, Puma.stats
+    assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split(/\r?\n/).last)
+    assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, Puma.stats)
 
   ensure
     cli.launcher.stop
@@ -125,7 +125,7 @@ class TestCLI < Minitest::Test
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
 
-    assert_match /{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split("\r\n").last
+    assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split("\r\n").last)
 
     cli.launcher.stop
     t.join
