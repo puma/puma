@@ -29,6 +29,37 @@ class TestPumaControlCli < Minitest::Test
     assert_equal "t3-pid", control_cli.instance_variable_get("@pidfile")
   end
 
+  def test_environment
+    ENV.delete 'RACK_ENV' # remove from travis
+    control_cli = Puma::ControlCLI.new ["halt"]
+    assert_equal "development", control_cli.instance_variable_get("@environment")
+    control_cli = Puma::ControlCLI.new ["-e", "test", "halt"]
+    assert_equal "test", control_cli.instance_variable_get("@environment")
+  end
+
+  def test_config_file_exist
+    ENV.delete 'RACK_ENV' # remove from travis
+    port = 6001
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.open("config/puma.rb", "w") { |f| f << "port #{port}" }
+        control_cli = Puma::ControlCLI.new ["halt"]
+        assert_equal "config/puma.rb",
+          control_cli.instance_variable_get("@config_file")
+      end
+    end
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir_p("config/puma")
+        File.open("config/puma/development.rb", "w") { |f| f << "port #{port}" }
+        control_cli = Puma::ControlCLI.new ["halt"]
+        assert_equal "config/puma/development.rb",
+          control_cli.instance_variable_get("@config_file")
+      end
+    end
+  end
+
   def test_control_no_token
     opts = [
       "--config-file", "test/config/control_no_token.rb",
