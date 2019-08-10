@@ -16,6 +16,7 @@ require "timeout"
 require "minitest/autorun"
 require "minitest/pride"
 require "minitest/proveit"
+require_relative "helpers/apps"
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
