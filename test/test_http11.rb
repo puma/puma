@@ -193,7 +193,7 @@ class Http11ParserTest < Minitest::Test
     req = {}
     http = "GET / HTTP/1.1\r\nX-Strip-Me: Strip This       \r\n\r\n"
 
-    nread = parser.execute(req, http, 0)
+    parser.execute(req, http, 0)
 
     assert_equal "Strip This", req["HTTP_X_STRIP_ME"]
   end
