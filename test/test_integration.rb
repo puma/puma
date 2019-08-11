@@ -12,9 +12,10 @@ require "open3"
 class TestIntegration < Minitest::Test
 
   def setup
-    @state_path = "test/test_puma.state"
-    @bind_path = "test/test_server.sock"
-    @control_path = "test/test_control.sock"
+    unique = UniquePort.call
+    @state_path = "test/test_#{unique}_puma.state"
+    @bind_path = "test/test_#{unique}_server.sock"
+    @control_path = "test/test_#{unique}_control.sock"
     @token = "xxyyzz"
 
     @server = nil
