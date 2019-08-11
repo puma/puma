@@ -44,10 +44,10 @@ end
 
 module UniquePort
   @port  = 3211
+  @mutex = Mutex.new
 
   def self.call
-    @port += 1
-    @port
+    @mutex.synchronize { @port += 1 }
   end
 end
 
@@ -69,8 +69,6 @@ if ENV['CI']
 end
 
 module TestSkips
-
-  @@next_port = 9000
 
   # usage: skip NO_FORK_MSG unless HAS_FORK
   # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
@@ -115,10 +113,6 @@ module TestSkips
       else false
     end
     skip skip_msg, bt if skip_msg
-  end
-
-  def next_port(incr = 1)
-    @@next_port += incr
   end
 end
 

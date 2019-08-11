@@ -45,7 +45,7 @@ class TestIntegration < Minitest::Test
   end
 
   def server_cmd(argv)
-    @tcp_port = next_port
+    @tcp_port = UniquePort.call
     base = "#{Gem.ruby} -Ilib bin/puma"
     base = "bundle exec #{base}" if defined?(Bundler)
     "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
