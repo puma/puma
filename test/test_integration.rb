@@ -9,12 +9,8 @@ require "open3"
 # TODO: remove stdout logging, get everything out of my rainbow dots
 
 class TestIntegration < Minitest::Test
-<<<<<<< HEAD
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
-=======
-  HOST = '127.0.0.1'
->>>>>>> Fixes Cluster worker shutdown/restart (#1908)
 
   def setup
     @state_path   = "test/test_#{name}_puma.state"
