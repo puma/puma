@@ -41,8 +41,8 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_for_tcp
-    tcp  = next_port
-    cntl = next_port
+    tcp  = UniquePort.call
+    cntl = UniquePort.call
     url = "tcp://127.0.0.1:#{cntl}/"
 
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
@@ -207,8 +207,8 @@ class TestCLI < Minitest::Test
 
   def test_control_gc_stats_tcp
     skip_on :jruby, suffix: " - Hitting /gc route does not increment count"
-    uri  = "tcp://127.0.0.1:#{next_port}/"
-    cntl_port = next_port
+    uri  = "tcp://127.0.0.1:#{UniquePort.call}/"
+    cntl_port = UniquePort.call
     cntl = "tcp://127.0.0.1:#{cntl_port}/"
 
     control_gc_stats(uri, cntl) { TCPSocket.new "127.0.0.1", cntl_port }
@@ -280,7 +280,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_state
-    url = "tcp://127.0.0.1:#{next_port}"
+    url = "tcp://127.0.0.1:#{UniquePort.call}"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
     cli.launcher.write_state
 

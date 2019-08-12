@@ -13,9 +13,10 @@ class TestIntegration < Minitest::Test
   HOST = '127.0.0.1'
 
   def setup
-    @state_path = "test/test_puma.state"
-    @bind_path = "test/test_server.sock"
-    @control_path = "test/test_control.sock"
+    unique = UniquePort.call
+    @state_path = "test/test_#{unique}_puma.state"
+    @bind_path = "test/test_#{unique}_server.sock"
+    @control_path = "test/test_#{unique}_control.sock"
     @token = "xxyyzz"
 
     @server = nil
@@ -46,7 +47,7 @@ class TestIntegration < Minitest::Test
   end
 
   def server_cmd(argv)
-    @tcp_port = next_port
+    @tcp_port = UniquePort.call
     base = "#{Gem.ruby} -Ilib bin/puma"
     base = "bundle exec #{base}" if defined?(Bundler)
     "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
@@ -101,9 +102,9 @@ class TestIntegration < Minitest::Test
     wait_for_server_to_boot(server)
   end
 
-  def connect
+  def connect(path = nil)
     s = TCPSocket.new "localhost", @tcp_port
-    s << "GET / HTTP/1.1\r\n\r\n"
+    s << "GET /#{path} HTTP/1.1\r\n\r\n"
     true until s.gets == "\r\n"
     s
   end
@@ -159,8 +160,7 @@ class TestIntegration < Minitest::Test
   def test_phased_restart_via_pumactl
     skip NO_FORK_MSG unless HAS_FORK
 
-    # hello-stuck-ci uses sleep 10, hello-stuck uses sleep 60
-    rackup = "test/rackup/hello-stuck#{ ENV['CI'] ? '-ci' : '' }.ru"
+    delay = 40
 
     conf = Puma::Configuration.new do |c|
       c.quiet
@@ -168,8 +168,8 @@ class TestIntegration < Minitest::Test
       c.bind "unix://#{@bind_path}"
       c.activate_control_app "unix://#{@control_path}", :auth_token => @token
       c.workers 2
-      c.worker_shutdown_timeout 1
-      c.rackup rackup
+      c.worker_shutdown_timeout 2
+      c.rackup "test/rackup/sleep.ru"
     end
 
     l = Puma::Launcher.new conf, :events => @events
@@ -182,7 +182,7 @@ class TestIntegration < Minitest::Test
     wait_booted
 
     s = UNIXSocket.new @bind_path
-    s << "GET / HTTP/1.0\r\n\r\n"
+    s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
 
     sout = StringIO.new
     # Phased restart
@@ -242,7 +242,7 @@ class TestIntegration < Minitest::Test
 
   def test_sigterm_closes_listeners_on_forked_servers
     skip NO_FORK_MSG unless HAS_FORK
-    pid = start_forked_server("-w 2 -q test/rackup/1second.ru")
+    pid = start_forked_server("-w 2 -q test/rackup/sleep.ru")
     threads = []
     initial_reply = nil
     next_replies = []
@@ -250,7 +250,7 @@ class TestIntegration < Minitest::Test
     mutex = Mutex.new
 
     threads << Thread.new do
-      s = connect
+      s = connect "sleep1"
       mutex.synchronize { condition_variable.broadcast }
       initial_reply = read_body(s)
     end
@@ -285,7 +285,7 @@ class TestIntegration < Minitest::Test
 
     threads.map(&:join)
 
-    assert_equal "Hello World", initial_reply
+    assert_equal "Slept 1", initial_reply
 
     assert_includes next_replies, :connection_refused
 
@@ -352,9 +352,9 @@ class TestIntegration < Minitest::Test
   def test_not_accepts_new_connections_after_term_signal
     skip_on :jruby, :windows
 
-    server('test/rackup/10seconds.ru')
+    server('test/rackup/sleep.ru')
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://127.0.0.1:#{@tcp_port}/sleep10")
     sleep 1 # ensure curl send a request
 
     Process.kill(:TERM, @server.pid)
@@ -369,7 +369,7 @@ class TestIntegration < Minitest::Test
     curl_wait_thread.join
     rejected_curl_wait_thread.join
 
-    assert_match(/Hello World/, curl_stdout.read)
+    assert_match(/Slept 10/, curl_stdout.read)
     assert_match(/Connection refused/, rejected_curl_stderr.read)
 
     Process.wait(@server.pid)
