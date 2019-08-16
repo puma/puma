@@ -53,7 +53,7 @@ matrix:
       os: osx
       osx_image: xcode11
       env: OS="osx xcode11"
-    - rvm: jruby-9.2.7.0
+    - rvm: jruby-9.2.8.0
       env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: jruby-head
       dist: bionic
@@ -63,7 +63,7 @@ matrix:
     - rvm: ruby-head
     - rvm: ruby-head
       env: jit=yes
-    - rvm: jruby-9.2.7.0
+    - rvm: jruby-9.2.8.0
     - rvm: jruby-head
       dist: bionic
       env: OS="Bionic 18.04"
