@@ -232,8 +232,8 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_single_mode
-    server = server("test/rackup/hello.ru")
-    _, status = stop_server(server)
+    server_under_test = server("test/rackup/hello.ru")
+    _, status = stop_server(server_under_test)
 
     assert_equal 15, status
   end
@@ -241,15 +241,15 @@ class TestIntegration < Minitest::Test
   def test_term_signal_exit_code_in_clustered_mode
     skip NO_FORK_MSG unless HAS_FORK
 
-    server = server("-w 2 test/rackup/hello.ru")
-    _, status = stop_server(server)
+    server_under_test = server("-w 2 test/rackup/hello.ru")
+    _, status = stop_server(server_under_test)
 
     assert_equal 15, status
   end
 
   def test_term_signal_suppress_in_single_mode
-    server = server("-C test/config/suppress_exception.rb test/rackup/hello.ru")
-    _, status = stop_server(server)
+    server_under_test = server("-C test/config/suppress_exception.rb test/rackup/hello.ru")
+    _, status = stop_server(server_under_test)
 
     assert_equal 0, status
   end
@@ -257,17 +257,10 @@ class TestIntegration < Minitest::Test
   def test_term_signal_suppress_in_clustered_mode
     skip NO_FORK_MSG unless HAS_FORK
 
-    server("-w 2 -C test/config/suppress_exception.rb test/rackup/hello.ru")
-
-    Process.kill(:TERM, @server.pid)
-    begin
-      Process.wait @server.pid
-    rescue Errno::ECHILD
-    end
-    status = $?.exitstatus
+    server_under_test = server("-w 2 -C test/config/suppress_exception.rb test/rackup/hello.ru")
+    _, status = stop_server(server_under_test)
 
     assert_equal 0, status
-    @server = nil # prevent `#teardown` from killing already killed server
   end
 
   def test_not_accepts_new_connections_after_term_signal
@@ -302,14 +295,14 @@ class TestIntegration < Minitest::Test
     skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
 
     worker_pids = []
-    server = server("-w 2 test/rackup/hello.ru")
+    server_under_test = server("-w 2 test/rackup/hello.ru")
     # Get the PIDs of the child workers.
     while worker_pids.size < 2
-      next unless line = server.gets.match(/pid: (\d+)/)
+      next unless line = server_under_test.gets.match(/pid: (\d+)/)
       worker_pids << line.captures.first.to_i
     end
 
-    stop_server(server)
+    stop_server(server_under_test)
 
     # Check if the worker processes remain in the process table.
     # Process.kill should raise the Errno::ESRCH exception,
@@ -346,9 +339,9 @@ class TestIntegration < Minitest::Test
 
   def stop_server(server)
     Process.kill(:TERM, server.pid)
-    pid = Process.wait2(server.pid)
+    pid_and_status = Process.wait2(server.pid)
     @server = nil
-    pid
+    pid_and_status
   end
 
   def restart_server_and_listen(argv)
