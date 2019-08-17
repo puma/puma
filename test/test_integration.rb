@@ -365,15 +365,15 @@ class TestIntegration < Minitest::Test
     wait_for_server_to_boot(server)
   end
 
+  def wait_for_server_to_boot(server)
+    true while server.gets !~ /Ctrl-C/ # wait for server to say it booted
+  end
+
   def connect(path = nil)
     s = TCPSocket.new "localhost", @tcp_port
     s << "GET /#{path} HTTP/1.1\r\n\r\n"
     true until s.gets == "\r\n"
     s
-  end
-
-  def wait_for_server_to_boot(server)
-    true while server.gets !~ /Ctrl-C/ # wait for server to say it booted
   end
 
   def read_body(connection)
