@@ -153,13 +153,13 @@ class TestIntegration < Minitest::Test
     assert_equal(1, e.status)
   end
 
-  def test_restart_closes_keepalive_sockets
+  def test_restart_with_usr2_works
     skip_unless_signal_exist? :USR2
     _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
 
-  def test_restart_closes_keepalive_sockets_workers
+  def test_restart_with_usr2_works_workers
     skip NO_FORK_MSG unless HAS_FORK
     _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
