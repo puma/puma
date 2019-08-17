@@ -44,74 +44,6 @@ class TestIntegration < Minitest::Test
     end
   end
 
-  def server_cmd(argv)
-    @tcp_port = UniquePort.call
-    base = "#{Gem.ruby} -Ilib bin/puma"
-    base = "bundle exec #{base}" if defined?(Bundler)
-    test_method = caller.detect { |l| l.match(/in `(test_.*)/) }
-    test_method = /in `(test_.*)'/.match(test_method)
-
-    "#{base} -b tcp://127.0.0.1:#{@tcp_port} --tag '#{test_method[1]}' #{argv}"
-  end
-
-  def server(argv)
-    @server = IO.popen(server_cmd(argv), "r")
-
-    wait_for_server_to_boot(@server)
-
-    @server
-  end
-
-  def stop_server(server)
-    Process.kill(:TERM, server.pid)
-    pid = Process.wait2(server.pid)
-    @server = nil
-    pid
-  end
-
-  def restart_server_and_listen(argv)
-    server(argv)
-    connection = connect
-    initial_reply = read_body(connection)
-    restart_server(@server, connection)
-    [initial_reply, read_body(connect)]
-  end
-
-  def wait_booted
-    @wait.sysread 1
-  end
-
-  # reuses an existing connection to make sure that works
-  def restart_server(server, connection)
-    Process.kill :USR2, @server.pid
-
-    connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
-
-    wait_for_server_to_boot(server)
-  end
-
-  def connect(path = nil)
-    s = TCPSocket.new "localhost", @tcp_port
-    s << "GET /#{path} HTTP/1.1\r\n\r\n"
-    true until s.gets == "\r\n"
-    s
-  end
-
-  def wait_for_server_to_boot(server)
-    true while server.gets !~ /Ctrl-C/ # wait for server to say it booted
-  end
-
-  def read_body(connection)
-    Timeout.timeout(10) do
-      loop do
-        response = connection.readpartial(1024)
-        body = response.split("\r\n\r\n", 2).last
-        return body if body && !body.empty?
-        sleep 0.01
-      end
-    end
-  end
-
   def test_stop_via_pumactl
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
 
@@ -390,5 +322,75 @@ class TestIntegration < Minitest::Test
       end
     end.compact
     assert_empty zombies, "Process ids #{zombies} became zombies"
+  end
+
+  private
+
+  def server_cmd(argv)
+    @tcp_port = UniquePort.call
+    base = "#{Gem.ruby} -Ilib bin/puma"
+    base = "bundle exec #{base}" if defined?(Bundler)
+    test_method = caller.detect { |l| l.match(/in `(test_.*)/) }
+    test_method = /in `(test_.*)'/.match(test_method)
+
+    "#{base} -b tcp://127.0.0.1:#{@tcp_port} --tag '#{test_method[1]}' #{argv}"
+  end
+
+  def server(argv)
+    @server = IO.popen(server_cmd(argv), "r")
+
+    wait_for_server_to_boot(@server)
+
+    @server
+  end
+
+  def stop_server(server)
+    Process.kill(:TERM, server.pid)
+    pid = Process.wait2(server.pid)
+    @server = nil
+    pid
+  end
+
+  def restart_server_and_listen(argv)
+    server(argv)
+    connection = connect
+    initial_reply = read_body(connection)
+    restart_server(@server, connection)
+    [initial_reply, read_body(connect)]
+  end
+
+  def wait_booted
+    @wait.sysread 1
+  end
+
+  # reuses an existing connection to make sure that works
+  def restart_server(server, connection)
+    Process.kill :USR2, @server.pid
+
+    connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
+
+    wait_for_server_to_boot(server)
+  end
+
+  def connect(path = nil)
+    s = TCPSocket.new "localhost", @tcp_port
+    s << "GET /#{path} HTTP/1.1\r\n\r\n"
+    true until s.gets == "\r\n"
+    s
+  end
+
+  def wait_for_server_to_boot(server)
+    true while server.gets !~ /Ctrl-C/ # wait for server to say it booted
+  end
+
+  def read_body(connection)
+    Timeout.timeout(10) do
+      loop do
+        response = connection.readpartial(1024)
+        body = response.split("\r\n\r\n", 2).last
+        return body if body && !body.empty?
+        sleep 0.01
+      end
+    end
   end
 end
