@@ -146,9 +146,14 @@ class TestIntegration < Minitest::Test
   end
 
   def test_phased_restart_via_pumactl
+    skip "Test causes tests to run twice"
     skip NO_FORK_MSG unless HAS_FORK
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
 
-    delay = 40
+    # The intention of this test is to get a worker "stuck" sleeping and
+    # then force a phased restart via pumactl. This is why worker_shutdown_timeout is
+    # set to 2.
+    delay = 999
 
     conf = Puma::Configuration.new do |c|
       c.quiet
