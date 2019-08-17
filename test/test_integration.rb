@@ -358,7 +358,7 @@ class TestIntegration < Minitest::Test
 
   # reuses an existing connection to make sure that works
   def restart_server(server, connection)
-    Process.kill :USR2, @server.pid
+    Process.kill :USR2, server.pid
 
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
 
