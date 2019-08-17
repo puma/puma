@@ -48,7 +48,10 @@ class TestIntegration < Minitest::Test
     @tcp_port = UniquePort.call
     base = "#{Gem.ruby} -Ilib bin/puma"
     base = "bundle exec #{base}" if defined?(Bundler)
-    "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
+    test_method = caller.detect { |l| l.match(/in `(test_.*)/) }
+    test_method = /in `(test_.*)'/.match(test_method)
+
+    "#{base} -b tcp://127.0.0.1:#{@tcp_port} --tag '#{test_method[1]}' #{argv}"
   end
 
   def server(argv)
@@ -59,20 +62,11 @@ class TestIntegration < Minitest::Test
     @server
   end
 
-  def start_forked_server(argv)
-    servercmd = server_cmd(argv)
-    pid = fork do
-      exec servercmd
-    end
-
-    sleep 5
+  def stop_server(server)
+    Process.kill(:TERM, server.pid)
+    pid = Process.wait2(server.pid)
+    @server = nil
     pid
-  end
-
-  def stop_forked_server(pid)
-    Process.kill(:TERM, pid)
-    sleep 1
-    Process.wait2(pid)
   end
 
   def restart_server_and_listen(argv)
@@ -236,7 +230,7 @@ class TestIntegration < Minitest::Test
 
   def test_sigterm_closes_listeners_on_forked_servers
     skip NO_FORK_MSG unless HAS_FORK
-    pid = start_forked_server("-w 2 -q test/rackup/sleep.ru")
+    pid = server("-w 2 -q test/rackup/sleep.ru").pid
     threads = []
     initial_reply = nil
     next_replies = []
@@ -301,10 +295,8 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_single_mode
-    skip NO_FORK_MSG unless HAS_FORK
-
-    pid = start_forked_server("test/rackup/hello.ru")
-    _, status = stop_forked_server(pid)
+    server = server("test/rackup/hello.ru")
+    _, status = stop_server(server)
 
     assert_equal 15, status
   end
@@ -312,17 +304,15 @@ class TestIntegration < Minitest::Test
   def test_term_signal_exit_code_in_clustered_mode
     skip NO_FORK_MSG unless HAS_FORK
 
-    pid = start_forked_server("-w 2 test/rackup/hello.ru")
-    _, status = stop_forked_server(pid)
+    server = server("-w 2 test/rackup/hello.ru")
+    _, status = stop_server(server)
 
     assert_equal 15, status
   end
 
   def test_term_signal_suppress_in_single_mode
-    skip NO_FORK_MSG unless HAS_FORK
-
-    pid = start_forked_server("-C test/config/suppress_exception.rb test/rackup/hello.ru")
-    _, status = stop_forked_server(pid)
+    server = server("-C test/config/suppress_exception.rb test/rackup/hello.ru")
+    _, status = stop_server(server)
 
     assert_equal 0, status
   end
@@ -382,10 +372,7 @@ class TestIntegration < Minitest::Test
       worker_pids << line.captures.first.to_i
     end
 
-    # Signal the workers to terminate, and wait for them to die.
-    Process.kill :TERM, @server.pid
-    Process.wait @server.pid
-    @server = nil # prevent `#teardown` from killing already killed server
+    stop_server(server)
 
     # Check if the worker processes remain in the process table.
     # Process.kill should raise the Errno::ESRCH exception,
