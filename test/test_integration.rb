@@ -84,17 +84,13 @@ class TestIntegration < Minitest::Test
     [initial_reply, read_body(connect)]
   end
 
-  def signal(which)
-    Process.kill which, @server.pid
-  end
-
   def wait_booted
     @wait.sysread 1
   end
 
   # reuses an existing connection to make sure that works
   def restart_server(server, connection)
-    signal :USR2
+    Process.kill :USR2, @server.pid
 
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
 
@@ -386,9 +382,11 @@ class TestIntegration < Minitest::Test
       next unless line = server.gets.match(/pid: (\d+)/)
       worker_pids << line.captures.first.to_i
     end
+
     # Signal the workers to terminate, and wait for them to die.
-    worker_pids.each { |pid| Process.kill :TERM, pid }
-    sleep 2
+    Process.kill :TERM, @server.pid
+    Process.wait @server.pid
+    @server = nil # prevent `#teardown` from killing already killed server
 
     # Check if the worker processes remain in the process table.
     # Process.kill should raise the Errno::ESRCH exception,
@@ -400,6 +398,6 @@ class TestIntegration < Minitest::Test
         nil
       end
     end.compact
-    assert_empty zombies
+    assert_empty zombies, "Process ids #{zombies} became zombies"
   end
 end
