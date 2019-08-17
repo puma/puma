@@ -5,8 +5,6 @@ require "puma/cli"
 require "puma/control_cli"
 require "open3"
 
-# These don't run on travis because they're too fragile
-
 # TODO: Remove over-utilization of @instance variables
 # TODO: remove stdout logging, get everything out of my rainbow dots
 
