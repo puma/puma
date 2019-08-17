@@ -9,13 +9,13 @@ require "open3"
 # TODO: remove stdout logging, get everything out of my rainbow dots
 
 class TestIntegration < Minitest::Test
+  TOKEN = "xxyyzz"
 
   def setup
     unique = UniquePort.call
     @state_path = "test/test_#{unique}_puma.state"
     @bind_path = "test/test_#{unique}_server.sock"
     @control_path = "test/test_#{unique}_control.sock"
-    @token = "xxyyzz"
 
     @server = nil
 
@@ -125,7 +125,7 @@ class TestIntegration < Minitest::Test
       c.quiet
       c.state_path @state_path
       c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => @token
+      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
       c.rackup "test/rackup/hello.ru"
     end
 
@@ -160,7 +160,7 @@ class TestIntegration < Minitest::Test
       c.quiet
       c.state_path @state_path
       c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => @token
+      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
       c.workers 2
       c.worker_shutdown_timeout 2
       c.rackup "test/rackup/sleep.ru"
