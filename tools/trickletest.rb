@@ -38,7 +38,6 @@ ARGV[1].to_i.times do
     do_test(st, size)
   end
 
-  t.abort_on_exception = true
   threads << t
 end
 
