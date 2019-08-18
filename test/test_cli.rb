@@ -51,7 +51,6 @@ class TestCLI < Minitest::Test
                          "test/rackup/lobster.ru"], @events
 
     t = Thread.new do
-      Thread.current.abort_on_exception = true
       cli.run
     end
 
@@ -83,7 +82,6 @@ class TestCLI < Minitest::Test
                          "test/rackup/lobster.ru"], @events
 
     t = Thread.new { cli.run }
-    t.abort_on_exception = true
 
     wait_booted
 
@@ -117,7 +115,6 @@ class TestCLI < Minitest::Test
                          "test/rackup/lobster.ru"], @events
 
     t = Thread.new { cli.run }
-    t.abort_on_exception = true
 
     wait_booted
 
@@ -141,7 +138,6 @@ class TestCLI < Minitest::Test
                          "test/rackup/lobster.ru"], @events
 
     t = Thread.new { cli.run }
-    t.abort_on_exception = true
 
     wait_booted
 
@@ -161,7 +157,6 @@ class TestCLI < Minitest::Test
                          "test/rackup/lobster.ru"], @events
 
     t = Thread.new do
-      Thread.current.abort_on_exception = true
       cli.run
     end
 

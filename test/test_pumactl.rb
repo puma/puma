@@ -83,7 +83,6 @@ class TestPumaControlCli < Minitest::Test
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
     t = Thread.new do
-      Thread.current.abort_on_exception = true
       control_cli.run
     end
 

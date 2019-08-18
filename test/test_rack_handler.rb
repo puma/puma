@@ -30,7 +30,6 @@ class TestPathHandler < Minitest::Test
         @launcher = s
       end
     end
-    thread.abort_on_exception = true
 
     # Wait for launcher to boot
     Timeout.timeout(10) do
