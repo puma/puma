@@ -13,7 +13,7 @@ class TestIntegration < Minitest::Test
     File.unlink bind_path if File.exist?(bind_path)
     File.unlink control_path if File.exist?(control_path)
 
-    stop_server if @server
+    stop_server if defined?(@server)
   end
 
   def test_stop_via_pumactl
