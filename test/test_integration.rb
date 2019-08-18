@@ -5,15 +5,10 @@ require "puma/cli"
 require "puma/control_cli"
 require "open3"
 
-# TODO: Remove over-utilization of @instance variables
-# TODO: remove stdout logging, get everything out of my rainbow dots
-
 class TestIntegration < Minitest::Test
   TOKEN = "xxyyzz"
 
   def setup
-    @server = nil
-
     @wait, @ready = IO.pipe
 
     @events = Puma::Events.strings
@@ -28,15 +23,7 @@ class TestIntegration < Minitest::Test
     @wait.close
     @ready.close
 
-    if @server
-      Process.kill "INT", @server.pid
-      begin
-        Process.wait @server.pid
-      rescue Errno::ECHILD
-      end
-
-      @server.close
-    end
+    stop_server if @server
   end
 
   def test_stop_via_pumactl
@@ -217,8 +204,8 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_single_mode
-    server_under_test = server("test/rackup/hello.ru")
-    _, status = stop_server(server_under_test)
+    server("test/rackup/hello.ru")
+    _, status = stop_server
 
     assert_equal 15, status
   end
@@ -226,15 +213,15 @@ class TestIntegration < Minitest::Test
   def test_term_signal_exit_code_in_clustered_mode
     skip NO_FORK_MSG unless HAS_FORK
 
-    server_under_test = server("-w 2 test/rackup/hello.ru")
-    _, status = stop_server(server_under_test)
+    server("-w 2 test/rackup/hello.ru")
+    _, status = stop_server
 
     assert_equal 15, status
   end
 
   def test_term_signal_suppress_in_single_mode
-    server_under_test = server("-C test/config/suppress_exception.rb test/rackup/hello.ru")
-    _, status = stop_server(server_under_test)
+    server("-C test/config/suppress_exception.rb test/rackup/hello.ru")
+    _, status = stop_server
 
     assert_equal 0, status
   end
@@ -242,8 +229,8 @@ class TestIntegration < Minitest::Test
   def test_term_signal_suppress_in_clustered_mode
     skip NO_FORK_MSG unless HAS_FORK
 
-    server_under_test = server("-w 2 -C test/config/suppress_exception.rb test/rackup/hello.ru")
-    _, status = stop_server(server_under_test)
+    server("-w 2 -C test/config/suppress_exception.rb test/rackup/hello.ru")
+    _, status = stop_server
 
     assert_equal 0, status
   end
@@ -251,18 +238,18 @@ class TestIntegration < Minitest::Test
   def test_not_accepts_new_connections_after_term_signal
     skip_on :jruby, :windows
 
-    server('test/rackup/sleep.ru')
+    server_under_test = server('test/rackup/sleep.ru')
 
     _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://127.0.0.1:#{@tcp_port}/sleep10")
     sleep 1 # ensure curl send a request
 
-    Process.kill(:TERM, @server.pid)
-    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
+    Process.kill(:TERM, server_under_test.pid)
+    true while server_under_test.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
     _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
 
-    assert nil != Process.getpgid(@server.pid) # ensure server is still running
+    assert nil != Process.getpgid(server_under_test.pid) # ensure server is still running
     assert nil != Process.getpgid(rejected_curl_wait_thread[:pid]) # ensure first curl invokation still in progress
 
     curl_wait_thread.join
@@ -271,7 +258,7 @@ class TestIntegration < Minitest::Test
     assert_match(/Slept 10/, curl_stdout.read)
     assert_match(/Connection refused/, rejected_curl_stderr.read)
 
-    Process.wait(@server.pid)
+    Process.wait(server_under_test.pid)
     @server = nil # prevent `#teardown` from killing already killed server
   end
 
@@ -287,7 +274,7 @@ class TestIntegration < Minitest::Test
       worker_pids << line.captures.first.to_i
     end
 
-    stop_server(server_under_test)
+    stop_server
 
     # Check if the worker processes remain in the process table.
     # Process.kill should raise the Errno::ESRCH exception,
@@ -321,25 +308,25 @@ class TestIntegration < Minitest::Test
   end
 
   def server(argv)
-    @server = IO.popen(server_cmd(argv), "r")
-
-    wait_for_server_to_boot(@server)
-
-    @server
+    @server ||= begin
+      s = IO.popen(server_cmd(argv), "r")
+      wait_for_server_to_boot(s)
+      s
+    end
   end
 
-  def stop_server(server)
-    Process.kill(:TERM, server.pid)
-    pid_and_status = Process.wait2(server.pid)
+  def stop_server
+    Process.kill(:TERM, @server.pid)
+    pid_and_status = Process.wait2(@server.pid)
     @server = nil
     pid_and_status
   end
 
   def restart_server_and_listen(argv)
-    server(argv)
+    server_under_test = server(argv)
     connection = connect
     initial_reply = read_body(connection)
-    restart_server(@server, connection)
+    restart_server(server_under_test, connection)
     [initial_reply, read_body(connect)]
   end
 
