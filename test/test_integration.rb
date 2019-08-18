@@ -8,46 +8,24 @@ require "open3"
 class TestIntegration < Minitest::Test
   TOKEN = "xxyyzz"
 
-  def setup
-    @wait, @ready = IO.pipe
-
-    @events = Puma::Events.strings
-    @events.on_booted { @ready << "!" }
-  end
-
   def teardown
     File.unlink state_path if File.exist?(state_path)
     File.unlink bind_path if File.exist?(bind_path)
     File.unlink control_path if File.exist?(control_path)
-
-    @wait.close
-    @ready.close
 
     stop_server if @server
   end
 
   def test_stop_via_pumactl
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-
-    conf = Puma::Configuration.new do |c|
-      c.quiet
-      c.state_path state_path
-      c.bind "unix://#{bind_path}"
-      c.activate_control_app "unix://#{control_path}", :auth_token => TOKEN
-      c.rackup "test/rackup/hello.ru"
-    end
-
-    t = Thread.new { Puma::Launcher.new(conf, :events => @events).run }
-
-    wait_booted
-
-    s = UNIXSocket.new bind_path
-    s << "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "Hello World", read_body(s)
+    server_under_test = server("-q test/rackup/sleep.ru --control-url unix://#{control_path} --control-token #{TOKEN} -S #{state_path}")
 
     Puma::ControlCLI.new(%W!-S #{state_path} stop!, StringIO.new).run
 
-    assert_kind_of Thread, t.join, "server didn't stop"
+    _, status = Process.wait2(server_under_test.pid)
+    assert_equal 0, status
+
+    @server = nil
   end
 
   def test_phased_restart_via_pumactl
@@ -329,11 +307,7 @@ class TestIntegration < Minitest::Test
     restart_server(server_under_test, connection)
     [initial_reply, read_body(connect)]
   end
-
-  def wait_booted
-    @wait.sysread 1
-  end
-
+  
   # reuses an existing connection to make sure that works
   def restart_server(server, connection)
     Process.kill :USR2, server.pid
