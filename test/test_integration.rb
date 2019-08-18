@@ -12,11 +12,6 @@ class TestIntegration < Minitest::Test
   TOKEN = "xxyyzz"
 
   def setup
-    unique = UniquePort.call
-    @state_path = "test/test_#{unique}_puma.state"
-    @bind_path = "test/test_#{unique}_server.sock"
-    @control_path = "test/test_#{unique}_control.sock"
-
     @server = nil
 
     @wait, @ready = IO.pipe
@@ -26,9 +21,9 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    File.unlink @state_path rescue nil
-    File.unlink @bind_path rescue nil
-    File.unlink @control_path rescue nil
+    File.unlink state_path rescue nil
+    File.unlink bind_path rescue nil
+    File.unlink control_path rescue nil
 
     @wait.close
     @ready.close
@@ -49,30 +44,21 @@ class TestIntegration < Minitest::Test
 
     conf = Puma::Configuration.new do |c|
       c.quiet
-      c.state_path @state_path
-      c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
+      c.state_path state_path
+      c.bind "unix://#{bind_path}"
+      c.activate_control_app "unix://#{control_path}", :auth_token => TOKEN
       c.rackup "test/rackup/hello.ru"
     end
 
-    l = Puma::Launcher.new conf, :events => @events
-
-    t = Thread.new do
-      Thread.current.abort_on_exception = true
-      l.run
-    end
+    t = Thread.new { Puma::Launcher.new(conf, :events => @events).run }
 
     wait_booted
 
-    s = UNIXSocket.new @bind_path
+    s = UNIXSocket.new bind_path
     s << "GET / HTTP/1.0\r\n\r\n"
     assert_equal "Hello World", read_body(s)
 
-    sout = StringIO.new
-
-    ccli = Puma::ControlCLI.new %W!-S #{@state_path} stop!, sout
-
-    ccli.run
+    Puma::ControlCLI.new(%W!-S #{state_path} stop!, StringIO.new).run
 
     assert_kind_of Thread, t.join, "server didn't stop"
   end
@@ -89,9 +75,9 @@ class TestIntegration < Minitest::Test
 
     conf = Puma::Configuration.new do |c|
       c.quiet
-      c.state_path @state_path
-      c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
+      c.state_path state_path
+      c.bind "unix://#{bind_path}"
+      c.activate_control_app "unix://#{control_path}", :auth_token => TOKEN
       c.workers 2
       c.worker_shutdown_timeout 2
       c.rackup "test/rackup/sleep.ru"
@@ -100,18 +86,17 @@ class TestIntegration < Minitest::Test
     l = Puma::Launcher.new conf, :events => @events
 
     t = Thread.new do
-      Thread.current.abort_on_exception = true
       l.run
     end
 
     wait_booted
 
-    s = UNIXSocket.new @bind_path
+    s = UNIXSocket.new bind_path
     s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
 
     sout = StringIO.new
     # Phased restart
-    ccli = Puma::ControlCLI.new ["-S", @state_path, "phased-restart"], sout
+    ccli = Puma::ControlCLI.new ["-S", state_path, "phased-restart"], sout
     ccli.run
 
     done = false
@@ -125,11 +110,11 @@ class TestIntegration < Minitest::Test
       end
     end
     # Stop
-    ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
+    ccli = Puma::ControlCLI.new ["-S", state_path, "stop"], sout
     ccli.run
 
     assert_kind_of Thread, t.join, "server didn't stop"
-    assert File.exist? @bind_path
+    assert File.exist? bind_path
   end
 
   def test_kill_unknown_via_pumactl
@@ -319,14 +304,18 @@ class TestIntegration < Minitest::Test
 
   private
 
+  def test_method_name
+    test_method = caller.detect { |l| l.match(/in `(test_.*)/) }
+    test_method = /in `(test_.*)'/.match(test_method)
+    test_method[1]
+  end
+
   def server_cmd(argv)
     @tcp_port = UniquePort.call
     base = "#{Gem.ruby} -Ilib bin/puma"
     base = "bundle exec #{base}" if defined?(Bundler)
-    test_method = caller.detect { |l| l.match(/in `(test_.*)/) }
-    test_method = /in `(test_.*)'/.match(test_method)
 
-    "#{base} -b tcp://127.0.0.1:#{@tcp_port} --tag '#{test_method[1]}' #{argv}"
+    "#{base} -b tcp://127.0.0.1:#{@tcp_port} --tag '#{test_method_name}' #{argv}"
   end
 
   def server(argv)
@@ -385,5 +374,17 @@ class TestIntegration < Minitest::Test
         sleep 0.01
       end
     end
+  end
+
+  def state_path
+    "test/#{test_method_name}_puma.state"
+  end
+
+  def bind_path
+    "test/#{test_method_name}_server.sock"
+  end
+
+  def control_path
+    "test/#{test_method_name}_control.sock"
   end
 end
