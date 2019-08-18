@@ -21,9 +21,9 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    File.unlink state_path rescue nil
-    File.unlink bind_path rescue nil
-    File.unlink control_path rescue nil
+    File.unlink state_path if File.exist?(state_path)
+    File.unlink bind_path if File.exist?(bind_path)
+    File.unlink control_path if File.exist?(control_path)
 
     @wait.close
     @ready.close
@@ -305,9 +305,11 @@ class TestIntegration < Minitest::Test
   private
 
   def test_method_name
-    test_method = caller.detect { |l| l.match(/in `(test_.*)/) }
-    test_method = /in `(test_.*)'/.match(test_method)
-    test_method[1]
+    @test_method_name ||= begin
+      test_method = caller.detect { |l| l.match(/in `(test_.*)/) }
+      test_method = /in `(test_.*)'/.match(test_method)
+      test_method && test_method[1]
+    end
   end
 
   def server_cmd(argv)
@@ -377,14 +379,17 @@ class TestIntegration < Minitest::Test
   end
 
   def state_path
+    return "" unless test_method_name
     "test/#{test_method_name}_puma.state"
   end
 
   def bind_path
+    return "" unless test_method_name
     "test/#{test_method_name}_server.sock"
   end
 
   def control_path
+    return "" unless test_method_name
     "test/#{test_method_name}_control.sock"
   end
 end
