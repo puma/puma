@@ -28,59 +28,9 @@ class TestIntegration < Minitest::Test
     @server = nil
   end
 
-  def test_phased_restart_via_pumactl
-    skip "Test causes tests to run twice"
-    skip NO_FORK_MSG unless HAS_FORK
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-
-    # The intention of this test is to get a worker "stuck" sleeping and
-    # then force a phased restart via pumactl. This is why worker_shutdown_timeout is
-    # set to 2.
-    delay = 999
-
-    conf = Puma::Configuration.new do |c|
-      c.quiet
-      c.state_path state_path
-      c.bind "unix://#{bind_path}"
-      c.activate_control_app "unix://#{control_path}", :auth_token => TOKEN
-      c.workers 2
-      c.worker_shutdown_timeout 2
-      c.rackup "test/rackup/sleep.ru"
-    end
-
-    l = Puma::Launcher.new conf, :events => @events
-
-    t = Thread.new do
-      l.run
-    end
-
-    wait_booted
-
-    s = UNIXSocket.new bind_path
-    s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
-
-    sout = StringIO.new
-    # Phased restart
-    ccli = Puma::ControlCLI.new ["-S", state_path, "phased-restart"], sout
-    ccli.run
-
-    done = false
-    until done
-      @events.stdout.rewind
-      log = @events.stdout.readlines.join("")
-      if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
-        assert_match(/TERM sent/, log)
-        assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
-        done = true
-      end
-    end
-    # Stop
-    ccli = Puma::ControlCLI.new ["-S", state_path, "stop"], sout
-    ccli.run
-
-    assert_kind_of Thread, t.join, "server didn't stop"
-    assert File.exist? bind_path
-  end
+  # TODO: test phased restart via pumactl
+  # The intention of this test is to get a worker "stuck" sleeping and
+  # then force a phased restart via pumactl
 
   def test_kill_unknown_via_pumactl
     skip_on :jruby
@@ -307,7 +257,7 @@ class TestIntegration < Minitest::Test
     restart_server(server_under_test, connection)
     [initial_reply, read_body(connect)]
   end
-  
+
   # reuses an existing connection to make sure that works
   def restart_server(server, connection)
     Process.kill :USR2, server.pid
