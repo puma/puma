@@ -1,0 +1,69 @@
+name: Puma
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    name: >-
+      OS: ${{ matrix.os }}  Ruby: ${{ matrix.ruby }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'ubuntu-16.04', 'ubuntu-18.04', 'macos', 'windows-latest' ]
+        ruby: [ '2.3.x', '2.4.x', '2.5.x', '2.6.x' ]
+        exclude:
+        - os: ubuntu-16.04
+          ruby: 2.4.x
+        - os: ubuntu-16.04
+          ruby: 2.5.x
+        - os: ubuntu-16.04
+          ruby: 2.6.x
+        - os: ubuntu-18.04
+          ruby: 2.3.x
+        - os: macos
+          ruby: 2.3.x
+        - os: windows-latest
+          ruby: 2.3.x
+    steps:
+    - name: repo checkout
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 10
+    - name: load ruby
+      uses: actions/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+
+    - name: ubuntu & macos - install ragel
+      if:   startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')
+      run:  |
+        if [ "${{ matrix.os }}" == "macos" ]; then
+          brew install ragel
+        else
+          sudo apt-get install ragel
+        fi
+    - name: windows - update MSYS2, openssl, ragel
+      if:   startsWith(matrix.os, 'windows')
+      uses: MSP-Greg/msys2-action@master
+      with:
+        base:  update
+        mingw: openssl ragel
+
+    - name: RubyGems, Bundler Update
+      run:  gem update --system --no-document --conservative
+    - name: bundle install
+      run:  bundle install --jobs 4 --retry 3
+    - name: compile
+      run:  bundle exec rake compile
+    - name: test
+      run:  bundle exec rake
+      env:
+        CI: true
+        TESTOPTS: -v

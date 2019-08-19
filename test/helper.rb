@@ -104,11 +104,10 @@ module TestSkips
     skip_msg = false
     engs.each do |eng|
       skip_msg = case eng
-        when :darwin   then "Skipped on darwin#{suffix}"      if RUBY_PLATFORM[/darwin/]
-        when :jruby    then "Skipped on JRuby#{suffix}"       if Puma.jruby?
-        when :windows  then "Skipped on Windows#{suffix}"     if Puma.windows?
-        when :appveyor then "Skipped on Appveyor#{suffix}"    if ENV["APPVEYOR"]
-        when :ci       then "Skipped on ENV['CI']#{suffix}"   if ENV["CI"]
+        when :darwin   then "Skipped on darwin#{suffix}"    if RUBY_PLATFORM[/darwin/]
+        when :jruby    then "Skipped on JRuby#{suffix}"     if Puma.jruby?
+        when :windows  then "Skipped on Windows#{suffix}"   if Puma.windows?
+        when :ci       then "Skipped on ENV['CI']#{suffix}" if ENV["CI"]
         when :no_bundler then "Skipped w/o Bundler#{suffix}"  if !defined?(Bundler)
         else false
       end
