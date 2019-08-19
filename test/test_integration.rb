@@ -240,8 +240,7 @@ class TestIntegration < Minitest::Test
   end
 
   def test_restart_with_prune_bundler_keeps_bundler_env
-    skip NO_FORK_MSG unless HAS_FORK
-    initial_reply, new_reply = restart_server_and_listen("-q -w 2 --prune-bundler test/rackup/hello-bundler-env.ru", "PATH" => "hello-bundler:#{ENV["PATH"]}", "BUNDLER_ORIG_PATH" => nil)
+    initial_reply, new_reply = restart_server_and_listen("-q --prune-bundler test/rackup/hello-bundler-env.ru", "PATH" => "hello-bundler:#{ENV["PATH"]}", "BUNDLER_ORIG_PATH" => nil)
     assert_match(/Hello PATH.*hello-bundler/, initial_reply)
     assert_match(/Hello PATH.*hello-bundler/, new_reply)
   end
