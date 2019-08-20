@@ -12,7 +12,7 @@ class TestCLI < Minitest::Test
 
     @tmp_path2 = "#{@tmp_path}2"
 
-    File.unlink @tmp_path if File.exist? @tmp_path
+    File.unlink @tmp_path  if File.exist? @tmp_path
     File.unlink @tmp_path2 if File.exist? @tmp_path2
 
     @wait, @ready = IO.pipe
@@ -41,8 +41,8 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_for_tcp
-    tcp  = next_port
-    cntl = next_port
+    tcp  = UniquePort.call
+    cntl = UniquePort.call
     url = "tcp://127.0.0.1:#{cntl}/"
 
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
@@ -62,8 +62,8 @@ class TestCLI < Minitest::Test
     body = s.read
     s.close
 
-    assert_match /{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split(/\r?\n/).last
-    assert_match /{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, Puma.stats
+    assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split(/\r?\n/).last)
+    assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, Puma.stats)
 
   ensure
     cli.launcher.stop
@@ -125,7 +125,7 @@ class TestCLI < Minitest::Test
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
 
-    assert_match /{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split("\r\n").last
+    assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split("\r\n").last)
 
     cli.launcher.stop
     t.join
@@ -207,8 +207,8 @@ class TestCLI < Minitest::Test
 
   def test_control_gc_stats_tcp
     skip_on :jruby, suffix: " - Hitting /gc route does not increment count"
-    uri  = "tcp://127.0.0.1:#{next_port}/"
-    cntl_port = next_port
+    uri  = "tcp://127.0.0.1:#{UniquePort.call}/"
+    cntl_port = UniquePort.call
     cntl = "tcp://127.0.0.1:#{cntl_port}/"
 
     control_gc_stats(uri, cntl) { TCPSocket.new "127.0.0.1", cntl_port }
@@ -280,7 +280,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_state
-    url = "tcp://127.0.0.1:#{next_port}"
+    url = "tcp://127.0.0.1:#{UniquePort.call}"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
     cli.launcher.write_state
 

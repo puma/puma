@@ -1,21 +1,21 @@
-require_relative "helper"
+# frozen_string_literal: true
 
+require_relative "helper"
 require "puma/cli"
 require "puma/control_cli"
 require "open3"
-
-# These don't run on travis because they're too fragile
 
 # TODO: Remove over-utilization of @instance variables
 # TODO: remove stdout logging, get everything out of my rainbow dots
 
 class TestIntegration < Minitest::Test
+  TOKEN = "xxyyzz"
 
   def setup
-    @state_path = "test/test_puma.state"
-    @bind_path = "test/test_server.sock"
-    @control_path = "test/test_control.sock"
-    @token = "xxyyzz"
+    unique = UniquePort.call
+    @state_path = "test/test_#{unique}_puma.state"
+    @bind_path = "test/test_#{unique}_server.sock"
+    @control_path = "test/test_#{unique}_control.sock"
 
     @server = nil
 
@@ -45,7 +45,7 @@ class TestIntegration < Minitest::Test
   end
 
   def server_cmd(argv)
-    @tcp_port = next_port
+    @tcp_port = UniquePort.call
     base = "#{Gem.ruby} -Ilib bin/puma"
     base = "bundle exec #{base}" if defined?(Bundler)
     "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
@@ -83,26 +83,22 @@ class TestIntegration < Minitest::Test
     [initial_reply, read_body(connect)]
   end
 
-  def signal(which)
-    Process.kill which, @server.pid
-  end
-
   def wait_booted
     @wait.sysread 1
   end
 
   # reuses an existing connection to make sure that works
   def restart_server(server, connection)
-    signal :USR2
+    Process.kill :USR2, @server.pid
 
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
 
     wait_for_server_to_boot(server)
   end
 
-  def connect
+  def connect(path = nil)
     s = TCPSocket.new "localhost", @tcp_port
-    s << "GET / HTTP/1.1\r\n\r\n"
+    s << "GET /#{path} HTTP/1.1\r\n\r\n"
     true until s.gets == "\r\n"
     s
   end
@@ -129,7 +125,7 @@ class TestIntegration < Minitest::Test
       c.quiet
       c.state_path @state_path
       c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => @token
+      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
       c.rackup "test/rackup/hello.ru"
     end
 
@@ -158,17 +154,16 @@ class TestIntegration < Minitest::Test
   def test_phased_restart_via_pumactl
     skip NO_FORK_MSG unless HAS_FORK
 
-    # hello-stuck-ci uses sleep 10, hello-stuck uses sleep 60
-    rackup = "test/rackup/hello-stuck#{ ENV['CI'] ? '-ci' : '' }.ru"
+    delay = 40
 
     conf = Puma::Configuration.new do |c|
       c.quiet
       c.state_path @state_path
       c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => @token
+      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
       c.workers 2
-      c.worker_shutdown_timeout 1
-      c.rackup rackup
+      c.worker_shutdown_timeout 2
+      c.rackup "test/rackup/sleep.ru"
     end
 
     l = Puma::Launcher.new conf, :events => @events
@@ -181,7 +176,7 @@ class TestIntegration < Minitest::Test
     wait_booted
 
     s = UNIXSocket.new @bind_path
-    s << "GET / HTTP/1.0\r\n\r\n"
+    s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
 
     sout = StringIO.new
     # Phased restart
@@ -241,7 +236,7 @@ class TestIntegration < Minitest::Test
 
   def test_sigterm_closes_listeners_on_forked_servers
     skip NO_FORK_MSG unless HAS_FORK
-    pid = start_forked_server("-w 2 -q test/rackup/1second.ru")
+    pid = start_forked_server("-w 2 -q test/rackup/sleep.ru")
     threads = []
     initial_reply = nil
     next_replies = []
@@ -249,7 +244,7 @@ class TestIntegration < Minitest::Test
     mutex = Mutex.new
 
     threads << Thread.new do
-      s = connect
+      s = connect "sleep1"
       mutex.synchronize { condition_variable.broadcast }
       initial_reply = read_body(s)
     end
@@ -284,7 +279,7 @@ class TestIntegration < Minitest::Test
 
     threads.map(&:join)
 
-    assert_equal "Hello World", initial_reply
+    assert_equal "Slept 1", initial_reply
 
     assert_includes next_replies, :connection_refused
 
@@ -351,9 +346,9 @@ class TestIntegration < Minitest::Test
   def test_not_accepts_new_connections_after_term_signal
     skip_on :jruby, :windows
 
-    server('test/rackup/10seconds.ru')
+    server('test/rackup/sleep.ru')
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://127.0.0.1:#{@tcp_port}/sleep10")
     sleep 1 # ensure curl send a request
 
     Process.kill(:TERM, @server.pid)
@@ -368,7 +363,7 @@ class TestIntegration < Minitest::Test
     curl_wait_thread.join
     rejected_curl_wait_thread.join
 
-    assert_match(/Hello World/, curl_stdout.read)
+    assert_match(/Slept 10/, curl_stdout.read)
     assert_match(/Connection refused/, rejected_curl_stderr.read)
 
     Process.wait(@server.pid)
@@ -377,6 +372,7 @@ class TestIntegration < Minitest::Test
 
   def test_no_zombie_children
     skip NO_FORK_MSG unless HAS_FORK
+    skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
 
     worker_pids = []
     server = server("-w 2 test/rackup/hello.ru")
@@ -385,11 +381,22 @@ class TestIntegration < Minitest::Test
       next unless line = server.gets.match(/pid: (\d+)/)
       worker_pids << line.captures.first.to_i
     end
-    # Signal the workers to terminate, and wait for them to die.
-    worker_pids.each { |pid| Process.kill :TERM, pid }
-    sleep 2
 
-    # Should return nil if Puma has correctly cleaned up
-    assert_nil Process.waitpid(-1, Process::WNOHANG)
+    # Signal the workers to terminate, and wait for them to die.
+    Process.kill :TERM, @server.pid
+    Process.wait @server.pid
+    @server = nil # prevent `#teardown` from killing already killed server
+
+    # Check if the worker processes remain in the process table.
+    # Process.kill should raise the Errno::ESRCH exception,
+    # indicating the process is dead and has been reaped.
+    zombies = worker_pids.map do |pid|
+      begin
+        pid if Process.kill 0, pid
+      rescue Errno::ESRCH
+        nil
+      end
+    end.compact
+    assert_empty zombies, "Process ids #{zombies} became zombies"
   end
 end

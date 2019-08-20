@@ -22,6 +22,7 @@ module Puma
       @control_auth_token = nil
       @config_file = nil
       @command = nil
+      @environment = ENV['RACK_ENV'] || "development"
 
       @argv = argv.dup
       @stdout = stdout
@@ -59,6 +60,11 @@ module Puma
           @config_file = arg
         end
 
+        o.on "-e", "--environment ENVIRONMENT",
+          "The environment to run the Rack app on (default development)" do |arg|
+          @environment = arg
+        end
+
         o.on_tail("-H", "--help", "Show this message") do
           @stdout.puts o
           exit
@@ -76,8 +82,10 @@ module Puma
       @command = argv.shift
 
       unless @config_file == '-'
-        if @config_file.nil? and File.exist?('config/puma.rb')
-          @config_file = 'config/puma.rb'
+        if @config_file.nil?
+          @config_file = %W(config/puma/#{@environment}.rb config/puma.rb).find do |f|
+            File.exist?(f)
+          end
         end
 
         if @config_file
@@ -258,6 +266,7 @@ module Puma
       run_args += ["--control-url", @control_url] if @control_url
       run_args += ["--control-token", @control_auth_token] if @control_auth_token
       run_args += ["-C", @config_file] if @config_file
+      run_args += ["-e", @environment] if @environment
 
       events = Puma::Events.new @stdout, @stderr
 
