@@ -230,7 +230,7 @@ module Puma
                         (busy_threads.to_f / @max) * WORK_AVAILABLE_TIMEOUT_FACTOR
                       end
           end
-          
+
           return busy_threads if @max > busy_threads
 
           @not_full.wait @mutex, timeout
