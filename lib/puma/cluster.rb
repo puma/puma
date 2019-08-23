@@ -35,34 +35,10 @@ module Puma
       @workers.each { |x| x.term }
 
       begin
-        if RUBY_VERSION < '2.6'
-          @workers.each do |w|
-            begin
-              Process.waitpid(w.pid)
-            rescue Errno::ECHILD
-              # child is already terminated
-            end
-          end
-        else
-          # below code is for a bug in Ruby 2.6+, above waitpid call hangs
-          t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          pids = @workers.map(&:pid)
-          loop do
-            pids.reject! do |w_pid|
-              begin
-                if Process.waitpid(w_pid, Process::WNOHANG)
-                  log "    worker status: #{$?}"
-                  true
-                end
-              rescue Errno::ECHILD
-                true # child is already terminated
-              end
-            end
-            break if pids.empty?
-            sleep 0.5
-          end
-          t_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          log format("    worker shutdown time: %6.2f", t_end - t_st)
+        loop do
+          wait_workers
+          break if @workers.empty?
+          sleep 0.2
         end
       rescue Interrupt
         log "! Cancelled waiting for workers"
@@ -99,6 +75,7 @@ module Puma
         @last_checkin = Time.now
         @last_status = '{}'
         @dead = false
+        @term = false
       end
 
       attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
@@ -120,6 +97,10 @@ module Puma
         @dead = true
       end
 
+      def term?
+        @term
+      end
+
       def ping!(status)
         @last_checkin = Time.now
         @last_status = status
@@ -134,9 +115,9 @@ module Puma
           if @first_term_sent && (Time.now - @first_term_sent) > @options[:worker_shutdown_timeout]
             @signal = "KILL"
           else
+            @term ||= true
             @first_term_sent ||= Time.now
           end
-
           Process.kill @signal, @pid
         rescue Errno::ESRCH
         end
@@ -227,12 +208,7 @@ module Puma
       # during this loop by giving the kernel time to kill them.
       sleep 1 if any
 
-      pids = []
-      while pid = Process.waitpid(-1, Process::WNOHANG) do
-        pids << pid
-      end
-      @workers.reject! { |w| w.dead? || pids.include?(w.pid) }
-
+      wait_workers
       cull_workers
       spawn_workers
 
@@ -552,6 +528,25 @@ module Puma
         @suicide_pipe.close
         read.close
         @wakeup.close
+      end
+    end
+
+    private
+
+    # loops thru @workers, removing workers that exited, and calling
+    # `#term` if needed
+    def wait_workers
+      @workers.reject! do |w|
+        begin
+          if Process.wait(w.pid, Process::WNOHANG)
+            true
+          else
+            w.term if w.term?
+            nil
+          end
+        rescue Errno::ECHILD
+          true # child is already terminated
+        end
       end
     end
   end
