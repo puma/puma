@@ -261,7 +261,7 @@ class TestIntegration < Minitest::Test
         mutex.synchronize { condition_variable.wait(mutex, 1.5) }
 
         begin
-          s = connect
+          s = connect "sleep1"
           read_body(s)
           next_replies << :success
         rescue Errno::ECONNRESET
