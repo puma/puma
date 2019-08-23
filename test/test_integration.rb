@@ -5,150 +5,55 @@ require "puma/cli"
 require "puma/control_cli"
 require "open3"
 
-# TODO: Remove over-utilization of @instance variables
-# TODO: remove stdout logging, get everything out of my rainbow dots
-
 class TestIntegration < Minitest::Test
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
 
+  BASE = defined?(Bundler) ?
+    "bundle exec #{Gem.ruby} -Ilib bin/puma" :
+    "#{Gem.ruby} -Ilib bin/puma"
+
   def setup
-    @state_path   = "test/test_#{name}_puma.state"
-    @bind_path    = "test/test_#{name}_server.sock"
-    @control_path = "test/test_#{name}_control.sock"
-
-    @server = nil
-
-    @wait, @ready = IO.pipe
-
-    @events = Puma::Events.strings
-    @events.on_booted { @ready << "!" }
+    @ios_to_close = []
+    @state_path   = "test/#{name}_puma.state"
+    @bind_path    = "test/#{name}_server.sock"
+    @control_path = "test/#{name}_control.sock"
   end
 
   def teardown
-    File.unlink @state_path   rescue nil
-    File.unlink @bind_path    rescue nil
-    File.unlink @control_path rescue nil
-
-    @wait.close
-    @ready.close
-
-    if @server
-      Process.kill "INT", @server.pid
+    if defined?(@server) && @server
+      begin
+        Process.kill "INT", @server.pid
+      rescue
+        Errno::ESRCH
+      end
       begin
         Process.wait @server.pid
       rescue Errno::ECHILD
       end
-
-      @server.close
-    end
-  end
-
-  def server_cmd(argv)
-    @tcp_port = UniquePort.call
-    base = "#{Gem.ruby} -Ilib bin/puma"
-    base = "bundle exec #{base}" if defined?(Bundler)
-    "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
-  end
-
-  def server(argv)
-    @server = IO.popen(server_cmd(argv), "r")
-
-    wait_for_server_to_boot(@server)
-
-    @server
-  end
-
-  def start_forked_server(argv)
-    servercmd = server_cmd(argv)
-    pid = fork do
-      exec servercmd
+      @server.close unless @server.closed?
     end
 
-    sleep 5
-    pid
-  end
-
-  def stop_forked_server(pid)
-    Process.kill(:TERM, pid)
-    sleep 1
-    Process.wait2(pid)
-  end
-
-  def restart_server_and_listen(argv)
-    server(argv)
-    connection = connect
-    initial_reply = read_body(connection)
-    restart_server(@server, connection)
-    [initial_reply, read_body(connect)]
-  end
-
-  def wait_booted
-    @wait.sysread 1
-  end
-
-  # reuses an existing connection to make sure that works
-  def restart_server(server, connection)
-    Process.kill :USR2, @server.pid
-
-    connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
-
-    wait_for_server_to_boot(server)
-  end
-
-  def connect(path = nil)
-    s = TCPSocket.new "localhost", @tcp_port
-    s << "GET /#{path} HTTP/1.1\r\n\r\n"
-    true until s.gets == "\r\n"
-    s
-  end
-
-  def wait_for_server_to_boot(server)
-    true while server.gets !~ /Ctrl-C/ # wait for server to say it booted
-  end
-
-  def read_body(connection)
-    Timeout.timeout(10) do
-      loop do
-        response = connection.readpartial(1024)
-        body = response.split("\r\n\r\n", 2).last
-        return body if body && !body.empty?
-        sleep 0.01
-      end
+    @ios_to_close.each do |io|
+      io.close if io.is_a?(IO) && !io.closed?
+      io = nil
     end
+
+    File.unlink @state_path   rescue nil
+    File.unlink @bind_path    rescue nil
+    File.unlink @control_path rescue nil
   end
 
   def test_stop_via_pumactl
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    server("-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}")
 
-    conf = Puma::Configuration.new do |c|
-      c.quiet
-      c.state_path @state_path
-      c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
-      c.rackup "test/rackup/hello.ru"
-    end
+    Puma::ControlCLI.new(%W!-S #{@state_path} stop!, StringIO.new).run
 
-    l = Puma::Launcher.new conf, :events => @events
+    _, status = Process.wait2(@server.pid)
+    assert_equal 0, status
 
-    t = Thread.new do
-      Thread.current.abort_on_exception = true
-      l.run
-    end
-
-    wait_booted
-
-    s = UNIXSocket.new @bind_path
-    s << "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "Hello World", read_body(s)
-
-    sout = StringIO.new
-
-    ccli = Puma::ControlCLI.new %W!-S #{@state_path} stop!, sout
-
-    ccli.run
-
-    assert_kind_of Thread, t.join, "server didn't stop"
+    @server = nil
   end
 
   def test_phased_restart_via_pumactl
@@ -166,38 +71,36 @@ class TestIntegration < Minitest::Test
       c.rackup "test/rackup/sleep.ru"
     end
 
-    l = Puma::Launcher.new conf, :events => @events
+    thr, _l, events = run_launcher conf
 
-    t = Thread.new do
-      Thread.current.abort_on_exception = true
-      l.run
-    end
-
-    wait_booted
+    start_time = Time.now.to_f
 
     s = UNIXSocket.new @bind_path
+    @ios_to_close << s
     s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
 
-    sout = StringIO.new
     # Phased restart
-    ccli = Puma::ControlCLI.new ["-S", @state_path, "phased-restart"], sout
-    ccli.run
+    Puma::ControlCLI.new(%W!-S #{@state_path} phased-restart!, events.stdout).run
 
     done = false
     until done
-      @events.stdout.rewind
-      log = @events.stdout.readlines.join("")
+      events.stdout.rewind
+      log = events.stdout.readlines.join("")
       if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
         assert_match(/TERM sent/, log)
         assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
         done = true
       end
     end
-    # Stop
-    ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
-    ccli.run
 
-    assert_kind_of Thread, t.join, "server didn't stop"
+    # if worker_shutdown_timeout is functioning, request shouldn't be allowed
+    # to complete, hence, restart should take less than request time
+    assert_operator (Time.now.to_f - start_time).round(2), :<, 30
+
+    # Stop
+    Puma::ControlCLI.new(%W!-S #{@state_path} stop!, events.stdout).run
+
+    assert_kind_of Thread, thr.join, "server didn't stop"
     assert File.exist? @bind_path
   end
 
@@ -213,8 +116,7 @@ class TestIntegration < Minitest::Test
     sout = StringIO.new
 
     e = assert_raises SystemExit do
-      ccli = Puma::ControlCLI.new %W!-p #{safe_pid} stop!, sout
-      ccli.run
+      Puma::ControlCLI.new(%W!-p #{safe_pid} stop!, sout).run
     end
     sout.rewind
     # windows bad URI(is not URI?)
@@ -222,13 +124,13 @@ class TestIntegration < Minitest::Test
     assert_equal(1, e.status)
   end
 
-  def test_restart_closes_keepalive_sockets
+  def test_restart_with_usr2_works
     skip_unless_signal_exist? :USR2
     _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
 
-  def test_restart_closes_keepalive_sockets_workers
+  def test_restart_with_usr2_works_workers
     skip NO_FORK_MSG unless HAS_FORK
     _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
@@ -236,7 +138,7 @@ class TestIntegration < Minitest::Test
 
   def test_sigterm_closes_listeners_on_forked_servers
     skip NO_FORK_MSG unless HAS_FORK
-    pid = start_forked_server("-w 2 -q test/rackup/sleep.ru")
+    pid = server("-w 2 -q test/rackup/sleep.ru").pid
     threads = []
     initial_reply = nil
     next_replies = []
@@ -277,7 +179,7 @@ class TestIntegration < Minitest::Test
       end
     end
 
-    threads.map(&:join)
+    threads.each(&:join)
 
     assert_equal "Slept 1", initial_reply
 
@@ -301,9 +203,9 @@ class TestIntegration < Minitest::Test
   end
 
   def test_term_signal_exit_code_in_single_mode
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_on :windows # no SIGTERM
 
-    pid = start_forked_server("test/rackup/hello.ru")
+    pid = server("test/rackup/hello.ru").pid
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
@@ -312,16 +214,16 @@ class TestIntegration < Minitest::Test
   def test_term_signal_exit_code_in_clustered_mode
     skip NO_FORK_MSG unless HAS_FORK
 
-    pid = start_forked_server("-w 2 test/rackup/hello.ru")
+    pid = server("-w 2 test/rackup/hello.ru").pid
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
   end
 
   def test_term_signal_suppress_in_single_mode
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_on :windows # no SIGTERM
 
-    pid = start_forked_server("-C test/config/suppress_exception.rb test/rackup/hello.ru")
+    pid = server("-C test/config/suppress_exception.rb test/rackup/hello.ru").pid
     _, status = stop_forked_server(pid)
 
     assert_equal 0, status
@@ -340,6 +242,7 @@ class TestIntegration < Minitest::Test
     status = $?.exitstatus
 
     assert_equal 0, status
+    @server.close unless @server.closed?
     @server = nil # prevent `#teardown` from killing already killed server
   end
 
@@ -348,14 +251,14 @@ class TestIntegration < Minitest::Test
 
     server('test/rackup/sleep.ru')
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://127.0.0.1:#{@tcp_port}/sleep10")
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}/sleep10")
     sleep 1 # ensure curl send a request
 
     Process.kill(:TERM, @server.pid)
     true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
-    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl 127.0.0.1:#{@tcp_port}")
+    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
 
     assert nil != Process.getpgid(@server.pid) # ensure server is still running
     assert nil != Process.getpgid(rejected_curl_wait_thread[:pid]) # ensure first curl invokation still in progress
@@ -367,6 +270,7 @@ class TestIntegration < Minitest::Test
     assert_match(/Connection refused/, rejected_curl_stderr.read)
 
     Process.wait(@server.pid)
+    @server.close unless @server.closed?
     @server = nil # prevent `#teardown` from killing already killed server
   end
 
@@ -385,6 +289,7 @@ class TestIntegration < Minitest::Test
     # Signal the workers to terminate, and wait for them to die.
     Process.kill :TERM, @server.pid
     Process.wait @server.pid
+    @server.close unless @server.closed?
     @server = nil # prevent `#teardown` from killing already killed server
 
     # Check if the worker processes remain in the process table.
@@ -400,17 +305,91 @@ class TestIntegration < Minitest::Test
     assert_empty zombies, "Process ids #{zombies} became zombies"
   end
 
+  # mimicking stuck workers, test respawn with external SIGTERM
   def test_worker_spawn_external_term
     worker_respawn { |l, old_pids|
       old_pids.each { |p| Process.kill :TERM, p }
     }
   end
 
+  # mimicking stuck workers, test restart
   def test_worker_phased_restart
     worker_respawn { |l, old_pids| l.phased_restart }
   end
 
   private
+
+  def server(argv, bind = nil)
+    if bind
+      cmd = "#{BASE} -b #{bind} #{argv}"
+    else
+      @tcp_port = UniquePort.call
+      cmd = "#{BASE} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+    end
+    @server = IO.popen(cmd, "r")
+    wait_for_server_to_boot
+    @server
+  end
+
+  def stop_forked_server(pid)
+    Process.kill(:TERM, pid)
+    sleep 1
+    Process.wait2(pid)
+  end
+
+  def restart_server_and_listen(argv)
+    server(argv)
+    connection = connect
+    initial_reply = read_body(connection)
+    restart_server(connection)
+    [initial_reply, read_body(connect)]
+  end
+
+  # reuses an existing connection to make sure that works
+  def restart_server(connection)
+    Process.kill :USR2, @server.pid
+    connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
+    wait_for_server_to_boot
+  end
+
+  def wait_for_server_to_boot
+    true while @server.gets !~ /Ctrl-C/ # wait for server to say it booted
+  end
+
+  def connect(path = nil)
+    s = TCPSocket.new HOST, @tcp_port
+    @ios_to_close << s
+    s << "GET /#{path} HTTP/1.1\r\n\r\n"
+    true until s.gets == "\r\n"
+    s
+  end
+
+  def read_body(connection)
+    Timeout.timeout(10) do
+      loop do
+        response = connection.readpartial(1024)
+        body = response.split("\r\n\r\n", 2).last
+        return body if body && !body.empty?
+        sleep 0.01
+      end
+    end
+  end
+
+  def run_launcher(conf)
+    wait, ready = IO.pipe
+    @ios_to_close << wait << ready
+    events = Puma::Events.strings
+    events.on_booted { ready << "!" }
+
+    launcher = Puma::Launcher.new conf, :events => events
+
+    thr = Thread.new { launcher.run }
+
+    # wait for boot from `events.on_booted`
+    wait.sysread 1
+
+    [thr, launcher, events]
+   end
 
   def worker_respawn
     skip NO_FORK_MSG unless HAS_FORK
@@ -505,23 +484,4 @@ class TestIntegration < Minitest::Test
     assert_empty new_pids & old_pids, "#{msg}\nBoth workers should be replaced with new"
     assert_empty old_waited, msg
   end
-
-  def run_launcher(conf)
-    # below for future PR
-    #@wait, @ready = IO.pipe
-    # @ios_to_close << @wait << @ready
-    #@events = Puma::Events.strings
-    #@events.on_booted { @ready << "!" }
-
-    launcher = Puma::Launcher.new conf, :events => @events
-
-    thr = Thread.new do
-      launcher.run
-    end
-
-    # wait for boot from #@events.on_booted
-    @wait.sysread 1
-
-    [thr, launcher, @events]
-   end
 end
