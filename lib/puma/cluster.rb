@@ -74,6 +74,10 @@ module Puma
         @started_at = Time.now
         @last_checkin = Time.now
         @last_status = '{}'
+<<<<<<< HEAD
+=======
+        @dead = false
+>>>>>>> Fixes Cluster worker shutdown/restart (#1908)
         @term = false
       end
 
@@ -86,6 +90,10 @@ module Puma
       def boot!
         @last_checkin = Time.now
         @stage = :booted
+      end
+
+      def term?
+        @term
       end
 
       def term?
