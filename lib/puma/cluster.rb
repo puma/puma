@@ -74,7 +74,6 @@ module Puma
         @started_at = Time.now
         @last_checkin = Time.now
         @last_status = '{}'
-        @dead = false
         @term = false
       end
 
@@ -87,14 +86,6 @@ module Puma
       def boot!
         @last_checkin = Time.now
         @stage = :booted
-      end
-
-      def dead?
-        @dead
-      end
-
-      def dead!
-        @dead = true
       end
 
       def term?
@@ -507,7 +498,7 @@ module Puma
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
                   force_check = true
                 when "t"
-                  w.dead!
+                  w.term
                   force_check = true
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
