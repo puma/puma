@@ -334,13 +334,13 @@ class TestIntegration < Minitest::Test
     wait_for_server_to_boot(@wait)
     sleep 0.1
 
-    signal :INT
+    Process.kill :INT, @server.pid
 
     t = Thread.new { Process.wait @server.pid }
     sleep 3
 
     if t.status == 'run'
-      signal :KILL
+      Process.kill :KILL, @server.pid
       result = false
     else
       result = true
