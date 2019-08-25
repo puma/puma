@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "helper"
-require "puma/cli"
 require "puma/control_cli"
 require "open3"
 
@@ -9,9 +8,10 @@ class TestIntegration < Minitest::Test
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
 
-  BASE = defined?(Bundler) ?
-    "bundle exec #{Gem.ruby} -Ilib bin/puma" :
-    "#{Gem.ruby} -Ilib bin/puma"
+  BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
+    "#{Gem.ruby} -Ilib"
+
+  WORKERS = 2
 
   def setup
     @ios_to_close = []
@@ -32,6 +32,7 @@ class TestIntegration < Minitest::Test
       rescue Errno::ECHILD
       end
       @server.close unless @server.closed?
+      @server = nil
     end
 
     @ios_to_close.each do |io|
@@ -44,11 +45,11 @@ class TestIntegration < Minitest::Test
     File.unlink @control_path rescue nil
   end
 
-  def test_stop_via_pumactl
+  def test_pumactl_stop
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     server("-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}")
 
-    Puma::ControlCLI.new(%W!-S #{@state_path} stop!, StringIO.new).run
+    cli_pumactl "-C unix://#{@control_path} -T #{TOKEN} stop"
 
     _, status = Process.wait2(@server.pid)
     assert_equal 0, status
@@ -56,55 +57,40 @@ class TestIntegration < Minitest::Test
     @server = nil
   end
 
-  def test_phased_restart_via_pumactl
+  def test_pumactl_phased_restart_cluster
     skip NO_FORK_MSG unless HAS_FORK
 
-    delay = 40
-
-    conf = Puma::Configuration.new do |c|
-      c.quiet
-      c.state_path @state_path
-      c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
-      c.workers 2
-      c.worker_shutdown_timeout 2
-      c.rackup "test/rackup/sleep.ru"
-    end
-
-    thr, _l, events = run_launcher conf
-
-    start_time = Time.now.to_f
+    server "-q -w #{WORKERS} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", "unix://#{@bind_path}"
 
     s = UNIXSocket.new @bind_path
     @ios_to_close << s
-    s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
+    s << "GET /sleep5 HTTP/1.0\r\n\r\n"
+
+    # Get the PIDs of the phase 0 workers.
+    phase0_worker_pids = get_worker_pids 0
 
     # Phased restart
-    Puma::ControlCLI.new(%W!-S #{@state_path} phased-restart!, events.stdout).run
+    cli_pumactl "-C unix://#{@control_path} -T #{TOKEN} phased-restart"
 
-    done = false
-    until done
-      events.stdout.rewind
-      log = events.stdout.readlines.join("")
-      if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
-        assert_match(/TERM sent/, log)
-        assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
-        done = true
-      end
-    end
+    # Get the PIDs of the phase 1 workers.
+    phase1_worker_pids = get_worker_pids 1
 
-    # if worker_shutdown_timeout is functioning, request shouldn't be allowed
-    # to complete, hence, restart should take less than request time
-    assert_operator (Time.now.to_f - start_time).round(2), :<, 30
+    msg = "phase 0 pids #{phase0_worker_pids.inspect}  phase 1 pids #{phase1_worker_pids.inspect}"
+
+    assert_equal WORKERS, phase0_worker_pids.length, msg
+    assert_equal WORKERS, phase1_worker_pids.length, msg
+    assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
 
     # Stop
-    Puma::ControlCLI.new(%W!-S #{@state_path} stop!, events.stdout).run
+    cli_pumactl "-C unix://#{@control_path} -T #{TOKEN} stop"
 
-    assert_kind_of Thread, thr.join, "server didn't stop"
-    assert File.exist? @bind_path
+    _, status = Process.wait2(@server.pid)
+    assert_equal 0, status
+
+    @server = nil
   end
 
-  def test_kill_unknown_via_pumactl
+  def test_pumactl_kill_unknown
     skip_on :jruby
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
@@ -124,21 +110,35 @@ class TestIntegration < Minitest::Test
     assert_equal(1, e.status)
   end
 
-  def test_restart_with_usr2_works
+  def test_usr2_restart_single
     skip_unless_signal_exist? :USR2
     _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
 
-  def test_restart_with_usr2_works_workers
+  def test_usr2_restart_cluster
     skip NO_FORK_MSG unless HAS_FORK
-    _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
+    _, new_reply = restart_server_and_listen("-q -w #{WORKERS} test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
 
-  def test_sigterm_closes_listeners_on_forked_servers
+  # It does not share environments between multiple generations, which would break Dotenv
+  def test_usr2_restart_restores_environment
+    # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
+    # next workers ENV
+    skip_on :jruby
+    skip_unless_signal_exist? :USR2
+
+    initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
+
+    assert_includes initial_reply, "Hello RAND"
+    assert_includes new_reply, "Hello RAND"
+    refute_equal initial_reply, new_reply
+  end
+
+  def test_term_closes_listeners_cluster
     skip NO_FORK_MSG unless HAS_FORK
-    pid = server("-w 2 -q test/rackup/sleep.ru").pid
+    pid = server("-w #{WORKERS} -q test/rackup/sleep.ru").pid
     threads = []
     initial_reply = nil
     next_replies = []
@@ -188,21 +188,7 @@ class TestIntegration < Minitest::Test
     refute_includes next_replies, :connection_reset
   end
 
-  # It does not share environments between multiple generations, which would break Dotenv
-  def test_restart_restores_environment
-    # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
-    # next workers ENV
-    skip_on :jruby
-    skip_unless_signal_exist? :USR2
-
-    initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
-
-    assert_includes initial_reply, "Hello RAND"
-    assert_includes new_reply, "Hello RAND"
-    refute_equal initial_reply, new_reply
-  end
-
-  def test_term_signal_exit_code_in_single_mode
+  def test_term_exit_code_single
     skip_on :windows # no SIGTERM
 
     pid = server("test/rackup/hello.ru").pid
@@ -211,16 +197,16 @@ class TestIntegration < Minitest::Test
     assert_equal 15, status
   end
 
-  def test_term_signal_exit_code_in_clustered_mode
+  def test_term_exit_code_cluster
     skip NO_FORK_MSG unless HAS_FORK
 
-    pid = server("-w 2 test/rackup/hello.ru").pid
+    pid = server("-w #{WORKERS} test/rackup/hello.ru").pid
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
   end
 
-  def test_term_signal_suppress_in_single_mode
+  def test_term_suppress_single
     skip_on :windows # no SIGTERM
 
     pid = server("-C test/config/suppress_exception.rb test/rackup/hello.ru").pid
@@ -229,10 +215,10 @@ class TestIntegration < Minitest::Test
     assert_equal 0, status
   end
 
-  def test_term_signal_suppress_in_clustered_mode
+  def test_term_suppress_cluster
     skip NO_FORK_MSG unless HAS_FORK
 
-    server("-w 2 -C test/config/suppress_exception.rb test/rackup/hello.ru")
+    server("-w #{WORKERS} -C test/config/suppress_exception.rb test/rackup/hello.ru")
 
     Process.kill(:TERM, @server.pid)
     begin
@@ -246,16 +232,7 @@ class TestIntegration < Minitest::Test
     @server = nil # prevent `#teardown` from killing already killed server
   end
 
-  def test_load_path_includes_extra_deps
-    skip NO_FORK_MSG unless HAS_FORK
-
-    server("-w 2 -C test/config/prune_bundler_with_deps.rb test/rackup/hello-last-load-path.ru")
-
-    last_load_path = read_body(connect)
-    assert_match(%r{gems/rdoc-[\d.]+/lib$}, last_load_path)
-  end
-
-  def test_not_accepts_new_connections_after_term_signal
+  def test_term_not_accepts_new_connections
     skip_on :jruby, :windows
 
     server('test/rackup/sleep.ru')
@@ -283,23 +260,18 @@ class TestIntegration < Minitest::Test
     @server = nil # prevent `#teardown` from killing already killed server
   end
 
-  def test_no_zombie_children
+  def test_term_worker_clean_exit_cluster
     skip NO_FORK_MSG unless HAS_FORK
     skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
 
-    worker_pids = []
-    server = server("-w 2 test/rackup/hello.ru")
+    pid = server("-w #{WORKERS} test/rackup/hello.ru").pid
+
     # Get the PIDs of the child workers.
-    while worker_pids.size < 2
-      next unless line = server.gets.match(/pid: (\d+)/)
-      worker_pids << line.captures.first.to_i
-    end
+    worker_pids = get_worker_pids 0
 
     # Signal the workers to terminate, and wait for them to die.
-    Process.kill :TERM, @server.pid
-    Process.wait @server.pid
-    @server.close unless @server.closed?
-    @server = nil # prevent `#teardown` from killing already killed server
+    Process.kill :TERM, pid
+    Process.wait pid
 
     # Check if the worker processes remain in the process table.
     # Process.kill should raise the Errno::ESRCH exception,
@@ -315,25 +287,25 @@ class TestIntegration < Minitest::Test
   end
 
   # mimicking stuck workers, test respawn with external SIGTERM
-  def test_worker_spawn_external_term
-    worker_respawn { |l, old_pids|
-      old_pids.each { |p| Process.kill :TERM, p }
+  def test_stuck_external_term_spawn_cluster
+    worker_respawn { |l, phase0_worker_pids|
+      phase0_worker_pids.each { |p| Process.kill :TERM, p }
     }
   end
 
   # mimicking stuck workers, test restart
-  def test_worker_phased_restart
-    worker_respawn { |l, old_pids| l.phased_restart }
+  def test_stuck_phased_restart_cluster
+    worker_respawn { |l, phase0_worker_pids| l.phased_restart }
   end
 
   private
 
   def server(argv, bind = nil)
     if bind
-      cmd = "#{BASE} -b #{bind} #{argv}"
+      cmd = "#{BASE} bin/puma -b #{bind} #{argv}"
     else
       @tcp_port = UniquePort.call
-      cmd = "#{BASE} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+      cmd = "#{BASE} bin/puma -b tcp://#{HOST}:#{@tcp_port} #{argv}"
     end
     @server = IO.popen(cmd, "r")
     wait_for_server_to_boot
@@ -384,6 +356,14 @@ class TestIntegration < Minitest::Test
     end
   end
 
+  def cli_pumactl(argv)
+    cmd = "#{BASE} bin/pumactl #{argv}"
+    pumactl = IO.popen(cmd, "r")
+    @ios_to_close << pumactl
+    Process.wait pumactl.pid
+    pumactl
+  end
+
   def run_launcher(conf)
     wait, ready = IO.pipe
     @ios_to_close << wait << ready
@@ -408,7 +388,7 @@ class TestIntegration < Minitest::Test
     conf = Puma::Configuration.new do |c|
       c.bind "tcp://#{HOST}:#{port}"
       c.threads 1, 1
-      c.workers 2
+      c.workers WORKERS
       c.worker_shutdown_timeout 2
       c.app TestApps::SLEEP
       c.after_worker_fork { |idx| workers_booted += 1 }
@@ -419,7 +399,7 @@ class TestIntegration < Minitest::Test
 
     # make sure two workers have booted
     time = 0
-    until workers_booted >= 2 || time >= 10
+    until workers_booted >= WORKERS || time >= 10
       sleep 2
       time += 2
     end
@@ -447,25 +427,25 @@ class TestIntegration < Minitest::Test
       end
     end
 
-    old_pids = cluster.instance_variable_get(:@workers).map(&:pid)
+    phase0_worker_pids = cluster.instance_variable_get(:@workers).map(&:pid)
 
     start_time = Time.now.to_f
 
     # below should 'cancel' the phase 0 workers, either via phased_restart or
     # externally SIGTERM'ing them
-    yield launcher, old_pids
+    yield launcher, phase0_worker_pids
 
     # make sure four workers have booted
     time = 0
-    until workers_booted >= 4 || time >= 45
+    until workers_booted >= 2 * WORKERS || time >= 45
       sleep 2
       time += 2
     end
 
-    new_pids = cluster.instance_variable_get(:@workers).map(&:pid)
+    phase1_worker_pids = cluster.instance_variable_get(:@workers).map(&:pid)
 
-    # should be empty if all old workers removed
-    old_waited = old_pids.map { |pid|
+    # should be empty if all phase 0 workers cleanly exited
+    phase0_exited = phase0_worker_pids.map { |pid|
       begin
         Process.wait(pid, Process::WNOHANG)
         pid
@@ -487,10 +467,23 @@ class TestIntegration < Minitest::Test
     # and cancel both requests
     assert_operator (Time.now.to_f - start_time).round(2), :<, 35
 
-    msg = "old_pids #{old_pids.inspect}  new_pids #{new_pids.inspect}  old_waited #{old_waited.inspect}"
-    assert_equal 2, new_pids.length, msg
-    assert_equal 2, old_pids.length, msg
-    assert_empty new_pids & old_pids, "#{msg}\nBoth workers should be replaced with new"
-    assert_empty old_waited, msg
+    msg = "phase0_worker_pids #{phase0_worker_pids.inspect}  phase1_worker_pids #{phase1_worker_pids.inspect}  phase0_exited #{phase0_exited.inspect}"
+    assert_equal WORKERS, phase0_worker_pids.length, msg
+    assert_equal WORKERS, phase1_worker_pids.length, msg
+    assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
+    assert_empty phase0_exited, msg
+  end
+
+  def get_worker_pids(phase, size = WORKERS)
+    pids = []
+    re = /pid: (\d+)\) booted, phase: #{phase}/
+    while pids.size < size
+      if pid = @server.gets[re, 1]
+        pids << pid
+      else
+        sleep 2
+      end
+    end
+    pids.map(&:to_i)
   end
 end
