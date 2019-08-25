@@ -330,15 +330,17 @@ class TestIntegration < Minitest::Test
   def test_int_signal_with_background_thread_in_jruby
     skip_unless :jruby
 
-    @server = Struct.new(:pid, :close).new(spawn(server_cmd('test/rackup/jruby-sigint.ru')))
-    sleep 6 # Wait until bootup. IO#popen is not working as expected and passes always.
-    Process.kill :INT, @server.pid
+    @server = Struct.new(:pid, :close).new(spawn(server_cmd('test/rackup/jruby-sigint.ru'), out: @ready))
+    wait_for_server_to_boot(@wait)
+    sleep 0.1
 
-    thr = Thread.new { Process.wait @server.pid }
-    sleep 5
+    signal :INT
 
-    if thr.status == 'run'.freeze
-      Process.kill :KILL, @server.pid
+    t = Thread.new { Process.wait @server.pid }
+    sleep 3
+
+    if t.status == 'run'
+      signal :KILL
       result = false
     else
       result = true
