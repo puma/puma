@@ -95,6 +95,7 @@ module TestSkips
     skip_msg = false
     engs.each do |eng|
       skip_msg = case eng
+        when :darwin   then "Skipped on darwin#{suffix}"    if RUBY_PLATFORM[/darwin/]
         when :jruby    then "Skipped on JRuby#{suffix}"     if Puma.jruby?
         when :windows  then "Skipped on Windows#{suffix}"   if Puma.windows?
         when :appveyor then "Skipped on Appveyor#{suffix}"  if ENV["APPVEYOR"]
@@ -108,6 +109,7 @@ module TestSkips
   # called with only one param
   def skip_unless(eng, bt: caller)
     skip_msg = case eng
+      when :darwin  then "Skip unless darwin"  unless RUBY_PLATFORM[/darwin/]
       when :jruby   then "Skip unless JRuby"   unless Puma.jruby?
       when :windows then "Skip unless Windows" unless Puma.windows?
       else false
