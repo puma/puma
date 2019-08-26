@@ -47,7 +47,7 @@ class TestIntegration < Minitest::Test
 
   def test_pumactl_stop
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-    server("-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}")
+    cli_server("-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}")
 
     cli_pumactl "-C unix://#{@control_path} -T #{TOKEN} stop"
 
@@ -60,7 +60,7 @@ class TestIntegration < Minitest::Test
   def test_pumactl_phased_restart_cluster
     skip NO_FORK_MSG unless HAS_FORK
 
-    server "-q -w #{WORKERS} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", "unix://#{@bind_path}"
+    cli_server "-q -w #{WORKERS} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", "unix://#{@bind_path}"
 
     s = UNIXSocket.new @bind_path
     @ios_to_close << s
@@ -138,7 +138,7 @@ class TestIntegration < Minitest::Test
 
   def test_term_closes_listeners_cluster
     skip NO_FORK_MSG unless HAS_FORK
-    pid = server("-w #{WORKERS} -q test/rackup/sleep.ru").pid
+    pid = cli_server("-w #{WORKERS} -q test/rackup/sleep.ru").pid
     threads = []
     initial_reply = nil
     next_replies = []
@@ -191,7 +191,7 @@ class TestIntegration < Minitest::Test
   def test_term_exit_code_single
     skip_on :windows # no SIGTERM
 
-    pid = server("test/rackup/hello.ru").pid
+    pid = cli_server("test/rackup/hello.ru").pid
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
@@ -200,7 +200,7 @@ class TestIntegration < Minitest::Test
   def test_term_exit_code_cluster
     skip NO_FORK_MSG unless HAS_FORK
 
-    pid = server("-w #{WORKERS} test/rackup/hello.ru").pid
+    pid = cli_server("-w #{WORKERS} test/rackup/hello.ru").pid
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
@@ -209,7 +209,7 @@ class TestIntegration < Minitest::Test
   def test_term_suppress_single
     skip_on :windows # no SIGTERM
 
-    pid = server("-C test/config/suppress_exception.rb test/rackup/hello.ru").pid
+    pid = cli_server("-C test/config/suppress_exception.rb test/rackup/hello.ru").pid
     _, status = stop_forked_server(pid)
 
     assert_equal 0, status
@@ -218,7 +218,7 @@ class TestIntegration < Minitest::Test
   def test_term_suppress_cluster
     skip NO_FORK_MSG unless HAS_FORK
 
-    server("-w #{WORKERS} -C test/config/suppress_exception.rb test/rackup/hello.ru")
+    cli_server("-w #{WORKERS} -C test/config/suppress_exception.rb test/rackup/hello.ru")
 
     Process.kill(:TERM, @server.pid)
     begin
@@ -235,7 +235,7 @@ class TestIntegration < Minitest::Test
   def test_term_not_accepts_new_connections
     skip_on :jruby, :windows
 
-    server('test/rackup/sleep.ru')
+    cli_server('test/rackup/sleep.ru')
 
     _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}/sleep10")
     sleep 1 # ensure curl send a request
@@ -264,7 +264,7 @@ class TestIntegration < Minitest::Test
     skip NO_FORK_MSG unless HAS_FORK
     skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
 
-    pid = server("-w #{WORKERS} test/rackup/hello.ru").pid
+    pid = cli_server("-w #{WORKERS} test/rackup/hello.ru").pid
 
     # Get the PIDs of the child workers.
     worker_pids = get_worker_pids 0
@@ -273,16 +273,8 @@ class TestIntegration < Minitest::Test
     Process.kill :TERM, pid
     Process.wait pid
 
-    # Check if the worker processes remain in the process table.
-    # Process.kill should raise the Errno::ESRCH exception,
-    # indicating the process is dead and has been reaped.
-    zombies = worker_pids.map do |pid|
-      begin
-        pid if Process.kill 0, pid
-      rescue Errno::ESRCH
-        nil
-      end
-    end.compact
+    zombies = clean_exit_pids worker_pids
+
     assert_empty zombies, "Process ids #{zombies} became zombies"
   end
 
@@ -300,7 +292,7 @@ class TestIntegration < Minitest::Test
 
   private
 
-  def server(argv, bind = nil)
+  def cli_server(argv, bind = nil)
     if bind
       cmd = "#{BASE} bin/puma -b #{bind} #{argv}"
     else
@@ -319,7 +311,7 @@ class TestIntegration < Minitest::Test
   end
 
   def restart_server_and_listen(argv)
-    server(argv)
+    cli_server(argv)
     connection = connect
     initial_reply = read_body(connection)
     restart_server(connection)
@@ -357,8 +349,7 @@ class TestIntegration < Minitest::Test
   end
 
   def cli_pumactl(argv)
-    cmd = "#{BASE} bin/pumactl #{argv}"
-    pumactl = IO.popen(cmd, "r")
+    pumactl = IO.popen("#{BASE} bin/pumactl #{argv}", "r")
     @ios_to_close << pumactl
     Process.wait pumactl.pid
     pumactl
@@ -445,14 +436,7 @@ class TestIntegration < Minitest::Test
     phase1_worker_pids = cluster.instance_variable_get(:@workers).map(&:pid)
 
     # should be empty if all phase 0 workers cleanly exited
-    phase0_exited = phase0_worker_pids.map { |pid|
-      begin
-        Process.wait(pid, Process::WNOHANG)
-        pid
-      rescue Errno::ECHILD
-        nil # child is already terminated
-      end
-    }.compact
+    phase0_exited = clean_exit_pids phase0_worker_pids
 
     Thread.kill worker0
     Thread.kill worker1
@@ -474,6 +458,7 @@ class TestIntegration < Minitest::Test
     assert_empty phase0_exited, msg
   end
 
+  # gets worker pids from @server output
   def get_worker_pids(phase, size = WORKERS)
     pids = []
     re = /pid: (\d+)\) booted, phase: #{phase}/
@@ -485,5 +470,19 @@ class TestIntegration < Minitest::Test
       end
     end
     pids.map(&:to_i)
+  end
+
+  # Returns an array of pids still in the process table, so it should
+  # be empty for a clean exit.
+  # Process.kill should raise the Errno::ESRCH exception, indicating the
+  # process is dead and has been reaped.
+  def clean_exit_pids(pids)
+    pids.map do |pid|
+      begin
+        pid if Process.kill 0, pid
+      rescue Errno::ESRCH
+        nil
+      end
+    end.compact
   end
 end
