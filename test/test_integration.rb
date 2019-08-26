@@ -330,25 +330,20 @@ class TestIntegration < Minitest::Test
   def test_int_signal_with_background_thread_in_jruby
     skip_unless :jruby
 
-    @server = Struct.new(:pid, :close).new(spawn(server_cmd('test/rackup/jruby-sigint.ru'), out: @ready))
-    wait_for_server_to_boot(@wait)
-    sleep 0.1
+    server('test/rackup/jruby-sigint.ru')
+    sleep 0.1 # Avoids race with the joining of server thread onto main.
 
     Process.kill :INT, @server.pid
 
     t = Thread.new { Process.wait @server.pid }
-    sleep 3
+    sleep 2.2
+    shutdown_complete = (t.status != 'run')
 
-    if t.status == 'run'
-      Process.kill :KILL, @server.pid
-      result = false
-    else
-      result = true
-    end
+    # `#teardown` uses INT, needs KILL here.
+    Process.kill :KILL, @server.pid unless shutdown_complete
 
     @server = nil # prevent `#teardown` from killing already killed server
-
-    assert_equal true, result
+    assert_equal true, shutdown_complete
   end
 
   def test_term_signal_suppress_in_clustered_mode
