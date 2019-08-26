@@ -204,8 +204,8 @@ end unless DISABLE_SSL
 class TestPumaServerSSLClient < Minitest::Test
 
   def assert_ssl_client_error_match(error, subject=nil, &blk)
-    port = 3212
     host = "127.0.0.1"
+    port = UniquePort.call
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
@@ -239,6 +239,8 @@ class TestPumaServerSSLClient < Minitest::Test
       end
     rescue OpenSSL::SSL::SSLError, EOFError
       client_error = true
+      # closes socket if open, may not close on error
+      http.send :do_finish
     end
 
     sleep 0.1
