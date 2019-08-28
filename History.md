@@ -54,7 +54,7 @@
   * Reactor now uses nio4r instead of `select` (#1728)
   * Add status to pumactl with pidfile (#1824)
 
-* 9 bugfixes
+* 10 bugfixes
   * Do not accept new requests on shutdown (#1685, #1808)
   * Fix 3 corner cases when request body is chunked (#1508)
   * Change pid existence check's condition branches (#1650)
@@ -64,6 +64,13 @@
   * Fix Java 8 support (#1773)
   * Fix error `uninitialized constant Puma::Cluster` (#1731)
   * Fix `not_token` being able to be set to true (#1803)
+  * Fix "Hang on SIGTERM with ruby 2.6 in clustered mode" ([PR #1741], [#1674], [#1720], [#1730], [#1755])
+
+[PR #1741]: https://github.com/puma/puma/pull/1741
+[#1674]: https://github.com/puma/puma/issues/1674
+[#1720]: https://github.com/puma/puma/issues/1720
+[#1730]: https://github.com/puma/puma/issues/1730
+[#1755]: https://github.com/puma/puma/issues/1755
 
 ## 3.12.1 / 2019-03-19
 
