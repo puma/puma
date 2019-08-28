@@ -113,6 +113,18 @@ class Http11ParserTest < Minitest::Test
     assert_equal 'posts-17408', req['FRAGMENT']
   end
 
+  def test_semicolon_in_path
+    parser = Puma::HttpParser.new
+    req = {}
+    get = "GET /forums/1/path;stillpath/2375?page=1 HTTP/1.1\r\n\r\n"
+
+    parser.execute(req, get, 0)
+
+    assert parser.finished?
+    assert_equal '/forums/1/path;stillpath/2375?page=1', req['REQUEST_URI']
+    assert_equal '/forums/1/path;stillpath/2375', req['REQUEST_PATH']
+  end
+
   # lame random garbage maker
   def rand_data(min, max, readable=true)
     count = min + ((rand(max)+1) *10).to_i
