@@ -523,5 +523,5 @@ class TestIntegration < Minitest::Test
     @wait.sysread 1
 
     [thr, launcher, @events]
-   end
+  end
 end
