@@ -339,11 +339,22 @@ class TestIntegration < Minitest::Test
     sleep 2.2
     shutdown_complete = (t.status != 'run')
 
+    port_vacated =
+      begin
+        sock = Socket.new(Socket::Constants::AF_INET, Socket::SOCK_STREAM, 0);
+        sock.bind(Socket.pack_sockaddr_in(@tcp_port, '0.0.0.0'));
+        sock.close
+        true
+      rescue Errno::EADDRINUSE;
+        false
+      end
+
     # `#teardown` uses INT, needs KILL here.
     Process.kill :KILL, @server.pid unless shutdown_complete
 
     @server = nil # prevent `#teardown` from killing already killed server
     assert_equal true, shutdown_complete
+    assert_equal true, port_vacated
   end
 
   def test_term_signal_suppress_in_clustered_mode
