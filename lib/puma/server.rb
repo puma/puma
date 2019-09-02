@@ -105,7 +105,7 @@ module Puma
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
     #
-    if RUBY_PLATFORM =~ /linux/
+    if RbConfig::CONFIG['host_os'] =~ /linux/
       UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
 
       # 6 == Socket::IPPROTO_TCP
