@@ -29,8 +29,8 @@ module Puma
     #
     def initialize(stdout, stderr)
       @formatter = DefaultFormatter.new
-      @stdout = stdout.dup
-      @stderr = stderr.dup
+      @stdout = stdout
+      @stderr = stderr
 
       @stdout.sync = true
       @stderr.sync = true

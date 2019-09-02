@@ -6,6 +6,7 @@ class TestEvents < Minitest::Test
 
     assert_instance_of Puma::NullIO, events.stdout
     assert_instance_of Puma::NullIO, events.stderr
+    assert_equal events.stdout, events.stderr
   end
 
   def test_strings
@@ -18,17 +19,8 @@ class TestEvents < Minitest::Test
   def test_stdio
     events = Puma::Events.stdio
 
-    # events.stdout is a dup, so same file handle, different ruby object, but inspect should show the same file handle
-    assert_equal STDOUT.inspect, events.stdout.inspect
-    assert_equal STDERR.inspect, events.stderr.inspect
-  end
-
-  def test_stdio_respects_sync
-    STDOUT.sync = false
-    events = Puma::Events.stdio
-
-    assert !STDOUT.sync
-    assert events.stdout.sync
+    assert_equal STDOUT, events.stdout
+    assert_equal STDERR, events.stderr
   end
 
   def test_register_callback_with_block
