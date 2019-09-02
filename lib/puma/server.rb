@@ -74,6 +74,7 @@ module Puma
       @first_data_timeout = options.fetch(:first_data_timeout, FIRST_DATA_TIMEOUT)
 
       @binder = Binder.new(events)
+      @own_binder = true
 
       @leak_stack_on_error = true
 
@@ -96,6 +97,7 @@ module Puma
 
     def inherit_binder(bind)
       @binder = bind
+      @own_binder = false
     end
 
     def tcp_mode!
@@ -427,6 +429,10 @@ module Puma
       ensure
         @check.close
         @notify.close
+
+        if @status != :restart and @own_binder
+          @binder.close
+        end
       end
 
       @events.fire :state, :done
@@ -944,10 +950,6 @@ module Puma
         end
 
         @events.debug "Drained #{count} additional connections."
-      end
-
-      if @status != :restart
-        @binder.close
       end
 
       if @thread_pool
