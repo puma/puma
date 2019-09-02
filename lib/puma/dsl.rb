@@ -584,6 +584,7 @@ module Puma
     # dictates.
     #
     # @note This is incompatible with +preload_app!+.
+    # @note This is only supported for RubyGems 2.2+
     def prune_bundler(answer=true)
       @options[:prune_bundler] = answer
     end
@@ -599,6 +600,21 @@ module Puma
     #   raise_exception_on_sigterm false
     def raise_exception_on_sigterm(answer=true)
       @options[:raise_exception_on_sigterm] = answer
+    end
+
+    # When using prune_bundler, if extra runtime dependencies need to be loaded to
+    # initialize your app, then this setting can be used.
+    #
+    # Before bundler is pruned, the gem names supplied will be looked up in the bundler
+    # context and then loaded again after bundler is pruned.
+    # Only applies if prune_bundler is used.
+    #
+    # @example
+    #   extra_runtime_dependencies ['gem_name_1', 'gem_name_2']
+    # @example
+    #   extra_runtime_dependencies ['puma_worker_killer']
+    def extra_runtime_dependencies(answer = [])
+      @options[:extra_runtime_dependencies] = Array(answer)
     end
 
     # Additional text to display in process listing.

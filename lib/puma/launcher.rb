@@ -259,33 +259,62 @@ module Puma
       end
     end
 
+    def dependencies_and_files_to_require_after_prune
+      puma = spec_for_gem("puma")
+
+      deps = puma.runtime_dependencies.map do |d|
+        "#{d.name}:#{spec_for_gem(d.name).version}"
+      end
+
+      [deps, require_paths_for_gem(puma) + extra_runtime_deps_directories]
+    end
+
+    def extra_runtime_deps_directories
+      Array(@options[:extra_runtime_dependencies]).map do |d_name|
+        if (spec = spec_for_gem(d_name))
+          require_paths_for_gem(spec)
+        else
+          log "* Could not load extra dependency: #{d_name}"
+          nil
+        end
+      end.flatten.compact
+    end
+
+    def puma_wild_location
+      puma = spec_for_gem("puma")
+      dirs = require_paths_for_gem(puma)
+      puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
+      File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
+    end
+
     def prune_bundler
       return unless defined?(Bundler)
-      puma = Bundler.rubygems.loaded_specs("puma")
-      dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
-      puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
-
-      unless puma_lib_dir
+      require_rubygems_min_version!(Gem::Version.new("2.2"), "prune_bundler")
+      unless puma_wild_location
         log "! Unable to prune Bundler environment, continuing"
         return
       end
 
-      deps = puma.runtime_dependencies.map do |d|
-        spec = Bundler.rubygems.loaded_specs(d.name)
-        "#{d.name}:#{spec.version.to_s}"
-      end
+      deps, dirs = dependencies_and_files_to_require_after_prune
 
       log '* Pruning Bundler environment'
       home = ENV['GEM_HOME']
       Bundler.with_clean_env do
         ENV['GEM_HOME'] = home
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
-        wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
-        args = [Gem.ruby, wild, '-I', dirs.join(':'), deps.join(',')] + @original_argv
+        args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
         args += [{:close_others => false}]
         Kernel.exec(*args)
       end
+    end
+
+    def spec_for_gem(gem_name)
+      Bundler.rubygems.loaded_specs(gem_name)
+    end
+
+    def require_paths_for_gem(gem_spec)
+      gem_spec.full_require_paths
     end
 
     def log(str)
@@ -429,6 +458,13 @@ module Puma
       rescue Exception
         log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
       end
+    end
+
+    def require_rubygems_min_version!(min_version, feature)
+      return if min_version <= Gem::Version.new(Gem::VERSION)
+
+      raise "#{feature} is not supported on your version of RubyGems. " \
+              "You must have RubyGems #{min_version}+ to use this feature."
     end
   end
 end

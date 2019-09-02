@@ -343,6 +343,15 @@ class TestIntegration < Minitest::Test
     @server = nil # prevent `#teardown` from killing already killed server
   end
 
+  def test_load_path_includes_extra_deps
+    skip NO_FORK_MSG unless HAS_FORK
+
+    server("-w 2 -C test/config/prune_bundler_with_deps.rb test/rackup/hello-last-load-path.ru")
+
+    last_load_path = read_body(connect)
+    assert_match(%r{gems/rdoc-[\d.]+/lib$}, last_load_path)
+  end
+
   def test_not_accepts_new_connections_after_term_signal
     skip_on :jruby, :windows
 
