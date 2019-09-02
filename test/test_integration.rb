@@ -198,6 +198,7 @@ class TestIntegration < Minitest::Test
     ccli.run
 
     assert_kind_of Thread, t.join, "server didn't stop"
+    assert File.exist? @bind_path
   end
 
   def test_kill_unknown_via_pumactl
