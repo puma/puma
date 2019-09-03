@@ -44,19 +44,14 @@ module Puma
 
     attr_reader :listeners, :ios
 
+    # TODO: Removing listeners should clean up @envs too
     def env(sock)
       @envs.fetch(sock, @proto_env)
     end
 
     def close
-      @ios.each { |i| i.close }
-      @unix_paths.each do |i|
-        # Errno::ENOENT is intermittently raised
-        begin
-          File.unlink i
-        rescue Errno::ENOENT
-        end
-      end
+      @ios.each { |i| i.close && @ios.delete(i) }
+      @unix_paths.each { |i| File.unlink(i) && @unix_paths.delete(i) }
     end
 
     def import_from_env

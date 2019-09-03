@@ -193,12 +193,12 @@ class TestIntegration < Minitest::Test
         done = true
       end
     end
-    # Stop
+
+    assert File.exist? @bind_path
     ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
     ccli.run
 
     assert_kind_of Thread, t.join, "server didn't stop"
-    assert File.exist? @bind_path
   end
 
   def test_kill_unknown_via_pumactl
