@@ -67,7 +67,10 @@ matrix:
     - rvm: jruby-head
       dist: bionic
       env: OS="Bionic 18.04"
-
+    - rvm: 2.4.6
+      os: osx     
+    - rvm: 2.5.6
+      os: osx
 env:
   global:
     - TESTOPTS="-v"
