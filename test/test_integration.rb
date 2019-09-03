@@ -188,19 +188,20 @@ class TestIntegration < Minitest::Test
     until done
       @events.stdout.rewind
       log = @events.stdout.readlines.join("")
-      if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
+      if log =~ /- Worker 1 \(pid: \d+\) booted, phase: 1/
         assert_match(/TERM sent/, log)
-        assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
+        # TODO: This test sends term twice to each worker and then kills them
+        # Why are there two terms to each worker?
         done = true
       end
     end
 
-    assert File.exist? @bind_path
+    assert File.exist?(@bind_path), "Bind path must exist after phased restart"
     ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
     ccli.run
 
     assert_kind_of Thread, t.join, "server didn't stop"
-    refute File.exist? @bind_path
+    refute File.exist?(@bind_path), "Bind path must be removed after stop"
   end
 
   def test_kill_unknown_via_pumactl
