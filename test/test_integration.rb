@@ -174,6 +174,7 @@ class TestIntegration < Minitest::Test
     end
 
     wait_booted
+    assert File.exist? @bind_path
 
     s = UNIXSocket.new @bind_path
     s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
@@ -199,6 +200,7 @@ class TestIntegration < Minitest::Test
     ccli.run
 
     assert_kind_of Thread, t.join, "server didn't stop"
+    refute File.exist? @bind_path
   end
 
   def test_kill_unknown_via_pumactl
