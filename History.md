@@ -6,6 +6,13 @@
 * Bugfixes
   * Your bugfix goes here (#Github Number)
 
+## 4.1.1 / 2019-09-05
+
+* 3 bugfixes
+  * Revert our attempt to not dup STDOUT/STDERR (#1946)
+  * Fix socket close on error (#1941)
+  * Fix workers not shutting down correctly (#1908)
+
 ## 4.1.0 / 2019-08-08
 
 * 4 features 
