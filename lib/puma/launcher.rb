@@ -217,11 +217,12 @@ module Puma
     end
 
     def close_binder_listeners
-      @binder.listeners.each do |l, io|
-        io.close
+      # close binder listeners as fast as possible, so separate loop
+      @binder.listeners.each { |_, io| io.close }
+      @binder.listeners.each do |l, _|
         uri = URI.parse(l)
         next unless uri.scheme == 'unix'
-        File.unlink("#{uri.host}#{uri.path}")
+        File.unlink "#{uri.host}#{uri.path}"
       end
     end
 
