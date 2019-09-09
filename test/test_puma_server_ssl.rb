@@ -32,6 +32,7 @@ DISABLE_SSL = begin
             end
 
 class TestPumaServerSSL < Minitest::Test
+  parallelize_me!
 
   def setup
     @http = nil
@@ -203,6 +204,7 @@ end unless DISABLE_SSL
 
 # client-side TLS authentication tests
 class TestPumaServerSSLClient < Minitest::Test
+  parallelize_me!
 
   def assert_ssl_client_error_match(error, subject=nil, &blk)
     host = "127.0.0.1"
