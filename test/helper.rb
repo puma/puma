@@ -47,7 +47,11 @@ module UniquePort
   @mutex = Mutex.new
 
   def self.call
-    @mutex.synchronize { @port += 1 }
+    @mutex.synchronize {
+      @port += 1
+      @port = 3307 if @port == 3306  # MySQL on Actions
+      @port
+    }
   end
 end
 
@@ -70,6 +74,34 @@ end
 
 module TestSkips
 
+  # finds bad signals, value is an array of symbols
+  BAD_SIGNAL_LIST = begin
+    code = <<-HEREDOC
+      data = (%w[HUP INT TTIN TTOU USR1 USR2] - Signal.list.keys).join(' ')
+
+      begin
+        Signal.trap('TERM') { }
+      rescue ArgumentError
+        data << 'TERM'
+      end
+
+      puts data
+    HEREDOC
+    pipe = IO.popen RbConfig.ruby, 'r+'
+    pid = pipe.pid
+    pipe.puts code
+    pipe.close_write
+
+    begin
+      Process.kill :TERM, pid
+      pipe.read.strip.split(' ').sort.map(&:to_sym)
+    rescue Errno::EINVAL
+      "#{pipe.read.strip} TERM".split(' ').sort.map(&:to_sym)
+    ensure
+      Process.wait pid
+    end
+  end
+
   # usage: skip NO_FORK_MSG unless HAS_FORK
   # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
   HAS_FORK = ::Process.respond_to? :fork
@@ -82,8 +114,8 @@ module TestSkips
 
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
-    signal = sig.to_s
-    unless Signal.list.key? signal
+    signal = sig.to_s.sub(/\ASIG/i, '').to_sym
+    if BAD_SIGNAL_LIST.include? signal
       skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
     end
   end

@@ -1,9 +1,10 @@
 require_relative "helper"
 
 class TestPumaServer < Minitest::Test
+  parallelize_me!
 
   def setup
-    @port = 0
+    @port = UniquePort.call
     @host = "127.0.0.1"
 
     @app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
