@@ -68,7 +68,7 @@ module Puma
         @pid = pid
         @phase = phase
         @stage = :started
-        @signal = :TERM
+        @signal = "TERM"
         @options = options
         @first_term_sent = nil
         @started_at = Time.now
@@ -108,7 +108,7 @@ module Puma
       def term
         begin
           if @first_term_sent && (Time.now - @first_term_sent) > @options[:worker_shutdown_timeout]
-            @signal = :KILL
+            @signal = "KILL"
           else
             @term ||= true
             @first_term_sent ||= Time.now
@@ -119,12 +119,12 @@ module Puma
       end
 
       def kill
-        Process.kill :KILL, @pid
+        Process.kill "KILL", @pid
       rescue Errno::ESRCH
       end
 
       def hup
-        Process.kill :HUP, @pid
+        Process.kill "HUP", @pid
       rescue Errno::ESRCH
       end
     end
@@ -220,10 +220,8 @@ module Puma
             log "- Stopping #{w.pid} for phased upgrade..."
           end
 
-          unless w.term?
-            w.term
-            log "- #{w.signal} sent to #{w.pid}..."
-          end
+          w.term
+          log "- #{w.signal} sent to #{w.pid}..."
         end
       end
     end
@@ -272,7 +270,6 @@ module Puma
       server = start_server
 
       Signal.trap "SIGTERM" do
-        @worker_write << "e#{Process.pid}\n" rescue nil
         server.stop
       end
 
@@ -504,10 +501,8 @@ module Puma
                   w.boot!
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
                   force_check = true
-                when "e"
-                  w.instance_variable_set :@term, true
                 when "t"
-                  w.term unless w.term?
+                  w.term
                   force_check = true
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
