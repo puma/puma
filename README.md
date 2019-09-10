@@ -118,17 +118,6 @@ This code can be used to setup the process before booting the application, allow
 you to do some Puma-specific things that you don't want to embed in your application.
 For instance, you could fire a log notification that a worker booted or send something to statsd. This can be called multiple times.
 
-If you're preloading your application and using ActiveRecord, it's recommended that you setup your connection pool here:
-
-```ruby
-# config/puma.rb
-on_worker_boot do
-  ActiveSupport.on_load(:active_record) do
-    ActiveRecord::Base.establish_connection
-  end
-end
-```
-
 `before_fork` specifies a block to be run before workers are forked:
 
 ```ruby
