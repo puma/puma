@@ -1,6 +1,12 @@
 name: Puma
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '*'
 
 jobs:
   build:
@@ -35,7 +41,7 @@ jobs:
       with:
         ruby-version: ${{ matrix.ruby }}
 
-    - name: Install ragel
+    - name: ubuntu & macos - install ragel
       if:   startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')
       run:  |
         if [ "${{ matrix.os }}" == "macos" ]; then
@@ -43,7 +49,7 @@ jobs:
         else
           sudo apt-get install ragel
         fi
-    - name: Windows MSYS2
+    - name: windows - update MSYS2, openssl, ragel
       if:   startsWith(matrix.os, 'windows')
       uses: MSP-Greg/msys2-action@master
       with:

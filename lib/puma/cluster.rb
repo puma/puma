@@ -92,10 +92,6 @@ module Puma
         @term
       end
 
-      def term?
-        @term
-      end
-
       def ping!(status)
         @last_checkin = Time.now
         @last_status = status
