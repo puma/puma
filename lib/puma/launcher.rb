@@ -217,12 +217,7 @@ module Puma
     end
 
     def close_binder_listeners
-      @binder.listeners.each do |l, io|
-        io.close
-        uri = URI.parse(l)
-        next unless uri.scheme == 'unix'
-        File.unlink("#{uri.host}#{uri.path}")
-      end
+      @binder.close_listeners
     end
 
     private
@@ -246,15 +241,9 @@ module Puma
         Dir.chdir(@restart_dir)
         Kernel.exec(*argv)
       else
-        redirects = {:close_others => true}
-        @binder.listeners.each_with_index do |(l, io), i|
-          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-          redirects[io.to_i] = io.to_i
-        end
-
         argv = restart_args
         Dir.chdir(@restart_dir)
-        argv += [redirects]
+        argv += [@binder.redirects_for_restart]
         Kernel.exec(*argv)
       end
     end

@@ -42,7 +42,7 @@ module Puma
       @ios = []
     end
 
-    attr_reader :listeners, :ios
+    attr_reader :ios
 
     def env(sock)
       @envs.fetch(sock, @proto_env)
@@ -413,5 +413,22 @@ module Puma
       s
     end
 
+    def close_listeners
+      @listeners.each do |l, io|
+        io.close
+        uri = URI.parse(l)
+        next unless uri.scheme == 'unix'
+        File.unlink("#{uri.host}#{uri.path}")
+      end
+    end
+
+    def redirects_for_restart
+      redirects = {:close_others => true}
+      @listeners.each_with_index do |(l, io), i|
+        ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
+        redirects[io.to_i] = io.to_i
+      end
+      redirects
+    end
   end
 end

@@ -24,7 +24,7 @@ class TestBinder < TestBinderBase
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
     @binder.parse(["tcp://localhost:10001"], @events)
 
-    assert_equal [], @binder.listeners
+    assert_equal [], @binder.instance_variable_get(:@listeners)
   end
 end
 
@@ -54,7 +54,7 @@ class TestBinderMRI < TestBinderBase
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
     @binder.parse(["ssl://localhost:10002?key=#{@key}&cert=#{@cert}"], @events)
 
-    assert_equal [], @binder.listeners
+    assert_equal [], @binder.instance_variable_get(:@listeners)
   end
 
   def test_binder_parses_ssl_cipher_filter
