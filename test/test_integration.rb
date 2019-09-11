@@ -7,6 +7,7 @@ require "open3"
 class TestIntegration < Minitest::Test
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
+  WORKERS_FOR_CLUSTER = 2
 
   def setup
     @state_path   = "test/test_#{name}_puma.state"
@@ -226,13 +227,13 @@ class TestIntegration < Minitest::Test
 
   def test_restart_closes_keepalive_sockets_workers
     skip NO_FORK_MSG unless HAS_FORK
-    _, new_reply = restart_server_and_listen("-q -w 2 test/rackup/hello.ru")
+    _, new_reply = restart_server_and_listen("-q -w #{WORKERS_FOR_CLUSTER} test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
   end
 
   def test_sigterm_closes_listeners_on_forked_servers
     skip NO_FORK_MSG unless HAS_FORK
-    pid = start_forked_server("-w 2 -q test/rackup/sleep.ru")
+    pid = start_forked_server("-w #{WORKERS_FOR_CLUSTER} -q test/rackup/sleep.ru")
     threads = []
     initial_reply = nil
     next_replies = []
@@ -308,7 +309,7 @@ class TestIntegration < Minitest::Test
   def test_term_signal_exit_code_in_clustered_mode
     skip NO_FORK_MSG unless HAS_FORK
 
-    pid = start_forked_server("-w 2 test/rackup/hello.ru")
+    pid = start_forked_server("-w #{WORKERS_FOR_CLUSTER} test/rackup/hello.ru")
     _, status = stop_forked_server(pid)
 
     assert_equal 15, status
@@ -326,7 +327,7 @@ class TestIntegration < Minitest::Test
   def test_term_signal_suppress_in_clustered_mode
     skip NO_FORK_MSG unless HAS_FORK
 
-    server("-w 2 -C test/config/suppress_exception.rb test/rackup/hello.ru")
+    server("-w #{WORKERS_FOR_CLUSTER} -C test/config/suppress_exception.rb test/rackup/hello.ru")
 
     Process.kill(:TERM, @server.pid)
     begin
@@ -342,7 +343,7 @@ class TestIntegration < Minitest::Test
   def test_load_path_includes_extra_deps
     skip NO_FORK_MSG unless HAS_FORK
 
-    server("-w 2 -C test/config/prune_bundler_with_deps.rb test/rackup/hello-last-load-path.ru")
+    server("-w #{WORKERS_FOR_CLUSTER} -C test/config/prune_bundler_with_deps.rb test/rackup/hello-last-load-path.ru")
 
     last_load_path = read_body(connect)
     assert_match(%r{gems/rdoc-[\d.]+/lib$}, last_load_path)
@@ -380,7 +381,7 @@ class TestIntegration < Minitest::Test
     skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
 
     worker_pids = []
-    server = server("-w 2 test/rackup/hello.ru")
+    server = server("-w #{WORKERS_FOR_CLUSTER} test/rackup/hello.ru")
     # Get the PIDs of the child workers.
     while worker_pids.size < 2
       next unless line = server.gets.match(/pid: (\d+)/)
