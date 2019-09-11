@@ -67,4 +67,21 @@ class TestIntegrationSingle < TestIntegration
     @server.close unless @server.closed?
     @server = nil # prevent `#teardown` from killing already killed server
   end
+
+  def test_int_signal_with_background_thread_in_jruby
+    skip_unless :jruby
+
+    cli_server('test/rackup/hello.ru')
+    begin
+      sock = TCPSocket.new(HOST, @tcp_port)
+      sock.close
+    rescue => ex
+      fail("Port didn't open properly: #{ex.message}")
+    end
+
+    Process.kill :INT, @server.pid
+    Process.wait @server.pid
+
+    assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
+  end
 end
