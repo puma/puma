@@ -8,6 +8,8 @@ class TestIntegration < Minitest::Test
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
   WORKERS_FOR_CLUSTER = 2
+  BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
+    "#{Gem.ruby} -Ilib"
 
   def setup
     @state_path   = "test/test_#{name}_puma.state"
@@ -43,9 +45,7 @@ class TestIntegration < Minitest::Test
 
   def server_cmd(argv)
     @tcp_port = UniquePort.call
-    base = "#{Gem.ruby} -Ilib bin/puma"
-    base = "bundle exec #{base}" if defined?(Bundler)
-    "#{base} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
+    "#{BASE} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
   end
 
   def server(argv)
