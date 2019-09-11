@@ -286,10 +286,10 @@ $ bundle install
 $ bundle exec rake
 ```
 
-To run a single test file, use the `TEST` environment variable:
+To run a single test file, run only that file:
 
 ```bash
-$ TEST=test/test_binder.rb bundle exec rake test
+$ ruby -Ilib test/test_integration.rb
 ```
 
 Or use [`m`](https://github.com/qrush/m):
