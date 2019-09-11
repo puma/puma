@@ -41,7 +41,7 @@ class TestIntegration < Minitest::Test
 
   def server_cmd(argv)
     @tcp_port = UniquePort.call
-    "#{BASE} -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
+    "#{BASE} bin/puma -b tcp://127.0.0.1:#{@tcp_port} #{argv}"
   end
 
   def server(argv)
