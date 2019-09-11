@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "helper"
-require "puma/cli"
 require "puma/control_cli"
 require "open3"
 
