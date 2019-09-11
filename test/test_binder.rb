@@ -7,7 +7,7 @@ require "puma/puma_http11"
 
 class TestBinderBase < Minitest::Test
   def setup
-    @events = Puma::Events.null
+    @events = Puma::Events.strings
     @binder = Puma::Binder.new(@events)
     @key    = File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
     @cert   = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
@@ -97,8 +97,6 @@ class TestBinderMRI < TestBinderBase
   end
 
   def test_correct_zero_port
-    @events = Puma::Events.strings
-    @binder = Puma::Binder.new(@events)
     @binder.parse(["tcp://localhost:0"], @events)
 
     m = %r!tcp://127.0.0.1:(\d+)!.match(@events.stdout.string)
@@ -108,8 +106,6 @@ class TestBinderMRI < TestBinderBase
   end
 
   def test_logs_all_localhost_bindings
-    @events = Puma::Events.strings
-    @binder = Puma::Binder.new(@events)
     @binder.parse(["tcp://localhost:0"], @events)
 
     assert_match %r!tcp://127.0.0.1:(\d+)!, @events.stdout.string
