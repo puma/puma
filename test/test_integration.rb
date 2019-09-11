@@ -144,55 +144,55 @@ class TestIntegration < Minitest::Test
     assert_kind_of Thread, t.join, "server didn't stop"
   end
 
-  def test_phased_restart_via_pumactl
-    skip NO_FORK_MSG unless HAS_FORK
-
-    delay = 40
-
-    conf = Puma::Configuration.new do |c|
-      c.quiet
-      c.state_path @state_path
-      c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
-      c.workers 2
-      c.worker_shutdown_timeout 2
-      c.rackup "test/rackup/sleep.ru"
-    end
-
-    l = Puma::Launcher.new conf, :events => @events
-
-    t = Thread.new do
-      Thread.current.abort_on_exception = true
-      l.run
-    end
-
-    wait_booted
-
-    s = UNIXSocket.new @bind_path
-    s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
-
-    sout = StringIO.new
-    # Phased restart
-    ccli = Puma::ControlCLI.new ["-S", @state_path, "phased-restart"], sout
-    ccli.run
-
-    done = false
-    until done
-      @events.stdout.rewind
-      log = @events.stdout.readlines.join("")
-      if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
-        assert_match(/TERM sent/, log)
-        assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
-        done = true
-      end
-    end
-    # Stop
-    ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
-    ccli.run
-
-    assert_kind_of Thread, t.join, "server didn't stop"
-    assert File.exist? @bind_path
-  end
+  # def test_phased_restart_via_pumactl
+  #   skip NO_FORK_MSG unless HAS_FORK
+  #
+  #   delay = 40
+  #
+  #   conf = Puma::Configuration.new do |c|
+  #     c.quiet
+  #     c.state_path @state_path
+  #     c.bind "unix://#{@bind_path}"
+  #     c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
+  #     c.workers 2
+  #     c.worker_shutdown_timeout 2
+  #     c.rackup "test/rackup/sleep.ru"
+  #   end
+  #
+  #   l = Puma::Launcher.new conf, :events => @events
+  #
+  #   t = Thread.new do
+  #     Thread.current.abort_on_exception = true
+  #     l.run
+  #   end
+  #
+  #   wait_booted
+  #
+  #   s = UNIXSocket.new @bind_path
+  #   s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
+  #
+  #   sout = StringIO.new
+  #   # Phased restart
+  #   ccli = Puma::ControlCLI.new ["-S", @state_path, "phased-restart"], sout
+  #   ccli.run
+  #
+  #   done = false
+  #   until done
+  #     @events.stdout.rewind
+  #     log = @events.stdout.readlines.join("")
+  #     if log =~ /- Worker \d \(pid: \d+\) booted, phase: 1/
+  #       assert_match(/TERM sent/, log)
+  #       assert_match(/- Worker \d \(pid: \d+\) booted, phase: 1/, log)
+  #       done = true
+  #     end
+  #   end
+  #   # Stop
+  #   ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
+  #   ccli.run
+  #
+  #   assert_kind_of Thread, t.join, "server didn't stop"
+  #   assert File.exist? @bind_path
+  # end
 
   def test_kill_unknown_via_pumactl
     skip_on :jruby
