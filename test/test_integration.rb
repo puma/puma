@@ -4,9 +4,6 @@ require_relative "helper"
 require "puma/control_cli"
 require "open3"
 
-# TODO: Remove over-utilization of @instance variables
-# TODO: remove stdout logging, get everything out of my rainbow dots
-
 class TestIntegration < Minitest::Test
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
