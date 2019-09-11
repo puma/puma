@@ -116,9 +116,9 @@ class TestIntegration < Minitest::Test
 
     conf = Puma::Configuration.new do |c|
       c.quiet
-      c.state_path @state_path
-      c.bind "unix://#{@bind_path}"
-      c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
+      c.state_path state_path
+      c.bind "unix://#{bind_path}"
+      c.activate_control_app "unix://#{control_path}", :auth_token => TOKEN
       c.rackup "test/rackup/hello.ru"
     end
 
@@ -130,13 +130,13 @@ class TestIntegration < Minitest::Test
 
     wait_booted
 
-    s = UNIXSocket.new @bind_path
+    s = UNIXSocket.new bind_path
     s << "GET / HTTP/1.0\r\n\r\n"
     assert_equal "Hello World", read_body(s)
 
     sout = StringIO.new
 
-    ccli = Puma::ControlCLI.new %W!-S #{@state_path} stop!, sout
+    ccli = Puma::ControlCLI.new %W!-S #{state_path} stop!, sout
 
     ccli.run
 
@@ -150,9 +150,9 @@ class TestIntegration < Minitest::Test
   #
   #   conf = Puma::Configuration.new do |c|
   #     c.quiet
-  #     c.state_path @state_path
-  #     c.bind "unix://#{@bind_path}"
-  #     c.activate_control_app "unix://#{@control_path}", :auth_token => TOKEN
+  #     c.state_path state_path
+  #     c.bind "unix://#{bind_path}"
+  #     c.activate_control_app "unix://#{control_path}", :auth_token => TOKEN
   #     c.workers 2
   #     c.worker_shutdown_timeout 2
   #     c.rackup "test/rackup/sleep.ru"
@@ -167,12 +167,12 @@ class TestIntegration < Minitest::Test
   #
   #   wait_booted
   #
-  #   s = UNIXSocket.new @bind_path
+  #   s = UNIXSocket.new bind_path
   #   s << "GET /sleep#{delay} HTTP/1.0\r\n\r\n"
   #
   #   sout = StringIO.new
   #   # Phased restart
-  #   ccli = Puma::ControlCLI.new ["-S", @state_path, "phased-restart"], sout
+  #   ccli = Puma::ControlCLI.new ["-S", state_path, "phased-restart"], sout
   #   ccli.run
   #
   #   done = false
@@ -186,11 +186,11 @@ class TestIntegration < Minitest::Test
   #     end
   #   end
   #   # Stop
-  #   ccli = Puma::ControlCLI.new ["-S", @state_path, "stop"], sout
+  #   ccli = Puma::ControlCLI.new ["-S", state_path, "stop"], sout
   #   ccli.run
   #
   #   assert_kind_of Thread, t.join, "server didn't stop"
-  #   assert File.exist? @bind_path
+  #   assert File.exist? bind_path
   # end
 
   def test_kill_unknown_via_pumactl
