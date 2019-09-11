@@ -18,7 +18,7 @@ end
 
 class WebServerTest < Minitest::Test
   parallelize_me!
-  
+
   VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
 
   def setup
