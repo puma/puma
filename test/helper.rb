@@ -47,7 +47,11 @@ module UniquePort
   @mutex = Mutex.new
 
   def self.call
-    @mutex.synchronize { @port += 1 }
+    @mutex.synchronize {
+      @port += 1
+      @port = 3307 if @port == 3306  # MySQL on Actions
+      @port
+    }
   end
 end
 

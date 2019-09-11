@@ -13,9 +13,11 @@ class TestIntegrationPumactl < TestIntegration
   def teardown
     super
 
-    File.unlink @state_path   rescue nil
-    File.unlink @bind_path    rescue nil
-    File.unlink @control_path rescue nil
+    begin
+      refute File.exist?(@bind_path), "Bind path must be removed after stop"
+    ensure
+      [@bind_path, @state_path, @control_path].each { |p| File.unlink(p) rescue nil }
+    end
   end
 
   def test_pumactl_stop
@@ -41,6 +43,7 @@ class TestIntegrationPumactl < TestIntegration
 
     # Get the PIDs of the phase 0 workers.
     phase0_worker_pids = get_worker_pids 0
+    assert File.exist? @bind_path
 
     # Phased restart
     cli_pumactl "-C unix://#{@control_path} -T #{TOKEN} phased-restart"
@@ -53,6 +56,7 @@ class TestIntegrationPumactl < TestIntegration
     assert_equal WORKERS, phase0_worker_pids.length, msg
     assert_equal WORKERS, phase1_worker_pids.length, msg
     assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
+    assert File.exist?(@bind_path), "Bind path must exist after phased restart"
 
     # Stop
     cli_pumactl "-C unix://#{@control_path} -T #{TOKEN} stop"
