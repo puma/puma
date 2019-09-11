@@ -12,10 +12,6 @@ class TestIntegration < Minitest::Test
     "#{Gem.ruby} -Ilib"
 
   def setup
-    @state_path   = "test/test_#{name}_puma.state"
-    @bind_path    = "test/test_#{name}_server.sock"
-    @control_path = "test/test_#{name}_control.sock"
-
     @server = nil
 
     @wait, @ready = IO.pipe
@@ -25,9 +21,9 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    File.unlink @state_path   rescue nil
-    File.unlink @bind_path    rescue nil
-    File.unlink @control_path rescue nil
+    [state_path, bind_path, control_path].each do |p|
+      File.unlink(p) if File.exist?(p)
+    end
 
     @wait.close
     @ready.close
@@ -654,5 +650,28 @@ class TestIntegration < Minitest::Test
     @wait.sysread 1
 
     [thr, launcher, @events]
+  end
+
+  def test_method_name
+    @test_method_name ||= begin
+      test_method = caller.detect { |l| l.match(/in `(test_.*)/) }
+      test_method = /in `(test_.*)'/.match(test_method)
+      test_method && test_method[1]
+    end
+  end
+  
+  def state_path
+    return "" unless test_method_name
+    "test/#{test_method_name}_puma.state"
+  end
+
+  def bind_path
+    return "" unless test_method_name
+    "test/#{test_method_name}_server.sock"
+  end
+
+  def control_path
+    return "" unless test_method_name
+    "test/#{test_method_name}_control.sock"
   end
 end
