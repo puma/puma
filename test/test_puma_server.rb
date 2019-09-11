@@ -1,7 +1,8 @@
 require_relative "helper"
 
 class TestPumaServer < Minitest::Test
-
+  parallelize_me!
+  
   def setup
     @port = 0
     @host = "127.0.0.1"
