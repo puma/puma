@@ -369,7 +369,7 @@ class TestIntegration < Minitest::Test
     wait.sysread 1
 
     [thr, launcher, events]
-   end
+  end
 
   def worker_respawn
     skip NO_FORK_MSG unless HAS_FORK
