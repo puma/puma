@@ -1,8 +1,6 @@
 require_relative "helper"
 
 require "puma/configuration"
-require "puma/const"
-require "puma/launcher"
 
 class TestLauncher < Minitest::Test
   def test_dependencies_and_files_to_require_after_prune_is_correctly_built_for_no_extra_deps
