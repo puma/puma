@@ -84,10 +84,12 @@ module TestSkips
   UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
   UNIX_SKT_MSG = "UnixSockets aren't available on the #{RUBY_PLATFORM} platform"
 
+  SIGNAL_LIST = Signal.list.keys.map(&:to_sym) - (Puma.windows? ? [:TERM] : [])
+
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
-    signal = sig.to_s
-    unless Signal.list.key? signal
+    signal = sig.to_s.sub(/\ASIG/, '').to_sym
+    unless SIGNAL_LIST.include? signal
       skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
     end
   end

@@ -26,17 +26,17 @@ class TestIntegrationSingle < TestIntegration
     skip_on :windows # no SIGTERM
     skip_on :jruby # JVM does not return correct exit code for TERM
 
-    pid = cli_server("test/rackup/hello.ru").pid
-    _, status = send_term_to_server(pid)
+    cli_server "test/rackup/hello.ru"
+    _, status = stop_server
 
     assert_equal 15, status
   end
 
   def test_term_suppress
-    skip_on :windows # no SIGTERM
+    skip_on :windows # no TERM
 
-    pid = cli_server("-C test/config/suppress_exception.rb test/rackup/hello.ru").pid
-    _, status = send_term_to_server(pid)
+    cli_server "-C test/config/suppress_exception.rb test/rackup/hello.ru"
+    _, status = stop_server
 
     assert_equal 0, status
   end

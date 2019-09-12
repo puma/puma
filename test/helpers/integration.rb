@@ -15,6 +15,7 @@ class TestIntegration < Minitest::Test
 
   def setup
     @ios_to_close = []
+    @bind_path    = "test/#{name}_server.sock"
   end
 
   def teardown
@@ -36,26 +37,31 @@ class TestIntegration < Minitest::Test
       io.close if io.is_a?(IO) && !io.closed?
       io = nil
     end
+    File.unlink(@bind_path) rescue nil
   end
 
   private
 
-  def cli_server(argv, bind = nil)
-    if bind
-      cmd = "#{BASE} bin/puma -b #{bind} #{argv}"
+  def cli_server(argv, unix: false)
+    if unix
+      cmd = "#{BASE} bin/puma -b unix://#{@bind_path} #{argv}"
     else
       @tcp_port = UniquePort.call
       cmd = "#{BASE} bin/puma -b tcp://#{HOST}:#{@tcp_port} #{argv}"
     end
     @server = IO.popen(cmd, "r")
     wait_for_server_to_boot
+    @pid = @server.pid
     @server
   end
 
-  def send_term_to_server(pid)
-    Process.kill(:TERM, pid)
+  def stop_server(pid = @pid, signal: :TERM)
+    Process.kill signal, pid
     sleep 1
-    Process.wait2(pid)
+    begin
+      Process.wait2 pid
+    rescue Errno::ECHILD
+    end
   end
 
   def restart_server_and_listen(argv)
@@ -77,8 +83,8 @@ class TestIntegration < Minitest::Test
     true while @server.gets !~ /Ctrl-C/ # wait for server to say it booted
   end
 
-  def connect(path = nil)
-    s = TCPSocket.new HOST, @tcp_port
+  def connect(path = nil, unix: false)
+    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
     @ios_to_close << s
     s << "GET /#{path} HTTP/1.1\r\n\r\n"
     true until s.gets == "\r\n"
