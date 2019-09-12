@@ -346,7 +346,9 @@ module Puma
       log "+ Changing to #{dir}"
       Dir.chdir dir
     end
-
+  
+    # Inside of a child process, this will return all zeroes, as @workers is only populated in 
+    # the master process.
     def stats
       old_worker_count = @workers.count { |w| w.phase != @phase }
       booted_worker_count = @workers.count { |w| w.booted? }
