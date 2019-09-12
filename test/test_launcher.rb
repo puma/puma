@@ -6,8 +6,7 @@ require "puma/launcher"
 
 class TestLauncher < Minitest::Test
   def test_dependencies_and_files_to_require_after_prune_is_correctly_built_for_no_extra_deps
-    skip_on :appveyor, suffix: " - bundler not used in appveyor so prune bundler logic tests unavailable"
-
+    skip_on :no_bundler
     l = Puma::Launcher.new Puma::Configuration.new
     deps, dirs = l.send(:dependencies_and_files_to_require_after_prune)
 
@@ -19,8 +18,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_dependencies_and_files_to_require_after_prune_is_correctly_built_with_extra_deps
-    skip_on :appveyor, suffix: " - bundler not used in appveyor so prune bundler logic tests unavailable"
-
+    skip_on :no_bundler
     conf = Puma::Configuration.new do |c|
       c.extra_runtime_dependencies ['rdoc']
     end
@@ -41,7 +39,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_extra_runtime_deps_directories_is_correctly_built
-    skip_on :appveyor, suffix: " - bundler not used in appveyor so prune bundler logic tests unavailable"
+    skip_on :no_bundler
     conf = Puma::Configuration.new do |c|
       c.extra_runtime_dependencies ['rdoc']
     end
@@ -53,7 +51,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_puma_wild_location_is_an_absolute_path
-    skip_on :appveyor, suffix: " - bundler not used in appveyor so prune bundler logic tests unavailable"
+    skip_on :no_bundler
     l = Puma::Launcher.new Puma::Configuration.new
     puma_wild_location = l.send(:puma_wild_location)
     assert_match(%r{bin/puma-wild$}, puma_wild_location)
