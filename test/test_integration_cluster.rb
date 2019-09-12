@@ -8,6 +8,20 @@ class TestIntegrationCluster < TestIntegration
     super
   end
 
+  def test_siginfo_thread_print
+    skip_unless_signal_exist? :INFO
+
+    cli_server("-w #{WORKERS} -q test/rackup/hello.ru")
+    worker_pids = get_worker_pids
+    output = []
+    t = Thread.new { output << @server.readlines }
+    Process.kill(:INFO, worker_pids.first)
+    Process.kill(:INT, @server.pid)
+    t.join
+
+    assert_match "Thread TID", output.join
+  end
+
   def test_usr2_restart
     _, new_reply = restart_server_and_listen("-q -w #{WORKERS} test/rackup/hello.ru")
     assert_equal "Hello World", new_reply
@@ -92,7 +106,7 @@ class TestIntegrationCluster < TestIntegration
     pid = cli_server("-w #{WORKERS} test/rackup/hello.ru").pid
 
     # Get the PIDs of the child workers.
-    worker_pids = get_worker_pids 0
+    worker_pids = get_worker_pids
 
     # Signal the workers to terminate, and wait for them to die.
     Process.kill :TERM, pid

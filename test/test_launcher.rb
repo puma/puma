@@ -60,4 +60,14 @@ class TestLauncher < Minitest::Test
     # assert no "/../" in path
     refute_match(%r{/\.\./}, puma_wild_location)
   end
+
+  def test_prints_thread_traces
+    events = Puma::Events.strings
+    l = Puma::Launcher.new(Puma::Configuration.new, events: events)
+
+    l.send(:log_thread_status)
+    events.stdout.rewind
+
+    assert_match "Thread TID", events.stdout.read
+  end
 end

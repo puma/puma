@@ -84,4 +84,17 @@ class TestIntegrationSingle < TestIntegration
 
     assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
   end
+
+  def test_siginfo_thread_print
+    skip_unless_signal_exist? :INFO
+
+    cli_server("test/rackup/hello.ru")
+    output = []
+    t = Thread.new { output << @server.readlines }
+    Process.kill(:INFO, @server.pid)
+    Process.kill(:INT, @server.pid)
+    t.join
+
+    assert_match "Thread TID", output.join
+  end
 end

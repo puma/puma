@@ -9,7 +9,7 @@ class TestPumaServer < Minitest::Test
 
     @app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    @events = Puma::Events.new STDOUT, STDERR
+    @events = Puma::Events.strings
     @server = Puma::Server.new @app, @events
   end
 
@@ -280,9 +280,6 @@ EOF
   end
 
   def test_doesnt_print_backtrace_in_production
-    @events = Puma::Events.strings
-    @server = Puma::Server.new @app, @events
-
     @server.app = proc { |e| raise "don't leak me bro" }
     @server.leak_stack_on_error = false
     @server.add_tcp_listener @host, @port
@@ -298,7 +295,6 @@ EOF
   end
 
   def test_prints_custom_error
-    @events = Puma::Events.strings
     re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
     @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
 
@@ -314,7 +310,6 @@ EOF
   end
 
   def test_leh_gets_env_as_well
-    @events = Puma::Events.strings
     re = lambda { |err,env|
       env['REQUEST_PATH'] || raise("where is env?")
       [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]

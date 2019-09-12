@@ -325,6 +325,17 @@ module Puma
       log "- Goodbye!"
     end
 
+    def log_thread_status
+      Thread.list.each do |thread|
+        @events.log "Thread TID-#{thread.object_id.to_s(36)} #{thread['label']}"
+        if thread.backtrace
+          @events.log thread.backtrace.join("\n")
+        else
+          @events.log "<no backtrace available>"
+        end
+      end
+    end
+
     def set_process_title
       Process.respond_to?(:setproctitle) ? Process.setproctitle(title) : $0 = title
     end
@@ -440,6 +451,15 @@ module Puma
         end
       rescue Exception
         log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
+      end
+
+      begin
+        Signal.trap "SIGINFO" do
+          log_thread_status
+        end
+      rescue Exception
+        # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
+        # to see this constantly on Linux.
       end
     end
 
