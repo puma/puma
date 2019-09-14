@@ -3,9 +3,9 @@ require_relative "helpers/integration"
 
 class TestIntegrationCluster < TestIntegration
   def setup
-    skip NO_FORK_MSG unless HAS_FORK
-
     super
+    
+    skip NO_FORK_MSG unless HAS_FORK
   end
 
   def test_siginfo_thread_print
