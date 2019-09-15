@@ -50,14 +50,6 @@ module Puma
 
     def close
       @ios.each { |i| i.close }
-      @unix_paths.each do |i|
-        # Errno::ENOENT is intermittently raised
-        begin
-          unix_socket = UNIXSocket.new i
-          unix_socket.close
-        rescue Errno::ENOENT
-        end
-      end
     end
 
     def import_from_env
@@ -429,6 +421,10 @@ module Puma
         next unless uri.scheme == 'unix'
         File.unlink("#{uri.host}#{uri.path}")
       end
+    end
+
+    def close_unix_paths
+      @unix_paths.each { |up| File.unlink(up) if File.exist? up }
     end
 
     def redirects_for_restart

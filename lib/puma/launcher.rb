@@ -220,6 +220,10 @@ module Puma
       @binder.close_listeners
     end
 
+    def close_binder_unix_paths
+      @binder.close_unix_paths
+    end
+
     private
 
     def reload_worker_directory
