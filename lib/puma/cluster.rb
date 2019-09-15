@@ -248,6 +248,7 @@ module Puma
       @suicide_pipe.close
 
       Thread.new do
+        Puma.set_thread_name "worker check pipe"
         IO.select [@check_pipe]
         log "! Detected parent died, dying"
         exit! 1
@@ -282,6 +283,7 @@ module Puma
       end
 
       Thread.new(@worker_write) do |io|
+        Puma.set_thread_name "stat payload"
         base_payload = "p#{Process.pid}"
 
         while true

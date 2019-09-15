@@ -307,6 +307,7 @@ module Puma
 
     def run_in_thread
       @thread = Thread.new do
+        Puma.set_thread_name "reactor"
         begin
           run_internal
         rescue StandardError => e

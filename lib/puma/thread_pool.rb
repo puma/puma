@@ -87,8 +87,7 @@ module Puma
       @spawned += 1
 
       th = Thread.new(@spawned) do |spawned|
-        # Thread name is new in Ruby 2.3
-        Thread.current.name = 'puma %03i' % spawned if Thread.current.respond_to?(:name=)
+        Puma.set_thread_name 'threadpool %03i' % spawned
         todo  = @todo
         block = @block
         mutex = @mutex
@@ -255,6 +254,7 @@ module Puma
         @running = true
 
         @thread = Thread.new do
+          Puma.set_thread_name "threadpool autotrim"
           while @running
             @pool.trim
             sleep @timeout
@@ -284,6 +284,7 @@ module Puma
         @running = true
 
         @thread = Thread.new do
+          Puma.set_thread_name "threadpool reaper"
           while @running
             @pool.reap
             sleep @timeout
