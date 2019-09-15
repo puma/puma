@@ -207,7 +207,10 @@ module Puma
       @events.fire :state, :running
 
       if background
-        @thread = Thread.new { handle_servers_lopez_mode }
+        @thread = Thread.new do
+          Puma.set_thread_name "server"
+          handle_servers_lopez_mode
+        end
         return @thread
       else
         handle_servers_lopez_mode
@@ -351,7 +354,10 @@ module Puma
       @events.fire :state, :running
 
       if background
-        @thread = Thread.new { handle_servers }
+        @thread = Thread.new do
+          Puma.set_thread_name "server"
+          handle_servers
+        end
         return @thread
       else
         handle_servers

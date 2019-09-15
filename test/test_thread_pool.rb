@@ -37,7 +37,7 @@ class TestThreadPool < Minitest::Test
       @work_done.wait(@work_mutex, 5)
       assert_equal 1, pool.spawned
       assert_equal [1], saw
-      assert_equal('puma 001', thread_name) if Thread.current.respond_to?(:name)
+      assert_equal('puma threadpool 001', thread_name) if Thread.current.respond_to?(:name)
     end
   end
 

@@ -328,6 +328,10 @@ module Puma
     def log_thread_status
       Thread.list.each do |thread|
         @events.log "Thread TID-#{thread.object_id.to_s(36)} #{thread['label']}"
+        logstr = "Thread: TID-#{thread.object_id.to_s(36)}"
+        logstr += " #{thread.name}" if thread.respond_to?(:name)
+        @events.log logstr
+
         if thread.backtrace
           @events.log thread.backtrace.join("\n")
         else
