@@ -52,6 +52,9 @@ class TestIntegration < Minitest::Test
     @server
   end
 
+  # rescue statements are just in case method is called with a server
+  # that is already stopped/killed, especially since Process.wait2 is
+  # blocking
   def stop_server(pid = @pid, signal: :TERM)
     begin
       Process.kill signal, pid

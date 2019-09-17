@@ -100,6 +100,8 @@ class TestIntegrationCluster < TestIntegration
 
     worker_respawn(0) do |phase0_worker_pids|
       last = phase0_worker_pids.last
+      # test is tricky if only one worker is TERM'd, so kill all but
+      # spread out, so all aren't killed at once
       phase0_worker_pids.each do |pid|
         Process.kill :TERM, pid
         sleep 4 unless pid == last
