@@ -21,6 +21,9 @@ require_relative "helpers/apps"
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
 
+$debugging_info = ''.dup
+$debugging_hold = false    # needed for TestCLI#test_control_clustered
+
 require "puma"
 require "puma/events"
 require "puma/detect"
@@ -131,5 +134,20 @@ class Minitest::Test
   def self.run(reporter, options = {}) # :nodoc:
     prove_it!
     super
+  end
+
+  def full_name
+    "#{self.class.name}##{name}"
+  end
+end
+
+Minitest.after_run do
+  # needed for TestCLI#test_control_clustered
+  unless $debugging_hold
+    out = $debugging_info.strip
+    unless out.empty?
+      puts "", " Debugging Info".rjust(75, '-'),
+        out, '-' * 75, ""
+    end
   end
 end

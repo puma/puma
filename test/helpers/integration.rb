@@ -20,24 +20,21 @@ class TestIntegration < Minitest::Test
 
   def teardown
     if defined?(@server) && @server
-      begin
-        Process.kill "INT", @server.pid
-      rescue
-        Errno::ESRCH
-      end
-      begin
-        Process.wait @server.pid
-      rescue Errno::ECHILD
-      end
-      @server.close unless @server.closed?
-      @server = nil
+      stop_server @pid, signal: :INT
     end
 
     @ios_to_close.each do |io|
       io.close if io.is_a?(IO) && !io.closed?
       io = nil
     end
+    refute File.exist?(@bind_path), "Bind path must be removed after stop"
     File.unlink(@bind_path) rescue nil
+
+    # wait until the end for OS buffering?
+    if defined?(@server) && @server
+      @server.close unless @server.closed?
+      @server = nil
+    end
   end
 
   private
@@ -56,8 +53,10 @@ class TestIntegration < Minitest::Test
   end
 
   def stop_server(pid = @pid, signal: :TERM)
-    Process.kill signal, pid
-    sleep 1
+    begin
+      Process.kill signal, pid
+    rescue Errno::ESRCH
+    end
     begin
       Process.wait2 pid
     rescue Errno::ECHILD
@@ -65,16 +64,16 @@ class TestIntegration < Minitest::Test
   end
 
   def restart_server_and_listen(argv)
-    cli_server(argv)
+    cli_server argv
     connection = connect
     initial_reply = read_body(connection)
-    restart_server(connection)
+    restart_server connection
     [initial_reply, read_body(connect)]
   end
 
   # reuses an existing connection to make sure that works
   def restart_server(connection)
-    Process.kill :USR2, @server.pid
+    Process.kill :USR2, @pid
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot
   end

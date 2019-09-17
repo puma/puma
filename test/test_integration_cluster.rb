@@ -2,23 +2,28 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationCluster < TestIntegration
+  parallelize_me!
+
   DARWIN = !!RUBY_PLATFORM[/darwin/]
 
   def setup
-    super
-
     skip NO_FORK_MSG unless HAS_FORK
+    super
+  end
+
+  def teardown
+    super if HAS_FORK
   end
 
   def test_siginfo_thread_print
     skip_unless_signal_exist? :INFO
 
-    cli_server("-w #{WORKERS} -q test/rackup/hello.ru")
+    cli_server "-w #{WORKERS} -q test/rackup/hello.ru"
     worker_pids = get_worker_pids
     output = []
     t = Thread.new { output << @server.readlines }
-    Process.kill(:INFO, worker_pids.first)
-    Process.kill(:INT, @server.pid)
+    Process.kill :INFO, worker_pids.first
+    Process.kill :INT , @pid
     t.join
 
     assert_match "Thread TID", output.join
@@ -65,31 +70,24 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_term_suppress
-    cli_server("-w #{WORKERS} -C test/config/suppress_exception.rb test/rackup/hello.ru")
+    cli_server "-w #{WORKERS} -C test/config/suppress_exception.rb test/rackup/hello.ru"
 
-    Process.kill(:TERM, @server.pid)
-    begin
-      Process.wait @server.pid
-    rescue Errno::ECHILD
-    end
-    status = $?.exitstatus
+    _, status = stop_server
 
     assert_equal 0, status
-    @server.close unless @server.closed?
-    @server = nil # prevent `#teardown` from killing already killed server
   end
 
   def test_term_worker_clean_exit
     skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
 
-    pid = cli_server("-w #{WORKERS} test/rackup/hello.ru").pid
+    cli_server "-w #{WORKERS} test/rackup/hello.ru"
 
     # Get the PIDs of the child workers.
     worker_pids = get_worker_pids
 
     # Signal the workers to terminate, and wait for them to die.
-    Process.kill :TERM, pid
-    Process.wait pid
+    Process.kill :TERM, @pid
+    Process.wait @pid
 
     zombies = bad_exit_pids worker_pids
 
@@ -151,6 +149,8 @@ class TestIntegrationCluster < TestIntegration
     refused   = replies.count { |r| r == :refused  }
     msg = "#{responses} responses, #{resets} resets, #{refused} refused"
 
+    $debugging_info << "#{full_name}\n    #{msg}\n"
+
     assert_operator 9,  :<=, responses, msg
 
     assert_operator 10, :>=, resets   , msg
@@ -168,6 +168,7 @@ class TestIntegrationCluster < TestIntegration
 
     s = connect "sleep1", unix: unix
     replies << read_body(s)
+
     Process.kill :USR1, @pid
 
     refused = thread_run_refused unix: unix
@@ -243,7 +244,6 @@ class TestIntegrationCluster < TestIntegration
     assert_empty phase0_exited, msg
 
     threads.each { |th| Thread.kill th }
-    stop_server signal: :KILL
   end
 
   # Returns an array of pids still in the process table, so it should

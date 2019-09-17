@@ -81,6 +81,9 @@ class TestCLI < Minitest::Test
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
 
+    # without this, Minitest.after_run will trigger on this test ?
+    $debugging_hold = true
+
     t = Thread.new { cli.run }
 
     wait_booted
@@ -88,6 +91,7 @@ class TestCLI < Minitest::Test
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
+    s.close
 
     require 'json'
     status = JSON.parse(body.split("\n").last)
@@ -99,10 +103,23 @@ class TestCLI < Minitest::Test
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
-    assert_match(/\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "workers": 2, "phase": 0, "booted_workers": 2, "old_workers": 0, "worker_status": \[\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "pid": \d+, "index": 0, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \},\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "pid": \d+, "index": 1, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \}\] \}/, body.split("\r\n").last)
+    s.close
 
-    cli.launcher.stop
-    t.join
+    assert_match(/\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "workers": 2, "phase": 0, "booted_workers": 2, "old_workers": 0, "worker_status": \[\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "pid": \d+, "index": 0, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \},\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "pid": \d+, "index": 1, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \}\] \}/, body.split("\r\n").last)
+  ensure
+    if UNIX_SKT_EXIST && HAS_FORK
+      cli.launcher.stop
+
+      done = nil
+      until done
+        @events.stdout.rewind
+        log = @events.stdout.readlines.join ''
+        done = log[/ - Goodbye!/]
+      end
+
+      t.join
+      $debugging_hold = false
+    end
   end
 
   def test_control
@@ -121,11 +138,14 @@ class TestCLI < Minitest::Test
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
+    s.close
 
     assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split("\r\n").last)
-
-    cli.launcher.stop
-    t.join
+  ensure
+    if UNIX_SKT_EXIST
+      cli.launcher.stop
+      t.join
+    end
   end
 
   def test_control_stop
@@ -144,10 +164,11 @@ class TestCLI < Minitest::Test
     s = UNIXSocket.new @tmp_path
     s << "GET /stop HTTP/1.0\r\n\r\n"
     body = s.read
+    s.close
 
     assert_equal '{ "status": "ok" }', body.split("\r\n").last
-
-    t.join
+  ensure
+    t.join if UNIX_SKT_EXIST
   end
 
   def control_gc_stats(uri, cntl)

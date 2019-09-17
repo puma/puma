@@ -2,6 +2,8 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationSingle < TestIntegration
+  parallelize_me!
+
   def test_usr2_restart
     skip_unless_signal_exist? :USR2
     _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
@@ -44,12 +46,12 @@ class TestIntegrationSingle < TestIntegration
   def test_term_not_accepts_new_connections
     skip_on :jruby, :windows
 
-    cli_server('test/rackup/sleep.ru')
+    cli_server 'test/rackup/sleep.ru'
 
     _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}/sleep10")
     sleep 1 # ensure curl send a request
 
-    Process.kill(:TERM, @server.pid)
+    Process.kill :TERM, @pid
     true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
@@ -72,7 +74,7 @@ class TestIntegrationSingle < TestIntegration
   def test_int_signal_with_background_thread_in_jruby
     skip_unless :jruby
 
-    cli_server('test/rackup/hello.ru')
+    cli_server 'test/rackup/hello.ru'
     begin
       sock = TCPSocket.new(HOST, @tcp_port)
       sock.close
@@ -80,8 +82,8 @@ class TestIntegrationSingle < TestIntegration
       fail("Port didn't open properly: #{ex.message}")
     end
 
-    Process.kill :INT, @server.pid
-    Process.wait @server.pid
+    Process.kill :INT, @pid
+    Process.wait @pid
 
     assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
   end
@@ -89,11 +91,11 @@ class TestIntegrationSingle < TestIntegration
   def test_siginfo_thread_print
     skip_unless_signal_exist? :INFO
 
-    cli_server("test/rackup/hello.ru")
+    cli_server 'test/rackup/hello.ru'
     output = []
     t = Thread.new { output << @server.readlines }
-    Process.kill(:INFO, @server.pid)
-    Process.kill(:INT, @server.pid)
+    Process.kill :INFO, @pid
+    Process.kill :INT , @pid
     t.join
 
     assert_match "Thread TID", output.join
