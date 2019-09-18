@@ -25,7 +25,7 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_term_exit_code
-    skip_on :windows # no SIGTERM
+    skip_unless_signal_exist? :TERM
     skip_on :jruby # JVM does not return correct exit code for TERM
 
     cli_server "test/rackup/hello.ru"
@@ -35,7 +35,7 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_term_suppress
-    skip_on :windows # no TERM
+    skip_unless_signal_exist? :TERM
 
     cli_server "-C test/config/suppress_exception.rb test/rackup/hello.ru"
     _, status = stop_server
@@ -44,7 +44,8 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_term_not_accepts_new_connections
-    skip_on :jruby, :windows
+    skip_unless_signal_exist? :TERM
+    skip_on :jruby
 
     cli_server 'test/rackup/sleep.ru'
 
@@ -71,8 +72,8 @@ class TestIntegrationSingle < TestIntegration
     @server = nil # prevent `#teardown` from killing already killed server
   end
 
-  def test_int_signal_with_background_thread_in_jruby
-    skip_unless :jruby
+  def test_int_refuse
+    skip_unless_signal_exist? :INT
 
     cli_server 'test/rackup/hello.ru'
     begin
