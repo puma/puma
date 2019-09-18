@@ -122,7 +122,7 @@ class TestIntegrationCluster < TestIntegration
   def term_closes_listeners(unix: false)
     skip_unless_signal_exist? :TERM
 
-    cli_server "-w #{WORKERS} -t 0:6 -q test/rackup/sleep_pid.ru", unix: unix
+    cli_server "-w #{WORKERS} -t 0:6 -q test/rackup/sleep_step.ru", unix: unix
     threads = []
     replies = []
     mutex = Mutex.new
@@ -135,29 +135,52 @@ class TestIntegrationCluster < TestIntegration
         threads << Thread.new do
           sleep i.to_f/div
           Process.kill :TERM, @pid
-          mutex.synchronize { replies << :term_sent }
+          mutex.synchronize { replies[i] = :term_sent }
         end
       else
         threads << Thread.new do
-          thread_run replies, i.to_f/div, 1, mutex, refused, unix: unix
+          thread_run_step replies, i.to_f/div, 1, i, mutex, refused, unix: unix
         end
       end
     end
 
     threads.each(&:join)
 
-    responses = replies.count { |r| r[/\ASlept 1/] }
-    resets    = replies.count { |r| r == :reset    }
-    refused   = replies.count { |r| r == :refused  }
-    msg = "#{responses} responses, #{resets} resets, #{refused} refused"
+    failures  = replies.count(:failure)
+    successes = replies.count(:success)
+    resets    = replies.count(:reset)
+    refused   = replies.count(:refused)
 
-    $debugging_info << "#{full_name}\n    #{msg}\n"
+    r_success = replies.rindex(:success)
+    l_reset   = replies.index(:reset)
+    r_reset   = replies.rindex(:reset)
+    l_refused = replies.index(:refused)
 
-    assert_operator 9,  :<=, responses, msg
+    msg = "#{successes} successes, #{resets} resets, #{refused} refused, failures #{failures}"
+
+    assert_equal 0, failures, msg
+
+    assert_operator 9,  :<=, successes, msg
 
     assert_operator 10, :>=, resets   , msg
 
     assert_operator 20, :<=, refused  , msg
+
+    # Interleaved asserts
+    # UNIX binders do not generate :reset items
+    if l_reset
+      assert_operator r_success, :<, l_reset  , "Interleaved success and reset"
+      assert_operator r_reset  , :<, l_refused, "Interleaved reset and refused"
+    else
+      assert_operator r_success, :<, l_refused, "Interleaved success and refused"
+    end
+
+  ensure
+    if passed?
+      $debugging_info << "#{full_name}\n    #{msg}\n"
+    else
+      $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
+    end
   end
 
   # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
@@ -177,7 +200,7 @@ class TestIntegrationCluster < TestIntegration
 
     24.times do |delay|
       threads << Thread.new do
-        thread_run replies, delay, 1, mutex, refused, unix: unix
+        thread_run_pid replies, delay, 1, mutex, refused, unix: unix
       end
     end
 
@@ -200,6 +223,10 @@ class TestIntegrationCluster < TestIntegration
     refute_includes replies, :refused, msg
 
     refute_includes replies, :reset  , msg
+  ensure
+    unless passed?
+      $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
+    end
   end
 
   def worker_respawn(phase = 1, size = WORKERS)
@@ -273,7 +300,7 @@ class TestIntegrationCluster < TestIntegration
   end
 
   # used in loop to create several 'requests'
-  def thread_run(replies, delay, sleep_time, mutex, refused, unix: false)
+  def thread_run_pid(replies, delay, sleep_time, mutex, refused, unix: false)
     begin
       sleep delay
       s = connect "sleep#{sleep_time}", unix: unix
@@ -287,4 +314,26 @@ class TestIntegrationCluster < TestIntegration
       mutex.synchronize { replies << :refused }
     end
   end
+
+  # used in loop to create several 'requests'
+  def thread_run_step(replies, delay, sleep_time, step, mutex, refused, unix: false)
+    begin
+      sleep delay
+      s = connect "sleep#{sleep_time}-#{step}", unix: unix
+      body = read_body(s)
+      if body[/\ASlept /]
+        mutex.synchronize { replies[step] = :success }
+      else
+        mutex.synchronize { replies[step] = :failure }
+      end
+    rescue Errno::ECONNRESET
+      # connection was accepted but then closed
+      # client would see an empty response
+      mutex.synchronize { replies[step] = :reset }
+    rescue *refused
+      mutex.synchronize { replies[step] = :refused }
+    end
+  end
+
+
 end
