@@ -24,6 +24,7 @@ class TestIntegrationSingle < TestIntegration
 
   def test_term_exit_code
     skip_on :windows # no SIGTERM
+    skip_on :jruby # JVM does not return correct exit code for TERM
 
     pid = cli_server("test/rackup/hello.ru").pid
     _, status = send_term_to_server(pid)
