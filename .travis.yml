@@ -28,10 +28,6 @@ script:
 
 rvm:
   - 2.2.10
-  - 2.3.8
-  - 2.4.7
-  - 2.5.6
-  - 2.6.4
   - ruby-head
 
 matrix:
@@ -45,14 +41,6 @@ matrix:
       env: OS="Bionic 18.04 OpenSSL 1.1.1"
     - rvm: ruby-head
       env: jit=yes
-    - rvm: 2.4.6
-      os: osx
-      osx_image: xcode11
-      env: OS="osx xcode11"
-    - rvm: 2.5.6
-      os: osx
-      osx_image: xcode11
-      env: OS="osx xcode11"
     - rvm: jruby-9.2.8.0
       env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: jruby-head
