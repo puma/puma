@@ -220,8 +220,10 @@ module Puma
             log "- Stopping #{w.pid} for phased upgrade..."
           end
 
-          w.term
-          log "- #{w.signal} sent to #{w.pid}..."
+          unless w.term?
+            w.term
+            log "- #{w.signal} sent to #{w.pid}..."
+          end
         end
       end
     end
@@ -271,6 +273,7 @@ module Puma
       server = start_server
 
       Signal.trap "SIGTERM" do
+        @worker_write << "e#{Process.pid}\n" rescue nil
         server.stop
       end
 
@@ -505,8 +508,11 @@ module Puma
                   w.boot!
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
                   force_check = true
+                when "e"
+                  # external term, see worker method, Signal.trap "SIGTERM"
+                  w.instance_variable_set :@term, true
                 when "t"
-                  w.term
+                  w.term unless w.term?
                   force_check = true
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
