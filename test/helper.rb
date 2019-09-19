@@ -21,6 +21,9 @@ require_relative "helpers/apps"
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
 
+$debugging_info = ''.dup
+$debugging_hold = false    # needed for TestCLI#test_control_clustered
+
 require "puma"
 require "puma/events"
 require "puma/detect"
@@ -84,10 +87,12 @@ module TestSkips
   UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
   UNIX_SKT_MSG = "UnixSockets aren't available on the #{RUBY_PLATFORM} platform"
 
+  SIGNAL_LIST = Signal.list.keys.map(&:to_sym) - (Puma.windows? ? [:INT, :TERM] : [])
+
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
-    signal = sig.to_s
-    unless Signal.list.key? signal
+    signal = sig.to_s.sub(/\ASIG/, '').to_sym
+    unless SIGNAL_LIST.include? signal
       skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
     end
   end
@@ -129,5 +134,20 @@ class Minitest::Test
   def self.run(reporter, options = {}) # :nodoc:
     prove_it!
     super
+  end
+
+  def full_name
+    "#{self.class.name}##{name}"
+  end
+end
+
+Minitest.after_run do
+  # needed for TestCLI#test_control_clustered
+  unless $debugging_hold
+    out = $debugging_info.strip
+    unless out.empty?
+      puts "", " Debugging Info".rjust(75, '-'),
+        out, '-' * 75, ""
+    end
   end
 end
