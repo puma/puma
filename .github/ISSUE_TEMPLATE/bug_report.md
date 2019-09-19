@@ -29,7 +29,16 @@ Run it with:
 bundle exec puma -C <where_your_config_is> hello.ru
 ```
 
-If you cannot reproduce with a hello world application or other simple application, we will have a lot more difficulty helping you fix your issue, because it may be application-specific and not a bug in Puma at all. 
+If you cannot reproduce with a hello world application or other simple application, we will have a lot more difficulty helping you fix your issue, because it may be application-specific and not a bug in Puma at all.  
+
+There is also a Dockerfile available for reproducing Linux-specific issues. To use:
+
+```
+$ docker build -f tools/docker/Dockerfile -t puma .
+$ docker run -p 9292:9292 -it puma
+```
+
+This will help you to create a container that reproduces your issue.
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
