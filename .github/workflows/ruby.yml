@@ -67,3 +67,4 @@ jobs:
       env:
         CI: true
         TESTOPTS: -v
+        RUBYOPT: --enable-frozen-string-literal

@@ -58,3 +58,4 @@ matrix:
 env:
   global:
     - TESTOPTS="-v"
+    - RUBYOPT="--enable-frozen-string-literal"
