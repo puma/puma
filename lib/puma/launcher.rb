@@ -2,12 +2,9 @@
 
 require 'puma/events'
 require 'puma/detect'
-
 require 'puma/cluster'
 require 'puma/single'
-
 require 'puma/const'
-
 require 'puma/binder'
 
 module Puma
