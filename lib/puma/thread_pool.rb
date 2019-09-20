@@ -243,10 +243,12 @@ module Puma
       end
     end
 
-    class AutoTrim
-      def initialize(pool, timeout)
+    class Automaton
+      def initialize(pool, timeout, thread_name, message)
         @pool = pool
         @timeout = timeout
+        @thread_name = thread_name
+        @message = message
         @running = false
       end
 
@@ -254,9 +256,9 @@ module Puma
         @running = true
 
         @thread = Thread.new do
-          Puma.set_thread_name "threadpool autotrim"
+          Puma.set_thread_name @thread_name
           while @running
-            @pool.trim
+            @pool.public_send(@message)
             sleep @timeout
           end
         end
@@ -269,37 +271,12 @@ module Puma
     end
 
     def auto_trim!(timeout=30)
-      @auto_trim = AutoTrim.new(self, timeout)
+      @auto_trim = Automaton.new(self, timeout, "threadpool trimmer", :trim)
       @auto_trim.start!
     end
 
-    class Reaper
-      def initialize(pool, timeout)
-        @pool = pool
-        @timeout = timeout
-        @running = false
-      end
-
-      def start!
-        @running = true
-
-        @thread = Thread.new do
-          Puma.set_thread_name "threadpool reaper"
-          while @running
-            @pool.reap
-            sleep @timeout
-          end
-        end
-      end
-
-      def stop
-        @running = false
-        @thread.wakeup
-      end
-    end
-
     def auto_reap!(timeout=5)
-      @reaper = Reaper.new(self, timeout)
+      @reaper = Automaton.new(self, timeout, "threadpool reaper", :reap)
       @reaper.start!
     end
 
