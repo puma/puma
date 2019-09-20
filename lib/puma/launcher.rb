@@ -126,19 +126,6 @@ module Puma
       File.unlink(path) if path && File.exist?(path)
     end
 
-    # If configured, write the pid of the current process out
-    # to a file.
-    def write_pid
-      path = @options[:pidfile]
-      return unless path
-
-      File.open(path, 'w') { |f| f.puts Process.pid }
-      cur = Process.pid
-      at_exit do
-        delete_pidfile if cur == Process.pid
-      end
-    end
-
     # Begin async shutdown of the server
     def halt
       @status = :halt
@@ -225,6 +212,19 @@ module Puma
     end
 
     private
+
+    # If configured, write the pid of the current process out
+    # to a file.
+    def write_pid
+      path = @options[:pidfile]
+      return unless path
+
+      File.open(path, 'w') { |f| f.puts Process.pid }
+      cur = Process.pid
+      at_exit do
+        delete_pidfile if cur == Process.pid
+      end
+    end
 
     def reload_worker_directory
       @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
@@ -331,15 +331,15 @@ module Puma
 
     def log_thread_status
       Thread.list.each do |thread|
-        @events.log "Thread TID-#{thread.object_id.to_s(36)} #{thread['label']}"
+        log "Thread TID-#{thread.object_id.to_s(36)} #{thread['label']}"
         logstr = "Thread: TID-#{thread.object_id.to_s(36)}"
         logstr += " #{thread.name}" if thread.respond_to?(:name)
-        @events.log logstr
+        log logstr
 
         if thread.backtrace
-          @events.log thread.backtrace.join("\n")
+          log thread.backtrace.join("\n")
         else
-          @events.log "<no backtrace available>"
+          log "<no backtrace available>"
         end
       end
     end

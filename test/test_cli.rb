@@ -33,13 +33,6 @@ class TestCLI < Minitest::Test
     @ready.close
   end
 
-  def test_pid_file
-    cli = Puma::CLI.new ["--pidfile", @tmp_path]
-    cli.launcher.write_pid
-
-    assert_equal File.read(@tmp_path).strip.to_i, Process.pid
-  end
-
   def test_control_for_tcp
     tcp  = UniquePort.call
     cntl = UniquePort.call

@@ -63,6 +63,22 @@ class TestLauncher < Minitest::Test
     assert_match "Thread TID", events.stdout.read
   end
 
+  def test_pid_file
+    tmp_file = Tempfile.new("puma-test")
+    tmp_path = tmp_file.path
+    tmp_file.close!
+
+    conf = Puma::Configuration.new do |c|
+      c.pidfile tmp_path
+    end
+
+    launcher(conf).write_state
+
+    assert_equal File.read(tmp_path).strip.to_i, Process.pid
+
+    File.unlink tmp_path
+  end
+
   private
 
   def events
