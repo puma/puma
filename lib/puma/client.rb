@@ -24,11 +24,11 @@ module Puma
   class ConnectionError < RuntimeError; end
 
   # An instance of this class represents a unique request from a client.
-  # For example a web request from a browser or from CURL. This
+  # For example, this could be a web request from a browser or from CURL.
   #
   # An instance of `Puma::Client` can be used as if it were an IO object
-  # by the reactor, that's because the latter is expected to call `#to_io`
-  # on any non-IO objects it polls. For example nio4r internally calls
+  # by the reactor. The reactor is expected to call `#to_io`
+  # on any non-IO objects it polls. For example, nio4r internally calls
   # `IO::try_convert` (which may call `#to_io`) when a new socket is
   # registered.
   #
