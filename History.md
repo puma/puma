@@ -3,6 +3,7 @@
 * Features
   * Strip whitespace at end of HTTP headers (#2010)
   * Optimize HTTP parser for JRuby (#2012)
+  * Removed the IOBuffer extension and replaced with Ruby (#1980)
 
 * Bugfixes
   * Fix Errno::EINVAL when SSL is enabled and browser rejects cert (#1564)
