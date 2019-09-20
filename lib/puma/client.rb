@@ -247,24 +247,10 @@ module Puma
       end
       true
     end
-    
-    def write_400
-      begin
-        @io << ERROR_400_RESPONSE
-      rescue StandardError
-      end
-    end
 
-    def write_408
+    def write_error(status_code)
       begin
-        @io << ERROR_408_RESPONSE
-      rescue StandardError
-      end
-    end
-
-    def write_500
-      begin
-        @io << ERROR_500_RESPONSE
+        @io << ERROR_RESPONSE[status_code]
       rescue StandardError
       end
     end

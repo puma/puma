@@ -320,7 +320,7 @@ module Puma
 
           @events.ssl_error self, addr, cert, e
         rescue HttpParserError => e
-          client.write_400
+          client.write_error(400)
           client.close
 
           @events.parse_error self, client.env, e
@@ -511,7 +511,7 @@ module Puma
       rescue HttpParserError => e
         lowlevel_error(e, client.env)
 
-        client.write_400
+        client.write_error(400)
 
         @events.parse_error self, client.env, e
 
@@ -519,7 +519,7 @@ module Puma
       rescue StandardError => e
         lowlevel_error(e, client.env)
 
-        client.write_500
+        client.write_error(500)
 
         @events.unknown_error self, e, "Read"
 
