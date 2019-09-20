@@ -34,7 +34,6 @@ class TestAppStatus < Minitest::Test
   def setup
     @server = FakeServer.new
     @app = Puma::App::Status.new(@server)
-    @app.auth_token = nil
   end
 
   def lint(uri)
@@ -44,7 +43,7 @@ class TestAppStatus < Minitest::Test
   end
 
   def test_bad_token
-    @app.auth_token = "abcdef"
+    @app.instance_variable_set(:@auth_token, "abcdef")
 
     status, _, _ = lint('/whatever')
 
@@ -52,7 +51,7 @@ class TestAppStatus < Minitest::Test
   end
 
   def test_good_token
-    @app.auth_token = "abcdef"
+    @app.instance_variable_set(:@auth_token, "abcdef")
 
     status, _, _ = lint('/whatever?token=abcdef')
 

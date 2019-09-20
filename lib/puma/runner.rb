@@ -53,11 +53,11 @@ module Puma
 
       uri = URI.parse str
 
-      app = Puma::App::Status.new @launcher
-
       if token = @options[:control_auth_token]
-        app.auth_token = token unless token.empty? || token == 'none'
+        token = nil if token.empty? || token == 'none'
       end
+
+      app = Puma::App::Status.new @launcher, token
 
       control = Puma::Server.new app, @launcher.events
       control.min_threads = 0
