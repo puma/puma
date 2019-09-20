@@ -36,6 +36,10 @@ module Puma
   # the header and body are fully buffered via the `try_to_finish` method.
   # They can be used to "time out" a response via the `timeout_at` reader.
   class Client
+    # The object used for a request with no body. All requests with
+    # no body share this one object since it has no state.
+    EmptyBody = NullIO.new
+
     include Puma::Const
     extend  Puma::Delegation
 
@@ -144,179 +148,6 @@ module Puma
       end
     end
 
-    # The object used for a request with no body. All requests with
-    # no body share this one object since it has no state.
-    EmptyBody = NullIO.new
-
-    def setup_chunked_body(body)
-      @chunked_body = true
-      @partial_part_left = 0
-      @prev_chunk = ""
-
-      @body = Tempfile.new(Const::PUMA_TMP_BASE)
-      @body.binmode
-      @tempfile = @body
-
-      return decode_chunk(body)
-    end
-
-    def decode_chunk(chunk)
-      if @partial_part_left > 0
-        if @partial_part_left <= chunk.size
-          if @partial_part_left > 2
-            @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
-          end
-          chunk = chunk[@partial_part_left..-1]
-          @partial_part_left = 0
-        else
-          @body << chunk if @partial_part_left > 2 # don't include the last \r\n
-          @partial_part_left -= chunk.size
-          return false
-        end
-      end
-
-      if @prev_chunk.empty?
-        io = StringIO.new(chunk)
-      else
-        io = StringIO.new(@prev_chunk+chunk)
-        @prev_chunk = ""
-      end
-
-      while !io.eof?
-        line = io.gets
-        if line.end_with?("\r\n")
-          len = line.strip.to_i(16)
-          if len == 0
-            @in_last_chunk = true
-            @body.rewind
-            rest = io.read
-            last_crlf_size = "\r\n".bytesize
-            if rest.bytesize < last_crlf_size
-              @buffer = nil
-              @partial_part_left = last_crlf_size - rest.bytesize
-              return false
-            else
-              @buffer = rest[last_crlf_size..-1]
-              @buffer = nil if @buffer.empty?
-              set_ready
-              return true
-            end
-          end
-
-          len += 2
-
-          part = io.read(len)
-
-          unless part
-            @partial_part_left = len
-            next
-          end
-
-          got = part.size
-
-          case
-          when got == len
-            @body << part[0..-3] # to skip the ending \r\n
-          when got <= len - 2
-            @body << part
-            @partial_part_left = len - part.size
-          when got == len - 1 # edge where we get just \r but not \n
-            @body << part[0..-2]
-            @partial_part_left = len - part.size
-          end
-        else
-          @prev_chunk = line
-          return false
-        end
-      end
-
-      if @in_last_chunk
-        set_ready
-        true
-      else
-        false
-      end
-    end
-
-    def read_chunked_body
-      while true
-        begin
-          chunk = @io.read_nonblock(4096)
-        rescue IO::WaitReadable
-          return false
-        rescue SystemCallError, IOError
-          raise ConnectionError, "Connection error detected during read"
-        end
-
-        # No chunk means a closed socket
-        unless chunk
-          @body.close
-          @buffer = nil
-          set_ready
-          raise EOFError
-        end
-
-        return true if decode_chunk(chunk)
-      end
-    end
-
-    def setup_body
-      @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
-
-      if @env[HTTP_EXPECT] == CONTINUE
-        # TODO allow a hook here to check the headers before
-        # going forward
-        @io << HTTP_11_100
-        @io.flush
-      end
-
-      @read_header = false
-
-      body = @parser.body
-
-      te = @env[TRANSFER_ENCODING2]
-
-      if te && CHUNKED.casecmp(te) == 0
-        return setup_chunked_body(body)
-      end
-
-      @chunked_body = false
-
-      cl = @env[CONTENT_LENGTH]
-
-      unless cl
-        @buffer = body.empty? ? nil : body
-        @body = EmptyBody
-        set_ready
-        return true
-      end
-
-      remain = cl.to_i - body.bytesize
-
-      if remain <= 0
-        @body = StringIO.new(body)
-        @buffer = nil
-        set_ready
-        return true
-      end
-
-      if remain > MAX_BODY
-        @body = Tempfile.new(Const::PUMA_TMP_BASE)
-        @body.binmode
-        @tempfile = @body
-      else
-        # The body[0,0] trick is to get an empty string in the same
-        # encoding as body.
-        @body = StringIO.new body[0,0]
-      end
-
-      @body.write body
-
-      @body_remain = remain
-
-      return false
-    end
-
     def try_to_finish
       return read_body unless @read_header
 
@@ -416,6 +247,98 @@ module Puma
       end
       true
     end
+    
+    def write_400
+      begin
+        @io << ERROR_400_RESPONSE
+      rescue StandardError
+      end
+    end
+
+    def write_408
+      begin
+        @io << ERROR_408_RESPONSE
+      rescue StandardError
+      end
+    end
+
+    def write_500
+      begin
+        @io << ERROR_500_RESPONSE
+      rescue StandardError
+      end
+    end
+
+    def peerip
+      return @peerip if @peerip
+
+      if @remote_addr_header
+        hdr = (@env[@remote_addr_header] || LOCALHOST_ADDR).split(/[\s,]/).first
+        @peerip = hdr
+        return hdr
+      end
+
+      @peerip ||= @io.peeraddr.last
+    end
+
+    private
+
+    def setup_body
+      @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
+
+      if @env[HTTP_EXPECT] == CONTINUE
+        # TODO allow a hook here to check the headers before
+        # going forward
+        @io << HTTP_11_100
+        @io.flush
+      end
+
+      @read_header = false
+
+      body = @parser.body
+
+      te = @env[TRANSFER_ENCODING2]
+
+      if te && CHUNKED.casecmp(te) == 0
+        return setup_chunked_body(body)
+      end
+
+      @chunked_body = false
+
+      cl = @env[CONTENT_LENGTH]
+
+      unless cl
+        @buffer = body.empty? ? nil : body
+        @body = EmptyBody
+        set_ready
+        return true
+      end
+
+      remain = cl.to_i - body.bytesize
+
+      if remain <= 0
+        @body = StringIO.new(body)
+        @buffer = nil
+        set_ready
+        return true
+      end
+
+      if remain > MAX_BODY
+        @body = Tempfile.new(Const::PUMA_TMP_BASE)
+        @body.binmode
+        @tempfile = @body
+      else
+        # The body[0,0] trick is to get an empty string in the same
+        # encoding as body.
+        @body = StringIO.new body[0,0]
+      end
+
+      @body.write body
+
+      @body_remain = remain
+
+      return false
+    end
 
     def read_body
       if @chunked_body
@@ -462,45 +385,124 @@ module Puma
       false
     end
 
+    def read_chunked_body
+      while true
+        begin
+          chunk = @io.read_nonblock(4096)
+        rescue IO::WaitReadable
+          return false
+        rescue SystemCallError, IOError
+          raise ConnectionError, "Connection error detected during read"
+        end
+
+        # No chunk means a closed socket
+        unless chunk
+          @body.close
+          @buffer = nil
+          set_ready
+          raise EOFError
+        end
+
+        return true if decode_chunk(chunk)
+      end
+    end
+
+    def setup_chunked_body(body)
+      @chunked_body = true
+      @partial_part_left = 0
+      @prev_chunk = ""
+
+      @body = Tempfile.new(Const::PUMA_TMP_BASE)
+      @body.binmode
+      @tempfile = @body
+
+      return decode_chunk(body)
+    end
+
+    def decode_chunk(chunk)
+      if @partial_part_left > 0
+        if @partial_part_left <= chunk.size
+          if @partial_part_left > 2
+            @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+          end
+          chunk = chunk[@partial_part_left..-1]
+          @partial_part_left = 0
+        else
+          @body << chunk if @partial_part_left > 2 # don't include the last \r\n
+          @partial_part_left -= chunk.size
+          return false
+        end
+      end
+
+      if @prev_chunk.empty?
+        io = StringIO.new(chunk)
+      else
+        io = StringIO.new(@prev_chunk+chunk)
+        @prev_chunk = ""
+      end
+
+      while !io.eof?
+        line = io.gets
+        if line.end_with?("\r\n")
+          len = line.strip.to_i(16)
+          if len == 0
+            @in_last_chunk = true
+            @body.rewind
+            rest = io.read
+            last_crlf_size = "\r\n".bytesize
+            if rest.bytesize < last_crlf_size
+              @buffer = nil
+              @partial_part_left = last_crlf_size - rest.bytesize
+              return false
+            else
+              @buffer = rest[last_crlf_size..-1]
+              @buffer = nil if @buffer.empty?
+              set_ready
+              return true
+            end
+          end
+
+          len += 2
+
+          part = io.read(len)
+
+          unless part
+            @partial_part_left = len
+            next
+          end
+
+          got = part.size
+
+          case
+          when got == len
+            @body << part[0..-3] # to skip the ending \r\n
+          when got <= len - 2
+            @body << part
+            @partial_part_left = len - part.size
+          when got == len - 1 # edge where we get just \r but not \n
+            @body << part[0..-2]
+            @partial_part_left = len - part.size
+          end
+        else
+          @prev_chunk = line
+          return false
+        end
+      end
+
+      if @in_last_chunk
+        set_ready
+        true
+      else
+        false
+      end
+    end
+
     def set_ready
       if @body_read_start
         @env['puma.request_body_wait'] = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond) - @body_read_start
       end
       @requests_served += 1
       @ready = true
-    end
-
-    def write_400
-      begin
-        @io << ERROR_400_RESPONSE
-      rescue StandardError
-      end
-    end
-
-    def write_408
-      begin
-        @io << ERROR_408_RESPONSE
-      rescue StandardError
-      end
-    end
-
-    def write_500
-      begin
-        @io << ERROR_500_RESPONSE
-      rescue StandardError
-      end
-    end
-
-    def peerip
-      return @peerip if @peerip
-
-      if @remote_addr_header
-        hdr = (@env[@remote_addr_header] || LOCALHOST_ADDR).split(/[\s,]/).first
-        @peerip = hdr
-        return hdr
-      end
-
-      @peerip ||= @io.peeraddr.last
     end
   end
 end
