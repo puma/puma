@@ -6,6 +6,23 @@
 * Bugfixes
   * Your bugfix goes here (#Github Number)
 
+
+## 4.2.0 / 2019-09-23
+
+* 6 features
+  * Pumactl has a new -e environment option and reads config/puma/<environment>.rb config files (#1885)
+  * Semicolons are now allowed in URL paths (MRI only), useful for Angular or Redmine (#1934)
+  * Allow extra dependencies to be defined when using prune_bundler (#1105)
+  * Puma now reports the correct port when binding to port 0, also reports other listeners when binding to localhost (#1786)
+  * Sending SIGINFO to any Puma worker now prints currently active threads and their backtraces (#1320)
+  * Puma threads all now have their name set on Ruby 2.3+ (#1968)
+* 4 bugfixes
+  * Fix some misbehavior with phased restart and externally SIGTERMed workers (#1908, #1952)
+  * Fix socket closing on error (#1941)
+  * Removed unnecessary SIGINT trap for JRuby that caused some race conditions (#1961)
+  * Fix socket files being left around after process stopped (#1970)
+* Absolutely thousands of lines of test improvements and fixes thanks to @MSP-Greg
+
 ## 4.1.1 / 2019-09-05
 
 * 3 bugfixes
