@@ -6,6 +6,7 @@
 
 * Bugfixes
   * Fix Errno::EINVAL when SSL is enabled and browser rejects cert (#1564)
+  * Fix an issue where SSL binds to port 0 were not reported correctly (#1989)
 
 ## 4.2.1 / 2019-10-07
 

@@ -217,7 +217,7 @@ module Puma
     def handle_servers_lopez_mode
       begin
         check = @check
-        sockets = [check] + @binder.ios
+        sockets = [check] + @binder.bound_servers
         pool = @thread_pool
 
         while @status == :run
@@ -364,7 +364,7 @@ module Puma
     def handle_servers
       begin
         check = @check
-        sockets = [check] + @binder.ios
+        sockets = [check] + @binder.bound_servers
         pool = @thread_pool
         queue_requests = @queue_requests
 
@@ -387,7 +387,7 @@ module Puma
               else
                 begin
                   if io = sock.accept_nonblock
-                    client = Client.new io, @binder.env(sock)
+                    client = Client.new io, @binder.env_for_server(sock)
                     if remote_addr_value
                       client.peerip = remote_addr_value
                     elsif remote_addr_header
@@ -931,7 +931,7 @@ module Puma
         count = 0
 
         while true
-          ios = IO.select @binder.ios, nil, nil, 0
+          ios = IO.select @binder.bound_servers, nil, nil, 0
           break unless ios
 
           ios.first.each do |sock|

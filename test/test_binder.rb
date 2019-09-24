@@ -22,17 +22,11 @@ class TestBinderBase < Minitest::Test
   end
 
   def ssl_context_for_binder(binder)
-    binder.instance_variable_get(:@ios)[0].instance_variable_get(:@ctx)
+    binder.bindings[0].server.instance_variable_get(:@ctx)
   end
 end
 
 class TestBinder < TestBinderBase
-  def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
-    @binder.parse(["tcp://localhost:10001"], @events)
-
-    assert_equal [], @binder.instance_variable_get(:@listeners)
-  end
-
   def test_correct_zero_port
     @binder.parse(["tcp://localhost:0"], @events)
 
@@ -52,11 +46,10 @@ class TestBinder < TestBinderBase
   end
 
   def test_correct_zero_port_ssl
-    skip("Implement in 4.3")
     @binder.parse(["ssl://localhost:0?key=#{key}&cert=#{cert}"], @events)
 
     stdout = @events.stdout.string
-    m = %r!tcp://127.0.0.1:(\d+)!.match(stdout)
+    m = %r!ssl://127.0.0.1:(\d+)!.match(stdout)
     port = m[1].to_i
 
     refute_equal 0, port
@@ -87,16 +80,43 @@ class TestBinder < TestBinderBase
 
     assert_match %r!unix://#{unix_path}!, @events.stdout.string
 
-    refute_includes @binder.instance_variable_get(:@unix_paths), unix_path
+    refute_includes @binder.bindings.map { |b| b.instance_variable_get(:@path) }, unix_path
 
     @binder.close_unix_paths
 
     assert File.exist?(unix_path)
-
   ensure
     if UNIX_SKT_EXIST
       File.unlink unix_path if File.exist? unix_path
     end
+  end
+
+  def test_binder_for_env
+    @binder.parse(["tcp://localhost:#{UniquePort.call}"], @events)
+    server = @binder.bindings.first.server
+
+    proto = Puma::Binder::PROTO_ENV
+    env = @binder.env_for_server(server)
+
+    assert_equal(env, env.merge(proto)) # Env contains the entire PROTO_ENV
+    assert_equal @events.stderr, env["rack.errors"]
+  end
+
+  def test_binder_for_env_unix
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    @binder.parse(["unix://test/#{name}_server.sock"], @events)
+    server = @binder.bindings.first.server
+
+    assert_equal("127.0.0.1", @binder.env_for_server(server)[Puma::Const::REMOTE_ADDR])
+  ensure
+    @binder.close_unix_paths if UNIX_SKT_EXIST
+  end
+
+  def test_binder_for_env_ssl
+    @binder.parse(["ssl://localhost:0?key=#{key}&cert=#{cert}"], @events)
+    server = @binder.bindings.first.server
+
+    assert_equal(Puma::Const::HTTPS, @binder.env_for_server(server)[Puma::Const::HTTPS_KEY])
   end
 
   private
@@ -115,10 +135,9 @@ class TestBinder < TestBinderBase
     @binder.parse(tested_paths, @events)
     stdout = @events.stdout.string
 
-    assert stdout.include?(prepared_paths[order[0]]), "\n#{stdout}\n"
-    assert stdout.include?(prepared_paths[order[1]]), "\n#{stdout}\n"
-  ensure
-    @binder.close_unix_paths if order.include?(:unix) && UNIX_SKT_EXIST
+    order.each do |prot|
+      assert_match Regexp.new(prot.to_s), stdout
+    end
   end
 end
 
@@ -143,12 +162,6 @@ class TestBinderMRI < TestBinderBase
   def setup
     super
     skip_on :jruby
-  end
-
-  def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
-    @binder.parse(["ssl://localhost:10002?key=#{key}&cert=#{cert}"], @events)
-
-    assert_equal [], @binder.instance_variable_get(:@listeners)
   end
 
   def test_binder_parses_ssl_cipher_filter

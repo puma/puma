@@ -273,6 +273,10 @@ module Puma
       def close
         @socket.close unless @socket.closed?       # closed? call is for Windows
       end
+
+      def local_address
+        @socket.local_address
+      end
     end
   end
 end

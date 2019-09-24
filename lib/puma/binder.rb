@@ -2,9 +2,11 @@
 
 require 'uri'
 require 'socket'
+require 'forwardable'
 
 require 'puma/const'
 require 'puma/util'
+require 'puma/binding'
 
 module Puma
   class Binder
@@ -14,42 +16,47 @@ module Puma
 
     def initialize(events)
       @events = events
-      @listeners = []
+      @bindings = []
       @inherited_fds = {}
       @activated_sockets = {}
-      @unix_paths = []
-
-      @proto_env = {
-        "rack.version".freeze => RACK_VERSION,
-        "rack.errors".freeze => events.stderr,
-        "rack.multithread".freeze => true,
-        "rack.multiprocess".freeze => false,
-        "rack.run_once".freeze => false,
-        "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
-
-        # I'd like to set a default CONTENT_TYPE here but some things
-        # depend on their not being a default set and inferring
-        # it from the content. And so if i set it here, it won't
-        # infer properly.
-
-        "QUERY_STRING".freeze => "",
-        SERVER_PROTOCOL => HTTP_11,
-        SERVER_SOFTWARE => PUMA_SERVER_STRING,
-        GATEWAY_INTERFACE => CGI_VER
-      }
-
-      @envs = {}
-      @ios = []
     end
 
-    attr_reader :ios
+    PROTO_ENV = {
+      "rack.version".freeze => RACK_VERSION,
+      "rack.multithread".freeze => true,
+      "rack.multiprocess".freeze => false,
+      "rack.run_once".freeze => false,
+      "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
-    def env(sock)
-      @envs.fetch(sock, @proto_env)
-    end
+      # I'd like to set a default CONTENT_TYPE here but some things
+      # depend on their not being a default set and inferring
+      # it from the content. And so if i set it here, it won't
+      # infer properly.
+
+      "QUERY_STRING".freeze => "",
+      SERVER_PROTOCOL => HTTP_11,
+      SERVER_SOFTWARE => PUMA_SERVER_STRING,
+      GATEWAY_INTERFACE => CGI_VER
+    }
+
+    attr_reader :bindings
 
     def close
-      @ios.each { |i| i.close }
+      @bindings.each(&:close)
+    end
+
+    def bound_servers
+      @bindings.map(&:server)
+    end
+
+    def env_for_server(server)
+      @env_cache ||= Hash.new do |h, key|
+        binding_env = @bindings.find { |b| b.server == key }.env
+        env = PROTO_ENV.dup
+        env.merge!(binding_env)["rack.errors".freeze] = @events.stderr
+        h[key] = env
+      end
+      @env_cache[server]
     end
 
     def import_from_env
@@ -91,10 +98,10 @@ module Puma
         case uri.scheme
         when "tcp"
           if fd = @inherited_fds.delete(str)
-            io = inherit_tcp_listener uri.host, uri.port, fd
+            inherit_tcp_listener uri.host, uri.port, fd
             logger.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
-            io = inherit_tcp_listener uri.host, uri.port, sock
+            inherit_tcp_listener uri.host, uri.port, sock
             logger.log "* Activated #{str}"
           else
             params = Util.parse_query uri.query
@@ -102,29 +109,16 @@ module Puma
             opt = params.key?('low_latency')
             bak = params.fetch('backlog', 1024).to_i
 
-            io = add_tcp_listener uri.host, uri.port, opt, bak
-
-            @ios.each do |i|
-              next unless TCPServer === i
-              addr = if i.local_address.ipv6?
-                "[#{i.local_address.ip_unpack[0]}]:#{i.local_address.ip_unpack[1]}"
-              else
-                i.local_address.ip_unpack.join(':')
-              end
-
-              logger.log "* Listening on tcp://#{addr}"
-            end
+            add_tcp_listener uri.host, uri.port, opt, bak
           end
-
-          @listeners << [str, io] if io
         when "unix"
           path = "#{uri.host}#{uri.path}".gsub("%20", " ")
 
           if fd = @inherited_fds.delete(str)
-            io = inherit_unix_listener path, fd
+            inherit_unix_listener path, fd
             logger.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :unix, path ])
-            io = inherit_unix_listener path, sock
+            inherit_unix_listener path, sock
             logger.log "* Activated #{str}"
           else
             umask = nil
@@ -147,11 +141,8 @@ module Puma
               end
             end
 
-            io = add_unix_listener path, umask, mode, backlog
-            logger.log "* Listening on #{str}"
+            add_unix_listener path, umask, mode, backlog
           end
-
-          @listeners << [str, io]
         when "ssl"
           params = Util.parse_query uri.query
           require 'puma/minissl'
@@ -215,20 +206,20 @@ module Puma
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
-            io = inherit_ssl_listener fd, ctx
+            inherit_ssl_listener fd, ctx
           elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
-            io = inherit_ssl_listener sock, ctx
+            inherit_ssl_listener sock, ctx
             logger.log "* Activated #{str}"
           else
-            io = add_ssl_listener uri.host, uri.port, ctx
-            logger.log "* Listening on #{str}"
+            add_ssl_listener uri.host, uri.port, ctx
           end
-
-          @listeners << [str, io] if io
         else
           logger.error "Invalid URI: #{str}"
         end
       end
+
+      #TODO: say Inherited/Activated instead of listening as appropriate
+      @bindings.each { |b| logger.log "* Listening on #{b}" }
 
       # If we inherited fds but didn't use them (because of a
       # configuration change), then be sure to close them.
@@ -290,21 +281,14 @@ module Puma
       s.listen backlog
       @connected_port = s.addr[1]
 
-      @ios << s
-      s
+      @bindings << Binding.new(s)
     end
 
     attr_reader :connected_port
 
     def inherit_tcp_listener(host, port, fd)
-      if fd.kind_of? TCPServer
-        s = fd
-      else
-        s = TCPServer.for_fd(fd)
-      end
-
-      @ios << s
-      s
+      s = fd.kind_of?(TCPServer) ? fd : TCPServer.for_fd(fd)
+      @bindings << Binding.new(s)
     end
 
     def add_ssl_listener(host, port, ctx,
@@ -328,41 +312,24 @@ module Puma
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
-
       ssl = MiniSSL::Server.new s, ctx
-      env = @proto_env.dup
-      env[HTTPS_KEY] = HTTPS
-      @envs[ssl] = env
 
-      @ios << ssl
-      s
+      @bindings << Binding.new(ssl)
     end
 
     def inherit_ssl_listener(fd, ctx)
       require 'puma/minissl'
       MiniSSL.check
 
-      if fd.kind_of? TCPServer
-        s = fd
-      else
-        s = TCPServer.for_fd(fd)
-      end
+      s = fd.kind_of?(TCPServer) ? fd : TCPServer.for_fd(fd)
       ssl = MiniSSL::Server.new(s, ctx)
 
-      env = @proto_env.dup
-      env[HTTPS_KEY] = HTTPS
-      @envs[ssl] = env
-
-      @ios << ssl
-
-      s
+      @bindings << Binding.new(ssl)
     end
 
     # Tell the server to listen on +path+ as a UNIX domain socket.
     #
     def add_unix_listener(path, umask=nil, mode=nil, backlog=1024)
-      @unix_paths << path unless File.exist? path
-
       # Let anyone connect by default
       umask ||= 0
 
@@ -382,7 +349,7 @@ module Puma
 
         s = UNIXServer.new(path)
         s.listen backlog
-        @ios << s
+        @bindings << Binding.new(s)
       ensure
         File.umask old_mask
       end
@@ -390,50 +357,32 @@ module Puma
       if mode
         File.chmod mode, path
       end
-
-      env = @proto_env.dup
-      env[REMOTE_ADDR] = "127.0.0.1"
-      @envs[s] = env
-
-      s
     end
 
     def inherit_unix_listener(path, fd)
-      @unix_paths << path unless File.exist? path
+      # TODO: bug? Should this read kind_of? UNIXServer?
+      s = fd.kind_of?(TCPServer) ? fd : UNIXServer.for_fd(fd)
 
-      if fd.kind_of? TCPServer
-        s = fd
-      else
-        s = UNIXServer.for_fd fd
-      end
-      @ios << s
-
-      env = @proto_env.dup
-      env[REMOTE_ADDR] = "127.0.0.1"
-      @envs[s] = env
-
-      s
+      @bindings << Binding.new(s)
     end
 
     def close_listeners
-      @listeners.each do |l, io|
-        io.close
-        uri = URI.parse(l)
-        next unless uri.scheme == 'unix'
-        unix_path = "#{uri.host}#{uri.path}"
-        File.unlink unix_path if @unix_paths.include? unix_path
+      @bindings.each do |binder|
+        binder.close
+        binder.unlink_fd if binder.unix?
       end
     end
 
     def close_unix_paths
-      @unix_paths.each { |up| File.unlink(up) if File.exist? up }
+      @bindings.select(&:unix?).each(&:unlink_fd)
     end
 
     def redirects_for_restart
       redirects = {:close_others => true}
-      @listeners.each_with_index do |(l, io), i|
-        ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-        redirects[io.to_i] = io.to_i
+      @bindings.each_with_index do |binder, i|
+        server_integer = binder.server.to_i
+        ENV["PUMA_INHERIT_#{i}"] = "#{server_integer}:#{binder}"
+        redirects[server_integer] = server_integer
       end
       redirects
     end
