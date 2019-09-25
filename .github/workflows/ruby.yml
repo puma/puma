@@ -3,7 +3,7 @@ name: Puma
 on:
   push:
     branches:
-      - master
+      - '*'
   pull_request:
     branches:
       - '*'
@@ -64,6 +64,7 @@ jobs:
       run:  bundle exec rake compile
     - name: test
       run:  bundle exec rake
+      timeout-minutes: 10
       env:
         CI: true
         TESTOPTS: -v
