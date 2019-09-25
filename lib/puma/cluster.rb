@@ -529,7 +529,6 @@ module Puma
         @suicide_pipe.close
         read.close
         @wakeup.close
-        @launcher.close_binder_unix_paths
       end
     end
 

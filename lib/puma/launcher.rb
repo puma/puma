@@ -184,6 +184,7 @@ module Puma
       when :exit
         # nothing
       end
+      # close_binder_unix_paths
     end
 
     # Return which tcp port the launcher is using, if it's using TCP
@@ -202,10 +203,6 @@ module Puma
 
     def close_binder_listeners
       @binder.close_listeners
-    end
-
-    def close_binder_unix_paths
-      @binder.close_unix_paths
     end
 
     private
@@ -466,6 +463,10 @@ module Puma
         # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
         # to see this constantly on Linux.
       end
+    end
+
+    def close_binder_unix_paths
+      @binder.close_unix_paths
     end
 
     def require_rubygems_min_version!(min_version, feature)

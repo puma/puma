@@ -12,7 +12,8 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def teardown
-    super if HAS_FORK
+    return if skipped?
+    super
   end
 
   def test_siginfo_thread_print
@@ -334,6 +335,4 @@ class TestIntegrationCluster < TestIntegration
       mutex.synchronize { replies[step] = :refused }
     end
   end
-
-
 end

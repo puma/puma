@@ -118,7 +118,6 @@ module Puma
       rescue Interrupt
         # Swallow it
       end
-      @launcher.close_binder_unix_paths
     end
   end
 end
