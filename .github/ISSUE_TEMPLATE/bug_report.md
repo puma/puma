@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 
 **Puma config:**
 
-Please copy-paste your Puma config or your command line options here.
+Please copy-paste your Puma config AND your command line options here.
 
 **To Reproduce**
 Please add reproduction steps here.
