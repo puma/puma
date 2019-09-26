@@ -64,6 +64,14 @@ class TestBinder < TestBinderBase
       assert_match %r!ssl://\[::1\]:(\d+)!, stdout
     end
   end
+
+  def test_correct_doublebind
+    @binder.parse(["ssl://localhost:0?key=#{key}&cert=#{cert}", "tcp://localhost:0"], @events)
+
+    stdout = @events.stdout.string
+
+    # Unsure of what to actually assert on here yet
+  end
 end
 
 class TestBinderJRuby < TestBinderBase
