@@ -304,6 +304,8 @@ Which can also be used to run a single test case:
 $ bundle exec m test/test_binder.rb:37
 ```
 
+If you open a pull request with a change that doesn't need to be noted in the changelog ([`History.md`](History.md)), add the text `[changelog skip]` to the pull request title to skip [the changelog check](https://github.com/puma/puma/pull/1991).
+
 ## License
 
 Puma is copyright Evan Phoenix and contributors, licensed under the BSD 3-Clause license. See the included LICENSE file for details.
