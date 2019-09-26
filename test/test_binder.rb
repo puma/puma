@@ -50,6 +50,20 @@ class TestBinder < TestBinderBase
       assert_match %r!tcp://\[::1\]:(\d+)!, @events.stdout.string
     end
   end
+
+  def test_correct_zero_port_ssl
+    @binder.parse(["ssl://localhost:0?key=#{key}&cert=#{cert}"], @events)
+
+    stdout = @events.stdout.string
+    m = %r!tcp://127.0.0.1:(\d+)!.match(stdout)
+    port = m[1].to_i
+
+    refute_equal 0, port
+    assert_match %r!ssl://127.0.0.1:(\d+)!, stdout
+    if @binder.loopback_addresses.include?("::1")
+      assert_match %r!ssl://\[::1\]:(\d+)!, stdout
+    end
+  end
 end
 
 class TestBinderJRuby < TestBinderBase
