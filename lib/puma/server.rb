@@ -9,13 +9,13 @@ require 'puma/null_io'
 require 'puma/reactor'
 require 'puma/client'
 require 'puma/binder'
-require 'puma/delegation'
 require 'puma/accept_nonblock'
 require 'puma/util'
 
 require 'puma/puma_http11'
 
 require 'socket'
+require 'forwardable'
 
 module Puma
 
@@ -32,7 +32,7 @@ module Puma
   class Server
 
     include Puma::Const
-    extend  Puma::Delegation
+    extend Forwardable
 
     attr_reader :thread
     attr_reader :events
@@ -89,10 +89,7 @@ module Puma
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
 
-    forward :add_tcp_listener,  :@binder
-    forward :add_ssl_listener,  :@binder
-    forward :add_unix_listener, :@binder
-    forward :connected_port,    :@binder
+    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_port
 
     def inherit_binder(bind)
       @binder = bind
