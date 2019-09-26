@@ -6,7 +6,6 @@
 * Bugfixes
   * Your bugfix goes here (#Github Number)
 
-
 ## 4.2.0 / 2019-09-23
 
 * 6 features
