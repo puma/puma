@@ -5,6 +5,7 @@
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)
+  * Fix warning in test_puma_server_ssl.rb, issue #1997
 
 ## 4.2.0 / 2019-09-23
 
