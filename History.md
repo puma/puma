@@ -1,10 +1,10 @@
 ## Master
 
 * Features
-  * Your feature goes here (#Github Number)
+  * binder.rb - cleanup handling of port 0, localhost, etc.  Add tests (#1987)
 
 * Bugfixes
-  * Your bugfix goes here (#Github Number)
+  * binder.rb - handle 'double binds' when unix, then ip.  Add tests (#1987)
 
 ## 4.2.0 / 2019-09-23
 
