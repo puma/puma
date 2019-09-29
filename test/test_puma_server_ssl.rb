@@ -89,12 +89,18 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_request_wont_block_thread
+    verbose_orig = nil
     start_server
     # Open a connection and give enough data to trigger a read, then wait
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
     socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, @port), ctx
+
+    # we're wrapping `socket.write` because it generates a warning
+    verbose_orig = $VERBOSE
+    $VERBOSE = nil
     socket.write "x"
+    $VERBOSE = verbose_orig
     sleep 0.1
 
     # Capture the amount of threads being used after connecting and being idle
@@ -106,6 +112,8 @@ class TestPumaServerSSL < Minitest::Test
     # The thread pool should be empty since the request would block on read
     # and our request should have been moved to the reactor.
     assert busy_threads.zero?, "Our connection is monopolizing a thread"
+  ensure
+    $VERBOSE = verbose_orig if !verbose_orig.nil? && $VERBOSE != verbose_orig
   end
 
   def test_very_large_return
