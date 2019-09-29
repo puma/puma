@@ -86,6 +86,7 @@ module Puma
     end
 
     def parse(binds, logger)
+      @logger = logger
       binds.each do |str|
         uri = URI.parse str
         case uri.scheme
@@ -103,16 +104,6 @@ module Puma
             bak = params.fetch('backlog', 1024).to_i
 
             io = add_tcp_listener uri.host, uri.port, opt, bak
-
-            @ios.each do |i|
-              addr = if i.local_address.ipv6?
-                "[#{i.local_address.ip_unpack[0]}]:#{i.local_address.ip_unpack[1]}"
-              else
-                i.local_address.ip_unpack.join(':')
-              end
-
-              logger.log "* Listening on tcp://#{addr}"
-            end
           end
 
           @listeners << [str, io] if io
@@ -157,60 +148,7 @@ module Puma
 
           MiniSSL.check
 
-          ctx = MiniSSL::Context.new
-
-          if defined?(JRUBY_VERSION)
-            unless params['keystore']
-              @events.error "Please specify the Java keystore via 'keystore='"
-            end
-
-            ctx.keystore = params['keystore']
-
-            unless params['keystore-pass']
-              @events.error "Please specify the Java keystore password  via 'keystore-pass='"
-            end
-
-            ctx.keystore_pass = params['keystore-pass']
-            ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
-          else
-            unless params['key']
-              @events.error "Please specify the SSL key via 'key='"
-            end
-
-            ctx.key = params['key']
-
-            unless params['cert']
-              @events.error "Please specify the SSL cert via 'cert='"
-            end
-
-            ctx.cert = params['cert']
-
-            if ['peer', 'force_peer'].include?(params['verify_mode'])
-              unless params['ca']
-                @events.error "Please specify the SSL ca via 'ca='"
-              end
-            end
-
-            ctx.ca = params['ca'] if params['ca']
-            ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
-          end
-
-          ctx.no_tlsv1 = true if params['no_tlsv1'] == 'true'
-          ctx.no_tlsv1_1 = true if params['no_tlsv1_1'] == 'true'
-
-          if params['verify_mode']
-            ctx.verify_mode = case params['verify_mode']
-                              when "peer"
-                                MiniSSL::VERIFY_PEER
-                              when "force_peer"
-                                MiniSSL::VERIFY_PEER | MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
-                              when "none"
-                                MiniSSL::VERIFY_NONE
-                              else
-                                @events.error "Please specify a valid verify_mode="
-                                MiniSSL::VERIFY_NONE
-                              end
-          end
+          ctx = ssl_ctx_init params
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
@@ -220,7 +158,6 @@ module Puma
             logger.log "* Activated #{str}"
           else
             io = add_ssl_listener uri.host, uri.port, ctx
-            logger.log "* Listening on #{str}"
           end
 
           @listeners << [str, io] if io
@@ -257,6 +194,7 @@ module Puma
         # We have to unlink a unix socket path that's not being used
         File.unlink key[1] if key[0] == :unix
       end
+      @logger = nil
     end
 
     def loopback_addresses
@@ -273,6 +211,7 @@ module Puma
     # allow to accumulate before returning connection refused.
     #
     def add_tcp_listener(host, port, optimize_for_latency=true, backlog=1024)
+      host_str = nil
       if host == "localhost"
         loopback_addresses.each do |addr|
           add_tcp_listener addr, port, optimize_for_latency, backlog
@@ -280,17 +219,31 @@ module Puma
         return
       end
 
-      host = host[1..-2] if host and host[0..0] == '['
+      # ':' means IPV6, loopback addresses may not have brackets
+      host_str = (host and host.include? ':' and !host.start_with? '[') ?
+        "[#{host}]" : host
+
       s = TCPServer.new(host, port)
+      port = s.local_address.ip_port if !port || port.zero?
+
       if optimize_for_latency
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
-      @connected_port = s.addr[1]
+      @connected_port = port
 
-      @ios << s
-      s
+      str = "tcp://#{host_str}:#{port}"
+      # called from parse
+      if defined?(@logger)
+        @logger.log "* Listening on #{str}"
+        @listeners << [str, s] if s
+        @ios << s
+        nil
+      else
+        @ios << s
+        s
+      end
     end
 
     attr_reader :connected_port
@@ -311,6 +264,7 @@ module Puma
       require 'puma/minissl'
 
       MiniSSL.check
+      host_str = nil
 
       if host == "localhost"
         loopback_addresses.each do |addr|
@@ -319,22 +273,34 @@ module Puma
         return
       end
 
-      host = host[1..-2] if host[0..0] == '['
+      # ':' means IPV6, loopback addresses may not have brackets
+      host_str = (host and host.include? ':' and !host.start_with? '[') ?
+        "[#{host}]" : host
+
       s = TCPServer.new(host, port)
+      port = s.local_address.ip_port if !port || port.zero?
+
       if optimize_for_latency
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
-
       ssl = MiniSSL::Server.new s, ctx
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS
       @envs[ssl] = env
-
-      @ios << ssl
-      s
+      str = "ssl://#{host_str}:#{port}"
+      # called from parse
+      if defined?(@logger)
+        @logger.log "* Listening on #{str}"
+        @listeners << [str, ssl] if ssl
+        @ios << ssl
+        nil
+      else
+        @ios << ssl
+        ssl
+      end
     end
 
     def inherit_ssl_listener(fd, ctx)
@@ -425,6 +391,64 @@ module Puma
 
     def close_unix_paths
       @unix_paths.each { |up| File.unlink(up) if File.exist? up }
+    end
+
+    def ssl_ctx_init(params)
+      ctx = MiniSSL::Context.new
+
+      if defined?(JRUBY_VERSION)
+        unless params['keystore']
+          @events.error "Please specify the Java keystore via 'keystore='"
+        end
+
+        ctx.keystore = params['keystore']
+
+        unless params['keystore-pass']
+          @events.error "Please specify the Java keystore password  via 'keystore-pass='"
+        end
+
+        ctx.keystore_pass = params['keystore-pass']
+        ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
+      else
+        unless params['key']
+          @events.error "Please specify the SSL key via 'key='"
+        end
+
+        ctx.key = params['key']
+
+        unless params['cert']
+          @events.error "Please specify the SSL cert via 'cert='"
+        end
+
+        ctx.cert = params['cert']
+
+        if ['peer', 'force_peer'].include?(params['verify_mode'])
+          unless params['ca']
+            @events.error "Please specify the SSL ca via 'ca='"
+          end
+        end
+
+        ctx.ca = params['ca'] if params['ca']
+        ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
+      end
+
+      ctx.no_tlsv1 = true if params['no_tlsv1'] == 'true'
+      ctx.no_tlsv1_1 = true if params['no_tlsv1_1'] == 'true'
+
+      if params['verify_mode']
+        ctx.verify_mode = case params['verify_mode']
+                          when "peer"
+                            MiniSSL::VERIFY_PEER
+                          when "force_peer"
+                            MiniSSL::VERIFY_PEER | MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
+                          when "none"
+                            MiniSSL::VERIFY_NONE
+                          else
+                            @events.error "Please specify a valid verify_mode="
+                            MiniSSL::VERIFY_NONE
+                          end
+      end
+      ctx
     end
 
     def redirects_for_restart
