@@ -17,12 +17,6 @@ class TestBinderBase < Minitest::Test
       (addr.include? ':' and !addr.start_with? '[') ? "[#{addr}]" : addr
     end.map { |addr| Regexp.escape addr }
 
-  CERT = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
-
-  KEY = File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
-
-  SSL_QUERY = "?key=#{KEY}&cert=#{CERT}"
-
   def setup
     @events = Puma::Events.strings
     @binder = Puma::Binder.new(@events)
@@ -59,6 +53,18 @@ class TestBinderBase < Minitest::Test
   def ssl_context_for_binder(binder = @binder)
     binder.instance_variable_get(:@ios)[0].instance_variable_get(:@ctx)
   end
+
+  def ssl_query
+    @ssl_query ||= if Puma.jruby?
+      @keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
+      @ssl_cipher_list = "TLS_DHE_RSA_WITH_DES_CBC_SHA,TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"
+      "keystore=#{@keystore}&keystore-pass=pswd&ssl_cipher_list=#{@ssl_cipher_list}"
+    else
+      cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+      key  = File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+      "key=#{key}&cert=#{cert}"
+    end
+  end
 end
 
 # Tests pass URI's (fixed, localhost, port 0, different protocols) to
@@ -92,7 +98,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_correct_zero_port_ssl
-    out, _ = parse ["ssl://localhost:0#{SSL_QUERY}"]
+    out, _ = parse ["ssl://localhost:0?#{ssl_query}"]
 
     port = out[%r!ssl://127.0.0.1:(\d+)!, 1].to_i
 
@@ -102,7 +108,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_ios_and_listeners_correct_length
-    out, l = parse ["ssl://localhost:0#{SSL_QUERY}", "tcp://localhost:0"]
+    out, l = parse ["ssl://localhost:0?#{ssl_query}", "tcp://localhost:0"]
 
     len = 2 * LOOPBACK_ADDRS.length
 
@@ -111,7 +117,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_double_ssl_then_tcp_both_localhost
-    out, l = parse ["ssl://localhost:0#{SSL_QUERY}", "tcp://localhost:0"]
+    out, l = parse ["ssl://localhost:0?#{ssl_query}", "tcp://localhost:0"]
 
     l_str = listener_string l
 
@@ -137,6 +143,37 @@ class TestBinder < TestBinderBase
     skip unless HAS_IP6 && windows?
     out, _ = parse ["tcp://[::1]:0"]
     assert_match %r!tcp://\[::1\]:(\d+)!, out
+  end
+
+  def test_binder_parses_tlsv1_disabled
+    @binder.parse(["ssl://127.0.0.1:0?#{ssl_query}&no_tlsv1=true"], @events)
+
+    assert ssl_context_for_binder.no_tlsv1
+  end
+
+  def test_binder_parses_tlsv1_enabled
+    @binder.parse(["ssl://127.0.0.1:0?#{ssl_query}&no_tlsv1=false"], @events)
+
+    refute ssl_context_for_binder.no_tlsv1
+  end
+
+  def test_binder_parses_tlsv1_tlsv1_1_unspecified_defaults_to_enabled
+    @binder.parse(["ssl://127.0.0.1:0?#{ssl_query}"], @events)
+
+    refute ssl_context_for_binder.no_tlsv1
+    refute ssl_context_for_binder.no_tlsv1_1
+  end
+
+  def test_binder_parses_tlsv1_1_disabled
+    @binder.parse(["ssl://127.0.0.1:0?#{ssl_query}&no_tlsv1_1=true"], @events)
+
+    assert ssl_context_for_binder.no_tlsv1_1
+  end
+
+  def test_binder_parses_tlsv1_1_enabled
+    @binder.parse(["ssl://127.0.0.1:0?#{ssl_query}&no_tlsv1_1=false"], @events)
+
+    refute ssl_context_for_binder.no_tlsv1_1
   end
 
   private
@@ -179,18 +216,15 @@ end
 
 class TestBinderJRuby < TestBinderBase
   def setup
-    super
     skip_unless :jruby
+    super
   end
 
   def test_binder_parses_jruby_ssl_options
-    keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
-    ssl_cipher_list = "TLS_DHE_RSA_WITH_DES_CBC_SHA,TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"
+    @binder.parse(["ssl://0.0.0.0:8080?#{ssl_query}"], @events)
 
-    @binder.parse(["ssl://0.0.0.0:8080?keystore=#{keystore}&keystore-pass=&ssl_cipher_list=#{ssl_cipher_list}"], @events)
-
-    assert_equal keystore, ssl_context_for_binder.keystore
-    assert_equal ssl_cipher_list, ssl_context_for_binder.ssl_cipher_list
+    assert_equal @keystore       , ssl_context_for_binder.keystore
+    assert_equal @ssl_cipher_list, ssl_context_for_binder.ssl_cipher_list
   end
 end
 
@@ -201,7 +235,7 @@ class TestBinderMRI < TestBinderBase
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
-    out, l = parse ["ssl://localhost:10002#{SSL_QUERY}"]
+    out, l = parse ["ssl://localhost:10002?#{ssl_query}"]
 
     strings = l.map(&:first)
     strings.each { |s| assert out.include?(s) }
@@ -210,39 +244,8 @@ class TestBinderMRI < TestBinderBase
   def test_binder_parses_ssl_cipher_filter
     ssl_cipher_filter = "AES@STRENGTH"
 
-    @binder.parse(["ssl://0.0.0.0#{SSL_QUERY}&ssl_cipher_filter=#{ssl_cipher_filter}"], @events)
+    @binder.parse(["ssl://0.0.0.0?#{ssl_query}&ssl_cipher_filter=#{ssl_cipher_filter}"], @events)
 
     assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
-  end
-
-  def test_binder_parses_tlsv1_disabled
-    @binder.parse(["ssl://0.0.0.0#{SSL_QUERY}&no_tlsv1=true"], @events)
-
-    assert ssl_context_for_binder.no_tlsv1
-  end
-
-  def test_binder_parses_tlsv1_enabled
-    @binder.parse(["ssl://0.0.0.0#{SSL_QUERY}&no_tlsv1=false"], @events)
-
-    refute ssl_context_for_binder.no_tlsv1
-  end
-
-  def test_binder_parses_tlsv1_tlsv1_1_unspecified_defaults_to_enabled
-    @binder.parse(["ssl://0.0.0.0#{SSL_QUERY}"], @events)
-
-    refute ssl_context_for_binder.no_tlsv1
-    refute ssl_context_for_binder.no_tlsv1_1
-  end
-
-  def test_binder_parses_tlsv1_1_disabled
-    @binder.parse(["ssl://0.0.0.0#{SSL_QUERY}&no_tlsv1_1=true"], @events)
-
-    assert ssl_context_for_binder.no_tlsv1_1
-  end
-
-  def test_binder_parses_tlsv1_1_enabled
-    @binder.parse(["ssl://0.0.0.0#{SSL_QUERY}&no_tlsv1_1=false"], @events)
-
-    refute ssl_context_for_binder.no_tlsv1_1
   end
 end
