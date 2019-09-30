@@ -51,6 +51,7 @@ matrix:
     - rvm: ruby-head
     - rvm: ruby-head
       env: jit=yes
+    - rvm: jruby-9.2.8.0
     - rvm: jruby-head
       dist: bionic
       env: OS="Bionic 18.04"
