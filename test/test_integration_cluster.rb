@@ -19,9 +19,9 @@ class TestIntegrationCluster < TestIntegration
   def test_pre_existing_unix
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre eixisting' }
+    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
 
-    cli_server "-w #{WORKERS} -t 0:6 -q test/rackup/sleep_step.ru", unix: :unix
+    cli_server "-w #{WORKERS} -q test/rackup/sleep_step.ru", unix: :unix
 
     stop_server
 

@@ -4,7 +4,7 @@
   * Your feature goes here (#Github Number)
 
 * Bugfixes
-  * Fix handling of pre-existing/systemd unix binder files (#1842, #1988)
+  * Fix socket activation of systemd (pre-existing) unix binder files (#1842, #1988)
   * Deal with multiple calls to bind correctly (#1986, #1994, #2006)
 
 ## 4.2.0 / 2019-09-23
