@@ -9,8 +9,8 @@ class IO
 end
 
 require 'puma/detect'
-require 'puma/delegation'
 require 'tempfile'
+require 'forwardable'
 
 if Puma::IS_JRUBY
   # We have to work around some OpenSSL buffer/io-readiness bugs
@@ -41,7 +41,7 @@ module Puma
     EmptyBody = NullIO.new
 
     include Puma::Const
-    extend  Puma::Delegation
+    extend Forwardable
 
     def initialize(io, env=nil)
       @io = io
@@ -83,7 +83,7 @@ module Puma
 
     attr_accessor :remote_addr_header
 
-    forward :closed?, :@io
+    def_delegators :@io, :closed?
 
     def inspect
       "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"
