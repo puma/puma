@@ -12,7 +12,25 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def teardown
-    super if HAS_FORK
+    return if skipped?
+    super
+  end
+
+  def test_pre_existing_unix
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+
+    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+
+    cli_server "-w #{WORKERS} -q test/rackup/sleep_step.ru", unix: :unix
+
+    stop_server
+
+    assert File.exist?(@bind_path)
+
+  ensure
+    if UNIX_SKT_EXIST
+      File.unlink @bind_path if File.exist? @bind_path
+    end
   end
 
   def test_siginfo_thread_print

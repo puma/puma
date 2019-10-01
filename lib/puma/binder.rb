@@ -361,7 +361,7 @@ module Puma
     # Tell the server to listen on +path+ as a UNIX domain socket.
     #
     def add_unix_listener(path, umask=nil, mode=nil, backlog=1024)
-      @unix_paths << path
+      @unix_paths << path unless File.exist? path
 
       # Let anyone connect by default
       umask ||= 0
@@ -399,7 +399,7 @@ module Puma
     end
 
     def inherit_unix_listener(path, fd)
-      @unix_paths << path
+      @unix_paths << path unless File.exist? path
 
       if fd.kind_of? TCPServer
         s = fd
@@ -420,7 +420,8 @@ module Puma
         io.close
         uri = URI.parse(l)
         next unless uri.scheme == 'unix'
-        File.unlink("#{uri.host}#{uri.path}")
+        unix_path = "#{uri.host}#{uri.path}"
+        File.unlink unix_path if @unix_paths.include? unix_path
       end
     end
 
