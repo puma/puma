@@ -78,6 +78,23 @@ class TestBinder < TestBinderBase
     assert_parsing_logs_uri [:tcp, :unix]
   end
 
+  def test_pre_existing_unix
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    unix_path = "test/#{name}_server.sock"
+
+    File.open(unix_path, mode: 'wb') { |f| f.puts 'pre eixisting' }
+    @binder.parse ["unix://#{unix_path}"], @events
+
+    assert_match %r!unix://#{unix_path}!, @events.stdout.string
+
+    refute_includes @binder.instance_variable_get(:@unix_paths), unix_path
+
+  ensure
+    if UNIX_SKT_EXIST
+      File.unlink unix_path if File.exist? unix_path
+    end
+  end
+
   private
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
