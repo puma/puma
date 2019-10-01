@@ -4,7 +4,7 @@
   * Your feature goes here (#Github Number)
 
 * Bugfixes
-  * Your bugfix goes here (#Github Number)
+  * Deal with multiple calls to bind correctly (#1986, #1994, #2006)
 
 ## 4.2.0 / 2019-09-23
 
