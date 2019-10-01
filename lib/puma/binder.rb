@@ -105,6 +105,7 @@ module Puma
             io = add_tcp_listener uri.host, uri.port, opt, bak
 
             @ios.each do |i|
+              next unless TCPServer === i
               addr = if i.local_address.ipv6?
                 "[#{i.local_address.ip_unpack[0]}]:#{i.local_address.ip_unpack[1]}"
               else
