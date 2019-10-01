@@ -52,6 +52,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_correct_zero_port_ssl
+    skip("Implement in 4.3")
     @binder.parse(["ssl://localhost:0?key=#{key}&cert=#{cert}"], @events)
 
     stdout = @events.stdout.string
@@ -65,12 +66,38 @@ class TestBinder < TestBinderBase
     end
   end
 
-  def test_correct_doublebind
-    @binder.parse(["ssl://localhost:0?key=#{key}&cert=#{cert}", "tcp://localhost:0"], @events)
+  def test_allows_both_ssl_and_tcp
+    assert_parsing_logs_uri [:ssl, :tcp]
+  end
 
+  def test_allows_both_unix_and_tcp
+    assert_parsing_logs_uri [:unix, :tcp]
+  end
+
+  def test_allows_both_tcp_and_unix
+    assert_parsing_logs_uri [:tcp, :unix]
+  end
+
+  private
+
+  def assert_parsing_logs_uri(order = [:unix, :tcp])
+    skip UNIX_SKT_MSG if order.include?(:unix) && !UNIX_SKT_EXIST
+
+    prepared_paths = {
+        ssl: "ssl://127.0.0.1:#{UniquePort.call}?key=#{key}&cert=#{cert}",
+        tcp: "tcp://127.0.0.1:#{UniquePort.call}",
+        unix: "unix://test/#{name}_server.sock"
+      }
+
+    tested_paths = [prepared_paths[order[0]], prepared_paths[order[1]]]
+
+    @binder.parse(tested_paths, @events)
     stdout = @events.stdout.string
 
-    # Unsure of what to actually assert on here yet
+    assert stdout.include?(prepared_paths[order[0]]), "\n#{stdout}\n"
+    assert stdout.include?(prepared_paths[order[1]]), "\n#{stdout}\n"
+  ensure
+    @binder.close_unix_paths if order.include?(:unix) && UNIX_SKT_EXIST
   end
 end
 
