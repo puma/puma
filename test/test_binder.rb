@@ -71,7 +71,45 @@ class TestBinder < TestBinderBase
 
     stdout = @events.stdout.string
 
-    # Unsure of what to actually assert on here yet
+    %w[tcp ssl].each do |prot|
+      assert_match %r!#{prot}://127.0.0.1:(\d+)!, stdout
+      if @binder.loopback_addresses.include?("::1")
+        assert_match %r!#{prot}://\[::1\]:(\d+)!, stdout
+      end
+    end
+  end
+
+  def test_allows_both_unix_and_tcp
+    assert_parsing_logs_uri [:unix, :tcp]
+  end
+
+  def test_allows_both_tcp_and_unix
+    assert_parsing_logs_uri [:tcp, :unix]
+  end
+
+  private
+
+  def assert_parsing_logs_uri(order = [:unix, :tcp])
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+
+    path_unix = "test/#{name}_server.sock"
+    uri_unix  = "unix://#{path_unix}"
+    uri_tcp   = "tcp://127.0.0.1:#{UniquePort.call}"
+
+    if order == [:unix, :tcp]
+      @binder.parse([uri_tcp, uri_unix], @events)
+    elsif order == [:tcp, :unix]
+      @binder.parse([uri_unix, uri_tcp], @events)
+    else
+      raise ArgumentError
+    end
+
+    stdout = @events.stdout.string
+
+    assert stdout.include?(uri_unix), "\n#{stdout}\n"
+    assert stdout.include?(uri_tcp) , "\n#{stdout}\n"
+  ensure
+    @binder.close_unix_paths if UNIX_SKT_EXIST
   end
 end
 
