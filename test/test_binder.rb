@@ -66,17 +66,8 @@ class TestBinder < TestBinderBase
     end
   end
 
-  def test_correct_doublebind
-    @binder.parse(["ssl://localhost:0?key=#{key}&cert=#{cert}", "tcp://localhost:0"], @events)
-
-    stdout = @events.stdout.string
-
-    %w[tcp ssl].each do |prot|
-      assert_match %r!#{prot}://127.0.0.1:(\d+)!, stdout
-      if @binder.loopback_addresses.include?("::1")
-        assert_match %r!#{prot}://\[::1\]:(\d+)!, stdout
-      end
-    end
+  def test_allows_both_ssl_and_tcp
+    assert_parsing_logs_uri [:ssl, :tcp]
   end
 
   def test_allows_both_unix_and_tcp
@@ -90,26 +81,23 @@ class TestBinder < TestBinderBase
   private
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip UNIX_SKT_MSG if order.include?(:unix) && !UNIX_SKT_EXIST
 
-    path_unix = "test/#{name}_server.sock"
-    uri_unix  = "unix://#{path_unix}"
-    uri_tcp   = "tcp://127.0.0.1:#{UniquePort.call}"
+    prepared_paths = {
+        ssl: "ssl://127.0.0.1:#{UniquePort.call}?key=#{key}&cert=#{cert}",
+        tcp: "tcp://127.0.0.1:#{UniquePort.call}",
+        unix: "unix://test/#{name}_server.sock"
+      }
 
-    if order == [:unix, :tcp]
-      @binder.parse([uri_tcp, uri_unix], @events)
-    elsif order == [:tcp, :unix]
-      @binder.parse([uri_unix, uri_tcp], @events)
-    else
-      raise ArgumentError
-    end
+    tested_paths = [prepared_paths[order[0]], prepared_paths[order[1]]]
 
+    @binder.parse(tested_paths, @events)
     stdout = @events.stdout.string
 
-    assert stdout.include?(uri_unix), "\n#{stdout}\n"
-    assert stdout.include?(uri_tcp) , "\n#{stdout}\n"
+    assert stdout.include?(prepared_paths[order[0]]), "\n#{stdout}\n"
+    assert stdout.include?(prepared_paths[order[1]]), "\n#{stdout}\n"
   ensure
-    @binder.close_unix_paths if UNIX_SKT_EXIST
+    @binder.close_unix_paths if order.include?(:unix) && UNIX_SKT_EXIST
   end
 end
 
