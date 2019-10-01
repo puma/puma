@@ -52,6 +52,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_correct_zero_port_ssl
+    skip("Implement in 4.3")
     @binder.parse(["ssl://localhost:0?key=#{key}&cert=#{cert}"], @events)
 
     stdout = @events.stdout.string
