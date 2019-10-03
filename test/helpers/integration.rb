@@ -6,6 +6,8 @@ require "open3"
 # Only single mode tests go here. Cluster and pumactl tests
 # have their own files, use those instead
 class TestIntegration < Minitest::Test
+  include WaitForServerLogs
+
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
   WORKERS = 2
@@ -82,7 +84,7 @@ class TestIntegration < Minitest::Test
   end
 
   def wait_for_server_to_boot
-    true while @server.gets !~ /Ctrl-C/ # wait for server to say it booted
+    wait_until_server_logs(/Ctrl-C/) # wait for server to say it booted
   end
 
   def connect(path = nil, unix: false)

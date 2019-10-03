@@ -2,6 +2,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationSingle < TestIntegration
+  include WaitForServerLogs
   parallelize_me!
 
   def test_usr2_restart
@@ -53,7 +54,7 @@ class TestIntegrationSingle < TestIntegration
     sleep 1 # ensure curl send a request
 
     Process.kill :TERM, @pid
-    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
+    wait_until_server_logs(/Gracefully stopping/) # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
     _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
