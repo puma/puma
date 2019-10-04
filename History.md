@@ -6,6 +6,7 @@
 * Bugfixes
   * Fix socket activation of systemd (pre-existing) unix binder files (#1842, #1988)
   * Deal with multiple calls to bind correctly (#1986, #1994, #2006)
+  * Accepts symbols for `verify_mode` (#1222)
 
 ## 4.2.0 / 2019-09-23
 
