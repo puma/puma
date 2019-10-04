@@ -97,6 +97,23 @@ class TestConfigFile < TestConfigFileBase
     assert ssl_binding.include?("&ssl_cipher_filter=#{cipher_filter}")
   end
 
+  def test_ssl_bind_with_ca
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert",
+        ca: "/path/to/ca",
+        key: "/path/to/key",
+        verify_mode: :peer,
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert_match "ca=/path/to/ca", ssl_binding
+    assert_match "verify_mode=peer", ssl_binding
+  end
+
   def test_lowlevel_error_handler_DSL
     conf = Puma::Configuration.new do |c|
       c.load "test/config/app.rb"
