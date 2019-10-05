@@ -21,44 +21,35 @@ public class Http11Parser {
   }
 
   action start_value { parser.mark = fpc; }
-  action write_value { 
-    if(parser.http_field != null) {
-      parser.http_field.call(runtime, parser.data, parser.buffer, parser.field_start, parser.field_len, parser.mark, fpc-parser.mark);
-    }
+  action write_value {
+    Http11.http_field(runtime, parser.data, parser.buffer, parser.field_start, parser.field_len, parser.mark, fpc-parser.mark);
   }
-  action request_method { 
-    if(parser.request_method != null) 
-      parser.request_method.call(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+  action request_method {
+    Http11.request_method(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
   }
-  action request_uri { 
-    if(parser.request_uri != null)
-      parser.request_uri.call(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+  action request_uri {
+    Http11.request_uri(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
   }
-  action fragment { 
-    if(parser.fragment != null)
-      parser.fragment.call(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+  action fragment {
+    Http11.fragment(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
   }
   
   action start_query {parser.query_start = fpc; }
-  action query_string { 
-    if(parser.query_string != null)
-      parser.query_string.call(runtime, parser.data, parser.buffer, parser.query_start, fpc-parser.query_start);
+  action query_string {
+    Http11.query_string(runtime, parser.data, parser.buffer, parser.query_start, fpc-parser.query_start);
   }
 
-  action http_version {	
-    if(parser.http_version != null)
-      parser.http_version.call(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+  action http_version {
+    Http11.http_version(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
   }
 
   action request_path {
-    if(parser.request_path != null)
-      parser.request_path.call(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+    Http11.request_path(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
   }
 
   action done { 
-    parser.body_start = fpc + 1; 
-    if(parser.header_done != null)
-      parser.header_done.call(runtime, parser.data, parser.buffer, fpc + 1, pe - fpc - 1);
+    parser.body_start = fpc + 1;
+    http.header_done(runtime, parser.data, parser.buffer, fpc + 1, pe - fpc - 1);
     fbreak;
   }
 
@@ -90,15 +81,6 @@ public class Http11Parser {
       RubyHash data;
       ByteList buffer;
 
-      public FieldCB http_field;
-      public ElementCB request_method;
-      public ElementCB request_uri;
-      public ElementCB fragment;
-      public ElementCB request_path;
-      public ElementCB query_string;
-      public ElementCB http_version;
-      public ElementCB header_done;
-
       public void init() {
           cs = 0;
 
@@ -115,7 +97,7 @@ public class Http11Parser {
 
    public final HttpParser parser = new HttpParser();
 
-   public int execute(Ruby runtime, ByteList buffer, int off) {
+   public int execute(Ruby runtime, Http11 http, ByteList buffer, int off) {
      int p, pe;
      int cs = parser.cs;
      int len = buffer.length();
