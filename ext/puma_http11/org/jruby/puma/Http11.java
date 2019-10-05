@@ -63,14 +63,12 @@ public class Http11 extends RubyObject {
     }
 
     private Ruby runtime;
-    private RubyClass eHttpParserError;
     private Http11Parser hp;
     private RubyString body;
 
     public Http11(Ruby runtime, RubyClass clazz) {
         super(runtime,clazz);
         this.runtime = runtime;
-        this.eHttpParserError = (RubyClass)runtime.getModule("Puma").getConstant("HttpParserError");
         this.hp = new Http11Parser();
         this.hp.parser.http_field = http_field;
         this.hp.parser.request_method = request_method;
@@ -83,22 +81,27 @@ public class Http11 extends RubyObject {
         this.hp.parser.init();
     }
 
-    public void validateMaxLength(int len, int max, String msg) {
+    public static void validateMaxLength(Ruby runtime, int len, int max, String msg) {
         if(len>max) {
-            throw newHTTPParserError(msg);
+            throw newHTTPParserError(runtime, msg);
         }
     }
 
-    private RaiseException newHTTPParserError(String msg) {
-        return runtime.newRaiseException(eHttpParserError, msg);
+    private static RaiseException newHTTPParserError(Ruby runtime, String msg) {
+        return runtime.newRaiseException(getHTTPParserError(runtime), msg);
     }
 
-    private Http11Parser.FieldCB http_field = new Http11Parser.FieldCB() {
+    private static RubyClass getHTTPParserError(Ruby runtime) {
+        // Cheaper to look this up lazily than cache eagerly and consume a field, since it's rarely encountered
+        return (RubyClass)runtime.getModule("Puma").getConstant("HttpParserError");
+    }
+
+    private static Http11Parser.FieldCB http_field = new Http11Parser.FieldCB() {
             public void call(Ruby runtime, RubyHash req, ByteList buffer, int field, int flen, int value, int vlen) {
                 RubyString f;
                 IRubyObject v;
-                validateMaxLength(flen, MAX_FIELD_NAME_LENGTH, MAX_FIELD_NAME_LENGTH_ERR);
-                validateMaxLength(vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
+                validateMaxLength(runtime, flen, MAX_FIELD_NAME_LENGTH, MAX_FIELD_NAME_LENGTH_ERR);
+                validateMaxLength(runtime, vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
 
                 ByteList b = new ByteList(buffer,field,flen);
                 for(int i = 0,j = b.length();i<j;i++) {
@@ -129,46 +132,46 @@ public class Http11 extends RubyObject {
             }
         };
 
-    private Http11Parser.ElementCB request_method = new Http11Parser.ElementCB() {
+    private static Http11Parser.ElementCB request_method = new Http11Parser.ElementCB() {
             public void call(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
                 RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
                 req.fastASet(RubyString.newStringShared(runtime, REQUEST_METHOD_BYTELIST),val);
             }
         };
 
-    private Http11Parser.ElementCB request_uri = new Http11Parser.ElementCB() {
+    private static Http11Parser.ElementCB request_uri = new Http11Parser.ElementCB() {
             public void call(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
-                validateMaxLength(length, MAX_REQUEST_URI_LENGTH, MAX_REQUEST_URI_LENGTH_ERR);
+                validateMaxLength(runtime, length, MAX_REQUEST_URI_LENGTH, MAX_REQUEST_URI_LENGTH_ERR);
                 RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
                 req.fastASet(RubyString.newStringShared(runtime, REQUEST_URI_BYTELIST),val);
             }
         };
 
-    private Http11Parser.ElementCB fragment = new Http11Parser.ElementCB() {
+    private static Http11Parser.ElementCB fragment = new Http11Parser.ElementCB() {
             public void call(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
-                validateMaxLength(length, MAX_FRAGMENT_LENGTH, MAX_FRAGMENT_LENGTH_ERR);
+                validateMaxLength(runtime, length, MAX_FRAGMENT_LENGTH, MAX_FRAGMENT_LENGTH_ERR);
                 RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
                 req.fastASet(RubyString.newStringShared(runtime, FRAGMENT_BYTELIST),val);
             }
         };
 
-    private Http11Parser.ElementCB request_path = new Http11Parser.ElementCB() {
+    private static Http11Parser.ElementCB request_path = new Http11Parser.ElementCB() {
             public void call(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
-                validateMaxLength(length, MAX_REQUEST_PATH_LENGTH, MAX_REQUEST_PATH_LENGTH_ERR);
+                validateMaxLength(runtime, length, MAX_REQUEST_PATH_LENGTH, MAX_REQUEST_PATH_LENGTH_ERR);
                 RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
                 req.fastASet(RubyString.newStringShared(runtime, REQUEST_PATH_BYTELIST),val);
             }
         };
 
-    private Http11Parser.ElementCB query_string = new Http11Parser.ElementCB() {
+    private static Http11Parser.ElementCB query_string = new Http11Parser.ElementCB() {
             public void call(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
-                validateMaxLength(length, MAX_QUERY_STRING_LENGTH, MAX_QUERY_STRING_LENGTH_ERR);
+                validateMaxLength(runtime, length, MAX_QUERY_STRING_LENGTH, MAX_QUERY_STRING_LENGTH_ERR);
                 RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
                 req.fastASet(RubyString.newStringShared(runtime, QUERY_STRING_BYTELIST),val);
             }
         };
 
-    private Http11Parser.ElementCB http_version = new Http11Parser.ElementCB() {
+    private static Http11Parser.ElementCB http_version = new Http11Parser.ElementCB() {
             public void call(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
                 RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
                 req.fastASet(RubyString.newStringShared(runtime, HTTP_VERSION_BYTELIST),val);
@@ -204,7 +207,7 @@ public class Http11 extends RubyObject {
         int from = RubyNumeric.fix2int(start);
         ByteList d = ((RubyString)data).getByteList();
         if(from >= d.length()) {
-            throw newHTTPParserError("Requested start is after data buffer end.");
+            throw newHTTPParserError(runtime, "Requested start is after data buffer end.");
         } else {
             Http11Parser hp = this.hp;
             Http11Parser.HttpParser parser = hp.parser;
@@ -213,10 +216,10 @@ public class Http11 extends RubyObject {
 
             hp.execute(runtime, d,from);
 
-            validateMaxLength(parser.nread,MAX_HEADER_LENGTH, MAX_HEADER_LENGTH_ERR);
+            validateMaxLength(runtime, parser.nread,MAX_HEADER_LENGTH, MAX_HEADER_LENGTH_ERR);
 
             if(hp.has_error()) {
-                throw newHTTPParserError("Invalid HTTP format, parsing fails.");
+                throw newHTTPParserError(runtime, "Invalid HTTP format, parsing fails.");
             } else {
                 return runtime.newFixnum(parser.nread);
             }
