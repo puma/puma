@@ -2,6 +2,8 @@
 // line 1 "ext/puma_http11/http11_parser.java.rl"
 package org.jruby.puma;
 
+import org.jruby.Ruby;
+import org.jruby.RubyHash;
 import org.jruby.util.ByteList;
 
 public class Http11Parser {
@@ -9,12 +11,12 @@ public class Http11Parser {
 /** Machine **/
 
 
-// line 65 "ext/puma_http11/http11_parser.java.rl"
+// line 67 "ext/puma_http11/http11_parser.java.rl"
 
 
 /** Data **/
 
-// line 18 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 20 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 private static byte[] init__puma_parser_actions_0()
 {
 	return new byte [] {
@@ -33,8 +35,8 @@ private static short[] init__puma_parser_key_offsets_0()
 	return new short [] {
 	    0,    0,    8,   17,   27,   29,   30,   31,   32,   33,   34,   36,
 	   39,   41,   44,   45,   61,   62,   78,   80,   81,   89,   97,  107,
-	  115,  125,  134,  142,  150,  159,  168,  177,  186,  195,  204,  213,
-	  222,  231,  240,  249,  258,  267,  276,  285,  294,  303,  312,  313
+	  115,  124,  132,  140,  149,  158,  167,  176,  185,  194,  203,  212,
+	  221,  230,  239,  248,  257,  266,  275,  284,  293,  302,  303
 	};
 }
 
@@ -53,24 +55,23 @@ private static char[] init__puma_parser_trans_keys_0()
 	   48,   57,   65,   90,   94,  122,   13,   32,   13,   32,   60,   62,
 	  127,    0,   31,   34,   35,   32,   60,   62,  127,    0,   31,   34,
 	   35,   43,   58,   45,   46,   48,   57,   65,   90,   97,  122,   32,
-	   34,   35,   60,   62,  127,    0,   31,   32,   34,   35,   59,   60,
-	   62,   63,  127,    0,   31,   32,   34,   35,   60,   62,   63,  127,
-	    0,   31,   32,   34,   35,   60,   62,  127,    0,   31,   32,   34,
-	   35,   60,   62,  127,    0,   31,   32,   36,   95,   45,   46,   48,
-	   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,
-	   32,   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,
-	   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,
-	   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,
-	   32,   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,
-	   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,
-	   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,
-	   32,   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,
-	   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,
-	   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,
-	   32,   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,
-	   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,
-	   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,
-	   32,    0
+	   34,   35,   60,   62,  127,    0,   31,   32,   34,   35,   60,   62,
+	   63,  127,    0,   31,   32,   34,   35,   60,   62,  127,    0,   31,
+	   32,   34,   35,   60,   62,  127,    0,   31,   32,   36,   95,   45,
+	   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,
+	   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,   32,
+	   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,
+	   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,
+	   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,   32,
+	   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,
+	   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,
+	   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,   32,
+	   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,
+	   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,
+	   65,   90,   32,   36,   95,   45,   46,   48,   57,   65,   90,   32,
+	   36,   95,   45,   46,   48,   57,   65,   90,   32,   36,   95,   45,
+	   46,   48,   57,   65,   90,   32,   36,   95,   45,   46,   48,   57,
+	   65,   90,   32,    0
 	};
 }
 
@@ -82,8 +83,8 @@ private static byte[] init__puma_parser_single_lengths_0()
 	return new byte [] {
 	    0,    2,    3,    4,    2,    1,    1,    1,    1,    1,    0,    1,
 	    0,    1,    1,    4,    1,    4,    2,    1,    4,    4,    2,    6,
-	    8,    7,    6,    6,    3,    3,    3,    3,    3,    3,    3,    3,
-	    3,    3,    3,    3,    3,    3,    3,    3,    3,    3,    1,    0
+	    7,    6,    6,    3,    3,    3,    3,    3,    3,    3,    3,    3,
+	    3,    3,    3,    3,    3,    3,    3,    3,    3,    1,    0
 	};
 }
 
@@ -95,8 +96,8 @@ private static byte[] init__puma_parser_range_lengths_0()
 	return new byte [] {
 	    0,    3,    3,    3,    0,    0,    0,    0,    0,    0,    1,    1,
 	    1,    1,    0,    6,    0,    6,    0,    0,    2,    2,    4,    1,
-	    1,    1,    1,    1,    3,    3,    3,    3,    3,    3,    3,    3,
-	    3,    3,    3,    3,    3,    3,    3,    3,    3,    3,    0,    0
+	    1,    1,    1,    3,    3,    3,    3,    3,    3,    3,    3,    3,
+	    3,    3,    3,    3,    3,    3,    3,    3,    3,    0,    0
 	};
 }
 
@@ -108,8 +109,8 @@ private static short[] init__puma_parser_index_offsets_0()
 	return new short [] {
 	    0,    0,    6,   13,   21,   24,   26,   28,   30,   32,   34,   36,
 	   39,   41,   44,   46,   57,   59,   70,   73,   75,   82,   89,   96,
-	  104,  114,  123,  131,  139,  146,  153,  160,  167,  174,  181,  188,
-	  195,  202,  209,  216,  223,  230,  237,  244,  251,  258,  265,  267
+	  104,  113,  121,  129,  136,  143,  150,  157,  164,  171,  178,  185,
+	  192,  199,  206,  213,  220,  227,  234,  241,  248,  255,  257
 	};
 }
 
@@ -127,21 +128,20 @@ private static byte[] init__puma_parser_indicies_0()
 	   24,   23,   23,   23,   23,   23,   23,   23,   23,    1,   26,   27,
 	   25,   29,   28,   30,    1,    1,    1,    1,    1,   31,   32,    1,
 	    1,    1,    1,    1,   33,   34,   35,   34,   34,   34,   34,    1,
-	    8,    1,    9,    1,    1,    1,    1,   35,   36,    1,   38,   39,
-	    1,    1,   40,    1,    1,   37,    8,    1,    9,    1,    1,   42,
-	    1,    1,   41,   43,    1,   45,    1,    1,    1,    1,   44,   46,
-	    1,   48,    1,    1,    1,    1,   47,    2,   49,   49,   49,   49,
-	   49,    1,    2,   50,   50,   50,   50,   50,    1,    2,   51,   51,
-	   51,   51,   51,    1,    2,   52,   52,   52,   52,   52,    1,    2,
-	   53,   53,   53,   53,   53,    1,    2,   54,   54,   54,   54,   54,
-	    1,    2,   55,   55,   55,   55,   55,    1,    2,   56,   56,   56,
-	   56,   56,    1,    2,   57,   57,   57,   57,   57,    1,    2,   58,
-	   58,   58,   58,   58,    1,    2,   59,   59,   59,   59,   59,    1,
-	    2,   60,   60,   60,   60,   60,    1,    2,   61,   61,   61,   61,
-	   61,    1,    2,   62,   62,   62,   62,   62,    1,    2,   63,   63,
-	   63,   63,   63,    1,    2,   64,   64,   64,   64,   64,    1,    2,
-	   65,   65,   65,   65,   65,    1,    2,   66,   66,   66,   66,   66,
-	    1,    2,    1,    1,    0
+	    8,    1,    9,    1,    1,    1,    1,   35,   36,    1,   38,    1,
+	    1,   39,    1,    1,   37,   40,    1,   42,    1,    1,    1,    1,
+	   41,   43,    1,   45,    1,    1,    1,    1,   44,    2,   46,   46,
+	   46,   46,   46,    1,    2,   47,   47,   47,   47,   47,    1,    2,
+	   48,   48,   48,   48,   48,    1,    2,   49,   49,   49,   49,   49,
+	    1,    2,   50,   50,   50,   50,   50,    1,    2,   51,   51,   51,
+	   51,   51,    1,    2,   52,   52,   52,   52,   52,    1,    2,   53,
+	   53,   53,   53,   53,    1,    2,   54,   54,   54,   54,   54,    1,
+	    2,   55,   55,   55,   55,   55,    1,    2,   56,   56,   56,   56,
+	   56,    1,    2,   57,   57,   57,   57,   57,    1,    2,   58,   58,
+	   58,   58,   58,    1,    2,   59,   59,   59,   59,   59,    1,    2,
+	   60,   60,   60,   60,   60,    1,    2,   61,   61,   61,   61,   61,
+	    1,    2,   62,   62,   62,   62,   62,    1,    2,   63,   63,   63,
+	   63,   63,    1,    2,    1,    1,    0
 	};
 }
 
@@ -151,12 +151,12 @@ private static final byte _puma_parser_indicies[] = init__puma_parser_indicies_0
 private static byte[] init__puma_parser_trans_targs_0()
 {
 	return new byte [] {
-	    2,    0,    3,   28,    4,   22,   24,   23,    5,   20,    6,    7,
-	    8,    9,   10,   11,   12,   13,   14,   15,   16,   17,   47,   17,
+	    2,    0,    3,   27,    4,   22,   24,   23,    5,   20,    6,    7,
+	    8,    9,   10,   11,   12,   13,   14,   15,   16,   17,   46,   17,
 	   18,   19,   14,   18,   19,   14,    5,   21,    5,   21,   22,   23,
-	    5,   24,   20,   25,   26,   25,   26,    5,   27,   20,    5,   27,
-	   20,   29,   30,   31,   32,   33,   34,   35,   36,   37,   38,   39,
-	   40,   41,   42,   43,   44,   45,   46
+	    5,   24,   20,   25,    5,   26,   20,    5,   26,   20,   28,   29,
+	   30,   31,   32,   33,   34,   35,   36,   37,   38,   39,   40,   41,
+	   42,   43,   44,   45
 	};
 }
 
@@ -169,9 +169,9 @@ private static byte[] init__puma_parser_trans_actions_0()
 	    1,    0,   11,    0,    1,    1,    1,    1,   13,   13,    1,    0,
 	    0,    0,    0,    0,    0,    0,   19,    0,    0,   28,   23,    3,
 	    5,    7,   31,    7,    0,    9,   25,    1,   15,    0,    0,    0,
-	   37,    0,   37,   21,   21,    0,    0,   40,   17,   40,   34,    0,
-	   34,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-	    0,    0,    0,    0,    0,    0,    0
+	   37,    0,   37,   21,   40,   17,   40,   34,    0,   34,    0,    0,
+	    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0
 	};
 }
 
@@ -179,17 +179,20 @@ private static final byte _puma_parser_trans_actions[] = init__puma_parser_trans
 
 
 static final int puma_parser_start = 1;
-static final int puma_parser_first_final = 47;
+static final int puma_parser_first_final = 46;
 static final int puma_parser_error = 0;
 
-// line 69 "ext/puma_http11/http11_parser.java.rl"
+static final int puma_parser_en_main = 1;
+
+
+// line 71 "ext/puma_http11/http11_parser.java.rl"
 
    public static interface ElementCB {
-     public void call(Object data, int at, int length);
+     public void call(Ruby runtime, RubyHash data, ByteList buffer, int at, int length);
    }
 
    public static interface FieldCB {
-     public void call(Object data, int field, int flen, int value, int vlen);
+     public void call(Ruby runtime, RubyHash data, ByteList buffer, int field, int flen, int value, int vlen);
    }
 
    public static class HttpParser {
@@ -202,7 +205,7 @@ static final int puma_parser_error = 0;
       int field_len;
       int query_start;
 
-      Object data;
+      RubyHash data;
       ByteList buffer;
 
       public FieldCB http_field;
@@ -217,13 +220,13 @@ static final int puma_parser_error = 0;
       public void init() {
           cs = 0;
 
-
+          
 // line 225 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	cs = puma_parser_start;
 	}
 
-// line 104 "ext/puma_http11/http11_parser.java.rl"
+// line 106 "ext/puma_http11/http11_parser.java.rl"
 
           body_start = 0;
           content_len = 0;
@@ -236,7 +239,7 @@ static final int puma_parser_error = 0;
 
    public final HttpParser parser = new HttpParser();
 
-   public int execute(ByteList buffer, int off) {
+   public int execute(Ruby runtime, ByteList buffer, int off) {
      int p, pe;
      int cs = parser.cs;
      int len = buffer.length();
@@ -249,7 +252,7 @@ static final int puma_parser_error = 0;
      byte[] data = buffer.bytes();
      parser.buffer = buffer;
 
-
+     
 // line 257 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	int _klen;
@@ -331,87 +334,87 @@ case 1:
 			switch ( _puma_parser_actions[_acts++] )
 			{
 	case 0:
-// line 13 "ext/puma_http11/http11_parser.java.rl"
+// line 15 "ext/puma_http11/http11_parser.java.rl"
 	{parser.mark = p; }
 	break;
 	case 1:
-// line 15 "ext/puma_http11/http11_parser.java.rl"
+// line 17 "ext/puma_http11/http11_parser.java.rl"
 	{ parser.field_start = p; }
 	break;
 	case 2:
-// line 16 "ext/puma_http11/http11_parser.java.rl"
+// line 18 "ext/puma_http11/http11_parser.java.rl"
 	{ /* FIXME stub */ }
 	break;
 	case 3:
-// line 17 "ext/puma_http11/http11_parser.java.rl"
-	{
+// line 19 "ext/puma_http11/http11_parser.java.rl"
+	{ 
     parser.field_len = p-parser.field_start;
   }
 	break;
 	case 4:
-// line 21 "ext/puma_http11/http11_parser.java.rl"
+// line 23 "ext/puma_http11/http11_parser.java.rl"
 	{ parser.mark = p; }
 	break;
 	case 5:
-// line 22 "ext/puma_http11/http11_parser.java.rl"
-	{
+// line 24 "ext/puma_http11/http11_parser.java.rl"
+	{ 
     if(parser.http_field != null) {
-      parser.http_field.call(parser.data, parser.field_start, parser.field_len, parser.mark, p-parser.mark);
+      parser.http_field.call(runtime, parser.data, parser.buffer, parser.field_start, parser.field_len, parser.mark, p-parser.mark);
     }
   }
 	break;
 	case 6:
-// line 27 "ext/puma_http11/http11_parser.java.rl"
-	{
-    if(parser.request_method != null)
-      parser.request_method.call(parser.data, parser.mark, p-parser.mark);
+// line 29 "ext/puma_http11/http11_parser.java.rl"
+	{ 
+    if(parser.request_method != null) 
+      parser.request_method.call(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
   }
 	break;
 	case 7:
-// line 31 "ext/puma_http11/http11_parser.java.rl"
-	{
+// line 33 "ext/puma_http11/http11_parser.java.rl"
+	{ 
     if(parser.request_uri != null)
-      parser.request_uri.call(parser.data, parser.mark, p-parser.mark);
+      parser.request_uri.call(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
   }
 	break;
 	case 8:
-// line 35 "ext/puma_http11/http11_parser.java.rl"
-	{
+// line 37 "ext/puma_http11/http11_parser.java.rl"
+	{ 
     if(parser.fragment != null)
-      parser.fragment.call(parser.data, parser.mark, p-parser.mark);
+      parser.fragment.call(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
   }
 	break;
 	case 9:
-// line 40 "ext/puma_http11/http11_parser.java.rl"
+// line 42 "ext/puma_http11/http11_parser.java.rl"
 	{parser.query_start = p; }
 	break;
 	case 10:
-// line 41 "ext/puma_http11/http11_parser.java.rl"
-	{
+// line 43 "ext/puma_http11/http11_parser.java.rl"
+	{ 
     if(parser.query_string != null)
-      parser.query_string.call(parser.data, parser.query_start, p-parser.query_start);
+      parser.query_string.call(runtime, parser.data, parser.buffer, parser.query_start, p-parser.query_start);
   }
 	break;
 	case 11:
-// line 46 "ext/puma_http11/http11_parser.java.rl"
-	{
+// line 48 "ext/puma_http11/http11_parser.java.rl"
+	{	
     if(parser.http_version != null)
-      parser.http_version.call(parser.data, parser.mark, p-parser.mark);
+      parser.http_version.call(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
   }
 	break;
 	case 12:
-// line 51 "ext/puma_http11/http11_parser.java.rl"
+// line 53 "ext/puma_http11/http11_parser.java.rl"
 	{
     if(parser.request_path != null)
-      parser.request_path.call(parser.data, parser.mark, p-parser.mark);
+      parser.request_path.call(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
   }
 	break;
 	case 13:
-// line 56 "ext/puma_http11/http11_parser.java.rl"
-	{
-    parser.body_start = p + 1;
+// line 58 "ext/puma_http11/http11_parser.java.rl"
+	{ 
+    parser.body_start = p + 1; 
     if(parser.header_done != null)
-      parser.header_done.call(parser.data, p + 1, pe - p - 1);
+      parser.header_done.call(runtime, parser.data, parser.buffer, p + 1, pe - p - 1);
     { p += 1; _goto_targ = 5; if (true)  continue _goto;}
   }
 	break;
@@ -435,11 +438,11 @@ case 5:
 	break; }
 	}
 
-// line 130 "ext/puma_http11/http11_parser.java.rl"
+// line 132 "ext/puma_http11/http11_parser.java.rl"
 
      parser.cs = cs;
      parser.nread += (p - off);
-
+     
      assert p <= pe                  : "buffer overflow after parsing execute";
      assert parser.nread <= len      : "nread longer than length";
      assert parser.body_start <= len : "body starts after buffer end";
