@@ -1,7 +1,7 @@
 ## Master
 
 * Features
-  * Your feature goes here (#Github Number)
+  * Optimize HTTP parser for JRuby (#2012)
 
 * Bugfixes
   * Fix socket activation of systemd (pre-existing) unix binder files (#1842, #1988)
