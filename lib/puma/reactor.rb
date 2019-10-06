@@ -237,7 +237,7 @@ module Puma
                 ssl_socket = c.io
                 begin
                   addr = ssl_socket.peeraddr.last
-                rescue IOError
+                rescue IOError, Errno::EINVAL
                   addr = "<unknown>"
                 end
 

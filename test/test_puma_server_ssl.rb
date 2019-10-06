@@ -199,6 +199,18 @@ class TestPumaServerSSL < Minitest::Test
       assert_match(msg, @events.error.message) if @events.error
     end
   end
+
+  def test_peeraddr_raises
+    port = UniquePort.call
+
+    s = TCPServer.new("127.0.0.1", port)
+
+    def s.peeraddr
+      raise Errno::EINVAL
+    end
+
+    assert_raises { s.peeraddr }
+  end
 end unless DISABLE_SSL
 
 # client-side TLS authentication tests
