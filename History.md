@@ -1,5 +1,5 @@
 * Features
-  * Your feature goes here (#Github Number)
+  * Strip whitespace at end of HTTP headers (#2010)
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)

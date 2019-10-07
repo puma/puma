@@ -199,9 +199,7 @@ class Http11ParserTest < Minitest::Test
     end
   end
 
-  # https://github.com/puma/puma/issues/1890
   def test_trims_whitespace_from_headers
-    skip("Known failure, see issue 1890 on GitHub")
     parser = Puma::HttpParser.new
     req = {}
     http = "GET / HTTP/1.1\r\nX-Strip-Me: Strip This       \r\n\r\n"

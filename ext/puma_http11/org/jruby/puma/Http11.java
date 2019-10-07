@@ -87,7 +87,9 @@ public class Http11 extends RubyObject {
                 validateMaxLength(flen, MAX_FIELD_NAME_LENGTH, MAX_FIELD_NAME_LENGTH_ERR);
                 validateMaxLength(vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
 
-                ByteList b = new ByteList(Http11.this.hp.parser.buffer,field,flen);
+                ByteList buffer = Http11.this.hp.parser.buffer;
+
+                ByteList b = new ByteList(buffer,field,flen);
                 for(int i = 0,j = b.length();i<j;i++) {
                     if((b.get(i) & 0xFF) == '-') {
                         b.set(i, (byte)'_');
@@ -105,7 +107,9 @@ public class Http11 extends RubyObject {
                   f.cat(b);
                 }
 
-                b = new ByteList(Http11.this.hp.parser.buffer, value, vlen);
+                while (vlen > 0 && Character.isWhitespace(buffer.get(value + vlen - 1))) vlen--;
+
+                b = new ByteList(buffer, value, vlen);
                 v = req.op_aref(req.getRuntime().getCurrentContext(), f);
                 if (v.isNil()) {
                     req.op_aset(req.getRuntime().getCurrentContext(), f, RubyString.newString(runtime, b));
