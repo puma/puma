@@ -1,9 +1,12 @@
-## Master
-
 * Features
   * Your feature goes here (#Github Number)
 
 * Bugfixes
+  * Your bugfix goes here (#Github Number)
+
+## 4.2.1 / 2019-10-07
+
+* 3 bugfixes
   * Fix socket activation of systemd (pre-existing) unix binder files (#1842, #1988)
   * Deal with multiple calls to bind correctly (#1986, #1994, #2006)
   * Accepts symbols for `verify_mode` (#1222)
