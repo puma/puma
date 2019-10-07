@@ -43,7 +43,7 @@ matrix:
       env: jit=yes
     - rvm: jruby-9.2.8.0
       dist: bionic
-      env: OS="Bionic 18.04"
+      env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED" OS="Bionic 18.04"
     - rvm: jruby-head
       dist: bionic
       env: OS="Bionic 18.04"
