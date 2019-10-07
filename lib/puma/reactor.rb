@@ -237,7 +237,8 @@ module Puma
                 ssl_socket = c.io
                 begin
                   addr = ssl_socket.peeraddr.last
-                rescue IOError
+                # EINVAL can happen when browser closes socket w/security exception
+                rescue IOError, Errno::EINVAL
                   addr = "<unknown>"
                 end
 
