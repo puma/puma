@@ -95,7 +95,7 @@ class TestBinder < TestBinderBase
     @binder.parse(["tcp://localhost:#{UniquePort.call}"], @events)
     server = @binder.bindings.first.server
 
-    proto = Puma::Binder::PROTO_ENV
+    proto = Puma::Const::PROTO_ENV
     env = @binder.env_for_server(server)
 
     assert_equal(env, env.merge(proto)) # Env contains the entire PROTO_ENV

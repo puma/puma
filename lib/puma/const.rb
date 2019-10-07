@@ -231,5 +231,22 @@ module Puma
     # Mininum interval to checks worker health
     WORKER_CHECK_INTERVAL = 5
 
+    PROTO_ENV = {
+      "rack.version".freeze => [1,3].freeze,
+      "rack.multithread".freeze => true,
+      "rack.multiprocess".freeze => false,
+      "rack.run_once".freeze => false,
+      "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
+
+      # I'd like to set a default CONTENT_TYPE here but some things
+      # depend on their not being a default set and inferring
+      # it from the content. And so if i set it here, it won't
+      # infer properly.
+
+      "QUERY_STRING".freeze => "",
+      SERVER_PROTOCOL => HTTP_11,
+      SERVER_SOFTWARE => PUMA_SERVER_STRING,
+      GATEWAY_INTERFACE => CGI_VER
+    }
   end
 end
