@@ -80,7 +80,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_pre_existing_unix
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip UNIX_SKT_MSG unless HAS_UNIX
     unix_path = "test/#{name}_server.sock"
 
     File.open(unix_path, mode: 'wb') { |f| f.puts 'pre existing' }
@@ -95,7 +95,7 @@ class TestBinder < TestBinderBase
     assert File.exist?(unix_path)
 
   ensure
-    if UNIX_SKT_EXIST
+    if HAS_UNIX
       File.unlink unix_path if File.exist? unix_path
     end
   end
@@ -134,7 +134,7 @@ class TestBinder < TestBinderBase
   private
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
-    skip UNIX_SKT_MSG if order.include?(:unix) && !UNIX_SKT_EXIST
+    skip UNIX_SKT_MSG if order.include?(:unix) && !HAS_UNIX
 
     prepared_paths = {
         ssl: "ssl://127.0.0.1:#{UniquePort.call}?#{ssl_query}",
@@ -150,7 +150,7 @@ class TestBinder < TestBinderBase
     assert stdout.include?(prepared_paths[order[0]]), "\n#{stdout}\n"
     assert stdout.include?(prepared_paths[order[1]]), "\n#{stdout}\n"
   ensure
-    @binder.close_unix_paths if order.include?(:unix) && UNIX_SKT_EXIST
+    @binder.close_unix_paths if order.include?(:unix) && HAS_UNIX
   end
 end
 

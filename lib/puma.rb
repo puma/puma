@@ -11,8 +11,8 @@ require 'stringio'
 require 'thread'
 
 module Puma
-  autoload :Const, 'puma/const'
-  autoload :Server, 'puma/server'
+  autoload :Const   , 'puma/const'
+  autoload :Server  , 'puma/server'
   autoload :Launcher, 'puma/launcher'
 
   def self.stats_object=(val)

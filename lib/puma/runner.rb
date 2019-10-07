@@ -88,6 +88,20 @@ module Puma
       @control = control
     end
 
+    def end_control(type)
+      if @control && [:halt, :stop].include?(type)
+        @control.send type, true
+        @control.binder.close
+        @control.binder.close_unix_paths
+      end
+    end
+
+    def close_control_io
+      return unless @control
+      @control.binder.close
+      @control.binder.close_unix_paths
+    end
+
     def ruby_engine
       if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
         "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"

@@ -16,47 +16,51 @@ module Puma
 
       def call(env)
         unless authenticate(env)
-          return rack_response(403, 'Invalid auth token', 'text/plain')
+          return rack_response 403, 'Invalid auth token', 'text/plain'
         end
 
         case env['PATH_INFO']
         when /\/stop$/
           @cli.stop
-          rack_response(200, OK_STATUS)
+          rack_response 200, OK_STATUS
 
         when /\/halt$/
           @cli.halt
-          rack_response(200, OK_STATUS)
+          rack_response 200, OK_STATUS
 
         when /\/restart$/
           @cli.restart
-          rack_response(200, OK_STATUS)
+          rack_response 200, OK_STATUS
 
         when /\/phased-restart$/
           if !@cli.phased_restart
-            rack_response(404, '{ "error": "phased restart not available" }')
+            rack_response 404, '{ "error": "phased restart not available" }'
           else
-            rack_response(200, OK_STATUS)
+            rack_response 200, OK_STATUS
           end
 
         when /\/reload-worker-directory$/
           if !@cli.send(:reload_worker_directory)
-            rack_response(404, '{ "error": "reload_worker_directory not available" }')
+            rack_response 404, '{ "error": "reload_worker_directory not available" }'
           else
-            rack_response(200, OK_STATUS)
+            rack_response 200, OK_STATUS
           end
 
         when /\/gc$/
           GC.start
-          rack_response(200, OK_STATUS)
+          rack_response 200, OK_STATUS
 
         when /\/gc-stats$/
-          rack_response(200, GC.stat.to_json)
+          rack_response 200, GC.stat.to_json
 
         when /\/stats$/
-          rack_response(200, @cli.stats)
+          rack_response 200, @cli.stats
+
+        when /\/thread-status$/
+          rack_response 200, @cli.thread_status, 'text/plain'
+
         else
-          rack_response 404, "Unsupported action", 'text/plain'
+          rack_response 404, 'Unsupported action', 'text/plain'
         end
       end
 

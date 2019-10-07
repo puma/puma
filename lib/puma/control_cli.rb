@@ -11,7 +11,20 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats}
+    CMDS_SGNLS = {
+      'halt'           => :QUIT,
+      'phased-restart' => :USR1,
+      'restart'        => :USR2,
+      'stop'           => :TERM,
+      'thread-status'  => :INFO,
+      'gc'       => nil,
+      'gc-stats' => nil,
+      'start'    => nil,
+      'stats'    => nil,
+      'status'   => nil
+    }.freeze
+
+    COMMANDS = CMDS_SGNLS.keys.sort.freeze
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
@@ -181,7 +194,7 @@ module Puma
         end
 
         message "Command #{@command} sent success"
-        message response.last if @command == "stats" || @command == "gc-stats"
+        message response.last if %w!stats gc-stats thread-status!.include? @command
       end
     ensure
       server.close if server && !server.closed?
@@ -193,42 +206,22 @@ module Puma
       end
 
       begin
-
-        case @command
-        when "restart"
-          Process.kill "SIGUSR2", @pid
-
-        when "halt"
-          Process.kill "QUIT", @pid
-
-        when "stop"
-          Process.kill "SIGTERM", @pid
-
-        when "stats"
-          puts "Stats not available via pid only"
-          return
-
-        when "reload-worker-directory"
-          puts "reload-worker-directory not available via pid only"
-          return
-
-        when "phased-restart"
-          Process.kill "SIGUSR1", @pid
-
-        when "status"
-          begin
-            Process.kill 0, @pid
-            puts "Puma is started"
-          rescue Errno::ESRCH
-            raise "Puma is not running"
-          end
-
-          return
-
+        if sgnl = CMDS_SGNLS[@command]
+          Process.kill sgnl, @pid
         else
-          return
+          case @command
+          when "status"
+            begin
+              Process.kill 0, @pid
+              puts "Puma is started"
+            rescue Errno::ESRCH
+              raise "Puma is not running"
+            end
+            return
+          else
+            return
+          end
         end
-
       rescue SystemCallError
         if @command == "restart"
           start

@@ -94,6 +94,7 @@ class TestPumaServerSSL < Minitest::Test
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
     socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, @port), ctx
+    socket.sync_close = true
     socket.write "x"
     sleep 0.1
 
@@ -101,11 +102,29 @@ class TestPumaServerSSL < Minitest::Test
     thread_pool = @server.instance_variable_get(:@thread_pool)
     busy_threads = thread_pool.spawned - thread_pool.waiting
 
-    socket.close
+    socket.sysclose
 
     # The thread pool should be empty since the request would block on read
     # and our request should have been moved to the reactor.
     assert busy_threads.zero?, "Our connection is monopolizing a thread"
+  end
+
+  def test_request_wont_block_thread_handshake
+    start_server
+    # Open a connection witha handshake
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, @port), ctx
+
+    socket.connect
+    sleep 0.05        # intermittent on CI without sleep
+
+    thread_pool = @server.instance_variable_get :@thread_pool
+    busy_threads = thread_pool.spawned - thread_pool.waiting
+
+    socket.close
+
+    assert busy_threads.zero?, 'Our connection is monopolizing a thread'
   end
 
   def test_very_large_return
@@ -212,12 +231,12 @@ class TestPumaServerSSLClient < Minitest::Test
 
     ctx = Puma::MiniSSL::Context.new
     if Puma.jruby?
-      ctx.keystore =  File.expand_path "../../examples/puma/client-certs/keystore.jks", __FILE__
+      ctx.keystore =  File.expand_path '../../examples/puma/client-certs/keystore.jks', __FILE__
       ctx.keystore_pass = 'blahblah'
     else
-      ctx.key = File.expand_path "../../examples/puma/client-certs/server.key", __FILE__
-      ctx.cert = File.expand_path "../../examples/puma/client-certs/server.crt", __FILE__
-      ctx.ca = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      ctx.key = File.expand_path '../../examples/puma/client-certs/server.key', __FILE__
+      ctx.cert = File.expand_path '../../examples/puma/client-certs/server.crt', __FILE__
+      ctx.ca = File.expand_path '../../examples/puma/client-certs/ca.crt', __FILE__
     end
     ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER | Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
 
@@ -238,7 +257,7 @@ class TestPumaServerSSLClient < Minitest::Test
         req = Net::HTTP::Get.new "/", {}
         http.request(req)
       end
-    rescue OpenSSL::SSL::SSLError, EOFError
+    rescue OpenSSL::SSL::SSLError, Errno::ECONNRESET, EOFError
       client_error = true
       # closes socket if open, may not close on error
       http.send :do_finish
@@ -265,11 +284,11 @@ class TestPumaServerSSLClient < Minitest::Test
 
   def test_verify_fail_if_client_unknown_ca
     assert_ssl_client_error_match('self signed certificate in certificate chain', '/DC=net/DC=puma/CN=ca-unknown') do |http|
-      key = File.expand_path "../../examples/puma/client-certs/client_unknown.key", __FILE__
-      crt = File.expand_path "../../examples/puma/client-certs/client_unknown.crt", __FILE__
+      key = File.expand_path '../../examples/puma/client-certs/client_unknown.key', __FILE__
+      crt = File.expand_path '../../examples/puma/client-certs/client_unknown.crt', __FILE__
       http.key = OpenSSL::PKey::RSA.new File.read(key)
       http.cert = OpenSSL::X509::Certificate.new File.read(crt)
-      http.ca_file = File.expand_path "../../examples/puma/client-certs/unknown_ca.crt", __FILE__
+      http.ca_file = File.expand_path '../../examples/puma/client-certs/unknown_ca.crt', __FILE__
     end
   end
 

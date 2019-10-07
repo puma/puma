@@ -30,13 +30,14 @@ module Puma
     end
 
     def halt
-      @server.halt
+      @server.halt if @server
     end
 
     def stop_blocked
       log "- Gracefully stopping, waiting for requests to finish"
+      @server.stop(true)  if @server
       @control.stop(true) if @control
-      @server.stop(true) if @server
+      close_control_io
     end
 
     def jruby_daemon?
@@ -104,7 +105,7 @@ module Puma
 
       start_control
 
-      @server = server = start_server
+      @server = start_server
 
       unless daemon?
         log "Use Ctrl-C to stop"
@@ -114,7 +115,7 @@ module Puma
       @launcher.events.fire_on_booted!
 
       begin
-        server.run.join
+        @server.run.join
       rescue Interrupt
         # Swallow it
       end

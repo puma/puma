@@ -50,7 +50,7 @@ module Puma
     end
 
     def close
-      @ios.each { |i| i.close }
+      @ios.each { |i| i.close unless i.to_io.closed? }
     end
 
     def import_from_env
@@ -361,8 +361,8 @@ module Puma
 
     def close_listeners
       @listeners.each do |l, io|
-        io.close
-        uri = URI.parse(l)
+        io.close unless io.to_io.closed?
+        uri = URI.parse l
         next unless uri.scheme == 'unix'
         unix_path = "#{uri.host}#{uri.path}"
         File.unlink unix_path if @unix_paths.include? unix_path

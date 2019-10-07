@@ -60,13 +60,11 @@ class TestLauncher < Minitest::Test
     launcher.send(:log_thread_status)
     events.stdout.rewind
 
-    assert_match "Thread TID", events.stdout.read
+    assert_match 'Thread: TID', events.stdout.read
   end
 
   def test_pid_file
-    tmp_file = Tempfile.new("puma-test")
-    tmp_path = tmp_file.path
-    tmp_file.close!
+    tmp_path = "tmp/#{full_file_name}.pid"
 
     conf = Puma::Configuration.new do |c|
       c.pidfile tmp_path

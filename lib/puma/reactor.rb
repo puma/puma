@@ -244,7 +244,8 @@ module Puma
 
                 cert = ssl_socket.peercert
 
-                c.close
+                # may generate another SSL error, continue to remove the monitor
+                c.close rescue nil
                 clear_monitor mon
 
                 @events.ssl_error @server, addr, cert, e
@@ -302,6 +303,7 @@ module Puma
     def run
       run_internal
     ensure
+      @selector.close
       @trigger.close
       @ready.close
     end
@@ -316,6 +318,7 @@ module Puma
           STDERR.puts e.backtrace
           retry
         ensure
+          @selector.close
           @trigger.close
           @ready.close
         end

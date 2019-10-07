@@ -2,7 +2,7 @@
 
 require 'puma/events'
 require 'puma/detect'
-require 'puma/cluster'
+require 'puma/cluster' if ::Puma::HAS_FORK
 require 'puma/single'
 require 'puma/const'
 require 'puma/binder'
@@ -65,7 +65,7 @@ module Puma
 
       generate_restart_data
 
-      if clustered? && !Process.respond_to?(:fork)
+      if clustered? && !HAS_FORK
         unsupported "worker mode not supported on #{RUBY_ENGINE} on this platform"
       end
 
@@ -169,6 +169,7 @@ module Puma
 
       setup_signals
       set_process_title
+
       @runner.run
 
       case @status
@@ -184,7 +185,9 @@ module Puma
       when :exit
         # nothing
       end
-      @binder.close_unix_paths
+        @binder.close
+        @binder.close_unix_paths
+        @runner.end_control @status
     end
 
     # Return which tcp port the launcher is using, if it's using TCP
@@ -195,7 +198,7 @@ module Puma
     def restart_args
       cmd = @options[:restart_cmd]
       if cmd
-        cmd.split(' ') + @original_argv
+        cmd.split + @original_argv
       else
         @restart_argv
       end
@@ -203,6 +206,24 @@ module Puma
 
     def close_binder_listeners
       @binder.close_listeners
+    end
+
+    def thread_status
+      out = ''.dup
+      Thread.list.each do |thread|
+        oid = thread.object_id.to_s 36
+        out <<   "Thread  TID-#{oid} #{thread['label']}\n"
+        logstr = "Thread: TID-#{oid}"
+        logstr += " #{thread.name}" if thread.respond_to?(:name)
+        out << "#{logstr}\n"
+
+        if thread.backtrace
+          out << thread.backtrace.join("\n") + "\n"
+        else
+          out << "<no backtrace available>\n"
+        end
+      end
+      out
     end
 
     private
@@ -324,18 +345,7 @@ module Puma
     end
 
     def log_thread_status
-      Thread.list.each do |thread|
-        log "Thread TID-#{thread.object_id.to_s(36)} #{thread['label']}"
-        logstr = "Thread: TID-#{thread.object_id.to_s(36)}"
-        logstr += " #{thread.name}" if thread.respond_to?(:name)
-        log logstr
-
-        if thread.backtrace
-          log thread.backtrace.join("\n")
-        else
-          log "<no backtrace available>"
-        end
-      end
+      log thread_status
     end
 
     def set_process_title
@@ -408,7 +418,7 @@ module Puma
 
     def setup_signals
       begin
-        Signal.trap "SIGUSR2" do
+        Signal.trap :USR2 do
           restart
         end
       rescue Exception
@@ -417,7 +427,7 @@ module Puma
 
       unless Puma.jruby?
         begin
-          Signal.trap "SIGUSR1" do
+          Signal.trap :USR1 do
             phased_restart
           end
         rescue Exception
@@ -426,7 +436,7 @@ module Puma
       end
 
       begin
-        Signal.trap "SIGTERM" do
+        Signal.trap :TERM do
           graceful_stop
 
           raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
@@ -436,7 +446,7 @@ module Puma
       end
 
       begin
-        Signal.trap "SIGINT" do
+        Signal.trap :INT do
           stop
         end
       rescue Exception
@@ -444,7 +454,7 @@ module Puma
       end
 
       begin
-        Signal.trap "SIGHUP" do
+        Signal.trap :HUP do
           if @runner.redirected_io?
             @runner.redirect_io
           else
@@ -456,7 +466,7 @@ module Puma
       end
 
       begin
-        Signal.trap "SIGINFO" do
+        Signal.trap :INFO do
           log_thread_status
         end
       rescue Exception

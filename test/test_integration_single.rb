@@ -2,82 +2,60 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationSingle < TestIntegration
-  parallelize_me!
+  parallelize_me! unless Puma.jruby?
 
-  def test_usr2_restart
-    skip_unless_signal_exist? :USR2
-    _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
-    assert_equal "Hello World", new_reply
-  end
-
-  # It does not share environments between multiple generations, which would break Dotenv
-  def test_usr2_restart_restores_environment
-    # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
-    # next workers ENV
-    skip_on :jruby
-    skip_unless_signal_exist? :USR2
-
-    initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
-
-    assert_includes initial_reply, "Hello RAND"
-    assert_includes new_reply, "Hello RAND"
-    refute_equal initial_reply, new_reply
+  def teardown
+    return if skipped?
+    super
   end
 
   def test_term_exit_code
     skip_unless_signal_exist? :TERM
     skip_on :jruby # JVM does not return correct exit code for TERM
+    setup_puma bind: :tcp, ctrl: :pid
 
     cli_server "test/rackup/hello.ru"
-    _, status = stop_server
+    run_pumactl 'stop'
 
-    assert_equal 15, status
+    begin
+      _, status = Process.wait2 @pid
+      assert_equal 15, status
+    rescue Errno::ECHILD
+    end
   end
 
   def test_term_suppress
     skip_unless_signal_exist? :TERM
+    setup_puma bind: :tcp, ctrl: :pid
 
     cli_server "-C test/config/suppress_exception.rb test/rackup/hello.ru"
-    _, status = stop_server
+    run_pumactl 'stop'
 
-    assert_equal 0, status
+    begin
+      _, status = Process.wait2 @pid
+      assert_equal 0, status
+    rescue Errno::ECHILD
+    end
   end
 
-  def test_term_not_accepts_new_connections
+  def test_stop_closes_listeners_tcp_sgnl
     skip_unless_signal_exist? :TERM
-    skip_on :jruby
+    setup_puma bind: :tcp, ctrl: :pid
+    stop_closes_listeners
+  end
 
-    cli_server 'test/rackup/sleep.ru'
-
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}/sleep10")
-    sleep 1 # ensure curl send a request
-
-    Process.kill :TERM, @pid
-    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
-
-    # Invoke a request which must be rejected
-    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
-
-    assert nil != Process.getpgid(@server.pid) # ensure server is still running
-    assert nil != Process.getpgid(rejected_curl_wait_thread[:pid]) # ensure first curl invokation still in progress
-
-    curl_wait_thread.join
-    rejected_curl_wait_thread.join
-
-    assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused/, rejected_curl_stderr.read)
-
-    Process.wait(@server.pid)
-    @server.close unless @server.closed?
-    @server = nil # prevent `#teardown` from killing already killed server
+  def test_stop_closes_listeners_tcp_sock
+    setup_puma bind: :tcp, ctrl: :tcp
+    stop_closes_listeners
   end
 
   def test_int_refuse
     skip_unless_signal_exist? :INT
+    setup_puma bind: :tcp, ctrl: :tcp
 
     cli_server 'test/rackup/hello.ru'
     begin
-      sock = TCPSocket.new(HOST, @tcp_port)
+      sock = connect ''
       sock.close
     rescue => ex
       fail("Port didn't open properly: #{ex.message}")
@@ -86,19 +64,65 @@ class TestIntegrationSingle < TestIntegration
     Process.kill :INT, @pid
     Process.wait @pid
 
-    assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
+    assert_raises(Errno::ECONNREFUSED) { connect '' }
   end
 
-  def test_siginfo_thread_print
+  def test_thread_status_sgnl
     skip_unless_signal_exist? :INFO
+    setup_puma bind: :tcp, ctrl: :pid
 
     cli_server 'test/rackup/hello.ru'
-    output = []
-    t = Thread.new { output << @server.readlines }
-    Process.kill :INFO, @pid
-    Process.kill :INT , @pid
-    t.join
 
-    assert_match "Thread TID", output.join
+    Process.kill :INFO, @pid
+    assert_io 'Thread: TID'
+  end
+
+  def test_thread_status_sock
+    setup_puma bind: :tcp, ctrl: :tcp
+
+    cli_server 'test/rackup/hello.ru'
+
+    out, _ = run_pumactl 'thread-status'
+
+    assert_match 'Thread: TID', out
+  end
+end
+
+# restart sets ENV variables, so these can't run parallel
+# note: not phased-restart
+class TestIntegrationSingleSerial < TestIntegration
+
+  def teardown
+    return if skipped?
+    super
+  end
+
+  # It does not share environments between multiple generations, which would break Dotenv
+  def test_restart_restores_environment_sgnl
+    # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
+    # next workers ENV
+    skip_on :jruby
+    skip_unless_signal_exist? :USR2
+
+    setup_puma bind: :tcp, ctrl: :pid
+    pre, post = restart_server_and_listen "-q test/rackup/hello-env.ru"
+    assert_includes pre , 'Hello RAND'
+    assert_includes post, 'Hello RAND'
+    refute_equal pre, post
+  end
+
+  def test_restart_sgnl
+    skip_unless_signal_exist? :USR2
+    setup_puma bind: :tcp, ctrl: :pid
+    pre, post = restart_server_and_listen "-q test/rackup/hello.ru"
+    assert_equal 'Hello World', pre
+    assert_equal 'Hello World', post
+  end
+
+  def test_restart_sock
+    setup_puma bind: :tcp, ctrl: :tcp
+    pre, post = restart_server_and_listen "-q test/rackup/hello.ru"
+    assert_equal 'Hello World', pre
+    assert_equal 'Hello World', post
   end
 end

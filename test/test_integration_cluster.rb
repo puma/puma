@@ -2,14 +2,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationCluster < TestIntegration
-  parallelize_me!
-
-  DARWIN = !!RUBY_PLATFORM[/darwin/]
-
-  def setup
-    skip NO_FORK_MSG unless HAS_FORK
-    super
-  end
+  parallelize_me! unless Puma.jruby?
 
   def teardown
     return if skipped?
@@ -17,87 +10,114 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_pre_existing_unix
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip UNIX_SKT_MSG unless HAS_UNIX
+    setup_puma bind: :unix, ctrl: :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.open(@path_bind, mode: 'wb') { |f| f.puts 'pre existing' }
 
-    cli_server "-w #{WORKERS} -q test/rackup/sleep_step.ru", unix: :unix
+    cli_server "-w #{WORKERS} -q test/rackup/sleep_step.ru"
 
-    stop_server
+    stop_server_wait
 
-    assert File.exist?(@bind_path)
+    assert File.exist?(@path_bind)
 
   ensure
-    if UNIX_SKT_EXIST
-      File.unlink @bind_path if File.exist? @bind_path
+    if HAS_UNIX
+      File.unlink(@path_bind) if File.exist? @path_bind
     end
   end
 
-  def test_siginfo_thread_print
+  def test_thread_status_sgnl
     skip_unless_signal_exist? :INFO
+    setup_puma bind: :tcp, ctrl: :tcp
 
     cli_server "-w #{WORKERS} -q test/rackup/hello.ru"
     worker_pids = get_worker_pids
-    output = []
-    t = Thread.new { output << @server.readlines }
+
     Process.kill :INFO, worker_pids.first
-    Process.kill :INT , @pid
-    t.join
-
-    assert_match "Thread TID", output.join
+    assert_io 'Thread: TID'
   end
 
-  def test_usr2_restart
-    _, new_reply = restart_server_and_listen("-q -w #{WORKERS} test/rackup/hello.ru")
-    assert_equal "Hello World", new_reply
+  def test_thread_status_sock
+    setup_puma bind: :tcp, ctrl: :tcp
+
+    cli_server "-w #{WORKERS} -q test/rackup/hello.ru"
+
+    out, _ = run_pumactl 'thread-status'
+    assert_match 'Thread: TID', out
   end
 
-  # Next two tests, one tcp, one unix
+  # Next three tests, two signal, one with tcp bind, the other with unix.  Third
+  # is tcp bind and tcp control.
   # Send requests 10 per second.  Send 10, then :TERM server, then send another 30.
   # No more than 10 should throw Errno::ECONNRESET.
 
-  def test_term_closes_listeners_tcp
+  def test_stop_closes_listeners_tcp_sgnl
     skip_unless_signal_exist? :TERM
-    term_closes_listeners unix: false
+    setup_puma bind: :tcp, ctrl: :pid
+    stop_closes_listeners "-w #{WORKERS}"
   end
 
-  def test_term_closes_listeners_unix
+  def test_stop_closes_listeners_unix_sgnl
     skip_unless_signal_exist? :TERM
-    term_closes_listeners unix: true
+    setup_puma bind: :unix, ctrl: :pid
+    stop_closes_listeners "-w #{WORKERS}"
+  end
+
+  def test_stop_closes_listeners_tcp_sock
+    setup_puma bind: :tcp, ctrl: :tcp
+    stop_closes_listeners "-w #{WORKERS}"
   end
 
   # Next two tests, one tcp, one unix
-  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
+  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 34.
   # All should be responded to, and at least three workers should be used
 
-  def test_usr1_all_respond_tcp
+  def test_phased_restart_all_respond_tcp_sgnl
     skip_unless_signal_exist? :USR1
-    usr1_all_respond unix: false
+    setup_puma bind: :tcp, ctrl: :pid
+    phased_restart_all_respond
   end
 
-  def test_usr1_all_respond_unix
+  def test_phased_restart_all_respond_unix_sgnl
     skip_unless_signal_exist? :USR1
-    usr1_all_respond unix: true
+    setup_puma bind: :unix, ctrl: :pid
+    phased_restart_all_respond
+  end
+
+  def test_phased_restart_all_respond_tcp_sock
+    setup_puma bind: :tcp, ctrl: :tcp
+    phased_restart_all_respond
   end
 
   def test_term_exit_code
+    setup_puma bind: :tcp, ctrl: :pid
     cli_server "-w #{WORKERS} test/rackup/hello.ru"
-    _, status = stop_server
+    run_pumactl 'stop'
 
-    assert_equal 15, status
+    begin
+      _, status = Process.wait2 @pid
+      assert_equal 15, status
+    rescue Errno::ECHILD
+    end
   end
 
   def test_term_suppress
+    setup_puma bind: :tcp, ctrl: :pid
     cli_server "-w #{WORKERS} -C test/config/suppress_exception.rb test/rackup/hello.ru"
+    run_pumactl 'stop'
 
-    _, status = stop_server
-
-    assert_equal 0, status
+    begin
+      _, status = Process.wait2 @pid
+      assert_equal 0, status
+    rescue Errno::ECHILD
+    end
   end
 
   def test_term_worker_clean_exit
     skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
 
+    setup_puma bind: :tcp, ctrl: :pid
     cli_server "-w #{WORKERS} test/rackup/hello.ru"
 
     # Get the PIDs of the child workers.
@@ -116,6 +136,7 @@ class TestIntegrationCluster < TestIntegration
   def test_stuck_external_term_spawn
     skip_unless_signal_exist? :TERM
 
+    setup_puma bind: :tcp, ctrl: :pid
     worker_respawn(0) do |phase0_worker_pids|
       last = phase0_worker_pids.last
       # test is tricky if only one worker is TERM'd, so kill all but
@@ -130,95 +151,30 @@ class TestIntegrationCluster < TestIntegration
   # mimicking stuck workers, test restart
   def test_stuck_phased_restart
     skip_unless_signal_exist? :USR1
+
+    setup_puma bind: :tcp, ctrl: :pid
     worker_respawn { |phase0_worker_pids| Process.kill :USR1, @pid }
   end
 
   private
 
-  # Send requests 10 per second.  Send 10, then :TERM server, then send another 30.
-  # No more than 10 should throw Errno::ECONNRESET.
-  def term_closes_listeners(unix: false)
-    skip_unless_signal_exist? :TERM
-
-    cli_server "-w #{WORKERS} -t 0:6 -q test/rackup/sleep_step.ru", unix: unix
-    threads = []
-    replies = []
-    mutex = Mutex.new
-    div   = 10
-
-    refused = thread_run_refused unix: unix
-
-    41.times.each do |i|
-      if i == 10
-        threads << Thread.new do
-          sleep i.to_f/div
-          Process.kill :TERM, @pid
-          mutex.synchronize { replies[i] = :term_sent }
-        end
-      else
-        threads << Thread.new do
-          thread_run_step replies, i.to_f/div, 1, i, mutex, refused, unix: unix
-        end
-      end
-    end
-
-    threads.each(&:join)
-
-    failures  = replies.count(:failure)
-    successes = replies.count(:success)
-    resets    = replies.count(:reset)
-    refused   = replies.count(:refused)
-
-    r_success = replies.rindex(:success)
-    l_reset   = replies.index(:reset)
-    r_reset   = replies.rindex(:reset)
-    l_refused = replies.index(:refused)
-
-    msg = "#{successes} successes, #{resets} resets, #{refused} refused, failures #{failures}"
-
-    assert_equal 0, failures, msg
-
-    assert_operator 9,  :<=, successes, msg
-
-    assert_operator 10, :>=, resets   , msg
-
-    assert_operator 20, :<=, refused  , msg
-
-    # Interleaved asserts
-    # UNIX binders do not generate :reset items
-    if l_reset
-      assert_operator r_success, :<, l_reset  , "Interleaved success and reset"
-      assert_operator r_reset  , :<, l_refused, "Interleaved reset and refused"
-    else
-      assert_operator r_success, :<, l_refused, "Interleaved success and refused"
-    end
-
-  ensure
-    if passed?
-      $debugging_info << "#{full_name}\n    #{msg}\n"
-    else
-      $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
-    end
-  end
-
-  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
+  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 34.
   # All should be responded to, and at least three workers should be used
-  def usr1_all_respond(unix: false)
-    cli_server "-w #{WORKERS} -t 0:5 -q test/rackup/sleep_pid.ru", unix: unix
+  def phased_restart_all_respond
+    cli_server "-w #{WORKERS} -t 0:5 -q test/rackup/sleep_pid.ru"
     threads = []
     replies = []
     mutex = Mutex.new
 
-    s = connect "sleep1", unix: unix
-    replies << read_body(s)
+    replies << read_body('sleep1')
 
-    Process.kill :USR1, @pid
+    run_pumactl 'phased-restart'
 
-    refused = thread_run_refused unix: unix
+    refused = thread_run_refused
 
-    24.times do |delay|
+    34.times do |delay|
       threads << Thread.new do
-        thread_run_pid replies, delay, 1, mutex, refused, unix: unix
+        thread_run_pid replies, delay, 1, mutex, refused
       end
     end
 
@@ -233,7 +189,7 @@ class TestIntegrationCluster < TestIntegration
 
     msg = "#{responses} responses, #{qty_pids} uniq pids"
 
-    assert_equal 25, responses, msg
+    assert_equal 35, responses, msg
     assert_operator qty_pids, :>, 2, msg
 
     msg = "#{responses} responses, #{resets} resets, #{refused} refused"
@@ -241,10 +197,6 @@ class TestIntegrationCluster < TestIntegration
     refute_includes replies, :refused, msg
 
     refute_includes replies, :reset  , msg
-  ensure
-    unless passed?
-      $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
-    end
   end
 
   def worker_respawn(phase = 1, size = WORKERS)
@@ -307,22 +259,11 @@ class TestIntegrationCluster < TestIntegration
     end.compact
   end
 
-  # used with thread_run to define correct 'refused' errors
-  def thread_run_refused(unix: false)
-    if unix
-      DARWIN ? [Errno::ENOENT, IOError] : [Errno::ENOENT]
-    else
-      DARWIN ? [Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
-        [Errno::ECONNREFUSED]
-    end
-  end
-
   # used in loop to create several 'requests'
-  def thread_run_pid(replies, delay, sleep_time, mutex, refused, unix: false)
+  def thread_run_pid(replies, delay, sleep_time, mutex, refused)
     begin
       sleep delay
-      s = connect "sleep#{sleep_time}", unix: unix
-      body = read_body(s)
+      body = read_body(connect "sleep#{sleep_time}")
       mutex.synchronize { replies << body }
     rescue Errno::ECONNRESET
       # connection was accepted but then closed
@@ -332,26 +273,29 @@ class TestIntegrationCluster < TestIntegration
       mutex.synchronize { replies << :refused }
     end
   end
+end if ::Puma::HAS_FORK
 
-  # used in loop to create several 'requests'
-  def thread_run_step(replies, delay, sleep_time, step, mutex, refused, unix: false)
-    begin
-      sleep delay
-      s = connect "sleep#{sleep_time}-#{step}", unix: unix
-      body = read_body(s)
-      if body[/\ASlept /]
-        mutex.synchronize { replies[step] = :success }
-      else
-        mutex.synchronize { replies[step] = :failure }
-      end
-    rescue Errno::ECONNRESET
-      # connection was accepted but then closed
-      # client would see an empty response
-      mutex.synchronize { replies[step] = :reset }
-    rescue *refused
-      mutex.synchronize { replies[step] = :refused }
-    end
+# restart sets ENV variables, so these can't run parallel
+# note: not phased-restart
+class TestIntegrationClusterSerial < TestIntegration
+
+  def teardown
+    return if skipped?
+    super
   end
 
+  def test_restart_sgnl
+    skip_unless_signal_exist? :USR2
+    setup_puma bind: :tcp, ctrl: :pid
+    pre, post = restart_server_and_listen "-q -w #{WORKERS} test/rackup/hello.ru"
+    assert_equal "Hello World", pre
+    assert_equal "Hello World", post
+  end
 
-end
+  def test_restart_sock
+    setup_puma bind: :tcp, ctrl: :tcp
+    pre, post = restart_server_and_listen "-q -w #{WORKERS} test/rackup/hello.ru"
+    assert_equal "Hello World", pre
+    assert_equal "Hello World", post
+  end
+end if ::Puma::HAS_FORK

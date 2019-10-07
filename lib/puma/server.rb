@@ -258,6 +258,7 @@ module Puma
         STDERR.puts e.backtrace
       ensure
         begin
+          @notify.close rescue nil
           @check.close
         rescue
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
@@ -428,8 +429,8 @@ module Puma
         STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
       ensure
-        @check.close
-        @notify.close
+        @check.close  rescue nil
+        @notify.close rescue nil
       end
 
       @events.fire :state, :done
@@ -983,17 +984,17 @@ module Puma
     # off the request queue before finally exiting.
 
     def stop(sync=false)
-      notify_safely(STOP_COMMAND)
+      notify_safely STOP_COMMAND
       @thread.join if @thread && sync
     end
 
     def halt(sync=false)
-      notify_safely(HALT_COMMAND)
+      notify_safely HALT_COMMAND
       @thread.join if @thread && sync
     end
 
     def begin_restart
-      notify_safely(RESTART_COMMAND)
+      notify_safely RESTART_COMMAND
     end
 
     def fast_write(io, str)

@@ -28,10 +28,12 @@ module Puma
 
       @phased_state = :idle
       @phased_restart = false
+      @restart = false
     end
 
     def stop_workers
       log "- Gracefully shutting down workers..."
+      @launcher.close_binder_listeners unless @restart
       @workers.each { |x| x.term }
 
       begin
@@ -333,7 +335,10 @@ module Puma
     def stop_blocked
       @status = :stop if @status == :run
       wakeup!
-      @control.stop(true) if @control
+      if @control
+        @control.stop(true)
+        close_control_io
+      end
       Process.waitall
     end
 
@@ -364,23 +369,23 @@ module Puma
     # We do this in a separate method to keep the lambda scope
     # of the signals handlers as small as possible.
     def setup_signals
-      Signal.trap "SIGCHLD" do
+      Signal.trap :CHLD do
         wakeup!
       end
 
-      Signal.trap "TTIN" do
+      Signal.trap :TTIN do
         @options[:workers] += 1
         wakeup!
       end
 
-      Signal.trap "TTOU" do
+      Signal.trap :TTOU do
         @options[:workers] -= 1 if @options[:workers] >= 2
         wakeup!
       end
 
       master_pid = Process.pid
 
-      Signal.trap "SIGTERM" do
+      Signal.trap :TERM do
         # The worker installs their own SIGTERM when booted.
         # Until then, this is run by the worker and the worker
         # should just exit if they get it.
@@ -388,8 +393,6 @@ module Puma
           log "Early termination of worker"
           exit! 0
         else
-          @launcher.close_binder_listeners
-
           stop_workers
           stop
 
@@ -522,7 +525,6 @@ module Puma
             @status = :stop
           end
         end
-
         stop_workers unless @status == :halt
       ensure
         @check_pipe.close
