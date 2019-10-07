@@ -1,9 +1,11 @@
+## Master
+
 * Features
   * Strip whitespace at end of HTTP headers (#2010)
   * Optimize HTTP parser for JRuby (#2012)
 
 * Bugfixes
-  * Your bugfix goes here (#Github Number)
+  * Fix Errno::EINVAL when SSL is enabled and browser rejects cert (#1564)
 
 ## 4.2.1 / 2019-10-07
 
