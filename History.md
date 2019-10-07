@@ -1,5 +1,6 @@
 * Features
   * Strip whitespace at end of HTTP headers (#2010)
+  * Optimize HTTP parser for JRuby (#2012)
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)
