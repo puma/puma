@@ -6,12 +6,12 @@ class TestPumaUnixSocket < Minitest::Test
 
   App = lambda { |env| [200, {}, ["Works"]] }
 
-  Path = "test/puma.sock"
+  PATH = "test/puma.sock"
 
   def setup
     return unless UNIX_SKT_EXIST
     @server = Puma::Server.new App
-    @server.add_unix_listener Path
+    @server.bind("unix://#{PATH}")
     @server.run
   end
 

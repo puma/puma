@@ -36,7 +36,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, ["ok"]]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     fifteen = "1" * 15
@@ -63,7 +63,7 @@ class TestPumaServer < Minitest::Test
       [-1, {}, []]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -79,7 +79,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, [giant]]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -124,7 +124,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env['SERVER_PORT']]]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     req = Net::HTTP::Get.new("/")
@@ -142,7 +142,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env['SERVER_PORT']]]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     req = Net::HTTP::Get.new("/")
@@ -159,7 +159,7 @@ class TestPumaServer < Minitest::Test
   def test_HEAD_has_no_body
     @server.app = proc { |env| [200, {"Foo" => "Bar"}, ["hello"]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -173,7 +173,7 @@ class TestPumaServer < Minitest::Test
   def test_GET_with_empty_body_has_sane_chunking
     @server.app = proc { |env| [200, {}, [""]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -190,7 +190,7 @@ class TestPumaServer < Minitest::Test
      [200, { "X-Hello" => "World" }, ["Hello world!"]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.early_hints = true
     @server.run
 
@@ -225,7 +225,7 @@ EOF
     def server.fast_write(*args)
       raise Puma::ConnectionError
     end
-    server.add_tcp_listener @host, @port
+    server.bind("tcp://#{@host}:#{@port}")
     server.early_hints = true
     server.run
 
@@ -246,7 +246,7 @@ EOF
      [200, { "X-Hello" => "World" }, ["Hello world!"]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -268,7 +268,7 @@ EOF
   def test_GET_with_no_body_has_sane_chunking
     @server.app = proc { |env| [200, {}, []] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -282,7 +282,7 @@ EOF
   def test_doesnt_print_backtrace_in_production
     @server.app = proc { |e| raise "don't leak me bro" }
     @server.leak_stack_on_error = false
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -299,7 +299,7 @@ EOF
     @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
 
     @server.app = proc { |e| raise "don't leak me bro" }
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -318,7 +318,7 @@ EOF
     @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
 
     @server.app = proc { |e| raise "don't leak me bro" }
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -331,7 +331,7 @@ EOF
   def test_custom_http_codes_10
     @server.app = proc { |env| [449, {}, [""]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -346,7 +346,7 @@ EOF
   def test_custom_http_codes_11
     @server.app = proc { |env| [449, {}, [""]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -361,7 +361,7 @@ EOF
     @server.app = proc { |env| [200, {"Content-Type" => "application/pdf",
                                       "Content-Length" => "4242"}, []] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -381,7 +381,7 @@ EOF
 
     @server.app = proc { |env| [200, {}, [""]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -398,7 +398,7 @@ EOF
 
   def test_timeout_in_data_phase
     @server.first_data_timeout = 2
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     client = TCPSocket.new @host, @server.connected_port
@@ -413,7 +413,7 @@ EOF
   def test_http_11_keep_alive_with_body
     @server.app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -432,7 +432,7 @@ EOF
   def test_http_11_close_with_body
     @server.app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -446,7 +446,7 @@ EOF
   def test_http_11_keep_alive_without_body
     @server.app = proc { |env| [204, {}, []] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -462,7 +462,7 @@ EOF
   def test_http_11_close_without_body
     @server.app = proc { |env| [204, {}, []] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -478,7 +478,7 @@ EOF
   def test_http_10_keep_alive_with_body
     @server.app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -497,7 +497,7 @@ EOF
   def test_http_10_close_with_body
     @server.app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -520,7 +520,7 @@ EOF
       [200, {"Content-Length" => "5", 'rack.hijack' => hijack_lambda}, nil]
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -534,7 +534,7 @@ EOF
   def test_http_10_keep_alive_without_body
     @server.app = proc { |env| [204, {}, []] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -550,7 +550,7 @@ EOF
   def test_http_10_close_without_body
     @server.app = proc { |env| [204, {}, []] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -564,7 +564,7 @@ EOF
   def test_Expect_100
     @server.app = proc { |env| [200, {}, [""]] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -582,7 +582,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -601,7 +601,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -623,7 +623,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -645,7 +645,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -667,7 +667,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -689,7 +689,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -711,7 +711,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     part1 = 'a' * 4200
@@ -742,7 +742,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -765,7 +765,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -788,7 +788,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -807,7 +807,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -828,7 +828,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -871,7 +871,7 @@ EOF
       [200, {}, [""]]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -897,7 +897,7 @@ EOF
   def test_empty_header_values
     @server.app = proc { |env| [200, {"X-Empty-Header" => ""}, []] }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -916,7 +916,7 @@ EOF
       [204, {}, []]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port
@@ -936,7 +936,7 @@ EOF
       [204, {}, []]
     }
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @server.connected_port

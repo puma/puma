@@ -51,8 +51,6 @@ module Puma
 
       require 'puma/app/status'
 
-      uri = URI.parse str
-
       if token = @options[:control_auth_token]
         token = nil if token.empty? || token == 'none'
       end
@@ -63,19 +61,9 @@ module Puma
       control.min_threads = 0
       control.max_threads = 1
 
-      case uri.scheme
-      when "tcp"
-        log "* Starting control server on #{str}"
-        control.add_tcp_listener uri.host, uri.port
-      when "unix"
-        log "* Starting control server on #{str}"
-        path = "#{uri.host}#{uri.path}"
-        mask = @options[:control_url_umask]
-
-        control.add_unix_listener path, mask
-      else
-        error "Invalid control URI: #{str}"
-      end
+      # TODO: it logged something different before that was control
+      # server specific
+      control.bind(str)
 
       control.run
       @control = control

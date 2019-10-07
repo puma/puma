@@ -24,7 +24,7 @@ class TestTCPRack < Minitest::Test
       socket.close
     end
 
-    @server.add_tcp_listener @host, @port
+    @server.bind("tcp://#{@host}:#{@port}")
     @server.run
 
     sock = TCPSocket.new @host, @port

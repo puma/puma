@@ -28,6 +28,10 @@ module Puma
       "tcp://#{addrinfo_to_uri}"
     end
 
+    def port
+      @server.local_address.ip_port
+    end
+
     private
 
     def addrinfo_to_uri

@@ -41,7 +41,7 @@ module Puma
       @env_cache[server]
     end
 
-    def parse(binds, logger)
+    def parse(binds, logger, ssl_ctx: nil)
       binds.each do |str|
         uri = URI.parse str
         case uri.scheme
@@ -60,10 +60,10 @@ module Puma
           if uri.host == "localhost"
             loopback_addresses.each do |loopback|
               uri.host = loopback
-              @bindings << SSLBinding.new(uri)
+              @bindings << SSLBinding.new(uri, ctx: ssl_ctx)
             end
           else
-            @bindings << SSLBinding.new(uri)
+            @bindings << SSLBinding.new(uri, ctx: ssl_ctx)
           end
         else
           logger.error "Invalid URI: #{str}"

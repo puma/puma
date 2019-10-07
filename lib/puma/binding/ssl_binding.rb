@@ -1,13 +1,13 @@
 module Puma
   class SSLBinding < TCPBinding
-    def initialize(uri)
+    def initialize(uri, ctx: nil)
       super
       params = Util.parse_query uri.query
       require 'puma/minissl'
 
       MiniSSL.check
 
-      ctx = MiniSSL::ContextBuilder.call(params)
+      ctx = MiniSSL::ContextBuilder.call(params) unless ctx
 
       # See implementation at TCPBinding#initialize
       @server = MiniSSL::Server.new @server, ctx

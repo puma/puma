@@ -48,7 +48,7 @@ module Puma
       @config        = conf
 
       @binder        = Binder.new(@events)
-      @binder.import_from_env
+      # @binder.import_from_env TODO add back?
 
       @environment = conf.environment
 

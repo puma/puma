@@ -66,7 +66,7 @@ class TestPumaServerSSL < Minitest::Test
 
     @events = SSLEventsHelper.new STDOUT, STDERR
     @server = Puma::Server.new app, @events
-    @ssl_listener = @server.add_ssl_listener @host, @port, ctx
+    @ssl_listener = @server.bind("ssl://#{@host}:#{@port}", nil, ssl_ctx: ctx)
     @server.run
 
     @http = Net::HTTP.new @host, @port
@@ -223,7 +223,7 @@ class TestPumaServerSSLClient < Minitest::Test
 
     events = SSLEventsHelper.new STDOUT, STDERR
     server = Puma::Server.new app, events
-    server.add_ssl_listener host, port, ctx
+    server.bind("ssl://#{host}:#{@ort}", nil, ssl_ctx: ctx)
     server.run
 
     http = Net::HTTP.new host, port

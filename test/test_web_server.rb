@@ -24,7 +24,7 @@ class WebServerTest < Minitest::Test
   def setup
     @tester = TestHandler.new
     @server = Puma::Server.new @tester, Puma::Events.strings
-    @server.add_tcp_listener "127.0.0.1", 0
+    @server.bind("tcp://127.0.0.1:0")
 
     @server.run
   end

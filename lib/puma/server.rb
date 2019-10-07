@@ -30,9 +30,7 @@ module Puma
   #
   # Each `Puma::Server` will have one reactor and one thread pool.
   class Server
-
     include Puma::Const
-    extend Forwardable
 
     attr_reader :thread
     attr_reader :events
@@ -89,10 +87,13 @@ module Puma
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
 
-    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_port
-
     def inherit_binder(bind)
       @binder = bind
+    end
+
+    def bind(*args)
+      str, logger, ctx = *args
+      @binder.parse([str], logger || events, ssl_ctx: ctx)
     end
 
     def tcp_mode!

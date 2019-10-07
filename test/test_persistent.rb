@@ -23,14 +23,13 @@ class TestPersistent < Minitest::Test
       [status, @headers, @body]
     end
 
-    @port = UniquePort.call
+    @port = 0
 
-    @server = Puma::Server.new @simple
-    @server.add_tcp_listener HOST, @port
+    @server = Puma::Server.new @simple, Puma::Events.null
+    @server.bind("tcp://#{HOST}:#{@port}")
     @server.max_threads = 1
     @server.run
-
-    @client = TCPSocket.new HOST, @port
+    @client = TCPSocket.new HOST, @server.binder.bindings.first.port
   end
 
   def teardown
@@ -232,7 +231,7 @@ class TestPersistent < Minitest::Test
 
     @client << @valid_request
 
-    c2 = TCPSocket.new HOST, @port
+    c2 = TCPSocket.new HOST, @server.binder.bindings.first.port
     c2 << @valid_request
 
     out = IO.select([c2], nil, nil, 1)
