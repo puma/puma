@@ -22,7 +22,7 @@ module Puma
       @control_auth_token = nil
       @config_file = nil
       @command = nil
-      @environment = ENV['RACK_ENV']
+      @environment = ENV['RACK_ENV'] || ENV['RAILS_ENV']
 
       @argv = argv.dup
       @stdout = stdout

@@ -4,6 +4,7 @@
   * Strip whitespace at end of HTTP headers (#2010)
   * Optimize HTTP parser for JRuby (#2012)
   * Add SSL support for the control app (#2046)
+  * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
 
 * Bugfixes
   * Fix Errno::EINVAL when SSL is enabled and browser rejects cert (#1564)

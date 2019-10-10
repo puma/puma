@@ -49,7 +49,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_environment_without_rack_env
-    with_env("RACK_ENV" => nil) do
+    with_env("RACK_ENV" => nil, 'RAILS_ENV' => nil) do
       control_cli = Puma::ControlCLI.new ["halt"]
       assert_nil control_cli.instance_variable_get("@environment")
 
@@ -91,7 +91,7 @@ class TestPumaControlCli < TestConfigFileBase
     puma_config_file = "config/puma.rb"
     development_config_file = "config/puma/development.rb"
 
-    with_env("RACK_ENV" => nil) do
+    with_env("RACK_ENV" => nil, 'RAILS_ENV' => nil) do
       with_config_file(puma_config_file, port) do
         control_cli = Puma::ControlCLI.new ["halt"]
         assert_equal puma_config_file, control_cli.instance_variable_get("@config_file")
