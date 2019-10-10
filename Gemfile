@@ -5,7 +5,7 @@ gemspec
 gem "rdoc"
 gem "rake-compiler"
 
-gem "nio4r", "~> 2.0"
+gem "nio4r", "~> 2.5" # this is higher than gemspec because of https://github.com/puma/puma/issues/2005
 gem "rack", "< 3.0"
 gem "minitest", "~> 5.11"
 gem "minitest-retry"
