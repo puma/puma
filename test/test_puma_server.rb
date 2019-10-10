@@ -727,7 +727,7 @@ EOF
 
     sock.gets
 
-    assert request_body_wait >= 1000
+    assert_operator request_body_wait, :>=, 1000
   end
 
   def test_request_body_wait_chunked
@@ -743,6 +743,6 @@ EOF
 
     sock.gets
 
-    assert_operator request_body_wait, :>=, 990
+    assert_operator request_body_wait, :>=, 1000
   end
 end
