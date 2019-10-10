@@ -10,4 +10,4 @@ jobs:
     - uses: actions/checkout@v1
     - name: Check that CHANGELOG is touched or PR is [ci skip]-d
       run: |
-        cat $GITHUB_EVENT_PATH | jq .pull_request.title | grep -i '\[\(\(changelog skip\)\|\(ci skip\)\)\]' ||  git diff remotes/origin/${{ github.base_ref }} --name-only | grep History.md
+        cat $GITHUB_EVENT_PATH | jq .pull_request.title | grep -i '\[\(\(changelog skip\)\|\(skip changelog\)\|\(ci skip\)\|\(skip ci\)\)\]' ||  git diff remotes/origin/${{ github.base_ref }} --name-only | grep History.md
