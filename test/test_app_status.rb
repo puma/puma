@@ -11,12 +11,9 @@ class TestAppStatus < Minitest::Test
   class FakeServer
     def initialize
       @status = :running
-      @backlog = 0
-      @running = 0
     end
 
     attr_reader :status
-    attr_accessor :backlog, :running
 
     def stop
       @status = :stop
@@ -81,8 +78,6 @@ class TestAppStatus < Minitest::Test
   end
 
   def test_stats
-    @server.backlog = 1
-    @server.running = 9
     status, _ , app = lint('/stats')
 
     assert_equal 200, status
