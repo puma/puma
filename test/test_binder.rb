@@ -22,7 +22,7 @@ class TestBinderBase < Minitest::Test
   end
 
   def ssl_context_for_binder(binder)
-    binder.instance_variable_get(:@ios)[0].instance_variable_get(:@ctx)
+    binder.ios[0].instance_variable_get(:@ctx)
   end
 end
 
