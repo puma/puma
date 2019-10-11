@@ -17,7 +17,7 @@
 ## 4.2.0 / 2019-09-23
 
 * 6 features
-  * Pumactl has a new -e environment option and reads config/puma/<environment>.rb config files (#1885)
+  * Pumactl has a new -e environment option and reads `config/puma/<environment>.rb` config files (#1885)
   * Semicolons are now allowed in URL paths (MRI only), useful for Angular or Redmine (#1934)
   * Allow extra dependencies to be defined when using prune_bundler (#1105)
   * Puma now reports the correct port when binding to port 0, also reports other listeners when binding to localhost (#1786)
