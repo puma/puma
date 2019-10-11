@@ -1,5 +1,4 @@
-dist: xenial
-env: OS="Xenial 16.04 OpenSSL 1.0.2"
+dist: bionic
 language: ruby
 cache: bundler
 
@@ -9,7 +8,7 @@ before_install:
     r_eng="$(ruby -e 'STDOUT.write RUBY_ENGINE')";
     rv="$(ruby -e 'STDOUT.write RUBY_VERSION')";
     if [ "$r_eng" == "ruby" ]; then
-      if   [ "$rv" \< "2.3" ]; then gem update --system 2.7.9 --no-document
+      if   [ "$rv" \< "2.3" ]; then gem update --system 2.7.10 --no-document
       elif [ "$rv" \< "2.6" ]; then gem update --system --no-document --conservative
       fi
     fi
@@ -26,10 +25,6 @@ before_script:
 script:
   - bundle exec rake
 
-rvm:
-  - 2.2.10
-  - ruby-head
-
 matrix:
   fast_finish: true
   include:
@@ -37,27 +32,30 @@ matrix:
       dist: trusty
       env: OS="Trusty 14.04 OpenSSL 1.0.1"
     - rvm: 2.6.4
-      dist: bionic
-      env: OS="Bionic 18.04 OpenSSL 1.1.1"
+      dist: xenial
+      env: OS="Xenial 16.04 OpenSSL 1.0.2"
+    - rvm: 2.6.4
+      os: osx
+      osx_image: xcode11
+      env: OS="OSX xcode11 OpenSSL 1.1.1"
+    - rvm: jruby-9.2.8.0
+      env:
+        - JRUBY_OPTS="--debug"
+        - JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
+    - rvm: jruby-head
+    - rvm: ruby-head
     - rvm: ruby-head
       env: jit=yes
-    - rvm: jruby-9.2.8.0
-      dist: bionic
-      env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED" OS="Bionic 18.04"
-    - rvm: jruby-head
-      dist: bionic
-      env: OS="Bionic 18.04"
 
   allow_failures:
+    - rvm: jruby-9.2.8.0
+      env:
+        - JRUBY_OPTS="--debug"
+        - JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
+    - rvm: jruby-head
     - rvm: ruby-head
     - rvm: ruby-head
       env: jit=yes
-    - rvm: jruby-9.2.8.0
-      dist: bionic
-      env: JRUBY_OPTS="--debug" JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED" OS="Bionic 18.04"
-    - rvm: jruby-head
-      dist: bionic
-      env: OS="Bionic 18.04"
 
 env:
   global:
