@@ -39,7 +39,7 @@ class TestCLI < Minitest::Test
     url = "tcp://127.0.0.1:#{cntl}/"
 
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
-                         "--control", url,
+                         "--control-url", url,
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
 
@@ -70,7 +70,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "-t", "2:2",
                          "-w", "2",
-                         "--control", url,
+                         "--control-url", url,
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
 
@@ -120,7 +120,7 @@ class TestCLI < Minitest::Test
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
-                         "--control", url,
+                         "--control-url", url,
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
 
@@ -146,7 +146,7 @@ class TestCLI < Minitest::Test
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
-                         "--control", url,
+                         "--control-url", url,
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
 
@@ -166,7 +166,7 @@ class TestCLI < Minitest::Test
 
   def control_gc_stats(uri, cntl)
     cli = Puma::CLI.new ["-b", uri,
-                         "--control", cntl,
+                         "--control-url", cntl,
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
 
@@ -236,7 +236,7 @@ class TestCLI < Minitest::Test
   def test_tmp_control
     skip_on :jruby, suffix: " - Unknown issue"
 
-    cli = Puma::CLI.new ["--state", @tmp_path, "--control", "auto"]
+    cli = Puma::CLI.new ["--state", @tmp_path, "--control-url", "auto"]
     cli.launcher.write_state
 
     data = YAML.load File.read(@tmp_path)
@@ -290,7 +290,7 @@ class TestCLI < Minitest::Test
 
   def test_state
     url = "tcp://127.0.0.1:#{UniquePort.call}"
-    cli = Puma::CLI.new ["--state", @tmp_path, "--control", url]
+    cli = Puma::CLI.new ["--state", @tmp_path, "--control-url", url]
     cli.launcher.write_state
 
     data = YAML.load File.read(@tmp_path)
