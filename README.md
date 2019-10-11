@@ -5,6 +5,7 @@
 # Puma: A Ruby Web Server Built For Concurrency
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
+[![Actions Build Status](https://github.com/puma/puma/workflows/Puma/badge.svg)](https://github.com/puma/puma/actions)
 [![Travis Build Status](https://travis-ci.org/puma/puma.svg?branch=master)](https://travis-ci.org/puma/puma)
 
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
