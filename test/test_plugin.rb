@@ -28,6 +28,24 @@ class TestPlugin < TestIntegration
     out.close
   end
 
+  def test_non_bundled_plugin
+    skip "Skipped on Windows Ruby < 2.5.0, Ruby bug" if windows? && RUBY_VERSION < '2.5.0'
+
+    @tcp_bind = UniquePort.call
+    @tcp_ctrl = UniquePort.call
+
+    out, err = capture_subprocess_io do
+      cli_server "-C test/config/custom_plugin.rb test/rackup/hello.ru"
+    end
+
+    _, status = stop_server
+
+    assert_equal "hello world!!!", err.strip
+
+    @server.close
+    @server = nil
+  end
+
   private
 
   def cli_pumactl(argv)

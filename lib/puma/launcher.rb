@@ -253,7 +253,9 @@ module Puma
         "#{d.name}:#{spec_for_gem(d.name).version}"
       end
 
-      [deps, require_paths_for_gem(puma) + extra_runtime_deps_directories]
+      plugin_paths = @config.all_plugins.map { |plugin| "puma/plugin/#{name}" }
+
+      [deps, require_paths_for_gem(puma) + extra_runtime_deps_directories + plugin_paths]
     end
 
     def extra_runtime_deps_directories
