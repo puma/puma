@@ -22,7 +22,7 @@ module Puma
       @control_auth_token = nil
       @config_file = nil
       @command = nil
-      @environment = ENV['RACK_ENV'] || "development"
+      @environment = ENV['RACK_ENV']
 
       @argv = argv.dup
       @stdout = stdout
@@ -82,8 +82,10 @@ module Puma
       @command = argv.shift
 
       unless @config_file == '-'
+        environment = @environment || 'development'
+
         if @config_file.nil?
-          @config_file = %W(config/puma/#{@environment}.rb config/puma.rb).find do |f|
+          @config_file = %W(config/puma/#{environment}.rb config/puma.rb).find do |f|
             File.exist?(f)
           end
         end
