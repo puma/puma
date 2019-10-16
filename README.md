@@ -280,32 +280,9 @@ reliability in production environments:
 
 ## Contributing
 
-To run the test suite:
+Find details for contributing in the [contribution guide].
 
-```bash
-$ bundle install
-$ bundle exec rake
-```
-
-To run a single test file, run only that file:
-
-```bash
-$ ruby -Ilib test/test_integration.rb
-```
-
-Or use [`m`](https://github.com/qrush/m):
-
-```
-$ bundle exec m test/test_binder.rb
-```
-
-Which can also be used to run a single test case:
-
-```
-$ bundle exec m test/test_binder.rb:37
-```
-
-If you open a pull request with a change that doesn't need to be noted in the changelog ([`History.md`](History.md)), add the text `[changelog skip]` to the pull request title to skip [the changelog check](https://github.com/puma/puma/pull/1991).
+[contribution guide]: https://github.com/puma/puma/blob/master/CONTRIBUTING.md
 
 ## License
 
