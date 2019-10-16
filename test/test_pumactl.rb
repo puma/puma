@@ -24,6 +24,17 @@ class TestPumaControlCli < Minitest::Test
     server.close
   end
 
+  def with_config_file(path_to_config, port)
+    path = Pathname.new(path_to_config)
+    Dir.mktmpdir do |tmp_dir|
+      Dir.chdir(tmp_dir) do
+        FileUtils.mkdir_p(path.dirname)
+        File.open(path, "w") { |f| f << "port #{port}" }
+        yield
+      end
+    end
+  end
+
   def test_config_file
     control_cli = Puma::ControlCLI.new ["--config-file", "test/config/state_file_testing_config.rb", "halt"]
     assert_equal "t3-pid", control_cli.instance_variable_get("@pidfile")
@@ -54,48 +65,34 @@ class TestPumaControlCli < Minitest::Test
   def test_environment_specific_config_file_exist
     ENV.delete "RACK_ENV"
     port = 6002
-    Dir.mktmpdir do |tmp_dir|
-      Dir.chdir(tmp_dir) do
-        FileUtils.mkdir("config")
-        File.open("config/puma.rb", "w") { |f| f << "port #{port}" }
-        control_cli = Puma::ControlCLI.new ["-e", "production", "halt"]
-        assert_equal "config/puma.rb",
-          control_cli.instance_variable_get("@config_file")
-      end
+
+    puma_config_file = "config/puma.rb"
+    with_config_file(puma_config_file, port) do
+      control_cli = Puma::ControlCLI.new ["-e", "production", "halt"]
+      assert_equal puma_config_file, control_cli.instance_variable_get("@config_file")
     end
 
-    Dir.mktmpdir do |tmp_dir|
-      Dir.chdir(tmp_dir) do
-        FileUtils.mkdir_p("config/puma")
-        File.open("config/puma/production.rb", "w") { |f| f << "port #{port}" }
-        control_cli = Puma::ControlCLI.new ["-e", "production", "halt"]
-        assert_equal "config/puma/production.rb",
-          control_cli.instance_variable_get("@config_file")
-      end
+    production_config_file = "config/puma/production.rb"
+    with_config_file(production_config_file, port) do
+      control_cli = Puma::ControlCLI.new ["-e", "production", "halt"]
+      assert_equal production_config_file, control_cli.instance_variable_get("@config_file")
     end
   end
 
   def test_default_config_file_exist
     ENV.delete "RACK_ENV" # remove from travis
     port = 6001
-    Dir.mktmpdir do |d|
-      Dir.chdir(d) do
-        FileUtils.mkdir("config")
-        File.open("config/puma.rb", "w") { |f| f << "port #{port}" }
-        control_cli = Puma::ControlCLI.new ["halt"]
-        assert_equal "config/puma.rb",
-          control_cli.instance_variable_get("@config_file")
-      end
+
+    puma_config_file = "config/puma.rb"
+    with_config_file(puma_config_file, port) do
+      control_cli = Puma::ControlCLI.new ["halt"]
+      assert_equal puma_config_file, control_cli.instance_variable_get("@config_file")
     end
 
-    Dir.mktmpdir do |d|
-      Dir.chdir(d) do
-        FileUtils.mkdir_p("config/puma")
-        File.open("config/puma/development.rb", "w") { |f| f << "port #{port}" }
-        control_cli = Puma::ControlCLI.new ["halt"]
-        assert_equal "config/puma/development.rb",
-          control_cli.instance_variable_get("@config_file")
-      end
+    development_config_file = "config/puma/development.rb"
+    with_config_file(development_config_file, port) do
+      control_cli = Puma::ControlCLI.new ["halt"]
+      assert_equal "config/puma/development.rb", control_cli.instance_variable_get("@config_file")
     end
   end
 
