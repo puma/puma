@@ -7,18 +7,22 @@ By participating in this project, you agree to follow the [code of conduct].
 There are lots of ways to contribute to puma. Some examples include:
 
 * creating a [bug report] or [feature request]
-* verifying bug reports and adding [reproduction steps]
+* verifying [existing bug reports] and adding [reproduction steps]
 * reviewing [pull requests] and testing the changes on your own machine
 * writing or editing documentation
 * improving test coverage
-* fixing a bug or adding a new feature
+* fixing a [reproducing bug] or adding a new feature
 
 [bug report]: https://github.com/puma/puma/issues/new?template=bug_report.md
 [feature request]: https://github.com/puma/puma/issues/new?template=feature_request.md
+[existing bug reports]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Aneeds-repro
 [pull requests]: https://github.com/puma/puma/pulls
 [reproduction steps]: https://github.com/puma/puma/blob/CONTRIBUTING.md#reproduction-steps
+[reproducing bug]: https://github.com/puma/puma/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abug
 
 ## Setup
+
+Clone down the Puma repository.
 
 You will need to install [ragel] to generate puma's extension code.
 
@@ -41,6 +45,18 @@ bundle install
 
 [ragel]: https://www.colm.net/open-source/ragel/
 
+To run Puma, you will need to compile the native extension. To do this:
+
+```sh
+bundle exec rake compile
+```
+
+Then, you will be able to run Puma using your local copy with:
+
+```sh
+bundle exec bin/puma test/rackup/hello.ru
+```
+
 ## Running tests
 
 You can run the full test suite with:
@@ -61,11 +77,29 @@ Or use [`m`](https://github.com/qrush/m):
 bundle exec m test/test_binder.rb
 ```
 
-Which can also be used to run a single test case:
+... which can also be used to run a single test case:
 
 ```sh
 bundle exec m test/test_binder.rb:37
 ```
+
+## How to contribute
+
+Puma needs help in several areas.
+
+**The `contrib-wanted` label is applied to issues that maintainers think would be easier for first-time contributors.**
+
+**Reproducing bug reports**: The `needs-repro` label is applied to issues that have a bug report but no reproduction steps. You can help by trying to reproduce the issue and then posting how you did it.
+
+**Helping with our native extensions**: If you can write C or Java, we could really use your help. Check out the issue labels for c-extensions and JRuby.
+
+**Fixing bugs**: Issues with the `bug` label have working reproduction steps, which you can use to write a test and create a patch.
+
+**Writing features**: Issues with the `feature` label are requests for new functionality. Write tests and code up our new feature!
+
+**Code review**: Take a look at open pull requests and offer your feedback. Code review is not just for maintainers - we need your help and eyeballs!
+
+**Write documentation**: Puma needs more docs in many areas, especially those where we have open issues labeled `docs`.
 
 ## Reproduction steps
 
@@ -105,3 +139,11 @@ If you open a pull request with a change that doesn't need to be noted in the
 changelog ([`History.md`](History.md)), add the text `[changelog skip]` to the
 pull request title to skip [the changelog
 check](https://github.com/puma/puma/pull/1991).
+
+## Bibliography/Reading
+
+Puma can be a bit intimidating for your first contribution because there's a lot of concepts here that you've probably never had to think about before - Rack, sockets, forking, threads etc. Here are some helpful links for learning more about things related to Puma:
+
+* [The Rack specification](https://www.rubydoc.info/github/rack/rack/file/SPEC)
+* The Ruby docs for IO.pipe, TCPServer/Socket.
+* [nio4r documentation](https://github.com/socketry/nio4r/wiki/Getting-Started)
