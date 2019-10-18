@@ -6,6 +6,7 @@
 
 * Bugfixes
   * Fix Errno::EINVAL when SSL is enabled and browser rejects cert (#1564)
+  * Fix pumactl defaulting puma to development if an environment was not specified (#2035)
 
 ## 4.2.1 / 2019-10-07
 

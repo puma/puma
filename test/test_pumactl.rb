@@ -1,8 +1,9 @@
 require_relative "helper"
+require_relative "helpers/config_file"
 
 require 'puma/control_cli'
 
-class TestPumaControlCli < Minitest::Test
+class TestPumaControlCli < TestConfigFileBase
   def setup
     # use a pipe to get info across thread boundary
     @wait, @ready = IO.pipe
@@ -24,38 +25,81 @@ class TestPumaControlCli < Minitest::Test
     server.close
   end
 
+  def with_config_file(path_to_config, port)
+    path = Pathname.new(path_to_config)
+    Dir.mktmpdir do |tmp_dir|
+      Dir.chdir(tmp_dir) do
+        FileUtils.mkdir_p(path.dirname)
+        File.open(path, "w") { |f| f << "port #{port}" }
+        yield
+      end
+    end
+  end
+
   def test_config_file
     control_cli = Puma::ControlCLI.new ["--config-file", "test/config/state_file_testing_config.rb", "halt"]
     assert_equal "t3-pid", control_cli.instance_variable_get("@pidfile")
   end
 
-  def test_environment
-    ENV.delete 'RACK_ENV' # remove from travis
-    control_cli = Puma::ControlCLI.new ["halt"]
-    assert_equal "development", control_cli.instance_variable_get("@environment")
-    control_cli = Puma::ControlCLI.new ["-e", "test", "halt"]
-    assert_equal "test", control_cli.instance_variable_get("@environment")
+  def test_rack_env_without_environment
+    with_env("RACK_ENV" => "test") do
+      control_cli = Puma::ControlCLI.new ["halt"]
+      assert_equal "test", control_cli.instance_variable_get("@environment")
+    end
   end
 
-  def test_config_file_exist
-    ENV.delete 'RACK_ENV' # remove from travis
-    port = 6001
-    Dir.mktmpdir do |d|
-      Dir.chdir(d) do
-        FileUtils.mkdir("config")
-        File.open("config/puma.rb", "w") { |f| f << "port #{port}" }
-        control_cli = Puma::ControlCLI.new ["halt"]
-        assert_equal "config/puma.rb",
-          control_cli.instance_variable_get("@config_file")
+  def test_environment_without_rack_env
+    with_env("RACK_ENV" => nil) do
+      control_cli = Puma::ControlCLI.new ["halt"]
+      assert_nil control_cli.instance_variable_get("@environment")
+
+      control_cli = Puma::ControlCLI.new ["-e", "test", "halt"]
+      assert_equal "test", control_cli.instance_variable_get("@environment")
+    end
+  end
+
+  def test_environment_with_rack_env
+    with_env("RACK_ENV" => "production") do
+      control_cli = Puma::ControlCLI.new ["halt"]
+      assert_equal "production", control_cli.instance_variable_get("@environment")
+
+      control_cli = Puma::ControlCLI.new ["-e", "test", "halt"]
+      assert_equal "test", control_cli.instance_variable_get("@environment")
+    end
+  end
+
+  def test_environment_specific_config_file_exist
+    port = 6002
+    puma_config_file = "config/puma.rb"
+    production_config_file = "config/puma/production.rb"
+
+    with_env("RACK_ENV" => nil) do
+      with_config_file(puma_config_file, port) do
+        control_cli = Puma::ControlCLI.new ["-e", "production", "halt"]
+        assert_equal puma_config_file, control_cli.instance_variable_get("@config_file")
+      end
+
+      with_config_file(production_config_file, port) do
+        control_cli = Puma::ControlCLI.new ["-e", "production", "halt"]
+        assert_equal production_config_file, control_cli.instance_variable_get("@config_file")
       end
     end
-    Dir.mktmpdir do |d|
-      Dir.chdir(d) do
-        FileUtils.mkdir_p("config/puma")
-        File.open("config/puma/development.rb", "w") { |f| f << "port #{port}" }
+  end
+
+  def test_default_config_file_exist
+    port = 6001
+    puma_config_file = "config/puma.rb"
+    development_config_file = "config/puma/development.rb"
+
+    with_env("RACK_ENV" => nil) do
+      with_config_file(puma_config_file, port) do
         control_cli = Puma::ControlCLI.new ["halt"]
-        assert_equal "config/puma/development.rb",
-          control_cli.instance_variable_get("@config_file")
+        assert_equal puma_config_file, control_cli.instance_variable_get("@config_file")
+      end
+
+      with_config_file(development_config_file, port) do
+        control_cli = Puma::ControlCLI.new ["halt"]
+        assert_equal development_config_file, control_cli.instance_variable_get("@config_file")
       end
     end
   end
