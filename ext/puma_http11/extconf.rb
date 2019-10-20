@@ -1,6 +1,11 @@
 require 'mkmf'
 
 dir_config("puma_http11")
+if RUBY_PLATFORM[/mingw32/]
+  append_cflags '-D_FORTIFY_SOURCE=2'
+  append_ldflags '-fstack-protector'
+  have_library 'ssp'
+end
 
 unless ENV["DISABLE_SSL"]
   dir_config("openssl")
