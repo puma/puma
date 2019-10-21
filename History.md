@@ -1,6 +1,14 @@
 ## Master
 
 * Features
+  * Your feature goes here (#Github Number)
+
+* Bugfixes
+  * Your bugfix goes here (#Github Number)
+
+## 4.3.0 / 2019-11-07
+
+* Features
   * Strip whitespace at end of HTTP headers (#2010)
   * Optimize HTTP parser for JRuby (#2012)
   * Add SSL support for the control app and cli (#2046, #2052)
