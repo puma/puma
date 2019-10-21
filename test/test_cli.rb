@@ -1,9 +1,12 @@
 require_relative "helper"
+require_relative "helpers/ssl"
 
 require "puma/cli"
 require "json"
 
 class TestCLI < Minitest::Test
+  include SSLHelper
+
   def setup
     @environment = 'production'
     @tmp_file = Tempfile.new("puma-test")
@@ -56,6 +59,42 @@ class TestCLI < Minitest::Test
 
     assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split(/\r?\n/).last)
     assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, Puma.stats)
+
+  ensure
+    cli.launcher.stop
+    t.join
+  end
+
+  def test_control_for_ssl
+    app_port = UniquePort.call
+    control_port = UniquePort.call
+    control_host = "127.0.0.1"
+    control_url = "ssl://#{control_host}:#{control_port}?#{ssl_query}"
+    token = "token"
+
+    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{app_port}",
+                         "--control-url", control_url,
+                         "--control-token", token,
+                         "test/rackup/lobster.ru"], @events
+
+    t = Thread.new do
+      cli.run
+    end
+
+    wait_booted
+
+    body = ""
+    http = Net::HTTP.new control_host, control_port
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    http.start do
+      req = Net::HTTP::Get.new "/stats?token=#{token}", {}
+      body = http.request(req).body
+    end
+
+    expected_stats = /{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/
+    assert_match(expected_stats, body.split(/\r?\n/).last)
+    assert_match(expected_stats, Puma.stats)
 
   ensure
     cli.launcher.stop
