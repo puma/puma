@@ -132,7 +132,7 @@ module Puma
         @pid = sf.pid
       elsif @pidfile
         # get pid from pid_file
-        @pid = File.open(@pidfile).gets.to_i
+        File.open(@pidfile) { |f| @pid = f.read.to_i }
       end
     end
 
