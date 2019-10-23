@@ -352,6 +352,14 @@ class TestCLI < Minitest::Test
     $LOAD_PATH.shift
   end
 
+  def test_extra_runtime_dependencies
+    cli = Puma::CLI.new ['--extra-runtime-dependencies', 'a,b']
+    extra_dependencies = cli.instance_variable_get(:@conf)
+                            .instance_variable_get(:@options)[:extra_runtime_dependencies]
+
+    assert_equal %w[a b], extra_dependencies
+  end
+
   def test_environment
     ENV.delete 'RACK_ENV'
 
