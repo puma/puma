@@ -24,6 +24,10 @@ Thread.abort_on_exception = true
 $debugging_info = ''.dup
 $debugging_hold = false    # needed for TestCLI#test_control_clustered
 
+$ORIG_OUT = STDOUT
+
+Dir.mkdir('tmp') unless Dir.exist?('tmp')
+
 require "puma"
 require "puma/events"
 require "puma/detect"
@@ -42,6 +46,35 @@ def hit(uris)
 
     assert response, "Didn't get a response: #{u}"
     response
+  end
+end
+
+module WaitForServerLogs
+  def assert_io(re, io: @server, debug: false, timeout: 10)
+    regex = Regexp === re ? re : Regexp.new(Regexp.escape re)
+
+    STDOUT.puts('',
+      "#{' ' * 20}*** #{full_name} assert_io #{re} ***") if debug
+    l = ''
+
+    ttf = Time.now.to_f + 10
+
+    while IO.select([io], nil, nil, timeout) do
+      l = io.gets
+      break if l.nil?
+      STDOUT.puts "io  #{l}" if debug
+      break if l[regex]
+      if (now = Time.now.to_f) > ttf
+        l = ''
+        break
+      end
+      timeout = ttf - now
+      sleep 0.05
+    end
+    t = caller(1..3).join "\n    "
+    refute_nil l, "Server returned nil waiting for '#{re}' in:\n    #{t}"
+    assert_match regex, l, "Server timeout waiting for '#{re}' in:\n    #{t}"
+    l[regex]
   end
 end
 
@@ -79,12 +112,11 @@ module TestSkips
 
   # usage: skip NO_FORK_MSG unless HAS_FORK
   # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
-  HAS_FORK = ::Process.respond_to? :fork
+  HAS_FORK = ::Puma::HAS_FORK
   NO_FORK_MSG = "Kernel.fork isn't available on the #{RUBY_PLATFORM} platform"
 
-  # socket is required by puma
-  # usage: skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-  UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
+  # usage: skip UNIX_SKT_MSG unless HAS_UNIX
+  HAS_UNIX = ::Puma::HAS_UNIX
   UNIX_SKT_MSG = "UnixSockets aren't available on the #{RUBY_PLATFORM} platform"
 
   SIGNAL_LIST = Signal.list.keys.map(&:to_sym) - (Puma.windows? ? [:INT, :TERM] : [])
@@ -125,6 +157,35 @@ module TestSkips
     end
     skip skip_msg, bt if skip_msg
   end
+
+  # runs in `Minitest.after_run`, which is after test wuite finishes,
+  # also runs when any test does not pass
+  #
+  def out_io
+    stdio = [STDIN, STDOUT, STDERR]
+    GC.start
+    ary = ObjectSpace.each_object(IO).select do |io|
+      begin
+        io.to_i
+      rescue
+      end
+    end.reject { |io| stdio.include? io }.sort_by(&:to_i)
+
+    return if ary.empty?
+
+    STDOUT.puts ''
+    ary.each do |io|
+      begin
+        if File === io
+          STDOUT.puts "    #{io.to_i.to_s.rjust 3}  #{io.path}"
+        else
+          STDOUT.puts "    #{io.to_i.to_s.rjust 3}  #{io.inspect}"
+        end
+      rescue
+      end
+    end
+  end
+  module_function :out_io
 end
 
 Minitest::Test.include TestSkips
@@ -135,18 +196,35 @@ class Minitest::Test
     super
   end
 
+  def after_teardown
+    return if passed? || skipped?
+    out_io unless Puma.jruby? or RUBY_VERSION < '2.3'
+  end
+
   def full_name
     "#{self.class.name}##{name}"
+  end
+
+  def full_file_name
+    cls_name = self.class.name.gsub(/([a-z])([A-Z])/, '\1_\2').downcase
+    "#{cls_name}__#{name}"
   end
 end
 
 Minitest.after_run do
   # needed for TestCLI#test_control_clustered
   unless $debugging_hold
-    out = $debugging_info.strip
-    unless out.empty?
+    out = "#{$debugging_info.rstrip}\n".dup
+    files = Dir.glob('tmp/*').map { |s| s.sub 'tmp/', '' }
+      .join("\n").sub(RUBY_PLATFORM, '')
+
+    out << files
+
+    unless out.strip.empty?
       puts "", " Debugging Info".rjust(75, '-'),
         out, '-' * 75, ""
     end
+    TestSkips.out_io unless Puma.jruby? or RUBY_VERSION < '2.3'
+    puts ''
   end
 end

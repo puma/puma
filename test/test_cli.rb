@@ -9,11 +9,8 @@ class TestCLI < Minitest::Test
 
   def setup
     @environment = 'production'
-    @tmp_file = Tempfile.new("puma-test")
-    @tmp_path = @tmp_file.path
-    @tmp_file.close!
-
-    @tmp_path2 = "#{@tmp_path}2"
+    @tmp_path  = "tmp/#{full_file_name}"
+    @tmp_path2 = "#{@tmp_path}_2"
 
     File.unlink @tmp_path  if File.exist? @tmp_path
     File.unlink @tmp_path2 if File.exist? @tmp_path2
@@ -21,7 +18,7 @@ class TestCLI < Minitest::Test
     @wait, @ready = IO.pipe
 
     @events = Puma::Events.strings
-    @events.on_booted { @ready << "!" }
+    @events.on_booted { @ready.syswrite '!' }
   end
 
   def wait_booted
@@ -29,14 +26,14 @@ class TestCLI < Minitest::Test
   end
 
   def teardown
-    File.unlink @tmp_path if File.exist? @tmp_path
+    File.unlink @tmp_path  if File.exist? @tmp_path
     File.unlink @tmp_path2 if File.exist? @tmp_path2
 
-    @wait.close
-    @ready.close
+    @ready.close rescue nil
+    @wait.close  rescue nil
   end
 
-  def test_control_for_tcp
+  def test_control_single_tcp
     tcp  = UniquePort.call
     cntl = UniquePort.call
     url = "tcp://127.0.0.1:#{cntl}/"
@@ -101,9 +98,9 @@ class TestCLI < Minitest::Test
     t.join
   end
 
-  def test_control_clustered
+  def test_control_clustered_unix
     skip NO_FORK_MSG  unless HAS_FORK
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip UNIX_SKT_MSG unless HAS_UNIX
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -139,7 +136,7 @@ class TestCLI < Minitest::Test
 
     assert_match(/\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "workers": 2, "phase": 0, "booted_workers": 2, "old_workers": 0, "worker_status": \[\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "pid": \d+, "index": 0, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \},\{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "pid": \d+, "index": 1, "phase": 0, "booted": true, "last_checkin": "[^"]+", "last_status": \{ "backlog":0, "running":2, "pool_capacity":2, "max_threads": 2 \} \}\] \}/, body.split("\r\n").last)
   ensure
-    if UNIX_SKT_EXIST && HAS_FORK
+    if HAS_UNIX && HAS_FORK
       cli.launcher.stop
 
       done = nil
@@ -155,7 +152,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip UNIX_SKT_MSG unless HAS_UNIX
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -174,14 +171,14 @@ class TestCLI < Minitest::Test
 
     assert_match(/{ "started_at": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "backlog": 0, "running": 0, "pool_capacity": 16, "max_threads": 16 }/, body.split("\r\n").last)
   ensure
-    if UNIX_SKT_EXIST
+    if HAS_UNIX
       cli.launcher.stop
       t.join
     end
   end
 
   def test_control_stop
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip UNIX_SKT_MSG unless HAS_UNIX
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -200,7 +197,7 @@ class TestCLI < Minitest::Test
 
     assert_equal '{ "status": "ok" }', body.split("\r\n").last
   ensure
-    t.join if UNIX_SKT_EXIST
+    t.join if HAS_UNIX
   end
 
   def control_gc_stats(uri, cntl)
@@ -264,7 +261,7 @@ class TestCLI < Minitest::Test
 
   def test_control_gc_stats_unix
     skip_on :jruby, suffix: " - Hitting /gc route does not increment count"
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip UNIX_SKT_MSG unless HAS_UNIX
 
     uri  = "unix://#{@tmp_path2}"
     cntl = "unix://#{@tmp_path}"

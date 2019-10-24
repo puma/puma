@@ -2,27 +2,19 @@ require_relative "helper"
 require_relative "helpers/config_file"
 
 require 'puma/control_cli'
+require 'pathname'
 
 class TestPumaControlCli < TestConfigFileBase
+  include WaitForServerLogs
+
   def setup
     # use a pipe to get info across thread boundary
     @wait, @ready = IO.pipe
   end
 
-  def wait_booted
-    line = @wait.gets until line =~ /Listening on/
-  end
-
   def teardown
-    @wait.close
-    @ready.close
-  end
-
-  def find_open_port
-    server = TCPServer.new("127.0.0.1", 0)
-    server.addr[1]
-  ensure
-    server.close
+    @ready.close unless @ready.nil? || @ready.closed?
+    @wait.close  unless @wait.nil?  || @wait.closed?
   end
 
   def with_config_file(path_to_config, port)
@@ -37,8 +29,8 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_config_file
-    control_cli = Puma::ControlCLI.new ["--config-file", "test/config/state_file_testing_config.rb", "halt"]
-    assert_equal "t3-pid", control_cli.instance_variable_get("@pidfile")
+    control_cli = Puma::ControlCLI.new ['--config-file', 'test/config/state_file_testing_config.rb', 'halt']
+    assert_equal "t3-pid", control_cli.instance_variable_get('@pidfile')
   end
 
   def test_rack_env_without_environment
@@ -106,50 +98,83 @@ class TestPumaControlCli < TestConfigFileBase
 
   def test_control_no_token
     opts = [
-      "--config-file", "test/config/control_no_token.rb",
-      "start"
+      '--config-file', 'test/config/control_no_token.rb',
+      'start'
     ]
 
     control_cli = Puma::ControlCLI.new opts, @ready, @ready
-    assert_equal 'none', control_cli.instance_variable_get("@control_auth_token")
+    assert_equal 'none', control_cli.instance_variable_get('@control_auth_token')
   end
 
-  def test_control_url_and_status
-    host = "127.0.0.1"
-    port = find_open_port
+  def test_control_url_and_status_halt
+    host = '127.0.0.1'
+    port = UniquePort.call
     url = "tcp://#{host}:#{port}/"
 
     opts = [
-      "--control-url", url,
-      "--control-token", "ctrl",
-      "--config-file", "test/config/app.rb",
+      '--control-url'  , url,
+      '--control-token', 'ctrl'
     ]
 
-    control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
+    control_cli = Puma::ControlCLI.new(opts + ['--config-file', 'test/config/app.rb', 'start'], @ready, @ready)
     t = Thread.new do
       control_cli.run
     end
 
-    wait_booted
+    assert_io 'Ctrl-C', io: @wait
 
     s = TCPSocket.new host, 9292
     s << "GET / HTTP/1.0\r\n\r\n"
     body = s.read
     assert_match "200 OK", body
     assert_match "embedded app", body
+    s.close
 
-    status_cmd = Puma::ControlCLI.new(opts + ["status"])
-    out, _ = capture_subprocess_io do
-      status_cmd.run
-    end
-    assert_match "Puma is started\n", out
+    Puma::ControlCLI.new(opts + ['status'], @ready, @ready).run
+    assert_io 'Puma is started', io: @wait
 
-    shutdown_cmd = Puma::ControlCLI.new(opts + ["halt"])
-    out, _ = capture_subprocess_io do
-      shutdown_cmd.run
+    Puma::ControlCLI.new(opts + ['halt'], @ready, @ready).run
+    assert_io 'Command halt sent success', io: @wait
+    assert_io 'Stopping immediately', io: @wait
+
+    assert_kind_of Thread, t.join, "server didn't halt"
+  ensure
+    s.close unless s.nil? || s.closed?
+  end
+
+  def test_control_url_and_status_stop
+    host = '127.0.0.1'
+    port = UniquePort.call
+    url = "tcp://#{host}:#{port}/"
+
+    opts = [
+      '--control-url'  , url,
+      '--control-token', 'ctrl'
+    ]
+
+    control_cli = Puma::ControlCLI.new(opts + ['--config-file', 'test/config/app.rb', 'start'], @ready, @ready)
+    t = Thread.new do
+      control_cli.run
     end
-    assert_match "Command halt sent success\n", out
+
+    assert_io 'Ctrl-C', io: @wait
+
+    s = TCPSocket.new host, 9292
+    s << "GET / HTTP/1.0\r\n\r\n"
+    body = s.read
+    assert_match "200 OK", body
+    assert_match "embedded app", body
+    s.close
+
+    Puma::ControlCLI.new(opts + ['status'], @ready, @ready).run
+    assert_io 'Puma is started', io: @wait
+
+    Puma::ControlCLI.new(opts + ['stop'], @ready, @ready).run
+    assert_io 'Command stop sent success', io: @wait
+    assert_io 'Goodbye', io: @wait
 
     assert_kind_of Thread, t.join, "server didn't stop"
+  ensure
+    s.close unless s.nil? || s.closed?
   end
 end

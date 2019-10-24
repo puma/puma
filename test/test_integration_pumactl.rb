@@ -2,60 +2,93 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationPumactl < TestIntegration
-  parallelize_me!
+  parallelize_me! unless Puma.jruby?
 
-  def setup
-    super
+  def test_stop_tcp_single
+    setup_puma bind: :tcp, ctrl: :tcp
 
-    @state_path   = "test/#{name}_puma.state"
-    @control_path = "test/#{name}_control.sock"
+    cli_server "-q test/rackup/sleep.ru"
+
+    stop_server_goodbye
+
+    begin # rescue needed on Windows?
+      _, status = Process.wait2 @pid
+      assert_equal 0, status
+    rescue Errno::ECHILD
+    end
   end
 
-  def teardown
-    super
+  def test_halt_tcp_single
+    setup_puma bind: :tcp, ctrl: :tcp
 
-    [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
+    cli_server "-q test/rackup/sleep.ru"
+
+    run_pumactl 'halt'
+    assert_io 'Stopping immediately!'
+
+    begin # rescue needed on Windows?
+      _, status = Process.wait2 @pid
+      assert_equal 0, status
+    rescue Errno::ECHILD
+    end
   end
 
-  def test_stop_tcp
-    @control_tcp_port = UniquePort.call
-    cli_server "-q test/rackup/sleep.ru --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} -S #{@state_path}"
+  def test_stop_unix_single
+    skip UNIX_SKT_MSG unless HAS_UNIX
+    setup_puma bind: :tcp, ctrl: :unix
+    cli_server "-q test/rackup/sleep.ru"
 
-    cli_pumactl "stop"
+    stop_server_goodbye
 
-    _, status = Process.wait2(@pid)
+    _, status = Process.wait2 @pid
     assert_equal 0, status
-
-    @server = nil
   end
 
-  def test_stop_unix
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-    cli_server "-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
+  def test_halt_unix_single
+    skip UNIX_SKT_MSG unless HAS_UNIX
+    setup_puma bind: :tcp, ctrl: :unix
+    cli_server "-q test/rackup/sleep.ru"
 
-    cli_pumactl "stop", unix: true
+    run_pumactl 'halt'
+    assert_io 'Stopping immediately!'
 
-    _, status = Process.wait2(@pid)
+    _, status = Process.wait2 @pid
     assert_equal 0, status
+  end
 
-    @server = nil
+  def test_stop_unix_cluster
+    skip UNIX_SKT_MSG unless HAS_UNIX
+    skip NO_FORK_MSG unless HAS_FORK
+    setup_puma bind: :tcp, ctrl: :unix
+    cli_server "-q -w #{WORKERS} test/rackup/sleep.ru"
+
+    stop_server_wait
+  end
+
+  def test_halt_unix_cluster
+    skip UNIX_SKT_MSG unless HAS_UNIX
+    skip NO_FORK_MSG unless HAS_FORK
+    setup_puma bind: :tcp, ctrl: :unix
+    cli_server "-q -w #{WORKERS} test/rackup/sleep.ru"
+
+    run_pumactl 'halt'
+    assert_io 'Stopping immediately!'
   end
 
   def test_phased_restart_cluster
     skip NO_FORK_MSG unless HAS_FORK
+    setup_puma bind: :unix, ctrl: :unix
 
-    cli_server "-q -w #{WORKERS} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
+    cli_server "-q -w #{WORKERS} test/rackup/sleep.ru"
 
-    s = UNIXSocket.new @bind_path
-    @ios_to_close << s
-    s << "GET /sleep5 HTTP/1.0\r\n\r\n"
+    connect 'sleep5'
 
     # Get the PIDs of the phase 0 workers.
     phase0_worker_pids = get_worker_pids 0
-    assert File.exist? @bind_path
+    assert File.exist? @path_bind
 
     # Phased restart
-    cli_pumactl "phased-restart", unix: true
+    run_pumactl 'phased-restart'
 
     # Get the PIDs of the phase 1 workers.
     phase1_worker_pids = get_worker_pids 1
@@ -65,11 +98,11 @@ class TestIntegrationPumactl < TestIntegration
     assert_equal WORKERS, phase0_worker_pids.length, msg
     assert_equal WORKERS, phase1_worker_pids.length, msg
     assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
-    assert File.exist?(@bind_path), "Bind path must exist after phased restart"
+    assert File.exist?(@path_bind), "Bind path must exist after phased restart"
 
-    cli_pumactl "stop", unix: true
+    run_pumactl 'stop'
 
-    _, status = Process.wait2(@pid)
+    _, status = Process.wait2 @pid
     assert_equal 0, status
 
     @server = nil
@@ -80,7 +113,7 @@ class TestIntegrationPumactl < TestIntegration
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
     # do not want to accidentally kill a valid other process
-    io = IO.popen(windows? ? "dir" : "ls")
+    io = IO.popen(windows? ? 'dir' : 'ls')
     safe_pid = io.pid
     Process.wait safe_pid
 
@@ -92,19 +125,6 @@ class TestIntegrationPumactl < TestIntegration
     sout.rewind
     # windows bad URI(is not URI?)
     assert_match(/No pid '\d+' found|bad URI\(is not URI\?\)/, sout.readlines.join(""))
-    assert_equal(1, e.status)
-  end
-
-  private
-
-  def cli_pumactl(argv, unix: false)
-    if unix
-      pumactl = IO.popen("#{BASE} bin/pumactl -C unix://#{@control_path} -T #{TOKEN} #{argv}", "r")
-    else
-      pumactl = IO.popen("#{BASE} bin/pumactl -C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}", "r")
-    end
-    @ios_to_close << pumactl
-    Process.wait pumactl.pid
-    pumactl
+    assert_equal 1, e.status
   end
 end

@@ -9,19 +9,16 @@ class TestPumaUnixSocket < Minitest::Test
   Path = "test/puma.sock"
 
   def setup
-    return unless UNIX_SKT_EXIST
     @server = Puma::Server.new App
     @server.add_unix_listener Path
     @server.run
   end
 
   def teardown
-    return unless UNIX_SKT_EXIST
     @server.stop(true)
   end
 
   def test_server
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     sock = UNIXSocket.new Path
 
     sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
@@ -30,4 +27,4 @@ class TestPumaUnixSocket < Minitest::Test
 
     assert_equal expected, sock.read(expected.size)
   end
-end
+end if ::Puma::HAS_UNIX
