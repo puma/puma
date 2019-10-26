@@ -11,7 +11,8 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats}
+    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats thread-backtraces}
+    PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
@@ -187,7 +188,7 @@ module Puma
         end
 
         message "Command #{@command} sent success"
-        message response.last if @command == "stats" || @command == "gc-stats"
+        message response.last if PRINTABLE_COMMANDS.include?(@command)
       end
     ensure
       server.close if server && !server.closed?

@@ -57,7 +57,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_prints_thread_traces
-    launcher.send(:log_thread_status)
+    launcher.log_thread_status(events)
     events.stdout.rewind
 
     assert_match "Thread TID", events.stdout.read
