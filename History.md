@@ -10,6 +10,7 @@
   * Fix pumactl defaulting puma to development if an environment was not specified (#2035)
   * Fix closing file stream when reading pid from pidfile (#2048)
   * Fix a typo in configuration option `--extra_runtime_dependencies` (#2050)
+  * Fix loading plugins with prune_bundler (#2032)
 
 ## 4.2.1 / 2019-10-07
 
