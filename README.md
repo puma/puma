@@ -228,6 +228,8 @@ If you want to prevent Puma from looking for a configuration file in those locat
 $ puma -C "-"
 ```
 
+The other side-effects of setting the environment are whether to show stack traces (in `development` or `test`), and setting RACK_ENV may potentially affect middleware looking for this value to change their behavior. The default puma RACK_ENV value is `development`. You can see all config default values [here](https://github.com/puma/puma/blob/12d1706ddc71b89ed2ee26275e31c788e94ff541/lib/puma/configuration.rb#L170).
+
 Check out [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
 
 ## Restart
