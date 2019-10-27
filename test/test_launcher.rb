@@ -50,7 +50,7 @@ class TestLauncher < Minitest::Test
   def test_prune_bundler_loads_plugins
     skip_on :no_bundler
     conf = Puma::Configuration.new do |c|
-      c.plugin 'hello'
+      c.plugin 'tmp_restart'
     end
     _, dirs = launcher(conf).send(:dependencies_and_files_to_require_after_prune)
     assert_equal(3, dirs.length)
