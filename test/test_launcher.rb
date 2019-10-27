@@ -54,7 +54,7 @@ class TestLauncher < Minitest::Test
     end
     _, dirs = launcher(conf).send(:dependencies_and_files_to_require_after_prune)
     assert_equal(3, dirs.length)
-    assert_match("hello", dirs.last)
+    assert_match("tmp_restart", dirs.last)
   end
 
   def test_puma_wild_location_is_an_absolute_path
