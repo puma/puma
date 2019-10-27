@@ -43,16 +43,16 @@ class TestLauncher < Minitest::Test
     end
     dep_dirs = launcher(conf).send(:extra_runtime_deps_directories)
 
-    assert_equal(3, dep_dirs.length)
+    assert_equal(1, dep_dirs.length)
     assert_match(%r{gems/rdoc-[\d.]+/lib$}, dep_dirs.first)
   end
 
-  def test_extra_runtime_deps_directories_is_correctly_built
+  def test_prune_bundler_loads_plugins
     skip_on :no_bundler
     conf = Puma::Configuration.new do |c|
       c.plugin 'hello'
     end
-    deps, dirs,  = launcher(conf).send(:dependencies_and_files_to_require_after_prune)
+    _, dirs = launcher(conf).send(:dependencies_and_files_to_require_after_prune)
     assert_equal(3, dirs.length)
     assert_match("hello", dirs.last)
   end
