@@ -8,7 +8,7 @@ Please describe your pull request. Thank you for contributing! You're the best.
 - [ ] I have added an entry to [History.md](../blob/master/History.md) if this PR fixes a bug or adds a feature. If it doesn't need an entry to HISTORY.md, I have added `[changelog skip]` to all commit messages.
 - [ ] I have added appropriate tests if this PR fixes a bug or adds a feature.
 - [ ] My pull request is 100 lines added/removed or less so that it can be easily reviewed.
-- [ ] If this PR doesn't need tests (docs change), I added `[ci skip]` to the commit messages.
+- [ ] If this PR doesn't need tests (docs change), I added `[ci skip]` to the title of the PR.
 - [ ] If this closes any issues, I have added "Closes `#issue`" to the PR description or my commit messages.
 - [ ] I have updated the documentation accordingly.
 - [ ] All new and existing tests passed, including Rubocop.
