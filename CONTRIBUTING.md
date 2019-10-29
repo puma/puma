@@ -68,7 +68,7 @@ bundle exec rake test:all
 To run a single test file:
 
 ```sh
-ruby -Ilib test/test_integration.rb
+ruby -Ilib test/test_binder.rb
 ```
 
 Or use [`m`](https://github.com/qrush/m):
