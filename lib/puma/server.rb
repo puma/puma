@@ -36,6 +36,7 @@ module Puma
 
     attr_reader :thread
     attr_reader :events
+    attr_reader :processed_requests
     attr_accessor :app
 
     attr_accessor :min_threads
@@ -79,6 +80,7 @@ module Puma
 
       @options = options
       @queue_requests = options[:queue_requests].nil? ? true : options[:queue_requests]
+      @processed_requests = 0
 
       ENV['RACK_ENV'] ||= "development"
 
@@ -616,6 +618,8 @@ module Puma
       client = req.io
 
       return false if closed_socket?(client)
+
+      @processed_requests +=1
 
       normalize_env env, req
 

@@ -18,7 +18,8 @@ module Puma
       r = @server.running || 0
       t = @server.pool_capacity || 0
       m = @server.max_threads || 0
-      %Q!{ "started_at": "#{@started_at.utc.iso8601}", "backlog": #{b}, "running": #{r}, "pool_capacity": #{t}, "max_threads": #{m} }!
+      p = @server.processed_requests || 0
+      %Q!{ "started_at": "#{@started_at.utc.iso8601}", "backlog": #{b}, "running": #{r}, "pool_capacity": #{t}, "max_threads": #{m}, "processed_requests": #{p} }!
     end
 
     def restart
