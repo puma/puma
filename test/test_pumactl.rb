@@ -1,6 +1,7 @@
 require_relative "helper"
 require_relative "helpers/config_file"
 
+require 'pathname'
 require 'puma/control_cli'
 
 class TestPumaControlCli < TestConfigFileBase
