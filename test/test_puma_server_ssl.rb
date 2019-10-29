@@ -91,9 +91,18 @@ class TestPumaServerSSL < Minitest::Test
   def test_request_wont_block_thread
     start_server
     # Open a connection and give enough data to trigger a read, then wait
+    key_contents = File.read File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+    cert_contents = File.read File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+    cert = OpenSSL::X509::Certificate.new(cert_contents)
+    key = OpenSSL::PKey.read(key_contents)
+
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    ctx.cert = cert
+    ctx.key = key
+
     socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, @port), ctx
+    socket.connect_nonblock
     socket.write "x"
     sleep 0.1
 
