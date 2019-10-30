@@ -43,6 +43,7 @@ class TestAppStatus < Minitest::Test
     @app.instance_variable_set(:@auth_token, "abcdef")
 
     status, _, _ = lint('/whatever')
+    assert false
 
     assert_equal 403, status
   end

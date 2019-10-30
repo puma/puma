@@ -40,7 +40,10 @@ jobs:
       uses: actions/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
-
+    - name: create makefile for c extension
+      run: ruby ext/puma_http11/extconf.rb
+    - name: compile and check warnings in c extension
+      run: make
     - name: ubuntu & macos - install ragel
       if:   startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')
       run:  |
