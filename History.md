@@ -4,7 +4,7 @@
   * Strip whitespace at end of HTTP headers (#2010)
   * Optimize HTTP parser for JRuby (#2012)
   * Add SSL support for the control app (#2046)
-  * Add requests processed counter to workers (#2057)
+  * Added a processed_requests counter to Puma.stats (#2057)
 
 * Bugfixes
   * Fix Errno::EINVAL when SSL is enabled and browser rejects cert (#1564)
