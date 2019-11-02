@@ -141,6 +141,12 @@ module Puma
 
       # create server object by scheme
       server = case uri.scheme
+                when "ssl"
+                  require 'openssl'
+                  OpenSSL::SSL::SSLSocket.new(
+                    TCPSocket.new(uri.host, uri.port),
+                    OpenSSL::SSL::SSLContext.new
+                  ).tap(&:connect)
                 when "tcp"
                   TCPSocket.new uri.host, uri.port
                 when "unix"
