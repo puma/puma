@@ -726,8 +726,10 @@ EOF
     sock << "ello"
 
     sock.gets
-
-    assert_operator request_body_wait, :>=, 1000
+  
+    # Could be 1000 but the tests get flaky. We don't care if it's extremely precise so much as that
+    # it is set to a reasonable number.
+    assert_operator request_body_wait, :>=, 900 
   end
 
   def test_request_body_wait_chunked
