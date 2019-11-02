@@ -744,7 +744,9 @@ EOF
     sock << "4\r\nello\r\n0\r\n\r\n"
 
     sock.gets
-
-    assert_operator request_body_wait, :>=, 1000
+    
+    # Could be 1000 but the tests get flaky. We don't care if it's extremely precise so much as that
+    # it is set to a reasonable number.
+    assert_operator request_body_wait, :>=, 900
   end
 end
