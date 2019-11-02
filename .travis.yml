@@ -56,6 +56,7 @@ matrix:
     - rvm: ruby-head
     - rvm: ruby-head
       env: jit=yes
+    - rvm: truffleruby
 
 env:
   global:
