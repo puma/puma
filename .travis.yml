@@ -30,7 +30,9 @@ matrix:
   include:
     - rvm: 2.2.10
       dist: trusty
-      env: OS="Trusty 14.04 OpenSSL 1.0.1"
+      env:
+        - OS="Trusty 14.04 OpenSSL 1.0.1"
+        - RUBYOPT=""
     - rvm: 2.6.4
       dist: xenial
       env: OS="Xenial 16.04 OpenSSL 1.0.2"
