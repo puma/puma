@@ -5,6 +5,7 @@
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)
+  * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
 
 ## 4.3.0 / 2019-11-07
 
