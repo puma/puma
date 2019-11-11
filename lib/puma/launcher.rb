@@ -455,7 +455,7 @@ module Puma
         Signal.trap "SIGINFO" do
           thread_status do |name, backtrace|
             @events.log name
-            @events.log backtrace
+            @events.log backtrace.map { |bt| "  #{bt}" }
           end
         end
       rescue Exception
