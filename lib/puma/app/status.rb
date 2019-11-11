@@ -57,9 +57,12 @@ module Puma
           rack_response(200, @cli.stats)
 
         when /\/thread-backtraces$/
-          strings = Puma::Events.strings
-          @cli.log_thread_status(strings)
-          rack_response(200, strings.stdout.string)
+          backtraces = []
+          @cli.thread_status do |name, backtrace|
+            backtraces << { name: name, backtrace: backtrace }
+          end
+
+          rack_response(200, backtraces.to_json)
         else
           rack_response 404, "Unsupported action", 'text/plain'
         end

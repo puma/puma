@@ -57,10 +57,9 @@ class TestLauncher < Minitest::Test
   end
 
   def test_prints_thread_traces
-    launcher.log_thread_status(events)
-    events.stdout.rewind
-
-    assert_match "Thread TID", events.stdout.read
+    launcher.thread_status do |name, _backtrace|
+      assert_match "Thread: TID", name
+    end
   end
 
   def test_pid_file

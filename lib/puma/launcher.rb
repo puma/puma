@@ -205,18 +205,14 @@ module Puma
       @binder.close_listeners
     end
 
-    def log_thread_status(events)
+    def thread_status
       Thread.list.each do |thread|
-        events.log "Thread TID-#{thread.object_id.to_s(36)} #{thread['label']}"
-        logstr = "Thread: TID-#{thread.object_id.to_s(36)}"
-        logstr += " #{thread.name}" if thread.respond_to?(:name)
-        events.log logstr
+        name = "Thread: TID-#{thread.object_id.to_s(36)}"
+        name += " #{thread['label']}" if thread['label']
+        name += " #{thread.name}" if thread.respond_to?(:name) && thread.name
+        backtrace = thread.backtrace || ["<no backtrace available>"]
 
-        if thread.backtrace
-          events.log thread.backtrace.join("\n")
-        else
-          events.log "<no backtrace available>"
-        end
+        yield name, backtrace
       end
     end
 
@@ -457,7 +453,10 @@ module Puma
 
       begin
         Signal.trap "SIGINFO" do
-          log_thread_status(@events)
+          thread_status do |name, backtrace|
+            @events.log name
+            @events.log backtrace
+          end
         end
       rescue Exception
         # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
