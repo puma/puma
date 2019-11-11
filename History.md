@@ -1,7 +1,7 @@
 ## Master
 
 * Features
-  * Your feature goes here (#Github Number)
+  * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)

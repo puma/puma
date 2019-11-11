@@ -99,6 +99,6 @@ class TestIntegrationSingle < TestIntegration
     Process.kill :INT , @pid
     t.join
 
-    assert_match "Thread TID", output.join
+    assert_match "Thread: TID", output.join
   end
 end
