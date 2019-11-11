@@ -384,11 +384,22 @@ class TestCLI < Minitest::Test
     assert_equal %w[a b], extra_dependencies
   end
 
-  def test_environment
+  def test_environment_rack_env
     ENV.delete 'RACK_ENV'
 
     Puma::CLI.new ["--environment", @environment]
 
-    assert_equal ENV['RACK_ENV'], @environment
+    assert_equal @environment, ENV['RACK_ENV']
+  end
+
+  def test_environment_rails_env
+    ENV.delete 'RACK_ENV'
+    ENV['RAILS_ENV'] = @environment
+
+    Puma::CLI.new []
+
+    assert_equal @environment, ENV['RACK_ENV']
+
+    ENV.delete 'RAILS_ENV'
   end
 end

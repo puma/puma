@@ -230,6 +230,15 @@ class TestConfigFileWithFakeEnv < TestConfigFileBase
     end
   end
 
+  def test_config_files_with_rails_env
+    with_env('RAILS_ENV' => 'fake-env', 'RACK_ENV' => nil) do
+      conf = Puma::Configuration.new do
+      end
+
+      assert_equal ['config/puma/fake-env.rb'], conf.config_files
+    end
+  end
+
   def test_config_files_with_specified_environment
     conf = Puma::Configuration.new do
     end
