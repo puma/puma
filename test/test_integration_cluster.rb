@@ -1,6 +1,8 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
+require "json"
+
 class TestIntegrationCluster < TestIntegration
   parallelize_me!
 
@@ -131,6 +133,25 @@ class TestIntegrationCluster < TestIntegration
   def test_stuck_phased_restart
     skip_unless_signal_exist? :USR1
     worker_respawn { |phase0_worker_pids| Process.kill :USR1, @pid }
+  end
+
+  def test_processed_requests_counter_incremented
+    cli_server "-w #{WORKERS} --control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
+    sleep 6 # wait until the first status ping has come through
+
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:9293/stats?token=#{TOKEN}")
+    curl_wait_thread.join
+    body = JSON.parse(curl_stdout.read)
+    assert body['worker_status'].sum { |w| w['last_status']['processed_requests'] }, 0
+
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}")
+    curl_wait_thread.join
+    assert_equal curl_stdout.read, 'Hello World'
+
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:9293/stats?token=#{TOKEN}")
+    curl_wait_thread.join
+    body = JSON.parse(curl_stdout.read)
+    assert body['worker_status'].sum { |w| w['last_status']['processed_requests'] }, 1
   end
 
   private
@@ -352,6 +373,4 @@ class TestIntegrationCluster < TestIntegration
       mutex.synchronize { replies[step] = :refused }
     end
   end
-
-
 end

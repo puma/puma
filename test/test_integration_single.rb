@@ -1,6 +1,8 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
+require "json"
+
 class TestIntegrationSingle < TestIntegration
   parallelize_me!
 
@@ -100,5 +102,22 @@ class TestIntegrationSingle < TestIntegration
     t.join
 
     assert_match "Thread TID", output.join
+  end
+
+  def test_processed_requests_counter_incremented
+    cli_server "--control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:9293/stats?token=#{TOKEN}")
+    curl_wait_thread.join
+    body = JSON.parse(curl_stdout.read)
+    assert body['processed_requests'], 0
+
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}")
+    curl_wait_thread.join
+    assert_equal curl_stdout.read, 'Hello World'
+
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:9293/stats?token=#{TOKEN}")
+    curl_wait_thread.join
+    body = JSON.parse(curl_stdout.read)
+    assert body['processed_requests'], 1
   end
 end
