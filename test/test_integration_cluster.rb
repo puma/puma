@@ -142,7 +142,7 @@ class TestIntegrationCluster < TestIntegration
     _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:9293/stats?token=#{TOKEN}")
     curl_wait_thread.join
     body = JSON.parse(curl_stdout.read)
-    assert body['worker_status'].sum { |w| w['last_status']['processed_requests'] }, 0
+    assert body['worker_status'].inject(0) { |sum, w| sum + w['last_status']['processed_requests'] }, 0
 
     _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}")
     curl_wait_thread.join
@@ -151,7 +151,7 @@ class TestIntegrationCluster < TestIntegration
     _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:9293/stats?token=#{TOKEN}")
     curl_wait_thread.join
     body = JSON.parse(curl_stdout.read)
-    assert body['worker_status'].sum { |w| w['last_status']['processed_requests'] }, 1
+    assert body['worker_status'].inject(0) { |sum, w| sum + w['last_status']['processed_requests'] }, 1
   end
 
   private
