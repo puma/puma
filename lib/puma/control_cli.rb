@@ -11,7 +11,8 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats}
+    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats thread-backtraces}
+    PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
@@ -22,7 +23,7 @@ module Puma
       @control_auth_token = nil
       @config_file = nil
       @command = nil
-      @environment = ENV['RACK_ENV']
+      @environment = ENV['RACK_ENV'] || ENV['RAILS_ENV']
 
       @argv = argv.dup
       @stdout = stdout
@@ -141,6 +142,12 @@ module Puma
 
       # create server object by scheme
       server = case uri.scheme
+                when "ssl"
+                  require 'openssl'
+                  OpenSSL::SSL::SSLSocket.new(
+                    TCPSocket.new(uri.host, uri.port),
+                    OpenSSL::SSL::SSLContext.new
+                  ).tap(&:connect)
                 when "tcp"
                   TCPSocket.new uri.host, uri.port
                 when "unix"
@@ -181,7 +188,7 @@ module Puma
         end
 
         message "Command #{@command} sent success"
-        message response.last if @command == "stats" || @command == "gc-stats"
+        message response.last if PRINTABLE_COMMANDS.include?(@command)
       end
     ensure
       server.close if server && !server.closed?

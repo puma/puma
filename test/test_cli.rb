@@ -203,6 +203,30 @@ class TestCLI < Minitest::Test
     t.join if UNIX_SKT_EXIST
   end
 
+  def test_control_thread_backtraces
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    url = "unix://#{@tmp_path}"
+
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
+                         "--control-url", url,
+                         "--control-token", "",
+                         "test/rackup/lobster.ru"], @events
+
+    t = Thread.new { cli.run }
+
+    wait_booted
+
+    s = UNIXSocket.new @tmp_path
+    s << "GET /thread-backtraces HTTP/1.0\r\n\r\n"
+    body = s.read
+    s.close
+
+    assert_match %r{Thread: TID-}, body.split("\r\n").last
+  ensure
+    cli.launcher.stop if cli
+    t.join if UNIX_SKT_EXIST
+  end
+
   def control_gc_stats(uri, cntl)
     cli = Puma::CLI.new ["-b", uri,
                          "--control-url", cntl,
@@ -360,11 +384,22 @@ class TestCLI < Minitest::Test
     assert_equal %w[a b], extra_dependencies
   end
 
-  def test_environment
+  def test_environment_rack_env
     ENV.delete 'RACK_ENV'
 
     Puma::CLI.new ["--environment", @environment]
 
-    assert_equal ENV['RACK_ENV'], @environment
+    assert_equal @environment, ENV['RACK_ENV']
+  end
+
+  def test_environment_rails_env
+    ENV.delete 'RACK_ENV'
+    ENV['RAILS_ENV'] = @environment
+
+    Puma::CLI.new []
+
+    assert_equal @environment, ENV['RACK_ENV']
+
+    ENV.delete 'RAILS_ENV'
   end
 end

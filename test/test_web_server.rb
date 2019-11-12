@@ -19,7 +19,7 @@ end
 class WebServerTest < Minitest::Test
   parallelize_me!
 
-  VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
+  VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
 
   def setup
     @tester = TestHandler.new
@@ -63,10 +63,9 @@ class WebServerTest < Minitest::Test
     end
   end
 
-  # TODO: Why does this test take exactly 20 seconds?
   def test_file_streamed_request
     body = "a" * (Puma::Const::MAX_BODY * 2)
-    long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\n\r\n" + body
+    long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\nConnection: close\r\n\r\n" + body
     socket = do_test(long, (Puma::Const::CHUNK_SIZE * 2) - 400)
     assert_match "hello", socket.read
     socket.close

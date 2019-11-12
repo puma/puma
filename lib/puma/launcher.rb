@@ -205,6 +205,17 @@ module Puma
       @binder.close_listeners
     end
 
+    def thread_status
+      Thread.list.each do |thread|
+        name = "Thread: TID-#{thread.object_id.to_s(36)}"
+        name += " #{thread['label']}" if thread['label']
+        name += " #{thread.name}" if thread.respond_to?(:name) && thread.name
+        backtrace = thread.backtrace || ["<no backtrace available>"]
+
+        yield name, backtrace
+      end
+    end
+
     private
 
     # If configured, write the pid of the current process out
@@ -321,21 +332,6 @@ module Puma
       @runner.stop_blocked
       log "=== puma shutdown: #{Time.now} ==="
       log "- Goodbye!"
-    end
-
-    def log_thread_status
-      Thread.list.each do |thread|
-        log "Thread TID-#{thread.object_id.to_s(36)} #{thread['label']}"
-        logstr = "Thread: TID-#{thread.object_id.to_s(36)}"
-        logstr += " #{thread.name}" if thread.respond_to?(:name)
-        log logstr
-
-        if thread.backtrace
-          log thread.backtrace.join("\n")
-        else
-          log "<no backtrace available>"
-        end
-      end
     end
 
     def set_process_title
@@ -457,7 +453,10 @@ module Puma
 
       begin
         Signal.trap "SIGINFO" do
-          log_thread_status
+          thread_status do |name, backtrace|
+            @events.log name
+            @events.log backtrace.map { |bt| "  #{bt}" }
+          end
         end
       rescue Exception
         # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying

@@ -1,9 +1,19 @@
 ## Master
 
 * Features
+  * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
+  * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
+
+* Bugfixes
+  * Your bugfix goes here (#Github Number)
+  * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
+
+## 4.3.0 / 2019-11-07
+
+* Features
   * Strip whitespace at end of HTTP headers (#2010)
   * Optimize HTTP parser for JRuby (#2012)
-  * Add SSL support for the control app (#2046)
+  * Add SSL support for the control app and cli (#2046, #2052)
   * Added a processed_requests counter to Puma.stats (#2057)
 
 * Bugfixes
