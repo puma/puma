@@ -139,6 +139,7 @@ class TestPumaControlCli < TestConfigFileBase
     s = TCPSocket.new host, 9292
     s << "GET / HTTP/1.0\r\n\r\n"
     body = s.read
+
     assert_match "200 OK", body
     assert_match "embedded app", body
 
@@ -149,6 +150,8 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_control_ssl
+    skip :jruby
+
     host = "127.0.0.1"
     port = find_open_port
     url = "ssl://#{host}:#{port}?#{ssl_query}"
@@ -160,6 +163,7 @@ class TestPumaControlCli < TestConfigFileBase
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
+
     t = Thread.new do
       control_cli.run
     end
@@ -176,6 +180,8 @@ class TestPumaControlCli < TestConfigFileBase
 
   def assert_command_cli_output(options, expected_out)
     cmd = Puma::ControlCLI.new(options)
+    puts cmd.inspect
+
     out, _ = capture_subprocess_io do
       cmd.run
     end
