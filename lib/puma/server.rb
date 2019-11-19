@@ -89,7 +89,7 @@ module Puma
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
 
-    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_port
+    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_ports
 
     def inherit_binder(bind)
       @binder = bind

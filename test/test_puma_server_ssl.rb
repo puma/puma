@@ -45,7 +45,7 @@ class TestPumaServerSSL < Minitest::Test
 
   # yields ctx to block, use for ctx setup & configuration
   def start_server
-    @port = UniquePort.call
+    @port = 0
     @host = "127.0.0.1"
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
@@ -69,7 +69,7 @@ class TestPumaServerSSL < Minitest::Test
     @ssl_listener = @server.add_ssl_listener @host, @port, ctx
     @server.run
 
-    @http = Net::HTTP.new @host, @port
+    @http = Net::HTTP.new @host, @server.connected_ports[0]
     @http.use_ssl = true
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
@@ -93,7 +93,8 @@ class TestPumaServerSSL < Minitest::Test
     # Open a connection and give enough data to trigger a read, then wait
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
-    socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, @port), ctx
+    port = @server.connected_ports[0]
+    socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, port), ctx
     socket.write "x"
     sleep 0.1
 
@@ -206,7 +207,7 @@ class TestPumaServerSSLClient < Minitest::Test
   parallelize_me!
   def assert_ssl_client_error_match(error, subject=nil, &blk)
     host = "127.0.0.1"
-    port = UniquePort.call
+    port = 0
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
@@ -226,7 +227,7 @@ class TestPumaServerSSLClient < Minitest::Test
     server.add_ssl_listener host, port, ctx
     server.run
 
-    http = Net::HTTP.new host, port
+    http = Net::HTTP.new host, server.connected_ports[0]
     http.use_ssl = true
     http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 

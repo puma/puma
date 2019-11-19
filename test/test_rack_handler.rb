@@ -49,7 +49,7 @@ class TestPathHandler < Minitest::Test
     host = windows? ? "127.0.1.1" : "0.0.0.0"
     opts = { Host: host }
     in_handler(app, opts) do |launcher|
-      hit(["http://#{host}:#{ launcher.connected_port }/test"])
+      hit(["http://#{host}:#{ launcher.connected_ports[0] }/test"])
       assert_equal("/test", @input["PATH_INFO"])
     end
   end
