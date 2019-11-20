@@ -228,6 +228,25 @@ module Puma
       end
     end
 
+    def wait_for_less_busy_worker(delay_s)
+      # Ruby MRI does GVL, this can result
+      # in processing contention when multiple threads
+      # (requests) are running concurrently
+      return unless Puma.mri?
+      return unless delay_s > 0
+
+      with_mutex do
+        return if @shutdown
+
+        # do not delay, if we are not busy
+        return unless busy_threads > 0
+
+        # this will be signaled once a request finishes,
+        # which can happen earlier than delay
+        @not_full.wait @mutex, delay_s
+      end
+    end
+
     # If there are any free threads in the pool, tell one to go ahead
     # and exit. If +force+ is true, then a trim request is requested
     # even if all threads are being utilized.
