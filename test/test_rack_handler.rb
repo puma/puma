@@ -227,20 +227,17 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
     end
   end
 
-  def test_file_log_requests_wins_over_deafult_config
+  def test_file_log_requests_wins_over_default_config
     file_log_requests_config = true
 
-    Dir.mktmpdir do |d|
-      Dir.chdir(d) do
-        FileUtils.mkdir("config")
-        File.open("config/puma.rb", "w") { |f| f << "log_requests #{file_log_requests_config}" }
+    @options[:config_files] = [
+      'test/shell/t1_conf.rb'
+    ]
 
-        conf = Rack::Handler::Puma.config(->{}, @options)
-        conf.load
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
 
-        assert_equal file_log_requests_config, conf.options[:log_requests]
-      end
-    end
+    assert_equal file_log_requests_config, conf.options[:log_requests]
   end
 
 
@@ -248,17 +245,14 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
     file_log_requests_config = true
     user_log_requests_config = false
 
-    Dir.mktmpdir do |d|
-      Dir.chdir(d) do
-        FileUtils.mkdir("config")
-        File.open("config/puma.rb", "w") { |f| f << "log_requests #{file_log_requests_config}" }
+    @options[:log_requests] = user_log_requests_config
+    @options[:config_files] = [
+      'test/shell/t1_conf.rb'
+    ]
 
-        @options[:log_requests] = user_log_requests_config
-        conf = Rack::Handler::Puma.config(->{}, @options)
-        conf.load
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
 
-        assert_equal user_log_requests_config, conf.options[:log_requests]
-      end
-    end
+    assert_equal user_log_requests_config, conf.options[:log_requests]
   end
 end
