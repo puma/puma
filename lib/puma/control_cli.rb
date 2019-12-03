@@ -21,6 +21,7 @@ module Puma
       @pid = nil
       @control_url = nil
       @control_auth_token = nil
+      @status_auth_token = nil
       @config_file = nil
       @command = nil
       @environment = ENV['RACK_ENV'] || ENV['RAILS_ENV']
@@ -55,6 +56,10 @@ module Puma
 
         o.on "-T", "--control-token TOKEN", "The token to use as authentication for the control server" do |arg|
           @control_auth_token = arg
+        end
+
+        o.on "-S", "--status-token TOKEN", "The token to use as authentication for the status server" do |arg|
+          @status_auth_token = arg
         end
 
         o.on "-F", "--config-file PATH", "Puma config script" do |arg|
@@ -97,6 +102,7 @@ module Puma
           @state              ||= config.options[:state]
           @control_url        ||= config.options[:control_url]
           @control_auth_token ||= config.options[:control_auth_token]
+          @status_auth_token  ||= config.options[:status_auth_token]
           @pidfile            ||= config.options[:pidfile]
         end
       end
@@ -130,6 +136,7 @@ module Puma
 
         @control_url = sf.control_url
         @control_auth_token = sf.control_auth_token
+        @status_auth_token = sf.status_auth_token
         @pid = sf.pid
       elsif @pidfile
         # get pid from pid_file
@@ -161,7 +168,9 @@ module Puma
       else
         url = "/#{@command}"
 
-        if @control_auth_token
+        if PRINTABLE_COMMANDS.include?(@command) && @status_auth_token
+          url = url + "?token=#{@status_auth_token}"
+        elsif @control_auth_token
           url = url + "?token=#{@control_auth_token}"
         end
 
@@ -179,7 +188,7 @@ module Puma
 
         (@http,@code,@message) = response.first.split(" ",3)
 
-        if @code == "403"
+        if @code == "401" || @code == "403"
           raise "Unauthorized access to server (wrong auth token)"
         elsif @code == "404"
           raise "Command error: #{response.last}"

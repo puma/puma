@@ -135,13 +135,18 @@ module Puma
         # symbols as option values.
         #
         # See: https://github.com/puma/puma/issues/1193#issuecomment-305995488
-        auth_token = 'none'
+        control_auth_token = 'none'
+        status_auth_token = 'none'
       else
-        auth_token = opts[:auth_token]
-        auth_token ||= Configuration.random_token
+        control_auth_token = opts[:control_auth_token]
+        control_auth_token ||= Configuration.random_token
+        status_auth_token = opts[:status_auth_token]
+        status_auth_token ||= Configuration.random_token
       end
 
-      @options[:control_auth_token] = auth_token
+      @options[:control_auth_token] = control_auth_token
+      @options[:status_auth_token] = status_auth_token
+
       @options[:control_url_umask] = opts[:umask] if opts[:umask]
     end
 

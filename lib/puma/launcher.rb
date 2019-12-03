@@ -113,6 +113,7 @@ module Puma
       sf.pid = Process.pid
       sf.control_url = @options[:control_url]
       sf.control_auth_token = @options[:control_auth_token]
+      sf.status_auth_token = @options[:status_auth_token]
 
       sf.save path
     end

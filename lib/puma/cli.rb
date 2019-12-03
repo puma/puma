@@ -119,7 +119,12 @@ module Puma
 
           o.on "--control-token TOKEN",
             "The token to use as authentication for the control server" do |arg|
-            @control_options[:auth_token] = arg
+            @control_options[:control_auth_token] = arg
+          end
+
+          o.on "--status-token TOKEN",
+            "The token to use as authentication for the status server" do |arg|
+            @control_options[:status_auth_token] = arg
           end
 
           o.on "-d", "--daemon", "Daemonize the server into the background" do

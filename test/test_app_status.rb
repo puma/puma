@@ -39,24 +39,157 @@ class TestAppStatus < Minitest::Test
     app.call mock_env
   end
 
-  def test_bad_token
-    @app.instance_variable_set(:@auth_token, "abcdef")
+  # control token and control_action
 
-    status, _, _ = lint('/whatever')
+  def test_missing_control_token_with_control_action
+    @app.instance_variable_set(:@control_token, "abcdef")
+
+    status, _, _ = lint('/stop')
 
     assert_equal 403, status
   end
 
-  def test_good_token
-    @app.instance_variable_set(:@auth_token, "abcdef")
+  def test_invalid_control_token_with_control_action
+    @app.instance_variable_set(:@control_token, "abcdef")
 
-    status, _, _ = lint('/whatever?token=abcdef')
+    status, _, _ = lint('/stop?token=invalid')
+
+    assert_equal 403, status
+  end
+
+  def test_valid_control_token_with_control_action
+    @app.instance_variable_set(:@control_token, "abcdef")
+
+    status, _ , app = lint('/stop?token=abcdef')
+
+    assert_equal :stop, @server.status
+    assert_equal 200, status
+    assert_equal ['{ "status": "ok" }'], app.enum_for.to_a
+  end
+
+  # control token and unsupported action
+
+  def test_valid_control_token_with_unsupported_action
+    @app.instance_variable_set(:@control_token, "abcdef")
+
+    status, _, _ = lint('/unsupported?token=abcdef')
 
     assert_equal 404, status
   end
 
-  def test_unsupported
-    status, _, _ = lint('/not-real')
+  # control token and status action
+
+  def test_missing_control_token_with_status_action
+    @app.instance_variable_set(:@control_token, "abcdef")
+    @app.instance_variable_set(:@status_token, "ghijkl")
+
+    status, _, _ = lint('/stats')
+
+    assert_equal 403, status
+  end
+
+  def test_missing_control_token_with_status_action_no_control_token_defined
+    @app.instance_variable_set(:@control_token, nil)
+    @app.instance_variable_set(:@status_token, "ghijkl")
+
+    status, _, app = lint('/stats')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  def test_missing_control_token_with_status_action_no_status_token_defined
+    @app.instance_variable_set(:@control_token, "abcdef")
+    @app.instance_variable_set(:@status_token, nil)
+
+    status, _, app = lint('/stats')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  def test_invalid_control_token_with_status_action
+    @app.instance_variable_set(:@control_token, "abcdef")
+    @app.instance_variable_set(:@status_token, "ghijkl")
+
+    status, _ , app = lint('/stats?token=invalid')
+
+    assert_equal 403, status
+  end
+
+  def test_invalid_control_token_with_status_action_no_control_token_defined
+    @app.instance_variable_set(:@control_token, nil)
+    @app.instance_variable_set(:@status_token, "ghijkl")
+
+    status, _ , app = lint('/stats?token=abcdef')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  def test_invalid_control_token_with_status_action_no_status_token_defined
+    @app.instance_variable_set(:@control_token, "abcdef")
+    @app.instance_variable_set(:@status_token, nil)
+
+    status, _ , app = lint('/stats?token=invalid')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  def test_valid_control_token_with_status_action
+    @app.instance_variable_set(:@control_token, "abcdef")
+    @app.instance_variable_set(:@status_token, "ghijkl")
+
+    status, _ , app = lint('/stats?token=abcdef')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  def test_valid_control_token_with_status_action_no_status_token_defined
+    @app.instance_variable_set(:@control_token, "abcdef")
+    @app.instance_variable_set(:@status_token, nil)
+
+    status, _ , app = lint('/stats?token=abcdef')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  # status token and status action
+
+  def test_missing_status_token_with_status_action
+    @app.instance_variable_set(:@control_token, "abcdef")
+    @app.instance_variable_set(:@status_token, "ghijkl")
+
+    status, _, _ = lint('/stats')
+
+    assert_equal 403, status
+  end
+
+  def test_invalid_status_token_with_status_action
+    @app.instance_variable_set(:@control_token, "abcdef")
+    @app.instance_variable_set(:@status_token, "ghijkl")
+
+    status, _, _ = lint('/stats?token=invalid')
+
+    assert_equal 403, status
+  end
+
+  def test_valid_status_token_with_status_action
+    @app.instance_variable_set(:@status_token, "ghijkl")
+
+    status, _ , app = lint('/stats?token=ghijkl')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  # no tokens defined
+
+  def test_unsupported_action
+    status, _, _ = lint('/unsupported')
 
     assert_equal 404, status
   end
