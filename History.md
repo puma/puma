@@ -3,6 +3,7 @@
 * Features
   * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
+  * Add `control_auth_actions` to authorize specific control and status actions (#2081)
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)

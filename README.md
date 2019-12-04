@@ -196,13 +196,25 @@ $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&no_tlsv1=true'
 
 ### Control/Status Server
 
-Puma has a built-in status and control app that can be used to query and control Puma.
+Puma includes a built-in status app that can be used to control and query Puma.
 
 ```
 $ puma --control-url tcp://127.0.0.1:9293 --control-token foo
 ```
 
-Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the status app has available.
+Puma will start the control server on localhost port 9293.
+All requests to the control server will need to include a control token (in this case, `token=foo`) as a query parameter.
+This allows for simple authentication.
+
+You can limit the actions authorized via this interface by specifying `control-auth-actions`.
+
+```
+$ puma --control-url tcp://127.0.0.1:9293 --control-token foo --control-auth-actions gc,stats
+```
+
+By default, all actions are authorized.
+
+Review [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see all available actions.
 
 You can also interact with the control server via `pumactl`. This command will restart Puma:
 

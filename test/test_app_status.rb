@@ -61,6 +61,30 @@ class TestAppStatus < Minitest::Test
     assert_equal 404, status
   end
 
+  def test_unauthorized_with_auth_actions
+    @app.instance_variable_set(:@auth_actions, ['stats'])
+
+    status, _, _ = lint('/stop')
+
+    assert_equal 401, status
+  end
+
+  def test_authorized_with_auth_actions
+    @app.instance_variable_set(:@auth_actions, ['stats'])
+
+    status, _, _ = lint('/stats')
+
+    assert_equal 200, status
+  end
+
+  def test_authorized_without_auth_actions
+    @app.instance_variable_set(:@auth_actions, [])
+
+    status, _, _ = lint('/stop')
+
+    assert_equal 200, status
+  end
+
   def test_stop
     status, _ , app = lint('/stop')
 

@@ -122,6 +122,11 @@ module Puma
             @control_options[:auth_token] = arg
           end
 
+          o.on "--control-auth-actions ACTIONS", Array,
+            "Comma-delimited list of authorized actions for the control server" do |list|
+            @control_options[:auth_actions] = list
+          end
+
           o.on "-d", "--daemon", "Daemonize the server into the background" do
             user_config.daemonize
             user_config.quiet

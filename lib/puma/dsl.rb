@@ -142,6 +142,7 @@ module Puma
       end
 
       @options[:control_auth_token] = auth_token
+      @options[:control_auth_actions] = opts[:auth_actions] || []
       @options[:control_url_umask] = opts[:umask] if opts[:umask]
     end
 

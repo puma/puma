@@ -180,6 +180,34 @@ class TestCLI < Minitest::Test
     end
   end
 
+  def test_control_auth_actions
+    tcp  = UniquePort.call
+    cntl = UniquePort.call
+    url = "tcp://127.0.0.1:#{cntl}/"
+
+    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
+                         "--control-url", url,
+                         "--control-token", "",
+                         "--control-auth-actions", "stats",
+                         "test/rackup/lobster.ru"], @events
+
+    t = Thread.new do
+      cli.run
+    end
+
+    wait_booted
+
+    s = TCPSocket.new "127.0.0.1", cntl
+    s << "GET /stop HTTP/1.0\r\n\r\n"
+    body = s.read
+    s.close
+
+    assert_match(/Action 'stop' not authorized/, body.split(/\r?\n/).last)
+
+  ensure
+    cli.launcher.stop
+    t.join
+  end
   def test_control_stop
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     url = "unix://#{@tmp_path}"

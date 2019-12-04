@@ -58,7 +58,9 @@ module Puma
         token = nil if token.empty? || token == 'none'
       end
 
-      app = Puma::App::Status.new @launcher, token
+      actions = @options[:control_auth_actions]
+
+      app = Puma::App::Status.new @launcher, token, actions
 
       control = Puma::Server.new app, @launcher.events
       control.min_threads = 0
