@@ -4,7 +4,12 @@
 
 * x bugfixes
 
-## 3.12.1 / 2019-01-08
+## 4.3.1 and 3.12.2 / 2019-12-05
+
+* Security
+  * Fix: a poorly-behaved client could use keepalive requests to monopolize Puma's reactor and create a denial of service attack. CVE-2019-16770.
+
+## 3.12.1 / 2019-03-19
 
 * 1 features
   * Internal strings are frozen (#1649)
