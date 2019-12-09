@@ -14,11 +14,13 @@ module Puma
   # that this inherits from.
   class Single < Runner
     def stats
-      b = @server.backlog || 0
-      r = @server.running || 0
-      t = @server.pool_capacity || 0
-      m = @server.max_threads || 0
-      %Q!{ "started_at": "#{@started_at.utc.iso8601}", "backlog": #{b}, "running": #{r}, "pool_capacity": #{t}, "max_threads": #{m} }!
+      {
+        started_at: @started_at.utc.iso8601,
+        backlog: @server.backlog || 0,
+        running: @server.running || 0,
+        pool_capacity: @server.pool_capacity || 0,
+        max_threads: @server.max_threads || 0,
+      }
     end
 
     def restart
