@@ -44,6 +44,7 @@ module Puma
     attr_accessor :auto_trim_time
     attr_accessor :reaping_time
     attr_accessor :first_data_timeout
+    attr_writer :update_capacity
 
     # Create a server for the rack app +app+.
     #
@@ -85,6 +86,7 @@ module Puma
       @mode = :http
 
       @precheck_closing = true
+      @update_capacity = nil
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
@@ -334,6 +336,7 @@ module Puma
       end
 
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
+      @thread_pool.update_capacity = @update_capacity
 
       if queue_requests
         @reactor = Reactor.new self, @thread_pool
@@ -386,7 +389,8 @@ module Puma
                 break if handle_check
               else
                 begin
-                  if io = sock.accept_nonblock
+                  receive_socket = sock.is_a?(UNIXSocket) && @update_capacity
+                  if (io = receive_socket ? sock.recv_io(TCPSocket) : sock.accept_nonblock)
                     client = Client.new io, @binder.env(sock)
                     if remote_addr_value
                       client.peerip = remote_addr_value

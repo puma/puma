@@ -28,6 +28,8 @@ module Puma
 
       @phased_state = :idle
       @phased_restart = false
+      @not_full = ConditionVariable.new
+      @mutex = Mutex.new
     end
 
     def stop_workers
@@ -63,7 +65,7 @@ module Puma
     end
 
     class Worker
-      def initialize(idx, pid, phase, options)
+      def initialize(idx, pid, phase, socket, options)
         @index = idx
         @pid = pid
         @phase = phase
@@ -75,9 +77,13 @@ module Puma
         @last_checkin = Time.now
         @last_status = '{}'
         @term = false
+        @socket = socket
+        @capacity = 0
+        @last_request = Time.now
       end
 
-      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
+      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at, :last_request
+      attr_accessor :capacity
 
       def booted?
         @stage == :booted
@@ -97,6 +103,13 @@ module Puma
         @last_status = status
       end
 
+      def accept(connection)
+        @capacity -= 1
+        @last_request = Time.now
+        @socket.send_io(connection)
+        connection.close
+      end
+
       def ping_timeout?(which)
         Time.now - @last_checkin > which
       end
@@ -108,6 +121,7 @@ module Puma
           else
             @term ||= true
             @first_term_sent ||= Time.now
+            @socket.close
           end
           Process.kill @signal, @pid
         rescue Errno::ESRCH
@@ -133,6 +147,7 @@ module Puma
 
       diff.times do
         idx = next_worker_index
+        parent_socket, @worker_socket = UNIXSocket.pair
         @launcher.config.run_hooks :before_worker_fork, idx
 
         pid = fork { worker(idx, master) }
@@ -143,7 +158,7 @@ module Puma
         end
 
         debug "Spawned worker: #{pid}"
-        @workers << Worker.new(idx, pid, @phase, @options)
+        @workers << Worker.new(idx, pid, @phase, parent_socket, @options)
 
         @launcher.config.run_hooks :after_worker_fork, idx
       end
@@ -267,6 +282,8 @@ module Puma
       @launcher.config.run_hooks :before_worker_boot, index
 
       server = start_server
+      server.update_capacity = Proc.new {|c| @worker_write << "!c#{Process.pid},#{c}\n" }
+      server.inherit_binder Binder.new(@launcher.events).tap {|b| b.ios << @worker_socket}
 
       Signal.trap "SIGTERM" do
         @worker_write << "e#{Process.pid}\n" rescue nil
@@ -474,6 +491,29 @@ module Puma
 
       @launcher.events.fire_on_booted!
 
+      Thread.new do
+        Puma.set_thread_name "acceptor"
+
+        # Chooses a load-balancing algorithm from a set of predefined symbol constants or a custom Proc.
+        algorithms = {
+          least_busy: lambda {|workers| workers.min_by {|w| [-w.capacity, w.last_request]}},
+          round_robin: lambda {|workers| workers.min_by(&:last_request)},
+          pile_up: lambda {|workers| workers.select {|w| w.capacity > 0}.min_by {|w| w.index} || workers.min_by(&:last_request)},
+          random: lambda {|workers| workers.sample}
+        }.freeze
+        routing = @options[:load_balancing]
+        debug "Using load balancing algorithm: #{routing}"
+        routing = algorithms[routing] unless routing.is_a?(Proc)
+        raise "Invalid value for load_balancing - #{@options[:load_balancing]}" unless routing.is_a?(Proc)
+
+        Socket.accept_loop(*@launcher.binder.ios) do |connection, _|
+          routing.call(@workers.reject(&:term?)).accept(connection)
+          until @workers.any? {|w| w.capacity > 0 }
+            @mutex.synchronize {@not_full.wait(@mutex)}
+          end
+        end
+      end
+
       begin
         force_check = false
 
@@ -512,6 +552,9 @@ module Puma
                   force_check = true
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
+                when "c"
+                  w.capacity = result.sub(/^\d+,/,'').chomp.to_i
+                  @not_full.signal
                 end
               else
                 log "! Out-of-sync worker list, no #{pid} worker"

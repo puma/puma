@@ -736,5 +736,26 @@ module Puma
       end
     end
 
+    # Control the load-balancing algorithm used to route incoming connections
+    # to workers.
+
+    # Built-in symbol values:
+    #
+    # * :least_busy  - [default] Select worker with least number of busy threads,
+    #                  using the oldest last request as a tie-breaker.
+    # * :round_robin - Select worker with the oldest last request, which will
+    #                  distribute requests evenly among all workers.
+    # * :pile_up     - Select a worker with non-zero capacity that has the lowest index.
+    #                  This will cause requests to 'pile up' on workers until
+    #                  they reach capacity.
+    # * :random      - Select a random worker.
+    #
+    # You can also pass a Proc to specify your own custom routing algorithm. The proc is
+    # passed an Array[Worker] argument and expects a Worker return value.
+    #
+    # @note Cluster mode only.
+    def load_balancing(algorithm=:least_busy)
+      @options[:load_balancing] = algorithm
+    end
   end
 end

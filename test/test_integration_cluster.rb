@@ -140,7 +140,7 @@ class TestIntegrationCluster < TestIntegration
   def term_closes_listeners(unix: false)
     skip_unless_signal_exist? :TERM
 
-    cli_server "-w #{WORKERS} -t 0:6 -q test/rackup/sleep_step.ru", unix: unix
+    cli_server "-w #{WORKERS} -t 1:6 -q test/rackup/sleep_step.ru", unix: unix
     threads = []
     replies = []
     mutex = Mutex.new

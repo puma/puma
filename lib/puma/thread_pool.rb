@@ -58,6 +58,7 @@ module Puma
       end
 
       @clean_thread_locals = false
+      @update_capacity = nil
     end
 
     attr_reader :spawned, :trim_requested, :waiting
@@ -76,7 +77,13 @@ module Puma
     end
 
     def pool_capacity
-      waiting + (@max - spawned)
+      waiting + (@max - spawned) - @todo.size
+    end
+
+    attr_writer :update_capacity
+
+    def update_capacity
+      @update_capacity.call(pool_capacity) if @update_capacity
     end
 
     # :nodoc:
@@ -115,13 +122,15 @@ module Puma
                 break
               end
 
-              @waiting += 1
+              @waiting += 1; update_capacity
               not_full.signal
               not_empty.wait mutex
               @waiting -= 1
             end
 
-            work = todo.shift if continue
+            if continue
+              work = todo.shift; update_capacity
+            end
           end
 
           break unless continue
@@ -157,7 +166,7 @@ module Puma
           raise "Unable to add work while shutting down"
         end
 
-        @todo << work
+        @todo << work; update_capacity
 
         if @waiting < @todo.size and @spawned < @max
           spawn_thread
