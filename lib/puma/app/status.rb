@@ -54,7 +54,7 @@ module Puma
           rack_response(200, GC.stat.to_json)
 
         when /\/stats$/
-          rack_response(200, @cli.stats)
+          rack_response(200, @cli.stats.to_json)
 
         when /\/thread-backtraces$/
           backtraces = []

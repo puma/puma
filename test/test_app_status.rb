@@ -24,7 +24,7 @@ class TestAppStatus < Minitest::Test
     end
 
     def stats
-      "{}"
+      {}
     end
   end
 
