@@ -486,6 +486,7 @@ module Puma
       @master_read, @worker_write = read, @wakeup
 
       @launcher.config.run_hooks :before_fork, nil
+      GC.compact if GC.respond_to?(:compact)
 
       spawn_workers
 
