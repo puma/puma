@@ -272,6 +272,12 @@ module Puma
 
       server = start_server
 
+      if (bind_workers = @options[:bind_workers])
+        binder = Binder.new(@launcher.events)
+        binder.parse(@options[:binds].map {|bind| bind_workers.call(bind, index)}, self)
+        server.inherit_binder(binder)
+      end
+
       Signal.trap "SIGTERM" do
         @worker_write << "e#{Process.pid}\n" rescue nil
         server.stop
@@ -455,7 +461,7 @@ module Puma
           exit 1
         end
 
-        @launcher.binder.parse @options[:binds], self
+        @launcher.binder.parse @options[:binds], self unless @options[:bind_workers]
       end
 
       read, @wakeup = Puma::Util.pipe

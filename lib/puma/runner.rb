@@ -138,7 +138,7 @@ module Puma
         raise e
       end
 
-      @launcher.binder.parse @options[:binds], self
+      @launcher.binder.parse @options[:binds], self unless @options[:bind_workers]
     end
 
     def app

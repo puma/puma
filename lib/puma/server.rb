@@ -969,7 +969,11 @@ module Puma
       end
 
       if @status != :restart
-        @binder.close
+        if @options[:bind_workers]
+          @binder.close_listeners
+        else
+          @binder.close
+        end
       end
 
       if @thread_pool

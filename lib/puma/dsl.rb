@@ -736,5 +736,37 @@ module Puma
       end
     end
 
+    # When set, each worker process will bind to a separate TCP port / UNIX socket,
+    # derived from the configured binds.
+    #
+    # Provide a Proc that takes [bind, index] arguments and returns a bind for the current worker,
+    # or 'true' to use default worker bind logic:
+    # - TCP binds add [index] to the port number.
+    #   Example: bind 'tcp://127.0.0.0:9292' binds at 127.0.0.0:9292, 127.0.0.0:9293, etc.
+    # - Unix-socket binds append '-[index]' to the specified socket path (ignoring extensions).
+    #   Example: bind 'unix:///tmp/puma.sock' binds at /tmp/puma-0.sock, /tmp/puma-1.sock, etc.
+    #
+    # The default is "false".
+    #
+    # @note Cluster mode only.
+    def bind_workers(val=true)
+      @options[:bind_workers] =
+        if val === true
+          lambda do |bind, index|
+            URI.parse(bind).tap do |uri|
+              if uri.scheme === 'tcp'
+                uri.port += index
+              else
+                require 'pathname'
+                uri.path = (p = Pathname(uri.path)).sub_ext("-#{index}#{p.extname}").to_s
+              end
+            end.to_s
+          end
+        elsif val.is_a?(Proc)
+          val
+        else
+          raise "Invalid value for bind_workers - #{val}"
+        end
+    end
   end
 end
