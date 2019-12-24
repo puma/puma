@@ -10,6 +10,9 @@
   * Your bugfix goes here (#Github Number)
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
 
+* Refactor
+  * Remove unused loader argument from Plugin initializer (#2095)
+
 ## 4.3.1 and 3.12.2 / 2019-12-05
 
 * Security
