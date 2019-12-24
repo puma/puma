@@ -100,7 +100,7 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "4.3.0".freeze
+    PUMA_VERSION = VERSION = "4.3.1".freeze
     CODE_NAME = "Mysterious Traveller".freeze
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
@@ -117,6 +117,13 @@ module Puma
     # How long to wait when getting some write blocking on the socket when
     # sending data back
     WRITE_TIMEOUT = 10
+
+    # How many requests to attempt inline before sending a client back to
+    # the reactor to be subject to normal ordering. The idea here is that
+    # we amortize the cost of going back to the reactor for a well behaved
+    # but very "greedy" client across 10 requests. This prevents a not
+    # well behaved client from monopolizing the thread forever.
+    MAX_FAST_INLINE = 10
 
     # The original URI requested by the client.
     REQUEST_URI= 'REQUEST_URI'.freeze
