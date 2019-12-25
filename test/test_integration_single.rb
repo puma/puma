@@ -105,16 +105,18 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_processed_requests_counter_incremented
-    cli_server "--control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
+    @control_tcp_port = UniquePort.call
+
+    cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru"
 
     sleep 6
-    body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
+    body = http_get("http://#{HOST}:#{@control_tcp_port}/stats?token=#{TOKEN}", format: :json)
     assert body['processed_requests'], 0
 
     body = http_get("http://#{HOST}:#{@tcp_port}")
     assert_equal body, 'Hello World'
 
-    body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
+    body = http_get("http://#{HOST}:#{@control_tcp_port}/stats?token=#{TOKEN}", format: :json)
     assert body['processed_requests'], 1
   end
 end
