@@ -93,7 +93,7 @@ class TestCLI < Minitest::Test
 
     expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":16,"max_threads":16,"processed_requests":0}/
     assert_match(expected_stats, body.split(/\r?\n/).last)
-    # assert_equal([:started_at, :backlog, :running, :pool_capacity, :max_threads, :processed_requests], Puma.stats.keys)
+    assert_equal([:started_at, :backlog, :running, :pool_capacity, :max_threads, :processed_requests], Puma.stats.keys)
 
   ensure
     cli.launcher.stop
