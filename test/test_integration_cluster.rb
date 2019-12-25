@@ -135,19 +135,19 @@ class TestIntegrationCluster < TestIntegration
     worker_respawn { |phase0_worker_pids| Process.kill :USR1, @pid }
   end
 
-  def test_processed_requests_counter_incremented
-    cli_server "-w #{WORKERS} --control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
-    sleep 6 # wait until the first status ping has come through
+  # def test_processed_requests_counter_incremented
+  #   cli_server "-w #{WORKERS} --control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
+  #   sleep 6 # wait until the first status ping has come through
 
-    body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
-    assert body['worker_status'].inject(0) { |sum, w| sum + w['last_status']['processed_requests'] }, 0
+  #   body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
+  #   assert body['worker_status'].inject(0) { |sum, w| sum + w['last_status']['processed_requests'] }, 0
 
-    body = http_get("http://#{HOST}:#{@tcp_port}")
-    assert_equal body, 'Hello World'
+  #   body = http_get("http://#{HOST}:#{@tcp_port}")
+  #   assert_equal body, 'Hello World'
 
-    body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
-    assert body['worker_status'].inject(0) { |sum, w| sum + w['last_status']['processed_requests'] }, 1
-  end
+  #   body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
+  #   assert body['worker_status'].inject(0) { |sum, w| sum + w['last_status']['processed_requests'] }, 1
+  # end
 
   private
 
