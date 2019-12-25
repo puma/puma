@@ -106,6 +106,8 @@ class TestIntegrationSingle < TestIntegration
 
   def test_processed_requests_counter_incremented
     cli_server "--control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
+    
+    sleep 6
     body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
     assert body['processed_requests'], 0
 
