@@ -104,15 +104,15 @@ class TestIntegrationSingle < TestIntegration
     assert_match "Thread: TID", output.join
   end
 
-  # def test_processed_requests_counter_incremented
-  #   cli_server "--control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
-  #   body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
-  #   assert body['processed_requests'], 0
+  def test_processed_requests_counter_incremented
+    cli_server "--control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
+    body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
+    assert body['processed_requests'], 0
 
-  #   body = http_get("http://#{HOST}:#{@tcp_port}")
-  #   assert_equal body, 'Hello World'
+    body = http_get("http://#{HOST}:#{@tcp_port}")
+    assert_equal body, 'Hello World'
 
-  #   body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
-  #   assert body['processed_requests'], 1
-  # end
+    body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
+    assert body['processed_requests'], 1
+  end
 end
