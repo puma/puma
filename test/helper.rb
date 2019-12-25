@@ -150,9 +150,3 @@ Minitest.after_run do
     end
   end
 end
-
-def http_get(url, format: :raw)
-  uri = URI(url)
-  body = Net::HTTP.get(uri)
-  format == :json ? JSON.parse(body) : body
-end

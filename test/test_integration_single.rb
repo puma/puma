@@ -109,14 +109,13 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru"
 
-    sleep 6
-    body = http_get("http://#{HOST}:#{@control_tcp_port}/stats?token=#{TOKEN}", format: :json)
+    body = JSON.parse(hit(["http://#{HOST}:#{@control_tcp_port}/stats?token=#{TOKEN}"]).first)
     assert body['processed_requests'], 0
 
-    body = http_get("http://#{HOST}:#{@tcp_port}")
+    body = hit(["http://#{HOST}:#{@tcp_port}"]).first
     assert_equal body, 'Hello World'
 
-    body = http_get("http://#{HOST}:#{@control_tcp_port}/stats?token=#{TOKEN}", format: :json)
+    body = JSON.parse(hit(["http://#{HOST}:#{@control_tcp_port}/stats?token=#{TOKEN}"]).first)
     assert body['processed_requests'], 1
   end
 end
