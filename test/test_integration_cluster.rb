@@ -139,18 +139,13 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-w #{WORKERS} --control-url tcp://#{HOST}:9293 --control-token #{TOKEN} test/rackup/hello.ru"
     sleep 6 # wait until the first status ping has come through
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:9293/stats?token=#{TOKEN}")
-    curl_wait_thread.join
-    body = JSON.parse(curl_stdout.read)
+    body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
     assert body['worker_status'].inject(0) { |sum, w| sum + w['last_status']['processed_requests'] }, 0
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}")
-    curl_wait_thread.join
-    assert_equal curl_stdout.read, 'Hello World'
+    body = http_get("http://#{HOST}:#{@tcp_port}")
+    assert_equal body, 'Hello World'
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:9293/stats?token=#{TOKEN}")
-    curl_wait_thread.join
-    body = JSON.parse(curl_stdout.read)
+    body = http_get("http://#{HOST}:9293/stats?token=#{TOKEN}", format: :json)
     assert body['worker_status'].inject(0) { |sum, w| sum + w['last_status']['processed_requests'] }, 1
   end
 
