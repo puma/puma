@@ -109,7 +109,7 @@ class TestIntegrationSingle < TestIntegration
 
     # cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru"
     cli_server 'test/rackup/hello.ru'
-
+    stop_server
     assert_equal true, true
     # body = JSON.parse(hit(["http://#{HOST}:#{@control_tcp_port}/stats?token=#{TOKEN}"]).first)
     # assert body['processed_requests'], 0
