@@ -107,7 +107,7 @@ class TestIntegrationSingle < TestIntegration
   def test_processed_requests_counter_incremented
     @control_tcp_port = UniquePort.call
 
-    cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru"
+    # cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru"
 
     assert_equal true, true
     # body = JSON.parse(hit(["http://#{HOST}:#{@control_tcp_port}/stats?token=#{TOKEN}"]).first)
