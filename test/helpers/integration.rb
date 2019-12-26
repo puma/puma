@@ -40,6 +40,7 @@ class TestIntegration < Minitest::Test
   private
 
   def cli_server(argv, unix: false)
+    p "CLI_SERVER"
     if unix
       cmd = "#{BASE} bin/puma -b unix://#{@bind_path} #{argv}"
     else
@@ -49,6 +50,7 @@ class TestIntegration < Minitest::Test
     @server = IO.popen(cmd, "r")
     wait_for_server_to_boot
     @pid = @server.pid
+    p @pid
     @server
   end
 
