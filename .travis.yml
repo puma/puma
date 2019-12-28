@@ -52,7 +52,7 @@ matrix:
     - rvm: ruby-head
       env: jit=yes
     - rvm: truffleruby
-    - rvm: 2.7.0-preview3
+    - rvm: 2.7.0
 
   allow_failures:
     - rvm: jruby-9.2.9.0
