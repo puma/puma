@@ -202,7 +202,10 @@ Puma has a built-in status and control app that can be used to query and control
 $ puma --control-url tcp://127.0.0.1:9293 --control-token foo
 ```
 
-Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the status app has available.
+Puma will start the control server on localhost port 9293.
+Control requests will need to include the control token, if defined (in this case, `token=foo`) as a query parameter: this allows for simple authentication.
+Status requests (`gc-stats` and `stats`) do not require a control token.
+Check out [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what actions are available.
 
 You can also interact with the control server via `pumactl`. This command will restart Puma:
 

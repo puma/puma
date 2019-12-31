@@ -77,7 +77,16 @@ class TestAppStatus < Minitest::Test
     assert_equal ['{ "status": "ok" }'], app.enum_for.to_a
   end
 
-  def test_stats
+  def test_stats_with_token_defined
+    @app.instance_variable_set(:@auth_token, "abcdef")
+
+    status, _ , app = lint('/stats')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+  end
+
+  def test_stats_without_token_defined
     status, _ , app = lint('/stats')
 
     assert_equal 200, status

@@ -15,38 +15,40 @@ module Puma
       end
 
       def call(env)
-        unless authenticate(env)
-          return rack_response(403, 'Invalid auth token', 'text/plain')
-        end
-
         case env['PATH_INFO']
-        when /\/stop$/
+        when /\/(stop)$/
+          return not_authenticated($1) unless authenticate(env)
           @cli.stop
           rack_response(200, OK_STATUS)
 
-        when /\/halt$/
+        when /\/(halt)$/
+          return not_authenticated($1) unless authenticate(env)
           @cli.halt
           rack_response(200, OK_STATUS)
 
-        when /\/restart$/
+        when /\/(restart)$/
+          return not_authenticated($1) unless authenticate(env)
           @cli.restart
           rack_response(200, OK_STATUS)
 
-        when /\/phased-restart$/
+        when /\/(phased-restart)$/
+          return not_authenticated($1) unless authenticate(env)
           if !@cli.phased_restart
             rack_response(404, '{ "error": "phased restart not available" }')
           else
             rack_response(200, OK_STATUS)
           end
 
-        when /\/reload-worker-directory$/
+        when /\/(reload-worker-directory)$/
+          return not_authenticated($1) unless authenticate(env)
           if !@cli.send(:reload_worker_directory)
             rack_response(404, '{ "error": "reload_worker_directory not available" }')
           else
             rack_response(200, OK_STATUS)
           end
 
-        when /\/gc$/
+        when /\/(gc)$/
+          return not_authenticated($1) unless authenticate(env)
           GC.start
           rack_response(200, OK_STATUS)
 
@@ -56,14 +58,16 @@ module Puma
         when /\/stats$/
           rack_response(200, @cli.stats.to_json)
 
-        when /\/thread-backtraces$/
+        when /\/(thread-backtraces)$/
+          return not_authenticated($1) unless authenticate(env)
           backtraces = []
           @cli.thread_status do |name, backtrace|
             backtraces << { name: name, backtrace: backtrace }
           end
-
           rack_response(200, backtraces.to_json)
+
         else
+          return not_authenticated("an unsupported action") unless authenticate(env)
           rack_response 404, "Unsupported action", 'text/plain'
         end
       end
@@ -73,6 +77,10 @@ module Puma
       def authenticate(env)
         return true unless @auth_token
         env['QUERY_STRING'].to_s.split(/&;/).include?("token=#{@auth_token}")
+      end
+
+      def not_authenticated(action)
+        rack_response(403, "Invalid auth token for '#{action}'", 'text/plain')
       end
 
       def rack_response(status, body, content_type='application/json')
