@@ -20,6 +20,7 @@ module Puma
         running: @server.running || 0,
         pool_capacity: @server.pool_capacity || 0,
         max_threads: @server.max_threads || 0,
+        requests_count: @server.requests_count || 0,
       }
     end
 

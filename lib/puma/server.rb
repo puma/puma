@@ -36,6 +36,7 @@ module Puma
 
     attr_reader :thread
     attr_reader :events
+    attr_reader :requests_count
     attr_accessor :app
 
     attr_accessor :min_threads
@@ -85,6 +86,8 @@ module Puma
       @mode = :http
 
       @precheck_closing = true
+
+      @requests_count = 0
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
@@ -626,6 +629,8 @@ module Puma
     #
     # Finally, it'll return +true+ on keep-alive connections.
     def handle_request(req, lines)
+      @requests_count +=1
+
       env = req.env
       client = req.io
 
