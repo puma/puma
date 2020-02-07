@@ -12,6 +12,7 @@
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
+  * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
 
 ## 4.3.1 and 3.12.2 / 2019-12-05
 
