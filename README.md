@@ -68,7 +68,7 @@ configure { set :server, :puma }
 Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
 
 You can also find several configuration examples as part of the
-[test](test/config) suite.
+[test](https://github.com/puma/puma/tree/master/test/config) suite.
 
 ### Thread Pool
 
