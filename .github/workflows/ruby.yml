@@ -1,30 +1,31 @@
 name: Puma
 
-on:
-  push:
-    branches:
-      - '*'
-  pull_request:
-    branches:
-      - '*'
+on: [push, pull_request]
 
 jobs:
   build:
     name: >-
-      OS: ${{ matrix.os }}  Ruby: ${{ matrix.ruby }}
+      ${{ matrix.os }}  Ruby: ${{ matrix.ruby }}
+    env:
+      CI: true
+      TESTOPTS: -v
+
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'ubuntu-18.04', 'macos', 'windows-latest' ]
-        ruby: [ '2.4.x', '2.5.x', '2.6.x' ]
+        os: [ ubuntu-18.04, macos, windows-latest ]
+        ruby: [ 2.3, 2.4, 2.5, 2.6, 2.7 ]
+        exclude:
+          - os: windows-latest
+            ruby: 2.3
+
     steps:
     - name: repo checkout
-      uses: actions/checkout@v1
-      with:
-        fetch-depth: 10
+      uses: actions/checkout@v2
+
     - name: load ruby
-      uses: actions/setup-ruby@v1
+      uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
 
@@ -34,8 +35,9 @@ jobs:
         if [ "${{ matrix.os }}" == "macos" ]; then
           brew install ragel
         else
-          sudo apt-get install ragel
+          sudo apt-get -qy install ragel
         fi
+
     - name: windows - update MSYS2, openssl, ragel
       if:   startsWith(matrix.os, 'windows')
       uses: MSP-Greg/msys2-action@master
@@ -51,54 +53,6 @@ jobs:
       run:  bundle exec rake compile
     - name: test
       run:  bundle exec rake
-      timeout-minutes: 10
       env:
-        CI: true
-        TESTOPTS: -v
         RUBYOPT: --enable-frozen-string-literal
-
-  rvm:
-    name: >-
-      OS: ${{ matrix.os }}  Ruby: ${{ matrix.cfg.ruby }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ 'ubuntu-18.04' ]
-        cfg:
-          - { ruby: '2.3.8' , openssl: 'libssl1.0-dev' }
-    steps:
-    - uses: actions/checkout@v1
-    - name: Set up RVM
-      run: |
-        curl -sSL https://get.rvm.io | bash
-    - name: Set up Ruby
-      run: |
-        source $HOME/.rvm/scripts/rvm
-        rvm install ${{ matrix.cfg.ruby }} --binary --autolibs=disable
-        rvm --default use ${{ matrix.cfg.ruby }}
-
-    - name: install ragel, openssl
-      run: sudo apt-get --quiet --yes install ragel ${{ matrix.cfg.openssl }}
-
-    - name: RubyGems, Bundler Update
-      run:  |
-        source $HOME/.rvm/scripts/rvm
-        gem update --system --no-document --conservative
-    - name: bundle install
-      run:  |
-        source $HOME/.rvm/scripts/rvm
-        bundle install --jobs 4 --retry 3
-    - name: compile
-      run:  |
-        source $HOME/.rvm/scripts/rvm
-        bundle exec rake compile
-    - name: test
-      run:  |
-        source $HOME/.rvm/scripts/rvm
-        bundle exec rake
       timeout-minutes: 10
-      env:
-        CI: true
-        TESTOPTS: -v
-        RUBYOPT: --enable-frozen-string-literal
