@@ -62,7 +62,7 @@ module Puma
       control.min_threads = 0
       control.max_threads = 1
 
-      control.binder.parse [str], self
+      control.binder.parse [str], self, 'Starting control server'
 
       control.run
       @control = control
