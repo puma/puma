@@ -420,7 +420,7 @@ module Puma
     end
 
     # How many worker processes to run.  Typically this is set to
-    # to the number of available cores.
+    # the number of available cores.
     #
     # The default is 0.
     #

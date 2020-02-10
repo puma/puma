@@ -1,43 +1,31 @@
 name: Puma
 
-on:
-  push:
-    branches:
-      - '*'
-  pull_request:
-    branches:
-      - '*'
+on: [push, pull_request]
 
 jobs:
   build:
     name: >-
-      OS: ${{ matrix.os }}  Ruby: ${{ matrix.ruby }}
+      ${{ matrix.os }}  Ruby: ${{ matrix.ruby }}
+    env:
+      CI: true
+      TESTOPTS: -v
+
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'ubuntu-16.04', 'ubuntu-18.04', 'macos', 'windows-latest' ]
-        ruby: [ '2.3.x', '2.4.x', '2.5.x', '2.6.x' ]
+        os: [ ubuntu-18.04, macos, windows-latest ]
+        ruby: [ 2.3, 2.4, 2.5, 2.6, 2.7 ]
         exclude:
-        - os: ubuntu-16.04
-          ruby: 2.4.x
-        - os: ubuntu-16.04
-          ruby: 2.5.x
-        - os: ubuntu-16.04
-          ruby: 2.6.x
-        - os: ubuntu-18.04
-          ruby: 2.3.x
-        - os: macos
-          ruby: 2.3.x
-        - os: windows-latest
-          ruby: 2.3.x
+          - os: windows-latest
+            ruby: 2.3
+
     steps:
     - name: repo checkout
-      uses: actions/checkout@v1
-      with:
-        fetch-depth: 10
+      uses: actions/checkout@v2
+
     - name: load ruby
-      uses: actions/setup-ruby@v1
+      uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
 
@@ -47,8 +35,9 @@ jobs:
         if [ "${{ matrix.os }}" == "macos" ]; then
           brew install ragel
         else
-          sudo apt-get install ragel
+          sudo apt-get -qy install ragel
         fi
+
     - name: windows - update MSYS2, openssl, ragel
       if:   startsWith(matrix.os, 'windows')
       uses: MSP-Greg/msys2-action@master
@@ -64,8 +53,6 @@ jobs:
       run:  bundle exec rake compile
     - name: test
       run:  bundle exec rake
-      timeout-minutes: 10
       env:
-        CI: true
-        TESTOPTS: -v
         RUBYOPT: --enable-frozen-string-literal
+      timeout-minutes: 10

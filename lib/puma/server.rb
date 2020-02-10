@@ -466,6 +466,8 @@ module Puma
         clean_thread_locals = @options[:clean_thread_locals]
         close_socket = true
 
+        requests = 0
+
         while true
           case handle_request(client, buffer)
           when false
@@ -479,7 +481,19 @@ module Puma
 
             ThreadPool.clean_thread_locals if clean_thread_locals
 
-            unless client.reset(@status == :run)
+            requests += 1
+
+            check_for_more_data = @status == :run
+
+            if requests >= MAX_FAST_INLINE
+              # This will mean that reset will only try to use the data it already
+              # has buffered and won't try to read more data. What this means is that
+              # every client, independent of their request speed, gets treated like a slow
+              # one once every MAX_FAST_INLINE requests.
+              check_for_more_data = false
+            end
+
+            unless client.reset(check_for_more_data)
               close_socket = false
               client.set_timeout @persistent_timeout
               @reactor.add client

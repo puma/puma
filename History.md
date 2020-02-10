@@ -4,10 +4,21 @@
   * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
   * Do not set user_config to quiet by default to allow for file config (#2074)
+  * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
+  * `GC.compact` is called before fork if available (#2093)
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
+
+* Refactor
+  * Remove unused loader argument from Plugin initializer (#2095)
+  * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
+
+## 4.3.1 and 3.12.2 / 2019-12-05
+
+* Security
+  * Fix: a poorly-behaved client could use keepalive requests to monopolize Puma's reactor and create a denial of service attack. CVE-2019-16770.
 
 ## 4.3.0 / 2019-11-07
 

@@ -238,6 +238,9 @@ module Puma
         return false unless IO.select([@to_io], nil, nil, 0)
         try_to_finish
       end
+
+      # For documentation, see https://github.com/puma/puma/issues/1754
+      send(:alias_method, :jruby_eagerly_finish, :eagerly_finish)
     end # IS_JRUBY
 
     def finish
