@@ -202,6 +202,48 @@ class TestCLI < Minitest::Test
     t.join if UNIX_SKT_EXIST
   end
 
+  def test_control_requests_count
+    tcp  = UniquePort.call
+    cntl = UniquePort.call
+    url = "tcp://127.0.0.1:#{cntl}/"
+
+    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
+                         "--control-url", url,
+                         "--control-token", "",
+                         "test/rackup/lobster.ru"], @events
+
+    t = Thread.new do
+      cli.run
+    end
+
+    wait_booted
+
+    s = TCPSocket.new "127.0.0.1", cntl
+    s << "GET /stats HTTP/1.0\r\n\r\n"
+    body = s.read
+    s.close
+
+    assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":\d+,"running":\d+,"pool_capacity":\d+,"max_threads":\d+,"requests_count":0}/, body.split(/\r?\n/).last)
+
+    # send real requests to server
+    3.times do
+      s = TCPSocket.new "127.0.0.1", tcp
+      s << "GET / HTTP/1.0\r\n\r\n"
+      body = s.read
+      s.close
+    end
+
+    s = TCPSocket.new "127.0.0.1", cntl
+    s << "GET /stats HTTP/1.0\r\n\r\n"
+    body = s.read
+    s.close
+
+    assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":\d+,"running":\d+,"pool_capacity":\d+,"max_threads":\d+,"requests_count":3}/, body.split(/\r?\n/).last)
+  ensure
+    cli.launcher.stop
+    t.join
+  end
+
   def test_control_thread_backtraces
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     url = "unix://#{@tmp_path}"
