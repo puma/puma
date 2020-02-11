@@ -9,6 +9,7 @@
 * Bugfixes
   * Your bugfix goes here (#Github Number)
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
+  * Ensure control server Unix socket is closed on shutdown (#2112)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
