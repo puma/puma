@@ -38,6 +38,14 @@ class WebServerTest < Minitest::Test
     assert @tester.ran_test, "Handler didn't really run"
   end
 
+  def test_requests_count
+    assert_equal @server.requests_count, 0
+    3.times do
+      hit(["http://127.0.0.1:#{@server.connected_port}/test"])
+    end
+    assert_equal @server.requests_count, 3
+  end
+
   def test_trickle_attack
     socket = do_test(VALID_REQUEST, 3)
     assert_match "hello", socket.read

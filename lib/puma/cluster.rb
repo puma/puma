@@ -94,7 +94,7 @@ module Puma
 
       def ping!(status)
         @last_checkin = Time.now
-        captures = status.match(/{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads": (?<max_threads>\d*) }/)
+        captures = status.match(/{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads": (?<max_threads>\d*), "requests_count": (?<requests_count>\d*) }/)
         @last_status = captures.names.inject({}) do |hash, key|
           hash[key.to_sym] = captures[key].to_i
           hash
@@ -296,7 +296,8 @@ module Puma
             r = server.running || 0
             t = server.pool_capacity || 0
             m = server.max_threads || 0
-            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m} }\n!
+            rc = server.requests_count || 0
+            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m}, "requests_count": #{rc} }\n!
             io << payload
           rescue IOError
             Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue

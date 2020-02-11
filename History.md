@@ -5,6 +5,7 @@
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
   * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `GC.compact` is called before fork if available (#2093)
+  * Add `requests_count` to workers stats. (#2106)
 
 * Bugfixes
   * Your bugfix goes here (#Github Number)
