@@ -9,13 +9,13 @@ require 'puma/null_io'
 require 'puma/reactor'
 require 'puma/client'
 require 'puma/binder'
-require 'puma/delegation'
 require 'puma/accept_nonblock'
 require 'puma/util'
 
 require 'puma/puma_http11'
 
 require 'socket'
+require 'forwardable'
 
 module Puma
 
@@ -32,10 +32,11 @@ module Puma
   class Server
 
     include Puma::Const
-    extend  Puma::Delegation
+    extend Forwardable
 
     attr_reader :thread
     attr_reader :events
+    attr_reader :requests_count
     attr_accessor :app
 
     attr_accessor :min_threads
@@ -85,14 +86,13 @@ module Puma
       @mode = :http
 
       @precheck_closing = true
+
+      @requests_count = 0
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
 
-    forward :add_tcp_listener,  :@binder
-    forward :add_ssl_listener,  :@binder
-    forward :add_unix_listener, :@binder
-    forward :connected_port,    :@binder
+    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_port
 
     def inherit_binder(bind)
       @binder = bind
@@ -207,7 +207,10 @@ module Puma
       @events.fire :state, :running
 
       if background
-        @thread = Thread.new { handle_servers_lopez_mode }
+        @thread = Thread.new do
+          Puma.set_thread_name "server"
+          handle_servers_lopez_mode
+        end
         return @thread
       else
         handle_servers_lopez_mode
@@ -317,7 +320,7 @@ module Puma
 
           @events.ssl_error self, addr, cert, e
         rescue HttpParserError => e
-          client.write_400
+          client.write_error(400)
           client.close
 
           @events.parse_error self, client.env, e
@@ -351,7 +354,10 @@ module Puma
       @events.fire :state, :running
 
       if background
-        @thread = Thread.new { handle_servers }
+        @thread = Thread.new do
+          Puma.set_thread_name "server"
+          handle_servers
+        end
         return @thread
       else
         handle_servers
@@ -463,6 +469,8 @@ module Puma
         clean_thread_locals = @options[:clean_thread_locals]
         close_socket = true
 
+        requests = 0
+
         while true
           case handle_request(client, buffer)
           when false
@@ -476,7 +484,19 @@ module Puma
 
             ThreadPool.clean_thread_locals if clean_thread_locals
 
-            unless client.reset(@status == :run)
+            requests += 1
+
+            check_for_more_data = @status == :run
+
+            if requests >= MAX_FAST_INLINE
+              # This will mean that reset will only try to use the data it already
+              # has buffered and won't try to read more data. What this means is that
+              # every client, independent of their request speed, gets treated like a slow
+              # one once every MAX_FAST_INLINE requests.
+              check_for_more_data = false
+            end
+
+            unless client.reset(check_for_more_data)
               close_socket = false
               client.set_timeout @persistent_timeout
               @reactor.add client
@@ -505,7 +525,7 @@ module Puma
       rescue HttpParserError => e
         lowlevel_error(e, client.env)
 
-        client.write_400
+        client.write_error(400)
 
         @events.parse_error self, client.env, e
 
@@ -513,7 +533,7 @@ module Puma
       rescue StandardError => e
         lowlevel_error(e, client.env)
 
-        client.write_500
+        client.write_error(500)
 
         @events.unknown_error self, e, "Read"
 
@@ -609,6 +629,8 @@ module Puma
     #
     # Finally, it'll return +true+ on keep-alive connections.
     def handle_request(req, lines)
+      @requests_count +=1
+
       env = req.env
       client = req.io
 

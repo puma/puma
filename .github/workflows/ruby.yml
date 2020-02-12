@@ -1,0 +1,58 @@
+name: Puma
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: >-
+      ${{ matrix.os }}  Ruby: ${{ matrix.ruby }}
+    env:
+      CI: true
+      TESTOPTS: -v
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-18.04, macos, windows-latest ]
+        ruby: [ 2.3, 2.4, 2.5, 2.6, 2.7 ]
+        exclude:
+          - os: windows-latest
+            ruby: 2.3
+
+    steps:
+    - name: repo checkout
+      uses: actions/checkout@v2
+
+    - name: load ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+
+    - name: ubuntu & macos - install ragel
+      if:   startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')
+      run:  |
+        if [ "${{ matrix.os }}" == "macos" ]; then
+          brew install ragel
+        else
+          sudo apt-get -qy install ragel
+        fi
+
+    - name: windows - update MSYS2, openssl, ragel
+      if:   startsWith(matrix.os, 'windows')
+      uses: MSP-Greg/msys2-action@master
+      with:
+        base:  update
+        mingw: openssl ragel
+
+    - name: RubyGems, Bundler Update
+      run:  gem update --system --no-document --conservative
+    - name: bundle install
+      run:  bundle install --jobs 4 --retry 3
+    - name: compile
+      run:  bundle exec rake compile
+    - name: test
+      run:  bundle exec rake
+      env:
+        RUBYOPT: --enable-frozen-string-literal
+      timeout-minutes: 10

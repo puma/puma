@@ -161,6 +161,10 @@ module Puma
             user_config.prune_bundler
           end
 
+          o.on "--extra-runtime-dependencies GEM1,GEM2", "Defines any extra needed gems when using --prune-bundler" do |arg|
+            user_config.extra_runtime_dependencies arg.split(',')
+          end
+
           o.on "-q", "--quiet", "Do not log requests internally (default true)" do
             user_config.quiet
           end

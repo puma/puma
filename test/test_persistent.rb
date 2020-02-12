@@ -1,14 +1,17 @@
 require_relative "helper"
 
 class TestPersistent < Minitest::Test
-  def setup
-    @valid_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
-    @close_request = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
-    @http10_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
-    @keep_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\n\r\n"
 
-    @valid_post = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello"
-    @valid_no_body = "GET / HTTP/1.1\r\nHost: test.com\r\nX-Status: 204\r\nContent-Type: text/plain\r\n\r\n"
+  HOST = "127.0.0.1"
+
+  def setup
+    @valid_request  = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+    @close_request  = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
+    @http10_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+    @keep_request   = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\n\r\n"
+
+    @valid_post    = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello"
+    @valid_no_body  = "GET / HTTP/1.1\r\nHost: test.com\r\nX-Status: 204\r\nContent-Type: text/plain\r\n\r\n"
 
     @headers = { "X-Header" => "Works" }
     @body = ["Hello"]
@@ -20,15 +23,14 @@ class TestPersistent < Minitest::Test
       [status, @headers, @body]
     end
 
-    @host = "127.0.0.1"
     @port = UniquePort.call
 
     @server = Puma::Server.new @simple
-    @server.add_tcp_listener "127.0.0.1", @port
+    @server.add_tcp_listener HOST, @port
     @server.max_threads = 1
     @server.run
 
-    @client = TCPSocket.new "127.0.0.1", @port
+    @client = TCPSocket.new HOST, @port
   end
 
   def teardown
@@ -230,7 +232,7 @@ class TestPersistent < Minitest::Test
 
     @client << @valid_request
 
-    c2 = TCPSocket.new @host, @port
+    c2 = TCPSocket.new HOST, @port
     c2 << @valid_request
 
     out = IO.select([c2], nil, nil, 1)
@@ -240,6 +242,8 @@ class TestPersistent < Minitest::Test
 
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4, c2)
     assert_equal "Hello", c2.read(5)
+  ensure
+    c2.close
   end
 
 end

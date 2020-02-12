@@ -1,6 +1,71 @@
-## 4.1.0
+## Master
 
-* 4 features 
+* Features
+  * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
+  * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
+  * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
+  * `GC.compact` is called before fork if available (#2093)
+  * Add `requests_count` to workers stats. (#2106)
+
+* Bugfixes
+  * Your bugfix goes here (#Github Number)
+  * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
+
+* Refactor
+  * Remove unused loader argument from Plugin initializer (#2095)
+  * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
+
+## 4.3.1 and 3.12.2 / 2019-12-05
+
+* Security
+  * Fix: a poorly-behaved client could use keepalive requests to monopolize Puma's reactor and create a denial of service attack. CVE-2019-16770.
+
+## 4.3.0 / 2019-11-07
+
+* Features
+  * Strip whitespace at end of HTTP headers (#2010)
+  * Optimize HTTP parser for JRuby (#2012)
+  * Add SSL support for the control app and cli (#2046, #2052)
+
+* Bugfixes
+  * Fix Errno::EINVAL when SSL is enabled and browser rejects cert (#1564)
+  * Fix pumactl defaulting puma to development if an environment was not specified (#2035)
+  * Fix closing file stream when reading pid from pidfile (#2048)
+  * Fix a typo in configuration option `--extra_runtime_dependencies` (#2050)
+
+## 4.2.1 / 2019-10-07
+
+* 3 bugfixes
+  * Fix socket activation of systemd (pre-existing) unix binder files (#1842, #1988)
+  * Deal with multiple calls to bind correctly (#1986, #1994, #2006)
+  * Accepts symbols for `verify_mode` (#1222)
+
+## 4.2.0 / 2019-09-23
+
+* 6 features
+  * Pumactl has a new -e environment option and reads `config/puma/<environment>.rb` config files (#1885)
+  * Semicolons are now allowed in URL paths (MRI only), useful for Angular or Redmine (#1934)
+  * Allow extra dependencies to be defined when using prune_bundler (#1105)
+  * Puma now reports the correct port when binding to port 0, also reports other listeners when binding to localhost (#1786)
+  * Sending SIGINFO to any Puma worker now prints currently active threads and their backtraces (#1320)
+  * Puma threads all now have their name set on Ruby 2.3+ (#1968)
+* 4 bugfixes
+  * Fix some misbehavior with phased restart and externally SIGTERMed workers (#1908, #1952)
+  * Fix socket closing on error (#1941)
+  * Removed unnecessary SIGINT trap for JRuby that caused some race conditions (#1961)
+  * Fix socket files being left around after process stopped (#1970)
+* Absolutely thousands of lines of test improvements and fixes thanks to @MSP-Greg
+
+## 4.1.1 / 2019-09-05
+
+* 3 bugfixes
+  * Revert our attempt to not dup STDOUT/STDERR (#1946)
+  * Fix socket close on error (#1941)
+  * Fix workers not shutting down correctly (#1908)
+
+## 4.1.0 / 2019-08-08
+
+* 4 features
   * Add REQUEST_PATH on parse error message (#1831)
   * You can now easily add custom log formatters with the `log_formatter` config option (#1816)
   * Puma.stats now provides process start times (#1844)
@@ -14,17 +79,17 @@
   * SSL read_nonblock no longer blocks (#1857)
   * Swallow connection errors when sending early hints (#1822)
   * Backtrace no longer dumped when invalid pumactl commands are run (#1863)
-  
-* 5 other 
+
+* 5 other
   * Avoid casting worker_timeout twice (#1838)
   * Removed a call to private that wasn't doing anything (#1882)
   * README, Rakefile, docs and test cleanups (#1848, #1847, #1846, #1853, #1859, #1850, #1866, #1870, #1872, #1833, #1888)
   * Puma.io has proper documentation now (https://puma.io/puma/)
   * Added the Contributor Covenant CoC
-  
-* 1 known issue 
+
+* 1 known issue
   * Some users are still experiencing issues surrounding socket activation and Unix sockets (#1842)
-  
+
 ## 4.0.1 / 2019-07-11
 
 * 2 bugfixes
@@ -46,7 +111,7 @@
   * Reactor now uses nio4r instead of `select` (#1728)
   * Add status to pumactl with pidfile (#1824)
 
-* 9 bugfixes
+* 10 bugfixes
   * Do not accept new requests on shutdown (#1685, #1808)
   * Fix 3 corner cases when request body is chunked (#1508)
   * Change pid existence check's condition branches (#1650)
@@ -56,6 +121,13 @@
   * Fix Java 8 support (#1773)
   * Fix error `uninitialized constant Puma::Cluster` (#1731)
   * Fix `not_token` being able to be set to true (#1803)
+  * Fix "Hang on SIGTERM with ruby 2.6 in clustered mode" ([PR #1741], [#1674], [#1720], [#1730], [#1755])
+
+[PR #1741]: https://github.com/puma/puma/pull/1741
+[#1674]: https://github.com/puma/puma/issues/1674
+[#1720]: https://github.com/puma/puma/issues/1720
+[#1730]: https://github.com/puma/puma/issues/1730
+[#1755]: https://github.com/puma/puma/issues/1755
 
 ## 3.12.1 / 2019-03-19
 

@@ -11,7 +11,8 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats}
+    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats thread-backtraces}
+    PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
@@ -22,6 +23,7 @@ module Puma
       @control_auth_token = nil
       @config_file = nil
       @command = nil
+      @environment = ENV['RACK_ENV'] || ENV['RAILS_ENV']
 
       @argv = argv.dup
       @stdout = stdout
@@ -59,6 +61,11 @@ module Puma
           @config_file = arg
         end
 
+        o.on "-e", "--environment ENVIRONMENT",
+          "The environment to run the Rack app on (default development)" do |arg|
+          @environment = arg
+        end
+
         o.on_tail("-H", "--help", "Show this message") do
           @stdout.puts o
           exit
@@ -76,8 +83,12 @@ module Puma
       @command = argv.shift
 
       unless @config_file == '-'
-        if @config_file.nil? and File.exist?('config/puma.rb')
-          @config_file = 'config/puma.rb'
+        environment = @environment || 'development'
+
+        if @config_file.nil?
+          @config_file = %W(config/puma/#{environment}.rb config/puma.rb).find do |f|
+            File.exist?(f)
+          end
         end
 
         if @config_file
@@ -122,7 +133,7 @@ module Puma
         @pid = sf.pid
       elsif @pidfile
         # get pid from pid_file
-        @pid = File.open(@pidfile).gets.to_i
+        File.open(@pidfile) { |f| @pid = f.read.to_i }
       end
     end
 
@@ -131,6 +142,12 @@ module Puma
 
       # create server object by scheme
       server = case uri.scheme
+                when "ssl"
+                  require 'openssl'
+                  OpenSSL::SSL::SSLSocket.new(
+                    TCPSocket.new(uri.host, uri.port),
+                    OpenSSL::SSL::SSLContext.new
+                  ).tap(&:connect)
                 when "tcp"
                   TCPSocket.new uri.host, uri.port
                 when "unix"
@@ -171,7 +188,7 @@ module Puma
         end
 
         message "Command #{@command} sent success"
-        message response.last if @command == "stats" || @command == "gc-stats"
+        message response.last if PRINTABLE_COMMANDS.include?(@command)
       end
     ensure
       server.close if server && !server.closed?
@@ -258,6 +275,7 @@ module Puma
       run_args += ["--control-url", @control_url] if @control_url
       run_args += ["--control-token", @control_auth_token] if @control_auth_token
       run_args += ["-C", @config_file] if @config_file
+      run_args += ["-e", @environment] if @environment
 
       events = Puma::Events.new @stdout, @stderr
 

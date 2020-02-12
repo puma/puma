@@ -1,25 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "helper"
+require_relative "helpers/config_file"
 
 require "puma/configuration"
-
-class TestConfigFileBase < Minitest::Test
-  private
-
-  def with_env(env = {})
-    original_env = {}
-    env.each do |k, v|
-      original_env[k] = ENV[k]
-      ENV[k] = v
-    end
-    yield
-  ensure
-    original_env.each do |k, v|
-      ENV[k] = v
-    end
-  end
-end
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -95,6 +79,23 @@ class TestConfigFile < TestConfigFileBase
 
     ssl_binding = conf.options[:binds].first
     assert ssl_binding.include?("&ssl_cipher_filter=#{cipher_filter}")
+  end
+
+  def test_ssl_bind_with_ca
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert",
+        ca: "/path/to/ca",
+        key: "/path/to/key",
+        verify_mode: :peer,
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert_match "ca=/path/to/ca", ssl_binding
+    assert_match "verify_mode=peer", ssl_binding
   end
 
   def test_lowlevel_error_handler_DSL
@@ -222,6 +223,15 @@ class TestConfigFileWithFakeEnv < TestConfigFileBase
 
   def test_config_files_with_rack_env
     with_env('RACK_ENV' => 'fake-env') do
+      conf = Puma::Configuration.new do
+      end
+
+      assert_equal ['config/puma/fake-env.rb'], conf.config_files
+    end
+  end
+
+  def test_config_files_with_rails_env
+    with_env('RAILS_ENV' => 'fake-env', 'RACK_ENV' => nil) do
       conf = Puma::Configuration.new do
       end
 

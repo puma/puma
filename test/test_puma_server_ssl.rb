@@ -19,19 +19,20 @@ end
 DISABLE_SSL = begin
               Puma::Server.class
               Puma::MiniSSL.check
-              puts "", RUBY_DESCRIPTION
-              puts "Puma::MiniSSL OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION}",
-                   "                      OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION}", ""
+              # net/http (loaded in helper) does not necessarily load OpenSSL
+              require "openssl" unless Object.const_defined? :OpenSSL
+              puts "", RUBY_DESCRIPTION,
+                   "                         Puma::MiniSSL                   OpenSSL",
+                   "OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION.ljust 32}#{OpenSSL::OPENSSL_LIBRARY_VERSION}",
+                   "        OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION.ljust 32}#{OpenSSL::OPENSSL_VERSION}", ""
             rescue
               true
             else
-              # net/http (loaded in helper) does not necessarily load OpenSSL
-              require "openssl" unless Object.const_defined? :OpenSSL
               false
             end
 
 class TestPumaServerSSL < Minitest::Test
-
+  parallelize_me!
   def setup
     @http = nil
     @server = nil
@@ -202,10 +203,10 @@ end unless DISABLE_SSL
 
 # client-side TLS authentication tests
 class TestPumaServerSSLClient < Minitest::Test
-
+  parallelize_me!
   def assert_ssl_client_error_match(error, subject=nil, &blk)
-    port = 3212
     host = "127.0.0.1"
+    port = UniquePort.call
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
@@ -239,6 +240,8 @@ class TestPumaServerSSLClient < Minitest::Test
       end
     rescue OpenSSL::SSL::SSLError, EOFError
       client_error = true
+      # closes socket if open, may not close on error
+      http.send :do_finish
     end
 
     sleep 0.1

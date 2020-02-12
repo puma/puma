@@ -16,9 +16,13 @@ require "timeout"
 require "minitest/autorun"
 require "minitest/pride"
 require "minitest/proveit"
+require_relative "helpers/apps"
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
+
+$debugging_info = ''.dup
+$debugging_hold = false    # needed for TestCLI#test_control_clustered
 
 require "puma"
 require "puma/events"
@@ -43,10 +47,14 @@ end
 
 module UniquePort
   @port  = 3211
+  @mutex = Mutex.new
 
   def self.call
-    @port += 1
-    @port
+    @mutex.synchronize {
+      @port += 1
+      @port = 3307 if @port == 3306  # MySQL on Actions
+      @port
+    }
   end
 end
 
@@ -69,8 +77,6 @@ end
 
 module TestSkips
 
-  @@next_port = 9000
-
   # usage: skip NO_FORK_MSG unless HAS_FORK
   # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
   HAS_FORK = ::Process.respond_to? :fork
@@ -81,10 +87,12 @@ module TestSkips
   UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
   UNIX_SKT_MSG = "UnixSockets aren't available on the #{RUBY_PLATFORM} platform"
 
+  SIGNAL_LIST = Signal.list.keys.map(&:to_sym) - (Puma.windows? ? [:INT, :TERM] : [])
+
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
-    signal = sig.to_s
-    unless Signal.list.key? signal
+    signal = sig.to_s.sub(/\ASIG/, '').to_sym
+    unless SIGNAL_LIST.include? signal
       skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
     end
   end
@@ -96,10 +104,11 @@ module TestSkips
     skip_msg = false
     engs.each do |eng|
       skip_msg = case eng
+        when :darwin   then "Skipped on darwin#{suffix}"    if RUBY_PLATFORM[/darwin/]
         when :jruby    then "Skipped on JRuby#{suffix}"     if Puma.jruby?
         when :windows  then "Skipped on Windows#{suffix}"   if Puma.windows?
-        when :appveyor then "Skipped on Appveyor#{suffix}"  if ENV["APPVEYOR"]
         when :ci       then "Skipped on ENV['CI']#{suffix}" if ENV["CI"]
+        when :no_bundler then "Skipped w/o Bundler#{suffix}"  if !defined?(Bundler)
         else false
       end
       skip skip_msg, bt if skip_msg
@@ -109,15 +118,12 @@ module TestSkips
   # called with only one param
   def skip_unless(eng, bt: caller)
     skip_msg = case eng
+      when :darwin  then "Skip unless darwin"  unless RUBY_PLATFORM[/darwin/]
       when :jruby   then "Skip unless JRuby"   unless Puma.jruby?
       when :windows then "Skip unless Windows" unless Puma.windows?
       else false
     end
     skip skip_msg, bt if skip_msg
-  end
-
-  def next_port(incr = 1)
-    @@next_port += incr
   end
 end
 
@@ -127,5 +133,20 @@ class Minitest::Test
   def self.run(reporter, options = {}) # :nodoc:
     prove_it!
     super
+  end
+
+  def full_name
+    "#{self.class.name}##{name}"
+  end
+end
+
+Minitest.after_run do
+  # needed for TestCLI#test_control_clustered
+  unless $debugging_hold
+    out = $debugging_info.strip
+    unless out.empty?
+      puts "", " Debugging Info".rjust(75, '-'),
+        out, '-' * 75, ""
+    end
   end
 end

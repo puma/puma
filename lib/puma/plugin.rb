@@ -10,7 +10,7 @@ module Puma
 
     def create(name)
       if cls = Plugins.find(name)
-        plugin = cls.new(Plugin)
+        plugin = cls.new
         @instances << plugin
         return plugin
       end
@@ -62,8 +62,11 @@ module Puma
     end
 
     def fire_background
-      @background.each do |b|
-        Thread.new(&b)
+      @background.each_with_index do |b, i|
+        Thread.new do
+          Puma.set_thread_name "plugin background #{i}"
+          b.call
+        end
       end
     end
   end
@@ -99,10 +102,6 @@ module Puma
       cls.class_eval(&blk)
 
       Plugins.register name, cls
-    end
-
-    def initialize(loader)
-      @loader = loader
     end
 
     def in_background(&blk)

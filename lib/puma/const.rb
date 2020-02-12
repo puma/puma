@@ -100,8 +100,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "4.0.1".freeze
-    CODE_NAME = "4 Fast 4 Furious".freeze
+    PUMA_VERSION = VERSION = "4.3.1".freeze
+    CODE_NAME = "Mysterious Traveller".freeze
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2
@@ -118,31 +118,35 @@ module Puma
     # sending data back
     WRITE_TIMEOUT = 10
 
+    # How many requests to attempt inline before sending a client back to
+    # the reactor to be subject to normal ordering. The idea here is that
+    # we amortize the cost of going back to the reactor for a well behaved
+    # but very "greedy" client across 10 requests. This prevents a not
+    # well behaved client from monopolizing the thread forever.
+    MAX_FAST_INLINE = 10
+
     # The original URI requested by the client.
     REQUEST_URI= 'REQUEST_URI'.freeze
     REQUEST_PATH = 'REQUEST_PATH'.freeze
     QUERY_STRING = 'QUERY_STRING'.freeze
+    CONTENT_LENGTH = "CONTENT_LENGTH".freeze
 
     PATH_INFO = 'PATH_INFO'.freeze
 
     PUMA_TMP_BASE = "puma".freeze
 
-    # Indicate that we couldn't parse the request
-    ERROR_400_RESPONSE = "HTTP/1.1 400 Bad Request\r\n\r\n".freeze
-
-    # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-    ERROR_404_RESPONSE = "HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\nNOT FOUND".freeze
-
-    # The standard empty 408 response for requests that timed out.
-    ERROR_408_RESPONSE = "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\n".freeze
-
-    CONTENT_LENGTH = "CONTENT_LENGTH".freeze
-
-    # Indicate that there was an internal error, obviously.
-    ERROR_500_RESPONSE = "HTTP/1.1 500 Internal Server Error\r\n\r\n".freeze
-
-    # A common header for indicating the server is too busy.  Not used yet.
-    ERROR_503_RESPONSE = "HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
+    ERROR_RESPONSE = {
+      # Indicate that we couldn't parse the request
+      400 => "HTTP/1.1 400 Bad Request\r\n\r\n".freeze,
+      # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
+      404 => "HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\nNOT FOUND".freeze,
+      # The standard empty 408 response for requests that timed out.
+      408 => "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\n".freeze,
+      # Indicate that there was an internal error, obviously.
+      500 => "HTTP/1.1 500 Internal Server Error\r\n\r\n".freeze,
+      # A common header for indicating the server is too busy.  Not used yet.
+      503 => "HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
+    }
 
     # The basic max request size we'll try to read.
     CHUNK_SIZE = 16 * 1024

@@ -35,34 +35,10 @@ module Puma
       @workers.each { |x| x.term }
 
       begin
-        if RUBY_VERSION < '2.6'
-          @workers.each do |w|
-            begin
-              Process.waitpid(w.pid)
-            rescue Errno::ECHILD
-              # child is already terminated
-            end
-          end
-        else
-          # below code is for a bug in Ruby 2.6+, above waitpid call hangs
-          t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          pids = @workers.map(&:pid)
-          loop do
-            pids.reject! do |w_pid|
-              begin
-                if Process.waitpid(w_pid, Process::WNOHANG)
-                  log "    worker status: #{$?}"
-                  true
-                end
-              rescue Errno::ECHILD
-                true # child is already terminated
-              end
-            end
-            break if pids.empty?
-            sleep 0.5
-          end
-          t_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          log format("    worker shutdown time: %6.2f", t_end - t_st)
+        loop do
+          wait_workers
+          break if @workers.empty?
+          sleep 0.2
         end
       rescue Interrupt
         log "! Cancelled waiting for workers"
@@ -97,8 +73,8 @@ module Puma
         @first_term_sent = nil
         @started_at = Time.now
         @last_checkin = Time.now
-        @last_status = '{}'
-        @dead = false
+        @last_status = {}
+        @term = false
       end
 
       attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
@@ -112,17 +88,17 @@ module Puma
         @stage = :booted
       end
 
-      def dead?
-        @dead
-      end
-
-      def dead!
-        @dead = true
+      def term?
+        @term
       end
 
       def ping!(status)
         @last_checkin = Time.now
-        @last_status = status
+        captures = status.match(/{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads": (?<max_threads>\d*), "requests_count": (?<requests_count>\d*) }/)
+        @last_status = captures.names.inject({}) do |hash, key|
+          hash[key.to_sym] = captures[key].to_i
+          hash
+        end
       end
 
       def ping_timeout?(which)
@@ -134,9 +110,9 @@ module Puma
           if @first_term_sent && (Time.now - @first_term_sent) > @options[:worker_shutdown_timeout]
             @signal = "KILL"
           else
+            @term ||= true
             @first_term_sent ||= Time.now
           end
-
           Process.kill @signal, @pid
         rescue Errno::ESRCH
         end
@@ -227,12 +203,7 @@ module Puma
       # during this loop by giving the kernel time to kill them.
       sleep 1 if any
 
-      pids = []
-      while pid = Process.waitpid(-1, Process::WNOHANG) do
-        pids << pid
-      end
-      @workers.reject! { |w| w.dead? || pids.include?(w.pid) }
-
+      wait_workers
       cull_workers
       spawn_workers
 
@@ -249,8 +220,10 @@ module Puma
             log "- Stopping #{w.pid} for phased upgrade..."
           end
 
-          w.term
-          log "- #{w.signal} sent to #{w.pid}..."
+          unless w.term?
+            w.term
+            log "- #{w.signal} sent to #{w.pid}..."
+          end
         end
       end
     end
@@ -277,6 +250,7 @@ module Puma
       @suicide_pipe.close
 
       Thread.new do
+        Puma.set_thread_name "worker check pipe"
         IO.select [@check_pipe]
         log "! Detected parent died, dying"
         exit! 1
@@ -299,6 +273,7 @@ module Puma
       server = start_server
 
       Signal.trap "SIGTERM" do
+        @worker_write << "e#{Process.pid}\n" rescue nil
         server.stop
       end
 
@@ -311,6 +286,7 @@ module Puma
       end
 
       Thread.new(@worker_write) do |io|
+        Puma.set_thread_name "stat payload"
         base_payload = "p#{Process.pid}"
 
         while true
@@ -320,7 +296,8 @@ module Puma
             r = server.running || 0
             t = server.pool_capacity || 0
             m = server.max_threads || 0
-            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m} }\n!
+            rc = server.requests_count || 0
+            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m}, "requests_count": #{rc} }\n!
             io << payload
           rescue IOError
             Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
@@ -376,11 +353,30 @@ module Puma
       Dir.chdir dir
     end
 
+    # Inside of a child process, this will return all zeroes, as @workers is only populated in
+    # the master process.
     def stats
       old_worker_count = @workers.count { |w| w.phase != @phase }
-      booted_worker_count = @workers.count { |w| w.booted? }
-      worker_status = '[' + @workers.map { |w| %Q!{ "started_at": "#{w.started_at.utc.iso8601}", "pid": #{w.pid}, "index": #{w.index}, "phase": #{w.phase}, "booted": #{w.booted?}, "last_checkin": "#{w.last_checkin.utc.iso8601}", "last_status": #{w.last_status} }!}.join(",") + ']'
-      %Q!{ "started_at": "#{@started_at.utc.iso8601}", "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{booted_worker_count}, "old_workers": #{old_worker_count}, "worker_status": #{worker_status} }!
+      worker_status = @workers.map do |w|
+        {
+          started_at: w.started_at.utc.iso8601,
+          pid: w.pid,
+          index: w.index,
+          phase: w.phase,
+          booted: w.booted?,
+          last_checkin: w.last_checkin.utc.iso8601,
+          last_status: w.last_status,
+        }
+      end
+
+      {
+        started_at: @started_at.utc.iso8601,
+        workers: @workers.size,
+        phase: @phase,
+        booted_workers: worker_status.count { |w| w[:booted] },
+        old_workers: old_worker_count,
+        worker_status: worker_status,
+      }
     end
 
     def preload?
@@ -491,6 +487,7 @@ module Puma
       @master_read, @worker_write = read, @wakeup
 
       @launcher.config.run_hooks :before_fork, nil
+      GC.compact if GC.respond_to?(:compact)
 
       spawn_workers
 
@@ -530,8 +527,11 @@ module Puma
                   w.boot!
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
                   force_check = true
+                when "e"
+                  # external term, see worker method, Signal.trap "SIGTERM"
+                  w.instance_variable_set :@term, true
                 when "t"
-                  w.dead!
+                  w.term unless w.term?
                   force_check = true
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
@@ -552,6 +552,25 @@ module Puma
         @suicide_pipe.close
         read.close
         @wakeup.close
+      end
+    end
+
+    private
+
+    # loops thru @workers, removing workers that exited, and calling
+    # `#term` if needed
+    def wait_workers
+      @workers.reject! do |w|
+        begin
+          if Process.wait(w.pid, Process::WNOHANG)
+            true
+          else
+            w.term if w.term?
+            nil
+          end
+        rescue Errno::ECHILD
+          true # child is already terminated
+        end
       end
     end
   end

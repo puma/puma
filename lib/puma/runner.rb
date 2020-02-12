@@ -2,6 +2,7 @@
 
 require 'puma/server'
 require 'puma/const'
+require 'puma/minissl/context_builder'
 
 module Puma
   # Generic class that is used by `Puma::Cluster` and `Puma::Single` to
@@ -53,17 +54,23 @@ module Puma
 
       uri = URI.parse str
 
-      app = Puma::App::Status.new @launcher
-
       if token = @options[:control_auth_token]
-        app.auth_token = token unless token.empty? || token == 'none'
+        token = nil if token.empty? || token == 'none'
       end
+
+      app = Puma::App::Status.new @launcher, token
 
       control = Puma::Server.new app, @launcher.events
       control.min_threads = 0
       control.max_threads = 1
 
       case uri.scheme
+      when "ssl"
+          log "* Starting control server on #{str}"
+          params = Util.parse_query uri.query
+          ctx = MiniSSL::ContextBuilder.new(params, @events).context
+
+          control.add_ssl_listener uri.host, uri.port, ctx
       when "tcp"
         log "* Starting control server on #{str}"
         control.add_tcp_listener uri.host, uri.port

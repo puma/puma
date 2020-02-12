@@ -7,13 +7,68 @@ module Puma
     # Check out {#call}'s source code to see what actions this web application
     # can respond to.
     class Status
-      def initialize(cli)
-        @cli = cli
-        @auth_token = nil
-      end
       OK_STATUS = '{ "status": "ok" }'.freeze
 
-      attr_accessor :auth_token
+      def initialize(cli, token = nil)
+        @cli = cli
+        @auth_token = token
+      end
+
+      def call(env)
+        unless authenticate(env)
+          return rack_response(403, 'Invalid auth token', 'text/plain')
+        end
+
+        case env['PATH_INFO']
+        when /\/stop$/
+          @cli.stop
+          rack_response(200, OK_STATUS)
+
+        when /\/halt$/
+          @cli.halt
+          rack_response(200, OK_STATUS)
+
+        when /\/restart$/
+          @cli.restart
+          rack_response(200, OK_STATUS)
+
+        when /\/phased-restart$/
+          if !@cli.phased_restart
+            rack_response(404, '{ "error": "phased restart not available" }')
+          else
+            rack_response(200, OK_STATUS)
+          end
+
+        when /\/reload-worker-directory$/
+          if !@cli.send(:reload_worker_directory)
+            rack_response(404, '{ "error": "reload_worker_directory not available" }')
+          else
+            rack_response(200, OK_STATUS)
+          end
+
+        when /\/gc$/
+          GC.start
+          rack_response(200, OK_STATUS)
+
+        when /\/gc-stats$/
+          rack_response(200, GC.stat.to_json)
+
+        when /\/stats$/
+          rack_response(200, @cli.stats.to_json)
+
+        when /\/thread-backtraces$/
+          backtraces = []
+          @cli.thread_status do |name, backtrace|
+            backtraces << { name: name, backtrace: backtrace }
+          end
+
+          rack_response(200, backtraces.to_json)
+        else
+          rack_response 404, "Unsupported action", 'text/plain'
+        end
+      end
+
+      private
 
       def authenticate(env)
         return true unless @auth_token
@@ -27,52 +82,6 @@ module Puma
         }
 
         [status, headers, [body]]
-      end
-
-      def call(env)
-        unless authenticate(env)
-          return rack_response(403, 'Invalid auth token', 'text/plain')
-        end
-
-        case env['PATH_INFO']
-        when /\/stop$/
-          @cli.stop
-          return rack_response(200, OK_STATUS)
-
-        when /\/halt$/
-          @cli.halt
-          return rack_response(200, OK_STATUS)
-
-        when /\/restart$/
-          @cli.restart
-          return rack_response(200, OK_STATUS)
-
-        when /\/phased-restart$/
-          if !@cli.phased_restart
-            return rack_response(404, '{ "error": "phased restart not available" }')
-          else
-            return rack_response(200, OK_STATUS)
-          end
-
-        when /\/reload-worker-directory$/
-          if !@cli.send(:reload_worker_directory)
-            return rack_response(404, '{ "error": "reload_worker_directory not available" }')
-          else
-            return rack_response(200, OK_STATUS)
-          end
-
-        when /\/gc$/
-          GC.start
-          return rack_response(200, OK_STATUS)
-
-        when /\/gc-stats$/
-          return rack_response(200, GC.stat.to_json)
-
-        when /\/stats$/
-          return rack_response(200, @cli.stats)
-        else
-          rack_response 404, "Unsupported action", 'text/plain'
-        end
       end
     end
   end

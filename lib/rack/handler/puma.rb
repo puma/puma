@@ -61,8 +61,6 @@ module Rack
         conf
       end
 
-
-
       def self.run(app, options = {})
         conf   = self.config(app, options)
 

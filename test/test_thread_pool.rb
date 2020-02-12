@@ -37,7 +37,7 @@ class TestThreadPool < Minitest::Test
       @work_done.wait(@work_mutex, 5)
       assert_equal 1, pool.spawned
       assert_equal [1], saw
-      assert_equal('puma 001', thread_name) if Thread.current.respond_to?(:name)
+      assert_equal('puma threadpool 001', thread_name) if Thread.current.respond_to?(:name)
     end
   end
 
@@ -223,13 +223,14 @@ class TestThreadPool < Minitest::Test
   def test_auto_reap_dead_threads
     pool = new_pool(2,2) { Thread.current.kill }
 
+    pool.auto_reap! 0.1
+
+    pause
+
     assert_equal 2, pool.spawned
 
-    # TODO: is there a point to these two lines?
     pool << 1
     pool << 2
-
-    pool.auto_reap! 0.1
 
     pause
 
@@ -237,13 +238,17 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_force_shutdown_immediately
+    finish = false
+    rescued = false
+
     pool = new_pool(0, 1) do |work|
       begin
         @work_mutex.synchronize do
           @work_done.signal
         end
-        sleep 10 # TODO: do something here other than sleep
+        Thread.pass until finish
       rescue Puma::ThreadPool::ForceShutdown
+        rescued = true
       end
     end
 
@@ -252,7 +257,9 @@ class TestThreadPool < Minitest::Test
     @work_mutex.synchronize do
       @work_done.wait(@work_mutex, 5)
       pool.shutdown(0)
+      finish = true
       assert_equal 0, pool.spawned
+      assert rescued
     end
   end
 end

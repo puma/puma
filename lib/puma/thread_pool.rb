@@ -87,8 +87,7 @@ module Puma
       @spawned += 1
 
       th = Thread.new(@spawned) do |spawned|
-        # Thread name is new in Ruby 2.3
-        Thread.current.name = 'puma %03i' % spawned if Thread.current.respond_to?(:name=)
+        Puma.set_thread_name 'threadpool %03i' % spawned
         todo  = @todo
         block = @block
         mutex = @mutex
@@ -190,7 +189,7 @@ module Puma
     # request, it might not be added to the `@todo` array right away.
     # For example if a slow client has only sent a header, but not a body
     # then the `@todo` array would stay the same size as the reactor works
-    # to try to buffer the request. In tha scenario the next call to this
+    # to try to buffer the request. In that scenario the next call to this
     # method would not block and another request would be added into the reactor
     # by the server. This would continue until a fully bufferend request
     # makes it through the reactor and can then be processed by the thread pool.
@@ -244,10 +243,12 @@ module Puma
       end
     end
 
-    class AutoTrim
-      def initialize(pool, timeout)
+    class Automaton
+      def initialize(pool, timeout, thread_name, message)
         @pool = pool
         @timeout = timeout
+        @thread_name = thread_name
+        @message = message
         @running = false
       end
 
@@ -255,8 +256,9 @@ module Puma
         @running = true
 
         @thread = Thread.new do
+          Puma.set_thread_name @thread_name
           while @running
-            @pool.trim
+            @pool.public_send(@message)
             sleep @timeout
           end
         end
@@ -269,36 +271,12 @@ module Puma
     end
 
     def auto_trim!(timeout=30)
-      @auto_trim = AutoTrim.new(self, timeout)
+      @auto_trim = Automaton.new(self, timeout, "threadpool trimmer", :trim)
       @auto_trim.start!
     end
 
-    class Reaper
-      def initialize(pool, timeout)
-        @pool = pool
-        @timeout = timeout
-        @running = false
-      end
-
-      def start!
-        @running = true
-
-        @thread = Thread.new do
-          while @running
-            @pool.reap
-            sleep @timeout
-          end
-        end
-      end
-
-      def stop
-        @running = false
-        @thread.wakeup
-      end
-    end
-
     def auto_reap!(timeout=5)
-      @reaper = Reaper.new(self, timeout)
+      @reaper = Automaton.new(self, timeout, "threadpool reaper", :reap)
       @reaper.start!
     end
 

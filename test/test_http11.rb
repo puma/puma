@@ -113,6 +113,19 @@ class Http11ParserTest < Minitest::Test
     assert_equal 'posts-17408', req['FRAGMENT']
   end
 
+  def test_semicolon_in_path
+    skip_on :jruby # Not yet supported on JRuby, see https://github.com/puma/puma/issues/1978
+    parser = Puma::HttpParser.new
+    req = {}
+    get = "GET /forums/1/path;stillpath/2375?page=1 HTTP/1.1\r\n\r\n"
+
+    parser.execute(req, get, 0)
+
+    assert parser.finished?
+    assert_equal '/forums/1/path;stillpath/2375?page=1', req['REQUEST_URI']
+    assert_equal '/forums/1/path;stillpath/2375', req['REQUEST_PATH']
+  end
+
   # lame random garbage maker
   def rand_data(min, max, readable=true)
     count = min + ((rand(max)+1) *10).to_i
@@ -186,14 +199,12 @@ class Http11ParserTest < Minitest::Test
     end
   end
 
-  # https://github.com/puma/puma/issues/1890
   def test_trims_whitespace_from_headers
-    skip("Known failure, see issue 1890 on GitHub")
     parser = Puma::HttpParser.new
     req = {}
     http = "GET / HTTP/1.1\r\nX-Strip-Me: Strip This       \r\n\r\n"
 
-    nread = parser.execute(req, http, 0)
+    parser.execute(req, http, 0)
 
     assert_equal "Strip This", req["HTTP_X_STRIP_ME"]
   end

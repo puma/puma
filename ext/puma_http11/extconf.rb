@@ -2,6 +2,12 @@ require 'mkmf'
 
 dir_config("puma_http11")
 
+if $mingw
+  append_cflags  '-fstack-protector-strong -D_FORTIFY_SOURCE=2'
+  append_ldflags '-fstack-protector-strong -l:libssp.a'
+  have_library 'ssp'
+end
+
 unless ENV["DISABLE_SSL"]
   dir_config("openssl")
 

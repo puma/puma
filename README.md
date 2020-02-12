@@ -5,8 +5,9 @@
 # Puma: A Ruby Web Server Built For Concurrency
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
-[![Travis Build Status](https://secure.travis-ci.org/puma/puma.svg)](https://travis-ci.org/puma/puma)
-[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/0xnxc7a26u9b2bub/branch/master?svg=true)](https://ci.appveyor.com/project/puma/puma/branch/master)
+[![Actions Build Status](https://github.com/puma/puma/workflows/Puma/badge.svg)](https://github.com/puma/puma/actions)
+[![Travis Build Status](https://travis-ci.org/puma/puma.svg?branch=master)](https://travis-ci.org/puma/puma)
+
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
 
@@ -16,7 +17,7 @@ Puma is a **simple, fast, multi-threaded, and highly concurrent HTTP 1.1 server 
 
 Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request using a thread pool. Each request is served in a separate thread, so truly concurrent Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
 
-Puma was designed to be the go-to server for [Rubinius](https://rubini.us), but also works well with JRuby and MRI.
+Puma was designed to be the go-to server for [Rubinius](https://rubinius.com), but also works well with JRuby and MRI.
 
 On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing IO waiting to be done in parallel.
 
@@ -67,7 +68,7 @@ configure { set :server, :puma }
 Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
 
 You can also find several configuration examples as part of the
-[test](test/config) suite.
+[test](https://github.com/puma/puma/tree/master/test/config) suite.
 
 ### Thread Pool
 
@@ -117,17 +118,6 @@ end
 This code can be used to setup the process before booting the application, allowing
 you to do some Puma-specific things that you don't want to embed in your application.
 For instance, you could fire a log notification that a worker booted or send something to statsd. This can be called multiple times.
-
-If you're preloading your application and using ActiveRecord, it's recommended that you setup your connection pool here:
-
-```ruby
-# config/puma.rb
-on_worker_boot do
-  ActiveSupport.on_load(:active_record) do
-    ActiveRecord::Base.establish_connection
-  end
-end
-```
 
 `before_fork` specifies a block to be run before workers are forked:
 
@@ -230,13 +220,15 @@ You can also provide a configuration file with the `-C` (or `--config`) flag:
 $ puma -C /path/to/config
 ```
 
-If no configuration file is specified, Puma will look for a configuration file at `config/puma.rb`. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` environment variable, Puma looks for configuration at `config/puma/<environment_name>.rb`.
+If no configuration file is specified, Puma will look for a configuration file at `config/puma.rb`. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` or the `RAILS_ENV` environment variables, Puma looks for configuration at `config/puma/<environment_name>.rb`.
 
 If you want to prevent Puma from looking for a configuration file in those locations, provide a dash as the argument to the `-C` (or `--config`) flag:
 
 ```
 $ puma -C "-"
 ```
+
+The other side-effects of setting the environment are whether to show stack traces (in `development` or `test`), and setting RACK_ENV may potentially affect middleware looking for this value to change their behavior. The default puma RACK_ENV value is `development`. You can see all config default values [here](https://github.com/puma/puma/blob/12d1706ddc71b89ed2ee26275e31c788e94ff541/lib/puma/configuration.rb#L170).
 
 Check out [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
 
@@ -281,39 +273,24 @@ reliability in production environments:
 * [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
 * [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
-## Community Plugins
+## Community Extensions
 
-* [puma-heroku](https://github.com/evanphx/puma-heroku) — default Puma configuration for running on Heroku
+### Plugins
+
+* [puma-heroku](https://github.com/puma/puma-heroku) — default Puma configuration for running on Heroku
 * [puma-metrics](https://github.com/harmjanblok/puma-metrics) — export Puma metrics to Prometheus
 * [puma-plugin-statsd](https://github.com/yob/puma-plugin-statsd) — send Puma metrics to statsd
 * [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog
 
+### Monitoring
+
+* [puma-status](https://github.com/ylecuyer/puma-status) — Monitor CPU/Mem/Load of running puma instances from the CLI
+
 ## Contributing
 
-To run the test suite:
+Find details for contributing in the [contribution guide].
 
-```bash
-$ bundle install
-$ bundle exec rake
-```
-
-To run a single test file, use the `TEST` environment variable:
-
-```bash
-$ TEST=test/test_binder.rb bundle exec rake test
-```
-
-Or use [`m`](https://github.com/qrush/m):
-
-```
-$ bundle exec m test/test_binder.rb
-```
-
-Which can also be used to run a single test case:
-
-```
-$ bundle exec m test/test_binder.rb:37
-```
+[contribution guide]: https://github.com/puma/puma/blob/master/CONTRIBUTING.md
 
 ## License
 

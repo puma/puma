@@ -2,12 +2,9 @@
 
 require 'puma/events'
 require 'puma/detect'
-
 require 'puma/cluster'
 require 'puma/single'
-
 require 'puma/const'
-
 require 'puma/binder'
 
 module Puma
@@ -126,19 +123,6 @@ module Puma
       File.unlink(path) if path && File.exist?(path)
     end
 
-    # If configured, write the pid of the current process out
-    # to a file.
-    def write_pid
-      path = @options[:pidfile]
-      return unless path
-
-      File.open(path, 'w') { |f| f.puts Process.pid }
-      cur = Process.pid
-      at_exit do
-        delete_pidfile if cur == Process.pid
-      end
-    end
-
     # Begin async shutdown of the server
     def halt
       @status = :halt
@@ -200,6 +184,7 @@ module Puma
       when :exit
         # nothing
       end
+      @binder.close_unix_paths
     end
 
     # Return which tcp port the launcher is using, if it's using TCP
@@ -217,15 +202,34 @@ module Puma
     end
 
     def close_binder_listeners
-      @binder.listeners.each do |l, io|
-        io.close
-        uri = URI.parse(l)
-        next unless uri.scheme == 'unix'
-        File.unlink("#{uri.host}#{uri.path}")
+      @binder.close_listeners
+    end
+
+    def thread_status
+      Thread.list.each do |thread|
+        name = "Thread: TID-#{thread.object_id.to_s(36)}"
+        name += " #{thread['label']}" if thread['label']
+        name += " #{thread.name}" if thread.respond_to?(:name) && thread.name
+        backtrace = thread.backtrace || ["<no backtrace available>"]
+
+        yield name, backtrace
       end
     end
 
     private
+
+    # If configured, write the pid of the current process out
+    # to a file.
+    def write_pid
+      path = @options[:pidfile]
+      return unless path
+
+      File.open(path, 'w') { |f| f.puts Process.pid }
+      cur = Process.pid
+      at_exit do
+        delete_pidfile if cur == Process.pid
+      end
+    end
 
     def reload_worker_directory
       @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
@@ -246,46 +250,69 @@ module Puma
         Dir.chdir(@restart_dir)
         Kernel.exec(*argv)
       else
-        redirects = {:close_others => true}
-        @binder.listeners.each_with_index do |(l, io), i|
-          ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-          redirects[io.to_i] = io.to_i
-        end
-
         argv = restart_args
         Dir.chdir(@restart_dir)
-        argv += [redirects]
+        argv += [@binder.redirects_for_restart]
         Kernel.exec(*argv)
       end
     end
 
+    def dependencies_and_files_to_require_after_prune
+      puma = spec_for_gem("puma")
+
+      deps = puma.runtime_dependencies.map do |d|
+        "#{d.name}:#{spec_for_gem(d.name).version}"
+      end
+
+      [deps, require_paths_for_gem(puma) + extra_runtime_deps_directories]
+    end
+
+    def extra_runtime_deps_directories
+      Array(@options[:extra_runtime_dependencies]).map do |d_name|
+        if (spec = spec_for_gem(d_name))
+          require_paths_for_gem(spec)
+        else
+          log "* Could not load extra dependency: #{d_name}"
+          nil
+        end
+      end.flatten.compact
+    end
+
+    def puma_wild_location
+      puma = spec_for_gem("puma")
+      dirs = require_paths_for_gem(puma)
+      puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
+      File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
+    end
+
     def prune_bundler
       return unless defined?(Bundler)
-      puma = Bundler.rubygems.loaded_specs("puma")
-      dirs = puma.require_paths.map { |x| File.join(puma.full_gem_path, x) }
-      puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
-
-      unless puma_lib_dir
+      require_rubygems_min_version!(Gem::Version.new("2.2"), "prune_bundler")
+      unless puma_wild_location
         log "! Unable to prune Bundler environment, continuing"
         return
       end
 
-      deps = puma.runtime_dependencies.map do |d|
-        spec = Bundler.rubygems.loaded_specs(d.name)
-        "#{d.name}:#{spec.version.to_s}"
-      end
+      deps, dirs = dependencies_and_files_to_require_after_prune
 
       log '* Pruning Bundler environment'
       home = ENV['GEM_HOME']
       Bundler.with_original_env do
         ENV['GEM_HOME'] = home
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
-        wild = File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
-        args = [Gem.ruby, wild, '-I', dirs.join(':'), deps.join(',')] + @original_argv
+        args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
         args += [{:close_others => false}]
         Kernel.exec(*args)
       end
+    end
+
+    def spec_for_gem(gem_name)
+      Bundler.rubygems.loaded_specs(gem_name)
+    end
+
+    def require_paths_for_gem(gem_spec)
+      gem_spec.full_require_paths
     end
 
     def log(str)
@@ -406,12 +433,6 @@ module Puma
 
       begin
         Signal.trap "SIGINT" do
-          if Puma.jruby?
-            @status = :exit
-            graceful_stop
-            exit
-          end
-
           stop
         end
       rescue Exception
@@ -429,6 +450,25 @@ module Puma
       rescue Exception
         log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
       end
+
+      begin
+        Signal.trap "SIGINFO" do
+          thread_status do |name, backtrace|
+            @events.log name
+            @events.log backtrace.map { |bt| "  #{bt}" }
+          end
+        end
+      rescue Exception
+        # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
+        # to see this constantly on Linux.
+      end
+    end
+
+    def require_rubygems_min_version!(min_version, feature)
+      return if min_version <= Gem::Version.new(Gem::VERSION)
+
+      raise "#{feature} is not supported on your version of RubyGems. " \
+              "You must have RubyGems #{min_version}+ to use this feature."
     end
   end
 end

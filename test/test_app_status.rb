@@ -11,12 +11,9 @@ class TestAppStatus < Minitest::Test
   class FakeServer
     def initialize
       @status = :running
-      @backlog = 0
-      @running = 0
     end
 
     attr_reader :status
-    attr_accessor :backlog, :running
 
     def stop
       @status = :stop
@@ -27,14 +24,13 @@ class TestAppStatus < Minitest::Test
     end
 
     def stats
-      "{}"
+      {}
     end
   end
 
   def setup
     @server = FakeServer.new
     @app = Puma::App::Status.new(@server)
-    @app.auth_token = nil
   end
 
   def lint(uri)
@@ -44,7 +40,7 @@ class TestAppStatus < Minitest::Test
   end
 
   def test_bad_token
-    @app.auth_token = "abcdef"
+    @app.instance_variable_set(:@auth_token, "abcdef")
 
     status, _, _ = lint('/whatever')
 
@@ -52,7 +48,7 @@ class TestAppStatus < Minitest::Test
   end
 
   def test_good_token
-    @app.auth_token = "abcdef"
+    @app.instance_variable_set(:@auth_token, "abcdef")
 
     status, _, _ = lint('/whatever?token=abcdef')
 
@@ -82,8 +78,6 @@ class TestAppStatus < Minitest::Test
   end
 
   def test_stats
-    @server.backlog = 1
-    @server.running = 9
     status, _ , app = lint('/stats')
 
     assert_equal 200, status

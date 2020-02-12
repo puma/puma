@@ -225,7 +225,7 @@ module Puma
               # will be flooding them with errors when persistent connections
               # are closed.
               rescue ConnectionError
-                c.write_500
+                c.write_error(500)
                 c.close
 
                 clear_monitor mon
@@ -237,7 +237,8 @@ module Puma
                 ssl_socket = c.io
                 begin
                   addr = ssl_socket.peeraddr.last
-                rescue IOError
+                # EINVAL can happen when browser closes socket w/security exception
+                rescue IOError, Errno::EINVAL
                   addr = "<unknown>"
                 end
 
@@ -252,7 +253,7 @@ module Puma
               rescue HttpParserError => e
                 @server.lowlevel_error(e, c.env)
 
-                c.write_400
+                c.write_error(400)
                 c.close
 
                 clear_monitor mon
@@ -261,7 +262,7 @@ module Puma
               rescue StandardError => e
                 @server.lowlevel_error(e, c.env)
 
-                c.write_500
+                c.write_error(500)
                 c.close
 
                 clear_monitor mon
@@ -277,7 +278,7 @@ module Puma
             while @timeouts.first.value.timeout_at < now
               mon = @timeouts.shift
               c = mon.value
-              c.write_408 if c.in_data_phase
+              c.write_error(408) if c.in_data_phase
               c.close
 
               clear_monitor mon
@@ -307,6 +308,7 @@ module Puma
 
     def run_in_thread
       @thread = Thread.new do
+        Puma.set_thread_name "reactor"
         begin
           run_internal
         rescue StandardError => e

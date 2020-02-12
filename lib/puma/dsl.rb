@@ -396,7 +396,7 @@ module Puma
     #     keystore_pass: password
     #   }
     def ssl_bind(host, port, opts)
-      verify = opts.fetch(:verify_mode, 'none')
+      verify = opts.fetch(:verify_mode, 'none').to_s
       no_tlsv1 = opts.fetch(:no_tlsv1, 'false')
       no_tlsv1_1 = opts.fetch(:no_tlsv1_1, 'false')
       ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
@@ -420,7 +420,7 @@ module Puma
     end
 
     # How many worker processes to run.  Typically this is set to
-    # to the number of available cores.
+    # the number of available cores.
     #
     # The default is 0.
     #
@@ -583,7 +583,10 @@ module Puma
     # new Bundler context and thus can float around as the release
     # dictates.
     #
+    # See also: extra_runtime_dependencies
+    #
     # @note This is incompatible with +preload_app!+.
+    # @note This is only supported for RubyGems 2.2+
     def prune_bundler(answer=true)
       @options[:prune_bundler] = answer
     end
@@ -599,6 +602,21 @@ module Puma
     #   raise_exception_on_sigterm false
     def raise_exception_on_sigterm(answer=true)
       @options[:raise_exception_on_sigterm] = answer
+    end
+
+    # When using prune_bundler, if extra runtime dependencies need to be loaded to
+    # initialize your app, then this setting can be used. This includes any Puma plugins.
+    #
+    # Before bundler is pruned, the gem names supplied will be looked up in the bundler
+    # context and then loaded again after bundler is pruned.
+    # Only applies if prune_bundler is used.
+    #
+    # @example
+    #   extra_runtime_dependencies ['gem_name_1', 'gem_name_2']
+    # @example
+    #   extra_runtime_dependencies ['puma_worker_killer', 'puma-heroku']
+    def extra_runtime_dependencies(answer = [])
+      @options[:extra_runtime_dependencies] = Array(answer)
     end
 
     # Additional text to display in process listing.
