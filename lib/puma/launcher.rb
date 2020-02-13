@@ -306,6 +306,7 @@ module Puma
         args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
         args += [{:close_others => false}]
+        p args
         Kernel.exec(*args)
       end
     end
