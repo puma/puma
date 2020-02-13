@@ -135,8 +135,6 @@ class TestIntegrationCluster < TestIntegration
 
   # It does not wipe out BUNDLE_GEMFILE et al
   def test_usr2_restart_preserves_bundler_environment
-    skip_unless_signal_exist? :USR2
-
     @tcp_port = UniquePort.call
     env = {
       # Intentionally set this to something we wish to keep intact on restarts
