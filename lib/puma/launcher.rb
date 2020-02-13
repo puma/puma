@@ -300,11 +300,13 @@ module Puma
 
       log "* Pruning Bundler environment"
       home = ENV['GEM_HOME']
-      Bundler.with_original_env do
+      bundle_gemfile = ENV['BUNDLE_GEMFILE']
+      Bundler.with_clean_env do
         require 'pp'
         puts 'ENV after Bundler.with_original_env:'
         pp ENV
         ENV['GEM_HOME'] = home
+        ENV['BUNDLE_GEMFILE'] = bundle_gemfile
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
         args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
