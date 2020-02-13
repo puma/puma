@@ -300,7 +300,8 @@ module Puma
 
       log "* Pruning Bundler environment"
       home = ENV['GEM_HOME']
-      Bundler.with_original_env do
+      #Bundler.with_original_env do
+      Bundler.with_clean_env do
         ENV['GEM_HOME'] = home
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
         args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':'), deps.join(',')] + @original_argv
