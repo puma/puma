@@ -295,7 +295,7 @@ module Puma
 
       deps, dirs = dependencies_and_files_to_require_after_prune
 
-      log "* Pruning Bundler environment #{rand 100}"
+      log "* Pruning Bundler environment #{caller.inspect}"
       home = ENV['GEM_HOME']
       Bundler.with_original_env do
         ENV['GEM_HOME'] = home
