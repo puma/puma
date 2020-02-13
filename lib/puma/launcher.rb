@@ -286,7 +286,9 @@ module Puma
     end
 
     def prune_bundler
-      return if ENV.key?('PUMA_BUNDLER_PRUNED')
+      puts '>>>> prune_bundler starting...'
+      puts "prune_bundler defined?(Bundler) = #{defined?(Bundler).inspect}"
+      #return if ENV.key?('PUMA_BUNDLER_PRUNED')
       return unless defined?(Bundler)
       require_rubygems_min_version!(Gem::Version.new("2.2"), "prune_bundler")
       unless puma_wild_location

@@ -28,4 +28,5 @@ require 'puma/cli'
 
 cli = Puma::CLI.new ARGV
 
+puts "puma-wild defined?(Bundler) = #{defined?(Bundler).inspect}"
 cli.run
