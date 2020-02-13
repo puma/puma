@@ -140,6 +140,11 @@ module Puma
             user_config.environment arg
           end
 
+          o.on "-f", "--fork-worker",
+            "Fork new workers from existing worker. Cluster mode only" do
+            user_config.fork_worker
+          end
+
           o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
             $LOAD_PATH.unshift(*arg.split(':'))
           end

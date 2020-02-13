@@ -736,5 +736,17 @@ module Puma
       end
     end
 
+    # When enabled, workers will be forked from worker 0 instead of from the master process.
+    # This enables the `refork` command to optimize copy-on-write performance in a running app.
+    #
+    # This option is similar to `preload_app` because the app is preloaded before forking,
+    # but it is compatible with phased restart.
+    #
+    # `preload_app` is not required when this option is enabled.
+    #
+    # @note Cluster mode only.
+    def fork_worker(answer=true)
+      @options[:fork_worker] = answer
+    end
   end
 end

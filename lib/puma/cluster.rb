@@ -78,6 +78,7 @@ module Puma
       end
 
       attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
+      attr_writer :pid, :phase
 
       def booted?
         @stage == :booted
@@ -113,7 +114,7 @@ module Puma
             @term ||= true
             @first_term_sent ||= Time.now
           end
-          Process.kill @signal, @pid
+          Process.kill @signal, @pid if @pid
         rescue Errno::ESRCH
         end
       end
@@ -139,11 +140,11 @@ module Puma
         idx = next_worker_index
         @launcher.config.run_hooks :before_worker_fork, idx
 
-        pid = fork { worker(idx, master) }
-        if !pid
-          log "! Complete inability to spawn new workers detected"
-          log "! Seppuku is the only choice."
-          exit! 1
+        if @options[:fork_worker] && idx != 0
+          @fork_writer << "#{idx}\n"
+          pid = nil
+        else
+          pid = spawn_worker(idx, master)
         end
 
         debug "Spawned worker: #{pid}"
@@ -155,6 +156,16 @@ module Puma
       if diff > 0
         @phased_state = :idle
       end
+    end
+
+    def spawn_worker(idx, master)
+      pid = fork { worker(idx, master) }
+      if !pid
+        log "! Complete inability to spawn new workers detected"
+        log "! Seppuku is the only choice."
+        exit! 1
+      end
+      pid
     end
 
     def cull_workers
@@ -246,8 +257,11 @@ module Puma
       Signal.trap "SIGINT", "IGNORE"
 
       @workers = []
-      @master_read.close
-      @suicide_pipe.close
+      if !@options[:fork_worker] || index == 0
+        @master_read.close
+        @suicide_pipe.close
+        @fork_writer.close
+      end
 
       Thread.new do
         Puma.set_thread_name "worker check pipe"
@@ -272,13 +286,29 @@ module Puma
 
       server = start_server
 
+      if index == 0
+        Signal.trap "SIGCHLD" do
+          Process.wait(-1, Process::WNOHANG) rescue nil
+          wakeup!
+        end
+
+        Thread.new do
+          Puma.set_thread_name "worker fork pipe"
+          while (idx = @fork_pipe.gets)
+            idx = idx.to_i
+            pid = spawn_worker(idx, master)
+            @worker_write << "f#{pid}:#{idx}\n" rescue nil
+          end
+        end
+      end
+
       Signal.trap "SIGTERM" do
         @worker_write << "e#{Process.pid}\n" rescue nil
         server.stop
       end
 
       begin
-        @worker_write << "b#{Process.pid}\n"
+        @worker_write << "b#{Process.pid}:#{index}\n"
       rescue SystemCallError, IOError
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         STDERR.puts "Master seems to have exited, exiting."
@@ -386,6 +416,13 @@ module Puma
     # We do this in a separate method to keep the lambda scope
     # of the signals handlers as small as possible.
     def setup_signals
+      Signal.trap "SIGURG" do
+        if (worker = @workers.find {|w| w.index == 0})
+          worker.phase += 1
+        end
+        phased_restart
+      end
+
       Signal.trap "SIGCHLD" do
         wakeup!
       end
@@ -469,6 +506,10 @@ module Puma
       #
       @check_pipe, @suicide_pipe = Puma::Util.pipe
 
+      # Separate pipe used by worker 0 to receive commands to
+      # fork new worker processes.
+      @fork_pipe, @fork_writer = Puma::Util.pipe
+
       if daemon?
         log "* Daemonizing..."
         Process.daemon(true)
@@ -521,6 +562,12 @@ module Puma
               result = read.gets
               pid = result.to_i
 
+              if req == "b" || req == "f"
+                pid, idx = result.split(':').map(&:to_i)
+                w = @workers.find {|x| x.index == idx}
+                w.pid = pid if w.pid.nil?
+              end
+
               if w = @workers.find { |x| x.pid == pid }
                 case req
                 when "b"
@@ -561,6 +608,7 @@ module Puma
     # `#term` if needed
     def wait_workers
       @workers.reject! do |w|
+        next false if w.pid.nil?
         begin
           if Process.wait(w.pid, Process::WNOHANG)
             true
@@ -569,7 +617,12 @@ module Puma
             nil
           end
         rescue Errno::ECHILD
-          true # child is already terminated
+          begin
+            Process.kill(0, w.pid)
+            false # child still alive, but has another parent
+          rescue Errno::ESRCH, Errno::EPERM
+            true # child is already terminated
+          end
         end
       end
     end

@@ -11,7 +11,7 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats thread-backtraces}
+    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats thread-backtraces refork}
     PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
@@ -231,6 +231,9 @@ module Puma
           end
 
           return
+
+        when "refork"
+          Process.kill "SIGURG", @pid
 
         else
           return
