@@ -3,7 +3,6 @@
 # Copyright (c) 2014 Evan Phoenix
 #
 
-puts "puma-wild 111 defined?(Bundler) = #{defined?(Bundler).inspect}"
 require 'rubygems'
 
 gems = ARGV.shift
@@ -16,14 +15,10 @@ if gems == "-I"
   gems = ARGV.shift
 end
 
-p gems
-
 gems.split(",").each do |s|
   name, ver = s.split(":",2)
   gem name, ver
 end
-
-puts "puma-wild 222 defined?(Bundler) = #{defined?(Bundler).inspect}"
 
 module Puma; end
 
@@ -31,7 +26,6 @@ Puma.const_set("WILD_ARGS", ["-I", inc, gems])
 
 require 'puma/cli'
 
-puts "puma-wild 333 defined?(Bundler) = #{defined?(Bundler).inspect}"
 cli = Puma::CLI.new ARGV
 
 cli.run

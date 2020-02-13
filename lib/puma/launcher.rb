@@ -286,9 +286,6 @@ module Puma
     end
 
     def prune_bundler
-      puts '>>>> prune_bundler starting...'
-      puts "prune_bundler defined?(Bundler) = #{defined?(Bundler).inspect}"
-      #return if ENV.key?('PUMA_BUNDLER_PRUNED')
       return unless defined?(Bundler)
       require_rubygems_min_version!(Gem::Version.new("2.2"), "prune_bundler")
       unless puma_wild_location
@@ -298,20 +295,16 @@ module Puma
 
       deps, dirs = dependencies_and_files_to_require_after_prune
 
-      log "* Pruning Bundler environment"
+      log '* Pruning Bundler environment'
       home = ENV['GEM_HOME']
       bundle_gemfile = ENV['BUNDLE_GEMFILE']
       Bundler.with_clean_env do
-        require 'pp'
-        puts 'ENV after Bundler.with_original_env:'
-        pp ENV
         ENV['GEM_HOME'] = home
         ENV['BUNDLE_GEMFILE'] = bundle_gemfile
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
         args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
         args += [{:close_others => false}]
-        p args
         Kernel.exec(*args)
       end
     end

@@ -21,12 +21,12 @@ class TestPreserveBundlerEnv < TestIntegration
     Dir.chdir(File.expand_path("bundle_preservation_test", __dir__)) do
       @server = IO.popen(env, cmd.split, "r")
     end
-    wait_for_server_to_boot(log: true)
+    wait_for_server_to_boot
     @pid = @server.pid
     connection = connect
     initial_reply = read_body(connection)
     assert_match("Gemfile.bundle_env_preservation_test", initial_reply)
-    restart_server connection, log: true
+    restart_server connection
     new_reply = read_body(connection)
     assert_match("Gemfile.bundle_env_preservation_test", new_reply)
   end
