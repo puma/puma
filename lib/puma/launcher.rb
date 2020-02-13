@@ -286,6 +286,7 @@ module Puma
     end
 
     def prune_bundler
+      return if ENV.key?('PUMA_BUNDLER_PRUNED')
       return unless defined?(Bundler)
       require_rubygems_min_version!(Gem::Version.new("2.2"), "prune_bundler")
       unless puma_wild_location
@@ -295,7 +296,7 @@ module Puma
 
       deps, dirs = dependencies_and_files_to_require_after_prune
 
-      log "* Pruning Bundler environment #{caller.inspect}"
+      log "* Pruning Bundler environment"
       home = ENV['GEM_HOME']
       Bundler.with_original_env do
         ENV['GEM_HOME'] = home
