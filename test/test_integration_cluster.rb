@@ -147,7 +147,7 @@ class TestIntegrationCluster < TestIntegration
     # Must use `bundle exec puma` here, because otherwise Bundler may not be defined, which is required to trigger the bug
     cmd = "bundle exec puma -q -w 1 --prune-bundler -b tcp://#{HOST}:#{@tcp_port}"
     Dir.chdir(File.expand_path("bundle_preservation_test", __dir__)) do
-      @server = IO.popen(env, cmd, "r")
+      @server = IO.popen(env, cmd.split, "r")
     end
     wait_for_server_to_boot
     @pid = @server.pid
