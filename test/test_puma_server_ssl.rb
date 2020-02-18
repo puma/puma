@@ -199,6 +199,44 @@ class TestPumaServerSSL < Minitest::Test
       assert_match(msg, @events.error.message) if @events.error
     end
   end
+
+  def test_http_rejection
+    body_http  = nil
+    body_https = nil
+
+    start_server
+
+    http = Net::HTTP.new @host, @port
+    http.use_ssl = false
+    http.read_timeout = 6
+
+    tcp = Thread.new do
+      req_http = Net::HTTP::Get.new "/", {}
+      assert_raises(Errno::ECONNREFUSED, EOFError) do
+        http.start.request(req_http) { |rep| body_http = rep.body }
+      end
+    end
+
+    ssl = Thread.new do
+      @http.start do
+        req_https = Net::HTTP::Get.new "/", {}
+        @http.request(req_https) { |rep_https| body_https = rep_https.body }
+      end
+    end
+
+    tcp.join
+    ssl.join
+    http.finish
+    sleep 1.0
+
+    assert_nil body_http
+    assert_equal "https", body_https
+
+    thread_pool = @server.instance_variable_get(:@thread_pool)
+    busy_threads = thread_pool.spawned - thread_pool.waiting
+
+    assert busy_threads.zero?, "Our connection is wasn't dropped"
+  end
 end unless DISABLE_SSL
 
 # client-side TLS authentication tests
