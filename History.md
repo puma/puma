@@ -10,7 +10,7 @@
 * Bugfixes
   * Your bugfix goes here (#Github Number)
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
-  * Preserve `BUNDLE_GEMFILE` env var on restart (#1893)
+  * Preserve `BUNDLE_GEMFILE` env var when using `prune_bundler` (#1893)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
