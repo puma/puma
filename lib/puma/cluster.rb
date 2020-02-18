@@ -25,9 +25,8 @@ module Puma
 
       @phase = 0
       @workers = []
-      @next_check = nil
+      @next_check = Time.now
 
-      @phased_state = :idle
       @phased_restart = false
     end
 
@@ -98,8 +97,12 @@ module Puma
         @last_status = JSON.parse(status, symbolize_names: true)
       end
 
-      def ping_timeout?(which)
-        Time.now - @last_checkin > which
+      def ping_timeout
+        @last_checkin +
+          (booted? ?
+            @options[:worker_timeout] :
+            @options[:worker_boot_timeout]
+          )
       end
 
       def term
@@ -116,8 +119,8 @@ module Puma
       end
 
       def kill
-        Process.kill "KILL", @pid
-      rescue Errno::ESRCH
+        @signal = 'KILL'
+        term
       end
 
       def hup
@@ -148,10 +151,6 @@ module Puma
 
         @launcher.config.run_hooks :after_worker_fork, idx, @launcher.events
       end
-
-      if diff > 0
-        @phased_state = :idle
-      end
     end
 
     def cull_workers
@@ -180,26 +179,12 @@ module Puma
       @workers.count { |w| !w.booted? } == 0
     end
 
-    def check_workers(force=false)
-      return if !force && @next_check && @next_check >= Time.now
+    def check_workers
+      return if @next_check >= Time.now
 
       @next_check = Time.now + Const::WORKER_CHECK_INTERVAL
 
-      any = false
-
-      @workers.each do |w|
-        next if !w.booted? && !w.ping_timeout?(@options[:worker_boot_timeout])
-        if w.ping_timeout?(@options[:worker_timeout])
-          log "! Terminating timed out worker: #{w.pid}"
-          w.kill
-          any = true
-        end
-      end
-
-      # If we killed any timed out workers, try to catch them
-      # during this loop by giving the kernel time to kill them.
-      sleep 1 if any
-
+      timeout_workers
       wait_workers
       cull_workers
       spawn_workers
@@ -212,21 +197,23 @@ module Puma
         w = @workers.find { |x| x.phase != @phase }
 
         if w
-          if @phased_state == :idle
-            @phased_state = :waiting
-            log "- Stopping #{w.pid} for phased upgrade..."
-          end
-
+          log "- Stopping #{w.pid} for phased upgrade..."
           unless w.term?
             w.term
             log "- #{w.signal} sent to #{w.pid}..."
           end
         end
       end
+
+      @next_check = [
+        @workers.reject(&:term?).map(&:ping_timeout).min,
+        @next_check
+      ].compact.min
     end
 
     def wakeup!
       return unless @wakeup
+      @next_check = Time.now
 
       begin
         @wakeup.write "!" unless @wakeup.closed?
@@ -483,8 +470,6 @@ module Puma
       @launcher.events.fire_on_booted!
 
       begin
-        force_check = false
-
         while @status == :run
           begin
             if @phased_restart
@@ -492,11 +477,9 @@ module Puma
               @phased_restart = false
             end
 
-            check_workers force_check
+            check_workers
 
-            force_check = false
-
-            res = IO.select([read], nil, nil, Const::WORKER_CHECK_INTERVAL)
+            res = IO.select([read], nil, nil, [0, @next_check - Time.now].max)
 
             if res
               req = read.read_nonblock(1)
@@ -511,13 +494,12 @@ module Puma
                 when "b"
                   w.boot!
                   log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
-                  force_check = true
+                  @next_check = Time.now
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
                   w.instance_variable_set :@term, true
                 when "t"
                   w.term unless w.term?
-                  force_check = true
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
                 end
@@ -555,6 +537,15 @@ module Puma
           end
         rescue Errno::ECHILD
           true # child is already terminated
+        end
+      end
+    end
+
+    def timeout_workers
+      @workers.each do |w|
+        if !w.term? && w.ping_timeout <= Time.now
+          log "! Terminating timed out worker: #{w.pid}"
+          w.kill
         end
       end
     end

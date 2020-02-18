@@ -54,12 +54,13 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_phased_restart_cluster
     skip NO_FORK_MSG unless HAS_FORK
+    start = Time.now
 
     cli_server "-q -w #{WORKERS} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
 
     s = UNIXSocket.new @bind_path
     @ios_to_close << s
-    s << "GET /sleep5 HTTP/1.0\r\n\r\n"
+    s << "GET /sleep1 HTTP/1.0\r\n\r\n"
 
     # Get the PIDs of the phase 0 workers.
     phase0_worker_pids = get_worker_pids 0
@@ -82,7 +83,7 @@ class TestIntegrationPumactl < TestIntegration
 
     _, status = Process.wait2(@pid)
     assert_equal 0, status
-
+    assert_operator Time.now - start, :<, 5
     @server = nil
   end
 

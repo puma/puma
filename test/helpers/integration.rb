@@ -126,8 +126,6 @@ class TestIntegration < Minitest::Test
     while pids.size < size
       if pid = @server.gets[re, 1]
         pids << pid
-      else
-        sleep 2
       end
     end
     pids.map(&:to_i)
