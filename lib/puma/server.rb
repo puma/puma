@@ -949,5 +949,10 @@ module Puma
       HTTP_INJECTION_REGEX =~ header_value.to_s
     end
     private :possible_header_injection?
+
+    def stats
+      stat_names = %i(backlog running pool_capacity max_threads requests_count)
+      stat_names.map {|name| [name, send(name) || 0]}.to_h
+    end
   end
 end
