@@ -133,7 +133,43 @@ class TestIntegrationCluster < TestIntegration
     worker_respawn { |phase0_worker_pids| Process.kill :USR1, @pid }
   end
 
+  def test_worker_boot_timeout
+    timeout = 1
+    worker_timeout(timeout, 2, "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
+  end
+
+  def test_worker_timeout
+    skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
+    timeout = Puma::Const::WORKER_CHECK_INTERVAL + 1
+    worker_timeout(timeout, 1, <<RUBY)
+worker_timeout #{timeout}
+on_worker_boot do
+  Thread.new do
+    sleep 1
+    Thread.list.find {|t| t.name == 'puma stat payload'}.kill
+  end
+end
+RUBY
+  end
+
   private
+
+  def worker_timeout(timeout, iterations, config)
+    config_file = Tempfile.new(%w(worker_timeout .rb))
+    config_file.write config
+    config_file.close
+    cli_server "-w #{WORKERS} -t 1:1 -C #{config_file.path} test/rackup/hello.ru"
+
+    pids = []
+    Timeout.timeout(iterations * timeout + 1) do
+      while pids.size < WORKERS * iterations
+        (pids << @server.gets[/Terminating timed out worker: (\d+)/, 1]).compact!
+      end
+      pids.map!(&:to_i)
+    end
+
+    assert_equal pids, pids.uniq
+  end
 
   # Send requests 10 per second.  Send 10, then :TERM server, then send another 30.
   # No more than 10 should throw Errno::ECONNRESET.
