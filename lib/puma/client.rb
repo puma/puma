@@ -273,6 +273,17 @@ module Puma
       @peerip ||= @io.peeraddr.last
     end
 
+    # Returns true if the connection is idle and may be closed.
+    #
+    # From RFC 2616 section 8.1.4:
+    # Servers SHOULD always respond to at least one request per connection,
+    # if at all possible. Servers SHOULD NOT close a connection in the
+    # middle of transmitting a response, unless a network or client failure
+    # is suspected.
+    def idle?
+      @requests_served > 0 && !in_data_phase
+    end
+
     private
 
     def setup_body

@@ -767,4 +767,23 @@ EOF
     @server = Puma::Server.new @app, @events, queue_requests: false
     test_open_connection_wait
   end
+
+  def test_shutdown_queued_request
+    server_run app: ->(env) {
+      sleep 3
+      [204, {}, []]
+    }
+
+    s1 = send_http "GET / HTTP/1.1\r\n\r\n"
+    s2 = send_http "GET / HTTP/1.1\r\n"
+    sleep 1
+
+    @server.stop
+    sleep 1
+
+    s2 << "\r\n"
+
+    assert_match /204/, s1.gets
+    assert_match /204/, s2.gets
+  end
 end
