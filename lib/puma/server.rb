@@ -308,7 +308,7 @@ module Puma
           if queue_requests
             process_now = client.eagerly_finish
           else
-            client.finish
+            client.finish(@first_data_timeout)
             process_now = true
           end
         rescue MiniSSL::SSLError => e
