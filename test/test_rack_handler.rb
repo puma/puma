@@ -226,4 +226,33 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
       end
     end
   end
+
+  def test_file_log_requests_wins_over_default_config
+    file_log_requests_config = true
+
+    @options[:config_files] = [
+      'test/shell/t1_conf.rb'
+    ]
+
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal file_log_requests_config, conf.options[:log_requests]
+  end
+
+
+  def test_user_log_requests_wins_over_file_config
+    file_log_requests_config = true
+    user_log_requests_config = false
+
+    @options[:log_requests] = user_log_requests_config
+    @options[:config_files] = [
+      'test/shell/t1_conf.rb'
+    ]
+
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal user_log_requests_config, conf.options[:log_requests]
+  end
 end

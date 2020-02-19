@@ -3,6 +3,7 @@
 * Features
   * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
+  * Do not set user_config to quiet by default to allow for file config (#2074)
   * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `GC.compact` is called before fork if available (#2093)
   * Add `requests_count` to workers stats. (#2106)
