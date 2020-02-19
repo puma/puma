@@ -185,8 +185,6 @@ module Puma
 
       @status = :run
 
-      queue_requests = @queue_requests
-
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
                                     ::Puma::IOBuffer) do |client, buffer|
@@ -197,7 +195,7 @@ module Puma
         process_now = false
 
         begin
-          if queue_requests
+          if @queue_requests
             process_now = client.eagerly_finish
           else
             client.finish(@first_data_timeout)
@@ -230,7 +228,7 @@ module Puma
 
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
-      if queue_requests
+      if @queue_requests
         @reactor = Reactor.new self, @thread_pool
         @reactor.run_in_thread
       end
@@ -314,11 +312,12 @@ module Puma
 
         @events.fire :state, @status
 
-        graceful_shutdown if @status == :stop || @status == :restart
         if queue_requests
+          @queue_requests = false
           @reactor.clear!
           @reactor.shutdown
         end
+        graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
         STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
@@ -388,6 +387,7 @@ module Puma
             end
 
             unless client.reset(check_for_more_data)
+              return unless @queue_requests
               close_socket = false
               client.set_timeout @persistent_timeout
               @reactor.add client

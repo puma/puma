@@ -881,6 +881,24 @@ EOF
       app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
+
+  def test_shutdown_queued_request
+    server_run app: ->(env) {
+      sleep 3
+      [204, {}, []]
+    }
+
+    s1 = send_http "GET / HTTP/1.1\r\n\r\n"
+    s2 = send_http "GET / HTTP/1.1\r\n"
+    sleep 1
+
+    @server.stop
+    sleep 1
+
+    s2 << "\r\n"
+
+    assert_match /204/, s1.gets
+    assert_match /204/, s2.gets
   end
 
   def test_http11_connection_header_queue
