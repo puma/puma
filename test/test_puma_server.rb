@@ -336,6 +336,11 @@ EOF
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
   end
 
+  def test_timeout_data_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_timeout_in_data_phase
+  end
+
   def test_http_11_keep_alive_with_body
     server_run app: ->(env) { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
