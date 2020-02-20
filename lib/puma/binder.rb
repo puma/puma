@@ -86,7 +86,7 @@ module Puma
       end
     end
 
-    def parse(binds, logger)
+    def parse(binds, logger, log_msg = 'Listening')
       binds.each do |str|
         uri = URI.parse str
         case uri.scheme
@@ -113,7 +113,7 @@ module Puma
                 i.local_address.ip_unpack.join(':')
               end
 
-              logger.log "* Listening on tcp://#{addr}"
+              logger.log "* #{log_msg} on tcp://#{addr}"
             end
           end
 
@@ -149,7 +149,7 @@ module Puma
             end
 
             io = add_unix_listener path, umask, mode, backlog
-            logger.log "* Listening on #{str}"
+            logger.log "* #{log_msg} on #{str}"
           end
 
           @listeners << [str, io]
