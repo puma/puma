@@ -153,7 +153,7 @@ module Puma
 
       begin
         data = @io.read_nonblock(CHUNK_SIZE)
-      rescue Errno::EAGAIN
+      rescue IO::WaitReadable
         return false
       rescue SystemCallError, IOError, EOFError
         raise ConnectionError, "Connection error detected during read"
@@ -349,7 +349,7 @@ module Puma
 
       begin
         chunk = @io.read_nonblock(want)
-      rescue Errno::EAGAIN
+      rescue IO::WaitReadable
         return false
       rescue SystemCallError, IOError
         raise ConnectionError, "Connection error detected during read"
