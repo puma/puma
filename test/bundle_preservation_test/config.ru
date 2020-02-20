@@ -1,1 +1,11 @@
-run lambda { |env| [200, {'Content-Type'=>'text/plain'}, [ENV['BUNDLE_GEMFILE'].inspect]] }
+run(
+  lambda do |env|
+    [
+      200,
+      {'Content-Type'=>'text/plain'},
+      [
+        [ENV['BUNDLE_GEMFILE'], ENV['GEM_HOME']].inspect
+      ]
+    ]
+  end
+)

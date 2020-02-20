@@ -12,9 +12,12 @@ class TestPreserveBundlerEnv < TestIntegration
     skip_unless_signal_exist? :USR2
 
     @tcp_port = UniquePort.call
+    gem_home = "/home/bundle_env_preservation_test"
+    bundle_gemfile = "Gemfile.bundle_env_preservation_test"
     env = {
+      "GEM_HOME" => gem_home,
       # Intentionally set this to something we wish to keep intact on restarts
-      "BUNDLE_GEMFILE" => "Gemfile.bundle_env_preservation_test",
+      "BUNDLE_GEMFILE" => bundle_gemfile,
       # Don't allow our (rake test's) original env to interfere with the child process
       "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil
     }
@@ -27,9 +30,11 @@ class TestPreserveBundlerEnv < TestIntegration
     @pid = @server.pid
     connection = connect
     initial_reply = read_body(connection)
-    assert_match("Gemfile.bundle_env_preservation_test", initial_reply)
+    refute_match(bundle_gemfile, initial_reply)
+    assert_match(gem_home, initial_reply)
     restart_server connection
     new_reply = read_body(connection)
-    assert_match("Gemfile.bundle_env_preservation_test", new_reply)
+    refute_match(bundle_gemfile, new_reply)
+    assert_match(gem_home, initial_reply)
   end
 end

@@ -297,11 +297,9 @@ module Puma
       deps, dirs = dependencies_and_files_to_require_after_prune
 
       log '* Pruning Bundler environment'
-      home = ENV['GEM_HOME']
-      bundle_gemfile = ENV['BUNDLE_GEMFILE']
-      Bundler.with_clean_env do
-        ENV['GEM_HOME'] = home
-        ENV['BUNDLE_GEMFILE'] = bundle_gemfile
+      gem_home = ENV['GEM_HOME']
+      Bundler.with_unbundled_env do
+        ENV['GEM_HOME'] = gem_home
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
         args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':'), deps.join(',')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation

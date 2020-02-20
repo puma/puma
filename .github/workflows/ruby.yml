@@ -40,8 +40,11 @@ jobs:
         run:  |
           gem update --system 2.7.10 --no-document
 
+      - name: Update Bundler
+        run: gem install bundler
+
       - name: bundle install
-        run:  bundle install --jobs 4 --retry 3 --path=.bundle/puma
+        run:  bundle install --jobs 4 --retry 3
       - name: compile
         run:  bundle exec rake compile
 
@@ -87,7 +90,7 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
 
       - name: bundle install
-        run:  bundle install --jobs 4 --retry 3 --path=.bundle/puma
+        run:  bundle install --jobs 4 --retry 3
 
       - name: compile
         if:   matrix.ruby >= '2.4'
