@@ -754,4 +754,17 @@ EOF
     # it is set to a reasonable number.
     assert_operator request_body_wait, :>=, 900
   end
+
+  def test_open_connection_wait
+    server_run app: ->(_) { [200, {}, ["Hello"]] }
+    s = send_http nil
+    sleep 0.1
+    s << "GET / HTTP/1.0\r\n\r\n"
+    assert_equal 'Hello', s.readlines.last
+  end
+
+  def test_open_connection_wait_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_open_connection_wait
+  end
 end
