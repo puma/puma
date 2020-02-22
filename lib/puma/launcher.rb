@@ -260,11 +260,7 @@ module Puma
     def dependencies_and_files_to_require_after_prune
       puma = spec_for_gem("puma")
 
-      deps = puma.runtime_dependencies.map do |d|
-        "#{d.name}:#{spec_for_gem(d.name).version}"
-      end
-
-      [deps, require_paths_for_gem(puma) + extra_runtime_deps_directories]
+      [[], require_paths_for_gem(puma) + extra_runtime_deps_directories]
     end
 
     def extra_runtime_deps_directories
