@@ -166,6 +166,8 @@ module Puma
     end
 
     def start_server
+      require 'puma/server'
+
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
 
