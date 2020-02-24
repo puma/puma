@@ -36,7 +36,7 @@ jobs:
           fi
 
       - name: bundle install
-        run:  bundle install --jobs 4 --retry 3
+        run:  bundle install --jobs 4 --retry 3 --path=.bundle/puma
       - name: compile
         run:  bundle exec rake compile
 
@@ -82,7 +82,7 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
 
       - name: bundle install
-        run:  bundle install --jobs 4 --retry 3
+        run:  bundle install --jobs 4 --retry 3 --path=.bundle/puma
 
       - name: compile
         if:   matrix.ruby >= '2.4'
