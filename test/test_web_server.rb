@@ -41,7 +41,7 @@ class WebServerTest < Minitest::Test
   def test_requests_count
     assert_equal @server.requests_count, 0
     3.times do
-      hit(["http://127.0.0.1:#{@server.connected_port}/test"])
+      hit(["http://127.0.0.1:#{@server.connected_ports[0]}/test"])
     end
     assert_equal @server.requests_count, 3
   end
