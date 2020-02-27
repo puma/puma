@@ -19,6 +19,7 @@
   * Remove unused loader argument from Plugin initializer (#2095)
   * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
   * Simplify `Runner#start_control` URL parsing (#2111)
+  * Removed the IOBuffer extension and replaced with Ruby (#1980)
 
 ## 4.3.2 and 3.12.3 / 2020-02-27
 
