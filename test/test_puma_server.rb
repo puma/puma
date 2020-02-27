@@ -27,6 +27,13 @@ class TestPumaServer < Minitest::Test
     header
   end
 
+  def send_http_and_read(req)
+    port = @server.connected_port
+    sock = TCPSocket.new @host, port
+    sock << req
+    sock.read
+  end
+
   def test_proper_stringio_body
     data = nil
 
@@ -743,19 +750,28 @@ EOF
 
   # https://github.com/ruby/ruby/commit/d9d4a28f1cdd05a0e8dabb36d747d40bbcc30f16
   def test_prevent_response_splitting_headers
-    server_run app: ->(_) { [200, {'X-header' => "malicious\r\nCookie: hack"}, ["Hello"]] }
+    @server.app = ->(_) { [200, {'X-header' => "malicious\r\nCookie: hack"}, ["Hello"]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
     refute_match 'hack', data
   end
 
   def test_prevent_response_splitting_headers_cr
-    server_run app: ->(_) { [200, {'X-header' => "malicious\rCookie: hack"}, ["Hello"]] }
+    @server.app = ->(_) { [200, {'X-header' => "malicious\rCookie: hack"}, ["Hello"]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
     refute_match 'hack', data
   end
 
   def test_prevent_response_splitting_headers_lf
-    server_run app: ->(_) { [200, {'X-header' => "malicious\nCookie: hack"}, ["Hello"]] }
+    @server.app = ->(_) { [200, {'X-header' => "malicious\nCookie: hack"}, ["Hello"]] }
+
+    @server.add_tcp_listener @host, @port
+    @server.run
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
     refute_match 'hack', data
   end
