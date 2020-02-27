@@ -187,9 +187,9 @@ module Puma
       @binder.close_unix_paths
     end
 
-    # Return which tcp port the launcher is using, if it's using TCP
-    def connected_port
-      @binder.connected_port
+    # Return all tcp ports the launcher may be using, TCP or SSL
+    def connected_ports
+      @binder.connected_ports
     end
 
     def restart_args

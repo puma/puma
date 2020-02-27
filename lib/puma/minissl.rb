@@ -270,6 +270,10 @@ module Puma
         Socket.new io, engine
       end
 
+      def addr
+        @socket.addr
+      end
+
       def close
         @socket.close unless @socket.closed?       # closed? call is for Windows
       end

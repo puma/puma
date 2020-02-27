@@ -39,14 +39,16 @@ class TestPumaServer < Minitest::Test
   end
 
   def send_http_and_read(req)
-    sock = TCPSocket.new @host, @server.connected_port
+    port = @server.connected_ports[0]
+    sock = TCPSocket.new @host, port
     @ios << sock
     sock << req
     sock.read
   end
 
   def send_http(req)
-    sock = TCPSocket.new @host, @server.connected_port
+    port = @server.connected_ports[0]
+    sock = TCPSocket.new @host, port
     @ios << sock
     sock << req
     sock
@@ -137,7 +139,8 @@ class TestPumaServer < Minitest::Test
     req = Net::HTTP::Get.new '/'
     req['HOST'] = 'example.com'
 
-    res = Net::HTTP.start @host, @server.connected_port do |http|
+    port = @server.connected_ports[0]
+    res = Net::HTTP.start @host, port do |http|
       http.request(req)
     end
 
@@ -153,7 +156,8 @@ class TestPumaServer < Minitest::Test
     req['HOST'] = "example.com"
     req['X_FORWARDED_PROTO'] = "https,http"
 
-    res = Net::HTTP.start @host, @server.connected_port do |http|
+    port = @server.connected_ports[0]
+    res = Net::HTTP.start @host, port do |http|
       http.request(req)
     end
 
@@ -745,7 +749,7 @@ EOF
     }
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
-    sleep 1
+    sleep 3
     sock << "4\r\nello\r\n0\r\n\r\n"
 
     sock.gets

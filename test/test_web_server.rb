@@ -34,7 +34,7 @@ class WebServerTest < Minitest::Test
   end
 
   def test_simple_server
-    hit(["http://127.0.0.1:#{@server.connected_port}/test"])
+    hit(["http://127.0.0.1:#{@server.connected_ports[0]}/test"])
     assert @tester.ran_test, "Handler didn't really run"
   end
 
@@ -83,7 +83,7 @@ class WebServerTest < Minitest::Test
 
   def do_test(string, chunk)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @server.connected_port);
+    socket = TCPSocket.new("127.0.0.1", @server.connected_ports[0]);
     request = StringIO.new(string)
     chunks_out = 0
 
@@ -96,7 +96,7 @@ class WebServerTest < Minitest::Test
 
   def do_test_raise(string, chunk, close_after = nil)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @server.connected_port);
+    socket = TCPSocket.new("127.0.0.1", @server.connected_ports[0]);
     request = StringIO.new(string)
     chunks_out = 0
 
