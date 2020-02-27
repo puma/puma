@@ -68,7 +68,7 @@ configure { set :server, :puma }
 Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
 
 You can also find several configuration examples as part of the
-[test](test/config) suite.
+[test](https://github.com/puma/puma/tree/master/test/config) suite.
 
 ### Thread Pool
 
@@ -220,13 +220,15 @@ You can also provide a configuration file with the `-C` (or `--config`) flag:
 $ puma -C /path/to/config
 ```
 
-If no configuration file is specified, Puma will look for a configuration file at `config/puma.rb`. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` environment variable, Puma looks for configuration at `config/puma/<environment_name>.rb`.
+If no configuration file is specified, Puma will look for a configuration file at `config/puma.rb`. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` or the `RAILS_ENV` environment variables, Puma looks for configuration at `config/puma/<environment_name>.rb`.
 
 If you want to prevent Puma from looking for a configuration file in those locations, provide a dash as the argument to the `-C` (or `--config`) flag:
 
 ```
 $ puma -C "-"
 ```
+
+The other side-effects of setting the environment are whether to show stack traces (in `development` or `test`), and setting RACK_ENV may potentially affect middleware looking for this value to change their behavior. The default puma RACK_ENV value is `development`. You can see all config default values [here](https://github.com/puma/puma/blob/12d1706ddc71b89ed2ee26275e31c788e94ff541/lib/puma/configuration.rb#L170).
 
 Check out [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
 
@@ -271,41 +273,24 @@ reliability in production environments:
 * [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
 * [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
-## Community Plugins
+## Community Extensions
 
-* [puma-heroku](https://github.com/evanphx/puma-heroku) — default Puma configuration for running on Heroku
+### Plugins
+
+* [puma-heroku](https://github.com/puma/puma-heroku) — default Puma configuration for running on Heroku
 * [puma-metrics](https://github.com/harmjanblok/puma-metrics) — export Puma metrics to Prometheus
 * [puma-plugin-statsd](https://github.com/yob/puma-plugin-statsd) — send Puma metrics to statsd
 * [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog
 
+### Monitoring
+
+* [puma-status](https://github.com/ylecuyer/puma-status) — Monitor CPU/Mem/Load of running puma instances from the CLI
+
 ## Contributing
 
-To run the test suite:
+Find details for contributing in the [contribution guide].
 
-```bash
-$ bundle install
-$ bundle exec rake
-```
-
-To run a single test file, run only that file:
-
-```bash
-$ ruby -Ilib test/test_integration.rb
-```
-
-Or use [`m`](https://github.com/qrush/m):
-
-```
-$ bundle exec m test/test_binder.rb
-```
-
-Which can also be used to run a single test case:
-
-```
-$ bundle exec m test/test_binder.rb:37
-```
-
-If you open a pull request with a change that doesn't need to be noted in the changelog ([`History.md`](History.md)), add the text `[changelog skip]` to the pull request title to skip [the changelog check](https://github.com/puma/puma/pull/1991).
+[contribution guide]: https://github.com/puma/puma/blob/master/CONTRIBUTING.md
 
 ## License
 

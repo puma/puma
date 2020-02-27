@@ -10,7 +10,7 @@ module Puma
 
     def create(name)
       if cls = Plugins.find(name)
-        plugin = cls.new(Plugin)
+        plugin = cls.new
         @instances << plugin
         return plugin
       end
@@ -102,10 +102,6 @@ module Puma
       cls.class_eval(&blk)
 
       Plugins.register name, cls
-    end
-
-    def initialize(loader)
-      @loader = loader
     end
 
     def in_background(&blk)

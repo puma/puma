@@ -1,12 +1,48 @@
 ## Master
 
 * Features
+  * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
+  * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
+  * Do not set user_config to quiet by default to allow for file config (#2074)
+  * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
+  * `GC.compact` is called before fork if available (#2093)
+  * Add `requests_count` to workers stats. (#2106)
+  * Changed #connected_port to #connected_ports (#2076)
+
+* Bugfixes
+  * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
+  * Preserve `BUNDLE_GEMFILE` env var when using `prune_bundler` (#1893)
+  * Send 408 request timeout even when queue requests is disabled (#2119)
+  * Rescue IO::WaitReadable instead of EAGAIN for blocking read (#2121)
+
+* Refactor
+  * Remove unused loader argument from Plugin initializer (#2095)
+  * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
+  * Simplify `Runner#start_control` URL parsing (#2111)
+  * Removed the IOBuffer extension and replaced with Ruby (#1980)
+
+## 4.3.2 and 3.12.3 / 2020-02-27
+
+* Security
+  * Fix: Prevent HTTP Response splitting via CR/LF in header values. CVE-2020-5247.
+
+## 4.3.1 and 3.12.2 / 2019-12-05
+
+* Security
+  * Fix: a poorly-behaved client could use keepalive requests to monopolize Puma's reactor and create a denial of service attack. CVE-2019-16770.
+
+## 4.3.0 / 2019-11-07
+
+* Features
   * Strip whitespace at end of HTTP headers (#2010)
   * Optimize HTTP parser for JRuby (#2012)
-  * Removed the IOBuffer extension and replaced with Ruby (#1980)
+  * Add SSL support for the control app and cli (#2046, #2052)
 
 * Bugfixes
   * Fix Errno::EINVAL when SSL is enabled and browser rejects cert (#1564)
+  * Fix pumactl defaulting puma to development if an environment was not specified (#2035)
+  * Fix closing file stream when reading pid from pidfile (#2048)
+  * Fix a typo in configuration option `--extra_runtime_dependencies` (#2050)
 
 ## 4.2.1 / 2019-10-07
 

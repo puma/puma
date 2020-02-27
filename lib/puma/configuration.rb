@@ -182,7 +182,7 @@ module Puma
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
         :remote_address => :socket,
         :tag => method(:infer_tag),
-        :environment => -> { ENV['RACK_ENV'] || "development" },
+        :environment => -> { ENV['RACK_ENV'] || ENV['RAILS_ENV'] || "development" },
         :rackup => DefaultRackup,
         :logger => STDOUT,
         :persistent_timeout => Const::PERSISTENT_TIMEOUT,
@@ -332,29 +332,9 @@ module Puma
     end
 
     def self.random_token
-      begin
-        require 'openssl'
-      rescue LoadError
-      end
+      require 'securerandom' unless defined?(SecureRandom)
 
-      count = 16
-
-      bytes = nil
-
-      if defined? OpenSSL::Random
-        bytes = OpenSSL::Random.random_bytes(count)
-      elsif File.exist?("/dev/urandom")
-        File.open('/dev/urandom') { |f| bytes = f.read(count) }
-      end
-
-      if bytes
-        token = "".dup
-        bytes.each_byte { |b| token << b.to_s(16) }
-      else
-        token = (0..count).to_a.map { rand(255).to_s(16) }.join
-      end
-
-      return token
+      SecureRandom.hex(16)
     end
   end
 end

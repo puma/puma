@@ -19,7 +19,7 @@ end
 class WebServerTest < Minitest::Test
   parallelize_me!
 
-  VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\n\r\n"
+  VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
 
   def setup
     @tester = TestHandler.new
@@ -34,8 +34,16 @@ class WebServerTest < Minitest::Test
   end
 
   def test_simple_server
-    hit(["http://127.0.0.1:#{@server.connected_port}/test"])
+    hit(["http://127.0.0.1:#{@server.connected_ports[0]}/test"])
     assert @tester.ran_test, "Handler didn't really run"
+  end
+
+  def test_requests_count
+    assert_equal @server.requests_count, 0
+    3.times do
+      hit(["http://127.0.0.1:#{@server.connected_ports[0]}/test"])
+    end
+    assert_equal @server.requests_count, 3
   end
 
   def test_trickle_attack
@@ -63,10 +71,9 @@ class WebServerTest < Minitest::Test
     end
   end
 
-  # TODO: Why does this test take exactly 20 seconds?
   def test_file_streamed_request
     body = "a" * (Puma::Const::MAX_BODY * 2)
-    long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\n\r\n" + body
+    long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\nConnection: close\r\n\r\n" + body
     socket = do_test(long, (Puma::Const::CHUNK_SIZE * 2) - 400)
     assert_match "hello", socket.read
     socket.close
@@ -76,7 +83,7 @@ class WebServerTest < Minitest::Test
 
   def do_test(string, chunk)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @server.connected_port);
+    socket = TCPSocket.new("127.0.0.1", @server.connected_ports[0]);
     request = StringIO.new(string)
     chunks_out = 0
 
@@ -89,7 +96,7 @@ class WebServerTest < Minitest::Test
 
   def do_test_raise(string, chunk, close_after = nil)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @server.connected_port);
+    socket = TCPSocket.new("127.0.0.1", @server.connected_ports[0]);
     request = StringIO.new(string)
     chunks_out = 0
 

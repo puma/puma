@@ -30,32 +30,29 @@ matrix:
   include:
     - rvm: 2.2.10
       dist: trusty
-      env: OS="Trusty 14.04 OpenSSL 1.0.1"
-    - rvm: 2.6.4
-      dist: xenial
-      env: OS="Xenial 16.04 OpenSSL 1.0.2"
-    - rvm: 2.6.4
-      os: osx
-      osx_image: xcode11
-      env: OS="OSX xcode11 OpenSSL 1.1.1"
-    - rvm: jruby-9.2.8.0
+      env:
+        - OS="Trusty 14.04 OpenSSL 1.0.1"
+        - RUBYOPT=""
+    - rvm: jruby-9.2.9.0
       env:
         - JRUBY_OPTS="--debug"
         - JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: jruby-head
+      env:
+        - JRUBY_OPTS="--debug"
+        - JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
     - rvm: ruby-head
     - rvm: ruby-head
       env: jit=yes
+    - rvm: truffleruby
 
   allow_failures:
-    - rvm: jruby-9.2.8.0
-      env:
-        - JRUBY_OPTS="--debug"
-        - JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
+    - rvm: jruby-9.2.9.0
     - rvm: jruby-head
     - rvm: ruby-head
     - rvm: ruby-head
       env: jit=yes
+    - rvm: truffleruby
 
 env:
   global:

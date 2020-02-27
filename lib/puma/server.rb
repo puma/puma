@@ -37,6 +37,7 @@ module Puma
 
     attr_reader :thread
     attr_reader :events
+    attr_reader :requests_count
     attr_accessor :app
 
     attr_accessor :min_threads
@@ -86,11 +87,13 @@ module Puma
       @mode = :http
 
       @precheck_closing = true
+
+      @requests_count = 0
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
 
-    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_port
+    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_ports
 
     def inherit_binder(bind)
       @binder = bind
@@ -306,7 +309,7 @@ module Puma
           if queue_requests
             process_now = client.eagerly_finish
           else
-            client.finish
+            client.finish(@first_data_timeout)
             process_now = true
           end
         rescue MiniSSL::SSLError => e
@@ -467,6 +470,8 @@ module Puma
         clean_thread_locals = @options[:clean_thread_locals]
         close_socket = true
 
+        requests = 0
+
         while true
           case handle_request(client, buffer)
           when false
@@ -480,7 +485,19 @@ module Puma
 
             ThreadPool.clean_thread_locals if clean_thread_locals
 
-            unless client.reset(@status == :run)
+            requests += 1
+
+            check_for_more_data = @status == :run
+
+            if requests >= MAX_FAST_INLINE
+              # This will mean that reset will only try to use the data it already
+              # has buffered and won't try to read more data. What this means is that
+              # every client, independent of their request speed, gets treated like a slow
+              # one once every MAX_FAST_INLINE requests.
+              check_for_more_data = false
+            end
+
+            unless client.reset(check_for_more_data)
               close_socket = false
               client.set_timeout @persistent_timeout
               @reactor.add client
@@ -613,6 +630,8 @@ module Puma
     #
     # Finally, it'll return +true+ on keep-alive connections.
     def handle_request(req, lines)
+      @requests_count +=1
+
       env = req.env
       client = req.io
 
@@ -668,6 +687,8 @@ module Puma
           status, headers, res_body = @app.call(env)
 
           return :async if req.hijacked
+          # Checking to see if an attacker is trying to inject headers into the response
+          headers.reject! { |_k, v| CRLF_REGEX =~ v.to_s }
 
           status = status.to_i
 

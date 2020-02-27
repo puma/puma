@@ -39,14 +39,16 @@ class TestPumaServer < Minitest::Test
   end
 
   def send_http_and_read(req)
-    sock = TCPSocket.new @host, @server.connected_port
+    port = @server.connected_ports[0]
+    sock = TCPSocket.new @host, port
     @ios << sock
     sock << req
     sock.read
   end
 
   def send_http(req)
-    sock = TCPSocket.new @host, @server.connected_port
+    port = @server.connected_ports[0]
+    sock = TCPSocket.new @host, port
     @ios << sock
     sock << req
     sock
@@ -137,7 +139,8 @@ class TestPumaServer < Minitest::Test
     req = Net::HTTP::Get.new '/'
     req['HOST'] = 'example.com'
 
-    res = Net::HTTP.start @host, @server.connected_port do |http|
+    port = @server.connected_ports[0]
+    res = Net::HTTP.start @host, port do |http|
       http.request(req)
     end
 
@@ -153,7 +156,8 @@ class TestPumaServer < Minitest::Test
     req['HOST'] = "example.com"
     req['X_FORWARDED_PROTO'] = "https,http"
 
-    res = Net::HTTP.start @host, @server.connected_port do |http|
+    port = @server.connected_ports[0]
+    res = Net::HTTP.start @host, port do |http|
       http.request(req)
     end
 
@@ -334,6 +338,11 @@ EOF
     data = sock.gets
 
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
+  end
+
+  def test_timeout_data_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_timeout_in_data_phase
   end
 
   def test_http_11_keep_alive_with_body
@@ -727,7 +736,9 @@ EOF
 
     sock.gets
 
-    assert_operator request_body_wait, :>=, 1000
+    # Could be 1000 but the tests get flaky. We don't care if it's extremely precise so much as that
+    # it is set to a reasonable number.
+    assert_operator request_body_wait, :>=, 900
   end
 
   def test_request_body_wait_chunked
@@ -738,11 +749,45 @@ EOF
     }
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
-    sleep 1
+    sleep 3
     sock << "4\r\nello\r\n0\r\n\r\n"
 
     sock.gets
 
-    assert_operator request_body_wait, :>=, 1000
+    # Could be 1000 but the tests get flaky. We don't care if it's extremely precise so much as that
+    # it is set to a reasonable number.
+    assert_operator request_body_wait, :>=, 900
+  end
+
+  def test_open_connection_wait
+    server_run app: ->(_) { [200, {}, ["Hello"]] }
+    s = send_http nil
+    sleep 0.1
+    s << "GET / HTTP/1.0\r\n\r\n"
+    assert_equal 'Hello', s.readlines.last
+  end
+
+  def test_open_connection_wait_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_open_connection_wait
+  end
+
+  # https://github.com/ruby/ruby/commit/d9d4a28f1cdd05a0e8dabb36d747d40bbcc30f16
+  def test_prevent_response_splitting_headers
+    server_run app: ->(_) { [200, {'X-header' => "malicious\r\nCookie: hack"}, ["Hello"]] }
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    refute_match 'hack', data
+  end
+
+  def test_prevent_response_splitting_headers_cr
+    server_run app: ->(_) { [200, {'X-header' => "malicious\rCookie: hack"}, ["Hello"]] }
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    refute_match 'hack', data
+  end
+
+  def test_prevent_response_splitting_headers_lf
+    server_run app: ->(_) { [200, {'X-header' => "malicious\nCookie: hack"}, ["Hello"]] }
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    refute_match 'hack', data
   end
 end

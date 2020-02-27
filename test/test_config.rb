@@ -1,25 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "helper"
+require_relative "helpers/config_file"
 
 require "puma/configuration"
-
-class TestConfigFileBase < Minitest::Test
-  private
-
-  def with_env(env = {})
-    original_env = {}
-    env.each do |k, v|
-      original_env[k] = ENV[k]
-      ENV[k] = v
-    end
-    yield
-  ensure
-    original_env.each do |k, v|
-      ENV[k] = v
-    end
-  end
-end
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -239,6 +223,15 @@ class TestConfigFileWithFakeEnv < TestConfigFileBase
 
   def test_config_files_with_rack_env
     with_env('RACK_ENV' => 'fake-env') do
+      conf = Puma::Configuration.new do
+      end
+
+      assert_equal ['config/puma/fake-env.rb'], conf.config_files
+    end
+  end
+
+  def test_config_files_with_rails_env
+    with_env('RAILS_ENV' => 'fake-env', 'RACK_ENV' => nil) do
       conf = Puma::Configuration.new do
       end
 

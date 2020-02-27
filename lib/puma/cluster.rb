@@ -73,7 +73,7 @@ module Puma
         @first_term_sent = nil
         @started_at = Time.now
         @last_checkin = Time.now
-        @last_status = '{}'
+        @last_status = {}
         @term = false
       end
 
@@ -94,7 +94,11 @@ module Puma
 
       def ping!(status)
         @last_checkin = Time.now
-        @last_status = status
+        captures = status.match(/{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads": (?<max_threads>\d*), "requests_count": (?<requests_count>\d*) }/)
+        @last_status = captures.names.inject({}) do |hash, key|
+          hash[key.to_sym] = captures[key].to_i
+          hash
+        end
       end
 
       def ping_timeout?(which)
@@ -292,7 +296,8 @@ module Puma
             r = server.running || 0
             t = server.pool_capacity || 0
             m = server.max_threads || 0
-            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m} }\n!
+            rc = server.requests_count || 0
+            payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m}, "requests_count": #{rc} }\n!
             io << payload
           rescue IOError
             Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
@@ -352,9 +357,26 @@ module Puma
     # the master process.
     def stats
       old_worker_count = @workers.count { |w| w.phase != @phase }
-      booted_worker_count = @workers.count { |w| w.booted? }
-      worker_status = '[' + @workers.map { |w| %Q!{ "started_at": "#{w.started_at.utc.iso8601}", "pid": #{w.pid}, "index": #{w.index}, "phase": #{w.phase}, "booted": #{w.booted?}, "last_checkin": "#{w.last_checkin.utc.iso8601}", "last_status": #{w.last_status} }!}.join(",") + ']'
-      %Q!{ "started_at": "#{@started_at.utc.iso8601}", "workers": #{@workers.size}, "phase": #{@phase}, "booted_workers": #{booted_worker_count}, "old_workers": #{old_worker_count}, "worker_status": #{worker_status} }!
+      worker_status = @workers.map do |w|
+        {
+          started_at: w.started_at.utc.iso8601,
+          pid: w.pid,
+          index: w.index,
+          phase: w.phase,
+          booted: w.booted?,
+          last_checkin: w.last_checkin.utc.iso8601,
+          last_status: w.last_status,
+        }
+      end
+
+      {
+        started_at: @started_at.utc.iso8601,
+        workers: @workers.size,
+        phase: @phase,
+        booted_workers: worker_status.count { |w| w[:booted] },
+        old_workers: old_worker_count,
+        worker_status: worker_status,
+      }
     end
 
     def preload?
@@ -465,6 +487,7 @@ module Puma
       @master_read, @worker_write = read, @wakeup
 
       @launcher.config.run_hooks :before_fork, nil
+      GC.compact if GC.respond_to?(:compact)
 
       spawn_workers
 
