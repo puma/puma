@@ -47,11 +47,8 @@ matrix:
     - rvm: truffleruby
 
   allow_failures:
-    - rvm: jruby-9.2.9.0
+    - rvm: jruby-9.2.10.0
     - rvm: jruby-head
-    - rvm: ruby-head
-    - rvm: ruby-head
-      env: jit=yes
     - rvm: truffleruby
 
 env:
