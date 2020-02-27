@@ -1,0 +1,18 @@
+PATH
+  remote: ../..
+  specs:
+    puma (4.3.1)
+      nio4r (~> 2.0)
+
+GEM
+  specs:
+    nio4r (2.5.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  puma!
+
+BUNDLED WITH
+   1.17.3
