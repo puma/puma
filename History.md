@@ -8,7 +8,7 @@
   * `GC.compact` is called before fork if available (#2093)
   * Add `requests_count` to workers stats. (#2106)
   * Changed #connected_port to #connected_ports (#2076)
-  
+
 * Bugfixes
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
   * Preserve `BUNDLE_GEMFILE` env var when using `prune_bundler` (#1893)
@@ -19,6 +19,11 @@
   * Remove unused loader argument from Plugin initializer (#2095)
   * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
   * Simplify `Runner#start_control` URL parsing (#2111)
+
+## 4.3.2 and 3.12.3 / 2020-02-27
+
+* Security
+  * Fix: Prevent HTTP Response splitting via CR/LF in header values. CVE-2020-5247.
 
 ## 4.3.1 and 3.12.2 / 2019-12-05
 
