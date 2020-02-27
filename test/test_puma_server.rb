@@ -771,4 +771,23 @@ EOF
     @server = Puma::Server.new @app, @events, queue_requests: false
     test_open_connection_wait
   end
+
+  # https://github.com/ruby/ruby/commit/d9d4a28f1cdd05a0e8dabb36d747d40bbcc30f16
+  def test_prevent_response_splitting_headers
+    server_run app: ->(_) { [200, {'X-header' => "malicious\r\nCookie: hack"}, ["Hello"]] }
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    refute_match 'hack', data
+  end
+
+  def test_prevent_response_splitting_headers_cr
+    server_run app: ->(_) { [200, {'X-header' => "malicious\rCookie: hack"}, ["Hello"]] }
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    refute_match 'hack', data
+  end
+
+  def test_prevent_response_splitting_headers_lf
+    server_run app: ->(_) { [200, {'X-header' => "malicious\nCookie: hack"}, ["Hello"]] }
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    refute_match 'hack', data
+  end
 end
