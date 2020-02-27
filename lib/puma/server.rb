@@ -687,7 +687,7 @@ module Puma
 
           return :async if req.hijacked
           # Checking to see if an attacker is trying to inject headers into the response
-          headers.reject! { |_k, v| CRLF_REGEX =~ v.to_s }
+          headers.reject! { |_k, v| CRLF_REGEX.match? v.to_s }
 
           status = status.to_i
 
