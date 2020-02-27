@@ -9,6 +9,7 @@
   * Add `requests_count` to workers stats. (#2106)
   * Changed #connected_port to #connected_ports (#2076)
   * `--control` has been removed. Use `--control-url` (#1487)
+  * `worker_directory` has been removed. Use `directory`
 
 * Bugfixes
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
