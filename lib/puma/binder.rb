@@ -237,8 +237,6 @@ module Puma
       tcp_server
     end
 
-    attr_reader :connected_ports
-
     def connected_ports
       ios.map { |io| io.addr[1] }
     end
