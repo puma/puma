@@ -7,9 +7,9 @@
   * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `GC.compact` is called before fork if available (#2093)
   * Add `requests_count` to workers stats. (#2106)
-
+  * Changed #connected_port to #connected_ports (#2076)
+  
 * Bugfixes
-  * Your bugfix goes here (#Github Number)
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
   * Preserve `BUNDLE_GEMFILE` env var when using `prune_bundler` (#1893)
   * Send 408 request timeout even when queue requests is disabled (#2119)
