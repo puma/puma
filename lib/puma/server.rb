@@ -657,6 +657,7 @@ module Puma
             headers.each_pair do |k, vs|
               if vs.respond_to?(:to_s) && !vs.to_s.empty?
                 vs.to_s.split(NEWLINE).each do |v|
+                  next if possible_header_injection?(v)
                   fast_write client, "#{k}: #{v}\r\n"
                 end
               else
@@ -681,8 +682,6 @@ module Puma
           status, headers, res_body = @app.call(env)
 
           return :async if req.hijacked
-          # Checking to see if an attacker is trying to inject headers into the response
-          headers.reject! { |_k, v| CRLF_REGEX =~ v.to_s }
 
           status = status.to_i
 
@@ -760,6 +759,7 @@ module Puma
         headers.each do |k, vs|
           case k.downcase
           when CONTENT_LENGTH2
+            next if possible_header_injection?(vs)
             content_length = vs
             next
           when TRANSFER_ENCODING
@@ -772,6 +772,7 @@ module Puma
 
           if vs.respond_to?(:to_s) && !vs.to_s.empty?
             vs.to_s.split(NEWLINE).each do |v|
+              next if possible_header_injection?(v)
               lines.append k, colon, v, line_ending
             end
           else
@@ -1042,5 +1043,10 @@ module Puma
     def shutting_down?
       @status == :stop || @status == :restart
     end
+
+    def possible_header_injection?(header_value)
+      HTTP_INJECTION_REGEX =~ header_value.to_s
+    end
+    private :possible_header_injection?
   end
 end
