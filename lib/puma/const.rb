@@ -228,7 +228,7 @@ module Puma
     COLON = ": ".freeze
 
     NEWLINE = "\n".freeze
-    CRLF_REGEX = /[\r\n]/.freeze
+    HTTP_INJECTION_REGEX = /[\r\n]/.freeze
 
     HIJACK_P = "rack.hijack?".freeze
     HIJACK = "rack.hijack".freeze
