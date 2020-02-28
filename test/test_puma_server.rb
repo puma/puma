@@ -772,22 +772,67 @@ EOF
     test_open_connection_wait
   end
 
-  # https://github.com/ruby/ruby/commit/d9d4a28f1cdd05a0e8dabb36d747d40bbcc30f16
-  def test_prevent_response_splitting_headers
-    server_run app: ->(_) { [200, {'X-header' => "malicious\r\nCookie: hack"}, ["Hello"]] }
+  # Rack may pass a newline in a header expecting us to split it.
+  def test_newline_splits
+    server_run app: ->(_) { [200, {'X-header' => "first line\nsecond line"}, ["Hello"]] }
+
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
-    refute_match 'hack', data
+
+    assert_match "X-header: first line\r\nX-header: second line\r\n", data
   end
 
-  def test_prevent_response_splitting_headers_cr
-    server_run app: ->(_) { [200, {'X-header' => "malicious\rCookie: hack"}, ["Hello"]] }
+  def test_newline_splits_in_early_hint
+    server_run early_hints: true, app: ->(env) do
+      env['rack.early_hints'].call({'X-header' => "first line\nsecond line"})
+      [200, {}, ["Hello world!"]]
+    end
+
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
-    refute_match 'hack', data
+
+    assert_match "X-header: first line\r\nX-header: second line\r\n", data
   end
 
-  def test_prevent_response_splitting_headers_lf
-    server_run app: ->(_) { [200, {'X-header' => "malicious\nCookie: hack"}, ["Hello"]] }
+  # To comply with the Rack spec, we have to split header field values
+  # containing newlines into multiple headers.
+  def assert_does_not_allow_http_injection(app, opts = {})
+    server_run(early_hints: opts[:early_hints], app: app)
+
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
-    refute_match 'hack', data
+
+    refute_match(/[\r\n]Cookie: hack[\r\n]/, data)
+  end
+
+  # HTTP Injection Tests
+  #
+  # Puma should prevent injection of CR and LF characters into headers, either as
+  # CRLF or CR or LF, because browsers may interpret it at as a line end and
+  # allow untrusted input in the header to split the header or start the
+  # response body. While it's not documented anywhere and they shouldn't be doing
+  # it, Chrome and curl recognize a lone CR as a line end. According to RFC,
+  # clients SHOULD interpret LF as a line end for robustness, and CRLF is the
+  # specced line end.
+  #
+  # There are three different tests because there are three ways to set header
+  # content in Puma. Regular (rack env), early hints, and a special case for
+  # overriding content-length.
+  {"cr" => "\r", "lf" => "\n", "crlf" => "\r\n"}.each do |suffix, line_ending|
+    # The cr-only case for the following test was CVE-2020-5247
+    define_method("test_prevent_response_splitting_headers_#{suffix}") do
+      app = ->(_) { [200, {'X-header' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
+      assert_does_not_allow_http_injection(app)
+    end
+
+    define_method("test_prevent_response_splitting_headers_early_hint_#{suffix}") do
+      app = ->(env) do
+        env['rack.early_hints'].call("X-header" => "untrusted input#{line_ending}Cookie: hack")
+        [200, {}, ["Hello"]]
+      end
+      assert_does_not_allow_http_injection(app, early_hints: true)
+    end
+
+    define_method("test_prevent_content_length_injection_#{suffix}") do
+      app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
+      assert_does_not_allow_http_injection(app)
+    end
   end
 end
