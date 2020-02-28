@@ -16,6 +16,13 @@ class TestPumaServer < Minitest::Test
     @server.stop(true)
   end
 
+  def server_run(app: @app, early_hints: false)
+    @server.app = app
+    @server.add_tcp_listener @host, @port
+    @server.early_hints = true if early_hints
+    @server.run
+  end
+
   def header(sock)
     header = []
     while true
