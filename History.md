@@ -4,6 +4,13 @@
 
 * x bugfixes
 
+
+## 4.3.3 and 3.12.4 / 2020-02-28
+  * Bugfixes
+    * Fix: Fixes a problem where we weren't splitting headers correctly on newlines (#2132)
+  * Security
+    * Fix: Prevent HTTP Response splitting via CR in early hints.
+
 ## 4.3.2 and 3.12.3 / 2020-02-27
 
 * Security
