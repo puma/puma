@@ -173,7 +173,7 @@ module Puma
       return 0 if Puma.jruby? || Puma.windows?
       1
     end
-    
+
     def default_max_threads
       return 5 if RUBY_ENGINE.nil? || RUBY_ENGINE == 'ruby'
       16
