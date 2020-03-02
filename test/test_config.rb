@@ -13,7 +13,7 @@ class TestConfigFile < TestConfigFileBase
     workers = 0 if Puma.jruby? || Puma.windows?
     assert_equal workers, Puma::Configuration.new.default_workers
   end
-  
+
   def test_default_max_threads
     max_threads = 16
     max_threads = 5 if RUBY_ENGINE.nil? || RUBY_ENGINE == 'ruby'
@@ -23,33 +23,33 @@ class TestConfigFile < TestConfigFileBase
   def test_config_loads_correct_min_threads
     conf = Puma::Configuration.new
     assert_equal 0, conf.options.default_options[:min_threads]
-    
+
     ENV['MIN_THREADS'] = '7'
     conf = Puma::Configuration.new
     assert_equal 7, conf.options.default_options[:min_threads]
-    
-    ENV['RAILS_MIN_THREADS'] = '8' 
+
+    ENV['RAILS_MIN_THREADS'] = '8'
     conf = Puma::Configuration.new
     assert_equal 8, conf.options.default_options[:min_threads]
   end
-  
+
   def test_config_loads_correct_max_threads
     conf = Puma::Configuration.new
     assert_equal conf.default_max_threads, conf.options.default_options[:max_threads]
-    
+
     ENV['MAX_THREADS'] = '7'
     conf = Puma::Configuration.new
     assert_equal 7, conf.options.default_options[:max_threads]
-    
+
     ENV['RAILS_MAX_THREADS'] = '8'
     conf = Puma::Configuration.new
     assert_equal 8, conf.options.default_options[:max_threads]
   end
-  
+
   def test_config_loads_correct_workers
     conf = Puma::Configuration.new
     assert_equal conf.default_workers, conf.options.default_options[:workers]
-    
+
     ENV['WEB_CONCURRENCY'] = '8'
     conf = Puma::Configuration.new
     assert_equal 8, conf.options.default_options[:workers]
@@ -59,7 +59,7 @@ class TestConfigFile < TestConfigFileBase
     ENV['WEB_CONCURRENCY'] = '0'
     conf = Puma::Configuration.new
     assert_equal false, conf.options.default_options[:preload_app]
-    
+
     ENV['WEB_CONCURRENCY'] = '2'
     preload = Puma::Plugin.new.workers_supported?
     conf = Puma::Configuration.new
