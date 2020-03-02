@@ -12,4 +12,8 @@ module Puma
   def self.windows?
     IS_WINDOWS
   end
+
+  def self.mri?
+    RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil? 
+  end
 end

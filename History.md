@@ -10,6 +10,11 @@
   * Changed #connected_port to #connected_ports (#2076)
   * `--control` has been removed. Use `--control-url` (#1487)
   * `worker_directory` has been removed. Use `directory`
+  * min_threads now set by environment variables RAILS_MIN_THREADS and MIN_THREADS
+  * max_threads now set by environment variables RAILS_MAX_THREADS and MAX_THREADS
+  * max_threads default to 5 in MRI or 16 for all other interpretters
+  * preload by default if workers > 1 and interpretter supports workers
+
 
 * Bugfixes
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
