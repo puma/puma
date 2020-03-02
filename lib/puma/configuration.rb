@@ -106,7 +106,7 @@ module Puma
   #
   # It also handles loading plugins.
   #
-  # > Note: `:port` and `:host` are not valid keys. By the time they make it to the
+  # > Note: `:port` and `:host` are not valid keys. By they time they make it to the
   #   configuration options they are expected to be incorporated into a `:binds` key.
   #   Under the hood the DSL maps `port` and `host` calls to `:binds`
   #
@@ -136,6 +136,8 @@ module Puma
       @user_dsl    = DSL.new(@options.user_options, self)
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
+
+      default_options[:preload_app] = (default_options[:workers] > 1 && Puma::Plugin.new.workers_supported?)
 
       if block
         configure(&block)
@@ -167,14 +169,24 @@ module Puma
       self
     end
 
+    def default_workers
+      return 0 if Puma.jruby? || Puma.windows?
+      1
+    end
+    
+    def default_max_threads
+      return 5 if RUBY_ENGINE.nil? || RUBY_ENGINE == 'ruby'
+      16
+    end
+
     def puma_default_options
       {
-        :min_threads => 0,
-        :max_threads => 16,
+        :min_threads => Integer(ENV['RAILS_MIN_THREADS'] || ENV['MIN_THREADS'] || 0),
+        :max_threads => Integer(ENV['RAILS_MAX_THREADS'] || ENV['MAX_THREADS'] || default_max_threads),
         :log_requests => false,
         :debug => false,
         :binds => ["tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"],
-        :workers => 0,
+        :workers => Integer(ENV['WEB_CONCURRENCY'] || default_workers),
         :daemon => false,
         :mode => :http,
         :worker_timeout => DefaultWorkerTimeout,
