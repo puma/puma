@@ -184,7 +184,7 @@ module Puma
       when :exit
         # nothing
       end
-      @binder.close_unix_paths
+      close_binder_listeners unless @status == :restart
     end
 
     # Return all tcp ports the launcher may be using, TCP or SSL
@@ -202,6 +202,7 @@ module Puma
     end
 
     def close_binder_listeners
+      @runner.close_control_listeners
       @binder.close_listeners
     end
 

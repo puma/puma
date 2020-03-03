@@ -90,7 +90,7 @@ class TestBinder < TestBinderBase
 
     refute_includes @binder.instance_variable_get(:@unix_paths), unix_path
 
-    @binder.close_unix_paths
+    @binder.close_listeners
 
     assert File.exist?(unix_path)
 
@@ -150,7 +150,7 @@ class TestBinder < TestBinderBase
     assert stdout.include?(prepared_paths[order[0]]), "\n#{stdout}\n"
     assert stdout.include?(prepared_paths[order[1]]), "\n#{stdout}\n"
   ensure
-    @binder.close_unix_paths if order.include?(:unix) && UNIX_SKT_EXIST
+    @binder.close_listeners if order.include?(:unix) && UNIX_SKT_EXIST
   end
 end
 

@@ -370,10 +370,6 @@ module Puma
       end
     end
 
-    def close_unix_paths
-      @unix_paths.each { |up| File.unlink(up) if File.exist? up }
-    end
-
     def redirects_for_restart
       redirects = {:close_others => true}
       @listeners.each_with_index do |(l, io), i|

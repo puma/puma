@@ -68,6 +68,10 @@ module Puma
       @control = control
     end
 
+    def close_control_listeners
+      @control.binder.close_listeners if @control
+    end
+
     def ruby_engine
       if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
         "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
