@@ -11,6 +11,7 @@
 Using "3.7.1" as a version example.
 
 1. `bundle exec rake release`
-2. Switch to latest JRuby version
-3. `rake java gem`
-4. `gem push pkg/puma-3.7.1-java.gem`
+2. `gem push --key github --host https://rubygems.pkg.github.com/puma pkg/puma-VERSION.gem`
+3. Switch to latest JRuby version
+4. `rake java gem`
+5. `gem push pkg/puma-VERSION-java.gem`

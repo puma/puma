@@ -167,7 +167,8 @@ class TestEvents < Minitest::Test
     server.add_tcp_listener host, port
     server.run
 
-    sock = TCPSocket.new host, server.connected_port
+    port = server.connected_ports[0]
+    sock = TCPSocket.new host, port
     path = "/"
     params = "a"*1024*10
 

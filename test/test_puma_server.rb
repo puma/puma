@@ -39,14 +39,16 @@ class TestPumaServer < Minitest::Test
   end
 
   def send_http_and_read(req)
-    sock = TCPSocket.new @host, @server.connected_port
+    port = @server.connected_ports[0]
+    sock = TCPSocket.new @host, port
     @ios << sock
     sock << req
     sock.read
   end
 
   def send_http(req)
-    sock = TCPSocket.new @host, @server.connected_port
+    port = @server.connected_ports[0]
+    sock = TCPSocket.new @host, port
     @ios << sock
     sock << req
     sock
@@ -137,7 +139,8 @@ class TestPumaServer < Minitest::Test
     req = Net::HTTP::Get.new '/'
     req['HOST'] = 'example.com'
 
-    res = Net::HTTP.start @host, @server.connected_port do |http|
+    port = @server.connected_ports[0]
+    res = Net::HTTP.start @host, port do |http|
       http.request(req)
     end
 
@@ -153,7 +156,8 @@ class TestPumaServer < Minitest::Test
     req['HOST'] = "example.com"
     req['X_FORWARDED_PROTO'] = "https,http"
 
-    res = Net::HTTP.start @host, @server.connected_port do |http|
+    port = @server.connected_ports[0]
+    res = Net::HTTP.start @host, port do |http|
       http.request(req)
     end
 
@@ -334,6 +338,11 @@ EOF
     data = sock.gets
 
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
+  end
+
+  def test_timeout_data_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_timeout_in_data_phase
   end
 
   def test_http_11_keep_alive_with_body
@@ -740,7 +749,7 @@ EOF
     }
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
-    sleep 1
+    sleep 3
     sock << "4\r\nello\r\n0\r\n\r\n"
 
     sock.gets
@@ -748,5 +757,82 @@ EOF
     # Could be 1000 but the tests get flaky. We don't care if it's extremely precise so much as that
     # it is set to a reasonable number.
     assert_operator request_body_wait, :>=, 900
+  end
+
+  def test_open_connection_wait
+    server_run app: ->(_) { [200, {}, ["Hello"]] }
+    s = send_http nil
+    sleep 0.1
+    s << "GET / HTTP/1.0\r\n\r\n"
+    assert_equal 'Hello', s.readlines.last
+  end
+
+  def test_open_connection_wait_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_open_connection_wait
+  end
+
+  # Rack may pass a newline in a header expecting us to split it.
+  def test_newline_splits
+    server_run app: ->(_) { [200, {'X-header' => "first line\nsecond line"}, ["Hello"]] }
+
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+
+    assert_match "X-header: first line\r\nX-header: second line\r\n", data
+  end
+
+  def test_newline_splits_in_early_hint
+    server_run early_hints: true, app: ->(env) do
+      env['rack.early_hints'].call({'X-header' => "first line\nsecond line"})
+      [200, {}, ["Hello world!"]]
+    end
+
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+
+    assert_match "X-header: first line\r\nX-header: second line\r\n", data
+  end
+
+  # To comply with the Rack spec, we have to split header field values
+  # containing newlines into multiple headers.
+  def assert_does_not_allow_http_injection(app, opts = {})
+    server_run(early_hints: opts[:early_hints], app: app)
+
+    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+
+    refute_match(/[\r\n]Cookie: hack[\r\n]/, data)
+  end
+
+  # HTTP Injection Tests
+  #
+  # Puma should prevent injection of CR and LF characters into headers, either as
+  # CRLF or CR or LF, because browsers may interpret it at as a line end and
+  # allow untrusted input in the header to split the header or start the
+  # response body. While it's not documented anywhere and they shouldn't be doing
+  # it, Chrome and curl recognize a lone CR as a line end. According to RFC,
+  # clients SHOULD interpret LF as a line end for robustness, and CRLF is the
+  # specced line end.
+  #
+  # There are three different tests because there are three ways to set header
+  # content in Puma. Regular (rack env), early hints, and a special case for
+  # overriding content-length.
+  {"cr" => "\r", "lf" => "\n", "crlf" => "\r\n"}.each do |suffix, line_ending|
+    # The cr-only case for the following test was CVE-2020-5247
+    define_method("test_prevent_response_splitting_headers_#{suffix}") do
+      app = ->(_) { [200, {'X-header' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
+      assert_does_not_allow_http_injection(app)
+    end
+
+    define_method("test_prevent_response_splitting_headers_early_hint_#{suffix}") do
+      app = ->(env) do
+        env['rack.early_hints'].call("X-header" => "untrusted input#{line_ending}Cookie: hack")
+        [200, {}, ["Hello"]]
+      end
+      assert_does_not_allow_http_injection(app, early_hints: true)
+    end
+
+    define_method("test_prevent_content_length_injection_#{suffix}") do
+      app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
+      assert_does_not_allow_http_injection(app)
+    end
   end
 end

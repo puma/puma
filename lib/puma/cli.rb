@@ -112,11 +112,6 @@ module Puma
             configure_control_url(arg)
           end
 
-          # alias --control-url for backwards-compatibility
-          o.on "--control URL", "DEPRECATED alias for --control-url" do |arg|
-            configure_control_url(arg)
-          end
-
           o.on "--control-token TOKEN",
             "The token to use as authentication for the control server" do |arg|
             @control_options[:auth_token] = arg

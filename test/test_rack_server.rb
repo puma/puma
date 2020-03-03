@@ -55,7 +55,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["http://127.0.0.1:#{ @server.connected_port }/test"])
+    hit(["http://127.0.0.1:#{ @server.connected_ports[0] }/test"])
 
     stop
 
@@ -70,7 +70,7 @@ class TestRackServer < Minitest::Test
 
     big = "x" * (1024 * 16)
 
-    Net::HTTP.post_form URI.parse("http://127.0.0.1:#{ @server.connected_port }/test"),
+    Net::HTTP.post_form URI.parse("http://127.0.0.1:#{ @server.connected_ports[0] }/test"),
                  { "big" => big }
 
     stop
@@ -83,7 +83,7 @@ class TestRackServer < Minitest::Test
     @server.app = lambda { |env| input = env; @simple.call(env) }
     @server.run
 
-    hit(["http://127.0.0.1:#{ @server.connected_port }/test/a/b/c"])
+    hit(["http://127.0.0.1:#{ @server.connected_ports[0] }/test/a/b/c"])
 
     stop
 
@@ -100,7 +100,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["http://127.0.0.1:#{ @server.connected_port }/test"])
+    hit(["http://127.0.0.1:#{ @server.connected_ports[0] }/test"])
 
     stop
 
@@ -116,7 +116,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["http://127.0.0.1:#{ @server.connected_port }/test"])
+    hit(["http://127.0.0.1:#{ @server.connected_ports[0] }/test"])
 
     stop
 

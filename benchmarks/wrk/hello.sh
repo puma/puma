@@ -3,6 +3,6 @@
 bundle exec bin/puma -t 4 test/rackup/hello.ru &
 PID1=$!
 sleep 5
-wrk -c 4 --latency http://localhost:9292
+wrk -c 4 -d 30 --latency http://localhost:9292
 
 kill $PID1

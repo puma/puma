@@ -49,7 +49,7 @@ class TestPathHandler < Minitest::Test
     host = windows? ? "127.0.1.1" : "0.0.0.0"
     opts = { Host: host }
     in_handler(app, opts) do |launcher|
-      hit(["http://#{host}:#{ launcher.connected_port }/test"])
+      hit(["http://#{host}:#{ launcher.connected_ports[0] }/test"])
       assert_equal("/test", @input["PATH_INFO"])
     end
   end
@@ -225,5 +225,34 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
         assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
       end
     end
+  end
+
+  def test_file_log_requests_wins_over_default_config
+    file_log_requests_config = true
+
+    @options[:config_files] = [
+      'test/shell/t1_conf.rb'
+    ]
+
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal file_log_requests_config, conf.options[:log_requests]
+  end
+
+
+  def test_user_log_requests_wins_over_file_config
+    file_log_requests_config = true
+    user_log_requests_config = false
+
+    @options[:log_requests] = user_log_requests_config
+    @options[:config_files] = [
+      'test/shell/t1_conf.rb'
+    ]
+
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal user_log_requests_config, conf.options[:log_requests]
   end
 end

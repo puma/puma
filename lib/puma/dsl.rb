@@ -536,12 +536,6 @@ module Puma
       @options[:directory] = dir.to_s
     end
 
-    # DEPRECATED: The directory to operate out of.
-    def worker_directory(dir)
-      $stderr.puts "worker_directory is deprecated. Please use `directory`"
-      directory dir
-    end
-
     # Run the app as a raw TCP app instead of an HTTP rack app.
     def tcp_mode
       @options[:mode] = :tcp

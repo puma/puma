@@ -33,7 +33,7 @@ matrix:
       env:
         - OS="Trusty 14.04 OpenSSL 1.0.1"
         - RUBYOPT=""
-    - rvm: jruby-9.2.9.0
+    - rvm: jruby-9.2.11.0
       env:
         - JRUBY_OPTS="--debug"
         - JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
@@ -41,17 +41,11 @@ matrix:
       env:
         - JRUBY_OPTS="--debug"
         - JAVA_OPTS="--add-opens java.base/sun.nio.ch=org.jruby.dist --add-opens java.base/java.io=org.jruby.dist --add-opens java.base/java.util.zip=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.security.cert=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED"
-    - rvm: ruby-head
-    - rvm: ruby-head
-      env: jit=yes
     - rvm: truffleruby
 
   allow_failures:
-    - rvm: jruby-9.2.9.0
+    - rvm: jruby-9.2.11.0
     - rvm: jruby-head
-    - rvm: ruby-head
-    - rvm: ruby-head
-      env: jit=yes
     - rvm: truffleruby
 
 env:

@@ -153,7 +153,7 @@ module Puma
 
       begin
         data = @io.read_nonblock(CHUNK_SIZE)
-      rescue Errno::EAGAIN
+      rescue IO::WaitReadable
         return false
       rescue SystemCallError, IOError, EOFError
         raise ConnectionError, "Connection error detected during read"
@@ -243,10 +243,13 @@ module Puma
       send(:alias_method, :jruby_eagerly_finish, :eagerly_finish)
     end # IS_JRUBY
 
-    def finish
+    def finish(timeout)
       return true if @ready
       until try_to_finish
-        IO.select([@to_io], nil, nil)
+        unless IO.select([@to_io], nil, nil, timeout)
+          write_error(408) if in_data_phase
+          raise ConnectionError
+        end
       end
       true
     end
@@ -346,7 +349,7 @@ module Puma
 
       begin
         chunk = @io.read_nonblock(want)
-      rescue Errno::EAGAIN
+      rescue IO::WaitReadable
         return false
       rescue SystemCallError, IOError
         raise ConnectionError, "Connection error detected during read"

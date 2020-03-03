@@ -1,4 +1,11 @@
 # frozen_string_literal: true
 
-require 'puma/detect'
-require 'puma/puma_http11'
+module Puma
+  class IOBuffer < String
+    def append(*args)
+      args.each { |a| concat(a) }
+    end
+
+    alias reset clear
+  end
+end

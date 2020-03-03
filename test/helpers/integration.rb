@@ -75,14 +75,24 @@ class TestIntegration < Minitest::Test
   end
 
   # reuses an existing connection to make sure that works
-  def restart_server(connection)
+  def restart_server(connection, log: false)
     Process.kill :USR2, @pid
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
-    wait_for_server_to_boot
+    wait_for_server_to_boot(log: log)
   end
 
-  def wait_for_server_to_boot
-    true while @server.gets !~ /Ctrl-C/ # wait for server to say it booted
+  # wait for server to say it booted
+  def wait_for_server_to_boot(log: false)
+    if log
+      puts "Waiting for server to boot..."
+      begin
+        line = @server.gets
+        puts line if line && line.strip != ''
+      end while line !~ /Ctrl-C/
+      puts "Server booted!"
+    else
+      true while @server.gets !~ /Ctrl-C/
+    end
   end
 
   def connect(path = nil, unix: false)

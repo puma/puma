@@ -226,19 +226,20 @@ module Puma
       end
 
       host = host[1..-2] if host and host[0..0] == '['
-      s = TCPServer.new(host, port)
+      tcp_server = TCPServer.new(host, port)
       if optimize_for_latency
-        s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+        tcp_server.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
-      s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
-      s.listen backlog
-      @connected_port = s.addr[1]
+      tcp_server.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
+      tcp_server.listen backlog
 
-      @ios << s
-      s
+      @ios << tcp_server
+      tcp_server
     end
 
-    attr_reader :connected_port
+    def connected_ports
+      ios.map { |io| io.addr[1] }
+    end
 
     def inherit_tcp_listener(host, port, fd)
       if fd.kind_of? TCPServer

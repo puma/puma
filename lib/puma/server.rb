@@ -11,6 +11,7 @@ require 'puma/client'
 require 'puma/binder'
 require 'puma/accept_nonblock'
 require 'puma/util'
+require 'puma/io_buffer'
 
 require 'puma/puma_http11'
 
@@ -36,6 +37,7 @@ module Puma
 
     attr_reader :thread
     attr_reader :events
+    attr_reader :requests_count
     attr_accessor :app
 
     attr_accessor :min_threads
@@ -85,11 +87,13 @@ module Puma
       @mode = :http
 
       @precheck_closing = true
+
+      @requests_count = 0
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
 
-    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_port
+    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_ports
 
     def inherit_binder(bind)
       @binder = bind
@@ -294,7 +298,7 @@ module Puma
 
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
-                                    IOBuffer) do |client, buffer|
+                                    ::Puma::IOBuffer) do |client, buffer|
 
         # Advertise this server into the thread
         Thread.current[ThreadLocalKey] = self
@@ -305,7 +309,7 @@ module Puma
           if queue_requests
             process_now = client.eagerly_finish
           else
-            client.finish
+            client.finish(@first_data_timeout)
             process_now = true
           end
         rescue MiniSSL::SSLError => e
@@ -626,6 +630,8 @@ module Puma
     #
     # Finally, it'll return +true+ on keep-alive connections.
     def handle_request(req, lines)
+      @requests_count +=1
+
       env = req.env
       client = req.io
 
@@ -657,6 +663,7 @@ module Puma
             headers.each_pair do |k, vs|
               if vs.respond_to?(:to_s) && !vs.to_s.empty?
                 vs.to_s.split(NEWLINE).each do |v|
+                  next if possible_header_injection?(v)
                   fast_write client, "#{k}: #{v}\r\n"
                 end
               else
@@ -758,6 +765,7 @@ module Puma
         headers.each do |k, vs|
           case k.downcase
           when CONTENT_LENGTH2
+            next if possible_header_injection?(vs)
             content_length = vs
             next
           when TRANSFER_ENCODING
@@ -770,6 +778,7 @@ module Puma
 
           if vs.respond_to?(:to_s) && !vs.to_s.empty?
             vs.to_s.split(NEWLINE).each do |v|
+              next if possible_header_injection?(v)
               lines.append k, colon, v, line_ending
             end
           else
@@ -1040,5 +1049,10 @@ module Puma
     def shutting_down?
       @status == :stop || @status == :restart
     end
+
+    def possible_header_injection?(header_value)
+      HTTP_INJECTION_REGEX =~ header_value.to_s
+    end
+    private :possible_header_injection?
   end
 end
