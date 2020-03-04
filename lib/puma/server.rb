@@ -432,7 +432,7 @@ module Puma
         STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
       ensure
-        @check.close
+        @check.close unless @check.closed? # Ruby 2.2 issue
         @notify.close
       end
 
