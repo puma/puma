@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-18.04, macos ]
-        ruby: [ 2.3, 2.4, 2.5, 2.6, 2.7, ruby-head ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, ruby-head ]
 
     steps:
       - name: repo checkout
@@ -34,6 +34,11 @@ jobs:
           else
             sudo apt-get -qy install ragel
           fi
+
+      - name: Ruby 2.2 update RubyGems
+        if:   matrix.ruby < '2.3'
+        run:  |
+          gem update --system 2.7.10 --no-document
 
       - name: bundle install
         run:  bundle install --jobs 4 --retry 3 --path=.bundle/puma

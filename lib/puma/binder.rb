@@ -362,7 +362,7 @@ module Puma
 
     def close_listeners
       @listeners.each do |l, io|
-        io.close
+        io.close unless io.closed? # Ruby 2.2 issue
         uri = URI.parse(l)
         next unless uri.scheme == 'unix'
         unix_path = "#{uri.host}#{uri.path}"

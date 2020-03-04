@@ -28,11 +28,6 @@ script:
 matrix:
   fast_finish: true
   include:
-    - rvm: 2.2.10
-      dist: trusty
-      env:
-        - OS="Trusty 14.04 OpenSSL 1.0.1"
-        - RUBYOPT=""
     - rvm: jruby-9.2.11.0
       env:
         - JRUBY_OPTS="--debug"
