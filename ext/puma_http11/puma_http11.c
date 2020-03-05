@@ -367,7 +367,7 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
     VALIDATE_MAX_LENGTH(puma_parser_nread(http), HEADER);
 
     if(puma_parser_has_error(http)) {
-      rb_raise(eHttpParserError, "%s", "Invalid HTTP format, parsing fails.");
+      rb_raise(eHttpParserError, "%s", "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?");
     } else {
       return INT2FIX(puma_parser_nread(http));
     }

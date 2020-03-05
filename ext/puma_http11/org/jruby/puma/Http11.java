@@ -197,7 +197,7 @@ public class Http11 extends RubyObject {
             validateMaxLength(runtime, parser.nread,MAX_HEADER_LENGTH, MAX_HEADER_LENGTH_ERR);
 
             if(hp.has_error()) {
-                throw newHTTPParserError(runtime, "Invalid HTTP format, parsing fails.");
+                throw newHTTPParserError(runtime, "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?");
             } else {
                 return runtime.newFixnum(parser.nread);
             }
