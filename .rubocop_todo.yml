@@ -39,19 +39,7 @@ Layout/EmptyLinesAroundModuleBody:
 # 5 offenses
 Layout/IndentationWidth:
   Enabled: true
-
-# 3 offenses
-Layout/AccessModifierIndentation:
-  EnforcedStyle: indent
-
-# 2 offenses
-Style/WhileUntilModifier:
-  Enabled: true
-
-# 1 offense
-Style/TernaryParentheses:
-  Enabled: true
-
+  
 # >200 offenses for 80
 # 58 offenses for 100
 # 18 offenses for 120
@@ -64,19 +52,3 @@ Metrics/LineLength:
     - https
   IgnoreCopDirectives: false
   IgnoredPatterns: []
-
-# 1 offense
-Metrics/ParameterLists:
-  Max: 5
-
-# 1 offense
-Performance/RedundantMatch:
-  Enabled: true
-
-# 1 offense
-Performance/RedundantBlockCall:
-  Enabled: true
-
-# 1 offense
-Performance/StringReplacement:
-  Enabled: true

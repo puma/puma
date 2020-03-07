@@ -33,9 +33,7 @@ class TestPathHandler < Minitest::Test
 
     # Wait for launcher to boot
     Timeout.timeout(10) do
-      until @launcher
-        sleep 1
-      end
+      sleep 1 until @launcher
     end
     sleep 1
 

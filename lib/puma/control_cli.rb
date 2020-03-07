@@ -263,7 +263,7 @@ module Puma
       exit 1
     end
 
-  private
+    private
     def start
       require 'puma/cli'
 

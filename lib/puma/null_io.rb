@@ -15,7 +15,7 @@ module Puma
     # Mimics IO#read with no data.
     #
     def read(count = nil, _buffer = nil)
-      (count && count > 0) ? nil : ""
+      count && count > 0 ? nil : ""
     end
 
     def rewind
