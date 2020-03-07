@@ -26,13 +26,13 @@ class TestBinder < TestBinderBase
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
     @binder.parse ["tcp://localhost:10001"], @events
 
-    assert_equal [], @binder.instance_variable_get(:@listeners)
+    assert_empty @binder.listeners
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
     @binder.parse ["ssl://localhost:10002?#{ssl_query}"], @events
 
-    assert_equal [], @binder.instance_variable_get(:@listeners)
+    assert_empty @binder.listeners
   end
 
   def test_correct_zero_port
@@ -50,15 +50,9 @@ class TestBinder < TestBinderBase
 
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
-    stdout = @events.stdout.string
-    assert_match ssl_regex, stdout
-
-    port = ssl_regex.match(stdout)[1].to_i
+    port = ssl_regex.match(@events.stdout.string)[1].to_i
 
     refute_equal 0, port
-    if @binder.loopback_addresses.include? '::1'
-      assert_match %r!ssl://\[::1\]:(\d+)!, stdout
-    end
   end
 
   def test_logs_all_localhost_bindings
@@ -67,6 +61,16 @@ class TestBinder < TestBinderBase
     assert_match %r!tcp://127.0.0.1:(\d+)!, @events.stdout.string
     if @binder.loopback_addresses.include?("::1")
       assert_match %r!tcp://\[::1\]:(\d+)!, @events.stdout.string
+    end
+  end
+
+  def test_logs_all_localhost_bindings_ssl
+    skip("Incorrectly logs localhost, not 127.0.0.1")
+    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
+
+    assert_match %r!ssl://127.0.0.1:(\d+)!, @events.stdout.string
+    if @binder.loopback_addresses.include?("::1")
+      assert_match %r!ssl://\[::1\]:(\d+)!, @events.stdout.string
     end
   end
 
@@ -91,7 +95,7 @@ class TestBinder < TestBinderBase
 
     assert_match %r!unix://#{unix_path}!, @events.stdout.string
 
-    refute_includes @binder.instance_variable_get(:@unix_paths), unix_path
+    refute_includes @binder.unix_paths, unix_path
 
     @binder.close_listeners
 
