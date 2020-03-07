@@ -197,6 +197,22 @@ class TestConfigFile < TestConfigFileBase
     conf.options[:raise_exception_on_sigterm] = true
     assert_equal conf.options[:raise_exception_on_sigterm], true
   end
+
+  def test_run_hooks_and_exception
+    require 'puma/events'
+
+    conf = Puma::Configuration.new do |c|
+      c.on_restart do |a|
+        raise RuntimeError, 'Error from hook'
+      end
+    end
+    conf.load
+    events = Puma::Events.strings
+
+    conf.run_hooks :on_restart, 'ARG', events
+    expected = /WARNING hook on_restart failed with exception \(RuntimeError\) Error from hook/
+    assert_match expected, events.stdout.string
+  end
 end
 
 # Thread unsafe modification of ENV

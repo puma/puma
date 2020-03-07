@@ -275,8 +275,15 @@ module Puma
       @plugins.create name
     end
 
-    def run_hooks(key, arg)
-      @options.all_of(key).each { |b| b.call arg }
+    def run_hooks(key, arg, events)
+      @options.all_of(key).each do |b|
+        begin
+          b.call arg
+        rescue => e
+          events.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
+          events.debug e.backtrace.join("\n")
+        end
+      end
     end
 
     def self.temp_path
