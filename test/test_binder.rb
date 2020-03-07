@@ -23,16 +23,42 @@ class TestBinderBase < Minitest::Test
 end
 
 class TestBinder < TestBinderBase
+  parallelize_me!
+
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
-    @binder.parse ["tcp://localhost:10001"], @events
+    @binder.parse ["tcp://localhost:0"], @events
 
     assert_empty @binder.listeners
   end
 
+  def test_home_alters_listeners_for_tcp_addresses
+    port = UniquePort.call
+    @binder.parse ["tcp://127.0.0.1:#{port}"], @events
+
+    assert_equal "tcp://127.0.0.1:#{port}", @binder.listeners[0][0]
+    assert_kind_of TCPServer, @binder.listeners[0][1]
+  end
+
+  def test_connected_ports
+    ports = (1..3).map { |_| UniquePort.call }
+
+    @binder.parse(ports.map { |p| "tcp://localhost:#{p}" }, @events)
+
+    assert_equal ports, @binder.connected_ports
+  end
+
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
-    @binder.parse ["ssl://localhost:10002?#{ssl_query}"], @events
+    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
     assert_empty @binder.listeners
+  end
+
+  def test_home_alters_listeners_for_ssl_addresses
+    port = UniquePort.call
+    @binder.parse ["ssl://127.0.0.1:#{port}?#{ssl_query}"], @events
+
+    assert_equal "ssl://127.0.0.1:#{port}?#{ssl_query}", @binder.listeners[0][0]
+    assert_kind_of TCPServer, @binder.listeners[0][1]
   end
 
   def test_correct_zero_port
@@ -59,7 +85,7 @@ class TestBinder < TestBinderBase
     @binder.parse ["tcp://localhost:0"], @events
 
     assert_match %r!tcp://127.0.0.1:(\d+)!, @events.stdout.string
-    if @binder.loopback_addresses.include?("::1")
+    if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
       assert_match %r!tcp://\[::1\]:(\d+)!, @events.stdout.string
     end
   end
@@ -69,7 +95,7 @@ class TestBinder < TestBinderBase
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
     assert_match %r!ssl://127.0.0.1:(\d+)!, @events.stdout.string
-    if @binder.loopback_addresses.include?("::1")
+    if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
       assert_match %r!ssl://\[::1\]:(\d+)!, @events.stdout.string
     end
   end
@@ -154,6 +180,54 @@ class TestBinder < TestBinderBase
     env_hash = @binder.envs[@binder.ios.first]
 
     assert_equal @events.stderr, env_hash["rack.errors"]
+  end
+
+  def test_close_calls_close_on_ios
+    @mocked_ios = [Minitest::Mock.new, Minitest::Mock.new]
+    @mocked_ios.each { |m| m.expect(:close, true) }
+    @binder.ios = @mocked_ios
+
+    @binder.close
+
+    assert @mocked_ios.each(&:verify)
+  end
+
+  # test redirect for restart
+
+  def test_close_listeners_closes_ios
+    @binder.parse ["tcp://127.0.0.1:#{UniquePort.call}"], @events
+
+    refute @binder.listeners.any? { |u, l| l.closed? }
+
+    @binder.close_listeners
+
+    assert @binder.listeners.all? { |u, l| l.closed? }
+  end
+
+  def test_close_listeners_closes_ios_unless_closed?
+    @binder.parse ["tcp://127.0.0.1:0"], @events
+
+    bomb = @binder.listeners.first[1]
+    bomb.close
+    def bomb.close; raise "Boom!"; end # the bomb has been planted
+
+    assert @binder.listeners.any? { |u, l| l.closed? }
+
+    @binder.close_listeners
+
+    assert @binder.listeners.all? { |u, l| l.closed? }
+  end
+
+  def test_listeners_file_unlink_if_unix_listener
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+
+    @binder.parse ["unix://test/#{name}_server.sock"], @events
+
+    assert File.socket?("test/#{name}_server.sock")
+
+    @binder.close_listeners
+
+    refute File.socket?("test/#{name}_server.sock")
   end
 
   private

@@ -43,7 +43,8 @@ module Puma
       @ios = []
     end
 
-    attr_reader :ios, :listeners, :unix_paths, :proto_env, :envs
+    attr_reader :ios, :listeners, :unix_paths, :proto_env, :envs, :activated_sockets, :inherited_fds
+    attr_writer :ios, :listeners
 
     def env(sock)
       @envs.fetch(sock, @proto_env)
@@ -204,12 +205,6 @@ module Puma
       end
     end
 
-    def loopback_addresses
-      Socket.ip_address_list.select do |addrinfo|
-        addrinfo.ipv6_loopback? || addrinfo.ipv4_loopback?
-      end.map { |addrinfo| addrinfo.ip_address }.uniq
-    end
-
     # Tell the server to listen on host +host+, port +port+.
     # If +optimize_for_latency+ is true (the default) then clients connecting
     # will be optimized for latency over throughput.
@@ -238,7 +233,7 @@ module Puma
     end
 
     def connected_ports
-      ios.map { |io| io.addr[1] }
+      ios.map { |io| io.addr[1] }.uniq
     end
 
     def inherit_tcp_listener(host, port, fd)
@@ -361,12 +356,12 @@ module Puma
     end
 
     def close_listeners
-      @listeners.each do |l, io|
+      listeners.each do |l, io|
         io.close unless io.closed? # Ruby 2.2 issue
         uri = URI.parse(l)
         next unless uri.scheme == 'unix'
         unix_path = "#{uri.host}#{uri.path}"
-        File.unlink unix_path if @unix_paths.include? unix_path
+        File.unlink unix_path if unix_paths.include? unix_path
       end
     end
 
@@ -377,6 +372,14 @@ module Puma
         redirects[io.to_i] = io.to_i
       end
       redirects
+    end
+
+    private
+
+    def loopback_addresses
+      Socket.ip_address_list.select do |addrinfo|
+        addrinfo.ipv6_loopback? || addrinfo.ipv4_loopback?
+      end.map { |addrinfo| addrinfo.ip_address }.uniq
     end
   end
 end
