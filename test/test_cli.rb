@@ -63,6 +63,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_for_ssl
+    require "net/http"
     control_port = UniquePort.call
     control_host = "127.0.0.1"
     control_url = "ssl://#{control_host}:#{control_port}?#{ssl_query}"

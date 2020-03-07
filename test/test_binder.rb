@@ -5,6 +5,7 @@ require_relative "helpers/ssl"
 
 require "puma/binder"
 require "puma/puma_http11"
+require "puma/events"
 
 class TestBinderBase < Minitest::Test
   include SSLHelper
