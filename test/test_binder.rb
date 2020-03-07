@@ -138,6 +138,24 @@ class TestBinder < TestBinderBase
     refute ssl_context_for_binder.no_tlsv1_1
   end
 
+  def test_env_contains_protoenv
+    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
+
+    env_hash = @binder.envs[@binder.ios.first]
+
+    @binder.proto_env.each do |k,v|
+      assert_equal env_hash[k], v
+    end
+  end
+
+  def test_env_contains_stderr
+    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
+
+    env_hash = @binder.envs[@binder.ios.first]
+
+    assert_equal @events.stderr, env_hash["rack.errors"]
+  end
+
   private
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])

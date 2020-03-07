@@ -43,7 +43,7 @@ module Puma
       @ios = []
     end
 
-    attr_reader :ios, :listeners, :unix_paths
+    attr_reader :ios, :listeners, :unix_paths, :proto_env, :envs
 
     def env(sock)
       @envs.fetch(sock, @proto_env)
