@@ -299,7 +299,7 @@ module Puma
       log '* Pruning Bundler environment'
       home = ENV['GEM_HOME']
       bundle_gemfile = ENV['BUNDLE_GEMFILE']
-      Bundler.with_clean_env do
+      with_unbundled_env do
         ENV['GEM_HOME'] = home
         ENV['BUNDLE_GEMFILE'] = bundle_gemfile
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
@@ -472,6 +472,15 @@ module Puma
 
       raise "#{feature} is not supported on your version of RubyGems. " \
               "You must have RubyGems #{min_version}+ to use this feature."
+    end
+
+    def with_unbundled_env
+      bundler_ver = Gem::Version.new(Bundler::VERSION)
+      if bundler_ver < Gem::Version.new('2.1.0')
+        Bundler.with_clean_env { yield }
+      else
+        Bundler.with_unbundled_env { yield }
+      end
     end
   end
 end
