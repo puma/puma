@@ -44,27 +44,29 @@ class TestBinder < TestBinderBase
     refute_equal 0, port
   end
 
+  def test_correct_zero_port_ssl
+    skip("Implement later")
+    ssl_regex = %r!ssl://127.0.0.1:(\d+)!
+
+    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
+
+    stdout = @events.stdout.string
+    assert_match ssl_regex, stdout
+
+    port = ssl_regex.match(stdout)[1].to_i
+
+    refute_equal 0, port
+    if @binder.loopback_addresses.include? '::1'
+      assert_match %r!ssl://\[::1\]:(\d+)!, stdout
+    end
+  end
+
   def test_logs_all_localhost_bindings
     @binder.parse ["tcp://localhost:0"], @events
 
     assert_match %r!tcp://127.0.0.1:(\d+)!, @events.stdout.string
     if @binder.loopback_addresses.include?("::1")
       assert_match %r!tcp://\[::1\]:(\d+)!, @events.stdout.string
-    end
-  end
-
-  def test_correct_zero_port_ssl
-    skip("Implement in 4.3")
-    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
-
-    stdout = @events.stdout.string
-    m = %r!tcp://127.0.0.1:(\d+)!.match(stdout)
-    port = m[1].to_i
-
-    refute_equal 0, port
-    assert_match %r!ssl://127.0.0.1:(\d+)!, stdout
-    if @binder.loopback_addresses.include? '::1'
-      assert_match %r!ssl://\[::1\]:(\d+)!, stdout
     end
   end
 
