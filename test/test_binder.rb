@@ -147,8 +147,9 @@ class TestBinder < TestBinderBase
     @binder.parse tested_paths, @events
     stdout = @events.stdout.string
 
-    assert stdout.include?(prepared_paths[order[0]]), "\n#{stdout}\n"
-    assert stdout.include?(prepared_paths[order[1]]), "\n#{stdout}\n"
+    order.each do |prot|
+      assert_match prepared_paths[prot], stdout
+    end
   ensure
     @binder.close_listeners if order.include?(:unix) && UNIX_SKT_EXIST
   end
