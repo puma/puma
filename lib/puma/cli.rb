@@ -80,7 +80,7 @@ module Puma
       @launcher.run
     end
 
-  private
+    private
     def unsupported(str)
       @events.error(str)
       raise UnsupportedOption
