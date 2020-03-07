@@ -298,8 +298,7 @@ module Puma
 
       log '* Pruning Bundler environment'
       home = ENV['GEM_HOME']
-      bundle_gemfile = ENV['BUNDLER_ORIG_BUNDLE_GEMFILE']
-      bundle_gemfile = nil if bundle_gemfile == 'BUNDLER_ENVIRONMENT_PRESERVER_INTENTIONALLY_NIL'
+      bundle_gemfile = Bundler.original_env['BUNDLE_GEMFILE']
       with_unbundled_env do
         ENV['GEM_HOME'] = home
         ENV['BUNDLE_GEMFILE'] = bundle_gemfile
