@@ -198,6 +198,96 @@ class TestConfigFile < TestConfigFileBase
     assert_equal conf.options[:raise_exception_on_sigterm], true
   end
 
+  def test_run_hooks_on_restart_hook
+    require 'puma/events'
+
+    messages = []
+    conf = Puma::Configuration.new do |c|
+      c.on_restart do |a|
+        messages << "on_restart is called with #{a}"
+      end
+    end
+    conf.load
+
+    conf.run_hooks :on_restart, 'ARG', Puma::Events.strings
+    assert_equal messages, ['on_restart is called with ARG']
+  end
+
+  def test_run_hooks_before_worker_fork
+    require 'puma/events'
+
+    messages = []
+    conf = Puma::Configuration.new do |c|
+      c.on_worker_fork do |a|
+        messages << "before_worker_fork is called with #{a}"
+      end
+    end
+    conf.load
+
+    conf.run_hooks :before_worker_fork, 'ARG', Puma::Events.strings
+    assert_equal messages, ['before_worker_fork is called with ARG']
+  end
+
+  def test_run_hooks_after_worker_fork
+    require 'puma/events'
+
+    messages = []
+    conf = Puma::Configuration.new do |c|
+      c.after_worker_fork do |a|
+        messages << "after_worker_fork is called with #{a}"
+      end
+    end
+    conf.load
+
+    conf.run_hooks :after_worker_fork, 'ARG', Puma::Events.strings
+    assert_equal messages, ['after_worker_fork is called with ARG']
+  end
+
+  def test_run_hooks_before_worker_boot
+    require 'puma/events'
+
+    messages = []
+    conf = Puma::Configuration.new do |c|
+      c.on_worker_boot do |a|
+        messages << "before_worker_boot is called with #{a}"
+      end
+    end
+    conf.load
+
+    conf.run_hooks :before_worker_boot, 'ARG', Puma::Events.strings
+    assert_equal messages, ['before_worker_boot is called with ARG']
+  end
+
+  def test_run_hooks_before_worker_shutdown
+    require 'puma/events'
+
+    messages = []
+    conf = Puma::Configuration.new do |c|
+      c.on_worker_shutdown do |a|
+        messages << "before_worker_shutdown is called with #{a}"
+      end
+    end
+    conf.load
+
+    conf.run_hooks :before_worker_shutdown, 'ARG', Puma::Events.strings
+    assert_equal messages, ['before_worker_shutdown is called with ARG']
+  end
+
+  def test_run_hooks_before_fork
+    require 'puma/events'
+
+    messages = []
+    conf = Puma::Configuration.new do |c|
+      c.before_fork do |a|
+        messages << "before_fork is called with #{a}"
+      end
+    end
+    conf.load
+
+    conf.run_hooks :before_fork, 'ARG', Puma::Events.strings
+    assert_equal messages, ['before_fork is called with ARG']
+  end
+
   def test_run_hooks_and_exception
     require 'puma/events'
 
