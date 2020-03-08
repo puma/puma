@@ -54,26 +54,30 @@ module Puma
       @ios.each { |i| i.close }
     end
 
-    def import_from_env
-      remove = []
+    def connected_ports
+      ios.map { |io| io.addr[1] }.uniq
+    end
 
-      ENV.each do |k,v|
-        if k =~ /PUMA_INHERIT_\d+/
-          fd, url = v.split(":", 2)
-          @inherited_fds[url] = fd.to_i
-          remove << k
-        elsif k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
-          v.to_i.times do |num|
-            fd = num + 3
-            sock = TCPServer.for_fd(fd)
-            begin
-              key = [ :unix, Socket.unpack_sockaddr_un(sock.getsockname) ]
-            rescue ArgumentError
+    def import_from_env(env_hash)
+      remove = []
+      remove += create_inherited_fds(env_hash)
+      env_hash.each do |k,v|
+        if k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
+          # systemd socket activation.
+          # LISTEN_FDS = number of listening sockets. e.g. 2 means accept on 2 sockets w/descriptors 3 and 4.
+          # LISTEN_PID = PID of the service process, aka us
+          # see https://www.freedesktop.org/software/systemd/man/systemd-socket-activate.html
+
+          number_of_sockets_to_listen_on = v.to_i
+          number_of_sockets_to_listen_on.times do |index|
+            fd = index + 3 # 3 is the magic number you add to follow the SA protocol
+            sock = TCPServer.for_fd(fd)  # TODO: change to BasicSocket?
+            key = begin # Try to parse as a path
+              [:unix, Socket.unpack_sockaddr_un(sock.getsockname)]
+            rescue ArgumentError # Try to parse as a port/ip
               port, addr = Socket.unpack_sockaddr_in(sock.getsockname)
-              if addr =~ /\:/
-                addr = "[#{addr}]"
-              end
-              key = [ :tcp, addr, port ]
+              addr = "[#{addr}]" if addr =~ /\:/
+              [:tcp, addr, port]
             end
             @activated_sockets[key] = sock
             @events.debug "Registered #{key.join ':'} for activation from LISTEN_FDS"
@@ -81,10 +85,7 @@ module Puma
           remove << k << 'LISTEN_PID'
         end
       end
-
-      remove.each do |k|
-        ENV.delete k
-      end
+      remove
     end
 
     def parse(binds, logger, log_msg = 'Listening')
@@ -232,10 +233,6 @@ module Puma
       tcp_server
     end
 
-    def connected_ports
-      ios.map { |io| io.addr[1] }.uniq
-    end
-
     def inherit_tcp_listener(host, port, fd)
       if fd.kind_of? TCPServer
         s = fd
@@ -366,12 +363,15 @@ module Puma
     end
 
     def redirects_for_restart
-      redirects = {:close_others => true}
-      @listeners.each_with_index do |(l, io), i|
-        ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-        redirects[io.to_i] = io.to_i
-      end
+      redirects = listeners.map { |a| [a[1].to_i, a[1].to_i] }.to_h
+      redirects[:close_others] = true
       redirects
+    end
+
+    def redirects_for_restart_env
+      listeners.each_with_object({}).with_index do |(listen, memo), i|
+        memo["PUMA_INHERIT_#{i}"] = "#{listen[1].to_i}:#{listen[0]}"
+      end
     end
 
     private
@@ -380,6 +380,16 @@ module Puma
       Socket.ip_address_list.select do |addrinfo|
         addrinfo.ipv6_loopback? || addrinfo.ipv4_loopback?
       end.map { |addrinfo| addrinfo.ip_address }.uniq
+    end
+
+    # def create_activated_sockets(env_hash)
+    # end
+
+    def create_inherited_fds(env_hash)
+      env_hash.select {|k,v| k =~ /PUMA_INHERIT_\d+/}.each do |_k, v|
+        fd, url = v.split(":", 2)
+        @inherited_fds[url] = fd.to_i
+      end.keys # pass keys back for removal
     end
   end
 end

@@ -48,7 +48,8 @@ module Puma
       @config        = conf
 
       @binder        = Binder.new(@events)
-      @binder.import_from_env
+      env_to_remove = @binder.import_from_env(ENV)
+      env_to_remove.each { |k| ENV.delete k }
 
       @environment = conf.environment
 
@@ -253,6 +254,7 @@ module Puma
       else
         argv = restart_args
         Dir.chdir(@restart_dir)
+        ENV.update(@binder.redirects_for_restart_env)
         argv += [@binder.redirects_for_restart]
         Kernel.exec(*argv)
       end

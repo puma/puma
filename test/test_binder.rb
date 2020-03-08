@@ -192,7 +192,25 @@ class TestBinder < TestBinderBase
     assert @mocked_ios.each(&:verify)
   end
 
-  # test redirect for restart
+  def test_redirects_for_restart_creates_a_hash
+    @binder.parse ["tcp://127.0.0.1:0"], @events
+
+    result = @binder.redirects_for_restart
+    ios = @binder.listeners.map { |_l, io| io.to_i }
+
+    ios.each { |int| assert_equal int, result[int] }
+    assert result[:close_others]
+  end
+
+  def test_redirects_for_restart_env
+    @binder.parse ["tcp://127.0.0.1:0"], @events
+
+    result = @binder.redirects_for_restart_env
+
+    @binder.listeners.each_with_index do |l, i|
+      assert_equal "#{l[1].to_i}:#{l[0]}", result["PUMA_INHERIT_#{i}"]
+    end
+  end
 
   def test_close_listeners_closes_ios
     @binder.parse ["tcp://127.0.0.1:#{UniquePort.call}"], @events
@@ -229,6 +247,22 @@ class TestBinder < TestBinderBase
 
     refute File.socket?("test/#{name}_server.sock")
   end
+
+  def test_import_from_env_listen_inherit
+    @binder.parse ["tcp://127.0.0.1:0"], @events
+    removals = @binder.import_from_env(@binder.redirects_for_restart_env)
+
+    @binder.listeners.each do |url, io|
+      assert_equal io.to_i, @binder.inherited_fds[url]
+    end
+    assert_includes removals, "PUMA_INHERIT_0"
+  end
+
+  # test socket activation with tcp
+  # test socket activation with IPv6
+  # test socket activation with Unix
+  # test socket activation logs to events
+  # test socket activation returns the right keys to remove
 
   private
 
