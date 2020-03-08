@@ -58,26 +58,30 @@ module Puma
       ios.map { |io| io.addr[1] }.uniq
     end
 
-    def import_from_env
+    def import_from_env(env_hash)
       remove = []
 
-      ENV.each do |k,v|
+      env_hash.each do |k,v|
         if k =~ /PUMA_INHERIT_\d+/
           fd, url = v.split(":", 2)
           @inherited_fds[url] = fd.to_i
           remove << k
         elsif k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
-          v.to_i.times do |num|
-            fd = num + 3
-            sock = TCPServer.for_fd(fd)
-            begin
-              key = [ :unix, Socket.unpack_sockaddr_un(sock.getsockname) ]
-            rescue ArgumentError
+          # systemd socket activation.
+          # LISTEN_FDS = number of listening sockets. e.g. 2 means accept on 2 sockets w/descriptors 3 and 4.
+          # LISTEN_PID = PID of the service process, aka us
+          # see https://www.freedesktop.org/software/systemd/man/systemd-socket-activate.html
+
+          number_of_sockets_to_listen_on = v.to_i
+          number_of_sockets_to_listen_on.times do |index|
+            fd = index + 3 # 3 is the magic number you add to follow the SA protocol
+            sock = TCPServer.for_fd(fd)  # TODO: change to BasicSocket?
+            key = begin # Try to parse as a path
+              [:unix, Socket.unpack_sockaddr_un(sock.getsockname)]
+            rescue ArgumentError # Try to parse as a port/ip
               port, addr = Socket.unpack_sockaddr_in(sock.getsockname)
-              if addr =~ /\:/
-                addr = "[#{addr}]"
-              end
-              key = [ :tcp, addr, port ]
+              addr = "[#{addr}]" if addr =~ /\:/
+              [:tcp, addr, port]
             end
             @activated_sockets[key] = sock
             @events.debug "Registered #{key.join ':'} for activation from LISTEN_FDS"
@@ -85,10 +89,15 @@ module Puma
           remove << k << 'LISTEN_PID'
         end
       end
+      remove
+    end
 
-      remove.each do |k|
-        ENV.delete k
-      end
+    def create_activated_sockets
+
+    end
+
+    def create_inherited_fds
+
     end
 
     def parse(binds, logger, log_msg = 'Listening')

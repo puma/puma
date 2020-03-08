@@ -248,6 +248,22 @@ class TestBinder < TestBinderBase
     refute File.socket?("test/#{name}_server.sock")
   end
 
+  def test_import_from_env_listen_inherit
+    @binder.parse ["tcp://127.0.0.1:0"], @events
+    removals = @binder.import_from_env(@binder.redirects_for_restart_env)
+
+    @binder.listeners.each do |url, io|
+      assert_equal io.to_i, @binder.inherited_fds[url]
+    end
+    assert_includes removals, "PUMA_INHERIT_0"
+  end
+
+  # test socket activation with tcp
+  # test socket activation with IPv6
+  # test socket activation with Unix
+  # test socket activation logs to events
+  # test socket activation returns the right keys to remove
+
   private
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
