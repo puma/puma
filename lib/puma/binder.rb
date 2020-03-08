@@ -60,13 +60,9 @@ module Puma
 
     def import_from_env(env_hash)
       remove = []
-
+      remove += create_inherited_fds(env_hash)
       env_hash.each do |k,v|
-        if k =~ /PUMA_INHERIT_\d+/
-          fd, url = v.split(":", 2)
-          @inherited_fds[url] = fd.to_i
-          remove << k
-        elsif k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
+        if k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
           # systemd socket activation.
           # LISTEN_FDS = number of listening sockets. e.g. 2 means accept on 2 sockets w/descriptors 3 and 4.
           # LISTEN_PID = PID of the service process, aka us
@@ -90,14 +86,6 @@ module Puma
         end
       end
       remove
-    end
-
-    def create_activated_sockets
-
-    end
-
-    def create_inherited_fds
-
     end
 
     def parse(binds, logger, log_msg = 'Listening')
@@ -392,6 +380,16 @@ module Puma
       Socket.ip_address_list.select do |addrinfo|
         addrinfo.ipv6_loopback? || addrinfo.ipv4_loopback?
       end.map { |addrinfo| addrinfo.ip_address }.uniq
+    end
+
+    # def create_activated_sockets(env_hash)
+    # end
+
+    def create_inherited_fds(env_hash)
+      env_hash.select {|k,v| k =~ /PUMA_INHERIT_\d+/}.each do |_k, v|
+        fd, url = v.split(":", 2)
+        @inherited_fds[url] = fd.to_i
+      end.keys # pass keys back for removal
     end
   end
 end
