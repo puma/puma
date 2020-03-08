@@ -54,6 +54,10 @@ module Puma
       @ios.each { |i| i.close }
     end
 
+    def connected_ports
+      ios.map { |io| io.addr[1] }.uniq
+    end
+
     def import_from_env
       remove = []
 
@@ -230,10 +234,6 @@ module Puma
 
       @ios << tcp_server
       tcp_server
-    end
-
-    def connected_ports
-      ios.map { |io| io.addr[1] }.uniq
     end
 
     def inherit_tcp_listener(host, port, fd)
