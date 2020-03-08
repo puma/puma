@@ -178,7 +178,7 @@ module Puma
         graceful_stop
       when :restart
         log "* Restarting..."
-        ENV.replace(previous_env)
+        ENV.update(previous_env)
         @runner.before_restart
         restart!
       when :exit
