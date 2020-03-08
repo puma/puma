@@ -253,6 +253,7 @@ module Puma
       else
         argv = restart_args
         Dir.chdir(@restart_dir)
+        ENV.merge!(@binder.redirects_for_restart_env)
         argv += [@binder.redirects_for_restart]
         Kernel.exec(*argv)
       end

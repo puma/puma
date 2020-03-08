@@ -192,7 +192,25 @@ class TestBinder < TestBinderBase
     assert @mocked_ios.each(&:verify)
   end
 
-  # test redirect for restart
+  def test_redirects_for_restart_creates_a_hash
+    @binder.parse ["tcp://127.0.0.1:0"], @events
+
+    result = @binder.redirects_for_restart
+    ios = @binder.listeners.map { |_l, io| io.to_i }
+
+    ios.each { |int| assert_equal int, result[int] }
+    assert result[:close_others]
+  end
+
+  def test_redirects_for_restart_env
+    @binder.parse ["tcp://127.0.0.1:0"], @events
+
+    result = @binder.redirects_for_restart_env
+
+    @binder.listeners.each_with_index do |l, i|
+      assert_equal "#{l[1].to_i}:#{l[0]}", result["PUMA_INHERIT_#{i}"]
+    end
+  end
 
   def test_close_listeners_closes_ios
     @binder.parse ["tcp://127.0.0.1:#{UniquePort.call}"], @events

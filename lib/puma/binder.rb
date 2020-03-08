@@ -366,12 +366,15 @@ module Puma
     end
 
     def redirects_for_restart
-      redirects = {:close_others => true}
-      @listeners.each_with_index do |(l, io), i|
-        ENV["PUMA_INHERIT_#{i}"] = "#{io.to_i}:#{l}"
-        redirects[io.to_i] = io.to_i
-      end
+      redirects = listeners.map { |a| [a[1].to_i, a[1].to_i] }.to_h
+      redirects[:close_others] = true
       redirects
+    end
+
+    def redirects_for_restart_env
+      listeners.each_with_object({}).with_index do |(listen, memo), i|
+        memo["PUMA_INHERIT_#{i}"] = "#{listen[1].to_i}:#{listen[0]}"
+      end
     end
 
     private
