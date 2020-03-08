@@ -72,7 +72,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ windows-latest ]
-        ruby: [ 2.3, 2.4, 2.5, 2.6, 2.7, ruby-head ]
+        ruby: [ 2.4, 2.5, 2.6, 2.7, ruby-head ]
 
     steps:
       - name: repo checkout
@@ -82,7 +82,7 @@ jobs:
         if:   startsWith(matrix.os, 'windows')
         uses: MSP-Greg/actions-ruby@v1
         with:
-          base:  update
+          # base:  update
           mingw: openssl ragel
           ruby-version: ${{ matrix.ruby }}
 
@@ -94,7 +94,7 @@ jobs:
         run:  bundle exec rake compile
 
       # Ruby 2.3 uses a OpenSSL package that is not MSYS2
-      - name: compile
+      - name: compile ruby 2.3
         if:   matrix.ruby == '2.3'
         run:  bundle exec rake compile -- --with-openssl-dir=C:/openssl-win
 
