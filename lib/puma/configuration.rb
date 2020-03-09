@@ -106,7 +106,7 @@ module Puma
   #
   # It also handles loading plugins.
   #
-  # > Note: `:port` and `:host` are not valid keys. By they time they make it to the
+  # > Note: `:port` and `:host` are not valid keys. By the time they make it to the
   #   configuration options they are expected to be incorporated into a `:binds` key.
   #   Under the hood the DSL maps `port` and `host` calls to `:binds`
   #
