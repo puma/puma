@@ -10,6 +10,7 @@
   * Changed #connected_port to #connected_ports (#2076)
   * `--control` has been removed. Use `--control-url` (#1487)
   * `worker_directory` has been removed. Use `directory`
+  * Increases maximum URI path length from 2048 to 8196
 
 * Bugfixes
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
