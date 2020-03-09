@@ -189,7 +189,7 @@ class TestBinder < TestBinderBase
 
     @binder.close
 
-    assert @mocked_ios.each(&:verify)
+    assert @mocked_ios.map(&:verify).all?
   end
 
   def test_redirects_for_restart_creates_a_hash
