@@ -6,7 +6,6 @@ import org.jruby.Ruby;
 import org.jruby.runtime.load.BasicLibraryService;
 
 import org.jruby.puma.Http11;
-import org.jruby.puma.IOBuffer;
 import org.jruby.puma.MiniSSL;
 
 public class PumaHttp11Service implements BasicLibraryService {
