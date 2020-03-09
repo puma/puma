@@ -145,7 +145,7 @@ class Http11ParserTest < Minitest::Test
     req = {}
 
     # Support URI path length to a max of 8196
-    path = "/" + rand_data(8000, 100)
+    path = "/" + rand_data(7000, 100)
     http = "GET #{path} HTTP/1.1\r\n\r\n"
     parser.execute(req, http, 0)
     assert_equal path, req['REQUEST_PATH']
