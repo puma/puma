@@ -4,6 +4,7 @@ require_relative "helper"
 require_relative "helpers/config_file"
 
 require "puma/configuration"
+require 'puma/events'
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -199,98 +200,30 @@ class TestConfigFile < TestConfigFileBase
   end
 
   def test_run_hooks_on_restart_hook
-    require 'puma/events'
-
-    messages = []
-    conf = Puma::Configuration.new do |c|
-      c.on_restart do |a|
-        messages << "on_restart is called with #{a}"
-      end
-    end
-    conf.load
-
-    conf.run_hooks :on_restart, 'ARG', Puma::Events.strings
-    assert_equal messages, ['on_restart is called with ARG']
+    assert_run_hooks :on_restart
   end
 
   def test_run_hooks_before_worker_fork
-    require 'puma/events'
-
-    messages = []
-    conf = Puma::Configuration.new do |c|
-      c.on_worker_fork do |a|
-        messages << "before_worker_fork is called with #{a}"
-      end
-    end
-    conf.load
-
-    conf.run_hooks :before_worker_fork, 'ARG', Puma::Events.strings
-    assert_equal messages, ['before_worker_fork is called with ARG']
+    assert_run_hooks :before_worker_fork, configured_with: :on_worker_fork
   end
 
   def test_run_hooks_after_worker_fork
-    require 'puma/events'
-
-    messages = []
-    conf = Puma::Configuration.new do |c|
-      c.after_worker_fork do |a|
-        messages << "after_worker_fork is called with #{a}"
-      end
-    end
-    conf.load
-
-    conf.run_hooks :after_worker_fork, 'ARG', Puma::Events.strings
-    assert_equal messages, ['after_worker_fork is called with ARG']
+    assert_run_hooks :after_worker_fork
   end
 
   def test_run_hooks_before_worker_boot
-    require 'puma/events'
-
-    messages = []
-    conf = Puma::Configuration.new do |c|
-      c.on_worker_boot do |a|
-        messages << "before_worker_boot is called with #{a}"
-      end
-    end
-    conf.load
-
-    conf.run_hooks :before_worker_boot, 'ARG', Puma::Events.strings
-    assert_equal messages, ['before_worker_boot is called with ARG']
+    assert_run_hooks :before_worker_boot, configured_with: :on_worker_boot
   end
 
   def test_run_hooks_before_worker_shutdown
-    require 'puma/events'
-
-    messages = []
-    conf = Puma::Configuration.new do |c|
-      c.on_worker_shutdown do |a|
-        messages << "before_worker_shutdown is called with #{a}"
-      end
-    end
-    conf.load
-
-    conf.run_hooks :before_worker_shutdown, 'ARG', Puma::Events.strings
-    assert_equal messages, ['before_worker_shutdown is called with ARG']
+    assert_run_hooks :before_worker_shutdown, configured_with: :on_worker_shutdown
   end
 
   def test_run_hooks_before_fork
-    require 'puma/events'
-
-    messages = []
-    conf = Puma::Configuration.new do |c|
-      c.before_fork do |a|
-        messages << "before_fork is called with #{a}"
-      end
-    end
-    conf.load
-
-    conf.run_hooks :before_fork, 'ARG', Puma::Events.strings
-    assert_equal messages, ['before_fork is called with ARG']
+    assert_run_hooks :before_fork
   end
 
   def test_run_hooks_and_exception
-    require 'puma/events'
-
     conf = Puma::Configuration.new do |c|
       c.on_restart do |a|
         raise RuntimeError, 'Error from hook'
@@ -302,6 +235,23 @@ class TestConfigFile < TestConfigFileBase
     conf.run_hooks :on_restart, 'ARG', events
     expected = /WARNING hook on_restart failed with exception \(RuntimeError\) Error from hook/
     assert_match expected, events.stdout.string
+  end
+
+  private
+
+  def assert_run_hooks(hook_name, options = {})
+    configured_with = options[:configured_with] || hook_name
+
+    messages = []
+    conf = Puma::Configuration.new do |c|
+      c.send(configured_with) do |a|
+        messages << "#{hook_name} is called with #{a}"
+      end
+    end
+    conf.load
+
+    conf.run_hooks hook_name, 'ARG', Puma::Events.strings
+    assert_equal messages, ["#{hook_name} is called with ARG"]
   end
 end
 

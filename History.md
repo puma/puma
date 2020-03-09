@@ -17,7 +17,7 @@
   * Preserve `BUNDLE_GEMFILE` env var when using `prune_bundler` (#1893)
   * Send 408 request timeout even when queue requests is disabled (#2119)
   * Rescue IO::WaitReadable instead of EAGAIN for blocking read (#2121)
-  * Rescue exceptions in hooks defined by users (on_worker_boot, after_worker_fork etc) (#1551)
+  * Rescue and log exceptions in hooks defined by users (on_worker_boot, after_worker_fork etc) (#1551)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
