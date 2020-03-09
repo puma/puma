@@ -14,7 +14,11 @@ class TestConfigFile < TestConfigFileBase
     end
     conf.load
 
-    conf.app
+    # suppress deprecation warning of Rack (>= 2.2.0)
+    # > Parsing options from the first comment line is deprecated!\n
+    assert_output(nil, nil) do
+      conf.app
+    end
 
     assert_equal ["tcp://127.0.0.1:9292"], conf.options[:binds]
   end
