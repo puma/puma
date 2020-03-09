@@ -14,6 +14,6 @@ module Puma
   end
 
   def self.mri?
-    RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil? 
+    RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil?
   end
 end
