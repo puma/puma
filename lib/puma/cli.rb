@@ -187,10 +187,6 @@ module Puma
             end
           end
 
-          o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
-            user_config.tcp_mode!
-          end
-
           o.on "--early-hints", "Enable early hints support" do
             user_config.early_hints
           end

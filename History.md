@@ -4,12 +4,15 @@
   * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
   * Do not set user_config to quiet by default to allow for file config (#2074)
-  * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `GC.compact` is called before fork if available (#2093)
   * Add `requests_count` to workers stats. (#2106)
-  * Changed #connected_port to #connected_ports (#2076)
+
+* Deprecations, Removals and Breaking API Changes
+  * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `--control` has been removed. Use `--control-url` (#1487)
-  * `worker_directory` has been removed. Use `directory`
+  * `worker_directory` has been removed. Use `directory`.
+  * `tcp_mode` has been removed without replacement. (#2169)
+  * Changed #connected_port to #connected_ports (#2076)
 
 * Bugfixes
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
@@ -23,7 +26,6 @@
   * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
   * Simplify `Runner#start_control` URL parsing (#2111)
   * Removed the IOBuffer extension and replaced with Ruby (#1980)
-
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
 
