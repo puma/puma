@@ -245,14 +245,6 @@ module Puma
     def app
       found = options[:app] || load_rackup
 
-      if @options[:mode] == :tcp
-        require 'puma/tcp_logger'
-
-        logger = @options[:logger]
-        quiet = !@options[:log_requests]
-        return TCPLogger.new(logger, found, quiet)
-      end
-
       if @options[:log_requests]
         require 'puma/commonlogger'
         logger = @options[:logger]

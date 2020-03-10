@@ -325,12 +325,6 @@ module Puma
       @options[:rackup] = path.to_s
     end
 
-    # Run Puma in TCP mode
-    #
-    def tcp_mode!
-      @options[:mode] = :tcp
-    end
-
     def early_hints(answer=true)
       @options[:early_hints] = answer
     end
@@ -534,11 +528,6 @@ module Puma
     #   directory '/u/apps/lolcat'
     def directory(dir)
       @options[:directory] = dir.to_s
-    end
-
-    # Run the app as a raw TCP app instead of an HTTP rack app.
-    def tcp_mode
-      @options[:mode] = :tcp
     end
 
     # Preload the application before starting the workers; this conflicts with

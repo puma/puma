@@ -92,10 +92,6 @@ module Puma
       log "* Version #{Puma::Const::PUMA_VERSION} (#{ruby_engine}), codename: #{Puma::Const::CODE_NAME}"
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
-
-      if @options[:mode] == :tcp
-        log "* Mode: Lopez Express (tcp)"
-      end
     end
 
     def redirected_io?
@@ -157,10 +153,6 @@ module Puma
       server.min_threads = min_t
       server.max_threads = max_t
       server.inherit_binder @launcher.binder
-
-      if @options[:mode] == :tcp
-        server.tcp_mode!
-      end
 
       if @options[:early_hints]
         server.early_hints = true
