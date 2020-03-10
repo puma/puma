@@ -13,6 +13,7 @@
   * `--control` has been removed. Use `--control-url` (#1487)
   * `worker_directory` has been removed. Use `directory`.
   * `tcp_mode` has been removed without replacement. (#2169)
+  * Daemonization has been removed without replacement. (#2170)
   * Changed #connected_port to #connected_ports (#2076)
 
 * Bugfixes
