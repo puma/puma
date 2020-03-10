@@ -117,11 +117,6 @@ module Puma
             @control_options[:auth_token] = arg
           end
 
-          o.on "-d", "--daemon", "Daemonize the server into the background" do
-            user_config.daemonize
-            user_config.quiet
-          end
-
           o.on "--debug", "Log lowlevel debugging information" do
             user_config.debug
           end

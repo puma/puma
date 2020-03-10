@@ -210,20 +210,6 @@ module Puma
       @options[:clean_thread_locals] = which
     end
 
-    # Daemonize the server into the background. It's highly recommended to
-    # use this in combination with +pidfile+ and +stdout_redirect+.
-    #
-    # The default is "false".
-    #
-    # @example
-    #   daemonize
-    #
-    # @example
-    #   daemonize false
-    def daemonize(which=true)
-      @options[:daemon] = which
-    end
-
     # When shutting down, drain the accept socket of pending
     # connections and process them. This loops over the accept
     # socket until there are no more read events and then stops

@@ -1,4 +1,4 @@
-system "ruby -rrubygems -Ilib bin/pumactl -F test/shell/t2_conf.rb start"
+system "ruby -rrubygems -Ilib bin/pumactl -F test/shell/t2_conf.rb start &"
 sleep 5
 system "curl http://localhost:10103/"
 

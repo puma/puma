@@ -70,10 +70,6 @@ module Puma
         unsupported "worker mode not supported on #{RUBY_ENGINE} on this platform"
       end
 
-      if @options[:daemon] && Puma.windows?
-        unsupported 'daemon mode not supported on Windows'
-      end
-
       Dir.chdir(@restart_dir)
 
       prune_bundler if prune_bundler?

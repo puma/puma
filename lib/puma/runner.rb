@@ -18,10 +18,6 @@ module Puma
       @started_at = Time.now
     end
 
-    def daemon?
-      @options[:daemon]
-    end
-
     def development?
       @options[:environment] == "development"
     end
@@ -130,7 +126,6 @@ module Puma
         exit 1
       end
 
-      # Load the app before we daemonize.
       begin
         @app = @launcher.config.app
       rescue Exception => e

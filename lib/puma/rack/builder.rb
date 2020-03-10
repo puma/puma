@@ -67,10 +67,6 @@ module Puma::Rack
           options[:environment] = e
         }
 
-        opts.on("-D", "--daemonize", "run daemonized in the background") { |d|
-          options[:daemonize] = d ? true : false
-        }
-
         opts.on("-P", "--pid FILE", "file to store PID") { |f|
           options[:pid] = ::File.expand_path(f)
         }
