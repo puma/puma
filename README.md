@@ -270,7 +270,7 @@ It is common to use process monitors with Puma. Modern process monitors like sys
 provide continuous monitoring and restarts for increased
 reliability in production environments:
 
-* [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
+* [docs/jungle](https://github.com/puma/puma/tree/master/docs/jungle) for rc.d and upstart
 * [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
 ## Community Extensions

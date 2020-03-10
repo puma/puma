@@ -469,12 +469,7 @@ module Puma
       #
       @check_pipe, @suicide_pipe = Puma::Util.pipe
 
-      if daemon?
-        log "* Daemonizing..."
-        Process.daemon(true)
-      else
-        log "Use Ctrl-C to stop"
-      end
+      log "Use Ctrl-C to stop"
 
       redirect_io
 
