@@ -7,19 +7,15 @@ class TestRedirectIO < TestIntegration
   def setup
     super
 
-    @out_file = Tempfile.new 'puma-out'
-    @out_file_path = @out_file.path
-    @err_file = Tempfile.new 'puma-err'
-    @err_file_path = @err_file.path
+    @out_file_path = Tempfile.new('puma-out').path
+    @err_file_path = Tempfile.new('puma-err').path
   end
 
   def teardown
     super
 
-    @out_file.close
-    @err_file.close
-    File.unlink @out_file_path
-    File.unlink @err_file_path
+    paths = [@out_file_path, @err_file_path, @old_out_file_path, @old_err_file_path]
+    File.unlink(*paths)
   end
 
   def test_sighup_redirects_io_single
@@ -32,21 +28,21 @@ class TestRedirectIO < TestIntegration
     ]
     cli_server cli_args.join ' '
 
-    wait_until_file_has_content @out_file
-    assert_match 'puma startup', @out_file.readline
+    wait_until_file_has_content @out_file_path
+    assert_match 'puma startup', File.read(@out_file_path)
 
-    wait_until_file_has_content @err_file
-    assert_match 'puma startup', @err_file.readline
+    wait_until_file_has_content @err_file_path
+    assert_match 'puma startup', File.read(@err_file_path)
 
     log_rotate_output_files
 
     Process.kill :HUP, @server.pid
 
-    wait_until_file_has_content @out_file
-    assert_match 'puma startup', @out_file.readline
+    wait_until_file_has_content @out_file_path
+    assert_match 'puma startup', File.read(@out_file_path)
 
-    wait_until_file_has_content @err_file
-    assert_match 'puma startup', @err_file.readline
+    wait_until_file_has_content @err_file_path
+    assert_match 'puma startup', File.read(@err_file_path)
   end
 
   def test_sighup_redirects_io_cluster
@@ -60,44 +56,45 @@ class TestRedirectIO < TestIntegration
     ]
     cli_server cli_args.join ' '
 
-    wait_until_file_has_content @out_file
-    assert_match 'puma startup', @out_file.readline
+    wait_until_file_has_content @out_file_path
+    assert_match 'puma startup', File.read(@out_file_path)
 
-    wait_until_file_has_content @err_file
-    assert_match 'puma startup', @err_file.readline
+    wait_until_file_has_content @err_file_path
+    assert_match 'puma startup', File.read(@err_file_path)
 
     log_rotate_output_files
 
     Process.kill :HUP, @server.pid
 
-    wait_until_file_has_content @out_file
-    assert_match 'puma startup', @out_file.readline
+    wait_until_file_has_content @out_file_path
+    assert_match 'puma startup', File.read(@out_file_path)
 
-    wait_until_file_has_content @err_file
-    assert_match 'puma startup', @err_file.readline
+    wait_until_file_has_content @err_file_path
+    assert_match 'puma startup', File.read(@err_file_path)
   end
 
   private
 
   def log_rotate_output_files
     # rename both files to .old
-    old_out_file_path = "#{@out_file_path}.old"
-    old_err_file_path = "#{@err_file_path}.old"
-    File.rename @out_file_path, old_out_file_path
-    File.rename @err_file_path, old_err_file_path
+    @old_out_file_path = "#{@out_file_path}.old"
+    @old_err_file_path = "#{@err_file_path}.old"
+    File.rename @out_file_path, @old_out_file_path
+    File.rename @err_file_path, @old_err_file_path
 
-    # reload references to output files
-    @out_file.close
-    @err_file.close
-    @out_file = File.open @out_file_path, File::CREAT
-    @err_file = File.open @err_file_path, File::CREAT
+    File.new(@out_file_path, File::CREAT).close
+    File.new(@err_file_path, File::CREAT).close
   end
 
-  def wait_until_file_has_content(file)
-    file.read_nonblock 1
-    file.seek 0
-  rescue EOFError
-    sleep 0.1
-    retry
+  def wait_until_file_has_content(path)
+    File.open(path) do |file|
+      begin
+        file.read_nonblock 1
+        file.seek 0
+      rescue EOFError
+        sleep 0.1
+        retry
+      end
+    end
   end
 end
