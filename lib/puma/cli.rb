@@ -80,7 +80,7 @@ module Puma
       @launcher.run
     end
 
-  private
+    private
     def unsupported(str)
       @events.error(str)
       raise UnsupportedOption
@@ -185,10 +185,6 @@ module Puma
             else
               user_config.threads min, min
             end
-          end
-
-          o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
-            user_config.tcp_mode!
           end
 
           o.on "--early-hints", "Enable early hints support" do

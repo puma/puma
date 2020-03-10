@@ -21,7 +21,7 @@ DISABLE_SSL = begin
               Puma::MiniSSL.check
               # net/http (loaded in helper) does not necessarily load OpenSSL
               require "openssl" unless Object.const_defined? :OpenSSL
-              puts "", RUBY_DESCRIPTION,
+              puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
                    "                         Puma::MiniSSL                   OpenSSL",
                    "OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION.ljust 32}#{OpenSSL::OPENSSL_LIBRARY_VERSION}",
                    "        OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION.ljust 32}#{OpenSSL::OPENSSL_VERSION}", ""

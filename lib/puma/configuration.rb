@@ -245,14 +245,6 @@ module Puma
     def app
       found = options[:app] || load_rackup
 
-      if @options[:mode] == :tcp
-        require 'puma/tcp_logger'
-
-        logger = @options[:logger]
-        quiet = !@options[:log_requests]
-        return TCPLogger.new(logger, found, quiet)
-      end
-
       if @options[:log_requests]
         require 'puma/commonlogger'
         logger = @options[:logger]
@@ -275,8 +267,15 @@ module Puma
       @plugins.create name
     end
 
-    def run_hooks(key, arg)
-      @options.all_of(key).each { |b| b.call arg }
+    def run_hooks(key, arg, events)
+      @options.all_of(key).each do |b|
+        begin
+          b.call arg
+        rescue => e
+          events.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
+          events.debug e.backtrace.join("\n")
+        end
+      end
     end
 
     def self.temp_path

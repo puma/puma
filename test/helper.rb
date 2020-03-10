@@ -11,26 +11,23 @@ if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
   end
 end
 
-require "net/http"
-require "timeout"
 require "minitest/autorun"
 require "minitest/pride"
 require "minitest/proveit"
 require_relative "helpers/apps"
 
-$LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
 
 $debugging_info = ''.dup
 $debugging_hold = false    # needed for TestCLI#test_control_clustered
 
 require "puma"
-require "puma/events"
 require "puma/detect"
 
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
 def hit(uris)
+  require "net/http"
   uris.map do |u|
     response =
       if u.kind_of? String
@@ -58,6 +55,7 @@ module UniquePort
   end
 end
 
+require "timeout"
 module TimeoutEveryTestCase
   # our own subclass so we never confused different timeouts
   class TestTookTooLong < Timeout::Error

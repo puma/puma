@@ -99,10 +99,6 @@ module Puma
       @binder = bind
     end
 
-    def tcp_mode!
-      @mode = :tcp
-    end
-
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
     #
@@ -176,107 +172,6 @@ module Puma
       @thread_pool and @thread_pool.pool_capacity
     end
 
-    # Lopez Mode == raw tcp apps
-
-    def run_lopez_mode(background=true)
-      @thread_pool = ThreadPool.new(@min_threads,
-                                    @max_threads,
-                                    Hash) do |client, tl|
-
-        io = client.to_io
-        addr = io.peeraddr.last
-
-        if addr.empty?
-          # Set unix socket addrs to localhost
-          addr = "127.0.0.1:0"
-        else
-          addr = "#{addr}:#{io.peeraddr[1]}"
-        end
-
-        env = { 'thread' => tl, REMOTE_ADDR => addr }
-
-        begin
-          @app.call env, client.to_io
-        rescue Object => e
-          STDERR.puts "! Detected exception at toplevel: #{e.message} (#{e.class})"
-          STDERR.puts e.backtrace
-        end
-
-        client.close unless env['detach']
-      end
-
-      @events.fire :state, :running
-
-      if background
-        @thread = Thread.new do
-          Puma.set_thread_name "server"
-          handle_servers_lopez_mode
-        end
-        return @thread
-      else
-        handle_servers_lopez_mode
-      end
-    end
-
-    def handle_servers_lopez_mode
-      begin
-        check = @check
-        sockets = [check] + @binder.ios
-        pool = @thread_pool
-
-        while @status == :run
-          begin
-            ios = IO.select sockets
-            ios.first.each do |sock|
-              if sock == check
-                break if handle_check
-              else
-                begin
-                  if io = sock.accept_nonblock
-                    client = Client.new io, nil
-                    pool << client
-                  end
-                rescue SystemCallError
-                  # nothing
-                rescue Errno::ECONNABORTED
-                  # client closed the socket even before accept
-                  begin
-                    io.close
-                  rescue
-                    Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-                  end
-                end
-              end
-            end
-          rescue Object => e
-            @events.unknown_error self, e, "Listen loop"
-          end
-        end
-
-        @events.fire :state, @status
-
-        graceful_shutdown if @status == :stop || @status == :restart
-
-      rescue Exception => e
-        STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
-        STDERR.puts e.backtrace
-      ensure
-        begin
-          @check.close
-        rescue
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-        end
-
-        # Prevent can't modify frozen IOError (RuntimeError)
-        begin
-          @notify.close
-        rescue IOError
-          # no biggy
-        end
-      end
-
-      @events.fire :state, :done
-    end
     # Runs the server.
     #
     # If +background+ is true (the default) then a thread is spun
@@ -289,10 +184,6 @@ module Puma
       @events.fire :state, :booting
 
       @status = :run
-
-      if @mode == :tcp
-        return run_lopez_mode(background)
-      end
 
       queue_requests = @queue_requests
 
