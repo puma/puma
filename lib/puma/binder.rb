@@ -62,7 +62,7 @@ module Puma
       remove = []
       remove += create_inherited_fds(env_hash)
       env_hash.each do |k,v|
-        if k == 'LISTEN_FDS' && ENV['LISTEN_PID'].to_i == $$
+        if k == 'LISTEN_FDS' && env_hash['LISTEN_PID'].to_i == $$
           # systemd socket activation.
           # LISTEN_FDS = number of listening sockets. e.g. 2 means accept on 2 sockets w/descriptors 3 and 4.
           # LISTEN_PID = PID of the service process, aka us
@@ -70,7 +70,7 @@ module Puma
 
           number_of_sockets_to_listen_on = v.to_i
           number_of_sockets_to_listen_on.times do |index|
-            fd = index + 3 # 3 is the magic number you add to follow the SA protocol
+            fd = socket_activation_fd(index)
             sock = TCPServer.for_fd(fd)  # TODO: change to BasicSocket?
             key = begin # Try to parse as a path
               [:unix, Socket.unpack_sockaddr_un(sock.getsockname)]
@@ -382,8 +382,9 @@ module Puma
       end.map { |addrinfo| addrinfo.ip_address }.uniq
     end
 
-    # def create_activated_sockets(env_hash)
-    # end
+    def socket_activation_fd(int)
+      int + 3 # 3 is the magic number you add to follow the SA protocol
+    end
 
     def create_inherited_fds(env_hash)
       env_hash.select {|k,v| k =~ /PUMA_INHERIT_\d+/}.each do |_k, v|
