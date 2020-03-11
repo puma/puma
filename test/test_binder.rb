@@ -250,7 +250,7 @@ class TestBinder < TestBinderBase
 
   def test_import_from_env_listen_inherit
     @binder.parse ["tcp://127.0.0.1:0"], @events
-    removals = @binder.import_from_env(@binder.redirects_for_restart_env)
+    removals = @binder.create_inherited_fds(@binder.redirects_for_restart_env)
 
     @binder.listeners.each do |url, io|
       assert_equal io.to_i, @binder.inherited_fds[url]
@@ -294,7 +294,7 @@ class TestBinder < TestBinderBase
 
     @binder.instance_variable_set(:@sock_fd, sock.fileno)
     def @binder.socket_activation_fd(int); @sock_fd; end
-    @result = @binder.import_from_env(hash)
+    @result = @binder.create_activated_fds(hash)
 
     url = "[::]" if url == "::"
     ary = path ? [:unix, path] : [:tcp, url, port]

@@ -48,8 +48,8 @@ module Puma
       @config        = conf
 
       @binder        = Binder.new(@events)
-      env_to_remove = @binder.import_from_env(ENV)
-      env_to_remove.each { |k| ENV.delete k }
+      @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
+      @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
 
       @environment = conf.environment
 
