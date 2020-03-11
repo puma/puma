@@ -250,7 +250,7 @@ class TestBinder < TestBinderBase
 
   def test_import_from_env_listen_inherit
     @binder.parse ["tcp://127.0.0.1:0"], @events
-    removals = @binder.import_from_env(@binder.redirects_for_restart_env)
+    removals = @binder.create_inherited_fds(@binder.redirects_for_restart_env)
 
     @binder.listeners.each do |url, io|
       assert_equal io.to_i, @binder.inherited_fds[url]
@@ -258,13 +258,51 @@ class TestBinder < TestBinderBase
     assert_includes removals, "PUMA_INHERIT_0"
   end
 
-  # test socket activation with tcp
-  # test socket activation with IPv6
-  # test socket activation with Unix
-  # test socket activation logs to events
-  # test socket activation returns the right keys to remove
+  # Socket activation tests. We have to skip all of these on non-UNIX platforms
+  # because the check that we do in the code only works if you support UNIX sockets.
+  # This is OK, because systemd obviously only works on Linux.
+  def test_socket_activation_tcp
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    url = "127.0.0.1"
+    port = UniquePort.call
+    sock = Addrinfo.tcp(url, port).listen
+    assert_activates_sockets(url: url, port: port, sock: sock)
+  end
+
+  def test_socket_activation_tcp_ipv6
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    url = "::"
+    port = UniquePort.call
+    sock = Addrinfo.tcp(url, port).listen
+    assert_activates_sockets(url: url, port: port, sock: sock)
+  end
+
+  def test_socket_activation_unix
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    path = "test/unixserver.state"
+    sock = Addrinfo.unix(path).listen
+    assert_activates_sockets(path: path, sock: sock)
+  ensure
+    File.unlink path if path
+  end
 
   private
+
+  def assert_activates_sockets(path: nil, port: nil, url: nil, sock: nil)
+    hash = { "LISTEN_FDS" => 1, "LISTEN_PID" => $$ }
+    @events.instance_variable_set(:@debug, true)
+
+    @binder.instance_variable_set(:@sock_fd, sock.fileno)
+    def @binder.socket_activation_fd(int); @sock_fd; end
+    @result = @binder.create_activated_fds(hash)
+
+    url = "[::]" if url == "::"
+    ary = path ? [:unix, path] : [:tcp, url, port]
+
+    assert_kind_of TCPServer, @binder.activated_sockets[ary]
+    assert_match "Registered #{ary.join(":")} for activation from LISTEN_FDS", @events.stdout.string
+    assert_equal ["LISTEN_FDS", "LISTEN_PID"], @result
+  end
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
     skip UNIX_SKT_MSG if order.include?(:unix) && !UNIX_SKT_EXIST
