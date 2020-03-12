@@ -24,6 +24,7 @@
   * Rescue IO::WaitReadable instead of EAGAIN for blocking read (#2121)
   * Ensure `BUNDLE_GEMFILE` is unspecified in workers if unspecified in master when using `prune_bundler` (#2154)
   * Rescue and log exceptions in hooks defined by users (on_worker_boot, after_worker_fork etc) (#1551)
+  * Fix `out_of_band` hook never executed if the number of worker threads is > 1 (#2177)
   
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)

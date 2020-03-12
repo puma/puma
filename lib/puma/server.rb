@@ -63,6 +63,9 @@ module Puma
 
       @status = :stop
 
+      @all_worker_threads_free = false
+      @all_worker_threads_free_mutex = Mutex.new
+
       @min_threads = 0
       @max_threads = 16
       @auto_trim_time = 30
@@ -189,6 +192,7 @@ module Puma
 
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
+                                    Proc.new { signal_all_worker_threads_free },
                                     ::Puma::IOBuffer) do |client, buffer|
 
         # Advertise this server into the thread
@@ -290,10 +294,6 @@ module Puma
                     end
 
                     pool << client
-                    busy_threads = pool.wait_until_not_full
-                    if busy_threads == 0
-                      @options[:out_of_band].each(&:call) if @options[:out_of_band]
-                    end
                   end
                 rescue SystemCallError
                   # nothing
@@ -309,6 +309,19 @@ module Puma
             end
           rescue Object => e
             @events.unknown_error self, e, "Listen loop"
+          end
+
+          if @all_worker_threads_free_mutex.try_lock # Do not block the critical path if mutex isn't available
+            if @all_worker_threads_free
+              begin
+                @options[:out_of_band].each(&:call) if @options[:out_of_band]
+              rescue Exception => e
+                STDERR.puts "Exception handling OOB callbacks: #{e.message} (#{e.class})"
+                STDERR.puts e.backtrace
+              end
+              @all_worker_threads_free = false
+            end
+            @all_worker_threads_free_mutex.unlock
           end
         end
 
@@ -344,6 +357,8 @@ module Puma
       when RESTART_COMMAND
         @status = :restart
         return true
+      when NOTIFY_THREADS_FREE_COMMAND
+        @all_worker_threads_free = true
       end
 
       return false
@@ -945,5 +960,12 @@ module Puma
       HTTP_INJECTION_REGEX =~ header_value.to_s
     end
     private :possible_header_injection?
+
+    def signal_all_worker_threads_free
+      @all_worker_threads_free_mutex.synchronize do
+        @all_worker_threads_free = true
+      end
+    end
+    private :signal_all_worker_threads_free
   end
 end

@@ -10,9 +10,10 @@ class TestThreadPool < Minitest::Test
 
   def new_pool(min, max, &block)
     block = proc { } unless block
+    all_worker_threads_free_cb = proc { }
     @work_mutex = Mutex.new
     @work_done = ConditionVariable.new
-    @pool = Puma::ThreadPool.new(min, max, &block)
+    @pool = Puma::ThreadPool.new(min, max, all_worker_threads_free_cb, &block)
   end
 
   def pause

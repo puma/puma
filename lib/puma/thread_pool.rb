@@ -29,7 +29,7 @@ module Puma
     # The block passed is the work that will be performed in each
     # thread.
     #
-    def initialize(min, max, *extra, &block)
+    def initialize(min, max, all_threads_free_cb, *extra, &block)
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
@@ -41,6 +41,7 @@ module Puma
 
       @min = Integer(min)
       @max = Integer(max)
+      @all_threads_free_cb = all_threads_free_cb
       @block = block
       @extra = extra
 
@@ -116,6 +117,7 @@ module Puma
               end
 
               @waiting += 1
+              signal_threadpool_empty
               not_full.signal
               not_empty.wait mutex
               @waiting -= 1
@@ -210,6 +212,15 @@ module Puma
 
           @not_full.wait @mutex
         end
+      end
+    end
+
+    # Call the callback +@all_threads_free_cb+ if all worker threads are free.
+    #
+    def signal_threadpool_empty
+      busy_threads = @spawned - @waiting
+      if busy_threads == 0
+        @all_threads_free_cb.call
       end
     end
 
