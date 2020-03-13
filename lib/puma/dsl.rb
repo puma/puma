@@ -539,6 +539,22 @@ module Puma
       @options[:lowlevel_error_handler] = obj
     end
 
+    # When force_shutdown_after is set, this allows you to control the message returned
+    # on a force shutdown to the client.
+    #
+    # @example
+    #   force_shutdown_error_response(500, {"Content-Type" => "application/json"}, [JSON.generate({message: "Server shutdown."})])
+    def force_shutdown_error_response(status, headers, response)
+      raise "Headers must be a hash" unless headers.is_a?(Hash)
+      raise "Response must be enumerable" unless response.is_a?(Enumerable)
+
+      @options[:force_shutdown_error_response] = [
+        Integer(status),
+        headers,
+        response
+      ]
+    end
+
     # This option is used to allow your app and its gems to be
     # properly reloaded when not using preload.
     #

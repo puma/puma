@@ -261,6 +261,36 @@ EOF
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
   end
 
+  def test_force_shutdown_custom_error_message
+    shutdown_response = [500, {"Content-Type" => "application/json"}, ["{}\n"]]
+    @server = Puma::Server.new @app, @events, {:force_shutdown_error_response => shutdown_response, :force_shutdown_after => 2}
+
+    server_run app: ->(env) do
+      @server.stop
+      sleep 10
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_match(/Content-Type: application\/json/, data)
+    assert_match(/{}\n$/, data)
+  end
+
+  def test_force_shutdown_error_default
+    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+
+    server_run app: ->(env) do
+      @server.stop
+      sleep 10
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 503 Service Unavailable/, data)
+    assert_match(/Request was internally terminated early\n$/, data)
+  end
+
   def test_prints_custom_error
     re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
     @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}

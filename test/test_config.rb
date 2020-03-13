@@ -114,6 +114,15 @@ class TestConfigFile < TestConfigFileBase
     assert_equal [200, {}, ["error page"]], app.call({})
   end
 
+  def test_force_shutdown_error_response_DSL
+    conf = Puma::Configuration.new do |c|
+      c.load "test/config/app.rb"
+    end
+    conf.load
+
+    assert_equal [500, {"Content-Type" => "application/json"}, ["{}"]], conf.options[:force_shutdown_error_response]
+  end
+
   def test_allow_users_to_override_default_options
     conf = Puma::Configuration.new(restart_cmd: 'bin/rails server')
 

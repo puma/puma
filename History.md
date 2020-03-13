@@ -7,6 +7,7 @@
   * `GC.compact` is called before fork if available (#2093)
   * Add `requests_count` to workers stats. (#2106)
   * Increases maximum URI path length from 2048 to 8196 bytes (#2167)
+  * Added `force_shutdown_error_response` to override the force shutdown response to clients. (#2182)
 
 * Deprecations, Removals and Breaking API Changes
   * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
