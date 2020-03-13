@@ -32,3 +32,10 @@ however they boil down to:
 
 Reading the [documentation](https://netty.io/wiki/forked-tomcat-native.html) is a great way to make sure the requirements
 are set.
+
+## Development
+
+### Logging
+
+If you'd like to see finer log details, consider changing _logging.properties_
+to change the default log level to **FINE**
