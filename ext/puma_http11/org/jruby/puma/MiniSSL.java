@@ -42,6 +42,12 @@ import java.util.logging.Logger;
 
 public class MiniSSL extends RubyObject {
 
+  /**
+   * A system property to dictate whether Puma should attempt to use Netty for creating an SSL Engine
+   * You can set it via `-Dpuma.ssl.use-netty=true` or in JRuby `ENV_JAVA["puma.ssl.use-netty"]`
+   */
+  private static final String NETTY_USE_KEY = "puma.ssl.use-netty";
+
   private final static Logger LOGGER = Logger.getLogger(MiniSSL.class.getName());
 
   private static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -172,7 +178,7 @@ public class MiniSSL extends RubyObject {
         protocols = new String[] { "TLSv1.2" };
     }
 
-    long verify_mode = miniSSLContext.callMethod(threadContext, "verify_mode").convertToInteger().getLongValue();
+    long verifyMode = miniSSLContext.callMethod(threadContext, "verify_mode").convertToInteger().getLongValue();
 
     IRubyObject sslCipherListObject = miniSSLContext.callMethod(threadContext, "ssl_cipher_list");
     String[] sslCipherList = null;
@@ -181,7 +187,7 @@ public class MiniSSL extends RubyObject {
       sslCipherList = sslCipherListObject.convertToString().asJavaString().split(",");
     }
 
-    engine = tryCreateEngine(kmf, tmf, protocols, verify_mode, sslCipherList);
+    engine = tryCreateEngine(kmf, tmf, protocols, verifyMode, sslCipherList);
 
     SSLSession session = engine.getSession();
     inboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
@@ -200,14 +206,20 @@ public class MiniSSL extends RubyObject {
   private static SSLEngine tryCreateEngine(KeyManagerFactory keyManagerFactory,
                                                TrustManagerFactory trustManagerFactory,
                                                String[] protocols,
-                                               long verify_mode,
+                                               long verifyMode,
                                                String[] ciphers) throws NoSuchAlgorithmException, KeyManagementException {
+    if (!Boolean.getBoolean(NETTY_USE_KEY)) {
+      return createJDKEngine(keyManagerFactory, trustManagerFactory, protocols, verifyMode, ciphers);
+    }
+
     try {
+      // these mappings were deduced from here:
+      // https://github.com/netty/netty/blob/2f32e0b8adb63decd9031e26fa5dd4154d93ce97/handler/src/main/java/io/netty/handler/ssl/JdkSslContext.java#L346
       io.netty.handler.ssl.ClientAuth clientAuth = io.netty.handler.ssl.ClientAuth.NONE;
-      if ((verify_mode & 0x1) != 0) {
+      if ((verifyMode & 0x1) != 0) {
         clientAuth = io.netty.handler.ssl.ClientAuth.OPTIONAL;
       }
-      if ((verify_mode & 0x2) != 0) {
+      if ((verifyMode & 0x2) != 0) {
         clientAuth = io.netty.handler.ssl.ClientAuth.REQUIRE;
       }
 
@@ -223,28 +235,45 @@ public class MiniSSL extends RubyObject {
       LOGGER.info("Using Netty tcnative OpenSSL engine");
 
       return engine;
+      /**
+       * Even though Netty may be on the classpath (not throw ClassNotFoundException); there can be other
+       * exceptions thrown by the Netty library such as if it failed to find a OpenSSL library.
+       * Catching on Throwable ensured; we can always default.
+       */
     } catch (Throwable t) {
-      SSLContext sslCtx = SSLContext.getInstance("TLS");
-      sslCtx.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
-      SSLEngine engine = sslCtx.createSSLEngine();
-
-      engine.setEnabledProtocols(protocols);
-      engine.setUseClientMode(false);
-
-      if ((verify_mode & 0x1) != 0) { // 'peer'
-        engine.setWantClientAuth(true);
-      }
-      if ((verify_mode & 0x2) != 0) { // 'force_peer'
-        engine.setNeedClientAuth(true);
-      }
-
-      if (ciphers != null) {
-        engine.setEnabledCipherSuites(ciphers);
-      }
-
-      LOGGER.info("Using JDK SSL engine");
-      return engine;
+      return createJDKEngine(keyManagerFactory, trustManagerFactory, protocols, verifyMode, ciphers);
     }
+  }
+
+  /**
+   * Create a JDK SSL Engine using Java's implementation.
+   * It's the slower then Netty; however that may be unavailable on the classpath.
+   */
+  private static SSLEngine createJDKEngine(KeyManagerFactory keyManagerFactory,
+                                               TrustManagerFactory trustManagerFactory,
+                                               String[] protocols,
+                                               long verifyMode,
+                                               String[] ciphers) throws NoSuchAlgorithmException, KeyManagementException  {
+    SSLContext sslCtx = SSLContext.getInstance("TLS");
+    sslCtx.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
+    SSLEngine engine = sslCtx.createSSLEngine();
+
+    engine.setEnabledProtocols(protocols);
+    engine.setUseClientMode(false);
+
+    if ((verifyMode & 0x1) != 0) { // 'peer'
+      engine.setWantClientAuth(true);
+    }
+    if ((verifyMode & 0x2) != 0) { // 'force_peer'
+      engine.setNeedClientAuth(true);
+    }
+
+    if (ciphers != null) {
+      engine.setEnabledCipherSuites(ciphers);
+    }
+
+    LOGGER.info("Using JDK SSL engine");
+    return engine;
   }
 
   @JRubyMethod
