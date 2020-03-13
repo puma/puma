@@ -36,7 +36,14 @@ import java.security.cert.CertificateException;
 import static javax.net.ssl.SSLEngineResult.Status;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
+import java.util.Arrays;
+
+import java.util.logging.Logger;
+
 public class MiniSSL extends RubyObject {
+
+  private final static Logger LOGGER = Logger.getLogger(MiniSSL.class.getName());
+
   private static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
     public IRubyObject allocate(Ruby runtime, RubyClass klass) {
       return new MiniSSL(runtime, klass);
@@ -154,11 +161,6 @@ public class MiniSSL extends RubyObject {
     TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
     tmf.init(ts);
 
-    SSLContext sslCtx = SSLContext.getInstance("TLS");
-
-    sslCtx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-    engine = sslCtx.createSSLEngine();
-
     String[] protocols;
     if(miniSSLContext.callMethod(threadContext, "no_tlsv1").isTrue()) {
         protocols = new String[] { "TLSv1.1", "TLSv1.2" };
@@ -170,22 +172,16 @@ public class MiniSSL extends RubyObject {
         protocols = new String[] { "TLSv1.2" };
     }
 
-    engine.setEnabledProtocols(protocols);
-    engine.setUseClientMode(false);
-
     long verify_mode = miniSSLContext.callMethod(threadContext, "verify_mode").convertToInteger().getLongValue();
-    if ((verify_mode & 0x1) != 0) { // 'peer'
-        engine.setWantClientAuth(true);
-    }
-    if ((verify_mode & 0x2) != 0) { // 'force_peer'
-        engine.setNeedClientAuth(true);
-    }
 
     IRubyObject sslCipherListObject = miniSSLContext.callMethod(threadContext, "ssl_cipher_list");
+    String[] sslCipherList = null;
+
     if (!sslCipherListObject.isNil()) {
-      String[] sslCipherList = sslCipherListObject.convertToString().asJavaString().split(",");
-      engine.setEnabledCipherSuites(sslCipherList);
+      sslCipherList = sslCipherListObject.convertToString().asJavaString().split(",");
     }
+
+    engine = tryCreateEngine(kmf, tmf, protocols, verify_mode, sslCipherList);
 
     SSLSession session = engine.getSession();
     inboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
@@ -194,6 +190,61 @@ public class MiniSSL extends RubyObject {
     outboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
 
     return this;
+  }
+
+  /**
+   * Try to create a netty tcnative OpenSSL engine which has much better performance
+   * than the JDK native one.
+   * Fall back to the default engine otherwise.
+   */
+  private static SSLEngine tryCreateEngine(KeyManagerFactory keyManagerFactory,
+                                               TrustManagerFactory trustManagerFactory,
+                                               String[] protocols,
+                                               long verify_mode,
+                                               String[] ciphers) throws NoSuchAlgorithmException, KeyManagementException {
+    try {
+      io.netty.handler.ssl.ClientAuth clientAuth = io.netty.handler.ssl.ClientAuth.NONE;
+      if ((verify_mode & 0x1) != 0) {
+        clientAuth = io.netty.handler.ssl.ClientAuth.OPTIONAL;
+      }
+      if ((verify_mode & 0x2) != 0) {
+        clientAuth = io.netty.handler.ssl.ClientAuth.REQUIRE;
+      }
+
+      SSLEngine engine = io.netty.handler.ssl.SslContextBuilder
+              .forServer(keyManagerFactory)
+              .trustManager(trustManagerFactory)
+              .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL)
+              .protocols(protocols)
+              .clientAuth(clientAuth)
+              .ciphers(Arrays.asList(ciphers))
+              .build()
+              .newEngine(io.netty.buffer.ByteBufAllocator.DEFAULT);
+      LOGGER.info("Using Netty tcnative OpenSSL engine");
+
+      return engine;
+    } catch (Throwable t) {
+      SSLContext sslCtx = SSLContext.getInstance("TLS");
+      sslCtx.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
+      SSLEngine engine = sslCtx.createSSLEngine();
+
+      engine.setEnabledProtocols(protocols);
+      engine.setUseClientMode(false);
+
+      if ((verify_mode & 0x1) != 0) { // 'peer'
+        engine.setWantClientAuth(true);
+      }
+      if ((verify_mode & 0x2) != 0) { // 'force_peer'
+        engine.setNeedClientAuth(true);
+      }
+
+      if (ciphers != null) {
+        engine.setEnabledCipherSuites(ciphers);
+      }
+
+      LOGGER.info("Using JDK SSL engine");
+      return engine;
+    }
   }
 
   @JRubyMethod

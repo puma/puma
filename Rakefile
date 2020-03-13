@@ -49,6 +49,7 @@ else
   # Java (JRuby)
   Rake::JavaExtensionTask.new("puma_http11", gemspec) do |ext|
     ext.lib_dir = "lib/puma"
+    ext.classpath = "netty-handler-4.1.47.Final.jar:netty-buffer-4.1.47.Final.jar"
   end
 end
 
