@@ -185,6 +185,7 @@ module Puma
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
         attr_reader :keystore
         attr_accessor :keystore_pass
+        attr_accessor :alias
         attr_accessor :ssl_cipher_list
 
         def keystore=(keystore)

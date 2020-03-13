@@ -14,6 +14,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.X509KeyManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -28,17 +29,21 @@ import java.nio.ByteBuffer;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.PrivateKey;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 
 import static javax.net.ssl.SSLEngineResult.Status;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import java.util.Arrays;
 
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
+import java.util.logging.Level;
 
 public class MiniSSL extends RubyObject {
 
@@ -156,6 +161,7 @@ public class MiniSSL extends RubyObject {
     KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
     KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
 
+    String alias = miniSSLContext.callMethod(threadContext, "alias").convertToString().asJavaString();
     char[] password = miniSSLContext.callMethod(threadContext, "keystore_pass").convertToString().asJavaString().toCharArray();
     String keystoreFile = miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString();
     ks.load(new FileInputStream(keystoreFile), password);
@@ -187,7 +193,7 @@ public class MiniSSL extends RubyObject {
       sslCipherList = sslCipherListObject.convertToString().asJavaString().split(",");
     }
 
-    engine = tryCreateEngine(kmf, tmf, protocols, verifyMode, sslCipherList);
+    engine = tryCreateEngine(alias, kmf, tmf, protocols, verifyMode, sslCipherList);
 
     SSLSession session = engine.getSession();
     inboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
@@ -203,14 +209,18 @@ public class MiniSSL extends RubyObject {
    * than the JDK native one.
    * Fall back to the default engine otherwise.
    */
-  private static SSLEngine tryCreateEngine(KeyManagerFactory keyManagerFactory,
-                                               TrustManagerFactory trustManagerFactory,
-                                               String[] protocols,
-                                               long verifyMode,
-                                               String[] ciphers) throws NoSuchAlgorithmException, KeyManagementException {
+  private static SSLEngine tryCreateEngine(String alias,
+                                           KeyManagerFactory keyManagerFactory,
+                                           TrustManagerFactory trustManagerFactory,
+                                           String[] protocols,
+                                           long verifyMode,
+                                           String[] ciphers) throws NoSuchAlgorithmException, KeyManagementException {
     if (!Boolean.getBoolean(NETTY_USE_KEY)) {
       return createJDKEngine(keyManagerFactory, trustManagerFactory, protocols, verifyMode, ciphers);
     }
+
+    PrivateKey privateKey = ((X509KeyManager) keyManagerFactory.getKeyManagers()[0]).getPrivateKey(alias);
+    X509Certificate[] privateKeyCertChain = ((X509KeyManager) keyManagerFactory.getKeyManagers()[0]).getCertificateChain(alias);
 
     try {
       // these mappings were deduced from here:
@@ -223,8 +233,12 @@ public class MiniSSL extends RubyObject {
         clientAuth = io.netty.handler.ssl.ClientAuth.REQUIRE;
       }
 
+      if (ciphers == null) {
+        ciphers = new String[]{};
+      }
+
       SSLEngine engine = io.netty.handler.ssl.SslContextBuilder
-              .forServer(keyManagerFactory)
+              .forServer(privateKey, privateKeyCertChain)
               .trustManager(trustManagerFactory)
               .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL)
               .protocols(protocols)
@@ -241,6 +255,7 @@ public class MiniSSL extends RubyObject {
        * Catching on Throwable ensured; we can always default.
        */
     } catch (Throwable t) {
+      LOGGER.log(Level.INFO, "Failed to use Netty OpenSSL " + t.getMessage(), t);
       return createJDKEngine(keyManagerFactory, trustManagerFactory, protocols, verifyMode, ciphers);
     }
   }
@@ -439,5 +454,20 @@ public class MiniSSL extends RubyObject {
     } catch (SSLPeerUnverifiedException ex) {
       return getRuntime().getNil();
     }
+  }
+
+  @JRubyMethod
+  public IRubyObject shutdown() {
+    // TODO: Implement!
+    return getRuntime().getTrue();
+  }
+
+  /**
+   * Returns true if the SSL connection is still in init phase.
+   */
+  @JRubyMethod(name = "init?")
+  public IRubyObject init_p() {
+    // TODO: Implement!
+    return getRuntime().getFalse();
   }
 }

@@ -1,6 +1,8 @@
 require_relative "helper"
 require "puma/minissl"
 require "puma/puma_http11"
+require "puma/events"
+require "net/http"
 
 #———————————————————————————————————————————————————————————————————————————————
 #             NOTE: ALL TESTS BYPASSED IF DISABLE_SSL IS TRUE
@@ -55,6 +57,7 @@ class TestPumaServerSSL < Minitest::Test
     if Puma.jruby?
       ctx.keystore =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
       ctx.keystore_pass = 'blahblah'
+      ctx.alias = 'mydomain'
     else
       ctx.key  =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
       ctx.cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
@@ -215,6 +218,7 @@ class TestPumaServerSSLClient < Minitest::Test
     if Puma.jruby?
       ctx.keystore =  File.expand_path "../../examples/puma/client-certs/keystore.jks", __FILE__
       ctx.keystore_pass = 'blahblah'
+      ctx.alias = 'server'
     else
       ctx.key = File.expand_path "../../examples/puma/client-certs/server.key", __FILE__
       ctx.cert = File.expand_path "../../examples/puma/client-certs/server.crt", __FILE__

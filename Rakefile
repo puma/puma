@@ -51,8 +51,11 @@ else
   task :java => :maven_dependencies
   # create a task which will download the dependencies if they do not exist already in the working directory
   task :maven_dependencies do
-    %w(https://repo1.maven.org/maven2/io/netty/netty-buffer/4.1.47.Final/netty-buffer-4.1.47.Final.jar
-       https://repo1.maven.org/maven2/io/netty/netty-handler/4.1.47.Final/netty-handler-4.1.47.Final.jar).each do |dependency|
+    %w(https://repo1.maven.org/maven2/io/netty/netty-common/4.1.47.Final/netty-common-4.1.47.Final.jar
+       https://repo1.maven.org/maven2/io/netty/netty-codec/4.1.47.Final/netty-codec-4.1.47.Final.jar
+       https://repo1.maven.org/maven2/io/netty/netty-buffer/4.1.47.Final/netty-buffer-4.1.47.Final.jar
+       https://repo1.maven.org/maven2/io/netty/netty-handler/4.1.47.Final/netty-handler-4.1.47.Final.jar
+       https://repo1.maven.org/maven2/io/netty/netty-tcnative-boringssl-static/2.0.29.Final/netty-tcnative-boringssl-static-2.0.29.Final.jar).each do |dependency|
       filename = URI(dependency).path.split('/').last
       next if File.exists?(filename)
       puts URI(dependency)
@@ -81,7 +84,9 @@ file "lib/puma/puma_http11.rb" do |t|
   end
 end
 
-Rake::TestTask.new(:test)
+Rake::TestTask.new(:test) do |t|
+  t.ruby_opts = ["-J-Djava.util.logging.config.file=logging.properties -J-Dpuma.ssl.use-netty=true"]
+end
 
 # tests require extension be compiled, but depend on the platform
 if Puma.jruby?

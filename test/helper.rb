@@ -24,6 +24,17 @@ $debugging_hold = false    # needed for TestCLI#test_control_clustered
 require "puma"
 require "puma/detect"
 
+# Add the Netty JAR to the ClassPath so we can test them with JRuby
+if Puma.jruby?
+  $CLASSPATH << "netty-buffer-4.1.47.Final.jar"
+  $CLASSPATH << "netty-handler-4.1.47.Final.jar"
+  $CLASSPATH << "netty-common-4.1.47.Final.jar"
+  $CLASSPATH << "netty-codec-4.1.47.Final.jar"
+  # This is an UberJar that contains all the different arch statically binded
+  # @see https://netty.io/wiki/forked-tomcat-native.html
+  $CLASSPATH << "netty-tcnative-boringssl-static-2.0.29.Final.jar"
+end
+
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
 def hit(uris)
