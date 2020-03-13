@@ -58,7 +58,6 @@ else
        https://repo1.maven.org/maven2/io/netty/netty-tcnative-boringssl-static/2.0.29.Final/netty-tcnative-boringssl-static-2.0.29.Final.jar).each do |dependency|
       filename = URI(dependency).path.split('/').last
       next if File.exists?(filename)
-      puts URI(dependency)
       response = Net::HTTP.get_response(URI(dependency))
       open(filename, "wb") { |file|
         file.write(response.body)
