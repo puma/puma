@@ -14,15 +14,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, macos ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, ruby-head ]
+        os: [ ubuntu-latest, macos ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, ruby-head, jruby, truffleruby ]
 
     steps:
       - name: repo checkout
         uses: actions/checkout@v2
 
       - name: load ruby, ragel
-        uses: MSP-Greg/setup-ruby-pkgs@v1
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
