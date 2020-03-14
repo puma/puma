@@ -84,7 +84,10 @@ file "lib/puma/puma_http11.rb" do |t|
 end
 
 Rake::TestTask.new(:test) do |t|
-  t.ruby_opts = ["-J-Djava.util.logging.config.file=logging.properties -J-Dpuma.ssl.use-netty=true"]
+  # if we are testing on JRuby; let's enable Netty OpenSSL for MiniSSL
+  # this is controlled via the system property below.
+  # We also set the logging.properties file; so that we can tune Java Logging
+  t.ruby_opts = ["-J-Djava.util.logging.config.file=logging.properties -J-Dpuma.ssl.use-netty=true"] if Puma.jruby?
 end
 
 # tests require extension be compiled, but depend on the platform
