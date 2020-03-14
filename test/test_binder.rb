@@ -284,7 +284,7 @@ class TestBinder < TestBinderBase
     sock = Addrinfo.unix(path).listen
     assert_activates_sockets(path: path, sock: sock)
   ensure
-    File.unlink path if path
+    File.unlink(path) rescue nil # JRuby race?
   end
 
   private

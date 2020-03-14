@@ -23,10 +23,13 @@ class TestIntegration < Minitest::Test
       stop_server @pid, signal: :INT
     end
 
-    @ios_to_close.each do |io|
-      io.close if io.is_a?(IO) && !io.closed?
-      io = nil
+    if @ios_to_close
+      @ios_to_close.each do |io|
+        io.close if io.is_a?(IO) && !io.closed?
+        io = nil
+      end
     end
+
     refute File.exist?(@bind_path), "Bind path must be removed after stop"
     File.unlink(@bind_path) rescue nil
 
