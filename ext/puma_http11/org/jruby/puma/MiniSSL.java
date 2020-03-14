@@ -65,6 +65,36 @@ public class MiniSSL extends RubyObject {
     RubyModule mPuma = runtime.defineModule("Puma");
     RubyModule ssl = mPuma.defineModuleUnder("MiniSSL");
 
+    /**
+     * Define constants to match parity with MRI OpenSSL extention for Puma.
+     */
+
+    // this constant is only used for testing; lets set it to true.
+    // java by default does not have SSL3/TLS1 enabled; and developers have to go through hoops
+    // to turn it on.
+    ssl.defineConstant("OPENSSL_NO_SSL3", runtime.newBoolean(true));
+    ssl.defineConstant("OPENSSL_NO_TLS1", runtime.newBoolean(true));
+
+    if (!Boolean.getBoolean(NETTY_USE_KEY)) {
+      ssl.defineConstant("OPENSSL_LIBRARY_VERSION", runtime.newString("Unknown"));
+      ssl.defineConstant("OPENSSL_VERSION", runtime.newString("Unknown"));
+    } else {
+      try {
+        ssl.defineConstant(
+                "OPENSSL_LIBRARY_VERSION",
+                runtime.newString(io.netty.handler.ssl.OpenSsl.versionString())
+        );
+        ssl.defineConstant(
+                "OPENSSL_VERSION",
+                runtime.newString(io.netty.handler.ssl.OpenSsl.versionString())
+        );
+      } catch (Throwable t) {
+        LOGGER.log(Level.INFO, "Failed to use Netty OpenSSL " + t.getMessage(), t);
+        ssl.defineConstant("OPENSSL_LIBRARY_VERSION", runtime.newString("Unknown"));
+        ssl.defineConstant("OPENSSL_VERSION", runtime.newString("Unknown"));
+      }
+    }
+
     mPuma.defineClassUnder("SSLError",
                            runtime.getClass("IOError"),
                            runtime.getClass("IOError").getAllocator());
