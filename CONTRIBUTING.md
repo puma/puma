@@ -21,6 +21,8 @@ There are lots of ways to contribute to puma. Some examples include:
 [reproduction steps]: https://github.com/puma/puma/blob/CONTRIBUTING.md#reproduction-steps
 [reproducing bug]: https://github.com/puma/puma/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abug
 
+Newbies welcome! We would be happy to help you make your first contribution to a F/OSS project.
+
 ## Setup
 
 Clone down the Puma repository.
