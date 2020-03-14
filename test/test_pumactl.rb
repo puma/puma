@@ -22,13 +22,6 @@ class TestPumaControlCli < TestConfigFileBase
     @ready.close
   end
 
-  def find_open_port
-    server = TCPServer.new("127.0.0.1", 0)
-    server.addr[1]
-  ensure
-    server.close
-  end
-
   def with_config_file(path_to_config, port)
     path = Pathname.new(path_to_config)
     Dir.mktmpdir do |tmp_dir|
@@ -120,7 +113,7 @@ class TestPumaControlCli < TestConfigFileBase
 
   def test_control_url_and_status
     host = "127.0.0.1"
-    port = find_open_port
+    port = UniquePort.call
     url = "tcp://#{host}:#{port}/"
 
     opts = [
@@ -150,7 +143,7 @@ class TestPumaControlCli < TestConfigFileBase
 
   def test_control_ssl
     host = "127.0.0.1"
-    port = find_open_port
+    port = UniquePort.call
     url = "ssl://#{host}:#{port}?#{ssl_query}"
 
     opts = [
