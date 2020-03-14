@@ -30,8 +30,10 @@ class TestIntegration < Minitest::Test
       end
     end
 
-    refute File.exist?(@bind_path), "Bind path must be removed after stop"
-    File.unlink(@bind_path) rescue nil
+    if @bind_path
+      refute File.exist?(@bind_path), "Bind path must be removed after stop"
+      File.unlink(@bind_path) rescue nil
+    end
 
     # wait until the end for OS buffering?
     if defined?(@server) && @server
