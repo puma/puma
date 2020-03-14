@@ -105,6 +105,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_allows_both_unix_and_tcp
+    skip_on :jruby # Undiagnosed thread race. TODO fix
     assert_parsing_logs_uri [:unix, :tcp]
   end
 

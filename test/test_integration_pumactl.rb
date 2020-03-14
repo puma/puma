@@ -20,6 +20,7 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_stop_tcp
+    skip_on :jruby # Undiagnose thread race. TODO fix
     @control_tcp_port = UniquePort.call
     cli_server "-q test/rackup/sleep.ru --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} -S #{@state_path}"
 
