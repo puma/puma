@@ -453,10 +453,12 @@ module Puma
       end
 
       begin
-        Signal.trap "SIGINFO" do
-          thread_status do |name, backtrace|
-            @events.log name
-            @events.log backtrace.map { |bt| "  #{bt}" }
+        unless Puma.jruby? # INFO in use by JVM already
+          Signal.trap "SIGINFO" do
+            thread_status do |name, backtrace|
+              @events.log name
+              @events.log backtrace.map { |bt| "  #{bt}" }
+            end
           end
         end
       rescue Exception

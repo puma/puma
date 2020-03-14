@@ -19,7 +19,7 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    if defined?(@server) && @server
+    if defined?(@server) && @server && @pid
       stop_server @pid, signal: :INT
     end
 
