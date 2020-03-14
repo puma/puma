@@ -78,7 +78,10 @@ class TestThreadPool < Minitest::Test
     end
 
     pool.trim
-    pool.instance_variable_get(:@workers).first.join
+    
+    # wait/join required here for MRI, JRuby slow enough to error here
+    worker = pool.instance_variable_get(:@workers).first
+    worker.join if worker
 
     assert_equal 0, pool.spawned
   end
