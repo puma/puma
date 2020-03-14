@@ -16,7 +16,7 @@ class TestThreadPool < Minitest::Test
   end
 
   def pause
-    sleep 0.2
+    sleep 1
   end
 
   def test_append_spawns

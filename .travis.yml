@@ -39,8 +39,6 @@ matrix:
     - rvm: truffleruby-head
 
   allow_failures:
-    - rvm: jruby-9.2.11.0
-    - rvm: jruby-head
     - rvm: truffleruby-head
 
 env:
