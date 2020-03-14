@@ -48,7 +48,7 @@ if !Puma.jruby?
     CLEAN.include "lib/puma/puma_http11.rb"
   end
 else
-  task :java => :maven_dependencies
+  task :compile => :maven_dependencies
   # create a task which will download the dependencies if they do not exist already in the working directory
   task :maven_dependencies do
     %w(https://repo1.maven.org/maven2/io/netty/netty-common/4.1.47.Final/netty-common-4.1.47.Final.jar
