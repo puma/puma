@@ -7,7 +7,7 @@ require_relative 'lib/puma/detect'
 require 'rubygems/package_task'
 require 'bundler/gem_tasks'
 require "uri"
-require 'net/http'
+require "net/http"
 
 gemspec = Gem::Specification.load("puma.gemspec")
 Gem::PackageTask.new(gemspec).define

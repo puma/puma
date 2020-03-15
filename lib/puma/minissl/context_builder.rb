@@ -23,8 +23,13 @@ module Puma
             events.error "Please specify the Java keystore password  via 'keystore-pass='"
           end
 
+          unless params['alias']
+            events.error "Please specify the Java keystore alias via 'alias='"
+          end
+
           ctx.keystore_pass = params['keystore-pass']
           ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
+          ctx.alias = params['alias']
         else
           unless params['key']
             events.error "Please specify the SSL key via 'key='"

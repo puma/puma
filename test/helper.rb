@@ -23,6 +23,7 @@ $debugging_hold = false    # needed for TestCLI#test_control_clustered
 
 require "puma"
 require "puma/detect"
+require "puma/events"
 
 # Add the Netty JAR to the ClassPath so we can test them with JRuby
 if Puma.jruby?
