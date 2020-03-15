@@ -191,7 +191,6 @@ public class MiniSSL extends RubyObject {
     KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
     KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
 
-    String alias = miniSSLContext.callMethod(threadContext, "alias").convertToString().asJavaString();
     char[] password = miniSSLContext.callMethod(threadContext, "keystore_pass").convertToString().asJavaString().toCharArray();
     String keystoreFile = miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString();
     ks.load(new FileInputStream(keystoreFile), password);
@@ -223,7 +222,7 @@ public class MiniSSL extends RubyObject {
       sslCipherList = sslCipherListObject.convertToString().asJavaString().split(",");
     }
 
-    engine = tryCreateEngine(alias, kmf, tmf, protocols, verifyMode, sslCipherList);
+    engine = tryCreateEngine(kmf, tmf, protocols, verifyMode, sslCipherList);
 
     SSLSession session = engine.getSession();
     inboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
@@ -239,8 +238,7 @@ public class MiniSSL extends RubyObject {
    * than the JDK native one.
    * Fall back to the default engine otherwise.
    */
-  private static SSLEngine tryCreateEngine(String alias,
-                                           KeyManagerFactory keyManagerFactory,
+  private static SSLEngine tryCreateEngine(KeyManagerFactory keyManagerFactory,
                                            TrustManagerFactory trustManagerFactory,
                                            String[] protocols,
                                            long verifyMode,
@@ -248,9 +246,6 @@ public class MiniSSL extends RubyObject {
     if (!Boolean.getBoolean(NETTY_USE_KEY)) {
       return createJDKEngine(keyManagerFactory, trustManagerFactory, protocols, verifyMode, ciphers);
     }
-
-    PrivateKey privateKey = ((X509KeyManager) keyManagerFactory.getKeyManagers()[0]).getPrivateKey(alias);
-    X509Certificate[] privateKeyCertChain = ((X509KeyManager) keyManagerFactory.getKeyManagers()[0]).getCertificateChain(alias);
 
     try {
       // these mappings were deduced from here:
@@ -268,7 +263,7 @@ public class MiniSSL extends RubyObject {
       }
 
       SSLEngine engine = io.netty.handler.ssl.SslContextBuilder
-              .forServer(privateKey, privateKeyCertChain)
+              .forServer(keyManagerFactory)
               .trustManager(trustManagerFactory)
               .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL)
               .protocols(protocols)

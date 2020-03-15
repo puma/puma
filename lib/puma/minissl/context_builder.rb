@@ -29,7 +29,6 @@ module Puma
 
           ctx.keystore_pass = params['keystore-pass']
           ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
-          ctx.alias = params['alias']
         else
           unless params['key']
             events.error "Please specify the SSL key via 'key='"
