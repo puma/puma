@@ -164,7 +164,7 @@ class TestPumaServerSSL < Minitest::Test
     skip("TLSv1 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_TLS1
     start_server { |ctx| ctx.no_tlsv1 = true }
 
-    if @http.respond_to? :max_version=
+    if OpenSSL::SSL::SSLContext.private_instance_methods(false).include?(:set_minmax_proto_version)
       @http.max_version = :TLS1
     else
       @http.ssl_version = :TLSv1
@@ -184,7 +184,7 @@ class TestPumaServerSSL < Minitest::Test
   def test_tls_v1_1_rejection
     start_server { |ctx| ctx.no_tlsv1_1 = true }
 
-    if @http.respond_to? :max_version=
+    if OpenSSL::SSL::SSLContext.private_instance_methods(false).include?(:set_minmax_proto_version)
       @http.max_version = :TLS1_1
     else
       @http.ssl_version = :TLSv1_1
