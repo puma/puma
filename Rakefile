@@ -8,6 +8,7 @@ require 'rubygems/package_task'
 require 'bundler/gem_tasks'
 require "uri"
 require "net/http"
+require "fileutils"
 
 gemspec = Gem::Specification.load("puma.gemspec")
 Gem::PackageTask.new(gemspec).define
@@ -48,7 +49,9 @@ if !Puma.jruby?
     CLEAN.include "lib/puma/puma_http11.rb"
   end
 else
+  task :java => :maven_dependencies
   task :compile => :maven_dependencies
+
   # create a task which will download the dependencies if they do not exist already in the working directory
   task :maven_dependencies do
     %w(https://repo1.maven.org/maven2/io/netty/netty-common/4.1.47.Final/netty-common-4.1.47.Final.jar
@@ -56,8 +59,12 @@ else
        https://repo1.maven.org/maven2/io/netty/netty-buffer/4.1.47.Final/netty-buffer-4.1.47.Final.jar
        https://repo1.maven.org/maven2/io/netty/netty-handler/4.1.47.Final/netty-handler-4.1.47.Final.jar
        https://repo1.maven.org/maven2/io/netty/netty-tcnative-boringssl-static/2.0.29.Final/netty-tcnative-boringssl-static-2.0.29.Final.jar).each do |dependency|
-      filename = URI(dependency).path.split('/').last
+      jar_filename = URI(dependency).path.split('/').last
+      filename = "tmp/java/puma_http11/#{jar_filename}"
       next if File.exists?(filename)
+
+      # make sure the directory exists
+      FileUtils.mkdir_p "tmp/java/puma_http11"
       response = Net::HTTP.get_response(URI(dependency))
       open(filename, "wb") { |file|
         file.write(response.body)
@@ -68,7 +75,7 @@ else
     # Java (JRuby)
   Rake::JavaExtensionTask.new("puma_http11", gemspec) do |ext|
     ext.lib_dir = "lib/puma"
-    ext.classpath = "netty-handler-4.1.47.Final.jar:netty-buffer-4.1.47.Final.jar"
+    ext.classpath = "tmp/java/puma_http11/netty-handler-4.1.47.Final.jar:tmp/java/puma_http11/netty-buffer-4.1.47.Final.jar"
   end
 
 end
