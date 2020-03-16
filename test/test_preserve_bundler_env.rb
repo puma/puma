@@ -8,6 +8,7 @@ class TestPreserveBundlerEnv < TestIntegration
   end
 
   def teardown
+    return if skipped?
     FileUtils.rm current_release_symlink, force: true
     super
   end

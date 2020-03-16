@@ -1,6 +1,8 @@
 require_relative "helper"
 require "puma/minissl"
 require "puma/puma_http11"
+require "puma/events"
+require "net/http"
 
 #———————————————————————————————————————————————————————————————————————————————
 #             NOTE: ALL TESTS BYPASSED IF DISABLE_SSL IS TRUE
