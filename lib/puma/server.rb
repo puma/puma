@@ -593,14 +593,7 @@ module Puma
           @events.log "Detected force shutdown of a thread, returning 503"
           @events.unknown_error self, e, "Rack app"
 
-          if @options[:force_shutdown_error_response]
-            status, headers, res_body = @options[:force_shutdown_error_response]
-          else
-            status = 503
-            headers = {}
-            res_body = ["Request was internally terminated early\n"]
-          end
-
+          status, headers, res_body = @options[:force_shutdown_error_response]
         rescue Exception => e
           @events.unknown_error self, e, "Rack app", env
 

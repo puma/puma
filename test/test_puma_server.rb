@@ -278,7 +278,7 @@ EOF
   end
 
   def test_force_shutdown_error_default
-    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2, :force_shutdown_error_response => Puma::ConfigDefault::DefaultThreadShutdownResponse}
 
     server_run app: ->(env) do
       @server.stop

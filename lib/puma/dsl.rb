@@ -545,8 +545,8 @@ module Puma
     # @example
     #   force_shutdown_error_response(500, {"Content-Type" => "application/json"}, [JSON.generate({message: "Server shutdown."})])
     def force_shutdown_error_response(status, headers, response)
-      raise "Headers must be a hash" unless headers.is_a?(Hash)
-      raise "Response must be enumerable" unless response.is_a?(Enumerable)
+      raise "Not a Rack-compatible header (must respond to each)" unless headers.respond_to?(:each)
+      raise "Not a Rack-compatible response (must respond to each)" unless response.respond_to?(:each)
 
       @options[:force_shutdown_error_response] = [
         Integer(status),

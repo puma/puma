@@ -13,6 +13,8 @@ module Puma
     DefaultTCPPort = 9292
     DefaultWorkerTimeout = 60
     DefaultWorkerShutdownTimeout = 30
+
+    DefaultThreadShutdownResponse = [503, {}, ["Request was internally terminated early\n"]].freeze
   end
 
   # A class used for storing "leveled" configuration options.
@@ -186,7 +188,8 @@ module Puma
         :logger => STDOUT,
         :persistent_timeout => Const::PERSISTENT_TIMEOUT,
         :first_data_timeout => Const::FIRST_DATA_TIMEOUT,
-        :raise_exception_on_sigterm => true
+        :raise_exception_on_sigterm => true,
+        :force_shutdown_error_response => DefaultThreadShutdownResponse,
       }
     end
 
