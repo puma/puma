@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-18.04, macos ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, ruby-head, jruby ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head, jruby ]
 
     steps:
       - name: repo checkout
@@ -40,7 +40,7 @@ jobs:
         run:  bundle exec rake compile
 
       - name: test
-        timeout-minutes: 10
+        timeout-minutes: 8
         run:  |
           # RubyGems < 3, no frozen strings
           if [[ "2.6" < "${{ matrix.ruby }}.0" ]]; then
@@ -60,7 +60,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ windows-latest ]
-        ruby: [ 2.3, 2.4, 2.5, 2.6, 2.7, mingw ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, mingw ]
 
     steps:
       - name: repo checkout
@@ -73,22 +73,67 @@ jobs:
           mingw: _upgrade_ openssl ragel
 
       - name: bundle install
-        run:  bundle install --jobs 4 --retry 3 --path=.bundle/puma
+        run:  |
+          # update RubyGems in Ruby 2.2, bundle install
+          if ('${{ matrix.ruby }}' -lt '2.3') {
+            gem update --system 2.7.10 --no-document
+          }
+          bundle install --jobs 4 --retry 3 --path=.bundle/puma
 
       - name: compile
         run:  |
-          # Windows Ruby < 2.4 do not use MSYS2 OpenSSL
-          if ('${{ matrix.ruby }}' -lt '2.4') {
-            bundle exec rake compile -- --with-openssl-dir=C:/openssl-win
-          } else {
-            bundle exec rake compile
-          }
+          bundle exec rake compile
 
       - name: test
-        timeout-minutes: 10
+        timeout-minutes: 8
         run:  |
           # RubyGems < 3, no frozen strings
           if ('${{ matrix.ruby }}' -ge '2.6') {
             $env:RUBYOPT = '--enable=frozen-string-literal'
           }
+          bundle exec rake
+
+  nonMRIHead:
+    name: >-
+      ${{ matrix.cfg.os }}, ${{ matrix.cfg.ruby }}
+    env:
+      CI: true
+      TESTOPTS: -v
+
+    runs-on: ${{ matrix.cfg.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        cfg:
+          - { os: ubuntu-latest, ruby: jruby-head       }
+          - { os: ubuntu-latest, ruby: truffleruby-head }
+
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v2
+
+      - name: load ruby, ragel
+        uses: MSP-Greg/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.cfg.ruby }}
+          apt-get: ragel
+          brew: ragel
+
+      - name: bundle install
+        run:  |
+          bundle install --jobs 4 --retry 3 --path=.bundle/puma
+
+      - name: compile
+        continue-on-error: true
+        run:  bundle exec rake compile
+
+      - name: test
+        timeout-minutes: 8
+        continue-on-error: true
+        if: success()
+        run:  |
+          # RubyGems < 3, no frozen strings
+          if [[ "2.6" < "${{ matrix.cfg.ruby }}.0" ]]; then
+            export RUBYOPT="--enable=frozen-string-literal"
+          fi
           bundle exec rake
