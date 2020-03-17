@@ -7,6 +7,15 @@ end
 
 module Puma
   module MiniSSL
+
+    # TODO: are there values somewhere?
+    OPENSSL_VERSION = 'OpenSSL 1.0.2z  na' unless const_defined?(:OPENSSL_VERSION)
+    OPENSSL_LIBRARY_VERSION = 'OpenSSL 1.0.2z  na' unless const_defined?(:OPENSSL_LIBRARY_VERSION)
+
+    # TODO: are there values somewhere?
+    OPENSSL_NO_SSL3 = true
+    OPENSSL_NO_TLS1 = false
+
     class Socket
       def initialize(socket, engine)
         @socket = socket
