@@ -11,6 +11,9 @@ jobs:
       TESTOPTS: -v
 
     runs-on: ${{ matrix.os }}
+    if: |
+      !(contains(github.event.pull_request.title, '[ci skip]')
+        || contains(github.event.head_commit.message, '[ci skip]'))
     strategy:
       fail-fast: false
       matrix:
@@ -56,6 +59,9 @@ jobs:
       TESTOPTS: -v
 
     runs-on: ${{ matrix.os }}
+    if: |
+      !(contains(github.event.pull_request.title, '[ci skip]')
+        || contains(github.event.head_commit.message, '[ci skip]'))
     strategy:
       fail-fast: false
       matrix:
@@ -101,6 +107,9 @@ jobs:
       TESTOPTS: -v
 
     runs-on: ${{ matrix.cfg.os }}
+    if: |
+      !(contains(github.event.pull_request.title, '[ci skip]')
+        || contains(github.event.head_commit.message, '[ci skip]'))
     strategy:
       fail-fast: false
       matrix:
