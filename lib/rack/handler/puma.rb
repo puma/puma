@@ -59,7 +59,7 @@ module Rack
         conf
       end
 
-      def self.run(app, options = {})
+      def self.run(app, **options)
         conf   = self.config(app, options)
 
         events = options.delete(:Silent) ? ::Puma::Events.strings : ::Puma::Events.stdio

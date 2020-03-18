@@ -26,7 +26,7 @@ class TestPathHandler < Minitest::Test
 
     @launcher = nil
     thread = Thread.new do
-      Rack::Handler::Puma.run(app, options) do |s, p|
+      Rack::Handler::Puma.run(app, **options) do |s, p|
         @launcher = s
       end
     end
