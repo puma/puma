@@ -30,6 +30,7 @@
   * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
   * Simplify `Runner#start_control` URL parsing (#2111)
   * Removed the IOBuffer extension and replaced with Ruby (#1980)
+  * Update `Rack::Handler::Puma.run` to use `**options` (#2189)
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
 
