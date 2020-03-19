@@ -11,7 +11,7 @@ module Puma
   class Binder
     include Puma::Const
 
-    RACK_VERSION = [1,3].freeze
+    RACK_VERSION = [1,6].freeze
 
     def initialize(events)
       @events = events
