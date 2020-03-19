@@ -44,12 +44,7 @@ jobs:
 
       - name: test
         timeout-minutes: 8
-        run:  |
-          # RubyGems < 3, no frozen strings
-          if [[ "2.6" < "${{ matrix.ruby }}.0" ]]; then
-            export RUBYOPT="--enable=frozen-string-literal"
-          fi
-          bundle exec rake
+        run: bundle exec rake
 
   win32:
     name: >-
@@ -92,12 +87,7 @@ jobs:
 
       - name: test
         timeout-minutes: 8
-        run:  |
-          # RubyGems < 3, no frozen strings
-          if ('${{ matrix.ruby }}' -ge '2.6') {
-            $env:RUBYOPT = '--enable=frozen-string-literal'
-          }
-          bundle exec rake
+        run: bundle exec rake
 
   nonMRIHead:
     name: >-
@@ -140,9 +130,4 @@ jobs:
         timeout-minutes: 8
         continue-on-error: true
         if: success()
-        run:  |
-          # RubyGems < 3, no frozen strings
-          if [[ "2.6" < "${{ matrix.cfg.ruby }}.0" ]]; then
-            export RUBYOPT="--enable=frozen-string-literal"
-          fi
-          bundle exec rake
+        run: bundle exec rake
