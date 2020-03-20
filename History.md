@@ -1,6 +1,7 @@
 ## Master
 
 * Features
+  * Add `fork_worker` option and `refork` command for improved copy-on-write performance (#2099)
   * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
   * Do not set user_config to quiet by default to allow for file config (#2074)
@@ -24,7 +25,7 @@
   * Rescue IO::WaitReadable instead of EAGAIN for blocking read (#2121)
   * Ensure `BUNDLE_GEMFILE` is unspecified in workers if unspecified in master when using `prune_bundler` (#2154)
   * Rescue and log exceptions in hooks defined by users (on_worker_boot, after_worker_fork etc) (#1551)
-  
+
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
   * Simplify `Configuration.random_token` and remove insecure fallback (#2102)

@@ -63,6 +63,11 @@ module Puma
           end
 
           rack_response(200, backtraces.to_json)
+
+        when /\/refork$/
+          Process.kill "SIGURG", $$
+          rack_response(200, OK_STATUS)
+
         else
           rack_response 404, "Unsupported action", 'text/plain'
         end
