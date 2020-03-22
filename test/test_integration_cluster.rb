@@ -33,18 +33,16 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
+  def test_sigwinch_thread_print
+    skip_unless_signal_exist? :WINCH
+
+    signal_thread_backtrace :WINCH
+  end
+
   def test_siginfo_thread_print
     skip_unless_signal_exist? :INFO
 
-    cli_server "-w #{WORKERS} -q test/rackup/hello.ru"
-    worker_pids = get_worker_pids
-    output = []
-    t = Thread.new { output << @server.readlines }
-    Process.kill :INFO, worker_pids.first
-    Process.kill :INT , @pid
-    t.join
-
-    assert_match "Thread: TID", output.join
+    signal_thread_backtrace :INFO
   end
 
   def test_usr2_restart
@@ -134,6 +132,18 @@ class TestIntegrationCluster < TestIntegration
   end
 
   private
+
+  def signal_thread_backtrace(signal)
+    cli_server "-w #{WORKERS} -q test/rackup/hello.ru"
+    worker_pids = get_worker_pids
+    output = []
+    t = Thread.new { output << @server.readlines }
+    Process.kill signal, worker_pids.first
+    Process.kill :INT , @pid
+    t.join
+
+    assert_match "Thread: TID", output.join
+  end
 
   # Send requests 10 per second.  Send 10, then :TERM server, then send another 30.
   # No more than 10 should throw Errno::ECONNRESET.

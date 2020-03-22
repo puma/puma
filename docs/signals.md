@@ -40,7 +40,7 @@ Puma cluster responds to these signals:
 - `USR1` restart workers in phases, a rolling restart. This will not reload configuration file.
 - `HUP`  reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided it will behave like `INT`
 - `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
-- `CHLD`
+- `WINCH` (`INFO` on BSD-based systems) prints a thread backtrace. This is useful for debugging infinite loops or slow performance.
 
 ## Callbacks order in case of different signals
 
