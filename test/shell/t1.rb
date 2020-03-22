@@ -1,6 +1,6 @@
 system "ruby -rrubygems -Ilib bin/puma -p 10102 -C test/shell/t1_conf.rb test/rackup/hello.ru &"
-sleep (defined?(JRUBY_VERSION) ? 7 : 5)
-system "curl http://localhost:10102/"
+
+sleep 1 until system "curl http://localhost:10102/"
 
 Process.kill :TERM, Integer(File.read("t1-pid"))
 
