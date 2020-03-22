@@ -2,7 +2,7 @@ system "ruby -rrubygems -Ilib bin/puma -p 10102 -C test/shell/t1_conf.rb test/ra
 sleep (defined?(JRUBY_VERSION) ? 7 : 5)
 system "curl http://localhost:10102/"
 
-system "kill `cat t1-pid`"
+Process.kill :TERM, Integer(File.read("t1-pid"))
 
 sleep 1
 
