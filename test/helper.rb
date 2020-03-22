@@ -57,7 +57,7 @@ module TimeoutEveryTestCase
   end
 
   def run(*)
-    ::Timeout.timeout(Puma.jruby? ? 120 : 60, TestTookTooLong) { super }
+    ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) { super }
   end
 end
 
