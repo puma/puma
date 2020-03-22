@@ -7,8 +7,11 @@ class TestRedirectIO < TestIntegration
   def setup
     super
 
-    @out_file_path = Tempfile.new('puma-out').path
-    @err_file_path = Tempfile.new('puma-err').path
+    # Keep the Tempfile instances alive to avoid being GC'd
+    @out_file = Tempfile.new('puma-out')
+    @err_file = Tempfile.new('puma-err')
+    @out_file_path = @out_file.path
+    @err_file_path = @err_file.path
   end
 
   def teardown
@@ -16,6 +19,8 @@ class TestRedirectIO < TestIntegration
 
     paths = [@out_file_path, @err_file_path, @old_out_file_path, @old_err_file_path].compact
     File.unlink(*paths)
+    @out_file = nil
+    @err_file = nil
   end
 
   def test_sighup_redirects_io_single
