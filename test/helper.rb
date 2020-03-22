@@ -78,7 +78,7 @@ module TestSkips
   # usage: skip NO_FORK_MSG unless HAS_FORK
   # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
   HAS_FORK = ::Process.respond_to? :fork
-  NO_FORK_MSG = "Kernel.fork isn't available on the #{RUBY_PLATFORM} platform"
+  NO_FORK_MSG = "Kernel.fork isn't available on #{RUBY_ENGINE} on #{RUBY_PLATFORM}"
 
   # socket is required by puma
   # usage: skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
