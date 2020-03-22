@@ -42,9 +42,13 @@ jobs:
       - name: compile
         run:  bundle exec rake compile
 
+      - name: rubocop
+        if: startsWith(matrix.ruby, '2.')
+        run: bundle exec rake rubocop
+
       - name: test
         timeout-minutes: 8
-        run: bundle exec rake
+        run: bundle exec rake test:all
 
   win32:
     name: >-
