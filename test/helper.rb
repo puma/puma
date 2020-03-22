@@ -99,7 +99,6 @@ module TestSkips
   # optional suffix kwarg is appended to the skip message
   # optional suffix bt should generally not used
   def skip_on(*engs, suffix: '', bt: caller)
-    skip_msg = false
     engs.each do |eng|
       skip_msg = case eng
         when :darwin   then "Skipped on darwin#{suffix}"    if RUBY_PLATFORM[/darwin/]
