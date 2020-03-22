@@ -43,15 +43,10 @@ def hit(uris)
 end
 
 module UniquePort
-  @port  = 3211
-  @mutex = Mutex.new
-
   def self.call
-    @mutex.synchronize {
-      @port += 1
-      @port = 3307 if @port == 3306  # MySQL on Actions
-      @port
-    }
+    TCPServer.open('127.0.0.1', 0) do |server|
+      server.connect_address.ip_port
+    end
   end
 end
 
