@@ -13,9 +13,7 @@ desired, using an application or instance specific name.
 
 Note that this uses the systemd preferred "simple" type where the
 start command remains running in the foreground (does not fork and
-exit). See also, the
-[Alternative Forking Configuration](#alternative-forking-configuration)
-below.
+exit).
 
 ~~~~ ini
 [Unit]
