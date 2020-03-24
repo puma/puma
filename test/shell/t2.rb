@@ -1,6 +1,6 @@
 system "ruby -rrubygems -Ilib bin/pumactl -F test/shell/t2_conf.rb start &"
-sleep (defined?(JRUBY_VERSION) ? 7 : 5)
-system "curl http://localhost:10103/"
+
+sleep 1 until system "curl http://localhost:10103/"
 
 out=`ruby -rrubygems -Ilib bin/pumactl -F test/shell/t2_conf.rb status`
 

@@ -43,15 +43,10 @@ def hit(uris)
 end
 
 module UniquePort
-  @port  = 3211
-  @mutex = Mutex.new
-
   def self.call
-    @mutex.synchronize {
-      @port += 1
-      @port = 3307 if @port == 3306  # MySQL on Actions
-      @port
-    }
+    TCPServer.open('127.0.0.1', 0) do |server|
+      server.connect_address.ip_port
+    end
   end
 end
 
@@ -62,7 +57,7 @@ module TimeoutEveryTestCase
   end
 
   def run(*)
-    ::Timeout.timeout(Puma.jruby? ? 120 : 60, TestTookTooLong) { super }
+    ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) { super }
   end
 end
 
@@ -78,7 +73,7 @@ module TestSkips
   # usage: skip NO_FORK_MSG unless HAS_FORK
   # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
   HAS_FORK = ::Process.respond_to? :fork
-  NO_FORK_MSG = "Kernel.fork isn't available on the #{RUBY_PLATFORM} platform"
+  NO_FORK_MSG = "Kernel.fork isn't available on #{RUBY_ENGINE} on #{RUBY_PLATFORM}"
 
   # socket is required by puma
   # usage: skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
@@ -99,11 +94,11 @@ module TestSkips
   # optional suffix kwarg is appended to the skip message
   # optional suffix bt should generally not used
   def skip_on(*engs, suffix: '', bt: caller)
-    skip_msg = false
     engs.each do |eng|
       skip_msg = case eng
         when :darwin   then "Skipped on darwin#{suffix}"    if RUBY_PLATFORM[/darwin/]
         when :jruby    then "Skipped on JRuby#{suffix}"     if Puma.jruby?
+        when :truffleruby then "Skipped on TruffleRuby#{suffix}" if RUBY_ENGINE == "truffleruby"
         when :windows  then "Skipped on Windows#{suffix}"   if Puma.windows?
         when :ci       then "Skipped on ENV['CI']#{suffix}" if ENV["CI"]
         when :no_bundler then "Skipped w/o Bundler#{suffix}"  if !defined?(Bundler)

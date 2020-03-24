@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-18.04, macos ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head, jruby ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head, jruby, truffleruby-head ]
 
     steps:
       - name: repo checkout
@@ -42,9 +42,13 @@ jobs:
       - name: compile
         run:  bundle exec rake compile
 
+      - name: rubocop
+        if: startsWith(matrix.ruby, '2.')
+        run: bundle exec rake rubocop
+
       - name: test
         timeout-minutes: 8
-        run: bundle exec rake
+        run: bundle exec rake test:all
 
   win32:
     name: >-
@@ -89,7 +93,7 @@ jobs:
         timeout-minutes: 8
         run: bundle exec rake
 
-  nonMRIHead:
+  allowedFailures:
     name: >-
       ${{ matrix.cfg.os }}, ${{ matrix.cfg.ruby }}
     env:
@@ -104,8 +108,7 @@ jobs:
       fail-fast: false
       matrix:
         cfg:
-          - { os: ubuntu-latest, ruby: jruby-head       }
-          - { os: ubuntu-latest, ruby: truffleruby-head }
+          - { os: ubuntu-latest, ruby: jruby-head }
 
     steps:
       - name: repo checkout

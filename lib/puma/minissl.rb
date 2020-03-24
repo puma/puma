@@ -125,11 +125,14 @@ module Puma
 
       def read_and_drop(timeout = 1)
         return :timeout unless IO.select([@socket], nil, nil, timeout)
-        return :eof unless read_nonblock(1024)
-        :drop
-      rescue Errno::EAGAIN
-        # do nothing
-        :eagain
+        case @socket.read_nonblock(1024, exception: false)
+        when nil
+          :eof
+        when :wait_readable
+          :eagain
+        else
+          :drop
+        end
       end
 
       def should_drop_bytes?
