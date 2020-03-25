@@ -203,6 +203,13 @@ module Puma
       @binder.close_listeners
     end
 
+    def log_backtrace
+      thread_status do |name, backtrace|
+        @events.log name
+        @events.log backtrace.map { |bt| "  #{bt}" }
+      end
+    end
+
     def thread_status
       Thread.list.each do |thread|
         name = "Thread: TID-#{thread.object_id.to_s(36)}"
@@ -453,11 +460,11 @@ module Puma
       end
 
       begin
-        Signal.trap "SIGWINCH" do
+        Signal.trap "SIGTTIN" do
           log_backtrace
         end
       rescue Exception
-        log "*** SIGWINCH not implemented, signal based thread backtraces unavailable!"
+        log "*** SIGTTIN not implemented, signal based thread backtraces unavailable!"
       end
 
       begin
@@ -469,13 +476,6 @@ module Puma
       rescue Exception
         # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
         # to see this constantly on Linux.
-      end
-    end
-
-    def log_backtrace
-      thread_status do |name, backtrace|
-        @events.log name
-        @events.log backtrace.map { |bt| "  #{bt}" }
       end
     end
 

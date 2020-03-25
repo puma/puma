@@ -390,17 +390,21 @@ module Puma
         wakeup!
       end
 
+      master_pid = Process.pid
+
       Signal.trap "TTIN" do
-        @options[:workers] += 1
-        wakeup!
+        if Process.pid == master_pid
+          @options[:workers] += 1
+          wakeup!
+        else
+          @launcher.log_backtrace
+        end
       end
 
       Signal.trap "TTOU" do
         @options[:workers] -= 1 if @options[:workers] >= 2
         wakeup!
       end
-
-      master_pid = Process.pid
 
       Signal.trap "SIGTERM" do
         # The worker installs their own SIGTERM when booted.

@@ -33,10 +33,10 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def test_sigwinch_thread_print
-    skip_unless_signal_exist? :WINCH
+  def test_sigttin_thread_print
+    skip_unless_signal_exist? :TTIN
 
-    signal_thread_backtrace :WINCH
+    signal_thread_backtrace :TTIN
   end
 
   def test_siginfo_thread_print

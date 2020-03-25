@@ -7,7 +7,8 @@
   * `GC.compact` is called before fork if available (#2093)
   * Add `requests_count` to workers stats. (#2106)
   * Increases maximum URI path length from 2048 to 8196 bytes (#2167)
-  * Sending SIGWINCH to any Puma worker now prints currently active threads and their backtraces (#2195)
+  * Sending SIGTTIN to a Puma worker now prints currently active threads and their backtraces (#2202)
+    NOTE: SIGTTIN will only increment a worker by 1 if the signal is sent to the main process.
 
 * Deprecations, Removals and Breaking API Changes
   * `Puma.stats` now returns a Hash instead of a JSON string (#2086)

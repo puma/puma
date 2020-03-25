@@ -33,14 +33,19 @@ Now you will see via `ps` that there is no more `tail` process. Sometimes when r
 
 Puma cluster responds to these signals:
 
-- `TTIN` increment the worker count by 1
+- `TTIN` This behaves differently depending on whether the signal is
+  sent to the main process or a cluster worker. When sent to the main
+  process, this increments the worker count by 1.
+
+  Otherwise, it prints a thread backtrace. This is useful for debugging infinite loops or slow performance.
+
 - `TTOU` decrement the worker count by 1
 - `TERM` send `TERM` to worker. Worker will attempt to finish then exit.
 - `USR2` restart workers. This also reloads puma configuration file, if there is one.
 - `USR1` restart workers in phases, a rolling restart. This will not reload configuration file.
 - `HUP`  reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided it will behave like `INT`
 - `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
-- `WINCH` (`INFO` on BSD-based systems) prints a thread backtrace. This is useful for debugging infinite loops or slow performance.
+- `INFO` (on BSD-based systems) prints a thread backtrace. This is useful for debugging infinite loops or slow performance.
 
 ## Callbacks order in case of different signals
 
