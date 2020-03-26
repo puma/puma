@@ -261,6 +261,36 @@ EOF
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
   end
 
+  def test_force_shutdown_custom_error_message
+    handler = lambda {|err, env, status| [500, {"Content-Type" => "application/json"}, ["{}\n"]]}
+    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => handler, :force_shutdown_after => 2}
+
+    server_run app: ->(env) do
+      @server.stop
+      sleep 10
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_match(/Content-Type: application\/json/, data)
+    assert_match(/{}\n$/, data)
+  end
+
+  def test_force_shutdown_error_default
+    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+
+    server_run app: ->(env) do
+      @server.stop
+      sleep 10
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 503 Service Unavailable/, data)
+    assert_match(/Puma caught this error.+Puma::ThreadPool::ForceShutdown/, data)
+  end
+
   def test_prints_custom_error
     re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
     @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
@@ -275,6 +305,21 @@ EOF
   def test_leh_gets_env_as_well
     re = lambda { |err,env|
       env['REQUEST_PATH'] || raise('where is env?')
+      [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
+    }
+
+    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
+
+    server_run app: ->(env) { raise "don't leak me bro" }
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 302 Found/, data)
+  end
+
+  def test_leh_has_status
+    re = lambda { |err, env, status|
+      raise "Cannot find status" unless status
       [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
     }
 

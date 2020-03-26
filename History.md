@@ -9,6 +9,7 @@
   * Add `requests_count` to workers stats. (#2106)
   * Increases maximum URI path length from 2048 to 8196 bytes (#2167)
   * Sending SIGWINCH to any Puma worker now prints currently active threads and their backtraces (#2195)
+  * Force shutdown responses can be overridden by using the `lowlevel_error_handler` config (#2203)
 
 * Deprecations, Removals and Breaking API Changes
   * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
