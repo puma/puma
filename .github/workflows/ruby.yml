@@ -95,10 +95,11 @@ jobs:
 
   allowedFailures:
     name: >-
-      ${{ matrix.cfg.os }}, ${{ matrix.cfg.ruby }}
+      ${{ matrix.cfg.os }}, ${{ matrix.cfg.ruby }}, openssl-1.1.1e
     env:
       CI: true
       TESTOPTS: -v
+      LD_LIBRARY_PATH: /usr/lib
 
     runs-on: ${{ matrix.cfg.os }}
     if: |
@@ -109,6 +110,7 @@ jobs:
       matrix:
         cfg:
           - { os: ubuntu-latest, ruby: jruby-head }
+          - { os: ubuntu-18.04, ruby: 2.7 }
 
     steps:
       - name: repo checkout
@@ -120,6 +122,13 @@ jobs:
           ruby-version: ${{ matrix.cfg.ruby }}
           apt-get: ragel
           brew: ragel
+
+      - name: install openssl
+        run:  |
+          openssl version
+          sudo apt-get --purge remove openssl > /dev/null 2>&1
+          bash test/shell/install_openssl.sh 1.1.1e
+          openssl version
 
       - name: bundle install
         run:  |
