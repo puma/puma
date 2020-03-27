@@ -167,7 +167,15 @@ module Puma
 
         server << "GET #{url} HTTP/1.0\r\n\r\n"
 
-        unless data = server.read
+        data = ''.dup
+        begin
+          while (t = server.read 1) do
+            data << t
+          end
+        rescue EOFError, OpenSSL::SSL::SSLError
+        end
+
+        if data.empty?
           raise "Server closed connection before responding"
         end
 

@@ -18,6 +18,7 @@
   * Changed #connected_port to #connected_ports (#2076)
 
 * Bugfixes
+  * Fix Puma::ControlCLI's use of the Ruby OpenSSL stdlib when using OpenSSL 1.1.1e (#2208)
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
   * Ensure control server Unix socket is closed on shutdown (#2112)
   * Preserve `BUNDLE_GEMFILE` env var when using `prune_bundler` (#1893)
