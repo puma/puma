@@ -146,8 +146,9 @@ module Puma
                   require 'openssl'
                   OpenSSL::SSL::SSLSocket.new(
                     TCPSocket.new(uri.host, uri.port),
-                    OpenSSL::SSL::SSLContext.new
-                  ).tap(&:connect)
+                    OpenSSL::SSL::SSLContext.new)
+                    .tap { |ssl| ssl.sync_close = true }  # default is false
+                    .tap(&:connect)
                 when "tcp"
                   TCPSocket.new uri.host, uri.port
                 when "unix"
@@ -191,7 +192,13 @@ module Puma
         message response.last if PRINTABLE_COMMANDS.include?(@command)
       end
     ensure
-      server.close if server && !server.closed?
+      if server
+        if uri.scheme == "ssl"
+          server.sysclose
+        else
+          server.close unless server.closed?
+        end
+      end
     end
 
     def send_signal
