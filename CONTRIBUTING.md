@@ -27,7 +27,7 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 Clone down the Puma repository.
 
-You will need to install [ragel] to generate puma's extension code.
+You will need to install [ragel] (use Ragel version 7.0.0.9) to generate puma's extension code.
 
 macOS:
 
