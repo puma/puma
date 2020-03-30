@@ -589,17 +589,15 @@ module Puma
 
             return :async
           end
+        rescue ThreadPool::ForceShutdown => e
+          @events.unknown_error self, e, "Rack app", env
+          @events.log "Detected force shutdown of a thread"
+
+          status, headers, res_body = lowlevel_error(e, env, 503)
         rescue Exception => e
           @events.unknown_error self, e, "Rack app", env
 
-          status = 500
-          if e.is_a?(ThreadPool::ForceShutdown)
-            status = 503
-
-            @events.log "Detected force shutdown of a thread, returning 503"
-          end
-
-          status, headers, res_body = lowlevel_error(e, env, status)
+          status, headers, res_body = lowlevel_error(e, env, 500)
         end
 
         content_length = nil
