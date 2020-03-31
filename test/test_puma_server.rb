@@ -267,7 +267,7 @@ EOF
 
     server_run app: ->(env) do
       @server.stop
-      sleep 10
+      sleep 5
     end
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
@@ -282,7 +282,7 @@ EOF
 
     server_run app: ->(env) do
       @server.stop
-      sleep 10
+      sleep 5
     end
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
