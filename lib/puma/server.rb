@@ -590,17 +590,14 @@ module Puma
             return :async
           end
         rescue ThreadPool::ForceShutdown => e
-          @events.log "Detected force shutdown of a thread, returning 503"
-          @events.unknown_error self, e, "Rack app"
+          @events.unknown_error self, e, "Rack app", env
+          @events.log "Detected force shutdown of a thread"
 
-          status = 503
-          headers = {}
-          res_body = ["Request was internally terminated early\n"]
-
+          status, headers, res_body = lowlevel_error(e, env, 503)
         rescue Exception => e
           @events.unknown_error self, e, "Rack app", env
 
-          status, headers, res_body = lowlevel_error(e, env)
+          status, headers, res_body = lowlevel_error(e, env, 500)
         end
 
         content_length = nil
@@ -807,19 +804,21 @@ module Puma
 
     # A fallback rack response if +@app+ raises as exception.
     #
-    def lowlevel_error(e, env)
+    def lowlevel_error(e, env, status=500)
       if handler = @options[:lowlevel_error_handler]
         if handler.arity == 1
           return handler.call(e)
-        else
+        elsif handler.arity == 2
           return handler.call(e, env)
+        else
+          return handler.call(e, env, status)
         end
       end
 
       if @leak_stack_on_error
-        [500, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
+        [status, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
       else
-        [500, {}, ["An unhandled lowlevel error occurred. The application logs may have details.\n"]]
+        [status, {}, ["An unhandled lowlevel error occurred. The application logs may have details.\n"]]
       end
     end
 
