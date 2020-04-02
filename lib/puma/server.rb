@@ -612,10 +612,10 @@ module Puma
         line_ending = LINE_END
         colon = COLON
 
-        http_11 = if env[HTTP_VERSION] == HTTP_11
+        http_11 = env[HTTP_VERSION] == HTTP_11
+        if http_11
           allow_chunked = true
           keep_alive = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
-          include_keepalive_header = false
 
           # An optimization. The most common response is 200, so we can
           # reply with the proper 200 status without having to compute
@@ -629,11 +629,9 @@ module Puma
 
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
-          true
         else
           allow_chunked = false
           keep_alive = env.fetch(HTTP_CONNECTION, "").downcase == KEEP_ALIVE
-          include_keepalive_header = keep_alive
 
           # Same optimization as above for HTTP/1.1
           #
@@ -645,7 +643,6 @@ module Puma
 
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
-          false
         end
 
         response_hijack = nil
@@ -674,10 +671,15 @@ module Puma
           end
         end
 
-        if include_keepalive_header
-          lines << CONNECTION_KEEP_ALIVE
-        elsif http_11 && !keep_alive
-          lines << CONNECTION_CLOSE
+        # HTTP/1.1 & 1.0 assume different defaults:
+        # - HTTP 1.0 assumes the connection will be closed if not specified
+        # - HTTP 1.1 assumes the connection will be kept alive if not specified.
+        # Only set the header if we're doing something which is not the default
+        # for this protocol version
+        if http_11
+          lines << CONNECTION_CLOSE if !keep_alive
+        else
+          lines << CONNECTION_KEEP_ALIVE if keep_alive
         end
 
         if no_body
