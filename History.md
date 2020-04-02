@@ -8,7 +8,6 @@
   * `GC.compact` is called before fork if available (#2093)
   * Add `requests_count` to workers stats. (#2106)
   * Increases maximum URI path length from 2048 to 8196 bytes (#2167)
-  * Sending SIGWINCH to any Puma worker now prints currently active threads and their backtraces (#2195)
   * Force shutdown responses can be overridden by using the `lowlevel_error_handler` config (#2203)
 
 * Deprecations, Removals and Breaking API Changes
@@ -28,7 +27,7 @@
   * Ensure `BUNDLE_GEMFILE` is unspecified in workers if unspecified in master when using `prune_bundler` (#2154)
   * Rescue and log exceptions in hooks defined by users (on_worker_boot, after_worker_fork etc) (#1551)
   * Read directly from the socket in #read_and_drop to avoid raising further SSL errors (#2198)
-  
+
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
   * Simplify `Configuration.random_token` and remove insecure fallback (#2102)

@@ -453,29 +453,17 @@ module Puma
       end
 
       begin
-        Signal.trap "SIGWINCH" do
-          log_backtrace
-        end
-      rescue Exception
-        log "*** SIGWINCH not implemented, signal based thread backtraces unavailable!"
-      end
-
-      begin
         unless Puma.jruby? # INFO in use by JVM already
           Signal.trap "SIGINFO" do
-            log_backtrace
+            thread_status do |name, backtrace|
+              @events.log name
+              @events.log backtrace.map { |bt| "  #{bt}" }
+            end
           end
         end
       rescue Exception
         # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
         # to see this constantly on Linux.
-      end
-    end
-
-    def log_backtrace
-      thread_status do |name, backtrace|
-        @events.log name
-        @events.log backtrace.map { |bt| "  #{bt}" }
       end
     end
 
