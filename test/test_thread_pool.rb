@@ -87,7 +87,7 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_trim_leaves_min
-    skip_on :truffleruby # Undiagnose thread race. TODO fix
+    skip_on :jruby, :truffleruby # Undiagnose thread race. TODO fix
     pool = new_pool(1, 2) do |work|
       @work_mutex.synchronize do
         @work_done.signal
