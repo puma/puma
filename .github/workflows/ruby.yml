@@ -28,6 +28,7 @@ jobs:
         uses: MSP-Greg/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+          bundler: 1
           apt-get: ragel
           brew: ragel
 
