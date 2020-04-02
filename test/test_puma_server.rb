@@ -1,4 +1,6 @@
 require_relative "helper"
+require "puma/events"
+require "net/http"
 
 class TestPumaServer < Minitest::Test
   parallelize_me!
