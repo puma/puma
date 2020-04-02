@@ -880,4 +880,36 @@ EOF
       assert_does_not_allow_http_injection(app)
     end
   end
+
+  def test_open_connection_wait
+    server_run app: ->(_) { [200, {}, ["Hello"]] }
+    s = send_http nil
+    sleep 0.1
+    s << "GET / HTTP/1.0\r\n\r\n"
+    assert_equal 'Hello', s.readlines.last
+  end
+
+  def test_open_connection_wait_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_open_connection_wait
+  end
+
+  def test_shutdown_queued_request
+    server_run app: ->(env) {
+      sleep 3
+      [204, {}, []]
+    }
+
+    s1 = send_http "GET / HTTP/1.1\r\n\r\n"
+    s2 = send_http "GET / HTTP/1.1\r\n"
+    sleep 1
+
+    @server.stop
+    sleep 1
+
+    s2 << "\r\n"
+
+    assert_match /204/, s1.gets
+    assert_match /204/, s2.gets
+  end
 end
