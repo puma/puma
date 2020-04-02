@@ -371,7 +371,6 @@ module Puma
             close_socket = false
             return
           when true
-            return unless @queue_requests
             buffer.reset
 
             ThreadPool.clean_thread_locals if clean_thread_locals
@@ -644,6 +643,10 @@ module Puma
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
         end
+
+        # regardless of what the client wants, we always close the connection
+        # if running without request queueing
+        keep_alive &&= @queue_requests
 
         response_hijack = nil
 
