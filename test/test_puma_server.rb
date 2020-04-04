@@ -881,24 +881,69 @@ EOF
       app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
+  end
 
-  def test_shutdown_queued_request
-    server_run app: ->(env) {
-      sleep 3
+  # Perform a server shutdown while requests are pending (one in app-server response, one still sending client request).
+  def shutdown_requests(app_delay: 2, request_delay: 1, post: false, response:, **options)
+    @server = Puma::Server.new @app, @events, options
+    server_run app: ->(_) {
+      sleep app_delay
       [204, {}, []]
     }
 
     s1 = send_http "GET / HTTP/1.1\r\n\r\n"
-    s2 = send_http "GET / HTTP/1.1\r\n"
-    sleep 1
+    s2 = send_http post ?
+      "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
+      "GET / HTTP/1.1\r\n"
+    sleep 0.1
 
     @server.stop
-    sleep 1
+    sleep request_delay
 
     s2 << "\r\n"
 
     assert_match /204/, s1.gets
-    assert_match /204/, s2.gets
+
+    assert IO.select([s2], nil, nil, app_delay), 'timeout waiting for response'
+    s2_result = begin
+      s2.gets
+    rescue Errno::ECONNABORTED, Errno::ECONNRESET
+      # Some platforms raise errors instead of returning a response/EOF when a TCP connection is aborted.
+      post ? '408' : nil
+    end
+
+    if response
+      assert_match response, s2_result
+    else
+      assert_nil s2_result
+    end
+  end
+
+  # Shutdown should allow pending requests to complete.
+  def test_shutdown_requests
+    shutdown_requests response: /204/
+    shutdown_requests response: /204/, queue_requests: false
+  end
+
+  # Requests stuck longer than `first_data_timeout` should have connection closed (408 w/pending POST body).
+  def test_shutdown_data_timeout
+    shutdown_requests request_delay: 3, first_data_timeout: 2, response: nil
+    shutdown_requests request_delay: 3, first_data_timeout: 2, response: nil, queue_requests: false
+    shutdown_requests request_delay: 3, first_data_timeout: 2, response: /408/, post: true
+  end
+
+  # Requests still pending after `force_shutdown_after` should have connection closed (408 w/pending POST body).
+  def test_force_shutdown
+    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 1
+    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 1, queue_requests: false
+    shutdown_requests request_delay: 4, response: /408/, force_shutdown_after: 1, post: true
+  end
+
+  # App-responses still pending during `force_shutdown_after` should return 503
+  # (uncaught Puma::ThreadPool::ForceShutdown exception).
+  def test_force_shutdown_app
+    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 1
+    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 1, queue_requests: false
   end
 
   def test_http11_connection_header_queue
