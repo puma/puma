@@ -27,6 +27,7 @@
   * Ensure `BUNDLE_GEMFILE` is unspecified in workers if unspecified in master when using `prune_bundler` (#2154)
   * Rescue and log exceptions in hooks defined by users (on_worker_boot, after_worker_fork etc) (#1551)
   * Read directly from the socket in #read_and_drop to avoid raising further SSL errors (#2198)
+  * Set `Connection: closed` header when queue requests is disabled (#2216)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)

@@ -1,4 +1,6 @@
 require_relative "helper"
+require "puma/events"
+require "net/http"
 
 class TestPumaServer < Minitest::Test
   parallelize_me!
@@ -879,5 +881,44 @@ EOF
       app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
+  end
+
+  def test_http11_connection_header_queue
+    server_run app: ->(_) { [200, {}, [""]] }
+
+    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], header(sock)
+
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(sock)
+
+    sock.close
+  end
+
+  def test_http10_connection_header_queue
+    server_run app: ->(_) { [200, {}, [""]] }
+
+    sock = send_http "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n"
+    assert_equal ["HTTP/1.0 200 OK", "Connection: Keep-Alive", "Content-Length: 0"], header(sock)
+
+    sock << "GET / HTTP/1.0\r\n\r\n"
+    assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
+    sock.close
+  end
+
+  def test_http11_connection_header_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    server_run app: ->(_) { [200, {}, [""]] }
+    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+    assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(sock)
+    sock.close
+  end
+
+  def test_http10_connection_header_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    server_run app: ->(_) { [200, {}, [""]] }
+    sock = send_http "GET / HTTP/1.0\r\n\r\n"
+    assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
+    sock.close
   end
 end
