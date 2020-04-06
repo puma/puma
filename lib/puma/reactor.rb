@@ -189,10 +189,10 @@ module Puma
                     if submon.value == @ready
                       false
                     else
-                      if submon.value.idle?
+                      if submon.value.can_close?
                         submon.value.close
                       else
-                        # Pass non-idle client connections to the thread pool.
+                        # Pass remaining open client connections to the thread pool.
                         @app_pool << submon.value
                       end
                       begin
