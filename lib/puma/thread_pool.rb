@@ -82,6 +82,10 @@ module Puma
       waiting + (@max - spawned)
     end
 
+    def busy_threads
+      with_mutex { @spawned - @waiting + @todo.size }
+    end
+
     # :nodoc:
     #
     # Must be called with @mutex held!
@@ -188,9 +192,6 @@ module Puma
     # method would not block and another request would be added into the reactor
     # by the server. This would continue until a fully bufferend request
     # makes it through the reactor and can then be processed by the thread pool.
-    #
-    # Returns the current number of busy threads, or +nil+ if shutting down.
-    #
     def wait_until_not_full
       with_mutex do
         while true
@@ -200,8 +201,7 @@ module Puma
           # is work queued that cannot be handled by waiting
           # threads, then accept more work until we would
           # spin up the max number of threads.
-          busy_threads = @spawned - @waiting + @todo.size
-          return busy_threads if @max > busy_threads
+          return if busy_threads < @max
 
           @not_full.wait @mutex
         end

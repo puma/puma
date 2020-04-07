@@ -984,4 +984,53 @@ EOF
     assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
     sock.close
   end
+
+  def oob_server(**options)
+    @request_count = 0
+    @oob_count = 0
+    @start = Time.now
+    @oob_finished = ConditionVariable.new
+    oob = -> {@oob_count += 1; @oob_finished.signal}
+    @server = Puma::Server.new @app, @events, out_of_band: [oob], **options
+    @server.min_threads = 5
+    @server.max_threads = 5
+    @mutex = Mutex.new
+    server_run app: ->(_) do
+      @mutex.synchronize {@request_count += 1}
+      [200, {}, [""]]
+    end
+  end
+
+  # Sequential requests should trigger out_of_band hooks after every request.
+  def test_out_of_band
+    n = 100
+    oob_server queue_requests: false
+    n.times do
+      @mutex.synchronize do
+        send_http "HEAD / HTTP/1.0\r\n\r\n"
+        @oob_finished.wait(@mutex, 1)
+      end
+    end
+    assert_equal n, @request_count
+    assert_equal n, @oob_count
+  end
+
+  # Streaming requests on parallel connections without delay should trigger
+  # out_of_band hooks only once after the final request.
+  def test_out_of_band_stream
+    n = 100
+    threads = 10
+    oob_server
+    req = "HEAD / HTTP/1.1\r\n"
+    @mutex.synchronize do
+      Array.new(threads) do
+        Thread.new do
+          send_http "#{req}\r\n" * (n/threads-1) + "#{req}Connection: close\r\n\r\n"
+        end
+      end.each(&:join)
+      @oob_finished.wait(@mutex, 1)
+    end
+    assert_equal n, @request_count
+    assert_equal 1, @oob_count
+  end
 end
