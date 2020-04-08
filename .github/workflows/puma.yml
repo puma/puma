@@ -1,24 +1,30 @@
-name: Puma
+name: CI
 
 on: [push, pull_request]
 
 jobs:
   build:
     name: >-
-      ${{ matrix.os }}, ${{ matrix.ruby }}
+      ${{ matrix.os }} ${{ matrix.ruby }}
     env:
       CI: true
       TESTOPTS: -v
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     if: |
       !(contains(github.event.pull_request.title, '[ci skip]')
         || contains(github.event.head_commit.message, '[ci skip]'))
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, macos ]
+        os: [ ubuntu, macos, windows ]
         ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head, jruby, truffleruby-head ]
+        include:
+          - { os: windows , ruby: mingw }
+        exclude:
+          - { os: windows , ruby: head }
+          - { os: windows , ruby: jruby }
+          - { os: windows , ruby: truffleruby-head }
 
     steps:
       - name: repo checkout
@@ -31,13 +37,15 @@ jobs:
           bundler: 1
           apt-get: ragel
           brew: ragel
+          mingw: _upgrade_ openssl ragel
 
-      - name: bundle install
-        run:  |
+      - name:  bundle install
+        shell: pwsh
+        run:   |
           # update RubyGems in Ruby 2.2, bundle install
-          if [[ "${{ matrix.ruby }}" < "2.3" ]]; then
+          if ('${{ matrix.ruby }}' -lt '2.3') {
             gem update --system 2.7.10 --no-document
-          fi
+          }
           bundle install --jobs 4 --retry 3 --path=.bundle/puma
 
       - name: compile
@@ -48,68 +56,25 @@ jobs:
         run: bundle exec rake rubocop
 
       - name: test
-        timeout-minutes: 8
+        timeout-minutes: 10
         run: bundle exec rake test:all
-
-  win32:
-    name: >-
-      ${{ matrix.os }}, ${{ matrix.ruby }}
-    env:
-      CI: true
-      TESTOPTS: -v
-
-    runs-on: ${{ matrix.os }}
-    if: |
-      !(contains(github.event.pull_request.title, '[ci skip]')
-        || contains(github.event.head_commit.message, '[ci skip]'))
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ windows-latest ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, mingw ]
-
-    steps:
-      - name: repo checkout
-        uses: actions/checkout@v2
-
-      - name: load ruby, ragel, openssl
-        uses: MSP-Greg/setup-ruby-pkgs@v1
-        with:
-          ruby-version: ${{ matrix.ruby }}
-          mingw: _upgrade_ openssl ragel
-
-      - name: bundle install
-        run:  |
-          # update RubyGems in Ruby 2.2, bundle install
-          if ('${{ matrix.ruby }}' -lt '2.3') {
-            gem update --system 2.7.10 --no-document
-          }
-          bundle install --jobs 4 --retry 3 --path=.bundle/puma
-
-      - name: compile
-        run:  |
-          bundle exec rake compile
-
-      - name: test
-        timeout-minutes: 8
-        run: bundle exec rake
 
   allowedFailures:
     name: >-
-      ${{ matrix.cfg.os }}, ${{ matrix.cfg.ruby }}
+      optional: ${{ matrix.os }} ${{ matrix.ruby }}
     env:
       CI: true
       TESTOPTS: -v
 
-    runs-on: ${{ matrix.cfg.os }}
+    runs-on: ${{ matrix.os }}-latest
     if: |
       !(contains(github.event.pull_request.title, '[ci skip]')
         || contains(github.event.head_commit.message, '[ci skip]'))
     strategy:
       fail-fast: false
       matrix:
-        cfg:
-          - { os: ubuntu-latest, ruby: jruby-head }
+        include:
+          - { os: ubuntu, ruby: jruby-head }
 
     steps:
       - name: repo checkout
@@ -118,7 +83,7 @@ jobs:
       - name: load ruby, ragel
         uses: MSP-Greg/setup-ruby-pkgs@v1
         with:
-          ruby-version: ${{ matrix.cfg.ruby }}
+          ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
 
@@ -131,7 +96,7 @@ jobs:
         run:  bundle exec rake compile
 
       - name: test
-        timeout-minutes: 8
+        timeout-minutes: 10
         continue-on-error: true
         if: success()
         run: bundle exec rake
