@@ -14,6 +14,7 @@ end
 require "minitest/autorun"
 require "minitest/pride"
 require "minitest/proveit"
+require "minitest/stub_const"
 require_relative "helpers/apps"
 
 Thread.abort_on_exception = true

@@ -10,6 +10,7 @@ gem "rack", "~> 1.6"
 gem "minitest", "~> 5.11"
 gem "minitest-retry"
 gem "minitest-proveit"
+gem "minitest-stub-const"
 
 gem "jruby-openssl", :platform => "jruby"
 

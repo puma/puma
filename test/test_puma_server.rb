@@ -934,16 +934,16 @@ EOF
 
   # Requests still pending after `force_shutdown_after` should have connection closed (408 w/pending POST body).
   def test_force_shutdown
-    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 1
-    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 1, queue_requests: false
-    shutdown_requests request_delay: 4, response: /408/, force_shutdown_after: 1, post: true
+    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 3
+    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 3, queue_requests: false
+    shutdown_requests request_delay: 4, response: /408/, force_shutdown_after: 3, post: true
   end
 
   # App-responses still pending during `force_shutdown_after` should return 503
   # (uncaught Puma::ThreadPool::ForceShutdown exception).
   def test_force_shutdown_app
-    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 1
-    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 1, queue_requests: false
+    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 3
+    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 3, queue_requests: false
   end
 
   def test_http11_connection_header_queue
