@@ -36,6 +36,7 @@
   * Simplify `Runner#start_control` URL parsing (#2111)
   * Removed the IOBuffer extension and replaced with Ruby (#1980)
   * Update `Rack::Handler::Puma.run` to use `**options` (#2189)
+  * ThreadPool concurrency refactoring (#2220)
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
 

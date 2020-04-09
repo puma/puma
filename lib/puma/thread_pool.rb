@@ -54,7 +54,10 @@ module Puma
       @reaper = nil
 
       @mutex.synchronize do
-        @min.times { spawn_thread }
+        @min.times do
+          spawn_thread
+          @not_full.wait(@mutex)
+        end
       end
 
       @clean_thread_locals = false
@@ -72,7 +75,7 @@ module Puma
     # How many objects have yet to be processed by the pool?
     #
     def backlog
-      @mutex.synchronize { @todo.size }
+      with_mutex { @todo.size }
     end
 
     def pool_capacity
@@ -99,20 +102,13 @@ module Puma
         while true
           work = nil
 
-          continue = true
-
           mutex.synchronize do
             while todo.empty?
               if @trim_requested > 0
                 @trim_requested -= 1
-                continue = false
-                not_full.signal
-                break
-              end
-
-              if @shutdown
-                continue = false
-                break
+                @spawned -= 1
+                @workers.delete th
+                Thread.exit
               end
 
               @waiting += 1
@@ -121,10 +117,8 @@ module Puma
               @waiting -= 1
             end
 
-            work = todo.shift if continue
+            work = todo.shift
           end
-
-          break unless continue
 
           if @clean_thread_locals
             ThreadPool.clean_thread_locals
@@ -136,11 +130,6 @@ module Puma
             STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
           end
         end
-
-        mutex.synchronize do
-          @spawned -= 1
-          @workers.delete th
-        end
       end
 
       @workers << th
@@ -150,9 +139,15 @@ module Puma
 
     private :spawn_thread
 
+    def with_mutex(&block)
+      @mutex.owned? ?
+        yield :
+        @mutex.synchronize(&block)
+    end
+
     # Add +work+ to the todo list for a Thread to pickup and process.
     def <<(work)
-      @mutex.synchronize do
+      with_mutex do
         if @shutdown
           raise "Unable to add work while shutting down"
         end
@@ -197,7 +192,7 @@ module Puma
     # Returns the current number of busy threads, or +nil+ if shutting down.
     #
     def wait_until_not_full
-      @mutex.synchronize do
+      with_mutex do
         while true
           return if @shutdown
 
@@ -213,13 +208,14 @@ module Puma
       end
     end
 
-    # If too many threads are in the pool, tell one to finish go ahead
+    # If there are any free threads in the pool, tell one to go ahead
     # and exit. If +force+ is true, then a trim request is requested
     # even if all threads are being utilized.
     #
     def trim(force=false)
-      @mutex.synchronize do
-        if (force or @waiting > 0) and @spawned - @trim_requested > @min
+      with_mutex do
+        free = @waiting - @todo.size
+        if (force or free > 0) and @spawned - @trim_requested > @min
           @trim_requested += 1
           @not_empty.signal
         end
@@ -229,7 +225,7 @@ module Puma
     # If there are dead threads in the pool make them go away while decreasing
     # spawned counter so that new healthy threads could be created again.
     def reap
-      @mutex.synchronize do
+      with_mutex do
         dead_workers = @workers.reject(&:alive?)
 
         dead_workers.each do |worker|
@@ -283,8 +279,9 @@ module Puma
     # Tell all threads in the pool to exit and wait for them to finish.
     #
     def shutdown(timeout=-1)
-      threads = @mutex.synchronize do
+      threads = with_mutex do
         @shutdown = true
+        @trim_requested = @spawned
         @not_empty.broadcast
         @not_full.broadcast
 
