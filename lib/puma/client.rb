@@ -246,7 +246,12 @@ module Puma
     def finish(timeout)
       return true if @ready
       until try_to_finish
-        unless IO.select([@to_io], nil, nil, timeout)
+        can_read = begin
+          IO.select([@to_io], nil, nil, timeout)
+        rescue ThreadPool::ForceShutdown
+          nil
+        end
+        unless can_read
           write_error(408) if in_data_phase
           raise ConnectionError
         end
@@ -271,6 +276,18 @@ module Puma
       end
 
       @peerip ||= @io.peeraddr.last
+    end
+
+    # Returns true if the persistent connection can be closed immediately
+    # without waiting for the configured idle/shutdown timeout.
+    def can_close?
+      # Allow connection to close if it's received at least one full request
+      # and hasn't received any data for a future request.
+      #
+      # From RFC 2616 section 8.1.4:
+      # Servers SHOULD always respond to at least one request per connection,
+      # if at all possible.
+      @requests_served > 0 && @parsed_bytes == 0
     end
 
     private
