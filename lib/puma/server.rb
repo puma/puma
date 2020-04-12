@@ -950,9 +950,12 @@ module Puma
     end
     private :possible_header_injection?
 
+    # List of methods invoked by #stats.
+    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count].freeze
+
+    # Returns a hash of stats about the running server for reporting purposes.
     def stats
-      stat_names = %i(backlog running pool_capacity max_threads requests_count)
-      stat_names.map {|name| [name, send(name) || 0]}.to_h
+      STAT_METHODS.map {|name| [name, send(name) || 0]}.to_h
     end
   end
 end
