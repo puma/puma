@@ -11,26 +11,23 @@ if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
   end
 end
 
-require "net/http"
-require "timeout"
 require "minitest/autorun"
 require "minitest/pride"
 require "minitest/proveit"
 require_relative "helpers/apps"
 
-$LOAD_PATH << File.expand_path("../../lib", __FILE__)
 Thread.abort_on_exception = true
 
 $debugging_info = ''.dup
 $debugging_hold = false    # needed for TestCLI#test_control_clustered
 
 require "puma"
-require "puma/events"
 require "puma/detect"
 
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
 def hit(uris)
+  require "net/http"
   uris.map do |u|
     response =
       if u.kind_of? String
@@ -46,25 +43,21 @@ def hit(uris)
 end
 
 module UniquePort
-  @port  = 3211
-  @mutex = Mutex.new
-
   def self.call
-    @mutex.synchronize {
-      @port += 1
-      @port = 3307 if @port == 3306  # MySQL on Actions
-      @port
-    }
+    TCPServer.open('127.0.0.1', 0) do |server|
+      server.connect_address.ip_port
+    end
   end
 end
 
+require "timeout"
 module TimeoutEveryTestCase
   # our own subclass so we never confused different timeouts
   class TestTookTooLong < Timeout::Error
   end
 
   def run(*)
-    ::Timeout.timeout(Puma.jruby? ? 120 : 60, TestTookTooLong) { super }
+    ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) { super }
   end
 end
 
@@ -80,7 +73,7 @@ module TestSkips
   # usage: skip NO_FORK_MSG unless HAS_FORK
   # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
   HAS_FORK = ::Process.respond_to? :fork
-  NO_FORK_MSG = "Kernel.fork isn't available on the #{RUBY_PLATFORM} platform"
+  NO_FORK_MSG = "Kernel.fork isn't available on #{RUBY_ENGINE} on #{RUBY_PLATFORM}"
 
   # socket is required by puma
   # usage: skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
@@ -101,11 +94,11 @@ module TestSkips
   # optional suffix kwarg is appended to the skip message
   # optional suffix bt should generally not used
   def skip_on(*engs, suffix: '', bt: caller)
-    skip_msg = false
     engs.each do |eng|
       skip_msg = case eng
         when :darwin   then "Skipped on darwin#{suffix}"    if RUBY_PLATFORM[/darwin/]
         when :jruby    then "Skipped on JRuby#{suffix}"     if Puma.jruby?
+        when :truffleruby then "Skipped on TruffleRuby#{suffix}" if RUBY_ENGINE == "truffleruby"
         when :windows  then "Skipped on Windows#{suffix}"   if Puma.windows?
         when :ci       then "Skipped on ENV['CI']#{suffix}" if ENV["CI"]
         when :no_bundler then "Skipped w/o Bundler#{suffix}"  if !defined?(Bundler)

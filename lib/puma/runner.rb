@@ -18,10 +18,6 @@ module Puma
       @started_at = Time.now
     end
 
-    def daemon?
-      @options[:daemon]
-    end
-
     def development?
       @options[:environment] == "development"
     end
@@ -68,6 +64,10 @@ module Puma
       @control = control
     end
 
+    def close_control_listeners
+      @control.binder.close_listeners if @control
+    end
+
     def ruby_engine
       if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
         "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
@@ -88,10 +88,6 @@ module Puma
       log "* Version #{Puma::Const::PUMA_VERSION} (#{ruby_engine}), codename: #{Puma::Const::CODE_NAME}"
       log "* Min threads: #{min_t}, max threads: #{max_t}"
       log "* Environment: #{ENV['RACK_ENV']}"
-
-      if @options[:mode] == :tcp
-        log "* Mode: Lopez Express (tcp)"
-      end
     end
 
     def redirected_io?
@@ -130,7 +126,6 @@ module Puma
         exit 1
       end
 
-      # Load the app before we daemonize.
       begin
         @app = @launcher.config.app
       rescue Exception => e
@@ -153,10 +148,6 @@ module Puma
       server.min_threads = min_t
       server.max_threads = max_t
       server.inherit_binder @launcher.binder
-
-      if @options[:mode] == :tcp
-        server.tcp_mode!
-      end
 
       if @options[:early_hints]
         server.early_hints = true

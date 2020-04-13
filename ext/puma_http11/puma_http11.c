@@ -54,7 +54,7 @@ DEF_MAX_LENGTH(FIELD_NAME, 256);
 DEF_MAX_LENGTH(FIELD_VALUE, 80 * 1024);
 DEF_MAX_LENGTH(REQUEST_URI, 1024 * 12);
 DEF_MAX_LENGTH(FRAGMENT, 1024); /* Don't know if this length is specified somewhere or not */
-DEF_MAX_LENGTH(REQUEST_PATH, 2048);
+DEF_MAX_LENGTH(REQUEST_PATH, 8196);
 DEF_MAX_LENGTH(QUERY_STRING, (1024 * 10));
 DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
 
@@ -367,7 +367,7 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
     VALIDATE_MAX_LENGTH(puma_parser_nread(http), HEADER);
 
     if(puma_parser_has_error(http)) {
-      rb_raise(eHttpParserError, "%s", "Invalid HTTP format, parsing fails.");
+      rb_raise(eHttpParserError, "%s", "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?");
     } else {
       return INT2FIX(puma_parser_nread(http));
     }

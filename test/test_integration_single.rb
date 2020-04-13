@@ -49,7 +49,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server 'test/rackup/sleep.ru'
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3("curl http://#{HOST}:#{@tcp_port}/sleep10")
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3({ 'LC_ALL' => 'C' }, "curl http://#{HOST}:#{@tcp_port}/sleep10")
     sleep 1 # ensure curl send a request
 
     Process.kill :TERM, @pid

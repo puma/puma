@@ -26,16 +26,14 @@ class TestPathHandler < Minitest::Test
 
     @launcher = nil
     thread = Thread.new do
-      Rack::Handler::Puma.run(app, options) do |s, p|
+      Rack::Handler::Puma.run(app, **options) do |s, p|
         @launcher = s
       end
     end
 
     # Wait for launcher to boot
     Timeout.timeout(10) do
-      until @launcher
-        sleep 1
-      end
+      sleep 1 until @launcher
     end
     sleep 1
 
@@ -227,6 +225,13 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
     end
   end
 
+  def test_default_log_request_when_no_config_file
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal false, conf.options[:log_requests]
+  end
+
   def test_file_log_requests_wins_over_default_config
     file_log_requests_config = true
 
@@ -240,9 +245,7 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
     assert_equal file_log_requests_config, conf.options[:log_requests]
   end
 
-
   def test_user_log_requests_wins_over_file_config
-    file_log_requests_config = true
     user_log_requests_config = false
 
     @options[:log_requests] = user_log_requests_config

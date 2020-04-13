@@ -19,16 +19,21 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    if defined?(@server) && @server
+    if defined?(@server) && @server && @pid
       stop_server @pid, signal: :INT
     end
 
-    @ios_to_close.each do |io|
-      io.close if io.is_a?(IO) && !io.closed?
-      io = nil
+    if @ios_to_close
+      @ios_to_close.each do |io|
+        io.close if io.is_a?(IO) && !io.closed?
+        io = nil
+      end
     end
-    refute File.exist?(@bind_path), "Bind path must be removed after stop"
-    File.unlink(@bind_path) rescue nil
+
+    if @bind_path
+      refute File.exist?(@bind_path), "Bind path must be removed after stop"
+      File.unlink(@bind_path) rescue nil
+    end
 
     # wait until the end for OS buffering?
     if defined?(@server) && @server

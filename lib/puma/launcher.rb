@@ -48,7 +48,8 @@ module Puma
       @config        = conf
 
       @binder        = Binder.new(@events)
-      @binder.import_from_env
+      @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
+      @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
 
       @environment = conf.environment
 
@@ -67,10 +68,6 @@ module Puma
 
       if clustered? && !Process.respond_to?(:fork)
         unsupported "worker mode not supported on #{RUBY_ENGINE} on this platform"
-      end
-
-      if @options[:daemon] && Puma.windows?
-        unsupported 'daemon mode not supported on Windows'
       end
 
       Dir.chdir(@restart_dir)
@@ -184,7 +181,7 @@ module Puma
       when :exit
         # nothing
       end
-      @binder.close_unix_paths
+      close_binder_listeners unless @status == :restart
     end
 
     # Return all tcp ports the launcher may be using, TCP or SSL
@@ -202,6 +199,7 @@ module Puma
     end
 
     def close_binder_listeners
+      @runner.close_control_listeners
       @binder.close_listeners
     end
 
@@ -236,7 +234,7 @@ module Puma
     end
 
     def restart!
-      @config.run_hooks :on_restart, self
+      @config.run_hooks :on_restart, self, @events
 
       if Puma.jruby?
         close_binder_listeners
@@ -252,6 +250,7 @@ module Puma
       else
         argv = restart_args
         Dir.chdir(@restart_dir)
+        ENV.update(@binder.redirects_for_restart_env)
         argv += [@binder.redirects_for_restart]
         Kernel.exec(*argv)
       end
@@ -297,8 +296,8 @@ module Puma
 
       log '* Pruning Bundler environment'
       home = ENV['GEM_HOME']
-      bundle_gemfile = ENV['BUNDLE_GEMFILE']
-      Bundler.with_clean_env do
+      bundle_gemfile = Bundler.original_env['BUNDLE_GEMFILE']
+      with_unbundled_env do
         ENV['GEM_HOME'] = home
         ENV['BUNDLE_GEMFILE'] = bundle_gemfile
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
@@ -454,10 +453,12 @@ module Puma
       end
 
       begin
-        Signal.trap "SIGINFO" do
-          thread_status do |name, backtrace|
-            @events.log name
-            @events.log backtrace.map { |bt| "  #{bt}" }
+        unless Puma.jruby? # INFO in use by JVM already
+          Signal.trap "SIGINFO" do
+            thread_status do |name, backtrace|
+              @events.log name
+              @events.log backtrace.map { |bt| "  #{bt}" }
+            end
           end
         end
       rescue Exception
@@ -471,6 +472,15 @@ module Puma
 
       raise "#{feature} is not supported on your version of RubyGems. " \
               "You must have RubyGems #{min_version}+ to use this feature."
+    end
+
+    def with_unbundled_env
+      bundler_ver = Gem::Version.new(Bundler::VERSION)
+      if bundler_ver < Gem::Version.new('2.1.0')
+        Bundler.with_clean_env { yield }
+      else
+        Bundler.with_unbundled_env { yield }
+      end
     end
   end
 end

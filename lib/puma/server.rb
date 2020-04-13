@@ -99,10 +99,6 @@ module Puma
       @binder = bind
     end
 
-    def tcp_mode!
-      @mode = :tcp
-    end
-
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
     #
@@ -176,107 +172,6 @@ module Puma
       @thread_pool and @thread_pool.pool_capacity
     end
 
-    # Lopez Mode == raw tcp apps
-
-    def run_lopez_mode(background=true)
-      @thread_pool = ThreadPool.new(@min_threads,
-                                    @max_threads,
-                                    Hash) do |client, tl|
-
-        io = client.to_io
-        addr = io.peeraddr.last
-
-        if addr.empty?
-          # Set unix socket addrs to localhost
-          addr = "127.0.0.1:0"
-        else
-          addr = "#{addr}:#{io.peeraddr[1]}"
-        end
-
-        env = { 'thread' => tl, REMOTE_ADDR => addr }
-
-        begin
-          @app.call env, client.to_io
-        rescue Object => e
-          STDERR.puts "! Detected exception at toplevel: #{e.message} (#{e.class})"
-          STDERR.puts e.backtrace
-        end
-
-        client.close unless env['detach']
-      end
-
-      @events.fire :state, :running
-
-      if background
-        @thread = Thread.new do
-          Puma.set_thread_name "server"
-          handle_servers_lopez_mode
-        end
-        return @thread
-      else
-        handle_servers_lopez_mode
-      end
-    end
-
-    def handle_servers_lopez_mode
-      begin
-        check = @check
-        sockets = [check] + @binder.ios
-        pool = @thread_pool
-
-        while @status == :run
-          begin
-            ios = IO.select sockets
-            ios.first.each do |sock|
-              if sock == check
-                break if handle_check
-              else
-                begin
-                  if io = sock.accept_nonblock
-                    client = Client.new io, nil
-                    pool << client
-                  end
-                rescue SystemCallError
-                  # nothing
-                rescue Errno::ECONNABORTED
-                  # client closed the socket even before accept
-                  begin
-                    io.close
-                  rescue
-                    Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-                  end
-                end
-              end
-            end
-          rescue Object => e
-            @events.unknown_error self, e, "Listen loop"
-          end
-        end
-
-        @events.fire :state, @status
-
-        graceful_shutdown if @status == :stop || @status == :restart
-
-      rescue Exception => e
-        STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
-        STDERR.puts e.backtrace
-      ensure
-        begin
-          @check.close
-        rescue
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-        end
-
-        # Prevent can't modify frozen IOError (RuntimeError)
-        begin
-          @notify.close
-        rescue IOError
-          # no biggy
-        end
-      end
-
-      @events.fire :state, :done
-    end
     # Runs the server.
     #
     # If +background+ is true (the default) then a thread is spun
@@ -290,12 +185,6 @@ module Puma
 
       @status = :run
 
-      if @mode == :tcp
-        return run_lopez_mode(background)
-      end
-
-      queue_requests = @queue_requests
-
       @thread_pool = ThreadPool.new(@min_threads,
                                     @max_threads,
                                     ::Puma::IOBuffer) do |client, buffer|
@@ -306,7 +195,7 @@ module Puma
         process_now = false
 
         begin
-          if queue_requests
+          if @queue_requests
             process_now = client.eagerly_finish
           else
             client.finish(@first_data_timeout)
@@ -339,7 +228,7 @@ module Puma
 
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
-      if queue_requests
+      if @queue_requests
         @reactor = Reactor.new self, @thread_pool
         @reactor.run_in_thread
       end
@@ -423,16 +312,17 @@ module Puma
 
         @events.fire :state, @status
 
-        graceful_shutdown if @status == :stop || @status == :restart
         if queue_requests
+          @queue_requests = false
           @reactor.clear!
           @reactor.shutdown
         end
+        graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
         STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
       ensure
-        @check.close
+        @check.close unless @check.closed? # Ruby 2.2 issue
         @notify.close
       end
 
@@ -480,7 +370,6 @@ module Puma
             close_socket = false
             return
           when true
-            return unless @queue_requests
             buffer.reset
 
             ThreadPool.clean_thread_locals if clean_thread_locals
@@ -498,6 +387,7 @@ module Puma
             end
 
             unless client.reset(check_for_more_data)
+              return unless @queue_requests
               close_socket = false
               client.set_timeout @persistent_timeout
               @reactor.add client
@@ -699,17 +589,14 @@ module Puma
             return :async
           end
         rescue ThreadPool::ForceShutdown => e
-          @events.log "Detected force shutdown of a thread, returning 503"
-          @events.unknown_error self, e, "Rack app"
+          @events.unknown_error self, e, "Rack app", env
+          @events.log "Detected force shutdown of a thread"
 
-          status = 503
-          headers = {}
-          res_body = ["Request was internally terminated early\n"]
-
+          status, headers, res_body = lowlevel_error(e, env, 503)
         rescue Exception => e
           @events.unknown_error self, e, "Rack app", env
 
-          status, headers, res_body = lowlevel_error(e, env)
+          status, headers, res_body = lowlevel_error(e, env, 500)
         end
 
         content_length = nil
@@ -724,10 +611,10 @@ module Puma
         line_ending = LINE_END
         colon = COLON
 
-        http_11 = if env[HTTP_VERSION] == HTTP_11
+        http_11 = env[HTTP_VERSION] == HTTP_11
+        if http_11
           allow_chunked = true
           keep_alive = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
-          include_keepalive_header = false
 
           # An optimization. The most common response is 200, so we can
           # reply with the proper 200 status without having to compute
@@ -741,11 +628,9 @@ module Puma
 
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
-          true
         else
           allow_chunked = false
           keep_alive = env.fetch(HTTP_CONNECTION, "").downcase == KEEP_ALIVE
-          include_keepalive_header = keep_alive
 
           # Same optimization as above for HTTP/1.1
           #
@@ -757,8 +642,11 @@ module Puma
 
             no_body ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
           end
-          false
         end
+
+        # regardless of what the client wants, we always close the connection
+        # if running without request queueing
+        keep_alive &&= @queue_requests
 
         response_hijack = nil
 
@@ -786,10 +674,15 @@ module Puma
           end
         end
 
-        if include_keepalive_header
-          lines << CONNECTION_KEEP_ALIVE
-        elsif http_11 && !keep_alive
-          lines << CONNECTION_CLOSE
+        # HTTP/1.1 & 1.0 assume different defaults:
+        # - HTTP 1.0 assumes the connection will be closed if not specified
+        # - HTTP 1.1 assumes the connection will be kept alive if not specified.
+        # Only set the header if we're doing something which is not the default
+        # for this protocol version
+        if http_11
+          lines << CONNECTION_CLOSE if !keep_alive
+        else
+          lines << CONNECTION_KEEP_ALIVE if keep_alive
         end
 
         if no_body
@@ -916,19 +809,21 @@ module Puma
 
     # A fallback rack response if +@app+ raises as exception.
     #
-    def lowlevel_error(e, env)
+    def lowlevel_error(e, env, status=500)
       if handler = @options[:lowlevel_error_handler]
         if handler.arity == 1
           return handler.call(e)
-        else
+        elsif handler.arity == 2
           return handler.call(e, env)
+        else
+          return handler.call(e, env, status)
         end
       end
 
       if @leak_stack_on_error
-        [500, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
+        [status, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
       else
-        [500, {}, ["An unhandled lowlevel error occurred. The application logs may have details.\n"]]
+        [status, {}, ["An unhandled lowlevel error occurred. The application logs may have details.\n"]]
       end
     end
 

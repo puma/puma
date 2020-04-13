@@ -13,9 +13,7 @@ desired, using an application or instance specific name.
 
 Note that this uses the systemd preferred "simple" type where the
 start command remains running in the foreground (does not fork and
-exit). See also, the
-[Alternative Forking Configuration](#alternative-forking-configuration)
-below.
+exit).
 
 ~~~~ ini
 [Unit]
@@ -207,66 +205,6 @@ Apr 07 08:40:19 hx puma[28320]: * Phased restart available
 Apr 07 08:40:19 hx puma[28320]: * Activated tcp://0.0.0.0:9233
 Apr 07 08:40:19 hx puma[28320]: * Activated ssl://0.0.0.0:9234?key=key.pem&cert=cert.pem
 Apr 07 08:40:19 hx puma[28320]: Use Ctrl-C to stop
-~~~~
-
-## Alternative Forking Configuration
-
-Other systems/tools might expect or need puma to be run as a
-"traditional" forking server, for example so that the `pumactl`
-command can be used directly and outside of systemd for
-stop/start/restart. This use case is incompatible with systemd socket
-activation, so it should not be configured. Below is an alternative
-puma.service config sample, using `Type=forking` and the `--daemon`
-flag in `ExecStart`. Here systemd is playing a role more equivalent to
-SysV init.d, where it is responsible for starting Puma on boot
-(multi-user.target) and stopping it on shutdown, but is not performing
-continuous restarts. Therefore running Puma in cluster mode, where the
-master can restart workers, is highly recommended. See the systemd
-[Restart] directive for details.
-
-~~~~ ini
-[Unit]
-Description=Puma HTTP Forking Server
-After=network.target
-
-[Service]
-# Background process configuration (use with --daemon in ExecStart)
-Type=forking
-
-# Preferably configure a non-privileged user
-# User=
-
-# The path to the puma application root
-# Also replace the "<WD>" place holders below with this path.
-WorkingDirectory=
-
-# The command to start Puma
-# (replace "<WD>" below)
-ExecStart=bundle exec puma -C <WD>/shared/puma.rb --daemon
-
-# The command to stop Puma
-# (replace "<WD>" below)
-ExecStop=bundle exec pumactl -S <WD>/shared/tmp/pids/puma.state stop
-
-# Path to PID file so that systemd knows which is the master process
-PIDFile=<WD>/shared/tmp/pids/puma.pid
-
-# Should systemd restart puma?
-# Use "no" (the default) to ensure no interference when using
-# stop/start/restart via `pumactl`.  The "on-failure" setting might
-# work better for this purpose, but you must test it.
-# Use "always" if only `systemctl` is used for start/stop/restart, and
-# reconsider if you actually need the forking config.
-Restart=no
-
-# `puma_ctl restart` wouldn't work without this. It's because `pumactl`
-# changes PID on restart and systemd stops the service afterwards
-# because of the PID change. This option prevents stopping after PID
-# change.
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
 ~~~~
 
 ### capistrano3-puma

@@ -1,4 +1,6 @@
 require_relative "helper"
+require "puma/events"
+require "net/http"
 
 class TestPumaServer < Minitest::Test
   parallelize_me!
@@ -261,6 +263,36 @@ EOF
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
   end
 
+  def test_force_shutdown_custom_error_message
+    handler = lambda {|err, env, status| [500, {"Content-Type" => "application/json"}, ["{}\n"]]}
+    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => handler, :force_shutdown_after => 2}
+
+    server_run app: ->(env) do
+      @server.stop
+      sleep 5
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_match(/Content-Type: application\/json/, data)
+    assert_match(/{}\n$/, data)
+  end
+
+  def test_force_shutdown_error_default
+    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+
+    server_run app: ->(env) do
+      @server.stop
+      sleep 5
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 503 Service Unavailable/, data)
+    assert_match(/Puma caught this error.+Puma::ThreadPool::ForceShutdown/, data)
+  end
+
   def test_prints_custom_error
     re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
     @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
@@ -275,6 +307,21 @@ EOF
   def test_leh_gets_env_as_well
     re = lambda { |err,env|
       env['REQUEST_PATH'] || raise('where is env?')
+      [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
+    }
+
+    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
+
+    server_run app: ->(env) { raise "don't leak me bro" }
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 302 Found/, data)
+  end
+
+  def test_leh_has_status
+    re = lambda { |err, env, status|
+      raise "Cannot find status" unless status
       [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
     }
 
@@ -834,5 +881,107 @@ EOF
       app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
+  end
+
+  # Perform a server shutdown while requests are pending (one in app-server response, one still sending client request).
+  def shutdown_requests(app_delay: 2, request_delay: 1, post: false, response:, **options)
+    @server = Puma::Server.new @app, @events, options
+    server_run app: ->(_) {
+      sleep app_delay
+      [204, {}, []]
+    }
+
+    s1 = send_http "GET / HTTP/1.1\r\n\r\n"
+    s2 = send_http post ?
+      "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
+      "GET / HTTP/1.1\r\n"
+    sleep 0.1
+
+    @server.stop
+    sleep request_delay
+
+    s2 << "\r\n"
+
+    assert_match /204/, s1.gets
+
+    assert IO.select([s2], nil, nil, app_delay), 'timeout waiting for response'
+    s2_result = begin
+      s2.gets
+    rescue Errno::ECONNABORTED, Errno::ECONNRESET
+      # Some platforms raise errors instead of returning a response/EOF when a TCP connection is aborted.
+      post ? '408' : nil
+    end
+
+    if response
+      assert_match response, s2_result
+    else
+      assert_nil s2_result
+    end
+  end
+
+  # Shutdown should allow pending requests to complete.
+  def test_shutdown_requests
+    shutdown_requests response: /204/
+    shutdown_requests response: /204/, queue_requests: false
+  end
+
+  # Requests stuck longer than `first_data_timeout` should have connection closed (408 w/pending POST body).
+  def test_shutdown_data_timeout
+    shutdown_requests request_delay: 3, first_data_timeout: 2, response: nil
+    shutdown_requests request_delay: 3, first_data_timeout: 2, response: nil, queue_requests: false
+    shutdown_requests request_delay: 3, first_data_timeout: 2, response: /408/, post: true
+  end
+
+  # Requests still pending after `force_shutdown_after` should have connection closed (408 w/pending POST body).
+  def test_force_shutdown
+    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 1
+    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 1, queue_requests: false
+    shutdown_requests request_delay: 4, response: /408/, force_shutdown_after: 1, post: true
+  end
+
+  # App-responses still pending during `force_shutdown_after` should return 503
+  # (uncaught Puma::ThreadPool::ForceShutdown exception).
+  def test_force_shutdown_app
+    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 1
+    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 1, queue_requests: false
+  end
+
+  def test_http11_connection_header_queue
+    server_run app: ->(_) { [200, {}, [""]] }
+
+    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], header(sock)
+
+    sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(sock)
+
+    sock.close
+  end
+
+  def test_http10_connection_header_queue
+    server_run app: ->(_) { [200, {}, [""]] }
+
+    sock = send_http "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n"
+    assert_equal ["HTTP/1.0 200 OK", "Connection: Keep-Alive", "Content-Length: 0"], header(sock)
+
+    sock << "GET / HTTP/1.0\r\n\r\n"
+    assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
+    sock.close
+  end
+
+  def test_http11_connection_header_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    server_run app: ->(_) { [200, {}, [""]] }
+    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+    assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(sock)
+    sock.close
+  end
+
+  def test_http10_connection_header_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    server_run app: ->(_) { [200, {}, [""]] }
+    sock = send_http "GET / HTTP/1.0\r\n\r\n"
+    assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
+    sock.close
   end
 end
