@@ -1,6 +1,8 @@
 require_relative "helper"
 require "puma/minissl"
 require "puma/puma_http11"
+require "puma/events"
+require "net/http"
 
 #———————————————————————————————————————————————————————————————————————————————
 #             NOTE: ALL TESTS BYPASSED IF DISABLE_SSL IS TRUE
@@ -21,7 +23,7 @@ DISABLE_SSL = begin
               Puma::MiniSSL.check
               # net/http (loaded in helper) does not necessarily load OpenSSL
               require "openssl" unless Object.const_defined? :OpenSSL
-              puts "", RUBY_DESCRIPTION,
+              puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
                    "                         Puma::MiniSSL                   OpenSSL",
                    "OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION.ljust 32}#{OpenSSL::OPENSSL_LIBRARY_VERSION}",
                    "        OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION.ljust 32}#{OpenSSL::OPENSSL_VERSION}", ""
@@ -164,7 +166,7 @@ class TestPumaServerSSL < Minitest::Test
     skip("TLSv1 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_TLS1
     start_server { |ctx| ctx.no_tlsv1 = true }
 
-    if @http.respond_to? :max_version=
+    if OpenSSL::SSL::SSLContext.private_instance_methods(false).include?(:set_minmax_proto_version)
       @http.max_version = :TLS1
     else
       @http.ssl_version = :TLSv1
@@ -184,7 +186,7 @@ class TestPumaServerSSL < Minitest::Test
   def test_tls_v1_1_rejection
     start_server { |ctx| ctx.no_tlsv1_1 = true }
 
-    if @http.respond_to? :max_version=
+    if OpenSSL::SSL::SSLContext.private_instance_methods(false).include?(:set_minmax_proto_version)
       @http.max_version = :TLS1_1
     else
       @http.ssl_version = :TLSv1_1

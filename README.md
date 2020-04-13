@@ -4,12 +4,11 @@
 
 # Puma: A Ruby Web Server Built For Concurrency
 
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/puma/puma?utm\_source=badge&utm\_medium=badge&utm\_campaign=pr-badge)
 [![Actions Build Status](https://github.com/puma/puma/workflows/Puma/badge.svg)](https://github.com/puma/puma/actions)
-[![Travis Build Status](https://travis-ci.org/puma/puma.svg?branch=master)](https://travis-ci.org/puma/puma)
 
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
+[![StackOverflow](http://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( http://stackoverflow.com/questions/tagged/puma )
 
 Puma is a **simple, fast, multi-threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications**.
 
@@ -270,7 +269,7 @@ It is common to use process monitors with Puma. Modern process monitors like sys
 provide continuous monitoring and restarts for increased
 reliability in production environments:
 
-* [tools/jungle](https://github.com/puma/puma/tree/master/tools/jungle) for sysvinit (init.d) and upstart
+* [docs/jungle](https://github.com/puma/puma/tree/master/docs/jungle) for rc.d and upstart
 * [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
 ## Community Extensions

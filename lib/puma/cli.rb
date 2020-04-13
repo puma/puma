@@ -80,7 +80,7 @@ module Puma
       @launcher.run
     end
 
-  private
+    private
     def unsupported(str)
       @events.error(str)
       raise UnsupportedOption
@@ -115,11 +115,6 @@ module Puma
           o.on "--control-token TOKEN",
             "The token to use as authentication for the control server" do |arg|
             @control_options[:auth_token] = arg
-          end
-
-          o.on "-d", "--daemon", "Daemonize the server into the background" do
-            user_config.daemonize
-            user_config.quiet
           end
 
           o.on "--debug", "Log lowlevel debugging information" do
@@ -185,10 +180,6 @@ module Puma
             else
               user_config.threads min, min
             end
-          end
-
-          o.on "--tcp-mode", "Run the app in raw TCP mode instead of HTTP mode" do
-            user_config.tcp_mode!
           end
 
           o.on "--early-hints", "Enable early hints support" do

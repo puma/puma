@@ -4,6 +4,7 @@ require_relative "helper"
 require_relative "helpers/config_file"
 
 require "puma/configuration"
+require 'puma/events'
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -66,7 +67,11 @@ class TestConfigFile < TestConfigFileBase
     end
     conf.load
 
-    conf.app
+    # suppress deprecation warning of Rack (>= 2.2.0)
+    # > Parsing options from the first comment line is deprecated!\n
+    assert_output(nil, nil) do
+      conf.app
+    end
 
     assert_equal ["tcp://127.0.0.1:9292"], conf.options[:binds]
   end
@@ -248,6 +253,61 @@ class TestConfigFile < TestConfigFileBase
     assert_equal conf.options[:raise_exception_on_sigterm], false
     conf.options[:raise_exception_on_sigterm] = true
     assert_equal conf.options[:raise_exception_on_sigterm], true
+  end
+
+  def test_run_hooks_on_restart_hook
+    assert_run_hooks :on_restart
+  end
+
+  def test_run_hooks_before_worker_fork
+    assert_run_hooks :before_worker_fork, configured_with: :on_worker_fork
+  end
+
+  def test_run_hooks_after_worker_fork
+    assert_run_hooks :after_worker_fork
+  end
+
+  def test_run_hooks_before_worker_boot
+    assert_run_hooks :before_worker_boot, configured_with: :on_worker_boot
+  end
+
+  def test_run_hooks_before_worker_shutdown
+    assert_run_hooks :before_worker_shutdown, configured_with: :on_worker_shutdown
+  end
+
+  def test_run_hooks_before_fork
+    assert_run_hooks :before_fork
+  end
+
+  def test_run_hooks_and_exception
+    conf = Puma::Configuration.new do |c|
+      c.on_restart do |a|
+        raise RuntimeError, 'Error from hook'
+      end
+    end
+    conf.load
+    events = Puma::Events.strings
+
+    conf.run_hooks :on_restart, 'ARG', events
+    expected = /WARNING hook on_restart failed with exception \(RuntimeError\) Error from hook/
+    assert_match expected, events.stdout.string
+  end
+
+  private
+
+  def assert_run_hooks(hook_name, options = {})
+    configured_with = options[:configured_with] || hook_name
+
+    messages = []
+    conf = Puma::Configuration.new do |c|
+      c.send(configured_with) do |a|
+        messages << "#{hook_name} is called with #{a}"
+      end
+    end
+    conf.load
+
+    conf.run_hooks hook_name, 'ARG', Puma::Events.strings
+    assert_equal messages, ["#{hook_name} is called with ARG"]
   end
 end
 

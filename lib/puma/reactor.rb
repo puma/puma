@@ -189,7 +189,12 @@ module Puma
                     if submon.value == @ready
                       false
                     else
-                      submon.value.close
+                      if submon.value.can_close?
+                        submon.value.close
+                      else
+                        # Pass remaining open client connections to the thread pool.
+                        @app_pool << submon.value
+                      end
                       begin
                         selector.deregister submon.value
                       rescue IOError

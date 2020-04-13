@@ -14,10 +14,13 @@ class TestIntegrationPumactl < TestIntegration
   def teardown
     super
 
+    refute File.exist?(@control_path), "Control path must be removed after stop"
+  ensure
     [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
   end
 
   def test_stop_tcp
+    skip_on :jruby, :truffleruby # Undiagnose thread race. TODO fix
     @control_tcp_port = UniquePort.call
     cli_server "-q test/rackup/sleep.ru --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} -S #{@state_path}"
 
@@ -30,10 +33,18 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_stop_unix
+    ctl_unix
+  end
+
+  def test_halt_unix
+    ctl_unix 'halt'
+  end
+
+  def ctl_unix(signal='stop')
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     cli_server "-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
 
-    cli_pumactl "stop", unix: true
+    cli_pumactl signal, unix: true
 
     _, status = Process.wait2(@pid)
     assert_equal 0, status

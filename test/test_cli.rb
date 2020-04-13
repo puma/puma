@@ -64,6 +64,8 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_for_ssl
+    skip_on :jruby # Hangs on CI, TODO fix
+    require "net/http"
     control_port = UniquePort.call
     control_host = "127.0.0.1"
     control_url = "ssl://#{control_host}:#{control_port}?#{ssl_query}"
@@ -94,8 +96,8 @@ class TestCLI < Minitest::Test
     assert_equal([:started_at, :backlog, :running, :pool_capacity, :max_threads, :requests_count], Puma.stats.keys)
 
   ensure
-    cli.launcher.stop
-    t.join
+    cli.launcher.stop if cli
+    t.join if t
   end
 
   def test_control_clustered

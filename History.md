@@ -1,41 +1,54 @@
 ## Master
 
 * Features
+  * Improve SSL connection closing in Puma::ControlCLI (#2211)
   * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
   * Do not set user_config to quiet by default to allow for file config (#2074)
-  * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `GC.compact` is called before fork if available (#2093)
   * Add `requests_count` to workers stats. (#2106)
-  * Changed #connected_port to #connected_ports (#2076)
+  * Increases maximum URI path length from 2048 to 8196 bytes (#2167)
+  * Force shutdown responses can be overridden by using the `lowlevel_error_handler` config (#2203)
+
+* Deprecations, Removals and Breaking API Changes
+  * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `--control` has been removed. Use `--control-url` (#1487)
   * `worker_directory` has been removed. Use `directory`
   * min_threads now set by environment variables PUMA_MIN_THREADS and MIN_THREADS
   * max_threads now set by environment variables PUMA_MAX_THREADS and MAX_THREADS
   * max_threads default to 5 in MRI or 16 for all other interpretters
   * preload by default if workers > 1 and interpretter supports workers
-
+  * `tcp_mode` has been removed without replacement. (#2169)
+  * Daemonization has been removed without replacement. (#2170)
+  * Changed #connected_port to #connected_ports (#2076)
 
 * Bugfixes
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
+  * Ensure control server Unix socket is closed on shutdown (#2112)
   * Preserve `BUNDLE_GEMFILE` env var when using `prune_bundler` (#1893)
   * Send 408 request timeout even when queue requests is disabled (#2119)
   * Rescue IO::WaitReadable instead of EAGAIN for blocking read (#2121)
+  * Ensure `BUNDLE_GEMFILE` is unspecified in workers if unspecified in master when using `prune_bundler` (#2154)
+  * Rescue and log exceptions in hooks defined by users (on_worker_boot, after_worker_fork etc) (#1551)
+  * Read directly from the socket in #read_and_drop to avoid raising further SSL errors (#2198)
+  * Set `Connection: closed` header when queue requests is disabled (#2216)
+  * Pass queued requests to thread pool on server shutdown (#2122)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
   * Simplify `Configuration.random_token` and remove insecure fallback (#2102)
   * Simplify `Runner#start_control` URL parsing (#2111)
   * Removed the IOBuffer extension and replaced with Ruby (#1980)
-
+  * Update `Rack::Handler::Puma.run` to use `**options` (#2189)
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
-  * Bugfixes
-    * Fix: Fixes a problem where we weren't splitting headers correctly on newlines (#2132)
-  * Security
-    * Fix: Prevent HTTP Response splitting via CR in early hints.
 
-## 4.3.2 and 3.12.3 / 2020-02-27
+* Bugfixes
+  * Fix: Fixes a problem where we weren't splitting headers correctly on newlines (#2132)
+* Security
+  * Fix: Prevent HTTP Response splitting via CR in early hints. CVE-2020-5249.
+
+## 4.3.2 and 3.12.3 / 2020-02-27 (YANKED)
 
 * Security
   * Fix: Prevent HTTP Response splitting via CR/LF in header values. CVE-2020-5247.

@@ -6,6 +6,8 @@ AllCops:
   Exclude:
     - 'tmp/**/*'
     - 'vendor/**/*'
+    - 'examples/**/*'
+    - 'pkg/**/*'
     - 'Rakefile'
 
 Layout/SpaceAfterColon:
@@ -52,4 +54,25 @@ Style/TrailingCommaInArguments:
   Enabled: true
 
 Performance:
+  Enabled: true
+
+Metrics/ParameterLists:
+  Max: 7
+
+Performance/RedundantMatch:
+  Enabled: true
+
+Performance/RedundantBlockCall:
+  Enabled: true
+
+Performance/StringReplacement:
+  Enabled: true
+
+Layout/AccessModifierIndentation:
+  EnforcedStyle: indent
+
+Style/WhileUntilModifier:
+  Enabled: true
+
+Style/TernaryParentheses:
   Enabled: true

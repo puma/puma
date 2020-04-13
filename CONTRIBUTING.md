@@ -8,8 +8,8 @@ There are lots of ways to contribute to puma. Some examples include:
 
 * creating a [bug report] or [feature request]
 * verifying [existing bug reports] and adding [reproduction steps]
-* reviewing [pull requests] and testing the changes on your own machine
-* writing or editing documentation
+* reviewing [pull requests] and testing the changes locally, on your own machine
+* writing or editing [documentation]
 * improving test coverage
 * fixing a [reproducing bug] or adding a new feature
 
@@ -17,14 +17,17 @@ There are lots of ways to contribute to puma. Some examples include:
 [feature request]: https://github.com/puma/puma/issues/new?template=feature_request.md
 [existing bug reports]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Aneeds-repro
 [pull requests]: https://github.com/puma/puma/pulls
+[documentation]: https://github.com/puma/puma/tree/master/docs
 [reproduction steps]: https://github.com/puma/puma/blob/CONTRIBUTING.md#reproduction-steps
 [reproducing bug]: https://github.com/puma/puma/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abug
+
+Newbies welcome! We would be happy to help you make your first contribution to a F/OSS project.
 
 ## Setup
 
 Clone down the Puma repository.
 
-You will need to install [ragel] to generate puma's extension code.
+You will need to install [ragel] (use Ragel version 7.0.0.9) to generate puma's extension code.
 
 macOS:
 
@@ -68,7 +71,7 @@ bundle exec rake test:all
 To run a single test file:
 
 ```sh
-ruby -Ilib test/test_binder.rb
+bundle exec ruby test/test_binder.rb
 ```
 
 Or use [`m`](https://github.com/qrush/m):
@@ -112,7 +115,7 @@ bundle exec puma -C <path/to/config.rb> <path/to/rackup.ru>
 ```
 
 As an example, using one of the test rack apps:
-[`test/rackup/hello.ru`][rackup], and one of the test config files:
+[`test/rackup/hello.ru`][rackup file], and one of the test config files:
 [`test/config/settings.rb`][config], you would run the test app with:
 
 ```sh
@@ -144,6 +147,7 @@ check](https://github.com/puma/puma/pull/1991).
 
 Puma can be a bit intimidating for your first contribution because there's a lot of concepts here that you've probably never had to think about before - Rack, sockets, forking, threads etc. Here are some helpful links for learning more about things related to Puma:
 
+* [Puma's Architecture docs](https://github.com/puma/puma/blob/master/docs/architecture.md)
 * [The Rack specification](https://www.rubydoc.info/github/rack/rack/file/SPEC)
 * The Ruby docs for IO.pipe, TCPServer/Socket.
 * [nio4r documentation](https://github.com/socketry/nio4r/wiki/Getting-Started)

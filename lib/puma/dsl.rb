@@ -210,20 +210,6 @@ module Puma
       @options[:clean_thread_locals] = which
     end
 
-    # Daemonize the server into the background. It's highly recommended to
-    # use this in combination with +pidfile+ and +stdout_redirect+.
-    #
-    # The default is "false".
-    #
-    # @example
-    #   daemonize
-    #
-    # @example
-    #   daemonize false
-    def daemonize(which=true)
-      @options[:daemon] = which
-    end
-
     # When shutting down, drain the accept socket of pending
     # connections and process them. This loops over the accept
     # socket until there are no more read events and then stops
@@ -323,12 +309,6 @@ module Puma
     #   rackup '/u/apps/lolcat/config.ru'
     def rackup(path)
       @options[:rackup] = path.to_s
-    end
-
-    # Run Puma in TCP mode
-    #
-    def tcp_mode!
-      @options[:mode] = :tcp
     end
 
     def early_hints(answer=true)
@@ -534,11 +514,6 @@ module Puma
     #   directory '/u/apps/lolcat'
     def directory(dir)
       @options[:directory] = dir.to_s
-    end
-
-    # Run the app as a raw TCP app instead of an HTTP rack app.
-    def tcp_mode
-      @options[:mode] = :tcp
     end
 
     # Preload the application before starting the workers; this conflicts with

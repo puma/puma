@@ -74,7 +74,9 @@ thread to become available.
     * haproxy: `%Th` (TLS handshake time) and `%Ti` (idle time before request) can
       can also be added as headers.
 
-## Daemonizing
+## Should I daemonize?
+
+Daemonization was removed in Puma 5.0. For alternatives, continue reading.
 
 I prefer to not daemonize my servers and use something like `runit` or `upstart` to
 monitor them as child processes. This gives them fast response to crashes and
