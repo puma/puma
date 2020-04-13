@@ -137,7 +137,13 @@ module Puma
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
 
-      default_options[:preload_app] = (default_options[:workers] > 1 && Puma::Plugin.new.workers_supported?)
+			# 1. workers_supported - #Puma::Plugin.new.workers_supported?)
+			workers_supported = !(Puma.jruby? || Puma.windows?)
+
+			# 2. preload app
+			if !@options[:prune_bundler]
+				default_options[:preload_app] =(@options[:workers] > 1) && workers_supported 
+			end
 
       if block
         configure(&block)
@@ -176,8 +182,8 @@ module Puma
 
     def puma_default_options
       {
-        :min_threads => Integer(ENV['RAILS_MIN_THREADS'] || ENV['MIN_THREADS'] || 0),
-        :max_threads => Integer(ENV['RAILS_MAX_THREADS'] || ENV['MAX_THREADS'] || default_max_threads),
+        :min_threads => Integer(ENV['PUMA_MIN_THREADS'] || ENV['MIN_THREADS'] || 0),
+        :max_threads => Integer(ENV['PUMA_MAX_THREADS'] || ENV['MAX_THREADS'] || default_max_threads),
         :log_requests => false,
         :debug => false,
         :binds => ["tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"],

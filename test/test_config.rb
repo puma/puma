@@ -22,7 +22,7 @@ class TestConfigFile < TestConfigFileBase
     conf = Puma::Configuration.new
     assert_equal 7, conf.options.default_options[:min_threads]
 
-    ENV['RAILS_MIN_THREADS'] = '8'
+    ENV['PUMA_MIN_THREADS'] = '8'
     conf = Puma::Configuration.new
     assert_equal 8, conf.options.default_options[:min_threads]
   end
@@ -35,7 +35,7 @@ class TestConfigFile < TestConfigFileBase
     conf = Puma::Configuration.new
     assert_equal 7, conf.options.default_options[:max_threads]
 
-    ENV['RAILS_MAX_THREADS'] = '8'
+    ENV['PUMA_MAX_THREADS'] = '8'
     conf = Puma::Configuration.new
     assert_equal 8, conf.options.default_options[:max_threads]
   end
