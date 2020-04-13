@@ -137,13 +137,13 @@ module Puma
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
 
-			# 1. workers_supported - #Puma::Plugin.new.workers_supported?)
-			workers_supported = !(Puma.jruby? || Puma.windows?)
+      # 1. workers_supported - #Puma::Plugin.new.workers_supported?)
+      workers_supported = !(Puma.jruby? || Puma.windows?)
 
-			# 2. preload app
-			if !@options[:prune_bundler]
-				default_options[:preload_app] =(@options[:workers] > 1) && workers_supported 
-			end
+      # 2. preload app
+      if !@options[:prune_bundler]
+        default_options[:preload_app] =(@options[:workers] > 1) && workers_supported
+      end
 
       if block
         configure(&block)

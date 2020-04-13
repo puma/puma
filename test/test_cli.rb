@@ -55,7 +55,7 @@ class TestCLI < Minitest::Test
     body = s.read
     s.close
 
-		dmt = Puma::Configuration.new.default_max_threads 
+    dmt = Puma::Configuration.new.default_max_threads
     assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt},"requests_count":0}/, body.split(/\r?\n/).last)
 
   ensure
@@ -88,8 +88,8 @@ class TestCLI < Minitest::Test
       body = http.request(req).body
     end
 
-		dmt = Puma::Configuration.new.default_max_threads 
-		expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt}/
+    dmt = Puma::Configuration.new.default_max_threads
+    expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt}/
     assert_match(expected_stats, body.split(/\r?\n/).last)
     assert_equal([:started_at, :backlog, :running, :pool_capacity, :max_threads, :requests_count], Puma.stats.keys)
 
@@ -169,7 +169,7 @@ class TestCLI < Minitest::Test
     body = s.read
     s.close
 
-		dmt = Puma::Configuration.new.default_max_threads 
+    dmt = Puma::Configuration.new.default_max_threads
     assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt},"requests_count":0}/, body.split("\r\n").last)
   ensure
     if UNIX_SKT_EXIST
