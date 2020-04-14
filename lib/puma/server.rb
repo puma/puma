@@ -949,5 +949,13 @@ module Puma
       HTTP_INJECTION_REGEX =~ header_value.to_s
     end
     private :possible_header_injection?
+
+    # List of methods invoked by #stats.
+    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count].freeze
+
+    # Returns a hash of stats about the running server for reporting purposes.
+    def stats
+      STAT_METHODS.map {|name| [name, send(name) || 0]}.to_h
+    end
   end
 end

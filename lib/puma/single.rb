@@ -15,13 +15,8 @@ module Puma
   class Single < Runner
     def stats
       {
-        started_at: @started_at.utc.iso8601,
-        backlog: @server.backlog || 0,
-        running: @server.running || 0,
-        pool_capacity: @server.pool_capacity || 0,
-        max_threads: @server.max_threads || 0,
-        requests_count: @server.requests_count || 0,
-      }
+        started_at: @started_at.utc.iso8601
+      }.merge(@server.stats)
     end
 
     def restart
