@@ -91,7 +91,6 @@ class TestCLI < Minitest::Test
 
     expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":16,"max_threads":16,"requests_count":0}/
     assert_match(expected_stats, body.split(/\r?\n/).last)
-    assert_equal([:started_at, :backlog, :running, :pool_capacity, :max_threads, :requests_count], Puma.stats.keys)
 
   ensure
     cli.launcher.stop if cli
@@ -221,7 +220,7 @@ class TestCLI < Minitest::Test
     body = s.read
     s.close
 
-    assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":\d+,"running":\d+,"pool_capacity":\d+,"max_threads":\d+,"requests_count":0}/, body.split(/\r?\n/).last)
+    assert_equal 0, JSON.parse(body.split(/\r?\n/).last)['requests_count']
 
     # send real requests to server
     3.times do
@@ -236,7 +235,7 @@ class TestCLI < Minitest::Test
     body = s.read
     s.close
 
-    assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":\d+,"running":\d+,"pool_capacity":\d+,"max_threads":\d+,"requests_count":3}/, body.split(/\r?\n/).last)
+    assert_equal 3, JSON.parse(body.split(/\r?\n/).last)['requests_count']
   ensure
     cli.launcher.stop
     t.join

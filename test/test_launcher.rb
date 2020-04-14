@@ -1,6 +1,7 @@
 require_relative "helper"
 
 require "puma/configuration"
+require 'puma/events'
 
 class TestLauncher < Minitest::Test
   def test_dependencies_and_files_to_require_after_prune_is_correctly_built_for_no_extra_deps
@@ -76,6 +77,39 @@ class TestLauncher < Minitest::Test
     assert_equal File.read(tmp_path).strip.to_i, Process.pid
 
     File.unlink tmp_path
+  end
+
+  def test_puma_stats
+    conf = Puma::Configuration.new do |c|
+      c.app -> {[200, {}, ['']]}
+      c.clear_binds!
+    end
+    launcher = launcher(conf)
+    launcher.events.on_booted {launcher.stop}
+    launcher.run
+    Puma::Server::STAT_METHODS.each do |stat|
+      assert_includes Puma.stats, stat
+    end
+  end
+
+  def test_puma_stats_clustered
+    skip NO_FORK_MSG unless HAS_FORK
+
+    conf = Puma::Configuration.new do |c|
+      c.app -> {[200, {}, ['']]}
+      c.workers 1
+      c.clear_binds!
+    end
+    launcher = launcher(conf)
+    Thread.new do
+      sleep Puma::Const::WORKER_CHECK_INTERVAL + 1
+      status = Puma.stats[:worker_status].first[:last_status]
+      Puma::Server::STAT_METHODS.each do |stat|
+        assert_includes status, stat
+      end
+      launcher.stop
+    end
+    launcher.run
   end
 
   private
