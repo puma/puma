@@ -10,35 +10,56 @@ class TestThreadPool < Minitest::Test
 
   def new_pool(min, max, &block)
     block = proc { } unless block
-    @work_mutex = Mutex.new
-    @work_done = ConditionVariable.new
     @pool = Puma::ThreadPool.new(min, max, &block)
   end
 
-  def pause
-    sleep 1
+  def mutex_pool(min, max, &block)
+    block = proc { } unless block
+    @pool = MutexPool.new(min, max, &block)
+  end
+
+  # Wraps ThreadPool work in mutex for better concurrency control.
+  class MutexPool < Puma::ThreadPool
+    # Wait until the added work is completed before returning.
+    # Array argument is treated as a batch of work items to be added.
+    # Block will run after work is added but before it is executed on a worker thread.
+    def <<(work, &block)
+      work = [work] unless work.is_a?(Array)
+      with_mutex do
+        work.each {|arg| super arg}
+        yield if block_given?
+        @not_full.wait(@mutex)
+      end
+    end
+
+    def signal
+      @not_full.signal
+    end
+
+    # If +wait+ is true, wait until the trim request is completed before returning.
+    def trim(force=false, wait: true)
+      super(force)
+      Thread.pass until @trim_requested == 0 if wait
+    end
   end
 
   def test_append_spawns
     saw = []
-    thread_name = nil
-
-    pool = new_pool(0, 1) do |work|
-      @work_mutex.synchronize do
-        saw << work
-        thread_name = Thread.current.name if Thread.current.respond_to?(:name)
-        @work_done.signal
-      end
+    pool = mutex_pool(0, 1) do |work|
+      saw << work
     end
 
     pool << 1
+    assert_equal 1, pool.spawned
+    assert_equal [1], saw
+  end
 
-    @work_mutex.synchronize do
-      @work_done.wait(@work_mutex, 5)
-      assert_equal 1, pool.spawned
-      assert_equal [1], saw
-      assert_equal('puma threadpool 001', thread_name) if Thread.current.respond_to?(:name)
-    end
+  def test_thread_name
+    skip 'Thread.name not supported' unless Thread.current.respond_to?(:name)
+    thread_name = nil
+    pool = mutex_pool(0, 1) {thread_name = Thread.current.name}
+    pool << 1
+    assert_equal('puma threadpool 001', thread_name)
   end
 
   def test_converts_pool_sizes
@@ -64,110 +85,68 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_trim
-    skip_on :jruby, :truffleruby # Undiagnose thread race. TODO fix
-    pool = new_pool(0, 1) do |work|
-      @work_mutex.synchronize do
-        @work_done.signal
-      end
-    end
+    pool = mutex_pool(0, 1)
 
     pool << 1
 
-    @work_mutex.synchronize do
-      @work_done.wait(@work_mutex, 5)
-      assert_equal 1, pool.spawned
-    end
+    assert_equal 1, pool.spawned
 
     pool.trim
-    # wait/join required here for MRI, JRuby races the access here
-    worker = pool.instance_variable_get(:@workers).first
-    worker.join if worker
-
     assert_equal 0, pool.spawned
   end
 
   def test_trim_leaves_min
-    skip_on :jruby, :truffleruby # Undiagnose thread race. TODO fix
-    pool = new_pool(1, 2) do |work|
-      @work_mutex.synchronize do
-        @work_done.signal
-      end
-    end
+    pool = mutex_pool(1, 2)
 
-    pool << 1
-    pool << 2
+    pool << [1, 2]
 
-    @work_mutex.synchronize do
-      @work_done.wait(@work_mutex, 5)
-      assert_equal 2, pool.spawned
-    end
+    assert_equal 2, pool.spawned
 
     pool.trim
-    pause
     assert_equal 1, pool.spawned
 
-
     pool.trim
-    pause
     assert_equal 1, pool.spawned
   end
 
   def test_force_trim_doesnt_overtrim
-    finish = false
-    pool = new_pool(1, 2) { Thread.pass until finish }
+    pool = mutex_pool(1, 2)
 
-    pool << 1
-    pool << 2
-
-    assert_equal 2, pool.spawned
-    pool.trim true
-    pool.trim true
-
-    finish = true
-
-    pause
+    pool.<< [1, 2] do
+      assert_equal 2, pool.spawned
+      pool.trim true, wait: false
+      pool.trim true, wait: false
+    end
 
     assert_equal 1, pool.spawned
   end
 
   def test_trim_is_ignored_if_no_waiting_threads
-    finish = false
-    pool = new_pool(1, 2) { Thread.pass until finish }
+    pool = mutex_pool(1, 2)
 
-    pool << 1
-    pool << 2
+    pool.<< [1, 2] do
+      assert_equal 2, pool.spawned
+      pool.trim
+      pool.trim
+    end
 
     assert_equal 2, pool.spawned
-    pool.trim
-    pool.trim
-
     assert_equal 0, pool.trim_requested
-
-    finish = true
-
-    pause
   end
 
   def test_autotrim
-    finish = false
-    pool = new_pool(1, 2) { Thread.pass until finish }
+    pool = mutex_pool(1, 2)
 
-    pool << 1
-    pool << 2
+    timeout = 0
+    pool.auto_trim! timeout
 
-    assert_equal 2, pool.spawned
+    pool.<< [1, 2] do
+      assert_equal 2, pool.spawned
+    end
 
-    finish = true
-
-    pause
-
-    assert_equal 2, pool.spawned
-
-    pool.auto_trim! 1
-
-    sleep 1
-
-    pause
+    start = Time.now
+    Thread.pass until pool.spawned == 1 ||
+      Time.now - start > 1
 
     assert_equal 1, pool.spawned
   end
@@ -175,23 +154,15 @@ class TestThreadPool < Minitest::Test
   def test_cleanliness
     values = []
     n = 100
-    mutex = Mutex.new
 
-    finished = false
-
-    pool = new_pool(1,1) {
-      mutex.synchronize { values.push Thread.current[:foo] }
+    pool = mutex_pool(1,1) {
+      values.push Thread.current[:foo]
       Thread.current[:foo] = :hai
-      Thread.pass until finished
     }
 
     pool.clean_thread_locals = true
 
-    n.times { pool << 1 }
-
-    finished = true
-
-    pause
+    pool << [1] * n
 
     assert_equal n,  values.length
 
@@ -199,13 +170,15 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_reap_only_dead_threads
-    pool = new_pool(2,2) { Thread.current.kill }
+    pool = mutex_pool(2,2) do
+      th = Thread.current
+      Thread.new {th.join; pool.signal}
+      th.kill
+    end
 
     assert_equal 2, pool.spawned
 
     pool << 1
-
-    pause
 
     assert_equal 2, pool.spawned
 
@@ -214,8 +187,6 @@ class TestThreadPool < Minitest::Test
     assert_equal 1, pool.spawned
 
     pool << 2
-
-    pause
 
     assert_equal 1, pool.spawned
 
@@ -225,45 +196,48 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_auto_reap_dead_threads
-    pool = new_pool(2,2) { Thread.current.kill }
+    pool = mutex_pool(2,2) do
+      th = Thread.current
+      Thread.new {th.join; pool.signal}
+      th.kill
+    end
 
-    pool.auto_reap! 0.1
-
-    pause
+    timeout = 0
+    pool.auto_reap! timeout
 
     assert_equal 2, pool.spawned
 
     pool << 1
     pool << 2
 
-    pause
+    start = Time.now
+    Thread.pass until pool.spawned == 0 ||
+      Time.now - start > 1
 
     assert_equal 0, pool.spawned
   end
 
   def test_force_shutdown_immediately
-    finish = false
     rescued = false
 
-    pool = new_pool(0, 1) do |work|
+    pool = mutex_pool(0, 1) do
       begin
-        @work_mutex.synchronize do
-          @work_done.signal
-        end
-        Thread.pass until finish
+        pool.signal
+        sleep
       rescue Puma::ThreadPool::ForceShutdown
         rescued = true
       end
     end
 
     pool << 1
+    pool.shutdown(0)
 
-    @work_mutex.synchronize do
-      @work_done.wait(@work_mutex, 5)
-      pool.shutdown(0)
-      finish = true
-      assert_equal 0, pool.spawned
-      assert rescued
-    end
+    assert_equal 0, pool.spawned
+    assert rescued
+  end
+
+  def test_waiting_on_startup
+    pool = new_pool(1, 2)
+    assert_equal 1, pool.waiting
   end
 end

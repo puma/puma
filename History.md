@@ -29,6 +29,7 @@
   * Read directly from the socket in #read_and_drop to avoid raising further SSL errors (#2198)
   * Set `Connection: closed` header when queue requests is disabled (#2216)
   * Pass queued requests to thread pool on server shutdown (#2122)
+  * Fixed a few minor concurrency bugs in ThreadPool that may have affected non-GVL Rubies (#2220)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
@@ -36,6 +37,7 @@
   * Simplify `Runner#start_control` URL parsing (#2111)
   * Removed the IOBuffer extension and replaced with Ruby (#1980)
   * Update `Rack::Handler::Puma.run` to use `**options` (#2189)
+  * ThreadPool concurrency refactoring (#2220)
   * JSON parse cluster worker stats instead of regex (#2124)
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
