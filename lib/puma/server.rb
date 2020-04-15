@@ -224,12 +224,6 @@ module Puma
             @reactor.add client
           end
         end
-
-        if @options[:out_of_band]
-          @thread_pool.with_mutex do
-            notify_safely(OUT_OF_BAND_COMMAND) if @thread_pool.busy_threads == 1
-          end
-        end
       end
 
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
@@ -346,9 +340,6 @@ module Puma
       when RESTART_COMMAND
         @status = :restart
         return true
-      when OUT_OF_BAND_COMMAND
-        @options[:out_of_band].each(&:call) if @options[:out_of_band]
-        return false
       end
 
       return false
@@ -444,6 +435,12 @@ module Puma
           # Already closed
         rescue StandardError => e
           @events.unknown_error self, e, "Client"
+        end
+
+        if @options[:out_of_band]
+          @thread_pool.with_mutex do
+            @options[:out_of_band].each(&:call) if @thread_pool.busy_threads == 1
+          end
         end
       end
     end
