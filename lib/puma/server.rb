@@ -288,10 +288,7 @@ module Puma
                     end
 
                     pool << client
-                    busy_threads = pool.wait_until_not_full
-                    if busy_threads == 0
-                      @options[:out_of_band].each(&:call) if @options[:out_of_band]
-                    end
+                    pool.wait_until_not_full
                   end
                 rescue SystemCallError
                   # nothing
@@ -438,6 +435,12 @@ module Puma
           # Already closed
         rescue StandardError => e
           @events.unknown_error self, e, "Client"
+        end
+
+        if @options[:out_of_band]
+          @thread_pool.with_mutex do
+            @options[:out_of_band].each(&:call) if @thread_pool.busy_threads == 1
+          end
         end
       end
     end

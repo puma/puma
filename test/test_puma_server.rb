@@ -984,4 +984,85 @@ EOF
     assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
     sock.close
   end
+
+  def oob_server(**options)
+    @request_count = 0
+    @oob_count = 0
+    @start = Time.now
+    in_oob = Mutex.new
+    @mutex = Mutex.new
+    @oob_finished = ConditionVariable.new
+    oob_wait = options.delete(:oob_wait)
+    oob = -> do
+      in_oob.synchronize do
+        @mutex.synchronize do
+          @oob_count += 1
+          @oob_finished.signal
+          @oob_finished.wait(@mutex, 1) if oob_wait
+        end
+      end
+    end
+    @server = Puma::Server.new @app, @events, out_of_band: [oob], **options
+    @server.min_threads = 5
+    @server.max_threads = 5
+    server_run app: ->(_) do
+      raise 'OOB conflict' if in_oob.locked?
+      @mutex.synchronize {@request_count += 1}
+      [200, {}, [""]]
+    end
+  end
+
+  # Sequential requests should trigger out_of_band hooks after every request.
+  def test_out_of_band
+    n = 100
+    oob_server queue_requests: false
+    n.times do
+      @mutex.synchronize do
+        send_http "GET / HTTP/1.0\r\n\r\n"
+        @oob_finished.wait(@mutex, 1)
+      end
+    end
+    assert_equal n, @request_count
+    assert_equal n, @oob_count
+  end
+
+  # Streaming requests on parallel connections without delay should trigger
+  # out_of_band hooks only once after the final request.
+  def test_out_of_band_stream
+    n = 100
+    threads = 10
+    oob_server
+    req = "GET / HTTP/1.1\r\n"
+    @mutex.synchronize do
+      Array.new(threads) do
+        Thread.new do
+          send_http "#{req}\r\n" * (n/threads-1) + "#{req}Connection: close\r\n\r\n"
+        end
+      end.each(&:join)
+      @oob_finished.wait(@mutex, 1)
+    end
+    assert_equal n, @request_count
+    assert_equal 1, @oob_count
+  end
+
+  def test_out_of_band_overlapping_requests
+    oob_server oob_wait: true
+    sock = nil
+    sock2 = nil
+    @mutex.synchronize do
+      sock2 = send_http "GET / HTTP/1.0\r\n"
+      sleep 0.01
+      sock = send_http "GET / HTTP/1.0\r\n\r\n"
+      # Request 1 processed
+      @oob_finished.wait(@mutex) # enter oob
+      sock2 << "\r\n"
+      sleep 0.01
+      @oob_finished.signal # exit oob
+      # Request 2 processed
+      @oob_finished.wait(@mutex) # enter oob
+      @oob_finished.signal # exit oob
+    end
+    assert_match(/200/, sock.read)
+    assert_match(/200/, sock2.read)
+  end
 end

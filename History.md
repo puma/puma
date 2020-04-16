@@ -31,6 +31,7 @@
   * Set `Connection: closed` header when queue requests is disabled (#2216)
   * Pass queued requests to thread pool on server shutdown (#2122)
   * Fixed a few minor concurrency bugs in ThreadPool that may have affected non-GVL Rubies (#2220)
+  * Fix `out_of_band` hook never executed if the number of worker threads is > 1 (#2177)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
