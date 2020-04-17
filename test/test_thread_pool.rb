@@ -240,4 +240,30 @@ class TestThreadPool < Minitest::Test
     pool = new_pool(1, 2)
     assert_equal 1, pool.waiting
   end
+
+  def test_shutdown_with_grace
+    timeout = 0.01
+    grace = 0.01
+
+    rescued = []
+    pool = mutex_pool(2, 2) do
+      begin
+        pool.signal
+        sleep
+      rescue Puma::ThreadPool::ForceShutdown
+        rescued << Thread.current
+        sleep
+      end
+    end
+
+    pool << 1
+    pool << 2
+
+    Puma::ThreadPool.stub_const(:SHUTDOWN_GRACE_TIME, grace) do
+      pool.shutdown(timeout)
+    end
+    assert_equal 0, pool.spawned
+    assert_equal 2, rescued.length
+    refute rescued.any?(&:alive?)
+  end
 end

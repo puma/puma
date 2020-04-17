@@ -277,6 +277,9 @@ module Puma
     end
 
     # Tell all threads in the pool to exit and wait for them to finish.
+    # Wait +timeout+ seconds then raise +ForceShutdown+ in remaining threads.
+    # Next, wait an extra +grace+ seconds then force-kill remaining threads.
+    # Finally, wait +kill_grace+ seconds for remaining threads to exit.
     #
     def shutdown(timeout=-1)
       threads = with_mutex do
@@ -295,27 +298,26 @@ module Puma
         # Wait for threads to finish without force shutdown.
         threads.each(&:join)
       else
-        # Wait for threads to finish after n attempts (+timeout+).
-        # If threads are still running, it will forcefully kill them.
-        timeout.times do
-          threads.delete_if do |t|
-            t.join 1
-          end
-
-          if threads.empty?
-            break
-          else
-            sleep 1
+        join = ->(timeout) do
+          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          threads.reject! do |t|
+            elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+            t.join timeout - elapsed
           end
         end
 
+        # Wait +timeout+ seconds for threads to finish.
+        join.call(timeout)
+
+        # If threads are still running, raise ForceShutdown and wait to finish.
         threads.each do |t|
           t.raise ForceShutdown
         end
+        join.call(SHUTDOWN_GRACE_TIME)
 
-        threads.each do |t|
-          t.join SHUTDOWN_GRACE_TIME
-        end
+        # If threads are _still_ running, forcefully kill them and wait to finish.
+        threads.each(&:kill)
+        join.call(1)
       end
 
       @spawned = 0

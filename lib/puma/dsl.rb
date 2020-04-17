@@ -243,7 +243,7 @@ module Puma
           when :immediately
             0
           else
-            Integer(val)
+            Float(val)
           end
 
       @options[:force_shutdown_after] = i
