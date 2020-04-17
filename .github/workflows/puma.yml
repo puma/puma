@@ -21,6 +21,7 @@ jobs:
         ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head, jruby, truffleruby-head ]
         include:
           - { os: windows , ruby: mingw }
+          - { os: ubuntu  , ruby: jruby-head, allow-failure: true }
         exclude:
           - { os: windows , ruby: head }
           - { os: windows , ruby: jruby }
@@ -56,47 +57,13 @@ jobs:
         run: bundle exec rake rubocop
 
       - name: test
+        id: test
         timeout-minutes: 10
+        continue-on-error: ${{ matrix.allow-failure || false }}
+        if: success() # only run if previous steps have succeeded
         run: bundle exec rake test:all
 
-  allowedFailures:
-    name: >-
-      optional: ${{ matrix.os }} ${{ matrix.ruby }}
-    env:
-      CI: true
-      TESTOPTS: -v
-
-    runs-on: ${{ matrix.os }}-latest
-    if: |
-      !(contains(github.event.pull_request.title, '[ci skip]')
-        || contains(github.event.head_commit.message, '[ci skip]'))
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: ubuntu, ruby: jruby-head }
-
-    steps:
-      - name: repo checkout
-        uses: actions/checkout@v2
-
-      - name: load ruby, ragel
-        uses: MSP-Greg/setup-ruby-pkgs@v1
-        with:
-          ruby-version: ${{ matrix.ruby }}
-          apt-get: ragel
-          brew: ragel
-
-      - name: bundle install
-        run:  |
-          bundle install --jobs 4 --retry 3 --path=.bundle/puma
-
-      - name: compile
-        continue-on-error: true
-        run:  bundle exec rake compile
-
-      - name: test
-        timeout-minutes: 10
-        continue-on-error: true
-        if: success()
-        run: bundle exec rake
+      - name: >-
+          Test outcome: ${{ steps.test.outcome }}
+        # every step must define a `uses` or `run` key
+        run: echo NOOP
