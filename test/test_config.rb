@@ -308,7 +308,7 @@ class TestConfigEnvVariables < TestConfigFileBase
       assert_equal 7, conf.options.default_options[:max_threads]
     end
 
-    with_env("MAX_THREADS" => "8") do
+    with_env("PUMA_MAX_THREADS" => "8") do
       conf = Puma::Configuration.new
       assert_equal 8, conf.options.default_options[:max_threads]
     end
