@@ -109,7 +109,7 @@ module Puma
     end
 
     def workers_supported?
-      return false if Puma.jruby? || Puma.windows?
+      return false if Puma.jruby? || Puma.windows? || Puma.truffle?
       true
     end
   end

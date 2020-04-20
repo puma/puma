@@ -335,8 +335,9 @@ class TestConfigEnvVariables < TestConfigFileBase
 
   def test_config_preloads_app_if_using_workers
     with_env("WEB_CONCURRENCY" => "2") do
+      preload = Puma::Plugin.new.workers_supported?
       conf = Puma::Configuration.new
-      assert_equal preload, conf.options.default_options[:preload_app] if ::Process.respond_to?(:fork)
+      assert_equal preload, conf.options.default_options[:preload_app]
     end
   end
 end

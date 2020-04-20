@@ -13,6 +13,12 @@ module Puma
     IS_WINDOWS
   end
 
+  IS_TRUFFLE = RUBY_PLATFORM == 'truffleruby'
+
+  def self.truffle?
+    IS_TRUFFLE
+  end
+
   def self.mri?
     RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil?
   end
