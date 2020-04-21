@@ -97,7 +97,8 @@ class TestPumaServerSSL < Minitest::Test
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
     port = @server.connected_ports[0]
     socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, port), ctx
-    socket.write "x"
+    socket.connect
+    socket.write "HEAD"
     sleep 0.1
 
     # Capture the amount of threads being used after connecting and being idle
