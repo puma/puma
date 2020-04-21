@@ -5,7 +5,7 @@
   * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
   * Do not set user_config to quiet by default to allow for file config (#2074)
-  * `GC.compact` is called before fork if available (#2093)
+  * `GC.compact` is called before fork if available (#2093), otherwise GC.start is called
   * Add `requests_count` to workers stats. (#2106)
   * Increases maximum URI path length from 2048 to 8196 bytes (#2167)
   * Force shutdown responses can be overridden by using the `lowlevel_error_handler` config (#2203)
