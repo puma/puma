@@ -5,9 +5,14 @@ on: [pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: |
+      !(   contains(github.event.pull_request.title, '[changelog skip]')
+        || contains(github.event.pull_request.title, '[skip changelog]')
+        || contains(github.event.pull_request.title, '[ci skip]')
+        || contains(github.event.pull_request.title, '[skip ci]'))
 
     steps:
     - uses: actions/checkout@v1
-    - name: Check that CHANGELOG is touched or PR is [ci skip]-d
+    - name: Check that CHANGELOG is touched
       run: |
-        cat $GITHUB_EVENT_PATH | jq .pull_request.title | grep -i '\[\(\(changelog skip\)\|\(skip changelog\)\|\(ci skip\)\|\(skip ci\)\)\]' ||  git diff remotes/origin/${{ github.base_ref }} --name-only | grep History.md
+        git diff remotes/origin/${{ github.base_ref }} --name-only | grep History.md
