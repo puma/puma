@@ -459,7 +459,11 @@ module Puma
       @master_read, @worker_write = read, @wakeup
 
       @launcher.config.run_hooks :before_fork, nil, @launcher.events
-      GC.compact if GC.respond_to?(:compact)
+      if GC.respond_to?(:compact)
+        GC.compact
+      else
+        GC.start
+      end
 
       spawn_workers
 
