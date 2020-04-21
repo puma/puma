@@ -107,10 +107,5 @@ module Puma
     def in_background(&blk)
       Plugins.add_background blk
     end
-
-    def workers_supported?
-      return false if Puma.jruby? || Puma.windows? || Puma.truffle?
-      true
-    end
   end
 end

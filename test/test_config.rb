@@ -249,6 +249,10 @@ class TestConfigFile < TestConfigFileBase
     assert_match expected, events.stdout.string
   end
 
+  def test_config_does_not_load_workers_by_default
+    assert_equal 0, Puma::Configuration.new.options.default_options[:workers]
+  end
+
   private
 
   def assert_run_hooks(hook_name, options = {})
@@ -285,8 +289,7 @@ end
 
 class TestConfigEnvVariables < TestConfigFileBase
   def test_config_loads_correct_min_threads
-    conf = Puma::Configuration.new
-    assert_equal 0, conf.options.default_options[:min_threads]
+    assert_equal 0, Puma::Configuration.new.options.default_options[:min_threads]
 
     with_env("MIN_THREADS" => "7") do
       conf = Puma::Configuration.new
@@ -314,11 +317,6 @@ class TestConfigEnvVariables < TestConfigFileBase
     end
   end
 
-  def test_config_does_not_load_workers_by_default
-    conf = Puma::Configuration.new
-    assert_equal 0, conf.options.default_options[:workers]
-  end
-
   def test_config_loads_workers_from_env
     with_env("WEB_CONCURRENCY" => "9") do
       conf = Puma::Configuration.new
@@ -335,7 +333,7 @@ class TestConfigEnvVariables < TestConfigFileBase
 
   def test_config_preloads_app_if_using_workers
     with_env("WEB_CONCURRENCY" => "2") do
-      preload = Puma::Plugin.new.workers_supported?
+      preload = Puma.forkable?
       conf = Puma::Configuration.new
       assert_equal preload, conf.options.default_options[:preload_app]
     end

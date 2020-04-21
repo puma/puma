@@ -137,9 +137,8 @@ module Puma
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
 
-
       if !@options[:prune_bundler]
-        default_options[:preload_app] = (@options[:workers] > 1) && ::Process.respond_to?(:fork)
+        default_options[:preload_app] = (@options[:workers] > 1) && Puma.forkable?
       end
 
       if block

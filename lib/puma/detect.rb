@@ -13,13 +13,11 @@ module Puma
     IS_WINDOWS
   end
 
-  IS_TRUFFLE = RUBY_ENGINE == 'truffleruby'
-
-  def self.truffle?
-    IS_TRUFFLE
-  end
-
   def self.mri?
     RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil?
+  end
+
+  def self.forkable?
+    ::Process.respond_to?(:fork)
   end
 end

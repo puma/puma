@@ -14,11 +14,12 @@
 * Deprecations, Removals and Breaking API Changes
   * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `--control` has been removed. Use `--control-url` (#1487)
-  * `worker_directory` has been removed. Use `directory`
-  * min_threads now set by environment variables PUMA_MIN_THREADS and MIN_THREADS
-  * max_threads now set by environment variables PUMA_MAX_THREADS and MAX_THREADS
-  * max_threads default to 5 in MRI or 16 for all other interpretters
-  * preload by default if workers > 1 and interpretter supports workers
+  * `worker_directory` has been removed. Use `directory`.
+  * min_threads now set by environment variables PUMA_MIN_THREADS and MIN_THREADS. (#2143)
+  * max_threads now set by environment variables PUMA_MAX_THREADS and MAX_THREADS. (#2143)
+  * max_threads default to 5 in MRI or 16 for all other interpreters. (#2143)
+  * preload by default if workers > 1 and interpreter supports forking. (#2143)
+  * Puma::Plugin.workers_supported? has been removed. Use Puma.forkable? instead. (#2143)
   * `tcp_mode` has been removed without replacement. (#2169)
   * Daemonization has been removed without replacement. (#2170)
   * Changed #connected_port to #connected_ports (#2076)
