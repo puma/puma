@@ -6,8 +6,16 @@ require_relative "helpers/config_file"
 require "puma/configuration"
 require 'puma/events'
 
+
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
+
+  def test_default_max_threads
+    max_threads = 16
+    max_threads = 5 if RUBY_ENGINE.nil? || RUBY_ENGINE == 'ruby'
+    assert_equal max_threads, Puma::Configuration.new.default_max_threads
+  end
+
 
   def test_app_from_rackup
     conf = Puma::Configuration.new do |c|
@@ -271,6 +279,65 @@ class TestEnvModifificationConfig < TestConfigFileBase
 
       conf.load
       assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
+    end
+  end
+end
+
+class TestConfigEnvVariables < TestConfigFileBase
+  def test_config_loads_correct_min_threads
+    conf = Puma::Configuration.new
+    assert_equal 0, conf.options.default_options[:min_threads]
+
+    with_env("MIN_THREADS" => "7") do
+      conf = Puma::Configuration.new
+      assert_equal 7, conf.options.default_options[:min_threads]
+    end
+
+    with_env("PUMA_MIN_THREADS" => "8") do
+      conf = Puma::Configuration.new
+      assert_equal 8, conf.options.default_options[:min_threads]
+    end
+  end
+
+  def test_config_loads_correct_max_threads
+    conf = Puma::Configuration.new
+    assert_equal conf.default_max_threads, conf.options.default_options[:max_threads]
+
+    with_env("MAX_THREADS" => "7") do
+      conf = Puma::Configuration.new
+      assert_equal 7, conf.options.default_options[:max_threads]
+    end
+
+    with_env("PUMA_MAX_THREADS" => "8") do
+      conf = Puma::Configuration.new
+      assert_equal 8, conf.options.default_options[:max_threads]
+    end
+  end
+
+  def test_config_does_not_load_workers_by_default
+    conf = Puma::Configuration.new
+    assert_equal 0, conf.options.default_options[:workers]
+  end
+
+  def test_config_loads_workers_from_env
+    with_env("WEB_CONCURRENCY" => "9") do
+      conf = Puma::Configuration.new
+      assert_equal 9, conf.options.default_options[:workers]
+    end
+  end
+
+  def test_config_does_not_preload_app_if_using_workers
+    with_env("WEB_CONCURRENCY" => "0") do
+      conf = Puma::Configuration.new
+      assert_equal false, conf.options.default_options[:preload_app]
+    end
+  end
+
+  def test_config_preloads_app_if_using_workers
+    with_env("WEB_CONCURRENCY" => "2") do
+      preload = Puma::Plugin.new.workers_supported?
+      conf = Puma::Configuration.new
+      assert_equal preload, conf.options.default_options[:preload_app]
     end
   end
 end

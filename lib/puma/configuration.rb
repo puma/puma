@@ -137,6 +137,11 @@ module Puma
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
 
+
+      if !@options[:prune_bundler]
+        default_options[:preload_app] = (@options[:workers] > 1) && ::Process.respond_to?(:fork)
+      end
+
       if block
         configure(&block)
       end
@@ -167,14 +172,18 @@ module Puma
       self
     end
 
+    def default_max_threads
+      Puma.mri? ? 5 : 16
+    end
+
     def puma_default_options
       {
-        :min_threads => 0,
-        :max_threads => 16,
+        :min_threads => Integer(ENV['PUMA_MIN_THREADS'] || ENV['MIN_THREADS'] || 0),
+        :max_threads => Integer(ENV['PUMA_MAX_THREADS'] || ENV['MAX_THREADS'] || default_max_threads),
         :log_requests => false,
         :debug => false,
         :binds => ["tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"],
-        :workers => 0,
+        :workers => Integer(ENV['WEB_CONCURRENCY'] || 0),
         :mode => :http,
         :worker_timeout => DefaultWorkerTimeout,
         :worker_boot_timeout => DefaultWorkerTimeout,
