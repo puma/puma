@@ -226,6 +226,7 @@ module Puma
         end
       end
 
+      @thread_pool.out_of_band_hook = @options[:out_of_band]
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
       if @queue_requests
@@ -435,12 +436,6 @@ module Puma
           # Already closed
         rescue StandardError => e
           @events.unknown_error self, e, "Client"
-        end
-
-        if @options[:out_of_band]
-          @thread_pool.with_mutex do
-            @options[:out_of_band].each(&:call) if @thread_pool.busy_threads == 1
-          end
         end
       end
     end

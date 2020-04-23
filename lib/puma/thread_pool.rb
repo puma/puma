@@ -65,6 +65,7 @@ module Puma
 
     attr_reader :spawned, :trim_requested, :waiting
     attr_accessor :clean_thread_locals
+    attr_accessor :out_of_band_hook
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Performance/HashEachMethods
@@ -117,6 +118,7 @@ module Puma
 
               @waiting += 1
               not_full.signal
+              trigger_out_of_band_hook
               not_empty.wait mutex
               @waiting -= 1
             end
@@ -143,9 +145,30 @@ module Puma
 
     private :spawn_thread
 
+    def trigger_out_of_band_hook
+      return unless out_of_band_hook && out_of_band_hook.any?
+
+      with_mutex do |mutex|
+        # we execute on idle hook when all threads are free
+        return unless @spawned == @waiting
+
+        # we unlock thread for the duration of out of band hook
+        # to allow other requests to be accepted
+        mutex.unlock
+
+        begin
+          out_of_band_hook.each(&:call)
+        rescue Exception => e
+          STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"
+        ensure
+          mutex.lock
+        end
+      end
+    end
+
     def with_mutex(&block)
       @mutex.owned? ?
-        yield :
+        yield(@mutex) :
         @mutex.synchronize(&block)
     end
 
