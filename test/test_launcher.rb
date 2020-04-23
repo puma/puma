@@ -79,6 +79,57 @@ class TestLauncher < Minitest::Test
     File.unlink tmp_path
   end
 
+  def test_state_permission_0640
+    tmp_file = Tempfile.new("puma-test")
+    tmp_path = tmp_file.path
+    tmp_file.close!
+    tmp_permission = 0640
+
+    conf = Puma::Configuration.new do |c|
+      c.state_path tmp_path
+      c.state_permission tmp_permission
+    end
+
+    launcher(conf).write_state
+
+    assert File.stat(tmp_path).mode.to_s(8)[-4..-1], tmp_permission
+  ensure
+    File.unlink tmp_path
+  end
+
+  def test_state_permission_nil
+    tmp_file = Tempfile.new("puma-test")
+    tmp_path = tmp_file.path
+    tmp_file.close!
+
+    conf = Puma::Configuration.new do |c|
+      c.state_path tmp_path
+      c.state_permission nil
+    end
+
+    launcher(conf).write_state
+
+    assert File.exist?(tmp_path)
+  ensure
+    File.unlink tmp_path
+  end
+
+  def test_no_state_permission
+    tmp_file = Tempfile.new("puma-test")
+    tmp_path = tmp_file.path
+    tmp_file.close!
+
+    conf = Puma::Configuration.new do |c|
+      c.state_path tmp_path
+    end
+
+    launcher(conf).write_state
+
+    assert File.exist?(tmp_path)
+  ensure
+    File.unlink tmp_path
+  end
+
   def test_puma_stats
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
