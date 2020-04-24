@@ -38,6 +38,7 @@
   * Fixed a few minor concurrency bugs in ThreadPool that may have affected non-GVL Rubies (#2220)
   * Fix `out_of_band` hook never executed if the number of worker threads is > 1 (#2177)
   * Fix ThreadPool#shutdown timeout accuracy (#2221)
+  * Fix `UserFileDefaultOptions#fetch` to properly use `default` (#2233)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
