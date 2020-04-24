@@ -224,6 +224,8 @@ module Puma
             @reactor.add client
           end
         end
+
+        process_now
       end
 
       @thread_pool.out_of_band_hook = @options[:out_of_band]
@@ -280,6 +282,7 @@ module Puma
                 break if handle_check
               else
                 begin
+                  pool.wait_until_not_full
                   if io = sock.accept_nonblock
                     client = Client.new io, @binder.env(sock)
                     if remote_addr_value
@@ -289,7 +292,6 @@ module Puma
                     end
 
                     pool << client
-                    pool.wait_until_not_full
                   end
                 rescue SystemCallError
                   # nothing

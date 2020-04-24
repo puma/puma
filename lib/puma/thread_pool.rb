@@ -47,6 +47,7 @@ module Puma
       @shutdown = false
 
       @trim_requested = 0
+      @out_of_band_pending = false
 
       @workers = []
 
@@ -117,8 +118,10 @@ module Puma
               end
 
               @waiting += 1
+              if @out_of_band_pending && trigger_out_of_band_hook
+                @out_of_band_pending = false
+              end
               not_full.signal
-              trigger_out_of_band_hook
               not_empty.wait mutex
               @waiting -= 1
             end
@@ -131,7 +134,7 @@ module Puma
           end
 
           begin
-            block.call(work, *extra)
+            @out_of_band_pending = true if block.call(work, *extra)
           rescue Exception => e
             STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
           end
@@ -146,29 +149,23 @@ module Puma
     private :spawn_thread
 
     def trigger_out_of_band_hook
-      return unless out_of_band_hook && out_of_band_hook.any?
+      return false unless out_of_band_hook && out_of_band_hook.any?
 
-      with_mutex do |mutex|
-        # we execute on idle hook when all threads are free
-        return unless @spawned == @waiting
+      # we execute on idle hook when all threads are free
+      return false unless @spawned == @waiting
 
-        # we unlock thread for the duration of out of band hook
-        # to allow other requests to be accepted
-        mutex.unlock
-
-        begin
-          out_of_band_hook.each(&:call)
-        rescue Exception => e
-          STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"
-        ensure
-          mutex.lock
-        end
-      end
+      out_of_band_hook.each(&:call)
+      true
+    rescue Exception => e
+      STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"
+      true
     end
+
+    private :trigger_out_of_band_hook
 
     def with_mutex(&block)
       @mutex.owned? ?
-        yield(@mutex) :
+        yield :
         @mutex.synchronize(&block)
     end
 
