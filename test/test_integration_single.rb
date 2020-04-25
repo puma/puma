@@ -43,6 +43,19 @@ class TestIntegrationSingle < TestIntegration
     assert_equal 0, status
   end
 
+  def test_prefer_rackup_file_specified_by_cli
+    skip_unless_signal_exist? :TERM
+    skip_on :jruby
+
+    cli_server "-C test/config/with_rackup_from_dsl.rb test/rackup/hello.ru"
+    connection = connect
+    reply = read_body(connection)
+    _, status = stop_server
+
+    assert_match("Hello World", reply)
+    assert_equal 15, status
+  end
+
   def test_term_not_accepts_new_connections
     skip_unless_signal_exist? :TERM
     skip_on :jruby
