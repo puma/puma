@@ -39,6 +39,7 @@
   * Fix `out_of_band` hook never executed if the number of worker threads is > 1 (#2177)
   * Fix ThreadPool#shutdown timeout accuracy (#2221)
   * Fix `UserFileDefaultOptions#fetch` to properly use `default` (#2233)
+  * Prefer the rackup file specified by the CLI (#2225)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
