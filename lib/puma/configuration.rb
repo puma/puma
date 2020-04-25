@@ -54,9 +54,7 @@ module Puma
     attr_reader :user_options, :file_options, :default_options
 
     def [](key)
-      return user_options[key]    if user_options.key?(key)
-      return file_options[key]    if file_options.key?(key)
-      return default_options[key] if default_options.key?(key)
+      fetch(key)
     end
 
     def []=(key, value)
@@ -64,7 +62,11 @@ module Puma
     end
 
     def fetch(key, default_value = nil)
-      self[key] || default_value
+      return user_options[key]    if user_options.key?(key)
+      return file_options[key]    if file_options.key?(key)
+      return default_options[key] if default_options.key?(key)
+
+      default_value
     end
 
     def all_of(key)
