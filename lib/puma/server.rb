@@ -281,31 +281,22 @@ module Puma
               if sock == check
                 break if handle_check
               else
-                begin
-                  pool.wait_until_not_full
-                  pool.wait_for_less_busy_worker(
-                    @options[:wait_for_less_busy_worker].to_f)
+                pool.wait_until_not_full
+                pool.wait_for_less_busy_worker(
+                  @options[:wait_for_less_busy_worker].to_f)
 
-                  if io = sock.accept_nonblock
-                    client = Client.new io, @binder.env(sock)
-                    if remote_addr_value
-                      client.peerip = remote_addr_value
-                    elsif remote_addr_header
-                      client.remote_addr_header = remote_addr_header
-                    end
-
-                    pool << client
-                  end
-                rescue SystemCallError
-                  # nothing
-                rescue Errno::ECONNABORTED
-                  # client closed the socket even before accept
-                  begin
-                    io.close
-                  rescue
-                    Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-                  end
+                io = begin
+                  sock.accept_nonblock
+                rescue IO::WaitReadable
+                  next
                 end
+                client = Client.new io, @binder.env(sock)
+                if remote_addr_value
+                  client.peerip = remote_addr_value
+                elsif remote_addr_header
+                  client.remote_addr_header = remote_addr_header
+                end
+                pool << client
               end
             end
           rescue Object => e
