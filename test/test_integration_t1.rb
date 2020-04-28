@@ -1,7 +1,7 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
-class TestIntegrationSingle < TestIntegration
+class TestIntegrationT1 < TestIntegration
   parallelize_me!
 
   def test_write_to_log
