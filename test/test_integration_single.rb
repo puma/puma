@@ -112,4 +112,23 @@ class TestIntegrationSingle < TestIntegration
 
     assert_match "Thread: TID", output.join
   end
+
+  def test_write_to_log
+    skip_unless_signal_exist? :TERM
+
+    suppress_output = '> /dev/null 2>&1'
+
+    cli_server '-C test/config/t1_conf.rb test/rackup/hello.ru'
+
+    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+
+    stop_server
+
+    log = File.read('t1-stdout')
+
+    File.unlink 't1-stdout' if File.file? 't1-stdout'
+    File.unlink 't1-pid' if File.file? 't1-pid'
+
+    assert_match(%r!GET / HTTP/1\.1!, log)
+  end
 end
