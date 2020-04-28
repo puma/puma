@@ -6,7 +6,7 @@ class TestIntegrationSingle < TestIntegration
 
   def test_write_to_log
     suppress_output = '> /dev/null 2>&1'
-    cli_server "-C test/shell/t1_conf.rb test/rackup/hello.ru"
+    cli_server "-C test/config/t1_conf.rb test/rackup/hello.ru"
 
     sleep 1 until system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
 
