@@ -8,13 +8,12 @@ class TestIntegrationT1 < TestIntegration
     skip_unless_signal_exist? :TERM
 
     suppress_output = '> /dev/null 2>&1'
+
     cli_server "-C test/config/t1_conf.rb test/rackup/hello.ru"
 
-    sleep 1 until system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
 
     stop_server
-
-    sleep 1
 
     log = File.read("t1-stdout")
 
