@@ -5,6 +5,8 @@ class TestIntegrationT1 < TestIntegration
   parallelize_me!
 
   def test_write_to_log
+    skip_unless_signal_exist? :TERM
+
     suppress_output = '> /dev/null 2>&1'
     cli_server "-C test/config/t1_conf.rb test/rackup/hello.ru"
 
