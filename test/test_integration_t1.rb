@@ -5,9 +5,10 @@ class TestIntegrationSingle < TestIntegration
   parallelize_me!
 
   def test_write_to_log
+    suppress_output = '> /dev/null 2>&1'
     cli_server "-C test/shell/t1_conf.rb test/rackup/hello.ru"
 
-    sleep 1 until system "curl http://localhost:#{@tcp_port}/"
+    sleep 1 until system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
 
     stop_server
 
