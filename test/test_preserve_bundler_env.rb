@@ -2,6 +2,8 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestPreserveBundlerEnv < TestIntegration
+#  parallelize_me!
+
   def setup
     skip NO_FORK_MSG unless HAS_FORK
     super
@@ -17,7 +19,7 @@ class TestPreserveBundlerEnv < TestIntegration
   def test_usr2_restart_preserves_bundler_environment
     skip_unless_signal_exist? :USR2
 
-    @tcp_port = UniquePort.call
+    @tcp_port = 0
     env = {
       # Intentionally set this to something we wish to keep intact on restarts
       "BUNDLE_GEMFILE" => "Gemfile.bundle_env_preservation_test",
@@ -27,7 +29,7 @@ class TestPreserveBundlerEnv < TestIntegration
     # Must use `bundle exec puma` here, because otherwise Bundler may not be defined, which is required to trigger the bug
     cmd = "bundle exec puma -q -w 1 --prune-bundler -b tcp://#{HOST}:#{@tcp_port}"
     Dir.chdir(File.expand_path("bundle_preservation_test", __dir__)) do
-      @server = IO.popen(env, cmd.split, "r")
+      @server = IO.popen(env, cmd.split, "r", err: [:child, :out])
     end
     wait_for_server_to_boot
     @pid = @server.pid
@@ -42,7 +44,7 @@ class TestPreserveBundlerEnv < TestIntegration
   def test_phased_restart_preserves_unspecified_bundle_gemfile
     skip_unless_signal_exist? :USR1
 
-    @tcp_port = UniquePort.call
+    @tcp_port = 0
     env = {
       "BUNDLE_GEMFILE" => nil,
       "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil
@@ -50,7 +52,7 @@ class TestPreserveBundlerEnv < TestIntegration
     set_release_symlink File.expand_path("bundle_preservation_test/version1", __dir__)
     cmd = "bundle exec puma -q -w 1 --prune-bundler -b tcp://#{HOST}:#{@tcp_port}"
     Dir.chdir(current_release_symlink) do
-      @server = IO.popen(env, cmd.split, "r")
+      @server = IO.popen(env, cmd.split, "r", err: [:child, :out])
     end
     wait_for_server_to_boot
     @pid = @server.pid

@@ -2,7 +2,7 @@
 # Copyright (c) 2005 Zed A. Shaw
 
 require_relative "helper"
-require "digest"
+require "openssl/digest"
 
 require "puma/puma_http11"
 
@@ -132,9 +132,9 @@ class Http11ParserTest < Minitest::Test
     res = count.to_s + "/"
 
     if readable
-      res << Digest::SHA1.hexdigest(rand(count * 100).to_s) * (count / 40)
+      res << OpenSSL::Digest::SHA1.hexdigest(rand(count * 100).to_s) * (count / 40)
     else
-      res << Digest::SHA1.digest(rand(count * 100).to_s) * (count / 20)
+      res << OpenSSL::Digest::SHA1.digest(rand(count * 100).to_s) * (count / 20)
     end
 
     return res

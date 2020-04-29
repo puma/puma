@@ -10,8 +10,7 @@ class TestIntegration < Minitest::Test
   TOKEN = "xxyyzz"
   WORKERS = 2
 
-  BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
-    "#{Gem.ruby} -Ilib"
+  BASE = "#{Gem.ruby} -rrubygems -Ilib"
 
   def setup
     @ios_to_close = []
@@ -19,10 +18,14 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    if defined?(@server) && @server && @pid
+    if defined?(@server) && @server && defined?(@pid) && @pid
       stop_server @pid, signal: :INT
     end
 
+    if @bind_path
+      refute File.exist?(@bind_path), "Bind path must be removed after stop"
+    end
+  ensure
     if @ios_to_close
       @ios_to_close.each do |io|
         io.close if io.is_a?(IO) && !io.closed?
@@ -30,10 +33,7 @@ class TestIntegration < Minitest::Test
       end
     end
 
-    if @bind_path
-      refute File.exist?(@bind_path), "Bind path must be removed after stop"
-      File.unlink(@bind_path) rescue nil
-    end
+    File.unlink(@bind_path) rescue nil
 
     # wait until the end for OS buffering?
     if defined?(@server) && @server
@@ -44,14 +44,19 @@ class TestIntegration < Minitest::Test
 
   private
 
-  def cli_server(argv, unix: false)
-    if unix
-      cmd = "#{BASE} bin/puma -b unix://#{@bind_path} #{argv}"
-    else
-      @tcp_port = UniquePort.call
-      cmd = "#{BASE} bin/puma -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+  def cli_server(argv, unix: false, config: nil)
+    if config
+      config_file = Tempfile.new(%w(config .rb))
+      config_file.write config
+      config_file.close
+      config = "-C #{config_file.path}"
     end
-    @server = IO.popen(cmd, "r")
+    if unix
+      cmd = "#{BASE} bin/puma #{config} -b unix://#{@bind_path} #{argv}"
+    else
+      cmd = "#{BASE} bin/puma #{config} -b tcp://#{HOST}:0 #{argv}"
+    end
+    @server = IO.popen(cmd.split(' '))
     wait_for_server_to_boot
     @pid = @server.pid
     @server
@@ -88,16 +93,17 @@ class TestIntegration < Minitest::Test
 
   # wait for server to say it booted
   def wait_for_server_to_boot(log: false)
-    if log
-      puts "Waiting for server to boot..."
-      begin
-        line = @server.gets
-        puts line if line && line.strip != ''
-      end while line !~ /Ctrl-C/
-      puts "Server booted!"
-    else
-      true while @server.gets !~ /Ctrl-C/
+    puts "Waiting for server to boot..." if log
+    while (line = @server.gets) !~ /Ctrl-C/
+      puts line if log && line && line.strip != ''
+      if (port = line[/Listening on tcp:.*:(\d+)/, 1])
+        @tcp_port = port.to_i
+      end
+      if (tcp_ctrl = line[/Starting control server on tcp:.*:(\d+)/, 1])
+        @tcp_ctrl = tcp_ctrl.to_i
+      end
     end
+    puts "Server booted!" if log
   end
 
   def connect(path = nil, unix: false)

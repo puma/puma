@@ -14,6 +14,7 @@ require 'puma/util'
 require 'puma/io_buffer'
 
 require 'puma/puma_http11'
+require 'puma/io_stopgap'
 
 require 'socket'
 require 'forwardable'
@@ -89,6 +90,8 @@ module Puma
       @precheck_closing = true
 
       @requests_count = 0
+      @oob_requested = false if @options[:out_of_band]
+      @queue_mutex = Mutex.new
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
@@ -185,47 +188,14 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(@min_threads,
-                                    @max_threads,
-                                    ::Puma::IOBuffer) do |client, buffer|
+      @thread_pool = ThreadPool.new(
+        @min_threads,
+        @max_threads,
+        ::Puma::IOBuffer,
+        &method(:process_client)
+      )
 
-        # Advertise this server into the thread
-        Thread.current[ThreadLocalKey] = self
-
-        process_now = false
-
-        begin
-          if @queue_requests
-            process_now = client.eagerly_finish
-          else
-            client.finish(@first_data_timeout)
-            process_now = true
-          end
-        rescue MiniSSL::SSLError => e
-          ssl_socket = client.io
-          addr = ssl_socket.peeraddr.last
-          cert = ssl_socket.peercert
-
-          client.close
-
-          @events.ssl_error self, addr, cert, e
-        rescue HttpParserError => e
-          client.write_error(400)
-          client.close
-
-          @events.parse_error self, client.env, e
-        rescue ConnectionError, EOFError
-          client.close
-        else
-          if process_now
-            process_client client, buffer
-          else
-            client.set_timeout @first_data_timeout
-            @reactor.add client
-          end
-        end
-      end
-
+      @thread_pool.out_of_band_hook = @options[:out_of_band]
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
       if @queue_requests
@@ -279,6 +249,7 @@ module Puma
                 break if handle_check
               else
                 begin
+                  pool.wait_until_not_full
                   if io = sock.accept_nonblock
                     client = Client.new io, @binder.env(sock)
                     if remote_addr_value
@@ -288,7 +259,6 @@ module Puma
                     end
 
                     pool << client
-                    pool.wait_until_not_full
                   end
                 rescue SystemCallError
                   # nothing
@@ -310,17 +280,23 @@ module Puma
         @events.fire :state, @status
 
         if queue_requests
-          @queue_requests = false
-          @reactor.clear!
-          @reactor.shutdown
+          @queue_mutex.synchronize do
+            @queue_requests = false
+            @reactor.clear!
+            @reactor.shutdown
+          end
         end
-        graceful_shutdown if @status == :stop || @status == :restart
+        shutdown(@status == :stop || @status == :restart)
       rescue Exception => e
         STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
       ensure
-        @check.close unless @check.closed? # Ruby 2.2 issue
-        @notify.close
+        begin
+          @check.close unless @check.closed? # Ruby 2.2 issue
+          @notify.close unless @notify.closed?
+        rescue IOError, Errno::EBADF
+          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+        end
       end
 
       @events.fire :state, :done
@@ -345,104 +321,118 @@ module Puma
       return false
     end
 
+    def queue_request(client, timeout)
+      @queue_mutex.synchronize do
+        if @queue_requests
+          client.set_timeout timeout
+          @reactor.add client
+        end
+      end
+    end
+
     # Given a connection on +client+, handle the incoming requests.
     #
     # This method support HTTP Keep-Alive so it may, depending on if the client
     # indicates that it supports keep alive, wait for another request before
     # returning.
     #
+    # Returns true if one or more complete requests were successfully handled.
     def process_client(client, buffer)
-      begin
+      close_socket = true
+      requests = 0
+      # Advertise this server into the thread
+      Thread.current[ThreadLocalKey] = self
 
-        clean_thread_locals = @options[:clean_thread_locals]
-        close_socket = true
+      if @queue_requests &&
+        !client.eagerly_finish &&
+        queue_request(client, @first_data_timeout)
 
-        requests = 0
+        close_socket = false
+        return
+      end
 
-        while true
-          case handle_request(client, buffer)
-          when false
-            return
-          when :async
-            close_socket = false
-            return
-          when true
-            buffer.reset
+      client.finish(@first_data_timeout)
 
-            ThreadPool.clean_thread_locals if clean_thread_locals
+      clean_thread_locals = @options[:clean_thread_locals]
 
-            requests += 1
+      while true
+        case handle_request(client, buffer).tap {requests += 1}
+        when false
+          return
+        when :async
+          close_socket = false
+          return
+        when true
+          buffer.reset
 
-            check_for_more_data = @status == :run
+          ThreadPool.clean_thread_locals if clean_thread_locals
 
-            if requests >= MAX_FAST_INLINE
-              # This will mean that reset will only try to use the data it already
-              # has buffered and won't try to read more data. What this means is that
-              # every client, independent of their request speed, gets treated like a slow
-              # one once every MAX_FAST_INLINE requests.
-              check_for_more_data = false
-            end
 
-            unless client.reset(check_for_more_data)
-              return unless @queue_requests
-              close_socket = false
-              client.set_timeout @persistent_timeout
-              @reactor.add client
-              return
-            end
+          check_for_more_data = @status == :run
+
+          if requests >= MAX_FAST_INLINE
+            # This will mean that reset will only try to use the data it already
+            # has buffered and won't try to read more data. What this means is that
+            # every client, independent of their request speed, gets treated like a slow
+            # one once every MAX_FAST_INLINE requests.
+            check_for_more_data = false
           end
-        end
 
-      # The client disconnected while we were reading data
-      rescue ConnectionError
-        # Swallow them. The ensure tries to close +client+ down
-
-      # SSL handshake error
-      rescue MiniSSL::SSLError => e
-        lowlevel_error(e, client.env)
-
-        ssl_socket = client.io
-        addr = ssl_socket.peeraddr.last
-        cert = ssl_socket.peercert
-
-        close_socket = true
-
-        @events.ssl_error self, addr, cert, e
-
-      # The client doesn't know HTTP well
-      rescue HttpParserError => e
-        lowlevel_error(e, client.env)
-
-        client.write_error(400)
-
-        @events.parse_error self, client.env, e
-
-      # Server error
-      rescue StandardError => e
-        lowlevel_error(e, client.env)
-
-        client.write_error(500)
-
-        @events.unknown_error self, e, "Read"
-
-      ensure
-        buffer.reset
-
-        begin
-          client.close if close_socket
-        rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-          # Already closed
-        rescue StandardError => e
-          @events.unknown_error self, e, "Client"
-        end
-
-        if @options[:out_of_band]
-          @thread_pool.with_mutex do
-            @options[:out_of_band].each(&:call) if @thread_pool.busy_threads == 1
+          unless client.reset(check_for_more_data)
+            close_socket = false if queue_request(client, @persistent_timeout)
+            return
           end
         end
       end
+
+    rescue ThreadPool::ForceShutdown => e
+      @events.unknown_error self, e, "Client", env
+      @events.log "Detected force shutdown of a thread"
+      client.write_error(503)
+
+    # The client disconnected while we were reading data
+    rescue ConnectionError
+      # Swallow them. The ensure tries to close +client+ down
+
+    # SSL handshake error
+    rescue MiniSSL::SSLError => e
+      lowlevel_error(e, client.env)
+
+      ssl_socket = client.io
+      addr = ssl_socket.peeraddr.last
+      cert = ssl_socket.peercert
+
+      @events.ssl_error self, addr, cert, e
+
+    # The client doesn't know HTTP well
+    rescue HttpParserError => e
+      lowlevel_error(e, client.env)
+
+      client.write_error(400)
+
+      @events.parse_error self, client.env, e
+
+    # Server error
+    rescue StandardError => e
+      lowlevel_error(e, client.env)
+
+      client.write_error(500)
+
+      @events.unknown_error self, e, "Read"
+
+    ensure
+      buffer.reset
+
+      begin
+        client.close if close_socket
+      rescue IOError, SystemCallError
+        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+        # Already closed
+      rescue StandardError => e
+        @events.unknown_error self, e, "Client"
+      end
+
+      return requests.to_i > 0
     end
 
     # Given a Hash +env+ for the request read from +client+, add
@@ -832,7 +822,7 @@ module Puma
 
     # Wait for all outstanding requests to finish.
     #
-    def graceful_shutdown
+    def shutdown(graceful)
       if @options[:shutdown_debug]
         threads = Thread.list
         total = threads.size
@@ -848,7 +838,7 @@ module Puma
         $stdout.syswrite "#{pid}: === End thread backtrace dump ===\n"
       end
 
-      if @options[:drain_on_shutdown]
+      if graceful && @options[:drain_on_shutdown]
         count = 0
 
         while true
@@ -875,18 +865,16 @@ module Puma
       end
 
       if @thread_pool
-        if timeout = @options[:force_shutdown_after]
-          @thread_pool.shutdown timeout.to_i
-        else
-          @thread_pool.shutdown
-        end
+        timeout = graceful ? @options[:force_shutdown_after] : 1
+        timeout = -1 if timeout.nil?
+        @thread_pool.shutdown timeout.to_f
       end
     end
 
     def notify_safely(message)
       begin
-        @notify << message
-      rescue IOError
+        @notify << message unless @notify.closed?
+      rescue IOError, Errno::EPIPE, Errno::EBADF
          # The server, in another thread, is shutting down
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
       rescue RuntimeError => e

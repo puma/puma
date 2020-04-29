@@ -23,7 +23,7 @@ class TestBinderBase < Minitest::Test
 end
 
 class TestBinder < TestBinderBase
-  parallelize_me!
+  # parallelize_me!
 
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
     @binder.parse ["tcp://localhost:0"], @events
@@ -32,7 +32,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_home_alters_listeners_for_tcp_addresses
-    port = UniquePort.call
+    port = 0
     @binder.parse ["tcp://127.0.0.1:#{port}"], @events
 
     assert_equal "tcp://127.0.0.1:#{port}", @binder.listeners[0][0]
@@ -40,11 +40,11 @@ class TestBinder < TestBinderBase
   end
 
   def test_connected_ports
-    ports = (1..3).map { |_| UniquePort.call }
+    ports = [0] * 3
 
-    @binder.parse(ports.map { |p| "tcp://localhost:#{p}" }, @events)
+    @binder.parse(ports.map { |p| "tcp://127.0.0.1:#{p}" }, @events)
 
-    assert_equal ports, @binder.connected_ports
+    assert_equal 3, @binder.connected_ports.length, "Connected ports: #{@binder.connected_ports}"
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
@@ -54,7 +54,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_home_alters_listeners_for_ssl_addresses
-    port = UniquePort.call
+    port = 0
     @binder.parse ["ssl://127.0.0.1:#{port}?#{ssl_query}"], @events
 
     assert_equal "ssl://127.0.0.1:#{port}?#{ssl_query}", @binder.listeners[0][0]
@@ -71,10 +71,9 @@ class TestBinder < TestBinderBase
   end
 
   def test_correct_zero_port_ssl
-    skip("Implement later")
     ssl_regex = %r!ssl://127.0.0.1:(\d+)!
 
-    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
+    @binder.parse ["ssl://127.0.0.1:0?#{ssl_query}"], @events
 
     port = ssl_regex.match(@events.stdout.string)[1].to_i
 
@@ -115,7 +114,7 @@ class TestBinder < TestBinderBase
 
   def test_pre_existing_unix
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-    unix_path = "test/#{name}_server.sock"
+    unix_path = "test/#{self.class}_#{name}_server.sock"
 
     File.open(unix_path, mode: 'wb') { |f| f.puts 'pre existing' }
     @binder.parse ["unix://#{unix_path}"], @events
@@ -214,7 +213,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_close_listeners_closes_ios
-    @binder.parse ["tcp://127.0.0.1:#{UniquePort.call}"], @events
+    @binder.parse ["tcp://127.0.0.1:0"], @events
 
     refute @binder.listeners.any? { |u, l| l.closed? }
 
@@ -265,7 +264,7 @@ class TestBinder < TestBinderBase
   def test_socket_activation_tcp
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     url = "127.0.0.1"
-    port = UniquePort.call
+    port = 0
     sock = Addrinfo.tcp(url, port).listen
     assert_activates_sockets(url: url, port: port, sock: sock)
   end
@@ -273,7 +272,7 @@ class TestBinder < TestBinderBase
   def test_socket_activation_tcp_ipv6
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     url = "::"
-    port = UniquePort.call
+    port = 0
     sock = Addrinfo.tcp(url, port).listen
     assert_activates_sockets(url: url, port: port, sock: sock)
   end
@@ -299,8 +298,10 @@ class TestBinder < TestBinderBase
     @result = @binder.create_activated_fds(hash)
 
     url = "[::]" if url == "::"
+    port = @binder.activated_sockets.first.first.last if port == 0
     ary = path ? [:unix, path] : [:tcp, url, port]
 
+    assert @binder.activated_sockets[ary], "Missing #{ary} in #{@binder.activated_sockets}"
     assert_kind_of TCPServer, @binder.activated_sockets[ary]
     assert_match "Registered #{ary.join(":")} for activation from LISTEN_FDS", @events.stdout.string
     assert_equal ["LISTEN_FDS", "LISTEN_PID"], @result
@@ -310,8 +311,8 @@ class TestBinder < TestBinderBase
     skip UNIX_SKT_MSG if order.include?(:unix) && !UNIX_SKT_EXIST
 
     prepared_paths = {
-        ssl: "ssl://127.0.0.1:#{UniquePort.call}?#{ssl_query}",
-        tcp: "tcp://127.0.0.1:#{UniquePort.call}",
+        ssl: "ssl://127.0.0.1:0?#{ssl_query}",
+        tcp: "tcp://127.0.0.1:0",
         unix: "unix://test/#{name}_server.sock"
       }
 
@@ -321,7 +322,8 @@ class TestBinder < TestBinderBase
     stdout = @events.stdout.string
 
     order.each do |prot|
-      assert_match prepared_paths[prot], stdout
+      regex = Regexp.new(Regexp.escape(prepared_paths[prot]).gsub(":0", ':\d+'))
+      assert_match regex, stdout
     end
   ensure
     @binder.close_listeners if order.include?(:unix) && UNIX_SKT_EXIST

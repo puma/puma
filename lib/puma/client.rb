@@ -142,10 +142,12 @@ module Puma
 
     def close
       begin
-        @io.close
-      rescue IOError
-        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+        @io.shutdown(:WR) if @io.respond_to?(:shutdown)
+      rescue Errno::ENOTCONN #ignore
       end
+      @io.close
+    rescue IOError, Errno::EBADF
+      Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
     end
 
     def try_to_finish
@@ -257,6 +259,12 @@ module Puma
         end
       end
       true
+    end
+
+    def cancel
+      finish 0
+    rescue ConnectionError
+      close
     end
 
     def write_error(status_code)

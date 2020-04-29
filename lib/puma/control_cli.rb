@@ -196,6 +196,7 @@ module Puma
         if uri.scheme == "ssl"
           server.sysclose
         else
+          server.shutdown(:WR) if server.respond_to?(:shutdown)
           server.close unless server.closed?
         end
       end

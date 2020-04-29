@@ -21,8 +21,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_stop_tcp
     skip_on :jruby, :truffleruby # Undiagnose thread race. TODO fix
-    @control_tcp_port = UniquePort.call
-    cli_server "-q test/rackup/sleep.ru --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} -S #{@state_path}"
+    cli_server "-q test/rackup/sleep.ru --control-url tcp://#{HOST}:0 --control-token #{TOKEN} -S #{@state_path}"
 
     cli_pumactl "stop"
 
@@ -48,7 +47,7 @@ class TestIntegrationPumactl < TestIntegration
 
     _, status = Process.wait2(@pid)
     assert_equal 0, status
-
+  ensure
     @server = nil
   end
 
@@ -113,7 +112,7 @@ class TestIntegrationPumactl < TestIntegration
     if unix
       pumactl = IO.popen("#{BASE} bin/pumactl -C unix://#{@control_path} -T #{TOKEN} #{argv}", "r")
     else
-      pumactl = IO.popen("#{BASE} bin/pumactl -C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}", "r")
+      pumactl = IO.popen("#{BASE} bin/pumactl -C tcp://#{HOST}:#{@tcp_ctrl} -T #{TOKEN} #{argv}", "r")
     end
     @ios_to_close << pumactl
     Process.wait pumactl.pid

@@ -24,10 +24,12 @@ module Puma
     end
 
     def stop
+      @control.stop(false) if @control
       @server.stop(false) if @server
     end
 
     def halt
+      @control.halt(true) if @control
       @server.halt
     end
 
@@ -54,10 +56,8 @@ module Puma
       log "Use Ctrl-C to stop"
       redirect_io
 
-      @launcher.events.fire_on_booted!
-
       begin
-        server.run.join
+        server.run.tap {@launcher.events.fire_on_booted!}.join
       rescue Interrupt
         # Swallow it
       end

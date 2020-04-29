@@ -101,8 +101,7 @@ class TestLauncher < Minitest::Test
       c.clear_binds!
     end
     launcher = launcher(conf)
-    Thread.new do
-      sleep Puma::Const::WORKER_CHECK_INTERVAL + 1
+    launcher.events.on_booted do
       status = Puma.stats[:worker_status].first[:last_status]
       Puma::Server::STAT_METHODS.each do |stat|
         assert_includes status, stat

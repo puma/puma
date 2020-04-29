@@ -67,14 +67,17 @@ module Puma
     #
     def log(str)
       @stdout.puts format(str)
+    rescue Errno::EPIPE # ignore
     end
 
     def write(str)
       @stdout.write format(str)
+    rescue Errno::EPIPE # ignore
     end
 
     def debug(str)
       log("% #{str}") if @debug
+    rescue Errno::EPIPE # ignore
     end
 
     # Write +str+ to +@stderr+
@@ -97,6 +100,7 @@ module Puma
         "(#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]}#{env[REQUEST_PATH]}): " \
         "#{error.inspect}" \
         "\n---\n"
+    rescue Errno::EPIPE # ignore
     end
 
     # An SSL error has occurred.
@@ -106,6 +110,7 @@ module Puma
     def ssl_error(server, peeraddr, peercert, error)
       subject = peercert ? peercert.subject : nil
       @stderr.puts "#{Time.now}: SSL error, peer: #{peeraddr}, peer cert: #{subject}, #{error.inspect}"
+    rescue Errno::EPIPE # ignore
     end
 
     # An unknown error has occurred.
@@ -125,6 +130,7 @@ module Puma
         string_block << error.backtrace
         @stderr.puts string_block.join("\n")
       end
+    rescue Errno::EPIPE # ignore
     end
 
     def on_booted(&block)

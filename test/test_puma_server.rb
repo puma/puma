@@ -14,19 +14,22 @@ class TestPumaServer < Minitest::Test
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
     @events = Puma::Events.strings
-    @server = Puma::Server.new @app, @events
   end
 
   def teardown
-    @server.stop(true)
+    @server.stop(true) if defined?(@server) && @server
     @ios.each { |io| io.close if io && !io.closed? }
   end
 
+  def server
+    @server ||= Puma::Server.new @app, @events
+  end
+
   def server_run(app: @app, early_hints: false)
-    @server.app = app
-    @server.add_tcp_listener @host, @port
-    @server.early_hints = true if early_hints
-    @server.run
+    server.app = app
+    server.add_tcp_listener @host, @port
+    server.early_hints = true if early_hints
+    server.run
   end
 
   def header(sock)
@@ -41,15 +44,14 @@ class TestPumaServer < Minitest::Test
   end
 
   def send_http_and_read(req)
-    port = @server.connected_ports[0]
-    sock = TCPSocket.new @host, port
-    @ios << sock
-    sock << req
+    sock = send_http(req)
     sock.read
+  ensure
+    sock && sock.close
   end
 
   def send_http(req)
-    port = @server.connected_ports[0]
+    port = server.connected_ports[0]
     sock = TCPSocket.new @host, port
     @ios << sock
     sock << req
@@ -114,7 +116,7 @@ class TestPumaServer < Minitest::Test
     env['HOST'] = "example.com"
     env['HTTP_X_FORWARDED_PROTO'] = "https,http"
 
-    assert_equal "443", @server.default_server_port(env)
+    assert_equal "443", server.default_server_port(env)
   end
 
   def test_respect_x_forwarded_ssl_on
@@ -122,7 +124,7 @@ class TestPumaServer < Minitest::Test
     env['HOST'] = 'example.com'
     env['HTTP_X_FORWARDED_SSL'] = 'on'
 
-    assert_equal "443", @server.default_server_port(env)
+    assert_equal "443", server.default_server_port(env)
   end
 
   def test_respect_x_forwarded_scheme
@@ -130,7 +132,7 @@ class TestPumaServer < Minitest::Test
     env['HOST'] = 'example.com'
     env['HTTP_X_FORWARDED_SCHEME'] = 'https'
 
-    assert_equal '443', @server.default_server_port(env)
+    assert_equal '443', server.default_server_port(env)
   end
 
   def test_default_server_port
@@ -206,7 +208,7 @@ EOF
   end
 
   def test_early_hints_are_ignored_if_connection_lost
-
+    server
     def @server.fast_write(*args)
       raise Puma::ConnectionError
     end
@@ -254,7 +256,7 @@ EOF
   end
 
   def test_doesnt_print_backtrace_in_production
-    @server.leak_stack_on_error = false
+    server.leak_stack_on_error = false
     server_run app: ->(env) { raise "don't leak me bro" }
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
@@ -265,11 +267,11 @@ EOF
 
   def test_force_shutdown_custom_error_message
     handler = lambda {|err, env, status| [500, {"Content-Type" => "application/json"}, ["{}\n"]]}
-    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => handler, :force_shutdown_after => 2}
+    @server = Puma::Server.new @app, @events, lowlevel_error_handler: handler, force_shutdown_after: 0
 
     server_run app: ->(env) do
       @server.stop
-      sleep 5
+      sleep
     end
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
@@ -280,11 +282,11 @@ EOF
   end
 
   def test_force_shutdown_error_default
-    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+    @server = Puma::Server.new @app, @events, force_shutdown_after: 0
 
     server_run app: ->(env) do
       @server.stop
-      sleep 5
+      sleep
     end
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
@@ -377,7 +379,7 @@ EOF
   end
 
   def test_timeout_in_data_phase
-    @server.first_data_timeout = 2
+    server.first_data_timeout = 2
     server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
@@ -706,6 +708,7 @@ EOF
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n"
 
+    mutex = Mutex.new
     last_crlf_written = false
     last_crlf_writer = Thread.new do
       sleep 0.1
@@ -718,7 +721,7 @@ EOF
     h = header(sock)
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "hello", body
-    assert_equal true, last_crlf_written
+    assert_equal true, mutex.synchronize {last_crlf_written}
 
     last_crlf_writer.join
 
@@ -785,7 +788,7 @@ EOF
 
     # Could be 1000 but the tests get flaky. We don't care if it's extremely precise so much as that
     # it is set to a reasonable number.
-    assert_operator request_body_wait, :>=, 900
+    assert_in_delta 1000, request_body_wait, 500
   end
 
   def test_request_body_wait_chunked
@@ -796,14 +799,14 @@ EOF
     }
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
-    sleep 3
+    sleep 1
     sock << "4\r\nello\r\n0\r\n\r\n"
 
     sock.gets
 
     # Could be 1000 but the tests get flaky. We don't care if it's extremely precise so much as that
     # it is set to a reasonable number.
-    assert_operator request_body_wait, :>=, 900
+    assert_in_delta 1000, request_body_wait, 500
   end
 
   def test_open_connection_wait
@@ -884,66 +887,119 @@ EOF
   end
 
   # Perform a server shutdown while requests are pending (one in app-server response, one still sending client request).
-  def shutdown_requests(app_delay: 2, request_delay: 1, post: false, response:, **options)
+  def shutdown_requests(**options)
     @server = Puma::Server.new @app, @events, options
+    mutex = Mutex.new
+    done = ConditionVariable.new
     server_run app: ->(_) {
-      sleep app_delay
+      mutex.synchronize {done.signal}
       [204, {}, []]
     }
 
-    s1 = send_http "GET / HTTP/1.1\r\n\r\n"
-    s2 = send_http post ?
-      "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
-      "GET / HTTP/1.1\r\n"
-    sleep 0.1
-
+    s2 = send_http "GET / HTTP/1.1\r\n"
+    s1 = nil
+    mutex.synchronize do
+      s1 = send_http "GET / HTTP/1.1\r\n\r\n"
+      done.wait(mutex)
+    end
     @server.stop
-    sleep request_delay
-
+    pool = @server.instance_variable_get(:@thread_pool)
+    Thread.pass until pool.instance_variable_get(:@shutdown)
     s2 << "\r\n"
+    assert IO.select([s2], nil, nil, 5), 'timeout waiting for response'
 
-    assert_match /204/, s1.gets
+    assert_match(/204/, s1.gets)
+    assert_match(/204/, s2.gets)
+  ensure
+    @server.stop(true)
+    s1.close
+    s2.close
+  end
 
-    assert IO.select([s2], nil, nil, app_delay), 'timeout waiting for response'
-    s2_result = begin
-      s2.gets
+  # Shutdown should allow pending requests to complete.
+  def test_shutdown_requests
+    shutdown_requests
+    shutdown_requests queue_requests: false
+  end
+
+  # Requests stuck longer than `first_data_timeout` should have connection closed (408 w/pending POST body).
+  def test_shutdown_data_timeout_shut2
+    force_shutdown first_data_timeout: 0.01
+    force_shutdown first_data_timeout: 0.01, queue_requests: false
+    force_shutdown first_data_timeout: 0.01, post: true
+  end
+
+  # Requests still pending after `force_shutdown_after` should have connection closed (408 w/pending POST body).
+  def force_shutdown(post: false, **options)
+    @server = Puma::Server.new @app, @events, **options
+    mutex = Mutex.new
+    done = ConditionVariable.new
+    server_run app: ->(_) {
+      mutex.synchronize {done.signal}
+      [204, {}, []]
+    }
+
+    req = nil
+    mutex.synchronize do
+      req = send_http post ?
+        "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
+        "GET / HTTP/1.1\r\n"
+      send_http "GET / HTTP/1.1\r\n\r\n"
+      done.wait(mutex)
+    end
+    @server.stop
+    assert IO.select([req], nil, nil, 30), 'timeout waiting for response'
+
+    result = begin
+      req.gets
     rescue Errno::ECONNABORTED, Errno::ECONNRESET
       # Some platforms raise errors instead of returning a response/EOF when a TCP connection is aborted.
       post ? '408' : nil
     end
 
-    if response
-      assert_match response, s2_result
+    if post
+      assert_match(/408/, result)
     else
-      assert_nil s2_result
+      assert_nil result
     end
+  ensure
+    @server.stop(true)
+    req && req.close
   end
 
-  # Shutdown should allow pending requests to complete.
-  def test_shutdown_requests
-    shutdown_requests response: /204/
-    shutdown_requests response: /204/, queue_requests: false
-  end
-
-  # Requests stuck longer than `first_data_timeout` should have connection closed (408 w/pending POST body).
-  def test_shutdown_data_timeout
-    shutdown_requests request_delay: 3, first_data_timeout: 2, response: nil
-    shutdown_requests request_delay: 3, first_data_timeout: 2, response: nil, queue_requests: false
-    shutdown_requests request_delay: 3, first_data_timeout: 2, response: /408/, post: true
-  end
-
-  # Requests still pending after `force_shutdown_after` should have connection closed (408 w/pending POST body).
   def test_force_shutdown
-    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 3
-    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 3, queue_requests: false
-    shutdown_requests request_delay: 4, response: /408/, force_shutdown_after: 3, post: true
+    force_shutdown force_shutdown_after: 0
+    force_shutdown force_shutdown_after: 0, queue_requests: false
+    force_shutdown force_shutdown_after: 0, post: true
   end
 
   # App-responses still pending during `force_shutdown_after` should return 503
   # (uncaught Puma::ThreadPool::ForceShutdown exception).
+  def force_shutdown_app(**options)
+    @server = Puma::Server.new @app, @events, force_shutdown_after: 0, **options
+    mutex = Mutex.new
+    done = ConditionVariable.new
+    server_run app: ->(_) {
+      mutex.synchronize {done.signal}
+      sleep
+      [204, {}, []]
+    }
+
+    s1 = nil
+    mutex.synchronize do
+      s1 = send_http "GET / HTTP/1.1\r\n\r\n"
+      done.wait(mutex)
+    end
+    @server.stop
+    assert_match(/503/, s1.gets)
+  ensure
+    @server.stop(true)
+    s1.close
+  end
+
   def test_force_shutdown_app
-    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 3
-    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 3, queue_requests: false
+    force_shutdown_app
+    force_shutdown_app queue_requests: false
   end
 
   def test_http11_connection_header_queue
@@ -983,86 +1039,5 @@ EOF
     sock = send_http "GET / HTTP/1.0\r\n\r\n"
     assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
     sock.close
-  end
-
-  def oob_server(**options)
-    @request_count = 0
-    @oob_count = 0
-    @start = Time.now
-    in_oob = Mutex.new
-    @mutex = Mutex.new
-    @oob_finished = ConditionVariable.new
-    oob_wait = options.delete(:oob_wait)
-    oob = -> do
-      in_oob.synchronize do
-        @mutex.synchronize do
-          @oob_count += 1
-          @oob_finished.signal
-          @oob_finished.wait(@mutex, 1) if oob_wait
-        end
-      end
-    end
-    @server = Puma::Server.new @app, @events, out_of_band: [oob], **options
-    @server.min_threads = 5
-    @server.max_threads = 5
-    server_run app: ->(_) do
-      raise 'OOB conflict' if in_oob.locked?
-      @mutex.synchronize {@request_count += 1}
-      [200, {}, [""]]
-    end
-  end
-
-  # Sequential requests should trigger out_of_band hooks after every request.
-  def test_out_of_band
-    n = 100
-    oob_server queue_requests: false
-    n.times do
-      @mutex.synchronize do
-        send_http "GET / HTTP/1.0\r\n\r\n"
-        @oob_finished.wait(@mutex, 1)
-      end
-    end
-    assert_equal n, @request_count
-    assert_equal n, @oob_count
-  end
-
-  # Streaming requests on parallel connections without delay should trigger
-  # out_of_band hooks only once after the final request.
-  def test_out_of_band_stream
-    n = 100
-    threads = 10
-    oob_server
-    req = "GET / HTTP/1.1\r\n"
-    @mutex.synchronize do
-      Array.new(threads) do
-        Thread.new do
-          send_http "#{req}\r\n" * (n/threads-1) + "#{req}Connection: close\r\n\r\n"
-        end
-      end.each(&:join)
-      @oob_finished.wait(@mutex, 1)
-    end
-    assert_equal n, @request_count
-    assert_equal 1, @oob_count
-  end
-
-  def test_out_of_band_overlapping_requests
-    oob_server oob_wait: true
-    sock = nil
-    sock2 = nil
-    @mutex.synchronize do
-      sock2 = send_http "GET / HTTP/1.0\r\n"
-      sleep 0.01
-      sock = send_http "GET / HTTP/1.0\r\n\r\n"
-      # Request 1 processed
-      @oob_finished.wait(@mutex) # enter oob
-      sock2 << "\r\n"
-      sleep 0.01
-      @oob_finished.signal # exit oob
-      # Request 2 processed
-      @oob_finished.wait(@mutex) # enter oob
-      @oob_finished.signal # exit oob
-    end
-    assert_match(/200/, sock.read)
-    assert_match(/200/, sock2.read)
   end
 end

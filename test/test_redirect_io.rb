@@ -12,12 +12,15 @@ class TestRedirectIO < TestIntegration
     @err_file = Tempfile.new('puma-err')
     @out_file_path = @out_file.path
     @err_file_path = @err_file.path
+    @old_out_file_path = nil
+    @old_err_file_path = nil
   end
 
   def teardown
     super
 
     paths = [@out_file_path, @err_file_path, @old_out_file_path, @old_err_file_path].compact
+    [@out_file, @err_file].each(&:close)
     File.unlink(*paths)
     @out_file = nil
     @err_file = nil

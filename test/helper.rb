@@ -2,15 +2,6 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
-  begin
-    require 'stopgap_13632'
-  rescue LoadError
-    puts "For test stability, you must install the stopgap_13632 gem."
-    exit(1)
-  end
-end
-
 require_relative "minitest/verbose"
 require "minitest/autorun"
 require "minitest/pride"
@@ -25,6 +16,7 @@ $debugging_hold = false    # needed for TestCLI#test_control_clustered
 
 require "puma"
 require "puma/detect"
+require 'puma/io_stopgap'
 
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
@@ -44,14 +36,6 @@ def hit(uris)
   end
 end
 
-module UniquePort
-  def self.call
-    TCPServer.open('127.0.0.1', 0) do |server|
-      server.connect_address.ip_port
-    end
-  end
-end
-
 require "timeout"
 module TimeoutEveryTestCase
   # our own subclass so we never confused different timeouts
@@ -59,7 +43,7 @@ module TimeoutEveryTestCase
   end
 
   def run(*)
-    ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) { super }
+    ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 10 : 120, TestTookTooLong) { super }
   end
 end
 
@@ -145,3 +129,16 @@ Minitest.after_run do
     end
   end
 end
+
+require 'openssl'
+# Silence warnings on SSLSocket initialization.
+module SSLSocketFix
+  def initialize(*args)
+    v = $VERBOSE
+    $VERBOSE = nil
+    super
+  ensure
+    $VERBOSE = v
+  end
+end
+OpenSSL::SSL::SSLSocket.prepend SSLSocketFix if %w(2.2.9 2.2.10).include? RUBY_VERSION

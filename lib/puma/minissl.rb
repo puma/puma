@@ -139,12 +139,14 @@ module Puma
         @engine.init? || !@engine.shutdown
       end
 
+      SHUTDOWN_TIMEOUT = 1 # seconds
+
       def close
         begin
           # Read any drop any partially initialized sockets and any received bytes during shutdown.
           # Don't let this socket hold this loop forever.
-          # If it can't send more packets within 1s, then give up.
-          return if [:timeout, :eof].include?(read_and_drop(1)) while should_drop_bytes?
+          # If it can't send more packets within SHUTDOWN_TIMEOUT, then give up.
+          return if [:timeout, :eof].include?(read_and_drop(SHUTDOWN_TIMEOUT)) while should_drop_bytes?
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           # nothing

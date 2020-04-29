@@ -9,6 +9,8 @@ jobs:
     env:
       CI: true
       TESTOPTS: -v
+      MT_CPU: 10
+      JRUBY_OPTS: --dev
 
     runs-on: ${{ matrix.os }}-latest
     if: |

@@ -606,19 +606,13 @@ module Puma
     # not a request timeout, it is to protect against a hung or dead process.
     # Setting this value will not protect against slow requests.
     #
-    # The minimum value is 6 seconds, the default value is 60 seconds.
+    # The default value is 60 seconds.
     #
     # @note Cluster mode only.
     # @example
     #   worker_timeout 60
     def worker_timeout(timeout)
-      timeout = Integer(timeout)
-      min = Const::WORKER_CHECK_INTERVAL
-
-      if timeout <= min
-        raise "The minimum worker_timeout must be greater than the worker reporting interval (#{min})"
-      end
-
+      timeout = Float(timeout)
       @options[:worker_timeout] = timeout
     end
 

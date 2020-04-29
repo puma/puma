@@ -5,7 +5,7 @@ require "puma/thread_pool"
 class TestThreadPool < Minitest::Test
 
   def teardown
-    @pool.shutdown(1) if @pool
+    @pool.shutdown(1) if defined?(@pool) && @pool
   end
 
   def new_pool(min, max, &block)
@@ -242,16 +242,17 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_shutdown_with_grace
-    timeout = 0.01
-    grace = 0.01
+    timeout = 0
+    # https://github.com/jruby/jruby/issues/6188
+    grace = Puma.jruby? ? 0.1 : 0
 
-    rescued = []
+    threads = []
     pool = mutex_pool(2, 2) do
       begin
+        threads << Thread.current
         pool.signal
         sleep
       rescue Puma::ThreadPool::ForceShutdown
-        rescued << Thread.current
         sleep
       end
     end
@@ -263,7 +264,6 @@ class TestThreadPool < Minitest::Test
       pool.shutdown(timeout)
     end
     assert_equal 0, pool.spawned
-    assert_equal 2, rescued.length
-    refute rescued.any?(&:alive?)
+    refute threads.any?(&:alive?)
   end
 end

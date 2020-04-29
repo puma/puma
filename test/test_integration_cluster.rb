@@ -16,7 +16,7 @@ class TestIntegrationCluster < TestIntegration
     super
   end
 
-  def test_pre_existing_unix
+  def test_cluster_pre_existing_unix
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
 
     File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
@@ -122,7 +122,7 @@ class TestIntegrationCluster < TestIntegration
       # spread out, so all aren't killed at once
       phase0_worker_pids.each do |pid|
         Process.kill :TERM, pid
-        sleep 4 unless pid == last
+        sleep 0.1 unless pid == last
       end
     end
   end
@@ -134,19 +134,19 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_worker_boot_timeout
-    timeout = 1
+    timeout = 0.1
     worker_timeout(timeout, 2, "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
   end
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
-    timeout = Puma::Const::WORKER_CHECK_INTERVAL + 1
+    timeout = 0.1
     worker_timeout(timeout, 1, <<RUBY)
 worker_timeout #{timeout}
 on_worker_boot do
   Thread.new do
-    sleep 1
-    Thread.list.find {|t| t.name == 'puma stat payload'}.kill
+    Thread.pass until thread = Thread.list.find {|t| t.name == 'puma stat payload'}
+    thread.kill
   end
 end
 RUBY
@@ -155,10 +155,7 @@ RUBY
   private
 
   def worker_timeout(timeout, iterations, config)
-    config_file = Tempfile.new(%w(worker_timeout .rb))
-    config_file.write config
-    config_file.close
-    cli_server "-w #{WORKERS} -t 1:1 -C #{config_file.path} test/rackup/hello.ru"
+    cli_server "-w #{WORKERS} -t 1:1 test/rackup/hello.ru", config: config
 
     pids = []
     Timeout.timeout(iterations * timeout + 1) do
@@ -237,15 +234,15 @@ RUBY
     end
   end
 
-  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
+  # Send 10 requests per second.  Send 1, then :USR1 server, then send another 24.
   # All should be responded to, and at least three workers should be used
-  def usr1_all_respond(unix: false)
+  def usr1_all_respond(unix: false, sleep: 0.1)
     cli_server "-w #{WORKERS} -t 0:5 -q test/rackup/sleep_pid.ru", unix: unix
     threads = []
     replies = []
     mutex = Mutex.new
 
-    s = connect "sleep1", unix: unix
+    s = connect "sleep#{sleep}", unix: unix
     replies << read_body(s)
 
     Process.kill :USR1, @pid
@@ -254,13 +251,13 @@ RUBY
 
     24.times do |delay|
       threads << Thread.new do
-        thread_run_pid replies, delay, 1, mutex, refused, unix: unix
+        thread_run_pid replies, delay.to_f/10, sleep, mutex, refused, unix: unix
       end
     end
 
     threads.each(&:join)
 
-    responses = replies.count { |r| r[/\ASlept 1/] }
+    responses = replies.count { |r| r[/\ASlept #{sleep}/] }
     resets    = replies.count { |r| r == :reset    }
     refused   = replies.count { |r| r == :refused  }
 
@@ -286,7 +283,7 @@ RUBY
   def worker_respawn(phase = 1, size = WORKERS)
     threads = []
 
-    cli_server "-w #{WORKERS} -t 1:1 -C test/config/worker_shutdown_timeout_2.rb test/rackup/sleep_pid.ru"
+    cli_server "-w #{size} -t 1:1 test/rackup/sleep_pid.ru", config: 'worker_shutdown_timeout 0'
 
     # make sure two workers have booted
     phase0_worker_pids = get_worker_pids
@@ -319,10 +316,10 @@ RUBY
     assert_operator (Time.now.to_f - @start_time).round(2), :<, 35
 
     msg = "phase0_worker_pids #{phase0_worker_pids.inspect}  phase1_worker_pids #{phase1_worker_pids.inspect}  phase0_exited #{phase0_exited.inspect}"
-    assert_equal WORKERS, phase0_worker_pids.length, msg
+    assert_equal size, phase0_worker_pids.length, msg
 
-    assert_equal WORKERS, phase1_worker_pids.length, msg
-    assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
+    assert_equal size, phase1_worker_pids.length, msg
+    assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nAll workers should be replaced with new"
 
     assert_empty phase0_exited, msg
 

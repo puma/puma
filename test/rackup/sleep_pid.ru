@@ -2,7 +2,7 @@
 # seconds to sleep, returns process pid
 
 run lambda { |env|
-  dly = (env['REQUEST_PATH'][/\/sleep(\d+)/,1] || '0').to_i
+  dly = (env['REQUEST_PATH'][/\/sleep(\d+\.?\d+)/,1] || '0').to_f
   sleep dly
   [200, {"Content-Type" => "text/plain"}, ["Slept #{dly} #{Process.pid}"]]
 }

@@ -4,6 +4,7 @@ require_relative "helper"
 
 require "puma/app/status"
 require "rack"
+require "rack/mock"
 
 class TestAppStatus < Minitest::Test
   parallelize_me!
@@ -71,7 +72,8 @@ class TestAppStatus < Minitest::Test
 
   def test_halt
     status, _ , app = lint('/halt')
-
+    start = Time.now
+    Thread.pass until @server.status == :halt || Time.now - start > 1
     assert_equal :halt, @server.status
     assert_equal 200, status
     assert_equal ['{ "status": "ok" }'], app.enum_for.to_a

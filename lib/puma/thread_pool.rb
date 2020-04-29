@@ -47,8 +47,9 @@ module Puma
       @shutdown = false
 
       @trim_requested = 0
+      @out_of_band_pending = false
 
-      @workers = []
+      @workers = Set.new
 
       @auto_trim = nil
       @reaper = nil
@@ -65,6 +66,7 @@ module Puma
 
     attr_reader :spawned, :trim_requested, :waiting
     attr_accessor :clean_thread_locals
+    attr_accessor :out_of_band_hook
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Performance/HashEachMethods
@@ -92,56 +94,76 @@ module Puma
     #
     def spawn_thread
       @spawned += 1
+      mutex = @mutex
 
-      th = Thread.new(@spawned) do |spawned|
-        Puma.set_thread_name 'threadpool %03i' % spawned
-        todo  = @todo
-        block = @block
-        mutex = @mutex
-        not_empty = @not_empty
-        not_full = @not_full
+      Thread.new(@spawned) do |spawned|
+        begin
+          th = Thread.current
+          @workers.add th
+          Puma.set_thread_name 'threadpool %03i' % spawned
+          todo  = @todo
+          not_empty = @not_empty
+          not_full = @not_full
 
-        extra = @extra.map { |i| i.new }
+          extra = @extra.map { |i| i.new }
 
-        while true
-          work = nil
+          while true
+            work = nil
 
-          mutex.synchronize do
-            while todo.empty?
-              if @trim_requested > 0
-                @trim_requested -= 1
-                @spawned -= 1
-                @workers.delete th
-                Thread.exit
+            mutex.synchronize do
+              while todo.empty?
+                if @trim_requested > 0
+                  @trim_requested -= 1
+                  @spawned -= 1
+                  @workers.delete th
+                  Thread.exit
+                end
+
+                @waiting += 1
+                if @out_of_band_pending && trigger_out_of_band_hook
+                  @out_of_band_pending = false
+                end
+                not_full.signal
+                not_empty.wait mutex
+                @waiting -= 1
               end
 
-              @waiting += 1
-              not_full.signal
-              not_empty.wait mutex
-              @waiting -= 1
+              work = todo.shift
             end
 
-            work = todo.shift
-          end
+            if @clean_thread_locals
+              ThreadPool.clean_thread_locals
+            end
 
-          if @clean_thread_locals
-            ThreadPool.clean_thread_locals
+            begin
+              @out_of_band_pending = true if @block.call(work, *extra)
+            rescue Exception => e
+              STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
+            end
           end
-
-          begin
-            block.call(work, *extra)
-          rescue Exception => e
-            STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
-          end
+        rescue ForceShutdown
+          mutex.unlock if mutex.owned? # Workaround Ruby thread concurrency bug
+          retry
         end
       end
-
-      @workers << th
-
-      th
     end
 
     private :spawn_thread
+
+    def trigger_out_of_band_hook
+      return false unless out_of_band_hook && out_of_band_hook.any?
+
+      # we execute on idle hook when all threads are free
+      return false unless @spawned == @waiting
+
+      out_of_band_hook.each(&:call)
+      true
+    rescue Exception => e
+      STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"
+      true
+    end
+
+    private :trigger_out_of_band_hook
 
     def with_mutex(&block)
       @mutex.owned? ?
@@ -263,6 +285,7 @@ module Puma
       def stop
         @running = false
         @thread.wakeup
+      rescue #ignore
       end
     end
 
@@ -302,14 +325,23 @@ module Puma
           start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           threads.reject! do |t|
             elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
-            t.join timeout - elapsed
+            begin
+              t.join timeout - elapsed
+            rescue ForceShutdown
+              true
+            end
           end
         end
 
-        # Wait +timeout+ seconds for threads to finish.
+        # Wait +timeout+ seconds for threads to finish processing all work.
         join.call(timeout)
 
-        # If threads are still running, raise ForceShutdown and wait to finish.
+        # Short-circuit remaining queued work.
+        @block = Proc.new do |work|
+          work.cancel if work.respond_to?(:cancel)
+        end
+
+        # If threads are still running, raise ForceShutdown and wait for work to finish.
         threads.each do |t|
           t.raise ForceShutdown
         end
@@ -321,7 +353,7 @@ module Puma
       end
 
       @spawned = 0
-      @workers = []
+      @workers.clear
     end
   end
 end

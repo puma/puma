@@ -1,6 +1,7 @@
 require_relative "helper"
 
 class TestPersistent < Minitest::Test
+  parallelize_me!
 
   HOST = "127.0.0.1"
 
@@ -23,10 +24,8 @@ class TestPersistent < Minitest::Test
       [status, @headers, @body]
     end
 
-    @port = UniquePort.call
-
     @server = Puma::Server.new @simple
-    @server.add_tcp_listener HOST, @port
+    @port = @server.add_tcp_listener(HOST, 0).connect_address.ip_port
     @server.max_threads = 1
     @server.run
 
@@ -40,8 +39,9 @@ class TestPersistent < Minitest::Test
 
   def lines(count, s=@client)
     str = "".dup
-    Timeout.timeout(5) do
-      count.times { str << s.gets }
+    count.times do
+      break unless IO.select([s], nil, nil, 5)
+      str << s.gets
     end
     str
   end
@@ -154,14 +154,14 @@ class TestPersistent < Minitest::Test
   end
 
   def test_persistent_timeout
-    @server.persistent_timeout = 1
+    @server.persistent_timeout = 0
     @client << @valid_request
     sz = @body[0].size.to_s
 
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
-    sleep 2
+    assert IO.select([@client], nil, nil, 10)
 
     assert_raises EOFError do
       @client.read_nonblock(1)
@@ -235,7 +235,7 @@ class TestPersistent < Minitest::Test
     c2 = TCPSocket.new HOST, @port
     c2 << @valid_request
 
-    out = IO.select([c2], nil, nil, 1)
+    out = IO.select([c2], nil, nil, 10)
 
     assert out, "select returned nil"
     assert_equal c2, out.first.first

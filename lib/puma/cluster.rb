@@ -261,29 +261,25 @@ module Puma
         server.stop
       end
 
-      begin
-        @worker_write << "b#{Process.pid}\n"
-      rescue SystemCallError, IOError
-        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-        STDERR.puts "Master seems to have exited, exiting."
-        return
-      end
+      server_thread = server.run
 
       Thread.new(@worker_write) do |io|
         Puma.set_thread_name "stat payload"
 
         while true
-          sleep Const::WORKER_CHECK_INTERVAL
           begin
             io << "p#{Process.pid}#{server.stats.to_json}\n"
-          rescue IOError
+          rescue SystemCallError, IOError
             Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+            STDERR.puts "Master seems to have exited, exiting."
+            server.stop
             break
           end
+          sleep Const::WORKER_CHECK_INTERVAL
         end
       end
 
-      server.run.join
+      server_thread.join
 
       # Invoke any worker shutdown hooks so they can prevent the worker
       # exiting until any background operations are completed
@@ -467,9 +463,9 @@ module Puma
         stop
       end
 
-      @launcher.events.fire_on_booted!
-
       begin
+        booted = false
+
         while @status == :run
           begin
             if @phased_restart
@@ -491,17 +487,23 @@ module Puma
 
               if w = @workers.find { |x| x.pid == pid }
                 case req
-                when "b"
-                  w.boot!
-                  log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
-                  @next_check = Time.now
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
                   w.instance_variable_set :@term, true
+                  @next_check = Time.now + 0.1
                 when "t"
                   w.term unless w.term?
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
+                  unless w.booted?
+                    w.boot!
+                    log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
+                    if !booted && all_workers_booted?
+                      @launcher.events.fire_on_booted!
+                      booted = true
+                    end
+                    @next_check = Time.now
+                  end
                 end
               else
                 log "! Out-of-sync worker list, no #{pid} worker"

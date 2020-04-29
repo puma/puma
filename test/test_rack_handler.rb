@@ -12,6 +12,8 @@ class TestHandlerGetStrSym < Minitest::Test
 end
 
 class TestPathHandler < Minitest::Test
+  parallelize_me!
+
   def app
     Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
   end

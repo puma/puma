@@ -74,11 +74,11 @@ module Puma
       env_hash['LISTEN_FDS'].to_i.times do |index|
         sock = TCPServer.for_fd(socket_activation_fd(index))
         key = begin # Try to parse as a path
-          [:unix, Socket.unpack_sockaddr_un(sock.getsockname)]
-        rescue ArgumentError # Try to parse as a port/ip
           port, addr = Socket.unpack_sockaddr_in(sock.getsockname)
           addr = "[#{addr}]" if addr =~ /\:/
           [:tcp, addr, port]
+        rescue ArgumentError # Try to parse as a port/ip
+          [:unix, Socket.unpack_sockaddr_un(sock.getsockname)]
         end
         @activated_sockets[key] = sock
         @events.debug "Registered #{key.join ':'} for activation from LISTEN_FDS"
@@ -165,7 +165,11 @@ module Puma
             logger.log "* Activated #{str}"
           else
             io = add_ssl_listener uri.host, uri.port, ctx
-            logger.log "* Listening on #{str}"
+            if io.is_a?(TCPServer) && uri.port == 0
+              uri.port = io.connect_address.ip_port
+            end
+
+            logger.log "* #{log_msg} on #{uri.to_s}"
           end
 
           @listeners << [str, io] if io

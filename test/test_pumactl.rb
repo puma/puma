@@ -14,7 +14,12 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def wait_booted
-    line = @wait.gets until line =~ /Use Ctrl-C to stop/
+    begin
+      line = @wait.gets
+      if (tcp_ctrl = line[/Starting control server on (tcp|ssl):.*:(\d+)/, 2])
+        @tcp_ctrl = tcp_ctrl.to_i
+      end
+    end until line =~ /Use Ctrl-C to stop/
   end
 
   def teardown
@@ -113,11 +118,8 @@ class TestPumaControlCli < TestConfigFileBase
 
   def test_control_url_and_status
     host = "127.0.0.1"
-    port = UniquePort.call
-    url = "tcp://#{host}:#{port}/"
-
     opts = [
-      "--control-url", url,
+      "--control-url", "tcp://#{host}:0/",
       "--control-token", "ctrl",
       "--config-file", "test/config/app.rb",
     ]
@@ -128,6 +130,8 @@ class TestPumaControlCli < TestConfigFileBase
     end
 
     wait_booted
+
+    opts[1] = "tcp://#{host}:#{@tcp_ctrl}"
 
     s = TCPSocket.new host, 9292
     s << "GET / HTTP/1.0\r\n\r\n"
@@ -144,8 +148,7 @@ class TestPumaControlCli < TestConfigFileBase
   def test_control_ssl
     skip_on :jruby # Hanging on JRuby, TODO fix
     host = "127.0.0.1"
-    port = UniquePort.call
-    url = "ssl://#{host}:#{port}?#{ssl_query}"
+    url = "ssl://#{host}:0?#{ssl_query}"
 
     opts = [
       "--control-url", url,
@@ -160,9 +163,12 @@ class TestPumaControlCli < TestConfigFileBase
 
     wait_booted
 
-    assert_command_cli_output opts + ["status"], "Puma is started"
-    assert_command_cli_output opts + ["stop"], "Command stop sent success"
+    opts[1] = URI.parse(url).tap {|u| u.port = @tcp_ctrl}.to_s
 
+    assert_command_cli_output opts + ["status"], "Puma is started"
+    Puma::MiniSSL::Socket.stub_const(:SHUTDOWN_TIMEOUT, 0) do
+      assert_command_cli_output opts + ["stop"], "Command stop sent success"
+    end
     assert_kind_of Thread, t.join, "server didn't stop"
   end
 

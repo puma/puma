@@ -25,7 +25,7 @@ module Puma
           rack_response(200, OK_STATUS)
 
         when /\/halt$/
-          @cli.halt
+          Thread.new {@cli.halt}
           rack_response(200, OK_STATUS)
 
         when /\/restart$/

@@ -58,24 +58,42 @@ class TestIntegrationSingle < TestIntegration
     skip_unless_signal_exist? :TERM
     skip_on :jruby
 
-    cli_server 'test/rackup/sleep.ru'
+    # Use tempfiles as an inter-process lock.
+    t = Tempfile.new('trigger')
+    t2 = Tempfile.new('trigger')
+    @ios_to_close.push(t, t2)
+    t.flock(File::LOCK_EX)
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3({ 'LC_ALL' => 'C' }, "curl http://#{HOST}:#{@tcp_port}/sleep10")
-    sleep 1 # ensure curl send a request
+    app = <<RUBY
+t = File.new('#{t.path}')
+t2 = File.new('#{t2.path}')
+t2.flock(File::LOCK_EX)
+app do |env|
+  t2.flock(File::LOCK_UN)
+  t.flock(File::LOCK_EX)
+  [200, {"Content-Type" => "text/plain"}, ["Done"]]
+end
+RUBY
+    cli_server '', config: app
 
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3({ 'LC_ALL' => 'C' }, "curl http://#{HOST}:#{@tcp_port}")
+
+    t2.flock(File::LOCK_EX)
     Process.kill :TERM, @pid
     true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
     _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
 
-    assert nil != Process.getpgid(@server.pid) # ensure server is still running
-    assert nil != Process.getpgid(rejected_curl_wait_thread[:pid]) # ensure first curl invokation still in progress
+    assert Process.getpgid(@server.pid) # ensure server is still running
+    assert Process.getpgid(curl_wait_thread[:pid]) # ensure first curl invocation still in progress
+
+    t.flock(File::LOCK_UN)
 
     curl_wait_thread.join
     rejected_curl_wait_thread.join
 
-    assert_match(/Slept 10/, curl_stdout.read)
+    assert_match(/Done/, curl_stdout.read)
     assert_match(/Connection refused/, rejected_curl_stderr.read)
 
     Process.wait(@server.pid)

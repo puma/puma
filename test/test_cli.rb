@@ -36,9 +36,15 @@ class TestCLI < Minitest::Test
     @ready.close
   end
 
+  def control_port(cli)
+    cli.launcher.
+      instance_variable_get(:@runner).
+      instance_variable_get(:@control).
+      binder.connected_ports.first
+  end
+
   def test_control_for_tcp
-    cntl = UniquePort.call
-    url = "tcp://127.0.0.1:#{cntl}/"
+    url = "tcp://127.0.0.1:0/"
 
     cli = Puma::CLI.new [ "--control-url", url,
                          "--control-token", "",
@@ -50,7 +56,7 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    s = TCPSocket.new "127.0.0.1", cntl
+    s = TCPSocket.new "127.0.0.1", control_port(cli)
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
@@ -66,9 +72,8 @@ class TestCLI < Minitest::Test
   def test_control_for_ssl
     skip_on :jruby # Hangs on CI, TODO fix
     require "net/http"
-    control_port = UniquePort.call
     control_host = "127.0.0.1"
-    control_url = "ssl://#{control_host}:#{control_port}?#{ssl_query}"
+    control_url = "ssl://#{control_host}:0?#{ssl_query}"
     token = "token"
 
     cli = Puma::CLI.new ["--control-url", control_url,
@@ -82,7 +87,7 @@ class TestCLI < Minitest::Test
     wait_booted
 
     body = ""
-    http = Net::HTTP.new control_host, control_port
+    http = Net::HTTP.new control_host, control_port(cli)
     http.use_ssl = true
     http.verify_mode = OpenSSL::SSL::VERIFY_NONE
     http.start do
@@ -128,8 +133,6 @@ class TestCLI < Minitest::Test
 
     assert_equal 2, status["workers"]
 
-    # wait until the first status ping has come through
-    sleep 6
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
@@ -139,6 +142,7 @@ class TestCLI < Minitest::Test
   ensure
     if UNIX_SKT_EXIST && HAS_FORK
       cli.launcher.stop
+      t.join
 
       done = nil
       until done
@@ -147,7 +151,6 @@ class TestCLI < Minitest::Test
         done = log[/ - Goodbye!/]
       end
 
-      t.join
       $debugging_hold = false
     end
   end
@@ -203,8 +206,8 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_requests_count
-    tcp  = UniquePort.call
-    cntl = UniquePort.call
+    tcp  = 0
+    cntl = 0
     url = "tcp://127.0.0.1:#{cntl}/"
 
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
@@ -217,6 +220,8 @@ class TestCLI < Minitest::Test
     end
 
     wait_booted
+    cntl = control_port(cli)
+    tcp = cli.launcher.binder.connected_ports.first
 
     s = TCPSocket.new "127.0.0.1", cntl
     s << "GET /stats HTTP/1.0\r\n\r\n"
@@ -279,8 +284,9 @@ class TestCLI < Minitest::Test
     end
 
     wait_booted
+    ctl_port = control_port(cli)
 
-    s = yield
+    s = yield ctl_port
     s << "GET /gc-stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
@@ -295,12 +301,12 @@ class TestCLI < Minitest::Test
     end
     gc_count_before = gc_stats["count"].to_i
 
-    s = yield
+    s = yield ctl_port
     s << "GET /gc HTTP/1.0\r\n\r\n"
     body = s.read # Ignored
     s.close
 
-    s = yield
+    s = yield ctl_port
     s << "GET /gc-stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
@@ -320,11 +326,10 @@ class TestCLI < Minitest::Test
 
   def test_control_gc_stats_tcp
     skip_on :jruby, suffix: " - Hitting /gc route does not increment count"
-    uri  = "tcp://127.0.0.1:#{UniquePort.call}/"
-    cntl_port = UniquePort.call
-    cntl = "tcp://127.0.0.1:#{cntl_port}/"
+    uri  = "tcp://127.0.0.1:0/"
+    cntl = "tcp://127.0.0.1:0/"
 
-    control_gc_stats(uri, cntl) { TCPSocket.new "127.0.0.1", cntl_port }
+    control_gc_stats(uri, cntl) { |port| TCPSocket.new "127.0.0.1", port }
   end
 
   def test_control_gc_stats_unix
@@ -393,7 +398,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_state
-    url = "tcp://127.0.0.1:#{UniquePort.call}"
+    url = "tcp://127.0.0.1:0"
     cli = Puma::CLI.new ["--state", @tmp_path, "--control-url", url]
     cli.launcher.write_state
 
