@@ -236,7 +236,7 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
     file_log_requests_config = true
 
     @options[:config_files] = [
-      'test/shell/t1_conf.rb'
+      'test/config/t1_conf.rb'
     ]
 
     conf = Rack::Handler::Puma.config(->{}, @options)
@@ -250,7 +250,7 @@ class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
 
     @options[:log_requests] = user_log_requests_config
     @options[:config_files] = [
-      'test/shell/t1_conf.rb'
+      'test/config/t1_conf.rb'
     ]
 
     conf = Rack::Handler::Puma.config(->{}, @options)

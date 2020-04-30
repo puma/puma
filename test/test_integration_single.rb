@@ -43,6 +43,17 @@ class TestIntegrationSingle < TestIntegration
     assert_equal 0, status
   end
 
+  def test_prefer_rackup_file_specified_by_cli
+    skip_unless_signal_exist? :TERM
+
+    cli_server "-C test/config/with_rackup_from_dsl.rb test/rackup/hello.ru"
+    connection = connect
+    reply = read_body(connection)
+    _, status = stop_server
+
+    assert_match("Hello World", reply)
+  end
+
   def test_term_not_accepts_new_connections
     skip_unless_signal_exist? :TERM
     skip_on :jruby
@@ -100,5 +111,24 @@ class TestIntegrationSingle < TestIntegration
     t.join
 
     assert_match "Thread: TID", output.join
+  end
+
+  def test_write_to_log
+    skip_unless_signal_exist? :TERM
+
+    suppress_output = '> /dev/null 2>&1'
+
+    cli_server '-C test/config/t1_conf.rb test/rackup/hello.ru'
+
+    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+
+    stop_server
+
+    log = File.read('t1-stdout')
+
+    File.unlink 't1-stdout' if File.file? 't1-stdout'
+    File.unlink 't1-pid' if File.file? 't1-pid'
+
+    assert_match(%r!GET / HTTP/1\.1!, log)
   end
 end

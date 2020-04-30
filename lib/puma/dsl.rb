@@ -308,7 +308,7 @@ module Puma
     # @example
     #   rackup '/u/apps/lolcat/config.ru'
     def rackup(path)
-      @options[:rackup] = path.to_s
+      @options[:rackup] ||= path.to_s
     end
 
     def early_hints(answer=true)
