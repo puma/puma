@@ -47,6 +47,7 @@ module Puma
       @shutdown = false
 
       @trim_requested = 0
+      @out_of_band_pending = false
 
       @workers = []
 
@@ -65,6 +66,7 @@ module Puma
 
     attr_reader :spawned, :trim_requested, :waiting
     attr_accessor :clean_thread_locals
+    attr_accessor :out_of_band_hook
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Performance/HashEachMethods
@@ -116,6 +118,9 @@ module Puma
               end
 
               @waiting += 1
+              if @out_of_band_pending && trigger_out_of_band_hook
+                @out_of_band_pending = false
+              end
               not_full.signal
               not_empty.wait mutex
               @waiting -= 1
@@ -129,7 +134,7 @@ module Puma
           end
 
           begin
-            block.call(work, *extra)
+            @out_of_band_pending = true if block.call(work, *extra)
           rescue Exception => e
             STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
           end
@@ -142,6 +147,21 @@ module Puma
     end
 
     private :spawn_thread
+
+    def trigger_out_of_band_hook
+      return false unless out_of_band_hook && out_of_band_hook.any?
+
+      # we execute on idle hook when all threads are free
+      return false unless @spawned == @waiting
+
+      out_of_band_hook.each(&:call)
+      true
+    rescue Exception => e
+      STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"
+      true
+    end
+
+    private :trigger_out_of_band_hook
 
     def with_mutex(&block)
       @mutex.owned? ?

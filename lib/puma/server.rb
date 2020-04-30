@@ -224,8 +224,11 @@ module Puma
             @reactor.add client
           end
         end
+
+        process_now
       end
 
+      @thread_pool.out_of_band_hook = @options[:out_of_band]
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
       if @queue_requests
@@ -279,6 +282,7 @@ module Puma
                 break if handle_check
               else
                 begin
+                  pool.wait_until_not_full
                   if io = sock.accept_nonblock
                     client = Client.new io, @binder.env(sock)
                     if remote_addr_value
@@ -288,7 +292,6 @@ module Puma
                     end
 
                     pool << client
-                    pool.wait_until_not_full
                   end
                 rescue SystemCallError
                   # nothing
@@ -435,12 +438,6 @@ module Puma
           # Already closed
         rescue StandardError => e
           @events.unknown_error self, e, "Client"
-        end
-
-        if @options[:out_of_band]
-          @thread_pool.with_mutex do
-            @options[:out_of_band].each(&:call) if @thread_pool.busy_threads == 1
-          end
         end
       end
     end
