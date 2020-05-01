@@ -59,8 +59,6 @@ module Puma
       @app = app
       @events = events
 
-      @check, @notify = Puma::Util.pipe
-
       @status = :stop
 
       @min_threads = 0
@@ -258,6 +256,7 @@ module Puma
     end
 
     def handle_servers
+      @check, @notify = Puma::Util.pipe unless @notify
       begin
         check = @check
         sockets = [check] + @binder.ios
@@ -324,6 +323,8 @@ module Puma
       ensure
         @check.close unless @check.closed? # Ruby 2.2 issue
         @notify.close
+        @notify = nil
+        @check = nil
       end
 
       @events.fire :state, :done
@@ -881,6 +882,7 @@ module Puma
     end
 
     def notify_safely(message)
+      @check, @notify = Puma::Util.pipe unless @notify
       begin
         @notify << message
       rescue IOError
@@ -910,8 +912,9 @@ module Puma
       @thread.join if @thread && sync
     end
 
-    def begin_restart
+    def begin_restart(sync=false)
       notify_safely(RESTART_COMMAND)
+      @thread.join if @thread && sync
     end
 
     def fast_write(io, str)

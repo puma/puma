@@ -705,5 +705,19 @@ module Puma
       end
     end
 
+    # When enabled, workers will be forked from worker 0 instead of from the master process.
+    # This option is similar to `preload_app` because the app is preloaded before forking,
+    # but it is compatible with phased restart.
+    #
+    # This option also enables the `refork` command (SIGURG), which optimizes copy-on-write performance
+    # in a running app.
+    #
+    # A refork will automatically trigger once after the specified number of requests
+    # (default 1000), or pass 0 to disable auto refork.
+    #
+    # @note Cluster mode only.
+    def fork_worker(after_requests=1000)
+      @options[:fork_worker] = Integer(after_requests)
+    end
   end
 end

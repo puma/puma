@@ -75,6 +75,11 @@ class TestIntegrationCluster < TestIntegration
     usr1_all_respond unix: false
   end
 
+  def test_usr1_fork_worker
+    skip_unless_signal_exist? :USR1
+    usr1_all_respond config: '--fork-worker'
+  end
+
   def test_usr1_all_respond_unix
     skip_unless_signal_exist? :USR1
     usr1_all_respond unix: true
@@ -239,8 +244,8 @@ RUBY
 
   # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
   # All should be responded to, and at least three workers should be used
-  def usr1_all_respond(unix: false)
-    cli_server "-w #{WORKERS} -t 0:5 -q test/rackup/sleep_pid.ru", unix: unix
+  def usr1_all_respond(unix: false, config: '')
+    cli_server "-w #{WORKERS} -t 0:5 -q test/rackup/sleep_pid.ru #{config}", unix: unix
     threads = []
     replies = []
     mutex = Mutex.new

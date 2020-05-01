@@ -41,6 +41,7 @@ Puma cluster responds to these signals:
 - `HUP`  reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided it will behave like `INT`
 - `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
 - `CHLD`
+- `URG` refork workers in phases from worker 0, if `fork_workers` option is enabled.
 
 ## Callbacks order in case of different signals
 
