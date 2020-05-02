@@ -59,6 +59,7 @@ module Puma
       @app = app
       @events = events
 
+      @check, @notify = nil
       @status = :stop
 
       @min_threads = 0
