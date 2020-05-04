@@ -300,17 +300,17 @@ module Puma
                   end
                 rescue SystemCallError => e
                   # TODO: check if we able to use client here
-                  @debug_logger.error_dump(e, client&.env)
+                  @debug_logger.error_dump(e)
                   # nothing
                 rescue Errno::ECONNABORTED
                   # TODO: check if we able to use client here
-                  @debug_logger.error_dump(e, client&.env, custom_message: 'Client closed the socket even before accept')
+                  @debug_logger.error_dump(e, nil, custom_message: 'Client closed the socket even before accept')
                   begin
                     io.close
                   rescue => e
                     Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
                     # TODO: check if we able to use client here
-                    @debug_logger.error_dump(e, client&.env)
+                    @debug_logger.error_dump(e, nil)
                   end
                 end
               end

@@ -29,7 +29,7 @@ module Puma
     def error_dump(error, env=nil, options={})
       return unless @debug || options[:force]
 
-      options[:print_title] = true unless options.keys.include?(:print_title)
+      options[:print_title] = true unless options.key?(:print_title)
 
       #
       # TODO: add all info we have about request
