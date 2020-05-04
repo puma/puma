@@ -157,13 +157,21 @@ end
 RUBY
   end
 
+  def test_refork
+    refork = Tempfile.new('refork')
+    cli_server "-w #{WORKERS} test/rackup/sleep.ru", config: <<RUBY
+fork_worker 1
+on_refork {File.write('#{refork.path}', 'Reforked')}
+RUBY
+    pids = get_worker_pids
+    read_body(connect('sleep1')) until refork.read == 'Reforked'
+    refute_includes pids, get_worker_pids(1, WORKERS - 1)
+  end
+
   private
 
   def worker_timeout(timeout, iterations, config)
-    config_file = Tempfile.new(%w(worker_timeout .rb))
-    config_file.write config
-    config_file.close
-    cli_server "-w #{WORKERS} -t 1:1 -C #{config_file.path} test/rackup/hello.ru"
+    cli_server "-w #{WORKERS} -t 1:1 test/rackup/hello.ru", config: config
 
     pids = []
     Timeout.timeout(iterations * timeout + 1) do
