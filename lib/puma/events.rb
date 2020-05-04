@@ -2,6 +2,7 @@
 
 require 'puma/const'
 require "puma/null_io"
+require 'puma/debug_logger'
 require 'stringio'
 
 module Puma
@@ -36,6 +37,7 @@ module Puma
       @stderr.sync = true
 
       @debug = ENV.key? 'PUMA_DEBUG'
+      @debug_logger = DebugLogger.new(@stderr)
 
       @hooks = Hash.new { |h,k| h[k] = [] }
     end
@@ -97,6 +99,7 @@ module Puma
         "(#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]}#{env[REQUEST_PATH]}): " \
         "#{error.inspect}" \
         "\n---\n"
+      @debug_logger.error_dump(error, env, print_title: false)
     end
 
     # An SSL error has occurred.
@@ -106,6 +109,7 @@ module Puma
     def ssl_error(server, peeraddr, peercert, error)
       subject = peercert ? peercert.subject : nil
       @stderr.puts "#{Time.now}: SSL error, peer: #{peeraddr}, peer cert: #{subject}, #{error.inspect}"
+      @debug_logger.error_dump(error, nil, print_title: false)
     end
 
     # An unknown error has occurred.
@@ -116,14 +120,7 @@ module Puma
       if error.respond_to? :render
         error.render "#{Time.now}: #{kind} error", @stderr
       else
-        if env
-          string_block = [ "#{Time.now}: #{kind} error handling request { #{env['REQUEST_METHOD']} #{env['PATH_INFO']} }" ]
-          string_block << error.inspect
-        else
-          string_block = [ "#{Time.now}: #{kind} error: #{error.inspect}" ]
-        end
-        string_block << error.backtrace
-        @stderr.puts string_block.join("\n")
+        @debug_logger.error_dump(error, env, force: true, custom_message: kind)
       end
     end
 
