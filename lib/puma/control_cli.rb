@@ -82,6 +82,15 @@ module Puma
 
       @command = argv.shift
 
+      # check presence of command
+      unless @command
+        raise "Available commands: #{COMMANDS.join(", ")}"
+      end
+
+      unless COMMANDS.include? @command
+        raise "Invalid command: #{@command}"
+      end
+
       unless @config_file == '-'
         environment = @environment || 'development'
 
@@ -100,16 +109,6 @@ module Puma
           @pidfile            ||= config.options[:pidfile]
         end
       end
-
-      # check present of command
-      unless @command
-        raise "Available commands: #{COMMANDS.join(", ")}"
-      end
-
-      unless COMMANDS.include? @command
-        raise "Invalid command: #{@command}"
-      end
-
     rescue => e
       @stdout.puts e.message
       exit 1
