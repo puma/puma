@@ -10,6 +10,7 @@
   * Increases maximum URI path length from 2048 to 8196 bytes (#2167)
   * Force shutdown responses can be overridden by using the `lowlevel_error_handler` config (#2203)
   * Faster phased restart and worker timeout (#2121)
+  * New configuration option to set state file permissions (#2238)
 
 * Deprecations, Removals and Breaking API Changes
   * `Puma.stats` now returns a Hash instead of a JSON string (#2086)

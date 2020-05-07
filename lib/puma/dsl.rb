@@ -399,6 +399,14 @@ module Puma
       @options[:state] = path.to_s
     end
 
+    # Use +permission+ to restrict permissions for the state file.
+    #
+    # @example
+    #   state_permission 0600
+    def state_permission(permission)
+      @options[:state_permission] = permission
+    end
+
     # How many worker processes to run.  Typically this is set to
     # the number of available cores.
     #
