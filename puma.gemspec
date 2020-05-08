@@ -22,9 +22,9 @@ Gem::Specification.new do |s|
   if s.respond_to?(:metadata=)
     s.metadata = {
       "bug_tracker_uri" => "https://github.com/puma/puma/issues",
-      "changelog_uri" => "https://github.com/puma/puma/blob/master/History.md"
+      "changelog_uri" => "https://github.com/puma/puma/blob/master/History.md",
       "homepage_uri" => "http://puma.io",
-      "source_code_uri" => "https://github.com/puma/puma",
+      "source_code_uri" => "https://github.com/puma/puma"
     }
   end
   
