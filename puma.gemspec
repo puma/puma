@@ -18,7 +18,16 @@ Gem::Specification.new do |s|
   s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
             %w[History.md LICENSE README.md]
   s.homepage = "http://puma.io"
-  s.metadata["changelog_uri"] = "https://github.com/puma/puma/blob/master/History.md"
+  
+  if s.respond_to?(:metadata=)
+    s.metadata = {
+      "bug_tracker_uri" => "https://github.com/puma/puma/issues",
+      "changelog_uri" => "https://github.com/puma/puma/blob/master/History.md"
+      "homepage_uri" => "http://puma.io",
+      "source_code_uri" => "https://github.com/puma/puma",
+    }
+  end
+  
   s.license = "BSD-3-Clause"
   s.required_ruby_version = Gem::Requirement.new(">= 2.2")
 end
