@@ -11,9 +11,9 @@
   * Force shutdown responses can be overridden by using the `lowlevel_error_handler` config (#2203)
   * Faster phased restart and worker timeout (#2121)
   * New configuration option to set state file permissions (#2238)
+  * `Puma.stats_hash` returns a stats in Hash instead of a JSON string (#2086, #2253)
 
 * Deprecations, Removals and Breaking API Changes
-  * `Puma.stats` now returns a Hash instead of a JSON string (#2086)
   * `--control` has been removed. Use `--control-url` (#1487)
   * `worker_directory` has been removed. Use `directory`.
   * min_threads now set by environment variables PUMA_MIN_THREADS and MIN_THREADS. (#2143)
