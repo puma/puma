@@ -42,7 +42,7 @@ module Puma
       string_block = []
       formatted_text = " #{text}:" if text
       formatted_error = " #{error.inspect}" if error
-      string_block << "#{Time.now}#{text}#{error.inspect}"
+      string_block << "#{Time.now}#{formatted_text}#{formatted_error}"
       if env
         string_block << "Handling request { #{env[REQUEST_METHOD]} #{env[REQUEST_PATH] || env[PATH_INFO]} } (#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]})"
       end

@@ -12,7 +12,6 @@ require 'puma/binder'
 require 'puma/accept_nonblock'
 require 'puma/util'
 require 'puma/io_buffer'
-require 'puma/debug_logger'
 
 require 'puma/puma_http11'
 
@@ -59,7 +58,6 @@ module Puma
     def initialize(app, events=Events.stdio, options={})
       @app = app
       @events = events
-      @debug_logger = DebugLogger.stdio
 
       @check, @notify = Puma::Util.pipe
 
@@ -210,15 +208,16 @@ module Puma
 
           client.close
 
-          @events.ssl_error self, addr, cert, e
+          @events.ssl_error e, addr, cert
         rescue HttpParserError => e
           client.write_error(400)
           client.close
 
-          @events.parse_error self, client.env, e
+          @events.parse_error e, client.env
         rescue ConnectionError, EOFError => e
-          @debug_logger.error_dump(error: e, env: client.env)
           client.close
+
+          @events.connection_error e, client.env
         else
           if process_now
             process_client client, buffer
@@ -296,25 +295,20 @@ module Puma
 
                     pool << client
                   end
-                rescue SystemCallError => e
-                  # TODO: check if we able to use client here
-                  @debug_logger.error_dump(error: e)
+                rescue SystemCallError
                   # nothing
                 rescue Errno::ECONNABORTED
-                  # TODO: check if we able to use client here
-                  @debug_logger.error_dump(error: e, text: 'Client closed the socket even before accept')
+                  # client closed the socket even before accept
                   begin
                     io.close
-                  rescue => e
+                  rescue
                     Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-                    # TODO: check if we able to use client here
-                    @debug_logger.error_dump(error: e)
                   end
                 end
               end
             end
           rescue Object => e
-            @events.unknown_error self, e, "Listen loop"
+            @events.unknown_error e, nil, "Listen loop"
           end
         end
 
@@ -327,7 +321,7 @@ module Puma
         end
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
-        @debug_logger.error_dump(error: e, force: true, text: 'Exception handling servers')
+        @events.unknown_error e, nil, "Exception handling servers"
       ensure
         @check.close unless @check.closed? # Ruby 2.2 issue
         @notify.close
@@ -404,8 +398,7 @@ module Puma
         end
 
       # The client disconnected while we were reading data
-      rescue ConnectionError => e
-        @debug_logger.error_dump(error: e, env: client.env, text: 'The client disconnected while we were reading data')
+      rescue ConnectionError
         # Swallow them. The ensure tries to close +client+ down
 
       # SSL handshake error
@@ -418,7 +411,7 @@ module Puma
 
         close_socket = true
 
-        @events.ssl_error self, addr, cert, e
+        @events.ssl_error e, addr, cert
 
       # The client doesn't know HTTP well
       rescue HttpParserError => e
@@ -426,7 +419,7 @@ module Puma
 
         client.write_error(400)
 
-        @events.parse_error self, client.env, e
+        @events.parse_error e, client.env
 
       # Server error
       rescue StandardError => e
@@ -434,19 +427,17 @@ module Puma
 
         client.write_error(500)
 
-        @events.unknown_error self, e, "Read"
-
+        @events.unknown_error e, nil, "Read"
       ensure
         buffer.reset
 
         begin
           client.close if close_socket
-        rescue IOError, SystemCallError => e
+        rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-          @debug_logger.error_dump(error: e, env: client.env)
           # Already closed
         rescue StandardError => e
-          @events.unknown_error self, e, "Client"
+          @events.unknown_error e, nil, "Client"
         end
       end
     end
@@ -494,11 +485,10 @@ module Puma
       unless env.key?(REMOTE_ADDR)
         begin
           addr = client.peerip
-        rescue Errno::ENOTCONN => e
+        rescue Errno::ENOTCONN
           # Client disconnects can result in an inability to get the
           # peeraddr from the socket; default to localhost.
           addr = LOCALHOST_IP
-          @debug_logger.error_dump(error: e, text: 'Client disconnects can result in an inability to get the peeraddr from the socket')
         end
 
         # Set unix socket addrs to localhost
@@ -572,9 +562,8 @@ module Puma
             end
 
             fast_write client, "\r\n".freeze
-          rescue ConnectionError => e
+          rescue ConnectionError
             # noop, if we lost the socket we just won't send the early hints
-            @debug_logger.error_dump(error: e, env: env)
           end
         }
       end
@@ -600,14 +589,12 @@ module Puma
             return :async
           end
         rescue ThreadPool::ForceShutdown => e
-          @events.unknown_error self, e, "Rack app", env
+          @events.unknown_error e, env, "Rack app"
           @events.log "Detected force shutdown of a thread"
-          @debug_logger.error_dump(error: e, env: env)
 
           status, headers, res_body = lowlevel_error(e, env, 503)
         rescue Exception => e
-          @events.unknown_error self, e, "Rack app", env
-          @debug_logger.error_dump(error: e, env: env)
+          @events.unknown_error e, env, "Rack app"
 
           status, headers, res_body = lowlevel_error(e, env, 500)
         end
@@ -744,8 +731,7 @@ module Puma
             fast_write client, CLOSE_CHUNKED
             client.flush
           end
-        rescue SystemCallError, IOError => e
-          @debug_logger.error_dump(error: e, env: env)
+        rescue SystemCallError, IOError
           raise ConnectionError, "Connection error detected during write"
         end
 
@@ -873,8 +859,7 @@ module Puma
                 client = Client.new io, @binder.env(sock)
                 @thread_pool << client
               end
-            rescue SystemCallError => e
-              @debug_logger.error_dump(error: e)
+            rescue SystemCallError
             end
           end
         end
@@ -898,12 +883,10 @@ module Puma
     def notify_safely(message)
       begin
         @notify << message
-      rescue IOError => e
+      rescue IOError
          # The server, in another thread, is shutting down
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-        @debug_logger.error_dump(error: e)
       rescue RuntimeError => e
-        @debug_logger.error_dump(error: e)
         # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
         if e.message.include?('IOError')
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
@@ -936,15 +919,13 @@ module Puma
       while true
         begin
           n = io.syswrite str
-        rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
-          @debug_logger.error_dump(error: e)
+        rescue Errno::EAGAIN, Errno::EWOULDBLOCK
           if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
             raise ConnectionError, "Socket timeout writing data"
           end
 
           retry
-        rescue  Errno::EPIPE, SystemCallError, IOError => e
-          @debug_logger.error_dump(error: e)
+        rescue  Errno::EPIPE, SystemCallError, IOError
           raise ConnectionError, "Socket timeout writing data"
         end
 

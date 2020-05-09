@@ -87,28 +87,35 @@ module Puma
       formatter.call(str)
     end
 
+    # An HTTP connection error has occurred.
+    # +error+ a connection exception, +env+ the request
+    #
+    def connection_error(error, env, text="HTTP connection error")
+      @debug_logger.error_dump(error: error, env: env, text: text)
+    end
+
     # An HTTP parse error has occurred.
-    # +server+ is the Server object, +env+ the request, and +error+ a
+    # +env+ the request, and +error+ a
     # parsing exception.
     #
-    def parse_error(server, env, error)
+    def parse_error(error, env)
       @debug_logger.error_dump(error: error, env: env, text: 'HTTP parse error, malformed request', force: true)
     end
 
     # An SSL error has occurred.
-    # +server+ is the Server object, +peeraddr+ peer address, +peercert+
+    # +peeraddr+ peer address, +peercert+
     # any peer certificate (if present), and +error+ an exception object.
     #
-    def ssl_error(server, peeraddr, peercert, error)
+    def ssl_error(error, peeraddr, peercert)
       subject = peercert ? peercert.subject : nil
       @debug_logger.error_dump(error: error, text: "SSL error, peer: #{peeraddr}, peer cert: #{subject}", force: true)
     end
 
     # An unknown error has occurred.
-    # +server+ is the Server object, +error+ an exception object,
+    # +error+ an exception object,
     # +kind+ some additional info, and +env+ the request.
     #
-    def unknown_error(server, error, kind="Unknown", env=nil)
+    def unknown_error(error, env=nil, kind="Unknown")
       @debug_logger.error_dump(error: error, env: env, text: kind, force: true)
     end
 
