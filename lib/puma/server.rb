@@ -113,18 +113,16 @@ module Puma
       def cork_socket(socket)
         begin
           socket.setsockopt(6, 3, 1) if socket.kind_of? TCPSocket
-        rescue IOError, SystemCallError => e
+        rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-          @debug_logger.error_dump(e)
         end
       end
 
       def uncork_socket(socket)
         begin
           socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
-        rescue IOError, SystemCallError => e
+        rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-          @debug_logger.error_dump(e)
         end
       end
 
