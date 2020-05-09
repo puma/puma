@@ -562,7 +562,8 @@ module Puma
             end
 
             fast_write client, "\r\n".freeze
-          rescue ConnectionError
+          rescue ConnectionError => e
+            @events.connection_error e, client.env
             # noop, if we lost the socket we just won't send the early hints
           end
         }
