@@ -102,6 +102,7 @@ module Puma
       write_pid
 
       path = @options[:state]
+      permission = @options[:state_permission]
       return unless path
 
       require 'puma/state_file'
@@ -111,7 +112,7 @@ module Puma
       sf.control_url = @options[:control_url]
       sf.control_auth_token = @options[:control_auth_token]
 
-      sf.save path
+      sf.save path, permission
     end
 
     # Delete the configured pidfile

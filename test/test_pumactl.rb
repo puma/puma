@@ -33,6 +33,14 @@ class TestPumaControlCli < TestConfigFileBase
     end
   end
 
+  def test_blank_command
+    assert_system_exit_with_cli_output [], "Available commands: #{Puma::ControlCLI::COMMANDS.join(", ")}"
+  end
+
+  def test_invalid_command
+    assert_system_exit_with_cli_output ['an-invalid-command'], 'Invalid command: an-invalid-command'
+  end
+
   def test_config_file
     control_cli = Puma::ControlCLI.new ["--config-file", "test/config/state_file_testing_config.rb", "halt"]
     assert_equal "t3-pid", control_cli.instance_variable_get("@pidfile")
@@ -173,6 +181,18 @@ class TestPumaControlCli < TestConfigFileBase
     out, _ = capture_subprocess_io do
       cmd.run
     end
+    assert_match expected_out, out
+  end
+
+  def assert_system_exit_with_cli_output(options, expected_out)
+    out, _ = capture_subprocess_io do
+      response = assert_raises(SystemExit) do
+        Puma::ControlCLI.new(options).run
+      end
+
+      assert_equal(response.status, 1)
+    end
+
     assert_match expected_out, out
   end
 end

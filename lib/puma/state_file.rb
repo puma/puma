@@ -8,8 +8,11 @@ module Puma
       @options = {}
     end
 
-    def save(path)
-      File.write path, YAML.dump(@options)
+    def save(path, permission = nil)
+      File.open(path, "w") do |file|
+        file.chmod(permission) if permission
+        file.write(YAML.dump(@options))
+      end
     end
 
     def load(path)
