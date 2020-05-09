@@ -79,7 +79,7 @@ module Puma
     # Write +str+ to +@stderr+
     #
     def error(str)
-      @stderr.puts format("ERROR: #{str}")
+      @debug_logger.error_dump(text: format("ERROR: #{str}"))
       exit 1
     end
 
@@ -92,7 +92,7 @@ module Puma
     # parsing exception.
     #
     def parse_error(server, env, error)
-      @debug_logger.error_dump(error, env, custom_message: 'HTTP parse error, malformed request', force: true)
+      @debug_logger.error_dump(error: error, env: env, text: 'HTTP parse error, malformed request', force: true)
     end
 
     # An SSL error has occurred.
@@ -101,7 +101,7 @@ module Puma
     #
     def ssl_error(server, peeraddr, peercert, error)
       subject = peercert ? peercert.subject : nil
-      @debug_logger.error_dump(error, nil, custom_message: "SSL error, peer: #{peeraddr}, peer cert: #{subject}", force: true)
+      @debug_logger.error_dump(error: error, text: "SSL error, peer: #{peeraddr}, peer cert: #{subject}", force: true)
     end
 
     # An unknown error has occurred.
@@ -109,7 +109,7 @@ module Puma
     # +kind+ some additional info, and +env+ the request.
     #
     def unknown_error(server, error, kind="Unknown", env=nil)
-      @debug_logger.error_dump(error, env, custom_message: kind, force: true)
+      @debug_logger.error_dump(error: error, env: env, text: kind, force: true)
     end
 
     def on_booted(&block)

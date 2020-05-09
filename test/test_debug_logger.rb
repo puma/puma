@@ -5,14 +5,6 @@ class TestDebugLogger < Minitest::Test
     @debug_logger = Puma::DebugLogger.stdio
   end
 
-  def test_other_io
-    with_debug_mode do
-      debug_logger = Puma::DebugLogger.new(StringIO.new)
-      debug_logger.error_dump(StandardError.new('ready'))
-      assert_match %r!#<StandardError: ready>!, debug_logger.ioerr.string
-    end
-  end
-
   def test_stdio
     debug_logger = Puma::DebugLogger.stdio
 
@@ -21,7 +13,7 @@ class TestDebugLogger < Minitest::Test
 
   def test_error_dump_if_debug_false
     _, err = capture_io do
-      @debug_logger.error_dump(StandardError.new('ready'))
+      @debug_logger.error_dump(text: 'blank')
     end
 
     assert_empty err
@@ -29,7 +21,7 @@ class TestDebugLogger < Minitest::Test
 
   def test_error_dump_force
     _, err = capture_io do
-      Puma::DebugLogger.stdio.error_dump(StandardError.new('ready'), nil, force: true)
+      Puma::DebugLogger.stdio.error_dump(text: 'ready', force: true)
     end
 
     assert_match %r!ready!, err
@@ -38,7 +30,7 @@ class TestDebugLogger < Minitest::Test
   def test_error_dump_with_only_error
     with_debug_mode do
       _, err = capture_io do
-        Puma::DebugLogger.stdio.error_dump(StandardError.new('ready'), nil)
+        Puma::DebugLogger.stdio.error_dump(error: StandardError.new('ready'))
       end
 
       assert_match %r!#<StandardError: ready>!, err
@@ -54,17 +46,17 @@ class TestDebugLogger < Minitest::Test
       }
 
       _, err = capture_io do
-        Puma::DebugLogger.stdio.error_dump(StandardError.new, env)
+        Puma::DebugLogger.stdio.error_dump(error: StandardError.new, env: env)
       end
 
       assert_match %r!Handling request { GET /debug } \(8\.8\.8\.8\)!, err
     end
   end
 
-  def test_error_dump_with_custom_message
+  def test_error_dump_with_text
     with_debug_mode do
       _, err = capture_io do
-        Puma::DebugLogger.stdio.error_dump(StandardError.new, nil, custom_message: 'The client disconnected while we were reading data')
+        Puma::DebugLogger.stdio.error_dump(text: 'The client disconnected while we were reading data')
       end
 
       assert_match %r!The client disconnected while we were reading data!, err

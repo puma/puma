@@ -22,28 +22,32 @@ module Puma
     end
 
     # Any error has occured during debug mode.
-    # +error+ is an exception object, +env+ the request,
     # +options+ hash with additional options:
     # - +force+ (default nil) to log info even if debug mode is turned off
-    # - +custom_message+ (default nil) custom string to print after title
+    # - +error+ is an exception object
+    # - +env+ the request
+    # - +text+ (default nil) custom string to print in title
     #   and before all remaining info.
     #
-    def error_dump(error, env=nil, options={})
+    def error_dump(options={})
       return unless @debug || options[:force]
+      error = options[:error]
+      env = options[:env]
+      text = options[:text]
 
       #
       # TODO: add all info we have about request
       #
+
       string_block = []
-
-      custom_message = " #{options[:custom_message]}:" if options[:custom_message]
-      string_block << "#{Time.now}#{custom_message} #{error.inspect}"
-
+      formatted_text = " #{text}:" if text
+      formatted_error = " #{error.inspect}" if error
+      string_block << "#{Time.now}#{text}#{error.inspect}"
       if env
         string_block << "Handling request { #{env[REQUEST_METHOD]} #{env[REQUEST_PATH] || env[PATH_INFO]} } (#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]})"
       end
 
-      string_block << error.backtrace
+      string_block << error.backtrace if error
 
       ioerr.puts string_block.join("\n")
     end
