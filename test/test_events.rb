@@ -175,7 +175,8 @@ class TestEvents < Minitest::Test
     sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
     sock.read
     sleep 0.1 # important so that the previous data is sent as a packet
-    assert_match %r!HTTP parse error, malformed request \(#{path}\)!, events.stderr.string
+    assert_match %r!HTTP parse error, malformed request!, events.stderr.string
+    assert_match %r!Handling request { GET #{path} }!, events.stderr.string
     server.stop(true)
   end
 end

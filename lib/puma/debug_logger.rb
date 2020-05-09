@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
+require 'puma/const'
+
 module Puma
   # The implementation of a logging in debug mode.
   #
   class DebugLogger
+    include Const
+
     attr_reader :ioerr
 
     def initialize(ioerr)
@@ -21,31 +25,22 @@ module Puma
     # +error+ is an exception object, +env+ the request,
     # +options+ hash with additional options:
     # - +force+ (default nil) to log info even if debug mode is turned off
-    # - +print_title+ (default true) to log time and error object inspection
-    #   on the first line.
     # - +custom_message+ (default nil) custom string to print after title
     #   and before all remaining info.
     #
     def error_dump(error, env=nil, options={})
       return unless @debug || options[:force]
 
-      options[:print_title] = true unless options.key?(:print_title)
-
       #
       # TODO: add all info we have about request
       #
       string_block = []
 
-      if options[:print_title]
-        string_block << "#{Time.now}: #{error.inspect}"
-      end
-
-      if options[:custom_message]
-        string_block << "#{options[:custom_message]}"
-      end
+      custom_message = " #{options[:custom_message]}:" if options[:custom_message]
+      string_block << "#{Time.now}#{custom_message} #{error.inspect}"
 
       if env
-        string_block << "Handling request { #{env['REQUEST_METHOD']} #{env['PATH_INFO']} }"
+        string_block << "Handling request { #{env[REQUEST_METHOD]} #{env[REQUEST_PATH] || env[PATH_INFO]} } (#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]})"
       end
 
       string_block << error.backtrace

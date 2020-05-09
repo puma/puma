@@ -5,6 +5,14 @@ class TestDebugLogger < Minitest::Test
     @debug_logger = Puma::DebugLogger.stdio
   end
 
+  def test_other_io
+    with_debug_mode do
+      debug_logger = Puma::DebugLogger.new(StringIO.new)
+      debug_logger.error_dump(StandardError.new('ready'))
+      assert_match %r!#<StandardError: ready>!, debug_logger.ioerr.string
+    end
+  end
+
   def test_stdio
     debug_logger = Puma::DebugLogger.stdio
 
@@ -41,24 +49,15 @@ class TestDebugLogger < Minitest::Test
     with_debug_mode do
       env = {
         'REQUEST_METHOD' => 'GET',
-        'PATH_INFO' => '/debug'
+        'PATH_INFO' => '/debug',
+        'HTTP_X_FORWARDED_FOR' => '8.8.8.8'
       }
 
       _, err = capture_io do
         Puma::DebugLogger.stdio.error_dump(StandardError.new, env)
       end
 
-      assert_match %r!Handling request { GET /debug }!, err
-    end
-  end
-
-  def test_error_dump_without_title
-    with_debug_mode do
-      _, err = capture_io do
-        Puma::DebugLogger.stdio.error_dump(StandardError.new('ready'), nil, print_title: false)
-      end
-
-      refute_match %r!#<StandardError: ready>!, err
+      assert_match %r!Handling request { GET /debug } \(8\.8\.8\.8\)!, err
     end
   end
 

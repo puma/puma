@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'puma/const'
 require "puma/null_io"
 require 'puma/debug_logger'
 require 'stringio'
@@ -23,8 +22,6 @@ module Puma
         "[#{$$}] #{str}"
       end
     end
-
-    include Const
 
     # Create an Events object that prints to +stdout+ and +stderr+.
     #
@@ -95,11 +92,7 @@ module Puma
     # parsing exception.
     #
     def parse_error(server, env, error)
-      @stderr.puts "#{Time.now}: HTTP parse error, malformed request " \
-        "(#{env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]}#{env[REQUEST_PATH]}): " \
-        "#{error.inspect}" \
-        "\n---\n"
-      @debug_logger.error_dump(error, env, print_title: false)
+      @debug_logger.error_dump(error, env, custom_message: 'HTTP parse error, malformed request', force: true)
     end
 
     # An SSL error has occurred.
@@ -108,8 +101,7 @@ module Puma
     #
     def ssl_error(server, peeraddr, peercert, error)
       subject = peercert ? peercert.subject : nil
-      @stderr.puts "#{Time.now}: SSL error, peer: #{peeraddr}, peer cert: #{subject}, #{error.inspect}"
-      @debug_logger.error_dump(error, nil, print_title: false)
+      @debug_logger.error_dump(error, nil, custom_message: "SSL error, peer: #{peeraddr}, peer cert: #{subject}", force: true)
     end
 
     # An unknown error has occurred.
@@ -117,11 +109,7 @@ module Puma
     # +kind+ some additional info, and +env+ the request.
     #
     def unknown_error(server, error, kind="Unknown", env=nil)
-      if error.respond_to? :render
-        error.render "#{Time.now}: #{kind} error", @stderr
-      else
-        @debug_logger.error_dump(error, env, force: true, custom_message: kind)
-      end
+      @debug_logger.error_dump(error, env, custom_message: kind, force: true)
     end
 
     def on_booted(&block)
