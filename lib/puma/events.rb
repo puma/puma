@@ -91,7 +91,7 @@ module Puma
     # +error+ a connection exception, +env+ the request
     #
     def connection_error(error, env, text="HTTP connection error")
-      @debug_logger.error_dump(error: error, env: env, text: text, force: true)
+      @debug_logger.error_dump(error: error, env: env, text: text)
     end
 
     # An HTTP parse error has occurred.
