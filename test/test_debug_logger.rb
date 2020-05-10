@@ -1,3 +1,4 @@
+require 'puma/debug_logger'
 require_relative "helper"
 
 class TestDebugLogger < Minitest::Test
