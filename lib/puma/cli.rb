@@ -133,7 +133,7 @@ module Puma
           o.on "-f", "--fork-worker=[REQUESTS]", OptionParser::DecimalInteger,
             "Fork new workers from existing worker. Cluster mode only",
             "Auto-refork after REQUESTS (default 1000)" do |*args|
-            user_config.fork_worker *args.compact
+            user_config.fork_worker(*args.compact)
           end
 
           o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
