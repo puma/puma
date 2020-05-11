@@ -298,7 +298,7 @@ module Puma
                 restart_server.clear
                 server.begin_restart(true)
                 @launcher.config.run_hooks :before_refork, nil, @launcher.events
-                GC.compact if GC.respond_to?(:compact)
+                nakayoshi_gc
               end
             elsif idx == 0 # restart server
               restart_server << true << false
@@ -540,7 +540,7 @@ module Puma
       @master_read, @worker_write = read, @wakeup
 
       @launcher.config.run_hooks :before_fork, nil, @launcher.events
-      GC.compact if GC.respond_to?(:compact)
+      nakayoshi_gc
 
       spawn_workers
 
@@ -643,6 +643,17 @@ module Puma
           w.kill
         end
       end
+    end
+
+    def nakayoshi_gc
+      return unless @options[:nakayoshi_fork]
+      log "! Promoting existing objects to old generation..."
+      4.times { GC.start(full_mark: false) }
+      if GC.respond_to?(:compact)
+        log "! Compacting..."
+        GC.compact
+      end
+      log "! Friendly fork preparation complete."
     end
   end
 end

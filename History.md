@@ -1,9 +1,9 @@
 ## 5.0.0
 
 * Features
-  * EXPERIMENTAL: Add `fork_worker` option and `refork` command for reduced memory usage. (#2099)
-  * EXPERIMENTAL: Reduce latency on MRI through inserting a small delay before re-listening on the socket if worker is busy (#2079).
-  * Possibly reduced memory usage by calling `GC.compact`  before fork if available (Ruby 2.7+) (#2093)
+  * EXPERIMENTAL: Add `fork_worker` option and `refork` command for reduced memory usage by forking from a worker process and eliminating the master process. (#2099)
+  * EXPERIMENTAL: Added `wait_for_less_busy_worker` config. This may reduce latency on MRI through inserting a small delay before re-listening on the socket if worker is busy (#2079).
+  * EXPERIMENTAL: Added `nakayoshi_fork` option. Reduce memory usage in preloaded cluster-mode apps by GCing before fork and compacting, where available. (#2093, #2256)
   * Added pumactl `thread-backtraces` command to print thread backtraces (#2054)
   * Added incrementing `requests_count` to `Puma.stats`. (#2106)
   * Increased maximum URI path length from 2048 to 8196 bytes (#2167)

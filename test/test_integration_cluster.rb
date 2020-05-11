@@ -168,6 +168,22 @@ RUBY
     refute_includes pids, get_worker_pids(1, WORKERS - 1)
   end
 
+  def test_nakayoshi
+    cli_server "-w #{WORKERS} test/rackup/hello.ru", config: <<RUBY
+    nakayoshi_fork true
+RUBY
+
+    output = nil
+    Timeout.timeout(10) do
+      until output
+        output = @server.gets[/Friendly fork preparation complete/]
+        sleep(0.01)
+      end
+    end
+
+    assert output, "Friendly fork didn't run"
+  end
+
   private
 
   def worker_timeout(timeout, iterations, config)

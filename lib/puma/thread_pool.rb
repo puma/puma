@@ -337,11 +337,11 @@ module Puma
         # Wait for threads to finish without force shutdown.
         threads.each(&:join)
       else
-        join = ->(timeout) do
+        join = ->(inner_timeout) do
           start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           threads.reject! do |t|
             elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
-            t.join timeout - elapsed
+            t.join inner_timeout - elapsed
           end
         end
 

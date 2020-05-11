@@ -902,7 +902,7 @@ EOF
 
     s2 << "\r\n"
 
-    assert_match /204/, s1.gets
+    assert_match(/204/, s1.gets)
 
     assert IO.select([s2], nil, nil, app_delay), 'timeout waiting for response'
     s2_result = begin
