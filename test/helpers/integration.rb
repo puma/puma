@@ -44,12 +44,18 @@ class TestIntegration < Minitest::Test
 
   private
 
-  def cli_server(argv, unix: false)
+  def cli_server(argv, unix: false, config: nil)
+    if config
+      config_file = Tempfile.new(%w(config .rb))
+      config_file.write config
+      config_file.close
+      config = "-C #{config_file.path}"
+    end
     if unix
-      cmd = "#{BASE} bin/puma -b unix://#{@bind_path} #{argv}"
+      cmd = "#{BASE} bin/puma #{config} -b unix://#{@bind_path} #{argv}"
     else
       @tcp_port = UniquePort.call
-      cmd = "#{BASE} bin/puma -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+      cmd = "#{BASE} bin/puma #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
     end
     @server = IO.popen(cmd, "r")
     wait_for_server_to_boot

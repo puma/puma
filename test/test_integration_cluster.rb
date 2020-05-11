@@ -75,6 +75,11 @@ class TestIntegrationCluster < TestIntegration
     usr1_all_respond unix: false
   end
 
+  def test_usr1_fork_worker
+    skip_unless_signal_exist? :USR1
+    usr1_all_respond config: '--fork-worker'
+  end
+
   def test_usr1_all_respond_unix
     skip_unless_signal_exist? :USR1
     usr1_all_respond unix: true
@@ -152,13 +157,21 @@ end
 RUBY
   end
 
+  def test_refork
+    refork = Tempfile.new('refork')
+    cli_server "-w #{WORKERS} test/rackup/sleep.ru", config: <<RUBY
+fork_worker 1
+on_refork {File.write('#{refork.path}', 'Reforked')}
+RUBY
+    pids = get_worker_pids
+    read_body(connect('sleep1')) until refork.read == 'Reforked'
+    refute_includes pids, get_worker_pids(1, WORKERS - 1)
+  end
+
   private
 
   def worker_timeout(timeout, iterations, config)
-    config_file = Tempfile.new(%w(worker_timeout .rb))
-    config_file.write config
-    config_file.close
-    cli_server "-w #{WORKERS} -t 1:1 -C #{config_file.path} test/rackup/hello.ru"
+    cli_server "-w #{WORKERS} -t 1:1 test/rackup/hello.ru", config: config
 
     pids = []
     Timeout.timeout(iterations * timeout + 1) do
@@ -237,8 +250,8 @@ RUBY
 
   # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
   # All should be responded to, and at least three workers should be used
-  def usr1_all_respond(unix: false)
-    cli_server "-w #{WORKERS} -t 0:5 -q test/rackup/sleep_pid.ru", unix: unix
+  def usr1_all_respond(unix: false, config: '')
+    cli_server "-w #{WORKERS} -t 0:5 -q test/rackup/sleep_pid.ru #{config}", unix: unix
     threads = []
     replies = []
     mutex = Mutex.new

@@ -500,6 +500,28 @@ module Puma
 
     alias_method :after_worker_boot, :after_worker_fork
 
+    # When `fork_worker` is enabled, code to run in Worker 0
+    # before all other workers are re-forked from this process,
+    # after the server has temporarily stopped serving requests
+    # (once per complete refork cycle).
+    #
+    # This can be used to trigger extra garbage-collection to maximize
+    # copy-on-write efficiency, or close any connections to remote servers
+    # (database, Redis, ...) that were opened while the server was running.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @note Cluster mode with `fork_worker` enabled only.
+    # @example
+    #   on_refork do
+    #     3.times {GC.start}
+    #   end
+
+    def on_refork(&block)
+      @options[:before_refork] ||= []
+      @options[:before_refork] << block
+    end
+
     # Code to run out-of-band when the worker is idle.
     # These hooks run immediately after a request has finished
     # processing and there are no busy threads on the worker.
@@ -713,5 +735,19 @@ module Puma
       end
     end
 
+    # When enabled, workers will be forked from worker 0 instead of from the master process.
+    # This option is similar to `preload_app` because the app is preloaded before forking,
+    # but it is compatible with phased restart.
+    #
+    # This option also enables the `refork` command (SIGURG), which optimizes copy-on-write performance
+    # in a running app.
+    #
+    # A refork will automatically trigger once after the specified number of requests
+    # (default 1000), or pass 0 to disable auto refork.
+    #
+    # @note Cluster mode only.
+    def fork_worker(after_requests=1000)
+      @options[:fork_worker] = Integer(after_requests)
+    end
   end
 end

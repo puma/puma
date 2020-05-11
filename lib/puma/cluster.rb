@@ -37,7 +37,7 @@ module Puma
       begin
         loop do
           wait_workers
-          break if @workers.empty?
+          break if @workers.reject {|w| w.pid.nil?}.empty?
           sleep 0.2
         end
       rescue Interrupt
@@ -78,6 +78,7 @@ module Puma
       end
 
       attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
+      attr_writer :pid, :phase
 
       def booted?
         @stage == :booted
@@ -113,7 +114,7 @@ module Puma
             @term ||= true
             @first_term_sent ||= Time.now
           end
-          Process.kill @signal, @pid
+          Process.kill @signal, @pid if @pid
         rescue Errno::ESRCH
         end
       end
@@ -134,23 +135,43 @@ module Puma
       return if diff < 1
 
       master = Process.pid
+      if @options[:fork_worker]
+        @fork_writer << "-1\n"
+      end
 
       diff.times do
         idx = next_worker_index
-        @launcher.config.run_hooks :before_worker_fork, idx, @launcher.events
 
-        pid = fork { worker(idx, master) }
-        if !pid
-          log "! Complete inability to spawn new workers detected"
-          log "! Seppuku is the only choice."
-          exit! 1
+        if @options[:fork_worker] && idx != 0
+          @fork_writer << "#{idx}\n"
+          pid = nil
+        else
+          pid = spawn_worker(idx, master)
         end
 
         debug "Spawned worker: #{pid}"
         @workers << Worker.new(idx, pid, @phase, @options)
-
-        @launcher.config.run_hooks :after_worker_fork, idx, @launcher.events
       end
+
+      if @options[:fork_worker] &&
+        @workers.all? {|x| x.phase == @phase}
+
+        @fork_writer << "0\n"
+      end
+    end
+
+    def spawn_worker(idx, master)
+      @launcher.config.run_hooks :before_worker_fork, idx, @launcher.events
+
+      pid = fork { worker(idx, master) }
+      if !pid
+        log "! Complete inability to spawn new workers detected"
+        log "! Seppuku is the only choice."
+        exit! 1
+      end
+
+      @launcher.config.run_hooks :after_worker_fork, idx, @launcher.events
+      pid
     end
 
     def cull_workers
@@ -213,7 +234,6 @@ module Puma
 
     def wakeup!
       return unless @wakeup
-      @next_check = Time.now
 
       begin
         @wakeup.write "!" unless @wakeup.closed?
@@ -229,9 +249,14 @@ module Puma
 
       Signal.trap "SIGINT", "IGNORE"
 
+      fork_worker = @options[:fork_worker] && index == 0
+
       @workers = []
-      @master_read.close
-      @suicide_pipe.close
+      if !@options[:fork_worker] || fork_worker
+        @master_read.close
+        @suicide_pipe.close
+        @fork_writer.close
+      end
 
       Thread.new do
         Puma.set_thread_name "worker check pipe"
@@ -254,15 +279,45 @@ module Puma
       # things in shape before booting the app.
       @launcher.config.run_hooks :before_worker_boot, index, @launcher.events
 
-      server = start_server
+      server = @server ||= start_server
+      restart_server = Queue.new << true << false
+
+      if fork_worker
+        restart_server.clear
+        Signal.trap "SIGCHLD" do
+          Process.wait(-1, Process::WNOHANG) rescue nil
+          wakeup!
+        end
+
+        Thread.new do
+          Puma.set_thread_name "worker fork pipe"
+          while (idx = @fork_pipe.gets)
+            idx = idx.to_i
+            if idx == -1 # stop server
+              if restart_server.length > 0
+                restart_server.clear
+                server.begin_restart(true)
+                @launcher.config.run_hooks :before_refork, nil, @launcher.events
+                GC.compact if GC.respond_to?(:compact)
+              end
+            elsif idx == 0 # restart server
+              restart_server << true << false
+            else # fork worker
+              pid = spawn_worker(idx, master)
+              @worker_write << "f#{pid}:#{idx}\n" rescue nil
+            end
+          end
+        end
+      end
 
       Signal.trap "SIGTERM" do
         @worker_write << "e#{Process.pid}\n" rescue nil
         server.stop
+        restart_server << false
       end
 
       begin
-        @worker_write << "b#{Process.pid}\n"
+        @worker_write << "b#{Process.pid}:#{index}\n"
       rescue SystemCallError, IOError
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         STDERR.puts "Master seems to have exited, exiting."
@@ -283,7 +338,7 @@ module Puma
         end
       end
 
-      server.run.join
+      server.run.join while restart_server.pop
 
       # Invoke any worker shutdown hooks so they can prevent the worker
       # exiting until any background operations are completed
@@ -360,9 +415,31 @@ module Puma
       @options[:preload_app]
     end
 
+    def fork_worker!
+      if (worker = @workers.find { |w| w.index == 0 })
+        worker.phase += 1
+      end
+      phased_restart
+    end
+
     # We do this in a separate method to keep the lambda scope
     # of the signals handlers as small as possible.
     def setup_signals
+      if @options[:fork_worker]
+        Signal.trap "SIGURG" do
+          fork_worker!
+        end
+
+        # Auto-fork after the specified number of requests.
+        if (fork_requests = @options[:fork_worker].to_i) > 0
+          @launcher.events.register(:ping!) do |w|
+            fork_worker! if w.index == 0 &&
+              w.phase == 0 &&
+              w.last_status[:requests_count] >= fork_requests
+          end
+        end
+      end
+
       Signal.trap "SIGCHLD" do
         wakeup!
       end
@@ -446,6 +523,10 @@ module Puma
       #
       @check_pipe, @suicide_pipe = Puma::Util.pipe
 
+      # Separate pipe used by worker 0 to receive commands to
+      # fork new worker processes.
+      @fork_pipe, @fork_writer = Puma::Util.pipe
+
       log "Use Ctrl-C to stop"
 
       redirect_io
@@ -484,10 +565,17 @@ module Puma
             if res
               req = read.read_nonblock(1)
 
+              @next_check = Time.now if req == "!"
               next if !req || req == "!"
 
               result = read.gets
               pid = result.to_i
+
+              if req == "b" || req == "f"
+                pid, idx = result.split(':').map(&:to_i)
+                w = @workers.find {|x| x.index == idx}
+                w.pid = pid if w.pid.nil?
+              end
 
               if w = @workers.find { |x| x.pid == pid }
                 case req
@@ -502,6 +590,7 @@ module Puma
                   w.term unless w.term?
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
+                  @launcher.events.fire(:ping!, w)
                 end
               else
                 log "! Out-of-sync worker list, no #{pid} worker"
@@ -528,6 +617,7 @@ module Puma
     # `#term` if needed
     def wait_workers
       @workers.reject! do |w|
+        next false if w.pid.nil?
         begin
           if Process.wait(w.pid, Process::WNOHANG)
             true
@@ -536,7 +626,12 @@ module Puma
             nil
           end
         rescue Errno::ECHILD
-          true # child is already terminated
+          begin
+            Process.kill(0, w.pid)
+            false # child still alive, but has another parent
+          rescue Errno::ESRCH, Errno::EPERM
+            true # child is already terminated
+          end
         end
       end
     end
