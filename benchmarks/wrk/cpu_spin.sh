@@ -51,7 +51,8 @@ ms() {
 }
 
 run_wrk() {
-  result=$(wrk -H "Connection: Close" -c "$wrk_c" -t "$wrk_t" -d "$DURATION" --latency "$@" | tee -a wrk.txt)
+  mkdir tmp &>/dev/null || true
+  result=$(wrk -H "Connection: Close" -c "$wrk_c" -t "$wrk_t" -d "$DURATION" --latency "$@" | tee -a tmp/wrk.txt)
   req_sec=$(echo "$result" | grep "^Requests/sec:" | awk '{print $2}')
   latency_avg=$(echo "$result" | grep "^\s*Latency.*%" | awk '{print $2}' | ms)
   latency_stddev=$(echo "$result" | grep "^\s*Latency.*%" | awk '{print $3}' | ms)
