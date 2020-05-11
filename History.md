@@ -1,19 +1,16 @@
 ## Master
 
 * Features
-  * Improve SSL connection closing in Puma::ControlCLI (#2211)
-  * Add pumactl `thread-backtraces` command to print thread backtraces (#2053)
-  * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
-  * Do not set user_config to quiet by default to allow for file config (#2074)
-  * `GC.compact` is called before fork if available (#2093)
-  * Add `requests_count` to workers stats. (#2106)
-  * Increases maximum URI path length from 2048 to 8196 bytes (#2167)
-  * Force shutdown responses can be overridden by using the `lowlevel_error_handler` config (#2203)
-  * Faster phased restart and worker timeout (#2121)
-  * New configuration option to set state file permissions (#2238)
-  * `Puma.stats_hash` returns a stats in Hash instead of a JSON string (#2086, #2253)
-  * Add `fork_worker` option and `refork` command for improved copy-on-write performance (#2099)
-  * Inject small delay for busy workers to improve requests distribution (#2079)
+  * EXPERIMENTAL: Add `fork_worker` option and `refork` command for reduced memory usage. (#2099)
+  * EXPERIMENTAL: Reduce latency on MRI through inserting a small delay before re-listening on the socket if worker is busy (#2079).
+  * Possibly reduced memory usage by calling `GC.compact`  before fork if available (Ruby 2.7+) (#2093)
+  * Added pumactl `thread-backtraces` command to print thread backtraces (#2054)
+  * Added incrementing `requests_count` to `Puma.stats`. (#2106)
+  * Increased maximum URI path length from 2048 to 8196 bytes (#2167)
+  * `lowlevel_error_handler` is now called during a forced threadpool shutdown, and if a callable with 3 arguments is set, we now also pass the status code (#2203)
+  * Faster phased restart and worker timeout (#2220)
+  * Added `state_permission` to config DSL to set state file permissions (#2238)
+  * Added `Puma.stats_hash`, which returns a stats in Hash instead of a JSON string (#2086, #2253)
 
 * Deprecations, Removals and Breaking API Changes
   * `--control` has been removed. Use `--control-url` (#1487)
@@ -21,13 +18,16 @@
   * min_threads now set by environment variables PUMA_MIN_THREADS and MIN_THREADS. (#2143)
   * max_threads now set by environment variables PUMA_MAX_THREADS and MAX_THREADS. (#2143)
   * max_threads default to 5 in MRI or 16 for all other interpreters. (#2143)
-  * preload by default if workers > 1 and interpreter supports forking. (#2143)
+  * preload by default if workers > 1 (#2143)
   * Puma::Plugin.workers_supported? has been removed. Use Puma.forkable? instead. (#2143)
   * `tcp_mode` has been removed without replacement. (#2169)
   * Daemonization has been removed without replacement. (#2170)
   * Changed #connected_port to #connected_ports (#2076)
+  * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
 
 * Bugfixes
+  * Do not set user_config to quiet by default to allow for file config (#2074)
+  * Always close SSL connection in Puma::ControlCLI (#2211)
   * Windows update extconf.rb for use with ssp and varied Ruby/MSYS2 combinations (#2069)
   * Ensure control server Unix socket is closed on shutdown (#2112)
   * Preserve `BUNDLE_GEMFILE` env var when using `prune_bundler` (#1893)
