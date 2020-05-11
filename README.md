@@ -27,7 +27,8 @@ $ gem install puma
 $ puma
 ```
 
-Without arguments, puma will look for a rackup (.ru) file in the current working directory called `config.ru`.
+Without arguments, puma will look for a rackup (.ru) file in 
+working directory called `config.ru`.
 
 ## Frameworks
 
@@ -77,7 +78,7 @@ Puma uses a thread pool. You can set the minimum and maximum number of threads t
 $ puma -t 8:32
 ```
 
-Puma will automatically scale the number of threads, from the minimum until it caps out at the maximum, based on how much traffic is present. The current default is `0:16`. Feel free to experiment, but be careful not to set the number of maximum threads to a large number, as you may exhaust resources on the system (or cause contention for the Global VM Lock, when using MRI).
+Puma will automatically scale the number of threads, from the minimum until it caps out at the maximum, based on how much traffic is present. The current default is `0:16` and on MRI is `0:5`. Feel free to experiment, but be careful not to set the number of maximum threads to a large number, as you may exhaust resources on the system (or cause contention for the Global VM Lock, when using MRI).
 
 Be aware that additionally Puma creates threads on its own for internal purposes (e.g. handling slow clients). So, even if you specify -t 1:1, expect around 7 threads created in your application.
 
@@ -250,7 +251,7 @@ Some platforms do not support all Puma features.
 
 ## Known Bugs
 
-For MRI versions 2.2.7, 2.2.8, 2.2.9, 2.2.10 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
+For MRI versions 2.2.7, 2.2.8, 2.2.9, 2.2.10, 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
 
 ```ruby
 if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
