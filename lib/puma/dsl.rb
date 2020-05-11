@@ -698,7 +698,7 @@ module Puma
     # Attempts to route traffic to less-busy workers by causing them to delay
     # listening on the socket, allowing workers which are not processing any
     # requests to pick up new requests first.
-    # 
+    #
     # Only works on MRI. For all other interpreters, this setting does nothing.
     def wait_for_less_busy_worker(val)
       @options[:wait_for_less_busy_worker] = val.to_f
