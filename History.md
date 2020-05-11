@@ -1,4 +1,4 @@
-## Master
+## 5.0.0
 
 * Features
   * EXPERIMENTAL: Add `fork_worker` option and `refork` command for reduced memory usage. (#2099)
