@@ -700,7 +700,7 @@ module Puma
     # requests to pick up new requests first.
     #
     # Only works on MRI. For all other interpreters, this setting does nothing.
-    def wait_for_less_busy_worker(val)
+    def wait_for_less_busy_worker(val=0.005)
       @options[:wait_for_less_busy_worker] = val.to_f
     end
 

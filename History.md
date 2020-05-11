@@ -1,7 +1,7 @@
 ## 5.0.0
 
 * Features
-  * EXPERIMENTAL: Add `fork_worker` option and `refork` command for reduced memory usage by forking from a worker process and eliminating the master process. (#2099)
+  * EXPERIMENTAL: Add `fork_worker` option and `refork` command for reduced memory usage by forking from a worker process instead of the master process. (#2099)
   * EXPERIMENTAL: Added `wait_for_less_busy_worker` config. This may reduce latency on MRI through inserting a small delay before re-listening on the socket if worker is busy (#2079).
   * EXPERIMENTAL: Added `nakayoshi_fork` option. Reduce memory usage in preloaded cluster-mode apps by GCing before fork and compacting, where available. (#2093, #2256)
   * Added pumactl `thread-backtraces` command to print thread backtraces (#2054)
