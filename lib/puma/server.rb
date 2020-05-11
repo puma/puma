@@ -213,11 +213,11 @@ module Puma
           client.write_error(400)
           client.close
 
-          @events.parse_error e, client.env
+          @events.parse_error e, client
         rescue ConnectionError, EOFError => e
           client.close
 
-          @events.connection_error e, client.env
+          @events.connection_error e, client
         else
           if process_now
             process_client client, buffer
@@ -419,7 +419,7 @@ module Puma
 
         client.write_error(400)
 
-        @events.parse_error e, client.env
+        @events.parse_error e, client
 
       # Server error
       rescue StandardError => e
@@ -590,12 +590,12 @@ module Puma
             return :async
           end
         rescue ThreadPool::ForceShutdown => e
-          @events.unknown_error e, env, "Rack app"
+          @events.unknown_error e, req, "Rack app"
           @events.log "Detected force shutdown of a thread"
 
           status, headers, res_body = lowlevel_error(e, env, 503)
         rescue Exception => e
-          @events.unknown_error e, env, "Rack app"
+          @events.unknown_error e, req, "Rack app"
 
           status, headers, res_body = lowlevel_error(e, env, 500)
         end

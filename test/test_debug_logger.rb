@@ -2,6 +2,8 @@ require 'puma/debug_logger'
 require_relative "helper"
 
 class TestDebugLogger < Minitest::Test
+  Req = Struct.new(:env, :body)
+
   def setup
     @debug_logger = Puma::DebugLogger.stdio
   end
@@ -38,19 +40,23 @@ class TestDebugLogger < Minitest::Test
     end
   end
 
-  def test_error_dump_with_env
+  def test_error_dump_with_request
     with_debug_mode do
+
       env = {
         'REQUEST_METHOD' => 'GET',
         'PATH_INFO' => '/debug',
         'HTTP_X_FORWARDED_FOR' => '8.8.8.8'
       }
+      req = Req.new(env, '{"hello":"world"}')
 
       _, err = capture_io do
-        Puma::DebugLogger.stdio.error_dump(error: StandardError.new, env: env)
+        Puma::DebugLogger.stdio.error_dump(error: StandardError.new, req: req)
       end
 
-      assert_match %r!Handling request { GET /debug } \(8\.8\.8\.8\)!, err
+      assert_match %r!Handling request { "GET /debug" - \(8\.8\.8\.8\) }!, err
+      assert_match %r!Headers: {"X_FORWARDED_FOR"=>"8\.8\.8\.8"}!, err
+      assert_match %r!Body: {"hello":"world"}!, err
     end
   end
 

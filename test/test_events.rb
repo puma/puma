@@ -1,3 +1,4 @@
+require 'puma/events'
 require_relative "helper"
 
 class TestEvents < Minitest::Test
@@ -176,7 +177,7 @@ class TestEvents < Minitest::Test
     sock.read
     sleep 0.1 # important so that the previous data is sent as a packet
     assert_match %r!HTTP parse error, malformed request!, events.stderr.string
-    assert_match %r!Handling request { GET #{path} }!, events.stderr.string
+    assert_match %r!Handling request { "GET #{path}" - \(-\) }!, events.stderr.string
     server.stop(true)
   end
 end

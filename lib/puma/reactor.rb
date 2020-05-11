@@ -263,7 +263,7 @@ module Puma
 
                 clear_monitor mon
 
-                @events.parse_error e, c.env
+                @events.parse_error e, c
               rescue StandardError => e
                 @server.lowlevel_error(e, c.env)
 

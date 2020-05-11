@@ -88,18 +88,18 @@ module Puma
     end
 
     # An HTTP connection error has occurred.
-    # +error+ a connection exception, +env+ the request
+    # +error+ a connection exception, +req+ the request
     #
-    def connection_error(error, env, text="HTTP connection error")
-      @debug_logger.error_dump(error: error, env: env, text: text)
+    def connection_error(error, req, text="HTTP connection error")
+      @debug_logger.error_dump(error: error, req: req, text: text)
     end
 
     # An HTTP parse error has occurred.
-    # +env+ the request, and +error+ a
+    # +req+ the request, and +error+ a
     # parsing exception.
     #
-    def parse_error(error, env)
-      @debug_logger.error_dump(error: error, env: env, text: 'HTTP parse error, malformed request', force: true)
+    def parse_error(error, req)
+      @debug_logger.error_dump(error: error, req: req, text: 'HTTP parse error, malformed request', force: true)
     end
 
     # An SSL error has occurred.
@@ -113,10 +113,10 @@ module Puma
 
     # An unknown error has occurred.
     # +error+ an exception object,
-    # +kind+ some additional info, and +env+ the request.
+    # +kind+ some additional info, and +req+ the request.
     #
-    def unknown_error(error, env=nil, kind="Unknown")
-      @debug_logger.error_dump(error: error, env: env, text: kind, force: true)
+    def unknown_error(error, req=nil, kind="Unknown")
+      @debug_logger.error_dump(error: error, req: req, text: kind, force: true)
     end
 
     def on_booted(&block)
