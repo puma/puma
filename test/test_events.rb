@@ -120,14 +120,16 @@ class TestEvents < Minitest::Test
     did_exit = false
 
     _, err = capture_io do
-      Puma::Events.stdio.error("interrupted")
+      begin
+        Puma::Events.stdio.error("interrupted")
+      rescue SystemExit
+        did_exit = true
+      ensure
+        assert did_exit
+      end
     end
 
-    assert_equal "ERROR: interrupted", err
-  rescue SystemExit
-    did_exit = true
-  ensure
-    assert did_exit
+    assert_match %r!ERROR: interrupted!, err
   end
 
   def test_pid_formatter

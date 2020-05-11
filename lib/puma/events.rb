@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "puma/null_io"
-require 'puma/debug_logger'
+require 'puma/error_logger'
 require 'stringio'
 
 module Puma
@@ -34,7 +34,7 @@ module Puma
       @stderr.sync = true
 
       @debug = ENV.key? 'PUMA_DEBUG'
-      @debug_logger = DebugLogger.new(@stderr)
+      @error_logger = ErrorLogger.new(@stderr)
 
       @hooks = Hash.new { |h,k| h[k] = [] }
     end
@@ -79,7 +79,7 @@ module Puma
     # Write +str+ to +@stderr+
     #
     def error(str)
-      @debug_logger.error_dump(text: format("ERROR: #{str}"))
+      @error_logger.info(text: format("ERROR: #{str}"))
       exit 1
     end
 
@@ -88,35 +88,44 @@ module Puma
     end
 
     # An HTTP connection error has occurred.
-    # +error+ a connection exception, +req+ the request
+    # +error+ a connection exception, +req+ the request,
+    # and +text+ additional info
     #
     def connection_error(error, req, text="HTTP connection error")
-      @debug_logger.error_dump(error: error, req: req, text: text)
+      @error_logger.info(error: error, req: req, text: text)
     end
 
     # An HTTP parse error has occurred.
-    # +req+ the request, and +error+ a
-    # parsing exception.
+    # +error+ a parsing exception,
+    # and +req+ the request.
     #
     def parse_error(error, req)
-      @debug_logger.error_dump(error: error, req: req, text: 'HTTP parse error, malformed request', force: true)
+      @error_logger.info(error: error, req: req, text: 'HTTP parse error, malformed request')
     end
 
     # An SSL error has occurred.
-    # +peeraddr+ peer address, +peercert+
-    # any peer certificate (if present), and +error+ an exception object.
+    # +error+ an exception object, +peeraddr+ peer address,
+    # and +peercert+ any peer certificate (if present).
     #
     def ssl_error(error, peeraddr, peercert)
       subject = peercert ? peercert.subject : nil
-      @debug_logger.error_dump(error: error, text: "SSL error, peer: #{peeraddr}, peer cert: #{subject}", force: true)
+      @error_logger.info(error: error, text: "SSL error, peer: #{peeraddr}, peer cert: #{subject}")
     end
 
     # An unknown error has occurred.
-    # +error+ an exception object,
-    # +kind+ some additional info, and +req+ the request.
+    # +error+ an exception object, +req+ the request,
+    # and +text+ additional info
     #
-    def unknown_error(error, req=nil, kind="Unknown")
-      @debug_logger.error_dump(error: error, req: req, text: kind, force: true)
+    def unknown_error(error, req=nil, text="Unknown error")
+      @error_logger.info(error: error, req: req, text: text)
+    end
+
+    # Log occurred error debug dump.
+    # +error+ an exception object, +req+ the request,
+    # and +text+ additional info
+    #
+    def debug_error(error, req=nil, text="")
+      @error_logger.debug(error: error, req: req, text: text)
     end
 
     def on_booted(&block)

@@ -5,7 +5,7 @@ require 'puma/const'
 module Puma
   # The implementation of a logging in debug mode.
   #
-  class DebugLogger
+  class ErrorLogger
     include Const
 
     attr_reader :ioerr
@@ -23,25 +23,41 @@ module Puma
       new $stderr
     end
 
-    # Any error has occured during debug mode.
+    # Print occured error details.
     # +options+ hash with additional options:
-    # - +force+ (default nil) to log info even if debug mode is turned off
     # - +error+ is an exception object
     # - +req+ the http request
     # - +text+ (default nil) custom string to print in title
     #   and before all remaining info.
     #
-    def error_dump(options={})
-      return unless @debug || options[:force]
+    def info(options={})
+      error_dump(options)
+    end
 
+    # Print occured error details only if
+    # environment variable PUMA_DEBUG is defined.
+    # +options+ hash with additional options:
+    # - +error+ is an exception object
+    # - +req+ the http request
+    # - +text+ (default nil) custom string to print in title
+    #   and before all remaining info.
+    #
+    def debug(options={})
+      return unless @debug
+      error_dump(options)
+    end
+
+    private
+
+    def error_dump(options={})
       error = options[:error]
       req = options[:req]
       env = req.env if req
       text = options[:text]
 
       string_block = []
-      formatted_text = " #{text}:" if text
-      formatted_error = " #{error.inspect}" if error
+      formatted_text = " #{text}" if text
+      formatted_error = ": #{error.inspect}" if error
       string_block << "#{Time.now}#{formatted_text}#{formatted_error}"
 
       if env
@@ -55,10 +71,8 @@ module Puma
       ioerr.puts string_block.join("\n")
     end
 
-    private
-
     def request_title(env)
-      request_line = REQUEST_FORMAT % [
+      REQUEST_FORMAT % [
         env[REQUEST_METHOD],
         env[REQUEST_PATH] || env[PATH_INFO],
         env[QUERY_STRING] || "",
