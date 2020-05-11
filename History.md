@@ -13,6 +13,7 @@
   * New configuration option to set state file permissions (#2238)
   * `Puma.stats_hash` returns a stats in Hash instead of a JSON string (#2086, #2253)
   * Add `fork_worker` option and `refork` command for improved copy-on-write performance (#2099)
+  * Inject small delay for busy workers to improve requests distribution (#2079)
 
 * Deprecations, Removals and Breaking API Changes
   * `--control` has been removed. Use `--control-url` (#1487)

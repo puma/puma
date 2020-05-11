@@ -694,6 +694,18 @@ module Puma
       @options[:shutdown_debug] = val
     end
 
+    # Controls an injected delay (in seconds) before
+    # accepting new socket
+    # if we are already processing requests,
+    # it gives a time for less busy workers
+    # to pick workbefore us
+    #
+    # This only affects Ruby MRI implementation
+    # The best value is between 0.001 (1ms) to 0.010 (10ms)
+    def wait_for_less_busy_worker(val)
+      @options[:wait_for_less_busy_worker] = val.to_f
+    end
+
     # Control how the remote address of the connection is set. This
     # is configurable because to calculate the true socket peer address
     # a kernel syscall is required which for very fast rack handlers

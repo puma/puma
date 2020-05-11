@@ -116,6 +116,7 @@ module TestSkips
       when :darwin  then "Skip unless darwin"  unless RUBY_PLATFORM[/darwin/]
       when :jruby   then "Skip unless JRuby"   unless Puma.jruby?
       when :windows then "Skip unless Windows" unless Puma.windows?
+      when :mri     then "Skip unless MRI"     unless Puma.mri?
       else false
     end
     skip skip_msg, bt if skip_msg
