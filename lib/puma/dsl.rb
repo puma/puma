@@ -694,14 +694,12 @@ module Puma
       @options[:shutdown_debug] = val
     end
 
-    # Controls an injected delay (in seconds) before
-    # accepting new socket
-    # if we are already processing requests,
-    # it gives a time for less busy workers
-    # to pick workbefore us
-    #
-    # This only affects Ruby MRI implementation
-    # The best value is between 0.001 (1ms) to 0.010 (10ms)
+
+    # Attempts to route traffic to less-busy workers by causing them to delay
+    # listening on the socket, allowing workers which are not processing any
+    # requests to pick up new requests first.
+    # 
+    # Only works on MRI. For all other interpreters, this setting does nothing.
     def wait_for_less_busy_worker(val)
       @options[:wait_for_less_busy_worker] = val.to_f
     end
