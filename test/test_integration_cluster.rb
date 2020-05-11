@@ -162,9 +162,7 @@ RUBY
 
     pids = []
     Timeout.timeout(iterations * timeout + 1) do
-      while pids.size < WORKERS * iterations
-        (pids << @server.gets[/Terminating timed out worker: (\d+)/, 1]).compact!
-      end
+      (pids << @server.gets[/Terminating timed out worker: (\d+)/, 1]).compact! while pids.size < WORKERS * iterations
       pids.map!(&:to_i)
     end
 

@@ -55,6 +55,8 @@ class TestCLI < Minitest::Test
     body = s.read
     s.close
 
+    assert_equal Puma.stats_hash, JSON.parse(Puma.stats, symbolize_names: true)
+
     dmt = Puma::Configuration.new.default_max_threads
     assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt},"requests_count":0}/, body.split(/\r?\n/).last)
 

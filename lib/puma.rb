@@ -20,6 +20,10 @@ module Puma
   end
 
   def self.stats
+    @get_stats.stats.to_json
+  end
+
+  def self.stats_hash
     @get_stats.stats
   end
 
