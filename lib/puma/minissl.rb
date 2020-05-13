@@ -5,8 +5,18 @@ begin
 rescue LoadError
 end
 
+# need for Puma::MiniSSL::OPENSSL constants used in `HAS_TLS1_3`
+require 'puma/puma_http11'
+
 module Puma
   module MiniSSL
+
+    # define constant at runtime, as it's easy to determine at built time,
+    # but Puma could (it shouldn't) be loaded with an older OpenSSL version
+    HAS_TLS1_3 = !IS_JRUBY &&
+      (OPENSSL_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) != -1 &&
+      (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) !=-1
+
     class Socket
       def initialize(socket, engine)
         @socket = socket
@@ -21,6 +31,24 @@ module Puma
       def closed?
         @socket.closed?
       end
+
+      # returns a two element array
+      # first is protocol version (SSL_get_version)
+      # second is 'handshake' state (SSL_state_string)
+      #
+      # used for dropping tcp connections to ssl
+      # see OpenSSL ssl/ssl_stat.c SSL_state_string for info
+      #
+      def ssl_version_state
+        IS_JRUBY ? [nil, nil] : @engine.ssl_vers_st
+      end
+
+      # used to check the handshake status, in particular when a TCP connection
+      # is made with TLSv1.3 as an available protocol
+      def bad_tlsv1_3?
+        HAS_TLS1_3 && @engine.ssl_vers_st == ['TLSv1.3', 'SSLERR']
+      end
+      private :bad_tlsv1_3?
 
       def readpartial(size)
         while true
@@ -41,6 +69,7 @@ module Puma
 
       def engine_read_all
         output = @engine.read
+        raise SSLError.exception "HTTP connection?" if bad_tlsv1_3?
         while output and additional_output = @engine.read
           output << additional_output
         end
@@ -167,7 +196,7 @@ module Puma
       end
     end
 
-    if defined?(JRUBY_VERSION)
+    if IS_JRUBY
       class SSLError < StandardError
         # Define this for jruby even though it isn't used.
       end
@@ -184,7 +213,7 @@ module Puma
         @no_tlsv1_1 = false
       end
 
-      if defined?(JRUBY_VERSION)
+      if IS_JRUBY
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
         attr_reader :keystore
         attr_accessor :keystore_pass
