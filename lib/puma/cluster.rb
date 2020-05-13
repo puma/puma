@@ -368,6 +368,7 @@ module Puma
     def stop
       @status = :stop
       wakeup!
+      @launcher.events.fire_on_stopped!
     end
 
     def stop_blocked
@@ -375,6 +376,7 @@ module Puma
       wakeup!
       @control.stop(true) if @control
       Process.waitall
+      @launcher.events.fire_on_stopped!
     end
 
     def halt

@@ -128,12 +128,20 @@ module Puma
       @error_logger.debug(error: error, req: req, text: text)
     end
 
+    def on_stopped(&block)
+      register(:on_stopped, &block)
+    end
+
     def on_booted(&block)
       register(:on_booted, &block)
     end
 
     def fire_on_booted!
       fire(:on_booted)
+    end
+
+    def fire_on_stopped!
+      fire(:on_stopped)
     end
 
     DEFAULT = new(STDOUT, STDERR)

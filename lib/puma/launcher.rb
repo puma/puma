@@ -168,6 +168,7 @@ module Puma
 
       setup_signals
       set_process_title
+      integrate_with_systemd
       @runner.run
 
       case @status
@@ -308,6 +309,42 @@ module Puma
         # Ruby 2.0+ defaults to true which breaks socket activation
         args += [{:close_others => false}]
         Kernel.exec(*args)
+      end
+    end
+
+    def integrate_with_systemd
+      return unless ENV["NOTIFY_SOCKET"]
+
+      log "* Enabling systemd notification integration"
+      require "puma/sd_notify"
+
+      @events.on_booted { Puma::SdNotify.ready }
+      @events.on_stopped { Puma::SdNotify.stopping }
+
+      start_watchdog if Puma::SdNotify.watchdog?
+    end
+
+    #
+    # Puma's systemd integration allows Puma to inform systemd:
+    #  1. when it has successfully started
+    #  2. when it is starting shutdown
+    #  3. periodically for a liveness check with a watchdog thread
+    #
+
+    def start_watchdog
+      usec = Integer(ENV["WATCHDOG_USEC"])
+      return log "systemd Watchdog too fast: " + usec if usec < 1_000_000
+
+      sec_f = usec / 1_000_000.0
+      # "It is recommended that a daemon sends a keep-alive notification message
+      # to the service manager every half of the time returned here."
+      ping_f = sec_f / 2
+      log "Pinging systemd watchdog every #{ping_f.round(1)} sec"
+      Thread.new do
+        loop do
+          sleep ping_f
+          Puma::SdNotify.watchdog
+        end
       end
     end
 
