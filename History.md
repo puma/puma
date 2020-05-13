@@ -1,4 +1,8 @@
 ### Master
+
+* Features
+  * Integrate with systemd's watchdog and notification features [#2184]
+
 * Bugfixes
   * Resolve issue with threadpool waiting counter decrement when thread is killed
 
