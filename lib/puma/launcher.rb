@@ -130,6 +130,7 @@ module Puma
 
     # Begin async shutdown of the server gracefully
     def stop
+      @events.fire_on_stopped!
       @status = :stop
       @runner.stop
     end
@@ -168,6 +169,7 @@ module Puma
 
       setup_signals
       set_process_title
+      integrate_with_systemd
       @runner.run
 
       case @status
@@ -316,6 +318,32 @@ module Puma
       end
     end
 
+    #
+    # Puma's systemd integration allows Puma to inform systemd:
+    #  1. when it has successfully started
+    #  2. when it is starting shutdown
+    #  3. periodically for a liveness check with a watchdog thread
+    #
+
+    def integrate_with_systemd
+      return unless ENV["SD_NOTIFY"]
+      return unless ENV["NOTIFY_SOCKET"]
+
+      require 'sd_notify'
+      return log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have sd_notify gem installed" unless defined?(SdNotify)
+
+      require 'puma/systemd'
+
+      log "* Enabling systemd notification integration"
+
+      @events.on_booted { SdNotify.ready }
+      @events.on_stopped { SdNotify.stopping }
+
+      systemd = Systemd.new(@events)
+
+      systemd.start_watchdog if SdNotify.watchdog?
+    end
+
     def spec_for_gem(gem_name)
       Bundler.rubygems.loaded_specs(gem_name)
     end
@@ -338,6 +366,7 @@ module Puma
     end
 
     def graceful_stop
+      @events.fire_on_stopped!
       @runner.stop_blocked
       log "=== puma shutdown: #{Time.now} ==="
       log "- Goodbye!"

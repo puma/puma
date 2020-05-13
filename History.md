@@ -3,6 +3,7 @@
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
   *  Adds max_fast_inline as a configuration option for the Server object (#2406)
+  * Integrate with systemd's watchdog and notification features (#2438)
 
 * Bugfixes
   * Cleanup daemonization in rc.d script (#2409)
