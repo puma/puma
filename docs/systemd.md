@@ -24,11 +24,16 @@ After=network.target
 # Requires=puma.socket
 
 [Service]
-# Foreground process (do not use --daemon in ExecStart or config.rb)
-Type=simple
+#Puma automatically supports systemd's `Type=notify` and watchdog service
+# monitoring. If you are using an earlier version of Puma, change this to `Type=simple`
+# and remove the `WatchdogSec` line.
+Type=notify
 
 # Preferably configure a non-privileged user
 # User=
+
+# If your Puma process locks up, systemd's watchdog will restart it within seconds.
+WatchdogSec=10
 
 # The path to the your application code root directory.
 # Also replace the "<YOUR_APP_PATH>" place holders below with this path.
