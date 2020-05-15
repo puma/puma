@@ -54,6 +54,7 @@
   * ThreadPool concurrency refactoring (#2220)
   * JSON parse cluster worker stats instead of regex (#2124)
   * Support parallel tests in verbose progress reporting (#2223)
+  * Refactor error handling in server accept loop (#2239)
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
 
