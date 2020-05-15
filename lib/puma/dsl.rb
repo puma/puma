@@ -443,8 +443,8 @@ module Puma
     #
     # @note Cluster mode only.
     # @example
-    #   on_worker_fork do
-    #     puts 'Before worker fork...'
+    #   on_worker_boot do
+    #     puts 'Before worker boot...'
     #   end
     def on_worker_boot(&block)
       @options[:before_worker_boot] ||= []
