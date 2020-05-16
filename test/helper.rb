@@ -45,9 +45,25 @@ def hit(uris)
 end
 
 module UniquePort
-  def self.call
-    TCPServer.open('127.0.0.1', 0) do |server|
-      server.connect_address.ip_port
+  @mutex = Mutex.new
+  @port = 9000
+
+  class << self
+    def port_in_use?(port, host = '127.0.0.1')
+      TCPServer.open(host, port).close
+      false
+    rescue Errno::EADDRINUSE
+      true
+    end
+    private :port_in_use?
+
+    def call
+      @mutex.synchronize {
+        begin
+          @port += 1
+        end while port_in_use? @port
+        @port
+      }
     end
   end
 end
