@@ -158,7 +158,7 @@ class TestEvents < Minitest::Test
   end
 
   def test_parse_error
-    port = 0
+    port = UniquePort.call
     host = "127.0.0.1"
     app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
     events = Puma::Events.strings
@@ -167,7 +167,6 @@ class TestEvents < Minitest::Test
     server.add_tcp_listener host, port
     server.run
 
-    port = server.connected_ports[0]
     sock = TCPSocket.new host, port
     path = "/"
     params = "a"*1024*10

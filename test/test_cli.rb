@@ -37,10 +37,12 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_for_tcp
+    tcp  = UniquePort.call
     cntl = UniquePort.call
     url = "tcp://127.0.0.1:#{cntl}/"
 
-    cli = Puma::CLI.new [ "--control-url", url,
+    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
+                         "--control-url", url,
                          "--control-token", "",
                          "test/rackup/lobster.ru"], @events
 
@@ -68,12 +70,14 @@ class TestCLI < Minitest::Test
   def test_control_for_ssl
     skip_on :jruby # Hangs on CI, TODO fix
     require "net/http"
+    tcp = UniquePort.call
     control_port = UniquePort.call
     control_host = "127.0.0.1"
     control_url = "ssl://#{control_host}:#{control_port}?#{ssl_query}"
     token = "token"
 
-    cli = Puma::CLI.new ["--control-url", control_url,
+    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
+                         "--control-url", control_url,
                          "--control-token", token,
                          "test/rackup/lobster.ru"], @events
 

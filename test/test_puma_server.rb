@@ -6,7 +6,7 @@ class TestPumaServer < Minitest::Test
   parallelize_me!
 
   def setup
-    @port = 0
+    @port = UniquePort.call
     @host = "127.0.0.1"
 
     @ios = []
@@ -49,8 +49,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def new_connection
-    port = @server.connected_ports[0]
-    TCPSocket.new(@host, port).tap {|sock| @ios << sock}
+    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
   end
 
   def test_proper_stringio_body
@@ -138,8 +137,7 @@ class TestPumaServer < Minitest::Test
     req = Net::HTTP::Get.new '/'
     req['HOST'] = 'example.com'
 
-    port = @server.connected_ports[0]
-    res = Net::HTTP.start @host, port do |http|
+    res = Net::HTTP.start @host, @port do |http|
       http.request(req)
     end
 
@@ -155,8 +153,7 @@ class TestPumaServer < Minitest::Test
     req['HOST'] = "example.com"
     req['X_FORWARDED_PROTO'] = "https,http"
 
-    port = @server.connected_ports[0]
-    res = Net::HTTP.start @host, port do |http|
+    res = Net::HTTP.start @host, @port do |http|
       http.request(req)
     end
 

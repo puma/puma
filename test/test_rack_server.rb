@@ -35,7 +35,7 @@ class TestRackServer < Minitest::Test
   def setup
     @simple = lambda { |env| [200, { "X-Header" => "Works" }, ["Hello"]] }
     @server = Puma::Server.new @simple
-    @server.add_tcp_listener "127.0.0.1", 0
+    @server.add_tcp_listener "127.0.0.1", UniquePort.call
 
     @stopped = false
   end

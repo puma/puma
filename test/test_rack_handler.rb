@@ -21,7 +21,7 @@ class TestPathHandler < Minitest::Test
   end
 
   def in_handler(app, options = {})
-    options[:Port] ||= 0
+    options[:Port] ||= UniquePort.call
     options[:Silent] = true
 
     @launcher = nil
