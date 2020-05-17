@@ -26,6 +26,7 @@
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
 
 * Bugfixes
+  * Fix JSON loading issues on phased-restarts (#2269)
   * Close client http connections made to an ssl server with TLSv1.3 (#2116)
   * Do not set user_config to quiet by default to allow for file config (#2074)
   * Always close SSL connection in Puma::ControlCLI (#2211)
