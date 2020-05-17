@@ -30,7 +30,7 @@ class TestErrorLogger < Minitest::Test
       Puma::ErrorLogger.stdio.info(error: StandardError.new, req: req)
     end
 
-    assert_match %r!Handling request { "GET /debug" - \(8\.8\.8\.8\) }!, err
+    assert_match %r!\("GET /debug" - \(8\.8\.8\.8\)\)!, err
     assert_match %r!Headers: {"X_FORWARDED_FOR"=>"8\.8\.8\.8"}!, err
     assert_match %r!Body: {"hello":"world"}!, err
   end

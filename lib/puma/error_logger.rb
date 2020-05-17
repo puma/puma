@@ -31,7 +31,7 @@ module Puma
     #   and before all remaining info.
     #
     def info(options={})
-      error_dump(options)
+      ioerr.puts title(options)
     end
 
     # Print occured error details only if
@@ -44,34 +44,38 @@ module Puma
     #
     def debug(options={})
       return unless @debug
-      error_dump(options)
-    end
 
-    private
-
-    def error_dump(options={})
       error = options[:error]
       req = options[:req]
-      env = req.env if req
-      text = options[:text]
 
       string_block = []
-      formatted_text = " #{text}" if text
-      formatted_error = ": #{error.inspect}" if error
-      string_block << "#{Time.now}#{formatted_text}#{formatted_error}"
-
-      if env
-        string_block << "Handling request { #{request_title(env)} }"
-        string_block << "Headers: #{request_headers(env)}"
-        string_block << "Body: #{req.body}"
-      end
-
-      string_block << error.backtrace if error
+      string_block << title(options)
+      string_block << request_dump(req) if req
+      string_block << error_backtrace(options) if error
 
       ioerr.puts string_block.join("\n")
     end
 
-    def request_title(env)
+    def title(options={})
+      text = options[:text]
+      req = options[:req]
+      error = options[:error]
+
+      string_block = ["#{Time.now}"]
+      string_block << " #{text}" if text
+      string_block << " (#{request_title(req)})" if req
+      string_block << ": #{error.inspect}" if error
+      string_block.join('')
+    end
+
+    def request_dump(req)
+      "Headers: #{request_headers(req)}\n" \
+      "Body: #{req.body}"
+    end
+
+    def request_title(req)
+      env = req.env
+
       REQUEST_FORMAT % [
         env[REQUEST_METHOD],
         env[REQUEST_PATH] || env[PATH_INFO],
@@ -80,8 +84,8 @@ module Puma
       ]
     end
 
-    def request_headers(env)
-      headers = env.select { |key, _| key.start_with?('HTTP_') }
+    def request_headers(req)
+      headers = req.env.select { |key, _| key.start_with?('HTTP_') }
       headers.map { |key, value| [key[5..-1], value] }.to_h.inspect
     end
   end
