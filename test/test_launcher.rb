@@ -139,7 +139,7 @@ class TestLauncher < Minitest::Test
     launcher.events.on_booted {launcher.stop}
     launcher.run
     Puma::Server::STAT_METHODS.each do |stat|
-      assert_includes Puma.stats, stat
+      assert_includes Puma.stats_hash, stat
     end
   end
 
@@ -154,7 +154,7 @@ class TestLauncher < Minitest::Test
     launcher = launcher(conf)
     Thread.new do
       sleep Puma::Const::WORKER_CHECK_INTERVAL + 1
-      status = Puma.stats[:worker_status].first[:last_status]
+      status = Puma.stats_hash[:worker_status].first[:last_status]
       Puma::Server::STAT_METHODS.each do |stat|
         assert_includes status, stat
       end

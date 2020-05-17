@@ -49,7 +49,7 @@ class TestIntegrationSingle < TestIntegration
     cli_server "-C test/config/with_rackup_from_dsl.rb test/rackup/hello.ru"
     connection = connect
     reply = read_body(connection)
-    _, status = stop_server
+    stop_server
 
     assert_match("Hello World", reply)
   end

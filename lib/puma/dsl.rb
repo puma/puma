@@ -500,6 +500,28 @@ module Puma
 
     alias_method :after_worker_boot, :after_worker_fork
 
+    # When `fork_worker` is enabled, code to run in Worker 0
+    # before all other workers are re-forked from this process,
+    # after the server has temporarily stopped serving requests
+    # (once per complete refork cycle).
+    #
+    # This can be used to trigger extra garbage-collection to maximize
+    # copy-on-write efficiency, or close any connections to remote servers
+    # (database, Redis, ...) that were opened while the server was running.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @note Cluster mode with `fork_worker` enabled only.
+    # @example
+    #   on_refork do
+    #     3.times {GC.start}
+    #   end
+
+    def on_refork(&block)
+      @options[:before_refork] ||= []
+      @options[:before_refork] << block
+    end
+
     # Code to run out-of-band when the worker is idle.
     # These hooks run immediately after a request has finished
     # processing and there are no busy threads on the worker.
@@ -672,6 +694,16 @@ module Puma
       @options[:shutdown_debug] = val
     end
 
+
+    # Attempts to route traffic to less-busy workers by causing them to delay
+    # listening on the socket, allowing workers which are not processing any
+    # requests to pick up new requests first.
+    #
+    # Only works on MRI. For all other interpreters, this setting does nothing.
+    def wait_for_less_busy_worker(val=0.005)
+      @options[:wait_for_less_busy_worker] = val.to_f
+    end
+
     # Control how the remote address of the connection is set. This
     # is configurable because to calculate the true socket peer address
     # a kernel syscall is required which for very fast rack handlers
@@ -713,5 +745,32 @@ module Puma
       end
     end
 
+    # When enabled, workers will be forked from worker 0 instead of from the master process.
+    # This option is similar to `preload_app` because the app is preloaded before forking,
+    # but it is compatible with phased restart.
+    #
+    # This option also enables the `refork` command (SIGURG), which optimizes copy-on-write performance
+    # in a running app.
+    #
+    # A refork will automatically trigger once after the specified number of requests
+    # (default 1000), or pass 0 to disable auto refork.
+    #
+    # @note Cluster mode only.
+    def fork_worker(after_requests=1000)
+      @options[:fork_worker] = Integer(after_requests)
+    end
+
+    # When enabled, Puma will GC 4 times before forking workers.
+    # If available (Ruby 2.7+), we will also call GC.compact.
+    # Not recommended for non-MRI Rubies.
+    #
+    # Based on the work of Koichi Sasada and Aaron Patterson, this option may
+    # decrease memory utilization of preload-enabled cluster-mode Pumas. It will
+    # also increase time to boot and fork. See your logs for details on how much
+    # time this adds to your boot process. For most apps, it will be less than one
+    # second.
+    def nakayoshi_fork(enabled=false)
+      @options[:nakayoshi_fork] = enabled
+    end
   end
 end

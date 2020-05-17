@@ -301,6 +301,7 @@ void raise_error(SSL* ssl, int result) {
   char msg[512];
   const char* err_str;
   int err = errno;
+  int mask = 4095;
   int ssl_err = SSL_get_error(ssl, result);
   int verify_err = (int) SSL_get_verify_result(ssl);
 
@@ -317,8 +318,8 @@ void raise_error(SSL* ssl, int result) {
     } else {
       err = (int) ERR_get_error();
       ERR_error_string_n(err, buf, sizeof(buf));
-      snprintf(msg, sizeof(msg), "OpenSSL error: %s - %d", buf, err);
-
+      int errexp = err & mask;
+      snprintf(msg, sizeof(msg), "OpenSSL error: %s - %d", buf, errexp);
     }
   } else {
     snprintf(msg, sizeof(msg), "Unknown OpenSSL error: %d", ssl_err);
@@ -462,6 +463,13 @@ VALUE engine_peercert(VALUE self) {
   return rb_cert_buf;
 }
 
+static VALUE
+engine_ssl_vers_st(VALUE self) {
+  ms_conn* conn;
+  Data_Get_Struct(self, ms_conn, conn);
+  return rb_ary_new3(2, rb_str_new2(SSL_get_version(conn->ssl)), rb_str_new2(SSL_state_string(conn->ssl)));
+}
+
 VALUE noop(VALUE self) {
   return Qnil;
 }
@@ -533,6 +541,8 @@ void Init_mini_ssl(VALUE puma) {
   rb_define_method(eng, "init?", engine_init, 0);
 
   rb_define_method(eng, "peercert", engine_peercert, 0);
+
+  rb_define_method(eng, "ssl_vers_st", engine_ssl_vers_st, 0);
 }
 
 #else

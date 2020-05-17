@@ -59,8 +59,7 @@ module Puma
       @app = app
       @events = events
 
-      @check, @notify = Puma::Util.pipe
-
+      @check, @notify = nil
       @status = :stop
 
       @min_threads = 0
@@ -260,6 +259,7 @@ module Puma
     end
 
     def handle_servers
+      @check, @notify = Puma::Util.pipe unless @notify
       begin
         check = @check
         sockets = [check] + @binder.ios
@@ -283,28 +283,22 @@ module Puma
               if sock == check
                 break if handle_check
               else
-                begin
-                  pool.wait_until_not_full
-                  if io = sock.accept_nonblock
-                    client = Client.new io, @binder.env(sock)
-                    if remote_addr_value
-                      client.peerip = remote_addr_value
-                    elsif remote_addr_header
-                      client.remote_addr_header = remote_addr_header
-                    end
+                pool.wait_until_not_full
+                pool.wait_for_less_busy_worker(
+                  @options[:wait_for_less_busy_worker].to_f)
 
-                    pool << client
-                  end
-                rescue SystemCallError
-                  # nothing
-                rescue Errno::ECONNABORTED
-                  # client closed the socket even before accept
-                  begin
-                    io.close
-                  rescue
-                    Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-                  end
+                io = begin
+                  sock.accept_nonblock
+                rescue IO::WaitReadable
+                  next
                 end
+                client = Client.new io, @binder.env(sock)
+                if remote_addr_value
+                  client.peerip = remote_addr_value
+                elsif remote_addr_header
+                  client.remote_addr_header = remote_addr_header
+                end
+                pool << client
               end
             end
           rescue Object => e
@@ -325,6 +319,8 @@ module Puma
       ensure
         @check.close unless @check.closed? # Ruby 2.2 issue
         @notify.close
+        @notify = nil
+        @check = nil
       end
 
       @events.fire :state, :done
@@ -882,6 +878,7 @@ module Puma
     end
 
     def notify_safely(message)
+      @check, @notify = Puma::Util.pipe unless @notify
       begin
         @notify << message
       rescue IOError
@@ -911,8 +908,9 @@ module Puma
       @thread.join if @thread && sync
     end
 
-    def begin_restart
+    def begin_restart(sync=false)
       notify_safely(RESTART_COMMAND)
+      @thread.join if @thread && sync
     end
 
     def fast_write(io, str)

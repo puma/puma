@@ -41,19 +41,16 @@ class TestPumaServer < Minitest::Test
   end
 
   def send_http_and_read(req)
-    port = @server.connected_ports[0]
-    sock = TCPSocket.new @host, port
-    @ios << sock
-    sock << req
-    sock.read
+    send_http(req).read
   end
 
   def send_http(req)
+    new_connection << req
+  end
+
+  def new_connection
     port = @server.connected_ports[0]
-    sock = TCPSocket.new @host, port
-    @ios << sock
-    sock << req
-    sock
+    TCPSocket.new(@host, port).tap {|sock| @ios << sock}
   end
 
   def test_proper_stringio_body
@@ -902,7 +899,7 @@ EOF
 
     s2 << "\r\n"
 
-    assert_match /204/, s1.gets
+    assert_match(/204/, s1.gets)
 
     assert IO.select([s2], nil, nil, app_delay), 'timeout waiting for response'
     s2_result = begin
@@ -983,5 +980,34 @@ EOF
     sock = send_http "GET / HTTP/1.0\r\n\r\n"
     assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
     sock.close
+  end
+
+  def stub_accept_nonblock(error)
+    @server.add_tcp_listener @host, @port
+    io = @server.binder.ios.last
+    accept_old = io.method(:accept_nonblock)
+    accept_stub = -> do
+      accept_old.call.close
+      raise error
+    end
+    io.stub(:accept_nonblock, accept_stub) do
+      @server.run
+      new_connection
+      sleep 0.01
+    end
+  end
+
+  # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
+  def test_accept_emfile
+    stub_accept_nonblock Errno::EMFILE.new('accept(2)')
+    refute_empty @events.stderr.string, "Expected EMFILE error not logged"
+  end
+
+  # Retryable errors such as ECONNABORTED should be silently swallowed by accept loop.
+  def test_accept_econnaborted
+    # Match Ruby #accept_nonblock implementation, ECONNABORTED error is extended by IO::WaitReadable.
+    error = Errno::ECONNABORTED.new('accept(2) would block').tap {|e| e.extend IO::WaitReadable}
+    stub_accept_nonblock(error)
+    assert_empty @events.stderr.string
   end
 end
