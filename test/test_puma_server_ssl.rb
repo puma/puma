@@ -215,7 +215,7 @@ class TestPumaServerSSL < Minitest::Test
 
     tcp = Thread.new do
       req_http = Net::HTTP::Get.new "/", {}
-      assert_raises(Errno::ECONNREFUSED, EOFError) do
+      assert_raises(Errno::ECONNREFUSED, EOFError, ::Net::ReadTimeout) do
         http.start.request(req_http) { |rep| body_http = rep.body }
       end
     end
