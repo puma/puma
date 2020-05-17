@@ -31,8 +31,6 @@ class TestErrorLogger < Minitest::Test
     end
 
     assert_match %r!\("GET /debug" - \(8\.8\.8\.8\)\)!, err
-    assert_match %r!Headers: {"X_FORWARDED_FOR"=>"8\.8\.8\.8"}!, err
-    assert_match %r!Body: {"hello":"world"}!, err
   end
 
   def test_info_with_text
