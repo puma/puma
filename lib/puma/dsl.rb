@@ -769,7 +769,7 @@ module Puma
     # also increase time to boot and fork. See your logs for details on how much
     # time this adds to your boot process. For most apps, it will be less than one
     # second.
-    def nakayoshi_fork(enabled=false)
+    def nakayoshi_fork(enabled=true)
       @options[:nakayoshi_fork] = enabled
     end
   end
