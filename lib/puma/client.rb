@@ -244,8 +244,16 @@ module Puma
 
       te = @env[TRANSFER_ENCODING2]
 
-      if te && CHUNKED.casecmp(te) == 0
-        return setup_chunked_body(body)
+      if te
+        if te.include?(",")
+          te.split(",").each do |part|
+            if CHUNKED.casecmp(part.strip) == 0
+              return setup_chunked_body(body)
+            end
+          end
+        elsif CHUNKED.casecmp(te) == 0
+          return setup_chunked_body(body)
+        end
       end
 
       @chunked_body = false
