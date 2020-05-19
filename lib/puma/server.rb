@@ -672,6 +672,37 @@ module Puma
         }
       end
 
+      # Fixup any headers with , in the name to have _ now. We emit
+      # headers with , in them during the parse phase to avoid ambiguity
+      # with the - to _ conversion for critical headers. But here for
+      # compatibility, we'll convert them back. This code is written to
+      # avoid allocation in the common case (ie there are no headers
+      # with , in their names), that's why it has the extra conditionals.
+
+      to_delete = nil
+      to_add = nil
+
+      env.each do |k,v|
+        if k.start_with?("HTTP_") and k.include?(",") and k != "HTTP_TRANSFER,ENCODING"
+          if to_delete
+            to_delete << k
+          else
+            to_delete = [k]
+          end
+
+          unless to_add
+            to_add = {}
+          end
+
+          to_add[k.gsub(",", "_")] = v
+        end
+      end
+
+      if to_delete
+        to_delete.each { |k| env.delete(k) }
+        env.merge! to_add
+      end
+
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
       #
