@@ -153,7 +153,7 @@ class TestPumaServer < Minitest::Test
 
     req = Net::HTTP::Get.new("/")
     req['HOST'] = "example.com"
-    req['X_FORWARDED_PROTO'] = "https,http"
+    req['X-FORWARDED-PROTO'] = "https,http"
 
     port = @server.connected_ports[0]
     res = Net::HTTP.start @host, port do |http|
