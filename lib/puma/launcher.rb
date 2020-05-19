@@ -172,12 +172,13 @@ module Puma
       case @status
       when :halt
         log "* Stopping immediately!"
+        @runner.stop_control
       when :run, :stop
         graceful_stop
       when :restart
         log "* Restarting..."
         ENV.replace(previous_env)
-        @runner.before_restart
+        @runner.stop_control
         restart!
       when :exit
         # nothing
