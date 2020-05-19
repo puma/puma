@@ -170,7 +170,7 @@ class TestEvents < Minitest::Test
     port = server.connected_ports[0]
     sock = TCPSocket.new host, port
     path = "/"
-    params = "a"*1024*10
+    params = "a"*1024*64
 
     sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
     sock.read
