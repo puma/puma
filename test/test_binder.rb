@@ -15,6 +15,13 @@ class TestBinderBase < Minitest::Test
     @binder = Puma::Binder.new(@events)
   end
 
+  def teardown
+    @binder.ios.reject! { |io| Minitest::Mock === io || io.to_io.closed? }
+    @binder.close
+    @binder.unix_paths.select! { |path| File.exist? path }
+    @binder.close_listeners
+  end
+
   private
 
   def ssl_context_for_binder(binder = @binder)
