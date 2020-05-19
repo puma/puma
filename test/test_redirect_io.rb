@@ -17,7 +17,9 @@ class TestRedirectIO < TestIntegration
   def teardown
     super
 
-    paths = [@out_file_path, @err_file_path, @old_out_file_path, @old_err_file_path].compact
+    paths = (skipped? ? [@out_file_path, @err_file_path] :
+      [@out_file_path, @err_file_path, @old_out_file_path, @old_err_file_path]).compact
+
     File.unlink(*paths)
     @out_file = nil
     @err_file = nil
