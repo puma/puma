@@ -264,6 +264,6 @@ class TestThreadPool < Minitest::Test
     end
     assert_equal 0, pool.spawned
     assert_equal 2, rescued.length
-    refute rescued.any?(&:alive?)
+    refute rescued.compact.any?(&:alive?)
   end
 end
