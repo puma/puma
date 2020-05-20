@@ -45,6 +45,7 @@
   * Fix `UserFileDefaultOptions#fetch` to properly use `default` (#2233)
   * Improvements to `out_of_band` hook (#2234)
   * Prefer the rackup file specified by the CLI (#2225)
+  * Fix for spawning subprocesses with fork_worker option (#2267)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
