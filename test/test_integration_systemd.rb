@@ -44,7 +44,7 @@ class TestIntegrationSystemd < TestIntegration
 
     cli_server "test/rackup/hello.ru"
     assert_equal(socket_message, "READY=1")
-    
+
     stop_server
     assert_match(socket_message, "STOPPING=1")
   end
