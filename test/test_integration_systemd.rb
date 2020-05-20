@@ -1,7 +1,9 @@
-require_relative 'helper'
-require "puma/sd_notify"
+require_relative "helper"
+require_relative "helpers/integration"
 
-class TestSystemd < Minitest::Test
+require 'sd_notify'
+
+class TestIntegrationSystemd < TestIntegration
   def setup
     ::Dir::Tmpname.create("puma_socket") do |sockaddr|
       @sockaddr = sockaddr
@@ -23,17 +25,27 @@ class TestSystemd < Minitest::Test
     @socket.recvfrom(10)[0]
   end
 
-  def test_notify
-    count = Puma::SdNotify.ready
+  def test_notify_protocol
+    count = SdNotify.ready
     assert_equal(socket_message, "READY=1")
     assert_equal(ENV["NOTIFY_SOCKET"], @sockaddr)
     assert_equal(count, 7)
 
-    count = Puma::SdNotify.stopping
+    count = SdNotify.stopping
     assert_equal(socket_message, "STOPPING=1")
     assert_equal(ENV["NOTIFY_SOCKET"], @sockaddr)
     assert_equal(count, 10)
 
-    refute Puma::SdNotify.watchdog?
+    refute SdNotify.watchdog?
+  end
+
+  def test_systemd_integration
+    skip_unless_signal_exist? :TERM
+
+    cli_server "test/rackup/hello.ru"
+    assert_equal(socket_message, "READY=1")
+    
+    stop_server
+    assert_match(socket_message, "STOPPING=1")
   end
 end
