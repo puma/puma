@@ -8,6 +8,7 @@
 
 * Refactor
   * Consolidate option handling in Server, Server small refactors, doc chang (#2389)
+  * Refactor Reactor and Client request buffering (#2279)
 
 ## 5.0.2 / 2020-09-28
 
