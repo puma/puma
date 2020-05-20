@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'sd_notify'
 require 'puma/events'
 require 'puma/detect'
 require 'puma/cluster'
@@ -315,6 +314,8 @@ module Puma
 
     def integrate_with_systemd
       return unless ENV["NOTIFY_SOCKET"]
+
+      require 'sd_notify'
       return log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have ruby-sdnotify gem installed" unless defined?(SdNotify)
 
       require 'puma/systemd'
