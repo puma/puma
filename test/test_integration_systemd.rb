@@ -5,6 +5,9 @@ require 'sd_notify'
 
 class TestIntegrationSystemd < TestIntegration
   def setup
+    skip "Skipped on Windows because it does not support Systemd" if windows?
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+
     ::Dir::Tmpname.create("puma_socket") do |sockaddr|
       @sockaddr = sockaddr
       @socket = Socket.new(:UNIX, :DGRAM, 0)
@@ -17,6 +20,7 @@ class TestIntegrationSystemd < TestIntegration
   end
 
   def teardown
+    return if skipped?
     @socket.close if @socket
     File.unlink(@sockaddr) if @sockaddr
     @socket = nil
