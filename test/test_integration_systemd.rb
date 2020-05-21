@@ -21,6 +21,8 @@ class TestIntegrationSystemd < TestIntegration
     File.unlink(@sockaddr) if @sockaddr
     @socket = nil
     @sockaddr = nil
+    ENV["SD_NOTIFY"] = nil
+    ENV["NOTIFY_SOCKET"] = nil
   end
 
   def socket_message
