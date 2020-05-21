@@ -26,11 +26,14 @@ After=network.target
 [Service]
 #Puma automatically supports systemd's `Type=notify` and watchdog service
 # monitoring. If you are using an earlier version of Puma, change this to `Type=simple`
-# and remove the `WatchdogSec` line.
+# and remove the `WatchdogSec` and `Environment="SD_NOTIFY` line.
 Type=notify
 
 # Preferably configure a non-privileged user
 # User=
+
+# Allows Systemd integration
+Environment="SD_NOTIFY=true"
 
 # If your Puma process locks up, systemd's watchdog will restart it within seconds.
 WatchdogSec=10
