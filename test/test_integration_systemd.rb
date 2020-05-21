@@ -12,6 +12,8 @@ class TestIntegrationSystemd < TestIntegration
       @socket.bind(socket_ai)
       ENV["NOTIFY_SOCKET"] = sockaddr
     end
+
+    ENV["SD_NOTIFY"] = "1"
   end
 
   def teardown
@@ -26,6 +28,8 @@ class TestIntegrationSystemd < TestIntegration
   end
 
   def test_notify_protocol
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+
     count = SdNotify.ready
     assert_equal(socket_message, "READY=1")
     assert_equal(ENV["NOTIFY_SOCKET"], @sockaddr)
@@ -40,6 +44,7 @@ class TestIntegrationSystemd < TestIntegration
   end
 
   def test_systemd_integration
+    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     skip_unless_signal_exist? :TERM
 
     cli_server "test/rackup/hello.ru"
