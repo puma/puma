@@ -25,7 +25,6 @@ module Puma
 
     def stop
       @server.stop(false) if @server
-      @launcher.events.fire_on_stopped!
     end
 
     def halt
@@ -36,7 +35,6 @@ module Puma
       log "- Gracefully stopping, waiting for requests to finish"
       @control.stop(true) if @control
       @server.stop(true) if @server
-      @launcher.events.fire_on_stopped!
     end
 
     def run

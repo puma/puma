@@ -132,6 +132,7 @@ module Puma
     def stop
       @status = :stop
       @runner.stop
+      @events.fire_on_stopped!
     end
 
     # Begin async restart of the server
@@ -353,6 +354,7 @@ module Puma
 
     def graceful_stop
       @runner.stop_blocked
+      @events.fire_on_stopped!
       log "=== puma shutdown: #{Time.now} ==="
       log "- Goodbye!"
     end
