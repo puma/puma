@@ -30,6 +30,7 @@ class TestIntegrationSystemd < TestIntegration
   end
 
   def test_notify_protocol
+    skip "Skipped on Windows because it does not support Systemd" if windows?
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
 
     count = SdNotify.ready
@@ -46,6 +47,7 @@ class TestIntegrationSystemd < TestIntegration
   end
 
   def test_systemd_integration
+    skip "Skipped on Windows because it does not support Systemd" if windows?
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     skip_unless_signal_exist? :TERM
 
