@@ -130,9 +130,9 @@ module Puma
 
     # Begin async shutdown of the server gracefully
     def stop
+      @events.fire_on_stopped!
       @status = :stop
       @runner.stop
-      @events.fire_on_stopped!
     end
 
     # Begin async restart of the server
@@ -313,6 +313,13 @@ module Puma
       end
     end
 
+    #
+    # Puma's systemd integration allows Puma to inform systemd:
+    #  1. when it has successfully started
+    #  2. when it is starting shutdown
+    #  3. periodically for a liveness check with a watchdog thread
+    #
+
     def integrate_with_systemd
       return unless ENV["SD_NOTIFY"]
       return unless ENV["NOTIFY_SOCKET"]
@@ -354,8 +361,8 @@ module Puma
     end
 
     def graceful_stop
-      @runner.stop_blocked
       @events.fire_on_stopped!
+      @runner.stop_blocked
       log "=== puma shutdown: #{Time.now} ==="
       log "- Goodbye!"
     end

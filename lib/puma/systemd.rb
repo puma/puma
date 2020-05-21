@@ -4,13 +4,6 @@ require 'puma/events'
 
 module Puma
   class Systemd
-    #
-    # Puma's systemd integration allows Puma to inform systemd:
-    #  1. when it has successfully started
-    #  2. when it is starting shutdown
-    #  3. periodically for a liveness check with a watchdog thread
-    #
-
     def initialize(events)
       @events = events
     end
