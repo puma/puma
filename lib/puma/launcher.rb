@@ -316,7 +316,7 @@ module Puma
     def integrate_with_systemd
       return unless ENV["SD_NOTIFY"]
       return unless ENV["NOTIFY_SOCKET"]
-     
+
       require 'sd_notify'
       return log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have ruby-sdnotify gem installed" unless defined?(SdNotify)
 
