@@ -324,8 +324,8 @@ module Puma
 
       log "* Enabling systemd notification integration"
 
-      @events.on_booted { SdNotify.ready }
-      @events.on_stopped { SdNotify.stopping }
+      @events.on_booted { SdNotify.ready if ENV["SD_NOTIFY"] }
+      @events.on_stopped { SdNotify.stopping if ENV["SD_NOTIFY"] }
 
       systemd = Systemd.new(@events)
 

@@ -16,6 +16,7 @@ module Puma
     end
 
     def start_watchdog
+      return unless ENV["SD_NOTIFY"]
       usec = Integer(ENV["WATCHDOG_USEC"])
       return log "systemd Watchdog too fast: " + usec if usec < 1_000_000
 
