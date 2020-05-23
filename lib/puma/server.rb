@@ -586,7 +586,7 @@ module Puma
             to_add = {}
           end
 
-          to_add[k.gsub(",", "_")] = v
+          to_add[k.tr(",", "_")] = v
         end
       end
 
