@@ -46,6 +46,7 @@
   * Improvements to `out_of_band` hook (#2234)
   * Prefer the rackup file specified by the CLI (#2225)
   * Fix for spawning subprocesses with fork_worker option (#2267)
+  * Set `CONTENT_LENGTH` for chunked requests (#2287)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
