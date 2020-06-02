@@ -20,13 +20,12 @@ module Puma
       @inherited_fds = {}
       @activated_sockets = {}
       @unix_paths = []
-      @conf = conf
 
       @proto_env = {
         "rack.version".freeze => RACK_VERSION,
         "rack.errors".freeze => events.stderr,
-        "rack.multithread".freeze => resolve_option(:multithread, @conf),
-        "rack.multiprocess".freeze => resolve_option(:multiprocess, @conf),
+        "rack.multithread".freeze => conf.options[:max_threads] > 1,
+        "rack.multiprocess".freeze => conf.options[:workers] >= 1,
         "rack.run_once".freeze => false,
         "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
@@ -384,15 +383,6 @@ module Puma
 
     def socket_activation_fd(int)
       int + 3 # 3 is the magic number you add to follow the SA protocol
-    end
-
-    def resolve_option(key, conf)
-      case key
-      when :multithread
-        conf.options[:max_threads] > 1
-      when :multiprocess
-        conf.options[:workers] >= 1
-      end
     end
   end
 end
