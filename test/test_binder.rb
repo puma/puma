@@ -6,6 +6,7 @@ require_relative "helpers/ssl"
 require "puma/binder"
 require "puma/puma_http11"
 require "puma/events"
+require "puma/configuration"
 
 class TestBinderBase < Minitest::Test
   include SSLHelper
@@ -293,6 +294,34 @@ class TestBinder < TestBinderBase
     assert_activates_sockets(path: path, sock: sock)
   ensure
     File.unlink(path) rescue nil # JRuby race?
+  end
+
+  def test_rack_multithread_default_configuration
+    binder = Puma::Binder.new(@events)
+
+    assert binder.proto_env["rack.multithread"]
+  end
+
+  def test_rack_multithread_custom_configuration
+    conf = Puma::Configuration.new(max_threads: 1)
+
+    binder = Puma::Binder.new(@events, conf)
+
+    refute binder.proto_env["rack.multithread"]
+  end
+
+  def test_rack_multiprocess_default_configuration
+    binder = Puma::Binder.new(@events)
+
+    refute binder.proto_env["rack.multiprocess"]
+  end
+
+  def test_rack_multiprocess_custom_configuration
+    conf = Puma::Configuration.new(workers: 1)
+
+    binder = Puma::Binder.new(@events, conf)
+
+    assert binder.proto_env["rack.multiprocess"]
   end
 
   private

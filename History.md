@@ -11,6 +11,7 @@
   * Faster phased restart and worker timeout (#2220)
   * Added `state_permission` to config DSL to set state file permissions (#2238)
   * Added `Puma.stats_hash`, which returns a stats in Hash instead of a JSON string (#2086, #2253)
+  * `rack.multithread` and `rack.multiprocess` now dynamically resolved by `max_thread` and `workers` respectively (#2288)
 
 * Deprecations, Removals and Breaking API Changes
   * `--control` has been removed. Use `--control-url` (#1487)
