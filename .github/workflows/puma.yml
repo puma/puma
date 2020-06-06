@@ -48,7 +48,7 @@ jobs:
           if ('${{ matrix.ruby }}' -lt '2.3') {
             gem update --system 2.7.10 --no-document
           }
-          bundle install --jobs 4 --retry 3 --path=.bundle/puma
+          bundle install --jobs 4 --retry 3
 
       - name: compile
         run:  bundle exec rake compile
