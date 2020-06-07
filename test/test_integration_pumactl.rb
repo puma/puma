@@ -42,13 +42,16 @@ class TestIntegrationPumactl < TestIntegration
 
   def ctl_unix(signal='stop')
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-    cli_server "-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
+    stderr = Tempfile.new(%w(stderr .log))
+    cli_server "-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}",
+      config: "stdout_redirect nil, '#{stderr.path}'",
+      unix: true
 
     cli_pumactl signal, unix: true
 
     _, status = Process.wait2(@pid)
     assert_equal 0, status
-
+    refute_match 'error', File.read(stderr.path)
     @server = nil
   end
 

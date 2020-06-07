@@ -6,6 +6,7 @@ require_relative "helpers/ssl"
 require "puma/binder"
 require "puma/puma_http11"
 require "puma/events"
+require "puma/configuration"
 
 class TestBinderBase < Minitest::Test
   include SSLHelper
@@ -13,6 +14,13 @@ class TestBinderBase < Minitest::Test
   def setup
     @events = Puma::Events.strings
     @binder = Puma::Binder.new(@events)
+  end
+
+  def teardown
+    @binder.ios.reject! { |io| Minitest::Mock === io || io.to_io.closed? }
+    @binder.close
+    @binder.unix_paths.select! { |path| File.exist? path }
+    @binder.close_listeners
   end
 
   private
@@ -288,6 +296,34 @@ class TestBinder < TestBinderBase
     File.unlink(path) rescue nil # JRuby race?
   end
 
+  def test_rack_multithread_default_configuration
+    binder = Puma::Binder.new(@events)
+
+    assert binder.proto_env["rack.multithread"]
+  end
+
+  def test_rack_multithread_custom_configuration
+    conf = Puma::Configuration.new(max_threads: 1)
+
+    binder = Puma::Binder.new(@events, conf)
+
+    refute binder.proto_env["rack.multithread"]
+  end
+
+  def test_rack_multiprocess_default_configuration
+    binder = Puma::Binder.new(@events)
+
+    refute binder.proto_env["rack.multiprocess"]
+  end
+
+  def test_rack_multiprocess_custom_configuration
+    conf = Puma::Configuration.new(workers: 1)
+
+    binder = Puma::Binder.new(@events, conf)
+
+    assert binder.proto_env["rack.multiprocess"]
+  end
+
   private
 
   def assert_activates_sockets(path: nil, port: nil, url: nil, sock: nil)
@@ -331,7 +367,7 @@ end
 class TestBinderJRuby < TestBinderBase
   def test_binder_parses_jruby_ssl_options
     keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
-    ssl_cipher_list = "TLS_DHE_RSA_WITH_DES_CBC_SHA,TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"
+    ssl_cipher_list = "TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
 
     @binder.parse ["ssl://0.0.0.0:8080?#{ssl_query}"], @events
 

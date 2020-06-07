@@ -11,6 +11,7 @@
   * Faster phased restart and worker timeout (#2220)
   * Added `state_permission` to config DSL to set state file permissions (#2238)
   * Added `Puma.stats_hash`, which returns a stats in Hash instead of a JSON string (#2086, #2253)
+  * `rack.multithread` and `rack.multiprocess` now dynamically resolved by `max_thread` and `workers` respectively (#2288)
 
 * Deprecations, Removals and Breaking API Changes
   * `--control` has been removed. Use `--control-url` (#1487)
@@ -45,6 +46,8 @@
   * Fix `UserFileDefaultOptions#fetch` to properly use `default` (#2233)
   * Improvements to `out_of_band` hook (#2234)
   * Prefer the rackup file specified by the CLI (#2225)
+  * Fix for spawning subprocesses with fork_worker option (#2267)
+  * Set `CONTENT_LENGTH` for chunked requests (#2287)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
@@ -56,6 +59,13 @@
   * JSON parse cluster worker stats instead of regex (#2124)
   * Support parallel tests in verbose progress reporting (#2223)
   * Refactor error handling in server accept loop (#2239)
+  
+## 4.3.4/4.3.5 and 3.12.5/3.12.6 / 2020-05-22
+
+Each patchlevel release contains a separate security fix. We recommend simply upgrading to 4.3.5/3.12.6.
+
+* Security
+  * Fix: Fixed two separate HTTP smuggling vulnerabilities that used the Transfer-Encoding header. CVE-2020-11076 and CVE-2020-11077.
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
 

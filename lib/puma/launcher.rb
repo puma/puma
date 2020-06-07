@@ -47,7 +47,7 @@ module Puma
       @original_argv = @argv.dup
       @config        = conf
 
-      @binder        = Binder.new(@events)
+      @binder        = Binder.new(@events, conf)
       @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
       @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
 
@@ -111,6 +111,7 @@ module Puma
       sf.pid = Process.pid
       sf.control_url = @options[:control_url]
       sf.control_auth_token = @options[:control_auth_token]
+      sf.running_from = File.expand_path('.')
 
       sf.save path, permission
     end
@@ -172,12 +173,13 @@ module Puma
       case @status
       when :halt
         log "* Stopping immediately!"
+        @runner.stop_control
       when :run, :stop
         graceful_stop
       when :restart
         log "* Restarting..."
         ENV.replace(previous_env)
-        @runner.before_restart
+        @runner.stop_control
         restart!
       when :exit
         # nothing

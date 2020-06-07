@@ -30,7 +30,7 @@ module Puma
       @events.log str
     end
 
-    def before_restart
+    def stop_control
       @control.stop(true) if @control
     end
 
