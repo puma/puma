@@ -3,7 +3,7 @@
 require 'puma/const'
 
 module Puma
-  # The implementation of a logging in debug mode.
+  # The implementation of a detailed error logging.
   #
   class ErrorLogger
     include Const
