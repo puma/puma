@@ -63,7 +63,7 @@ module Puma
 
       string_block = ["#{Time.now}"]
       string_block << " #{text}" if text
-      string_block << " (#{request_title(req)})" if req
+      string_block << " (#{request_title(req)})" if request_parsed?(req)
       string_block << ": #{error.inspect}" if error
       string_block.join('')
     end
@@ -87,6 +87,10 @@ module Puma
     def request_headers(req)
       headers = req.env.select { |key, _| key.start_with?('HTTP_') }
       headers.map { |key, value| [key[5..-1], value] }.to_h.inspect
+    end
+
+    def request_parsed?(req)
+      req && req.env[REQUEST_METHOD]
     end
   end
 end
