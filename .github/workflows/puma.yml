@@ -37,7 +37,6 @@ jobs:
         uses: MSP-Greg/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler: 1
           apt-get: ragel
           brew: ragel
           mingw: _upgrade_ openssl ragel
@@ -49,7 +48,7 @@ jobs:
           if ('${{ matrix.ruby }}' -lt '2.3') {
             gem update --system 2.7.10 --no-document
           }
-          bundle install --jobs 4 --retry 3 --path=.bundle/puma
+          bundle install --jobs 4 --retry 3
 
       - name: compile
         run:  bundle exec rake compile
