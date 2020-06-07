@@ -173,7 +173,7 @@ public class MiniSSL extends RubyObject {
     engine.setEnabledProtocols(protocols);
     engine.setUseClientMode(false);
 
-    long verify_mode = miniSSLContext.callMethod(threadContext, "verify_mode").convertToInteger().getLongValue();
+    long verify_mode = miniSSLContext.callMethod(threadContext, "verify_mode").convertToInteger("to_i").getLongValue();
     if ((verify_mode & 0x1) != 0) { // 'peer'
         engine.setWantClientAuth(true);
     }

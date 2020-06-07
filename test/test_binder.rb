@@ -367,7 +367,7 @@ end
 class TestBinderJRuby < TestBinderBase
   def test_binder_parses_jruby_ssl_options
     keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
-    ssl_cipher_list = "TLS_DHE_RSA_WITH_DES_CBC_SHA,TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"
+    ssl_cipher_list = "TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
 
     @binder.parse ["ssl://0.0.0.0:8080?#{ssl_query}"], @events
 
