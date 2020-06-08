@@ -207,14 +207,16 @@ module Puma
 
           client.close
 
-          @events.ssl_error self, addr, cert, e
+          @events.ssl_error e, addr, cert
         rescue HttpParserError => e
           client.write_error(400)
           client.close
 
-          @events.parse_error self, client.env, e
-        rescue ConnectionError, EOFError
+          @events.parse_error e, client
+        rescue ConnectionError, EOFError => e
           client.close
+
+          @events.connection_error e, client
         else
           if process_now
             process_client client, buffer
@@ -300,7 +302,7 @@ module Puma
               end
             end
           rescue Object => e
-            @events.unknown_error self, e, "Listen loop"
+            @events.unknown_error e, nil, "Listen loop"
           end
         end
 
@@ -313,8 +315,7 @@ module Puma
         end
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
-        STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
-        STDERR.puts e.backtrace
+        @events.unknown_error e, nil, "Exception handling servers"
       ensure
         @check.close unless @check.closed? # Ruby 2.2 issue
         @notify.close
@@ -406,7 +407,7 @@ module Puma
 
         close_socket = true
 
-        @events.ssl_error self, addr, cert, e
+        @events.ssl_error e, addr, cert
 
       # The client doesn't know HTTP well
       rescue HttpParserError => e
@@ -414,7 +415,7 @@ module Puma
 
         client.write_error(400)
 
-        @events.parse_error self, client.env, e
+        @events.parse_error e, client
 
       # Server error
       rescue StandardError => e
@@ -422,8 +423,7 @@ module Puma
 
         client.write_error(500)
 
-        @events.unknown_error self, e, "Read"
-
+        @events.unknown_error e, nil, "Read"
       ensure
         buffer.reset
 
@@ -433,7 +433,7 @@ module Puma
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           # Already closed
         rescue StandardError => e
-          @events.unknown_error self, e, "Client"
+          @events.unknown_error e, nil, "Client"
         end
       end
     end
@@ -558,7 +558,8 @@ module Puma
             end
 
             fast_write client, "\r\n".freeze
-          rescue ConnectionError
+          rescue ConnectionError => e
+            @events.debug_error e
             # noop, if we lost the socket we just won't send the early hints
           end
         }
@@ -616,12 +617,12 @@ module Puma
             return :async
           end
         rescue ThreadPool::ForceShutdown => e
-          @events.unknown_error self, e, "Rack app", env
+          @events.unknown_error e, req, "Rack app"
           @events.log "Detected force shutdown of a thread"
 
           status, headers, res_body = lowlevel_error(e, env, 503)
         rescue Exception => e
-          @events.unknown_error self, e, "Rack app", env
+          @events.unknown_error e, req, "Rack app"
 
           status, headers, res_body = lowlevel_error(e, env, 500)
         end

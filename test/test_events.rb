@@ -1,3 +1,4 @@
+require 'puma/events'
 require_relative "helper"
 
 class TestEvents < Minitest::Test
@@ -119,14 +120,16 @@ class TestEvents < Minitest::Test
     did_exit = false
 
     _, err = capture_io do
-      Puma::Events.stdio.error("interrupted")
+      begin
+        Puma::Events.stdio.error("interrupted")
+      rescue SystemExit
+        did_exit = true
+      ensure
+        assert did_exit
+      end
     end
 
-    assert_equal "ERROR: interrupted", err
-  rescue SystemExit
-    did_exit = true
-  ensure
-    assert did_exit
+    assert_match %r!ERROR: interrupted!, err
   end
 
   def test_pid_formatter
@@ -175,7 +178,8 @@ class TestEvents < Minitest::Test
     sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
     sock.read
     sleep 0.1 # important so that the previous data is sent as a packet
-    assert_match %r!HTTP parse error, malformed request \(#{path}\)!, events.stderr.string
+    assert_match %r!HTTP parse error, malformed request!, events.stderr.string
+    assert_match %r!\("GET #{path}" - \(-\)\)!, events.stderr.string
     server.stop(true)
   end
 end

@@ -252,7 +252,7 @@ module Puma
                 c.close
                 clear_monitor mon
 
-                @events.ssl_error @server, addr, cert, e
+                @events.ssl_error e, addr, cert
 
               # The client doesn't know HTTP well
               rescue HttpParserError => e
@@ -263,7 +263,7 @@ module Puma
 
                 clear_monitor mon
 
-                @events.parse_error @server, c.env, e
+                @events.parse_error e, c
               rescue StandardError => e
                 @server.lowlevel_error(e, c.env)
 
