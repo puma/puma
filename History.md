@@ -1,3 +1,7 @@
+### Master
+* Bugfixes
+  * Resolve issue with threadpool waiting counter decrement when thread is killed
+
 ## 5.0.0
 
 * Features
