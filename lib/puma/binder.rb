@@ -114,7 +114,7 @@ module Puma
                 i.local_address.ip_unpack.join(':')
               end
 
-              logger.log "* #{log_msg} on tcp://#{addr}"
+              logger.log "* #{log_msg} on http://#{addr}"
             end
           end
 
