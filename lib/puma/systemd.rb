@@ -10,7 +10,7 @@ module Puma
 
     def start_watchdog
       usec = Integer(ENV["WATCHDOG_USEC"])
-      return log "systemd Watchdog too fast: " + usec if usec < 1_000_000
+      return warn "systemd Watchdog too fast: #{usec}" if usec < 1_000_000
 
       sec_f = usec / 1_000_000.0
       # "It is recommended that a daemon sends a keep-alive notification message
