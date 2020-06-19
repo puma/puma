@@ -24,9 +24,10 @@ After=network.target
 # Requires=puma.socket
 
 [Service]
-#Puma automatically supports systemd's `Type=notify` and watchdog service
-# monitoring. If you are using an earlier version of Puma, change this to `Type=simple`
-# and remove the `WatchdogSec` and `Environment="SD_NOTIFY` line.
+# Puma supports systemd's `Type=notify` and watchdog service
+# monitoring, since you have installed [sd_notify](https://github.com/agis/ruby-sdnotify) gem. 
+# If you are using an earlier version of Puma, change this to `Type=simple`
+# and remove the `WatchdogSec` and `Environment="SD_NOTIFY=true` line.
 Type=notify
 
 # Preferably configure a non-privileged user
