@@ -58,7 +58,7 @@ module TimeoutEveryTestCase
   class TestTookTooLong < Timeout::Error
   end
 
-  def run(*)
+  def capture_exceptions(*)
     ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) { super }
   end
 end
