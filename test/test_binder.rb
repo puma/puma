@@ -347,9 +347,13 @@ class TestBinder < TestBinderBase
 
     prepared_paths = {
         ssl: "ssl://127.0.0.1:#{UniquePort.call}?#{ssl_query}",
-        tcp: "http://127.0.0.1:#{UniquePort.call}",
+        tcp: "tcp://127.0.0.1:#{UniquePort.call}",
         unix: "unix://test/#{name}_server.sock"
       }
+
+    expected_logs = prepared_paths.dup.tap do |logs|
+      logs[:tcp] = logs[:tcp].gsub('tcp://', 'http://')
+    end
 
     tested_paths = [prepared_paths[order[0]], prepared_paths[order[1]]]
 
@@ -357,7 +361,7 @@ class TestBinder < TestBinderBase
     stdout = @events.stdout.string
 
     order.each do |prot|
-      assert_match prepared_paths[prot], stdout
+      assert_match expected_logs[prot], stdout
     end
   ensure
     @binder.close_listeners if order.include?(:unix) && UNIX_SKT_EXIST
