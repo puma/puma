@@ -1,6 +1,7 @@
 ### Master
 * Bugfixes
   * Resolve issue with threadpool waiting counter decrement when thread is killed
+  * Fix filehandle leak in MiniSSL (#2299)
 
 ## 5.0.0
 
