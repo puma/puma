@@ -22,6 +22,7 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -32,6 +33,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 import static javax.net.ssl.SSLEngineResult.Status;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -128,10 +131,39 @@ public class MiniSSL extends RubyObject {
     super(runtime, klass);
   }
 
-  @JRubyMethod(meta = true)
-  public static IRubyObject server(ThreadContext context, IRubyObject recv, IRubyObject miniSSLContext) {
-    RubyClass klass = (RubyClass) recv;
+  private static Map<String, KeyManagerFactory> keyManagerFactoryMap = new ConcurrentHashMap<String, KeyManagerFactory>();
+  private static Map<String, TrustManagerFactory> trustManagerFactoryMap = new ConcurrentHashMap<String, TrustManagerFactory>();
 
+  @JRubyMethod(meta = true)
+  public static synchronized IRubyObject server(ThreadContext context, IRubyObject recv, IRubyObject miniSSLContext)
+      throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException {
+    // Create the KeyManagerFactory and TrustManagerFactory for this server
+    String keystoreFile = miniSSLContext.callMethod(context, "keystore").convertToString().asJavaString();
+    char[] password = miniSSLContext.callMethod(context, "keystore_pass").convertToString().asJavaString().toCharArray();
+
+    KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+    InputStream is = new FileInputStream(keystoreFile);
+    try {
+      ks.load(is, password);
+    } finally {
+      is.close();
+    }
+    KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+    kmf.init(ks, password);
+    keyManagerFactoryMap.put(keystoreFile, kmf);
+
+    KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
+    is = new FileInputStream(keystoreFile);
+    try {
+      ts.load(is, password);
+    } finally {
+      is.close();
+    }
+    TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+    tmf.init(ts);
+    trustManagerFactoryMap.put(keystoreFile, tmf);
+
+    RubyClass klass = (RubyClass) recv;
     return klass.newInstance(context,
         new IRubyObject[] { miniSSLContext },
         Block.NULL_BLOCK);
@@ -139,20 +171,16 @@ public class MiniSSL extends RubyObject {
 
   @JRubyMethod
   public IRubyObject initialize(ThreadContext threadContext, IRubyObject miniSSLContext)
-      throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException {
+      throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
     KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
     KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
 
-    char[] password = miniSSLContext.callMethod(threadContext, "keystore_pass").convertToString().asJavaString().toCharArray();
     String keystoreFile = miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString();
-    ks.load(new FileInputStream(keystoreFile), password);
-    ts.load(new FileInputStream(keystoreFile), password);
-
-    KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-    kmf.init(ks, password);
-
-    TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-    tmf.init(ts);
+    KeyManagerFactory kmf = keyManagerFactoryMap.get(keystoreFile);
+    TrustManagerFactory tmf = trustManagerFactoryMap.get(keystoreFile);
+    if(kmf == null || tmf == null) {
+      throw new KeyStoreException("Could not find KeyManagerFactory/TrustManagerFactory for keystore: " + keystoreFile);
+    }
 
     SSLContext sslCtx = SSLContext.getInstance("TLS");
 
