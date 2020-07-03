@@ -1,6 +1,7 @@
 ### Master
 * Bugfixes
   * Resolve issue with threadpool waiting counter decrement when thread is killed
+  * Fix Puma::MiniSSL when OpenSSL is not available (#2303)
 
 ## 5.0.0
 
@@ -63,7 +64,7 @@
   * JSON parse cluster worker stats instead of regex (#2124)
   * Support parallel tests in verbose progress reporting (#2223)
   * Refactor error handling in server accept loop (#2239)
-  
+
 ## 4.3.4/4.3.5 and 3.12.5/3.12.6 / 2020-05-22
 
 Each patchlevel release contains a separate security fix. We recommend simply upgrading to 4.3.5/3.12.6.
