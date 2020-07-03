@@ -13,7 +13,7 @@ module Puma
 
     # define constant at runtime, as it's easy to determine at built time,
     # but Puma could (it shouldn't) be loaded with an older OpenSSL version
-    HAS_TLS1_3 = !IS_JRUBY &&
+    HAS_TLS1_3 = !IS_JRUBY && defined?(OPENSSL_VERSION) &&
       (OPENSSL_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) != -1 &&
       (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) !=-1
 
