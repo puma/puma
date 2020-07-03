@@ -10,7 +10,6 @@ require 'puma/puma_http11'
 
 module Puma
   module MiniSSL
-
     # define constant at runtime, as it's easy to determine at built time,
     # but Puma could (it shouldn't) be loaded with an older OpenSSL version
     HAS_TLS1_3 = !IS_JRUBY &&
@@ -203,8 +202,6 @@ module Puma
       class SSLError < StandardError
         # Define this for jruby even though it isn't used.
       end
-
-      def self.check; end
     end
 
     class Context

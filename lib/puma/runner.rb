@@ -2,7 +2,6 @@
 
 require 'puma/server'
 require 'puma/const'
-require 'puma/minissl/context_builder'
 
 module Puma
   # Generic class that is used by `Puma::Cluster` and `Puma::Single` to

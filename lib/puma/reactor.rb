@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'puma/util'
-require 'puma/minissl'
+require 'puma/minissl' if ::Puma::HAS_SSL
 
 require 'nio'
 

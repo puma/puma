@@ -9,11 +9,8 @@ require 'puma/null_io'
 require 'puma/reactor'
 require 'puma/client'
 require 'puma/binder'
-require 'puma/accept_nonblock'
 require 'puma/util'
 require 'puma/io_buffer'
-
-require 'puma/puma_http11'
 
 require 'socket'
 require 'forwardable'

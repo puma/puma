@@ -2,9 +2,6 @@ module Puma
   module MiniSSL
     class ContextBuilder
       def initialize(params, events)
-        require 'puma/minissl'
-        MiniSSL.check
-
         @params = params
         @events = events
       end
