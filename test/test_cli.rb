@@ -9,10 +9,8 @@ class TestCLI < Minitest::Test
 
   def setup
     @environment = 'production'
-    @tmp_file = Tempfile.new("puma-test")
-    @tmp_path = @tmp_file.path
-    @tmp_file.close!
 
+    @tmp_path = tmp_path('puma-test')
     @tmp_path2 = "#{@tmp_path}2"
 
     File.unlink @tmp_path  if File.exist? @tmp_path

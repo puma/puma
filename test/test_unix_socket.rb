@@ -6,7 +6,7 @@ class TestPumaUnixSocket < Minitest::Test
 
   App = lambda { |env| [200, {}, ["Works"]] }
 
-  PATH = "test/puma.sock"
+  PATH = tmp_path('.sock')
 
   def setup
     return unless UNIX_SKT_EXIST
