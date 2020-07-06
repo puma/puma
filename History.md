@@ -29,6 +29,7 @@
   * Daemonization has been removed without replacement. (#2170)
   * Changed #connected_port to #connected_ports (#2076)
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found (#2022)
+  * Log binding on http:// for TCP bindings to make it clickable
 
 * Bugfixes
   * Close client http connections made to an ssl server with TLSv1.3 (#2116)
