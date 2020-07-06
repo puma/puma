@@ -1,16 +1,15 @@
 # frozen_string_literal: true
 
 require_relative "helper"
-require_relative "helpers/ssl"
+require_relative "helpers/ssl" if ::Puma::HAS_SSL
 require_relative "helpers/tmp_path"
 
 require "puma/binder"
-require "puma/puma_http11"
 require "puma/events"
 require "puma/configuration"
 
 class TestBinderBase < Minitest::Test
-  include SSLHelper
+  include SSLHelper if ::Puma::HAS_SSL
   include TmpPath
 
   def setup
@@ -58,12 +57,14 @@ class TestBinder < TestBinderBase
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
     assert_empty @binder.listeners
   end
 
   def test_home_alters_listeners_for_ssl_addresses
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     port = UniquePort.call
     @binder.parse ["ssl://127.0.0.1:#{port}?#{ssl_query}"], @events
 
@@ -81,7 +82,9 @@ class TestBinder < TestBinderBase
   end
 
   def test_correct_zero_port_ssl
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     skip("Implement later")
+
     ssl_regex = %r!ssl://127.0.0.1:(\d+)!
 
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
@@ -101,7 +104,9 @@ class TestBinder < TestBinderBase
   end
 
   def test_logs_all_localhost_bindings_ssl
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     skip("Incorrectly logs localhost, not 127.0.0.1")
+
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
     assert_match %r!ssl://127.0.0.1:(\d+)!, @events.stdout.string
@@ -145,18 +150,21 @@ class TestBinder < TestBinderBase
   end
 
   def test_binder_parses_tlsv1_disabled
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1=true"], @events
 
     assert ssl_context_for_binder.no_tlsv1
   end
 
   def test_binder_parses_tlsv1_enabled
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1=false"], @events
 
     refute ssl_context_for_binder.no_tlsv1
   end
 
   def test_binder_parses_tlsv1_tlsv1_1_unspecified_defaults_to_enabled
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}"], @events
 
     refute ssl_context_for_binder.no_tlsv1
@@ -164,18 +172,21 @@ class TestBinder < TestBinderBase
   end
 
   def test_binder_parses_tlsv1_1_disabled
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1_1=true"], @events
 
     assert ssl_context_for_binder.no_tlsv1_1
   end
 
   def test_binder_parses_tlsv1_1_enabled
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1_1=false"], @events
 
     refute ssl_context_for_binder.no_tlsv1_1
   end
 
   def test_env_contains_protoenv
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
     env_hash = @binder.envs[@binder.ios.first]
@@ -186,6 +197,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_env_contains_stderr
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
     env_hash = @binder.envs[@binder.ios.first]
@@ -346,6 +358,7 @@ class TestBinder < TestBinderBase
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
     skip UNIX_SKT_MSG if order.include?(:unix) && !UNIX_SKT_EXIST
+    skip 'No ssl support' unless ::Puma::HAS_SSL
 
     unix_path = tmp_path('.sock')
     prepared_paths = {
@@ -373,6 +386,8 @@ end
 
 class TestBinderJRuby < TestBinderBase
   def test_binder_parses_jruby_ssl_options
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
     keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
     ssl_cipher_list = "TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
 
@@ -385,6 +400,8 @@ end if ::Puma::IS_JRUBY
 
 class TestBinderMRI < TestBinderBase
   def test_binder_parses_ssl_cipher_filter
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
     ssl_cipher_filter = "AES@STRENGTH"
 
     @binder.parse ["ssl://0.0.0.0?#{ssl_query}&ssl_cipher_filter=#{ssl_cipher_filter}"], @events

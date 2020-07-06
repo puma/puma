@@ -1,6 +1,6 @@
 require_relative "helper"
 
-require "puma/minissl"
+require "puma/minissl" if ::Puma::HAS_SSL
 
 class TestMiniSSL < Minitest::Test
 
@@ -26,4 +26,4 @@ class TestMiniSSL < Minitest::Test
       assert_equal("No such cert file '/no/such/cert'", exception.message)
     end
   end
-end
+end if ::Puma::HAS_SSL

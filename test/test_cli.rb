@@ -1,12 +1,12 @@
 require_relative "helper"
-require_relative "helpers/ssl"
+require_relative "helpers/ssl" if ::Puma::HAS_SSL
 require_relative "helpers/tmp_path"
 
 require "puma/cli"
 require "json"
 
 class TestCLI < Minitest::Test
-  include SSLHelper
+  include SSLHelper if ::Puma::HAS_SSL
   include TmpPath
 
   def setup
@@ -67,6 +67,8 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_for_ssl
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
     require "net/http"
     control_port = UniquePort.call
     control_host = "127.0.0.1"
