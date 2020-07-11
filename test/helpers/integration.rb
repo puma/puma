@@ -2,7 +2,6 @@
 
 require "puma/control_cli"
 require "open3"
-#require_relative "../helper"
 
 # Only single mode tests go here. Cluster and pumactl tests
 # have their own files, use those instead
