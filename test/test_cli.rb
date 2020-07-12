@@ -1,11 +1,13 @@
 require_relative "helper"
 require_relative "helpers/ssl"
+require_relative "helpers/tmp_path"
 
 require "puma/cli"
 require "json"
 
 class TestCLI < Minitest::Test
   include SSLHelper
+  include TmpPath
 
   def setup
     @environment = 'production'

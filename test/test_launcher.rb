@@ -1,9 +1,12 @@
 require_relative "helper"
+require_relative "helpers/tmp_path"
 
 require "puma/configuration"
 require 'puma/events'
 
 class TestLauncher < Minitest::Test
+  include TmpPath
+
   def test_dependencies_and_files_to_require_after_prune_is_correctly_built_for_no_extra_deps
     skip_on :no_bundler
 

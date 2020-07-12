@@ -2,6 +2,7 @@
 
 require_relative "helper"
 require_relative "helpers/ssl"
+require_relative "helpers/tmp_path"
 
 require "puma/binder"
 require "puma/puma_http11"
@@ -10,6 +11,7 @@ require "puma/configuration"
 
 class TestBinderBase < Minitest::Test
   include SSLHelper
+  include TmpPath
 
   def setup
     @events = Puma::Events.strings

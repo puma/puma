@@ -2,6 +2,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationPumactl < TestIntegration
+  include TmpPath
   parallelize_me!
 
   def setup

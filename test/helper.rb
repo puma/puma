@@ -44,13 +44,6 @@ def hit(uris)
   end
 end
 
-def tmp_path(extension=nil)
-  sock_file = Tempfile.new(['', extension])
-  path = sock_file.path
-  sock_file.close!
-  path
-end
-
 module UniquePort
   def self.call
     TCPServer.open('127.0.0.1', 0) do |server|
