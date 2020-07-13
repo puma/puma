@@ -26,8 +26,9 @@ module TmpPath
   end
 
   def clean_tmp_paths
-    tmp_paths.each { |path| delete_tmp_path(path) }
-    @tmp_paths = []
+    while path = tmp_paths.pop
+      delete_tmp_path(path)
+    end
   end
 
   def delete_tmp_path(path)
