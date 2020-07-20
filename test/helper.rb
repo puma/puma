@@ -58,8 +58,11 @@ module TimeoutEveryTestCase
   class TestTookTooLong < Timeout::Error
   end
 
-  def capture_exceptions(*)
-    ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) { super }
+  def time_it
+    t0 = Minitest.clock_time
+    ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) { yield }
+  ensure
+    self.time = Minitest.clock_time - t0
   end
 end
 

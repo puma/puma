@@ -387,7 +387,7 @@ RUBY
   # used with thread_run to define correct 'refused' errors
   def thread_run_refused(unix: false)
     if unix
-      DARWIN ? [Errno::ENOENT, IOError] : [Errno::ENOENT]
+      [Errno::ENOENT, IOError]
     else
       DARWIN ? [Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
         [Errno::ECONNREFUSED]

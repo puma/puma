@@ -317,7 +317,12 @@ module Puma
       rescue Exception => e
         @events.unknown_error e, nil, "Exception handling servers"
       ensure
-        @check.close unless @check.closed? # Ruby 2.2 issue
+        begin
+          @check.close unless @check.closed?
+        rescue Errno::EBADF, RuntimeError
+          # RuntimeError is Ruby 2.2 issue, can't modify frozen IOError
+          # Errno::EBADF is infrequently raised
+        end
         @notify.close
         @notify = nil
         @check = nil
@@ -912,7 +917,7 @@ module Puma
       @check, @notify = Puma::Util.pipe unless @notify
       begin
         @notify << message
-      rescue IOError
+      rescue IOError, NoMethodError, Errno::EPIPE
          # The server, in another thread, is shutting down
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
       rescue RuntimeError => e
