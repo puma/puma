@@ -120,6 +120,8 @@ public class MiniSSL extends RubyObject {
   }
 
   private SSLEngine engine;
+  private boolean closed;
+  private boolean handshake;
   private MiniSSLBuffer inboundNetData;
   private MiniSSLBuffer outboundAppData;
   private MiniSSLBuffer outboundNetData;
@@ -157,6 +159,8 @@ public class MiniSSL extends RubyObject {
     SSLContext sslCtx = SSLContext.getInstance("TLS");
 
     sslCtx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+    closed = false;
+    handshake = false;
     engine = sslCtx.createSSLEngine();
 
     String[] protocols;
@@ -240,14 +244,21 @@ public class MiniSSL extends RubyObject {
           // need to wait for more data to come in before we retry
           retryOp = false;
           break;
-        default:
-          // other cases are OK and CLOSED.  We're done here.
+        case CLOSED:
+          closed = true;
           retryOp = false;
+          break;
+        default:
+          // other case is OK.  We're done here.
+          retryOp = false;
+      }
+      if (res.getHandshakeStatus() == HandshakeStatus.FINISHED) {
+        handshake = true;
       }
     }
 
     // after each op, run any delegated tasks if needed
-    if(engine.getHandshakeStatus() == HandshakeStatus.NEED_TASK) {
+    if(res.getHandshakeStatus() == HandshakeStatus.NEED_TASK) {
       Runnable runnable;
       while ((runnable = engine.getDelegatedTask()) != null) {
         runnable.run();
@@ -271,13 +282,14 @@ public class MiniSSL extends RubyObject {
 
       HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
       boolean done = false;
+      SSLEngineResult res = null;
       while (!done) {
         switch (handshakeStatus) {
           case NEED_WRAP:
-            doOp(SSLOperation.WRAP, inboundAppData, outboundNetData);
+            res = doOp(SSLOperation.WRAP, inboundAppData, outboundNetData);
             break;
           case NEED_UNWRAP:
-            SSLEngineResult res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
+            res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
             if (res.getStatus() == Status.BUFFER_UNDERFLOW) {
               // need more data before we can shake more hands
               done = true;
@@ -286,7 +298,9 @@ public class MiniSSL extends RubyObject {
           default:
             done = true;
         }
-        handshakeStatus = engine.getHandshakeStatus();
+        if (!done) {
+          handshakeStatus = res.getHandshakeStatus();
+        }
       }
 
       if (inboundNetData.hasRemaining()) {
@@ -358,6 +372,23 @@ public class MiniSSL extends RubyObject {
       return JavaEmbedUtils.javaToRuby(getRuntime(), engine.getSession().getPeerCertificates()[0].getEncoded());
     } catch (SSLPeerUnverifiedException ex) {
       return getRuntime().getNil();
+    }
+  }
+
+  @JRubyMethod(name = "init?")
+  public IRubyObject isInit(ThreadContext context) {
+    return handshake ? getRuntime().getFalse() : getRuntime().getTrue();
+  }
+
+  @JRubyMethod
+  public IRubyObject shutdown() {
+    if (closed || engine.isInboundDone() && engine.isOutboundDone()) {
+      if (engine.isOutboundDone()) {
+        engine.closeOutbound();
+      }
+      return getRuntime().getTrue();
+    } else {
+      return getRuntime().getFalse();
     }
   }
 }

@@ -197,6 +197,9 @@ module Puma
     end
 
     if IS_JRUBY
+      OPENSSL_NO_SSL3 = false
+      OPENSSL_NO_TLS1 = false
+
       class SSLError < StandardError
         # Define this for jruby even though it isn't used.
       end
