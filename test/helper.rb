@@ -58,11 +58,27 @@ module TimeoutEveryTestCase
   class TestTookTooLong < Timeout::Error
   end
 
-  def time_it
-    t0 = Minitest.clock_time
-    ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) { yield }
-  ensure
-    self.time = Minitest.clock_time - t0
+  def run
+    with_info_handler do
+      time_it do
+        capture_exceptions do
+          before_setup; setup; after_setup
+
+          # wrap timeout around test method only
+          ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) {
+            self.send self.name
+          }
+        end
+
+        Minitest::Test::TEARDOWN_METHODS.each do |hook|
+          capture_exceptions do
+            self.send hook
+          end
+        end
+      end
+    end
+
+    Minitest::Result.from self # per contract
   end
 end
 
