@@ -6,7 +6,6 @@ class TestPumaServer < Minitest::Test
   parallelize_me!
 
   def setup
-    @port = 0
     @host = "127.0.0.1"
 
     @ios = []
@@ -24,7 +23,7 @@ class TestPumaServer < Minitest::Test
 
   def server_run(app: @app, early_hints: false)
     @server.app = app
-    @server.add_tcp_listener @host, @port
+    @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.early_hints = true if early_hints
     @server.run
   end
@@ -49,8 +48,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def new_connection
-    port = @server.connected_ports[0]
-    TCPSocket.new(@host, port).tap {|sock| @ios << sock}
+    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
   end
 
   def test_proper_stringio_body
@@ -138,8 +136,7 @@ class TestPumaServer < Minitest::Test
     req = Net::HTTP::Get.new '/'
     req['HOST'] = 'example.com'
 
-    port = @server.connected_ports[0]
-    res = Net::HTTP.start @host, port do |http|
+    res = Net::HTTP.start @host, @port do |http|
       http.request(req)
     end
 
@@ -155,8 +152,7 @@ class TestPumaServer < Minitest::Test
     req['HOST'] = "example.com"
     req['X-FORWARDED-PROTO'] = "https,http"
 
-    port = @server.connected_ports[0]
-    res = Net::HTTP.start @host, port do |http|
+    res = Net::HTTP.start @host, @port do |http|
       http.request(req)
     end
 
@@ -1024,7 +1020,7 @@ EOF
   end
 
   def stub_accept_nonblock(error)
-    @server.add_tcp_listener @host, @port
+    @port = (@server.add_tcp_listener @host, 0).addr[1]
     io = @server.binder.ios.last
     accept_old = io.method(:accept_nonblock)
     accept_stub = -> do
