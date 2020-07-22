@@ -399,7 +399,7 @@ RUBY
     begin
       sleep delay
       s = connect "sleep#{sleep_time}", unix: unix
-      body = read_body(s)
+      body = read_body(s, 20)
       mutex.synchronize { replies << body }
     rescue Errno::ECONNRESET
       # connection was accepted but then closed
