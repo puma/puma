@@ -35,8 +35,8 @@ class TestRackServer < Minitest::Test
   def setup
     @simple = lambda { |env| [200, { "X-Header" => "Works" }, ["Hello"]] }
     @server = Puma::Server.new @simple
-    @server.add_tcp_listener "127.0.0.1", 0
-
+    port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
+    @tcp = "http://127.0.0.1:#{port}"
     @stopped = false
   end
 
@@ -55,7 +55,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["http://127.0.0.1:#{ @server.connected_ports[0] }/test"])
+    hit(["#{@tcp}/test"])
 
     stop
 
@@ -70,7 +70,7 @@ class TestRackServer < Minitest::Test
 
     big = "x" * (1024 * 16)
 
-    Net::HTTP.post_form URI.parse("http://127.0.0.1:#{ @server.connected_ports[0] }/test"),
+    Net::HTTP.post_form URI.parse("#{@tcp}/test"),
                  { "big" => big }
 
     stop
@@ -83,7 +83,7 @@ class TestRackServer < Minitest::Test
     @server.app = lambda { |env| input = env; @simple.call(env) }
     @server.run
 
-    hit(["http://127.0.0.1:#{ @server.connected_ports[0] }/test/a/b/c"])
+    hit(["#{@tcp}/test/a/b/c"])
 
     stop
 
@@ -100,7 +100,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["http://127.0.0.1:#{ @server.connected_ports[0] }/test"])
+    hit(["#{@tcp}/test"])
 
     stop
 
@@ -116,7 +116,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["http://127.0.0.1:#{ @server.connected_ports[0] }/test"])
+    hit(["#{@tcp}/test"])
 
     stop
 

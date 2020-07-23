@@ -167,10 +167,9 @@ class TestEvents < Minitest::Test
     events = Puma::Events.strings
     server = Puma::Server.new app, events
 
-    server.add_tcp_listener host, port
+    port = (server.add_tcp_listener host, 0).addr[1]
     server.run
 
-    port = server.connected_ports[0]
     sock = TCPSocket.new host, port
     path = "/"
     params = "a"*1024*10

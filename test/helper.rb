@@ -16,6 +16,7 @@ require "minitest/autorun"
 require "minitest/pride"
 require "minitest/proveit"
 require "minitest/stub_const"
+require "net/http"
 require_relative "helpers/apps"
 
 Thread.abort_on_exception = true
@@ -29,7 +30,6 @@ require "puma/detect"
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
 def hit(uris)
-  require "net/http"
   uris.map do |u|
     response =
       if u.kind_of? String
