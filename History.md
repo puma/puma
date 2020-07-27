@@ -2,6 +2,7 @@
 * Bugfixes
   * Resolve issue with threadpool waiting counter decrement when thread is killed
   * Constrain rake-compiler version to 0.9.4 to fix `ClassNotFound` exception when using MiniSSL with Java8.
+  * Fix recursive `prune_bundler` (#2319).
 
 ## 5.0.0
 

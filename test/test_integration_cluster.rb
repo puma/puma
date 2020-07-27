@@ -198,6 +198,30 @@ RUBY
     assert output, "Friendly fork didn't run"
   end
 
+  def test_prune_bundler_with_multiple_workers
+    cli_server "", config: <<RUBY
+require 'bundler/setup'
+Bundler.setup
+
+prune_bundler true
+
+workers 2
+
+app do |env|
+  [200, {}, ["embedded app"]]
+end
+
+lowlevel_error_handler do |err|
+  [200, {}, ["error page"]]
+end
+RUBY
+
+    connection = connect
+    reply = read_body(connection)
+
+    assert reply, "embedded app"
+  end
+
   private
 
   def worker_timeout(timeout, iterations, config)

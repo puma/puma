@@ -90,6 +90,26 @@ class TestIntegrationPumactl < TestIntegration
     @server = nil
   end
 
+  def test_prune_bundler_with_multiple_workers
+    skip NO_FORK_MSG unless HAS_FORK
+
+    cli_server "-q -C test/config/prune_bundler_with_multiple_workers.rb --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
+
+    s = UNIXSocket.new @bind_path
+    @ios_to_close << s
+    s << "GET / HTTP/1.0\r\n\r\n"
+
+    body = s.read
+
+    assert_match "200 OK", body
+    assert_match "embedded app", body
+
+    cli_pumactl "stop", unix: true
+
+    _, status = Process.wait2(@pid)
+    @server = nil
+  end
+
   def test_kill_unknown
     skip_on :jruby
 
