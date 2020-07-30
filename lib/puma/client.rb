@@ -456,7 +456,15 @@ module Puma
           chunk = chunk[@partial_part_left..-1]
           @partial_part_left = 0
         else
-          write_chunk(chunk) if @partial_part_left > 2 # don't include the last \r\n
+          if @partial_part_left > 2
+            if @partial_part_left == chunk.size + 1
+              # Don't include the last \r
+              write_chunk(chunk[0..(@partial_part_left-3)])
+            else
+              # don't include the last \r\n
+              write_chunk(chunk)
+            end
+          end
           @partial_part_left -= chunk.size
           return false
         end
