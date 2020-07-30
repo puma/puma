@@ -6,6 +6,7 @@
   * Constrain rake-compiler version to 0.9.4 to fix `ClassNotFound` exception when using MiniSSL with Java8.
   * Fix recursive `prune_bundler` (#2319).
   * Ensure that TCP_CORK is usable
+  * Fix corner case when request body is chunked (#2326)
 
 ## 5.0.0
 
