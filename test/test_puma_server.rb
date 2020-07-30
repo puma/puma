@@ -512,6 +512,36 @@ EOF
     assert_equal 5, content_length
   end
 
+  def test_large_chunked_request
+    body = nil
+    content_length = nil
+    server_run app: ->(env) {
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [""]]
+    }
+
+    header = "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+    chunk_header_size = 6 # 4fb8\r\n
+    # Current implementation reads one chunk of CHUNK_SIZE, then more chunks of size 4096.
+    # We want a chunk to split exactly after "#{request_body}\r", before the "\n".
+    edge_case_size = Puma::Const::CHUNK_SIZE + 4096 - header.size - chunk_header_size - 1
+
+    margin = 0 # 0 for only testing this specific case, increase to test more surrounding sizes
+    (-margin..margin).each do |i|
+      size = edge_case_size + i
+      request_body = '.' * size
+      request = "#{header}#{size.to_s(16)}\r\n#{request_body}\r\n0\r\n\r\n"
+
+      data = send_http_and_read request
+
+      assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+      assert_equal size, content_length
+      assert_equal request_body, body
+    end
+  end
+
   def test_chunked_request_pause_before_value
     body = nil
     content_length = nil
