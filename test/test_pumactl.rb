@@ -178,7 +178,10 @@ class TestPumaControlCli < TestConfigFileBase
   def assert_command_cli_output(options, expected_out)
     cmd = Puma::ControlCLI.new(options)
     out, _ = capture_subprocess_io do
-      cmd.run
+      begin
+        cmd.run
+      rescue SystemExit => e
+      end
     end
     assert_match expected_out, out
   end
