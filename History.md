@@ -1,7 +1,7 @@
 ## Master
 
 * Bugfixes
-  * Explicitly include ctype.h to fix compilation warning and build error on MacOS Big Sur (#2304)
+  * Explicitly include ctype.h to fix compilation warning and build error on macOS with Xcode 12 (#2304)
 
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
