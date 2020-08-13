@@ -8,7 +8,7 @@
 
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
-[![StackOverflow](http://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( http://stackoverflow.com/questions/tagged/puma )
+[![StackOverflow](https://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( https://stackoverflow.com/questions/tagged/puma )
 
 Puma is a **simple, fast, multi-threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications**.
 
@@ -27,7 +27,7 @@ $ gem install puma
 $ puma
 ```
 
-Without arguments, puma will look for a rackup (.ru) file in 
+Without arguments, puma will look for a rackup (.ru) file in
 working directory called `config.ru`.
 
 ## Frameworks
@@ -135,7 +135,7 @@ Preloading can’t be used with phased restart, since phased restart kills and r
 If puma encounters an error outside of the context of your application, it will respond with a 500 and a simple
 textual error message (see `lowlevel_error` in [this file](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
 You can specify custom behavior for this scenario. For example, you can report the error to your third-party
-error-tracking service (in this example, [rollbar](http://rollbar.com)):
+error-tracking service (in this example, [rollbar](https://rollbar.com)):
 
 ```ruby
 lowlevel_error_handler do |e|

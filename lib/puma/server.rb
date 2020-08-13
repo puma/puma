@@ -474,7 +474,7 @@ module Puma
 
       env[PATH_INFO] = env[REQUEST_PATH]
 
-      # From http://www.ietf.org/rfc/rfc3875 :
+      # From https://www.ietf.org/rfc/rfc3875 :
       # "Script authors should be aware that the REMOTE_ADDR and
       # REMOTE_HOST meta-variables (see sections 4.1.8 and 4.1.9)
       # may not identify the ultimate source of the request.
