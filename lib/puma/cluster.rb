@@ -98,6 +98,7 @@ module Puma
         @last_status = JSON.parse(status, symbolize_names: true)
       end
 
+      # @see Puma::Cluster#check_workers
       def ping_timeout
         @last_checkin +
           (booted? ?
@@ -649,6 +650,7 @@ module Puma
       end
     end
 
+    # @version 5.0.0
     def nakayoshi_gc
       return unless @options[:nakayoshi_fork]
       log "! Promoting existing objects to old generation..."
