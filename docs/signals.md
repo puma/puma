@@ -38,10 +38,10 @@ Puma cluster responds to these signals:
 - `TERM` send `TERM` to worker. Worker will attempt to finish then exit.
 - `USR2` restart workers. This also reloads puma configuration file, if there is one.
 - `USR1` restart workers in phases, a rolling restart. This will not reload configuration file.
-- `HUP`  reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided it will behave like `INT`
-- `INT` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
+- `HUP ` reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided it will behave like `INT`
+- `INT ` equivalent of sending Ctrl-C to cluster. Will attempt to finish then exit.
 - `CHLD`
-- `URG` refork workers in phases from worker 0, if `fork_workers` option is enabled.
+- `URG ` refork workers in phases from worker 0, if `fork_workers` option is enabled.
 
 ## Callbacks order in case of different signals
 
