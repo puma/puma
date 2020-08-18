@@ -33,7 +33,7 @@
   * Log binding on http:// for TCP bindings to make it clickable
 
 * Bugfixes
-  * Improve shutdown reliability (#2312)
+  * Improve shutdown reliability (#2312, #2338)
   * Close client http connections made to an ssl server with TLSv1.3 (#2116)
   * Do not set user_config to quiet by default to allow for file config (#2074)
   * Always close SSL connection in Puma::ControlCLI (#2211)
