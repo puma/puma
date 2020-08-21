@@ -3,7 +3,7 @@
 module Puma
   # Rack::CommonLogger forwards every request to the given +app+, and
   # logs a line in the
-  # {Apache common log format}[http://httpd.apache.org/docs/1.3/logs.html#common]
+  # {Apache common log format}[https://httpd.apache.org/docs/1.3/logs.html#common]
   # to the +logger+.
   #
   # If +logger+ is nil, CommonLogger will fall back +rack.errors+, which is
@@ -16,7 +16,7 @@ module Puma
   # (which is called without arguments in order to make the error appear for
   # sure)
   class CommonLogger
-    # Common Log Format: http://httpd.apache.org/docs/1.3/logs.html#common
+    # Common Log Format: https://httpd.apache.org/docs/1.3/logs.html#common
     #
     #   lilith.local - - [07/Aug/2006 23:58:02 -0400] "GET / HTTP/1.1" 500 -
     #
