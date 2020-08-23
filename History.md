@@ -11,7 +11,7 @@
   * EXPERIMENTAL: Added `nakayoshi_fork` option. Reduce memory usage in preloaded cluster-mode apps by GCing before fork and compacting, where available. (#2093, #2256)
   * Added pumactl `thread-backtraces` command to print thread backtraces (#2054)
   * Added incrementing `requests_count` to `Puma.stats`. (#2106)
-  * Increased maximum URI path length from 2048 to 8196 bytes (#2167)
+  * Increased maximum URI path length from 2048 to 8192 bytes (#2167, #2344)
   * `lowlevel_error_handler` is now called during a forced threadpool shutdown, and if a callable with 3 arguments is set, we now also pass the status code (#2203)
   * Faster phased restart and worker timeout (#2220)
   * Added `state_permission` to config DSL to set state file permissions (#2238)
@@ -66,7 +66,7 @@
   * JSON parse cluster worker stats instead of regex (#2124)
   * Support parallel tests in verbose progress reporting (#2223)
   * Refactor error handling in server accept loop (#2239)
-  
+
 ## 4.3.4/4.3.5 and 3.12.5/3.12.6 / 2020-05-22
 
 Each patchlevel release contains a separate security fix. We recommend simply upgrading to 4.3.5/3.12.6.
