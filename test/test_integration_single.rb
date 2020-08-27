@@ -141,7 +141,7 @@ class TestIntegrationSingle < TestIntegration
 
     system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
 
-    out=`ruby -rrubygems -Ilib bin/pumactl -F test/config/t2_conf.rb status`
+    out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
 
     stop_server
 
