@@ -133,6 +133,8 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_puma_started_log_writing
+    skip_unless_signal_exist? :TERM
+
     suppress_output = '> /dev/null 2>&1'
 
     cli_server '-C test/config/t2_conf.rb test/rackup/hello.ru'
