@@ -162,7 +162,7 @@ RUBY
 
     cli_server "-C test/config/t3_conf.rb test/rackup/hello.ru"
 
-    pids = get_worker_pids
+    get_worker_pids # this will wait till all the processes are up
 
     worker_pid_was_present = File.file? "t3-worker-2-pid"
 
