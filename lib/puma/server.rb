@@ -98,10 +98,22 @@ module Puma
       @binder = bind
     end
 
+    class << self
+      # :nodoc:
+      def tcp_cork_supported?
+        RbConfig::CONFIG['host_os'] =~ /linux/ &&
+          Socket.const_defined?(:IPPROTO_TCP) &&
+          Socket.const_defined?(:TCP_CORK) &&
+          Socket.const_defined?(:SOL_TCP) &&
+          Socket.const_defined?(:TCP_INFO)
+      end
+      private :tcp_cork_supported?
+    end
+
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
     #
-    if RUBY_PLATFORM =~ /linux/
+    if tcp_cork_supported?
       UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
 
       # 6 == Socket::IPPROTO_TCP
@@ -109,7 +121,7 @@ module Puma
       # 1/0 == turn on/off
       def cork_socket(socket)
         begin
-          socket.setsockopt(6, 3, 1) if socket.kind_of? TCPSocket
+          socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if socket.kind_of? TCPSocket
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
@@ -117,7 +129,7 @@ module Puma
 
       def uncork_socket(socket)
         begin
-          socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
+          socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if socket.kind_of? TCPSocket
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
@@ -207,14 +219,16 @@ module Puma
 
           client.close
 
-          @events.ssl_error self, addr, cert, e
+          @events.ssl_error e, addr, cert
         rescue HttpParserError => e
           client.write_error(400)
           client.close
 
-          @events.parse_error self, client.env, e
-        rescue ConnectionError, EOFError
+          @events.parse_error e, client
+        rescue ConnectionError, EOFError => e
           client.close
+
+          @events.connection_error e, client
         else
           if process_now
             process_client client, buffer
@@ -300,7 +314,7 @@ module Puma
               end
             end
           rescue Object => e
-            @events.unknown_error self, e, "Listen loop"
+            @events.unknown_error e, nil, "Listen loop"
           end
         end
 
@@ -313,10 +327,14 @@ module Puma
         end
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
-        STDERR.puts "Exception handling servers: #{e.message} (#{e.class})"
-        STDERR.puts e.backtrace
+        @events.unknown_error e, nil, "Exception handling servers"
       ensure
-        @check.close unless @check.closed? # Ruby 2.2 issue
+        begin
+          @check.close unless @check.closed?
+        rescue Errno::EBADF, RuntimeError
+          # RuntimeError is Ruby 2.2 issue, can't modify frozen IOError
+          # Errno::EBADF is infrequently raised
+        end
         @notify.close
         @notify = nil
         @check = nil
@@ -406,7 +424,7 @@ module Puma
 
         close_socket = true
 
-        @events.ssl_error self, addr, cert, e
+        @events.ssl_error e, addr, cert
 
       # The client doesn't know HTTP well
       rescue HttpParserError => e
@@ -414,7 +432,7 @@ module Puma
 
         client.write_error(400)
 
-        @events.parse_error self, client.env, e
+        @events.parse_error e, client
 
       # Server error
       rescue StandardError => e
@@ -422,8 +440,7 @@ module Puma
 
         client.write_error(500)
 
-        @events.unknown_error self, e, "Read"
-
+        @events.unknown_error e, nil, "Read"
       ensure
         buffer.reset
 
@@ -433,7 +450,7 @@ module Puma
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           # Already closed
         rescue StandardError => e
-          @events.unknown_error self, e, "Client"
+          @events.unknown_error e, nil, "Client"
         end
       end
     end
@@ -469,7 +486,7 @@ module Puma
 
       env[PATH_INFO] = env[REQUEST_PATH]
 
-      # From http://www.ietf.org/rfc/rfc3875 :
+      # From https://www.ietf.org/rfc/rfc3875 :
       # "Script authors should be aware that the REMOTE_ADDR and
       # REMOTE_HOST meta-variables (see sections 4.1.8 and 4.1.9)
       # may not identify the ultimate source of the request.
@@ -558,10 +575,42 @@ module Puma
             end
 
             fast_write client, "\r\n".freeze
-          rescue ConnectionError
+          rescue ConnectionError => e
+            @events.debug_error e
             # noop, if we lost the socket we just won't send the early hints
           end
         }
+      end
+
+      # Fixup any headers with , in the name to have _ now. We emit
+      # headers with , in them during the parse phase to avoid ambiguity
+      # with the - to _ conversion for critical headers. But here for
+      # compatibility, we'll convert them back. This code is written to
+      # avoid allocation in the common case (ie there are no headers
+      # with , in their names), that's why it has the extra conditionals.
+
+      to_delete = nil
+      to_add = nil
+
+      env.each do |k,v|
+        if k.start_with?("HTTP_") and k.include?(",") and k != "HTTP_TRANSFER,ENCODING"
+          if to_delete
+            to_delete << k
+          else
+            to_delete = [k]
+          end
+
+          unless to_add
+            to_add = {}
+          end
+
+          to_add[k.tr(",", "_")] = v
+        end
+      end
+
+      if to_delete
+        to_delete.each { |k| env.delete(k) }
+        env.merge! to_add
       end
 
       # A rack extension. If the app writes #call'ables to this
@@ -585,12 +634,12 @@ module Puma
             return :async
           end
         rescue ThreadPool::ForceShutdown => e
-          @events.unknown_error self, e, "Rack app", env
+          @events.unknown_error e, req, "Rack app"
           @events.log "Detected force shutdown of a thread"
 
           status, headers, res_body = lowlevel_error(e, env, 503)
         rescue Exception => e
-          @events.unknown_error self, e, "Rack app", env
+          @events.unknown_error e, req, "Rack app"
 
           status, headers, res_body = lowlevel_error(e, env, 500)
         end
@@ -880,7 +929,7 @@ module Puma
       @check, @notify = Puma::Util.pipe unless @notify
       begin
         @notify << message
-      rescue IOError
+      rescue IOError, NoMethodError, Errno::EPIPE
          # The server, in another thread, is shutting down
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
       rescue RuntimeError => e

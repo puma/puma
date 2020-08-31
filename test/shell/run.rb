@@ -1,18 +1,10 @@
 require "puma"
 require "puma/detect"
 
-TESTS_TO_RUN = if Process.respond_to?(:fork)
-  %w[t2 t3]
-else
-  %w[t2]
-end
+return unless Process.respond_to?(:fork)
 
-results = TESTS_TO_RUN.map do |test|
-  system("ruby -rrubygems test/shell/#{test}.rb ") # > /dev/null 2>&1
-end
-
-if results.any? { |r| r != true }
-  exit 1
-else
+if system("ruby -rrubygems test/shell/t3.rb ")
   exit 0
+else
+  exit 1
 end

@@ -248,6 +248,7 @@ module Puma
       $0 = title
 
       Signal.trap "SIGINT", "IGNORE"
+      Signal.trap "SIGCHLD", "DEFAULT"
 
       fork_worker = @options[:fork_worker] && index == 0
 
@@ -284,9 +285,11 @@ module Puma
 
       if fork_worker
         restart_server.clear
+        worker_pids = []
         Signal.trap "SIGCHLD" do
-          Process.wait(-1, Process::WNOHANG) rescue nil
-          wakeup!
+          wakeup! if worker_pids.reject! do |p|
+            Process.wait(p, Process::WNOHANG) rescue true
+          end
         end
 
         Thread.new do
@@ -303,7 +306,7 @@ module Puma
             elsif idx == 0 # restart server
               restart_server << true << false
             else # fork worker
-              pid = spawn_worker(idx, master)
+              worker_pids << pid = spawn_worker(idx, master)
               @worker_write << "f#{pid}:#{idx}\n" rescue nil
             end
           end

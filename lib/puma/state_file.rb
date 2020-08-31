@@ -19,7 +19,7 @@ module Puma
       @options = YAML.load File.read(path)
     end
 
-    FIELDS = %w!control_url control_auth_token pid!
+    FIELDS = %w!control_url control_auth_token pid running_from!
 
     FIELDS.each do |f|
       define_method f do

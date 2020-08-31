@@ -168,6 +168,20 @@ RUBY
     refute_includes pids, get_worker_pids(1, WORKERS - 1)
   end
 
+  def test_fork_worker_spawn
+    cli_server '', config: <<RUBY
+workers 1
+fork_worker 0
+app do |_|
+  pid = spawn('ls', [:out, :err]=>'/dev/null')
+  sleep 0.01
+  exitstatus = Process.detach(pid).value.exitstatus
+  [200, {}, [exitstatus.to_s]]
+end
+RUBY
+    assert_equal '0', read_body(connect)
+  end
+
   def test_nakayoshi
     cli_server "-w #{WORKERS} test/rackup/hello.ru", config: <<RUBY
     nakayoshi_fork true
@@ -373,7 +387,7 @@ RUBY
   # used with thread_run to define correct 'refused' errors
   def thread_run_refused(unix: false)
     if unix
-      DARWIN ? [Errno::ENOENT, IOError] : [Errno::ENOENT]
+      [Errno::ENOENT, IOError]
     else
       DARWIN ? [Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
         [Errno::ECONNREFUSED]

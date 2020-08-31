@@ -70,7 +70,7 @@ class TestIntegrationSingle < TestIntegration
     _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
 
     assert nil != Process.getpgid(@server.pid) # ensure server is still running
-    assert nil != Process.getpgid(rejected_curl_wait_thread[:pid]) # ensure first curl invokation still in progress
+    assert nil != Process.getpgid(curl_wait_thread[:pid]) # ensure first curl invocation still in progress
 
     curl_wait_thread.join
     rejected_curl_wait_thread.join
@@ -130,5 +130,27 @@ class TestIntegrationSingle < TestIntegration
     File.unlink 't1-pid' if File.file? 't1-pid'
 
     assert_match(%r!GET / HTTP/1\.1!, log)
+  end
+
+  def test_puma_started_log_writing
+    skip_unless_signal_exist? :TERM
+
+    suppress_output = '> /dev/null 2>&1'
+
+    cli_server '-C test/config/t2_conf.rb test/rackup/hello.ru'
+
+    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+
+    out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
+
+    stop_server
+
+    log = File.read('t2-stdout')
+
+    File.unlink 't2-stdout' if File.file? 't2-stdout'
+
+    assert_match(%r!GET / HTTP/1\.1!, log)
+    assert(!File.file?("t2-pid"))
+    assert_equal("Puma is started\n", out)
   end
 end

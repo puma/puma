@@ -20,7 +20,10 @@ Welcome back!
 Puma was originally conceived as a thread-only webserver, but grew the ability to
 also use processes in version 2.
 
-Here are some rules of thumb:
+To run puma in single mode (e.g. for a development environment) you will need to
+set the number of workers to 0, anything above will run in cluster mode.
+
+Here are some rules of thumb for cluster mode:
 
 ### MRI
 
@@ -66,7 +69,8 @@ thread to become available.
 
 * Have your upstream proxy set a header with the time it received the request:
     * nginx: `proxy_set_header X-Request-Start "${msec}";`
-    * haproxy: `http-request set-header X-Request-Start "%t";`
+    * haproxy >= 1.9: `http-request set-header X-Request-Start t=%[date()]%[date_us()]`
+    * haproxy < 1.9: `http-request set-header X-Request-Start t=%[date()]`
 * In your Rack middleware, determine the amount of time elapsed since `X-Request-Start`.
 * To improve accuracy, you will want to subtract time spent waiting for slow clients:
     * `env['puma.request_body_wait']` contains the number of milliseconds Puma spent

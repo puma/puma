@@ -6,6 +6,7 @@ require 'socket'
 require 'puma/const'
 require 'puma/util'
 require 'puma/minissl/context_builder'
+require 'puma/configuration'
 
 module Puma
   class Binder
@@ -13,7 +14,7 @@ module Puma
 
     RACK_VERSION = [1,6].freeze
 
-    def initialize(events)
+    def initialize(events, conf = Configuration.new)
       @events = events
       @listeners = []
       @inherited_fds = {}
@@ -23,8 +24,8 @@ module Puma
       @proto_env = {
         "rack.version".freeze => RACK_VERSION,
         "rack.errors".freeze => events.stderr,
-        "rack.multithread".freeze => true,
-        "rack.multiprocess".freeze => false,
+        "rack.multithread".freeze => conf.options[:max_threads] > 1,
+        "rack.multiprocess".freeze => conf.options[:workers] >= 1,
         "rack.run_once".freeze => false,
         "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
@@ -113,7 +114,7 @@ module Puma
                 i.local_address.ip_unpack.join(':')
               end
 
-              logger.log "* #{log_msg} on tcp://#{addr}"
+              logger.log "* #{log_msg} on http://#{addr}"
             end
           end
 

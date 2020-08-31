@@ -15,13 +15,13 @@ Gem::Specification.new do |s|
   end
   s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
             %w[History.md LICENSE README.md]
-  s.homepage = "http://puma.io"
+  s.homepage = "https://puma.io"
 
   if s.respond_to?(:metadata=)
     s.metadata = {
       "bug_tracker_uri" => "https://github.com/puma/puma/issues",
       "changelog_uri" => "https://github.com/puma/puma/blob/master/History.md",
-      "homepage_uri" => "http://puma.io",
+      "homepage_uri" => "https://puma.io",
       "source_code_uri" => "https://github.com/puma/puma"
     }
   end

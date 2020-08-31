@@ -11,10 +11,10 @@ require "net/http"
 class SSLEventsHelper < ::Puma::Events
   attr_accessor :addr, :cert, :error
 
-  def ssl_error(server, peeraddr, peercert, error)
+  def ssl_error(error, peeraddr, peercert)
+    self.error = error
     self.addr = peeraddr
     self.cert = peercert
-    self.error = error
   end
 end
 
