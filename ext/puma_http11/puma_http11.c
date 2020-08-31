@@ -10,6 +10,7 @@
 #include "ext_help.h"
 #include <assert.h>
 #include <string.h>
+#include <ctype.h>
 #include "http11_parser.h"
 
 #ifndef MANAGED_STRINGS
