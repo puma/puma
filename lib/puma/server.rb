@@ -104,7 +104,6 @@ module Puma
         RbConfig::CONFIG['host_os'] =~ /linux/ &&
           Socket.const_defined?(:IPPROTO_TCP) &&
           Socket.const_defined?(:TCP_CORK) &&
-          Socket.const_defined?(:SOL_TCP) &&
           Socket.const_defined?(:TCP_INFO)
       end
       private :tcp_cork_supported?
@@ -140,7 +139,7 @@ module Puma
         return false unless @precheck_closing
 
         begin
-          tcp_info = socket.getsockopt(Socket::SOL_TCP, Socket::TCP_INFO)
+          tcp_info = socket.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           @precheck_closing = false
