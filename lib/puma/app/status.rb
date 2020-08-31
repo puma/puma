@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'json'
-
 module Puma
   module App
     # Check out {#call}'s source code to see what actions this web application
@@ -17,6 +15,10 @@ module Puma
       def call(env)
         unless authenticate(env)
           return rack_response(403, 'Invalid auth token', 'text/plain')
+        end
+
+        if env['PATH_INFO'] =~ /\/(gc-stats|stats|thread-backtraces)$/
+          require 'json'
         end
 
         case env['PATH_INFO']

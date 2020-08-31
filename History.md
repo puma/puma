@@ -6,6 +6,9 @@
 * Bugfixes
   * Your bugfix goes here (#Github Number)
 
+## 4.3.4/4.3.5 and 3.12.5/3.12.6 / 2020-05-22
+
+Each patchlevel release contains a separate security fix. We recommend simply upgrading to 4.3.5/3.12.6.
 
 ## 4.3.3 and 3.12.4 / 2020-02-28
   * Bugfixes
