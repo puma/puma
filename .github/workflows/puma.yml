@@ -54,7 +54,6 @@ jobs:
         run:  bundle exec rake compile
 
       - name: rubocop
-        if: startsWith(matrix.ruby, '2.')
         run: bundle exec rake rubocop
 
       - name: test

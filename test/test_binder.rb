@@ -74,7 +74,7 @@ class TestBinder < TestBinderBase
   def test_correct_zero_port
     @binder.parse ["tcp://localhost:0"], @events
 
-    m = %r!tcp://127.0.0.1:(\d+)!.match(@events.stdout.string)
+    m = %r!http://127.0.0.1:(\d+)!.match(@events.stdout.string)
     port = m[1].to_i
 
     refute_equal 0, port
@@ -94,9 +94,9 @@ class TestBinder < TestBinderBase
   def test_logs_all_localhost_bindings
     @binder.parse ["tcp://localhost:0"], @events
 
-    assert_match %r!tcp://127.0.0.1:(\d+)!, @events.stdout.string
+    assert_match %r!http://127.0.0.1:(\d+)!, @events.stdout.string
     if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
-      assert_match %r!tcp://\[::1\]:(\d+)!, @events.stdout.string
+      assert_match %r!http://\[::1\]:(\d+)!, @events.stdout.string
     end
   end
 
@@ -354,13 +354,17 @@ class TestBinder < TestBinderBase
         unix: "unix://#{unix_path}"
       }
 
+    expected_logs = prepared_paths.dup.tap do |logs|
+      logs[:tcp] = logs[:tcp].gsub('tcp://', 'http://')
+    end
+
     tested_paths = [prepared_paths[order[0]], prepared_paths[order[1]]]
 
     @binder.parse tested_paths, @events
     stdout = @events.stdout.string
 
     order.each do |prot|
-      assert_match prepared_paths[prot], stdout
+      assert_match expected_logs[prot], stdout
     end
   ensure
     @binder.close_listeners if order.include?(:unix) && UNIX_SKT_EXIST

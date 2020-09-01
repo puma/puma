@@ -65,7 +65,8 @@ module Puma
     # Write +str+ to +@stdout+
     #
     def log(str)
-      @stdout.puts format(str)
+      @stdout.puts format(str) if @stdout.respond_to? :puts
+    rescue Errno::EPIPE
     end
 
     def write(str)
