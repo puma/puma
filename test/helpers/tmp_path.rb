@@ -1,14 +1,11 @@
 module TmpPath
-  def run(*args)
-    begin
-      result = super(*args)
-    rescue Interrupt
-      clean_tmp_paths
-      raise
-    end
-
+  def capture_exceptions
+    super
+  rescue
     clean_tmp_paths
-    result
+    raise
+  ensure
+    clean_tmp_paths
   end
 
   private
