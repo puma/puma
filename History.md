@@ -1,5 +1,7 @@
 ### Master
 * Bugfixes
+  * JRuby - Add Puma::MiniSSL::Engine#init? and #teardown methods, run all SSL tests (#2317)
+  * Improve shutdown reliability (#2312)
   * Resolve issue with threadpool waiting counter decrement when thread is killed
   * Constrain rake-compiler version to 0.9.4 to fix `ClassNotFound` exception when using MiniSSL with Java8.
   * Ensure that TCP_CORK is usable
