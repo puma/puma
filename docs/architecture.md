@@ -2,7 +2,7 @@
 
 ## Overview
 
-![http://bit.ly/2iJuFky](images/puma-general-arch.png)
+![https://bit.ly/2iJuFky](images/puma-general-arch.png)
 
 Puma is a threaded web server, processing requests across a TCP or UNIX socket.
 
@@ -12,7 +12,7 @@ Clustered mode is shown/discussed here. Single mode is analogous to having a sin
 
 ## Connection pipeline
 
-![http://bit.ly/2zwzhEK](images/puma-connection-flow.png)
+![https://bit.ly/2zwzhEK](images/puma-connection-flow.png)
 
 * Upon startup, Puma listens on a TCP or UNIX socket.
   * The backlog of this socket is configured (with a default of 1024), determining how many established but unaccepted connections can exist concurrently.
@@ -29,7 +29,7 @@ Clustered mode is shown/discussed here. Single mode is analogous to having a sin
 
 ### Disabling `queue_requests`
 
-![http://bit.ly/2zxCJ1Z](images/puma-connection-flow-no-reactor.png)
+![https://bit.ly/2zxCJ1Z](images/puma-connection-flow-no-reactor.png)
 
 The `queue_requests` option is `true` by default, enabling the separate thread used to buffer requests as described above.
 

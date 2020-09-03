@@ -5,7 +5,6 @@ require 'puma/util'
 require 'puma/plugin'
 
 require 'time'
-require 'json'
 
 module Puma
   # This class is instantiated by the `Puma::Launcher` and used
@@ -95,6 +94,7 @@ module Puma
 
       def ping!(status)
         @last_checkin = Time.now
+        require 'json'
         @last_status = JSON.parse(status, symbolize_names: true)
       end
 
@@ -333,6 +333,7 @@ module Puma
         while true
           sleep Const::WORKER_CHECK_INTERVAL
           begin
+            require 'json'
             io << "p#{Process.pid}#{server.stats.to_json}\n"
           rescue IOError
             Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue

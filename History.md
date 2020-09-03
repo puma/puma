@@ -1,8 +1,11 @@
 ### Master
 * Bugfixes
+  * JRuby - Add Puma::MiniSSL::Engine#init? and #teardown methods, run all SSL tests (#2317)
+  * Improve shutdown reliability (#2312)
   * Resolve issue with threadpool waiting counter decrement when thread is killed
   * Constrain rake-compiler version to 0.9.4 to fix `ClassNotFound` exception when using MiniSSL with Java8.
   * Fix recursive `prune_bundler` (#2319).
+  * Ensure that TCP_CORK is usable
 
 ## 5.0.0
 
@@ -12,7 +15,7 @@
   * EXPERIMENTAL: Added `nakayoshi_fork` option. Reduce memory usage in preloaded cluster-mode apps by GCing before fork and compacting, where available. (#2093, #2256)
   * Added pumactl `thread-backtraces` command to print thread backtraces (#2054)
   * Added incrementing `requests_count` to `Puma.stats`. (#2106)
-  * Increased maximum URI path length from 2048 to 8196 bytes (#2167)
+  * Increased maximum URI path length from 2048 to 8192 bytes (#2167, #2344)
   * `lowlevel_error_handler` is now called during a forced threadpool shutdown, and if a callable with 3 arguments is set, we now also pass the status code (#2203)
   * Faster phased restart and worker timeout (#2220)
   * Added `state_permission` to config DSL to set state file permissions (#2238)
@@ -34,7 +37,8 @@
   * Log binding on http:// for TCP bindings to make it clickable
 
 * Bugfixes
-  * Improve shutdown reliability (#2312)
+  * Fix JSON loading issues on phased-restarts (#2269)
+  * Improve shutdown reliability (#2312, #2338)
   * Close client http connections made to an ssl server with TLSv1.3 (#2116)
   * Do not set user_config to quiet by default to allow for file config (#2074)
   * Always close SSL connection in Puma::ControlCLI (#2211)
@@ -67,7 +71,7 @@
   * JSON parse cluster worker stats instead of regex (#2124)
   * Support parallel tests in verbose progress reporting (#2223)
   * Refactor error handling in server accept loop (#2239)
-  
+
 ## 4.3.4/4.3.5 and 3.12.5/3.12.6 / 2020-05-22
 
 Each patchlevel release contains a separate security fix. We recommend simply upgrading to 4.3.5/3.12.6.

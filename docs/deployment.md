@@ -20,7 +20,10 @@ Welcome back!
 Puma was originally conceived as a thread-only webserver, but grew the ability to
 also use processes in version 2.
 
-Here are some rules of thumb:
+To run puma in single mode (e.g. for a development environment) you will need to
+set the number of workers to 0, anything above will run in cluster mode.
+
+Here are some rules of thumb for cluster mode:
 
 ### MRI
 

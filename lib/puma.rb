@@ -20,6 +20,7 @@ module Puma
   end
 
   def self.stats
+    require 'json'
     @get_stats.stats.to_json
   end
 

@@ -98,10 +98,22 @@ module Puma
       @binder = bind
     end
 
+    class << self
+      # :nodoc:
+      def tcp_cork_supported?
+        RbConfig::CONFIG['host_os'] =~ /linux/ &&
+          Socket.const_defined?(:IPPROTO_TCP) &&
+          Socket.const_defined?(:TCP_CORK) &&
+          Socket.const_defined?(:SOL_TCP) &&
+          Socket.const_defined?(:TCP_INFO)
+      end
+      private :tcp_cork_supported?
+    end
+
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
     #
-    if RUBY_PLATFORM =~ /linux/
+    if tcp_cork_supported?
       UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
 
       # 6 == Socket::IPPROTO_TCP
@@ -109,7 +121,7 @@ module Puma
       # 1/0 == turn on/off
       def cork_socket(socket)
         begin
-          socket.setsockopt(6, 3, 1) if socket.kind_of? TCPSocket
+          socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if socket.kind_of? TCPSocket
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
@@ -117,7 +129,7 @@ module Puma
 
       def uncork_socket(socket)
         begin
-          socket.setsockopt(6, 3, 0) if socket.kind_of? TCPSocket
+          socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if socket.kind_of? TCPSocket
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
@@ -474,7 +486,7 @@ module Puma
 
       env[PATH_INFO] = env[REQUEST_PATH]
 
-      # From http://www.ietf.org/rfc/rfc3875 :
+      # From https://www.ietf.org/rfc/rfc3875 :
       # "Script authors should be aware that the REMOTE_ADDR and
       # REMOTE_HOST meta-variables (see sections 4.1.8 and 4.1.9)
       # may not identify the ultimate source of the request.

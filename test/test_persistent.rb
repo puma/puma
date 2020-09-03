@@ -41,7 +41,7 @@ class TestPersistent < Minitest::Test
   def lines(count, s=@client)
     str = "".dup
     Timeout.timeout(5) do
-      count.times { str << s.gets }
+      count.times { str << (s.gets || "") }
     end
     str
   end
