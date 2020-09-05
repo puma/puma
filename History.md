@@ -1,7 +1,8 @@
-## Master
+## 4.3.6 / 2020-09-05
 
 * Bugfixes
   * Explicitly include ctype.h to fix compilation warning and build error on macOS with Xcode 12 (#2304)
+  * Don't require json at boot (#2269)
 
 ## 4.3.4/4.3.5 and 3.12.5/3.12.6 / 2020-05-22
 
