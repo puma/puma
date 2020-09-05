@@ -15,7 +15,7 @@ class TestBusyWorker < Minitest::Test
   end
 
   def new_connection
-    TCPSocket.new('127.0.0.1', @server.connected_ports[0]).tap {|s| @ios << s}
+    TCPSocket.new('127.0.0.1', @port).tap {|s| @ios << s}
   rescue IOError
     Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
     retry
@@ -56,7 +56,7 @@ class TestBusyWorker < Minitest::Test
     @server = Puma::Server.new request_handler, Puma::Events.strings, **options
     @server.min_threads = options[:min_threads] || 0
     @server.max_threads = options[:max_threads] || 10
-    @server.add_tcp_listener '127.0.0.1', 0
+    @port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]
     @server.run
   end
 

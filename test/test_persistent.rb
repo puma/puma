@@ -23,10 +23,8 @@ class TestPersistent < Minitest::Test
       [status, @headers, @body]
     end
 
-    @port = UniquePort.call
-
     @server = Puma::Server.new @simple
-    @server.add_tcp_listener HOST, @port
+    @port = (@server.add_tcp_listener HOST, 0).addr[1]
     @server.max_threads = 1
     @server.run
 

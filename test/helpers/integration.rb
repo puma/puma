@@ -114,8 +114,8 @@ class TestIntegration < Minitest::Test
     s
   end
 
-  def read_body(connection)
-    Timeout.timeout(10) do
+  def read_body(connection, time_out = 10)
+    Timeout.timeout(time_out) do
       loop do
         response = connection.readpartial(1024)
         body = response.split("\r\n\r\n", 2).last

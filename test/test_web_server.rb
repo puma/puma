@@ -24,8 +24,8 @@ class WebServerTest < Minitest::Test
   def setup
     @tester = TestHandler.new
     @server = Puma::Server.new @tester, Puma::Events.strings
-    @server.add_tcp_listener "127.0.0.1", 0
-
+    @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
+    @tcp = "http://127.0.0.1:#{@port}"
     @server.run
   end
 
@@ -34,14 +34,14 @@ class WebServerTest < Minitest::Test
   end
 
   def test_simple_server
-    hit(["http://127.0.0.1:#{@server.connected_ports[0]}/test"])
+    hit(["#{@tcp}/test"])
     assert @tester.ran_test, "Handler didn't really run"
   end
 
   def test_requests_count
     assert_equal @server.requests_count, 0
     3.times do
-      hit(["http://127.0.0.1:#{@server.connected_ports[0]}/test"])
+      hit(["#{@tcp}/test"])
     end
     assert_equal @server.requests_count, 3
   end
@@ -83,7 +83,7 @@ class WebServerTest < Minitest::Test
 
   def do_test(string, chunk)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @server.connected_ports[0]);
+    socket = TCPSocket.new("127.0.0.1", @port);
     request = StringIO.new(string)
     chunks_out = 0
 
@@ -96,7 +96,7 @@ class WebServerTest < Minitest::Test
 
   def do_test_raise(string, chunk, close_after = nil)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @server.connected_ports[0]);
+    socket = TCPSocket.new("127.0.0.1", @port);
     request = StringIO.new(string)
     chunks_out = 0
 

@@ -54,7 +54,6 @@ class TestPumaServerSSL < Minitest::Test
 
   # yields ctx to block, use for ctx setup & configuration
   def start_server
-    @port = 0
     @host = "127.0.0.1"
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
@@ -75,10 +74,10 @@ class TestPumaServerSSL < Minitest::Test
 
     @events = SSLEventsHelper.new STDOUT, STDERR
     @server = Puma::Server.new app, @events
-    @ssl_listener = @server.add_ssl_listener @host, @port, ctx
+    @port = (@server.add_ssl_listener @host, 0, ctx).addr[1]
     @server.run
 
-    @http = Net::HTTP.new @host, @server.connected_ports[0]
+    @http = Net::HTTP.new @host, @port
     @http.use_ssl = true
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
