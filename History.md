@@ -1,13 +1,3 @@
-### Master
-* Bugfixes
-  * JRuby - Add Puma::MiniSSL::Engine#init? and #teardown methods, run all SSL tests (#2317)
-  * Improve shutdown reliability (#2312)
-  * Resolve issue with threadpool waiting counter decrement when thread is killed
-  * Constrain rake-compiler version to 0.9.4 to fix `ClassNotFound` exception when using MiniSSL with Java8.
-  * Fix recursive `prune_bundler` (#2319).
-  * Ensure that TCP_CORK is usable
-  * Fix corner case when request body is chunked (#2326)
-
 ## 5.0.0
 
 * Features
@@ -61,6 +51,13 @@
   * Prefer the rackup file specified by the CLI (#2225)
   * Fix for spawning subprocesses with fork_worker option (#2267)
   * Set `CONTENT_LENGTH` for chunked requests (#2287)
+  * JRuby - Add Puma::MiniSSL::Engine#init? and #teardown methods, run all SSL tests (#2317)
+  * Improve shutdown reliability (#2312)
+  * Resolve issue with threadpool waiting counter decrement when thread is killed
+  * Constrain rake-compiler version to 0.9.4 to fix `ClassNotFound` exception when using MiniSSL with Java8.
+  * Fix recursive `prune_bundler` (#2319).
+  * Ensure that TCP_CORK is usable
+  * Fix corner case when request body is chunked (#2326)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
