@@ -157,6 +157,31 @@ end
 RUBY
   end
 
+  def test_worker_index_is_with_in_options_limit
+    skip_unless_signal_exist? :TERM
+
+    cli_server "-C test/config/t3_conf.rb test/rackup/hello.ru"
+
+    get_worker_pids # this will wait till all the processes are up
+
+    worker_pid_was_present = File.file? "t3-worker-2-pid"
+
+    stop_server(Integer(File.read("t3-worker-2-pid")))
+
+    worker_index_within_number_of_workers = !File.file?("t3-worker-3-pid")
+
+    stop_server(Integer(File.read("t3-pid")))
+
+    File.unlink "t3-pid" if File.file? "t3-pid"
+    File.unlink "t3-worker-0-pid" if File.file? "t3-worker-0-pid"
+    File.unlink "t3-worker-1-pid" if File.file? "t3-worker-1-pid"
+    File.unlink "t3-worker-2-pid" if File.file? "t3-worker-2-pid"
+    File.unlink "t3-worker-3-pid" if File.file? "t3-worker-3-pid"
+
+    assert(worker_pid_was_present)
+    assert(worker_index_within_number_of_workers)
+  end
+
   def test_refork
     refork = Tempfile.new('refork')
     cli_server "-w #{WORKERS} test/rackup/sleep.ru", config: <<RUBY
