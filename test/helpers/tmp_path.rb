@@ -1,9 +1,6 @@
 module TmpPath
   def capture_exceptions
     super
-  rescue
-    clean_tmp_paths
-    raise
   ensure
     clean_tmp_paths
   end
