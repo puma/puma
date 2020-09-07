@@ -72,7 +72,10 @@ module TimeoutEveryTestCase
 
         Minitest::Test::TEARDOWN_METHODS.each do |hook|
           capture_exceptions do
-            self.send hook
+            # wrap timeout around teardown methods, remove when they're stable
+            ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) {
+              self.send hook
+            }
           end
         end
       end
