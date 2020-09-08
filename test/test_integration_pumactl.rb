@@ -2,13 +2,14 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationPumactl < TestIntegration
+  include TmpPath
   parallelize_me!
 
   def setup
     super
 
-    @state_path   = "test/#{name}_puma.state"
-    @control_path = "test/#{name}_control.sock"
+    @state_path   = tmp_path('.state')
+    @control_path = tmp_path('.sock')
   end
 
   def teardown

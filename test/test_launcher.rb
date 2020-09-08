@@ -1,9 +1,12 @@
 require_relative "helper"
+require_relative "helpers/tmp_path"
 
 require "puma/configuration"
 require 'puma/events'
 
 class TestLauncher < Minitest::Test
+  include TmpPath
+
   def test_dependencies_and_files_to_require_after_prune_is_correctly_built_for_no_extra_deps
     skip_on :no_bundler
 
@@ -64,70 +67,62 @@ class TestLauncher < Minitest::Test
   end
 
   def test_pid_file
-    tmp_file = Tempfile.new("puma-test")
-    tmp_path = tmp_file.path
-    tmp_file.close!
+    pid_path = tmp_path('.pid')
 
     conf = Puma::Configuration.new do |c|
-      c.pidfile tmp_path
+      c.pidfile pid_path
     end
 
     launcher(conf).write_state
 
-    assert_equal File.read(tmp_path).strip.to_i, Process.pid
+    assert_equal File.read(pid_path).strip.to_i, Process.pid
 
-    File.unlink tmp_path
+    File.unlink pid_path
   end
 
   def test_state_permission_0640
-    tmp_file = Tempfile.new("puma-test")
-    tmp_path = tmp_file.path
-    tmp_file.close!
-    tmp_permission = 0640
+    state_path = tmp_path('.state')
+    state_permission = 0640
 
     conf = Puma::Configuration.new do |c|
-      c.state_path tmp_path
-      c.state_permission tmp_permission
+      c.state_path state_path
+      c.state_permission state_permission
     end
 
     launcher(conf).write_state
 
-    assert File.stat(tmp_path).mode.to_s(8)[-4..-1], tmp_permission
+    assert File.stat(state_path).mode.to_s(8)[-4..-1], state_permission
   ensure
-    File.unlink tmp_path
+    File.unlink state_path
   end
 
   def test_state_permission_nil
-    tmp_file = Tempfile.new("puma-test")
-    tmp_path = tmp_file.path
-    tmp_file.close!
+    state_path = tmp_path('.state')
 
     conf = Puma::Configuration.new do |c|
-      c.state_path tmp_path
+      c.state_path state_path
       c.state_permission nil
     end
 
     launcher(conf).write_state
 
-    assert File.exist?(tmp_path)
+    assert File.exist?(state_path)
   ensure
-    File.unlink tmp_path
+    File.unlink state_path
   end
 
   def test_no_state_permission
-    tmp_file = Tempfile.new("puma-test")
-    tmp_path = tmp_file.path
-    tmp_file.close!
+    state_path = tmp_path('.state')
 
     conf = Puma::Configuration.new do |c|
-      c.state_path tmp_path
+      c.state_path state_path
     end
 
     launcher(conf).write_state
 
-    assert File.exist?(tmp_path)
+    assert File.exist?(state_path)
   ensure
-    File.unlink tmp_path
+    File.unlink state_path
   end
 
   def test_puma_stats

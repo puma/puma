@@ -1,18 +1,18 @@
 require_relative "helper"
 require_relative "helpers/ssl"
+require_relative "helpers/tmp_path"
 
 require "puma/cli"
 require "json"
 
 class TestCLI < Minitest::Test
   include SSLHelper
+  include TmpPath
 
   def setup
     @environment = 'production'
-    @tmp_file = Tempfile.new("puma-test")
-    @tmp_path = @tmp_file.path
-    @tmp_file.close!
 
+    @tmp_path = tmp_path('puma-test')
     @tmp_path2 = "#{@tmp_path}2"
 
     File.unlink @tmp_path  if File.exist? @tmp_path

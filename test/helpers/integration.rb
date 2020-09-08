@@ -2,10 +2,12 @@
 
 require "puma/control_cli"
 require "open3"
+require_relative 'tmp_path'
 
 # Only single mode tests go here. Cluster and pumactl tests
 # have their own files, use those instead
 class TestIntegration < Minitest::Test
+  include TmpPath
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
   WORKERS = 2
@@ -15,7 +17,7 @@ class TestIntegration < Minitest::Test
 
   def setup
     @ios_to_close = []
-    @bind_path    = "test/#{name}_server.sock"
+    @bind_path    = tmp_path('.sock')
   end
 
   def teardown

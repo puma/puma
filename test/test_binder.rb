@@ -2,6 +2,7 @@
 
 require_relative "helper"
 require_relative "helpers/ssl"
+require_relative "helpers/tmp_path"
 
 require "puma/binder"
 require "puma/puma_http11"
@@ -10,6 +11,7 @@ require "puma/configuration"
 
 class TestBinderBase < Minitest::Test
   include SSLHelper
+  include TmpPath
 
   def setup
     @events = Puma::Events.strings
@@ -123,8 +125,8 @@ class TestBinder < TestBinderBase
 
   def test_pre_existing_unix
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-    unix_path = "test/#{name}_server.sock"
 
+    unix_path = tmp_path('.sock')
     File.open(unix_path, mode: 'wb') { |f| f.puts 'pre existing' }
     @binder.parse ["unix://#{unix_path}"], @events
 
@@ -248,13 +250,12 @@ class TestBinder < TestBinderBase
   def test_listeners_file_unlink_if_unix_listener
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
 
-    @binder.parse ["unix://test/#{name}_server.sock"], @events
-
-    assert File.socket?("test/#{name}_server.sock")
+    unix_path = tmp_path('.sock')
+    @binder.parse ["unix://#{unix_path}"], @events
+    assert File.socket?(unix_path)
 
     @binder.close_listeners
-
-    refute File.socket?("test/#{name}_server.sock")
+    refute File.socket?(unix_path)
   end
 
   def test_import_from_env_listen_inherit
@@ -289,11 +290,12 @@ class TestBinder < TestBinderBase
   def test_socket_activation_unix
     skip_on :jruby # Failing with what I think is a JRuby bug
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-    path = "test/unixserver.state"
-    sock = Addrinfo.unix(path).listen
-    assert_activates_sockets(path: path, sock: sock)
+
+    state_path = tmp_path('.state')
+    sock = Addrinfo.unix(state_path).listen
+    assert_activates_sockets(path: state_path, sock: sock)
   ensure
-    File.unlink(path) rescue nil # JRuby race?
+    File.unlink(state_path) rescue nil # JRuby race?
   end
 
   def test_rack_multithread_default_configuration
@@ -345,10 +347,11 @@ class TestBinder < TestBinderBase
   def assert_parsing_logs_uri(order = [:unix, :tcp])
     skip UNIX_SKT_MSG if order.include?(:unix) && !UNIX_SKT_EXIST
 
+    unix_path = tmp_path('.sock')
     prepared_paths = {
         ssl: "ssl://127.0.0.1:#{UniquePort.call}?#{ssl_query}",
         tcp: "tcp://127.0.0.1:#{UniquePort.call}",
-        unix: "unix://test/#{name}_server.sock"
+        unix: "unix://#{unix_path}"
       }
 
     expected_logs = prepared_paths.dup.tap do |logs|
