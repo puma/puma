@@ -78,6 +78,9 @@ module TimeoutEveryTestCase
             }
           end
         end
+        if respond_to? :clean_tmp_paths
+          clean_tmp_paths
+        end
       end
     end
 
@@ -85,9 +88,8 @@ module TimeoutEveryTestCase
   end
 end
 
+Minitest::Test.prepend TimeoutEveryTestCase
 if ENV['CI']
-  Minitest::Test.prepend TimeoutEveryTestCase
-
   require 'minitest/retry'
   Minitest::Retry.use!
 end
