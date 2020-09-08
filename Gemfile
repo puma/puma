@@ -3,7 +3,7 @@ source "https://rubygems.org"
 gemspec
 
 gem "rdoc"
-gem "rake-compiler", "~> 0.9.4"
+gem "rake-compiler", "~> 1.1.1"
 
 gem "nio4r", "~> 2.0"
 gem "rack", "~> 1.6"
