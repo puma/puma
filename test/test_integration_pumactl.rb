@@ -58,9 +58,9 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_phased_restart_cluster
     skip NO_FORK_MSG unless HAS_FORK
-    start = Time.now
-
     cli_server "-q -w #{WORKERS} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
+
+    start = Time.now
 
     s = UNIXSocket.new @bind_path
     @ios_to_close << s
