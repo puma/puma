@@ -53,11 +53,11 @@ class TestPumaServerSSL < Minitest::Test
     ctx = Puma::MiniSSL::Context.new
 
     if Puma.jruby?
-      ctx.keystore =  File.expand_path "../../examples/puma/keystore.jks", __FILE__
-      ctx.keystore_pass = 'blahblah'
+      ctx.keystore =  File.expand_path "../examples/puma/keystore.jks", __dir__
+      ctx.keystore_pass = 'jruby_puma'
     else
-      ctx.key  =  File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
-      ctx.cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+      ctx.key  =  File.expand_path "../examples/puma/puma_keypair.pem", __dir__
+      ctx.cert = File.expand_path "../examples/puma/cert_puma.pem", __dir__
     end
 
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
@@ -204,26 +204,30 @@ end unless DISABLE_SSL
 # client-side TLS authentication tests
 class TestPumaServerSSLClient < Minitest::Test
   parallelize_me!
+
+  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
+
   def assert_ssl_client_error_match(error, subject=nil, &blk)
-    host = "127.0.0.1"
+    host = "localhost"
     port = UniquePort.call
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     ctx = Puma::MiniSSL::Context.new
     if Puma.jruby?
-      ctx.keystore =  File.expand_path "../../examples/puma/client-certs/keystore.jks", __FILE__
-      ctx.keystore_pass = 'blahblah'
+      ctx.keystore = "#{CERT_PATH}/keystore.jks"
+      ctx.keystore_pass = 'jruby_puma'
     else
-      ctx.key = File.expand_path "../../examples/puma/client-certs/server.key", __FILE__
-      ctx.cert = File.expand_path "../../examples/puma/client-certs/server.crt", __FILE__
-      ctx.ca = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      ctx.key  = "#{CERT_PATH}/server.key"
+      ctx.cert = "#{CERT_PATH}/server.crt"
+      ctx.ca   = "#{CERT_PATH}/ca.crt"
     end
     ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER | Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
 
     events = SSLEventsHelper.new STDOUT, STDERR
     server = Puma::Server.new app, events
     server.add_ssl_listener host, port, ctx
+    host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
     server.run
 
     http = Net::HTTP.new host, port
@@ -246,11 +250,11 @@ class TestPumaServerSSLClient < Minitest::Test
 
     sleep 0.1
     assert_equal !!error, client_error
-    # The JRuby MiniSSL implementation lacks error capturing currently, so we can't inspect the
-    # messages here
+    # The JRuby MiniSSL implementation lacks error capturing currently,
+    # so we can't inspect the messages here
     unless Puma.jruby?
       assert_match error, events.error.message if error
-      assert_equal host, events.addr if error
+      assert_includes host_addrs, events.addr if error
       assert_equal subject, events.cert.subject.to_s if subject
     end
   ensure
@@ -264,32 +268,32 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_client_unknown_ca
-    assert_ssl_client_error_match('self signed certificate in certificate chain', '/DC=net/DC=puma/CN=ca-unknown') do |http|
-      key = File.expand_path "../../examples/puma/client-certs/client_unknown.key", __FILE__
-      crt = File.expand_path "../../examples/puma/client-certs/client_unknown.crt", __FILE__
+    assert_ssl_client_error_match('self signed certificate in certificate chain', '/DC=net/DC=puma/CN=CAU') do |http|
+      key = "#{CERT_PATH}/client_unknown.key"
+      crt = "#{CERT_PATH}/client_unknown.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
       http.cert = OpenSSL::X509::Certificate.new File.read(crt)
-      http.ca_file = File.expand_path "../../examples/puma/client-certs/unknown_ca.crt", __FILE__
+      http.ca_file = "#{CERT_PATH}/unknown_ca.crt"
     end
   end
 
   def test_verify_fail_if_client_expired_cert
-    assert_ssl_client_error_match('certificate has expired', '/DC=net/DC=puma/CN=client-expired') do |http|
-      key = File.expand_path "../../examples/puma/client-certs/client_expired.key", __FILE__
-      crt = File.expand_path "../../examples/puma/client-certs/client_expired.crt", __FILE__
+    assert_ssl_client_error_match('certificate has expired', '/DC=net/DC=puma/CN=localhost') do |http|
+      key = "#{CERT_PATH}/client_expired.key"
+      crt = "#{CERT_PATH}/client_expired.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
       http.cert = OpenSSL::X509::Certificate.new File.read(crt)
-      http.ca_file = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      http.ca_file = "#{CERT_PATH}/ca.crt"
     end
   end
 
   def test_verify_client_cert
     assert_ssl_client_error_match(nil) do |http|
-      key = File.expand_path "../../examples/puma/client-certs/client.key", __FILE__
-      crt = File.expand_path "../../examples/puma/client-certs/client.crt", __FILE__
+      key = "#{CERT_PATH}/client.key"
+      crt = "#{CERT_PATH}/client.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
       http.cert = OpenSSL::X509::Certificate.new File.read(crt)
-      http.ca_file = File.expand_path "../../examples/puma/client-certs/ca.crt", __FILE__
+      http.ca_file = "#{CERT_PATH}/ca.crt"
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
   end
