@@ -58,6 +58,7 @@
   * Fix recursive `prune_bundler` (#2319).
   * Ensure that TCP_CORK is usable
   * Fix corner case when request body is chunked (#2326)
+  * Fix filehandle leak in MiniSSL (#2299)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
