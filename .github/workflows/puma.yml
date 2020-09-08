@@ -1,0 +1,62 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: >-
+      ${{ matrix.os }} ${{ matrix.ruby }}
+    env:
+      CI: true
+      TESTOPTS: -v
+
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]')
+        || contains(github.event.head_commit.message, '[ci skip]')
+        || contains(github.event.head_commit.message, '[skip ci]'))
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, windows-2019 ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head ]
+        include:
+          - { os: windows-2019 , ruby: mingw }
+        exclude:
+          - { os: ubuntu-20.04 , ruby: 2.2 }
+          - { os: ubuntu-20.04 , ruby: 2.3 }
+          - { os: ubuntu-20.04 , ruby: 2.4 }
+          - { os: ubuntu-20.04 , ruby: 2.6 }
+          - { os: windows-2019 , ruby: head }
+
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v2
+
+      - name: load ruby, ragel
+        uses: MSP-Greg/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          apt-get: ragel
+          brew: ragel
+          mingw: _upgrade_ openssl ragel
+
+      - name:  bundle install
+        shell: pwsh
+        run:   |
+          # update RubyGems in Ruby 2.2, bundle install
+          if ('${{ matrix.ruby }}' -lt '2.3') {
+            gem update --system 2.7.10 --no-document
+          }
+          bundle install --jobs 4 --retry 3
+
+      - name: compile
+        run:  bundle exec rake compile
+
+      - name: rubocop
+        run: bundle exec rake rubocop
+
+      - name: test
+        timeout-minutes: 10
+        run: bundle exec rake test:all
