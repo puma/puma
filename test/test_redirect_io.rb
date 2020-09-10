@@ -5,6 +5,7 @@ class TestRedirectIO < TestIntegration
   parallelize_me!
 
   def setup
+    skip_unless_signal_exist? :HUP
     super
 
     # Keep the Tempfile instances alive to avoid being GC'd
@@ -15,6 +16,7 @@ class TestRedirectIO < TestIntegration
   end
 
   def teardown
+    return if skipped?
     super
 
     paths = (skipped? ? [@out_file_path, @err_file_path] :
@@ -27,7 +29,6 @@ class TestRedirectIO < TestIntegration
 
   def test_sighup_redirects_io_single
     skip_on :jruby # Server isn't coming up in CI, TODO Fix
-    skip_unless_signal_exist? :HUP
 
     cli_args = [
       '--redirect-stdout', @out_file_path,
@@ -55,7 +56,6 @@ class TestRedirectIO < TestIntegration
 
   def test_sighup_redirects_io_cluster
     skip NO_FORK_MSG unless HAS_FORK
-    skip_unless_signal_exist? :HUP
 
     cli_args = [
       '-w', '1',

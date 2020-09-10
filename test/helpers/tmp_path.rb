@@ -1,28 +1,20 @@
 module TmpPath
-  def capture_exceptions
-    super
-  ensure
-    clean_tmp_paths
+  def clean_tmp_paths
+    while path = tmp_paths.pop
+      delete_tmp_path(path)
+    end
   end
 
   private
 
   def tmp_path(extension=nil)
-    sock_file = Tempfile.new(['', extension])
-    path = sock_file.path
-    sock_file.close!
+    path = Tempfile.create(['', extension]) { |f| f.path }
     tmp_paths << path
     path
   end
 
   def tmp_paths
     @tmp_paths ||= []
-  end
-
-  def clean_tmp_paths
-    while path = tmp_paths.pop
-      delete_tmp_path(path)
-    end
   end
 
   def delete_tmp_path(path)

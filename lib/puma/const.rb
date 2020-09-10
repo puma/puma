@@ -102,7 +102,7 @@ module Puma
 
     PUMA_VERSION = VERSION = "5.0.0.beta2".freeze
     CODE_NAME = "Spoony Bard".freeze
-    
+
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2

@@ -4,8 +4,6 @@ require_relative "helpers/integration"
 class TestIntegrationCluster < TestIntegration
   parallelize_me!
 
-  DARWIN = !!RUBY_PLATFORM[/darwin/]
-
   def setup
     skip NO_FORK_MSG unless HAS_FORK
     super
