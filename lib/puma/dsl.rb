@@ -191,6 +191,32 @@ module Puma
       @options[:binds] = []
     end
 
+    # Bind to (systemd) activated sockets, regardless of configured binds.
+    #
+    # Systemd can present sockets as file descriptors that are already opened.
+    # By default Puma will use these but only if it was explicitly told to bind
+    # to the socket. If not, it will close the activated sockets. This means
+    # all configuration is duplicated.
+    #
+    # Binds can contain additional configuration, but only SSL config is really
+    # relevant since the unix and TCP socket options are ignored.
+    #
+    # This means there is a lot of duplicated configuration for no additional
+    # value in most setups. This method tells the launcher to bind to all
+    # activated sockets, regardless of existing bind.
+    #
+    # To clear configured binds, the value only can be passed. This will clear
+    # out any binds that may have been configured.
+    #
+    # @example Use any systemd activated sockets as well as configured binds
+    #   bind_to_activated_sockets
+    #
+    # @example Only bind to systemd activated sockets, ignoring other binds
+    #   bind_to_activated_sockets 'only'
+    def bind_to_activated_sockets(bind=true)
+      @options[:bind_to_activated_sockets] = bind
+    end
+
     # Define the TCP port to bind to. Use +bind+ for more advanced options.
     #
     # @example

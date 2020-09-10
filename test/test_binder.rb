@@ -34,6 +34,51 @@ end
 class TestBinder < TestBinderBase
   parallelize_me!
 
+  def test_synthesize_binds_from_activated_fds_no_sockets
+    binds = ['tcp://0.0.0.0:3000']
+    result = @binder.synthesize_binds_from_activated_fs(binds, true)
+
+    assert_equal ['tcp://0.0.0.0:3000'], result
+  end
+
+  def test_synthesize_binds_from_activated_fds_non_matching_together
+    binds = ['tcp://0.0.0.0:3000']
+    sockets = {['tcp', '0.0.0.0', '5000'] => nil}
+    @binder.instance_variable_set(:@activated_sockets, sockets)
+    result = @binder.synthesize_binds_from_activated_fs(binds, false)
+
+    assert_equal ['tcp://0.0.0.0:3000', 'tcp://0.0.0.0:5000'], result
+  end
+
+  def test_synthesize_binds_from_activated_fds_non_matching_only
+    binds = ['tcp://0.0.0.0:3000']
+    sockets = {['tcp', '0.0.0.0', '5000'] => nil}
+    @binder.instance_variable_set(:@activated_sockets, sockets)
+    result = @binder.synthesize_binds_from_activated_fs(binds, true)
+
+    assert_equal ['tcp://0.0.0.0:5000'], result
+  end
+
+  def test_synthesize_binds_from_activated_fds_complex_binds
+    binds = [
+      'tcp://0.0.0.0:3000',
+      'ssl://192.0.2.100:5000',
+      'ssl://192.0.2.101:5000?no_tlsv1=true',
+      'unix:///run/puma.sock'
+    ]
+    sockets = {
+      ['tcp', '0.0.0.0', '5000'] => nil,
+      ['tcp', '192.0.2.100', '5000'] => nil,
+      ['tcp', '192.0.2.101', '5000'] => nil,
+      ['unix', '/run/puma.sock'] => nil
+    }
+    @binder.instance_variable_set(:@activated_sockets, sockets)
+    result = @binder.synthesize_binds_from_activated_fs(binds, false)
+
+    expected = ['tcp://0.0.0.0:3000', 'ssl://192.0.2.100:5000', 'ssl://192.0.2.101:5000?no_tlsv1=true', 'unix:///run/puma.sock', 'tcp://0.0.0.0:5000']
+    assert_equal expected, result
+  end
+
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
     @binder.parse ["tcp://localhost:0"], @events
 
