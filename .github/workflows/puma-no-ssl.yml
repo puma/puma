@@ -1,0 +1,51 @@
+name: No SSL
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: >-
+      ${{ matrix.os }} ${{ matrix.ruby }}
+    env:
+      CI: true
+      TESTOPTS: -v
+      DISABLE_SSL: no_ssl
+
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]')
+        || contains(github.event.head_commit.message, '[ci skip]')
+        || contains(github.event.head_commit.message, '[skip ci]'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-20.04, ruby: 2.7   }
+          - { os: ubuntu-20.04, ruby: jruby }
+          - { os: windows-2019, ruby: 2.7   }
+
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v2
+
+      - name: load ruby, ragel
+        uses: MSP-Greg/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          apt-get: ragel
+          brew: ragel
+          mingw: _upgrade_ openssl ragel
+
+      # won't run on Ruby 2.2, see puma.yml
+      - name:  bundle install
+        shell: pwsh
+        run: bundle install --jobs 4 --retry 3
+
+      - name: compile
+        run:  bundle exec rake compile
+
+      - name: test
+        id: test
+        timeout-minutes: 10
+        run: bundle exec rake test:all
