@@ -255,13 +255,8 @@ class TestPumaServerSSLClient < Minitest::Test
 
   CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
 
-  def assert_ssl_client_error_match(error, subject=nil, &blk)
-    host = "localhost"
-    port = 0
-
-    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
-
-    ctx = Puma::MiniSSL::Context.new
+  # Context can be shared, may help with JRuby
+  CTX = Puma::MiniSSL::Context.new.tap { |ctx|
     if Puma.jruby?
       ctx.keystore =  "#{CERT_PATH}/keystore.jks"
       ctx.keystore_pass = 'jruby_puma'
@@ -271,10 +266,17 @@ class TestPumaServerSSLClient < Minitest::Test
       ctx.ca   = "#{CERT_PATH}/ca.crt"
     end
     ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER | Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
+  }
+
+  def assert_ssl_client_error_match(error, subject=nil, &blk)
+    host = "localhost"
+    port = 0
+
+    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     events = SSLEventsHelper.new STDOUT, STDERR
     server = Puma::Server.new app, events
-    server.add_ssl_listener host, port, ctx
+    server.add_ssl_listener host, port, CTX
     host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
     server.run
 
