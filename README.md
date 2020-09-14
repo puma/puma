@@ -37,10 +37,6 @@ development files are installed on the system.
 If the system does not have OpenSSL development files installed, Puma will
 install/compile, but it will not allow ssl connections.
 
-If the system has OpenSSL development files installed, but you don't want Puma
-to use ssl connections, set ENV['DISABLE_SSL'] to any value before installing
-Puma.
-
 ## Frameworks
 
 ### Rails
