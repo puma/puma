@@ -1,44 +1,38 @@
+# Nothing in this file runs if Puma isn't compiled with ssl support
+#
+# helper is required first since it loads Puma, which needs to be
+# loaded so HAS_SSL is defined
 require_relative "helper"
-require "puma/minissl"
-require "puma/puma_http11"
-require "puma/events"
-require "net/http"
 
-#———————————————————————————————————————————————————————————————————————————————
-#             NOTE: ALL TESTS BYPASSED IF DISABLE_SSL IS TRUE
-#———————————————————————————————————————————————————————————————————————————————
+if ::Puma::HAS_SSL
+  require "puma/minissl"
+  require "puma/events"
+  require "net/http"
 
-class SSLEventsHelper < ::Puma::Events
-  attr_accessor :addr, :cert, :error
+  class SSLEventsHelper < ::Puma::Events
+    attr_accessor :addr, :cert, :error
 
-  def ssl_error(error, peeraddr, peercert)
-    self.error = error
-    self.addr = peeraddr
-    self.cert = peercert
+    def ssl_error(error, peeraddr, peercert)
+      self.error = error
+      self.addr = peeraddr
+      self.cert = peercert
+    end
+  end
+
+  # net/http (loaded in helper) does not necessarily load OpenSSL
+  require "openssl" unless Object.const_defined? :OpenSSL
+  if Puma::IS_JRUBY
+    puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
+      "                         OpenSSL",
+      "OPENSSL_LIBRARY_VERSION: #{OpenSSL::OPENSSL_LIBRARY_VERSION}",
+      "        OPENSSL_VERSION: #{OpenSSL::OPENSSL_VERSION}", ""
+  else
+    puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
+      "                         Puma::MiniSSL                   OpenSSL",
+      "OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION.ljust 32}#{OpenSSL::OPENSSL_LIBRARY_VERSION}",
+      "        OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION.ljust 32}#{OpenSSL::OPENSSL_VERSION}", ""
   end
 end
-
-DISABLE_SSL = begin
-              Puma::Server.class
-              Puma::MiniSSL.check
-              # net/http (loaded in helper) does not necessarily load OpenSSL
-              require "openssl" unless Object.const_defined? :OpenSSL
-              if Puma::IS_JRUBY
-                puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
-                  "                         OpenSSL",
-                  "OPENSSL_LIBRARY_VERSION: #{OpenSSL::OPENSSL_LIBRARY_VERSION}",
-                  "        OPENSSL_VERSION: #{OpenSSL::OPENSSL_VERSION}", ""
-              else
-                puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
-                  "                         Puma::MiniSSL                   OpenSSL",
-                  "OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION.ljust 32}#{OpenSSL::OPENSSL_LIBRARY_VERSION}",
-                  "        OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION.ljust 32}#{OpenSSL::OPENSSL_VERSION}", ""
-              end
-            rescue
-              true
-            else
-              false
-            end
 
 class TestPumaServerSSL < Minitest::Test
   parallelize_me!
@@ -247,7 +241,7 @@ class TestPumaServerSSL < Minitest::Test
 
     assert busy_threads.zero?, "Our connection is wasn't dropped"
   end
-end unless DISABLE_SSL
+end if ::Puma::HAS_SSL
 
 # client-side TLS authentication tests
 class TestPumaServerSSLClient < Minitest::Test
@@ -347,4 +341,4 @@ class TestPumaServerSSLClient < Minitest::Test
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
   end
-end unless DISABLE_SSL
+end if ::Puma::HAS_SSL

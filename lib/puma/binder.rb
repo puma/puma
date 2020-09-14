@@ -5,10 +5,16 @@ require 'socket'
 
 require 'puma/const'
 require 'puma/util'
-require 'puma/minissl/context_builder'
 require 'puma/configuration'
 
 module Puma
+
+  if HAS_SSL
+    require 'puma/minissl'
+    require 'puma/minissl/context_builder'
+    require 'puma/accept_nonblock'
+  end
+
   class Binder
     include Puma::Const
 
@@ -155,6 +161,9 @@ module Puma
 
           @listeners << [str, io]
         when "ssl"
+
+          raise "Puma compiled without SSL support" unless HAS_SSL
+
           params = Util.parse_query uri.query
           ctx = MiniSSL::ContextBuilder.new(params, @events).context
 
@@ -245,9 +254,8 @@ module Puma
 
     def add_ssl_listener(host, port, ctx,
                          optimize_for_latency=true, backlog=1024)
-      require 'puma/minissl'
 
-      MiniSSL.check
+      raise "Puma compiled without SSL support" unless HAS_SSL
 
       if host == "localhost"
         loopback_addresses.each do |addr|
@@ -264,7 +272,6 @@ module Puma
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
-
       ssl = MiniSSL::Server.new s, ctx
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS
@@ -275,8 +282,7 @@ module Puma
     end
 
     def inherit_ssl_listener(fd, ctx)
-      require 'puma/minissl'
-      MiniSSL.check
+      raise "Puma compiled without SSL support" unless HAS_SSL
 
       if fd.kind_of? TCPServer
         s = fd

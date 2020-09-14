@@ -10,6 +10,9 @@ require 'stringio'
 
 require 'thread'
 
+require_relative 'puma/puma_http11'
+require_relative 'puma/detect'
+
 module Puma
   autoload :Const, 'puma/const'
   autoload :Server, 'puma/server'
@@ -32,5 +35,13 @@ module Puma
   def self.set_thread_name(name)
     return unless Thread.current.respond_to?(:name=)
     Thread.current.name = "puma #{name}"
+  end
+
+  unless HAS_SSL
+    module MiniSSL
+      # this class is defined so that it exists when Puma is compiled
+      # without ssl support, as Server and Reactor use it in rescue statements.
+      class SSLError < StandardError ; end
+    end
   end
 end

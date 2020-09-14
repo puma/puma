@@ -44,6 +44,7 @@ class TestConfigFile < TestConfigFileBase
   end
 
   def test_ssl_configuration_from_DSL
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     conf = Puma::Configuration.new do |config|
       config.load "test/config/ssl_config.rb"
     end
@@ -61,6 +62,7 @@ class TestConfigFile < TestConfigFileBase
 
   def test_ssl_bind
     skip_on :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
 
     conf = Puma::Configuration.new do |c|
       c.ssl_bind "0.0.0.0", "9292", {
@@ -78,6 +80,7 @@ class TestConfigFile < TestConfigFileBase
 
   def test_ssl_bind_with_cipher_filter
     skip_on :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
 
     cipher_filter = "!aNULL:AES+SHA"
     conf = Puma::Configuration.new do |c|
@@ -95,6 +98,7 @@ class TestConfigFile < TestConfigFileBase
   end
 
   def test_ssl_bind_with_ca
+    skip 'No ssl support' unless ::Puma::HAS_SSL
     conf = Puma::Configuration.new do |c|
       c.ssl_bind "0.0.0.0", "9292", {
         cert: "/path/to/cert",

@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 module Puma
+  # at present, MiniSSL::Engine is only defined in extension code, not in minissl.rb
+  HAS_SSL = const_defined?(:MiniSSL, false) && MiniSSL.const_defined?(:Engine, false)
+
+  def self.ssl?
+    HAS_SSL
+  end
+
   IS_JRUBY = defined?(JRUBY_VERSION)
 
   def self.jruby?

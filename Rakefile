@@ -47,6 +47,29 @@ if !Puma.jruby?
   end
 else
   # Java (JRuby)
+  # ::Rake::JavaExtensionTask.source_files supplies the list of files to
+  # compile.  At present, it only works with a glob prefixed with @ext_dir.
+  # override it so we can select the files
+  class ::Rake::JavaExtensionTask
+    def source_files
+      if ENV["DISABLE_SSL"]
+        # uses no_ssl/PumaHttp11Service.java, removes MiniSSL.java
+        FileList[
+          File.join(@ext_dir, "no_ssl/PumaHttp11Service.java"),
+          File.join(@ext_dir, "org/jruby/puma/Http11.java"),
+          File.join(@ext_dir, "org/jruby/puma/Http11Parser.java")
+        ]
+      else
+        FileList[
+          File.join(@ext_dir, "PumaHttp11Service.java"),
+          File.join(@ext_dir, "org/jruby/puma/Http11.java"),
+          File.join(@ext_dir, "org/jruby/puma/Http11Parser.java"),
+          File.join(@ext_dir, "org/jruby/puma/MiniSSL.java")
+        ]
+      end
+    end
+  end
+
   Rake::JavaExtensionTask.new("puma_http11", gemspec) do |ext|
     ext.lib_dir = "lib/puma"
   end
