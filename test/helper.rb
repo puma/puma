@@ -65,7 +65,7 @@ module TimeoutEveryTestCase
           before_setup; setup; after_setup
 
           # wrap timeout around test method only
-          ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) {
+          ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 45 : 45, TestTookTooLong) {
             self.send self.name
           }
         end
@@ -73,7 +73,7 @@ module TimeoutEveryTestCase
         Minitest::Test::TEARDOWN_METHODS.each do |hook|
           capture_exceptions do
             # wrap timeout around teardown methods, remove when they're stable
-            ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 60 : 120, TestTookTooLong) {
+            ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 45 : 45, TestTookTooLong) {
               self.send hook
             }
           end
