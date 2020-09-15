@@ -68,6 +68,7 @@
   * Ensure that TCP_CORK is usable
   * Fix corner case when request body is chunked (#2326)
   * Fix filehandle leak in MiniSSL (#2299)
+  * Rescue ENOTCONN (#2335)
 
 * Refactor
   * Remove unused loader argument from Plugin initializer (#2095)
