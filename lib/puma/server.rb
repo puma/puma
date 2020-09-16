@@ -34,7 +34,7 @@ module Puma
 
     attr_reader :thread
     attr_reader :events
-    attr_reader :requests_count
+    attr_reader :requests_count # @version 5.0.0
     attr_accessor :app
 
     attr_accessor :min_threads
@@ -97,6 +97,7 @@ module Puma
 
     class << self
       # :nodoc:
+      # @version 5.0.0
       def tcp_cork_supported?
         RbConfig::CONFIG['host_os'] =~ /linux/ &&
           Socket.const_defined?(:IPPROTO_TCP) &&
@@ -994,9 +995,11 @@ module Puma
     private :possible_header_injection?
 
     # List of methods invoked by #stats.
+    # @version 5.0.0
     STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count].freeze
 
     # Returns a hash of stats about the running server for reporting purposes.
+    # @version 5.0.0
     def stats
       STAT_METHODS.map {|name| [name, send(name) || 0]}.to_h
     end
