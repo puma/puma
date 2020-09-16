@@ -50,7 +50,12 @@ module Puma
       @ios = []
     end
 
-    attr_reader :ios, :listeners, :unix_paths, :proto_env, :envs, :activated_sockets, :inherited_fds
+    attr_reader :ios
+
+    # @version 5.0.0
+    attr_reader :activated_sockets, :envs, :inherited_fds, :listeners, :proto_env, , :unix_paths
+
+    # @version 5.0.0
     attr_writer :ios, :listeners
 
     def env(sock)
@@ -61,10 +66,12 @@ module Puma
       @ios.each { |i| i.close }
     end
 
+    # @version 5.0.0
     def connected_ports
       ios.map { |io| io.addr[1] }.uniq
     end
 
+    # @version 5.0.0
     def create_inherited_fds(env_hash)
       env_hash.select {|k,v| k =~ /PUMA_INHERIT_\d+/}.each do |_k, v|
         fd, url = v.split(":", 2)
@@ -75,7 +82,9 @@ module Puma
     # systemd socket activation.
     # LISTEN_FDS = number of listening sockets. e.g. 2 means accept on 2 sockets w/descriptors 3 and 4.
     # LISTEN_PID = PID of the service process, aka us
-    # see https://www.freedesktop.org/software/systemd/man/systemd-socket-activate.html
+    # @see https://www.freedesktop.org/software/systemd/man/systemd-socket-activate.html
+    # @version 5.0.0
+    #
     def create_activated_fds(env_hash)
       return [] unless env_hash['LISTEN_FDS'] && env_hash['LISTEN_PID'].to_i == $$
       env_hash['LISTEN_FDS'].to_i.times do |index|
@@ -373,6 +382,7 @@ module Puma
       redirects
     end
 
+    # @version 5.0.0
     def redirects_for_restart_env
       listeners.each_with_object({}).with_index do |(listen, memo), i|
         memo["PUMA_INHERIT_#{i}"] = "#{listen[1].to_i}:#{listen[0]}"
@@ -387,6 +397,7 @@ module Puma
       end.map { |addrinfo| addrinfo.ip_address }.uniq
     end
 
+    # @version 5.0.0
     def socket_activation_fd(int)
       int + 3 # 3 is the magic number you add to follow the SA protocol
     end
