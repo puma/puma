@@ -463,6 +463,9 @@ VALUE engine_peercert(VALUE self) {
   return rb_cert_buf;
 }
 
+/* @see Puma::MiniSSL::Socket#ssl_version_state
+ * @version 5.0.0
+ */
 static VALUE
 engine_ssl_vers_st(VALUE self) {
   ms_conn* conn;
