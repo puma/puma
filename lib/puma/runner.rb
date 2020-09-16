@@ -29,6 +29,7 @@ module Puma
       @events.log str
     end
 
+    # @version 5.0.0
     def stop_control
       @control.stop(true) if @control
     end
@@ -63,6 +64,7 @@ module Puma
       @control = control
     end
 
+    # @version 5.0.0
     def close_control_listeners
       @control.binder.close_listeners if @control
     end
