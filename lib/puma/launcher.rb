@@ -188,6 +188,7 @@ module Puma
     end
 
     # Return all tcp ports the launcher may be using, TCP or SSL
+    # @version 5.0.0
     def connected_ports
       @binder.connected_ports
     end
@@ -206,6 +207,7 @@ module Puma
       @binder.close_listeners
     end
 
+    # @version 5.0.0
     def thread_status
       Thread.list.each do |thread|
         name = "Thread: TID-#{thread.object_id.to_s(36)}"
@@ -478,6 +480,7 @@ module Puma
               "You must have RubyGems #{min_version}+ to use this feature."
     end
 
+    # @version 5.0.0
     def with_unbundled_env
       bundler_ver = Gem::Version.new(Bundler::VERSION)
       if bundler_ver < Gem::Version.new('2.1.0')
