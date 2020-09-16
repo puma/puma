@@ -20,10 +20,12 @@ module Puma
     IS_WINDOWS
   end
 
+  # @version 5.0.0
   def self.mri?
     RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil?
   end
 
+  # @version 5.0.0
   def self.forkable?
     ::Process.respond_to?(:fork)
   end
