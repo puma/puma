@@ -27,6 +27,7 @@ module Puma
     @get_stats.stats.to_json
   end
 
+  # @version 5.0.0
   def self.stats_hash
     @get_stats.stats
   end
