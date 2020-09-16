@@ -529,7 +529,8 @@ module Puma
     #   on_refork do
     #     3.times {GC.start}
     #   end
-
+    # @version 5.0.0
+    #
     def on_refork(&block)
       @options[:before_refork] ||= []
       @options[:before_refork] << block
