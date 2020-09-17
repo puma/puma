@@ -53,7 +53,7 @@ module Puma
     attr_reader :ios
 
     # @version 5.0.0
-    attr_reader :activated_sockets, :envs, :inherited_fds, :listeners, :proto_env, , :unix_paths
+    attr_reader :activated_sockets, :envs, :inherited_fds, :listeners, :proto_env, :unix_paths
 
     # @version 5.0.0
     attr_writer :ios, :listeners

@@ -139,7 +139,7 @@ module Puma
 
       # This is a temporary fix to deal with websockets code using
       # write_nonblock.
-      
+
       # The problem with implementing it properly
       # is that it means we'd have to have the ability to rewind
       # an engine because after we write+extract, the socket
