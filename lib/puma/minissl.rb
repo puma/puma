@@ -10,8 +10,9 @@ require 'puma/puma_http11'
 
 module Puma
   module MiniSSL
-    # define constant at runtime, as it's easy to determine at built time,
+    # Define constant at runtime, as it's easy to determine at built time,
     # but Puma could (it shouldn't) be loaded with an older OpenSSL version
+    # @version 5.0.0
     HAS_TLS1_3 = !IS_JRUBY &&
       (OPENSSL_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) != -1 &&
       (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) !=-1
@@ -31,19 +32,21 @@ module Puma
         @socket.closed?
       end
 
-      # returns a two element array
-      # first is protocol version (SSL_get_version)
+      # Returns a two element array,
+      # first is protocol version (SSL_get_version),
       # second is 'handshake' state (SSL_state_string)
       #
-      # used for dropping tcp connections to ssl
-      # see OpenSSL ssl/ssl_stat.c SSL_state_string for info
+      # Used for dropping tcp connections to ssl.
+      # See OpenSSL ssl/ssl_stat.c SSL_state_string for info
+      # @version 5.0.0
       #
       def ssl_version_state
         IS_JRUBY ? [nil, nil] : @engine.ssl_vers_st
       end
 
-      # used to check the handshake status, in particular when a TCP connection
+      # Used to check the handshake status, in particular when a TCP connection
       # is made with TLSv1.3 as an available protocol
+      # @version 5.0.0
       def bad_tlsv1_3?
         HAS_TLS1_3 && @engine.ssl_vers_st == ['TLSv1.3', 'SSLERR']
       end
@@ -135,14 +138,18 @@ module Puma
       alias_method :<<, :write
 
       # This is a temporary fix to deal with websockets code using
-      # write_nonblock. The problem with implementing it properly
+      # write_nonblock.
+      
+      # The problem with implementing it properly
       # is that it means we'd have to have the ability to rewind
       # an engine because after we write+extract, the socket
       # write_nonblock call might raise an exception and later
       # code would pass the same data in, but the engine would think
-      # it had already written the data in. So for the time being
-      # (and since write blocking is quite rare), go ahead and actually
-      # block in write_nonblock.
+      # it had already written the data in.
+      #
+      # So for the time being (and since write blocking is quite rare),
+      # go ahead and actually block in write_nonblock.
+      #
       def write_nonblock(data, *_)
         write data
       end
@@ -258,13 +265,13 @@ module Puma
 
       # disables TLSv1
       def no_tlsv1=(tlsv1)
-        raise ArgumentError, "Invalid value of no_tlsv1" unless ['true', 'false', true, false].include?(tlsv1)
+        raise ArgumentError, "Invalid value of no_tlsv1=" unless ['true', 'false', true, false].include?(tlsv1)
         @no_tlsv1 = tlsv1
       end
 
       # disables TLSv1 and TLSv1.1.  Overrides `#no_tlsv1=`
       def no_tlsv1_1=(tlsv1_1)
-        raise ArgumentError, "Invalid value of no_tlsv1" unless ['true', 'false', true, false].include?(tlsv1_1)
+        raise ArgumentError, "Invalid value of no_tlsv1_1=" unless ['true', 'false', true, false].include?(tlsv1_1)
         @no_tlsv1_1 = tlsv1_1
       end
 
@@ -300,6 +307,7 @@ module Puma
         Socket.new io, engine
       end
 
+      # @version 5.0.0
       def addr
         @socket.addr
       end

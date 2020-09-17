@@ -4,6 +4,7 @@ require 'puma/const'
 
 module Puma
   # The implementation of a detailed error logging.
+  # @version 5.0.0
   #
   class ErrorLogger
     include Const

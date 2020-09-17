@@ -91,6 +91,7 @@ module Puma
     # An HTTP connection error has occurred.
     # +error+ a connection exception, +req+ the request,
     # and +text+ additional info
+    # @version 5.0.0
     #
     def connection_error(error, req, text="HTTP connection error")
       @error_logger.info(error: error, req: req, text: text)
@@ -124,6 +125,7 @@ module Puma
     # Log occurred error debug dump.
     # +error+ an exception object, +req+ the request,
     # and +text+ additional info
+    # @version 5.0.0
     #
     def debug_error(error, req=nil, text="")
       @error_logger.debug(error: error, req: req, text: text)

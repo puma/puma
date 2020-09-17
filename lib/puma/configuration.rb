@@ -173,6 +173,7 @@ module Puma
       self
     end
 
+    # @version 5.0.0
     def default_max_threads
       Puma.mri? ? 5 : 16
     end

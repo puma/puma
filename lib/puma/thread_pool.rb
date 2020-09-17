@@ -66,7 +66,7 @@ module Puma
 
     attr_reader :spawned, :trim_requested, :waiting
     attr_accessor :clean_thread_locals
-    attr_accessor :out_of_band_hook
+    attr_accessor :out_of_band_hook # @version 5.0.0
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Performance/HashEachMethods
@@ -84,6 +84,7 @@ module Puma
       waiting + (@max - spawned)
     end
 
+    # @version 5.0.0
     def busy_threads
       with_mutex { @spawned - @waiting + @todo.size }
     end
@@ -151,6 +152,7 @@ module Puma
 
     private :spawn_thread
 
+    # @version 5.0.0
     def trigger_out_of_band_hook
       return false unless out_of_band_hook && out_of_band_hook.any?
 
@@ -166,6 +168,7 @@ module Puma
 
     private :trigger_out_of_band_hook
 
+    # @version 5.0.0
     def with_mutex(&block)
       @mutex.owned? ?
         yield :
@@ -231,6 +234,7 @@ module Puma
       end
     end
 
+    # @version 5.0.0
     def wait_for_less_busy_worker(delay_s)
       # Ruby MRI does GVL, this can result
       # in processing contention when multiple threads

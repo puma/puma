@@ -280,6 +280,8 @@ module Puma
 
     # Returns true if the persistent connection can be closed immediately
     # without waiting for the configured idle/shutdown timeout.
+    # @version 5.0.0
+    #
     def can_close?
       # Allow connection to close if it's received at least one full request
       # and hasn't received any data for a future request.
@@ -443,6 +445,7 @@ module Puma
       end
     end
 
+    # @version 5.0.0
     def write_chunk(str)
       @chunked_content_length += @body.write(str)
     end

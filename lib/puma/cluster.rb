@@ -77,6 +77,8 @@ module Puma
       end
 
       attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
+
+      # @version 5.0.0
       attr_writer :pid, :phase
 
       def booted?
@@ -98,6 +100,8 @@ module Puma
         @last_status = JSON.parse(status, symbolize_names: true)
       end
 
+      # @see Puma::Cluster#check_workers
+      # @version 5.0.0
       def ping_timeout
         @last_checkin +
           (booted? ?
@@ -160,6 +164,7 @@ module Puma
       end
     end
 
+    # @version 5.0.0
     def spawn_worker(idx, master)
       @launcher.config.run_hooks :before_worker_fork, idx, @launcher.events
 
@@ -419,6 +424,7 @@ module Puma
       @options[:preload_app]
     end
 
+    # @version 5.0.0
     def fork_worker!
       if (worker = @workers.find { |w| w.index == 0 })
         worker.phase += 1
@@ -640,6 +646,7 @@ module Puma
       end
     end
 
+    # @version 5.0.0
     def timeout_workers
       @workers.each do |w|
         if !w.term? && w.ping_timeout <= Time.now
@@ -649,6 +656,7 @@ module Puma
       end
     end
 
+    # @version 5.0.0
     def nakayoshi_gc
       return unless @options[:nakayoshi_fork]
       log "! Promoting existing objects to old generation..."

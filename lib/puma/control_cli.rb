@@ -12,6 +12,8 @@ module Puma
   class ControlCLI
 
     COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats thread-backtraces refork}
+
+    # @version 5.0.0
     PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)

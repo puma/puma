@@ -14,22 +14,23 @@ module Puma
   #   end
   #   config.load
   #
-  #   puts config.options[:binds]
-  #   "tcp://127.0.0.1:3001"
+  #   puts config.options[:binds] # => "tcp://127.0.0.1:3001"
   #
   # Used to load file:
-  #
+  # 
   #   $ cat puma_config.rb
-  #     port 3002
+  #   port 3002
+  #
+  # Resulting configuration:
   #
   #   config = Configuration.new(config_file: "puma_config.rb")
   #   config.load
   #
-  #   puts config.options[:binds]
-  #   # => "tcp://127.0.0.1:3002"
+  #   puts config.options[:binds] # => "tcp://127.0.0.1:3002"
   #
   # You can also find many examples being used by the test suite in
   # +test/config+.
+  #
   class DSL
     include ConfigDefault
 
@@ -98,6 +99,9 @@ module Puma
     #       [body]
     #     ]
     #   end
+    #
+    # @see Puma::Configuration#app
+    #
     def app(obj=nil, &block)
       obj ||= block
 
@@ -160,12 +164,12 @@ module Puma
     #
     # You can use query parameters within the url to specify options:
     #
-    #  - Set the socket backlog depth with +backlog+, default is 1024.
-    #  - Set up an SSL certificate with +key+ & +cert+.
-    #  - Set whether to optimize for low latency instead of throughput with
-    #    +low_latency+, default is to optimize for low latency. This is done
-    #    via +Socket::TCP_NODELAY+.
-    #  - Set socket permissions with +umask+.
+    # * Set the socket backlog depth with +backlog+, default is 1024.
+    # * Set up an SSL certificate with +key+ & +cert+.
+    # * Set whether to optimize for low latency instead of throughput with
+    #   +low_latency+, default is to optimize for low latency. This is done
+    #   via +Socket::TCP_NODELAY+.
+    # * Set socket permissions with +umask+.
     #
     # @example Backlog depth
     #   bind 'unix:///var/run/puma.sock?backlog=512'
@@ -175,6 +179,9 @@ module Puma
     #   bind 'tcp://0.0.0.0:9292?low_latency=false'
     # @example Socket permissions
     #   bind 'unix:///var/run/puma.sock?umask=0111'
+    # @see Puma::Runner#load_and_bind
+    # @see Puma::Cluster#run
+    #
     def bind(url)
       @options[:binds] ||= []
       @options[:binds] << url
@@ -193,13 +200,14 @@ module Puma
       bind "tcp://#{host}:#{port}"
     end
 
-    # Define how long persistent connections can be idle before Puma closes
-    # them.
+    # Define how long persistent connections can be idle before Puma closes them.
+    # @see Puma::Server.new
     def persistent_timeout(seconds)
       @options[:persistent_timeout] = Integer(seconds)
     end
 
     # Define how long the tcp socket stays open, if no data has been received.
+    # @see Puma::Server.new
     def first_data_timeout(seconds)
       @options[:first_data_timeout] = Integer(seconds)
     end
@@ -210,10 +218,11 @@ module Puma
       @options[:clean_thread_locals] = which
     end
 
-    # When shutting down, drain the accept socket of pending
-    # connections and process them. This loops over the accept
-    # socket until there are no more read events and then stops
-    # looking and waits for the requests to finish.
+    # When shutting down, drain the accept socket of pending connections and
+    # process them. This loops over the accept socket until there are no more
+    # read events and then stops looking and waits for the requests to finish.
+    # @see Puma::Server#graceful_shutdown
+    #
     def drain_on_shutdown(which=true)
       @options[:drain_on_shutdown] = which
     end
@@ -236,6 +245,7 @@ module Puma
     #
     # Puma always waits a few seconds after killing a thread for it to try
     # to finish up it's work, even in :immediately mode.
+    # @see Puma::Server#graceful_shutdown
     def force_shutdown_after(val=:forever)
       i = case val
           when :forever
@@ -315,7 +325,7 @@ module Puma
       @options[:early_hints] = answer
     end
 
-    # Redirect STDOUT and STDERR to files specified. The +append+ parameter
+    # Redirect +STDOUT+ and +STDERR+ to files specified. The +append+ parameter
     # specifies whether the output is appended, the default is +false+.
     #
     # @example
@@ -356,8 +366,8 @@ module Puma
       @options[:max_threads] = max
     end
 
-    # Instead of "bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'" you
-    # can also use the "ssl_bind" option.
+    # Instead of `bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'` you
+    # can also use the this method.
     #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
@@ -403,6 +413,8 @@ module Puma
     #
     # @example
     #   state_permission 0600
+    # @version 5.0.0
+    #
     def state_permission(permission)
       @options[:state_permission] = permission
     end
@@ -413,6 +425,7 @@ module Puma
     # The default is 0.
     #
     # @note Cluster mode only.
+    # @see Puma::Cluster
     def workers(count)
       @options[:workers] = count.to_i
     end
@@ -516,7 +529,8 @@ module Puma
     #   on_refork do
     #     3.times {GC.start}
     #   end
-
+    # @version 5.0.0
+    #
     def on_refork(&block)
       @options[:before_refork] ||= []
       @options[:before_refork] << block
@@ -582,7 +596,7 @@ module Puma
     # new Bundler context and thus can float around as the release
     # dictates.
     #
-    # See also: extra_runtime_dependencies
+    # @see extra_runtime_dependencies
     #
     # @note This is incompatible with +preload_app!+.
     # @note This is only supported for RubyGems 2.2+
@@ -599,6 +613,9 @@ module Puma
     #
     # @example
     #   raise_exception_on_sigterm false
+    # @see Puma::Launcher#setup_signals
+    # @see Puma::Cluster#setup_signals
+    #
     def raise_exception_on_sigterm(answer=true)
       @options[:raise_exception_on_sigterm] = answer
     end
@@ -614,6 +631,8 @@ module Puma
     #   extra_runtime_dependencies ['gem_name_1', 'gem_name_2']
     # @example
     #   extra_runtime_dependencies ['puma_worker_killer', 'puma-heroku']
+    # @see Puma::Launcher#extra_runtime_deps_directories
+    #
     def extra_runtime_dependencies(answer = [])
       @options[:extra_runtime_dependencies] = Array(answer)
     end
@@ -641,6 +660,8 @@ module Puma
     # @note Cluster mode only.
     # @example
     #   worker_timeout 60
+    # @see Puma::Cluster::Worker#ping_timeout
+    #
     def worker_timeout(timeout)
       timeout = Integer(timeout)
       min = Const::WORKER_CHECK_INTERVAL
@@ -657,15 +678,20 @@ module Puma
     # If unspecified, this defaults to the value of worker_timeout.
     #
     # @note Cluster mode only.
-    # @example:
+    #
+    # @example
     #   worker_boot_timeout 60
+    # @see Puma::Cluster::Worker#ping_timeout
+    #
     def worker_boot_timeout(timeout)
       @options[:worker_boot_timeout] = Integer(timeout)
     end
 
-    # Set the timeout for worker shutdown
+    # Set the timeout for worker shutdown.
     #
     # @note Cluster mode only.
+    # @see Puma::Cluster::Worker#term
+    #
     def worker_shutdown_timeout(timeout)
       @options[:worker_shutdown_timeout] = Integer(timeout)
     end
@@ -683,6 +709,7 @@ module Puma
     # slow clients will occupy a handler thread while the request
     # is being sent. A reverse proxy, such as nginx, can handle
     # slow clients and queue requests before they reach Puma.
+    # @see Puma::Server
     def queue_requests(answer=true)
       @options[:queue_requests] = answer
     end
@@ -690,6 +717,7 @@ module Puma
     # When a shutdown is requested, the backtraces of all the
     # threads will be written to $stdout. This can help figure
     # out why shutdown is hanging.
+    #
     def shutdown_debug(val=true)
       @options[:shutdown_debug] = val
     end
@@ -700,6 +728,10 @@ module Puma
     # requests to pick up new requests first.
     #
     # Only works on MRI. For all other interpreters, this setting does nothing.
+    # @see Puma::Server#handle_servers
+    # @see Puma::ThreadPool#wait_for_less_busy_worker
+    # @version 5.0.0
+    #
     def wait_for_less_busy_worker(val=0.005)
       @options[:wait_for_less_busy_worker] = val.to_f
     end
@@ -711,18 +743,18 @@ module Puma
     #
     # There are 4 possible values:
     #
-    # * :socket (the default) - read the peername from the socket using the
-    #           syscall. This is the normal behavior.
-    # * :localhost - set the remote address to "127.0.0.1"
-    # * header: http_header - set the remote address to the value of the
-    #                          provided http header. For instance:
-    #                          `set_remote_address header: "X-Real-IP"`.
-    #                          Only the first word (as separated by spaces or comma)
-    #                          is used, allowing headers such as X-Forwarded-For
-    #                          to be used as well.
-    # * Any string - this allows you to hardcode remote address to any value
-    #                you wish. Because Puma never uses this field anyway, it's
-    #                format is entirely in your hands.
+    # 1. **:socket** (the default) - read the peername from the socket using the
+    #    syscall. This is the normal behavior.
+    # 2. **:localhost** - set the remote address to "127.0.0.1"
+    # 3. **header: <http_header>**- set the remote address to the value of the
+    #    provided http header. For instance:
+    #    `set_remote_address header: "X-Real-IP"`.
+    #    Only the first word (as separated by spaces or comma) is used, allowing
+    #    headers such as X-Forwarded-For to be used as well.
+    # 4. **\<Any string\>** - this allows you to hardcode remote address to any value
+    #    you wish. Because Puma never uses this field anyway, it's format is
+    #    entirely in your hands.
+    #
     def set_remote_address(val=:socket)
       case val
       when :socket
@@ -756,6 +788,8 @@ module Puma
     # (default 1000), or pass 0 to disable auto refork.
     #
     # @note Cluster mode only.
+    # @version 5.0.0
+    #
     def fork_worker(after_requests=1000)
       @options[:fork_worker] = Integer(after_requests)
     end
@@ -769,6 +803,10 @@ module Puma
     # also increase time to boot and fork. See your logs for details on how much
     # time this adds to your boot process. For most apps, it will be less than one
     # second.
+    #
+    # @see Puma::Cluster#nakayoshi_gc
+    # @version 5.0.0
+    #
     def nakayoshi_fork(enabled=true)
       @options[:nakayoshi_fork] = enabled
     end
