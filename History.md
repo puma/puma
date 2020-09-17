@@ -1,3 +1,11 @@
+## Master
+
+* Features
+  * Your feature goes here (#Github Number)
+
+* Bugfixes
+  * Your bugfix goes here (#Github Number)
+
 ## 5.0.0
 
 * Features
