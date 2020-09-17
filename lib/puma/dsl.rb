@@ -17,7 +17,7 @@ module Puma
   #   puts config.options[:binds] # => "tcp://127.0.0.1:3001"
   #
   # Used to load file:
-  # 
+  #
   #   $ cat puma_config.rb
   #   port 3002
   #
