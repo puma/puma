@@ -239,7 +239,7 @@ module Puma
               rescue MiniSSL::SSLError => e
                 @server.lowlevel_error(e, c.env)
                 ssl_socket = c.io
-                addr = ssl_socket.peeraddr.last
+                addr = ssl_socket.peeraddr(swallow: true).last
                 cert = ssl_socket.peercert
 
                 c.close
