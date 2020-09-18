@@ -101,10 +101,18 @@ module Puma
       def tcp_cork_supported?
         RbConfig::CONFIG['host_os'] =~ /linux/ &&
           Socket.const_defined?(:IPPROTO_TCP) &&
-          Socket.const_defined?(:TCP_CORK) &&
+          Socket.const_defined?(:TCP_CORK)
+      end
+
+      # :nodoc:
+      # @version 5.0.0
+      def closed_socket_supported?
+        RbConfig::CONFIG['host_os'] =~ /linux/ &&
+          Socket.const_defined?(:IPPROTO_TCP) &&
           Socket.const_defined?(:TCP_INFO)
       end
       private :tcp_cork_supported?
+      private :closed_socket_supported?
     end
 
     # On Linux, use TCP_CORK to better control how the TCP stack
@@ -131,7 +139,15 @@ module Puma
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
       end
+    else
+      def cork_socket(socket)
+      end
 
+      def uncork_socket(socket)
+      end
+    end
+
+    if closed_socket_supported?
       def closed_socket?(socket)
         return false unless socket.kind_of? TCPSocket
         return false unless @precheck_closing
@@ -149,12 +165,6 @@ module Puma
         end
       end
     else
-      def cork_socket(socket)
-      end
-
-      def uncork_socket(socket)
-      end
-
       def closed_socket?(socket)
         false
       end
