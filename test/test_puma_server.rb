@@ -24,7 +24,7 @@ class TestPumaServer < Minitest::Test
   def server_run(app: @app, early_hints: false)
     @server.app = app
     @port = (@server.add_tcp_listener @host, 0).addr[1]
-    @server.early_hints = true if early_hints
+    @server.instance_variable_set(:@early_hints, true) if early_hints
     @server.run
   end
 
@@ -194,7 +194,7 @@ Content-Length: 12
 EOF
 ).split("\n").join("\r\n") + "\r\n\r\n"
 
-    assert_equal true, @server.early_hints
+    assert_equal true, @server.instance_variable_get(:@early_hints)
     assert_equal expected_data, data
   end
 
@@ -234,7 +234,7 @@ Content-Length: 12
 EOF
 ).split("\n").join("\r\n") + "\r\n\r\n"
 
-    assert_nil @server.early_hints
+    assert_nil @server.instance_variable_get :@early_hints
     assert_equal expected_data, data
   end
 
@@ -247,7 +247,7 @@ EOF
   end
 
   def test_doesnt_print_backtrace_in_production
-    @server.leak_stack_on_error = false
+    @server.instance_variable_set :@leak_stack_on_error, false
     server_run app: ->(env) { raise "don't leak me bro" }
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
@@ -273,7 +273,8 @@ EOF
   end
 
   def test_force_shutdown_error_default
-    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+    @server = Puma::Server.new @app, @events, {force_shutdown_after: 2}
+    @server.instance_variable_set :@leak_stack_on_error, true
 
     server_run app: ->(env) do
       @server.stop
@@ -370,7 +371,7 @@ EOF
   end
 
   def test_timeout_in_data_phase
-    @server.first_data_timeout = 2
+    @server.instance_variable_set :@first_data_timeout, 2
     server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
