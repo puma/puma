@@ -6,6 +6,9 @@
 * Bugfixes
   * Your bugfix goes here (#Github Number)
 
+* Refactor
+  * Remove unneeded attr_accessor statements from Server (#2373)
+
 ## 5.0.0
 
 * Features
