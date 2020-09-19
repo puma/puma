@@ -77,7 +77,7 @@ module Puma
                   restart_server.clear
                   server.begin_restart(true)
                   @launcher.config.run_hooks :before_refork, nil, @launcher.events
-                  nakayoshi_gc
+                  Puma::Util.nakayoshi_gc @events if @options[:nakayoshi_fork]
                 end
               elsif idx == 0 # restart server
                 restart_server << true << false
@@ -162,17 +162,6 @@ module Puma
         rescue SystemCallError, IOError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
-      end
-
-      def nakayoshi_gc
-        return unless @options[:nakayoshi_fork]
-        log "! Promoting existing objects to old generation..."
-        4.times { GC.start(full_mark: false) }
-        if GC.respond_to?(:compact)
-          log "! Compacting..."
-          GC.compact
-        end
-        log "! Friendly fork preparation complete."
       end
     end
   end

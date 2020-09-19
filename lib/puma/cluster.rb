@@ -386,7 +386,7 @@ module Puma
       @master_read, @worker_write = read, @wakeup
 
       @launcher.config.run_hooks :before_fork, nil, @launcher.events
-      nakayoshi_gc
+      Puma::Util.nakayoshi_gc @events if @options[:nakayoshi_fork]
 
       spawn_workers
 
@@ -490,18 +490,6 @@ module Puma
           w.kill
         end
       end
-    end
-
-    # @version 5.0.0
-    def nakayoshi_gc
-      return unless @options[:nakayoshi_fork]
-      log "! Promoting existing objects to old generation..."
-      4.times { GC.start(full_mark: false) }
-      if GC.respond_to?(:compact)
-        log "! Compacting..."
-        GC.compact
-      end
-      log "! Friendly fork preparation complete."
     end
   end
 end
