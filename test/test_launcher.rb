@@ -3,6 +3,7 @@ require_relative "helpers/tmp_path"
 
 require "puma/configuration"
 require 'puma/events'
+require 'puma/cli'
 
 class TestLauncher < Minitest::Test
   include TmpPath
@@ -141,12 +142,8 @@ class TestLauncher < Minitest::Test
   def test_puma_stats_clustered
     skip NO_FORK_MSG unless HAS_FORK
 
-    conf = Puma::Configuration.new do |c|
-      c.app -> {[200, {}, ['']]}
-      c.workers 1
-      c.clear_binds!
-    end
-    launcher = launcher(conf)
+    cli = Puma::CLI.new ['--config', 'test/config/cluster_stats.rb']
+    launcher = cli.launcher
     Thread.new do
       sleep Puma::Const::WORKER_CHECK_INTERVAL + 1
       status = Puma.stats_hash[:worker_status].first[:last_status]
