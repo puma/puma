@@ -61,7 +61,7 @@ module Puma
       @workers.each { |x| x.hup }
     end
 
-    class Worker
+    class WorkerHandle
       def initialize(idx, pid, phase, options)
         @index = idx
         @pid = pid
@@ -154,7 +154,7 @@ module Puma
         end
 
         debug "Spawned worker: #{pid}"
-        @workers << Worker.new(idx, pid, @phase, @options)
+        @workers << WorkerHandle.new(idx, pid, @phase, @options)
       end
 
       if @options[:fork_worker] &&
