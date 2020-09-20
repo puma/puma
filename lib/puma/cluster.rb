@@ -187,7 +187,6 @@ module Puma
 
       new_worker = Worker.new index: index,
                               master: master,
-                              options: @options,
                               launcher: @launcher,
                               pipes: pipes
       new_worker.run

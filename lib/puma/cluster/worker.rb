@@ -11,13 +11,13 @@ module Puma
     class Worker < Puma::Runner
       attr_reader :index, :master
 
-      def initialize(index:, master:, options:, launcher:, pipes:, server: nil)
+      def initialize(index:, master:, launcher:, pipes:, server: nil)
         super launcher, launcher.events
 
         @index = index
         @master = master
-        @options = options
         @launcher = launcher
+        @options = launcher.options
         @check_pipe = pipes[:check_pipe]
         @worker_write = pipes[:worker_write]
         @fork_pipe = pipes[:fork_pipe]
@@ -136,7 +136,6 @@ module Puma
         pid = fork do
           new_worker = Worker.new index: idx,
                                   master: master,
-                                  options: @options,
                                   launcher: @launcher,
                                   pipes: { check_pipe: @check_pipe,
                                            worker_write: @worker_write },
