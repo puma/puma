@@ -89,7 +89,7 @@ module Puma
       @status = :run
     end
 
-    attr_reader :binder, :events, :config, :options, :restart_dir
+    attr_reader :binder, :events, :config, :options, :restart_dir, :original_argv
 
     # Return stats about the server
     def stats

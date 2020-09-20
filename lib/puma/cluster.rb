@@ -93,7 +93,42 @@ module Puma
     def spawn_worker(idx, master)
       @launcher.config.run_hooks :before_worker_fork, idx, @launcher.events
 
-      pid = fork { worker(idx, master) }
+      pid = if supports_phased_restart?
+              pipes = { check_pipe: @check_pipe.fileno, worker_write: @worker_write.fileno }
+              if @options[:fork_worker]
+                pipes[:fork_pipe] = @fork_pipe.fileno
+                pipes[:wakeup] = @wakeup.fileno
+              end
+
+              script = <<-RUBY
+                original_argv = #{@launcher.original_argv.inspect}
+                worker_index = #{idx}
+                master_pid = #{master}
+
+                pipes = Hash[#{pipes}.map { |k, v| [k, IO.for_fd(v)] }]
+                pipes[:worker_write].sync = true
+                pipes[:wakeup].sync = true if pipes[:wakeup]
+
+                require 'bundler/setup'
+                require 'puma/cli'
+                require 'puma/cluster/worker'
+
+                cli = Puma::CLI.new original_argv
+                worker = Puma::Cluster::Worker.new index: worker_index,
+                                                   master: master_pid,
+                                                   launcher: cli.launcher,
+                                                   pipes: pipes
+                cli.launcher.binder.parse cli.launcher.options[:binds], worker
+                worker.run
+              RUBY
+
+              env = @launcher.binder.redirects_for_restart_env
+              pipe_map = Hash[pipes.map { |_, v| [v, v] }]
+              binds_map = @launcher.binder.redirects_for_restart
+              spawn env, Gem.ruby, '-e', script, pipe_map.merge(binds_map)
+            else
+              fork { worker(idx, master) }
+            end
       if !pid
         log "! Complete inability to spawn new workers detected"
         log "! Seppuku is the only choice."

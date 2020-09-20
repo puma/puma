@@ -54,11 +54,12 @@ class TestIntegration < Minitest::Test
       config_file.close
       config = "-C #{config_file.path}"
     end
+    puma_path = File.expand_path '../../../bin/puma', __FILE__
     if unix
-      cmd = "#{BASE} bin/puma #{config} -b unix://#{@bind_path} #{argv}"
+      cmd = "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
     else
       @tcp_port = UniquePort.call
-      cmd = "#{BASE} bin/puma #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+      cmd = "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
     end
     @server = IO.popen(cmd, "r")
     wait_for_server_to_boot
