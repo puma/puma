@@ -237,22 +237,11 @@ module Puma
 
               # SSL handshake failure
               rescue MiniSSL::SSLError => e
-                @server.lowlevel_error(e, c.env)
-
-                ssl_socket = c.io
-                begin
-                  addr = ssl_socket.peeraddr.last
-                # EINVAL can happen when browser closes socket w/security exception
-                rescue IOError, Errno::EINVAL
-                  addr = "<unknown>"
-                end
-
-                cert = ssl_socket.peercert
+                @server.lowlevel_error e, c.env
+                @events.ssl_error e, c.io
 
                 c.close
                 clear_monitor mon
-
-                @events.ssl_error e, addr, cert
 
               # The client doesn't know HTTP well
               rescue HttpParserError => e

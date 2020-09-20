@@ -106,10 +106,12 @@ module Puma
     end
 
     # An SSL error has occurred.
-    # +error+ an exception object, +peeraddr+ peer address,
-    # and +peercert+ any peer certificate (if present).
+    # @param error <Puma::MiniSSL::SSLError>
+    # @param ssl_socket <Puma::MiniSSL::Socket>
     #
-    def ssl_error(error, peeraddr, peercert)
+    def ssl_error(error, ssl_socket)
+      peeraddr = ssl_socket.peeraddr.last rescue "<unknown>"
+      peercert = ssl_socket.peercert
       subject = peercert ? peercert.subject : nil
       @error_logger.info(error: error, text: "SSL error, peer: #{peeraddr}, peer cert: #{subject}")
     end
