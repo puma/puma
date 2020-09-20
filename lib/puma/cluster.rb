@@ -118,6 +118,21 @@ module Puma
                                                    master: master_pid,
                                                    launcher: cli.launcher,
                                                    pipes: pipes
+
+                begin
+                  unless Puma.jruby? # INFO in use by JVM already
+                    Signal.trap "SIGINFO" do
+                      cli.launcher.thread_status do |name, backtrace|
+                        worker.log name
+                        worker.log backtrace.map { |bt| "  \#{bt}" }
+                      end
+                    end
+                  end
+                rescue Exception
+                  # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
+                  # to see this constantly on Linux.
+                end
+
                 cli.launcher.binder.parse cli.launcher.options[:binds], worker
                 worker.run
               RUBY
