@@ -2,6 +2,11 @@
 
 module Puma
   class Cluster < Runner
+    # This class represents a worker process from the perspective of the puma
+    # master process. It contains information about the process and its health
+    # and it exposes methods to control the process via IPC. It does not
+    # include the actual logic executed by the worker process itself. For that,
+    # see Puma::Cluster::Worker.
     class WorkerHandle
       def initialize(idx, pid, phase, options)
         @index = idx
