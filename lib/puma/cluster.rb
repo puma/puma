@@ -199,7 +199,7 @@ module Puma
     end
 
     def phased_restart
-      return false if @options[:preload_app]
+      return false unless supports_phased_restart?
 
       @phased_restart = true
       wakeup!
@@ -459,6 +459,10 @@ module Puma
     end
 
     private
+
+    def supports_phased_restart?
+      !@options[:preload_app]
+    end
 
     # loops thru @workers, removing workers that exited, and calling
     # `#term` if needed
