@@ -85,6 +85,8 @@ module Puma
       @precheck_closing = true
 
       @requests_count = 0
+
+      @shutdown_mutex = Mutex.new
     end
 
     attr_accessor :binder, :leak_stack_on_error, :early_hints
@@ -237,12 +239,13 @@ module Puma
 
           @events.connection_error e, client
         else
-          if process_now
-            process_client client, buffer
-          else
-            client.set_timeout @first_data_timeout
-            @reactor.add client
-          end
+          process_now ||= @shutdown_mutex.synchronize do
+                            next true unless @queue_requests
+                            client.set_timeout @first_data_timeout
+                            @reactor.add client
+                            false
+                          end
+          process_client client, buffer if process_now
         end
 
         process_now
@@ -328,7 +331,9 @@ module Puma
         @events.fire :state, @status
 
         if queue_requests
-          @queue_requests = false
+          @shutdown_mutex.synchronize do
+            @queue_requests = false
+          end
           @reactor.clear!
           @reactor.shutdown
         end
@@ -408,11 +413,13 @@ module Puma
             end
 
             unless client.reset(check_for_more_data)
-              return unless @queue_requests
-              close_socket = false
-              client.set_timeout @persistent_timeout
-              @reactor.add client
-              return
+              @shutdown_mutex.synchronize do
+                return unless @queue_requests
+                close_socket = false
+                client.set_timeout @persistent_timeout
+                @reactor.add client
+                return
+              end
             end
           end
         end
