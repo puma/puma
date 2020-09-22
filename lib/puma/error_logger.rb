@@ -51,8 +51,8 @@ module Puma
 
       string_block = []
       string_block << title(options)
-      string_block << request_dump(req) if req
-      string_block << error_backtrace(options) if error
+      string_block << request_dump(req) if request_parsed?(req)
+      string_block << error.backtrace if error
 
       ioerr.puts string_block.join("\n")
     end
