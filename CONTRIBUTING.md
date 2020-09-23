@@ -148,6 +148,6 @@ check](https://github.com/puma/puma/pull/1991).
 Puma can be a bit intimidating for your first contribution because there's a lot of concepts here that you've probably never had to think about before - Rack, sockets, forking, threads etc. Here are some helpful links for learning more about things related to Puma:
 
 * [Puma's Architecture docs](https://github.com/puma/puma/blob/master/docs/architecture.md)
-* [The Rack specification](https://www.rubydoc.info/github/rack/rack/file/SPEC)
+* [The Rack specification](https://github.com/rack/rack/blob/master/SPEC.rdoc)
 * The Ruby docs for IO.pipe, TCPServer/Socket.
 * [nio4r documentation](https://github.com/socketry/nio4r/wiki/Getting-Started)
