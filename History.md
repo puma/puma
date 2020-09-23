@@ -7,6 +7,7 @@
   * Your bugfix goes here (#Github Number)
 
 * Refactor
+  * Change Events#ssl_error signature from (error, peeraddr, peercert) to (error, ssl_socket) (#2375)
   * Remove unneeded attr_accessor statements from Server (#2373)
 
 ## 5.0.0

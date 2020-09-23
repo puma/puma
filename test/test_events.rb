@@ -179,6 +179,43 @@ class TestEvents < Minitest::Test
     sleep 0.1 # important so that the previous data is sent as a packet
     assert_match %r!HTTP parse error, malformed request!, events.stderr.string
     assert_match %r!\("GET #{path}" - \(-\)\)!, events.stderr.string
-    server.stop(true)
+  ensure
+    sock.close if sock && !sock.closed?
+    server.stop true
   end
+
+  # test_puma_server_ssl.rb checks that ssl errors are raised correctly,
+  # but it mocks the actual error code.  This test the code, but it will
+  # break if the logged message changes
+  def test_ssl_error
+    events = Puma::Events.strings
+
+    ssl_mock = -> (addr, subj) {
+      obj = Object.new
+      obj.define_singleton_method(:peeraddr) { addr }
+      if subj
+        cert = Object.new
+        cert.define_singleton_method(:subject) { subj }
+        obj.define_singleton_method(:peercert) { cert }
+      else
+        obj.define_singleton_method(:peercert) { nil }
+      end
+      obj
+    }
+
+    events.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(['127.0.0.1'], 'test_cert')
+    error = events.stderr.string
+    assert_includes error, "SSL error"
+    assert_includes error, "peer: 127.0.0.1"
+    assert_includes error, "cert: test_cert"
+
+    events.stderr.string = ''
+
+    events.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(nil, nil)
+    error = events.stderr.string
+    assert_includes error, "SSL error"
+    assert_includes error, "peer: <unknown>"
+    assert_includes error, "cert: :"
+
+  end if ::Puma::HAS_SSL
 end

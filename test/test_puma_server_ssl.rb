@@ -12,10 +12,10 @@ if ::Puma::HAS_SSL
   class SSLEventsHelper < ::Puma::Events
     attr_accessor :addr, :cert, :error
 
-    def ssl_error(error, peeraddr, peercert)
+    def ssl_error(error, ssl_socket)
       self.error = error
-      self.addr = peeraddr
-      self.cert = peercert
+      self.addr = ssl_socket.peeraddr.last rescue "<unknown>"
+      self.cert = ssl_socket.peercert
     end
   end
 
