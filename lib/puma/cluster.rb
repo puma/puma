@@ -194,6 +194,7 @@ module Puma
       end
     end
 
+    # @!attribute [r] next_worker_index
     def next_worker_index
       all_positions =  0...@options[:workers]
       occupied_positions = @workers.map { |w| w.index }
@@ -396,6 +397,7 @@ module Puma
 
     # Inside of a child process, this will return all zeroes, as @workers is only populated in
     # the master process.
+    # @!attribute [r] stats
     def stats
       old_worker_count = @workers.count { |w| w.phase != @phase }
       worker_status = @workers.map do |w|

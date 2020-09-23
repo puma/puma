@@ -13,6 +13,7 @@ module Puma
   # gets created via the `start_server` method from the `Puma::Runner` class
   # that this inherits from.
   class Single < Runner
+    # @!attribute [r] stats
     def stats
       {
         started_at: @started_at.utc.iso8601
