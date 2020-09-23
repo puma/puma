@@ -222,8 +222,10 @@ class TestThreadPool < Minitest::Test
 
     pool = mutex_pool(0, 1) do
       begin
-        pool.signal
-        sleep
+        pool.with_force_shutdown do
+          pool.signal
+          sleep
+        end
       rescue Puma::ThreadPool::ForceShutdown
         rescued = true
       end
@@ -248,8 +250,10 @@ class TestThreadPool < Minitest::Test
     rescued = []
     pool = mutex_pool(2, 2) do
       begin
-        pool.signal
-        sleep
+        pool.with_force_shutdown do
+          pool.signal
+          sleep
+        end
       rescue Puma::ThreadPool::ForceShutdown
         rescued << Thread.current
         sleep

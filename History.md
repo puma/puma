@@ -5,6 +5,7 @@
 
 * Bugfixes
   * Prevent connections from entering Reactor after shutdown begins (#2377)
+  * Better error handling during force shutdown (#2271)
 
 * Refactor
   * Change Events#ssl_error signature from (error, peeraddr, peercert) to (error, ssl_socket) (#2375)

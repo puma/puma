@@ -949,27 +949,37 @@ EOF
   end
 
   # Perform a server shutdown while requests are pending (one in app-server response, one still sending client request).
-  def shutdown_requests(app_delay: 2, request_delay: 1, post: false, response:, **options)
+  def shutdown_requests(s1_complete: true, s1_response: nil, post: false, s2_response: nil, **options)
     @server = Puma::Server.new @app, @events, options
-    server_run app: ->(_) {
-      sleep app_delay
+    mutex = Mutex.new
+    app_finished = ConditionVariable.new
+    server_run app: ->(env) {
+      path = env['REQUEST_PATH']
+      mutex.synchronize do
+        app_finished.signal
+        app_finished.wait(mutex) if path == '/s1'
+      end
       [204, {}, []]
     }
 
-    s1 = send_http "GET / HTTP/1.1\r\n\r\n"
+    s1 = nil
     s2 = send_http post ?
-      "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
-      "GET / HTTP/1.1\r\n"
-    sleep 0.1
-
+      "POST /s2 HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
+      "GET /s2 HTTP/1.1\r\n"
+    mutex.synchronize do
+      s1 = send_http "GET /s1 HTTP/1.1\r\n\r\n"
+      app_finished.wait(mutex)
+      app_finished.signal if s1_complete
+    end
     @server.stop
-    sleep request_delay
+    Thread.pass until @server.instance_variable_get(:@thread_pool).instance_variable_get(:@shutdown)
 
-    s2 << "\r\n"
+    assert_match(s1_response, s1.gets) if s1_response
 
-    assert_match(/204/, s1.gets)
+    # Send s2 after shutdown begins
+    s2 << "\r\n" unless IO.select([s2], nil, nil, 0.1)
 
-    assert IO.select([s2], nil, nil, app_delay), 'timeout waiting for response'
+    assert IO.select([s2], nil, nil, 10), 'timeout waiting for response'
     s2_result = begin
       s2.gets
     rescue Errno::ECONNABORTED, Errno::ECONNRESET
@@ -977,38 +987,27 @@ EOF
       post ? '408' : nil
     end
 
-    if response
-      assert_match response, s2_result
+    if s2_response
+      assert_match s2_response, s2_result
     else
       assert_nil s2_result
     end
   end
 
-  # Shutdown should allow pending requests to complete.
+  # Shutdown should allow pending requests and app-responses to complete.
   def test_shutdown_requests
-    shutdown_requests response: /204/
-    shutdown_requests response: /204/, queue_requests: false
-  end
-
-  # Requests stuck longer than `first_data_timeout` should have connection closed (408 w/pending POST body).
-  def test_shutdown_data_timeout
-    shutdown_requests request_delay: 3, first_data_timeout: 2, response: nil
-    shutdown_requests request_delay: 3, first_data_timeout: 2, response: nil, queue_requests: false
-    shutdown_requests request_delay: 3, first_data_timeout: 2, response: /408/, post: true
+    opts = {s1_response: /204/, s2_response: /204/}
+    shutdown_requests(**opts)
+    shutdown_requests(**opts, queue_requests: false)
   end
 
   # Requests still pending after `force_shutdown_after` should have connection closed (408 w/pending POST body).
+  # App-responses still pending should return 503 (uncaught Puma::ThreadPool::ForceShutdown exception).
   def test_force_shutdown
-    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 3
-    shutdown_requests request_delay: 4, response: nil, force_shutdown_after: 3, queue_requests: false
-    shutdown_requests request_delay: 4, response: /408/, force_shutdown_after: 3, post: true
-  end
-
-  # App-responses still pending during `force_shutdown_after` should return 503
-  # (uncaught Puma::ThreadPool::ForceShutdown exception).
-  def test_force_shutdown_app
-    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 3
-    shutdown_requests app_delay: 3, response: /503/, force_shutdown_after: 3, queue_requests: false
+    opts = {s1_complete: false, s1_response: /503/, s2_response: nil, force_shutdown_after: 0}
+    shutdown_requests(**opts)
+    shutdown_requests(**opts, queue_requests: false)
+    shutdown_requests(**opts, post: true, s2_response: /408/)
   end
 
   def test_http11_connection_header_queue

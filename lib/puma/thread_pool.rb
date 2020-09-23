@@ -62,6 +62,8 @@ module Puma
       end
 
       @clean_thread_locals = false
+      @force_shutdown = false
+      @shutdown_mutex = Mutex.new
     end
 
     attr_reader :spawned, :trim_requested, :waiting
@@ -322,6 +324,19 @@ module Puma
       @reaper.start!
     end
 
+    # Allows ThreadPool::ForceShutdown to be raised within the
+    # provided block if the thread is forced to shutdown during execution.
+    def with_force_shutdown
+      t = Thread.current
+      @shutdown_mutex.synchronize do
+        raise ForceShutdown if @force_shutdown
+        t[:with_force_shutdown] = true
+      end
+      yield
+    ensure
+      t[:with_force_shutdown] = false
+    end
+
     # Tell all threads in the pool to exit and wait for them to finish.
     # Wait +timeout+ seconds then raise +ForceShutdown+ in remaining threads.
     # Next, wait an extra +grace+ seconds then force-kill remaining threads.
@@ -356,8 +371,11 @@ module Puma
         join.call(timeout)
 
         # If threads are still running, raise ForceShutdown and wait to finish.
-        threads.each do |t|
-          t.raise ForceShutdown
+        @shutdown_mutex.synchronize do
+          @force_shutdown = true
+          threads.each do |t|
+            t.raise ForceShutdown if t[:with_force_shutdown]
+          end
         end
         join.call(SHUTDOWN_GRACE_TIME)
 
