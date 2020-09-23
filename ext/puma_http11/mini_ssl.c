@@ -142,7 +142,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   VALUE obj;
   SSL_CTX* ctx;
   SSL* ssl;
-  int min, ssl_options;
+  int ssl_options;
 
   ms_conn* conn = engine_alloc(self, &obj);
 
