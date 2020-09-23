@@ -4,7 +4,7 @@
   * Your feature goes here (#Github Number)
 
 * Bugfixes
-  * Your bugfix goes here (#Github Number)
+  * Prevent connections from entering Reactor after shutdown begins (#2377)
 
 * Refactor
   * Change Events#ssl_error signature from (error, peeraddr, peercert) to (error, ssl_socket) (#2375)
