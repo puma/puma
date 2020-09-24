@@ -10,8 +10,8 @@ require 'stringio'
 
 require 'thread'
 
-require_relative 'puma/puma_http11'
-require_relative 'puma/detect'
+require 'puma/puma_http11'
+require 'puma/detect'
 
 module Puma
   autoload :Const, 'puma/const'
