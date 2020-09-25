@@ -7,6 +7,7 @@
   * Prevent connections from entering Reactor after shutdown begins (#2377)
   * Better error handling during force shutdown (#2271)
   * Fix LoadError in CentOS 8 (#2381)
+  * Do not log EOFError when a client connection is closed without write (#2384)
 
 * Refactor
   * Change Events#ssl_error signature from (error, peeraddr, peercert) to (error, ssl_socket) (#2375)
