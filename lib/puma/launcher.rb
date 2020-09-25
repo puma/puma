@@ -188,11 +188,13 @@ module Puma
     end
 
     # Return all tcp ports the launcher may be using, TCP or SSL
+    # @!attribute [r] connected_ports
     # @version 5.0.0
     def connected_ports
       @binder.connected_ports
     end
 
+    # @!attribute [r] restart_args
     def restart_args
       cmd = @options[:restart_cmd]
       if cmd
@@ -207,6 +209,7 @@ module Puma
       @binder.close_listeners
     end
 
+    # @!attribute [r] thread_status
     # @version 5.0.0
     def thread_status
       Thread.list.each do |thread|
@@ -261,6 +264,7 @@ module Puma
       end
     end
 
+    # @!attribute [r] dependencies_and_files_to_require_after_prune
     def dependencies_and_files_to_require_after_prune
       puma = spec_for_gem("puma")
 
@@ -271,6 +275,7 @@ module Puma
       [deps, require_paths_for_gem(puma) + extra_runtime_deps_directories]
     end
 
+    # @!attribute [r] extra_runtime_deps_directories
     def extra_runtime_deps_directories
       Array(@options[:extra_runtime_dependencies]).map do |d_name|
         if (spec = spec_for_gem(d_name))
@@ -282,6 +287,7 @@ module Puma
       end.flatten.compact
     end
 
+    # @!attribute [r] puma_wild_location
     def puma_wild_location
       puma = spec_for_gem("puma")
       dirs = require_paths_for_gem(puma)
@@ -345,6 +351,7 @@ module Puma
       Process.respond_to?(:setproctitle) ? Process.setproctitle(title) : $0 = title
     end
 
+    # @!attribute [r] title
     def title
       buffer  = "puma #{Puma::Const::VERSION} (#{@options[:binds].join(',')})"
       buffer += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
@@ -356,6 +363,7 @@ module Puma
       ENV['RACK_ENV'] = environment
     end
 
+    # @!attribute [r] environment
     def environment
       @environment
     end

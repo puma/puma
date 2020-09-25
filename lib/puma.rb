@@ -18,15 +18,18 @@ module Puma
   autoload :Server, 'puma/server'
   autoload :Launcher, 'puma/launcher'
 
+  # @!attribute [rw] stats_object=
   def self.stats_object=(val)
     @get_stats = val
   end
 
+  # @!attribute [rw] stats_object
   def self.stats
     require 'json'
     @get_stats.stats.to_json
   end
 
+  # @!attribute [r] stats_hash
   # @version 5.0.0
   def self.stats_hash
     @get_stats.stats

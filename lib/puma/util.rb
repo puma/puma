@@ -72,6 +72,7 @@ module Puma
         end
       end
 
+      # @!attribute [r] to_hash
       def to_hash
         hash = {}
         each { |k,v| hash[k] = v }
