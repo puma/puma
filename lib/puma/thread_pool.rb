@@ -82,10 +82,12 @@ module Puma
       with_mutex { @todo.size }
     end
 
+    # @!attribute [r] pool_capacity
     def pool_capacity
       waiting + (@max - spawned)
     end
 
+    # @!attribute [r] busy_threads
     # @version 5.0.0
     def busy_threads
       with_mutex { @spawned - @waiting + @todo.size }

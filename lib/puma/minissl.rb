@@ -24,6 +24,7 @@ module Puma
         @peercert = nil
       end
 
+      # @!attribute [r] to_io
       def to_io
         @socket
       end
@@ -38,6 +39,7 @@ module Puma
       #
       # Used for dropping tcp connections to ssl.
       # See OpenSSL ssl/ssl_stat.c SSL_state_string for info
+      # @!attribute [r] ssl_version_state
       # @version 5.0.0
       #
       def ssl_version_state
@@ -188,10 +190,12 @@ module Puma
         end
       end
 
+      # @!attribute [r] peeraddr
       def peeraddr
         @socket.peeraddr
       end
 
+      # @!attribute [r] peercert
       def peercert
         return @peercert if @peercert
 
@@ -264,12 +268,14 @@ module Puma
       end
 
       # disables TLSv1
+      # @!attribute [w] no_tlsv1=
       def no_tlsv1=(tlsv1)
         raise ArgumentError, "Invalid value of no_tlsv1=" unless ['true', 'false', true, false].include?(tlsv1)
         @no_tlsv1 = tlsv1
       end
 
       # disables TLSv1 and TLSv1.1.  Overrides `#no_tlsv1=`
+      # @!attribute [w] no_tlsv1_1=
       def no_tlsv1_1=(tlsv1_1)
         raise ArgumentError, "Invalid value of no_tlsv1_1=" unless ['true', 'false', true, false].include?(tlsv1_1)
         @no_tlsv1_1 = tlsv1_1
@@ -287,6 +293,7 @@ module Puma
         @ctx = ctx
       end
 
+      # @!attribute [r] to_io
       def to_io
         @socket
       end
@@ -307,6 +314,7 @@ module Puma
         Socket.new io, engine
       end
 
+      # @!attribute [r] addr
       # @version 5.0.0
       def addr
         @socket.addr

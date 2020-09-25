@@ -85,6 +85,7 @@ module Puma
 
     def_delegators :@io, :closed?
 
+    # @!attribute [r] inspect
     def inspect
       "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"
     end
@@ -96,6 +97,7 @@ module Puma
       env[HIJACK_IO] ||= @io
     end
 
+    # @!attribute [r] in_data_phase
     def in_data_phase
       !@read_header
     end
