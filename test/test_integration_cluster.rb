@@ -245,6 +245,13 @@ RUBY
     assert reply, "embedded app"
   end
 
+  def test_load_path_includes_extra_deps
+    cli_server "-w #{WORKERS} -C test/config/prune_bundler_with_deps.rb test/rackup/hello-last-load-path.ru"
+    last_load_path = read_body(connect)
+
+    assert_match(%r{gems/rdoc-[\d.]+/lib$}, last_load_path)
+  end
+
   private
 
   def worker_timeout(timeout, iterations, config)
