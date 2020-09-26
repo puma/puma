@@ -47,8 +47,7 @@ class TestIntegrationSingle < TestIntegration
     skip_unless_signal_exist? :TERM
 
     cli_server "-C test/config/with_rackup_from_dsl.rb test/rackup/hello.ru"
-    connection = connect
-    reply = read_body(connection)
+    reply = read_body(connect)
     stop_server
 
     assert_match("Hello World", reply)
