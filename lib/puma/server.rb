@@ -246,7 +246,11 @@ module Puma
           client.close
 
           @events.parse_error e, client
-        rescue ConnectionError, EOFError, ThreadPool::ForceShutdown => e
+        rescue EOFError => e
+          client.close
+
+          # Swallow, do not log
+        rescue ConnectionError, ThreadPool::ForceShutdown => e
           client.close
 
           @events.connection_error e, client

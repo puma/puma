@@ -9,6 +9,7 @@
   * Prevent connections from entering Reactor after shutdown begins ([#2377])
   * Fix error backtrace debug logging && Do not log request dump if it is not parsed ([#2376])
   * Split TCP_CORK and TCP_INFO ([#2372])
+  * Do not log EOFError when a client connection is closed without write (#2384)
 
 * Refactor
   * Change Events#ssl_error signature from (error, peeraddr, peercert) to (error, ssl_socket) ([#2375])

@@ -157,7 +157,9 @@ module Puma
         data = @io.read_nonblock(CHUNK_SIZE)
       rescue IO::WaitReadable
         return false
-      rescue SystemCallError, IOError, EOFError
+      rescue EOFError
+        # Swallow error, don't log
+      rescue SystemCallError, IOError
         raise ConnectionError, "Connection error detected during read"
       end
 

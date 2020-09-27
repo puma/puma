@@ -256,6 +256,17 @@ EOF
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
   end
 
+
+  def test_eof_on_connection_close_is_not_logged_as_an_error
+    server_run
+
+    new_connection.close # Make a connection and close without writing
+
+    @server.stop(true)
+    stderr = @events.stderr.string
+    assert stderr.empty?, "Expected stderr from server to be empty but it was #{stderr.inspect}"
+  end
+
   def test_force_shutdown_custom_error_message
     handler = lambda {|err, env, status| [500, {"Content-Type" => "application/json"}, ["{}\n"]]}
     @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => handler, :force_shutdown_after => 2}
