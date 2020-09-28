@@ -421,16 +421,6 @@ RUBY
     end.compact
   end
 
-  # used with thread_run to define correct 'refused' errors
-  def thread_run_refused(unix: false)
-    if unix
-      [Errno::ENOENT, IOError]
-    else
-      DARWIN ? [Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
-        [Errno::ECONNREFUSED]
-    end
-  end
-
   # used in loop to create several 'requests'
   def thread_run_pid(replies, delay, sleep_time, mutex, refused, unix: false)
     begin

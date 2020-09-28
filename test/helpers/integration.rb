@@ -139,4 +139,14 @@ class TestIntegration < Minitest::Test
     end
     pids.map(&:to_i)
   end
+
+  # used to define correct 'refused' errors
+  def thread_run_refused(unix: false)
+    if unix
+      [Errno::ENOENT, IOError]
+    else
+      DARWIN ? [Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
+        [Errno::ECONNREFUSED]
+    end
+  end
 end
