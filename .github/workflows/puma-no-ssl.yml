@@ -47,5 +47,5 @@ jobs:
 
       - name: test
         id: test
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: bundle exec rake test:all

@@ -68,7 +68,7 @@ jobs:
 
       - name: test
         id: test
-        timeout-minutes: 10
+        timeout-minutes: 20
         continue-on-error: ${{ matrix.allow-failure || false }}
         if: success() # only run if previous steps have succeeded
         run: bundle exec rake test:all
