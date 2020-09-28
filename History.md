@@ -4,18 +4,23 @@
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
 
 * Bugfixes
+  * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+
+## 5.0.1 / 2020-09-28
+
+* Bugfixes
   * Fix LoadError in CentOS 8 ([#2381])
   * Better error handling during force shutdown ([#2271])
   * Prevent connections from entering Reactor after shutdown begins ([#2377])
   * Fix error backtrace debug logging && Do not log request dump if it is not parsed ([#2376])
   * Split TCP_CORK and TCP_INFO ([#2372])
-  * Do not log EOFError when a client connection is closed without write (#2384)
+  * Do not log EOFError when a client connection is closed without write ([#2384])
 
 * Refactor
   * Change Events#ssl_error signature from (error, peeraddr, peercert) to (error, ssl_socket) ([#2375])
   * Consolidate option handling in Server, Server small refactors, doc chang ([#2373])
 
-## 5.0.0
+## 5.0.0 / 2020-09-17
 
 * Features
   * Allow compiling without OpenSSL and dynamically load files needed for SSL, add 'no ssl' CI ([#2305])
@@ -1612,7 +1617,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
-
+[#2384]:https://github.com/puma/puma/pull/2384 "2020-09-24 @schneems"
 [#2381]:https://github.com/puma/puma/pull/2381 "2020-09-24 @joergschray"
 [#2271]:https://github.com/puma/puma/pull/2271 "2020-05-17 @wjordan"
 [#2377]:https://github.com/puma/puma/pull/2377 "2020-09-22 @cjlarose"
