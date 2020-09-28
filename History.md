@@ -6,6 +6,11 @@
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+## 5.0.2 / 2020-09-28
+
+* Bugfixes 
+  * Reverted API changes to Server.
+
 ## 5.0.1 / 2020-09-28
 
 * Bugfixes
