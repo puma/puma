@@ -54,9 +54,8 @@ module Puma
 
       app = Puma::App::Status.new @launcher, token
 
-      control = Puma::Server.new app, @launcher.events
-      control.min_threads = 0
-      control.max_threads = 1
+      control = Puma::Server.new app, @launcher.events,
+        { min_threads: 0, max_threads: 1 }
 
       control.binder.parse [str], self, 'Starting control server'
 
@@ -69,6 +68,7 @@ module Puma
       @control.binder.close_listeners if @control
     end
 
+    # @!attribute [r] ruby_engine
     def ruby_engine
       if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
         "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
@@ -137,27 +137,14 @@ module Puma
       @launcher.binder.parse @options[:binds], self
     end
 
+    # @!attribute [r] app
     def app
       @app ||= @launcher.config.app
     end
 
     def start_server
-      min_t = @options[:min_threads]
-      max_t = @options[:max_threads]
-
       server = Puma::Server.new app, @launcher.events, @options
-      server.min_threads = min_t
-      server.max_threads = max_t
       server.inherit_binder @launcher.binder
-
-      if @options[:early_hints]
-        server.early_hints = true
-      end
-
-      unless development? || test?
-        server.leak_stack_on_error = false
-      end
-
       server
     end
   end
