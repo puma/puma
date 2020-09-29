@@ -987,7 +987,7 @@ EOF
     assert_match(s1_response, s1.gets) if s1_response
 
     # Send s2 after shutdown begins
-    s2 << "\r\n" unless IO.select([s2], nil, nil, 0.1)
+    s2 << "\r\n" unless IO.select([s2], nil, nil, 0.2)
 
     assert IO.select([s2], nil, nil, 10), 'timeout waiting for response'
     s2_result = begin
