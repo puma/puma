@@ -34,15 +34,26 @@ module Puma
 
     attr_reader :thread
     attr_reader :events
-    attr_reader :requests_count # @version 5.0.0
-    attr_accessor :app
+    attr_reader :min_threads, :max_threads  # for #stats
+    attr_reader :requests_count             # @version 5.0.0
 
-    attr_accessor :min_threads
-    attr_accessor :max_threads
-    attr_accessor :persistent_timeout
-    attr_accessor :auto_trim_time
-    attr_accessor :reaping_time
-    attr_accessor :first_data_timeout
+    # @todo the following may be deprecated in the future
+    attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
+      :leak_stack_on_error,
+      :persistent_timeout, :reaping_time
+
+    # @deprecated v6.0.0
+    attr_writer :auto_trim_time, :early_hints, :first_data_timeout,
+      :leak_stack_on_error, :min_threads, :max_threads,
+      :persistent_timeout, :reaping_time
+
+    attr_accessor :app
+    attr_accessor :binder
+
+    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener,
+      :add_unix_listener, :connected_ports
+
+    ThreadLocalKey = :puma_server
 
     # Create a server for the rack app +app+.
     #
@@ -52,6 +63,10 @@ module Puma
     # Server#run returns a thread that you can join on to wait for the server
     # to do its work.
     #
+    # @note Several instance variables exist so they are available for testing,
+    #   and have default values set via +fetch+.  Normally the values are set via
+    #   `::Puma::Configuration.puma_default_options`.
+    #
     def initialize(app, events=Events.stdio, options={})
       @app = app
       @events = events
@@ -59,24 +74,25 @@ module Puma
       @check, @notify = nil
       @status = :stop
 
-      @min_threads = 0
-      @max_threads = 16
       @auto_trim_time = 30
       @reaping_time = 1
 
       @thread = nil
       @thread_pool = nil
-      @early_hints = nil
-
-      @persistent_timeout = options.fetch(:persistent_timeout, PERSISTENT_TIMEOUT)
-      @first_data_timeout = options.fetch(:first_data_timeout, FIRST_DATA_TIMEOUT)
-
-      @binder = Binder.new(events)
-
-      @leak_stack_on_error = true
 
       @options = options
-      @queue_requests = options[:queue_requests].nil? ? true : options[:queue_requests]
+
+      @early_hints        = options.fetch :early_hints, nil
+      @first_data_timeout = options.fetch :first_data_timeout, FIRST_DATA_TIMEOUT
+      @min_threads        = options.fetch :min_threads, 0
+      @max_threads        = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
+      @persistent_timeout = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
+      @queue_requests     = options.fetch :queue_requests, true
+
+      temp = !!(@options[:environment] =~ /\A(development|test)\z/)
+      @leak_stack_on_error = @options[:environment] ? temp : true
+
+      @binder = Binder.new(events)
 
       ENV['RACK_ENV'] ||= "development"
 
@@ -89,15 +105,16 @@ module Puma
       @shutdown_mutex = Mutex.new
     end
 
-    attr_accessor :binder, :leak_stack_on_error, :early_hints
-
-    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener, :add_unix_listener, :connected_ports
-
     def inherit_binder(bind)
       @binder = bind
     end
 
     class << self
+      # @!attribute [r] current
+      def current
+        Thread.current[ThreadLocalKey]
+      end
+
       # :nodoc:
       # @version 5.0.0
       def tcp_cork_supported?
@@ -172,10 +189,12 @@ module Puma
       end
     end
 
+    # @!attribute [r] backlog
     def backlog
       @thread_pool and @thread_pool.backlog
     end
 
+    # @!attribute [r] running
     def running
       @thread_pool and @thread_pool.spawned
     end
@@ -188,6 +207,7 @@ module Puma
     # there are 5 threads sitting idle ready to take
     # a request. If one request comes in, then the
     # value would be 4 until it finishes processing.
+    # @!attribute [r] pool_capacity
     def pool_capacity
       @thread_pool and @thread_pool.pool_capacity
     end
@@ -998,12 +1018,6 @@ module Puma
     end
     private :fast_write
 
-    ThreadLocalKey = :puma_server
-
-    def self.current
-      Thread.current[ThreadLocalKey]
-    end
-
     def shutting_down?
       @status == :stop || @status == :restart
     end
@@ -1019,6 +1033,7 @@ module Puma
 
     # Returns a hash of stats about the running server for reporting purposes.
     # @version 5.0.0
+    # @!attribute [r] stats
     def stats
       STAT_METHODS.map {|name| [name, send(name) || 0]}.to_h
     end
