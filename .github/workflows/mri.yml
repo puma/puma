@@ -1,11 +1,11 @@
-name: CI
+name: MRI
 
 on: [push, pull_request]
 
 jobs:
   build:
     name: >-
-      ${{ matrix.os }} ${{ matrix.ruby }}
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
     env:
       CI: true
       TESTOPTS: -v
@@ -20,23 +20,18 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, windows-2019 ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head, jruby, jruby-head, truffleruby-head ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head ]
+        no-ssl: ['']
         include:
-          - { os: ubuntu-18.04 , ruby: jruby-head, allow-failure: true }
           - { os: windows-2019 , ruby: mingw }
+          - { os: ubuntu-20.04 , ruby: 2.7   , no-ssl: ' no SSL' }
+          - { os: windows-2019 , ruby: 2.7   , no-ssl: ' no SSL' }
         exclude:
-          - { os: ubuntu-20.04 , ruby: 2.2 }
-          - { os: ubuntu-20.04 , ruby: 2.3 }
-          - { os: ubuntu-20.04 , ruby: 2.4 }
-          - { os: ubuntu-20.04 , ruby: 2.6 }
-          - { os: ubuntu-20.04 , ruby: jruby }
-          - { os: ubuntu-20.04 , ruby: jruby-head }
-          - { os: ubuntu-20.04 , ruby: truffleruby-head }
-          - { os: macos-10.15  , ruby: jruby-head }
+          - { os: ubuntu-20.04 , ruby: 2.2  }
+          - { os: ubuntu-20.04 , ruby: 2.3  }
+          - { os: ubuntu-20.04 , ruby: 2.4  }
+          - { os: ubuntu-20.04 , ruby: 2.6  }
           - { os: windows-2019 , ruby: head }
-          - { os: windows-2019 , ruby: jruby }
-          - { os: windows-2019 , ruby: jruby-head }
-          - { os: windows-2019 , ruby: truffleruby-head }
 
     steps:
       - name: repo checkout
@@ -59,6 +54,10 @@ jobs:
           }
           bundle install --jobs 4 --retry 3
 
+      - name: set SSL
+        if: matrix.no-ssl == ' no SSL'
+        run: echo '::set-env name=DISABLE_SSL::true'
+
       - name: compile
         run:  bundle exec rake compile
 
@@ -67,13 +66,5 @@ jobs:
         run: bundle exec rake rubocop
 
       - name: test
-        id: test
-        timeout-minutes: 20
-        continue-on-error: ${{ matrix.allow-failure || false }}
-        if: success() # only run if previous steps have succeeded
+        timeout-minutes: 10
         run: bundle exec rake test:all
-
-      - name: >-
-          Test outcome: ${{ steps.test.outcome }}
-        # every step must define a `uses` or `run` key
-        run: echo NOOP

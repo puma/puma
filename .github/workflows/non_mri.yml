@@ -1,0 +1,69 @@
+name: non_MRI
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: >-
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
+    env:
+      CI: true
+      TESTOPTS: -v
+
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]')
+        || contains(github.event.head_commit.message, '[ci skip]')
+        || contains(github.event.head_commit.message, '[skip ci]'))
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15 ]
+        ruby: [ jruby, jruby-head, truffleruby-head ]
+        no-ssl: ['']
+        include:
+          #- { os: ubuntu-18.04 , ruby: jruby-head, allow-failure: true }
+          - { os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
+        exclude:
+          - { os: ubuntu-20.04 , ruby: jruby }
+          - { os: ubuntu-20.04 , ruby: jruby-head }
+          - { os: ubuntu-20.04 , ruby: truffleruby-head }
+          - { os: macos-10.15  , ruby: jruby-head }
+
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v2
+
+      - name: load ruby, ragel
+        uses: MSP-Greg/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          apt-get: ragel
+          brew: ragel
+          mingw: _upgrade_ openssl ragel
+
+      - name: bundle install
+        run:  bundle install --jobs 4 --retry 3
+
+      - name: set SSL
+        if: matrix.no-ssl == ' no SSL'
+        run: echo '::set-env name=DISABLE_SSL::true'
+
+      - name: compile
+        run:  bundle exec rake compile
+
+      - name: rubocop
+        if: startsWith(matrix.ruby, 'truffleruby') == false
+        run: bundle exec rake rubocop
+
+      - name: test
+        id: test
+        timeout-minutes: 20
+        continue-on-error: ${{ matrix.allow-failure || false }}
+        if: success() # only run if previous steps have succeeded
+        run: bundle exec rake test:all
+
+      - name: >-
+          Test outcome: ${{ steps.test.outcome }}
+        # every step must define a `uses` or `run` key
+        run: echo NOOP
