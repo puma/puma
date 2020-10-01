@@ -1,7 +1,7 @@
 ## Before Release
 
 - Make sure tests pass and your last local commit matches master.
-- Run tests with latest jruby
+- Run tests with latest Jruby
 - Update the version in `const.rb`.
 - Make sure there is a history entry in `History.md`.
 - On minor version updates i.e. from 3.10.x to 3.11.x update the "codename" in `const.rb`.
