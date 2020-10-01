@@ -50,7 +50,7 @@ class TestIntegration < Minitest::Test
   def cli_server(argv, unix: false, config: nil)
     if config
       config_file = Tempfile.new(%w(config .rb))
-      config_file.write config
+      config_file.syswrite config
       config_file.close
       config = "-C #{config_file.path}"
     end
@@ -91,7 +91,7 @@ class TestIntegration < Minitest::Test
   # reuses an existing connection to make sure that works
   def restart_server(connection, log: false)
     Process.kill :USR2, @pid
-    connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
+    connection.syswrite "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot(log: log)
   end
 
@@ -112,7 +112,7 @@ class TestIntegration < Minitest::Test
   def connect(path = nil, unix: false)
     s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
     @ios_to_close << s
-    s << "GET /#{path} HTTP/1.1\r\n\r\n"
+    s.write "GET /#{path} HTTP/1.1\r\n\r\n"
     true until s.gets == "\r\n"
     s
   end
@@ -120,7 +120,7 @@ class TestIntegration < Minitest::Test
   def read_body(connection, time_out = 10)
     Timeout.timeout(time_out) do
       loop do
-        response = connection.readpartial(1024)
+        response = connection.readpartial 1024
         body = response.split("\r\n\r\n", 2).last
         return body if body && !body.empty?
         sleep 0.01

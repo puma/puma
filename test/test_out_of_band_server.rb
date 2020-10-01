@@ -26,7 +26,7 @@ class TestOutOfBandServer < Minitest::Test
   end
 
   def send_http(req)
-    new_connection << req
+    new_connection.tap { |s| s.syswrite req }
   end
 
   def send_http_and_read(req)
@@ -108,7 +108,7 @@ class TestOutOfBandServer < Minitest::Test
       @oob_finished.wait(@mutex) # enter OOB
 
       # Send Req2
-      req2 << "GET / HTTP/1.0\r\n\r\n"
+      req2.syswrite "GET / HTTP/1.0\r\n\r\n"
       # If Req2 is processed now it raises 'OOB Conflict' in the response.
       sleep 0.01
 

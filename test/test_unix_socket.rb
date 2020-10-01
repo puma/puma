@@ -25,7 +25,7 @@ class TestPumaUnixSocket < Minitest::Test
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
     sock = UNIXSocket.new @tmp_socket_path
 
-    sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
+    sock.syswrite "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
 
     expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
 

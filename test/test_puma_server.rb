@@ -44,7 +44,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def send_http(req)
-    new_connection << req
+    new_connection.tap { |s| s.syswrite req }
   end
 
   def new_connection
@@ -64,9 +64,9 @@ class TestPumaServer < Minitest::Test
     sock = send_http "PUT / HTTP/1.0\r\nContent-Length: 30\r\n\r\n#{fifteen}"
 
     sleep 0.1 # important so that the previous data is sent as a packet
-    sock << fifteen
+    sock.syswrite fifteen
 
-    sock.read
+    sock.sysread 256
 
     assert_equal "#{fifteen}#{fifteen}", data
   end
@@ -255,7 +255,6 @@ EOF
     refute_match(/don't leak me bro/, data)
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
   end
-
 
   def test_eof_on_connection_close_is_not_logged_as_an_error
     server_run
@@ -561,9 +560,9 @@ EOF
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\n"
     sleep 1
 
-    sock << "h\r\n4\r\nello\r\n0\r\n\r\n"
+    sock.syswrite "h\r\n4\r\nello\r\n0\r\n\r\n"
 
-    data = sock.read
+    data = sock.sysread 1024
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
@@ -582,9 +581,9 @@ EOF
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
     sleep 1
 
-    sock << "4\r\nello\r\n0\r\n\r\n"
+    sock.syswrite "4\r\nello\r\n0\r\n\r\n"
 
-    data = sock.read
+    data = sock.sysread 1024
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
@@ -603,9 +602,9 @@ EOF
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r"
     sleep 1
 
-    sock << "\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    sock.syswrite "\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    data = sock.read
+    data = sock.sysread 1024
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
@@ -624,9 +623,9 @@ EOF
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1"
     sleep 1
 
-    sock << "\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    sock.syswrite "\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    data = sock.read
+    data = sock.sysread 1024
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
@@ -645,9 +644,9 @@ EOF
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\ne"
     sleep 1
 
-    sock << "llo\r\n0\r\n\r\n"
+    sock.syswrite "llo\r\n0\r\n\r\n"
 
-    data = sock.read
+    data = sock.sysread 1024
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
@@ -671,13 +670,13 @@ EOF
 
     sleep 0.1
 
-    sock << chunked_body[0..-10]
+    sock.syswrite chunked_body[0..-10]
 
     sleep 0.1
 
-    sock << chunked_body[-9..-1]
+    sock.syswrite chunked_body[-9..-1]
 
-    data = sock.read
+    data = sock.sysread 6144
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal (part1 + 'b'), body
@@ -697,9 +696,9 @@ EOF
 
     sleep 1
 
-    sock << "\n0\r\n\r\n"
+    sock.syswrite "\n0\r\n\r\n"
 
-    data = sock.read
+    data = sock.read 1024
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal 'hello', body
@@ -719,9 +718,9 @@ EOF
 
     sleep 1
 
-    sock << "\r\n0\r\n\r\n"
+    sock.syswrite "\r\n0\r\n\r\n"
 
-    data = sock.read
+    data = sock.sysread 1024
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal 'hello', body
@@ -778,9 +777,9 @@ EOF
     last_crlf_written = false
     last_crlf_writer = Thread.new do
       sleep 0.1
-      sock << "\r"
+      sock.syswrite "\r"
       sleep 0.1
-      sock << "\n"
+      sock.syswrite "\n"
       last_crlf_written = true
     end
 
@@ -792,7 +791,7 @@ EOF
 
     last_crlf_writer.join
 
-    sock << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    sock.syswrite "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
     sleep 0.1
 
     h = header(sock)
@@ -824,7 +823,7 @@ EOF
     assert_equal 5, content_length
     assert_equal "127.0.0.1", remote_addr
 
-    sock << "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.2\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    sock.syswrite "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.2\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
     sleep 0.1
 
     h = header(sock)
@@ -854,7 +853,7 @@ EOF
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nh"
     sleep 1
-    sock << "ello"
+    sock.syswrite "ello"
 
     sock.gets
 
@@ -872,7 +871,7 @@ EOF
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n"
     sleep 3
-    sock << "4\r\nello\r\n0\r\n\r\n"
+    sock.syswrite "4\r\nello\r\n0\r\n\r\n"
 
     sock.gets
 
@@ -885,7 +884,7 @@ EOF
     server_run app: ->(_) { [200, {}, ["Hello"]] }
     s = send_http nil
     sleep 0.1
-    s << "GET / HTTP/1.0\r\n\r\n"
+    s.syswrite "GET / HTTP/1.0\r\n\r\n"
     assert_equal 'Hello', s.readlines.last
   end
 
@@ -973,9 +972,10 @@ EOF
     }
 
     s1 = nil
-    s2 = send_http post ?
+    s2 = send_http(post ?
       "POST /s2 HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
       "GET /s2 HTTP/1.1\r\n"
+    )
     mutex.synchronize do
       s1 = send_http "GET /s1 HTTP/1.1\r\n\r\n"
       app_finished.wait(mutex)
@@ -987,7 +987,7 @@ EOF
     assert_match(s1_response, s1.gets) if s1_response
 
     # Send s2 after shutdown begins
-    s2 << "\r\n" unless IO.select([s2], nil, nil, 0.2)
+    s2.syswrite "\r\n" unless IO.select([s2], nil, nil, 0.1)
 
     assert IO.select([s2], nil, nil, 10), 'timeout waiting for response'
     s2_result = begin
@@ -1026,7 +1026,7 @@ EOF
     sock = send_http "GET / HTTP/1.1\r\n\r\n"
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], header(sock)
 
-    sock << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    sock.syswrite "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
     assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(sock)
 
     sock.close
@@ -1038,7 +1038,7 @@ EOF
     sock = send_http "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n"
     assert_equal ["HTTP/1.0 200 OK", "Connection: Keep-Alive", "Content-Length: 0"], header(sock)
 
-    sock << "GET / HTTP/1.0\r\n\r\n"
+    sock.syswrite "GET / HTTP/1.0\r\n\r\n"
     assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
     sock.close
   end

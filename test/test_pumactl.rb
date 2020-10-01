@@ -138,7 +138,7 @@ class TestPumaControlCli < TestConfigFileBase
     wait_booted
 
     s = TCPSocket.new host, 9292
-    s << "GET / HTTP/1.0\r\n\r\n"
+    s.syswrite "GET / HTTP/1.0\r\n\r\n"
     body = s.read
     assert_match "200 OK", body
     assert_match "embedded app", body

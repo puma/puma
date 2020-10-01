@@ -22,7 +22,7 @@ class TestBusyWorker < Minitest::Test
   end
 
   def send_http(req)
-    new_connection << req
+    new_connection.tap { |s| s.syswrite req }
   end
 
   def send_http_and_read(req)

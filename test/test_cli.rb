@@ -21,7 +21,7 @@ class TestCLI < Minitest::Test
     @wait, @ready = IO.pipe
 
     @events = Puma::Events.strings
-    @events.on_booted { @ready << "!" }
+    @events.on_booted { @ready.syswrite "!" }
   end
 
   def wait_booted
@@ -52,7 +52,7 @@ class TestCLI < Minitest::Test
     wait_booted
 
     s = TCPSocket.new "127.0.0.1", cntl
-    s << "GET /stats HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -124,7 +124,7 @@ class TestCLI < Minitest::Test
     wait_booted
 
     s = UNIXSocket.new @tmp_path
-    s << "GET /stats HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -136,7 +136,7 @@ class TestCLI < Minitest::Test
     # wait until the first status ping has come through
     sleep 6
     s = UNIXSocket.new @tmp_path
-    s << "GET /stats HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -171,7 +171,7 @@ class TestCLI < Minitest::Test
     wait_booted
 
     s = UNIXSocket.new @tmp_path
-    s << "GET /stats HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -198,7 +198,7 @@ class TestCLI < Minitest::Test
     wait_booted
 
     s = UNIXSocket.new @tmp_path
-    s << "GET /stop HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /stop HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -224,7 +224,7 @@ class TestCLI < Minitest::Test
     wait_booted
 
     s = TCPSocket.new "127.0.0.1", cntl
-    s << "GET /stats HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -233,13 +233,13 @@ class TestCLI < Minitest::Test
     # send real requests to server
     3.times do
       s = TCPSocket.new "127.0.0.1", tcp
-      s << "GET / HTTP/1.0\r\n\r\n"
+      s.syswrite "GET / HTTP/1.0\r\n\r\n"
       body = s.read
       s.close
     end
 
     s = TCPSocket.new "127.0.0.1", cntl
-    s << "GET /stats HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -263,7 +263,7 @@ class TestCLI < Minitest::Test
     wait_booted
 
     s = UNIXSocket.new @tmp_path
-    s << "GET /thread-backtraces HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /thread-backtraces HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -286,7 +286,7 @@ class TestCLI < Minitest::Test
     wait_booted
 
     s = yield
-    s << "GET /gc-stats HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /gc-stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 
@@ -301,12 +301,12 @@ class TestCLI < Minitest::Test
     gc_count_before = gc_stats["count"].to_i
 
     s = yield
-    s << "GET /gc HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /gc HTTP/1.0\r\n\r\n"
     body = s.read # Ignored
     s.close
 
     s = yield
-    s << "GET /gc-stats HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /gc-stats HTTP/1.0\r\n\r\n"
     body = s.read
     s.close
 

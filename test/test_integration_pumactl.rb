@@ -64,7 +64,7 @@ class TestIntegrationPumactl < TestIntegration
 
     s = UNIXSocket.new @bind_path
     @ios_to_close << s
-    s << "GET /sleep1 HTTP/1.0\r\n\r\n"
+    s.syswrite "GET /sleep1 HTTP/1.0\r\n\r\n"
 
     # Get the PIDs of the phase 0 workers.
     phase0_worker_pids = get_worker_pids 0
@@ -98,7 +98,7 @@ class TestIntegrationPumactl < TestIntegration
 
     s = UNIXSocket.new @bind_path
     @ios_to_close << s
-    s << "GET / HTTP/1.0\r\n\r\n"
+    s.syswrite "GET / HTTP/1.0\r\n\r\n"
 
     body = s.read
 
