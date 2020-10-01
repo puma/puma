@@ -1,6 +1,6 @@
 # Restarts
 
-To perform a restart, there are 3 builtin mechanisms:
+To perform a restart, there are 3 built in mechanisms:
 
   * Send the `puma` process the `SIGUSR2` signal (normal restart)
   * Send the `puma` process the `SIGUSR1` signal (restart in phases (a "rolling restart"), cluster mode only)
