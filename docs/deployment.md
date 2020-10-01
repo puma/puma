@@ -1,4 +1,4 @@
-# Deployment engineering for puma
+# Deployment engineering for Puma
 
 Puma is software that is expected to be run in a deployed environment eventually.
 You can certainly use it as your dev server only, but most people look to use
