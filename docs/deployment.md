@@ -1,4 +1,4 @@
-# Deployment engineering for puma
+# Deployment engineering for Puma
 
 Puma is software that is expected to be run in a deployed environment eventually.
 You can certainly use it as your dev server only, but most people look to use
@@ -7,11 +7,10 @@ it in their production deployments as well.
 To that end, this is meant to serve as a foundation of wisdom how to do that
 in a way that increases happiness and decreases downtime.
 
-## Specifying puma
+## Specifying Puma
 
 Most people want to do this by putting `gem "puma"` into their Gemfile, so we'll
 go ahead and assume that. Go add it now... we'll wait.
-
 
 Welcome back!
 
@@ -20,7 +19,7 @@ Welcome back!
 Puma was originally conceived as a thread-only webserver, but grew the ability to
 also use processes in version 2.
 
-To run puma in single mode (e.g. for a development environment) you will need to
+To run `puma` in single mode (e.g. for a development environment) you will need to
 set the number of workers to 0, anything above will run in cluster mode.
 
 Here are some rules of thumb for cluster mode:
