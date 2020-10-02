@@ -4,6 +4,7 @@
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
 
 * Bugfixes
+  * Fix errors related to phased restarts when using deployment strategies that delete gems for old releases ([#2407])
   * Cleanup daemonization in rc.d script (#2409)
 
 * Refactor
