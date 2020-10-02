@@ -15,6 +15,11 @@
   * Remove upstart from docs (#2408)
   * Consolidate option handling in Server, Server small refactors, doc changes (#2389)
 
+## 5.0.3 / 2020-10-02
+
+* Features 
+  *  Adds ENV option to set MAX_FAST_INLINE constant 
+
 ## 5.0.2 / 2020-09-28
 
 * Bugfixes 

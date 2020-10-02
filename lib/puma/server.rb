@@ -441,7 +441,7 @@ module Puma
 
             check_for_more_data = @status == :run
 
-            if requests >= MAX_FAST_INLINE
+            if requests >= MAX_FAST_INLINE && MAX_FAST_INLINE.positive?
               # This will mean that reset will only try to use the data it already
               # has buffered and won't try to read more data. What this means is that
               # every client, independent of their request speed, gets treated like a slow
