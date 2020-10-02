@@ -229,10 +229,10 @@ RUBY
   end
 
   def test_load_path_includes_extra_deps
-    cli_server "-w #{WORKERS} -C test/config/prune_bundler_with_deps.rb test/rackup/hello-last-load-path.ru"
-    last_load_path = read_body(connect)
+    cli_server "-w #{WORKERS} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru"
 
-    assert_match(%r{gems/rdoc-[\d.]+/lib$}, last_load_path)
+    true while (line = @server.gets) !~ /^Last LOAD_PATH/
+    assert_match(%r{gems/rdoc-[\d.]+/lib$}, line)
   end
 
   private
