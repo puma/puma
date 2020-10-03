@@ -7,7 +7,7 @@
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
 * Refactor
-  * Consolidate option handling in Server, Server small refactors, doc chang (#2389)
+  * Consolidate option handling in Server, Server small refactors, doc changes (#2389)
 
 ## 5.0.2 / 2020-09-28
 
