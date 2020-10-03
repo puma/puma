@@ -4,7 +4,7 @@
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
 
 * Bugfixes
-  * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Cleanup daemonization in rc.d script (#2409)
 
 * Refactor
   * Consolidate option handling in Server, Server small refactors, doc chang (#2389)
