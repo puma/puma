@@ -274,11 +274,11 @@ end
 
 Puma has support for Capistrano with an [external gem](https://github.com/seuros/capistrano-puma).
 
-It is common to use process monitors with Puma. Modern process monitors like systemd or upstart
+It is common to use process monitors with Puma. Modern process monitors like systemd or rc.d
 provide continuous monitoring and restarts for increased
 reliability in production environments:
 
-* [docs/jungle](https://github.com/puma/puma/tree/master/docs/jungle) for rc.d and upstart
+* [docs/jungle](https://github.com/puma/puma/tree/master/docs/jungle) for rc.d
 * [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
 
 ## Community Extensions

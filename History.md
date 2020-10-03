@@ -7,6 +7,7 @@
   * Cleanup daemonization in rc.d script (#2409)
 
 * Refactor
+  * Remove upstart from docs (#2408)
   * Consolidate option handling in Server, Server small refactors, doc changes (#2389)
 
 ## 5.0.2 / 2020-09-28
