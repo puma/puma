@@ -23,7 +23,7 @@ puma_start()
 		rb_ver=$(/usr/local/bin/jq -r ".servers[$i].ruby_version" /usr/local/etc/puma.conf)
 		case $rb_env in
 			"rbenv")
-				su - $user -c "cd $dir && rbenv shell $rb_ver && bundle exec puma -C $dir/config/puma.rb -d"
+				cd $dir && rbenv shell $rb_ver && /usr/sbin/daemon -u $user bundle exec puma -C $dir/config/puma.rb
 				;;
 			*)
 				;;
@@ -48,7 +48,7 @@ puma_restart()
 		rb_ver=$(/usr/local/bin/jq -r ".servers[$i].ruby_version" /usr/local/etc/puma.conf)
 		case $rb_env in
 			"rbenv")
-				su - $user -c "cd $dir && pkill ruby && rbenv shell $ruby_version && bundle exec puma -C $dir/config/puma.rb -d"
+				cd $dir && rbenv shell $rb_ver && /usr/sbin/daemon -u $user bundle exec puma -C $dir/config/puma.rb
 				;;
 			*)
 				;;
