@@ -411,10 +411,11 @@ module Puma
         if @queue_requests &&
           !client.eagerly_finish
 
-          close_socket = false
           client.set_timeout(@first_data_timeout)
-          @reactor.add client
-          return false
+          if @reactor.add client
+            close_socket = false
+            return false
+          end
         end
 
         with_force_shutdown(client) do
@@ -451,10 +452,11 @@ module Puma
 
             unless next_request_ready
               break unless @queue_requests
-              close_socket = false
               client.set_timeout @persistent_timeout
-              @reactor.add client
-              break
+              if @reactor.add client
+                close_socket = false
+                break
+              end
             end
           end
         end

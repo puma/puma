@@ -40,17 +40,22 @@ module Puma
 
     # Add a new IO object to monitor.
     # The object must respond to #timeout and #timeout_at.
+    # Returns false if the reactor is already shut down.
     def add(io)
       @input << io
       @selector.wakeup
+      true
     rescue ClosedQueueError
-      @block.call(io)
+      false
     end
 
     # Shutdown the reactor, blocking until the background thread is finished.
     def shutdown
       @input.close
-      @selector.wakeup
+      begin
+        @selector.wakeup
+      rescue IOError # Ignore if selector is already closed
+      end
       @thread.join if @thread
     end
 
@@ -79,7 +84,7 @@ module Puma
         retry
       end
       # Wakeup all remaining objects on shutdown.
-      @timeouts.each(&method(:wakeup!))
+      @timeouts.each(&@block.method(:call))
       @selector.close
     end
 
