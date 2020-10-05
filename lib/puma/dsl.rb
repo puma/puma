@@ -583,18 +583,12 @@ module Puma
       @options[:lowlevel_error_handler] = obj
     end
 
-    # This option is used to allow your app and its gems to be
-    # properly reloaded when not using preload.
+    # This option is a memory optimization for use in cluster mode.
     #
-    # When set, if Puma detects that it's been invoked in the
-    # context of Bundler, it will cleanup the environment and
-    # re-run itself outside the Bundler environment, but directly
-    # using the files that Bundler has setup.
-    #
-    # This means that Puma is now decoupled from your Bundler
-    # context and when each worker loads, it will be loading a
-    # new Bundler context and thus can float around as the release
-    # dictates.
+    # When set, if the Puma master process detects that it's been invoked in
+    # the context of Bundler, it will cleanup the environment and re-run itself
+    # outside the Bundler environment, but directly using the files that
+    # Bundler has setup. This has no effect on worker processes.
     #
     # @see extra_runtime_dependencies
     #
