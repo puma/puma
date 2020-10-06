@@ -101,8 +101,6 @@ module Puma
       @precheck_closing = true
 
       @requests_count = 0
-
-      @shutdown_mutex = Mutex.new
     end
 
     def inherit_binder(bind)
@@ -225,60 +223,19 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(@min_threads,
-                                    @max_threads,
-                                    ::Puma::IOBuffer) do |client, buffer|
-
-        # Advertise this server into the thread
-        Thread.current[ThreadLocalKey] = self
-
-        process_now = false
-
-        begin
-          if @queue_requests
-            process_now = client.eagerly_finish
-          else
-            @thread_pool.with_force_shutdown do
-              client.finish(@first_data_timeout)
-            end
-            process_now = true
-          end
-        rescue MiniSSL::SSLError => e
-          @events.ssl_error e, client.io
-          client.close
-
-        rescue HttpParserError => e
-          client.write_error(400)
-          client.close
-
-          @events.parse_error e, client
-        rescue EOFError => e
-          client.close
-
-          # Swallow, do not log
-        rescue ConnectionError, ThreadPool::ForceShutdown => e
-          client.close
-
-          @events.connection_error e, client
-        else
-          process_now ||= @shutdown_mutex.synchronize do
-                            next true unless @queue_requests
-                            client.set_timeout @first_data_timeout
-                            @reactor.add client
-                            false
-                          end
-          process_client client, buffer if process_now
-        end
-
-        process_now
-      end
+      @thread_pool = ThreadPool.new(
+        @min_threads,
+        @max_threads,
+        ::Puma::IOBuffer,
+        &method(:process_client)
+      )
 
       @thread_pool.out_of_band_hook = @options[:out_of_band]
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
       if @queue_requests
-        @reactor = Reactor.new self, @thread_pool
-        @reactor.run_in_thread
+        @reactor = Reactor.new(&method(:reactor_wakeup))
+        @reactor.run
       end
 
       if @reaping_time
@@ -300,6 +257,44 @@ module Puma
       else
         handle_servers
       end
+    end
+
+    # This method is called from the Reactor thread when a queued Client receives data,
+    # times out, or when the Reactor is shutting down.
+    #
+    # It is responsible for ensuring that a request has been completely received
+    # before it starts to be processed by the ThreadPool. This may be known as read buffering.
+    # If read buffering is not done, and no other read buffering is performed (such as by an application server
+    # such as nginx) then the application would be subject to a slow client attack.
+    #
+    # For a graphical representation of how the request buffer works see [architecture.md](https://github.com/puma/puma/blob/master/docs/architecture.md#connection-pipeline).
+    #
+    # The method checks to see if it has the full header and body with
+    # the `Puma::Client#try_to_finish` method. If the full request has been sent,
+    # then the request is passed to the ThreadPool (`@thread_pool << client`)
+    # so that a "worker thread" can pick up the request and begin to execute application logic.
+    # The Client is then removed from the reactor (return `true`).
+    #
+    # If a client object times out, a 408 response is written, its connection is closed,
+    # and the object is removed from the reactor (return `true`).
+    #
+    # If the Reactor is shutting down, all Clients are either timed out or passed to the
+    # ThreadPool, depending on their current state (#can_close?).
+    #
+    # Otherwise, if the full request is not ready then the client will remain in the reactor
+    # (return `false`). When the client sends more data to the socket the `Puma::Client` object
+    # will wake up and again be checked to see if it's ready to be passed to the thread pool.
+    def reactor_wakeup(client)
+      shutdown = !@queue_requests
+      if client.try_to_finish || (shutdown && !client.can_close?)
+        @thread_pool << client
+      elsif shutdown || client.timeout == 0
+        client.timeout!
+      end
+    rescue StandardError => e
+      client_error(e, client)
+      client.close
+      true
     end
 
     def handle_servers
@@ -353,10 +348,7 @@ module Puma
         @events.fire :state, @status
 
         if queue_requests
-          @shutdown_mutex.synchronize do
-            @queue_requests = false
-          end
-          @reactor.clear!
+          @queue_requests = false
           @reactor.shutdown
         end
         graceful_shutdown if @status == :stop || @status == :restart
@@ -396,27 +388,47 @@ module Puma
       return false
     end
 
-    # Given a connection on +client+, handle the incoming requests.
+    # Given a connection on +client+, handle the incoming requests,
+    # or queue the connection in the Reactor if no request is available.
     #
-    # This method support HTTP Keep-Alive so it may, depending on if the client
+    # This method is called from a ThreadPool worker thread.
+    #
+    # This method supports HTTP Keep-Alive so it may, depending on if the client
     # indicates that it supports keep alive, wait for another request before
     # returning.
     #
+    # Return true if one or more requests were processed.
     def process_client(client, buffer)
+      # Advertise this server into the thread
+      Thread.current[ThreadLocalKey] = self
+
+      clean_thread_locals = @options[:clean_thread_locals]
+      close_socket = true
+
+      requests = 0
+
       begin
+        if @queue_requests &&
+          !client.eagerly_finish
 
-        clean_thread_locals = @options[:clean_thread_locals]
-        close_socket = true
+          client.set_timeout(@first_data_timeout)
+          if @reactor.add client
+            close_socket = false
+            return false
+          end
+        end
 
-        requests = 0
+        with_force_shutdown(client) do
+          client.finish(@first_data_timeout)
+        end
 
         while true
           case handle_request(client, buffer)
           when false
-            return
+            break
           when :async
             close_socket = false
-            return
+            break
           when true
             buffer.reset
 
@@ -434,47 +446,25 @@ module Puma
               check_for_more_data = false
             end
 
-            next_request_ready = @thread_pool.with_force_shutdown do
+            next_request_ready = with_force_shutdown(client) do
               client.reset(check_for_more_data)
             end
 
             unless next_request_ready
-              @shutdown_mutex.synchronize do
-                return unless @queue_requests
+              break unless @queue_requests
+              client.set_timeout @persistent_timeout
+              if @reactor.add client
                 close_socket = false
-                client.set_timeout @persistent_timeout
-                @reactor.add client
-                return
+                break
               end
             end
           end
         end
-
-      # The client disconnected while we were reading data
-      rescue ConnectionError, ThreadPool::ForceShutdown
-        # Swallow them. The ensure tries to close +client+ down
-
-      # SSL handshake error
-      rescue MiniSSL::SSLError => e
-        lowlevel_error e, client.env
-        @events.ssl_error e, client.io
-        close_socket = true
-
-      # The client doesn't know HTTP well
-      rescue HttpParserError => e
-        lowlevel_error(e, client.env)
-
-        client.write_error(400)
-
-        @events.parse_error e, client
-
-      # Server error
+        true
       rescue StandardError => e
-        lowlevel_error(e, client.env)
-
-        client.write_error(500)
-
-        @events.unknown_error e, nil, "Read"
+        client_error(e, client)
+        # The ensure tries to close +client+ down
+        requests > 0
       ensure
         buffer.reset
 
@@ -487,6 +477,14 @@ module Puma
           @events.unknown_error e, nil, "Client"
         end
       end
+    end
+
+    # Triggers a client timeout if the thread-pool shuts down
+    # during execution of the provided block.
+    def with_force_shutdown(client, &block)
+      @thread_pool.with_force_shutdown(&block)
+    rescue ThreadPool::ForceShutdown
+      client.timeout!
     end
 
     # Given a Hash +env+ for the request read from +client+, add
@@ -870,6 +868,24 @@ module Puma
       stream.rewind
 
       return stream
+    end
+
+    # Handle various error types thrown by Client I/O operations.
+    def client_error(e, client)
+      # Swallow, do not log
+      return if [ConnectionError, EOFError].include?(e.class)
+
+      lowlevel_error(e, client.env)
+      case e
+      when MiniSSL::SSLError
+        @events.ssl_error e, client.io
+      when HttpParserError
+        client.write_error(400)
+        @events.parse_error e, client
+      else
+        client.write_error(500)
+        @events.unknown_error e, nil, "Read"
+      end
     end
 
     # A fallback rack response if +@app+ raises as exception.

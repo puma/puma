@@ -103,7 +103,12 @@ module Puma
     end
 
     def set_timeout(val)
-      @timeout_at = Time.now + val
+      @timeout_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + val
+    end
+
+    # Number of seconds until the timeout elapses.
+    def timeout
+      [@timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
     end
 
     def reset(fast_check=true)
@@ -195,19 +200,13 @@ module Puma
     end
 
     def finish(timeout)
-      return true if @ready
-      until try_to_finish
-        can_read = begin
-          IO.select([@to_io], nil, nil, timeout)
-        rescue ThreadPool::ForceShutdown
-          nil
-        end
-        unless can_read
-          write_error(408) if in_data_phase
-          raise ConnectionError
-        end
-      end
-      true
+      return if @ready
+      IO.select([@to_io], nil, nil, timeout) || timeout! until try_to_finish
+    end
+
+    def timeout!
+      write_error(408) if in_data_phase
+      raise ConnectionError
     end
 
     def write_error(status_code)
