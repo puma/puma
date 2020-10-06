@@ -81,7 +81,7 @@ thread to become available.
 
 Daemonization was removed in Puma 5.0. For alternatives, continue reading.
 
-I prefer to not daemonize my servers and use something like `runit` or `upstart` to
+I prefer to not daemonize my servers and use something like `runit` or `systemd` to
 monitor them as child processes. This gives them fast response to crashes and
 makes it easy to figure out what is going on. Additionally, unlike `unicorn`,
 puma does not require daemonization to do zero-downtime restarts.
@@ -91,7 +91,7 @@ task and thus want it to live on past the `cap deploy`. To these people I say:
 You need to be using a process monitor. Nothing is making sure puma stays up in
 this scenario! You're just waiting for something weird to happen, puma to die,
 and to get paged at 3am. Do yourself a favor, at least the process monitoring
-your OS comes with, be it `sysvinit`, `upstart`, or `systemd`. Or branch out
+your OS comes with, be it `sysvinit` or `systemd`. Or branch out
 and use `runit` or hell, even `monit`.
 
 ## Restarting

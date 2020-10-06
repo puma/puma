@@ -193,64 +193,11 @@ module Puma
       false
     end
 
-    if IS_JRUBY
-      def jruby_start_try_to_finish
-        return read_body unless @read_header
-
-        begin
-          data = @io.sysread_nonblock(CHUNK_SIZE)
-        rescue OpenSSL::SSL::SSLError => e
-          return false if e.kind_of? IO::WaitReadable
-          raise e
-        end
-
-        # No data means a closed socket
-        unless data
-          @buffer = nil
-          set_ready
-          raise EOFError
-        end
-
-        if @buffer
-          @buffer << data
-        else
-          @buffer = data
-        end
-
-        @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
-
-        if @parser.finished?
-          return setup_body
-        elsif @parsed_bytes >= MAX_HEADER
-          raise HttpParserError,
-            "HEADER is longer than allowed, aborting client early."
-        end
-
-        false
-      end
-
-      def eagerly_finish
-        return true if @ready
-
-        if @io.kind_of? OpenSSL::SSL::SSLSocket
-          return true if jruby_start_try_to_finish
-        end
-
-        return false unless IO.select([@to_io], nil, nil, 0)
-        try_to_finish
-      end
-
-    else
-
-      def eagerly_finish
-        return true if @ready
-        return false unless IO.select([@to_io], nil, nil, 0)
-        try_to_finish
-      end
-
-      # For documentation, see https://github.com/puma/puma/issues/1754
-      send(:alias_method, :jruby_eagerly_finish, :eagerly_finish)
-    end # IS_JRUBY
+    def eagerly_finish
+      return true if @ready
+      return false unless IO.select([@to_io], nil, nil, 0)
+      try_to_finish
+    end
 
     def finish(timeout)
       return if @ready

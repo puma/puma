@@ -47,7 +47,8 @@ jobs:
 
       - name: set SSL
         if: matrix.no-ssl == ' no SSL'
-        run: echo '::set-env name=DISABLE_SSL::true'
+        shell: bash
+        run: echo 'DISABLE_SSL=true' >> $GITHUB_ENV
 
       - name: compile
         run:  bundle exec rake compile
