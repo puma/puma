@@ -7,6 +7,7 @@
   * Cleanup daemonization in rc.d script (#2409)
 
 * Refactor
+  * client.rb - remove JRuby specific 'finish' code (#2412)
   * Consolidate fast_write calls in Server, extract early_hints assembly (#2405)
   * Remove upstart from docs (#2408)
   * Consolidate option handling in Server, Server small refactors, doc changes (#2389)
