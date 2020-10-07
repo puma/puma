@@ -18,6 +18,7 @@ unless Queue.instance_methods.include?(:close)
         raise ClosedQueueError if @closed
         super
       end
+      alias << push
     end
     Queue.prepend QueueClose
   end
