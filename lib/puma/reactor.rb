@@ -84,7 +84,7 @@ module Puma
         retry
       end
       # Wakeup all remaining objects on shutdown.
-      @timeouts.each(&@block.method(:call))
+      @timeouts.each(&@block)
       @selector.close
     end
 
