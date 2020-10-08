@@ -972,6 +972,22 @@ EOF
       [204, {}, []]
     }
 
+    pool = @server.instance_variable_get(:@thread_pool)
+
+    # Trigger potential race condition by pausing Reactor#add until shutdown begins.
+    if options.fetch(:queue_requests, true)
+      reactor = @server.instance_variable_get(:@reactor)
+      reactor.instance_variable_set(:@pool, pool)
+      reactor.extend(Module.new do
+        def add(client)
+          if client.env['REQUEST_PATH'] == '/s2'
+            Thread.pass until @pool.instance_variable_get(:@shutdown)
+          end
+          super
+        end
+      end)
+    end
+
     s1 = nil
     s2 = send_http post ?
       "POST /s2 HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
@@ -982,7 +998,7 @@ EOF
       app_finished.signal if s1_complete
     end
     @server.stop
-    Thread.pass until @server.instance_variable_get(:@thread_pool).instance_variable_get(:@shutdown)
+    Thread.pass until pool.instance_variable_get(:@shutdown)
 
     assert_match(s1_response, s1.gets) if s1_response
 
