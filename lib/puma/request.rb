@@ -290,12 +290,12 @@ module Puma
     end
     private :possible_header_injection?
 
-    # Fixup any headers with , in the name to have _ now. We emit
-    # headers with , in them during the parse phase to avoid ambiguity
-    # with the - to _ conversion for critical headers. But here for
+    # Fixup any headers with `,` in the name to have `_` now. We emit
+    # headers with `,` in them during the parse phase to avoid ambiguity
+    # with the `-` to `_` conversion for critical headers. But here for
     # compatibility, we'll convert them back. This code is written to
     # avoid allocation in the common case (ie there are no headers
-    # with , in their names), that's why it has the extra conditionals.
+    # with `,` in their names), that's why it has the extra conditionals.
     # @param env [Hash] see Puma::Client#env, from request, modifies in place
     # @version 5.0.3
     #
