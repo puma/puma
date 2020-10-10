@@ -14,6 +14,9 @@
   * Remove upstart from docs (#2408)
   * Consolidate option handling in Server, Server small refactors, doc changes (#2389)
 
+* Other
+  * Don't show "WARNING: Detected 1 Thread(s) started in app boot" for known connection reaper thread started by Active Record ([#2422])
+
 ## 5.0.2 / 2020-09-28
 
 * Bugfixes 

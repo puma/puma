@@ -337,11 +337,22 @@ module Puma
 
         after = Thread.list
 
-        if after.size > before.size
-          threads = (after - before)
-          if threads.first.respond_to? :backtrace
+        # Ignore known connection reaper thread started by active_record in:
+        # active_record/connection_adapters/abstract/connection_pool.rb
+        # See:
+        # * https://github.com/puma/puma/issues/2421
+        # * https://github.com/rails/rails/issues/37066
+        new_threads = (after - before).reject do |t|
+          next false unless t.respond_to?(:backtrace) && t.backtrace
+          t.backtrace.first.match?(
+            %r{active_record/connection_adapters/abstract/connection_pool\.rb:\d+:.*sleep}
+          )
+        end
+
+        if new_threads.size > 0
+          if new_threads.first.respond_to? :backtrace
             log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot:"
-            threads.each do |t|
+            new_threads.each do |t|
               log "! #{t.inspect} - #{t.backtrace ? t.backtrace.first : ''}"
             end
           else
