@@ -1,7 +1,18 @@
 ## Master
 
-* Features 
-  *  Adds max_fast_inline as a configuration option for the Server object
+* Features  
+  *  Adds max_fast_inline as a configuration option for the Server object (#2406)
+
+* Bugfixes
+  * Cleanup daemonization in rc.d script (#2409)
+
+* Refactor
+  * Extract req/resp methods to new request.rb from server.rb (#2419)
+  * Refactor Reactor and Client request buffering (#2279)
+  * client.rb - remove JRuby specific 'finish' code (#2412)
+  * Consolidate fast_write calls in Server, extract early_hints assembly (#2405)
+  * Remove upstart from docs (#2408)
+  * Consolidate option handling in Server, Server small refactors, doc changes (#2389)
 
 * Bugfixes
   * Cleanup daemonization in rc.d script (#2409)
