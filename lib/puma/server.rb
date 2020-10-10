@@ -38,6 +38,7 @@ module Puma
     attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
+    attr_reader :max_fast_inline
 
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
@@ -90,6 +91,7 @@ module Puma
       @max_threads        = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
       @persistent_timeout = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
       @queue_requests     = options.fetch :queue_requests, true
+      @max_fast_inline    = options.fetch :max_fast_inline, MAX_FAST_INLINE
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -441,11 +443,11 @@ module Puma
 
             check_for_more_data = @status == :run
 
-            if requests >= MAX_FAST_INLINE && MAX_FAST_INLINE.positive?
+            if requests >= max_fast_inline
               # This will mean that reset will only try to use the data it already
               # has buffered and won't try to read more data. What this means is that
               # every client, independent of their request speed, gets treated like a slow
-              # one once every MAX_FAST_INLINE requests.
+              # one once every max_fast_inline requests.
               check_for_more_data = false
             end
 
