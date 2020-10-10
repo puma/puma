@@ -1,7 +1,7 @@
 ## Master
 
-* Features
-  * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+* Features 
+  *  Adds max_fast_inline as a configuration option for the Server object
 
 * Bugfixes
   * Cleanup daemonization in rc.d script (#2409)
@@ -17,8 +17,6 @@
 
 ## 5.0.3 / 2020-10-02
 
-* Features 
-  *  Adds ENV option to set MAX_FAST_INLINE constant 
 
 ## 5.0.2 / 2020-09-28
 
