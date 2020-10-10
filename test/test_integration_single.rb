@@ -4,6 +4,16 @@ require_relative "helpers/integration"
 class TestIntegrationSingle < TestIntegration
   parallelize_me!
 
+  def workers ; 0 ; end
+
+  def test_hot_restart_does_not_drop_connections_threads
+    hot_restart_does_not_drop_connections num_threads: 5, total_requests: 1_000
+  end
+
+  def test_hot_restart_does_not_drop_connections
+    hot_restart_does_not_drop_connections
+  end
+
   def test_usr2_restart
     skip_unless_signal_exist? :USR2
     _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")

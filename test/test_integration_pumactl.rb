@@ -5,6 +5,8 @@ class TestIntegrationPumactl < TestIntegration
   include TmpPath
   parallelize_me!
 
+  def workers ; 2 ; end
+
   def setup
     super
 
@@ -58,7 +60,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_phased_restart_cluster
     skip NO_FORK_MSG unless HAS_FORK
-    cli_server "-q -w #{WORKERS} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
+    cli_server "-q -w #{workers} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
 
     start = Time.now
 
@@ -78,8 +80,8 @@ class TestIntegrationPumactl < TestIntegration
 
     msg = "phase 0 pids #{phase0_worker_pids.inspect}  phase 1 pids #{phase1_worker_pids.inspect}"
 
-    assert_equal WORKERS, phase0_worker_pids.length, msg
-    assert_equal WORKERS, phase1_worker_pids.length, msg
+    assert_equal workers, phase0_worker_pids.length, msg
+    assert_equal workers, phase1_worker_pids.length, msg
     assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
     assert File.exist?(@bind_path), "Bind path must exist after phased restart"
 
@@ -129,18 +131,5 @@ class TestIntegrationPumactl < TestIntegration
     # windows bad URI(is not URI?)
     assert_match(/No pid '\d+' found|bad URI\(is not URI\?\)/, sout.readlines.join(""))
     assert_equal(1, e.status)
-  end
-
-  private
-
-  def cli_pumactl(argv, unix: false)
-    if unix
-      pumactl = IO.popen("#{BASE} bin/pumactl -C unix://#{@control_path} -T #{TOKEN} #{argv}", "r")
-    else
-      pumactl = IO.popen("#{BASE} bin/pumactl -C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}", "r")
-    end
-    @ios_to_close << pumactl
-    Process.wait pumactl.pid
-    pumactl
   end
 end
