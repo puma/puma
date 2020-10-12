@@ -108,16 +108,17 @@ module Puma
   #
   # It also handles loading plugins.
   #
-  # > Note: `:port` and `:host` are not valid keys. By the time they make it to the
+  # [Note:]
+  #   `:port` and `:host` are not valid keys. By the time they make it to the
   #   configuration options they are expected to be incorporated into a `:binds` key.
   #   Under the hood the DSL maps `port` and `host` calls to `:binds`
   #
-  #   config = Configuration.new({}) do |user_config, file_config, default_config|
-  #     user_config.port 3003
-  #   end
-  #   config.load
-  #   puts config.options[:port]
-  #   # => 3003
+  #     config = Configuration.new({}) do |user_config, file_config, default_config|
+  #       user_config.port 3003
+  #     end
+  #     config.load
+  #     puts config.options[:port]
+  #     # => 3003
   #
   # It is expected that `load` is called on the configuration instance after setting
   # config. This method expands any values in `config_file` and puts them into the
