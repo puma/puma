@@ -3,7 +3,7 @@ require "puma/events"
 require "net/http"
 
 class TestPumaServer < Minitest::Test
-  parallelize_me!
+  parallelize_me! unless JRUBY_HEAD
 
   def setup
     @host = "127.0.0.1"
