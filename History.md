@@ -2,6 +2,7 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Add no_tlsv1_3 to Puma::DSL#ssl_bindings and Puma::MiniSSL::Context (#2426)
 
 * Bugfixes
   * Cleanup daemonization in rc.d script (#2409)

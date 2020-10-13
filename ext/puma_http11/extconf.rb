@@ -17,12 +17,11 @@ unless ENV["DISABLE_SSL"]
     have_header "openssl/bio.h"
 
     # below is  yes for 1.0.2 & later
-    have_func  "DTLS_method"                  , "openssl/ssl.h"
+    have_func  "DTLS_method"                           , "openssl/ssl.h"
 
-    # below are yes for 1.1.0 & later, may need to check func rather than macro
-    # with versions after 1.1.1
-    have_func  "TLS_server_method"            , "openssl/ssl.h"
-    have_macro "SSL_CTX_set_min_proto_version", "openssl/ssl.h"
+    # below are yes for 1.1.0 & later
+    have_func  "TLS_server_method"                     , "openssl/ssl.h"
+    have_func  "SSL_CTX_set_min_proto_version(NULL, 0)", "openssl/ssl.h"
   end
 end
 

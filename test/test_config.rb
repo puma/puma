@@ -16,7 +16,6 @@ class TestConfigFile < TestConfigFileBase
     assert_equal max_threads, Puma::Configuration.new.default_max_threads
   end
 
-
   def test_app_from_rackup
     conf = Puma::Configuration.new do |c|
       c.rackup "test/rackup/hello-bind.ru"
@@ -74,7 +73,82 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1=false&no_tlsv1_1=false"
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
+  def test_ssl_bind
+    skip_on :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert",
+        key: "/path/to/key",
+        verify_mode: "the_verify_mode",
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
+  def test_ssl_bind_no_tlsv1
+    skip_on :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert",
+        key: "/path/to/key",
+        verify_mode: "the_verify_mode",
+        no_tlsv1: true,
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1=true"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
+  def test_ssl_bind_no_tlsv1_1
+    skip_on :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert",
+        key: "/path/to/key",
+        verify_mode: "the_verify_mode",
+        no_tlsv1_1: true,
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1_1=true"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
+  def test_ssl_bind_no_tlsv1_3
+    skip_on :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert",
+        key: "/path/to/key",
+        verify_mode: "the_verify_mode",
+        no_tlsv1_3: true,
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1_3=true"
     assert_equal [ssl_binding], conf.options[:binds]
   end
 

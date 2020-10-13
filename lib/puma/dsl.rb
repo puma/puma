@@ -369,6 +369,12 @@ module Puma
     # Instead of `bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'` you
     # can also use the this method.
     #
+    # Protocols can be disabled by the use of `no_tlsv1`, `no_tlsv1_1`, and
+    # `no_tlsv1_3`.  `no_tlsv1`, and `no_tlsv1_1` set the minimum protocol to
+    # TLSv1.1 and TLSv1.2 respectively.  `no_tlsv1_3` should only be used when a
+    # front-end does not support TLSv1.3.
+    # The default value for all three is `false`, set them to `true` to enable.
+    #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert: path_to_cert,
@@ -387,16 +393,26 @@ module Puma
     #   }
     def ssl_bind(host, port, opts)
       verify = opts.fetch(:verify_mode, 'none').to_s
-      no_tlsv1 = opts.fetch(:no_tlsv1, 'false')
-      no_tlsv1_1 = opts.fetch(:no_tlsv1_1, 'false')
+
+      tls_str = nil
+      tls_str = if opts[:no_tlsv1_1]
+        '&no_tlsv1_1=true'
+      elsif opts[:no_tlsv1]
+        '&no_tlsv1=true'
+      end
+
+      if opts[:no_tlsv1_3]
+        tls_str = "#{tls_str || ''}&no_tlsv1_3=true"
+      end
+
       ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
 
       if defined?(JRUBY_VERSION)
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}&no_tlsv1_1=#{no_tlsv1_1}#{ca_additions}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}&#{keystore_additions}&verify_mode=#{verify}#{tls_str}#{ca_additions}"
       else
         ssl_cipher_filter = "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" if opts[:ssl_cipher_filter]
-        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}#{ssl_cipher_filter}&verify_mode=#{verify}&no_tlsv1=#{no_tlsv1}&no_tlsv1_1=#{no_tlsv1_1}#{ca_additions}"
+        bind "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}"
       end
     end
 

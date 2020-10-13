@@ -204,6 +204,23 @@ class TestPumaServerSSL < Minitest::Test
     end
   end
 
+  def test_tls_v1_3_rejection
+    skip("No TLSv1.3 support") unless ::Puma::MiniSSL::HAS_TLS1_3
+    ssl_version = ''
+    start_server { |ctx| ctx.no_tlsv1_3 = true }
+
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    port = @server.connected_ports[0]
+    socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, port), ctx
+    socket.connect
+    socket.syswrite 'help Me'
+    ssl_version = socket.ssl_version
+    socket.close
+
+    assert_equal 'TLSv1.2', ssl_version
+  end
+
   def test_http_rejection
     body_http  = nil
     body_https = nil

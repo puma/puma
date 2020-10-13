@@ -217,11 +217,12 @@ module Puma
 
     class Context
       attr_accessor :verify_mode
-      attr_reader :no_tlsv1, :no_tlsv1_1
+      attr_reader :no_tlsv1, :no_tlsv1_1, :no_tlsv1_3
 
       def initialize
         @no_tlsv1   = false
         @no_tlsv1_1 = false
+        @no_tlsv1_3 = false
       end
 
       if IS_JRUBY
@@ -267,20 +268,26 @@ module Puma
         end
       end
 
-      # disables TLSv1
+      # Disables TLSv1
       # @!attribute [w] no_tlsv1=
       def no_tlsv1=(tlsv1)
         raise ArgumentError, "Invalid value of no_tlsv1=" unless ['true', 'false', true, false].include?(tlsv1)
         @no_tlsv1 = tlsv1
       end
 
-      # disables TLSv1 and TLSv1.1.  Overrides `#no_tlsv1=`
+      # Disables TLSv1 and TLSv1.1.  Overrides `#no_tlsv1=`
       # @!attribute [w] no_tlsv1_1=
       def no_tlsv1_1=(tlsv1_1)
         raise ArgumentError, "Invalid value of no_tlsv1_1=" unless ['true', 'false', true, false].include?(tlsv1_1)
         @no_tlsv1_1 = tlsv1_1
       end
 
+      # Disables TLSv1.3.
+      # @!attribute [w] no_tlsv1_3=
+      def no_tlsv1_3=(tlsv1_3)
+        raise ArgumentError, "Invalid value of no_tlsv1_3=" unless ['true', 'false', true, false].include?(tlsv1_3)
+        @no_tlsv1_3 = tlsv1_3 if HAS_TLS1_3
+      end
     end
 
     VERIFY_NONE = 0

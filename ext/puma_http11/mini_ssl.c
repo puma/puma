@@ -171,6 +171,9 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   ID sym_no_tlsv1_1 = rb_intern("no_tlsv1_1");
   VALUE no_tlsv1_1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1_1, 0);
 
+  ID sym_no_tlsv1_3 = rb_intern("no_tlsv1_3");
+  VALUE no_tlsv1_3 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1_3, 0);
+
 #ifdef HAVE_TLS_SERVER_METHOD
   ctx = SSL_CTX_new(TLS_server_method());
 #else
@@ -198,11 +201,14 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   else {
     min = TLS1_VERSION;
   }
-  
+
   SSL_CTX_set_min_proto_version(ctx, min);
 
-  SSL_CTX_set_options(ctx, ssl_options);
+  if (RTEST(no_tlsv1_3)) {
+    SSL_CTX_set_max_proto_version(ctx, TLS1_2_VERSION);
+  }
 
+  SSL_CTX_set_options(ctx, ssl_options);
 #else
   /* As of 1.0.2f, SSL_OP_SINGLE_DH_USE key use is always on */
   ssl_options |= SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE;
@@ -504,27 +510,27 @@ void Init_mini_ssl(VALUE puma) {
 #else
   rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(SSLeay_version(SSLEAY_VERSION)));
 #endif
- 
-#if defined(OPENSSL_NO_SSL3) || defined(OPENSSL_NO_SSL3_METHOD) 
-  /* True if SSL3 is not available */ 
-  rb_define_const(mod, "OPENSSL_NO_SSL3", Qtrue); 
-#else 
-  rb_define_const(mod, "OPENSSL_NO_SSL3", Qfalse); 
-#endif 
 
-#if defined(OPENSSL_NO_TLS1) || defined(OPENSSL_NO_TLS1_METHOD) 
-  /* True if TLS1 is not available */ 
-  rb_define_const(mod, "OPENSSL_NO_TLS1", Qtrue); 
-#else 
-  rb_define_const(mod, "OPENSSL_NO_TLS1", Qfalse); 
-#endif 
+#if defined(OPENSSL_NO_SSL3) || defined(OPENSSL_NO_SSL3_METHOD)
+  /* True if SSL3 is not available */
+  rb_define_const(mod, "OPENSSL_NO_SSL3", Qtrue);
+#else
+  rb_define_const(mod, "OPENSSL_NO_SSL3", Qfalse);
+#endif
 
-#if defined(OPENSSL_NO_TLS1_1) || defined(OPENSSL_NO_TLS1_1_METHOD) 
-  /* True if TLS1_1 is not available */ 
-  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qtrue); 
-#else 
-  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qfalse); 
-#endif 
+#if defined(OPENSSL_NO_TLS1) || defined(OPENSSL_NO_TLS1_METHOD)
+  /* True if TLS1 is not available */
+  rb_define_const(mod, "OPENSSL_NO_TLS1", Qtrue);
+#else
+  rb_define_const(mod, "OPENSSL_NO_TLS1", Qfalse);
+#endif
+
+#if defined(OPENSSL_NO_TLS1_1) || defined(OPENSSL_NO_TLS1_1_METHOD)
+  /* True if TLS1_1 is not available */
+  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qtrue);
+#else
+  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qfalse);
+#endif
 
   rb_define_singleton_method(mod, "check", noop, 0);
 

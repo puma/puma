@@ -45,8 +45,9 @@ module Puma
           ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
         end
 
-        ctx.no_tlsv1 = true if params['no_tlsv1'] == 'true'
+        ctx.no_tlsv1   = true if params['no_tlsv1']   == 'true'
         ctx.no_tlsv1_1 = true if params['no_tlsv1_1'] == 'true'
+        ctx.no_tlsv1_3 = true if params['no_tlsv1_3'] == 'true'
 
         if params['verify_mode']
           ctx.verify_mode = case params['verify_mode']
