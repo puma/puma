@@ -108,6 +108,8 @@ module TestSkips
 
   SIGNAL_LIST = Signal.list.keys.map(&:to_sym) - (Puma.windows? ? [:INT, :TERM] : [])
 
+  JRUBY_HEAD = Puma::IS_JRUBY && RUBY_DESCRIPTION =~ /SNAPSHOT/
+
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
     signal = sig.to_s.sub(/\ASIG/, '').to_sym

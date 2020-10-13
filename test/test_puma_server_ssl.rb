@@ -216,7 +216,8 @@ class TestPumaServerSSL < Minitest::Test
 
     tcp = Thread.new do
       req_http = Net::HTTP::Get.new "/", {}
-      assert_raises(Errno::ECONNREFUSED, EOFError) do
+      # Net::ReadTimeout - TruffleRuby
+      assert_raises(Errno::ECONNREFUSED, EOFError, Net::ReadTimeout) do
         http.start.request(req_http) { |rep| body_http = rep.body }
       end
     end
@@ -245,7 +246,7 @@ end if ::Puma::HAS_SSL
 
 # client-side TLS authentication tests
 class TestPumaServerSSLClient < Minitest::Test
-  parallelize_me!
+  parallelize_me! unless ::Puma.jruby?
 
   CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
 
@@ -286,7 +287,8 @@ class TestPumaServerSSLClient < Minitest::Test
         req = Net::HTTP::Get.new "/", {}
         http.request(req)
       end
-    rescue OpenSSL::SSL::SSLError, EOFError
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET
+      # Errno::ECONNRESET TruffleRuby
       client_error = true
       # closes socket if open, may not close on error
       http.send :do_finish
@@ -302,7 +304,7 @@ class TestPumaServerSSLClient < Minitest::Test
       assert_equal subject, events.cert.subject.to_s if subject
     end
   ensure
-    server.stop(true)
+    server.stop(true) if server
   end
 
   def test_verify_fail_if_no_client_cert
