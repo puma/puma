@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'nio'
 require 'puma/queue_close' if RUBY_VERSION < '2.3'
 
 module Puma
@@ -20,6 +19,7 @@ module Puma
     # The provided block will be invoked when an IO has data available to read,
     # its timeout elapses, or when the Reactor shuts down.
     def initialize(&block)
+      require 'nio'
       @selector = NIO::Selector.new
       @input = Queue.new
       @timeouts = []
