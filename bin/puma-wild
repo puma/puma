@@ -5,24 +5,18 @@
 
 require 'rubygems'
 
-gems = ARGV.shift
+cli_arg = ARGV.shift
 
 inc = ""
 
-if gems == "-I"
+if cli_arg == "-I"
   inc = ARGV.shift
   $LOAD_PATH.concat inc.split(":")
-  gems = ARGV.shift
-end
-
-gems.split(",").each do |s|
-  name, ver = s.split(":",2)
-  gem name, ver
 end
 
 module Puma; end
 
-Puma.const_set("WILD_ARGS", ["-I", inc, gems])
+Puma.const_set("WILD_ARGS", ["-I", inc])
 
 require 'puma/cli'
 
