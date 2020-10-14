@@ -5,6 +5,7 @@
 
 * Bugfixes
   * Cleanup daemonization in rc.d script (#2409)
+  * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts (#2427)
 
 * Refactor
   * Extract req/resp methods to new request.rb from server.rb (#2419)
