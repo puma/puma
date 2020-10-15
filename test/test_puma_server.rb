@@ -1120,6 +1120,7 @@ EOF
     # valid req & read, close
     sock = TCPSocket.new @host, @port
     sock.syswrite "GET / HTTP/1.0\r\n\r\n"
+    sleep 0.05  # macOS TruffleRuby may not get the body without
     resp = sock.sysread 256
     sock.close
     assert_match 'Hello World', resp
