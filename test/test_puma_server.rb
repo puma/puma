@@ -1103,4 +1103,41 @@ EOF
     stub_accept_nonblock(error)
     assert_empty @events.stderr.string
   end
+
+  # see      https://github.com/puma/puma/issues/2390
+  # fixed by https://github.com/puma/puma/pull/2279
+  #
+  def test_client_quick_close_no_lowlevel_error_handler_call
+    handler = ->(err, env, status) {
+      @events.stdout.write "LLEH #{err.message}"
+      [500, {"Content-Type" => "application/json"}, ["{}\n"]]
+    }
+
+    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => handler}
+
+    server_run app: ->(env) { [200, {}, ['Hello World']] }
+
+    # valid req & read, close
+    sock = TCPSocket.new @host, @port
+    sock.syswrite "GET / HTTP/1.0\r\n\r\n"
+    resp = sock.sysread 256
+    sock.close
+    assert_match 'Hello World', resp
+    sleep 0.5
+    assert_empty @events.stdout.string
+
+    # valid req, close
+    sock = TCPSocket.new @host, @port
+    sock.syswrite "GET / HTTP/1.0\r\n\r\n"
+    sock.close
+    sleep 0.5
+    assert_empty @events.stdout.string
+
+    # invalid req, close
+    sock = TCPSocket.new @host, @port
+    sock.syswrite "GET / HTTP"
+    sock.close
+    sleep 0.5
+    assert_empty @events.stdout.string
+  end
 end
