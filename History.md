@@ -5,6 +5,7 @@
 
 * Bugfixes
   * Cleanup daemonization in rc.d script (#2409)
+  * Fire `on_booted` after server starts
 
 * Refactor
   * Extract req/resp methods to new request.rb from server.rb (#2419)

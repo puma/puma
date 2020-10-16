@@ -103,22 +103,24 @@ module Puma
           return
         end
 
-        Thread.new(@worker_write) do |io|
-          Puma.set_thread_name "stat payload"
+        while restart_server.pop
+          server_thread = server.run
+          stat_thread ||= Thread.new(@worker_write) do |io|
+            Puma.set_thread_name "stat payload"
 
-          while true
-            sleep Const::WORKER_CHECK_INTERVAL
-            begin
-              require 'json'
-              io << "p#{Process.pid}#{server.stats.to_json}\n"
-            rescue IOError
-              Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-              break
+            while true
+              begin
+                require 'json'
+                io << "p#{Process.pid}#{server.stats.to_json}\n"
+              rescue IOError
+                Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+                break
+              end
+              sleep Const::WORKER_CHECK_INTERVAL
             end
           end
+          server_thread.join
         end
-
-        server.run.join while restart_server.pop
 
         # Invoke any worker shutdown hooks so they can prevent the worker
         # exiting until any background operations are completed
