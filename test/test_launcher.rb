@@ -133,6 +133,7 @@ class TestLauncher < Minitest::Test
     launcher = launcher(conf)
     launcher.events.on_booted {launcher.stop}
     launcher.run
+    sleep 2 unless Puma.mri?
     Puma::Server::STAT_METHODS.each do |stat|
       assert_includes Puma.stats_hash, stat
     end
