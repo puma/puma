@@ -64,6 +64,7 @@ class TestOutOfBandServer < Minitest::Test
     @server.max_threads = options[:max_threads] || 1
     @port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]
     @server.run
+    sleep 0.15 if Puma.jruby?
   end
 
   # Sequential requests should trigger out_of_band after every request.
