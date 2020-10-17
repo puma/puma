@@ -18,14 +18,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, macos-10.15 ]
-        ruby: [ jruby, jruby-head, truffleruby-head ]
-        no-ssl: ['']
         include:
-          - { os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
+          - { os: ubuntu-20.04 , ruby: jruby }
           - { os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
-        exclude:
-          - { os: macos-10.15  , ruby: jruby-head }
+          - { os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
+          - { os: ubuntu-20.04 , ruby: truffleruby-head }
+          - { os: macos-11.0   , ruby: jruby }
+          - { os: macos-10.15  , ruby: jruby }
+          - { os: macos-10.15  , ruby: truffleruby-head }
 
     steps:
       - name: repo checkout
@@ -38,6 +38,12 @@ jobs:
           apt-get: ragel
           brew: ragel
           mingw: _upgrade_ openssl ragel
+
+      - name: set JAVA_HOME
+        if: startsWith(matrix.os, 'macos')
+        shell: bash
+        run:  |
+          echo JAVA_HOME=$JAVA_HOME_11_X64 >> $GITHUB_ENV
 
       - name: bundle install
         run:  bundle install --jobs 4 --retry 3
@@ -56,7 +62,7 @@ jobs:
 
       - name: test
         id: test
-        timeout-minutes: 15
+        timeout-minutes: 12
         continue-on-error: ${{ matrix.allow-failure || false }}
         if: success() # only run if previous steps have succeeded
         run: bundle exec rake test:all
