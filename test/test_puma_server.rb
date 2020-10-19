@@ -26,6 +26,7 @@ class TestPumaServer < Minitest::Test
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.early_hints = true if early_hints
     @server.run
+    sleep 0.15 if Puma.jruby?
   end
 
   def header(sock)

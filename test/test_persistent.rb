@@ -27,7 +27,7 @@ class TestPersistent < Minitest::Test
     @port = (@server.add_tcp_listener HOST, 0).addr[1]
     @server.max_threads = 1
     @server.run
-
+    sleep 0.15 if Puma.jruby?
     @client = TCPSocket.new HOST, @port
   end
 

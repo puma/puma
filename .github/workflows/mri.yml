@@ -26,6 +26,7 @@ jobs:
           - { os: windows-2019 , ruby: mingw }
           - { os: ubuntu-20.04 , ruby: 2.7   , no-ssl: ' no SSL' }
           - { os: windows-2019 , ruby: 2.7   , no-ssl: ' no SSL' }
+          - { os: macos-11.0   , ruby: 2.7  }
         exclude:
           - { os: ubuntu-20.04 , ruby: 2.2  }
           - { os: ubuntu-20.04 , ruby: 2.3  }

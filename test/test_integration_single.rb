@@ -94,6 +94,7 @@ class TestIntegrationSingle < TestIntegration
 
   def test_int_refuse
     skip_unless_signal_exist? :INT
+    skip_on :jruby  # seems to intermittently lockup JRuby CI
 
     cli_server 'test/rackup/hello.ru'
     begin
