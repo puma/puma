@@ -208,7 +208,8 @@ class TestIntegration < Minitest::Test
             # client would see an empty response
             # Errno::EBADF Windows may not be able to make a connection
             mutex.synchronize { replies[:reset] += 1 }
-          rescue *refused
+          rescue *refused, IOError
+            # IOError intermittently thrown by Ubuntu, add to allow retry
             mutex.synchronize { replies[:refused] += 1 }
           rescue ::Timeout::Error
             mutex.synchronize { replies[:read_timeout] += 1 }

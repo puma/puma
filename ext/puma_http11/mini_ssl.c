@@ -2,12 +2,7 @@
 
 #include <ruby.h>
 #include <ruby/version.h>
-
-#if RUBY_API_VERSION_MAJOR == 1
-#include <rubyio.h>
-#else
 #include <ruby/io.h>
-#endif
 
 #ifdef HAVE_OPENSSL_BIO_H
 
@@ -33,7 +28,8 @@ typedef struct {
   int bytes;
 } ms_cert_buf;
 
-void engine_free(ms_conn* conn) {
+void engine_free(void *ptr) {
+  ms_conn *conn = ptr;
   ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
   if(cert_buf) {
     OPENSSL_free(cert_buf->buf);
@@ -45,10 +41,16 @@ void engine_free(ms_conn* conn) {
   free(conn);
 }
 
+const rb_data_type_t engine_data_type = {
+    "MiniSSL/ENGINE",
+    { 0, engine_free, 0 },
+    0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
 ms_conn* engine_alloc(VALUE klass, VALUE* obj) {
   ms_conn* conn;
 
-  *obj = Data_Make_Struct(klass, ms_conn, 0, engine_free, conn);
+  *obj = TypedData_Make_Struct(klass, ms_conn, &engine_data_type, conn);
 
   conn->read = BIO_new(BIO_s_mem());
   BIO_set_nbio(conn->read, 1);
@@ -198,7 +200,7 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   else {
     min = TLS1_VERSION;
   }
-  
+
   SSL_CTX_set_min_proto_version(ctx, min);
 
   SSL_CTX_set_options(ctx, ssl_options);
@@ -281,7 +283,7 @@ VALUE engine_inject(VALUE self, VALUE str) {
   ms_conn* conn;
   long used;
 
-  Data_Get_Struct(self, ms_conn, conn);
+  TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
   StringValue(str);
 
@@ -334,7 +336,7 @@ VALUE engine_read(VALUE self) {
   char buf[512];
   int bytes, error;
 
-  Data_Get_Struct(self, ms_conn, conn);
+  TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
   ERR_clear_error();
 
@@ -361,7 +363,7 @@ VALUE engine_write(VALUE self, VALUE str) {
   ms_conn* conn;
   int bytes;
 
-  Data_Get_Struct(self, ms_conn, conn);
+  TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
   StringValue(str);
 
@@ -385,7 +387,7 @@ VALUE engine_extract(VALUE self) {
   size_t pending;
   char buf[512];
 
-  Data_Get_Struct(self, ms_conn, conn);
+  TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
   pending = BIO_pending(conn->write);
   if(pending > 0) {
@@ -404,7 +406,7 @@ VALUE engine_shutdown(VALUE self) {
   ms_conn* conn;
   int ok;
 
-  Data_Get_Struct(self, ms_conn, conn);
+  TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
   ERR_clear_error();
 
@@ -419,7 +421,7 @@ VALUE engine_shutdown(VALUE self) {
 VALUE engine_init(VALUE self) {
   ms_conn* conn;
 
-  Data_Get_Struct(self, ms_conn, conn);
+  TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
   return SSL_in_init(conn->ssl) ? Qtrue : Qfalse;
 }
@@ -432,7 +434,7 @@ VALUE engine_peercert(VALUE self) {
   ms_cert_buf* cert_buf = NULL;
   VALUE rb_cert_buf;
 
-  Data_Get_Struct(self, ms_conn, conn);
+  TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
   cert = SSL_get_peer_certificate(conn->ssl);
   if(!cert) {
@@ -469,7 +471,7 @@ VALUE engine_peercert(VALUE self) {
 static VALUE
 engine_ssl_vers_st(VALUE self) {
   ms_conn* conn;
-  Data_Get_Struct(self, ms_conn, conn);
+  TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
   return rb_ary_new3(2, rb_str_new2(SSL_get_version(conn->ssl)), rb_str_new2(SSL_state_string(conn->ssl)));
 }
 
@@ -504,27 +506,27 @@ void Init_mini_ssl(VALUE puma) {
 #else
   rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(SSLeay_version(SSLEAY_VERSION)));
 #endif
- 
-#if defined(OPENSSL_NO_SSL3) || defined(OPENSSL_NO_SSL3_METHOD) 
-  /* True if SSL3 is not available */ 
-  rb_define_const(mod, "OPENSSL_NO_SSL3", Qtrue); 
-#else 
-  rb_define_const(mod, "OPENSSL_NO_SSL3", Qfalse); 
-#endif 
 
-#if defined(OPENSSL_NO_TLS1) || defined(OPENSSL_NO_TLS1_METHOD) 
-  /* True if TLS1 is not available */ 
-  rb_define_const(mod, "OPENSSL_NO_TLS1", Qtrue); 
-#else 
-  rb_define_const(mod, "OPENSSL_NO_TLS1", Qfalse); 
-#endif 
+#if defined(OPENSSL_NO_SSL3) || defined(OPENSSL_NO_SSL3_METHOD)
+  /* True if SSL3 is not available */
+  rb_define_const(mod, "OPENSSL_NO_SSL3", Qtrue);
+#else
+  rb_define_const(mod, "OPENSSL_NO_SSL3", Qfalse);
+#endif
 
-#if defined(OPENSSL_NO_TLS1_1) || defined(OPENSSL_NO_TLS1_1_METHOD) 
-  /* True if TLS1_1 is not available */ 
-  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qtrue); 
-#else 
-  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qfalse); 
-#endif 
+#if defined(OPENSSL_NO_TLS1) || defined(OPENSSL_NO_TLS1_METHOD)
+  /* True if TLS1 is not available */
+  rb_define_const(mod, "OPENSSL_NO_TLS1", Qtrue);
+#else
+  rb_define_const(mod, "OPENSSL_NO_TLS1", Qfalse);
+#endif
+
+#if defined(OPENSSL_NO_TLS1_1) || defined(OPENSSL_NO_TLS1_1_METHOD)
+  /* True if TLS1_1 is not available */
+  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qtrue);
+#else
+  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qfalse);
+#endif
 
   rb_define_singleton_method(mod, "check", noop, 0);
 

@@ -50,7 +50,7 @@ module Puma
       start_control
 
       @server = server = start_server
-
+      server_thread = server.run
 
       log "Use Ctrl-C to stop"
       redirect_io
@@ -58,7 +58,7 @@ module Puma
       @launcher.events.fire_on_booted!
 
       begin
-        server.run.join
+        server_thread.join
       rescue Interrupt
         # Swallow it
       end

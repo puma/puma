@@ -90,6 +90,7 @@ module Puma
       @max_threads        = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
       @persistent_timeout = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
       @queue_requests     = options.fetch :queue_requests, true
+      @max_fast_inline    = options.fetch :max_fast_inline, MAX_FAST_INLINE
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -248,6 +249,8 @@ module Puma
         @thread_pool.auto_trim!(@auto_trim_time)
       end
 
+      @check, @notify = Puma::Util.pipe unless @notify
+
       @events.fire :state, :running
 
       if background
@@ -300,7 +303,6 @@ module Puma
     end
 
     def handle_servers
-      @check, @notify = Puma::Util.pipe unless @notify
       begin
         check = @check
         sockets = [check] + @binder.ios
@@ -441,11 +443,11 @@ module Puma
 
             check_for_more_data = @status == :run
 
-            if requests >= MAX_FAST_INLINE
+            if requests >= @max_fast_inline
               # This will mean that reset will only try to use the data it already
               # has buffered and won't try to read more data. What this means is that
               # every client, independent of their request speed, gets treated like a slow
-              # one once every MAX_FAST_INLINE requests.
+              # one once every max_fast_inline requests.
               check_for_more_data = false
             end
 
@@ -640,19 +642,16 @@ module Puma
     end
 
     def notify_safely(message)
-      @check, @notify = Puma::Util.pipe unless @notify
-      begin
-        @notify << message
-      rescue IOError, NoMethodError, Errno::EPIPE
-         # The server, in another thread, is shutting down
+      @notify << message
+    rescue IOError, NoMethodError, Errno::EPIPE
+      # The server, in another thread, is shutting down
+      Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+    rescue RuntimeError => e
+      # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
+      if e.message.include?('IOError')
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-      rescue RuntimeError => e
-        # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
-        if e.message.include?('IOError')
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-        else
-          raise e
-        end
+      else
+        raise e
       end
     end
     private :notify_safely

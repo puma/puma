@@ -3,7 +3,7 @@ require_relative "helpers/integration"
 
 class TestIntegrationPumactl < TestIntegration
   include TmpPath
-  parallelize_me!
+  parallelize_me! if ::Puma.mri?
 
   def workers ; 2 ; end
 

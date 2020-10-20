@@ -133,8 +133,6 @@ class TestCLI < Minitest::Test
 
     assert_equal 2, status["workers"]
 
-    # wait until the first status ping has come through
-    sleep 6
     s = UNIXSocket.new @tmp_path
     s << "GET /stats HTTP/1.0\r\n\r\n"
     body = s.read
@@ -144,6 +142,7 @@ class TestCLI < Minitest::Test
   ensure
     if UNIX_SKT_EXIST && HAS_FORK
       cli.launcher.stop
+      t.join
 
       done = nil
       until done
@@ -152,7 +151,6 @@ class TestCLI < Minitest::Test
         done = log[/ - Goodbye!/]
       end
 
-      t.join
       $debugging_hold = false
     end
   end

@@ -395,9 +395,9 @@ module Puma
         stop
       end
 
-      @launcher.events.fire_on_booted!
-
       begin
+        booted = false
+
         while @status == :run
           begin
             if @phased_restart
@@ -438,6 +438,10 @@ module Puma
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
                   @launcher.events.fire(:ping!, w)
+                  if !booted && @workers.none? {|worker| worker.last_status.empty?}
+                    @launcher.events.fire_on_booted!
+                    booted = true
+                  end
                 end
               else
                 log "! Out-of-sync worker list, no #{pid} worker"

@@ -62,20 +62,15 @@ module TimeoutEveryTestCase
     with_info_handler do
       time_it do
         capture_exceptions do
-          before_setup; setup; after_setup
-
-          # wrap timeout around test method only
-          ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 45 : 60, TestTookTooLong) {
+          ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 45 : 60, TestTookTooLong) do
+            before_setup; setup; after_setup
             self.send self.name
-          }
+          end
         end
 
-        Minitest::Test::TEARDOWN_METHODS.each do |hook|
-          capture_exceptions do
-            # wrap timeout around teardown methods, remove when they're stable
-            ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 45 : 60, TestTookTooLong) {
-              self.send hook
-            }
+        capture_exceptions do
+          ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 45 : 60, TestTookTooLong) do
+            Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
           end
         end
         if respond_to? :clean_tmp_paths
@@ -107,6 +102,8 @@ module TestSkips
   UNIX_SKT_MSG = "UnixSockets aren't available on the #{RUBY_PLATFORM} platform"
 
   SIGNAL_LIST = Signal.list.keys.map(&:to_sym) - (Puma.windows? ? [:INT, :TERM] : [])
+
+  JRUBY_HEAD = Puma::IS_JRUBY && RUBY_DESCRIPTION =~ /SNAPSHOT/
 
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
