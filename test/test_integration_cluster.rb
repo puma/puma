@@ -261,6 +261,13 @@ RUBY
     end
   end
 
+  def test_json_gem_not_required_in_master_process
+    cli_server "-w #{workers} -C test/config/prune_bundler_print_json_defined.rb test/rackup/hello.ru"
+
+    line = @server.gets
+    assert_match(/defined\?\(JSON\): nil/, line)
+  end
+
   private
 
   def worker_timeout(timeout, iterations, config)
