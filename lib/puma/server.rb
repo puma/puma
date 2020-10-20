@@ -249,6 +249,8 @@ module Puma
         @thread_pool.auto_trim!(@auto_trim_time)
       end
 
+      @check, @notify = Puma::Util.pipe unless @notify
+
       @events.fire :state, :running
 
       if background
@@ -301,7 +303,6 @@ module Puma
     end
 
     def handle_servers
-      @check, @notify = Puma::Util.pipe unless @notify
       begin
         check = @check
         sockets = [check] + @binder.ios
@@ -641,19 +642,16 @@ module Puma
     end
 
     def notify_safely(message)
-      @check, @notify = Puma::Util.pipe unless @notify
-      begin
-        @notify << message
-      rescue IOError, NoMethodError, Errno::EPIPE
-         # The server, in another thread, is shutting down
+      @notify << message
+    rescue IOError, NoMethodError, Errno::EPIPE
+      # The server, in another thread, is shutting down
+      Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+    rescue RuntimeError => e
+      # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
+      if e.message.include?('IOError')
         Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-      rescue RuntimeError => e
-        # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
-        if e.message.include?('IOError')
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-        else
-          raise e
-        end
+      else
+        raise e
       end
     end
     private :notify_safely

@@ -1142,4 +1142,12 @@ EOF
     sleep 0.5
     assert_empty @events.stdout.string
   end
+
+  def test_run_stop_thread_safety
+    100.times do
+      thread = @server.run
+      @server.stop
+      assert thread.join(1)
+    end
+  end
 end
