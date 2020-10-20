@@ -285,7 +285,6 @@ reliability in production environments:
 
 ### Plugins
 
-* [puma-heroku](https://github.com/puma/puma-heroku) — default Puma configuration for running on Heroku
 * [puma-metrics](https://github.com/harmjanblok/puma-metrics) — export Puma metrics to Prometheus
 * [puma-plugin-statsd](https://github.com/yob/puma-plugin-statsd) — send Puma metrics to statsd
 * [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog
