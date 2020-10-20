@@ -239,10 +239,26 @@ RUBY
   end
 
   def test_load_path_includes_extra_deps
-    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello-last-load-path.ru"
-    last_load_path = read_body(connect)
+    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru"
 
-    assert_match(%r{gems/rdoc-[\d.]+/lib$}, last_load_path)
+    load_path = []
+    while (line = @server.gets) =~ /^LOAD_PATH/
+      load_path << line.gsub(/^LOAD_PATH: /, '')
+    end
+    assert_match(%r{gems/rdoc-[\d.]+/lib$}, load_path.last)
+  end
+
+  def test_load_path_does_not_include_nio4r
+    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru"
+
+    load_path = []
+    while (line = @server.gets) =~ /^LOAD_PATH/
+      load_path << line.gsub(/^LOAD_PATH: /, '')
+    end
+
+    load_path.each do |path|
+      refute_match(%r{gems/nio4r-[\d.]+/lib}, path)
+    end
   end
 
   private

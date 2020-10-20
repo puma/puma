@@ -7,29 +7,25 @@ require 'puma/events'
 class TestLauncher < Minitest::Test
   include TmpPath
 
-  def test_dependencies_and_files_to_require_after_prune_is_correctly_built_for_no_extra_deps
+  def test_files_to_require_after_prune_is_correctly_built_for_no_extra_deps
     skip_on :no_bundler
 
-    deps, dirs = launcher.send(:dependencies_and_files_to_require_after_prune)
+    dirs = launcher.send(:files_to_require_after_prune)
 
-    assert_equal(1, deps.length)
-    assert_match(%r{^nio4r:[\d.]+$}, deps.first)
     assert_equal(2, dirs.length)
     assert_match(%r{puma/lib$}, dirs[0]) # lib dir
     assert_match(%r{puma-#{Puma::Const::PUMA_VERSION}$}, dirs[1]) # native extension dir
     refute_match(%r{gems/rdoc-[\d.]+/lib$}, dirs[2])
   end
 
-  def test_dependencies_and_files_to_require_after_prune_is_correctly_built_with_extra_deps
+  def test_files_to_require_after_prune_is_correctly_built_with_extra_deps
     skip_on :no_bundler
     conf = Puma::Configuration.new do |c|
       c.extra_runtime_dependencies ['rdoc']
     end
 
-    deps, dirs = launcher(conf).send(:dependencies_and_files_to_require_after_prune)
+    dirs = launcher(conf).send(:files_to_require_after_prune)
 
-    assert_equal(1, deps.length)
-    assert_match(%r{^nio4r:[\d.]+$}, deps.first)
     assert_equal(3, dirs.length)
     assert_match(%r{puma/lib$}, dirs[0]) # lib dir
     assert_match(%r{puma-#{Puma::Const::PUMA_VERSION}$}, dirs[1]) # native extension dir

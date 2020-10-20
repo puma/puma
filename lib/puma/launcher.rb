@@ -264,15 +264,11 @@ module Puma
       end
     end
 
-    # @!attribute [r] dependencies_and_files_to_require_after_prune
-    def dependencies_and_files_to_require_after_prune
+    # @!attribute [r] files_to_require_after_prune
+    def files_to_require_after_prune
       puma = spec_for_gem("puma")
 
-      deps = puma.runtime_dependencies.map do |d|
-        "#{d.name}:#{spec_for_gem(d.name).version}"
-      end
-
-      [deps, require_paths_for_gem(puma) + extra_runtime_deps_directories]
+      require_paths_for_gem(puma) + extra_runtime_deps_directories
     end
 
     # @!attribute [r] extra_runtime_deps_directories
@@ -304,7 +300,7 @@ module Puma
         return
       end
 
-      deps, dirs = dependencies_and_files_to_require_after_prune
+      dirs = files_to_require_after_prune
 
       log '* Pruning Bundler environment'
       home = ENV['GEM_HOME']
@@ -313,7 +309,7 @@ module Puma
         ENV['GEM_HOME'] = home
         ENV['BUNDLE_GEMFILE'] = bundle_gemfile
         ENV['PUMA_BUNDLER_PRUNED'] = '1'
-        args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':'), deps.join(',')] + @original_argv
+        args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':')] + @original_argv
         # Ruby 2.0+ defaults to true which breaks socket activation
         args += [{:close_others => false}]
         Kernel.exec(*args)

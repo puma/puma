@@ -6,6 +6,7 @@
 
 * Bugfixes
   * Cleanup daemonization in rc.d script (#2409)
+  * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts (#2427)
   * Fire `on_booted` after server starts
 
 * Refactor
