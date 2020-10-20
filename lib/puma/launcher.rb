@@ -244,6 +244,7 @@ module Puma
     end
 
     def restart!
+      @events.fire_on_restart!
       @config.run_hooks :on_restart, self, @events
 
       if Puma.jruby?
@@ -326,22 +327,20 @@ module Puma
     #
 
     def integrate_with_systemd
-      return unless ENV["SD_NOTIFY"]
       return unless ENV["NOTIFY_SOCKET"]
 
-      require 'sd_notify'
-      return log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have sd_notify gem installed" unless defined?(SdNotify)
-
-      require 'puma/systemd'
+      begin
+        require 'puma/systemd'
+      rescue LoadError
+        log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have sd_notify gem installed"
+        return
+      end
 
       log "* Enabling systemd notification integration"
 
-      @events.on_booted { SdNotify.ready }
-      @events.on_stopped { SdNotify.stopping }
-
       systemd = Systemd.new(@events)
-
-      systemd.start_watchdog if SdNotify.watchdog?
+      systemd.hook_events
+      systemd.start_watchdog
     end
 
     def spec_for_gem(gem_name)

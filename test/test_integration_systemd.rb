@@ -7,6 +7,10 @@ class TestIntegrationSystemd < TestIntegration
   def setup
     skip "Skipped because Systemd support is linux-only" if windows? || osx?
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless_signal_exist? :TERM
+    skip_on :jruby
+
+    super
 
     ::Dir::Tmpname.create("puma_socket") do |sockaddr|
       @sockaddr = sockaddr
@@ -15,8 +19,6 @@ class TestIntegrationSystemd < TestIntegration
       @socket.bind(socket_ai)
       ENV["NOTIFY_SOCKET"] = sockaddr
     end
-
-    ENV["SD_NOTIFY"] = "1"
   end
 
   def teardown
@@ -25,32 +27,28 @@ class TestIntegrationSystemd < TestIntegration
     File.unlink(@sockaddr) if @sockaddr
     @socket = nil
     @sockaddr = nil
-    ENV["SD_NOTIFY"] = nil
     ENV["NOTIFY_SOCKET"] = nil
     ENV["WATCHDOG_USEC"] = nil
   end
 
   def socket_message
-    @socket.recvfrom(10)[0]
+    @socket.recvfrom(15)[0]
   end
 
   def test_systemd_integration
-    skip "Skipped because Systemd support is linux-only" if windows? || osx?
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-    skip_unless_signal_exist? :TERM
-
     cli_server "test/rackup/hello.ru"
     assert_equal(socket_message, "READY=1")
 
+    connection = connect
+    restart_server connection
+    assert_equal(socket_message, "RELOADING=1")
+    assert_equal(socket_message, "READY=1")
+
     stop_server
-    assert_match(socket_message, "STOPPING=1")
+    assert_equal(socket_message, "STOPPING=1")
   end
 
   def test_systemd_watchdog
-    skip "Skipped because Systemd support is linux-only" if windows? || osx?
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
-    skip_unless_signal_exist? :TERM
-
     ENV["WATCHDOG_USEC"] = "1_000_000"
 
     cli_server "test/rackup/hello.ru"

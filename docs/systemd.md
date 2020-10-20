@@ -25,19 +25,16 @@ After=network.target
 
 [Service]
 # Puma supports systemd's `Type=notify` and watchdog service
-# monitoring, since you have installed [sd_notify](https://github.com/agis/ruby-sdnotify) gem. 
-# If you are using an earlier version of Puma, change this to `Type=simple`
-# and remove the `WatchdogSec` and `Environment="SD_NOTIFY=true` line.
+# monitoring, since you have installed [sd_notify](https://github.com/agis/ruby-sdnotify) gem.
+# On earlier versions of Puma or JRuby, change this to `Type=simple` and remove
+# the `WatchdogSec` line.
 Type=notify
-
-# Preferably configure a non-privileged user
-# User=
-
-# Allows Systemd integration
-Environment="SD_NOTIFY=true"
 
 # If your Puma process locks up, systemd's watchdog will restart it within seconds.
 WatchdogSec=10
+
+# Preferably configure a non-privileged user
+# User=
 
 # The path to the your application code root directory.
 # Also replace the "<YOUR_APP_PATH>" place holders below with this path.
