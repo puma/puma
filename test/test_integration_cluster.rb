@@ -190,15 +190,30 @@ RUBY
     assert(worker_index_within_number_of_workers)
   end
 
+  # use three workers to keep accepting clients
   def test_refork
-    refork = Tempfile.new('refork')
-    cli_server "-w #{workers} test/rackup/sleep.ru", config: <<RUBY
-fork_worker 1
-on_refork {File.write('#{refork.path}', 'Reforked')}
+    refork = Tempfile.new 'refork'
+    wrkrs = 3
+    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<RUBY
+fork_worker 20
+on_refork { File.write '#{refork.path}', 'Reforked' }
 RUBY
-    pids = get_worker_pids
-    read_body(connect('sleep1')) until refork.read == 'Reforked'
-    refute_includes pids, get_worker_pids(1, workers - 1)
+    pids = get_worker_pids 0, wrkrs
+
+    socks = []
+    until refork.read == 'Reforked'
+      socks << fast_connect
+      sleep 0.004
+    end
+
+    100.times {
+      socks << fast_connect
+      sleep 0.004
+    }
+
+    socks.each { |s| read_body s }
+
+    refute_includes pids, get_worker_pids(1, wrkrs - 1)
   end
 
   def test_fork_worker_spawn
