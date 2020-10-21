@@ -282,13 +282,20 @@ module Puma
     end
     # private :normalize_env
 
+    # @param header_key [#to_s]
+    # @return [Boolean]
+    #
+    def illegal_header_key?(header_key)
+      !!(ILLEGAL_HEADER_KEY_REGEX =~ header_key.to_s)
+    end
+
     # @param header_value [#to_s]
     # @return [Boolean]
     #
-    def possible_header_injection?(header_value)
-      !!(HTTP_INJECTION_REGEX =~ header_value.to_s)
+    def illegal_header_value?(header_value)
+      !!(ILLEGAL_HEADER_VALUE_REGEX =~ header_value.to_s)
     end
-    private :possible_header_injection?
+    private :illegal_header_key?, :illegal_header_value?
 
     # Fixup any headers with `,` in the name to have `_` now. We emit
     # headers with `,` in them during the parse phase to avoid ambiguity
@@ -334,9 +341,11 @@ module Puma
     def str_early_hints(headers)
       eh_str = "HTTP/1.1 103 Early Hints\r\n".dup
       headers.each_pair do |k, vs|
+        next if illegal_header_key?(k)
+
         if vs.respond_to?(:to_s) && !vs.to_s.empty?
           vs.to_s.split(NEWLINE).each do |v|
-            next if possible_header_injection?(v)
+            next if illegal_header_value?(v)
             eh_str << "#{k}: #{v}\r\n"
           end
         else
@@ -399,9 +408,11 @@ module Puma
       res_info[:response_hijack] = nil
 
       headers.each do |k, vs|
+        next if illegal_header_key?(k)
+
         case k.downcase
         when CONTENT_LENGTH2
-          next if possible_header_injection?(vs)
+          next if illegal_header_value?(vs)
           res_info[:content_length] = vs
           next
         when TRANSFER_ENCODING
@@ -410,11 +421,13 @@ module Puma
         when HIJACK
           res_info[:response_hijack] = vs
           next
+        when BANNED_HEADER_KEY
+          next
         end
 
         if vs.respond_to?(:to_s) && !vs.to_s.empty?
           vs.to_s.split(NEWLINE).each do |v|
-            next if possible_header_injection?(v)
+            next if illegal_header_value?(v)
             lines.append k, colon, v, line_ending
           end
         else

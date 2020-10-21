@@ -8,6 +8,7 @@
   * Cleanup daemonization in rc.d script (#2409)
   * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts (#2427)
   * Fire `on_booted` after server starts
+  * Ignore illegal response header (#2439)
 
 * Refactor
   * Extract req/resp methods to new request.rb from server.rb (#2419)
