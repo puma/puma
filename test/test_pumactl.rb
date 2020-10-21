@@ -182,7 +182,7 @@ class TestPumaControlCli < TestConfigFileBase
     out, _ = capture_subprocess_io do
       begin
         cmd.run
-      rescue SystemExit => e
+      rescue SystemExit
       end
     end
     assert_match expected_out, out

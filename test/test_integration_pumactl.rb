@@ -109,7 +109,7 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop", unix: true
 
-    _, status = Process.wait2(@pid)
+    _, _ = Process.wait2(@pid)
     @server = nil
   end
 
