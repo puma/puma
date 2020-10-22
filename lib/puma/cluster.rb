@@ -479,7 +479,9 @@ module Puma
         rescue Errno::ECHILD
           begin
             Process.kill(0, w.pid)
-            false # child still alive, but has another parent
+            # child still alive but has another parent (e.g., using fork_worker)
+            w.term if w.term?
+            false
           rescue Errno::ESRCH, Errno::EPERM
             true # child is already terminated
           end

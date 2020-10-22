@@ -91,6 +91,7 @@ module Puma
 
         Signal.trap "SIGTERM" do
           @worker_write << "e#{Process.pid}\n" rescue nil
+          restart_server.clear
           server.stop
           restart_server << false
         end
