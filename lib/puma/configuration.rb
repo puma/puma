@@ -12,6 +12,7 @@ module Puma
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 9292
     DefaultWorkerTimeout = 60
+    DefaultDevelopmentWorkerTimeout = 3600
     DefaultWorkerShutdownTimeout = 30
   end
 
@@ -179,6 +180,10 @@ module Puma
       Puma.mri? ? 5 : 16
     end
 
+    def development?
+      environment_str == 'development'
+    end
+
     def puma_default_options
       {
         :min_threads => Integer(ENV['PUMA_MIN_THREADS'] || ENV['MIN_THREADS'] || 0),
@@ -188,7 +193,7 @@ module Puma
         :binds => ["tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"],
         :workers => Integer(ENV['WEB_CONCURRENCY'] || 0),
         :mode => :http,
-        :worker_timeout => DefaultWorkerTimeout,
+        :worker_timeout => -> { development? ? DefaultDevelopmentWorkerTimeout : DefaultWorkerTimeout },
         :worker_boot_timeout => DefaultWorkerTimeout,
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
         :remote_address => :socket,
