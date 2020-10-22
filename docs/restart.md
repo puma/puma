@@ -1,41 +1,64 @@
-# Restarts
+Puma provides three distinct kinds of restart operations, each for different use cases. Hot restarts and phased restarts are described here. The third kind of restart operation is called "refork" and is described in the documentation for [`fork_worker`](fork_worker.md).
 
-To perform a restart, there are 3 builtin mechanisms:
+## Hot restart
 
-  * Send the `puma` process the `SIGUSR2` signal (normal restart)
-  * Send the `puma` process the `SIGUSR1` signal (restart in phases (a "rolling restart"), cluster mode only)
-  * Use the status server and issue `/restart`
+To perform a "hot" restart, Puma performs an `exec` operation to start the process up again, so no memory is shared between the old process and the new process. As a result, it is safe to issue a restart any place where you would manually stop Puma and start it again. In particular, it is safe to upgrade Puma itself using a hot restart.
 
-No code is shared between the current and restarted process, so it should be safe to issue a restart any place where you would manually stop Puma and start it again.
+If the new process is unable to load, it will simply exit. You should therefore run Puma under a process monitor when using it in production.
 
-If the new process is unable to load, it will simply exit. You should therefore run Puma under a process monitor (see below) when using it in production.
+### How-to
 
-### Normal vs Hot vs Phased Restart
+Any of the following will cause a Puma server to perform a hot restart: 
 
-A hot restart means that no requests will be lost while deploying your new code, since the server socket is kept open between restarts.
+* Send the `puma` process the `SIGUSR2` signal
+* Issue a `GET` request to the Puma status/control server with the path `/restart`
+* Issue `pumactl restart` (this uses the control server method if available, otherwise sends the `SIGUSR2` signal to the process)
 
-But beware, hot restart does not mean that the incoming requests won’t hang for multiple seconds while your new code has not fully deployed. If you need a zero downtime and zero hanging requests deploy, you must use phased restart.
+### Supported configurations
 
-When you run pumactl phased-restart, Puma kills workers one-by-one, meaning that at least another worker is still available to serve requests, which lead to zero hanging requests (yay!).
+* Works in cluster mode and in single mode
+* Supported on all platforms
 
-But again beware, upgrading an application sometimes involves upgrading the database schema. With phased restart, there may be a moment during the deployment where processes belonging to the previous version and processes belonging to the new version both exist at the same time. Any database schema upgrades you perform must therefore be backwards-compatible with the old application version.
+### Client experience
 
-If you perform a lot of database migrations, you probably should not use phased restart and use a normal/hot restart instead (`pumactl restart`). That way, no code is shared while deploying (in that case, `preload_app!` might help for quicker deployment, see ["Clustered Mode" in the README](../README.md#clustered-mode)).
+* All platforms: for clients with an in-flight request, those clients will be served responses before the connection is closed gracefully. Puma gracefully disconnects any idle HTTP persistent connections before restarting.
+* On MRI or TruffleRuby on Linux and BSD: Clients who connect just before the server restarts may experience increased latency while the server stops and starts again, but their connections will not be closed prematurely.
+* On Windows and on JRuby: Clients who connect just before a restart may experience "connection reset" errors.
 
-**Note**: Hot and phased restarts are only available on MRI, not on JRuby. They are also unavailable on Windows servers.
+### Additional notes
 
-### Release Directory
+* Only one version of the application is running at a time.
+* `on_restart` is invoked just before the server shuts down. This can be used to clean up resources (like long-lived database connections) gracefully. Since Ruby 2.0, it is not typically necessary to explicitly close file descriptors on restart. This is because any file descriptor opened by Ruby will have the `FD_CLOEXEC` flag set, meaning that file descriptors are closed on `exec`. `on_restart` is useful, though, if your application needs to perform any more graceful protocol-specific shutdown procedures before closing connections.
 
-If your symlink releases into a common working directory (i.e., `/current` from Capistrano), Puma won't pick up your new changes when running phased restarts without additional configuration. You should set your working directory within Puma's config to specify the directory it should use. This is a change from earlier versions of Puma (< 2.15) that would infer the directory for you.
+## Phased restart
 
-```ruby
-# config/puma.rb
+Phased restarts replace all running workers in a Puma cluster. This is a useful way to gracefully upgrade the application that Puma is serving. A phased restart works by first killing an old worker, then starting a new worker, waiting until the new worker has successfully started before proceeding to the next worker. This process continues until all workers have been replaced. The master process is not restarted.
 
-directory '/var/www/current'
-```
+### How-to
 
-### Cleanup Code
+Any of the following will cause a Puma server to perform a phased restart: 
 
-Puma isn't able to understand all the resources that your app may use, so it provides a hook in the configuration file you pass to `-C` called `on_restart`. The block passed to `on_restart` will be called, unsurprisingly, just before Puma restarts itself.
+* Send the `puma` process the `SIGUSR1` signal
+* Issue a `GET` request to the Puma status/control server with the path `/phased-restart`
+* Issue `pumactl phased-restart` (this uses the control server method if available, otherwise sends the `SIGUSR1` signal to the process)
 
-You should place code to close global log files, redis connections, etc. in this block so that their file descriptors don't leak into the restarted process. Failure to do so will result in slowly running out of descriptors and eventually obscure crashes as the server is restarted many times.
+### Supported configurations
+
+* Works in cluster mode only
+* To support upgrading the application that Puma is serving, ensure `prune_bundler` is enabled and that `preload_app` is disabled (it is disabled by default).
+* Supported on all platforms where cluster mode is supported
+
+### Client experience
+
+* In-flight requests are always served responses before the connection is closed gracefully
+* Idle persistent connections are gracefully disconnected
+* New connections are not lost, and clients will not experience any increase in latency (as long as the number of configured workers is greater than one)
+
+### Additional notes
+
+* When a phased restart begins, the Puma master process changes its current working directory to the directory specified by the `directory` option. If `directory` is set to symlink, this is automatically re-evaluated, so this mechanism can be used to upgrade the application.
+* On a single server, it's possible that two versions of the application are running concurrently during a phased restart.
+* `on_restart` is not invoked
+* Phased restarts can be slow for Puma clusters with many workers. Hot restarts often complete more quickly, but at the cost of increased latency during the restart.
+* Phased restarts cannot be used to upgrade any gems loaded by the Puma master process, including `puma` itself, anything in `extra_runtime_dependencies`, or dependencies thereof. Upgrading other gems is safe.
+* If you remove the gems from old releases as part of your deployment strategy, there are additional considerations. Do not put any gems into `extra_runtime_dependencies` that have native extensions or have dependencies that have native extensions (one common example is `puma_worker_killer` and its dependency on `ffi`). Workers will fail on boot during a phased restart. The underlying issue is recorded in [an issue on the rubygems project](https://github.com/rubygems/rubygems/issues/4004). Hot restarts are your only option here if you need these dependencies.
