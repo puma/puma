@@ -117,7 +117,7 @@ bundle exec puma -C <path/to/config.rb> <path/to/rackup.ru>
 ```
 
 As an example, using one of the test rack apps:
-[`test/rackup/hello.ru`][rackup file], and one of the test config files:
+[`test/rackup/hello.ru`][rackup], and one of the test config files:
 [`test/config/settings.rb`][config], you would run the test app with:
 
 ```sh
