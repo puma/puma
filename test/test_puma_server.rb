@@ -1143,6 +1143,18 @@ EOF
     assert_empty @events.stdout.string
   end
 
+  def test_idle_connections_closed_immediately_on_shutdown
+    server_run
+    sock = new_connection
+    sleep 0.5 # give enough time for new connection to enter reactor
+    @server.stop false
+
+    assert IO.select([sock], nil, nil, 1), 'Unexpected timeout'
+    assert_raises EOFError do
+      sock.read_nonblock(256)
+    end
+  end
+
   def test_run_stop_thread_safety
     100.times do
       thread = @server.run
