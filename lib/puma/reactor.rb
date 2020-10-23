@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'puma/queue_close' if RUBY_VERSION < '2.3'
+require 'puma/queue_close' unless ::Queue.instance_methods.include? :close
 
 module Puma
   # Monitors a collection of IO objects, calling a block whenever
