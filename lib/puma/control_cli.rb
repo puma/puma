@@ -11,10 +11,32 @@ require 'socket'
 module Puma
   class ControlCLI
 
-    COMMANDS = %w{halt restart phased-restart start stats status stop reload-worker-directory gc gc-stats thread-backtraces refork}
+    # values must be string or nil
+    # value of `nil` means command cannot be processed via signal
+    # @version 5.0.3
+    CMD_PATH_SIG_MAP = {
+      'gc'       => nil,
+      'gc-stats' => nil,
+      'halt'     => 'SIGQUIT',
+      'phased-restart' => 'SIGUSR1',
+      'refork'   => 'SIGURG',
+      'reload-worker-directory' => nil,
+      'restart'  => 'SIGUSR2',
+      'start'    => nil,
+      'stats'    => nil,
+      'status'   => '',
+      'stop'     => 'SIGTERM',
+      'thread-backtraces' => nil
+    }.freeze
+
+    # @deprecated 6.0.0
+    COMMANDS = CMD_PATH_SIG_MAP.keys.freeze
+
+    # commands that cannot be used in a request
+    NO_REQ_COMMANDS = %w{refork}.freeze
 
     # @version 5.0.0
-    PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}
+    PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}.freeze
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
@@ -33,7 +55,7 @@ module Puma
       @cli_options = {}
 
       opts = OptionParser.new do |o|
-        o.banner = "Usage: pumactl (-p PID | -P pidfile | -S status_file | -C url -T token | -F config.rb) (#{COMMANDS.join("|")})"
+        o.banner = "Usage: pumactl (-p PID | -P pidfile | -S status_file | -C url -T token | -F config.rb) (#{CMD_PATH_SIG_MAP.keys.join("|")})"
 
         o.on "-S", "--state PATH", "Where the state file to use is" do |arg|
           @state = arg
@@ -86,10 +108,10 @@ module Puma
 
       # check presence of command
       unless @command
-        raise "Available commands: #{COMMANDS.join(", ")}"
+        raise "Available commands: #{CMD_PATH_SIG_MAP.keys.join(", ")}"
       end
 
-      unless COMMANDS.include? @command
+      unless CMD_PATH_SIG_MAP.key? @command
         raise "Invalid command: #{@command}"
       end
 
@@ -142,24 +164,27 @@ module Puma
       uri = URI.parse @control_url
 
       # create server object by scheme
-      server = case uri.scheme
-                when "ssl"
-                  require 'openssl'
-                  OpenSSL::SSL::SSLSocket.new(
-                    TCPSocket.new(uri.host, uri.port),
-                    OpenSSL::SSL::SSLContext.new)
-                    .tap { |ssl| ssl.sync_close = true }  # default is false
-                    .tap(&:connect)
-                when "tcp"
-                  TCPSocket.new uri.host, uri.port
-                when "unix"
-                  UNIXSocket.new "#{uri.host}#{uri.path}"
-                else
-                  raise "Invalid scheme: #{uri.scheme}"
-                end
+      server =
+        case uri.scheme
+        when 'ssl'
+          require 'openssl'
+          OpenSSL::SSL::SSLSocket.new(
+            TCPSocket.new(uri.host, uri.port),
+            OpenSSL::SSL::SSLContext.new)
+            .tap { |ssl| ssl.sync_close = true }  # default is false
+            .tap(&:connect)
+        when 'tcp'
+          TCPSocket.new uri.host, uri.port
+        when 'unix'
+          UNIXSocket.new "#{uri.host}#{uri.path}"
+        else
+          raise "Invalid scheme: #{uri.scheme}"
+        end
 
-      if @command == "status"
-        message "Puma is started"
+      if @command == 'status'
+        message 'Puma is started'
+      elsif NO_REQ_COMMANDS.include? @command
+        raise "Invalid request command: #{@command}"
       else
         url = "/#{@command}"
 
@@ -167,10 +192,10 @@ module Puma
           url = url + "?token=#{@control_auth_token}"
         end
 
-        server << "GET #{url} HTTP/1.0\r\n\r\n"
+        server.syswrite "GET #{url} HTTP/1.0\r\n\r\n"
 
         unless data = server.read
-          raise "Server closed connection before responding"
+          raise 'Server closed connection before responding'
         end
 
         response = data.split("\r\n")
@@ -179,13 +204,13 @@ module Puma
           raise "Server sent empty response"
         end
 
-        (@http,@code,@message) = response.first.split(" ",3)
+        @http, @code, @message = response.first.split(' ',3)
 
-        if @code == "403"
-          raise "Unauthorized access to server (wrong auth token)"
-        elsif @code == "404"
+        if @code == '403'
+          raise 'Unauthorized access to server (wrong auth token)'
+        elsif @code == '404'
           raise "Command error: #{response.last}"
-        elsif @code != "200"
+        elsif @code != '200'
           raise "Bad response from server: #{@code}"
         end
 
@@ -194,7 +219,7 @@ module Puma
       end
     ensure
       if server
-        if uri.scheme == "ssl"
+        if uri.scheme == 'ssl'
           server.sysclose
         else
           server.close unless server.closed?
@@ -204,51 +229,28 @@ module Puma
 
     def send_signal
       unless @pid
-        raise "Neither pid nor control url available"
+        raise 'Neither pid nor control url available'
       end
 
       begin
+        sig = CMD_PATH_SIG_MAP[@command]
 
-        case @command
-        when "restart"
-          Process.kill "SIGUSR2", @pid
-
-        when "halt"
-          Process.kill "QUIT", @pid
-
-        when "stop"
-          Process.kill "SIGTERM", @pid
-
-        when "stats"
-          puts "Stats not available via pid only"
+        if sig.nil?
+          puts "'#{@command}' not available via pid only"
           return
-
-        when "reload-worker-directory"
-          puts "reload-worker-directory not available via pid only"
-          return
-
-        when "phased-restart"
-          Process.kill "SIGUSR1", @pid
-
-        when "status"
+        elsif sig.start_with? 'SIG'
+          Process.kill sig, @pid
+        elsif @command == 'status'
           begin
             Process.kill 0, @pid
-            puts "Puma is started"
+            puts 'Puma is started'
           rescue Errno::ESRCH
-            raise "Puma is not running"
+            raise 'Puma is not running'
           end
-
-          return
-
-        when "refork"
-          Process.kill "SIGURG", @pid
-
-        else
           return
         end
-
       rescue SystemCallError
-        if @command == "restart"
+        if @command == 'restart'
           start
         else
           raise "No pid '#{@pid}' found"
@@ -259,14 +261,13 @@ module Puma
     end
 
     def run
-      return start if @command == "start"
-
+      return start if @command == 'start'
       prepare_configuration
 
-      if Puma.windows?
+      if Puma.windows? || @control_url
         send_request
       else
-        @control_url ? send_request : send_signal
+        send_signal
       end
 
     rescue => e
