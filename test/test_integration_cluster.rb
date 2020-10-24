@@ -213,7 +213,7 @@ RUBY
 
     socks.each { |s| read_body s }
 
-    refute_includes pids, get_worker_pids(1, wrkrs - 1)
+    get_worker_pids(1, wrkrs - 1).each { |pid| refute_includes pids, pid }
   end
 
   def test_fork_worker_spawn
