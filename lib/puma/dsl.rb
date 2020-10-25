@@ -810,12 +810,5 @@ module Puma
     def nakayoshi_fork(enabled=true)
       @options[:nakayoshi_fork] = enabled
     end
-
-    # The number of requests to attempt inline before sending a client back to
-    # the reactor to be subject to normal ordering.
-    #
-    def max_fast_inline(num_of_requests)
-      @options[:max_fast_inline] = Float(num_of_requests)
-    end
   end
 end

@@ -2,7 +2,6 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
-  *  Adds max_fast_inline as a configuration option for the Server object (#2406)
 
 * Bugfixes
   * Add Client#io_ok?, check before Reactor#register (#2432)

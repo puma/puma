@@ -198,8 +198,7 @@ module Puma
         :logger => STDOUT,
         :persistent_timeout => Const::PERSISTENT_TIMEOUT,
         :first_data_timeout => Const::FIRST_DATA_TIMEOUT,
-        :raise_exception_on_sigterm => true,
-        :max_fast_inline => Const::MAX_FAST_INLINE
+        :raise_exception_on_sigterm => true
       }
     end
 
