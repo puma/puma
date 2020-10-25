@@ -12,6 +12,7 @@
   * Cleanup daemonization in rc.d script (#2409)
 
 * Refactor
+  * queue_close.rb - refactor loading, move comment for docs
   * Extract req/resp methods to new request.rb from server.rb (#2419)
   * Refactor Reactor and Client request buffering (#2279)
   * client.rb - remove JRuby specific 'finish' code (#2412)
