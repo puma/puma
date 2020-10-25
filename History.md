@@ -1,4 +1,4 @@
-## 5.0.3 / 2020-10-25
+## 5.0.3 / 2020-10-26
 
 * Bugfixes
   * Add Client#io_ok?, check before Reactor#register (#2432)
