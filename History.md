@@ -1,7 +1,4 @@
-## Master
-
-* Features
-  * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+## 5.0.3 / 2020-10-25
 
 * Bugfixes
   * Add Client#io_ok?, check before Reactor#register (#2432)
