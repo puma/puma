@@ -179,14 +179,17 @@ class TestIntegration < Minitest::Test
   end
 
   def cli_pumactl(argv, unix: false)
-    if unix
-      pumactl = IO.popen("#{BASE} bin/pumactl -C unix://#{@control_path} -T #{TOKEN} #{argv}", "r")
-    else
-      pumactl = IO.popen("#{BASE} bin/pumactl -C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}", "r")
-    end
-    @ios_to_close << pumactl
-    Process.wait pumactl.pid
-    pumactl
+    arg =
+      if unix
+        %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
+      else
+        %W[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+      end
+    r, w = IO.pipe
+    Thread.new { Puma::ControlCLI.new(arg, w, w).run }.join
+    w.close
+    @ios_to_close << r
+    r
   end
 
   def hot_restart_does_not_drop_connections(num_threads: 1, total_requests: 500)
@@ -250,7 +253,7 @@ class TestIntegration < Minitest::Test
             end
           end
         end
-#        STDOUT.puts "#{thread} #{replies[:success]}"
+        # STDOUT.puts "#{thread} #{replies[:success]}"
       end
     end
 
