@@ -16,6 +16,7 @@ module Puma
       @closed
     end
     def push(object)
+      @closed ||= false
       raise ClosedQueueError if @closed
       super
     end
