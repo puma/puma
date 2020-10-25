@@ -13,6 +13,7 @@ t/
 .rbx/
 Gemfile.lock
 .idea/
+vendor/
 /test/test_puma.state
 /test/test_server.sock
 /test/test_control.sock
