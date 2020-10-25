@@ -5,6 +5,7 @@
   *  Adds max_fast_inline as a configuration option for the Server object (#2406)
 
 * Bugfixes
+  * Add Client#io_ok?, check before Reactor#register (#2432)
   * Fix hang on shutdown in refork (#2442)
   * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts (#2427, #2018)
   * Server run thread safety fix (#2435) 
@@ -12,7 +13,9 @@
   * Cleanup daemonization in rc.d script (#2409)
 
 * Refactor
-  * queue_close.rb - refactor loading, move comment for docs
+  * Remove accept_nonblock.rb, add test_integration_ssl.rb (#2448)
+  * Refactor status.rb - dry it up a bit (#2450)
+  * queue_close.rb - refactor loading, move comment for docs (#2447)
   * Extract req/resp methods to new request.rb from server.rb (#2419)
   * Refactor Reactor and Client request buffering (#2279)
   * client.rb - remove JRuby specific 'finish' code (#2412)

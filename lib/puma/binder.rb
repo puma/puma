@@ -12,7 +12,15 @@ module Puma
   if HAS_SSL
     require 'puma/minissl'
     require 'puma/minissl/context_builder'
-    require 'puma/accept_nonblock'
+
+    # Odd bug in 'pure Ruby' nio4r verion 2.5.2, which installs with Ruby 2.3.
+    # NIO doesn't create any OpenSSL objects, but it rescues an OpenSSL error.
+    # The bug was that it did not require openssl.
+    # @todo remove when Ruby 2.3 support is dropped
+    #
+    if windows? && RbConfig::CONFIG['ruby_version'] == '2.3.0'
+      require 'openssl'
+    end
   end
 
   class Binder
