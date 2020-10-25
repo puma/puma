@@ -74,7 +74,10 @@ module Puma
           timed_out.each(&method(:wakeup!))
 
           unless @input.empty?
-            register(@input.pop) until @input.empty?
+            until @input.empty?
+              client = @input.pop
+              register(client) if client.io_ok?
+            end
             @timeouts.sort_by!(&:timeout_at)
           end
         end

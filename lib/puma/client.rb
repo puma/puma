@@ -85,6 +85,12 @@ module Puma
 
     def_delegators :@io, :closed?
 
+    # Test to see if io meets a bare minimum of functioning, @to_io needs to be
+    # used for MiniSSL::Socket
+    def io_ok?
+      @to_io.is_a?(::BasicSocket) && !closed?
+    end
+
     # @!attribute [r] inspect
     def inspect
       "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"

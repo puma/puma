@@ -5,9 +5,11 @@
   *  Adds max_fast_inline as a configuration option for the Server object (#2406)
 
 * Bugfixes
+  * Fix hang on shutdown in refork (#2442)
+  * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts (#2427, #2018)
+  * Server run thread safety fix (#2435) 
+  * Fire `on_booted` after server starts (#2431, #2212)
   * Cleanup daemonization in rc.d script (#2409)
-  * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts (#2427)
-  * Fire `on_booted` after server starts
 
 * Refactor
   * Extract req/resp methods to new request.rb from server.rb (#2419)
