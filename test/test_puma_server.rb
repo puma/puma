@@ -1150,4 +1150,15 @@ EOF
       assert thread.join(1)
     end
   end
+
+  def test_command_ignored_before_run
+    @server.stop # ignored
+    @server.run
+    @server.halt
+    done = Queue.new
+    @server.events.register(:state) do |state|
+      done << @server.instance_variable_get(:@status) if state == :done
+    end
+    assert_equal :halt, done.pop
+  end
 end

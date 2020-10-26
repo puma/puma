@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'puma/queue_close' if RUBY_VERSION < '2.3'
+require 'puma/queue_close' unless ::Queue.instance_methods.include? :close
 
 module Puma
   # Monitors a collection of IO objects, calling a block whenever
@@ -74,7 +74,10 @@ module Puma
           timed_out.each(&method(:wakeup!))
 
           unless @input.empty?
-            register(@input.pop) until @input.empty?
+            until @input.empty?
+              client = @input.pop
+              register(client) if client.io_ok?
+            end
             @timeouts.sort_by!(&:timeout_at)
           end
         end

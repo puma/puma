@@ -7,11 +7,16 @@ module Puma
     class Status
       OK_STATUS = '{ "status": "ok" }'.freeze
 
-      def initialize(cli, token = nil)
-        @cli = cli
+      # @param launcher [::Puma::Launcher]
+      # @param token [String, nil] the token used for authentication
+      #
+      def initialize(launcher, token = nil)
+        @launcher = launcher
         @auth_token = token
       end
 
+      # most commands call methods in `::Puma::Launcher` based on command in
+      # `env['PATH_INFO']`
       def call(env)
         unless authenticate(env)
           return rack_response(403, 'Invalid auth token', 'text/plain')
@@ -21,57 +26,53 @@ module Puma
           require 'json'
         end
 
-        case env['PATH_INFO']
-        when /\/stop$/
-          @cli.stop
-          rack_response(200, OK_STATUS)
+        # resp_type is processed by following case statement, return
+        # is a number (status) or a string used as the body of a 200 response
+        resp_type =
+          case env['PATH_INFO'][/\/([^\/]+)$/, 1]
+          when 'stop'
+            @launcher.stop ; 200
 
-        when /\/halt$/
-          @cli.halt
-          rack_response(200, OK_STATUS)
+          when 'halt'
+            @launcher.halt ; 200
 
-        when /\/restart$/
-          @cli.restart
-          rack_response(200, OK_STATUS)
+          when 'restart'
+            @launcher.restart ; 200
 
-        when /\/phased-restart$/
-          if !@cli.phased_restart
-            rack_response(404, '{ "error": "phased restart not available" }')
+          when 'phased-restart'
+            @launcher.phased_restart ? 200 : 404
+
+          when 'reload-worker-directory'
+            @launcher.send(:reload_worker_directory) ? 200 : 404
+
+          when 'gc'
+            GC.start ; 200
+
+          when 'gc-stats'
+            GC.stat.to_json
+
+          when 'stats'
+            @launcher.stats.to_json
+
+          when 'thread-backtraces'
+            backtraces = []
+            @launcher.thread_status do |name, backtrace|
+              backtraces << { name: name, backtrace: backtrace }
+            end
+            backtraces.to_json
+
           else
-            rack_response(200, OK_STATUS)
+            return rack_response(404, "Unsupported action", 'text/plain')
           end
 
-        when /\/reload-worker-directory$/
-          if !@cli.send(:reload_worker_directory)
-            rack_response(404, '{ "error": "reload_worker_directory not available" }')
-          else
-            rack_response(200, OK_STATUS)
-          end
-
-        when /\/gc$/
-          GC.start
-          rack_response(200, OK_STATUS)
-
-        when /\/gc-stats$/
-          rack_response(200, GC.stat.to_json)
-
-        when /\/stats$/
-          rack_response(200, @cli.stats.to_json)
-
-        when /\/thread-backtraces$/
-          backtraces = []
-          @cli.thread_status do |name, backtrace|
-            backtraces << { name: name, backtrace: backtrace }
-          end
-
-          rack_response(200, backtraces.to_json)
-
-        when /\/refork$/
-          Process.kill "SIGURG", $$
-          rack_response(200, OK_STATUS)
-
-        else
-          rack_response 404, "Unsupported action", 'text/plain'
+        case resp_type
+        when String
+          rack_response 200, resp_type
+        when 200
+          rack_response 200, OK_STATUS
+        when 404
+          str = env['PATH_INFO'][/\/(\S+)/, 1].tr '-', '_'
+          rack_response 404, "{ \"error\": \"#{str} not available\" }"
         end
       end
 

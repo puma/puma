@@ -57,7 +57,7 @@ jobs:
         run:  bundle exec rake compile
 
       - name: rubocop
-        if: startsWith(matrix.ruby, 'truffleruby') == false
+        if: endsWith(matrix.ruby, '-head') == false
         run: bundle exec rake rubocop
 
       - name: test
