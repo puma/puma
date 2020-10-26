@@ -6,7 +6,8 @@
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
-
+  * Ignore illegal (by Rack spec) response header (#2439)
+  
 ## 5.0.3 / 2020-10-26
 
 * Bugfixes
