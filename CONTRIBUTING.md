@@ -25,6 +25,8 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 ## Setup
 
+First step: join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org)
+
 Clone down the Puma repository.
 
 You will need to install [ragel] (use Ragel version 7.0.0.9) to generate puma's extension code.
@@ -115,7 +117,7 @@ bundle exec puma -C <path/to/config.rb> <path/to/rackup.ru>
 ```
 
 As an example, using one of the test rack apps:
-[`test/rackup/hello.ru`][rackup file], and one of the test config files:
+[`test/rackup/hello.ru`][rackup], and one of the test config files:
 [`test/config/settings.rb`][config], you would run the test app with:
 
 ```sh
@@ -142,6 +144,10 @@ If you open a pull request with a change that doesn't need to be noted in the
 changelog ([`History.md`](History.md)), add the text `[changelog skip]` to the
 pull request title to skip [the changelog
 check](https://github.com/puma/puma/pull/1991).
+
+## Join the community
+
+If you're looking to contribute to Puma, please join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org).
 
 ## Bibliography/Reading
 

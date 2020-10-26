@@ -116,6 +116,35 @@ class TestIntegration < Minitest::Test
     s
   end
 
+  # use only if all socket writes are fast
+  # does not wait for a read
+  def fast_connect(path = nil, unix: false)
+    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    @ios_to_close << s
+    fast_write s, "GET /#{path} HTTP/1.1\r\n\r\n"
+    s
+  end
+
+  def fast_write(io, str)
+    n = 0
+    while true
+      begin
+        n = io.syswrite str
+      rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
+        if !IO.select(nil, [io], nil, 5)
+          raise e
+        end
+
+        retry
+      rescue Errno::EPIPE, SystemCallError, IOError => e
+        raise e
+      end
+
+      return if n == str.bytesize
+      str = str.byteslice(n..-1)
+    end
+  end
+
   def read_body(connection, time_out = 10)
     Timeout.timeout(time_out) do
       loop do
@@ -193,7 +222,6 @@ class TestIntegration < Minitest::Test
           begin
             socket = TCPSocket.new HOST, @tcp_port
             fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
-            true until socket.gets == "\r\n"
             body = read_body(socket, 10)
             if body == "Hello World"
               mutex.synchronize {
@@ -263,7 +291,7 @@ class TestIntegration < Minitest::Test
 
     if Puma.windows?
       # 5 is default thread count in Puma?
-      reset_max = num_threads > 1 ? restart_count * 5 : 5
+      reset_max = num_threads * restart_count
       assert_operator reset_max, :>=, reset, "#{msg}Expected reset_max >= reset errors"
     else
       assert_equal 0, reset, "#{msg}Expected no reset errors"
@@ -285,26 +313,6 @@ class TestIntegration < Minitest::Test
       $debugging_info << "#{full_name}\n#{msg}\n"
     else
       $debugging_info << "#{full_name}\n#{msg}\n"
-    end
-  end
-
-  def fast_write(io, str)
-    n = 0
-    while true
-      begin
-        n = io.syswrite str
-      rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
-        if !IO.select(nil, [io], nil, 5)
-          raise e
-        end
-
-        retry
-      rescue Errno::EPIPE, SystemCallError, IOError => e
-        raise e
-      end
-
-      return if n == str.bytesize
-      str = str.byteslice(n..-1)
     end
   end
 end
