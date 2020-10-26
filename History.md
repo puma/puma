@@ -11,9 +11,6 @@
 ## 5.0.3 / 2020-10-26
 
 * Bugfixes
-  * Cleanup daemonization in rc.d script (#2409)
-  * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts (#2427)
-  * Fire `on_booted` after server starts
   * Add Client#io_ok?, check before Reactor#register ([#2432])
   * Fix hang on shutdown in refork ([#2442])
   * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts ([#2427], [#2018])
