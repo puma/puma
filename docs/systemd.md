@@ -24,8 +24,15 @@ After=network.target
 # Requires=puma.socket
 
 [Service]
-# Foreground process (do not use --daemon in ExecStart or config.rb)
-Type=simple
+# Puma supports systemd's `Type=notify` and watchdog service
+# monitoring, if the [sd_notify](https://github.com/agis/ruby-sdnotify) gem is installed,
+# as of Puma 5.1 or later.
+# On earlier versions of Puma or JRuby, change this to `Type=simple` and remove
+# the `WatchdogSec` line.
+Type=notify
+
+# If your Puma process locks up, systemd's watchdog will restart it within seconds.
+WatchdogSec=10
 
 # Preferably configure a non-privileged user
 # User=
