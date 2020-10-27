@@ -38,11 +38,11 @@ module Puma
       end
     end
 
-    # Add a new IO object to monitor.
+    # Add a new client to monitor.
     # The object must respond to #timeout and #timeout_at.
     # Returns false if the reactor is already shut down.
-    def add(io)
-      @input << io
+    def add(client)
+      @input << client
       @selector.wakeup
       true
     rescue ClosedQueueError
@@ -92,17 +92,17 @@ module Puma
     end
 
     # Start monitoring the object.
-    def register(io)
-      @selector.register(io, :r).value = io
-      @timeouts << io
+    def register(client)
+      @selector.register(client.to_io, :r).value = client
+      @timeouts << client
     end
 
     # 'Wake up' a monitored object by calling the provided block.
     # Stop monitoring the object if the block returns `true`.
-    def wakeup!(io)
-      if @block.call(io)
-        @selector.deregister(io)
-        @timeouts.delete(io)
+    def wakeup!(client)
+      if @block.call client
+        @selector.deregister client.to_io
+        @timeouts.delete client
       end
     end
   end
