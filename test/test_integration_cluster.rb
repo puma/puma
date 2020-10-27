@@ -283,6 +283,17 @@ RUBY
     assert_match(/defined\?\(JSON\): nil/, line)
   end
 
+  def test_application_is_loaded_exactly_once_if_using_preload_app
+    cli_server "-w #{workers} --preload test/rackup/write_to_stdout_on_boot.ru"
+
+    worker_load_count = 0
+    while (line = @server.gets) =~ /^Loading app/
+      worker_load_count += 1
+    end
+
+    assert_equal 0, worker_load_count
+  end
+
   private
 
   def worker_timeout(timeout, iterations, config)
