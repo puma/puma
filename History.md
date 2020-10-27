@@ -34,6 +34,7 @@
   * Consolidate fast_write calls in Server, extract early_hints assembly ([#2405])
   * Remove upstart from docs ([#2408])
   * Consolidate option handling in Server, Server small refactors, doc changes ([#2389])
+  * Extract worker process into separate class ([#2374])
 
 ## 5.0.2 / 2020-09-28
 
