@@ -239,13 +239,8 @@ module Puma
     # @version 5.0.0
     #
     def can_close?
-      # Allow connection to close if it's received at least one full request
-      # and hasn't received any data for a future request.
-      #
-      # From RFC 2616 section 8.1.4:
-      # Servers SHOULD always respond to at least one request per connection,
-      # if at all possible.
-      @requests_served > 0 && @parsed_bytes == 0
+      # Allow connection to close if we're not in the middle of parsing a request.
+      @parsed_bytes == 0
     end
 
     private

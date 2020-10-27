@@ -64,11 +64,18 @@ You can run your Sinatra application with Puma from the command line like this:
 $ ruby app.rb -s Puma
 ```
 
-Or you can configure your Sinatra application to always use Puma:
+In order to actually configure Puma using a config file, like `puma.rb`, however, you need to use the `puma` executable. To do this, you must add a rackup file to your Sinatra app:
 
 ```ruby
-require 'sinatra'
-configure { set :server, :puma }
+# config.ru
+require './app'
+run Sinatra::Application
+```
+
+You can then start your application using:
+
+```
+$ bundle exec puma 
 ```
 
 ## Configuration
