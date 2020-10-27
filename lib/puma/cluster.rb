@@ -186,10 +186,12 @@ module Puma
         pipes[:wakeup] = @wakeup
       end
 
+      server = start_server if preload?
       new_worker = Worker.new index: index,
                               master: master,
                               launcher: @launcher,
-                              pipes: pipes
+                              pipes: pipes,
+                              server: server
       new_worker.run
     end
 
