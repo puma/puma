@@ -2,18 +2,18 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
-  * Integrate with systemd's watchdog and notification features (#2438)
-  * Adds max_fast_inline as a configuration option for the Server object (#2406)
+  * Integrate with systemd's watchdog and notification features ([#2438])
+  * Adds max_fast_inline as a configuration option for the Server object ([#2406])
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
-  * Ignore illegal (by Rack spec) response header (#2439)
-  * Close idle connections immediately on shutdown (#2460)
+  * Ignore illegal (by Rack spec) response header ([#2439])
+  * Close idle connections immediately on shutdown ([#2460])
 
 ## 5.0.4 / 2020-10-27
 
 * Bugfixes
-  * Pass preloaded application into new workers if available when using `preload_app` (#2461)
+  * Pass preloaded application into new workers if available when using `preload_app` ([#2461], [#2454])
 
 ## 5.0.3 / 2020-10-26
 
@@ -21,7 +21,7 @@
   * Add Client#io_ok?, check before Reactor#register ([#2432])
   * Fix hang on shutdown in refork ([#2442])
   * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts ([#2427], [#2018])
-  * Server run thread safety fix ([#2435]) 
+  * Server run thread safety fix ([#2435])
   * Fire `on_booted` after server starts ([#2431], [#2212])
   * Cleanup daemonization in rc.d script ([#2409])
 
@@ -33,11 +33,12 @@
   * client.rb - remove JRuby specific 'finish' code ([#2412])
   * Consolidate fast_write calls in Server, extract early_hints assembly ([#2405])
   * Remove upstart from docs ([#2408])
+  * Extract worker process into separate class ([#2374])
   * Consolidate option handling in Server, Server small refactors, doc changes ([#2389])
 
 ## 5.0.2 / 2020-09-28
 
-* Bugfixes 
+* Bugfixes
   * Reverted API changes to Server.
 
 ## 5.0.1 / 2020-09-28
@@ -1651,22 +1652,13 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
-[#2432]:https://github.com/puma/puma/pull/2432     "PR by @MSP-Greg, merged 2020-10-25"
-[#2442]:https://github.com/puma/puma/pull/2442     "PR by @wjordan, merged 2020-10-22"
-[#2427]:https://github.com/puma/puma/pull/2427     "PR by @cjlarose, merged 2020-10-20"
-[#2018]:https://github.com/puma/puma/issues/2018   "Issue by @gingerlime, closed 2020-10-20"
-[#2435]:https://github.com/puma/puma/pull/2435     "PR by @wjordan, merged 2020-10-20"
-[#2431]:https://github.com/puma/puma/pull/2431     "PR by @wjordan, merged 2020-10-16"
-[#2212]:https://github.com/puma/puma/issues/2212   "Issue by @junaruga, closed 2020-10-16"
-[#2409]:https://github.com/puma/puma/pull/2409     "PR by @fliiiix, merged 2020-10-03"
-[#2448]:https://github.com/puma/puma/pull/2448     "PR by @MSP-Greg, merged 2020-10-25"
-[#2450]:https://github.com/puma/puma/pull/2450     "PR by @MSP-Greg, merged 2020-10-25"
-[#2419]:https://github.com/puma/puma/pull/2419     "PR by @MSP-Greg, merged 2020-10-09"
-[#2279]:https://github.com/puma/puma/pull/2279     "PR by @wjordan, merged 2020-10-06"
-[#2412]:https://github.com/puma/puma/pull/2412     "PR by @MSP-Greg, merged 2020-10-06"
-[#2405]:https://github.com/puma/puma/pull/2405     "PR by @MSP-Greg, merged 2020-10-05"
-[#2408]:https://github.com/puma/puma/pull/2408     "PR by @fliiiix, merged 2020-10-03"
-[#2389]:https://github.com/puma/puma/pull/2389     "PR by @MSP-Greg, merged 2020-09-29"
+[#2374]:https://github.com/puma/puma/pull/2374     "PR by @cjlarose, merged 2020-09-29"
+[#2438]:https://github.com/puma/puma/pull/2438     "PR by @ekohl, merged 2020-10-26"
+[#2406]:https://github.com/puma/puma/pull/2406     "PR by @fdel15, merged 2020-10-19"
+[#2439]:https://github.com/puma/puma/pull/2439     "PR by @kuei0221, merged 2020-10-26"
+[#2460]:https://github.com/puma/puma/pull/2460     "PR by @cjlarose, merged 2020-10-27"
+[#2461]:https://github.com/puma/puma/pull/2461     "PR by @cjlarose, merged 2020-10-27"
+[#2454]:https://github.com/puma/puma/issues/2454   "Issue by @majksner, closed 2020-10-27"
 [#2432]:https://github.com/puma/puma/pull/2432     "PR by @MSP-Greg, merged 2020-10-25"
 [#2442]:https://github.com/puma/puma/pull/2442     "PR by @wjordan, merged 2020-10-22"
 [#2427]:https://github.com/puma/puma/pull/2427     "PR by @cjlarose, merged 2020-10-20"
@@ -1708,10 +1700,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2288]:https://github.com/puma/puma/pull/2288     "PR by @FTLam11, merged 2020-06-02"
 [#1487]:https://github.com/puma/puma/pull/1487     "PR by @jxa, merged 2018-05-09"
 [#2143]:https://github.com/puma/puma/pull/2143     "PR by @jalevin, merged 2020-04-21"
-[#2143]:https://github.com/puma/puma/pull/2143     "PR by @jalevin, merged 2020-04-21"
-[#2143]:https://github.com/puma/puma/pull/2143     "PR by @jalevin, merged 2020-04-21"
-[#2143]:https://github.com/puma/puma/pull/2143     "PR by @jalevin, merged 2020-04-21"
-[#2143]:https://github.com/puma/puma/pull/2143     "PR by @jalevin, merged 2020-04-21"
 [#2169]:https://github.com/puma/puma/pull/2169     "PR by @nateberkopec, merged 2020-03-10"
 [#2170]:https://github.com/puma/puma/pull/2170     "PR by @nateberkopec, merged 2020-03-10"
 [#2076]:https://github.com/puma/puma/pull/2076     "PR by @drews256, merged 2020-02-27"
@@ -1732,7 +1720,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2198]:https://github.com/puma/puma/pull/2198     "PR by @eregon, merged 2020-03-24"
 [#2216]:https://github.com/puma/puma/pull/2216     "PR by @praboud-stripe, merged 2020-04-06"
 [#2122]:https://github.com/puma/puma/pull/2122     "PR by @wjordan, merged 2020-04-10"
-[#2220]:https://github.com/puma/puma/pull/2220     "PR by @wjordan, merged 2020-04-14"
 [#2177]:https://github.com/puma/puma/issues/2177   "Issue by @GuiTeK, closed 2020-04-08"
 [#2221]:https://github.com/puma/puma/pull/2221     "PR by @wjordan, merged 2020-04-17"
 [#2233]:https://github.com/puma/puma/pull/2233     "PR by @ayufan, merged 2020-04-25"
@@ -1741,7 +1728,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2267]:https://github.com/puma/puma/pull/2267     "PR by @wjordan, merged 2020-05-20"
 [#2287]:https://github.com/puma/puma/pull/2287     "PR by @eugeneius, merged 2020-05-31"
 [#2317]:https://github.com/puma/puma/pull/2317     "PR by @MSP-Greg, merged 2020-09-01"
-[#2312]:https://github.com/puma/puma/pull/2312     "PR by @MSP-Greg, merged 2020-07-20"
 [#2319]:https://github.com/puma/puma/issues/2319   "Issue by @AlexWayfer, closed 2020-09-03"
 [#2326]:https://github.com/puma/puma/pull/2326     "PR by @rkistner, closed 2020-09-04"
 [#2299]:https://github.com/puma/puma/issues/2299   "Issue by @JohnPhillips31416, closed 2020-09-17"
@@ -1750,12 +1736,10 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2111]:https://github.com/puma/puma/pull/2111     "PR by @wjordan, merged 2020-02-20"
 [#1980]:https://github.com/puma/puma/pull/1980     "PR by @nateberkopec, merged 2020-02-27"
 [#2189]:https://github.com/puma/puma/pull/2189     "PR by @jkowens, merged 2020-03-19"
-[#2220]:https://github.com/puma/puma/pull/2220     "PR by @wjordan, merged 2020-04-14"
 [#2124]:https://github.com/puma/puma/pull/2124     "PR by @wjordan, merged 2020-04-14"
 [#2223]:https://github.com/puma/puma/pull/2223     "PR by @wjordan, merged 2020-04-20"
 [#2239]:https://github.com/puma/puma/pull/2239     "PR by @wjordan, merged 2020-05-15"
 [#2304]:https://github.com/puma/puma/issues/2304   "Issue by @mpeltomaa, closed 2020-09-05"
-[#2269]:https://github.com/puma/puma/pull/2269     "PR by @MSP-Greg, merged 2020-08-31"
 [#2132]:https://github.com/puma/puma/issues/2132   "Issue by @bmclean, closed 2020-02-28"
 [#2010]:https://github.com/puma/puma/pull/2010     "PR by @nateberkopec, merged 2019-10-07"
 [#2012]:https://github.com/puma/puma/pull/2012     "PR by @headius, merged 2019-10-07"
@@ -1783,8 +1767,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#1961]:https://github.com/puma/puma/pull/1961     "PR by @nateberkopec, merged 2019-09-11"
 [#1970]:https://github.com/puma/puma/pull/1970     "PR by @MSP-Greg, merged 2019-09-18"
 [#1946]:https://github.com/puma/puma/pull/1946     "PR by @nateberkopec, merged 2019-09-02"
-[#1941]:https://github.com/puma/puma/pull/1941     "PR by @MSP-Greg, merged 2019-09-02"
-[#1908]:https://github.com/puma/puma/pull/1908     "PR by @MSP-Greg, merged 2019-08-23"
 [#1831]:https://github.com/puma/puma/pull/1831     "PR by @spk, merged 2019-07-27"
 [#1816]:https://github.com/puma/puma/pull/1816     "PR by @ylecuyer, merged 2019-08-01"
 [#1844]:https://github.com/puma/puma/pull/1844     "PR by @ylecuyer, merged 2019-08-01"
@@ -1808,7 +1790,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#1872]:https://github.com/puma/puma/pull/1872     "PR by @MSP-Greg, merged 2019-07-30"
 [#1833]:https://github.com/puma/puma/issues/1833   "Issue by @julik, closed 2019-07-09"
 [#1888]:https://github.com/puma/puma/pull/1888     "PR by @ClikeX, merged 2019-08-06"
-[#1842]:https://github.com/puma/puma/issues/1842   "Issue by @nateberkopec, closed 2019-09-18"
 [#1829]:https://github.com/puma/puma/pull/1829     "PR by @Fudoshiki, merged 2019-07-09"
 [#1832]:https://github.com/puma/puma/pull/1832     "PR by @MSP-Greg, merged 2019-07-08"
 [#1827]:https://github.com/puma/puma/pull/1827     "PR by @amrrbakry, merged 2019-06-27"
@@ -1844,7 +1825,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#1604]:https://github.com/puma/puma/pull/1604     "PR by @schneems, merged 2018-07-02"
 [#1579]:https://github.com/puma/puma/pull/1579     "PR by @schneems, merged 2018-06-14"
 [#1506]:https://github.com/puma/puma/pull/1506     "PR by @dekellum, merged 2018-05-09"
-[#1487]:https://github.com/puma/puma/pull/1487     "PR by @jxa, merged 2018-05-09"
 [#1563]:https://github.com/puma/puma/pull/1563     "PR by @dannyfallon, merged 2018-05-01"
 [#1557]:https://github.com/puma/puma/pull/1557     "PR by @swrobel, merged 2018-05-09"
 [#1529]:https://github.com/puma/puma/pull/1529     "PR by @desnudopenguino, merged 2018-03-20"
@@ -1940,11 +1920,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#1138]:https://github.com/puma/puma/pull/1138     "PR by @steakknife, merged 2016-12-13"
 [#1118]:https://github.com/puma/puma/pull/1118     "PR by @hiroara, merged 2016-11-20"
 [#1075]:https://github.com/puma/puma/issues/1075   "Issue by @pvalena, closed 2016-09-06"
-[#1118]:https://github.com/puma/puma/pull/1118     "PR by @hiroara, merged 2016-11-20"
-[#1036]:https://github.com/puma/puma/issues/1036   "Issue by @matobinder, closed 2016-08-03"
-[#1120]:https://github.com/puma/puma/pull/1120     "PR by @prathamesh-sonpatki, merged 2016-11-21"
-[#1002]:https://github.com/puma/puma/issues/1002   "Issue by @mattyb, closed 2016-07-26"
-[#1089]:https://github.com/puma/puma/issues/1089   "Issue by @AdamBialas, closed 2016-09-17"
 [#932]:https://github.com/puma/puma/issues/932     "Issue by @everplays, closed 2016-07-24"
 [#519]:https://github.com/puma/puma/issues/519     "Issue by @tmornini, closed 2016-07-25"
 [#828]:https://github.com/puma/puma/issues/828     "Issue by @Zapotek, closed 2016-07-24"
@@ -1955,7 +1930,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#925]:https://github.com/puma/puma/issues/925     "Issue by @lokenmakwana, closed 2016-07-24"
 [#911]:https://github.com/puma/puma/issues/911     "Issue by @veganstraightedge, closed 2016-07-24"
 [#620]:https://github.com/puma/puma/issues/620     "Issue by @javanthropus, closed 2016-07-25"
-[#1027]:https://github.com/puma/puma/issues/1027   "Issue by @rosenfeld, closed 2016-07-24"
 [#778]:https://github.com/puma/puma/issues/778     "Issue by @niedhui, closed 2016-07-24"
 [#1021]:https://github.com/puma/puma/pull/1021     "PR by @sarahzrf, merged 2016-07-20"
 [#1022]:https://github.com/puma/puma/issues/1022   "Issue by @AKovtunov, closed 2017-08-16"
@@ -1983,7 +1957,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#788]:https://github.com/puma/puma/issues/788     "Issue by @herregroen, closed 2016-04-07"
 [#894]:https://github.com/puma/puma/issues/894     "Issue by @rafbm, closed 2016-04-07"
 [#937]:https://github.com/puma/puma/issues/937     "Issue by @huangxiangdan, closed 2016-04-07"
-[#840]:https://github.com/puma/puma/issues/840     "Issue by @maxkwallace, closed 2016-04-07"
 [#945]:https://github.com/puma/puma/pull/945       "PR by @dekellum, merged 2016-04-07"
 [#946]:https://github.com/puma/puma/pull/946       "PR by @vipulnsward, merged 2016-04-07"
 [#947]:https://github.com/puma/puma/pull/947       "PR by @vipulnsward, merged 2016-04-07"
