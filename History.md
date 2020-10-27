@@ -2,18 +2,18 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
-  * Integrate with systemd's watchdog and notification features (#2438)
-  * Adds max_fast_inline as a configuration option for the Server object (#2406)
+  * Integrate with systemd's watchdog and notification features ([#2438])
+  * Adds max_fast_inline as a configuration option for the Server object ([#2406])
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
-  * Ignore illegal (by Rack spec) response header (#2439)
-  * Close idle connections immediately on shutdown (#2460)
+  * Ignore illegal (by Rack spec) response header ([#2439])
+  * Close idle connections immediately on shutdown ([#2460])
 
 ## 5.0.4 / 2020-10-27
 
 * Bugfixes
-  * Pass preloaded application into new workers if available when using `preload_app` (#2461)
+  * Pass preloaded application into new workers if available when using `preload_app` ([#2461])
 
 ## 5.0.3 / 2020-10-26
 
