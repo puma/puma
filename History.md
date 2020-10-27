@@ -21,7 +21,7 @@
   * Add Client#io_ok?, check before Reactor#register ([#2432])
   * Fix hang on shutdown in refork ([#2442])
   * Fix `Bundler::GemNotFound` errors for `nio4r` gem during phased restarts ([#2427], [#2018])
-  * Server run thread safety fix ([#2435]) 
+  * Server run thread safety fix ([#2435])
   * Fire `on_booted` after server starts ([#2431], [#2212])
   * Cleanup daemonization in rc.d script ([#2409])
 
@@ -37,7 +37,7 @@
 
 ## 5.0.2 / 2020-09-28
 
-* Bugfixes 
+* Bugfixes
   * Reverted API changes to Server.
 
 ## 5.0.1 / 2020-09-28
