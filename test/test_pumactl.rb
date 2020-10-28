@@ -34,7 +34,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_blank_command
-    assert_system_exit_with_cli_output [], "Available commands: #{Puma::ControlCLI::COMMANDS.join(", ")}"
+    assert_system_exit_with_cli_output [], "Available commands: #{Puma::ControlCLI::CMD_PATH_SIG_MAP.keys.join(", ")}"
   end
 
   def test_invalid_command
