@@ -24,6 +24,8 @@ Similar to the `preload_app!` option, the `fork_worker` option allows your appli
 
 ### Limitations
 
+- Not compatible with the `preload_app!` option
+
 - This mode is still very experimental so there may be bugs or edge-cases, particularly around expected behavior of existing hooks. Please open a [bug report](https://github.com/puma/puma/issues/new?template=bug_report.md) if you encounter any issues.
 
 - In order to fork new workers cleanly, worker 0 shuts down its server and stops serving requests so there are no open file descriptors or other kinds of shared global state between processes, and to maximize copy-on-write efficiency across the newly-forked workers. This may temporarily reduce total capacity of the cluster during a phased restart / refork.
