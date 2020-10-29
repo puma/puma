@@ -40,6 +40,33 @@ class TestWorkerGemIndependence < TestIntegration
     assert_equal new_expected_nio4r_version, new_reply
   end
 
+  def test_changing_json_version_during_phased_restart
+    skip_unless_signal_exist? :USR1
+
+    set_release_symlink File.expand_path("worker_gem_independence_test/old_json", __dir__)
+
+    Dir.chdir(current_release_symlink) do
+      bundle_install
+      cli_server '--prune-bundler -w 1'
+    end
+
+    connection = connect
+    initial_reply = read_body(connection)
+    expected_json_version = '2.3.1'
+    assert_equal expected_json_version, initial_reply
+
+    set_release_symlink File.expand_path("worker_gem_independence_test/new_json", __dir__)
+    Dir.chdir(current_release_symlink) do
+      bundle_install
+    end
+    start_phased_restart
+
+    connection = connect
+    new_reply = read_body(connection)
+    new_expected_json_version = '2.3.0'
+    assert_equal new_expected_json_version, new_reply
+  end
+
   private
 
   def current_release_symlink
