@@ -80,7 +80,7 @@ $ bundle exec puma
 
 ## Configuration
 
-Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
+Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
 
 You can also find several configuration examples as part of the
 [test](https://github.com/puma/puma/tree/master/test/config) suite.
@@ -148,7 +148,7 @@ Preloading can’t be used with phased restart, since phased restart kills and r
 ### Error handling
 
 If puma encounters an error outside of the context of your application, it will respond with a 500 and a simple
-textual error message (see `lowlevel_error` in [this file](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
+textual error message (see `Puma::Server#lowlevel_error` or [server.rb](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
 You can specify custom behavior for this scenario. For example, you can report the error to your third-party
 error-tracking service (in this example, [rollbar](https://rollbar.com)):
 
@@ -201,7 +201,7 @@ $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_cipher_fil
 $ puma -b 'ssl://127.0.0.1:9292?keystore=path_to_keystore&keystore-pass=keystore_password&ssl_cipher_list=TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA'
 ```
 
-See https://www.openssl.org/docs/man1.0.2/apps/ciphers.html for cipher filter format and full list of cipher suites.
+See https://www.openssl.org/docs/man1.1.1/man1/ciphers.html for cipher filter format and full list of cipher suites.
 
 Disable TLS v1 with the `no_tlsv1` option:
 
@@ -217,7 +217,7 @@ Puma has a built-in status and control app that can be used to query and control
 $ puma --control-url tcp://127.0.0.1:9293 --control-token foo
 ```
 
-Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the status app has available.
+Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the status app has available.
 
 You can also interact with the control server via `pumactl`. This command will restart Puma:
 
@@ -243,19 +243,19 @@ If you want to prevent Puma from looking for a configuration file in those locat
 $ puma -C "-"
 ```
 
-The other side-effects of setting the environment are whether to show stack traces (in `development` or `test`), and setting RACK_ENV may potentially affect middleware looking for this value to change their behavior. The default puma RACK_ENV value is `development`. You can see all config default values [here](https://github.com/puma/puma/blob/12d1706ddc71b89ed2ee26275e31c788e94ff541/lib/puma/configuration.rb#L170).
+The other side-effects of setting the environment are whether to show stack traces (in `development` or `test`), and setting RACK_ENV may potentially affect middleware looking for this value to change their behavior. The default puma RACK_ENV value is `development`. You can see all config default values in `Puma::Configuration#puma_default_options` or [configuration.rb](https://github.com/puma/puma/blob/61c6213fbab/lib/puma/configuration.rb#L182-L204).
 
-Check out [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
+Check out `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
 
 ## Restart
 
 Puma includes the ability to restart itself. When available (MRI, Rubinius, JRuby), Puma performs a "hot restart". This is the same functionality available in *Unicorn* and *NGINX* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
 
-For more, see the [restart documentation](https://github.com/puma/puma/blob/master/docs/restart.md).
+For more, see the [Restart documentation](docs/restart.md).
 
 ## Signals
 
-Puma responds to several signals. A detailed guide to using UNIX signals with Puma can be found in the [signals documentation](https://github.com/puma/puma/blob/master/docs/signals.md).
+Puma responds to several signals. A detailed guide to using UNIX signals with Puma can be found in the [Signals documentation](docs/signals.md).
 
 ## Platform Constraints
 
@@ -285,8 +285,8 @@ It is common to use process monitors with Puma. Modern process monitors like sys
 provide continuous monitoring and restarts for increased
 reliability in production environments:
 
-* [docs/jungle](https://github.com/puma/puma/tree/master/docs/jungle) for rc.d
-* [docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md)
+* [rc.d](docs/jungle/rc.d/README.md)
+* [systemd](docs/systemd.md)
 
 ## Community Extensions
 
@@ -302,9 +302,7 @@ reliability in production environments:
 
 ## Contributing
 
-Find details for contributing in the [contribution guide].
-
-[contribution guide]: https://github.com/puma/puma/blob/master/CONTRIBUTING.md
+Find details for contributing in the [contribution guide](CONTRIBUTING.md).
 
 ## License
 
