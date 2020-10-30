@@ -42,8 +42,11 @@ module Puma
 
       def ping!(status)
         @last_checkin = Time.now
-        require 'json'
-        @last_status = JSON.parse(status, symbolize_names: true)
+        captures = status.match(/{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads": (?<max_threads>\d*), "requests_count": (?<requests_count>\d*) }/)
+        @last_status = captures.names.inject({}) do |hash, key|
+          hash[key.to_sym] = captures[key].to_i
+          hash
+        end
       end
 
       # @see Puma::Cluster#check_workers
