@@ -14,36 +14,25 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_nio4r_version_during_phased_restart
-    skip_unless_signal_exist? :USR1
-
-    set_release_symlink File.expand_path("worker_gem_independence_test/old_nio4r", __dir__)
-
-    Dir.chdir(current_release_symlink) do
-      bundle_install
-      cli_server '--prune-bundler -w 1'
-    end
-
-    connection = connect
-    initial_reply = read_body(connection)
-    expected_nio4r_version = '2.3.0'
-    assert_equal expected_nio4r_version, initial_reply
-
-    set_release_symlink File.expand_path("worker_gem_independence_test/new_nio4r", __dir__)
-    Dir.chdir(current_release_symlink) do
-      bundle_install
-    end
-    start_phased_restart
-
-    connection = connect
-    new_reply = read_body(connection)
-    new_expected_nio4r_version = '2.3.1'
-    assert_equal new_expected_nio4r_version, new_reply
+    change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_nio4r',
+                                             old_version: '2.3.0',
+                                             new_app_dir: 'worker_gem_independence_test/new_nio4r',
+                                             new_version: '2.3.1'
   end
 
   def test_changing_json_version_during_phased_restart
+    change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_json',
+                                             old_version: '2.3.1',
+                                             new_app_dir: 'worker_gem_independence_test/new_json',
+                                             new_version: '2.3.0'
+  end
+
+  private
+
+  def change_gem_version_during_phased_restart(old_app_dir:, new_app_dir:, old_version:, new_version:)
     skip_unless_signal_exist? :USR1
 
-    set_release_symlink File.expand_path("worker_gem_independence_test/old_json", __dir__)
+    set_release_symlink File.expand_path(old_app_dir, __dir__)
 
     Dir.chdir(current_release_symlink) do
       bundle_install
@@ -52,10 +41,9 @@ class TestWorkerGemIndependence < TestIntegration
 
     connection = connect
     initial_reply = read_body(connection)
-    expected_json_version = '2.3.1'
-    assert_equal expected_json_version, initial_reply
+    assert_equal old_version, initial_reply
 
-    set_release_symlink File.expand_path("worker_gem_independence_test/new_json", __dir__)
+    set_release_symlink File.expand_path(new_app_dir, __dir__)
     Dir.chdir(current_release_symlink) do
       bundle_install
     end
@@ -63,11 +51,8 @@ class TestWorkerGemIndependence < TestIntegration
 
     connection = connect
     new_reply = read_body(connection)
-    new_expected_json_version = '2.3.0'
-    assert_equal new_expected_json_version, new_reply
+    assert_equal new_version, new_reply
   end
-
-  private
 
   def current_release_symlink
     File.expand_path "worker_gem_independence_test/current", __dir__
