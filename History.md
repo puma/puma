@@ -10,6 +10,7 @@
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
   * Ignore illegal (by Rack spec) response header ([#2439])
   * Close idle connections immediately on shutdown ([#2460])
+  * Fix some instances of phased restart errors related to the `json` gem (#2473)
 
 ## 5.0.4 / 2020-10-27
 
