@@ -25,17 +25,6 @@ module Puma
       @next_check = Time.now
 
       @phased_restart = false
-
-      if @options[:fork_worker]
-        # Auto-fork after the specified number of requests.
-        if (fork_requests = @options[:fork_worker].to_i) > 0
-          @launcher.events.register(:ping!) do |w|
-            fork_worker! if w.index == 0 &&
-              w.phase == 0 &&
-              w.last_status[:requests_count] >= fork_requests
-          end
-        end
-      end
     end
 
     def stop_workers
@@ -285,8 +274,19 @@ module Puma
     # We do this in a separate method to keep the lambda scope
     # of the signals handlers as small as possible.
     def setup_signals
-      Signal.trap "SIGURG" do
-        fork_worker!
+      if @options[:fork_worker]
+        Signal.trap "SIGURG" do
+          fork_worker!
+        end
+
+        # Auto-fork after the specified number of requests.
+        if (fork_requests = @options[:fork_worker].to_i) > 0
+          @launcher.events.register(:ping!) do |w|
+            fork_worker! if w.index == 0 &&
+              w.phase == 0 &&
+              w.last_status[:requests_count] >= fork_requests
+          end
+        end
       end
 
       Signal.trap "SIGCHLD" do
