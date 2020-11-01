@@ -108,11 +108,17 @@ module Puma
           server_thread = server.run
           stat_thread ||= Thread.new(@worker_write) do |io|
             Puma.set_thread_name "stat payload"
+            base_payload = "p#{Process.pid}"
 
             while true
               begin
-                require 'json'
-                io << "p#{Process.pid}#{server.stats.to_json}\n"
+                b = server.backlog || 0
+                r = server.running || 0
+                t = server.pool_capacity || 0
+                m = server.max_threads || 0
+                rc = server.requests_count || 0
+                payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m}, "requests_count": #{rc} }\n!
+                io << payload
               rescue IOError
                 Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
                 break
