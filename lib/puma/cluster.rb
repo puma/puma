@@ -331,13 +331,15 @@ module Puma
 
       log "* Process workers: #{@options[:workers]}"
 
-      before = Thread.list
+      # Threads explicitly marked as fork safe will be ignored.
+      # Used in Rails, but may be used by anyone.
+      before = Thread.list.reject { |t| t.thread_variable_get(:fork_safe) }
 
       if preload?
         log "* Preloading application"
         load_and_bind
 
-        after = Thread.list
+        after = Thread.list.reject { |t| t.thread_variable_get(:fork_safe) }
 
         if after.size > before.size
           threads = (after - before)
