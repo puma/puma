@@ -92,6 +92,12 @@ module Puma
         end
       end
     end
+
+    def final_options
+      default_options
+        .merge(file_options)
+        .merge(user_options)
+    end
   end
 
   # The main configuration class of Puma.
@@ -288,6 +294,10 @@ module Puma
           events.debug e.backtrace.join("\n")
         end
       end
+    end
+
+    def final_options
+      @options.final_options
     end
 
     def self.temp_path

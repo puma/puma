@@ -87,6 +87,8 @@ module Puma
       Puma.stats_object = @runner
 
       @status = :run
+
+      log_config if ENV['PUMA_LOG_CONFIG']
     end
 
     attr_reader :binder, :events, :config, :options, :restart_dir
@@ -520,6 +522,15 @@ module Puma
       else
         Bundler.with_unbundled_env { yield }
       end
+    end
+
+    def log_config
+      log "Configuration:"
+
+      @config.final_options
+        .each { |config_key, value| log "- #{config_key}: #{value}" }
+
+      log "\n"
     end
   end
 end
