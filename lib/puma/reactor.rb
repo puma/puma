@@ -95,6 +95,8 @@ module Puma
     def register(client)
       @selector.register(client.to_io, :r).value = client
       @timeouts << client
+    rescue ArgumentError
+      # unreadable clients raise error when processed by NIO
     end
 
     # 'Wake up' a monitored object by calling the provided block.
