@@ -2,6 +2,7 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Prints the loaded configuration if the environment variable `PUMA_LOG_CONFIG` is present ([#2472])
   * Integrate with systemd's watchdog and notification features ([#2438])
   * Adds max_fast_inline as a configuration option for the Server object ([#2406])
   * You can now fork workers from worker 0 using SIGURG w/o fork_worker enabled [#2449]

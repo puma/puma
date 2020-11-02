@@ -158,6 +158,22 @@ class TestLauncher < Minitest::Test
     launcher.run
   end
 
+  def test_log_config_enabled
+    ENV['PUMA_LOG_CONFIG'] = "1"
+
+    assert_match(/Configuration:/, launcher.events.stdout.string)
+
+    launcher.config.final_options.each do |config_key, _value|
+      assert_match(/#{config_key}/, launcher.events.stdout.string)
+    end
+
+    ENV.delete('PUMA_LOG_CONFIG')
+  end
+
+  def test_log_config_disabled
+    refute_match /Configuration:/, launcher.events.stdout.string
+  end
+
   private
 
   def events

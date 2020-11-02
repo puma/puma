@@ -85,6 +85,9 @@ Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full 
 You can also find several configuration examples as part of the
 [test](https://github.com/puma/puma/tree/master/test/config) suite.
 
+For debugging purposes, you can set the environment variable `PUMA_LOG_CONFIG` with a value
+and the loaded configuration will be printed as part of the boot process.
+
 ### Thread Pool
 
 Puma uses a thread pool. You can set the minimum and maximum number of threads that are available in the pool with the `-t` (or `--threads`) flag:

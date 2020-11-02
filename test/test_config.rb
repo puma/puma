@@ -265,6 +265,13 @@ class TestConfigFile < TestConfigFileBase
     assert_equal 0, Puma::Configuration.new.options.default_options[:workers]
   end
 
+  def test_final_options_returns_merged_options
+    conf = Puma::Configuration.new({ min_threads: 1, max_threads: 2 }, { min_threads: 2 })
+
+    assert_equal 1, conf.final_options[:min_threads]
+    assert_equal 2, conf.final_options[:max_threads]
+  end
+
   private
 
   def assert_run_hooks(hook_name, options = {})
