@@ -35,8 +35,10 @@ class TestWorkerGemIndependence < TestIntegration
     set_release_symlink File.expand_path(old_app_dir, __dir__)
 
     Dir.chdir(current_release_symlink) do
-      bundle_install
-      cli_server '--prune-bundler -w 1'
+      with_unbundled_env do
+        system("bundle install", out: File::NULL)
+        cli_server '--prune-bundler -w 1'
+      end
     end
 
     connection = connect
@@ -45,7 +47,9 @@ class TestWorkerGemIndependence < TestIntegration
 
     set_release_symlink File.expand_path(new_app_dir, __dir__)
     Dir.chdir(current_release_symlink) do
-      bundle_install
+      with_unbundled_env do
+        system("bundle install", out: File::NULL)
+      end
     end
     start_phased_restart
 
@@ -75,12 +79,6 @@ class TestWorkerGemIndependence < TestIntegration
       Bundler.with_clean_env { yield }
     else
       Bundler.with_unbundled_env { yield }
-    end
-  end
-
-  def bundle_install
-    with_unbundled_env do
-      system("bundle install", out: File::NULL)
     end
   end
 end
