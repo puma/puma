@@ -54,4 +54,14 @@ class TestJSON < Minitest::Test
     value = { key: 'value' }
     assert_equal '{"key":"value"}', Puma::JSON.generate(value)
   end
+
+  def test_json_generates_string_for_true
+    value = [true]
+    assert_equal '[true]', Puma::JSON.generate(value)
+  end
+
+  def test_json_generates_string_for_true
+    value = [false]
+    assert_equal '[false]', Puma::JSON.generate(value)
+  end
 end

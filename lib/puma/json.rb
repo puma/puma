@@ -20,6 +20,10 @@ module Puma
 
       def serialize_value(output, value)
         case value
+        when true
+          output << 'true'
+        when false
+          output << 'false'
         when Array
           output << '['
           value.each_with_index do |member, index|
