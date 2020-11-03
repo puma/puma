@@ -28,4 +28,9 @@ class TestJSON < Minitest::Test
     value = ['a\\']
     assert_equal '["a\\\\"]', Puma::JSON.generate(value)
   end
+
+  def test_json_generates_string_for_hash_with_string_keys
+    value = { "key" => "value" }
+    assert_equal '{"key":"value"}', Puma::JSON.generate(value)
+  end
 end
