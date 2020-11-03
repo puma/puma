@@ -27,6 +27,10 @@ module Puma
             serialize_value output, member
           end
           output << ']'
+        when String
+          output << '"'
+          output << value
+          output << '"'
         when Integer
           output << value.to_s
         end

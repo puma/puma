@@ -13,4 +13,9 @@ class TestJSON < Minitest::Test
     value = [1, [2, [3]]]
     assert_equal '[1,[2,[3]]]', Puma::JSON.generate(value)
   end
+
+  def test_json_generates_string_for_array_of_strings
+    value = ["a", "b", "c"]
+    assert_equal '["a","b","c"]', Puma::JSON.generate(value)
+  end
 end
