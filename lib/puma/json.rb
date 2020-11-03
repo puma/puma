@@ -42,7 +42,7 @@ module Puma
           output << '}'
         when String
           serialize_string output, value
-        when Integer
+        when Integer, Float
           output << value.to_s
         else
           raise SerializationError, "Unexpected value of type #{value.class}"

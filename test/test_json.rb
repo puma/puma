@@ -64,4 +64,9 @@ class TestJSON < Minitest::Test
     value = [false]
     assert_equal '[false]', Puma::JSON.generate(value)
   end
+
+  def test_json_generates_string_for_float
+    value = [1.23]
+    assert_equal '[1.23]', Puma::JSON.generate(value)
+  end
 end
