@@ -280,7 +280,7 @@ RUBY
     cli_server "-w #{workers} -C test/config/prune_bundler_print_json_defined.rb test/rackup/hello.ru"
 
     line = @server.gets
-    assert_match(/defined\?\(JSON\): nil/, line)
+    assert_match(/defined\?\(::JSON\): nil/, line)
   end
 
   def test_application_is_loaded_exactly_once_if_using_preload_app
