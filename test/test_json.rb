@@ -18,4 +18,9 @@ class TestJSON < Minitest::Test
     value = ["a", "b", "c"]
     assert_equal '["a","b","c"]', Puma::JSON.generate(value)
   end
+
+  def test_json_escapes_strings_with_quotes
+    value = ['a"']
+    assert_equal '["a\""]', Puma::JSON.generate(value)
+  end
 end
