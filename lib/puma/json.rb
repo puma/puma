@@ -1,6 +1,21 @@
 # frozen_string_literal: true
 
 module Puma
+
+  # Puma deliberately avoids the use of the json gem and instead performs JSON
+  # serialization without any external dependencies. In a puma cluster, loading
+  # any gem into the puma master process means that operators cannot use a
+  # phased restart to upgrade their application if the new version of that
+  # application uses a different version of that gem. The json gem in
+  # particular is additionally problematic because it leverages native
+  # extensions. If the puma master process relies on a gem with native
+  # extensions and operators remove gems from disk related to old releases,
+  # subsequent phased restarts can fail.
+  #
+  # The implementation of JSON serialization in this module is not designed to
+  # be particularly full-featured or fast. It just has to handle the few places
+  # where Puma relies on JSON serialization internally.
+
   module JSON
     class SerializationError < StandardError; end
 
