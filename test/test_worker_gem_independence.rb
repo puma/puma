@@ -36,6 +36,7 @@ class TestWorkerGemIndependence < TestIntegration
 
     Dir.chdir(current_release_symlink) do
       with_unbundled_env do
+        system("bundle config --local path vendor/bundle", out: File::NULL)
         system("bundle install", out: File::NULL)
         cli_server '--prune-bundler -w 1'
       end
@@ -48,6 +49,7 @@ class TestWorkerGemIndependence < TestIntegration
     set_release_symlink File.expand_path(new_app_dir, __dir__)
     Dir.chdir(current_release_symlink) do
       with_unbundled_env do
+        system("bundle config --local path vendor/bundle", out: File::NULL)
         system("bundle install", out: File::NULL)
       end
     end
