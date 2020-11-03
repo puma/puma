@@ -37,20 +37,22 @@ module Puma
           end
           output << '}'
         when String
-          output << '"'
-          output << value.gsub(/[\\"]/, '\\' => '\\\\', '"' => '\\"')
-          output << '"'
+          serialize_string output, value
         when Integer
           output << value.to_s
         end
       end
 
+      def serialize_string(output, value)
+        output << '"'
+        output << value.gsub(/[\\"]/, '\\' => '\\\\', '"' => '\\"')
+        output << '"'
+      end
+
       def serialize_object_key(output, value)
         case value
         when String
-          output << '"'
-          output << value.gsub(/[\\"]/, '\\' => '\\\\', '"' => '\\"')
-          output << '"'
+          serialize_string output, value
         else
           raise SerializationError, "Could not serialize object of type #{value.class} as object key"
         end
