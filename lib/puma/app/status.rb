@@ -23,7 +23,7 @@ module Puma
           return rack_response(403, 'Invalid auth token', 'text/plain')
         end
 
-        if env['PATH_INFO'] =~ /\/(gc-stats|thread-backtraces)$/
+        if env['PATH_INFO'] =~ /\/thread-backtraces$/
           require 'json'
         end
 
@@ -50,7 +50,7 @@ module Puma
             GC.start ; 200
 
           when 'gc-stats'
-            GC.stat.to_json
+            Puma::JSON.generate GC.stat
 
           when 'stats'
             Puma::JSON.generate @launcher.stats
