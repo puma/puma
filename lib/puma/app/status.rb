@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require 'puma/json'
 
 module Puma
   module App
@@ -22,7 +23,7 @@ module Puma
           return rack_response(403, 'Invalid auth token', 'text/plain')
         end
 
-        if env['PATH_INFO'] =~ /\/(gc-stats|stats|thread-backtraces)$/
+        if env['PATH_INFO'] =~ /\/(gc-stats|thread-backtraces)$/
           require 'json'
         end
 
@@ -52,7 +53,7 @@ module Puma
             GC.stat.to_json
 
           when 'stats'
-            @launcher.stats.to_json
+            Puma::JSON.generate @launcher.stats
 
           when 'thread-backtraces'
             backtraces = []
