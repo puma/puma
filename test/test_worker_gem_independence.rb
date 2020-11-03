@@ -57,6 +57,21 @@ class TestWorkerGemIndependence < TestIntegration
                                              new_version: '2.3.0'
   end
 
+  def test_changing_json_version_during_phased_restart_after_querying_thread_backtraces_from_status_server
+    @control_tcp_port = UniquePort.call
+    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    before_restart = ->() do
+      cli_pumactl "thread-backtraces"
+    end
+
+    change_gem_version_during_phased_restart server_opts: server_opts,
+                                             before_restart: before_restart,
+                                             old_app_dir: 'worker_gem_independence_test/old_json',
+                                             old_version: '2.3.1',
+                                             new_app_dir: 'worker_gem_independence_test/new_json',
+                                             new_version: '2.3.0'
+  end
+
   private
 
   def change_gem_version_during_phased_restart(old_app_dir:,

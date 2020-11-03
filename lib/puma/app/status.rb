@@ -23,10 +23,6 @@ module Puma
           return rack_response(403, 'Invalid auth token', 'text/plain')
         end
 
-        if env['PATH_INFO'] =~ /\/thread-backtraces$/
-          require 'json'
-        end
-
         # resp_type is processed by following case statement, return
         # is a number (status) or a string used as the body of a 200 response
         resp_type =
@@ -60,7 +56,7 @@ module Puma
             @launcher.thread_status do |name, backtrace|
               backtraces << { name: name, backtrace: backtrace }
             end
-            backtraces.to_json
+            Puma::JSON.generate backtraces
 
           else
             return rack_response(404, "Unsupported action", 'text/plain')
