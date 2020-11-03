@@ -49,4 +49,9 @@ class TestJSON < Minitest::Test
     end
     assert_equal 'Could not serialize object of type Array as object key', ex.message
   end
+
+  def test_json_generates_string_for_hash_with_symbol_keys
+    value = { key: 'value' }
+    assert_equal '{"key":"value"}', Puma::JSON.generate(value)
+  end
 end

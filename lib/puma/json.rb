@@ -51,6 +51,8 @@ module Puma
 
       def serialize_object_key(output, value)
         case value
+        when Symbol
+          serialize_string output, value.to_s
         when String
           serialize_string output, value
         else
