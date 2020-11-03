@@ -40,6 +40,8 @@ module Puma
           serialize_string output, value
         when Integer
           output << value.to_s
+        else
+          raise SerializationError, "Unexpected value of type #{value.class}"
         end
       end
 
