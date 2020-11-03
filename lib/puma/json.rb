@@ -29,7 +29,7 @@ module Puma
           output << ']'
         when String
           output << '"'
-          output << value.gsub('"', '\"')
+          output << value.gsub(/[\\"]/, '\\' => '\\\\', '"' => '\\"')
           output << '"'
         when Integer
           output << value.to_s
