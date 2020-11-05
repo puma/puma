@@ -34,14 +34,6 @@ class TestJSON < Minitest::Test
     assert_equal '{"key":"value"}', Puma::JSON.generate(value)
   end
 
-  def test_generate_raises_error_for_unexpected_top_level_type
-    value = 1
-    ex = assert_raises Puma::JSON::SerializationError do
-      Puma::JSON.generate value
-    end
-    assert_equal "Could not serialize object of type #{value.class}", ex.message
-  end
-
   def test_generate_raises_error_for_unexpected_key_type
     value = { [1] => 'b' }
     ex = assert_raises Puma::JSON::SerializationError do

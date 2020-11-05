@@ -21,14 +21,9 @@ module Puma
 
     class << self
       def generate(value)
-        case value
-        when Array, Hash
-          parts = []
-          serialize_value parts, value
-          parts.join ''
-        else
-          raise SerializationError, "Could not serialize object of type #{value.class}"
-        end
+        parts = []
+        serialize_value parts, value
+        parts.join ''
       end
 
       private
