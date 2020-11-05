@@ -67,6 +67,11 @@ class TestJSON < Minitest::Test
     assert_equal 'false', Puma::JSON.generate(value)
   end
 
+  def test_json_generates_string_for_nil
+    value = nil
+    assert_equal 'null', Puma::JSON.generate(value)
+  end
+
   def test_generate_raises_error_for_unexpected_value_type
     value = /abc/
     ex = assert_raises Puma::JSON::SerializationError do

@@ -54,6 +54,8 @@ module Puma
           output << 'true'
         when false
           output << 'false'
+        when nil
+          output << 'null'
         else
           raise SerializationError, "Unexpected value of type #{value.class}"
         end
