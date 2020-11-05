@@ -63,12 +63,14 @@ module Puma
 
       def serialize_string(output, value)
         output << '"'
-        output << value.gsub(/[\\"]/) do |character|
+        output << value.gsub(/[\\"\x00-\x1F]/) do |character|
           case character
           when '\\'
             '\\\\'
           when '"'
             '\\"'
+          when /[\x00-\x1F]/
+            '\u%.4X' % character.ord
           else
             character
           end

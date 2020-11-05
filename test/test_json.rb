@@ -57,6 +57,16 @@ class TestJSON < Minitest::Test
     assert_equal '"a\\\\"', Puma::JSON.generate(value)
   end
 
+  def test_json_escapes_strings_with_null_byte
+    value = "\x00"
+    assert_equal '"\u0000"', Puma::JSON.generate(value)
+  end
+
+  def test_json_escapes_strings_with_unicode_information_separator_one
+    value = "\x1f"
+    assert_equal '"\u001F"', Puma::JSON.generate(value)
+  end
+
   def test_json_generates_string_for_true
     value = true
     assert_equal 'true', Puma::JSON.generate(value)
