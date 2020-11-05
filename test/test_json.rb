@@ -20,13 +20,13 @@ class TestJSON < Minitest::Test
   end
 
   def test_json_escapes_strings_with_quotes
-    value = ['a"']
-    assert_equal '["a\""]', Puma::JSON.generate(value)
+    value = 'a"'
+    assert_equal '"a\""', Puma::JSON.generate(value)
   end
 
   def test_json_escapes_strings_with_backslashes
-    value = ['a\\']
-    assert_equal '["a\\\\"]', Puma::JSON.generate(value)
+    value = 'a\\'
+    assert_equal '"a\\\\"', Puma::JSON.generate(value)
   end
 
   def test_json_generates_string_for_hash_with_string_keys
@@ -43,7 +43,7 @@ class TestJSON < Minitest::Test
   end
 
   def test_generate_raises_error_for_unexpected_value_type
-    value = { unsupported_value: /abc/ }
+    value = /abc/
     ex = assert_raises Puma::JSON::SerializationError do
       Puma::JSON.generate value
     end
@@ -56,17 +56,17 @@ class TestJSON < Minitest::Test
   end
 
   def test_json_generates_string_for_true
-    value = [true]
-    assert_equal '[true]', Puma::JSON.generate(value)
+    value = true
+    assert_equal 'true', Puma::JSON.generate(value)
   end
 
   def test_json_generates_string_for_false
-    value = [false]
-    assert_equal '[false]', Puma::JSON.generate(value)
+    value = false
+    assert_equal 'false', Puma::JSON.generate(value)
   end
 
   def test_json_generates_string_for_float
-    value = [1.23]
-    assert_equal '[1.23]', Puma::JSON.generate(value)
+    value = 1.23
+    assert_equal '1.23', Puma::JSON.generate(value)
   end
 end
