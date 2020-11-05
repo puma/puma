@@ -35,17 +35,6 @@ module Puma
 
       def serialize_value(output, value)
         case value
-        when true
-          output << 'true'
-        when false
-          output << 'false'
-        when Array
-          output << '['
-          value.each_with_index do |member, index|
-            output << ',' if index != 0
-            serialize_value output, member
-          end
-          output << ']'
         when Hash
           output << '{'
           value.each_with_index do |(k, v), index|
@@ -55,10 +44,21 @@ module Puma
             serialize_value output, v
           end
           output << '}'
-        when String
-          serialize_string output, value
+        when Array
+          output << '['
+          value.each_with_index do |member, index|
+            output << ',' if index != 0
+            serialize_value output, member
+          end
+          output << ']'
         when Integer, Float
           output << value.to_s
+        when String
+          serialize_string output, value
+        when true
+          output << 'true'
+        when false
+          output << 'false'
         else
           raise SerializationError, "Unexpected value of type #{value.class}"
         end
