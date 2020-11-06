@@ -76,8 +76,6 @@ module Puma
             '\\"'
           when CONTROL_CHAR_TO_ESCAPE
             '\u%.4X' % character.ord
-          else
-            character
           end
         end
         output << '"'
