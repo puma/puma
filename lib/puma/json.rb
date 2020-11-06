@@ -80,10 +80,8 @@ module Puma
 
       def serialize_object_key(output, value)
         case value
-        when Symbol
+        when Symbol, String
           serialize_string output, value.to_s
-        when String
-          serialize_string output, value
         else
           raise SerializationError, "Could not serialize object of type #{value.class} as object key"
         end
