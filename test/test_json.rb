@@ -93,13 +93,14 @@ class TestJSON < Minitest::Test
 
   private
 
-  def assert_puma_json_generates_string(expected_output, value_to_serialize, expected_roundtrip: value_to_serialize)
+  def assert_puma_json_generates_string(expected_output, value_to_serialize, expected_roundtrip: nil)
     actual_output = Puma::JSON.generate(value_to_serialize)
     assert_equal expected_output, actual_output
 
     if value_to_serialize.nil?
       assert_nil ::JSON.parse(actual_output)
     else
+      expected_roundtrip ||= value_to_serialize
       assert_equal expected_roundtrip, ::JSON.parse(actual_output)
     end
   end
