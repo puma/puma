@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require 'stringio'
 
 module Puma
 
@@ -26,9 +27,10 @@ module Puma
 
     class << self
       def generate(value)
-        parts = []
-        serialize_value parts, value
-        parts.join ''
+        StringIO.open do |io|
+          serialize_value io, value
+          io.string
+        end
       end
 
       private
