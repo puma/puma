@@ -1,4 +1,5 @@
 require_relative "helper"
+require "json"
 require "puma/json"
 
 class TestJSON < Minitest::Test
@@ -11,7 +12,7 @@ class TestJSON < Minitest::Test
 
   def test_json_generates_string_for_hash_with_symbol_keys
     value = { key: 'value' }
-    assert_puma_json_generates_string '{"key":"value"}', value
+    assert_puma_json_generates_string '{"key":"value"}', value, expected_roundtrip: { "key" => "value" }
   end
 
   def test_generate_raises_error_for_unexpected_key_type
@@ -92,7 +93,14 @@ class TestJSON < Minitest::Test
 
   private
 
-  def assert_puma_json_generates_string(expected_output, value_to_serialize)
-    assert_equal expected_output, Puma::JSON.generate(value_to_serialize)
+  def assert_puma_json_generates_string(expected_output, value_to_serialize, expected_roundtrip: value_to_serialize)
+    actual_output = Puma::JSON.generate(value_to_serialize)
+    assert_equal expected_output, actual_output
+
+    if value_to_serialize.nil?
+      assert_nil ::JSON.parse(actual_output)
+    else
+      assert_equal expected_roundtrip, ::JSON.parse(actual_output)
+    end
   end
 end
