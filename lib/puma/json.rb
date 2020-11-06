@@ -17,6 +17,11 @@ module Puma
   # where Puma relies on JSON serialization internally.
 
   module JSON
+    QUOTE = /"/
+    BACKSLASH = /\\/
+    CONTROL_CHAR_TO_ESCAPE = /[\x00-\x1F]/ # As required by ECMA-404
+    CHAR_TO_ESCAPE = Regexp.union QUOTE, BACKSLASH, CONTROL_CHAR_TO_ESCAPE
+
     class SerializationError < StandardError; end
 
     class << self
@@ -63,13 +68,13 @@ module Puma
 
       def serialize_string(output, value)
         output << '"'
-        output << value.gsub(/[\\"\x00-\x1F]/) do |character|
+        output << value.gsub(CHAR_TO_ESCAPE) do |character|
           case character
-          when '\\'
+          when BACKSLASH
             '\\\\'
-          when '"'
+          when QUOTE
             '\\"'
-          when /[\x00-\x1F]/
+          when CONTROL_CHAR_TO_ESCAPE
             '\u%.4X' % character.ord
           else
             character
