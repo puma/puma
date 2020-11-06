@@ -5,6 +5,7 @@ gemspec
 gem "rdoc"
 gem "rake-compiler", "~> 1.1.1"
 
+gem "json", "~> 2.3"
 gem "nio4r", "~> 2.0"
 gem "rack", "~> 1.6"
 gem "minitest", "~> 5.11"
