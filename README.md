@@ -75,7 +75,7 @@ run Sinatra::Application
 You can then start your application using:
 
 ```
-$ bundle exec puma 
+$ bundle exec puma
 ```
 
 ## Configuration
