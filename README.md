@@ -146,7 +146,7 @@ before_fork do
 end
 ```
 
-Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preload_app copies the code of master into the workers.
+Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and `preload_app!` copies the code of master into the workers.
 
 ### Error handling
 
