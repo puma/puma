@@ -561,7 +561,7 @@ module Puma
     end
 
     # Preload the application before starting the workers; this conflicts with
-    # phased restart feature. This is off by default.
+    # phased restart feature. On by default if your app uses more than 1 worker.
     #
     # @note Cluster mode only.
     # @example
