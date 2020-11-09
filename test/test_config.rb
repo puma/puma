@@ -343,7 +343,7 @@ class TestConfigEnvVariables < TestConfigFileBase
     end
   end
 
-  def test_config_does_not_preload_app_if_using_workers
+  def test_config_does_not_preload_app_if_not_using_workers
     with_env("WEB_CONCURRENCY" => "0") do
       conf = Puma::Configuration.new
       assert_equal false, conf.options.default_options[:preload_app]
