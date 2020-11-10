@@ -104,6 +104,10 @@ module Puma
             user_config.bind arg
           end
 
+          o.on "--bind-to-activated-sockets [only]", "Bind to all activated sockets" do |arg|
+            user_config.bind_to_activated_sockets(arg || true)
+          end
+
           o.on "-C", "--config PATH", "Load PATH as a config file" do |arg|
             file_config.load arg
           end

@@ -58,6 +58,13 @@ module Puma
 
       @config.load
 
+      if @config.options[:bind_to_activated_sockets]
+        @config.options[:binds] = @binder.synthesize_binds_from_activated_fs(
+          @config.options[:binds],
+          @config.options[:bind_to_activated_sockets] == 'only'
+        )
+      end
+
       @options = @config.options
       @config.clamp
 

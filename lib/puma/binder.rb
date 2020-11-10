@@ -111,6 +111,43 @@ module Puma
       ["LISTEN_FDS", "LISTEN_PID"] # Signal to remove these keys from ENV
     end
 
+    # Synthesize binds from systemd socket activation
+    #
+    # When systemd socket activation is enabled, it can be tedious to keep the
+    # binds in sync. This method can synthesize any binds based on the received
+    # activated sockets. Any existing matching binds will be respected.
+    #
+    # When only_matching is true in, all binds that do not match an activated
+    # socket is removed in place.
+    #
+    # It's a noop if no activated sockets were received.
+    def synthesize_binds_from_activated_fs(binds, only_matching)
+      return binds unless activated_sockets.any?
+
+      activated_binds = []
+
+      activated_sockets.keys.each do |proto, addr, port|
+        if port
+          tcp_url = "#{proto}://#{addr}:#{port}"
+          ssl_url = "ssl://#{addr}:#{port}"
+          ssl_url_prefix = "#{ssl_url}?"
+
+          existing = binds.find { |bind| bind == tcp_url || bind == ssl_url || bind.start_with?(ssl_url_prefix) }
+
+          activated_binds << (existing || tcp_url)
+        else
+          # TODO: can there be a SSL bind without a port?
+          activated_binds << "#{proto}://#{addr}"
+        end
+      end
+
+      if only_matching
+        activated_binds
+      else
+        binds | activated_binds
+      end
+    end
+
     def parse(binds, logger, log_msg = 'Listening')
       binds.each do |str|
         uri = URI.parse str

@@ -129,6 +129,21 @@ Puma will detect the release path socket as different than the one provided by
 systemd and attempt to bind it again, resulting in the exception
  `There is already a server bound to:`.
 
+### Binding
+
+By default you need to configure puma to have binds matching with all
+ListenStream statements. Any mismatched systemd ListenStreams will be closed by
+puma.
+
+To automatically bind to all activated sockets, the option
+`--bind-to-activated-sockets` can be used. This matches the config DSL
+`bind_to_activated_sockets` statement. This will cause puma to create a bind
+automatically for any activated socket. When systemd socket activation is not
+enabled, this option does nothing.
+
+This also accepts an optional argument `only` (DSL: `'only'`) to discard any
+binds that's not socket activated.
+
 ## Usage
 
 Without socket activation, use `systemctl` as root (e.g. via `sudo`) as
