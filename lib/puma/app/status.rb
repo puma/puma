@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require 'puma/json'
 
 module Puma
   module App
@@ -20,10 +21,6 @@ module Puma
       def call(env)
         unless authenticate(env)
           return rack_response(403, 'Invalid auth token', 'text/plain')
-        end
-
-        if env['PATH_INFO'] =~ /\/(gc-stats|stats|thread-backtraces)$/
-          require 'json'
         end
 
         # resp_type is processed by following case statement, return
@@ -49,17 +46,17 @@ module Puma
             GC.start ; 200
 
           when 'gc-stats'
-            GC.stat.to_json
+            Puma::JSON.generate GC.stat
 
           when 'stats'
-            @launcher.stats.to_json
+            Puma::JSON.generate @launcher.stats
 
           when 'thread-backtraces'
             backtraces = []
             @launcher.thread_status do |name, backtrace|
               backtraces << { name: name, backtrace: backtrace }
             end
-            backtraces.to_json
+            Puma::JSON.generate backtraces
 
           else
             return rack_response(404, "Unsupported action", 'text/plain')

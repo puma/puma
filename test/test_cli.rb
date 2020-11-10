@@ -322,7 +322,6 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_gc_stats_tcp
-    skip_on :jruby, suffix: " - Hitting /gc route does not increment count"
     uri  = "tcp://127.0.0.1:#{UniquePort.call}/"
     cntl_port = UniquePort.call
     cntl = "tcp://127.0.0.1:#{cntl_port}/"
@@ -331,7 +330,6 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_gc_stats_unix
-    skip_on :jruby, suffix: " - Hitting /gc route does not increment count"
     skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
 
     uri  = "unix://#{@tmp_path2}"

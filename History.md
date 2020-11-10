@@ -13,6 +13,7 @@
   * Ignore illegal (by Rack spec) response header ([#2439])
   * Close idle connections immediately on shutdown ([#2460])
   * Fix some instances of phased restart errors related to the `json` gem (#2473)
+  * Remove use of `json` gem to fix phased restart errors (#2479)
 
 ## 5.0.4 / 2020-10-27
 
