@@ -89,7 +89,7 @@
   * Daemonization has been removed without replacement. ([#2170])
   * Changed #connected_port to #connected_ports ([#2076])
   * Configuration: `environment` is read from `RAILS_ENV`, if `RACK_ENV` can't be found ([#2022])
-  * Log binding on http:// for TCP bindings to make it clickable
+  * Log binding on http:// for TCP bindings to make it clickable  ([#2300])
 
 * Bugfixes
   * Fix JSON loading issues on phased-restarts ([#2269])
