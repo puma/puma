@@ -50,12 +50,16 @@ static VALUE global_request_path;
 
 
 /* Defines the maximum allowed lengths for various input elements.*/
+#ifndef PUMA_QUERY_STRING_MAX_LENGTH
+#define PUMA_QUERY_STRING_MAX_LENGTH (1024 * 10)
+#endif
+
 DEF_MAX_LENGTH(FIELD_NAME, 256);
 DEF_MAX_LENGTH(FIELD_VALUE, 80 * 1024);
 DEF_MAX_LENGTH(REQUEST_URI, 1024 * 12);
 DEF_MAX_LENGTH(FRAGMENT, 1024); /* Don't know if this length is specified somewhere or not */
 DEF_MAX_LENGTH(REQUEST_PATH, 8192);
-DEF_MAX_LENGTH(QUERY_STRING, (1024 * 10));
+DEF_MAX_LENGTH(QUERY_STRING, PUMA_QUERY_STRING_MAX_LENGTH);
 DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
 
 struct common_field {
