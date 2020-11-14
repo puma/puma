@@ -145,6 +145,12 @@ changelog ([`History.md`](History.md)), add the text `[changelog skip]` to the
 pull request title to skip [the changelog
 check](https://github.com/puma/puma/pull/1991).
 
+## Backports
+
+Puma does not have a backport "policy" - maintainers will not consistently backport bugfixes to previous minor or major versions (we do treat security differently, see [`SECURITY.md`](Security.md). 
+
+As a contributor, you may make pull requests against `-stable` branches to backport fixes, and maintainers will release them once they're merged. For example, if you'd like to make a backport for 4.3.x, you can make a pull request against `4-3-stable`. If there is no appropriate branch for the release you'd like to backport against, please just open an issue and we'll make one for you.
+
 ## Join the community
 
 If you're looking to contribute to Puma, please join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org).
