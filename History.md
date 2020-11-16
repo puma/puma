@@ -10,6 +10,7 @@
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Catch 'Error in reactor loop escaped: mode not supported for this object: r' (#2477)
   * Ignore Rails' reaper thread (and any thread marked forksafe) for warning ([#2475])
   * Ignore illegal (by Rack spec) response header ([#2439])
   * Close idle connections immediately on shutdown ([#2460])
