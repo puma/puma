@@ -96,7 +96,7 @@ module Puma
         end
 
         o.on_tail("-V", "--version", "Show version") do
-          puts Const::PUMA_VERSION
+          @stdout.puts Const::PUMA_VERSION
           exit
         end
       end
@@ -236,14 +236,14 @@ module Puma
         sig = CMD_PATH_SIG_MAP[@command]
 
         if sig.nil?
-          puts "'#{@command}' not available via pid only"
+          @stdout.puts "'#{@command}' not available via pid only"
           return
         elsif sig.start_with? 'SIG'
           Process.kill sig, @pid
         elsif @command == 'status'
           begin
             Process.kill 0, @pid
-            puts 'Puma is started'
+            @stdout.puts 'Puma is started'
           rescue Errno::ESRCH
             raise 'Puma is not running'
           end

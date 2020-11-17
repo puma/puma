@@ -10,6 +10,7 @@
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * control_cli.rb - all normal output should be to @stdout (#2487)
   * Catch 'Error in reactor loop escaped: mode not supported for this object: r' (#2477)
   * Ignore Rails' reaper thread (and any thread marked forksafe) for warning ([#2475])
   * Ignore illegal (by Rack spec) response header ([#2439])
