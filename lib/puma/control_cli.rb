@@ -237,6 +237,7 @@ module Puma
 
         if sig.nil?
           @stdout.puts "'#{@command}' not available via pid only"
+          @stdout.flush unless @stdout.sync
           return
         elsif sig.start_with? 'SIG'
           Process.kill sig, @pid
@@ -244,6 +245,7 @@ module Puma
           begin
             Process.kill 0, @pid
             @stdout.puts 'Puma is started'
+            @stdout.flush unless @stdout.sync
           rescue Errno::ESRCH
             raise 'Puma is not running'
           end

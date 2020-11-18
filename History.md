@@ -2,6 +2,7 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Uses `flush` after writing messages to avoid mutating $stdout and $stderr using `sync=true` ([#2486])
   * Prints the loaded configuration if the environment variable `PUMA_LOG_CONFIG` is present ([#2472])
   * Integrate with systemd's watchdog and notification features ([#2438])
   * Adds max_fast_inline as a configuration option for the Server object ([#2406])

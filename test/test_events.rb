@@ -24,6 +24,15 @@ class TestEvents < Minitest::Test
     assert_equal STDERR, events.stderr
   end
 
+  def test_stdio_respects_sync
+    events = Puma::Events.stdio
+
+    assert_equal STDOUT.sync, events.stdout.sync
+    assert_equal STDERR.sync, events.stderr.sync
+    assert_equal STDOUT, events.stdout
+    assert_equal STDERR, events.stderr
+  end
+
   def test_register_callback_with_block
     res = false
 

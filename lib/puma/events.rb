@@ -30,9 +30,6 @@ module Puma
       @stdout = stdout
       @stderr = stderr
 
-      @stdout.sync = true
-      @stderr.sync = true
-
       @debug = ENV.key? 'PUMA_DEBUG'
       @error_logger = ErrorLogger.new(@stderr)
 
@@ -66,6 +63,8 @@ module Puma
     #
     def log(str)
       @stdout.puts format(str) if @stdout.respond_to? :puts
+
+      @stdout.flush unless @stdout.sync
     rescue Errno::EPIPE
     end
 
