@@ -40,7 +40,9 @@ static VALUE global_http_version;
 static VALUE global_request_path;
 
 /** Defines common length and error messages for input length validation. */
-#define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " # length " allowed length (was %d)"
+#define QUOTE(s) #s
+#define EXPLAND_MAX_LENGHT_VALUE(s) QUOTE(s)
+#define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " EXPLAND_MAX_LENGHT_VALUE(length) " allowed length (was %d)"
 
 /** Validates the max length of given input and throws an HttpParserError exception if over. */
 #define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, MAX_##N##_LENGTH_ERR, len); }
@@ -50,12 +52,16 @@ static VALUE global_request_path;
 
 
 /* Defines the maximum allowed lengths for various input elements.*/
+#ifndef PUMA_QUERY_STRING_MAX_LENGTH
+#define PUMA_QUERY_STRING_MAX_LENGTH (1024 * 10)
+#endif
+
 DEF_MAX_LENGTH(FIELD_NAME, 256);
 DEF_MAX_LENGTH(FIELD_VALUE, 80 * 1024);
 DEF_MAX_LENGTH(REQUEST_URI, 1024 * 12);
 DEF_MAX_LENGTH(FRAGMENT, 1024); /* Don't know if this length is specified somewhere or not */
 DEF_MAX_LENGTH(REQUEST_PATH, 8192);
-DEF_MAX_LENGTH(QUERY_STRING, (1024 * 10));
+DEF_MAX_LENGTH(QUERY_STRING, PUMA_QUERY_STRING_MAX_LENGTH);
 DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
 
 struct common_field {
