@@ -453,4 +453,24 @@ class TestBinderMRI < TestBinderBase
 
     assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
   end
+
+  def test_binder_parses_ssl_verification_flags_one
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    input = "&verification_flags=TRUSTED_FIRST"
+
+    @binder.parse ["ssl://0.0.0.0?#{ssl_query}#{input}"], @events
+
+    assert_equal 0x8000, ssl_context_for_binder.verification_flags
+  end
+
+  def test_binder_parses_ssl_verification_flags_multiple
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    input = "&verification_flags=TRUSTED_FIRST,NO_CHECK_TIME"
+
+    @binder.parse ["ssl://0.0.0.0?#{ssl_query}#{input}"], @events
+
+    assert_equal 0x8000 | 0x200000, ssl_context_for_binder.verification_flags
+  end
 end unless ::Puma::IS_JRUBY

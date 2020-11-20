@@ -152,8 +152,8 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
   int min;
 #endif
   int ssl_options;
-  ID sym_key, sym_cert, sym_ca, sym_verify_mode, sym_ssl_cipher_filter, sym_no_tlsv1, sym_no_tlsv1_1;
-  VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1;
+  ID sym_key, sym_cert, sym_ca, sym_verify_mode, sym_ssl_cipher_filter, sym_no_tlsv1, sym_no_tlsv1_1, sym_verification_flags;
+  VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1, verification_flags;
   DH *dh;
 
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
@@ -196,6 +196,15 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
 
   SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
   SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
+
+  sym_verification_flags = rb_intern("verification_flags");
+  verification_flags = rb_funcall(mini_ssl_ctx, sym_verification_flags, 0);
+
+  if (!NIL_P(verification_flags)) {
+    X509_VERIFY_PARAM *param = SSL_CTX_get0_param(ctx);
+    X509_VERIFY_PARAM_set_flags(param, NUM2INT(verification_flags));
+    SSL_CTX_set1_param(ctx, param);
+  }
 
   if (!NIL_P(ca)) {
     StringValue(ca);
