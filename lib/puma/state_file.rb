@@ -9,9 +9,11 @@ module Puma
     end
 
     def save(path, permission = nil)
-      File.open(path, "w") do |file|
-        file.chmod(permission) if permission
-        file.write(YAML.dump(@options))
+      contents =YAML.dump @options
+      if permission
+        File.write path, contents, mode: 'wb:UTF-8'
+      else
+        File.write path, contents, mode: 'wb:UTF-8', perm: permission
       end
     end
 

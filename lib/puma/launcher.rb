@@ -240,11 +240,10 @@ module Puma
     def write_pid
       path = @options[:pidfile]
       return unless path
-
-      File.open(path, 'w') { |f| f.puts Process.pid }
-      cur = Process.pid
+      cur_pid = Process.pid
+      File.write path, cur_pid, mode: 'wb:UTF-8'
       at_exit do
-        delete_pidfile if cur == Process.pid
+        delete_pidfile if cur_pid == Process.pid
       end
     end
 
