@@ -567,9 +567,10 @@ void Init_mini_ssl(VALUE puma) {
 
 #else
 
+NORETURN(VALUE raise_error(VALUE self));
+
 VALUE raise_error(VALUE self) {
   rb_raise(rb_eStandardError, "SSL not available in this build");
-  return Qnil;
 }
 
 void Init_mini_ssl(VALUE puma) {

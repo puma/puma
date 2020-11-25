@@ -43,9 +43,6 @@ static const int puma_parser_start = 1;
 static const int puma_parser_first_final = 46;
 static const int puma_parser_error = 0;
 
-static const int puma_parser_en_main = 1;
-
-
 #line 85 "ext/puma_http11/http11_parser.rl"
 
 int puma_parser_init(puma_parser *parser)  {
