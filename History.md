@@ -2,9 +2,11 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Fail build if compiling extensions raises warnings ([#1953])
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Fix all compiler warnings reported in mini_ssl source code ([#1953])
 
 ## 5.1.0 / 2020-11-30
 

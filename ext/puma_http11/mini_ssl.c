@@ -88,6 +88,10 @@ DH *get_dh1024() {
   static unsigned char dh1024_g[] = { 0x02 };
 
   DH *dh;
+#if !(OPENSSL_VERSION_NUMBER < 0x10100005L || defined(LIBRESSL_VERSION_NUMBER))
+  BIGNUM *p, *g;
+#endif
+
   dh = DH_new();
 
 #if OPENSSL_VERSION_NUMBER < 0x10100005L || defined(LIBRESSL_VERSION_NUMBER)
@@ -99,7 +103,6 @@ DH *get_dh1024() {
     return NULL;
   }
 #else
-  BIGNUM *p, *g;
   p = BN_bin2bn(dh1024_p, sizeof(dh1024_p), NULL);
   g = BN_bin2bn(dh1024_g, sizeof(dh1024_g), NULL);
 
@@ -141,37 +144,48 @@ static int engine_verify_callback(int preverify_ok, X509_STORE_CTX* ctx) {
 }
 
 VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
+  ms_conn* conn;
   VALUE obj;
   SSL_CTX* ctx;
   SSL* ssl;
-  int min, ssl_options;
+#ifdef HAVE_SSL_CTX_SET_MIN_PROTO_VERSION
+  int min;
+#endif
+  int ssl_options;
+  ID sym_key, sym_cert, sym_ca, sym_verify_mode, sym_ssl_cipher_filter, sym_no_tlsv1, sym_no_tlsv1_1;
+  VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1;
+  DH *dh;
 
-  ms_conn* conn = engine_alloc(self, &obj);
+#if OPENSSL_VERSION_NUMBER < 0x10002000L
+  EC_KEY *ecdh;
+#endif
 
-  ID sym_key = rb_intern("key");
-  VALUE key = rb_funcall(mini_ssl_ctx, sym_key, 0);
+  conn = engine_alloc(self, &obj);
+
+  sym_key = rb_intern("key");
+  key = rb_funcall(mini_ssl_ctx, sym_key, 0);
 
   StringValue(key);
 
-  ID sym_cert = rb_intern("cert");
-  VALUE cert = rb_funcall(mini_ssl_ctx, sym_cert, 0);
+  sym_cert = rb_intern("cert");
+  cert = rb_funcall(mini_ssl_ctx, sym_cert, 0);
 
   StringValue(cert);
 
-  ID sym_ca = rb_intern("ca");
-  VALUE ca = rb_funcall(mini_ssl_ctx, sym_ca, 0);
+  sym_ca = rb_intern("ca");
+  ca = rb_funcall(mini_ssl_ctx, sym_ca, 0);
 
-  ID sym_verify_mode = rb_intern("verify_mode");
-  VALUE verify_mode = rb_funcall(mini_ssl_ctx, sym_verify_mode, 0);
+  sym_verify_mode = rb_intern("verify_mode");
+  verify_mode = rb_funcall(mini_ssl_ctx, sym_verify_mode, 0);
 
-  ID sym_ssl_cipher_filter = rb_intern("ssl_cipher_filter");
-  VALUE ssl_cipher_filter = rb_funcall(mini_ssl_ctx, sym_ssl_cipher_filter, 0);
+  sym_ssl_cipher_filter = rb_intern("ssl_cipher_filter");
+  ssl_cipher_filter = rb_funcall(mini_ssl_ctx, sym_ssl_cipher_filter, 0);
 
-  ID sym_no_tlsv1 = rb_intern("no_tlsv1");
-  VALUE no_tlsv1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1, 0);
+  sym_no_tlsv1 = rb_intern("no_tlsv1");
+  no_tlsv1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1, 0);
 
-  ID sym_no_tlsv1_1 = rb_intern("no_tlsv1_1");
-  VALUE no_tlsv1_1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1_1, 0);
+  sym_no_tlsv1_1 = rb_intern("no_tlsv1_1");
+  no_tlsv1_1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1_1, 0);
 
 #ifdef HAVE_TLS_SERVER_METHOD
   ctx = SSL_CTX_new(TLS_server_method());
@@ -228,13 +242,13 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
     SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL@STRENGTH");
   }
 
-  DH *dh = get_dh1024();
+  dh = get_dh1024();
   SSL_CTX_set_tmp_dh(ctx, dh);
 
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
   // Remove this case if OpenSSL 1.0.1 (now EOL) support is no
   // longer needed.
-  EC_KEY *ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+  ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
   if (ecdh) {
     SSL_CTX_set_tmp_ecdh(ctx, ecdh);
     EC_KEY_free(ecdh);
@@ -298,6 +312,8 @@ VALUE engine_inject(VALUE self, VALUE str) {
 
 static VALUE eError;
 
+NORETURN(void raise_error(SSL* ssl, int result));
+
 void raise_error(SSL* ssl, int result) {
   char buf[512];
   char msg[512];
@@ -320,8 +336,7 @@ void raise_error(SSL* ssl, int result) {
     } else {
       err = (int) ERR_get_error();
       ERR_error_string_n(err, buf, sizeof(buf));
-      int errexp = err & mask;
-      snprintf(msg, sizeof(msg), "OpenSSL error: %s - %d", buf, errexp);
+      snprintf(msg, sizeof(msg), "OpenSSL error: %s - %d", buf, err & mask);
     }
   } else {
     snprintf(msg, sizeof(msg), "Unknown OpenSSL error: %d", ssl_err);

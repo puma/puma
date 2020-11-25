@@ -2,6 +2,9 @@ require 'mkmf'
 
 dir_config("puma_http11")
 
+# Make all warnings into errors
+append_cflags config_string 'WERRORFLAG'
+
 if $mingw && RUBY_VERSION >= '2.4'
   append_cflags  '-fstack-protector-strong -D_FORTIFY_SOURCE=2'
   append_ldflags '-fstack-protector-strong -l:libssp.a'
