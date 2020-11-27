@@ -174,6 +174,26 @@ class TestLauncher < Minitest::Test
     refute_match(/Configuration:/, launcher.events.stdout.string)
   end
 
+  def test_fire_on_stopped
+    conf = Puma::Configuration.new do |c|
+      c.app -> {[200, {}, ['']]}
+      c.port UniquePort.call
+    end
+
+    launcher = launcher(conf)
+    launcher.events.on_booted {
+      sleep 1.1 unless Puma.mri?
+      launcher.stop
+    }
+    launcher.events.on_stopped { puts 'on_stopped called' }
+
+    out, = capture_io do
+      launcher.run
+    end
+    sleep 0.2 unless Puma.mri?
+    assert_equal 'on_stopped called', out.strip
+  end
+
   private
 
   def events
