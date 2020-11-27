@@ -19,6 +19,7 @@
   * Close idle connections immediately on shutdown ([#2460])
   * Fix some instances of phased restart errors related to the `json` gem (#2473)
   * Remove use of `json` gem to fix phased restart errors (#2479)
+  * Fix grouping regexp of ILLEGAL_HEADER_KEY_REGEX (#2495)
 
 ## 5.0.4 / 2020-10-27
 

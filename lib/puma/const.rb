@@ -241,7 +241,7 @@ module Puma
     # Illegal character in the key or value of response header
     DQUOTE = "\"".freeze
     HTTP_HEADER_DELIMITER = Regexp.escape("(),/:;<=>?@[]{}").freeze
-    ILLEGAL_HEADER_KEY_REGEX = /[\u0000-\u0025|#{DQUOTE}|#{HTTP_HEADER_DELIMITER}]/.freeze
+    ILLEGAL_HEADER_KEY_REGEX = /(\u0000-\u0025|#{DQUOTE}|#{HTTP_HEADER_DELIMITER})/.freeze
     ILLEGAL_HEADER_VALUE_REGEX = /[\000-\037]/.freeze
 
     # Banned keys of response header
