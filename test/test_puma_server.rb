@@ -445,8 +445,10 @@ EOF
 
   def test_chunked_request
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -454,12 +456,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
+    assert_equal 5, content_length
   end
 
   def test_chunked_request_pause_before_value
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -472,12 +477,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
+    assert_equal 5, content_length
   end
 
   def test_chunked_request_pause_between_chunks
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -490,12 +498,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
+    assert_equal 5, content_length
   end
 
   def test_chunked_request_pause_mid_count
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -508,12 +519,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
+    assert_equal 5, content_length
   end
 
   def test_chunked_request_pause_before_count_newline
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -526,12 +540,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
+    assert_equal 5, content_length
   end
 
   def test_chunked_request_pause_mid_value
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -544,12 +561,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
+    assert_equal 5, content_length
   end
 
   def test_chunked_request_pause_between_cr_lf_after_size_of_second_chunk
     body = nil
+    content_length = nil
     server_run app: ->(env)  {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -571,12 +591,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal (part1 + 'b'), body
+    assert_equal 4201, content_length
   end
 
   def test_chunked_request_pause_between_closing_cr_lf
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -590,12 +613,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal 'hello', body
+    assert_equal 5, content_length
   end
 
   def test_chunked_request_pause_before_closing_cr_lf
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -609,12 +635,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal 'hello', body
+    assert_equal 5, content_length
   end
 
   def test_chunked_request_header_case
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -622,12 +651,15 @@ EOF
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
+    assert_equal 5, content_length
   end
 
   def test_chunked_keep_alive
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -637,14 +669,17 @@ EOF
 
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "hello", body
+    assert_equal 5, content_length
 
     sock.close
   end
 
   def test_chunked_keep_alive_two_back_to_back
     body = nil
+    content_length = nil
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
@@ -662,6 +697,7 @@ EOF
     h = header(sock)
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "hello", body
+    assert_equal 5, content_length
     assert_equal true, last_crlf_written
 
     last_crlf_writer.join
@@ -673,16 +709,19 @@ EOF
 
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "goodbye", body
+    assert_equal 7, content_length
 
     sock.close
   end
 
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
     body = nil
+    content_length = nil
     remote_addr =nil
     @server = Puma::Server.new @app, @events, { remote_address: :header, remote_address_header: 'HTTP_X_FORWARDED_FOR'}
     server_run app: ->(env) {
       body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
       remote_addr = env['REMOTE_ADDR']
       [200, {}, [""]]
     }
@@ -692,6 +731,7 @@ EOF
     h = header sock
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "hello", body
+    assert_equal 5, content_length
     assert_equal "127.0.0.1", remote_addr
 
     sock << "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.2\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
@@ -701,6 +741,7 @@ EOF
 
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "goodbye", body
+    assert_equal 7, content_length
     assert_equal "127.0.0.2", remote_addr
 
     sock.close

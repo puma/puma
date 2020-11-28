@@ -397,7 +397,10 @@ module Puma
           raise EOFError
         end
 
-        return true if decode_chunk(chunk)
+        if decode_chunk(chunk)
+          @env[CONTENT_LENGTH] = @chunked_content_length
+          return true
+        end
       end
     end
 
@@ -410,19 +413,28 @@ module Puma
       @body.binmode
       @tempfile = @body
 
-      return decode_chunk(body)
+      @chunked_content_length = 0
+
+      if decode_chunk(body)
+        @env[CONTENT_LENGTH] = @chunked_content_length
+        return true
+      end
+    end
+
+    def write_chunk(str)
+      @chunked_content_length += @body.write(str)
     end
 
     def decode_chunk(chunk)
       if @partial_part_left > 0
         if @partial_part_left <= chunk.size
           if @partial_part_left > 2
-            @body << chunk[0..(@partial_part_left-3)] # skip the \r\n
+            write_chunk(chunk[0..(@partial_part_left-3)]) # skip the \r\n
           end
           chunk = chunk[@partial_part_left..-1]
           @partial_part_left = 0
         else
-          @body << chunk if @partial_part_left > 2 # don't include the last \r\n
+          write_chunk(chunk) if @partial_part_left > 2 # don't include the last \r\n
           @partial_part_left -= chunk.size
           return false
         end
@@ -469,12 +481,12 @@ module Puma
 
           case
           when got == len
-            @body << part[0..-3] # to skip the ending \r\n
+            write_chunk(part[0..-3]) # to skip the ending \r\n
           when got <= len - 2
-            @body << part
+            write_chunk(part)
             @partial_part_left = len - part.size
           when got == len - 1 # edge where we get just \r but not \n
-            @body << part[0..-2]
+            write_chunk(part[0..-2])
             @partial_part_left = len - part.size
           end
         else
