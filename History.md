@@ -1,3 +1,8 @@
+## 4.3.7 / 2020-11-30
+
+* Bugfixes
+  * Backport set CONTENT_LENGTH for chunked requests (Originally: #2287, backport: #2496)
+
 ## 4.3.6 / 2020-09-05
 
 * Bugfixes
