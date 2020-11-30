@@ -114,7 +114,7 @@ module Puma
       debug "Workers to cull: #{workers_to_cull.inspect}"
 
       workers_to_cull.each do |worker|
-        log "- Worker #{worker.index} (pid: #{worker.pid}) terminating"
+        log "- Worker #{worker.index} (PID: #{worker.pid}) terminating"
         worker.term
       end
     end
@@ -433,7 +433,7 @@ module Puma
                 case req
                 when "b"
                   w.boot!
-                  log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
+                  log "- Worker #{w.index} (PID: #{pid}) booted, phase: #{w.phase}"
                   @next_check = Time.now
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
