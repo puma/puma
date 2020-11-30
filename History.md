@@ -10,15 +10,15 @@
   * Add compile option to change the `QUERY_STRING` max length ([#2485])
 
 * Bugfixes
-  * Fix JRuby handling in Puma::DSL#ssl_bind (#2489)
-  * control_cli.rb - all normal output should be to @stdout (#2487)
-  * Catch 'Error in reactor loop escaped: mode not supported for this object: r' (#2477)
+  * Fix JRuby handling in Puma::DSL#ssl_bind ([#2489])
+  * control_cli.rb - all normal output should be to @stdout ([#2487])
+  * Catch 'Error in reactor loop escaped: mode not supported for this object: r' ([#2477])
   * Ignore Rails' reaper thread (and any thread marked forksafe) for warning ([#2475])
   * Ignore illegal (by Rack spec) response header ([#2439])
   * Close idle connections immediately on shutdown ([#2460])
-  * Fix some instances of phased restart errors related to the `json` gem (#2473)
-  * Remove use of `json` gem to fix phased restart errors (#2479)
-  * Fix grouping regexp of ILLEGAL_HEADER_KEY_REGEX (#2495)
+  * Fix some instances of phased restart errors related to the `json` gem ([#2473])
+  * Remove use of `json` gem to fix phased restart errors ([#2479])
+  * Fix grouping regexp of ILLEGAL_HEADER_KEY_REGEX ([#2495])
 
 ## 5.0.4 / 2020-10-27
 
@@ -148,7 +148,7 @@
 ## 4.3.7 / 2020-11-30
 
 * Bugfixes
-  * Backport set CONTENT_LENGTH for chunked requests (Originally: #2287, backport: #2496)
+  * Backport set CONTENT_LENGTH for chunked requests (Originally: [#2287], backport: [#2496])
 
 ## 4.3.4/4.3.5 and 3.12.5/3.12.6 / 2020-05-22
 
@@ -1667,11 +1667,21 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
-[#2374]:https://github.com/puma/puma/pull/2374     "PR by @cjlarose, merged 2020-09-29"
+[#2472]:https://github.com/puma/puma/pull/2472     "PR by @ccverak, merged 2020-11-02"
 [#2438]:https://github.com/puma/puma/pull/2438     "PR by @ekohl, merged 2020-10-26"
 [#2406]:https://github.com/puma/puma/pull/2406     "PR by @fdel15, merged 2020-10-19"
+[#2449]:https://github.com/puma/puma/pull/2449     "PR by @MSP-Greg, merged 2020-10-28"
+[#2362]:https://github.com/puma/puma/pull/2362     "PR by @ekohl, merged 2020-11-10"
+[#2485]:https://github.com/puma/puma/pull/2485     "PR by @elct9620, merged 2020-11-18"
+[#2489]:https://github.com/puma/puma/pull/2489     "PR by @MSP-Greg, merged 2020-11-27"
+[#2487]:https://github.com/puma/puma/pull/2487     "PR by @MSP-Greg, merged 2020-11-17"
+[#2477]:https://github.com/puma/puma/pull/2477     "PR by @MSP-Greg, merged 2020-11-16"
+[#2475]:https://github.com/puma/puma/pull/2475     "PR by @nateberkopec, merged 2020-11-02"
 [#2439]:https://github.com/puma/puma/pull/2439     "PR by @kuei0221, merged 2020-10-26"
 [#2460]:https://github.com/puma/puma/pull/2460     "PR by @cjlarose, merged 2020-10-27"
+[#2473]:https://github.com/puma/puma/pull/2473     "PR by @cjlarose, merged 2020-11-01"
+[#2479]:https://github.com/puma/puma/pull/2479     "PR by @cjlarose, merged 2020-11-10"
+[#2495]:https://github.com/puma/puma/pull/2495     "PR by @JuanitoFatas, merged 2020-11-27"
 [#2461]:https://github.com/puma/puma/pull/2461     "PR by @cjlarose, merged 2020-10-27"
 [#2454]:https://github.com/puma/puma/issues/2454   "Issue by @majksner, closed 2020-10-27"
 [#2432]:https://github.com/puma/puma/pull/2432     "PR by @MSP-Greg, merged 2020-10-25"
@@ -1689,6 +1699,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2412]:https://github.com/puma/puma/pull/2412     "PR by @MSP-Greg, merged 2020-10-06"
 [#2405]:https://github.com/puma/puma/pull/2405     "PR by @MSP-Greg, merged 2020-10-05"
 [#2408]:https://github.com/puma/puma/pull/2408     "PR by @fliiiix, merged 2020-10-03"
+[#2374]:https://github.com/puma/puma/pull/2374     "PR by @cjlarose, merged 2020-09-29"
 [#2389]:https://github.com/puma/puma/pull/2389     "PR by @MSP-Greg, merged 2020-09-29"
 [#2381]:https://github.com/puma/puma/pull/2381     "PR by @joergschray, merged 2020-09-24"
 [#2271]:https://github.com/puma/puma/pull/2271     "PR by @wjordan, merged 2020-09-24"
@@ -1755,6 +1766,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2223]:https://github.com/puma/puma/pull/2223     "PR by @wjordan, merged 2020-04-20"
 [#2239]:https://github.com/puma/puma/pull/2239     "PR by @wjordan, merged 2020-05-15"
 [#2304]:https://github.com/puma/puma/issues/2304   "Issue by @mpeltomaa, closed 2020-09-05"
+[#2496]:https://github.com/puma/puma/pull/2496     "PR by @TheRusskiy, merged 2020-11-30"
 [#2132]:https://github.com/puma/puma/issues/2132   "Issue by @bmclean, closed 2020-02-28"
 [#2010]:https://github.com/puma/puma/pull/2010     "PR by @nateberkopec, merged 2019-10-07"
 [#2012]:https://github.com/puma/puma/pull/2012     "PR by @headius, merged 2019-10-07"
