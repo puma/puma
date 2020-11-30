@@ -1,3 +1,11 @@
+## Master
+
+* Features
+  * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+
+* Bugfixes
+  * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+
 ## 5.1.0 / 2020-11-30
 
 * Features
