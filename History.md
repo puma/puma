@@ -2,6 +2,7 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Phased restart availability is now always logged, even if it is not available.
   * Prints the loaded configuration if the environment variable `PUMA_LOG_CONFIG` is present ([#2472])
   * Integrate with systemd's watchdog and notification features ([#2438])
   * Adds max_fast_inline as a configuration option for the Server object ([#2406])

@@ -337,6 +337,7 @@ module Puma
       before = Thread.list.reject { |t| t.thread_variable_get(:fork_safe) }
 
       if preload?
+        log "*     Restarts: (\u2714) hot (\u2716) phased"
         log "* Preloading application"
         load_and_bind
 
@@ -354,7 +355,7 @@ module Puma
           end
         end
       else
-        log "* Phased restart available"
+        log "*     Restarts: (\u2714) hot (\u2714) phased"
 
         unless @launcher.config.app_configured?
           error "No application configured, nothing to run"
