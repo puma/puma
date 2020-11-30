@@ -1,7 +1,6 @@
-## 5.1.0
+## 5.1.0 / 2020-11-30
 
 * Features
-  * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
   * Phased restart availability is now always logged, even if it is not available.
   * Prints the loaded configuration if the environment variable `PUMA_LOG_CONFIG` is present ([#2472])
   * Integrate with systemd's watchdog and notification features ([#2438])
@@ -11,7 +10,6 @@
   * Add compile option to change the `QUERY_STRING` max length ([#2485])
 
 * Bugfixes
-  * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
   * Fix JRuby handling in Puma::DSL#ssl_bind (#2489)
   * control_cli.rb - all normal output should be to @stdout (#2487)
   * Catch 'Error in reactor loop escaped: mode not supported for this object: r' (#2477)
@@ -151,7 +149,7 @@
 
 * Bugfixes
   * Backport set CONTENT_LENGTH for chunked requests (Originally: #2287, backport: #2496)
-  
+
 ## 4.3.4/4.3.5 and 3.12.5/3.12.6 / 2020-05-22
 
 Each patchlevel release contains a separate security fix. We recommend simply upgrading to 4.3.5/3.12.6.
