@@ -240,9 +240,10 @@ module Puma
 
     # Illegal character in the key or value of response header
     DQUOTE = "\"".freeze
-    HTTP_HEADER_DELIMITER = Regexp.escape("(),/:;<=>?@[]{}").freeze
-    ILLEGAL_HEADER_KEY_REGEX = /(\u0000-\u0025|#{DQUOTE}|#{HTTP_HEADER_DELIMITER})/.freeze
-    ILLEGAL_HEADER_VALUE_REGEX = /[\000-\037]/.freeze
+    HTTP_HEADER_DELIMITER = Regexp.escape("(),/:;<=>?@[]{}\\").freeze
+    ILLEGAL_HEADER_KEY_REGEX = /[\x00-\x20#{DQUOTE}#{HTTP_HEADER_DELIMITER}]/.freeze
+    # header values can contain HTAB?
+    ILLEGAL_HEADER_VALUE_REGEX = /[\x00-\x08\x0A-\x1F]/.freeze
 
     # Banned keys of response header
     BANNED_HEADER_KEY = /rack.|status/.freeze
