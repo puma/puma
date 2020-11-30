@@ -329,7 +329,8 @@ module Puma
 
       output_header "cluster"
 
-      log "* Process workers: #{@options[:workers]}"
+      # This is aligned with the output from Runner, see Runner#output_header
+      log "*      Workers: #{@options[:workers]}"
 
       # Threads explicitly marked as fork safe will be ignored.
       # Used in Rails, but may be used by anyone.
