@@ -81,7 +81,7 @@ static void snake_upcase_char(char *c)
 }%%
 
 /** Data **/
-%% write data;
+%% write data noentry;
 
 int puma_parser_init(puma_parser *parser)  {
   int cs = 0;

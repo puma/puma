@@ -43,12 +43,13 @@ static const int puma_parser_start = 1;
 static const int puma_parser_first_final = 46;
 static const int puma_parser_error = 0;
 
+
 #line 85 "ext/puma_http11/http11_parser.rl"
 
 int puma_parser_init(puma_parser *parser)  {
   int cs = 0;
   
-#line 55 "ext/puma_http11/http11_parser.c"
+#line 53 "ext/puma_http11/http11_parser.c"
 	{
 	cs = puma_parser_start;
 	}
@@ -82,7 +83,7 @@ size_t puma_parser_execute(puma_parser *parser, const char *buffer, size_t len, 
   assert((size_t) (pe - p) == len - off && "pointers aren't same distance");
 
   
-#line 89 "ext/puma_http11/http11_parser.c"
+#line 87 "ext/puma_http11/http11_parser.c"
 	{
 	if ( p == pe )
 		goto _test_eof;
@@ -113,7 +114,7 @@ st2:
 	if ( ++p == pe )
 		goto _test_eof2;
 case 2:
-#line 120 "ext/puma_http11/http11_parser.c"
+#line 118 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr2;
 		case 36: goto st27;
@@ -138,7 +139,7 @@ st3:
 	if ( ++p == pe )
 		goto _test_eof3;
 case 3:
-#line 145 "ext/puma_http11/http11_parser.c"
+#line 143 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 42: goto tr4;
 		case 43: goto tr5;
@@ -162,7 +163,7 @@ st4:
 	if ( ++p == pe )
 		goto _test_eof4;
 case 4:
-#line 169 "ext/puma_http11/http11_parser.c"
+#line 167 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr8;
 		case 35: goto tr9;
@@ -224,7 +225,7 @@ st5:
 	if ( ++p == pe )
 		goto _test_eof5;
 case 5:
-#line 231 "ext/puma_http11/http11_parser.c"
+#line 229 "ext/puma_http11/http11_parser.c"
 	if ( (*p) == 72 )
 		goto tr10;
 	goto st0;
@@ -236,7 +237,7 @@ st6:
 	if ( ++p == pe )
 		goto _test_eof6;
 case 6:
-#line 243 "ext/puma_http11/http11_parser.c"
+#line 241 "ext/puma_http11/http11_parser.c"
 	if ( (*p) == 84 )
 		goto st7;
 	goto st0;
@@ -317,7 +318,7 @@ st14:
 	if ( ++p == pe )
 		goto _test_eof14;
 case 14:
-#line 324 "ext/puma_http11/http11_parser.c"
+#line 322 "ext/puma_http11/http11_parser.c"
 	if ( (*p) == 10 )
 		goto st15;
 	goto st0;
@@ -368,7 +369,7 @@ st46:
 	if ( ++p == pe )
 		goto _test_eof46;
 case 46:
-#line 375 "ext/puma_http11/http11_parser.c"
+#line 373 "ext/puma_http11/http11_parser.c"
 	goto st0;
 tr21:
 #line 40 "ext/puma_http11/http11_parser.rl"
@@ -384,7 +385,7 @@ st17:
 	if ( ++p == pe )
 		goto _test_eof17;
 case 17:
-#line 391 "ext/puma_http11/http11_parser.c"
+#line 389 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 33: goto tr23;
 		case 58: goto tr24;
@@ -423,7 +424,7 @@ st18:
 	if ( ++p == pe )
 		goto _test_eof18;
 case 18:
-#line 430 "ext/puma_http11/http11_parser.c"
+#line 428 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 13: goto tr26;
 		case 32: goto tr27;
@@ -437,7 +438,7 @@ st19:
 	if ( ++p == pe )
 		goto _test_eof19;
 case 19:
-#line 444 "ext/puma_http11/http11_parser.c"
+#line 442 "ext/puma_http11/http11_parser.c"
 	if ( (*p) == 13 )
 		goto tr29;
 	goto st19;
@@ -483,7 +484,7 @@ st20:
 	if ( ++p == pe )
 		goto _test_eof20;
 case 20:
-#line 490 "ext/puma_http11/http11_parser.c"
+#line 488 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr31;
 		case 60: goto st0;
@@ -504,7 +505,7 @@ st21:
 	if ( ++p == pe )
 		goto _test_eof21;
 case 21:
-#line 511 "ext/puma_http11/http11_parser.c"
+#line 509 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr33;
 		case 60: goto st0;
@@ -525,7 +526,7 @@ st22:
 	if ( ++p == pe )
 		goto _test_eof22;
 case 22:
-#line 532 "ext/puma_http11/http11_parser.c"
+#line 530 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 43: goto st22;
 		case 58: goto st23;
@@ -550,7 +551,7 @@ st23:
 	if ( ++p == pe )
 		goto _test_eof23;
 case 23:
-#line 557 "ext/puma_http11/http11_parser.c"
+#line 555 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr8;
 		case 34: goto st0;
@@ -570,7 +571,7 @@ st24:
 	if ( ++p == pe )
 		goto _test_eof24;
 case 24:
-#line 577 "ext/puma_http11/http11_parser.c"
+#line 575 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr37;
 		case 34: goto st0;
@@ -593,7 +594,7 @@ st25:
 	if ( ++p == pe )
 		goto _test_eof25;
 case 25:
-#line 600 "ext/puma_http11/http11_parser.c"
+#line 598 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr41;
 		case 34: goto st0;
@@ -613,7 +614,7 @@ st26:
 	if ( ++p == pe )
 		goto _test_eof26;
 case 26:
-#line 620 "ext/puma_http11/http11_parser.c"
+#line 618 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr44;
 		case 34: goto st0;
