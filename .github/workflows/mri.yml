@@ -60,6 +60,10 @@ jobs:
         shell: bash
         run: echo 'DISABLE_SSL=true' >> $GITHUB_ENV
 
+      - name: set WERRORFLAG
+        shell: bash
+        run: echo 'MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
+
       - name: compile
         run:  bundle exec rake compile
 
