@@ -2,11 +2,12 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
-  * Fail build if compiling extensions raises warnings ([#1953])
+  * Fail build if compiling extensions raises warnings on GH Actions ([#1953])
+  * Add MAKE_WARNINGS_INTO_ERRORS environment variable to toggle whether a build should treat all warnings into errors or not ([#1953])
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
-  * Fix all compiler warnings reported in mini_ssl source code ([#1953])
+  * Fix compiler warnings, but skipped warnings related to ragel state machine generated code ([#1953])
 
 ## 5.1.0 / 2020-11-30
 
