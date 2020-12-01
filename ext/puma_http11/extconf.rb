@@ -25,4 +25,15 @@ unless ENV["DISABLE_SSL"]
   end
 end
 
+if ENV["MAKE_WARNINGS_INTO_ERRORS"]
+  # Make all warnings into errors
+  # Except `implicit-fallthrough` since most failures comes from ragel state machine generated code
+  if respond_to? :append_cflags
+    append_cflags config_string 'WERRORFLAG'
+    append_cflags '-Wno-implicit-fallthrough'
+  else
+    $CFLAGS += ' ' << (config_string 'WERRORFLAG') << ' -Wno-implicit-fallthrough'
+  end
+end
+
 create_makefile("puma/puma_http11")
