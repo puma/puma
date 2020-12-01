@@ -1,18 +1,18 @@
 # Compile Options
 
-There provide some `cflags` to change Puma's default configuration for C.
+There are some `cflags` provided to change Puma's default configuration for its C extension.
 
-## Query String
+## Query String, `PUMA_QUERY_STRING_MAX_LENGTH`
 
-By default, the max length of `QUERY_STRING` is `1024 * 10`. But you may want to adjust it to allow accept large queries in the GET requests.
+By default, the max length of `QUERY_STRING` is `1024 * 10`. But you may want to adjust it to allow accept larger queries in GET requests.
 
-For manual install
+For manual install, pass the `PUMA_QUERY_STRING_MAX_LENGTH` option like this:
 
 ```
 gem install puma -- --with-cflags="-D PUMA_QUERY_STRING_MAX_LENGTH=64000"
 ```
 
-For bundler config
+For Bundler, use its configuration system:
 
 ```
 bundle config build.puma --with-cflags="-D PUMA_QUERY_STRING_MAX_LENGTH=64000"
