@@ -15,7 +15,6 @@ module Puma
 
     def initialize(ioerr)
       @ioerr = ioerr
-      @ioerr.sync = true
 
       @debug = ENV.key? 'PUMA_DEBUG'
     end
@@ -32,7 +31,7 @@ module Puma
     #   and before all remaining info.
     #
     def info(options={})
-      ioerr.puts title(options)
+      log title(options)
     end
 
     # Print occured error details only if
@@ -54,7 +53,7 @@ module Puma
       string_block << request_dump(req) if request_parsed?(req)
       string_block << error.backtrace if error
 
-      ioerr.puts string_block.join("\n")
+      log string_block.join("\n")
     end
 
     def title(options={})
@@ -92,6 +91,14 @@ module Puma
 
     def request_parsed?(req)
       req && req.env[REQUEST_METHOD]
+    end
+
+    private
+
+    def log(str)
+      ioerr.puts str
+
+      ioerr.flush unless ioerr.sync
     end
   end
 end

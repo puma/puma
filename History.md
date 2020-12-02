@@ -2,6 +2,7 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Uses `flush` after writing messages to avoid mutating $stdout and $stderr using `sync=true` ([#2486])
   * Fail build if compiling extensions raises warnings on GH Actions ([#1953])
   * Add MAKE_WARNINGS_INTO_ERRORS environment variable to toggle whether a build should treat all warnings into errors or not ([#1953])
 

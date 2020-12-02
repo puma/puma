@@ -113,8 +113,8 @@ module Puma
         end
 
         STDOUT.reopen stdout, (append ? "a" : "w")
-        STDOUT.sync = true
         STDOUT.puts "=== puma startup: #{Time.now} ==="
+        STDOUT.flush unless STDOUT.sync
       end
 
       if stderr
@@ -123,8 +123,8 @@ module Puma
         end
 
         STDERR.reopen stderr, (append ? "a" : "w")
-        STDERR.sync = true
         STDERR.puts "=== puma startup: #{Time.now} ==="
+        STDERR.flush unless STDERR.sync
       end
     end
 
