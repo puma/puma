@@ -6,7 +6,6 @@ require_relative "helpers/config_file"
 require "puma/configuration"
 require 'puma/events'
 
-
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
 
@@ -74,7 +73,52 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1=false&no_tlsv1_1=false"
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
+  def test_ssl_bind_jruby
+    skip_unless :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    cipher_list = "TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        keystore: "/path/to/keystore",
+        keystore_pass: "password",
+        ssl_cipher_list: cipher_list,
+        verify_mode: "the_verify_mode"
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?keystore=/path/to/keystore" \
+      "&keystore-pass=password&ssl_cipher_list=#{cipher_list}" \
+      "&verify_mode=the_verify_mode"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
+
+
+
+  def test_ssl_bind_no_tlsv1_1
+    skip_on :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert",
+        key: "/path/to/key",
+        verify_mode: "the_verify_mode",
+        no_tlsv1_1: true
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1_1=true"
     assert_equal [ssl_binding], conf.options[:binds]
   end
 

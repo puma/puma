@@ -171,7 +171,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_log_config_disabled
-    refute_match /Configuration:/, launcher.events.stdout.string
+    refute_match(/Configuration:/, launcher.events.stdout.string)
   end
 
   private

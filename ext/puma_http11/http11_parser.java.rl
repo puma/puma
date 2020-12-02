@@ -58,7 +58,7 @@ public class Http11Parser {
 }%%
 
 /** Data **/
-%% write data;
+%% write data noentry;
 
    public static interface ElementCB {
      public void call(Ruby runtime, RubyHash data, ByteList buffer, int at, int length);

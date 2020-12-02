@@ -156,7 +156,7 @@ module Puma
         @pid = sf.pid
       elsif @pidfile
         # get pid from pid_file
-        File.open(@pidfile) { |f| @pid = f.read.to_i }
+        @pid = File.read(@pidfile, mode: 'rb:UTF-8').to_i
       end
     end
 

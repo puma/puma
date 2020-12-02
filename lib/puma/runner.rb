@@ -59,7 +59,7 @@ module Puma
 
       control.binder.parse [str], self, 'Starting control server'
 
-      control.run
+      control.run thread_name: 'control'
       @control = control
     end
 
@@ -86,9 +86,16 @@ module Puma
       max_t = @options[:max_threads]
 
       log "Puma starting in #{mode} mode..."
-      log "* Version #{Puma::Const::PUMA_VERSION} (#{ruby_engine}), codename: #{Puma::Const::CODE_NAME}"
-      log "* Min threads: #{min_t}, max threads: #{max_t}"
-      log "* Environment: #{ENV['RACK_ENV']}"
+      log "* Puma version: #{Puma::Const::PUMA_VERSION} (#{ruby_engine}) (\"#{Puma::Const::CODE_NAME}\")"
+      log "*  Min threads: #{min_t}"
+      log "*  Max threads: #{max_t}"
+      log "*  Environment: #{ENV['RACK_ENV']}"
+
+      if mode == "cluster"
+        log "*   Master PID: #{Process.pid}"
+      else
+        log "*          PID: #{Process.pid}"
+      end
     end
 
     def redirected_io?

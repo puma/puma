@@ -33,20 +33,18 @@ static void snake_upcase_char(char *c)
 /** Machine **/
 
 
-#line 79 "ext/puma_http11/http11_parser.rl"
+#line 81 "ext/puma_http11/http11_parser.rl"
 
 
 /** Data **/
 
-#line 40 "ext/puma_http11/http11_parser.c"
+#line 42 "ext/puma_http11/http11_parser.c"
 static const int puma_parser_start = 1;
 static const int puma_parser_first_final = 46;
 static const int puma_parser_error = 0;
 
-static const int puma_parser_en_main = 1;
 
-
-#line 83 "ext/puma_http11/http11_parser.rl"
+#line 85 "ext/puma_http11/http11_parser.rl"
 
 int puma_parser_init(puma_parser *parser)  {
   int cs = 0;
@@ -56,7 +54,7 @@ int puma_parser_init(puma_parser *parser)  {
 	cs = puma_parser_start;
 	}
 
-#line 87 "ext/puma_http11/http11_parser.rl"
+#line 89 "ext/puma_http11/http11_parser.rl"
   parser->cs = cs;
   parser->body_start = 0;
   parser->content_len = 0;
@@ -109,7 +107,7 @@ st0:
 cs = 0;
 	goto _out;
 tr0:
-#line 35 "ext/puma_http11/http11_parser.rl"
+#line 37 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st2;
 st2:
@@ -132,7 +130,7 @@ case 2:
 		goto st27;
 	goto st0;
 tr2:
-#line 48 "ext/puma_http11/http11_parser.rl"
+#line 50 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_method(parser, PTR_TO(mark), LEN(mark, p));
   }
@@ -158,7 +156,7 @@ case 3:
 		goto tr5;
 	goto st0;
 tr4:
-#line 35 "ext/puma_http11/http11_parser.rl"
+#line 37 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st4;
 st4:
@@ -172,53 +170,53 @@ case 4:
 	}
 	goto st0;
 tr8:
-#line 51 "ext/puma_http11/http11_parser.rl"
+#line 53 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st5;
 tr31:
-#line 35 "ext/puma_http11/http11_parser.rl"
+#line 37 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
-#line 54 "ext/puma_http11/http11_parser.rl"
+#line 56 "ext/puma_http11/http11_parser.rl"
 	{
     parser->fragment(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st5;
 tr33:
-#line 54 "ext/puma_http11/http11_parser.rl"
+#line 56 "ext/puma_http11/http11_parser.rl"
 	{
     parser->fragment(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st5;
 tr37:
-#line 67 "ext/puma_http11/http11_parser.rl"
+#line 69 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_path(parser, PTR_TO(mark), LEN(mark,p));
   }
-#line 51 "ext/puma_http11/http11_parser.rl"
+#line 53 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st5;
 tr41:
-#line 58 "ext/puma_http11/http11_parser.rl"
+#line 60 "ext/puma_http11/http11_parser.rl"
 	{ MARK(query_start, p); }
-#line 59 "ext/puma_http11/http11_parser.rl"
+#line 61 "ext/puma_http11/http11_parser.rl"
 	{
     parser->query_string(parser, PTR_TO(query_start), LEN(query_start, p));
   }
-#line 51 "ext/puma_http11/http11_parser.rl"
+#line 53 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st5;
 tr44:
-#line 59 "ext/puma_http11/http11_parser.rl"
+#line 61 "ext/puma_http11/http11_parser.rl"
 	{
     parser->query_string(parser, PTR_TO(query_start), LEN(query_start, p));
   }
-#line 51 "ext/puma_http11/http11_parser.rl"
+#line 53 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, p));
   }
@@ -232,7 +230,7 @@ case 5:
 		goto tr10;
 	goto st0;
 tr10:
-#line 35 "ext/puma_http11/http11_parser.rl"
+#line 37 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st6;
 st6:
@@ -297,21 +295,21 @@ case 13:
 		goto st13;
 	goto st0;
 tr18:
-#line 63 "ext/puma_http11/http11_parser.rl"
+#line 65 "ext/puma_http11/http11_parser.rl"
 	{
     parser->http_version(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st14;
 tr26:
-#line 44 "ext/puma_http11/http11_parser.rl"
+#line 46 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
-#line 45 "ext/puma_http11/http11_parser.rl"
+#line 47 "ext/puma_http11/http11_parser.rl"
 	{
     parser->http_field(parser, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, p));
   }
 	goto st14;
 tr29:
-#line 45 "ext/puma_http11/http11_parser.rl"
+#line 47 "ext/puma_http11/http11_parser.rl"
 	{
     parser->http_field(parser, PTR_TO(field_start), parser->field_len, PTR_TO(mark), LEN(mark, p));
   }
@@ -360,7 +358,7 @@ case 16:
 		goto tr22;
 	goto st0;
 tr22:
-#line 71 "ext/puma_http11/http11_parser.rl"
+#line 73 "ext/puma_http11/http11_parser.rl"
 	{
     parser->body_start = p - buffer + 1;
     parser->header_done(parser, p + 1, pe - p - 1);
@@ -374,13 +372,13 @@ case 46:
 #line 373 "ext/puma_http11/http11_parser.c"
 	goto st0;
 tr21:
-#line 38 "ext/puma_http11/http11_parser.rl"
+#line 40 "ext/puma_http11/http11_parser.rl"
 	{ MARK(field_start, p); }
-#line 39 "ext/puma_http11/http11_parser.rl"
+#line 41 "ext/puma_http11/http11_parser.rl"
 	{ snake_upcase_char((char *)p); }
 	goto st17;
 tr23:
-#line 39 "ext/puma_http11/http11_parser.rl"
+#line 41 "ext/puma_http11/http11_parser.rl"
 	{ snake_upcase_char((char *)p); }
 	goto st17;
 st17:
@@ -413,13 +411,13 @@ case 17:
 		goto tr23;
 	goto st0;
 tr24:
-#line 40 "ext/puma_http11/http11_parser.rl"
+#line 42 "ext/puma_http11/http11_parser.rl"
 	{
     parser->field_len = LEN(field_start, p);
   }
 	goto st18;
 tr27:
-#line 44 "ext/puma_http11/http11_parser.rl"
+#line 46 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st18;
 st18:
@@ -433,7 +431,7 @@ case 18:
 	}
 	goto tr25;
 tr25:
-#line 44 "ext/puma_http11/http11_parser.rl"
+#line 46 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st19;
 st19:
@@ -445,39 +443,39 @@ case 19:
 		goto tr29;
 	goto st19;
 tr9:
-#line 51 "ext/puma_http11/http11_parser.rl"
+#line 53 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st20;
 tr38:
-#line 67 "ext/puma_http11/http11_parser.rl"
+#line 69 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_path(parser, PTR_TO(mark), LEN(mark,p));
   }
-#line 51 "ext/puma_http11/http11_parser.rl"
+#line 53 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st20;
 tr42:
-#line 58 "ext/puma_http11/http11_parser.rl"
+#line 60 "ext/puma_http11/http11_parser.rl"
 	{ MARK(query_start, p); }
-#line 59 "ext/puma_http11/http11_parser.rl"
+#line 61 "ext/puma_http11/http11_parser.rl"
 	{
     parser->query_string(parser, PTR_TO(query_start), LEN(query_start, p));
   }
-#line 51 "ext/puma_http11/http11_parser.rl"
+#line 53 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st20;
 tr45:
-#line 59 "ext/puma_http11/http11_parser.rl"
+#line 61 "ext/puma_http11/http11_parser.rl"
 	{
     parser->query_string(parser, PTR_TO(query_start), LEN(query_start, p));
   }
-#line 51 "ext/puma_http11/http11_parser.rl"
+#line 53 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_uri(parser, PTR_TO(mark), LEN(mark, p));
   }
@@ -500,7 +498,7 @@ case 20:
 		goto st0;
 	goto tr30;
 tr30:
-#line 35 "ext/puma_http11/http11_parser.rl"
+#line 37 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st21;
 st21:
@@ -521,7 +519,7 @@ case 21:
 		goto st0;
 	goto st21;
 tr5:
-#line 35 "ext/puma_http11/http11_parser.rl"
+#line 37 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st22;
 st22:
@@ -546,7 +544,7 @@ case 22:
 		goto st22;
 	goto st0;
 tr7:
-#line 35 "ext/puma_http11/http11_parser.rl"
+#line 37 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st23;
 st23:
@@ -566,7 +564,7 @@ case 23:
 		goto st0;
 	goto st23;
 tr6:
-#line 35 "ext/puma_http11/http11_parser.rl"
+#line 37 "ext/puma_http11/http11_parser.rl"
 	{ MARK(mark, p); }
 	goto st24;
 st24:
@@ -587,7 +585,7 @@ case 24:
 		goto st0;
 	goto st24;
 tr39:
-#line 67 "ext/puma_http11/http11_parser.rl"
+#line 69 "ext/puma_http11/http11_parser.rl"
 	{
     parser->request_path(parser, PTR_TO(mark), LEN(mark,p));
   }
@@ -609,7 +607,7 @@ case 25:
 		goto st0;
 	goto tr40;
 tr40:
-#line 58 "ext/puma_http11/http11_parser.rl"
+#line 60 "ext/puma_http11/http11_parser.rl"
 	{ MARK(query_start, p); }
 	goto st26;
 st26:
@@ -1010,7 +1008,7 @@ case 45:
 	_out: {}
 	}
 
-#line 115 "ext/puma_http11/http11_parser.rl"
+#line 117 "ext/puma_http11/http11_parser.rl"
 
   if (!puma_parser_has_error(parser))
     parser->cs = cs;

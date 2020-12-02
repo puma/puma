@@ -182,8 +182,6 @@ static final int puma_parser_start = 1;
 static final int puma_parser_first_final = 46;
 static final int puma_parser_error = 0;
 
-static final int puma_parser_en_main = 1;
-
 
 // line 62 "ext/puma_http11/http11_parser.java.rl"
 
@@ -212,12 +210,12 @@ static final int puma_parser_en_main = 1;
           cs = 0;
 
           
-// line 218 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 214 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	cs = puma_parser_start;
 	}
 
-// line 90 "ext/puma_http11/http11_parser.java.rl"
+// line 88 "ext/puma_http11/http11_parser.java.rl"
 
           body_start = 0;
           content_len = 0;
@@ -244,7 +242,7 @@ static final int puma_parser_en_main = 1;
      parser.buffer = buffer;
 
      
-// line 250 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 246 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	int _klen;
 	int _trans = 0;
@@ -400,7 +398,7 @@ case 1:
     { p += 1; _goto_targ = 5; if (true)  continue _goto;}
   }
 	break;
-// line 406 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 402 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 			}
 		}
 	}
@@ -420,7 +418,7 @@ case 5:
 	break; }
 	}
 
-// line 116 "ext/puma_http11/http11_parser.java.rl"
+// line 114 "ext/puma_http11/http11_parser.java.rl"
 
      parser.cs = cs;
      parser.nread += (p - off);

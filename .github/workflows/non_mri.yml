@@ -1,5 +1,6 @@
 name: non_MRI
-on: [push, pull_request]
+
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build:
@@ -52,6 +53,10 @@ jobs:
         if: matrix.no-ssl == ' no SSL'
         shell: bash
         run: echo 'DISABLE_SSL=true' >> $GITHUB_ENV
+
+      - name: set WERRORFLAG
+        shell: bash
+        run: echo 'MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
       - name: compile
         run:  bundle exec rake compile

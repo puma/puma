@@ -114,7 +114,7 @@ module Puma
       debug "Workers to cull: #{workers_to_cull.inspect}"
 
       workers_to_cull.each do |worker|
-        log "- Worker #{worker.index} (pid: #{worker.pid}) terminating"
+        log "- Worker #{worker.index} (PID: #{worker.pid}) terminating"
         worker.term
       end
     end
@@ -329,13 +329,15 @@ module Puma
 
       output_header "cluster"
 
-      log "* Process workers: #{@options[:workers]}"
+      # This is aligned with the output from Runner, see Runner#output_header
+      log "*      Workers: #{@options[:workers]}"
 
       # Threads explicitly marked as fork safe will be ignored.
       # Used in Rails, but may be used by anyone.
       before = Thread.list.reject { |t| t.thread_variable_get(:fork_safe) }
 
       if preload?
+        log "*     Restarts: (\u2714) hot (\u2716) phased"
         log "* Preloading application"
         load_and_bind
 
@@ -353,7 +355,7 @@ module Puma
           end
         end
       else
-        log "* Phased restart available"
+        log "*     Restarts: (\u2714) hot (\u2714) phased"
 
         unless @launcher.config.app_configured?
           error "No application configured, nothing to run"
@@ -432,7 +434,7 @@ module Puma
                 case req
                 when "b"
                   w.boot!
-                  log "- Worker #{w.index} (pid: #{pid}) booted, phase: #{w.phase}"
+                  log "- Worker #{w.index} (PID: #{pid}) booted, phase: #{w.phase}"
                   @next_check = Time.now
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
