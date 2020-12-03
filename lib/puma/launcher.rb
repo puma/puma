@@ -139,7 +139,6 @@ module Puma
 
     # Begin async shutdown of the server gracefully
     def stop
-      @events.fire_on_stopped!
       @status = :stop
       @runner.stop
     end
