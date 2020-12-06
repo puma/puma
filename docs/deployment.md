@@ -29,7 +29,7 @@ Here are some rules of thumb for cluster mode:
 * Use cluster mode and set the number of workers to 1.5x the number of cpu cores
   in the machine, minimum 2.
 * Set the number of threads to desired concurrent requests / number of workers.
-  Puma defaults to 16 and that's a decent number.
+  Puma defaults to 5 and that's a decent number.
 
 #### Migrating from Unicorn
 
