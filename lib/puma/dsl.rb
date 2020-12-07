@@ -51,14 +51,20 @@ module Puma
       if defined?(JRUBY_VERSION)
         ssl_cipher_list = opts[:ssl_cipher_list] ?
           "&ssl_cipher_list=#{opts[:ssl_cipher_list]}" : nil
+
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
+
         "ssl://#{host}:#{port}?#{keystore_additions}#{ssl_cipher_list}" \
           "&verify_mode=#{verify}#{tls_str}#{ca_additions}"
       else
         ssl_cipher_filter = opts[:ssl_cipher_filter] ?
           "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
+
+        v_flags = (ary = opts[:verification_flags]) ?
+          "&verification_flags=#{Array(ary).join ','}" : nil
+
         "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}" \
-          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}"
+          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}"
       end
     end
 
@@ -429,6 +435,7 @@ module Puma
     #     key: path_to_key,
     #     ssl_cipher_filter: cipher_filter, # optional
     #     verify_mode: verify_mode,         # default 'none'
+    #     verification_flags: flags,        # optional, not supported by JRuby
     #   }
     # @example For JRuby, two keys are required: keystore & keystore_pass.
     #   ssl_bind '127.0.0.1', '9292', {

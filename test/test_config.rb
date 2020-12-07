@@ -141,6 +141,24 @@ class TestConfigFile < TestConfigFileBase
     assert ssl_binding.include?("&ssl_cipher_filter=#{cipher_filter}")
   end
 
+  def test_ssl_bind_with_verification_flags
+    skip_on :jruby
+    skip 'No ssl support' unless ::Puma::HAS_SSL
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "cert",
+        key: "key",
+        verification_flags: ["TRUSTED_FIRST", "NO_CHECK_TIME"]
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert ssl_binding.include?("&verification_flags=TRUSTED_FIRST,NO_CHECK_TIME")
+  end
+
   def test_ssl_bind_with_ca
     skip 'No ssl support' unless ::Puma::HAS_SSL
     conf = Puma::Configuration.new do |c|
