@@ -10,8 +10,13 @@
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
   * Fix compiler warnings, but skipped warnings related to ragel state machine generated code ([#1953])
-  * Fix over eager matching against banned header names ([#2510])
 
+
+## 5.1.1 / 2020-12-10
+
+* Bugfixes 
+  * Fix over eager matching against banned header names ([#2510])
+  
 ## 5.1.0 / 2020-11-30
 
 * Features
