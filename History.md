@@ -1667,6 +1667,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2510]:https://github.com/puma/puma/pull/2510     "PR by @micke"
 [#2472]:https://github.com/puma/puma/pull/2472     "PR by @ccverak, merged 2020-11-02"
 [#2438]:https://github.com/puma/puma/pull/2438     "PR by @ekohl, merged 2020-10-26"
 [#2406]:https://github.com/puma/puma/pull/2406     "PR by @fdel15, merged 2020-10-19"

@@ -246,6 +246,6 @@ module Puma
     ILLEGAL_HEADER_VALUE_REGEX = /[\x00-\x08\x0A-\x1F]/.freeze
 
     # Banned keys of response header
-    BANNED_HEADER_KEY = /rack.|status/.freeze
+    BANNED_HEADER_KEY = /\A(rack\.|status\z)/.freeze
   end
 end
