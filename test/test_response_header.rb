@@ -87,11 +87,26 @@ class TestResponseHeader < Minitest::Test
     assert_ignore_header("Status", "500")
   end
 
+  # The header key can contain the word status.
+  def test_key_containing_status
+    server_run app: ->(env) { [200, {'Teapot-Status' => 'Boiling'}, []] }
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 200 OK\r\nTeapot-Status: Boiling\r\n\r\n/, data)
+  end
+
   # Special headers starting “rack.” are for communicating with the server, and must not be sent back to the client.
   def test_rack_key
     assert_ignore_header("rack.command_to_server_only", "work")
   end
 
+  # The header key can still start with the word rack
+  def test_racket_key
+    server_run app: ->(env) { [200, {'Racket' => 'Bouncy'}, []] }
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 200 OK\r\nRacket: Bouncy\r\n\r\n/, data)
+  end
 
   # testing header key must conform rfc token specification
   # i.e. cannot contain non-printable ASCII, DQUOTE or “(),/:;<=>?@[]{}”.
