@@ -15,5 +15,5 @@ gem install puma -- --with-cflags="-D PUMA_QUERY_STRING_MAX_LENGTH=64000"
 For Bundler, use its configuration system:
 
 ```
-bundle config build.puma --with-cflags="-D PUMA_QUERY_STRING_MAX_LENGTH=64000"
+bundle config build.puma "--with-cflags='-D PUMA_QUERY_STRING_MAX_LENGTH=64000'"
 ```
