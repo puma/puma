@@ -283,6 +283,7 @@ Some platforms do not support all Puma features.
 
   * **JRuby**, **Windows**: server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to Ruby. Also, cluster mode is not supported due to a lack of fork(2).
   * **Windows**: Cluster mode is not supported due to a lack of fork(2).
+  * **Kubernetes**: The way Kubernetes handles pod shutdowns interacts poorly with server processes implementing graceful shutdown, like Puma. See the [kubernetes section of the documentation](docs/kubernetes.md) for more details.
 
 ## Known Bugs
 
