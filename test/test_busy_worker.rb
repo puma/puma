@@ -2,9 +2,8 @@ require_relative "helper"
 require "puma/events"
 
 class TestBusyWorker < Minitest::Test
-  parallelize_me!
-
   def setup
+    skip_unless :mri # This feature only makes sense on MRI
     @ios = []
     @server = nil
   end
@@ -63,8 +62,6 @@ class TestBusyWorker < Minitest::Test
   # Multiple concurrent requests are not processed
   # sequentially as a small delay is introduced
   def test_multiple_requests_waiting_on_less_busy_worker
-    skip_unless :mri
-
     with_server(wait_for_less_busy_worker: 1.0) do |_|
       sleep(0.1)
 
@@ -85,8 +82,6 @@ class TestBusyWorker < Minitest::Test
   # Multiple concurrent requests are processed
   # in parallel as a delay is disabled
   def test_multiple_requests_processing_in_parallel
-    skip_unless :mri
-
     with_server(wait_for_less_busy_worker: 0.0) do |_|
       sleep(0.1)
 
