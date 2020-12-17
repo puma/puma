@@ -55,7 +55,7 @@ module Puma
       app = Puma::App::Status.new @launcher, token
 
       control = Puma::Server.new app, @launcher.events,
-        { min_threads: 0, max_threads: 1 }
+        { min_threads: 0, max_threads: 1, queue_requests: false }
 
       control.binder.parse [str], self, 'Starting control server'
 
