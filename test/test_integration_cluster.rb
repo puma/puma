@@ -283,6 +283,25 @@ RUBY
     assert_match(/defined\?\(::JSON\): nil/, line)
   end
 
+  def test_nio4r_gem_not_required_in_master_process
+    cli_server "-w #{workers} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
+
+    line = @server.gets
+    assert_match(/defined\?\(::NIO\): nil/, line)
+  end
+
+  def test_nio4r_gem_not_required_in_master_process_when_using_control_server
+    @control_tcp_port = UniquePort.call
+    control_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    cli_server "-w #{workers} #{control_opts} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
+
+    line = @server.gets
+    assert_match(/Starting control server/, line)
+
+    line = @server.gets
+    assert_match(/defined\?\(::NIO\): nil/, line)
+  end
+
   def test_application_is_loaded_exactly_once_if_using_preload_app
     cli_server "-w #{workers} --preload test/rackup/write_to_stdout_on_boot.ru"
 
