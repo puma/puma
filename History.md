@@ -10,6 +10,7 @@
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
   * Fix compiler warnings, but skipped warnings related to ragel state machine generated code ([#1953])
+  * Fix phased restart errors related to nio4r gem when using the Puma control server (#2516)
 
 
 ## 5.1.1 / 2020-12-10
