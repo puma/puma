@@ -22,6 +22,9 @@ unless ENV["DISABLE_SSL"]
     # below are yes for 1.1.0 & later
     have_func  "TLS_server_method"                     , "openssl/ssl.h"
     have_func  "SSL_CTX_set_min_proto_version(NULL, 0)", "openssl/ssl.h"
+
+    have_func  "X509_STORE_up_ref"
+    have_func("SSL_CTX_set_ecdh_auto(NULL, 0)", "openssl/ssl.h")
   end
 end
 
