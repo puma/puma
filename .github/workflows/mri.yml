@@ -20,10 +20,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, windows-2019 ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, head ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0' ] # head
         no-ssl: ['']
         include:
-          - { os: windows-2019 , ruby: mingw }
+          #- { os: windows-2019 , ruby: mingw }
           - { os: ubuntu-20.04 , ruby: 2.7   , no-ssl: ' no SSL' }
           - { os: windows-2019 , ruby: 2.7   , no-ssl: ' no SSL' }
           - { os: macos-11.0   , ruby: 2.7  }
@@ -32,7 +32,7 @@ jobs:
           - { os: ubuntu-20.04 , ruby: 2.3  }
           - { os: ubuntu-20.04 , ruby: 2.4  }
           - { os: ubuntu-20.04 , ruby: 2.6  }
-          - { os: windows-2019 , ruby: head }
+          #- { os: windows-2019 , ruby: head }
 
     steps:
       - name: repo checkout
