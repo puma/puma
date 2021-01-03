@@ -9,6 +9,10 @@ module Puma
       nil
     end
 
+    def string
+      ""
+    end
+
     def each
     end
 

@@ -11,13 +11,13 @@
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
   * Fix compiler warnings, but skipped warnings related to ragel state machine generated code ([#1953])
   * Fix phased restart errors related to nio4r gem when using the Puma control server (#2516)
-
+  * Add `#string` method to `Puma::NullIO` ([#2520])
 
 ## 5.1.1 / 2020-12-10
 
-* Bugfixes 
+* Bugfixes
   * Fix over eager matching against banned header names ([#2510])
-  
+
 ## 5.1.0 / 2020-11-30
 
 * Features
@@ -1687,6 +1687,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2520]:https://github.com/puma/puma/pull/2520     "PR by @dentarg"
 [#2510]:https://github.com/puma/puma/pull/2510     "PR by @micke"
 [#2472]:https://github.com/puma/puma/pull/2472     "PR by @ccverak, merged 2020-11-02"
 [#2438]:https://github.com/puma/puma/pull/2438     "PR by @ekohl, merged 2020-10-26"
