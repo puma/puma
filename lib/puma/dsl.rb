@@ -257,7 +257,7 @@ module Puma
     #   port 9292
     def port(port, host=nil)
       host ||= default_host
-      bind "tcp://#{host}:#{port}"
+      bind URI::Generic.build(scheme: 'tcp', host: host, port: Integer(port)).to_s
     end
 
     # Define how long persistent connections can be idle before Puma closes them.

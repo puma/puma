@@ -95,6 +95,14 @@ class TestUserSuppliedOptionsHostIsSet < Minitest::Test
 
     assert_equal ["tcp://#{user_host}:#{user_port}"], conf.options[:binds]
   end
+
+  def test_ipv6_host_supplied_port_default
+    @options[:Host] = "::1"
+    conf = Rack::Handler::Puma.config(->{}, @options)
+    conf.load
+
+    assert_equal ["tcp://[::1]:9292"], conf.options[:binds]
+  end
 end
 
 class TestUserSuppliedOptionsIsEmpty < Minitest::Test

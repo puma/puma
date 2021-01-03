@@ -12,6 +12,7 @@
   * Fix compiler warnings, but skipped warnings related to ragel state machine generated code ([#1953])
   * Fix phased restart errors related to nio4r gem when using the Puma control server (#2516)
   * Add `#string` method to `Puma::NullIO` ([#2520])
+  * Fix binding via Rack handler to IPv6 addresses (#2521)
 
 ## 5.1.1 / 2020-12-10
 
