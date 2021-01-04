@@ -21,6 +21,10 @@ class TestNullIO < Minitest::Test
     assert_nil nio.gets
   end
 
+  def test_string_returns_empty_string
+    assert_equal "", nio.string
+  end
+
   def test_each_never_yields
     nio.instance_variable_set(:@foo, :baz)
     nio.each { @foo = :bar }
