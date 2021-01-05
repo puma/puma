@@ -2,6 +2,7 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Add option to specify the desired IO selector backend for libev ([#pending])
   * Add ability to set OpenSSL verification flags (MRI only) ([#2490])
   * Uses `flush` after writing messages to avoid mutating $stdout and $stderr using `sync=true` ([#2486])
   * Fail build if compiling extensions raises warnings on GH Actions ([#1953])
@@ -15,9 +16,9 @@
 
 ## 5.1.1 / 2020-12-10
 
-* Bugfixes 
+* Bugfixes
   * Fix over eager matching against banned header names ([#2510])
-  
+
 ## 5.1.0 / 2020-11-30
 
 * Features
