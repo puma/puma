@@ -84,13 +84,14 @@ module Puma
 
       @options = options
 
-      @early_hints        = options.fetch :early_hints, nil
-      @first_data_timeout = options.fetch :first_data_timeout, FIRST_DATA_TIMEOUT
-      @min_threads        = options.fetch :min_threads, 0
-      @max_threads        = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
-      @persistent_timeout = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
-      @queue_requests     = options.fetch :queue_requests, true
-      @max_fast_inline    = options.fetch :max_fast_inline, MAX_FAST_INLINE
+      @early_hints         = options.fetch :early_hints, nil
+      @first_data_timeout  = options.fetch :first_data_timeout, FIRST_DATA_TIMEOUT
+      @min_threads         = options.fetch :min_threads, 0
+      @max_threads         = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
+      @persistent_timeout  = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
+      @queue_requests      = options.fetch :queue_requests, true
+      @max_fast_inline     = options.fetch :max_fast_inline, MAX_FAST_INLINE
+      @io_selector_backend = options.fetch :io_selector_backend, :auto
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -237,7 +238,7 @@ module Puma
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
 
       if @queue_requests
-        @reactor = Reactor.new(&method(:reactor_wakeup))
+        @reactor = Reactor.new(@io_selector_backend, &method(:reactor_wakeup))
         @reactor.run
       end
 

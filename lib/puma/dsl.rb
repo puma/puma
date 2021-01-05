@@ -865,5 +865,13 @@ module Puma
     def max_fast_inline(num_of_requests)
       @options[:max_fast_inline] = Float(num_of_requests)
     end
+
+    # Change the backend for the IO selector.
+    #
+    # The default is +:auto+ which will let nio4r choose the backend.
+    #
+    def io_selector_backend(backend)
+      @options[:io_selector_backend] = backend.to_sym
+    end
   end
 end

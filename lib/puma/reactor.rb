@@ -18,9 +18,9 @@ module Puma
     # Create a new Reactor to monitor IO objects added by #add.
     # The provided block will be invoked when an IO has data available to read,
     # its timeout elapses, or when the Reactor shuts down.
-    def initialize(&block)
+    def initialize(backend, &block)
       require 'nio'
-      @selector = NIO::Selector.new
+      @selector = backend == :auto ? NIO::Selector.new : NIO::Selector.new(backend)
       @input = Queue.new
       @timeouts = []
       @block = block
