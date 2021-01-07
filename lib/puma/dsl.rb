@@ -866,9 +866,18 @@ module Puma
       @options[:max_fast_inline] = Float(num_of_requests)
     end
 
-    # Change the backend for the IO selector.
+    # Specify the backend for the IO selector.
     #
-    # The default is +:auto+ which will let nio4r choose the backend.
+    # Provided values will be passed directly to +NIO::Selector.new+, with the
+    # exception of +:auto+ which will let nio4r choose the backend.
+    #
+    # Check the documentation of +NIO::Selector.backends+ for the list of valid
+    # options. The available options on your system will depend on the operating
+    # system.
+    #
+    # The default is +:auto+.
+    #
+    # @see https://github.com/socketry/nio4r/blob/master/lib/nio/selector.rb
     #
     def io_selector_backend(backend)
       @options[:io_selector_backend] = backend.to_sym
