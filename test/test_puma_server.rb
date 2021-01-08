@@ -1179,19 +1179,8 @@ EOF
     backend = NIO::Selector.backends.first
 
     @server = Puma::Server.new @app, @events, {:io_selector_backend => backend}
-
-    server_run app: ->(env) do
-      [200, {}, [env['SERVER_PORT']]]
-    end
-
-    req = Net::HTTP::Get.new '/'
-    req['HOST'] = 'example.com'
-
-    res = Net::HTTP.start @host, @port do |http|
-      http.request(req)
-    end
-
-    assert_equal '200', res.code
+    @server.run
+    @server.stop
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)
 
