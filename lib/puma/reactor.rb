@@ -3,6 +3,8 @@
 require 'puma/queue_close' unless ::Queue.instance_methods.include? :close
 
 module Puma
+  class UnsupportedBackend < StandardError; end
+
   # Monitors a collection of IO objects, calling a block whenever
   # any monitored object either receives data or times out, or when the Reactor shuts down.
   #
@@ -20,6 +22,9 @@ module Puma
     # its timeout elapses, or when the Reactor shuts down.
     def initialize(backend, &block)
       require 'nio'
+      unless backend == :auto || NIO::Selector.backends.include?(backend)
+        raise "unsupported IO selector backend: #{backend} (available backends: #{NIO::Selector.backends.join(', ')})"
+      end
       @selector = backend == :auto ? NIO::Selector.new : NIO::Selector.new(backend)
       @input = Queue.new
       @timeouts = []
