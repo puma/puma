@@ -872,8 +872,10 @@ module Puma
     # exception of +:auto+ which will let nio4r choose the backend.
     #
     # Check the documentation of +NIO::Selector.backends+ for the list of valid
-    # options. The available options on your system will depend on the operating
-    # system.
+    # options. Note that the available options on your system will depend on the
+    # operating system. If you want to use the pure Ruby backend (not
+    # recommended due to its comparatively low performance), set environment
+    # variable +NIO4R_PURE+ to +true+.
     #
     # The default is +:auto+.
     #
