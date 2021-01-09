@@ -405,7 +405,7 @@ module Puma
     # Configure +min+ to be the minimum number of threads to use to answer
     # requests and +max+ the maximum.
     #
-    # The default is "0, 16".
+    # The default is "0, 5" in MRI or "0, 16" for other interpretters.
     #
     # @example
     #   threads 0, 16
