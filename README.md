@@ -309,6 +309,10 @@ reliability in production environments:
 * [rc.d](docs/jungle/rc.d/README.md)
 * [systemd](docs/systemd.md)
 
+Community guides: 
+
+* [Deploying Puma on OpenBSD using relayd and httpd](https://gist.github.com/anon987654321/4532cf8d6c59c1f43ec8973faa031103)
+
 ## Community Extensions
 
 ### Plugins
