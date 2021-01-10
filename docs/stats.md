@@ -1,0 +1,30 @@
+## accessing stats
+
+stats can be accessed via 
+1. pumactr
+2. Puma.stats when in non-worker mode
+3. Puma.stats when in worker mode (should not be invoked from worker process, right?)
+
+
+## meaning of stats
+
+* started_at: when puma was started
+* phase: ??
+* workers: ??
+* booted_workers: how many workers currently running?
+* old_workers: ??
+* worker_status: array of hashes of info for each worker (see below)
+
+## meaning of worker stats
+
+* started_at: when the worker was started
+* pid: the process id of the worker process
+* index: each worker gets a number. if puma is configured to have 3 workers, then this will be 0, 1, or 2
+* booted: if it's done booting [?]
+* last_checkin: ??
+* last_status: a hash of info about the worker's state handling requests
+  * backlog: requests that are waiting for an available thread to be available. if this is above 0, you need more capacity [always true?]
+  * running: how many threads are running
+  * pool_capacity: ??? (i've observed this number stay at 3 even when threads cool back down to 0, so i dont' know what it means)
+  * max_threads: the maximum number of threads puma is configured to spool up per worker 
+  * requests_count: the number of requests this worker has served since starting
