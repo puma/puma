@@ -1,7 +1,7 @@
 ## accessing stats
 
 stats can be accessed via 
-1. pumactr
+1. `pumactl`
 2. Puma.stats when in non-worker mode
 3. Puma.stats when in worker mode (should not be invoked from worker process, right?)
 
