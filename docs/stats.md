@@ -25,6 +25,6 @@ stats can be accessed via
 * last_status: a hash of info about the worker's state handling requests
   * backlog: requests that are waiting for an available thread to be available. if this is above 0, you need more capacity [always true?]
   * running: how many threads are running
-  * pool_capacity: ??? (i've observed this number stay at 3 even when threads cool back down to 0, so i dont' know what it means)
+  * pool_capacity: the number of requests that the server is capable of taking right now. For example if the number is 5 then it means there are 5 threads sitting idle ready to take a request. If one request comes in, then the value would be 4 until it finishes processing.
   * max_threads: the maximum number of threads puma is configured to spool up per worker 
   * requests_count: the number of requests this worker has served since starting
