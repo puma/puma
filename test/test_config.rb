@@ -274,6 +274,14 @@ class TestConfigFile < TestConfigFileBase
     assert_equal Float::INFINITY, conf.options[:max_fast_inline]
   end
 
+  def test_config_files_with_symbol_convert
+    conf = Puma::Configuration.new(config_files: ['test/config/with_symbol_convert.rb']) do
+    end
+    conf.load
+
+    assert_equal :ruby, conf.options[:io_selector_backend]
+  end
+
   def test_config_raise_exception_on_sigterm
     conf = Puma::Configuration.new do |c|
       c.raise_exception_on_sigterm false

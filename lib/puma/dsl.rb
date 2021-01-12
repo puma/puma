@@ -865,5 +865,24 @@ module Puma
     def max_fast_inline(num_of_requests)
       @options[:max_fast_inline] = Float(num_of_requests)
     end
+
+    # Specify the backend for the IO selector.
+    #
+    # Provided values will be passed directly to +NIO::Selector.new+, with the
+    # exception of +:auto+ which will let nio4r choose the backend.
+    #
+    # Check the documentation of +NIO::Selector.backends+ for the list of valid
+    # options. Note that the available options on your system will depend on the
+    # operating system. If you want to use the pure Ruby backend (not
+    # recommended due to its comparatively low performance), set environment
+    # variable +NIO4R_PURE+ to +true+.
+    #
+    # The default is +:auto+.
+    #
+    # @see https://github.com/socketry/nio4r/blob/master/lib/nio/selector.rb
+    #
+    def io_selector_backend(backend)
+      @options[:io_selector_backend] = backend.to_sym
+    end
   end
 end

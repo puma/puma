@@ -1,6 +1,7 @@
 require_relative "helper"
 require "puma/events"
 require "net/http"
+require "nio"
 
 class TestPumaServer < Minitest::Test
   parallelize_me! unless JRUBY_HEAD
@@ -1172,5 +1173,17 @@ EOF
       done << @server.instance_variable_get(:@status) if state == :done
     end
     assert_equal :halt, done.pop
+  end
+
+  def test_custom_io_selector
+    backend = NIO::Selector.backends.first
+
+    @server = Puma::Server.new @app, @events, {:io_selector_backend => backend}
+    @server.run
+    @server.stop
+
+    selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)
+
+    assert_equal selector.backend, backend
   end
 end
