@@ -6,7 +6,7 @@ Stats can be accessed in two ways:
 
 `$ pumactl stats` or `GET /stats`
 
-Read more about `pumactl` and the control server [here](https://github.com/puma/puma#controlstatus-server).
+[Read more about `pumactl` and the control server in the README.](https://github.com/puma/puma#controlstatus-server).
 
 ### Puma.stats
 
