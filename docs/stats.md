@@ -1,15 +1,15 @@
 ## accessing stats
 
-stats can be accessed via 
-1. `pumactl`
-2. Puma.stats when in non-worker mode
-3. Puma.stats when in worker mode (should not be invoked from worker process, right?)
+stats can be accessed via
+1. `$ pumactl stats` — read more about `pumactl` and the control server [here](https://github.com/puma/puma#controlstatus-server)
+2. `Puma.stats` when in single mode
+3. `Puma.stats` when in cluster mode (should not be invoked from worker process, right?)
 
 
 ## meaning of stats
 
 * started_at: when puma was started
-* phase: ??
+* phase: which phase of restart the process is in, during [phased restart](https://github.com/puma/puma/blob/master/docs/restart.md)
 * workers: ??
 * booted_workers: how many workers currently running?
 * old_workers: ??
@@ -21,7 +21,7 @@ stats can be accessed via
 * pid: the process id of the worker process
 * index: each worker gets a number. if puma is configured to have 3 workers, then this will be 0, 1, or 2
 * booted: if it's done booting [?]
-* last_checkin: ??
+* last_checkin: Last time the worker responded to the master process' heartbeat check.
 * last_status: a hash of info about the worker's state handling requests
   * backlog: requests that are waiting for an available thread to be available. if this is above 0, you need more capacity [always true?]
   * running: how many threads are running
