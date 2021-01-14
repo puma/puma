@@ -1,16 +1,16 @@
 ## accessing stats
 
-stats can be accessed in two ways
+Stats can be accessed in two ways:
 
 ### control server
 
 `$ pumactl stats` or `GET /stats`
 
-Read more about `pumactl` and the control server [here](https://github.com/puma/puma#controlstatus-server)
+Read more about `pumactl` and the control server [here](https://github.com/puma/puma#controlstatus-server).
 
 ### Puma.stats
 
-`Puma.stats` produces a JSON string. `Puma.stats_hash` produces a ruby hash
+`Puma.stats` produces a JSON string. `Puma.stats_hash` produces a ruby hash.
 
 #### in single mode
 
@@ -47,7 +47,7 @@ end
 
 ## Explanation of stats
 
-When Puma.stats returns different information and a different structure depending on if Puma is in single vs cluster mode. There is one top-level attribute that is common to both modes:
+`Puma.stats` returns different information and a different structure depending on if Puma is in single vs cluster mode. There is one top-level attribute that is common to both modes:
 
 * started_at: when puma was started
 
@@ -82,7 +82,7 @@ When Puma is run in single mode, these stats ar available at the top level. When
 
 ## Examples
 
-Here are two example stats hashes produced by Puma.stats
+Here are two example stats hashes produced by `Puma.stats`:
 
 ### single
 
