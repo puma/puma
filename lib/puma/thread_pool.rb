@@ -110,7 +110,7 @@ module Puma
 
         extra = @extra.map { |i| i.new }
 
-        while true
+        loop do
           work = nil
 
           mutex.synchronize do
@@ -224,7 +224,7 @@ module Puma
     # makes it through the reactor and can then be processed by the thread pool.
     def wait_until_not_full
       with_mutex do
-        while true
+        loop do
           return if @shutdown
 
           # If we can still spin up new threads and there

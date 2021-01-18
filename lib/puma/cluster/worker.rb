@@ -110,7 +110,7 @@ module Puma
             Puma.set_thread_name "stat payload"
             base_payload = "p#{Process.pid}"
 
-            while true
+            loop do
               begin
                 b = server.backlog || 0
                 r = server.running || 0

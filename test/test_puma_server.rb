@@ -32,7 +32,7 @@ class TestPumaServer < Minitest::Test
 
   def header(sock)
     header = []
-    while true
+    loop do
       line = sock.gets
       break if line == "\r\n"
       header << line.strip
@@ -96,7 +96,7 @@ class TestPumaServer < Minitest::Test
 
     sock = send_http "GET / HTTP/1.0\r\n\r\n"
 
-    while true
+    loop do
       line = sock.gets
       break if line == "\r\n"
     end

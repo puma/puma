@@ -17,7 +17,7 @@ Puma::Plugin.create do
     end
 
     in_background do
-      while true
+      loop do
         sleep 2
 
         begin

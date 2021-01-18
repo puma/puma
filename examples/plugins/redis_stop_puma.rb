@@ -32,7 +32,7 @@ Puma::Plugin.create do
     return unless redis.ping == 'PONG'
 
     in_background do
-      while true
+      loop do
         sleep 2
         if message = redis.get("puma::restart::#{hostname}")
           redis.del("puma::restart::#{hostname}")

@@ -356,7 +356,7 @@ module Puma
     end
 
     def read_chunked_body
-      while true
+      loop do
         begin
           chunk = @io.read_nonblock(4096)
         rescue IO::WaitReadable

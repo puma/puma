@@ -427,7 +427,7 @@ module Puma
           client.finish(@first_data_timeout)
         end
 
-        while true
+        loop do
           @requests_count += 1
           case handle_request(client, buffer)
           when false
@@ -610,7 +610,7 @@ module Puma
       if @options[:drain_on_shutdown]
         count = 0
 
-        while true
+        loop do
           ios = IO.select @binder.ios, nil, nil, 0
           break unless ios
 

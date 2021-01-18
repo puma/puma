@@ -55,7 +55,7 @@ module Puma
       private :bad_tlsv1_3?
 
       def readpartial(size)
-        while true
+        loop do
           output = @engine.read
           return output if output
 
@@ -83,7 +83,7 @@ module Puma
       def read_nonblock(size, *_)
         # *_ is to deal with keyword args that were added
         # at some point (and being used in the wild)
-        while true
+        loop do
           output = engine_read_all
           return output if output
 
@@ -119,7 +119,7 @@ module Puma
 
         need = data.bytesize
 
-        while true
+        loop do
           wrote = @engine.write data
           enc = @engine.extract
 
