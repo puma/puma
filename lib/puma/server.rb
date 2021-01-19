@@ -495,62 +495,6 @@ module Puma
 
     # :nocov:
 
-    # Given the request +env+ from +client+ and the partial body +body+
-    # plus a potential Content-Length value +cl+, finish reading
-    # the body and return it.
-    #
-    # If the body is larger than MAX_BODY, a Tempfile object is used
-    # for the body, otherwise a StringIO is used.
-    # @deprecated 6.0.0
-    #
-    def read_body(env, client, body, cl)
-      content_length = cl.to_i
-
-      remain = content_length - body.bytesize
-
-      return StringIO.new(body) if remain <= 0
-
-      # Use a Tempfile if there is a lot of data left
-      if remain > MAX_BODY
-        stream = Tempfile.new(Const::PUMA_TMP_BASE)
-        stream.binmode
-      else
-        # The body[0,0] trick is to get an empty string in the same
-        # encoding as body.
-        stream = StringIO.new body[0,0]
-      end
-
-      stream.write body
-
-      # Read an odd sized chunk so we can read even sized ones
-      # after this
-      chunk = client.readpartial(remain % CHUNK_SIZE)
-
-      # No chunk means a closed socket
-      unless chunk
-        stream.close
-        return nil
-      end
-
-      remain -= stream.write(chunk)
-
-      # Read the rest of the chunks
-      while remain > 0
-        chunk = client.readpartial(CHUNK_SIZE)
-        unless chunk
-          stream.close
-          return nil
-        end
-
-        remain -= stream.write(chunk)
-      end
-
-      stream.rewind
-
-      return stream
-    end
-    # :nocov:
-
     # Handle various error types thrown by Client I/O operations.
     def client_error(e, client)
       # Swallow, do not log
