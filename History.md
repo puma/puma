@@ -15,6 +15,9 @@
   * Add `#string` method to `Puma::NullIO` ([#2520])
   * Fix binding via Rack handler to IPv6 addresses (#2521)
 
+* Refactor
+  * Remove `Server#read_body` ([#2531])
+
 ## 5.1.1 / 2020-12-10
 
 * Bugfixes
