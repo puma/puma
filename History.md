@@ -1,12 +1,10 @@
-## Master
+## 5.2.0
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
   * Add option to specify the desired IO selector backend for libev ([#2522])
   * Add ability to set OpenSSL verification flags (MRI only) ([#2490])
   * Uses `flush` after writing messages to avoid mutating $stdout and $stderr using `sync=true` ([#2486])
-  * Fail build if compiling extensions raises warnings on GH Actions ([#1953])
-  * Add MAKE_WARNINGS_INTO_ERRORS environment variable to toggle whether a build should treat all warnings into errors or not ([#1953])
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
@@ -17,6 +15,7 @@
 
 * Refactor
   * Remove `Server#read_body` ([#2531])
+  * Fail build if compiling extensions raises warnings on GH Actions, configurable via `MAKE_WARNINGS_INTO_ERRORS` ([#1953])
 
 ## 5.1.1 / 2020-12-10
 
