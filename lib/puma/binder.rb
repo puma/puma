@@ -160,6 +160,7 @@ module Puma
             io = inherit_tcp_listener uri.host, uri.port, sock
             logger.log "* Activated #{str}"
           else
+            ios_len = @ios.length
             params = Util.parse_query uri.query
 
             opt = params.key?('low_latency')
@@ -167,14 +168,8 @@ module Puma
 
             io = add_tcp_listener uri.host, uri.port, opt, bak
 
-            @ios.each do |i|
-              next unless TCPServer === i
-              addr = if i.local_address.ipv6?
-                "[#{i.local_address.ip_unpack[0]}]:#{i.local_address.ip_unpack[1]}"
-              else
-                i.local_address.ip_unpack.join(':')
-              end
-
+            @ios[ios_len..-1].each do |i|
+              addr = loc_addr_str i
               logger.log "* #{log_msg} on http://#{addr}"
             end
           end
@@ -229,8 +224,13 @@ module Puma
             io = inherit_ssl_listener sock, ctx
             logger.log "* Activated #{str}"
           else
+            ios_len = @ios.length
             io = add_ssl_listener uri.host, uri.port, ctx
-            logger.log "* Listening on #{str}"
+
+            @ios[ios_len..-1].each do |i|
+              addr = loc_addr_str i
+              logger.log "* #{log_msg} on ssl://#{addr}?#{uri.query}"
+            end
           end
 
           @listeners << [str, io] if io
@@ -297,11 +297,7 @@ module Puma
     end
 
     def inherit_tcp_listener(host, port, fd)
-      if fd.kind_of? TCPServer
-        s = fd
-      else
-        s = TCPServer.for_fd(fd)
-      end
+      s = fd.kind_of?(::TCPServer) ? fd : ::TCPServer.for_fd(fd)
 
       @ios << s
       s
@@ -339,11 +335,8 @@ module Puma
     def inherit_ssl_listener(fd, ctx)
       raise "Puma compiled without SSL support" unless HAS_SSL
 
-      if fd.kind_of? TCPServer
-        s = fd
-      else
-        s = TCPServer.for_fd(fd)
-      end
+      s = fd.kind_of?(::TCPServer) ? fd : ::TCPServer.for_fd(fd)
+
       ssl = MiniSSL::Server.new(s, ctx)
 
       env = @proto_env.dup
@@ -398,11 +391,8 @@ module Puma
     def inherit_unix_listener(path, fd)
       @unix_paths << path unless File.exist? path
 
-      if fd.kind_of? TCPServer
-        s = fd
-      else
-        s = UNIXServer.for_fd fd
-      end
+      s = fd.kind_of?(::TCPServer) ? fd : ::UNIXServer.for_fd(fd)
+
       @ios << s
 
       env = @proto_env.dup
@@ -442,6 +432,15 @@ module Puma
       Socket.ip_address_list.select do |addrinfo|
         addrinfo.ipv6_loopback? || addrinfo.ipv4_loopback?
       end.map { |addrinfo| addrinfo.ip_address }.uniq
+    end
+
+    def loc_addr_str(io)
+      loc_addr = io.to_io.local_address
+      if loc_addr.ipv6?
+        "[#{loc_addr.ip_unpack[0]}]:#{loc_addr.ip_unpack[1]}"
+      else
+        loc_addr.ip_unpack.join(':')
+      end
     end
 
     # @version 5.0.0

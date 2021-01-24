@@ -8,6 +8,7 @@
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Fix ssl bind logging with 0.0.0.0 and localhost (#2533)
   * Fix compiler warnings, but skipped warnings related to ragel state machine generated code ([#1953])
   * Fix phased restart errors related to nio4r gem when using the Puma control server (#2516)
   * Add `#string` method to `Puma::NullIO` ([#2520])

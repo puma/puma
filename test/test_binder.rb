@@ -128,7 +128,6 @@ class TestBinder < TestBinderBase
 
   def test_correct_zero_port_ssl
     skip 'No ssl support' unless ::Puma::HAS_SSL
-    skip("Implement later")
 
     ssl_regex = %r!ssl://127.0.0.1:(\d+)!
 
@@ -150,7 +149,6 @@ class TestBinder < TestBinderBase
 
   def test_logs_all_localhost_bindings_ssl
     skip 'No ssl support' unless ::Puma::HAS_SSL
-    skip("Incorrectly logs localhost, not 127.0.0.1")
 
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
