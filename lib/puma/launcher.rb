@@ -217,6 +217,10 @@ module Puma
     def close_binder_listeners
       @runner.close_control_listeners
       @binder.close_listeners
+      unless @status == :restart
+        log "=== puma shutdown: #{Time.now} ==="
+        log "- Goodbye!"
+      end
     end
 
     # @!attribute [r] thread_status
@@ -374,8 +378,6 @@ module Puma
     def graceful_stop
       @events.fire_on_stopped!
       @runner.stop_blocked
-      log "=== puma shutdown: #{Time.now} ==="
-      log "- Goodbye!"
     end
 
     def set_process_title
