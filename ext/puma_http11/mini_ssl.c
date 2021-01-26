@@ -28,6 +28,8 @@ typedef struct {
   int bytes;
 } ms_cert_buf;
 
+VALUE eError;
+
 void engine_free(void *ptr) {
   ms_conn *conn = ptr;
   ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
@@ -46,23 +48,6 @@ const rb_data_type_t engine_data_type = {
     { 0, engine_free, 0 },
     0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
 };
-
-ms_conn* engine_alloc(VALUE klass, VALUE* obj) {
-  ms_conn* conn;
-
-  *obj = TypedData_Make_Struct(klass, ms_conn, &engine_data_type, conn);
-
-  conn->read = BIO_new(BIO_s_mem());
-  BIO_set_nbio(conn->read, 1);
-
-  conn->write = BIO_new(BIO_s_mem());
-  BIO_set_nbio(conn->write, 1);
-
-  conn->ssl = 0;
-  conn->ctx = 0;
-
-  return conn;
-}
 
 DH *get_dh1024() {
   /* `openssl dhparam 1024 -C`
@@ -117,6 +102,37 @@ DH *get_dh1024() {
   return dh;
 }
 
+static void
+sslctx_free(void *ptr) {
+  SSL_CTX *ctx = ptr;
+  SSL_CTX_free(ctx);
+}
+
+static const rb_data_type_t sslctx_type = {
+  "MiniSSL/SSLContext",
+  {
+    0, sslctx_free,
+  },
+  0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+ms_conn* engine_alloc(VALUE klass, VALUE* obj) {
+  ms_conn* conn;
+
+  *obj = TypedData_Make_Struct(klass, ms_conn, &engine_data_type, conn);
+
+  conn->read = BIO_new(BIO_s_mem());
+  BIO_set_nbio(conn->read, 1);
+
+  conn->write = BIO_new(BIO_s_mem());
+  BIO_set_nbio(conn->write, 1);
+
+  conn->ssl = 0;
+  conn->ctx = 0;
+
+  return conn;
+}
+
 static int engine_verify_callback(int preverify_ok, X509_STORE_CTX* ctx) {
   X509* err_cert;
   SSL* ssl;
@@ -143,62 +159,66 @@ static int engine_verify_callback(int preverify_ok, X509_STORE_CTX* ctx) {
   return preverify_ok;
 }
 
-VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
-  ms_conn* conn;
-  VALUE obj;
+static VALUE
+sslctx_alloc(VALUE klass) {
+  SSL_CTX *ctx;
+  long mode = 0 |
+    SSL_MODE_ENABLE_PARTIAL_WRITE |
+    SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER |
+    SSL_MODE_RELEASE_BUFFERS;
+
+#ifdef HAVE_TLS_SERVER_METHOD
+  ctx = SSL_CTX_new(TLS_method());
+  // printf("\nctx using TLS_method security_level %d\n", SSL_CTX_get_security_level(ctx));
+#else
+  ctx = SSL_CTX_new(SSLv23_method());
+#endif
+  if (!ctx) {
+    rb_raise(eError, "SSL_CTX_new");
+  }
+  SSL_CTX_set_mode(ctx, mode);
+
+  return TypedData_Wrap_Struct(klass, &sslctx_type, ctx);
+}
+
+VALUE
+sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   SSL_CTX* ctx;
-  SSL* ssl;
+
 #ifdef HAVE_SSL_CTX_SET_MIN_PROTO_VERSION
   int min;
 #endif
   int ssl_options;
-  ID sym_key, sym_cert, sym_ca, sym_verify_mode, sym_ssl_cipher_filter, sym_no_tlsv1, sym_no_tlsv1_1, sym_verification_flags;
-  VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1, verification_flags;
+  VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
+    verification_flags;
   DH *dh;
 
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
   EC_KEY *ecdh;
 #endif
 
-  conn = engine_alloc(self, &obj);
+  TypedData_Get_Struct(self, SSL_CTX, &sslctx_type, ctx);
 
-  sym_key = rb_intern("key");
-  key = rb_funcall(mini_ssl_ctx, sym_key, 0);
-
+  key = rb_funcall(mini_ssl_ctx, rb_intern_const("key"), 0);
   StringValue(key);
 
-  sym_cert = rb_intern("cert");
-  cert = rb_funcall(mini_ssl_ctx, sym_cert, 0);
-
+  cert = rb_funcall(mini_ssl_ctx, rb_intern_const("cert"), 0);
   StringValue(cert);
 
-  sym_ca = rb_intern("ca");
-  ca = rb_funcall(mini_ssl_ctx, sym_ca, 0);
+  ca = rb_funcall(mini_ssl_ctx, rb_intern_const("ca"), 0);
 
-  sym_verify_mode = rb_intern("verify_mode");
-  verify_mode = rb_funcall(mini_ssl_ctx, sym_verify_mode, 0);
+  verify_mode = rb_funcall(mini_ssl_ctx, rb_intern_const("verify_mode"), 0);
 
-  sym_ssl_cipher_filter = rb_intern("ssl_cipher_filter");
-  ssl_cipher_filter = rb_funcall(mini_ssl_ctx, sym_ssl_cipher_filter, 0);
+  ssl_cipher_filter = rb_funcall(mini_ssl_ctx, rb_intern_const("ssl_cipher_filter"), 0);
 
-  sym_no_tlsv1 = rb_intern("no_tlsv1");
-  no_tlsv1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1, 0);
+  no_tlsv1 = rb_funcall(mini_ssl_ctx, rb_intern_const("no_tlsv1"), 0);
 
-  sym_no_tlsv1_1 = rb_intern("no_tlsv1_1");
-  no_tlsv1_1 = rb_funcall(mini_ssl_ctx, sym_no_tlsv1_1, 0);
-
-#ifdef HAVE_TLS_SERVER_METHOD
-  ctx = SSL_CTX_new(TLS_server_method());
-#else
-  ctx = SSL_CTX_new(SSLv23_server_method());
-#endif
-  conn->ctx = ctx;
+  no_tlsv1_1 = rb_funcall(mini_ssl_ctx, rb_intern_const("no_tlsv1_1"), 0);
 
   SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
   SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
 
-  sym_verification_flags = rb_intern("verification_flags");
-  verification_flags = rb_funcall(mini_ssl_ctx, sym_verification_flags, 0);
+  verification_flags = rb_funcall(mini_ssl_ctx, rb_intern_const("verification_flags"), 0);
 
   if (!NIL_P(verification_flags)) {
     X509_VERIFY_PARAM *param = SSL_CTX_get0_param(ctx);
@@ -263,23 +283,33 @@ VALUE engine_init_server(VALUE self, VALUE mini_ssl_ctx) {
     EC_KEY_free(ecdh);
   }
 #elif OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-  // Prior to OpenSSL 1.1.0, servers must manually enable server-side ECDH
-  // negotiation.
   SSL_CTX_set_ecdh_auto(ctx, 1);
 #endif
+
+  if (NIL_P(verify_mode)) {
+    /* SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL); */
+  } else {
+    SSL_CTX_set_verify(ctx, NUM2INT(verify_mode), engine_verify_callback);
+  }
+  // printf("\ninitialize end security_level %d\n", SSL_CTX_get_security_level(ctx));
+  rb_obj_freeze(self);
+  return self;
+}
+
+VALUE engine_init_server(VALUE self, VALUE sslctx) {
+  ms_conn* conn;
+  VALUE obj;
+  SSL_CTX* ctx;
+  SSL* ssl;
+
+  conn = engine_alloc(self, &obj);
+
+  TypedData_Get_Struct(sslctx, SSL_CTX, &sslctx_type, ctx);
 
   ssl = SSL_new(ctx);
   conn->ssl = ssl;
   SSL_set_app_data(ssl, NULL);
-
-  if (NIL_P(verify_mode)) {
-    /* SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL); */
-  } else {
-    SSL_set_verify(ssl, NUM2INT(verify_mode), engine_verify_callback);
-  }
-
   SSL_set_bio(ssl, conn->read, conn->write);
-
   SSL_set_accept_state(ssl);
   return obj;
 }
@@ -318,8 +348,6 @@ VALUE engine_inject(VALUE self, VALUE str) {
 
   return INT2FIX(used);
 }
-
-static VALUE eError;
 
 NORETURN(void raise_error(SSL* ssl, int result));
 
@@ -409,7 +437,9 @@ VALUE engine_extract(VALUE self) {
   ms_conn* conn;
   int bytes;
   size_t pending;
-  char buf[512];
+  // https://www.openssl.org/docs/manmaster/man3/BIO_f_buffer.html
+  // crypto/bio/bf_buff.c DEFAULT_BUFFER_SIZE
+  char buf[4096];
 
   TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
@@ -504,7 +534,7 @@ VALUE noop(VALUE self) {
 }
 
 void Init_mini_ssl(VALUE puma) {
-  VALUE mod, eng;
+  VALUE mod, eng, sslctx;
 
 /* Fake operation for documentation (RDoc, YARD) */
 #if 0 == 1
@@ -518,6 +548,11 @@ void Init_mini_ssl(VALUE puma) {
 
   mod = rb_define_module_under(puma, "MiniSSL");
   eng = rb_define_class_under(mod, "Engine", rb_cObject);
+  sslctx = rb_define_class_under(mod, "SSLContext", rb_cObject);
+  rb_define_alloc_func(sslctx, sslctx_alloc);
+  rb_define_method(sslctx, "initialize", sslctx_initialize, 1);
+  rb_undef_method(sslctx, "initialize_copy");
+
 
   // OpenSSL Build / Runtime/Load versions
 

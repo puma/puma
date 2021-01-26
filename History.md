@@ -2,6 +2,7 @@
 
 * Features
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * 10x latency improvement for MRI on ssl connections by reducing overhead (#2519)
   * Add option to specify the desired IO selector backend for libev ([#2522])
   * Add ability to set OpenSSL verification flags (MRI only) ([#2490])
   * Uses `flush` after writing messages to avoid mutating $stdout and $stderr using `sync=true` ([#2486])
@@ -16,6 +17,7 @@
   * Fix binding via Rack handler to IPv6 addresses (#2521)
 
 * Refactor
+  * Refactor MiniSSL::Context on MRI, fix MiniSSL::Socket#write (#2519)
   * Remove `Server#read_body` ([#2531])
   * Fail build if compiling extensions raises warnings on GH Actions, configurable via `MAKE_WARNINGS_INTO_ERRORS` ([#1953])
 

@@ -73,7 +73,6 @@ module Puma
 
       def engine_read_all
         output = @engine.read
-        raise SSLError.exception "HTTP connection?" if bad_tlsv1_3?
         while output and additional_output = @engine.read
           output << additional_output
         end
@@ -100,6 +99,7 @@ module Puma
             # ourselves.
             raise IO::EAGAINWaitReadable
           elsif data.nil?
+            raise SSLError.exception "HTTP connection?" if bad_tlsv1_3?
             return nil
           end
 
@@ -117,20 +117,21 @@ module Puma
       def write(data)
         return 0 if data.empty?
 
-        need = data.bytesize
+        data_size = data.bytesize
+        need = data_size
 
         while true
           wrote = @engine.write data
-          enc = @engine.extract
 
-          while enc
-            @socket.write enc
-            enc = @engine.extract
+          enc_wr = ''.dup
+          while (enc = @engine.extract)
+            enc_wr << enc
           end
+          @socket.write enc_wr unless enc_wr.empty?
 
           need -= wrote
 
-          return data.bytesize if need == 0
+          return data_size if need == 0
 
           data = data[wrote..-1]
         end
@@ -318,27 +319,26 @@ module Puma
       def initialize(socket, ctx)
         @socket = socket
         @ctx = ctx
-      end
-
-      # @!attribute [r] to_io
-      def to_io
-        @socket
+        @eng_ctx = IS_JRUBY ? @ctx : SSLContext.new(ctx)
       end
 
       def accept
         @ctx.check
         io = @socket.accept
-        engine = Engine.server @ctx
-
+        engine = Engine.server @eng_ctx
         Socket.new io, engine
       end
 
       def accept_nonblock
         @ctx.check
         io = @socket.accept_nonblock
-        engine = Engine.server @ctx
-
+        engine = Engine.server @eng_ctx
         Socket.new io, engine
+      end
+
+      # @!attribute [r] to_io
+      def to_io
+        @socket
       end
 
       # @!attribute [r] addr
@@ -349,6 +349,10 @@ module Puma
 
       def close
         @socket.close unless @socket.closed?       # closed? call is for Windows
+      end
+
+      def closed?
+        @socket.closed?
       end
     end
   end
