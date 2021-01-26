@@ -9,6 +9,7 @@
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * MiniSSL - Update dhparam to 2048 bit for use with SSL_CTX_set_tmp_dh (#2535)
   * Change 'Goodbye!' message to be output after listeners are closed (#2529)
   * Fix ssl bind logging with 0.0.0.0 and localhost (#2533)
   * Fix compiler warnings, but skipped warnings related to ragel state machine generated code ([#1953])
