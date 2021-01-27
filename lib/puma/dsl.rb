@@ -405,7 +405,10 @@ module Puma
     # Configure +min+ to be the minimum number of threads to use to answer
     # requests and +max+ the maximum.
     #
-    # The default is "0, 5" in MRI or "0, 16" for other interpreters.
+    # The default is the environment variables +PUMA_MIN_THREADS+ / +PUMA_MAX_THREADS+
+    # (or +MIN_THREADS+ / +MAX_THREADS+ if the +PUMA_+ variables aren't set).
+    #
+    # If these environment variables aren't set, the default is "0, 5" in MRI or "0, 16" for other interpreters.
     #
     # @example
     #   threads 0, 16
@@ -470,7 +473,8 @@ module Puma
     # How many worker processes to run.  Typically this is set to
     # the number of available cores.
     #
-    # The default is 0.
+    # The default is the value of the environment variable +WEB_CONCURRENCY+ if
+    # set, otherwise 0.
     #
     # @note Cluster mode only.
     # @see Puma::Cluster
