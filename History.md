@@ -1,4 +1,4 @@
-## 5.2.0
+## 5.2.0 / 2021-01-27
 
 * Features
   * 10x latency improvement for MRI on ssl connections by reducing overhead ([#2519])
