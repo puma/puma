@@ -1,24 +1,22 @@
 ## 5.2.0
 
 * Features
-  * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
-  * 10x latency improvement for MRI on ssl connections by reducing overhead (#2519)
+  * 10x latency improvement for MRI on ssl connections by reducing overhead ([#2519])
   * Add option to specify the desired IO selector backend for libev ([#2522])
   * Add ability to set OpenSSL verification flags (MRI only) ([#2490])
   * Uses `flush` after writing messages to avoid mutating $stdout and $stderr using `sync=true` ([#2486])
 
 * Bugfixes
-  * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
-  * MiniSSL - Update dhparam to 2048 bit for use with SSL_CTX_set_tmp_dh (#2535)
-  * Change 'Goodbye!' message to be output after listeners are closed (#2529)
-  * Fix ssl bind logging with 0.0.0.0 and localhost (#2533)
+  * MiniSSL - Update dhparam to 2048 bit for use with SSL_CTX_set_tmp_dh ([#2535])
+  * Change 'Goodbye!' message to be output after listeners are closed ([#2529])
+  * Fix ssl bind logging with 0.0.0.0 and localhost ([#2533])
   * Fix compiler warnings, but skipped warnings related to ragel state machine generated code ([#1953])
-  * Fix phased restart errors related to nio4r gem when using the Puma control server (#2516)
+  * Fix phased restart errors related to nio4r gem when using the Puma control server ([#2516])
   * Add `#string` method to `Puma::NullIO` ([#2520])
-  * Fix binding via Rack handler to IPv6 addresses (#2521)
+  * Fix binding via Rack handler to IPv6 addresses ([#2521])
 
 * Refactor
-  * Refactor MiniSSL::Context on MRI, fix MiniSSL::Socket#write (#2519)
+  * Refactor MiniSSL::Context on MRI, fix MiniSSL::Socket#write ([#2519])
   * Remove `Server#read_body` ([#2531])
   * Fail build if compiling extensions raises warnings on GH Actions, configurable via `MAKE_WARNINGS_INTO_ERRORS` ([#1953])
 
@@ -1696,8 +1694,19 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
-[#2520]:https://github.com/puma/puma/pull/2520     "PR by @dentarg"
-[#2510]:https://github.com/puma/puma/pull/2510     "PR by @micke"
+[#2519]:https://github.com/puma/puma/pull/2519     "PR by @MSP-Greg, merged 2021-01-26"
+[#2522]:https://github.com/puma/puma/pull/2522     "PR by @jcmfernandes, merged 2021-01-12"
+[#2490]:https://github.com/puma/puma/pull/2490     "PR by @Bonias, merged 2020-12-07"
+[#2486]:https://github.com/puma/puma/pull/2486     "PR by @ccverak, merged 2020-12-02"
+[#2535]:https://github.com/puma/puma/pull/2535     "PR by @MSP-Greg, merged 2021-01-27"
+[#2529]:https://github.com/puma/puma/pull/2529     "PR by @MSP-Greg, merged 2021-01-24"
+[#2533]:https://github.com/puma/puma/pull/2533     "PR by @MSP-Greg, merged 2021-01-24"
+[#1953]:https://github.com/puma/puma/issues/1953   "Issue by @nateberkopec, closed 2020-12-01"
+[#2516]:https://github.com/puma/puma/pull/2516     "PR by @cjlarose, merged 2020-12-17"
+[#2520]:https://github.com/puma/puma/pull/2520     "PR by @dentarg, merged 2021-01-04"
+[#2521]:https://github.com/puma/puma/pull/2521     "PR by @ojab, merged 2021-01-04"
+[#2531]:https://github.com/puma/puma/pull/2531     "PR by @wjordan, merged 2021-01-19"
+[#2510]:https://github.com/puma/puma/pull/2510     "PR by @micke, merged 2020-12-10"
 [#2472]:https://github.com/puma/puma/pull/2472     "PR by @ccverak, merged 2020-11-02"
 [#2438]:https://github.com/puma/puma/pull/2438     "PR by @ekohl, merged 2020-10-26"
 [#2406]:https://github.com/puma/puma/pull/2406     "PR by @fdel15, merged 2020-10-19"
@@ -1761,6 +1770,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2170]:https://github.com/puma/puma/pull/2170     "PR by @nateberkopec, merged 2020-03-10"
 [#2076]:https://github.com/puma/puma/pull/2076     "PR by @drews256, merged 2020-02-27"
 [#2022]:https://github.com/puma/puma/pull/2022     "PR by @olleolleolle, merged 2019-11-11"
+[#2300]:https://github.com/puma/puma/pull/2300     "PR by @alexeevit, merged 2020-07-06"
 [#2269]:https://github.com/puma/puma/pull/2269     "PR by @MSP-Greg, merged 2020-08-31"
 [#2312]:https://github.com/puma/puma/pull/2312     "PR by @MSP-Greg, merged 2020-07-20"
 [#2338]:https://github.com/puma/puma/issues/2338   "Issue by @micahhainlinestitchfix, closed 2020-08-18"
@@ -1796,8 +1806,8 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2124]:https://github.com/puma/puma/pull/2124     "PR by @wjordan, merged 2020-04-14"
 [#2223]:https://github.com/puma/puma/pull/2223     "PR by @wjordan, merged 2020-04-20"
 [#2239]:https://github.com/puma/puma/pull/2239     "PR by @wjordan, merged 2020-05-15"
-[#2304]:https://github.com/puma/puma/issues/2304   "Issue by @mpeltomaa, closed 2020-09-05"
 [#2496]:https://github.com/puma/puma/pull/2496     "PR by @TheRusskiy, merged 2020-11-30"
+[#2304]:https://github.com/puma/puma/issues/2304   "Issue by @mpeltomaa, closed 2020-09-05"
 [#2132]:https://github.com/puma/puma/issues/2132   "Issue by @bmclean, closed 2020-02-28"
 [#2010]:https://github.com/puma/puma/pull/2010     "PR by @nateberkopec, merged 2019-10-07"
 [#2012]:https://github.com/puma/puma/pull/2012     "PR by @headius, merged 2019-10-07"
@@ -2144,7 +2154,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#646]:https://github.com/puma/puma/pull/646       "PR by @mkonecny, merged 2015-02-05"
 [#630]:https://github.com/puma/puma/issues/630     "Issue by @jelmd, closed 2015-01-20"
 [#622]:https://github.com/puma/puma/issues/622     "Issue by @sabamotto, closed 2015-01-20"
-[#583]:https://github.com/puma/puma/issues/583     "Issue by @emq, closed 2015-01-20"
+[#583]:https://github.com/puma/puma/issues/583     "Issue by @rwojsznis, closed 2015-01-20"
 [#586]:https://github.com/puma/puma/issues/586     "Issue by @ponchik, closed 2015-01-20"
 [#359]:https://github.com/puma/puma/issues/359     "Issue by @natew, closed 2014-12-13"
 [#633]:https://github.com/puma/puma/issues/633     "Issue by @joevandyk, closed 2015-01-20"
