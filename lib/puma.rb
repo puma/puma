@@ -19,6 +19,24 @@ module Puma
   autoload :Server, 'puma/server'
   autoload :Launcher, 'puma/launcher'
 
+  # at present, MiniSSL::Engine is only defined in extension code (puma_http11),
+  # not in minissl.rb
+  HAS_SSL = const_defined?(:MiniSSL, false) && MiniSSL.const_defined?(:Engine, false)
+
+  if HAS_SSL
+    require 'puma/minissl'
+  else
+    module MiniSSL
+      # this class is defined so that it exists when Puma is compiled
+      # without ssl support, as Server and Reactor use it in rescue statements.
+      class SSLError < StandardError ; end
+    end
+  end
+
+  def self.ssl?
+    HAS_SSL
+  end
+
   # @!attribute [rw] stats_object=
   def self.stats_object=(val)
     @get_stats = val
@@ -39,13 +57,5 @@ module Puma
   def self.set_thread_name(name)
     return unless Thread.current.respond_to?(:name=)
     Thread.current.name = "puma #{name}"
-  end
-
-  unless HAS_SSL
-    module MiniSSL
-      # this class is defined so that it exists when Puma is compiled
-      # without ssl support, as Server and Reactor use it in rescue statements.
-      class SSLError < StandardError ; end
-    end
   end
 end
