@@ -133,7 +133,7 @@ module Puma
 
           return data_size if need == 0
 
-          data = data[wrote..-1]
+          data = data.byteslice(wrote..-1)
         end
       end
 

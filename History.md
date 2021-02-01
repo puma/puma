@@ -1,3 +1,8 @@
+## 5.2.1 / 2021-01-
+
+* Bugfixes
+  * MiniSSL::Socket#write - use data.byteslice(wrote..-1) ([#2543])
+
 ## 5.2.0 / 2021-01-27
 
 * Features
