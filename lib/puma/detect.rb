@@ -1,20 +1,24 @@
 # frozen_string_literal: true
 
+# This file can be loaded independently of puma.rb, so it cannot have any code
+# that assumes puma.rb is loaded.
+
+
 module Puma
-  # at present, MiniSSL::Engine is only defined in extension code, not in minissl.rb
-  HAS_SSL = const_defined?(:MiniSSL, false) && MiniSSL.const_defined?(:Engine, false)
+  # @version 5.2.1
+  HAS_FORK = ::Process.respond_to? :fork
 
-  def self.ssl?
-    HAS_SSL
-  end
+  IS_JRUBY = Object.const_defined? :JRUBY_VERSION
 
-  IS_JRUBY = defined?(JRUBY_VERSION)
+  IS_WINDOWS = !!(RUBY_PLATFORM =~ /mswin|ming|cygwin/ ||
+    IS_JRUBY && RUBY_DESCRIPTION =~ /mswin/)
+
+  # @version 5.2.0
+  IS_MRI = (RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil?)
 
   def self.jruby?
     IS_JRUBY
   end
-
-  IS_WINDOWS = RUBY_PLATFORM =~ /mswin|ming|cygwin/
 
   def self.windows?
     IS_WINDOWS
@@ -22,11 +26,11 @@ module Puma
 
   # @version 5.0.0
   def self.mri?
-    RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil?
+    IS_MRI
   end
 
   # @version 5.0.0
   def self.forkable?
-    ::Process.respond_to?(:fork)
+    HAS_FORK
   end
 end
