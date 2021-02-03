@@ -374,7 +374,7 @@ module Puma
         end
 
         if decode_chunk(chunk)
-          @env[CONTENT_LENGTH] = @chunked_content_length
+          @env[CONTENT_LENGTH] = @chunked_content_length.to_s
           return true
         end
       end
@@ -391,7 +391,7 @@ module Puma
       @chunked_content_length = 0
 
       if decode_chunk(body)
-        @env[CONTENT_LENGTH] = @chunked_content_length
+        @env[CONTENT_LENGTH] = @chunked_content_length.to_s
         return true
       end
     end
