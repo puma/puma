@@ -31,6 +31,7 @@ module Rack
 
         conf = ::Puma::Configuration.new(options, default_options) do |user_config, file_config, default_config|
           if options.delete(:Verbose)
+            require 'rack/common_logger'
             app = Rack::CommonLogger.new(app, STDOUT)
           end
 

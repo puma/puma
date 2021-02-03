@@ -19,6 +19,7 @@
   * Fix phased restart errors related to nio4r gem when using the Puma control server ([#2516])
   * Add `#string` method to `Puma::NullIO` ([#2520])
   * Fix binding via Rack handler to IPv6 addresses ([#2521])
+  * Require rack/common_logger explicitly if :verbose is true ([#2547])
 
 * Refactor
   * Refactor MiniSSL::Context on MRI, fix MiniSSL::Socket#write ([#2519])
