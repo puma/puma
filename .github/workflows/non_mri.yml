@@ -24,7 +24,6 @@ jobs:
           - { os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
           - { os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
           - { os: ubuntu-20.04 , ruby: truffleruby-head }
-          - { os: macos-11.0   , ruby: jruby }
           - { os: macos-10.15  , ruby: jruby }
           - { os: macos-10.15  , ruby: truffleruby-head }
 
