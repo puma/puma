@@ -120,17 +120,13 @@ module Puma
       # :nodoc:
       # @version 5.0.0
       def tcp_cork_supported?
-        RbConfig::CONFIG['host_os'] =~ /linux/ &&
-          Socket.const_defined?(:IPPROTO_TCP) &&
-          Socket.const_defined?(:TCP_CORK)
+        Socket.const_defined?(:TCP_CORK) && Socket.const_defined?(:IPPROTO_TCP)
       end
 
       # :nodoc:
       # @version 5.0.0
       def closed_socket_supported?
-        RbConfig::CONFIG['host_os'] =~ /linux/ &&
-          Socket.const_defined?(:IPPROTO_TCP) &&
-          Socket.const_defined?(:TCP_INFO)
+        Socket.const_defined?(:TCP_INFO) && Socket.const_defined?(:IPPROTO_TCP)
       end
       private :tcp_cork_supported?
       private :closed_socket_supported?
@@ -138,6 +134,7 @@ module Puma
 
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
+    # socket parameter may be an MiniSSL::Socket, so use to_io
     #
     if tcp_cork_supported?
       UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
@@ -146,16 +143,18 @@ module Puma
       # 3 == TCP_CORK
       # 1/0 == turn on/off
       def cork_socket(socket)
+        skt = socket.to_io
         begin
-          socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if socket.kind_of? TCPSocket
+          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if skt.kind_of? TCPSocket
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end
       end
 
       def uncork_socket(socket)
+        skt = socket.to_io
         begin
-          socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if socket.kind_of? TCPSocket
+          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if skt.kind_of? TCPSocket
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
         end

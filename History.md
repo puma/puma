@@ -1,6 +1,8 @@
 ## 5.2.1 / 2021-01-
 
 * Bugfixes
+  * Fix TCP cork/uncork operations to work with ssl clients (#2550)
+  * Require rack/common_logger explicitly if :verbose is true ([#2547])
   * MiniSSL::Socket#write - use data.byteslice(wrote..-1) ([#2543])
 
 ## 5.2.0 / 2021-01-27
@@ -19,7 +21,6 @@
   * Fix phased restart errors related to nio4r gem when using the Puma control server ([#2516])
   * Add `#string` method to `Puma::NullIO` ([#2520])
   * Fix binding via Rack handler to IPv6 addresses ([#2521])
-  * Require rack/common_logger explicitly if :verbose is true ([#2547])
 
 * Refactor
   * Refactor MiniSSL::Context on MRI, fix MiniSSL::Socket#write ([#2519])
