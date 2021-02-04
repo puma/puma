@@ -2,7 +2,7 @@
 
 * Bugfixes
   * MiniSSL::Socket#write - use data.byteslice(wrote..-1) ([#2543])
-  * Set @env[CONTENT_LENGTH] value as string.
+  * Set `@env[CONTENT_LENGTH]` value as string.
 
 ## 5.2.0 / 2021-01-27
 
