@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "writer"
+
 module Puma
 
   # The methods here are included in Server, but are separated into this file.
@@ -123,7 +125,7 @@ module Puma
           end
 
           lines << LINE_END
-          fast_write io, lines.to_s
+          fast_write io, lines
           return res_info[:keep_alive]
         end
 
@@ -137,7 +139,7 @@ module Puma
 
         lines << line_ending
 
-        fast_write io, lines.to_s
+        fast_write io, lines
 
         if response_hijack
           response_hijack.call io
@@ -194,23 +196,7 @@ module Puma
     # @raise [ConnectionError]
     #
     def fast_write(io, str)
-      n = 0
-      while true
-        begin
-          n = io.syswrite str
-        rescue Errno::EAGAIN, Errno::EWOULDBLOCK
-          if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
-            raise ConnectionError, "Socket timeout writing data"
-          end
-
-          retry
-        rescue  Errno::EPIPE, SystemCallError, IOError
-          raise ConnectionError, "Socket timeout writing data"
-        end
-
-        return if n == str.bytesize
-        str = str.byteslice(n..-1)
-      end
+      Writer.write(io, str)
     end
     private :fast_write
 
