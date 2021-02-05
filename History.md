@@ -1,10 +1,10 @@
-## 5.2.1 / 2021-02-
+## 5.2.1 / 2021-02-05
 
 * Bugfixes
-  * Fix TCP cork/uncork operations to work with ssl clients (#2550)
+  * Fix TCP cork/uncork operations to work with ssl clients ([#2550])
   * Require rack/common_logger explicitly if :verbose is true ([#2547])
   * MiniSSL::Socket#write - use data.byteslice(wrote..-1) ([#2543])
-  * Set `@env[CONTENT_LENGTH]` value as string.
+  * Set `@env[CONTENT_LENGTH]` value as string. ([#2549])
 
 ## 5.2.0 / 2021-01-27
 
@@ -1702,6 +1702,10 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2550]:https://github.com/puma/puma/pull/2550     "PR by @MSP-Greg, merged 2021-02-05"
+[#2547]:https://github.com/puma/puma/pull/2547     "PR by @wildmaples, merged 2021-02-03"
+[#2543]:https://github.com/puma/puma/pull/2543     "PR by @MSP-Greg, merged 2021-02-01"
+[#2549]:https://github.com/puma/puma/pull/2549     "PR by @nmb, merged 2021-02-04"
 [#2519]:https://github.com/puma/puma/pull/2519     "PR by @MSP-Greg, merged 2021-01-26"
 [#2522]:https://github.com/puma/puma/pull/2522     "PR by @jcmfernandes, merged 2021-01-12"
 [#2490]:https://github.com/puma/puma/pull/2490     "PR by @Bonias, merged 2020-12-07"
