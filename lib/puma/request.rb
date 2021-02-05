@@ -30,7 +30,7 @@ module Puma
     #
     def handle_request(client, lines)
       env = client.env
-      io = client.io
+      io  = client.io   # io may be a MiniSSL::Socket
 
       return false if closed_socket?(io)
 
