@@ -97,6 +97,14 @@ class TestEvents < Minitest::Test
     assert_equal "ready\n", out
   end
 
+  def test_null_log_does_nothing
+    out, _ = capture_io do
+      Puma::Events.null.log("ready")
+    end
+
+    assert_equal "", out
+  end
+
   def test_write_writes_to_stdout
     out, _ = capture_io do
       Puma::Events.stdio.write("ready")

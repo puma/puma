@@ -36,6 +36,10 @@ module Puma
       true
     end
 
+    def sync
+      true
+    end
+
     def sync=(v)
     end
 
@@ -43,6 +47,10 @@ module Puma
     end
 
     def write(*ary)
+    end
+
+    def flush
+      self
     end
   end
 end

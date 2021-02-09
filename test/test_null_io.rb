@@ -56,4 +56,12 @@ class TestNullIO < Minitest::Test
   def test_size
     assert_equal 0, nio.size
   end
+
+  def test_sync_returns_true
+    assert_equal true, nio.sync
+  end
+
+  def test_flush_returns_self
+    assert_equal nio, nio.flush
+  end
 end

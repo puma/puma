@@ -1,3 +1,8 @@
+## 5.2.2 / 2021-02-
+
+* Bugfixes
+  * Add `#flush` and `#sync` methods to `Puma::NullIO`  ([#2553])
+
 ## 5.2.1 / 2021-02-05
 
 * Bugfixes
