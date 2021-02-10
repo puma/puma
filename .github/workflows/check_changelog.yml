@@ -10,8 +10,6 @@ jobs:
     if: |
       !(   contains(github.event.pull_request.title, '[changelog skip]')
         || contains(github.event.pull_request.title, '[skip changelog]')
-        || contains(github.event.pull_request.title, '[ci skip]')
-        || contains(github.event.pull_request.title, '[skip ci]'))
 
     steps:
     - uses: actions/checkout@v1
