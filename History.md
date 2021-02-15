@@ -1,3 +1,8 @@
+## 5.2.2 / 2021-02-15
+
+* Bugfixes
+  * Remove `**` from `options` parameter ([#2555])
+
 ## 5.2.2 / 2021-02-
 
 * Bugfixes
