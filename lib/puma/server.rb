@@ -34,6 +34,8 @@ module Puma
     include Request
     extend Forwardable
 
+    PURGE_INTERRUPT_QUEUE = ::Thread.current.respond_to? :purge_interrupt_queue
+
     attr_reader :thread
     attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
@@ -114,19 +116,19 @@ module Puma
     class << self
       # @!attribute [r] current
       def current
-        Thread.current[ThreadLocalKey]
+        ::Thread.current[ThreadLocalKey]
       end
 
       # :nodoc:
       # @version 5.0.0
       def tcp_cork_supported?
-        Socket.const_defined?(:TCP_CORK) && Socket.const_defined?(:IPPROTO_TCP)
+        ::Socket.const_defined?(:TCP_CORK) && ::Socket.const_defined?(:IPPROTO_TCP)
       end
 
       # :nodoc:
       # @version 5.0.0
       def closed_socket_supported?
-        Socket.const_defined?(:TCP_INFO) && Socket.const_defined?(:IPPROTO_TCP)
+        ::Socket.const_defined?(:TCP_INFO) && ::Socket.const_defined?(:IPPROTO_TCP)
       end
       private :tcp_cork_supported?
       private :closed_socket_supported?
@@ -134,29 +136,29 @@ module Puma
 
     # On Linux, use TCP_CORK to better control how the TCP stack
     # packetizes our stream. This improves both latency and throughput.
-    # socket parameter may be an MiniSSL::Socket, so use to_io
+    # socket parameter may be a `MiniSSL::Socket`, so use to_io
     #
     if tcp_cork_supported?
-      UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
-
       # 6 == Socket::IPPROTO_TCP
       # 3 == TCP_CORK
       # 1/0 == turn on/off
       def cork_socket(socket)
         skt = socket.to_io
+        return unless skt.kind_of? ::TCPSocket
         begin
-          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if skt.kind_of? TCPSocket
+          skt.setsockopt ::Socket::IPPROTO_TCP, ::Socket::TCP_CORK, 1
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+          Thread.current.purge_interrupt_queue if PURGE_INTERRUPT_QUEUE
         end
       end
 
       def uncork_socket(socket)
         skt = socket.to_io
+        return unless skt.kind_of? ::TCPSocket
         begin
-          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if skt.kind_of? TCPSocket
+          skt.setsockopt ::Socket::IPPROTO_TCP, ::Socket::TCP_CORK, 0
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+          Thread.current.purge_interrupt_queue if PURGE_INTERRUPT_QUEUE
         end
       end
     else
@@ -168,14 +170,17 @@ module Puma
     end
 
     if closed_socket_supported?
+      UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
+
       def closed_socket?(socket)
-        return false unless socket.kind_of? TCPSocket
+        skt = socket.to_io
+        return false unless skt.kind_of? ::TCPSocket
         return false unless @precheck_closing
 
         begin
-          tcp_info = socket.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
+          tcp_info = skt.getsockopt(::Socket::IPPROTO_TCP, ::Socket::TCP_INFO)
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+          Thread.current.purge_interrupt_queue if PURGE_INTERRUPT_QUEUE
           @precheck_closing = false
           false
         else
@@ -475,7 +480,7 @@ module Puma
         begin
           client.close if close_socket
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+          Thread.current.purge_interrupt_queue if PURGE_INTERRUPT_QUEUE
           # Already closed
         rescue StandardError => e
           @events.unknown_error e, nil, "Client"
@@ -588,11 +593,11 @@ module Puma
       @notify << message
     rescue IOError, NoMethodError, Errno::EPIPE
       # The server, in another thread, is shutting down
-      Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+      Thread.current.purge_interrupt_queue if PURGE_INTERRUPT_QUEUE
     rescue RuntimeError => e
       # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
       if e.message.include?('IOError')
-        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+        Thread.current.purge_interrupt_queue if PURGE_INTERRUPT_QUEUE
       else
         raise e
       end

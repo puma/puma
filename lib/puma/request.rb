@@ -154,19 +154,15 @@ module Puma
             else
               fast_write io, part
             end
-            io.flush
           end
-
-          if chunked
-            fast_write io, CLOSE_CHUNKED
-            io.flush
-          end
+          fast_write io, CLOSE_CHUNKED if chunked
         rescue SystemCallError, IOError
           raise ConnectionError, "Connection error detected during write"
         end
 
       ensure
         uncork_socket io
+        io.flush
 
         body.close
         client.tempfile.unlink if client.tempfile
@@ -196,21 +192,18 @@ module Puma
     #
     def fast_write(io, str)
       n = 0
-      while true
+      byte_size = str.bytesize
+      while n < byte_size
         begin
-          n = io.syswrite str
+          n += io.syswrite(n == 0 ? str : str.byteslice(n..-1))
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
-          if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
+          unless IO.select(nil, [io], nil, WRITE_TIMEOUT)
             raise ConnectionError, "Socket timeout writing data"
           end
-
           retry
         rescue  Errno::EPIPE, SystemCallError, IOError
           raise ConnectionError, "Socket timeout writing data"
         end
-
-        return if n == str.bytesize
-        str = str.byteslice(n..-1)
       end
     end
     private :fast_write

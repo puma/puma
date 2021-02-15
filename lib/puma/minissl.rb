@@ -114,27 +114,27 @@ module Puma
         end
       end
 
+      # Elsewhere, most socket writes use `syswrite`.  When returning a large
+      # response body (2MB), Ubuntu works fine with `syswrite`, but macOS &
+      # Windows have OpenSSL errors on the client.
+      #
       def write(data)
         return 0 if data.empty?
+        n = 0
+        byte_size = data.bytesize
+        enc_wr = ''.dup
+        enc = nil
 
-        data_size = data.bytesize
-        need = data_size
+        while n < byte_size
+          n += @engine.write(n == 0 ? data : data.byteslice(n..-1))
 
-        while true
-          wrote = @engine.write data
+          enc_wr << enc while (enc = @engine.extract)
 
-          enc_wr = ''.dup
-          while (enc = @engine.extract)
-            enc_wr << enc
-          end
           @socket.write enc_wr unless enc_wr.empty?
-
-          need -= wrote
-
-          return data_size if need == 0
-
-          data = data.byteslice(wrote..-1)
+          enc_wr.clear
         end
+        enc.clear unless enc.nil?
+        byte_size
       end
 
       alias_method :syswrite, :write
@@ -184,7 +184,7 @@ module Puma
           # If it can't send more packets within 1s, then give up.
           return if [:timeout, :eof].include?(read_and_drop(1)) while should_drop_bytes?
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+          Thread.current.purge_interrupt_queue if SERVER::PURGE_INTERRUPT_QUEUE
           # nothing
         ensure
           @socket.close
