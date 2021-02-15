@@ -18,8 +18,8 @@ class TestPumaServer < Minitest::Test
   end
 
   def teardown
-    @server.stop(true)
     @ios.each { |io| io.close if io && !io.closed? }
+    @server.stop true
   end
 
   def server_run(app: @app, early_hints: false)
@@ -88,7 +88,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_very_large_return
-    giant = "x" * 2056610
+    giant = '─x─x-x' * 209_716 # bytesize is 2_097_160 (2 MB is 2_097_152)
 
     server_run app: ->(env) do
       [200, {}, [giant]]
@@ -101,9 +101,13 @@ class TestPumaServer < Minitest::Test
       break if line == "\r\n"
     end
 
-    out = sock.read
+    body = sock.read.force_encoding('UTF-8')
 
-    assert_equal giant.bytesize, out.bytesize
+    assert_equal giant.bytesize, body.bytesize
+    # just check start and end, in case of error, we don't want 2MB dumped
+    # to the console
+    assert_equal giant[0..100], body[0..100]
+    assert_equal giant[-100..-1], body[-100..-1]
   end
 
   def test_respect_x_forwarded_proto
@@ -264,7 +268,6 @@ EOF
 
     new_connection.close # Make a connection and close without writing
 
-    @server.stop(true)
     stderr = @events.stderr.string
     assert stderr.empty?, "Expected stderr from server to be empty but it was #{stderr.inspect}"
   end
@@ -274,7 +277,7 @@ EOF
     @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => handler, :force_shutdown_after => 2}
 
     server_run app: ->(env) do
-      @server.stop
+      @server.stop true
       sleep 5
     end
 
@@ -289,7 +292,7 @@ EOF
     @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
 
     server_run app: ->(env) do
-      @server.stop
+      @server.stop true
       sleep 5
     end
 
@@ -377,7 +380,7 @@ EOF
 
     assert_equal [:booting, :running], states
 
-    @server.stop(true)
+    @server.stop true
 
     assert_equal [:booting, :running, :stop, :done], states
   end
@@ -1173,7 +1176,7 @@ EOF
     server_run
     sock = new_connection
     sleep 0.5 # give enough time for new connection to enter reactor
-    @server.stop false
+    @server.stop
 
     assert IO.select([sock], nil, nil, 1), 'Unexpected timeout'
     assert_raises EOFError do
@@ -1184,20 +1187,23 @@ EOF
   def test_run_stop_thread_safety
     100.times do
       thread = @server.run
-      @server.stop
+      @server.stop true
       assert thread.join(1)
     end
   end
 
   def test_command_ignored_before_run
-    @server.stop # ignored
-    @server.run
-    @server.halt
     done = Queue.new
     @server.events.register(:state) do |state|
       done << @server.instance_variable_get(:@status) if state == :done
     end
+
+    @server.stop # ignored
+    @server.run
+    @server.halt
+
     assert_equal :halt, done.pop
+    assert_empty done
   end
 
   def test_custom_io_selector

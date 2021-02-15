@@ -2,12 +2,12 @@
 #
 # helper is required first since it loads Puma, which needs to be
 # loaded so HAS_SSL is defined
-require_relative "helper"
+require_relative 'helper'
 
 if ::Puma::HAS_SSL
-  require "puma/minissl"
-  require "puma/events"
-  require "net/http"
+  require 'puma/minissl'
+  require 'puma/events'
+  require 'net/http'
 
   class SSLEventsHelper < ::Puma::Events
     attr_accessor :addr, :cert, :error
@@ -36,6 +36,7 @@ end
 
 class TestPumaServerSSL < Minitest::Test
   parallelize_me!
+
   def setup
     @http = nil
     @server = nil
@@ -68,10 +69,10 @@ class TestPumaServerSSL < Minitest::Test
 
     @events = SSLEventsHelper.new STDOUT, STDERR
     @server = Puma::Server.new app, @events
-    @port = (@server.add_ssl_listener @host, 0, ctx).addr[1]
+    @bind_port = (@server.add_ssl_listener @host, 0, ctx).addr[1]
     @server.run
 
-    @http = Net::HTTP.new @host, @port
+    @http = Net::HTTP.new @host, @bind_port
     @http.use_ssl = true
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
@@ -82,8 +83,8 @@ class TestPumaServerSSL < Minitest::Test
     @http.start do
       req = Net::HTTP::Get.new "/", {}
 
-      @http.request(req) do |rep|
-        body = rep.body
+      @http.request(req) do |resp|
+        body = resp.body
       end
     end
 
@@ -114,7 +115,7 @@ class TestPumaServerSSL < Minitest::Test
 
   def test_very_large_return
     start_server
-    giant = "x" * 2056610
+    giant = '─x─x-x' * 209_716 # bytesize is 2_097_160 (2 MB is 2_097_152)
 
     @server.app = proc do
       [200, {}, [giant]]
@@ -123,12 +124,16 @@ class TestPumaServerSSL < Minitest::Test
     body = nil
     @http.start do
       req = Net::HTTP::Get.new "/"
-      @http.request(req) do |rep|
-        body = rep.body
+      @http.request(req) do |resp|
+        body = resp.body.force_encoding('UTF-8')
       end
     end
 
     assert_equal giant.bytesize, body.bytesize
+    # just check start and end, in case of error, we don't want 2MB dumped
+    # to the console
+    assert_equal giant[0..100], body[0..100]
+    assert_equal giant[-100..-1], body[-100..-1]
   end
 
   def test_form_submit
@@ -138,8 +143,8 @@ class TestPumaServerSSL < Minitest::Test
       req = Net::HTTP::Post.new '/'
       req.set_form_data('a' => '1', 'b' => '2')
 
-      @http.request(req) do |rep|
-        body = rep.body
+      @http.request(req) do |resp|
+        body = resp.body
       end
 
     end
@@ -218,14 +223,14 @@ class TestPumaServerSSL < Minitest::Test
       req_http = Net::HTTP::Get.new "/", {}
       # Net::ReadTimeout - TruffleRuby
       assert_raises(Errno::ECONNREFUSED, EOFError, Net::ReadTimeout) do
-        http.start.request(req_http) { |rep| body_http = rep.body }
+        http.start.request(req_http) { |resp| body_http = resp.body }
       end
     end
 
     ssl = Thread.new do
       @http.start do
         req_https = Net::HTTP::Get.new "/", {}
-        @http.request(req_https) { |rep_https| body_https = rep_https.body }
+        @http.request(req_https) { |resp_https| body_https = resp_https.body }
       end
     end
 
