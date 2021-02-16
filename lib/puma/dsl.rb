@@ -888,5 +888,9 @@ module Puma
     def io_selector_backend(backend)
       @options[:io_selector_backend] = backend.to_sym
     end
+
+    def mutate_stdout_and_stderr_to_sync_on_write(enabled=true)
+      @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
+    end
   end
 end
