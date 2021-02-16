@@ -5,7 +5,7 @@ AllCops:
   StyleGuideCopsOnly: false
   Exclude:
     - 'tmp/**/*'
-    - 'vendor/**/*'
+    - '**/vendor/bundle/**/*'
     - 'examples/**/*'
     - 'pkg/**/*'
     - 'Rakefile'
