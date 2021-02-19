@@ -434,7 +434,7 @@ module Puma
                 case req
                 when "b"
                   w.boot!
-                  log "- Worker #{w.index} (PID: #{pid}) booted, phase: #{w.phase}"
+                  log "- Worker #{w.index} (PID: #{pid}) booted in #{w.uptime.truncate(2)}s, phase: #{w.phase}"
                   @next_check = Time.now
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
@@ -499,7 +499,12 @@ module Puma
     def timeout_workers
       @workers.each do |w|
         if !w.term? && w.ping_timeout <= Time.now
-          log "! Terminating timed out worker: #{w.pid}"
+          details = if w.booted?
+                      "(worker failed to check in within #{@options[:worker_timeout]} seconds)"
+                    else
+                      "(worker failed to boot within #{@options[:worker_boot_timeout]} seconds)"
+                    end
+          log "! Terminating timed out worker #{details}: #{w.pid}"
           w.kill
         end
       end
