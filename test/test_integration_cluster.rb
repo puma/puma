@@ -148,13 +148,13 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_boot_timeout
     timeout = 1
-    worker_timeout(timeout, 2, "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
+    worker_timeout(timeout, 2, "worker failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
   end
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
     timeout = Puma::Const::WORKER_CHECK_INTERVAL + 1
-    worker_timeout(timeout, 1, <<RUBY)
+    worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<RUBY)
 worker_timeout #{timeout}
 on_worker_boot do
   Thread.new do
@@ -315,12 +315,12 @@ RUBY
 
   private
 
-  def worker_timeout(timeout, iterations, config)
+  def worker_timeout(timeout, iterations, details, config)
     cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: config
 
     pids = []
     Timeout.timeout(iterations * timeout + 1) do
-      (pids << @server.gets[/Terminating timed out worker: (\d+)/, 1]).compact! while pids.size < workers * iterations
+      (pids << @server.gets[/Terminating timed out worker \(#{details}\): (\d+)/, 1]).compact! while pids.size < workers * iterations
       pids.map!(&:to_i)
     end
 

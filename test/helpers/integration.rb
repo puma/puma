@@ -46,6 +46,10 @@ class TestIntegration < Minitest::Test
 
   private
 
+  def silent_and_checked_system_command(*args)
+    assert(system(*args, out: File::NULL, err: File::NULL))
+  end
+
   def cli_server(argv, unix: false, config: nil)
     if config
       config_file = Tempfile.new(%w(config .rb))
@@ -160,7 +164,7 @@ class TestIntegration < Minitest::Test
   # gets worker pids from @server output
   def get_worker_pids(phase = 0, size = workers)
     pids = []
-    re = /PID: (\d+)\) booted, phase: #{phase}/
+    re = /PID: (\d+)\) booted in \d+.\d+s, phase: #{phase}/
     while pids.size < size
       if pid = @server.gets[re, 1]
         pids << pid
