@@ -164,7 +164,7 @@ class TestIntegration < Minitest::Test
   # gets worker pids from @server output
   def get_worker_pids(phase = 0, size = workers)
     pids = []
-    re = /PID: (\d+)\) booted in \d+.\d+s, phase: #{phase}/
+    re = /PID: (\d+)\) booted in [.0-9]+s, phase: #{phase}/
     while pids.size < size
       if pid = @server.gets[re, 1]
         pids << pid
