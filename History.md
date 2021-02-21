@@ -2,7 +2,7 @@
 
 * Bugfixes
   * Add `#flush` and `#sync` methods to `Puma::NullIO`  ([#2553])
-* Minor
+* Features
   * Add reason to worker time out and startup time when worked boots ([#2528])
 
 ## 5.2.1 / 2021-02-05
