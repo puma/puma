@@ -126,6 +126,11 @@ module Puma
         STDERR.puts "=== puma startup: #{Time.now} ==="
         STDERR.flush unless STDERR.sync
       end
+
+      if @options[:mutate_stdout_and_stderr_to_sync_on_write]
+        STDOUT.sync = true
+        STDERR.sync = true
+      end
     end
 
     def load_and_bind
@@ -150,11 +155,6 @@ module Puma
     end
 
     def start_server
-      if @options[:mutate_stdout_and_stderr_to_sync_on_write]
-        STDOUT.sync = true
-        STDERR.sync = true
-      end
-
       server = Puma::Server.new app, @launcher.events, @options
       server.inherit_binder @launcher.binder
       server
