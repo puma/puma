@@ -2,6 +2,7 @@
 
 * Bugfixes
   * Add `#flush` and `#sync` methods to `Puma::NullIO`  ([#2553])
+  * Restore `sync=true` on `STDOUT` and `STDERR` streams #2557
 
 ## 5.2.1 / 2021-02-05
 

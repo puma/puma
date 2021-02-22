@@ -206,7 +206,8 @@ module Puma
         :first_data_timeout => Const::FIRST_DATA_TIMEOUT,
         :raise_exception_on_sigterm => true,
         :max_fast_inline => Const::MAX_FAST_INLINE,
-        :io_selector_backend => :auto
+        :io_selector_backend => :auto,
+        :mutate_stdout_and_stderr_to_sync_on_write => true,
       }
     end
 
