@@ -165,9 +165,17 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_application_logs_are_flushed_on_write
-    cli_server 'test/rackup/write_to_stdout.ru'
+    @control_tcp_port = UniquePort.call
+    cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/write_to_stdout.ru"
+
     read_body connect
-    log_line = @server.gets
-    assert_equal "hello\n", log_line
+
+    cli_pumactl 'stop'
+
+    assert_equal "hello\n", @server.gets
+    assert_includes @server.read, 'Goodbye!'
+
+    @server.close unless @server.closed?
+    @server = nil
   end
 end
