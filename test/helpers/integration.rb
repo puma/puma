@@ -204,7 +204,7 @@ class TestIntegration < Minitest::Test
     args = "-w #{workers} -t 0:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?
       @control_tcp_port = UniquePort.call
-      cli_server "#{args} --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+      cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} #{args}"
     else
       cli_server args
     end
