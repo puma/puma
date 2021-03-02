@@ -176,7 +176,9 @@ module Puma
         when 'tcp'
           TCPSocket.new uri.host, uri.port
         when 'unix'
-          UNIXSocket.new "#{uri.host}#{uri.path}"
+          # check for abstract UNIXSocket
+          UNIXSocket.new(@control_url.start_with?('unix://@') ?
+            "\0#{uri.host}#{uri.path}" : "#{uri.host}#{uri.path}")
         else
           raise "Invalid scheme: #{uri.scheme}"
         end
