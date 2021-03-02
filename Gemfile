@@ -15,6 +15,8 @@ gem "minitest-stub-const"
 gem "sd_notify"
 
 gem "jruby-openssl", :platform => "jruby"
+# needed for rubocop
+gem "racc", :platform => "jruby"
 
 gem "rubocop", "~> 0.58.0"
 
