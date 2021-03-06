@@ -434,7 +434,7 @@ module Puma
                 case req
                 when "b"
                   w.boot!
-                  log "- Worker #{w.index} (PID: #{pid}) booted in #{w.uptime.truncate(*(RUBY_VERSION >= "2.4." ? [2] : []))}s, phase: #{w.phase}"
+                  log "- Worker #{w.index} (PID: #{pid}) booted in #{w.uptime.round(2)}s, phase: #{w.phase}"
                   @next_check = Time.now
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
