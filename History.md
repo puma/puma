@@ -1,3 +1,12 @@
+## Master
+
+* Features
+  * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+
+* Bugfixes
+  * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Don't close systemd activated socket on pumactl restart (#2563, #2504)
+
 ## 5.2.2 / 2021-02-22
 
 * Bugfixes
