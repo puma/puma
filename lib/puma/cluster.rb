@@ -332,12 +332,6 @@ module Puma
       # This is aligned with the output from Runner, see Runner#output_header
       log "*      Workers: #{@options[:workers]}"
 
-      if @options[:workers] == 1
-        log "! WARNING: Detected running cluster mode with 1 worker:"
-        log "! Running Puma in cluster mode with a single worker is often a misconfiguration."
-        log "! Consider running Puma in single-mode in order to reduce memory overhead."
-      end
-
       # Threads explicitly marked as fork safe will be ignored.
       # Used in Rails, but may be used by anyone.
       before = Thread.list.reject { |t| t.thread_variable_get(:fork_safe) }
@@ -387,6 +381,8 @@ module Puma
       @fork_pipe, @fork_writer = Puma::Util.pipe
 
       log "Use Ctrl-C to stop"
+
+      single_worker_warning
 
       redirect_io
 
@@ -475,6 +471,15 @@ module Puma
     end
 
     private
+
+    def single_worker_warning
+      return if @options[:workers] != 1 || @options[:silence_single_worker_warning]
+
+      log "! WARNING: Detected running cluster mode with 1 worker."
+      log "! Running Puma in cluster mode with a single worker is often a misconfiguration."
+      log "! Consider running Puma in single-mode in order to reduce memory overhead."
+      log "! Set the `silence_single_worker_warning` option to silence this warning message."
+    end
 
     # loops thru @workers, removing workers that exited, and calling
     # `#term` if needed
