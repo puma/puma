@@ -482,6 +482,13 @@ module Puma
       @options[:workers] = count.to_i
     end
 
+    # Disable warning message when running in cluster mode with a single worker.
+    #
+    # @note Cluster mode only.
+    def silence_single_worker_warning
+      @options[:silence_single_worker_warning] = true
+    end
+
     # Code to run immediately before master process
     # forks workers (once on boot). These hooks can block if necessary
     # to wait for background operations unknown to Puma to finish before
