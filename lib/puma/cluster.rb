@@ -382,6 +382,8 @@ module Puma
 
       log "Use Ctrl-C to stop"
 
+      single_worker_warning
+
       redirect_io
 
       Plugins.fire_background
@@ -469,6 +471,15 @@ module Puma
     end
 
     private
+
+    def single_worker_warning
+      return if @options[:workers] != 1 || @options[:silence_single_worker_warning]
+
+      log "! WARNING: Detected running cluster mode with 1 worker."
+      log "! Running Puma in cluster mode with a single worker is often a misconfiguration."
+      log "! Consider running Puma in single-mode in order to reduce memory overhead."
+      log "! Set the `silence_single_worker_warning` option to silence this warning message."
+    end
 
     # loops thru @workers, removing workers that exited, and calling
     # `#term` if needed

@@ -193,6 +193,7 @@ module Puma
         :debug => false,
         :binds => ["tcp://#{DefaultTCPHost}:#{DefaultTCPPort}"],
         :workers => Integer(ENV['WEB_CONCURRENCY'] || 0),
+        :silence_single_worker_warning => false,
         :mode => :http,
         :worker_timeout => DefaultWorkerTimeout,
         :worker_boot_timeout => DefaultWorkerTimeout,
