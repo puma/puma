@@ -93,8 +93,8 @@ class TestWorkerGemIndependence < TestIntegration
 
     Dir.chdir(current_release_symlink) do
       with_unbundled_env do
-        system("bundle config --local path vendor/bundle", out: File::NULL)
-        system("bundle install", out: File::NULL)
+        silent_and_checked_system_command("bundle config --local path vendor/bundle")
+        silent_and_checked_system_command("bundle install")
         cli_server "--prune-bundler -w 1 #{server_opts}"
       end
     end
@@ -108,8 +108,8 @@ class TestWorkerGemIndependence < TestIntegration
     set_release_symlink File.expand_path(new_app_dir, __dir__)
     Dir.chdir(current_release_symlink) do
       with_unbundled_env do
-        system("bundle config --local path vendor/bundle", out: File::NULL)
-        system("bundle install", out: File::NULL)
+        silent_and_checked_system_command("bundle config --local path vendor/bundle")
+        silent_and_checked_system_command("bundle install")
       end
     end
     start_phased_restart
@@ -131,7 +131,7 @@ class TestWorkerGemIndependence < TestIntegration
   def start_phased_restart
     Process.kill :USR1, @pid
 
-    true while @server.gets !~ /booted, phase: 1/
+    true while @server.gets !~ /booted in [.0-9]+s, phase: 1/
   end
 
   def with_unbundled_env

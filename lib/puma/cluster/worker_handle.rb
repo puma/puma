@@ -31,6 +31,10 @@ module Puma
         @stage == :booted
       end
 
+      def uptime
+        Time.now - started_at
+      end
+
       def boot!
         @last_checkin = Time.now
         @stage = :booted
