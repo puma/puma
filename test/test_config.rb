@@ -342,6 +342,22 @@ class TestConfigFile < TestConfigFileBase
     assert_equal 2, conf.final_options[:max_threads]
   end
 
+  def test_silence_single_worker_warning_default
+    conf = Puma::Configuration.new
+    conf.load
+
+    assert_equal false, conf.options[:silence_single_worker_warning]
+  end
+
+  def test_silence_single_worker_warning_overwrite
+    conf = Puma::Configuration.new do |c|
+      c.silence_single_worker_warning
+    end
+    conf.load
+
+    assert_equal true, conf.options[:silence_single_worker_warning]
+  end
+
   private
 
   def assert_run_hooks(hook_name, options = {})

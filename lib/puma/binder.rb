@@ -258,14 +258,18 @@ module Puma
       end
 
       # Also close any unused activated sockets
-      @activated_sockets.each do |key, sock|
-        logger.log "* Closing unused activated socket: #{key.join ':'}"
-        begin
-          sock.close
-        rescue SystemCallError
+      unless @activated_sockets.empty?
+        fds = @ios.map(&:to_i)
+        @activated_sockets.each do |key, sock|
+          next if fds.include? sock.to_i
+          logger.log "* Closing unused activated socket: #{key.first}://#{key[1..-1].join ':'}"
+          begin
+            sock.close
+          rescue SystemCallError
+          end
+          # We have to unlink a unix socket path that's not being used
+          File.unlink key[1] if key.first == :unix
         end
-        # We have to unlink a unix socket path that's not being used
-        File.unlink key[1] if key[0] == :unix
       end
     end
 

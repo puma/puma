@@ -126,6 +126,11 @@ module Puma
         STDERR.puts "=== puma startup: #{Time.now} ==="
         STDERR.flush unless STDERR.sync
       end
+
+      if @options[:mutate_stdout_and_stderr_to_sync_on_write]
+        STDOUT.sync = true
+        STDERR.sync = true
+      end
     end
 
     def load_and_bind

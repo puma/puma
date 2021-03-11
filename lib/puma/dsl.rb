@@ -482,6 +482,24 @@ module Puma
       @options[:workers] = count.to_i
     end
 
+    # Disable warning message when running in cluster mode with a single worker.
+    #
+    # Cluster mode has some overhead of running an addtional 'control' process
+    # in order to manage the cluster. If only running a single worker it is
+    # likely not worth paying that overhead vs running in single mode with
+    # additional threads instead.
+    #
+    # There are some scenarios where running cluster mode with a single worker
+    # may still be warranted and valid under certain deployment scenarios, see
+    # https://github.com/puma/puma/issues/2534
+    #
+    # Moving from workers = 1 to workers = 0 will save 10-30% of memory use.
+    #
+    # @note Cluster mode only.
+    def silence_single_worker_warning
+      @options[:silence_single_worker_warning] = true
+    end
+
     # Code to run immediately before master process
     # forks workers (once on boot). These hooks can block if necessary
     # to wait for background operations unknown to Puma to finish before
@@ -887,6 +905,10 @@ module Puma
     #
     def io_selector_backend(backend)
       @options[:io_selector_backend] = backend.to_sym
+    end
+
+    def mutate_stdout_and_stderr_to_sync_on_write(enabled=true)
+      @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
     end
   end
 end

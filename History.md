@@ -1,9 +1,19 @@
-## 5.2.2 / 2021-02-
+## Master
+
+* Features
+  * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Warn when running Cluster mode with a single worker (#2565)
+  * Add reason to worker time out and startup time when worked boots ([#2528])
+
+* Bugfixes
+  * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Don't close systemd activated socket on pumactl restart (#2563, #2504)
+
+## 5.2.2 / 2021-02-22
 
 * Bugfixes
   * Add `#flush` and `#sync` methods to `Puma::NullIO`  ([#2553])
-* Features
-  * Add reason to worker time out and startup time when worked boots ([#2528])
+  * Restore `sync=true` on `STDOUT` and `STDERR` streams ([#2557])
 
 ## 5.2.1 / 2021-02-05
 
@@ -1709,6 +1719,8 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2557]:https://github.com/puma/puma/pull/2557     "PR by @cjlarose, merged 2021-02-22"
+[#2553]:https://github.com/puma/puma/pull/2553     "PR by @olivierbellone, merged 02-10-22"
 [#2550]:https://github.com/puma/puma/pull/2550     "PR by @MSP-Greg, merged 2021-02-05"
 [#2547]:https://github.com/puma/puma/pull/2547     "PR by @wildmaples, merged 2021-02-03"
 [#2543]:https://github.com/puma/puma/pull/2543     "PR by @MSP-Greg, merged 2021-02-01"

@@ -313,6 +313,28 @@ RUBY
     assert_equal 0, worker_load_count
   end
 
+  def test_warning_message_outputted_when_single_worker
+    cli_server "-w 1 test/rackup/hello.ru"
+
+    output = []
+    while (line = @server.gets) && line !~ /Worker \d \(PID/
+      output << line
+    end
+
+    assert_match /WARNING: Detected running cluster mode with 1 worker/, output.join
+  end
+
+  def test_warning_message_not_outputted_when_single_worker_silenced
+    cli_server "-w 1 test/rackup/hello.ru", config: "silence_single_worker_warning"
+
+    output = []
+    while (line = @server.gets) && line !~ /Worker \d \(PID/
+      output << line
+    end
+
+    refute_match /WARNING: Detected running cluster mode with 1 worker/, output.join
+  end
+
   private
 
   def worker_timeout(timeout, iterations, details, config)

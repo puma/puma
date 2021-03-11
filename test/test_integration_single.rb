@@ -163,4 +163,19 @@ class TestIntegrationSingle < TestIntegration
     assert(!File.file?("t2-pid"))
     assert_equal("Puma is started\n", out)
   end
+
+  def test_application_logs_are_flushed_on_write
+    @control_tcp_port = UniquePort.call
+    cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/write_to_stdout.ru"
+
+    read_body connect
+
+    cli_pumactl 'stop'
+
+    assert_equal "hello\n", @server.gets
+    assert_includes @server.read, 'Goodbye!'
+
+    @server.close unless @server.closed?
+    @server = nil
+  end
 end
