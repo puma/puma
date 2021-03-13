@@ -91,19 +91,20 @@ end
 
 module TestSkips
 
-  # usage: skip NO_FORK_MSG unless HAS_FORK
-  # windows >= 2.6 fork is not defined, < 2.6 fork raises NotImplementedError
   HAS_FORK = ::Process.respond_to? :fork
-  NO_FORK_MSG = "Kernel.fork isn't available on #{RUBY_ENGINE} on #{RUBY_PLATFORM}"
-
-  # socket is required by puma
-  # usage: skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
   UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
-  UNIX_SKT_MSG = "UnixSockets aren't available on the #{RUBY_PLATFORM} platform"
+
+  MSG_FORK = "Kernel.fork isn't available on #{RUBY_ENGINE} on #{RUBY_PLATFORM}"
+  MSG_UNIX = "UNIXSockets aren't available on the #{RUBY_PLATFORM} platform"
+  MSG_AUNIX = "Abstract UNIXSockets aren't available on the #{RUBY_PLATFORM} platform"
 
   SIGNAL_LIST = Signal.list.keys.map(&:to_sym) - (Puma.windows? ? [:INT, :TERM] : [])
 
   JRUBY_HEAD = Puma::IS_JRUBY && RUBY_DESCRIPTION =~ /SNAPSHOT/
+
+  DARWIN = RUBY_PLATFORM.include? 'darwin'
+
+  TRUFFLE = RUBY_ENGINE == 'truffleruby'
 
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
@@ -113,18 +114,22 @@ module TestSkips
     end
   end
 
-  # called with one or more params, like skip_on :jruby, :windows
+  # called with one or more params, like skip_if :jruby, :windows
   # optional suffix kwarg is appended to the skip message
   # optional suffix bt should generally not used
-  def skip_on(*engs, suffix: '', bt: caller)
+  def skip_if(*engs, suffix: '', bt: caller)
     engs.each do |eng|
       skip_msg = case eng
-        when :darwin   then "Skipped on darwin#{suffix}"    if RUBY_PLATFORM[/darwin/]
-        when :jruby    then "Skipped on JRuby#{suffix}"     if Puma.jruby?
-        when :truffleruby then "Skipped on TruffleRuby#{suffix}" if RUBY_ENGINE == "truffleruby"
-        when :windows  then "Skipped on Windows#{suffix}"   if Puma.windows?
-        when :ci       then "Skipped on ENV['CI']#{suffix}" if ENV["CI"]
-        when :no_bundler then "Skipped w/o Bundler#{suffix}"  if !defined?(Bundler)
+        when :darwin      then "Skipped if darwin#{suffix}"      if Puma::IS_OSX
+        when :jruby       then "Skipped if JRuby#{suffix}"       if Puma::IS_JRUBY
+        when :truffleruby then "Skipped if TruffleRuby#{suffix}" if TRUFFLE
+        when :windows     then "Skipped if Windows#{suffix}"     if Puma::IS_WINDOWS
+        when :ci          then "Skipped if ENV['CI']#{suffix}"   if ENV['CI']
+        when :no_bundler  then "Skipped w/o Bundler#{suffix}"    if !defined?(Bundler)
+        when :ssl         then "Skipped if SSL is supported"     if Puma::HAS_SSL
+        when :fork        then "Skipped if Kernel.fork exists"   if HAS_FORK
+        when :unix        then "Skipped if UNIXSocket exists"    if Puma::HAS_UNIX_SOCKET
+        when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
         else false
       end
       skip skip_msg, bt if skip_msg
@@ -134,10 +139,14 @@ module TestSkips
   # called with only one param
   def skip_unless(eng, bt: caller)
     skip_msg = case eng
-      when :darwin  then "Skip unless darwin"  unless RUBY_PLATFORM[/darwin/]
-      when :jruby   then "Skip unless JRuby"   unless Puma.jruby?
-      when :windows then "Skip unless Windows" unless Puma.windows?
-      when :mri     then "Skip unless MRI"     unless Puma.mri?
+      when :darwin  then "Skip unless darwin"           unless Puma::IS_OSX
+      when :jruby   then "Skip unless JRuby"            unless Puma::IS_JRUBY
+      when :windows then "Skip unless Windows"          unless Puma::IS_WINDOWS
+      when :mri     then "Skip unless MRI"              unless Puma::IS_MRI
+      when :ssl     then "Skip unless SSL is supported" unless Puma::HAS_SSL
+      when :fork    then MSG_FORK                       unless HAS_FORK
+      when :unix    then MSG_UNIX                       unless Puma::HAS_UNIX_SOCKET
+      when :aunix   then MSG_AUNIX                      unless Puma.abstract_unix_socket?
       else false
     end
     skip skip_msg, bt if skip_msg
