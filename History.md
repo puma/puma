@@ -4,6 +4,7 @@
   * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
   * Warn when running Cluster mode with a single worker (#2565)
   * Add reason to worker time out and startup time when worked boots ([#2528])
+  * Add :between_bytes_timeout to prevent timeout during slow incoming requests (#2575)
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
