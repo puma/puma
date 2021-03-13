@@ -382,9 +382,9 @@ EOF
     assert_equal [:booting, :running, :stop, :done], states
   end
 
-  def assert_proper_timeout(expected, &block)
+  def assert_proper_timeout(expected)
     now = Time.now
-    ret = block.call
+    ret = yield
     t = Time.now - now
     assert_in_delta expected, t, 0.5, "unexpected timeout, #{t} instead of ~#{expected}"
     ret
