@@ -23,7 +23,7 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_stop_tcp
-    skip_on :jruby, :truffleruby # Undiagnose thread race. TODO fix
+    skip_if :jruby, :truffleruby # Undiagnose thread race. TODO fix
     @control_tcp_port = UniquePort.call
     cli_server "-q test/rackup/sleep.ru --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} -S #{@state_path}"
 
@@ -44,7 +44,7 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def ctl_unix(signal='stop')
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
     stderr = Tempfile.new(%w(stderr .log))
     cli_server "-q test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}",
       config: "stdout_redirect nil, '#{stderr.path}'",
@@ -59,7 +59,7 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_phased_restart_cluster
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
     cli_server "-q -w #{workers} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
 
     start = Time.now
@@ -94,7 +94,7 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_prune_bundler_with_multiple_workers
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
 
     cli_server "-q -C test/config/prune_bundler_with_multiple_workers.rb --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
 
@@ -114,7 +114,7 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_kill_unknown
-    skip_on :jruby
+    skip_if :jruby
 
     # we run ls to get a 'safe' pid to pass off as puma in cli stop
     # do not want to accidentally kill a valid other process

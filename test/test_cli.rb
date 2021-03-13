@@ -67,7 +67,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_for_ssl
-    skip 'No ssl support' unless ::Puma::HAS_SSL
+    skip_unless :ssl
 
     require "net/http"
     control_port = UniquePort.call
@@ -105,8 +105,8 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_clustered
-    skip NO_FORK_MSG  unless HAS_FORK
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :fork
+    skip_unless :unix
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -156,7 +156,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -183,7 +183,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_stop
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -248,7 +248,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_thread_backtraces
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -330,7 +330,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_gc_stats_unix
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
 
     uri  = "unix://#{@tmp_path2}"
     cntl = "unix://#{@tmp_path}"
@@ -339,7 +339,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_tmp_control
-    skip_on :jruby, suffix: " - Unknown issue"
+    skip_if :jruby, suffix: " - Unknown issue"
 
     cli = Puma::CLI.new ["--state", @tmp_path, "--control-url", "auto"]
     cli.launcher.write_state
@@ -356,7 +356,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_state_file_callback_filtering
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
     cli = Puma::CLI.new [ "--config", "test/config/state_file_testing_config.rb",
                           "--state", @tmp_path ]
     cli.launcher.write_state
@@ -373,7 +373,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_log_formatter_default_clustered
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
 
     cli = Puma::CLI.new [ "-w 2" ]
     assert_instance_of Puma::Events::PidFormatter, cli.launcher.events.formatter
@@ -386,7 +386,7 @@ class TestCLI < Minitest::Test
   end
 
   def test_log_formatter_custom_clustered
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
 
     cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb", "-w 2" ]
     assert_instance_of Proc, cli.launcher.events.formatter

@@ -7,7 +7,7 @@ class TestIntegrationCluster < TestIntegration
   def workers ; 2 ; end
 
   def setup
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
     super
   end
 
@@ -25,7 +25,7 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_pre_existing_unix
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
 
     File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
 

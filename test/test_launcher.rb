@@ -8,7 +8,7 @@ class TestLauncher < Minitest::Test
   include TmpPath
 
   def test_files_to_require_after_prune_is_correctly_built_for_no_extra_deps
-    skip_on :no_bundler
+    skip_if :no_bundler
 
     dirs = launcher.send(:files_to_require_after_prune)
 
@@ -19,7 +19,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_files_to_require_after_prune_is_correctly_built_with_extra_deps
-    skip_on :no_bundler
+    skip_if :no_bundler
     conf = Puma::Configuration.new do |c|
       c.extra_runtime_dependencies ['rdoc']
     end
@@ -37,7 +37,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_extra_runtime_deps_directories_is_correctly_built
-    skip_on :no_bundler
+    skip_if :no_bundler
     conf = Puma::Configuration.new do |c|
       c.extra_runtime_dependencies ['rdoc']
     end
@@ -48,7 +48,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_puma_wild_location_is_an_absolute_path
-    skip_on :no_bundler
+    skip_if :no_bundler
     puma_wild_location = launcher.send(:puma_wild_location)
 
     assert_match(%r{bin/puma-wild$}, puma_wild_location)
@@ -139,7 +139,7 @@ class TestLauncher < Minitest::Test
   end
 
   def test_puma_stats_clustered
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
 
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}

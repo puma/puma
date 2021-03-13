@@ -24,7 +24,7 @@ class TestIntegrationSingle < TestIntegration
   def test_usr2_restart_restores_environment
     # jruby has a bug where setting `nil` into the ENV or `delete` do not change the
     # next workers ENV
-    skip_on :jruby
+    skip_if :jruby
     skip_unless_signal_exist? :USR2
 
     initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
@@ -36,7 +36,7 @@ class TestIntegrationSingle < TestIntegration
 
   def test_term_exit_code
     skip_unless_signal_exist? :TERM
-    skip_on :jruby # JVM does not return correct exit code for TERM
+    skip_if :jruby # JVM does not return correct exit code for TERM
 
     cli_server "test/rackup/hello.ru"
     _, status = stop_server
@@ -65,7 +65,7 @@ class TestIntegrationSingle < TestIntegration
 
   def test_term_not_accepts_new_connections
     skip_unless_signal_exist? :TERM
-    skip_on :jruby
+    skip_if :jruby
 
     cli_server 'test/rackup/sleep.ru'
 
@@ -94,7 +94,7 @@ class TestIntegrationSingle < TestIntegration
 
   def test_int_refuse
     skip_unless_signal_exist? :INT
-    skip_on :jruby  # seems to intermittently lockup JRuby CI
+    skip_if :jruby  # seems to intermittently lockup JRuby CI
 
     cli_server 'test/rackup/hello.ru'
     begin

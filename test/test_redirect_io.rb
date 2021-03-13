@@ -28,7 +28,7 @@ class TestRedirectIO < TestIntegration
   end
 
   def test_sighup_redirects_io_single
-    skip_on :jruby # Server isn't coming up in CI, TODO Fix
+    skip_if :jruby # Server isn't coming up in CI, TODO Fix
 
     cli_args = [
       '--redirect-stdout', @out_file_path,
@@ -55,7 +55,7 @@ class TestRedirectIO < TestIntegration
   end
 
   def test_sighup_redirects_io_cluster
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
 
     cli_args = [
       '-w', '1',
