@@ -382,40 +382,51 @@ EOF
     assert_equal [:booting, :running, :stop, :done], states
   end
 
+  def assert_proper_timeout(expected, &block)
+    now = Time.now
+    ret = block.call
+    t = Time.now - now
+    assert_in_delta expected, t, 0.5, "unexpected timeout, #{t} instead of ~#{expected}"
+    ret
+  end
+
   def test_timeout_in_data_phase
     @server.first_data_timeout = 2
     server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
 
-    data = sock.gets
+    data = assert_proper_timeout(@server.first_data_timeout) { sock.gets }
 
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
   end
 
   def test_timeout_after_data_received
-    @server.first_data_timeout = 2
+    @server.first_data_timeout = 4
     @server.between_bytes_timeout = 2
     server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 100\r\n\r\n"
+    sleep 0.1
 
     sock << "hello"
+    sleep 0.1
 
-    data = sock.gets
+    data = assert_proper_timeout(@server.between_bytes_timeout) { sock.gets }
 
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
   end
 
   def test_no_timeout_after_data_received
-    @server.first_data_timeout = 2
-    @server.between_bytes_timeout = 30
+    @server.first_data_timeout = 10
+    @server.between_bytes_timeout = 4
     server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 10\r\n\r\n"
+    sleep 0.1
 
     sock << "hello"
-    sleep 4
+    sleep 2
     sock << "world"
 
     data = sock.gets
