@@ -299,7 +299,7 @@ module Puma
       elsif shutdown || client.timeout == 0
         client.timeout!
       else
-        client.set_timeout(between_bytes_timeout)
+        client.set_timeout(@between_bytes_timeout)
         false
       end
     rescue StandardError => e
