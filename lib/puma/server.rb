@@ -429,7 +429,7 @@ module Puma
         end
 
         with_force_shutdown(client) do
-          client.finish(@first_data_timeout)
+          client.finish(@first_data_timeout, @between_bytes_timeout)
         end
 
         while true

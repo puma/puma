@@ -417,6 +417,23 @@ EOF
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
   end
 
+  def test_timeout_after_data_received_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    @server.first_data_timeout = 4
+    @server.between_bytes_timeout = 2
+    server_run
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 100\r\n\r\n"
+    sleep 0.1
+
+    sock << "hello"
+    sleep 0.1
+
+    data = assert_proper_timeout(@server.between_bytes_timeout) { sock.gets }
+
+    assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
+  end
+
   def test_no_timeout_after_data_received
     @server.first_data_timeout = 10
     @server.between_bytes_timeout = 4

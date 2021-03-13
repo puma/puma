@@ -205,8 +205,9 @@ module Puma
       try_to_finish
     end
 
-    def finish(timeout)
+    def finish(first_data_timeout, between_bytes_timeout)
       return if @ready
+      timeout = @parsed_bytes > 0 ? first_data_timeout : between_bytes_timeout
       IO.select([@to_io], nil, nil, timeout) || timeout! until try_to_finish
     end
 
