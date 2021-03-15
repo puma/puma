@@ -176,3 +176,49 @@ Minitest.after_run do
     end
   end
 end
+
+module AggregatedResults
+  def aggregated_results(io)
+    filtered_results = results.dup
+
+    if options[:verbose]
+      skips = filtered_results.select(&:skipped?)
+      unless skips.empty?
+        dash = "\u2500"
+        io.puts '', "Skips:"
+        hsh = skips.group_by { |f| f.failures.first.error.message }
+        hsh_s = {}
+        hsh.each { |k, ary|
+          hsh_s[k] = ary.map { |s|
+            [s.source_location, s.klass, s.name]
+          }.sort_by(&:first)
+        }
+        num = 0
+        hsh_s = hsh_s.sort.to_h
+        hsh_s.each { |k,v|
+          io.puts " #{k} #{dash * 2}".rjust 90, dash
+          hsh_1 = v.group_by { |i| i.first.first }
+          hsh_1.each { |k,v|
+            io.puts "  #{k[/\/test\/(.*)/,1]}"
+            v.each { |item|
+              num += 1
+              io.puts format("    %3s %-5s #{item[1]} #{item[2]}", "#{num})", ":#{item[0][1]}")
+            }
+            puts ''
+          }
+        }
+      end
+    end
+
+    filtered_results.reject!(&:skipped?)
+
+    io.puts "Errors & Failures:" unless filtered_results.empty?
+
+    filtered_results.each_with_index { |result, i|
+      io.puts "\n%3d) %s" % [i+1, result]
+    }
+    io.puts
+    io
+  end
+end
+Minitest::SummaryReporter.prepend AggregatedResults
