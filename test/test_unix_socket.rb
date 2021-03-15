@@ -22,7 +22,7 @@ class TestPumaUnixSocket < Minitest::Test
   end
 
   def test_server
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
     sock = UNIXSocket.new @tmp_socket_path
 
     sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"

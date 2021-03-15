@@ -3,7 +3,7 @@ require_relative "helpers/integration"
 
 class TestWorkerGemIndependence < TestIntegration
   def setup
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
     super
   end
 

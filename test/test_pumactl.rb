@@ -150,7 +150,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_control_ssl
-    skip 'No ssl support' unless ::Puma::HAS_SSL
+    skip_unless :ssl
 
     host = "127.0.0.1"
     port = UniquePort.call

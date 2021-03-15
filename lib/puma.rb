@@ -23,6 +23,8 @@ module Puma
   # not in minissl.rb
   HAS_SSL = const_defined?(:MiniSSL, false) && MiniSSL.const_defined?(:Engine, false)
 
+  HAS_UNIX_SOCKET = Object.const_defined? :UNIXSocket
+
   if HAS_SSL
     require 'puma/minissl'
   else

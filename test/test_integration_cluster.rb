@@ -7,7 +7,7 @@ class TestIntegrationCluster < TestIntegration
   def workers ; 2 ; end
 
   def setup
-    skip NO_FORK_MSG unless HAS_FORK
+    skip_unless :fork
     super
   end
 
@@ -25,7 +25,7 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_pre_existing_unix
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
 
     File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
 
@@ -306,9 +306,7 @@ RUBY
     cli_server "-w #{workers} --preload test/rackup/write_to_stdout_on_boot.ru"
 
     worker_load_count = 0
-    while (line = @server.gets) =~ /^Loading app/
-      worker_load_count += 1
-    end
+    worker_load_count += 1 while @server.gets =~ /^Loading app/
 
     assert_equal 0, worker_load_count
   end
@@ -321,7 +319,7 @@ RUBY
       output << line
     end
 
-    assert_match /WARNING: Detected running cluster mode with 1 worker/, output.join
+    assert_match(/WARNING: Detected running cluster mode with 1 worker/, output.join)
   end
 
   def test_warning_message_not_outputted_when_single_worker_silenced
@@ -332,7 +330,7 @@ RUBY
       output << line
     end
 
-    refute_match /WARNING: Detected running cluster mode with 1 worker/, output.join
+    refute_match(/WARNING: Detected running cluster mode with 1 worker/, output.join)
   end
 
   private

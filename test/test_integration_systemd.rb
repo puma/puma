@@ -6,9 +6,9 @@ require 'sd_notify'
 class TestIntegrationSystemd < TestIntegration
   def setup
     skip "Skipped because Systemd support is linux-only" if windows? || osx?
-    skip UNIX_SKT_MSG unless UNIX_SKT_EXIST
+    skip_unless :unix
     skip_unless_signal_exist? :TERM
-    skip_on :jruby
+    skip_if :jruby
 
     super
 
