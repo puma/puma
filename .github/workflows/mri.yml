@@ -41,11 +41,12 @@ jobs:
           mingw: _upgrade_ openssl ragel
 
       - name:  bundle install
+        timeout-minutes: 5
         shell: pwsh
         run:   |
           # update RubyGems in Ruby 2.2, bundle install
           if ('${{ matrix.ruby }}' -lt '2.3') {
-            gem update --system 2.7.10 --no-document
+            gem update --system 2.7.11 --no-document
           }
           bundle install --jobs 4 --retry 3
 

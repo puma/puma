@@ -41,6 +41,7 @@ jobs:
           echo JAVA_HOME=$JAVA_HOME_11_X64 >> $GITHUB_ENV
 
       - name: bundle install
+        timeout-minutes: 5
         run:  bundle install --jobs 4 --retry 3
 
       - name: set SSL
