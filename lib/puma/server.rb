@@ -327,8 +327,7 @@ module Puma
                 break if handle_check
               else
                 pool.wait_until_not_full
-                pool.wait_for_less_busy_worker(
-                  @options[:wait_for_less_busy_worker].to_f)
+                pool.wait_for_less_busy_worker(@options[:wait_for_less_busy_worker])
 
                 io = begin
                   sock.accept_nonblock
