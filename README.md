@@ -16,7 +16,7 @@ Puma is a **simple, fast, multi-threaded, and highly concurrent HTTP 1.1 server 
 
 Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request using a thread pool. Each request is served in a separate thread, so truly concurrent Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
 
-Puma was designed to be the go-to server for [Rubinius](https://rubinius.com), but also works well with JRuby and MRI.
+Originally designed as a server for (Rubinius)[https://github.com/rubinius/rubinius], Puma also works well with Ruby (MRI) and JRuby.
 
 On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing IO waiting to be done in parallel.
 
