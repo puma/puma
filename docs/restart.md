@@ -45,7 +45,7 @@ Any of the following will cause a Puma server to perform a phased restart:
 ### Supported configurations
 
 * Works in cluster mode only
-* To support upgrading the application that Puma is serving, ensure `prune_bundler` is enabled and that `preload_app` is disabled (it is disabled by default).
+* To support upgrading the application that Puma is serving, ensure `prune_bundler` is enabled and that `preload_app!` is disabled
 * Supported on all platforms where cluster mode is supported
 
 ### Client experience
