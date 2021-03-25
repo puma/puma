@@ -839,6 +839,31 @@ EOF
     sock.close
   end
 
+  def test_chunked_encoding
+    enc = Encoding::UTF_16LE
+    str = "──иї_テスト──\n".encode enc
+
+    server_run app: ->(env) {
+      hdrs = {}
+      hdrs['Content-Type'] = "text; charset=#{enc.to_s.downcase}"
+
+      body = Enumerator.new do |yielder|
+        100.times do |entry|
+          yielder << str
+        end
+        yielder << "\nHello World\n".encode(enc)
+      end
+
+      [200, hdrs, body]
+    }
+
+    body = Net::HTTP.start @host, @port do |http|
+      http.request(Net::HTTP::Get.new '/').body.force_encoding(enc)
+    end
+    assert_includes body, str
+    assert_equal enc, body.encoding
+  end
+
   def test_empty_header_values
     server_run app: ->(env) { [200, {"X-Empty-Header" => ""}, []] }
 
@@ -1180,7 +1205,6 @@ EOF
 
     @server = Puma::Server.new @app, @events, {:io_selector_backend => backend}
     @server.run
-    @server.stop
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)
 
