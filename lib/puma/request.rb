@@ -148,8 +148,9 @@ module Puma
           res_body.each do |part|
             next if part.bytesize.zero?
             if chunked
-              str = part.bytesize.to_s(16) << line_ending << part << line_ending
-              fast_write io, str
+               fast_write io, (part.bytesize.to_s(16) << line_ending)
+               fast_write io, part            # part may have different encoding
+               fast_write io, line_ending
             else
               fast_write io, part
             end
