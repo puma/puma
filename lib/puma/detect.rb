@@ -29,6 +29,10 @@ module Puma
     IS_MRI
   end
 
+  def self.cruby?
+    IS_MRI
+  end
+
   # @version 5.0.0
   def self.forkable?
     HAS_FORK
