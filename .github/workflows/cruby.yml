@@ -1,4 +1,4 @@
-name: non_MRI
+name: CRuby
 
 on: [push, pull_request, workflow_dispatch]
 
@@ -14,13 +14,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, windows-2019 ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', head ]
+        no-ssl: ['']
         include:
-          - { os: ubuntu-20.04 , ruby: jruby }
-          - { os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
-          - { os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
-          - { os: ubuntu-20.04 , ruby: truffleruby-head }
-          - { os: macos-10.15  , ruby: jruby }
-          - { os: macos-10.15  , ruby: truffleruby-head }
+          - { os: windows-2019 , ruby: mingw }
+          - { os: ubuntu-20.04 , ruby: 2.7   , no-ssl: ' no SSL' }
+          - { os: windows-2019 , ruby: 2.7   , no-ssl: ' no SSL' }
+        exclude:
+          - { os: ubuntu-20.04 , ruby: 2.2  }
+          - { os: ubuntu-20.04 , ruby: 2.3  }
+          - { os: ubuntu-20.04 , ruby: 2.4  }
+          - { os: ubuntu-20.04 , ruby: 2.6  }
+          - { os: windows-2019 , ruby: head }
 
     steps:
       - name: repo checkout
@@ -34,15 +40,15 @@ jobs:
           brew: ragel
           mingw: _upgrade_ openssl ragel
 
-      - name: set JAVA_HOME
-        if: startsWith(matrix.os, 'macos')
-        shell: bash
-        run:  |
-          echo JAVA_HOME=$JAVA_HOME_11_X64 >> $GITHUB_ENV
-
-      - name: bundle install
+      - name:  bundle install
         timeout-minutes: 5
-        run:  bundle install --jobs 4 --retry 3
+        shell: pwsh
+        run:   |
+          # update RubyGems in Ruby 2.2, bundle install
+          if ('${{ matrix.ruby }}' -lt '2.3') {
+            gem update --system 2.7.11 --no-document
+          }
+          bundle install --jobs 4 --retry 3
 
       - name: set SSL
         if: matrix.no-ssl == ' no SSL'
@@ -57,17 +63,9 @@ jobs:
         run:  bundle exec rake compile
 
       - name: rubocop
-        if: endsWith(matrix.ruby, '-head') == false
+        if: startsWith(matrix.ruby, 'truffleruby') == false
         run: bundle exec rake rubocop
 
       - name: test
-        id: test
-        timeout-minutes: 12
-        continue-on-error: ${{ matrix.allow-failure || false }}
-        if: success() # only run if previous steps have succeeded
+        timeout-minutes: 10
         run: bundle exec rake test:all
-
-      - name: >-
-          Test outcome: ${{ steps.test.outcome }}
-        # every step must define a `uses` or `run` key
-        run: echo NOOP

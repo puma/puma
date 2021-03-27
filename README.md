@@ -4,8 +4,8 @@
 
 # Puma: A Ruby Web Server Built For Concurrency
 
-[![Actions MRI](https://github.com/puma/puma/workflows/MRI/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3AMRI)
-[![Actions non MRI](https://github.com/puma/puma/workflows/non_MRI/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3Anon_MRI)
+[![Actions CRuby](https://github.com/puma/puma/workflows/CRuby/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3ACRuby)
+[![Actions non CRuby](https://github.com/puma/puma/workflows/non_CRuby/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3Anon_CRuby)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
 [![StackOverflow](https://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( https://stackoverflow.com/questions/tagged/puma )
