@@ -37,7 +37,7 @@ task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
 
 if !Puma.jruby?
   # compile extensions using rake-compiler
-  # C (MRI, Rubinius)
+  # C (CRuby, Rubinius)
   Rake::ExtensionTask.new("puma_http11", gemspec) do |ext|
     # place extension inside namespace
     ext.lib_dir = "lib/puma"
