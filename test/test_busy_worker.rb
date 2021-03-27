@@ -3,7 +3,7 @@ require "puma/events"
 
 class TestBusyWorker < Minitest::Test
   def setup
-    skip_unless :mri # This feature only makes sense on MRI
+    skip_unless :cruby # This feature only makes sense on CRuby
     @ios = []
     @server = nil
   end

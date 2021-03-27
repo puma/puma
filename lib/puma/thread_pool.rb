@@ -242,10 +242,10 @@ module Puma
     def wait_for_less_busy_worker(delay_s)
       return unless delay_s && delay_s > 0
 
-      # Ruby MRI does GVL, this can result
+      # CRuby has a GVL, this can result
       # in processing contention when multiple threads
       # (requests) are running concurrently
-      return unless Puma.mri?
+      return unless Puma.cruby?
 
       with_mutex do
         return if @shutdown

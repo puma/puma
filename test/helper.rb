@@ -142,7 +142,7 @@ module TestSkips
       when :darwin  then "Skip unless darwin"           unless Puma::IS_OSX
       when :jruby   then "Skip unless JRuby"            unless Puma::IS_JRUBY
       when :windows then "Skip unless Windows"          unless Puma::IS_WINDOWS
-      when :mri     then "Skip unless MRI"              unless Puma::IS_MRI
+      when :cruby   then "Skip unless CRuby"            unless Puma.cruby?
       when :ssl     then "Skip unless SSL is supported" unless Puma::HAS_SSL
       when :fork    then MSG_FORK                       unless HAS_FORK
       when :unix    then MSG_UNIX                       unless Puma::HAS_UNIX_SOCKET

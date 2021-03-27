@@ -182,7 +182,7 @@ module Puma
 
     # @version 5.0.0
     def default_max_threads
-      Puma.mri? ? 5 : 16
+      Puma.cruby? ? 5 : 16
     end
 
     def puma_default_options

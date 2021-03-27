@@ -10,7 +10,7 @@ require_relative "helpers/integration"
 # the server process isn't affected by whatever is loaded in the CI process.
 
 class TestIntegrationSSL < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me! if ::Puma.cruby?
 
   require "net/http"
   require "openssl"

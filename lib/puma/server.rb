@@ -87,7 +87,7 @@ module Puma
       @early_hints         = options.fetch :early_hints, nil
       @first_data_timeout  = options.fetch :first_data_timeout, FIRST_DATA_TIMEOUT
       @min_threads         = options.fetch :min_threads, 0
-      @max_threads         = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
+      @max_threads         = options.fetch :max_threads , (Puma.cruby? ? 5 : 16)
       @persistent_timeout  = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
       @queue_requests      = options.fetch :queue_requests, true
       @max_fast_inline     = options.fetch :max_fast_inline, MAX_FAST_INLINE

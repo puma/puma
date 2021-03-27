@@ -441,7 +441,7 @@ class TestBinderJRuby < TestBinderBase
   end
 end if ::Puma::IS_JRUBY
 
-class TestBinderMRI < TestBinderBase
+class TestBinderCRuby < TestBinderBase
   def test_binder_parses_ssl_cipher_filter
     skip_unless :ssl
 

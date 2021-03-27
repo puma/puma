@@ -2,7 +2,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationCluster < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me! if ::Puma.cruby?
 
   def workers ; 2 ; end
 

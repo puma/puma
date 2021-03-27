@@ -128,11 +128,11 @@ class TestLauncher < Minitest::Test
     end
     launcher = launcher(conf)
     launcher.events.on_booted {
-      sleep 1.1 unless Puma.mri?
+      sleep 1.1 unless Puma.cruby?
       launcher.stop
     }
     launcher.run
-    sleep 1 unless Puma.mri?
+    sleep 1 unless Puma.cruby?
     Puma::Server::STAT_METHODS.each do |stat|
       assert_includes Puma.stats_hash, stat
     end
@@ -182,7 +182,7 @@ class TestLauncher < Minitest::Test
 
     launcher = launcher(conf)
     launcher.events.on_booted {
-      sleep 1.1 unless Puma.mri?
+      sleep 1.1 unless Puma.cruby?
       launcher.stop
     }
     launcher.events.on_stopped { puts 'on_stopped called' }
@@ -190,7 +190,7 @@ class TestLauncher < Minitest::Test
     out, = capture_io do
       launcher.run
     end
-    sleep 0.2 unless Puma.mri?
+    sleep 0.2 unless Puma.cruby?
     assert_equal 'on_stopped called', out.strip
   end
 
