@@ -24,7 +24,7 @@ set the number of workers to 0, anything above will run in cluster mode.
 
 Here are some rules of thumb for cluster mode:
 
-### MRI
+### CRuby
 
 * Use cluster mode and set the number of workers to 1.5x the number of cpu cores
   in the machine, minimum 2.
@@ -48,7 +48,7 @@ See [systemd.md](systemd.md)
 
 **How do you know if you've got enough (or too many workers)?**
 
-A good question. Due to MRI's GIL, only one thread can be executing Ruby code at a time.
+A good question. Due to CRuby's GVL, only one thread can be executing Ruby code at a time.
 But since so many apps are waiting on IO from DBs, etc., they can utilize threads
 to make better use of the process.
 

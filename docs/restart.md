@@ -22,7 +22,7 @@ Any of the following will cause a Puma server to perform a hot restart:
 ### Client experience
 
 * All platforms: for clients with an in-flight request, those clients will be served responses before the connection is closed gracefully. Puma gracefully disconnects any idle HTTP persistent connections before restarting.
-* On MRI or TruffleRuby on Linux and BSD: Clients who connect just before the server restarts may experience increased latency while the server stops and starts again, but their connections will not be closed prematurely.
+* On CRuby or TruffleRuby on Linux and BSD: Clients who connect just before the server restarts may experience increased latency while the server stops and starts again, but their connections will not be closed prematurely.
 * On Windows and on JRuby: Clients who connect just before a restart may experience "connection reset" errors.
 
 ### Additional notes

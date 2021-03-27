@@ -408,7 +408,7 @@ module Puma
     # The default is the environment variables +PUMA_MIN_THREADS+ / +PUMA_MAX_THREADS+
     # (or +MIN_THREADS+ / +MAX_THREADS+ if the +PUMA_+ variables aren't set).
     #
-    # If these environment variables aren't set, the default is "0, 5" in MRI or "0, 16" for other interpreters.
+    # If these environment variables aren't set, the default is "0, 5" in CRuby or "0, 16" for other interpreters.
     #
     # @example
     #   threads 0, 16
@@ -797,7 +797,7 @@ module Puma
     # listening on the socket, allowing workers which are not processing any
     # requests to pick up new requests first.
     #
-    # Only works on MRI. For all other interpreters, this setting does nothing.
+    # Only works on CRuby. For all other interpreters, this setting does nothing.
     # @see Puma::Server#handle_servers
     # @see Puma::ThreadPool#wait_for_less_busy_worker
     # @version 5.0.0
@@ -866,7 +866,7 @@ module Puma
 
     # When enabled, Puma will GC 4 times before forking workers.
     # If available (Ruby 2.7+), we will also call GC.compact.
-    # Not recommended for non-MRI Rubies.
+    # Not recommended for non-CRuby Rubies.
     #
     # Based on the work of Koichi Sasada and Aaron Patterson, this option may
     # decrease memory utilization of preload-enabled cluster-mode Pumas. It will

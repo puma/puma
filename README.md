@@ -16,9 +16,9 @@ Puma is a **simple, fast, multi-threaded, and highly concurrent HTTP 1.1 server 
 
 Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request using a thread pool. Each request is served in a separate thread, so truly concurrent Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
 
-Originally designed as a server for (Rubinius)[https://github.com/rubinius/rubinius], Puma also works well with Ruby (MRI) and JRuby.
+Originally designed as a server for (Rubinius)[https://github.com/rubinius/rubinius], Puma also works well with CRuby and JRuby.
 
-On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing IO waiting to be done in parallel.
+On CRuby, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves CRuby's throughput by allowing IO waiting to be done in parallel.
 
 ## Quick Start
 
@@ -96,7 +96,7 @@ Puma uses a thread pool. You can set the minimum and maximum number of threads t
 $ puma -t 8:32
 ```
 
-Puma will automatically scale the number of threads, from the minimum until it caps out at the maximum, based on how much traffic is present. The current default is `0:16` and on MRI is `0:5`. Feel free to experiment, but be careful not to set the number of maximum threads to a large number, as you may exhaust resources on the system (or cause contention for the Global VM Lock, when using MRI).
+Puma will automatically scale the number of threads, from the minimum until it caps out at the maximum, based on how much traffic is present. The current default is `0:16` and on CRuby is `0:5`. Feel free to experiment, but be careful not to set the number of maximum threads to a large number, as you may exhaust resources on the system (or cause contention for the Global VM Lock, when using CRuby).
 
 Be aware that additionally Puma creates threads on its own for internal purposes (e.g. handling slow clients). So, even if you specify -t 1:1, expect around 7 threads created in your application.
 
@@ -269,7 +269,7 @@ Check out `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/master/lib/p
 
 ## Restart
 
-Puma includes the ability to restart itself. When available (MRI, Rubinius, JRuby), Puma performs a "hot restart". This is the same functionality available in *Unicorn* and *NGINX* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
+Puma includes the ability to restart itself. When available (CRuby, Rubinius, JRuby), Puma performs a "hot restart". This is the same functionality available in *Unicorn* and *NGINX* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
 
 For more, see the [Restart documentation](docs/restart.md).
 
@@ -287,7 +287,7 @@ Some platforms do not support all Puma features.
 
 ## Known Bugs
 
-For MRI versions 2.2.7, 2.2.8, 2.2.9, 2.2.10, 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
+For CRuby versions 2.2.7, 2.2.8, 2.2.9, 2.2.10, 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
 
 ```ruby
 if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
