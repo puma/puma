@@ -137,8 +137,6 @@ module Puma
     # socket parameter may be an MiniSSL::Socket, so use to_io
     #
     if tcp_cork_supported?
-      UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
-
       # 6 == Socket::IPPROTO_TCP
       # 3 == TCP_CORK
       # 1/0 == turn on/off
@@ -168,6 +166,8 @@ module Puma
     end
 
     if closed_socket_supported?
+      UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
+
       def closed_socket?(socket)
         return false unless socket.kind_of? TCPSocket
         return false unless @precheck_closing
