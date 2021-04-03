@@ -29,8 +29,8 @@ typedef void (*field_cb)(struct puma_parser* hp,
 
 typedef struct puma_parser {
   int cs;
-  size_t body_start;
   int content_len;
+  size_t body_start;
   size_t nread;
   size_t mark;
   size_t field_start;
