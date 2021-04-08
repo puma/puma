@@ -11,6 +11,9 @@ jobs:
       TESTOPTS: -v
 
     runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]'))
     strategy:
       fail-fast: false
       matrix:
