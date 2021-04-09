@@ -21,6 +21,7 @@ module Puma
       def initialize(socket, engine)
         @socket = socket
         @engine = engine
+        @buffer = Puma::IOBuffer.new
         @peercert = nil
       end
 
@@ -114,31 +115,40 @@ module Puma
         end
       end
 
+      # When returning a large response body (2MB), Ubuntu works fine with
+      # `syswrite`, but macOS & Windows have OpenSSL errors on the client.
+      #
       def write(data)
         return 0 if data.empty?
+        write_size = 128 * 1024
+        ttl = 0
+        running = 0
+        byte_size = data.bytesize
+        enc_wr = @buffer
+        enc = nil
 
-        data_size = data.bytesize
-        need = data_size
+        while ttl < byte_size
+          inc = @engine.write(ttl.zero? ? data : data.byteslice(ttl..-1))
+          running += inc
+          ttl += inc
+          enc_wr.write(enc) while (enc = @engine.extract)
 
-        while true
-          wrote = @engine.write data
-
-          enc_wr = ''.dup
-          while (enc = @engine.extract)
-            enc_wr << enc
+          if running > write_size
+            @socket.write enc_wr.read
+            running = 0
           end
-          @socket.write enc_wr unless enc_wr.empty?
-
-          need -= wrote
-
-          return data_size if need == 0
-
-          data = data.byteslice(wrote..-1)
         end
+        @socket.write(enc_wr.read) unless enc_wr.empty?
+        enc.clear unless enc.nil?
+        byte_size
       end
 
       alias_method :syswrite, :write
-      alias_method :<<, :write
+
+      def <<(data)
+        write data
+        self
+      end
 
       # This is a temporary fix to deal with websockets code using
       # write_nonblock.
