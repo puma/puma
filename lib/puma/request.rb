@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'stringio'
+
 module Puma
 
   # The methods here are included in Server, but are separated into this file.
@@ -11,6 +13,8 @@ module Puma
   # @version 5.0.3
   #
   module Request
+
+    BUFFER_LENGTH = 128 * 1024
 
     include Puma::Const
 
@@ -50,7 +54,7 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
 
       env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] = default_server_port(env) == PORT_443 ? HTTPS : HTTP
+      env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
@@ -108,7 +112,7 @@ module Puma
           nil
         end
 
-        cork_socket io
+#        cork_socket io
 
         str_headers(env, status, headers, res_info, lines)
 
@@ -123,7 +127,7 @@ module Puma
           end
 
           lines << LINE_END
-          fast_write io, lines.to_s
+          fast_write io, lines.read
           return res_info[:keep_alive]
         end
 
@@ -137,36 +141,17 @@ module Puma
 
         lines << line_ending
 
-        fast_write io, lines.to_s
-
         if response_hijack
+          fast_write io, lines.read
           response_hijack.call io
           return :async
         end
 
-        begin
-          res_body.each do |part|
-            next if part.bytesize.zero?
-            if chunked
-               fast_write io, (part.bytesize.to_s(16) << line_ending)
-               fast_write io, part            # part may have different encoding
-               fast_write io, line_ending
-            else
-              fast_write io, part
-            end
-            io.flush
-          end
-
-          if chunked
-            fast_write io, CLOSE_CHUNKED
-            io.flush
-          end
-        rescue SystemCallError, IOError
-          raise ConnectionError, "Connection error detected during write"
-        end
+        fast_write_body io, res_body, lines, chunked
 
       ensure
-        uncork_socket io
+#        uncork_socket io
+        io.flush
 
         body.close
         client.tempfile.unlink if client.tempfile
@@ -189,39 +174,73 @@ module Puma
       end
     end
 
-    # Writes to an io (normally Client#io) using #syswrite
-    # @param io [#syswrite] the io to write to
+    # Used to write 'early hints', 'no body' responses, 'hijacked' responses,
+    # and body segments (called by `fast_write_ary`).
+    # Writes a string to an io (normally `Client#io`) using `write_nonblock`.
+    # Large strings may not be written in one pass, especially if `io` is a
+    # `MiniSSL::Socket`.
+    # @param io [#write_nonblock] the io to write to
     # @param str [String] the string written to the io
     # @raise [ConnectionError]
     #
     def fast_write(io, str)
       n = 0
-      while true
+      byte_size = str.bytesize
+      while n < byte_size
         begin
-          n = io.syswrite str
-        rescue Errno::EAGAIN, Errno::EWOULDBLOCK
-          if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
+          n += io.write_nonblock(n == 0 ? str : str.byteslice(n..-1))
+        rescue IO::WaitWritable, Errno::EINTR
+          unless IO.select(nil, [io], nil, WRITE_TIMEOUT)
             raise ConnectionError, "Socket timeout writing data"
           end
-
           retry
         rescue  Errno::EPIPE, SystemCallError, IOError
           raise ConnectionError, "Socket timeout writing data"
         end
-
-        return if n == str.bytesize
-        str = str.byteslice(n..-1)
       end
     end
-    private :fast_write
 
-    # @param status [Integer] status from the app
-    # @return [String] the text description from Puma::HTTP_STATUS_CODES
+    # Used to write headers and body.
+    # Writes to an io (normally `Client#io`) using `#fast_write`.
+    # Accumulates `body` items into `strm`, then writes anytime `strm` is 128kB
+    # or larger.
+    # @param io [#write] the io to write to
+    # @param body [Enumerable, File] the body object
+    # @param strm [Puma::IOBuffer] strm to write body body into
+    # @param chunk [Boolean]
+    # @raise [ConnectionError]
     #
-    def fetch_status_code(status)
-      HTTP_STATUS_CODES.fetch(status) { 'CUSTOM' }
+    def fast_write_body(io, body, strm, chunked)
+      running_len = 0
+      if body.is_a? ::File
+        while part = body.read(BUFFER_LENGTH)
+          if chunked
+            strm.append part.bytesize.to_s(16), LINE_END, part, LINE_END
+            fast_write io, strm.read
+          else
+            fast_write io, part
+          end
+        end
+        fast_write(io, CLOSE_CHUNKED) if chunked
+      else
+        body.each do |part|
+          next if (byte_size = part.bytesize).zero?
+          running_len += byte_size
+          if running_len > BUFFER_LENGTH && byte_size != running_len
+            fast_write io, strm.read
+            running_len = 0
+          end
+          if chunked
+            strm.append byte_size.to_s(16), LINE_END, part, LINE_END
+          else
+            strm.append part
+          end
+        end
+        fast_write io, (chunked ? (strm << CLOSE_CHUNKED).read : strm.read)
+      end
     end
-    private :fetch_status_code
+
+    private :fast_write, :fast_write_body
 
     # Given a Hash +env+ for the request read from +client+, add
     # and fixup keys to comply with Rack's env guidelines.
@@ -357,6 +376,14 @@ module Puma
     end
     private :str_early_hints
 
+    # @param status [Integer] status from the app
+    # @return [String] the text description from Puma::HTTP_STATUS_CODES
+    #
+    def fetch_status_code(status)
+      HTTP_STATUS_CODES.fetch status, 'CUSTOM'
+    end
+    private :fetch_status_code
+
     # Processes and write headers to the IOBuffer.
     # @param env [Hash] see Puma::Client#env, from request
     # @param status [Integer] the status returned by the Rack application
@@ -372,7 +399,7 @@ module Puma
       http_11 = env[HTTP_VERSION] == HTTP_11
       if http_11
         res_info[:allow_chunked] = true
-        res_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
+        res_info[:keep_alive] = env.fetch(HTTP_CONNECTION, '').downcase != CLOSE
 
         # An optimization. The most common response is 200, so we can
         # reply with the proper 200 status without having to compute
@@ -388,7 +415,7 @@ module Puma
         end
       else
         res_info[:allow_chunked] = false
-        res_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase == KEEP_ALIVE
+        res_info[:keep_alive] = env.fetch(HTTP_CONNECTION, '').downcase == KEEP_ALIVE
 
         # Same optimization as above for HTTP/1.1
         #
