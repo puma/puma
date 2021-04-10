@@ -35,7 +35,7 @@ class TestPathHandler < Minitest::Test
     Timeout.timeout(10) do
       sleep 1 until @launcher
     end
-    sleep 1
+    sleep 1.5 unless Puma::IS_MRI
 
     yield @launcher
   ensure
