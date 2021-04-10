@@ -169,11 +169,11 @@ module Puma
       UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
 
       def closed_socket?(socket)
-        return false unless socket.kind_of? TCPSocket
-        return false unless @precheck_closing
+        skt = socket.to_io
+        return false unless skt.kind_of?(TCPSocket) && @precheck_closing
 
         begin
-          tcp_info = socket.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
+          tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           @precheck_closing = false
