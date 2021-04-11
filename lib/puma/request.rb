@@ -199,7 +199,7 @@ module Puma
       while true
         begin
           n = io.write_nonblock str
-        rescue IO::WaitWritable, Errno::EAGAIN, Errno::EWOULDBLOCK
+        rescue IO::WaitWritable, Errno::EINTR
           if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
             raise ConnectionError, "Socket timeout writing data"
           end
