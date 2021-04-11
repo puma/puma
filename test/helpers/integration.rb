@@ -134,8 +134,8 @@ class TestIntegration < Minitest::Test
     n = 0
     while true
       begin
-        n = io.syswrite str
-      rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
+        n = io.write_nonblock str
+      rescue IO::WaitWritable, Errno::EAGAIN, Errno::EWOULDBLOCK => e
         if !IO.select(nil, [io], nil, 5)
           raise e
         end
