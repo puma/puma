@@ -33,21 +33,22 @@ class TestPathHandler < Minitest::Test
 
     # Wait for launcher to boot
     Timeout.timeout(10) do
-      sleep 1 until @launcher
+      sleep 0.5 until @launcher
     end
     sleep 1.5 unless Puma::IS_MRI
 
     yield @launcher
   ensure
     @launcher.stop if @launcher
-    thread.join  if thread
+    thread.join if thread
   end
 
   def test_handler_boots
-    host = windows? ? "127.0.1.1" : "0.0.0.0"
-    opts = { Host: host }
+    host = Puma::IS_WINDOWS ? "127.0.0.1" : "0.0.0.0"
+    port = UniquePort.call
+    opts = { Host: host, Port: port }
     in_handler(app, opts) do |launcher|
-      hit(["http://#{host}:#{ launcher.connected_ports[0] }/test"])
+      hit(["http://#{host}:#{port}/test"])
       assert_equal("/test", @input["PATH_INFO"])
     end
   end
