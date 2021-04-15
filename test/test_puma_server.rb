@@ -22,10 +22,9 @@ class TestPumaServer < Minitest::Test
     @ios.each { |io| io.close if io && !io.closed? }
   end
 
-  def server_run(app: @app, early_hints: false)
-    @server.app = app
+  def server_run(**options, &block)
+    @server = Puma::Server.new block || @app, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
-    @server.early_hints = true if early_hints
     @server.run
     sleep 0.15 if Puma.jruby?
   end
@@ -56,7 +55,7 @@ class TestPumaServer < Minitest::Test
   def test_proper_stringio_body
     data = nil
 
-    server_run app: ->(env) do
+    server_run do |env|
       data = env['rack.input'].read
       [200, {}, ["ok"]]
     end
@@ -75,7 +74,7 @@ class TestPumaServer < Minitest::Test
 
   def test_puma_socket
     body = "HTTP/1.1 750 Upgraded to Awesome\r\nDone: Yep!\r\n"
-    server_run app: ->(env) do
+    server_run do |env|
       io = env['puma.socket']
       io.write body
       io.close
@@ -90,7 +89,7 @@ class TestPumaServer < Minitest::Test
   def test_very_large_return
     giant = "x" * 2056610
 
-    server_run app: ->(env) do
+    server_run do
       [200, {}, [giant]]
     end
 
@@ -131,7 +130,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_default_server_port
-    server_run app: ->(env) do
+    server_run do |env|
       [200, {}, [env['SERVER_PORT']]]
     end
 
@@ -146,7 +145,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_default_server_port_respects_x_forwarded_proto
-    server_run app: ->(env) do
+    server_run do |env|
       [200, {}, [env['SERVER_PORT']]]
     end
 
@@ -162,7 +161,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_HEAD_has_no_body
-    server_run app: ->(env) { [200, {"Foo" => "Bar"}, ["hello"]] }
+    server_run { [200, {"Foo" => "Bar"}, ["hello"]] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -170,7 +169,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_GET_with_empty_body_has_sane_chunking
-    server_run app: ->(env) { [200, {}, [""]] }
+    server_run { [200, {}, [""]] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -178,7 +177,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_early_hints_works
-    server_run early_hints: true, app: ->(env) do
+    server_run(early_hints: true) do |env|
      env['rack.early_hints'].call("Link" => "</style.css>; rel=preload; as=style\n</script.js>; rel=preload")
      [200, { "X-Hello" => "World" }, ["Hello world!"]]
     end
@@ -202,13 +201,13 @@ EOF
 
   def test_early_hints_are_ignored_if_connection_lost
 
-    def @server.fast_write(*args)
-      raise Puma::ConnectionError
-    end
-
-    server_run early_hints: true, app: ->(env) do
+    server_run(early_hints: true) do |env|
       env['rack.early_hints'].call("Link" => "</script.js>; rel=preload")
       [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    end
+
+    def @server.fast_write(*args)
+      raise Puma::ConnectionError
     end
 
     # This request will cause the server to try and send early hints
@@ -222,7 +221,7 @@ EOF
   end
 
   def test_early_hints_is_off_by_default
-    server_run app: ->(env) do
+    server_run do |env|
      assert_nil env['rack.early_hints']
      [200, { "X-Hello" => "World" }, ["Hello world!"]]
     end
@@ -241,7 +240,7 @@ EOF
   end
 
   def test_GET_with_no_body_has_sane_chunking
-    server_run app: ->(env) { [200, {}, []] }
+    server_run { [200, {}, []] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -249,8 +248,7 @@ EOF
   end
 
   def test_doesnt_print_backtrace_in_production
-    @server.leak_stack_on_error = false
-    server_run app: ->(env) { raise "don't leak me bro" }
+    server_run(environment: :production) { raise "don't leak me bro" }
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
@@ -271,9 +269,7 @@ EOF
 
   def test_force_shutdown_custom_error_message
     handler = lambda {|err, env, status| [500, {"Content-Type" => "application/json"}, ["{}\n"]]}
-    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => handler, :force_shutdown_after => 2}
-
-    server_run app: ->(env) do
+    server_run(lowlevel_error_handler: handler, force_shutdown_after: 2) do
       @server.stop
       sleep 5
     end
@@ -286,9 +282,7 @@ EOF
   end
 
   def test_force_shutdown_error_default
-    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
-
-    server_run app: ->(env) do
+    server_run(force_shutdown_after: 2) do
       @server.stop
       sleep 5
     end
@@ -301,9 +295,7 @@ EOF
 
   def test_prints_custom_error
     re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
-    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
-
-    server_run app: ->(env) { raise "don't leak me bro" }
+    server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
@@ -316,9 +308,7 @@ EOF
       [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
     }
 
-    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
-
-    server_run app: ->(env) { raise "don't leak me bro" }
+    server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
@@ -331,9 +321,7 @@ EOF
       [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
     }
 
-    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => re}
-
-    server_run app: ->(env) { raise "don't leak me bro" }
+    server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
@@ -341,7 +329,7 @@ EOF
   end
 
   def test_custom_http_codes_10
-    server_run app: ->(env) { [449, {}, [""]] }
+    server_run { [449, {}, [""]] }
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
@@ -349,7 +337,7 @@ EOF
   end
 
   def test_custom_http_codes_11
-    server_run app: ->(env) { [449, {}, [""]] }
+    server_run { [449, {}, [""]] }
 
     data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
@@ -357,7 +345,7 @@ EOF
   end
 
   def test_HEAD_returns_content_headers
-    server_run app: ->(env) { [200, {"Content-Type" => "application/pdf",
+    server_run { [200, {"Content-Type" => "application/pdf",
                                      "Content-Length" => "4242"}, []] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
@@ -371,7 +359,7 @@ EOF
 
     @events.register(:state) { |s| states << s }
 
-    server_run app: ->(env) { [200, {}, [""]] }
+    server_run { [200, {}, [""]] }
 
     _ = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -382,9 +370,8 @@ EOF
     assert_equal [:booting, :running, :stop, :done], states
   end
 
-  def test_timeout_in_data_phase
-    @server.first_data_timeout = 2
-    server_run
+  def test_timeout_in_data_phase(**options)
+    server_run(first_data_timeout: 2, **options)
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
 
@@ -394,12 +381,11 @@ EOF
   end
 
   def test_timeout_data_no_queue
-    @server = Puma::Server.new @app, @events, queue_requests: false
-    test_timeout_in_data_phase
+    test_timeout_in_data_phase(queue_requests: false)
   end
 
   def test_http_11_keep_alive_with_body
-    server_run app: ->(env) { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
@@ -414,7 +400,7 @@ EOF
   end
 
   def test_http_11_close_with_body
-    server_run app: ->(env) { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 
     data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
@@ -422,7 +408,7 @@ EOF
   end
 
   def test_http_11_keep_alive_without_body
-    server_run app: ->(env) { [204, {}, []] }
+    server_run { [204, {}, []] }
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
@@ -432,7 +418,7 @@ EOF
   end
 
   def test_http_11_close_without_body
-    server_run app: ->(env) { [204, {}, []] }
+    server_run { [204, {}, []] }
 
     sock = send_http "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
@@ -442,7 +428,7 @@ EOF
   end
 
   def test_http_10_keep_alive_with_body
-    server_run app: ->(env) { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
     sock = send_http "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
@@ -455,7 +441,7 @@ EOF
   end
 
   def test_http_10_close_with_body
-    server_run app: ->(env) { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
@@ -465,7 +451,7 @@ EOF
   def test_http_10_partial_hijack_with_content_length
     body_parts = ['abc', 'de']
 
-    server_run app: ->(env) do
+    server_run do
       hijack_lambda = proc do | io |
         io.write(body_parts[0])
         io.write(body_parts[1])
@@ -480,7 +466,7 @@ EOF
   end
 
   def test_http_10_keep_alive_without_body
-    server_run app: ->(env) { [204, {}, []] }
+    server_run { [204, {}, []] }
 
     sock = send_http "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
@@ -490,7 +476,7 @@ EOF
   end
 
   def test_http_10_close_without_body
-    server_run app: ->(env) { [204, {}, []] }
+    server_run { [204, {}, []] }
 
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
@@ -498,7 +484,7 @@ EOF
   end
 
   def test_Expect_100
-    server_run app: ->(env) { [200, {}, [""]] }
+    server_run { [200, {}, [""]] }
 
     data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
 
@@ -508,7 +494,7 @@ EOF
   def test_chunked_request
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -524,7 +510,7 @@ EOF
   def test_large_chunked_request
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -554,7 +540,7 @@ EOF
   def test_chunked_request_pause_before_value
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -575,7 +561,7 @@ EOF
   def test_chunked_request_pause_between_chunks
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -596,7 +582,7 @@ EOF
   def test_chunked_request_pause_mid_count
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -617,7 +603,7 @@ EOF
   def test_chunked_request_pause_before_count_newline
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -638,7 +624,7 @@ EOF
   def test_chunked_request_pause_mid_value
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -659,7 +645,7 @@ EOF
   def test_chunked_request_pause_between_cr_lf_after_size_of_second_chunk
     body = nil
     content_length = nil
-    server_run app: ->(env)  {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -689,7 +675,7 @@ EOF
   def test_chunked_request_pause_between_closing_cr_lf
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -711,7 +697,7 @@ EOF
   def test_chunked_request_pause_before_closing_cr_lf
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -733,7 +719,7 @@ EOF
   def test_chunked_request_header_case
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -749,7 +735,7 @@ EOF
   def test_chunked_keep_alive
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -769,7 +755,7 @@ EOF
   def test_chunked_keep_alive_two_back_to_back
     body = nil
     content_length = nil
-    server_run app: ->(env) {
+    server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
@@ -810,8 +796,7 @@ EOF
     body = nil
     content_length = nil
     remote_addr =nil
-    @server = Puma::Server.new @app, @events, { remote_address: :header, remote_address_header: 'HTTP_X_FORWARDED_FOR'}
-    server_run app: ->(env) {
+    server_run(remote_address: :header, remote_address_header: 'HTTP_X_FORWARDED_FOR') { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
       remote_addr = env['REMOTE_ADDR']
@@ -843,7 +828,7 @@ EOF
     enc = Encoding::UTF_16LE
     str = "──иї_テスト──\n".encode enc
 
-    server_run app: ->(env) {
+    server_run {
       hdrs = {}
       hdrs['Content-Type'] = "text; charset=#{enc.to_s.downcase}"
 
@@ -865,7 +850,7 @@ EOF
   end
 
   def test_empty_header_values
-    server_run app: ->(env) { [200, {"X-Empty-Header" => ""}, []] }
+    server_run { [200, {"X-Empty-Header" => ""}, []] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -874,7 +859,7 @@ EOF
 
   def test_request_body_wait
     request_body_wait = nil
-    server_run app: ->(env) {
+    server_run { |env|
       request_body_wait = env['puma.request_body_wait']
       [204, {}, []]
     }
@@ -892,7 +877,7 @@ EOF
 
   def test_request_body_wait_chunked
     request_body_wait = nil
-    server_run app: ->(env) {
+    server_run { |env|
       request_body_wait = env['puma.request_body_wait']
       [204, {}, []]
     }
@@ -908,8 +893,8 @@ EOF
     assert_operator request_body_wait, :>=, 900
   end
 
-  def test_open_connection_wait
-    server_run app: ->(_) { [200, {}, ["Hello"]] }
+  def test_open_connection_wait(**options)
+    server_run(**options) { [200, {}, ["Hello"]] }
     s = send_http nil
     sleep 0.1
     s << "GET / HTTP/1.0\r\n\r\n"
@@ -917,13 +902,12 @@ EOF
   end
 
   def test_open_connection_wait_no_queue
-    @server = Puma::Server.new @app, @events, queue_requests: false
-    test_open_connection_wait
+    test_open_connection_wait(queue_requests: false)
   end
 
   # Rack may pass a newline in a header expecting us to split it.
   def test_newline_splits
-    server_run app: ->(_) { [200, {'X-header' => "first line\nsecond line"}, ["Hello"]] }
+    server_run { [200, {'X-header' => "first line\nsecond line"}, ["Hello"]] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -931,7 +915,7 @@ EOF
   end
 
   def test_newline_splits_in_early_hint
-    server_run early_hints: true, app: ->(env) do
+    server_run(early_hints: true) do |env|
       env['rack.early_hints'].call({'X-header' => "first line\nsecond line"})
       [200, {}, ["Hello world!"]]
     end
@@ -944,7 +928,7 @@ EOF
   # To comply with the Rack spec, we have to split header field values
   # containing newlines into multiple headers.
   def assert_does_not_allow_http_injection(app, opts = {})
-    server_run(early_hints: opts[:early_hints], app: app)
+    server_run(early_hints: opts[:early_hints], &app)
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -987,10 +971,9 @@ EOF
 
   # Perform a server shutdown while requests are pending (one in app-server response, one still sending client request).
   def shutdown_requests(s1_complete: true, s1_response: nil, post: false, s2_response: nil, **options)
-    @server = Puma::Server.new @app, @events, options
     mutex = Mutex.new
     app_finished = ConditionVariable.new
-    server_run app: ->(env) {
+    server_run(**options) { |env|
       path = env['REQUEST_PATH']
       mutex.synchronize do
         app_finished.signal
@@ -1064,7 +1047,7 @@ EOF
   end
 
   def test_http11_connection_header_queue
-    server_run app: ->(_) { [200, {}, [""]] }
+    server_run { [200, {}, [""]] }
 
     sock = send_http "GET / HTTP/1.1\r\n\r\n"
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], header(sock)
@@ -1076,7 +1059,7 @@ EOF
   end
 
   def test_http10_connection_header_queue
-    server_run app: ->(_) { [200, {}, [""]] }
+    server_run { [200, {}, [""]] }
 
     sock = send_http "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n"
     assert_equal ["HTTP/1.0 200 OK", "Connection: Keep-Alive", "Content-Length: 0"], header(sock)
@@ -1087,16 +1070,14 @@ EOF
   end
 
   def test_http11_connection_header_no_queue
-    @server = Puma::Server.new @app, @events, queue_requests: false
-    server_run app: ->(_) { [200, {}, [""]] }
+    server_run(queue_requests: false) { [200, {}, [""]] }
     sock = send_http "GET / HTTP/1.1\r\n\r\n"
     assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(sock)
     sock.close
   end
 
   def test_http10_connection_header_no_queue
-    @server = Puma::Server.new @app, @events, queue_requests: false
-    server_run app: ->(_) { [200, {}, [""]] }
+    server_run(queue_requests: false) { [200, {}, [""]] }
     sock = send_http "GET / HTTP/1.0\r\n\r\n"
     assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(sock)
     sock.close
@@ -1140,9 +1121,7 @@ EOF
       [500, {"Content-Type" => "application/json"}, ["{}\n"]]
     }
 
-    @server = Puma::Server.new @app, @events, {:lowlevel_error_handler => handler}
-
-    server_run app: ->(env) { [200, {}, ['Hello World']] }
+    server_run(lowlevel_error_handler: handler) { [200, {}, ['Hello World']] }
 
     # valid req & read, close
     sock = TCPSocket.new @host, @port
