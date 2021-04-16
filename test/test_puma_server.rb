@@ -1189,4 +1189,18 @@ EOF
 
     assert_equal selector.backend, backend
   end
+
+  def test_drain_on_shutdown
+    wait = Queue.new
+    server_run(drain_on_shutdown: true, max_threads: 1) do
+      wait.pop rescue nil
+      [200, {}, ["DONE"]]
+    end
+    connections = Array.new(10) {send_http "GET / HTTP/1.0\r\n\r\n"}
+    @server.stop
+    wait.close
+    connections.each do |s|
+      assert_match 'DONE', s.read
+    end
+  end
 end
