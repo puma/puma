@@ -910,5 +910,21 @@ module Puma
     def mutate_stdout_and_stderr_to_sync_on_write(enabled=true)
       @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
     end
+
+    # Specify a Fiber scheduler implementation to process requests using non-blocking Fibers.
+    #
+    # Accepts either a block returning an Object implementing +Fiber::SchedulerInterface+
+    # or a Class to be instantiated when the server thread starts.
+    #
+    # If a fiber scheduler is provided, the server will use a pool of non-blocking Fibers
+    # instead of threads.
+    #
+    # Requires Ruby >= 3.0.
+    def fiber_scheduler(scheduler=nil, &block)
+      raise "Fiber scheduler not available in Ruby version #{RUBY_VERSION}" unless Fiber.respond_to?(:set_scheduler)
+      @options[:fiber_scheduler] = ->{scheduler.new} if scheduler.is_a?(Class)
+      @options[:fiber_scheduler] ||= block
+      raise "Provide either a block or Class" unless @options[:fiber_scheduler].is_a?(Proc)
+    end
   end
 end

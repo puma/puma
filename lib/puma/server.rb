@@ -2,8 +2,10 @@
 
 require 'stringio'
 require 'io/wait'
+require 'fiber'
 
 require 'puma/thread_pool'
+require 'puma/fiber_pool'
 require 'puma/const'
 require 'puma/events'
 require 'puma/null_io'
@@ -93,6 +95,14 @@ module Puma
       @queue_requests      = options.fetch :queue_requests, true
       @max_fast_inline     = options.fetch :max_fast_inline, MAX_FAST_INLINE
       @io_selector_backend = options.fetch :io_selector_backend, :auto
+
+      @scheduler = Fiber.respond_to?(:set_scheduler) && options[:fiber_scheduler]
+
+      # Test scheduler implementation using SCHEDULER=1 env variable.
+      if ENV['SCHEDULER']
+        require 'libev_scheduler'
+        @scheduler = ->{Libev::Scheduler.new}
+      end
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -227,7 +237,9 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(
+      pool_class = @scheduler ? FiberPool : ThreadPool
+
+      @thread_pool = pool_class.new(
         @min_threads,
         @max_threads,
         ::Puma::IOBuffer,
@@ -309,7 +321,7 @@ module Puma
         sockets = [check] + @binder.ios
         pool = @thread_pool
         queue_requests = @queue_requests
-        drain = @options[:drain_on_shutdown] ? 0 : nil
+        drain = 0
 
         remote_addr_value = nil
         remote_addr_header = nil
@@ -321,45 +333,43 @@ module Puma
           remote_addr_header = @options[:remote_address_header]
         end
 
-        while @status == :run || (drain && shutting_down?)
-          begin
-            ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : nil)
-            break unless ios
-            ios.first.each do |sock|
-              if sock == check
-                break if handle_check
-              else
-                pool.wait_until_not_full
-                pool.wait_for_less_busy_worker(@options[:wait_for_less_busy_worker])
+        @shutdown_proc = -> do
+          @events.debug "Drained #{drain} additional connections." if drain
+          @events.fire :state, @status
 
-                io = begin
-                  sock.accept_nonblock
-                rescue IO::WaitReadable
-                  next
-                end
-                drain += 1 if shutting_down?
-                client = Client.new io, @binder.env(sock)
-                if remote_addr_value
-                  client.peerip = remote_addr_value
-                elsif remote_addr_header
-                  client.remote_addr_header = remote_addr_header
-                end
-                pool << client
+          if queue_requests
+            @queue_requests = false
+            @reactor.shutdown
+          end
+          graceful_shutdown if @status == :stop || @status == :restart
+        end
+
+        io_select_loop(sockets) do |sock|
+          begin
+            if sock == check
+              next if handle_check
+            else
+              pool.wait_until_not_full
+              pool.wait_for_less_busy_worker(@options[:wait_for_less_busy_worker])
+
+              io = begin
+                     sock.accept_nonblock
+                   rescue IO::WaitReadable
+                     next
+                   end
+              drain += 1 if shutting_down?
+              client = Client.new io, @binder.env(sock)
+              if remote_addr_value
+                client.peerip = remote_addr_value
+              elsif remote_addr_header
+                client.remote_addr_header = remote_addr_header
               end
+              pool << client
             end
           rescue Object => e
             @events.unknown_error e, nil, "Listen loop"
           end
         end
-
-        @events.debug "Drained #{drain} additional connections." if drain
-        @events.fire :state, @status
-
-        if queue_requests
-          @queue_requests = false
-          @reactor.shutdown
-        end
-        graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
         @events.unknown_error e, nil, "Exception handling servers"
       ensure
@@ -375,6 +385,47 @@ module Puma
       end
 
       @events.fire :state, :done
+    end
+
+    def io_select_loop(ios, &block)
+      drain = @options[:drain_on_shutdown]
+      if @scheduler
+        @events.debug 'Using fiber scheduler'
+
+        @queue_requests = false
+        old_scheduler = Fiber.scheduler
+        Fiber.set_scheduler(@scheduler.call)
+        @fibers = fibers = []
+        ios.each do |io|
+          Fiber.schedule do
+            fibers << (fiber = Fiber.current)
+            while @status == :run || (drain && shutting_down?)
+              begin
+                if shutting_down?
+                  break unless io.wait(0)
+                else
+                  break unless io.wait
+                end
+                yield io
+              end
+            end
+            fibers.delete fiber
+            if io == @check
+              fibers.map(&:resume)
+              @shutdown_proc.call
+            end
+          end
+        end
+        Fiber.set_scheduler(old_scheduler)
+      else
+        while @status == :run || (drain && shutting_down?)
+          begin
+            break unless (readable = IO.select ios, nil, nil, (shutting_down? ? 0 : nil))
+            readable.first.each(&block)
+          end
+        end
+        @shutdown_proc.call
+      end
     end
 
     # :nodoc:
@@ -416,21 +467,22 @@ module Puma
       requests = 0
 
       begin
-        if @queue_requests &&
-          !client.eagerly_finish
-
-          client.set_timeout(@first_data_timeout)
-          if @reactor.add client
-            close_socket = false
-            return false
-          end
-        end
-
-        with_force_shutdown(client) do
-          client.finish(@first_data_timeout)
-        end
-
         while true
+          timeout = requests == 0 ? @first_data_timeout : @persistent_timeout
+          if @queue_requests &&
+            !client.eagerly_finish
+
+            client.set_timeout(timeout)
+            if @reactor.add client
+              close_socket = false
+              return false
+            end
+          end
+
+          with_force_shutdown(client) do
+            client.finish(timeout)
+          end
+
           @requests_count += 1
           case handle_request(client, buffer)
           when false
@@ -455,17 +507,8 @@ module Puma
               check_for_more_data = false
             end
 
-            next_request_ready = with_force_shutdown(client) do
+            with_force_shutdown(client) do
               client.reset(check_for_more_data)
-            end
-
-            unless next_request_ready
-              break unless @queue_requests
-              client.set_timeout @persistent_timeout
-              if @reactor.add client
-                close_socket = false
-                break
-              end
             end
           end
         end

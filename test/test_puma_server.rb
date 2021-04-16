@@ -413,6 +413,7 @@ EOF
     sock = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
     h = header sock
+    sock.close
 
     assert_equal ["HTTP/1.1 204 No Content"], h
   end
@@ -435,6 +436,7 @@ EOF
     h = header sock
 
     body = sock.gets
+    sock.close
 
     assert_equal ["HTTP/1.0 200 OK", "Content-Type: plain/text", "Connection: Keep-Alive", "Content-Length: 6"], h
     assert_equal "hello\n", body
@@ -471,6 +473,7 @@ EOF
     sock = send_http "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
     h = header sock
+    sock.close
 
     assert_equal ["HTTP/1.0 204 No Content", "Connection: Keep-Alive"], h
   end
@@ -864,7 +867,7 @@ EOF
       [204, {}, []]
     }
 
-    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nh"
+    sock = send_http "POST / HTTP/1.1\r\nConnection: close\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nh"
     sleep 1
     sock << "ello"
 
@@ -1028,6 +1031,9 @@ EOF
     else
       assert_nil s2_result
     end
+  ensure
+    s1.close
+    s2.close
   end
 
   # Shutdown should allow pending requests and app-responses to complete.
@@ -1070,10 +1076,10 @@ EOF
   end
 
   def test_http11_connection_header_no_queue
+    skip if ENV['SCHEDULER'] # allow keepalive with scheduler and no queue
     server_run(queue_requests: false) { [200, {}, [""]] }
     sock = send_http "GET / HTTP/1.1\r\n\r\n"
     assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(sock)
-    sock.close
   end
 
   def test_http10_connection_header_no_queue
@@ -1149,6 +1155,8 @@ EOF
   end
 
   def test_idle_connections_closed_immediately_on_shutdown
+    skip if ENV['SCHEDULER'] # behavior not yet implemented outside reactor
+
     server_run
     sock = new_connection
     sleep 0.5 # give enough time for new connection to enter reactor

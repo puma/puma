@@ -404,7 +404,7 @@ module Puma
 
       # regardless of what the client wants, we always close the connection
       # if running without request queueing
-      res_info[:keep_alive] &&= @queue_requests
+      res_info[:keep_alive] &&= !!(@queue_requests || @scheduler)
 
       res_info[:response_hijack] = nil
 
