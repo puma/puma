@@ -1282,4 +1282,34 @@ EOF
 
     assert_equal selector.backend, backend
   end
+
+  def test_drain_on_shutdown(drain=true)
+    num_connections = 10
+
+    wait = Queue.new
+    server_run(drain_on_shutdown: drain, max_threads: 1) do
+      wait.pop
+      [200, {}, ["DONE"]]
+    end
+    connections = Array.new(num_connections) {send_http "GET / HTTP/1.0\r\n\r\n"}
+    @server.stop
+    wait.close
+    bad = 0
+    connections.each do |s|
+      begin
+        assert_match 'DONE', s.read
+      rescue Errno::ECONNRESET
+        bad += 1
+      end
+    end
+    if drain
+      assert_equal 0, bad
+    else
+      refute_equal 0, bad
+    end
+  end
+
+  def test_not_drain_on_shutdown
+    test_drain_on_shutdown false
+  end
 end
