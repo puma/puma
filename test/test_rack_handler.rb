@@ -44,7 +44,7 @@ class TestPathHandler < Minitest::Test
   end
 
   def test_handler_boots
-    host = Puma::IS_WINDOWS ? "127.0.0.1" : "0.0.0.0"
+    host = '127.0.0.1'
     port = UniquePort.call
     opts = { Host: host, Port: port }
     in_handler(app, opts) do |launcher|
