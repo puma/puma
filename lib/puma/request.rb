@@ -32,8 +32,6 @@ module Puma
       env = client.env
       io  = client.io   # io may be a MiniSSL::Socket
 
-      return false if closed_socket?(io)
-
       normalize_env env, client
 
       env[PUMA_SOCKET] = io
@@ -164,7 +162,9 @@ module Puma
         rescue SystemCallError, IOError
           raise ConnectionError, "Connection error detected during write"
         end
-
+      rescue IOError => e
+        return false if closed_socket?
+        raise e
       ensure
         uncork_socket io
 
