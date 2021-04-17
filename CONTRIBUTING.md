@@ -27,6 +27,8 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 First step: join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org)
 
+**If you're nervous, get stuck, need help, or want to know where to start and where you can help**, please don't hesitate to [book 30 minutes with maintainer @nateberkopec here](https://calendly.com/nate-berkopec/puma). He is happy to help!
+
 Clone down the Puma repository.
 
 You will need to install [ragel] (use Ragel version 7.0.0.9) to generate puma's extension code.
