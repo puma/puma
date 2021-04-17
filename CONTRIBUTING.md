@@ -62,6 +62,14 @@ Then, you will be able to run Puma using your local copy with:
 bundle exec bin/puma test/rackup/hello.ru
 ```
 
+Alternatively, you can reference your local copy in a project's `Gemfile`:
+
+```ruby
+gem "puma", path: "/path/to/local/puma"
+```
+
+See the [Bundler docs](https://bundler.io/man/gemfile.5.html#PATH) for more details.
+
 ## Running tests
 
 You can run the full test suite with:
