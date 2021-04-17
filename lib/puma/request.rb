@@ -159,12 +159,12 @@ module Puma
             fast_write io, CLOSE_CHUNKED
             io.flush
           end
-        rescue SystemCallError, IOError
+        rescue SystemCallError
           raise ConnectionError, "Connection error detected during write"
         end
-      rescue IOError => e
+      rescue IOError
         return false if closed_socket?
-        raise e
+        raise ConnectionError, "Socket timeout writing data"
       ensure
         uncork_socket io
 
@@ -205,7 +205,7 @@ module Puma
           end
 
           retry
-        rescue  Errno::EPIPE, SystemCallError, IOError
+        rescue  Errno::EPIPE, SystemCallError
           raise ConnectionError, "Socket timeout writing data"
         end
 
