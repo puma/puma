@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'stringio'
+require 'io/wait'
 
 require 'puma/thread_pool'
 require 'puma/const'

@@ -162,7 +162,7 @@ module Puma
       end
 
       def read_and_drop(timeout = 1)
-        return :timeout unless IO.select([@socket], nil, nil, timeout)
+        return :timeout unless @socket.wait_readable(timeout)
         case @socket.read_nonblock(1024, exception: false)
         when nil
           :eof

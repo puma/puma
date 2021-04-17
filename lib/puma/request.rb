@@ -200,7 +200,7 @@ module Puma
         begin
           n = io.syswrite str
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
-          if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
+          unless io.wait_writable(WRITE_TIMEOUT)
             raise ConnectionError, "Socket timeout writing data"
           end
 
