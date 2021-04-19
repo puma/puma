@@ -245,6 +245,14 @@ module Puma
         ::Puma::IOBuffer,
         &method(:process_client)
       )
+      if ENV['FIBERS_THREADS']
+        @events.debug "Using fibers + threads"
+        @real_thread_pool = ThreadPool.new(
+          @min_threads,
+          @max_threads,
+          &method(:rack_request)
+        )
+      end
 
       @thread_pool.out_of_band_hook = @options[:out_of_band]
       @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
@@ -275,6 +283,13 @@ module Puma
       else
         handle_servers
       end
+    end
+
+    def rack_request(env)
+      response = @thread_pool.with_force_shutdown do
+        @app.call(env)
+      end
+      env[PUMA_THREAD_QUEUE] << response
     end
 
     # This method is called from the Reactor thread when a queued Client receives data,

@@ -194,6 +194,7 @@ module Puma
     PUMA_SOCKET = "puma.socket".freeze
     PUMA_CONFIG = "puma.config".freeze
     PUMA_PEERCERT = "puma.peercert".freeze
+    PUMA_THREAD_QUEUE = "puma.thread_queue".freeze
 
     HTTP = "http".freeze
     HTTPS = "https".freeze

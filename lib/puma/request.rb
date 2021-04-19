@@ -72,8 +72,15 @@ module Puma
 
       begin
         begin
-          status, headers, res_body = @thread_pool.with_force_shutdown do
-            @app.call(env)
+          if ENV['FIBERS_THREADS']
+            # Handle Rack-application request on the worker thread pool.
+            env[PUMA_THREAD_QUEUE] = Thread.current[PUMA_THREAD_QUEUE] ||= Queue.new
+            @real_thread_pool << env
+            status, headers, res_body = env[PUMA_THREAD_QUEUE].pop
+          else
+            status, headers, res_body = @thread_pool.with_force_shutdown do
+              @app.call(env)
+            end
           end
 
           return :async if client.hijacked
