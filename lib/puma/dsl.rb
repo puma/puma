@@ -922,7 +922,7 @@ module Puma
     # Requires Ruby >= 3.0.
     def fiber_scheduler(scheduler=nil, &block)
       raise "Fiber scheduler not available in Ruby version #{RUBY_VERSION}" unless Fiber.respond_to?(:set_scheduler)
-      @options[:fiber_scheduler] = ->{scheduler.new} if scheduler.is_a?(Class)
+      @options[:fiber_scheduler] = -> {scheduler.new} if scheduler.is_a?(Class)
       @options[:fiber_scheduler] ||= block
       raise "Provide either a block or Class" unless @options[:fiber_scheduler].is_a?(Proc)
     end
