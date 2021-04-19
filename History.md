@@ -7,6 +7,7 @@
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+  * Ensure no segfaults when accessing thread-local variables on Ruby < 2.7.0 (#2567)
   * Don't close systemd activated socket on pumactl restart (#2563, #2504)
 
 ## 5.2.2 / 2021-02-22
