@@ -398,6 +398,30 @@ EOF
     test_timeout_in_data_phase
   end
 
+  # https://github.com/puma/puma/issues/2574
+  def test_no_timeout_after_data_received
+    @server.first_data_timeout = 1
+    server_run
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 11\r\n\r\n"
+    sleep 0.5
+
+    sock << "hello"
+    sleep 0.5
+    sock << "world"
+    sleep 0.5
+    sock << "!"
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 200 OK\r\n", data
+  end
+
+  def test_no_timeout_after_data_received_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_no_timeout_after_data_received
+  end
+
   def test_http_11_keep_alive_with_body
     server_run app: ->(env) { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
