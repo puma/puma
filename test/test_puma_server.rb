@@ -53,6 +53,36 @@ class TestPumaServer < Minitest::Test
     TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
   end
 
+  def test_normalize_host_header_missing
+    server_run app: ->(env) do
+      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    assert_equal "localhost\n80", data.split("\r\n").last
+  end
+
+  def test_normalize_host_header_ipv4
+    server_run app: ->(env) do
+      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
+    assert_equal "123.123.123.123\n456", data.split("\r\n").last
+  end
+
+  def test_normalize_host_header_ipv6
+    server_run app: ->(env) do
+      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: ::ffff:127.0.0.1:9292\r\n\r\n"
+    assert_equal "::ffff:127.0.0.1\n9292", data.split("\r\n").last
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: ::1:9292\r\n\r\n"
+    assert_equal "::1\n9292", data.split("\r\n").last
+  end
+
   def test_proper_stringio_body
     data = nil
 
