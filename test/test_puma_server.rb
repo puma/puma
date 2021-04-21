@@ -286,6 +286,7 @@ EOF
   end
 
   def test_low_level_error_message
+    skip_if :windows
     @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
 
     server_run app: ->(env) do
