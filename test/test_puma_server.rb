@@ -285,6 +285,26 @@ EOF
     assert_match(/{}\n$/, data)
   end
 
+  def test_low_level_error_message
+    @server = Puma::Server.new @app, @events
+
+    server_run app: ->(env) do
+      require 'json'
+
+      # will raise fatal: machine stack overflow in critical region
+      obj = {}
+      obj['cycle'] = obj
+      ::JSON.dump(obj)
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert (data.size > 0), "Expected response message to be not empty"
+  end
+
+
+
   def test_force_shutdown_error_default
     @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
 

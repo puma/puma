@@ -528,7 +528,8 @@ module Puma
       end
 
       if @leak_stack_on_error
-        [status, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{e.backtrace.join("\n")}"]]
+        backtrace = e.backtrace.nil? ? '<no backtrace available>' :  e.backtrace.join("\n")
+        [status, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{backtrace}"]]
       else
         [status, {}, ["An unhandled lowlevel error occurred. The application logs may have details.\n"]]
       end
