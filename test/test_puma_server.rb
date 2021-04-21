@@ -304,8 +304,6 @@ EOF
     assert (data.size > 0), "Expected response message to be not empty"
   end
 
-
-
   def test_force_shutdown_error_default
     @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
 
