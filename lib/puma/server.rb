@@ -295,6 +295,9 @@ module Puma
         @thread_pool << client
       elsif shutdown || client.timeout == 0
         client.timeout!
+      else
+        client.set_timeout(@first_data_timeout)
+        false
       end
     rescue StandardError => e
       client_error(e, client)
