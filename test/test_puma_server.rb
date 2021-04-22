@@ -62,6 +62,18 @@ class TestPumaServer < Minitest::Test
     assert_equal "localhost\n80", data.split("\r\n").last
   end
 
+  def test_normalize_host_header_hostname
+    server_run app: ->(env) do
+      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: example.com:456\r\n\r\n"
+    assert_equal "example.com\n456", data.split("\r\n").last
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n"
+    assert_equal "example.com\n80", data.split("\r\n").last
+  end
+
   def test_normalize_host_header_ipv4
     server_run app: ->(env) do
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
@@ -69,6 +81,9 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
     assert_equal "123.123.123.123\n456", data.split("\r\n").last
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123\r\n\r\n"
+    assert_equal "123.123.123.123\n80", data.split("\r\n").last
   end
 
   def test_normalize_host_header_ipv6
@@ -76,11 +91,14 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: ::ffff:127.0.0.1:9292\r\n\r\n"
-    assert_equal "::ffff:127.0.0.1\n9292", data.split("\r\n").last
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    assert_equal "[::ffff:127.0.0.1]\n9292", data.split("\r\n").last
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: ::1:9292\r\n\r\n"
-    assert_equal "::1\n9292", data.split("\r\n").last
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::1]:9292\r\n\r\n"
+    assert_equal "[::1]\n9292", data.split("\r\n").last
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::1]\r\n\r\n"
+    assert_equal "[::1]\n80", data.split("\r\n").last
   end
 
   def test_proper_stringio_body

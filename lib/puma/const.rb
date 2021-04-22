@@ -247,8 +247,5 @@ module Puma
 
     # Banned keys of response header
     BANNED_HEADER_KEY = /\A(rack\.|status\z)/.freeze
-
-    # Index of the colon separating host/port in the HTTP_HOST header for IPV4 and IPV6
-    COLON_INDEX_REGEX = /:\d+\z/.freeze
   end
 end
