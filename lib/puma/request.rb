@@ -231,7 +231,7 @@ module Puma
     #
     def normalize_env(env, client)
       if host = env[HTTP_HOST]
-        if colon = host.index(/:\d+$/)
+        if colon = host.index(COLON_INDEX_REGEX)
           env[SERVER_NAME] = host[0, colon]
           env[SERVER_PORT] = host[colon+1, host.bytesize]
         else
