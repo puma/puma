@@ -126,7 +126,7 @@ module Puma
       @parsed_bytes = 0
       @ready = false
       @body_remain = 0
-      @peerip = nil
+      @peerip = nil if @remote_addr_header
       @in_last_chunk = false
 
       if @buffer
