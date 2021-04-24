@@ -178,7 +178,7 @@ class TestIntegration < Minitest::Test
     if unix
       [Errno::ENOENT, IOError]
     else
-      DARWIN ? [Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
+      DARWIN ? [Errno::EBADF, Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
         [Errno::ECONNREFUSED]
     end
   end
