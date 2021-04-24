@@ -291,7 +291,7 @@ module Puma
       host = host[1..-2] if host and host[0..0] == '['
       tcp_server = TCPServer.new(host, port)
 
-      if defined? Localhost::Authority 
+      if defined? Localhost::Authority
         raise "Puma compiled without SSL support" unless HAS_SSL
         if ENV['RACK_ENV'] == "development" || ENV['RACK_ENV'] == "test"
           authority = Localhost::Authority.fetch
