@@ -39,6 +39,20 @@ module Puma
     HAS_SSL
   end
 
+  def self.abstract_unix_socket?
+    @abstract_unix ||=
+      if HAS_UNIX_SOCKET
+        begin
+          ::UNIXServer.new("\0puma.temp.unix").close
+          true
+        rescue ArgumentError  # darwin
+          false
+        end
+      else
+        false
+      end
+  end
+
   # @!attribute [rw] stats_object=
   def self.stats_object=(val)
     @get_stats = val
