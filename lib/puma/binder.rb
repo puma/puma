@@ -284,7 +284,7 @@ module Puma
 
 
     def localhost_authority_context
-     if !@localhost_authority.nil? && (ENV['RACK_ENV'] == "development" || ENV['RACK_ENV'] == "test")
+     if !@localhost_authority.nil?
         local_certificates_path = File.expand_path("~/.localhost")
         if (@localhost_authority.respond_to?(:key_path) && @localhost_authority.respond_to?(:certificate_path))
           key_path = @localhost_authority.key_path
