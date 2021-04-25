@@ -4,7 +4,7 @@
 # loaded so HAS_SSL is defined
 require_relative "helper"
 
-if ::Puma::HAS_SSL
+if ::Puma::HAS_SSL  && !Puma.jruby?
   require "puma/events"
   require "net/http"
   require "localhost/authority"
@@ -165,4 +165,4 @@ class TestPumaLocalhostAuthority < Minitest::Test
 
     assert busy_threads.zero?, "Our connection is wasn't dropped"
   end
-end if ::Puma::HAS_SSL
+end if ::Puma::HAS_SSL && !Puma.jruby?

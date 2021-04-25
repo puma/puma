@@ -12,7 +12,6 @@ module Puma
   if HAS_SSL
     require 'puma/minissl'
     require 'puma/minissl/context_builder'
-    require 'puma/accept_nonblock'
     # Odd bug in 'pure Ruby' nio4r verion 2.5.2, which installs with Ruby 2.3.
     # NIO doesn't create any OpenSSL objects, but it rescues an OpenSSL error.
     # The bug was that it did not require openssl.
@@ -34,7 +33,7 @@ module Puma
       @inherited_fds = {}
       @activated_sockets = {}
       @unix_paths = []
-      @localhost_authority = Localhost::Authority.fetch if defined? Localhost::Authority
+      @localhost_authority = Localhost::Authority.fetch if defined?(Localhost::Authority) && !defined?(JRUBY_VERSION)
 
       @proto_env = {
         "rack.version".freeze => RACK_VERSION,
@@ -293,7 +292,7 @@ module Puma
           key_path = File.join(local_certificates_path, "localhost.key")
           crt_path = File.join(local_certificates_path, "localhost.crt")
         end
-        ctx = MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path, "keystore" => key_path, "keystore-pass" => crt_path}, @events).context
+        ctx = MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path}, @events).context
         return ctx
      end
     end
