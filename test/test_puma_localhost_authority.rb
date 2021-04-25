@@ -45,10 +45,12 @@ class TestPumaLocalhostAuthority < Minitest::Test
     @host = "127.0.0.1"
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
     @events = SSLEventsHelper.new STDOUT, STDERR
+    
+
 
     @server = Puma::Server.new @app, @events
     @server.app = app
-    @port = (@server.add_tcp_listener @host, 0).addr[1]
+    @port = (@server.add_ssl_listener @host, 0,nil).addr[1]
 
     @http = Net::HTTP.new @host, @port
     @http.use_ssl = true
@@ -139,7 +141,7 @@ class TestPumaLocalhostAuthority < Minitest::Test
     tcp = Thread.new do
       req_http = Net::HTTP::Get.new "/", {}
       # Net::ReadTimeout - TruffleRuby
-      assert_raises(Errno::ECONNREFUSED, EOFError, Net::ReadTimeout, Errno::ECONNRESET) do
+      assert_raises(Errno::ECONNREFUSED, EOFError, Net::ReadTimeout) do
         http.start.request(req_http) { |rep| body_http = rep.body }
       end
     end
