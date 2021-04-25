@@ -293,7 +293,7 @@ module Puma
           key_path = File.join(local_certificates_path, "localhost.key")
           crt_path = File.join(local_certificates_path, "localhost.crt")
         end
-        ctx = MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path, "keystore" => key_path, "keystore_pass" => crt_path}, @events).context
+        ctx = MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path, "keystore" => key_path, "keystore-pass" => crt_path}, @events).context
         return ctx
      end
     end
