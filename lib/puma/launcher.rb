@@ -160,16 +160,7 @@ module Puma
 
     # Run the server. This blocks until the server is stopped
     def run
-      previous_env =
-        if defined?(Bundler)
-          env = Bundler::ORIGINAL_ENV.dup
-          # add -rbundler/setup so we load from Gemfile when restarting
-          bundle = "-rbundler/setup"
-          env["RUBYOPT"] = [env["RUBYOPT"], bundle].join(" ").lstrip unless env["RUBYOPT"].to_s.include?(bundle)
-          env
-        else
-          ENV.to_h
-        end
+      previous_env = original_bundler_env || ENV.to_h
 
       @config.clamp
 
@@ -188,7 +179,7 @@ module Puma
         graceful_stop
       when :restart
         log "* Restarting..."
-        ENV.replace(previous_env)
+        update_env(previous_env)
         @runner.stop_control
         restart!
       when :exit
@@ -538,6 +529,26 @@ module Puma
         .each { |config_key, value| log "- #{config_key}: #{value}" }
 
       log "\n"
+    end
+
+    def original_bundler_env
+      return unless defined?(Bundler)
+
+      env = Bundler::ORIGINAL_ENV.dup
+      # add -rbundler/setup so we load from Gemfile when restarting
+      bundle = "-rbundler/setup"
+      env["RUBYOPT"] = [env["RUBYOPT"], bundle].join(" ").lstrip unless env["RUBYOPT"].to_s.include?(bundle)
+      env
+    end
+
+    def update_env(previous_env)
+      replacement_env = if @options[:reload_env_on_restart]
+        ENV.to_h
+      else
+        previous_env
+      end
+
+      ENV.replace(replacement_env)
     end
   end
 end
