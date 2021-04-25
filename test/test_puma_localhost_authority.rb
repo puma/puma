@@ -45,7 +45,7 @@ class TestPumaLocalhostAuthority < Minitest::Test
     @host = "127.0.0.1"
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
     @events = SSLEventsHelper.new STDOUT, STDERR
-    
+
 
 
     @server = Puma::Server.new @app, @events

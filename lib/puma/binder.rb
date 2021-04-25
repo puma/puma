@@ -35,7 +35,7 @@ module Puma
       @activated_sockets = {}
       @unix_paths = []
       @localhost_authority = Localhost::Authority.fetch if defined? Localhost::Authority
- 
+
       @proto_env = {
         "rack.version".freeze => RACK_VERSION,
         "rack.errors".freeze => events.stderr,
@@ -216,9 +216,9 @@ module Puma
           raise "Puma compiled without SSL support" unless HAS_SSL
 
           params = Util.parse_query uri.query
-    
-          
-          if params.empty? 
+
+
+          if params.empty?
             # If key and certs are not defined and localhost gem is required.
             # localhost gem will be used for self signed
             ctx = localhost_authority_context || MiniSSL::ContextBuilder.new(params, @events).context
@@ -286,10 +286,10 @@ module Puma
     def localhost_authority_context
      if !@localhost_authority.nil? && (ENV['RACK_ENV'] == "development" || ENV['RACK_ENV'] == "test")
         local_certificates_path = File.expand_path("~/.localhost")
-        if(@localhost_authority.respond_to?(:key_path) && @localhost_authority.respond_to?(:certificate_path))  
+        if (@localhost_authority.respond_to?(:key_path) && @localhost_authority.respond_to?(:certificate_path))
           key_path = @localhost_authority.key_path
           crt_path = @localhost_authority.certificate_path
-        else 
+        else
           key_path = File.join(local_certificates_path, "localhost.key")
           crt_path = File.join(local_certificates_path, "localhost.crt")
         end
@@ -339,7 +339,7 @@ module Puma
       raise "Puma compiled without SSL support" unless HAS_SSL
       # Puma will try to use local authority context if context is supplied nil
       ctx = ctx || localhost_authority_context
-      
+
       if host == "localhost"
         loopback_addresses.each do |addr|
           add_ssl_listener addr, port, ctx, optimize_for_latency, backlog
@@ -368,7 +368,7 @@ module Puma
       raise "Puma compiled without SSL support" unless HAS_SSL
       # Puma will try to use local authority context if context is supplied nil
       ctx = ctx || localhost_authority_context
-      
+
       s = fd.kind_of?(::TCPServer) ? fd : ::TCPServer.for_fd(fd)
 
       ssl = MiniSSL::Server.new(s, ctx)
