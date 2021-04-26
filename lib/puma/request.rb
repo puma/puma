@@ -231,7 +231,11 @@ module Puma
     #
     def normalize_env(env, client)
       if host = env[HTTP_HOST]
-        if colon = host.index(":")
+        # host can be a hostname, ipv4 or bracketed ipv6. Followed by an optional port.
+        if colon = host.rindex("]:") # IPV6 with port
+          env[SERVER_NAME] = host[0, colon+1]
+          env[SERVER_PORT] = host[colon+2, host.bytesize]
+        elsif !host.start_with?("[") && colon = host.index(":") # not hostname or IPV4 with port
           env[SERVER_NAME] = host[0, colon]
           env[SERVER_PORT] = host[colon+1, host.bytesize]
         else
