@@ -187,6 +187,21 @@ Need a bit of security? Use SSL sockets:
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 ```
+#### Self-signed certificates: 
+
+Puma supports [localhost](https://github.com/socketry/localhost) gem for self-signed certificates on non JRuby implementations. To use [localhost](https://github.com/socketry/localhost), you have to `require "localhost/authority"`: 
+
+```ruby
+# config.ru
+require './app'
+require 'localhost/authority'
+run Sinatra::Application
+```
+##### Ruby:
+```
+$ puma -b 'ssl://localhost:9292' config.ru
+```
+
 
 #### Controlling SSL Cipher Suites
 
