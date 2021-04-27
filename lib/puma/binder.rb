@@ -33,7 +33,6 @@ module Puma
       @inherited_fds = {}
       @activated_sockets = {}
       @unix_paths = []
-      @localhost_authority = Localhost::Authority.fetch if defined?(Localhost::Authority) && !defined?(JRUBY_VERSION)
 
       @proto_env = {
         "rack.version".freeze => RACK_VERSION,
@@ -220,6 +219,8 @@ module Puma
           if params.empty?
             # If key and certs are not defined and localhost gem is required.
             # localhost gem will be used for self signed
+            # Load localhost authority if not loaded.
+            localhost_authority
             ctx = localhost_authority_context || MiniSSL::ContextBuilder.new(params, @events).context
           else
             ctx = MiniSSL::ContextBuilder.new(params, @events).context
@@ -281,6 +282,9 @@ module Puma
       end
     end
 
+    def localhost_authority
+      @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority) && !defined?(JRUBY_VERSION)
+    end
 
     def localhost_authority_context
      if !@localhost_authority.nil?
