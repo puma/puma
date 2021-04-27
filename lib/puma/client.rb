@@ -295,6 +295,7 @@ module Puma
 
       if remain > MAX_BODY
         @body = Tempfile.new(Const::PUMA_TMP_BASE)
+        @body.unlink
         @body.binmode
         @tempfile = @body
       else
@@ -386,6 +387,7 @@ module Puma
       @prev_chunk = ""
 
       @body = Tempfile.new(Const::PUMA_TMP_BASE)
+      @body.unlink
       @body.binmode
       @tempfile = @body
       @chunked_content_length = 0
