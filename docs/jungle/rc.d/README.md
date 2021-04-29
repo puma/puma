@@ -1,6 +1,6 @@
 # Puma as a service using rc.d
 
-Manage multilpe Puma servers as services on one box using FreeBSD's rc.d service.
+Manage multiple Puma servers as services on one box using FreeBSD's rc.d service.
 
 ## Dependencies
 

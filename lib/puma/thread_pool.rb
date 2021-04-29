@@ -13,7 +13,7 @@ module Puma
   # a thread pool via the `Puma::ThreadPool#<<` operator where it is stored in a `@todo` array.
   #
   # Each thread in the pool has an internal loop where it pulls a request from the `@todo` array
-  # and proceses it.
+  # and processes it.
   class ThreadPool
     class ForceShutdown < RuntimeError
     end
@@ -220,7 +220,7 @@ module Puma
     # then the `@todo` array would stay the same size as the reactor works
     # to try to buffer the request. In that scenario the next call to this
     # method would not block and another request would be added into the reactor
-    # by the server. This would continue until a fully bufferend request
+    # by the server. This would continue until a fully buffered request
     # makes it through the reactor and can then be processed by the thread pool.
     def wait_until_not_full
       with_mutex do
