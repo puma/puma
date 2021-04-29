@@ -23,7 +23,7 @@ module Puma
       new $stderr
     end
 
-    # Print occured error details.
+    # Print occurred error details.
     # +options+ hash with additional options:
     # - +error+ is an exception object
     # - +req+ the http request
@@ -34,7 +34,7 @@ module Puma
       log title(options)
     end
 
-    # Print occured error details only if
+    # Print occurred error details only if
     # environment variable PUMA_DEBUG is defined.
     # +options+ hash with additional options:
     # - +error+ is an exception object

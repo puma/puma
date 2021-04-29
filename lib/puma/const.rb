@@ -235,7 +235,7 @@ module Puma
 
     EARLY_HINTS = "rack.early_hints".freeze
 
-    # Mininum interval to checks worker health
+    # Minimum interval to checks worker health
     WORKER_CHECK_INTERVAL = 5
 
     # Illegal character in the key or value of response header

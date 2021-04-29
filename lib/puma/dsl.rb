@@ -484,7 +484,7 @@ module Puma
 
     # Disable warning message when running in cluster mode with a single worker.
     #
-    # Cluster mode has some overhead of running an addtional 'control' process
+    # Cluster mode has some overhead of running an additional 'control' process
     # in order to manage the cluster. If only running a single worker it is
     # likely not worth paying that overhead vs running in single mode with
     # additional threads instead.
