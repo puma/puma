@@ -311,6 +311,7 @@ module Puma
         sockets = [check] + @binder.ios
         pool = @thread_pool
         queue_requests = @queue_requests
+        drain = @options[:drain_on_shutdown] ? 0 : nil
 
         remote_addr_value = nil
         remote_addr_header = nil
@@ -322,9 +323,10 @@ module Puma
           remote_addr_header = @options[:remote_address_header]
         end
 
-        while @status == :run
+        while @status == :run || (drain && shutting_down?)
           begin
-            ios = IO.select sockets
+            ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : nil)
+            break unless ios
             ios.first.each do |sock|
               if sock == check
                 break if handle_check
@@ -337,6 +339,7 @@ module Puma
                 rescue IO::WaitReadable
                   next
                 end
+                drain += 1 if shutting_down?
                 client = Client.new io, @binder.env(sock)
                 if remote_addr_value
                   client.peerip = remote_addr_value
@@ -351,6 +354,7 @@ module Puma
           end
         end
 
+        @events.debug "Drained #{drain} additional connections." if drain
         @events.fire :state, @status
 
         if queue_requests
@@ -551,28 +555,6 @@ module Puma
           $stdout.syswrite "#{pid}: #{t.backtrace.join("\n#{pid}: ")}\n\n"
         end
         $stdout.syswrite "#{pid}: === End thread backtrace dump ===\n"
-      end
-
-      if @options[:drain_on_shutdown]
-        count = 0
-
-        while true
-          ios = IO.select @binder.ios, nil, nil, 0
-          break unless ios
-
-          ios.first.each do |sock|
-            begin
-              if io = sock.accept_nonblock
-                count += 1
-                client = Client.new io, @binder.env(sock)
-                @thread_pool << client
-              end
-            rescue SystemCallError
-            end
-          end
-        end
-
-        @events.debug "Drained #{count} additional connections."
       end
 
       if @status != :restart
