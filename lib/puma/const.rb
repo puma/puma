@@ -100,8 +100,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "5.2.2".freeze
-    CODE_NAME = "Fettisdagsbulle".freeze
+    PUMA_VERSION = VERSION = "5.3.0".freeze
+    CODE_NAME = "Sweetnighter".freeze
 
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
