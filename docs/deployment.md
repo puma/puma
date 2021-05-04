@@ -16,7 +16,7 @@ Welcome back!
 
 ## Single vs Cluster mode
 
-Puma was originally conceived as a thread-only webserver, but grew the ability to
+Puma was originally conceived as a thread-only web server, but grew the ability to
 also use processes in version 2.
 
 To run `puma` in single mode (e.g. for a development environment) you will need to

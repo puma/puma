@@ -8,7 +8,7 @@ useful features for running Puma in production.
 ## Service Configuration
 
 Below is a sample puma.service configuration file for systemd, which
-can be copied or symlinked to /etc/systemd/system/puma.service, or if
+can be copied or symlinked to `/etc/systemd/system/puma.service`, or if
 desired, using an application or instance specific name.
 
 Note that this uses the systemd preferred "simple" type where the
