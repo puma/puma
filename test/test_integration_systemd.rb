@@ -33,16 +33,16 @@ class TestIntegrationSystemd < TestIntegration
 
   def test_systemd_notify_usr1_phased_restart_cluster
     skip_unless :fork
-    restart :USR1
+    assert_restarts_with_systemd :USR1
   end
 
   def test_systemd_notify_usr2_hot_restart_cluster
     skip_unless :fork
-    restart :USR2
+    assert_restarts_with_systemd :USR2
   end
 
   def test_systemd_notify_usr2_hot_restart_single
-      restart :USR2, workers: 0
+    assert_restarts_with_systemd :USR2, workers: 0
   end
 
   def test_systemd_watchdog
@@ -59,7 +59,7 @@ class TestIntegrationSystemd < TestIntegration
 
   private
 
-  def restart(signal, workers: 2)
+  def assert_restarts_with_systemd(signal, workers: 2)
     cli_server "-w#{workers} test/rackup/hello.ru"
     assert_equal socket_message, 'READY=1'
 
