@@ -381,8 +381,9 @@ module Puma
       @options[:rackup] ||= path.to_s
     end
 
-    # Allows setting `env['rack.url_scheme']`, which may need to be set due
-    # to frontend configuration.  Normal values are 'http' or 'https'.
+    # Allows setting `env['rack.url_scheme']`.
+    # Only necessary if X-Forwarded-Proto is not being set by your proxy
+    # Normal values are 'http' or 'https'.
     def rack_url_scheme(scheme=nil)
       @options[:rack_url_scheme] = scheme
     end
