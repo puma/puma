@@ -110,7 +110,7 @@ module Puma
 
         cork_socket io
 
-        str_headers(env, status, headers, res_info, lines)
+        str_headers(env, status, headers, res_info, lines, client)
 
         line_ending = LINE_END
 
@@ -367,9 +367,10 @@ module Puma
     # @param headers [Hash] the headers returned by the Rack application
     # @param res_info [Hash] used to pass info between this method and #handle_request
     # @param lines [Puma::IOBuffer] modified inn place
+    # @param client [Puma::Client]
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_info, lines)
+    def str_headers(env, status, headers, res_info, lines, client)
       line_ending = LINE_END
       colon = COLON
 
@@ -409,6 +410,13 @@ module Puma
       # regardless of what the client wants, we always close the connection
       # if running without request queueing
       res_info[:keep_alive] &&= @queue_requests
+
+      # Close the connection when the server is at capacity and
+      # the listener has a new connection waiting.
+      # This allows Puma to service connections fairly when the number
+      # of concurrent connections exceeds the size of the threadpool.
+      res_info[:keep_alive] &&= @thread_pool.busy_threads < @max_threads ||
+        !IO.select([client.listener], nil, nil, 0)
 
       res_info[:response_hijack] = nil
 

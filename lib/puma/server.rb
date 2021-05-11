@@ -341,6 +341,7 @@ module Puma
                 end
                 drain += 1 if shutting_down?
                 client = Client.new io, @binder.env(sock)
+                client.listener = sock
                 if remote_addr_value
                   client.peerip = remote_addr_value
                 elsif remote_addr_header
@@ -447,23 +448,14 @@ module Puma
 
             requests += 1
 
-            # Closing keepalive sockets after they've made a reasonable
-            # number of requests allows Puma to service many connections
-            # fairly, even when the number of concurrent connections exceeds
-            # the size of the threadpool. It also allows cluster mode Pumas
-            # to keep load evenly distributed across workers, because clients
-            # are randomly assigned a new worker when opening a new connection.
-            #
-            # Previously, Puma would kick connections in this conditional back
-            # to the reactor. However, because this causes the todo set to increase
-            # in size, the wait_until_full mutex would never unlock, leaving
-            # any additional connections unserviced.
-            break if requests >= @max_fast_inline
-
-            check_for_more_data = @status == :run
+            # As an optimization, try to read the next request from the
+            # socket for a short time before returning to the reactor,
+            # only if the server is running and no other requests are waiting.
+            fast_check = @status == :run &&
+              @thread_pool.backlog == 0
 
             next_request_ready = with_force_shutdown(client) do
-              client.reset(check_for_more_data)
+              client.reset(fast_check)
             end
 
             unless next_request_ready
