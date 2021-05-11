@@ -1,3 +1,8 @@
+## 5.3.1 / 2021-05-11
+
+* Security
+  * Close keepalive connections after the maximum number of fast inlined requests (#2625)
+
 ## 5.3.0 / 2021-05-07
 
 * Features
