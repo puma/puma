@@ -1,3 +1,8 @@
+## 4.3.8 / 2021-05-11
+
+* Security
+  * Close keepalive connections after the maximum number of fast inlined requests (#2625)
+
 ## 4.3.7 / 2020-11-30
 
 * Bugfixes
