@@ -483,15 +483,20 @@ module Puma
 
             requests += 1
 
-            check_for_more_data = @status == :run
+            # Closing keepalive sockets after they've made a reasonable
+            # number of requests allows Puma to service many connections
+            # fairly, even when the number of concurrent connections exceeds
+            # the size of the threadpool. It also allows cluster mode Pumas
+            # to keep load evenly distributed across workers, because clients
+            # are randomly assigned a new worker when opening a new connection.
+            #
+            # Previously, Puma would kick connections in this conditional back
+            # to the reactor. However, because this causes the todo set to increase
+            # in size, the wait_until_full mutex would never unlock, leaving
+            # any additional connections unserviced.
+            break if requests >= MAX_FAST_INLINE
 
-            if requests >= MAX_FAST_INLINE
-              # This will mean that reset will only try to use the data it already
-              # has buffered and won't try to read more data. What this means is that
-              # every client, independent of their request speed, gets treated like a slow
-              # one once every MAX_FAST_INLINE requests.
-              check_for_more_data = false
-            end
+            check_for_more_data = @status == :run
 
             unless client.reset(check_for_more_data)
               close_socket = false
