@@ -59,7 +59,6 @@ module Puma
         rescue Exception => e     
           log "! Unable to start worker"
           log e.backtrace[0]
-          sleep 1
           exit 1
         end
 
