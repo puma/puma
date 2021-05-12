@@ -33,13 +33,13 @@ module Puma
         Signal.trap "SIGINT", "IGNORE"
         Signal.trap "SIGCHLD", "DEFAULT"
 
-        Thread.new do
+       Thread.new do
           Puma.set_thread_name "worker check pipe"
           IO.select [@check_pipe]
           log "! Detected parent died, dying"
           exit! 1
         end
-
+         
         # If we're not running under a Bundler context, then
         # report the info about the context we will be using
         if !ENV['BUNDLE_GEMFILE']
@@ -54,7 +54,15 @@ module Puma
         # things in shape before booting the app.
         @launcher.config.run_hooks :before_worker_boot, index, @launcher.events
 
+        begin 
         server = @server ||= start_server
+        rescue Exception => e     
+          log "! Unable to start worker"
+          log e.backtrace[0]
+          sleep 1
+          exit 1
+        end
+
         restart_server = Queue.new << true << false
 
         fork_worker = @options[:fork_worker] && index == 0
