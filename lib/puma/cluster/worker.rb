@@ -39,7 +39,7 @@ module Puma
           log "! Detected parent died, dying"
           exit! 1
         end
-         
+
         # If we're not running under a Bundler context, then
         # report the info about the context we will be using
         if !ENV['BUNDLE_GEMFILE']
@@ -54,9 +54,9 @@ module Puma
         # things in shape before booting the app.
         @launcher.config.run_hooks :before_worker_boot, index, @launcher.events
 
-        begin 
+        begin
         server = @server ||= start_server
-        rescue Exception => e     
+        rescue Exception => e
           log "! Unable to start worker"
           log e.backtrace[0]
           exit 1
