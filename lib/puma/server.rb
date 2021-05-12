@@ -435,7 +435,7 @@ module Puma
 
         while true
           @requests_count += 1
-          case handle_request(client, buffer)
+          case handle_request(client, buffer, requests)
           when false
             break
           when :async
@@ -449,10 +449,13 @@ module Puma
             requests += 1
 
             # As an optimization, try to read the next request from the
-            # socket for a short time before returning to the reactor,
-            # only if the server is running and no other requests are waiting.
-            fast_check = @status == :run &&
-              @thread_pool.backlog == 0
+            # socket for a short time before returning to the reactor.
+            fast_check = @status == :run
+
+            # Always pass the client back to the reactor after a reasonable
+            # number of inline requests if there are other requests pending.
+            fast_check = false if requests >= @max_fast_inline &&
+              @thread_pool.backlog > 0
 
             next_request_ready = with_force_shutdown(client) do
               client.reset(fast_check)
