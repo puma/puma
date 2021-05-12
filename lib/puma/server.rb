@@ -435,7 +435,7 @@ module Puma
 
         while true
           @requests_count += 1
-          case handle_request(client, buffer, requests)
+          case handle_request(client, buffer, requests + 1)
           when false
             break
           when :async
