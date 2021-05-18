@@ -201,7 +201,7 @@ module Puma
     # * Set the socket backlog depth with +backlog+, default is 1024.
     # * Set up an SSL certificate with +key+ & +cert+.
     # * Set whether to optimize for low latency instead of throughput with
-    #   +low_latency+, default is to optimize for low latency. This is done
+    #   +low_latency+, default is to not optimize for low latency. This is done
     #   via +Socket::TCP_NODELAY+.
     # * Set socket permissions with +umask+.
     #
