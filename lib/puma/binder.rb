@@ -163,7 +163,7 @@ module Puma
             ios_len = @ios.length
             params = Util.parse_query uri.query
 
-            opt = params.key?('low_latency')
+            opt = params.key?('low_latency') && params['low_latency'] != 'false'
             bak = params.fetch('backlog', 1024).to_i
 
             io = add_tcp_listener uri.host, uri.port, opt, bak

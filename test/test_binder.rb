@@ -192,6 +192,30 @@ class TestBinder < TestBinderBase
     end
   end
 
+  def test_binder_parses_nil_low_latency
+    @binder.parse ["tcp://0.0.0.0:0?low_latency"], @events
+
+    socket = @binder.listeners.first.last
+
+    assert socket.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY).bool
+  end
+
+  def test_binder_parses_true_low_latency
+    @binder.parse ["tcp://0.0.0.0:0?low_latency=true"], @events
+
+    socket = @binder.listeners.first.last
+
+    assert socket.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY).bool
+  end
+
+  def test_binder_parses_false_low_latency
+    @binder.parse ["tcp://0.0.0.0:0?low_latency=false"], @events
+
+    socket = @binder.listeners.first.last
+
+    refute socket.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY).bool
+  end
+
   def test_binder_parses_tlsv1_disabled
     skip_unless :ssl
     @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1=true"], @events
