@@ -193,6 +193,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_binder_parses_nil_low_latency
+    skip_if :jruby
     @binder.parse ["tcp://0.0.0.0:0?low_latency"], @events
 
     socket = @binder.listeners.first.last
@@ -201,6 +202,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_binder_parses_true_low_latency
+    skip_if :jruby
     @binder.parse ["tcp://0.0.0.0:0?low_latency=true"], @events
 
     socket = @binder.listeners.first.last
@@ -209,6 +211,7 @@ class TestBinder < TestBinderBase
   end
 
   def test_binder_parses_false_low_latency
+    skip_if :jruby
     @binder.parse ["tcp://0.0.0.0:0?low_latency=false"], @events
 
     socket = @binder.listeners.first.last
