@@ -69,6 +69,7 @@ module Puma
       @hijacked = false
 
       @peerip = nil
+      @listener = nil
       @remote_addr_header = nil
 
       @body_remain = 0
@@ -81,7 +82,7 @@ module Puma
 
     attr_writer :peerip
 
-    attr_accessor :remote_addr_header
+    attr_accessor :remote_addr_header, :listener
 
     def_delegators :@io, :closed?
 
