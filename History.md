@@ -1,3 +1,10 @@
+## 5.3.2 / 2021-05-21
+
+* Bugfixes
+  * Gracefully handle Rack not accepting CLI options (#2630, #2626)
+  * Fix sigterm misbehavior (#2629)
+  * Improvements to keepalive-connection shedding (#2628)
+
 ## 5.3.1 / 2021-05-11
 
 * Security
