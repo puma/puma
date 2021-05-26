@@ -304,7 +304,6 @@ EOF
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
   end
 
-
   def test_eof_on_connection_close_is_not_logged_as_an_error
     server_run
 
@@ -1311,5 +1310,25 @@ EOF
 
   def test_not_drain_on_shutdown
     test_drain_on_shutdown false
+  end
+
+  def test_rack_url_scheme_dflt
+    server_run
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    assert_equal "http", data.split("\r\n").last
+  end
+
+  def test_rack_url_scheme_user
+    @port = UniquePort.call
+    opts = { rack_url_scheme: 'user', binds: ["tcp://#{@host}:#{@port}"] }
+    conf = Puma::Configuration.new(opts).tap(&:clamp)
+    @server = Puma::Server.new @app, @events, conf.options
+    @server.inherit_binder Puma::Binder.new(@events, conf)
+    @server.binder.parse conf.options[:binds], @events
+    @server.run
+
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    assert_equal "user", data.split("\r\n").last
   end
 end

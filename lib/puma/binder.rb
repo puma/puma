@@ -41,6 +41,7 @@ module Puma
         "rack.multithread".freeze => conf.options[:max_threads] > 1,
         "rack.multiprocess".freeze => conf.options[:workers] >= 1,
         "rack.run_once".freeze => false,
+        RACK_URL_SCHEME => conf.options[:rack_url_scheme],
         "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
         # I'd like to set a default CONTENT_TYPE here but some things

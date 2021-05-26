@@ -51,7 +51,7 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
 
       env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] = default_server_port(env) == PORT_443 ? HTTPS : HTTP
+      env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
