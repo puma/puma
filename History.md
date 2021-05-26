@@ -8,7 +8,7 @@
 ## 5.3.1 / 2021-05-11
 
 * Security
-  * Close keepalive connections after the maximum number of fast inlined requests (#2625)
+  * Close keepalive connections after the maximum number of fast inlined requests (CVE-2021-29509) (#2625)
 
 ## 5.3.0 / 2021-05-07
 
@@ -223,7 +223,7 @@
 ## 4.3.8 / 2021-05-11
 
 * Security
-  * Close keepalive connections after the maximum number of fast inlined requests (#2625)
+  * Close keepalive connections after the maximum number of fast inlined requests (CVE-2021-29509) (#2625)
 
 ## 4.3.7 / 2020-11-30
 
