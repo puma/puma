@@ -272,6 +272,12 @@ module Puma
       @options[:first_data_timeout] = Integer(seconds)
     end
 
+    # Define how long the tcp socket stays open, once data has been received.
+    # @see Puma::Server.new
+    def between_bytes_timeout(seconds)
+      @options[:between_bytes_timeout] = Integer(seconds)
+    end
+
     # Work around leaky apps that leave garbage in Thread locals
     # across requests.
     def clean_thread_locals(which=true)
