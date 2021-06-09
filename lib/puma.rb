@@ -12,7 +12,7 @@ require 'thread'
 
 require 'puma/puma_http11'
 require 'puma/detect'
-require 'puma/json'
+require 'puma/json_serialization'
 
 module Puma
   autoload :Const, 'puma/const'
@@ -60,7 +60,7 @@ module Puma
 
   # @!attribute [rw] stats_object
   def self.stats
-    Puma::JSON.generate @get_stats.stats
+    Puma::JSONSerialization.generate @get_stats.stats
   end
 
   # @!attribute [r] stats_hash

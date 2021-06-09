@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-require 'puma/json'
+require 'puma/json_serialization'
 
 module Puma
   module App
@@ -46,17 +46,17 @@ module Puma
             GC.start ; 200
 
           when 'gc-stats'
-            Puma::JSON.generate GC.stat
+            Puma::JSONSerialization.generate GC.stat
 
           when 'stats'
-            Puma::JSON.generate @launcher.stats
+            Puma::JSONSerialization.generate @launcher.stats
 
           when 'thread-backtraces'
             backtraces = []
             @launcher.thread_status do |name, backtrace|
               backtraces << { name: name, backtrace: backtrace }
             end
-            Puma::JSON.generate backtraces
+            Puma::JSONSerialization.generate backtraces
 
           else
             return rack_response(404, "Unsupported action", 'text/plain')
