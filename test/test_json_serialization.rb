@@ -1,8 +1,8 @@
 require_relative "helper"
 require "json"
-require "puma/json"
+require "puma/json_serialization"
 
-class TestJSON < Minitest::Test
+class TestJSONSerialization < Minitest::Test
   parallelize_me! unless JRUBY_HEAD
 
   def test_json_generates_string_for_hash_with_string_keys
@@ -17,8 +17,8 @@ class TestJSON < Minitest::Test
 
   def test_generate_raises_error_for_unexpected_key_type
     value = { [1] => 'b' }
-    ex = assert_raises Puma::JSON::SerializationError do
-      Puma::JSON.generate value
+    ex = assert_raises Puma::JSONSerialization::SerializationError do
+      Puma::JSONSerialization.generate value
     end
     assert_equal 'Could not serialize object of type Array as object key', ex.message
   end
@@ -85,8 +85,8 @@ class TestJSON < Minitest::Test
 
   def test_generate_raises_error_for_unexpected_value_type
     value = /abc/
-    ex = assert_raises Puma::JSON::SerializationError do
-      Puma::JSON.generate value
+    ex = assert_raises Puma::JSONSerialization::SerializationError do
+      Puma::JSONSerialization.generate value
     end
     assert_equal 'Unexpected value of type Regexp', ex.message
   end
@@ -94,7 +94,7 @@ class TestJSON < Minitest::Test
   private
 
   def assert_puma_json_generates_string(expected_output, value_to_serialize, expected_roundtrip: nil)
-    actual_output = Puma::JSON.generate(value_to_serialize)
+    actual_output = Puma::JSONSerialization.generate(value_to_serialize)
     assert_equal expected_output, actual_output
 
     if value_to_serialize.nil?
