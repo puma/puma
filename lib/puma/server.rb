@@ -396,7 +396,7 @@ module Puma
         return true
       end
 
-      return false
+      false
     end
 
     # Given a connection on +client+, handle the incoming requests,

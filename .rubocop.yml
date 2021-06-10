@@ -76,3 +76,6 @@ Style/WhileUntilModifier:
 
 Style/TernaryParentheses:
   Enabled: true
+
+Style/RedundantReturn:
+  Enabled: true

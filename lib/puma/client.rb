@@ -309,7 +309,7 @@ module Puma
 
       @body_remain = remain
 
-      return false
+      false
     end
 
     def read_body

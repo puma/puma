@@ -176,7 +176,7 @@ module Puma
         after_reply.each { |o| o.call }
       end
 
-      return res_info[:keep_alive]
+      res_info[:keep_alive]
     end
 
     # @param env [Hash] see Puma::Client#env, from request
