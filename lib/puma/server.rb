@@ -105,6 +105,19 @@ module Puma
       @precheck_closing = true
 
       @requests_count = 0
+
+      @on_before_rack = nil
+      @on_after_rack = nil
+      Plugins.each do |plugin|
+        if plugin.respond_to? :on_before_rack
+          @on_before_rack ||= []
+          @on_before_rack << plugin.method(:on_before_rack)
+        end
+        if plugin.respond_to? :on_after_rack
+          @on_after_rack ||= []
+          @on_after_rack << plugin.method(:on_after_rack)
+        end
+      end
     end
 
     def inherit_binder(bind)
@@ -280,6 +293,10 @@ module Puma
     # so that a "worker thread" can pick up the request and begin to execute application logic.
     # The Client is then removed from the reactor (return `true`).
     #
+    # If the client is streamable instead (`Puma::Client#stream?`) then this method checks if data is available
+    # to process with the `on_read_ready` method. When data is available the client is then passed to the ThreadPool
+    # as normal, and the client is removed from the reactor (return `true`).
+    #
     # If a client object times out, a 408 response is written, its connection is closed,
     # and the object is removed from the reactor (return `true`).
     #
@@ -291,7 +308,15 @@ module Puma
     # will wake up and again be checked to see if it's ready to be passed to the thread pool.
     def reactor_wakeup(client)
       shutdown = !@queue_requests
-      if client.try_to_finish || (shutdown && !client.can_close?)
+      if client.stream?
+        if client.on_read_ready || (shutdown && !client.can_close?)
+          @thread_pool << client
+        elsif client.closed?
+          true
+        else
+          false
+        end
+      elsif client.try_to_finish || (shutdown && !client.can_close?)
         @thread_pool << client
       elsif shutdown || client.timeout == 0
         client.timeout!
@@ -410,6 +435,16 @@ module Puma
     #
     # Return true if one or more requests were processed.
     def process_client(client, buffer)
+      if client.respond_to? :churn
+        more_to_churn = client.churn
+        if more_to_churn
+          @thread_pool << client
+        elsif !client.closed?
+          @reactor.add client
+        end
+        return true
+      end
+
       # Advertise this server into the thread
       Thread.current[ThreadLocalKey] = self
 

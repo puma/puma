@@ -71,6 +71,10 @@ module Puma
       #
       after_reply = env[RACK_AFTER_REPLY] = []
 
+      if @on_before_rack
+        @on_before_rack.each { |hook| hook.call(env) }
+      end
+
       begin
         begin
           status, headers, res_body = @thread_pool.with_force_shutdown do
@@ -97,6 +101,29 @@ module Puma
           @events.unknown_error e, client, "Rack app"
 
           status, headers, res_body = lowlevel_error(e, env, 500)
+        end
+
+        if @on_after_rack
+          is_async = false
+
+          @on_after_rack.reverse_each do |hook|
+            stream_client = hook.call(env, headers, io)
+
+            if stream_client && stream_client.stream?
+              if is_async
+                raise "Only one #on_after_rack hook should take over"
+              else
+                if stream_client.on_read_ready
+                  @thread_pool << stream_client
+                else
+                  @reactor.add stream_client
+                end
+                is_async = true
+              end
+            end
+          end
+
+          return :async if is_async
         end
 
         res_info = {}

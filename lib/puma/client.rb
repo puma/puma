@@ -162,6 +162,10 @@ module Puma
       end
     end
 
+    def stream?
+      false
+    end
+
     def try_to_finish
       return read_body unless @read_header
 
