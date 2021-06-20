@@ -284,7 +284,7 @@ module Puma
     end
 
     def localhost_authority
-      @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority) && !defined?(JRUBY_VERSION)
+      @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority)
     end
 
     def localhost_authority_context
