@@ -17,7 +17,7 @@ module Puma
   # be particularly full-featured or fast. It just has to handle the few places
   # where Puma relies on JSON serialization internally.
 
-  module JSON
+  module JSONSerialization
     QUOTE = /"/
     BACKSLASH = /\\/
     CONTROL_CHAR_TO_ESCAPE = /[\x00-\x1F]/ # As required by ECMA-404

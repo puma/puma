@@ -1,14 +1,42 @@
-## Master
-
-* Features
-  * Your feature goes here <Most recent on the top, like GitHub> (#Github Number)
-  * Warn when running Cluster mode with a single worker (#2565)
-  * Add reason to worker time out and startup time when worked boots ([#2528])
+## 5.3.2 / 2021-05-21
 
 * Bugfixes
-  * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
-  * Ensure no segfaults when accessing thread-local variables on Ruby < 2.7.0 (#2567)
-  * Don't close systemd activated socket on pumactl restart (#2563, #2504)
+  * Gracefully handle Rack not accepting CLI options (#2630, #2626)
+  * Fix sigterm misbehavior (#2629)
+  * Improvements to keepalive-connection shedding (#2628)
+
+## 5.3.1 / 2021-05-11
+
+* Security
+  * Close keepalive connections after the maximum number of fast inlined requests (CVE-2021-29509) (#2625)
+
+## 5.3.0 / 2021-05-07
+
+* Features
+  * Add support for Linux's abstract sockets ([#2564], [#2526])
+  * Add debug to worker timeout and startup ([#2559], [#2528])
+  * Print warning when running one-worker cluster ([#2565], [#2534])
+  * Don't close systemd activated socket on pumactl restart ([#2563], [#2504])
+
+* Bugfixes
+  * systemd - fix event firing ([#2591], [#2572])
+  * Immediately unlink temporary files ([#2613])
+  * Improve parsing of HTTP_HOST header ([#2605], [#2584])
+  * Handle fatal error that has no backtrace ([#2607], [#2552])
+  * Fix timing out requests too early ([#2606], [#2574])
+  * Handle segfault in Ruby 2.6.6 on thread-locals ([#2567], [#2566])
+  * Server#closed_socket? - parameter may be a MiniSSL::Socket ([#2596])
+  * Define UNPACK_TCP_STATE_FROM_TCP_INFO in the right place ([#2588], [#2556])
+  * request.rb - fix chunked assembly for ascii incompatible encodings, add test ([#2585], [#2583])
+
+* Performance
+  * Reset peerip only if remote_addr_header is set ([#2609])
+  * Reduce puma_parser struct size ([#2590])
+
+* Refactor
+  * Refactor drain on shutdown ([#2600])
+  * Micro optimisations in `wait_for_less_busy_worker` feature ([#2579])
+  * Lots of test fixes
 
 ## 5.2.2 / 2021-02-22
 
@@ -191,6 +219,11 @@
   * JSON parse cluster worker stats instead of regex ([#2124])
   * Support parallel tests in verbose progress reporting ([#2223])
   * Refactor error handling in server accept loop ([#2239])
+
+## 4.3.8 / 2021-05-11
+
+* Security
+  * Close keepalive connections after the maximum number of fast inlined requests (CVE-2021-29509) (#2625)
 
 ## 4.3.7 / 2020-11-30
 
@@ -1720,8 +1753,36 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2564]:https://github.com/puma/puma/pull/2564     "PR by @MSP-Greg, merged 2021-04-24"
+[#2526]:https://github.com/puma/puma/issues/2526   "Issue by @nerdrew, closed 2021-04-24"
+[#2559]:https://github.com/puma/puma/pull/2559     "PR by @ylecuyer, merged 2021-03-11"
+[#2528]:https://github.com/puma/puma/issues/2528   "Issue by @cjlarose, closed 2021-03-11"
+[#2565]:https://github.com/puma/puma/pull/2565     "PR by @CGA1123, merged 2021-03-09"
+[#2534]:https://github.com/puma/puma/issues/2534   "Issue by @nateberkopec, closed 2021-03-09"
+[#2563]:https://github.com/puma/puma/pull/2563     "PR by @MSP-Greg, merged 2021-03-06"
+[#2504]:https://github.com/puma/puma/issues/2504   "Issue by @fsateler, closed 2021-03-06"
+[#2591]:https://github.com/puma/puma/pull/2591     "PR by @MSP-Greg, merged 2021-05-05"
+[#2572]:https://github.com/puma/puma/issues/2572   "Issue by @josefbilendo, closed 2021-05-05"
+[#2613]:https://github.com/puma/puma/pull/2613     "PR by @smcgivern, merged 2021-04-27"
+[#2605]:https://github.com/puma/puma/pull/2605     "PR by @pascalbetz, merged 2021-04-26"
+[#2584]:https://github.com/puma/puma/issues/2584   "Issue by @kaorihinata, closed 2021-04-26"
+[#2607]:https://github.com/puma/puma/pull/2607     "PR by @calvinxiao, merged 2021-04-23"
+[#2552]:https://github.com/puma/puma/issues/2552   "Issue by @feliperaul, opened 2021-02-09"
+[#2606]:https://github.com/puma/puma/pull/2606     "PR by @wjordan, merged 2021-04-20"
+[#2574]:https://github.com/puma/puma/issues/2574   "Issue by @darkhelmet, closed 2021-04-20"
+[#2567]:https://github.com/puma/puma/pull/2567     "PR by @kddeisz, merged 2021-04-19"
+[#2566]:https://github.com/puma/puma/issues/2566   "Issue by @kddeisz, closed 2021-04-19"
+[#2596]:https://github.com/puma/puma/pull/2596     "PR by @MSP-Greg, merged 2021-04-18"
+[#2588]:https://github.com/puma/puma/pull/2588     "PR by @dentarg, merged 2021-04-02"
+[#2556]:https://github.com/puma/puma/issues/2556   "Issue by @gamecreature, closed 2021-04-02"
+[#2585]:https://github.com/puma/puma/pull/2585     "PR by @MSP-Greg, merged 2021-03-26"
+[#2583]:https://github.com/puma/puma/issues/2583   "Issue by @jboler, closed 2021-03-26"
+[#2609]:https://github.com/puma/puma/pull/2609     "PR by @calvinxiao, merged 2021-04-26"
+[#2590]:https://github.com/puma/puma/pull/2590     "PR by @calvinxiao, merged 2021-04-05"
+[#2600]:https://github.com/puma/puma/pull/2600     "PR by @wjordan, merged 2021-04-30"
+[#2579]:https://github.com/puma/puma/pull/2579     "PR by @ghiculescu, merged 2021-03-17"
+[#2553]:https://github.com/puma/puma/pull/2553     "PR by @olivierbellone, merged 2021-02-10"
 [#2557]:https://github.com/puma/puma/pull/2557     "PR by @cjlarose, merged 2021-02-22"
-[#2553]:https://github.com/puma/puma/pull/2553     "PR by @olivierbellone, merged 02-10-22"
 [#2550]:https://github.com/puma/puma/pull/2550     "PR by @MSP-Greg, merged 2021-02-05"
 [#2547]:https://github.com/puma/puma/pull/2547     "PR by @wildmaples, merged 2021-02-03"
 [#2543]:https://github.com/puma/puma/pull/2543     "PR by @MSP-Greg, merged 2021-02-01"

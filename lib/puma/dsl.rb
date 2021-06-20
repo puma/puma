@@ -201,7 +201,7 @@ module Puma
     # * Set the socket backlog depth with +backlog+, default is 1024.
     # * Set up an SSL certificate with +key+ & +cert+.
     # * Set whether to optimize for low latency instead of throughput with
-    #   +low_latency+, default is to optimize for low latency. This is done
+    #   +low_latency+, default is to not optimize for low latency. This is done
     #   via +Socket::TCP_NODELAY+.
     # * Set socket permissions with +umask+.
     #
@@ -381,6 +381,13 @@ module Puma
       @options[:rackup] ||= path.to_s
     end
 
+    # Allows setting `env['rack.url_scheme']`.
+    # Only necessary if X-Forwarded-Proto is not being set by your proxy
+    # Normal values are 'http' or 'https'.
+    def rack_url_scheme(scheme=nil)
+      @options[:rack_url_scheme] = scheme
+    end
+
     def early_hints(answer=true)
       @options[:early_hints] = answer
     end
@@ -484,7 +491,7 @@ module Puma
 
     # Disable warning message when running in cluster mode with a single worker.
     #
-    # Cluster mode has some overhead of running an addtional 'control' process
+    # Cluster mode has some overhead of running an additional 'control' process
     # in order to manage the cluster. If only running a single worker it is
     # likely not worth paying that overhead vs running in single mode with
     # additional threads instead.

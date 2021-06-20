@@ -44,6 +44,13 @@ Linux:
 apt-get install ragel
 ```
 
+Windows (Ruby 2.5 and later):
+```sh
+ridk exec pacman -S mingw-w64-x86_64-openssl mingw-w64-x86_64-ragel
+```
+
+**Note:** For all of the following commands you should be in your fork's directory.
+
 Install Ruby dependencies with:
 
 ```sh
@@ -55,13 +62,19 @@ bundle install
 To run Puma, you will need to compile the native extension. To do this:
 
 ```sh
+# Ubuntu, macOS, etc
 bundle exec rake compile
+
+# Windows
+bundle exec rake -rdevkit compile
 ```
 
 Then, you will be able to run Puma using your local copy with:
 
 ```sh
 bundle exec bin/puma test/rackup/hello.ru
+# -or-
+bundle exec ruby -Ilib bin/puma test/rackup/hello.ru
 ```
 
 Alternatively, you can reference your local copy in a project's `Gemfile`:
@@ -155,9 +168,11 @@ changelog ([`History.md`](History.md)), add the text `[changelog skip]` to the
 pull request title to skip [the changelog
 check](https://github.com/puma/puma/pull/1991).
 
+Puma uses GitHub Actions for it's main CI testing.  Please consider running the CI in your fork before creating a PR.  A new repo (including forks) has Actions disabled.  It can be set from the 'Setting' tab on your repo's web page.
+
 ## Backports
 
-Puma does not have a backport "policy" - maintainers will not consistently backport bugfixes to previous minor or major versions (we do treat security differently, see [`SECURITY.md`](SECURITY.md). 
+Puma does not have a backport "policy" - maintainers will not consistently backport bugfixes to previous minor or major versions (we do treat security differently, see [`SECURITY.md`](SECURITY.md).
 
 As a contributor, you may make pull requests against `-stable` branches to backport fixes, and maintainers will release them once they're merged. For example, if you'd like to make a backport for 4.3.x, you can make a pull request against `4-3-stable`. If there is no appropriate branch for the release you'd like to backport against, please just open an issue and we'll make one for you.
 

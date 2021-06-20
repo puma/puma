@@ -31,21 +31,18 @@ class TestIntegrationSystemd < TestIntegration
     ENV["WATCHDOG_USEC"] = nil
   end
 
-  def socket_message
-    @socket.recvfrom(15)[0]
+  def test_systemd_notify_usr1_phased_restart_cluster
+    skip_unless :fork
+    assert_restarts_with_systemd :USR1
   end
 
-  def test_systemd_integration
-    cli_server "test/rackup/hello.ru"
-    assert_equal(socket_message, "READY=1")
+  def test_systemd_notify_usr2_hot_restart_cluster
+    skip_unless :fork
+    assert_restarts_with_systemd :USR2
+  end
 
-    connection = connect
-    restart_server connection
-    assert_equal(socket_message, "RELOADING=1")
-    assert_equal(socket_message, "READY=1")
-
-    stop_server
-    assert_equal(socket_message, "STOPPING=1")
+  def test_systemd_notify_usr2_hot_restart_single
+    assert_restarts_with_systemd :USR2, workers: 0
   end
 
   def test_systemd_watchdog
@@ -58,5 +55,29 @@ class TestIntegrationSystemd < TestIntegration
 
     stop_server
     assert_match(socket_message, "STOPPING=1")
+  end
+
+  private
+
+  def assert_restarts_with_systemd(signal, workers: 2)
+    cli_server "-w#{workers} test/rackup/hello.ru"
+    assert_equal socket_message, 'READY=1'
+
+    Process.kill signal, @pid
+    connect.write "GET / HTTP/1.1\r\n\r\n"
+    assert_equal socket_message, 'RELOADING=1'
+    assert_equal socket_message, 'READY=1'
+
+    Process.kill signal, @pid
+    connect.write "GET / HTTP/1.1\r\n\r\n"
+    assert_equal socket_message, 'RELOADING=1'
+    assert_equal socket_message, 'READY=1'
+
+    stop_server
+    assert_equal socket_message, 'STOPPING=1'
+  end
+
+  def socket_message
+    @socket.recvfrom(15)[0]
   end
 end

@@ -311,6 +311,7 @@ module Puma
         sockets = [check] + @binder.ios
         pool = @thread_pool
         queue_requests = @queue_requests
+        drain = @options[:drain_on_shutdown] ? 0 : nil
 
         remote_addr_value = nil
         remote_addr_header = nil
@@ -322,9 +323,10 @@ module Puma
           remote_addr_header = @options[:remote_address_header]
         end
 
-        while @status == :run
+        while @status == :run || (drain && shutting_down?)
           begin
-            ios = IO.select sockets
+            ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : nil)
+            break unless ios
             ios.first.each do |sock|
               if sock == check
                 break if handle_check
@@ -337,7 +339,9 @@ module Puma
                 rescue IO::WaitReadable
                   next
                 end
+                drain += 1 if shutting_down?
                 client = Client.new io, @binder.env(sock)
+                client.listener = sock
                 if remote_addr_value
                   client.peerip = remote_addr_value
                 elsif remote_addr_header
@@ -351,6 +355,7 @@ module Puma
           end
         end
 
+        @events.debug "Drained #{drain} additional connections." if drain
         @events.fire :state, @status
 
         if queue_requests
@@ -391,7 +396,7 @@ module Puma
         return true
       end
 
-      return false
+      false
     end
 
     # Given a connection on +client+, handle the incoming requests,
@@ -430,7 +435,7 @@ module Puma
 
         while true
           @requests_count += 1
-          case handle_request(client, buffer)
+          case handle_request(client, buffer, requests + 1)
           when false
             break
           when :async
@@ -443,18 +448,17 @@ module Puma
 
             requests += 1
 
-            check_for_more_data = @status == :run
+            # As an optimization, try to read the next request from the
+            # socket for a short time before returning to the reactor.
+            fast_check = @status == :run
 
-            if requests >= @max_fast_inline
-              # This will mean that reset will only try to use the data it already
-              # has buffered and won't try to read more data. What this means is that
-              # every client, independent of their request speed, gets treated like a slow
-              # one once every max_fast_inline requests.
-              check_for_more_data = false
-            end
+            # Always pass the client back to the reactor after a reasonable
+            # number of inline requests if there are other requests pending.
+            fast_check = false if requests >= @max_fast_inline &&
+              @thread_pool.backlog > 0
 
             next_request_ready = with_force_shutdown(client) do
-              client.reset(check_for_more_data)
+              client.reset(fast_check)
             end
 
             unless next_request_ready
@@ -551,28 +555,6 @@ module Puma
           $stdout.syswrite "#{pid}: #{t.backtrace.join("\n#{pid}: ")}\n\n"
         end
         $stdout.syswrite "#{pid}: === End thread backtrace dump ===\n"
-      end
-
-      if @options[:drain_on_shutdown]
-        count = 0
-
-        while true
-          ios = IO.select @binder.ios, nil, nil, 0
-          break unless ios
-
-          ios.first.each do |sock|
-            begin
-              if io = sock.accept_nonblock
-                count += 1
-                client = Client.new io, @binder.env(sock)
-                @thread_pool << client
-              end
-            rescue SystemCallError
-            end
-          end
-        end
-
-        @events.debug "Drained #{count} additional connections."
       end
 
       if @status != :restart

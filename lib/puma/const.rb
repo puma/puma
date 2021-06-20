@@ -100,8 +100,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "5.2.2".freeze
-    CODE_NAME = "Fettisdagsbulle".freeze
+    PUMA_VERSION = VERSION = "5.3.2".freeze
+    CODE_NAME = "Sweetnighter".freeze
 
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
@@ -235,7 +235,7 @@ module Puma
 
     EARLY_HINTS = "rack.early_hints".freeze
 
-    # Mininum interval to checks worker health
+    # Minimum interval to checks worker health
     WORKER_CHECK_INTERVAL = 5
 
     # Illegal character in the key or value of response header

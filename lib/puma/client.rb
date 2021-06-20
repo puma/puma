@@ -69,6 +69,7 @@ module Puma
       @hijacked = false
 
       @peerip = nil
+      @listener = nil
       @remote_addr_header = nil
 
       @body_remain = 0
@@ -81,7 +82,7 @@ module Puma
 
     attr_writer :peerip
 
-    attr_accessor :remote_addr_header
+    attr_accessor :remote_addr_header, :listener
 
     def_delegators :@io, :closed?
 
@@ -126,7 +127,7 @@ module Puma
       @parsed_bytes = 0
       @ready = false
       @body_remain = 0
-      @peerip = nil
+      @peerip = nil if @remote_addr_header
       @in_last_chunk = false
 
       if @buffer
@@ -295,6 +296,7 @@ module Puma
 
       if remain > MAX_BODY
         @body = Tempfile.new(Const::PUMA_TMP_BASE)
+        @body.unlink
         @body.binmode
         @tempfile = @body
       else
@@ -307,7 +309,7 @@ module Puma
 
       @body_remain = remain
 
-      return false
+      false
     end
 
     def read_body
@@ -386,6 +388,7 @@ module Puma
       @prev_chunk = ""
 
       @body = Tempfile.new(Const::PUMA_TMP_BASE)
+      @body.unlink
       @body.binmode
       @tempfile = @body
       @chunked_content_length = 0

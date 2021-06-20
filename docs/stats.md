@@ -53,7 +53,7 @@ end
 
 ### single mode and individual workers in cluster mode
 
-When Puma is run in single mode, these stats ar available at the top level. When Puma is run in cluster mode, these stats are available within the `worker_status` array in a hash labeled `last_status`, in an array of hashes, one hash for each worker.
+When Puma is run in single mode, these stats are available at the top level. When Puma is run in cluster mode, these stats are available within the `worker_status` array in a hash labeled `last_status`, in an array of hashes, one hash for each worker.
 
 * backlog: requests that are waiting for an available thread to be available. if this is above 0, you need more capacity [always true?]
 * running: how many threads are running

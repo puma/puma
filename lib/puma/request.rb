@@ -26,9 +26,10 @@ module Puma
     # Finally, it'll return +true+ on keep-alive connections.
     # @param client [Puma::Client]
     # @param lines [Puma::IOBuffer]
+    # @param requests [Integer]
     # @return [Boolean,:async]
     #
-    def handle_request(client, lines)
+    def handle_request(client, lines, requests)
       env = client.env
       io  = client.io   # io may be a MiniSSL::Socket
 
@@ -50,7 +51,7 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
 
       env[RACK_INPUT] = body
-      env[RACK_URL_SCHEME] = default_server_port(env) == PORT_443 ? HTTPS : HTTP
+      env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
@@ -110,7 +111,7 @@ module Puma
 
         cork_socket io
 
-        str_headers(env, status, headers, res_info, lines)
+        str_headers(env, status, headers, res_info, lines, requests, client)
 
         line_ending = LINE_END
 
@@ -175,7 +176,7 @@ module Puma
         after_reply.each { |o| o.call }
       end
 
-      return res_info[:keep_alive]
+      res_info[:keep_alive]
     end
 
     # @param env [Hash] see Puma::Client#env, from request
@@ -231,7 +232,11 @@ module Puma
     #
     def normalize_env(env, client)
       if host = env[HTTP_HOST]
-        if colon = host.index(":")
+        # host can be a hostname, ipv4 or bracketed ipv6. Followed by an optional port.
+        if colon = host.rindex("]:") # IPV6 with port
+          env[SERVER_NAME] = host[0, colon+1]
+          env[SERVER_PORT] = host[colon+2, host.bytesize]
+        elsif !host.start_with?("[") && colon = host.index(":") # not hostname or IPV4 with port
           env[SERVER_NAME] = host[0, colon]
           env[SERVER_PORT] = host[colon+1, host.bytesize]
         else
@@ -363,9 +368,11 @@ module Puma
     # @param headers [Hash] the headers returned by the Rack application
     # @param res_info [Hash] used to pass info between this method and #handle_request
     # @param lines [Puma::IOBuffer] modified inn place
+    # @param requests [Integer] number of inline requests handled
+    # @param client [Puma::Client]
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_info, lines)
+    def str_headers(env, status, headers, res_info, lines, requests, client)
       line_ending = LINE_END
       colon = COLON
 
@@ -405,6 +412,14 @@ module Puma
       # regardless of what the client wants, we always close the connection
       # if running without request queueing
       res_info[:keep_alive] &&= @queue_requests
+
+      # Close the connection after a reasonable number of inline requests
+      # if the server is at capacity and the listener has a new connection ready.
+      # This allows Puma to service connections fairly when the number
+      # of concurrent connections exceeds the size of the threadpool.
+      res_info[:keep_alive] &&= requests < @max_fast_inline ||
+        @thread_pool.busy_threads < @max_threads ||
+        !IO.select([client.listener], nil, nil, 0)
 
       res_info[:response_hijack] = nil
 

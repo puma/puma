@@ -343,6 +343,8 @@ module Puma
       raise "Missing rackup file '#{rackup}'" unless File.exist?(rackup)
 
       rack_app, rack_options = rack_builder.parse_file(rackup)
+      rack_options = rack_options || {}
+
       @options.file_options.merge!(rack_options)
 
       config_ru_binds = []

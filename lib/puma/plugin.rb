@@ -91,7 +91,7 @@ module Puma
       path = ary.first[CALLER_FILE]
 
       m = %r!puma/plugin/([^/]*)\.rb$!.match(path)
-      return m[1]
+      m[1]
     end
 
     def self.create(&blk)

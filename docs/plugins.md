@@ -34,5 +34,5 @@ functionality to augment puma.
 `config` runs when the server is being configured and is passed a `Puma::DSL`
 object that can be used to add additional configuration.
 
-Any public methods in `Puma::Plugin` are the public API that any plugin may
+Any public methods in [`Puma::Plugin`](../lib/puma/plugin.rb) are the public API that any plugin may
 use.

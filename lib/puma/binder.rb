@@ -12,6 +12,7 @@ module Puma
   if HAS_SSL
     require 'puma/minissl'
     require 'puma/minissl/context_builder'
+
     # Odd bug in 'pure Ruby' nio4r verion 2.5.2, which installs with Ruby 2.3.
     # NIO doesn't create any OpenSSL objects, but it rescues an OpenSSL error.
     # The bug was that it did not require openssl.
@@ -40,6 +41,7 @@ module Puma
         "rack.multithread".freeze => conf.options[:max_threads] > 1,
         "rack.multiprocess".freeze => conf.options[:workers] >= 1,
         "rack.run_once".freeze => false,
+        RACK_URL_SCHEME => conf.options[:rack_url_scheme],
         "SCRIPT_NAME".freeze => ENV['SCRIPT_NAME'] || "",
 
         # I'd like to set a default CONTENT_TYPE here but some things
@@ -163,7 +165,7 @@ module Puma
             ios_len = @ios.length
             params = Util.parse_query uri.query
 
-            opt = params.key?('low_latency')
+            opt = params.key?('low_latency') && params['low_latency'] != 'false'
             bak = params.fetch('backlog', 1024).to_i
 
             io = add_tcp_listener uri.host, uri.port, opt, bak
@@ -177,11 +179,19 @@ module Puma
           @listeners << [str, io] if io
         when "unix"
           path = "#{uri.host}#{uri.path}".gsub("%20", " ")
+          abstract = false
+          if str.start_with? 'unix://@'
+            raise "OS does not support abstract UNIXSockets" unless Puma.abstract_unix_socket?
+            abstract = true
+            path = "@#{path}"
+          end
 
           if fd = @inherited_fds.delete(str)
+            @unix_paths << path unless abstract
             io = inherit_unix_listener path, fd
             logger.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :unix, path ])
+            @unix_paths << path unless abstract || File.exist?(path)
             io = inherit_unix_listener path, sock
             logger.log "* Activated #{str}"
           else
@@ -205,6 +215,7 @@ module Puma
               end
             end
 
+            @unix_paths << path unless abstract || File.exist?(path)
             io = add_unix_listener path, umask, mode, backlog
             logger.log "* #{log_msg} on #{str}"
           end
@@ -389,8 +400,6 @@ module Puma
     # Tell the server to listen on +path+ as a UNIX domain socket.
     #
     def add_unix_listener(path, umask=nil, mode=nil, backlog=1024)
-      @unix_paths << path unless File.exist? path
-
       # Let anyone connect by default
       umask ||= 0
 
@@ -407,8 +416,7 @@ module Puma
             raise "There is already a server bound to: #{path}"
           end
         end
-
-        s = UNIXServer.new(path)
+        s = UNIXServer.new path.sub(/\A@/, "\0") # check for abstract UNIXSocket
         s.listen backlog
         @ios << s
       ensure
@@ -427,8 +435,6 @@ module Puma
     end
 
     def inherit_unix_listener(path, fd)
-      @unix_paths << path unless File.exist? path
-
       s = fd.kind_of?(::TCPServer) ? fd : ::UNIXServer.for_fd(fd)
 
       @ios << s
@@ -441,24 +447,24 @@ module Puma
     end
 
     def close_listeners
-      listeners.each do |l, io|
-        io.close unless io.closed? # Ruby 2.2 issue
-        uri = URI.parse(l)
+      @listeners.each do |l, io|
+        io.close unless io.closed?
+        uri = URI.parse l
         next unless uri.scheme == 'unix'
         unix_path = "#{uri.host}#{uri.path}"
-        File.unlink unix_path if unix_paths.include? unix_path
+        File.unlink unix_path if @unix_paths.include?(unix_path) && File.exist?(unix_path)
       end
     end
 
     def redirects_for_restart
-      redirects = listeners.map { |a| [a[1].to_i, a[1].to_i] }.to_h
+      redirects = @listeners.map { |a| [a[1].to_i, a[1].to_i] }.to_h
       redirects[:close_others] = true
       redirects
     end
 
     # @version 5.0.0
     def redirects_for_restart_env
-      listeners.each_with_object({}).with_index do |(listen, memo), i|
+      @listeners.each_with_object({}).with_index do |(listen, memo), i|
         memo["PUMA_INHERIT_#{i}"] = "#{listen[1].to_i}:#{listen[0]}"
       end
     end

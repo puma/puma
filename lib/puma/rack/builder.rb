@@ -165,7 +165,7 @@ module Puma::Rack
         require config
         app = Object.const_get(::File.basename(config, '.rb').capitalize)
       end
-      return app, options
+      [app, options]
     end
 
     def self.new_from_string(builder_script, file="(rackup)")

@@ -25,6 +25,14 @@ unless ENV["DISABLE_SSL"]
 
     have_func  "X509_STORE_up_ref"
     have_func("SSL_CTX_set_ecdh_auto(NULL, 0)", "openssl/ssl.h")
+
+    # Random.bytes available in Ruby 2.5 and later, Random::DEFAULT deprecated in 3.0
+    if Random.respond_to?(:bytes)
+      $defs.push("-DHAVE_RANDOM_BYTES")
+      puts "checking for Random.bytes... yes"
+    else
+      puts "checking for Random.bytes... no"
+    end
   end
 end
 

@@ -43,6 +43,7 @@ module Puma
     end
 
     def start_phased_restart
+      @events.fire_on_restart!
       @phase += 1
       log "- Starting phased worker restart, phase: #{@phase}"
 
@@ -317,7 +318,7 @@ module Puma
 
           stop_workers
           stop
-
+          @events.fire_on_stopped!
           raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
           exit 0 # Clean exit, workers were stopped
         end
@@ -411,12 +412,16 @@ module Puma
 
       begin
         booted = false
+        in_phased_restart = false
+        workers_not_booted = @options[:workers]
 
         while @status == :run
           begin
             if @phased_restart
               start_phased_restart
               @phased_restart = false
+              in_phased_restart = true
+              workers_not_booted = @options[:workers]
             end
 
             check_workers
@@ -444,6 +449,7 @@ module Puma
                   w.boot!
                   log "- Worker #{w.index} (PID: #{pid}) booted in #{w.uptime.round(2)}s, phase: #{w.phase}"
                   @next_check = Time.now
+                  workers_not_booted -= 1
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
                   w.instance_variable_set :@term, true
@@ -460,6 +466,10 @@ module Puma
               else
                 log "! Out-of-sync worker list, no #{pid} worker"
               end
+            end
+            if in_phased_restart && workers_not_booted.zero?
+              @events.fire_on_booted!
+              in_phased_restart = false
             end
 
           rescue Interrupt

@@ -61,7 +61,7 @@ module Puma
         end
       end
 
-      return params
+      params
     end
 
     # A case-insensitive Hash that preserves the original case of a

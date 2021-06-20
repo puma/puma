@@ -137,7 +137,7 @@ class Http11ParserTest < Minitest::Test
       res << Digest::SHA1.digest(rand(count * 100).to_s) * (count / 20)
     end
 
-    return res
+    res
   end
 
   def test_max_uri_path_length

@@ -208,7 +208,7 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 #endif
   int ssl_options;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
-    verification_flags;
+    verification_flags, session_id_bytes;
   DH *dh;
 
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
@@ -309,6 +309,21 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   } else {
     SSL_CTX_set_verify(ctx, NUM2INT(verify_mode), engine_verify_callback);
   }
+
+  // Random.bytes available in Ruby 2.5 and later, Random::DEFAULT deprecated in 3.0
+  session_id_bytes = rb_funcall(
+#ifdef HAVE_RANDOM_BYTES
+    rb_cRandom,
+#else
+    rb_const_get(rb_cRandom, rb_intern_const("DEFAULT")),
+#endif
+    rb_intern_const("bytes"),
+    1, ULL2NUM(SSL_MAX_SSL_SESSION_ID_LENGTH));
+
+  SSL_CTX_set_session_id_context(ctx,
+                                 (unsigned char *) RSTRING_PTR(session_id_bytes),
+                                 SSL_MAX_SSL_SESSION_ID_LENGTH);
+
   // printf("\ninitialize end security_level %d\n", SSL_CTX_get_security_level(ctx));
   rb_obj_freeze(self);
   return self;

@@ -12,7 +12,7 @@ require 'thread'
 
 require 'puma/puma_http11'
 require 'puma/detect'
-require 'puma/json'
+require 'puma/json_serialization'
 
 module Puma
   autoload :Const, 'puma/const'
@@ -39,6 +39,20 @@ module Puma
     HAS_SSL
   end
 
+  def self.abstract_unix_socket?
+    @abstract_unix ||=
+      if HAS_UNIX_SOCKET
+        begin
+          ::UNIXServer.new("\0puma.temp.unix").close
+          true
+        rescue ArgumentError  # darwin
+          false
+        end
+      else
+        false
+      end
+  end
+
   # @!attribute [rw] stats_object=
   def self.stats_object=(val)
     @get_stats = val
@@ -46,7 +60,7 @@ module Puma
 
   # @!attribute [rw] stats_object
   def self.stats
-    Puma::JSON.generate @get_stats.stats
+    Puma::JSONSerialization.generate @get_stats.stats
   end
 
   # @!attribute [r] stats_hash
