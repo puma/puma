@@ -288,7 +288,7 @@ module Puma
     end
 
     def localhost_authority_context
-     if !localhost_authority.nil?
+      if !localhost_authority.nil?
         local_certificates_path = File.expand_path("~/.localhost")
         if (localhost_authority.respond_to?(:key_path) && localhost_authority.respond_to?(:certificate_path))
           key_path = localhost_authority.key_path
@@ -298,8 +298,8 @@ module Puma
           crt_path = File.join(local_certificates_path, "localhost.crt")
         end
         ctx = MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path}, @events).context
-        return ctx
-     end
+        ctx
+      end
     end
 
     # Tell the server to listen on host +host+, port +port+.
