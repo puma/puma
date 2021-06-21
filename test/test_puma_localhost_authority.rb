@@ -3,11 +3,13 @@
 # helper is required first since it loads Puma, which needs to be
 # loaded so HAS_SSL is defined
 require_relative "helper"
+require "localhost/authority"
 
 if ::Puma::HAS_SSL  && !Puma.jruby?
+  require "puma/minissl"
   require "puma/events"
   require "net/http"
-  require "localhost/authority"
+
 
   class SSLEventsHelper < ::Puma::Events
     attr_accessor :addr, :cert, :error
@@ -23,9 +25,9 @@ if ::Puma::HAS_SSL  && !Puma.jruby?
   require "openssl" unless Object.const_defined? :OpenSSL
 
   puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
-    "                         OpenSSL",
-    "OPENSSL_LIBRARY_VERSION: #{OpenSSL::OPENSSL_LIBRARY_VERSION}",
-    "        OPENSSL_VERSION: #{OpenSSL::OPENSSL_VERSION}", ""
+       "                         OpenSSL",
+       "OPENSSL_LIBRARY_VERSION: #{OpenSSL::OPENSSL_LIBRARY_VERSION}",
+       "        OPENSSL_VERSION: #{OpenSSL::OPENSSL_VERSION}", ""
 end
 
 class TestPumaLocalhostAuthority < Minitest::Test
@@ -73,96 +75,55 @@ class TestPumaLocalhostAuthority < Minitest::Test
     assert_equal "https", body
   end
 
-  def test_request_wont_block_thread
-    start_server
-    # Open a connection and give enough data to trigger a read, then wait
-    ctx = OpenSSL::SSL::SSLContext.new
-    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
-    port = @server.connected_ports[0]
-    socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new(@host, port), ctx
-    socket.connect
-    socket.write "HEAD"
+  def test_localhost_authority_generated
+    # Initiate server to create localhost authority
+    unless File.exist?(File.join(Localhost::Authority.path,"localhost.key"))
+      start_server
+    end
+    assert_equal(File.exist?(File.join(Localhost::Authority.path,"localhost.key")), true)
+    assert_equal(File.exist?(File.join(Localhost::Authority.path,"localhost.crt")), true)
+  end
+
+end if ::Puma::HAS_SSL
+
+class TestPumaSSLLocalhostAuthority < Minitest::Test
+  def test_self_signed_by_localhost_authority
+    @host = "localhost"
+
+    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
+
+    @events = SSLEventsHelper.new STDOUT, STDERR
+
+    @server = Puma::Server.new app, @events
+    @server.app = app
+
+    @server.add_ssl_listener @host, 0,nil
+
+
+    @http = Net::HTTP.new @host, @server.connected_ports[0]
+    @http.use_ssl = true
+
+    local_authority_key = OpenSSL::PKey::RSA.new File.read(File.join(Localhost::Authority.path,"localhost.key"))
+    local_authority_crt = OpenSSL::X509::Certificate.new File.read(File.join(Localhost::Authority.path,"localhost.crt"))
+
+    @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    @server.run
+    @cert = nil
+    client_error = false
+    begin
+      @http.start do
+        req = Net::HTTP::Get.new "/", {}
+        @http.request(req)
+        @cert = @http.peer_cert
+      end
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET => e
+      # Errno::ECONNRESET TruffleRuby
+      client_error = true
+      # closes socket if open, may not close on error
+      @http.send :do_finish
+    end
     sleep 0.1
 
-    # Capture the amount of threads being used after connecting and being idle
-    thread_pool = @server.instance_variable_get(:@thread_pool)
-    busy_threads = thread_pool.spawned - thread_pool.waiting
-
-    socket.close
-
-    # The thread pool should be empty since the request would block on read
-    # and our request should have been moved to the reactor.
-    assert busy_threads.zero?, "Our connection is monopolizing a thread"
+    assert_equal(@cert.to_pem, local_authority_crt.to_pem)
   end
-
-  def test_very_large_return
-    start_server
-    giant = "x" * 2056610
-    @server.app = proc do
-      [200, {}, [giant]]
-    end
-
-    body = nil
-    @http.start do
-      req = Net::HTTP::Get.new "/"
-      @http.request(req) do |rep|
-        body = rep.body
-      end
-    end
-
-    assert_equal giant.bytesize, body.bytesize
-  end
-
-  def test_form_submit
-    start_server
-    body = nil
-    @http.start do
-      req = Net::HTTP::Post.new '/'
-      req.set_form_data('a' => '1', 'b' => '2')
-
-      @http.request(req) do |rep|
-        body = rep.body
-      end
-
-    end
-
-    assert_equal "https", body
-  end
-
-  def test_http_rejection
-    body_http  = nil
-    body_https = nil
-    start_server
-    http = Net::HTTP.new @host, @server.connected_ports[0]
-    http.use_ssl = false
-    http.read_timeout = 6
-
-    tcp = Thread.new do
-      req_http = Net::HTTP::Get.new "/", {}
-      # Net::ReadTimeout - TruffleRuby
-      assert_raises(Errno::ECONNREFUSED, EOFError, Net::ReadTimeout) do
-        http.start.request(req_http) { |rep| body_http = rep.body }
-      end
-    end
-
-    ssl = Thread.new do
-      @http.start do
-        req_https = Net::HTTP::Get.new "/", {}
-        @http.request(req_https) { |rep_https| body_https = rep_https.body }
-      end
-    end
-
-    tcp.join
-    ssl.join
-    http.finish
-    sleep 1.0
-
-    assert_nil body_http
-    assert_equal "https", body_https
-
-    thread_pool = @server.instance_variable_get(:@thread_pool)
-    busy_threads = thread_pool.spawned - thread_pool.waiting
-
-    assert busy_threads.zero?, "Our connection is wasn't dropped"
-  end
-end if ::Puma::HAS_SSL && !Puma.jruby?
+end
