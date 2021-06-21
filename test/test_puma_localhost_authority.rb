@@ -44,16 +44,15 @@ class TestPumaLocalhostAuthority < Minitest::Test
 
   # yields ctx to block, use for ctx setup & configuration
   def start_server
-    @host = "127.0.0.1"
+    @host = "localhost"
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     @events = SSLEventsHelper.new STDOUT, STDERR
-
     @server = Puma::Server.new app, @events
     @server.app = app
-    @port = (@server.add_ssl_listener @host, 0,nil).addr[1]
+    @server.add_ssl_listener @host, 0,nil
+    @http = Net::HTTP.new @host, @server.connected_ports[0]
 
-    @http = Net::HTTP.new @host, @port
     @http.use_ssl = true
     # Disabling verification since its self signed
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
