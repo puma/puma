@@ -126,4 +126,4 @@ class TestPumaSSLLocalhostAuthority < Minitest::Test
 
     assert_equal(@cert.to_pem, local_authority_crt.to_pem)
   end
-end
+end  if ::Puma::HAS_SSL
