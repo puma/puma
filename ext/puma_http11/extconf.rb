@@ -11,9 +11,18 @@ end
 unless ENV["DISABLE_SSL"]
   dir_config("openssl")
 
-  if %w'crypto libeay32'.find {|crypto| have_library(crypto, 'BIO_read')} and
+  found_ssl = if pkg_config 'openssl'
+    puts 'using OpenSSL pkgconfig (openssl.pc)'
+    true
+  elsif %w'crypto libeay32'.find {|crypto| have_library(crypto, 'BIO_read')} &&
       %w'ssl ssleay32'.find {|ssl| have_library(ssl, 'SSL_CTX_new')}
+    true
+  else
+    puts '** Puma will be compiled without SSL support'
+    false
+  end
 
+  if found_ssl
     have_header "openssl/bio.h"
 
     # below is  yes for 1.0.2 & later
