@@ -201,7 +201,7 @@ module Puma
         begin
           n = io.syswrite str
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
-          if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
+          unless io.wait_writable WRITE_TIMEOUT
             raise ConnectionError, "Socket timeout writing data"
           end
 
@@ -419,7 +419,7 @@ module Puma
       # of concurrent connections exceeds the size of the threadpool.
       res_info[:keep_alive] &&= requests < @max_fast_inline ||
         @thread_pool.busy_threads < @max_threads ||
-        !IO.select([client.listener], nil, nil, 0)
+        !client.listener.to_io.wait_readable(0)
 
       res_info[:response_hijack] = nil
 

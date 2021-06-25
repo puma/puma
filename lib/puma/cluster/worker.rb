@@ -35,7 +35,7 @@ module Puma
 
        Thread.new do
           Puma.set_thread_name "worker check pipe"
-          IO.select [@check_pipe]
+          @check_pipe.wait_readable
           log "! Detected parent died, dying"
           exit! 1
         end

@@ -143,8 +143,7 @@ module Puma
         return false
       else
         begin
-          if fast_check &&
-              IO.select([@to_io], nil, nil, FAST_TRACK_KA_TIMEOUT)
+          if fast_check && @to_io.wait_readable(FAST_TRACK_KA_TIMEOUT)
             return try_to_finish
           end
         rescue IOError
@@ -202,13 +201,13 @@ module Puma
 
     def eagerly_finish
       return true if @ready
-      return false unless IO.select([@to_io], nil, nil, 0)
+      return false unless @to_io.wait_readable(0)
       try_to_finish
     end
 
     def finish(timeout)
       return if @ready
-      IO.select([@to_io], nil, nil, timeout) || timeout! until try_to_finish
+      @to_io.wait_readable(timeout) || timeout! until try_to_finish
     end
 
     def timeout!

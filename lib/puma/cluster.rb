@@ -426,9 +426,7 @@ module Puma
 
             check_workers
 
-            res = IO.select([read], nil, nil, [0, @next_check - Time.now].max)
-
-            if res
+            if read.wait_readable([0, @next_check - Time.now].max)
               req = read.read_nonblock(1)
 
               @next_check = Time.now if req == "!"
