@@ -39,7 +39,7 @@ module Puma
 
       env[PUMA_SOCKET] = io
 
-      if env[HTTPS_KEY] && io.methods.include?("peer_cert") && io.peercert
+      if env[HTTPS_KEY] && io.peercert
         env[PUMA_PEERCERT] = io.peercert
       end
 
