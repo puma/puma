@@ -227,16 +227,12 @@ module Puma
 
           params = Util.parse_query uri.query
 
-
-          if params.empty?
-            # If key and certs are not defined and localhost gem is required.
-            # localhost gem will be used for self signed
-            # Load localhost authority if not loaded.
-            localhost_authority
-            ctx = localhost_authority_context || MiniSSL::ContextBuilder.new(params, @events).context
-          else
-            ctx = MiniSSL::ContextBuilder.new(params, @events).context
-          end
+          # If key and certs are not defined and localhost gem is required.
+          # localhost gem will be used for self signed
+          # Load localhost authority if not loaded.
+          ctx = localhost_authority && localhost_authority_context if params.empty?
+            
+          ctx ||= MiniSSL::ContextBuilder.new(params, @events).context
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
@@ -308,7 +304,7 @@ module Puma
           key_path = File.join(local_certificates_path, "localhost.key")
           crt_path = File.join(local_certificates_path, "localhost.crt")
         end
-        ctx = MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path}, @events).context
+        MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path}, @events).context
         ctx
       end
     end
@@ -353,7 +349,7 @@ module Puma
 
       raise "Puma compiled without SSL support" unless HAS_SSL
       # Puma will try to use local authority context if context is supplied nil
-      ctx = ctx || localhost_authority_context
+      ctx ||= localhost_authority_context
 
       if host == "localhost"
         loopback_addresses.each do |addr|
@@ -382,7 +378,7 @@ module Puma
     def inherit_ssl_listener(fd, ctx)
       raise "Puma compiled without SSL support" unless HAS_SSL
       # Puma will try to use local authority context if context is supplied nil
-      ctx = ctx || localhost_authority_context
+      ctx ||= localhost_authority_context
 
       s = fd.kind_of?(::TCPServer) ? fd : ::TCPServer.for_fd(fd)
 
