@@ -63,20 +63,7 @@ class TestPumaLocalhostAuthority < Minitest::Test
     @server.run
   end
 
-  def test_url_scheme_for_https
-    start_server
-    body = nil
-    @http.start do
-      req = Net::HTTP::Get.new "/", {}
-      @http.request(req) do |rep|
-        body = rep.body
-      end
-    end
-
-    assert_equal "https", body
-  end
-
-  def test_localhost_authority_generated
+  def test_localhost_authority_file_generated
     # Initiate server to create localhost authority
     unless File.exist?(File.join(Localhost::Authority.path,"localhost.key"))
       start_server

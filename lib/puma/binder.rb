@@ -13,7 +13,7 @@ module Puma
     require 'puma/minissl'
     require 'puma/minissl/context_builder'
 
-    # Odd bug in 'pure Ruby' nio4r verion 2.5.2, which installs with Ruby 2.3.
+    # Odd bug in 'pure Ruby' nio4r version 2.5.2, which installs with Ruby 2.3.
     # NIO doesn't create any OpenSSL objects, but it rescues an OpenSSL error.
     # The bug was that it did not require openssl.
     # @todo remove when Ruby 2.3 support is dropped
@@ -227,16 +227,12 @@ module Puma
 
           params = Util.parse_query uri.query
 
+          # If key and certs are not defined and localhost gem is required.
+          # localhost gem will be used for self signed
+          # Load localhost authority if not loaded.
+          ctx = localhost_authority && localhost_authority_context if params.empty?
 
-          if params.empty?
-            # If key and certs are not defined and localhost gem is required.
-            # localhost gem will be used for self signed
-            # Load localhost authority if not loaded.
-            localhost_authority
-            ctx = localhost_authority_context || MiniSSL::ContextBuilder.new(params, @events).context
-          else
-            ctx = MiniSSL::ContextBuilder.new(params, @events).context
-          end
+          ctx ||= MiniSSL::ContextBuilder.new(params, @events).context
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
@@ -295,24 +291,19 @@ module Puma
     end
 
     def localhost_authority
-      @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority)
+      @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority) && !Puma::IS_JRUBY
     end
 
     def localhost_authority_context
-      if !localhost_authority.nil?
+      return unless localhost_authority
+
+      key_path, crt_path = if [:key_path, :certificate_path].all? { |m| localhost_authority.respond_to?(m) }
+        [localhost_authority.key_path, localhost_authority.certificate_path]
+      else
         local_certificates_path = File.expand_path("~/.localhost")
-        if (localhost_authority.respond_to?(:key_path) && localhost_authority.respond_to?(:certificate_path))
-          key_path = localhost_authority.key_path
-          crt_path = localhost_authority.certificate_path
-        else
-          key_path = File.join(local_certificates_path, "localhost.key")
-          crt_path = File.join(local_certificates_path, "localhost.crt")
-        end
-        ctx = MiniSSL::ContextBuilder.new({ "key" => key_path,
-                                            "cert" => crt_path
-                                          }, @events).context
-        ctx
+        [File.join(local_certificates_path, "localhost.key"), File.join(local_certificates_path, "localhost.crt")]
       end
+      MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path }, @events).context
     end
 
     # Tell the server to listen on host +host+, port +port+.
@@ -355,7 +346,7 @@ module Puma
 
       raise "Puma compiled without SSL support" unless HAS_SSL
       # Puma will try to use local authority context if context is supplied nil
-      ctx = ctx || localhost_authority_context
+      ctx ||= localhost_authority_context
 
       if host == "localhost"
         loopback_addresses.each do |addr|
@@ -384,7 +375,7 @@ module Puma
     def inherit_ssl_listener(fd, ctx)
       raise "Puma compiled without SSL support" unless HAS_SSL
       # Puma will try to use local authority context if context is supplied nil
-      ctx = ctx || localhost_authority_context
+      ctx ||= localhost_authority_context
 
       s = fd.kind_of?(::TCPServer) ? fd : ::TCPServer.for_fd(fd)
 
