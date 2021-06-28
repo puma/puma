@@ -72,7 +72,7 @@ class TestPumaLocalhostAuthority < Minitest::Test
     assert_equal(File.exist?(File.join(Localhost::Authority.path,"localhost.crt")), true)
   end
 
-end if ::Puma::HAS_SSL
+end if ::Puma::HAS_SSL &&  !Puma::IS_JRUBY
 
 class TestPumaSSLLocalhostAuthority < Minitest::Test
   def test_self_signed_by_localhost_authority
