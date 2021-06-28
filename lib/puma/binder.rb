@@ -97,6 +97,7 @@ module Puma
     # @version 5.0.0
     #
     def create_activated_fds(env_hash)
+      @events.debug "ENV['LISTEN_FDS'] #{ENV['LISTEN_FDS'].inspect}  env_hash['LISTEN_PID'] #{env_hash['LISTEN_PID'].inspect}"
       return [] unless env_hash['LISTEN_FDS'] && env_hash['LISTEN_PID'].to_i == $$
       env_hash['LISTEN_FDS'].to_i.times do |index|
         sock = TCPServer.for_fd(socket_activation_fd(index))
@@ -190,7 +191,8 @@ module Puma
             @unix_paths << path unless abstract
             io = inherit_unix_listener path, fd
             logger.log "* Inherited #{str}"
-          elsif sock = @activated_sockets.delete([ :unix, path ])
+          elsif sock = @activated_sockets.delete([ :unix, path ]) ||
+              @activated_sockets.delete([ :unix, File.realdirpath(path) ])
             @unix_paths << path unless abstract || File.exist?(path)
             io = inherit_unix_listener path, sock
             logger.log "* Activated #{str}"
