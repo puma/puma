@@ -5,11 +5,10 @@
 require_relative "helper"
 require "localhost/authority"
 
-if ::Puma::HAS_SSL
+if ::Puma::HAS_SSL && !Puma::IS_JRUBY
   require "puma/minissl"
   require "puma/events"
   require "net/http"
-
 
   class SSLEventsHelper < ::Puma::Events
     attr_accessor :addr, :cert, :error
@@ -21,20 +20,16 @@ if ::Puma::HAS_SSL
     end
   end
 
+
   # net/http (loaded in helper) does not necessarily load OpenSSL
   require "openssl" unless Object.const_defined? :OpenSSL
 
-  if Puma::IS_JRUBY
-    puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
-      "                         OpenSSL",
-      "OPENSSL_LIBRARY_VERSION: #{OpenSSL::OPENSSL_LIBRARY_VERSION}",
-      "        OPENSSL_VERSION: #{OpenSSL::OPENSSL_VERSION}", ""
-  else
-    puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
-      "                         Puma::MiniSSL                   OpenSSL",
-      "OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION.ljust 32}#{OpenSSL::OPENSSL_LIBRARY_VERSION}",
-      "        OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION.ljust 32}#{OpenSSL::OPENSSL_VERSION}", ""
-  end
+
+  puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
+       "                         Puma::MiniSSL                   OpenSSL",
+       "OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION.ljust 32}#{OpenSSL::OPENSSL_LIBRARY_VERSION}",
+       "        OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION.ljust 32}#{OpenSSL::OPENSSL_VERSION}", ""
+
 end
 
 class TestPumaLocalhostAuthority < Minitest::Test
@@ -132,4 +127,4 @@ class TestPumaSSLLocalhostAuthority < Minitest::Test
 
     assert_equal(@cert.to_pem, local_authority_crt.to_pem)
   end
-end  if ::Puma::HAS_SSL
+end  if ::Puma::HAS_SSL && !Puma::IS_JRUBY
