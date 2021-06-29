@@ -20,16 +20,8 @@ if ::Puma::HAS_SSL && !Puma::IS_JRUBY
     end
   end
 
-
   # net/http (loaded in helper) does not necessarily load OpenSSL
   require "openssl" unless Object.const_defined? :OpenSSL
-
-
-  puts "", RUBY_DESCRIPTION, "RUBYOPT: #{ENV['RUBYOPT']}",
-       "                         Puma::MiniSSL                   OpenSSL",
-       "OPENSSL_LIBRARY_VERSION: #{Puma::MiniSSL::OPENSSL_LIBRARY_VERSION.ljust 32}#{OpenSSL::OPENSSL_LIBRARY_VERSION}",
-       "        OPENSSL_VERSION: #{Puma::MiniSSL::OPENSSL_VERSION.ljust 32}#{OpenSSL::OPENSSL_VERSION}", ""
-
 end
 
 class TestPumaLocalhostAuthority < Minitest::Test
@@ -87,26 +79,23 @@ class TestPumaSSLLocalhostAuthority < Minitest::Test
 
     @server.add_ssl_listener @host, 0,nil
 
-
     @http = Net::HTTP.new @host, @server.connected_ports[0]
     @http.use_ssl = true
 
-    local_authority_key = OpenSSL::PKey::RSA.new File.read(File.join(Localhost::Authority.path,"localhost.key"))
+    OpenSSL::PKey::RSA.new File.read(File.join(Localhost::Authority.path,"localhost.key"))
     local_authority_crt = OpenSSL::X509::Certificate.new File.read(File.join(Localhost::Authority.path,"localhost.crt"))
 
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
     @server.run
     @cert = nil
-    client_error = false
     begin
       @http.start do
         req = Net::HTTP::Get.new "/", {}
         @http.request(req)
         @cert = @http.peer_cert
       end
-    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET => e
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET
       # Errno::ECONNRESET TruffleRuby
-      client_error = true
       # closes socket if open, may not close on error
       @http.send :do_finish
     end
