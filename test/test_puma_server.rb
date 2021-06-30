@@ -1383,4 +1383,17 @@ EOF
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
     assert_equal "user", data.split("\r\n").last
   end
+
+  def test_remote_address_header
+    server_run(remote_address: :header, remote_address_header: 'HTTP_X_REMOTE_IP') do |env|
+      [200, {}, [env['REMOTE_ADDR']]]
+    end
+    remote_addr = send_http_and_read("GET / HTTP/1.1\r\nX-Remote-IP: 1.2.3.4\r\n\r\n").split("\r\n").last
+    assert_equal '1.2.3.4', remote_addr
+
+    # TODO: it would be great to test a connection from a non-localhost IP, but we can't really do that. For
+    # now, at least test that it doesn't return garbage.
+    remote_addr = send_http_and_read("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
+    assert_equal @host, remote_addr
+  end
 end
