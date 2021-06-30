@@ -276,8 +276,8 @@ module Puma
           addr = client.peerip
         rescue Errno::ENOTCONN
           # Client disconnects can result in an inability to get the
-          # peeraddr from the socket; default to localhost.
-          addr = LOCALHOST_IP
+          # peeraddr from the socket; default to unspec.
+          addr = UNSPECIFIED_IP
         end
 
         # Set unix socket addrs to localhost
