@@ -878,13 +878,16 @@ module Puma
     # There are 5 possible values:
     #
     # 1. **:socket** (the default) - read the peername from the socket using the
-    #    syscall. This is the normal behavior.
+    #    syscall. This is the normal behavior. If this fails for any reason (e.g.,
+    #    if the peer disconnects between the connection being accepted and the getpeername
+    #    system call), Puma will return "0.0.0.0"
     # 2. **:localhost** - set the remote address to "127.0.0.1"
     # 3. **header: <http_header>**- set the remote address to the value of the
     #    provided http header. For instance:
     #    `set_remote_address header: "X-Real-IP"`.
     #    Only the first word (as separated by spaces or comma) is used, allowing
-    #    headers such as X-Forwarded-For to be used as well.
+    #    headers such as X-Forwarded-For to be used as well. If this header is absent,
+    #    Puma will fall back to the behavior of :socket
     # 4. **proxy_protocol: :v1**- set the remote address to the value read from the
     #    HAproxy PROXY protocol, version 1. If the request does not have the PROXY
     #    protocol attached to it, will fall back to :socket
