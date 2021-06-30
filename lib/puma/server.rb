@@ -321,6 +321,8 @@ module Puma
           remote_addr_value = @options[:remote_address_value]
         when :header
           remote_addr_header = @options[:remote_address_header]
+        when :proxy_protocol
+          remote_addr_proxy_protocol = @options[:remote_address_proxy_protocol]
         end
 
         while @status == :run || (drain && shutting_down?)
@@ -346,6 +348,8 @@ module Puma
                   client.peerip = remote_addr_value
                 elsif remote_addr_header
                   client.remote_addr_header = remote_addr_header
+                elsif remote_addr_proxy_protocol
+                  client.expect_proxy_proto = remote_addr_proxy_protocol
                 end
                 pool << client
               end

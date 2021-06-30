@@ -828,7 +828,10 @@ module Puma
     #    `set_remote_address header: "X-Real-IP"`.
     #    Only the first word (as separated by spaces or comma) is used, allowing
     #    headers such as X-Forwarded-For to be used as well.
-    # 4. **\<Any string\>** - this allows you to hardcode remote address to any value
+    # 4. **proxy_protocol: v1**- set the remote address to the value read from the
+    #    HAproxy PROXY protocol, version 1. If the request does not have the PROXY
+    #    protocol attached to it, will fall back to :socket
+    # 5. **\<Any string\>** - this allows you to hardcode remote address to any value
     #    you wish. Because Puma never uses this field anyway, it's format is
     #    entirely in your hands.
     #
@@ -846,6 +849,13 @@ module Puma
         if hdr = val[:header]
           @options[:remote_address] = :header
           @options[:remote_address_header] = "HTTP_" + hdr.upcase.tr("-", "_")
+        elsif protocol_version = val[:proxy_protocol]
+          @options[:remote_address] = :proxy_protocol
+          protocol_version = protocol_version.downcase.to_sym
+          if ! [:v1].include?(protocol_version)
+            raise "Invalid value for proxy_protocol - #{protocol_version.inspect}"
+          end
+          @options[:remote_address_proxy_protocol] = protocol_version
         else
           raise "Invalid value for set_remote_address - #{val.inspect}"
         end
