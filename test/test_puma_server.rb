@@ -54,8 +54,7 @@ class TestPumaServer < Minitest::Test
     family = addr.ipv4? ? "TCP4" : "TCP6"
     target = addr.ipv4? ? "127.0.0.1" : "::1"
     conn = new_connection
-    conn << "PROXY #{family} #{remote_ip} #{target} 10000 80\r\n"
-    conn << req
+    conn << ("PROXY #{family} #{remote_ip} #{target} 10000 80\r\n" + req)
   end
 
   def new_connection
