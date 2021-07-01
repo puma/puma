@@ -830,7 +830,7 @@ module Puma
     #    `set_remote_address header: "X-Real-IP"`.
     #    Only the first word (as separated by spaces or comma) is used, allowing
     #    headers such as X-Forwarded-For to be used as well. If this header is absent,
-    #    Puma will fall back to the behavior of :socket
+    #    Puma will fall back to the behavior for :socket
     # 4. **\<Any string\>** - this allows you to hardcode remote address to any value
     #    you wish. Because Puma never uses this field anyway, it's format is
     #    entirely in your hands.
