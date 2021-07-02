@@ -119,6 +119,7 @@ module Puma
                 @trim_requested -= 1
                 @spawned -= 1
                 @workers.delete th
+                not_full.signal
                 Thread.exit
               end
 
