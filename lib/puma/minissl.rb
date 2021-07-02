@@ -161,28 +161,13 @@ module Puma
         @socket.flush
       end
 
-      def read_and_drop(timeout = 1)
-        return :timeout unless @socket.wait_readable(timeout)
-        case @socket.read_nonblock(1024, exception: false)
-        when nil
-          :eof
-        when :wait_readable
-          :eagain
-        else
-          :drop
-        end
-      end
-
-      def should_drop_bytes?
-        @engine.init? || !@engine.shutdown
-      end
-
       def close
         begin
-          # Read any drop any partially initialized sockets and any received bytes during shutdown.
-          # Don't let this socket hold this loop forever.
-          # If it can't send more packets within 1s, then give up.
-          return if [:timeout, :eof].include?(read_and_drop(1)) while should_drop_bytes?
+          unless @engine.shutdown
+            while alert_data = @engine.extract
+              @socket.write alert_data
+            end
+          end
         rescue IOError, SystemCallError
           Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
           # nothing
