@@ -227,6 +227,7 @@ module Puma
       @status = :run
 
       @thread_pool = ThreadPool.new(
+        thread_name,
         @min_threads,
         @max_threads,
         ::Puma::IOBuffer,
