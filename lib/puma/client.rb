@@ -134,6 +134,8 @@ module Puma
       @in_last_chunk = false
 
       if @buffer
+        return false unless try_to_parse_proxy_protocol
+
         @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
 
         if @parser.finished?
@@ -165,6 +167,30 @@ module Puma
       end
     end
 
+    # If necessary, read the PROXY protocol from the buffer. Returns
+    # false if more data is needed.
+    def try_to_parse_proxy_protocol
+      if @read_proxy
+        if @expect_proxy_proto == :v1
+          if @buffer.include? "\r\n"
+            if md = PROXY_PROTOCOL_V1_REGEX.match(@buffer)
+              if md[1]
+                @peerip = md[1].split(" ")[0]
+              end
+              @buffer = md.post_match
+            end
+            # if the buffer has a \r\n but doesn't have a PROXY protocol
+            # request, this is just HTTP from a non-PROXY client; move on
+            @read_proxy = false
+            return @buffer.size > 0
+          else
+            return false
+          end
+        end
+      end
+      true
+    end
+
     def try_to_finish
       return read_body if in_data_phase
 
@@ -191,23 +217,7 @@ module Puma
         @buffer = data
       end
 
-      if @read_proxy
-        if @expect_proxy_proto == :v1
-          if @buffer.include? "\r\n"
-            if md = PROXY_PROTOCOL_V1_REGEX.match(@buffer)
-              if md[1]
-                @peerip = md[1].split(" ")[0]
-              end
-              @buffer = md.post_match
-            end
-            # if the buffer has a \r\n but doesn't have a PROXY protocol
-            # request, this is just HTTP from a non-PROXY client; move on
-            @read_proxy = false
-          else
-            return false
-          end
-        end
-      end
+      return false unless try_to_parse_proxy_protocol
 
       @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
 

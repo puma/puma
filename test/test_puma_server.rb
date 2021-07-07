@@ -49,13 +49,20 @@ class TestPumaServer < Minitest::Test
     new_connection << req
   end
 
-  def send_proxy_v1_http(req, remote_ip)
+  def send_proxy_v1_http(req, remote_ip, multisend = false)
     addr = IPAddr.new(remote_ip)
     family = addr.ipv4? ? "TCP4" : "TCP6"
     target = addr.ipv4? ? "127.0.0.1" : "::1"
     conn = new_connection
-    conn << ("PROXY #{family} #{remote_ip} #{target} 10000 80\r\n" + req)
+    if multisend
+      conn << "PROXY #{family} #{remote_ip} #{target} 10000 80\r\n"
+      sleep 0.15
+      conn << req
+    else
+      conn << ("PROXY #{family} #{remote_ip} #{target} 10000 80\r\n" + req)
+    end
   end
+
 
   def new_connection
     TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
@@ -1035,6 +1042,9 @@ EOF
     assert_equal '1.2.3.4', remote_addr
 
     remote_addr = send_proxy_v1_http("GET / HTTP/1.0\r\n\r\n", "fd00::1").read.split("\r\n").last
+    assert_equal 'fd00::1', remote_addr
+
+    remote_addr = send_proxy_v1_http("GET / HTTP/1.0\r\n\r\n", "fd00::1", true).read.split("\r\n").last
     assert_equal 'fd00::1', remote_addr
   end
 
