@@ -40,12 +40,14 @@ module Puma
     attr_reader :requests_count             # @version 5.0.0
 
     # @todo the following may be deprecated in the future
-    attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
+    attr_reader :auto_trim_time, :early_hints,
+      :first_data_timeout, :between_bytes_timeout,
       :leak_stack_on_error,
       :persistent_timeout, :reaping_time
 
     # @deprecated v6.0.0
-    attr_writer :auto_trim_time, :early_hints, :first_data_timeout,
+    attr_writer :auto_trim_time, :early_hints,
+      :first_data_timeout, :between_bytes_timeout,
       :leak_stack_on_error, :min_threads, :max_threads,
       :persistent_timeout, :reaping_time
 
@@ -84,14 +86,15 @@ module Puma
 
       @options = options
 
-      @early_hints         = options.fetch :early_hints, nil
-      @first_data_timeout  = options.fetch :first_data_timeout, FIRST_DATA_TIMEOUT
-      @min_threads         = options.fetch :min_threads, 0
-      @max_threads         = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
-      @persistent_timeout  = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
-      @queue_requests      = options.fetch :queue_requests, true
-      @max_fast_inline     = options.fetch :max_fast_inline, MAX_FAST_INLINE
-      @io_selector_backend = options.fetch :io_selector_backend, :auto
+      @early_hints           = options.fetch :early_hints, nil
+      @first_data_timeout    = options.fetch :first_data_timeout, FIRST_DATA_TIMEOUT
+      @between_bytes_timeout = options.fetch :between_bytes_timeout, @first_data_timeout
+      @min_threads           = options.fetch :min_threads, 0
+      @max_threads           = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
+      @persistent_timeout    = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
+      @queue_requests        = options.fetch :queue_requests, true
+      @max_fast_inline       = options.fetch :max_fast_inline, MAX_FAST_INLINE
+      @io_selector_backend   = options.fetch :io_selector_backend, :auto
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -296,7 +299,7 @@ module Puma
       elsif shutdown || client.timeout == 0
         client.timeout!
       else
-        client.set_timeout(@first_data_timeout)
+        client.set_timeout(@between_bytes_timeout)
         false
       end
     rescue StandardError => e
@@ -430,7 +433,7 @@ module Puma
         end
 
         with_force_shutdown(client) do
-          client.finish(@first_data_timeout)
+          client.finish(@first_data_timeout, @between_bytes_timeout)
         end
 
         while true

@@ -436,24 +436,24 @@ EOF
     assert_equal [:booting, :running, :stop, :done], states
   end
 
-  def test_timeout_in_data_phase(**options)
-    server_run(first_data_timeout: 1, **options)
+  def test_timeout_in_data_phase
+    @server.first_data_timeout = 2
+    server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
 
-    sock << "Hello" unless IO.select([sock], nil, nil, 1.15)
-
-    data = sock.gets
+    data = assert_proper_timeout(@server.first_data_timeout) { sock.gets }
 
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
   end
 
   def test_timeout_data_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
     test_timeout_in_data_phase(queue_requests: false)
   end
 
   # https://github.com/puma/puma/issues/2574
-  def test_no_timeout_after_data_received
+  def test_no_timeout_after_data_received_first_data
     @server.first_data_timeout = 1
     server_run
 
@@ -474,6 +474,44 @@ EOF
   def test_no_timeout_after_data_received_no_queue
     @server = Puma::Server.new @app, @events, queue_requests: false
     test_no_timeout_after_data_received
+  end
+
+  def test_timeout_after_data_received
+    @server.first_data_timeout = 4
+    @server.between_bytes_timeout = 2
+    server_run
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 100\r\n\r\n"
+    sleep 0.1
+
+    sock << "hello"
+    sleep 0.1
+
+    data = assert_proper_timeout(@server.between_bytes_timeout) { sock.gets }
+
+    assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
+  end
+
+  def test_timeout_after_data_received_no_queue
+    @server = Puma::Server.new @app, @events, queue_requests: false
+    test_timeout_after_data_received
+  end
+
+  def test_no_timeout_after_data_received
+    @server.first_data_timeout = 10
+    @server.between_bytes_timeout = 4
+    server_run
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 10\r\n\r\n"
+    sleep 0.1
+
+    sock << "hello"
+    sleep 2
+    sock << "world"
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 200 OK\r\n", data
   end
 
   def test_http_11_keep_alive_with_body
@@ -1330,5 +1368,15 @@ EOF
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
     assert_equal "user", data.split("\r\n").last
+  end
+
+  private
+
+  def assert_proper_timeout(expected)
+    now = Time.now
+    ret = yield
+    t = Time.now - now
+    assert_in_delta expected, t, 0.5, "unexpected timeout, #{t} instead of ~#{expected}"
+    ret
   end
 end
