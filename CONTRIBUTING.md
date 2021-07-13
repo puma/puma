@@ -163,12 +163,9 @@ Code contributions should generally include test coverage. If you aren't sure ho
 test your changes, please open a pull request and leave a comment asking for
 help.
 
-If you open a pull request with a change that doesn't need to be noted in the
-changelog ([`History.md`](History.md)), add the text `[changelog skip]` to the
-pull request title to skip [the changelog
-check](https://github.com/puma/puma/pull/1991).
+There's no need to update the changelog ([`History.md`](History.md)), as that is done [when a new release is made](Release.md).
 
-Puma uses GitHub Actions for it's main CI testing.  Please consider running the CI in your fork before creating a PR.  A new repo (including forks) has Actions disabled.  It can be set from the 'Setting' tab on your repo's web page.
+Puma uses GitHub Actions for it's main CI testing.  Please consider running the CI in your fork before creating a PR.  A new repo (including forks) has Actions disabled.  It can be set from the 'Settings' tab on your repo's web page.
 
 ## Backports
 
