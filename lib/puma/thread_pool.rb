@@ -29,7 +29,7 @@ module Puma
     # The block passed is the work that will be performed in each
     # thread.
     #
-    def initialize(min, max, *extra, &block)
+    def initialize(name, min, max, *extra, &block)
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
@@ -39,6 +39,7 @@ module Puma
       @spawned = 0
       @waiting = 0
 
+      @name = name
       @min = Integer(min)
       @max = Integer(max)
       @block = block
@@ -101,7 +102,7 @@ module Puma
       @spawned += 1
 
       th = Thread.new(@spawned) do |spawned|
-        Puma.set_thread_name 'threadpool %03i' % spawned
+        Puma.set_thread_name '%s threadpool %03i' % [@name, spawned]
         todo  = @todo
         block = @block
         mutex = @mutex
@@ -319,12 +320,12 @@ module Puma
     end
 
     def auto_trim!(timeout=30)
-      @auto_trim = Automaton.new(self, timeout, "threadpool trimmer", :trim)
+      @auto_trim = Automaton.new(self, timeout, "#{@name} threadpool trimmer", :trim)
       @auto_trim.start!
     end
 
     def auto_reap!(timeout=5)
-      @reaper = Automaton.new(self, timeout, "threadpool reaper", :reap)
+      @reaper = Automaton.new(self, timeout, "#{@name} threadpool reaper", :reap)
       @reaper.start!
     end
 
