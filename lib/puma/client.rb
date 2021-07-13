@@ -70,6 +70,7 @@ module Puma
       @hijacked = false
 
       @peerip = nil
+      @peer_family = nil
       @listener = nil
       @remote_addr_header = nil
       @expect_proxy_proto = false
@@ -263,6 +264,16 @@ module Puma
       end
 
       @peerip ||= @io.peeraddr.last
+    end
+
+    def peer_family
+      return @peer_family if @peer_family
+
+      @peer_family ||= begin
+                         @io.local_address.afamily
+                       rescue
+                         Socket::AF_INET
+                       end
     end
 
     # Returns true if the persistent connection can be closed immediately
