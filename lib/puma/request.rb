@@ -277,11 +277,21 @@ module Puma
         rescue Errno::ENOTCONN
           # Client disconnects can result in an inability to get the
           # peeraddr from the socket; default to unspec.
-          addr = UNSPECIFIED_IP
+          if client.peer_family == Socket::AF_INET6
+            addr = UNSPECIFIED_IPV6
+          else
+            addr = UNSPECIFIED_IPV4
+          end
         end
 
         # Set unix socket addrs to localhost
-        addr = LOCALHOST_IP if addr.empty?
+        if addr.empty?
+          if client.peer_family == Socket::AF_INET6
+            addr = LOCALHOST_IPV6
+          else
+            addr = LOCALHOST_IPV4
+          end
+        end
 
         env[REMOTE_ADDR] = addr
       end
