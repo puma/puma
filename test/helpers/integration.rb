@@ -176,6 +176,7 @@ class TestIntegration < Minitest::Test
   # used to define correct 'refused' errors
   def thread_run_refused(unix: false)
     if unix
+      DARWIN ? [Errno::ENOENT, Errno::EPIPE, IOError] :
       [Errno::ENOENT, IOError]
     else
       DARWIN ? [Errno::EBADF, Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :

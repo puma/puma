@@ -14,6 +14,7 @@ require 'puma/io_buffer'
 require 'puma/request'
 
 require 'socket'
+require 'io/wait'
 require 'forwardable'
 
 module Puma
