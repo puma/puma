@@ -1,14 +1,29 @@
+## 5.4.0 / 2021-07-28
+
+* Features
+  * Better/expanded names for threadpool threads ([#2657])
+  * Allow pkg_config for OpenSSL ([#2648], [#1412])
+  * Add `rack_url_scheme` to Puma::DSL, allows setting of `rack.url_scheme` header ([#2586], [#2569])
+
+* Bugfixes
+  * `Binder#parse` - allow for symlinked unix path, add create_activated_fds debug ENV ([#2643], [#2638])
+  * Fix deprecation warning: minissl.c - Use Random.bytes if available ([#2642])
+  * Client certificates: set session id context while creating SSLContext ([#2633])
+
+* Refactor
+  * Replace `IO.select` with `IO#wait_*` when checking a single IO ([#2666])
+
 ## 5.3.2 / 2021-05-21
 
 * Bugfixes
-  * Gracefully handle Rack not accepting CLI options (#2630, #2626)
-  * Fix sigterm misbehavior (#2629)
-  * Improvements to keepalive-connection shedding (#2628)
+  * Gracefully handle Rack not accepting CLI options ([#2630], [#2626])
+  * Fix sigterm misbehavior ([#2629])
+  * Improvements to keepalive-connection shedding ([#2628])
 
 ## 5.3.1 / 2021-05-11
 
 * Security
-  * Close keepalive connections after the maximum number of fast inlined requests (CVE-2021-29509) (#2625)
+  * Close keepalive connections after the maximum number of fast inlined requests (CVE-2021-29509) ([#2625])
 
 ## 5.3.0 / 2021-05-07
 
@@ -223,7 +238,7 @@
 ## 4.3.8 / 2021-05-11
 
 * Security
-  * Close keepalive connections after the maximum number of fast inlined requests (CVE-2021-29509) (#2625)
+  * Close keepalive connections after the maximum number of fast inlined requests (CVE-2021-29509) ([#2625])
 
 ## 4.3.7 / 2020-11-30
 
@@ -1753,6 +1768,21 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2657]:https://github.com/puma/puma/pull/2657     "PR by @olivierbellone, merged 2021-07-13"
+[#2648]:https://github.com/puma/puma/pull/2648     "PR by @MSP-Greg, merged 2021-06-27"
+[#1412]:https://github.com/puma/puma/issues/1412   "Issue by @x-yuri, closed 2021-06-27"
+[#2586]:https://github.com/puma/puma/pull/2586     "PR by @MSP-Greg, merged 2021-05-26"
+[#2569]:https://github.com/puma/puma/issues/2569   "Issue by @tarragon, closed 2021-05-26"
+[#2643]:https://github.com/puma/puma/pull/2643     "PR by @MSP-Greg, merged 2021-06-27"
+[#2638]:https://github.com/puma/puma/issues/2638   "Issue by @gingerlime, closed 2021-06-27"
+[#2642]:https://github.com/puma/puma/pull/2642     "PR by @MSP-Greg, merged 2021-06-16"
+[#2633]:https://github.com/puma/puma/pull/2633     "PR by @onlined, merged 2021-06-04"
+[#2666]:https://github.com/puma/puma/pull/2666     "PR by @MSP-Greg, merged 2021-07-25"
+[#2630]:https://github.com/puma/puma/pull/2630     "PR by @seangoedecke, merged 2021-05-20"
+[#2626]:https://github.com/puma/puma/issues/2626   "Issue by @rorymckinley, closed 2021-05-20"
+[#2629]:https://github.com/puma/puma/pull/2629     "PR by @ye-lin-aung, merged 2021-05-20"
+[#2628]:https://github.com/puma/puma/pull/2628     "PR by @wjordan, merged 2021-05-20"
+[#2625]:https://github.com/puma/puma/issues/2625   "Issue by @jarthod, closed 2021-05-11"
 [#2564]:https://github.com/puma/puma/pull/2564     "PR by @MSP-Greg, merged 2021-04-24"
 [#2526]:https://github.com/puma/puma/issues/2526   "Issue by @nerdrew, closed 2021-04-24"
 [#2559]:https://github.com/puma/puma/pull/2559     "PR by @ylecuyer, merged 2021-03-11"
@@ -1767,7 +1797,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2605]:https://github.com/puma/puma/pull/2605     "PR by @pascalbetz, merged 2021-04-26"
 [#2584]:https://github.com/puma/puma/issues/2584   "Issue by @kaorihinata, closed 2021-04-26"
 [#2607]:https://github.com/puma/puma/pull/2607     "PR by @calvinxiao, merged 2021-04-23"
-[#2552]:https://github.com/puma/puma/issues/2552   "Issue by @feliperaul, opened 2021-02-09"
+[#2552]:https://github.com/puma/puma/issues/2552   "Issue by @feliperaul, closed 2021-05-24"
 [#2606]:https://github.com/puma/puma/pull/2606     "PR by @wjordan, merged 2021-04-20"
 [#2574]:https://github.com/puma/puma/issues/2574   "Issue by @darkhelmet, closed 2021-04-20"
 [#2567]:https://github.com/puma/puma/pull/2567     "PR by @kddeisz, merged 2021-04-19"
