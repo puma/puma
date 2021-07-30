@@ -9,6 +9,7 @@
   * `Binder#parse` - allow for symlinked unix path, add create_activated_fds debug ENV ([#2643], [#2638])
   * Fix deprecation warning: minissl.c - Use Random.bytes if available ([#2642])
   * Client certificates: set session id context while creating SSLContext ([#2633])
+  * Fix deadlock issue in thread pool ([#2656])
 
 * Refactor
   * Replace `IO.select` with `IO#wait_*` when checking a single IO ([#2666])
@@ -1768,6 +1769,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2656]:https://github.com/puma/puma/pull/2656     "PR by @olivierbellone, merged 2021-07-07"
 [#2657]:https://github.com/puma/puma/pull/2657     "PR by @olivierbellone, merged 2021-07-13"
 [#2648]:https://github.com/puma/puma/pull/2648     "PR by @MSP-Greg, merged 2021-06-27"
 [#1412]:https://github.com/puma/puma/issues/1412   "Issue by @x-yuri, closed 2021-06-27"
