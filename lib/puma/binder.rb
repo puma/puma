@@ -57,6 +57,7 @@ module Puma
 
       @envs = {}
       @ios = []
+      localhost_authority
     end
 
     attr_reader :ios
@@ -227,7 +228,13 @@ module Puma
           raise "Puma compiled without SSL support" unless HAS_SSL
 
           params = Util.parse_query uri.query
-          ctx = MiniSSL::ContextBuilder.new(params, @events).context
+
+          # If key and certs are not defined and localhost gem is required.
+          # localhost gem will be used for self signed
+          # Load localhost authority if not loaded.
+          ctx = localhost_authority && localhost_authority_context if params.empty?
+
+          ctx ||= MiniSSL::ContextBuilder.new(params, @events).context
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
@@ -285,6 +292,22 @@ module Puma
       end
     end
 
+    def localhost_authority
+      @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority) && !Puma::IS_JRUBY
+    end
+
+    def localhost_authority_context
+      return unless localhost_authority
+
+      key_path, crt_path = if [:key_path, :certificate_path].all? { |m| localhost_authority.respond_to?(m) }
+        [localhost_authority.key_path, localhost_authority.certificate_path]
+      else
+        local_certificates_path = File.expand_path("~/.localhost")
+        [File.join(local_certificates_path, "localhost.key"), File.join(local_certificates_path, "localhost.crt")]
+      end
+      MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path }, @events).context
+    end
+
     # Tell the server to listen on host +host+, port +port+.
     # If +optimize_for_latency+ is true (the default) then clients connecting
     # will be optimized for latency over throughput.
@@ -302,6 +325,7 @@ module Puma
 
       host = host[1..-2] if host and host[0..0] == '['
       tcp_server = TCPServer.new(host, port)
+
       if optimize_for_latency
         tcp_server.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
@@ -323,6 +347,8 @@ module Puma
                          optimize_for_latency=true, backlog=1024)
 
       raise "Puma compiled without SSL support" unless HAS_SSL
+      # Puma will try to use local authority context if context is supplied nil
+      ctx ||= localhost_authority_context
 
       if host == "localhost"
         loopback_addresses.each do |addr|
@@ -350,6 +376,8 @@ module Puma
 
     def inherit_ssl_listener(fd, ctx)
       raise "Puma compiled without SSL support" unless HAS_SSL
+      # Puma will try to use local authority context if context is supplied nil
+      ctx ||= localhost_authority_context
 
       s = fd.kind_of?(::TCPServer) ? fd : ::TCPServer.for_fd(fd)
 
