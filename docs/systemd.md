@@ -248,3 +248,4 @@ cap $stage puma:stop  --dry-run
 
 [Restart]: https://www.freedesktop.org/software/systemd/man/systemd.service.html#Restart=
 [#1367]: https://github.com/puma/puma/issues/1367
+[#1499]: https://github.com/puma/puma/issues/1499

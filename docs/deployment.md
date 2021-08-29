@@ -97,20 +97,5 @@ and use `runit` or hell, even `monit`.
 ## Restarting
 
 You probably will want to deploy some new code at some point, and you'd like
-puma to start running that new code. Minimizing the amount of time the server
-is unavailable would be nice as well. Here's how to do it:
-
-1. Don't use `preload!`. This dirties the master process and means it will have
-to shutdown all the workers and re-exec itself to get your new code. It is not compatible with phased-restart and `prune_bundler` as well.
-
-1. Use `prune_bundler`. This makes it so that the cluster master will detach itself
-from a Bundler context on start. This allows the cluster workers to load your app
-and start a brand new Bundler context within the worker only. This means your
-master remains pristine and can live on between new releases of your code.
-
-1. Use phased-restart (`SIGUSR1` or `pumactl phased-restart`). This tells the master
-to kill off one worker at a time and restart them in your new code. This minimizes
-downtime and staggers the restart nicely. **WARNING** This means that both your
-old code and your new code will be running concurrently. Most deployment solutions
-already cause that, but it's worth warning you about it again. Be careful with your
-migrations, etc!
+puma to start running that new code. There are a few options for restarting
+puma, described separately in our [restart documentation](restart.md).
