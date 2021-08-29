@@ -101,7 +101,7 @@ module Puma
   module Const
 
     PUMA_VERSION = VERSION = "5.4.0".freeze
-    CODE_NAME = "Super Flight".freeze
+    CODE_NAME = "Zawgyi".freeze
 
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
