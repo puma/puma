@@ -2,7 +2,7 @@
   <img src="https://puma.io/images/logos/puma-logo-large.png">
 </p>
 
-# Puma: A Ruby Web Server Built For Concurrency
+# Puma: A Ruby Web Server Built For Parallelism
 
 [![Actions MRI](https://github.com/puma/puma/workflows/MRI/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3AMRI)
 [![Actions non MRI](https://github.com/puma/puma/workflows/non_MRI/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3Anon_MRI)
@@ -10,11 +10,11 @@
 [![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
 [![StackOverflow](https://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( https://stackoverflow.com/questions/tagged/puma )
 
-Puma is a **simple, fast, multi-threaded, and highly concurrent HTTP 1.1 server for Ruby/Rack applications**.
+Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server for Ruby/Rack applications**.
 
 ## Built For Speed &amp; Concurrency
 
-Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request using a thread pool. Each request is served in a separate thread, so truly concurrent Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
+Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request using a thread pool. Each request is served in a separate thread, so truly parallel Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
 
 Originally designed as a server for [Rubinius](https://github.com/rubinius/rubinius), Puma also works well with Ruby (MRI) and JRuby.
 
