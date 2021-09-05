@@ -112,6 +112,11 @@ module Puma
             file_config.load arg
           end
 
+          # Identical to supplying --config "-", but more semantic
+          o.on "--no-config", "Prevent Puma from searching for a config file" do |arg|
+            file_config.load "-"
+          end
+
           o.on "--control-url URL", "The bind url to use for the control server. Use 'auto' to use temp unix server" do |arg|
             configure_control_url(arg)
           end
