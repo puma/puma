@@ -585,7 +585,7 @@ module Puma
     #   end
     def after_worker_fork(&block)
       @options[:after_worker_fork] ||= []
-      @options[:after_worker_fork] = block
+      @options[:after_worker_fork] << block
     end
 
     alias_method :after_worker_boot, :after_worker_fork
