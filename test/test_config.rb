@@ -363,16 +363,31 @@ class TestConfigFile < TestConfigFileBase
   def assert_run_hooks(hook_name, options = {})
     configured_with = options[:configured_with] || hook_name
 
+    # test single, not an array
+    messages = []
+    conf = Puma::Configuration.new
+    conf.options[hook_name] = -> (a) {
+      messages << "#{hook_name} is called with #{a}"
+    }
+
+    conf.run_hooks hook_name, 'ARG', Puma::Events.strings
+    assert_equal messages, ["#{hook_name} is called with ARG"]
+
+    # test multiple
     messages = []
     conf = Puma::Configuration.new do |c|
       c.send(configured_with) do |a|
-        messages << "#{hook_name} is called with #{a}"
+        messages << "#{hook_name} is called with #{a} one time"
+      end
+
+      c.send(configured_with) do |a|
+        messages << "#{hook_name} is called with #{a} a second time"
       end
     end
     conf.load
 
     conf.run_hooks hook_name, 'ARG', Puma::Events.strings
-    assert_equal messages, ["#{hook_name} is called with ARG"]
+    assert_equal messages, ["#{hook_name} is called with ARG one time", "#{hook_name} is called with ARG a second time"]
   end
 end
 
