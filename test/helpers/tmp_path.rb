@@ -7,8 +7,15 @@ module TmpPath
 
   private
 
-  def tmp_path(extension=nil)
-    path = Tempfile.create(['', extension]) { |f| f.path }
+  def tmp_path(extension=nil, contents: nil)
+    if contents
+      f = Tempfile.create(['', extension])
+      f.write "#{contents.strip}\n"
+      path = f.path
+      f.close
+    else
+      path = Tempfile.create(['', extension]) { |fh| fh.path }
+    end
     tmp_paths << path
     path
   end
