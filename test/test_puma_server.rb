@@ -2,6 +2,7 @@ require_relative "helper"
 require "puma/events"
 require "net/http"
 require "nio"
+require "ipaddr"
 
 class TestPumaServer < Minitest::Test
   parallelize_me! unless JRUBY_HEAD
@@ -47,6 +48,21 @@ class TestPumaServer < Minitest::Test
   def send_http(req)
     new_connection << req
   end
+
+  def send_proxy_v1_http(req, remote_ip, multisend = false)
+    addr = IPAddr.new(remote_ip)
+    family = addr.ipv4? ? "TCP4" : "TCP6"
+    target = addr.ipv4? ? "127.0.0.1" : "::1"
+    conn = new_connection
+    if multisend
+      conn << "PROXY #{family} #{remote_ip} #{target} 10000 80\r\n"
+      sleep 0.15
+      conn << req
+    else
+      conn << ("PROXY #{family} #{remote_ip} #{target} 10000 80\r\n" + req)
+    end
+  end
+
 
   def new_connection
     TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
@@ -1015,6 +1031,21 @@ EOF
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_match "X-header: first line\r\nX-header: second line\r\n", data
+  end
+
+  def test_proxy_protocol
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do |env|
+      [200, {}, [env["REMOTE_ADDR"]]]
+    end
+
+    remote_addr = send_proxy_v1_http("GET / HTTP/1.0\r\n\r\n", "1.2.3.4").read.split("\r\n").last
+    assert_equal '1.2.3.4', remote_addr
+
+    remote_addr = send_proxy_v1_http("GET / HTTP/1.0\r\n\r\n", "fd00::1").read.split("\r\n").last
+    assert_equal 'fd00::1', remote_addr
+
+    remote_addr = send_proxy_v1_http("GET / HTTP/1.0\r\n\r\n", "fd00::1", true).read.split("\r\n").last
+    assert_equal 'fd00::1', remote_addr
   end
 
   # To comply with the Rack spec, we have to split header field values

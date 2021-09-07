@@ -56,6 +56,7 @@ module Puma
       @parser = HttpParser.new
       @parsed_bytes = 0
       @read_header = true
+      @read_proxy = false
       @ready = false
 
       @body = nil
@@ -71,6 +72,7 @@ module Puma
       @peerip = nil
       @listener = nil
       @remote_addr_header = nil
+      @expect_proxy_proto = false
 
       @body_remain = 0
 
@@ -106,7 +108,7 @@ module Puma
 
     # @!attribute [r] in_data_phase
     def in_data_phase
-      !@read_header
+      !(@read_header || @read_proxy)
     end
 
     def set_timeout(val)
@@ -121,6 +123,7 @@ module Puma
     def reset(fast_check=true)
       @parser.reset
       @read_header = true
+      @read_proxy = !!@expect_proxy_proto
       @env = @proto_env.dup
       @body = nil
       @tempfile = nil
@@ -131,6 +134,8 @@ module Puma
       @in_last_chunk = false
 
       if @buffer
+        return false unless try_to_parse_proxy_protocol
+
         @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
 
         if @parser.finished?
@@ -161,8 +166,32 @@ module Puma
       end
     end
 
+    # If necessary, read the PROXY protocol from the buffer. Returns
+    # false if more data is needed.
+    def try_to_parse_proxy_protocol
+      if @read_proxy
+        if @expect_proxy_proto == :v1
+          if @buffer.include? "\r\n"
+            if md = PROXY_PROTOCOL_V1_REGEX.match(@buffer)
+              if md[1]
+                @peerip = md[1].split(" ")[0]
+              end
+              @buffer = md.post_match
+            end
+            # if the buffer has a \r\n but doesn't have a PROXY protocol
+            # request, this is just HTTP from a non-PROXY client; move on
+            @read_proxy = false
+            return @buffer.size > 0
+          else
+            return false
+          end
+        end
+      end
+      true
+    end
+
     def try_to_finish
-      return read_body unless @read_header
+      return read_body if in_data_phase
 
       begin
         data = @io.read_nonblock(CHUNK_SIZE)
@@ -186,6 +215,8 @@ module Puma
       else
         @buffer = data
       end
+
+      return false unless try_to_parse_proxy_protocol
 
       @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
 
@@ -241,6 +272,17 @@ module Puma
     def can_close?
       # Allow connection to close if we're not in the middle of parsing a request.
       @parsed_bytes == 0
+    end
+
+    def expect_proxy_proto=(val)
+      if val
+        if @read_header
+          @read_proxy = true
+        end
+      else
+        @read_proxy = false
+      end
+      @expect_proxy_proto = val
     end
 
     private
