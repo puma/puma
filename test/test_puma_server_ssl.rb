@@ -6,18 +6,7 @@ require_relative "helper"
 
 if ::Puma::HAS_SSL
   require "puma/minissl"
-  require "puma/events"
   require "net/http"
-
-  class SSLEventsHelper < ::Puma::Events
-    attr_accessor :addr, :cert, :error
-
-    def ssl_error(error, ssl_socket)
-      self.error = error
-      self.addr = ssl_socket.peeraddr.last rescue "<unknown>"
-      self.cert = ssl_socket.peercert
-    end
-  end
 
   # net/http (loaded in helper) does not necessarily load OpenSSL
   require "openssl" unless Object.const_defined? :OpenSSL
@@ -217,7 +206,7 @@ class TestPumaServerSSL < Minitest::Test
     tcp = Thread.new do
       req_http = Net::HTTP::Get.new "/", {}
       # Net::ReadTimeout - TruffleRuby
-      assert_raises(Errno::ECONNREFUSED, EOFError, Net::ReadTimeout) do
+      assert_raises(Errno::ECONNREFUSED, EOFError, Net::ReadTimeout, Net::OpenTimeout) do
         http.start.request(req_http) { |rep| body_http = rep.body }
       end
     end
