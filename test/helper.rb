@@ -27,6 +27,21 @@ $debugging_hold = false    # needed for TestCLI#test_control_clustered
 require "puma"
 require "puma/detect"
 
+# used in various ssl test files, see test_puma_server_ssl.rb and
+# test_puma_localhost_authority.rb
+if Puma::HAS_SSL
+  require "puma/events"
+  class SSLEventsHelper < ::Puma::Events
+    attr_accessor :addr, :cert, :error
+
+    def ssl_error(error, ssl_socket)
+      self.error = error
+      self.addr = ssl_socket.peeraddr.last rescue "<unknown>"
+      self.cert = ssl_socket.peercert
+    end
+  end
+end
+
 # Either takes a string to do a get request against, or a tuple of [URI, HTTP] where
 # HTTP is some kind of Net::HTTP request object (POST, HEAD, etc.)
 def hit(uris)
@@ -171,8 +186,14 @@ Minitest.after_run do
   unless $debugging_hold
     out = $debugging_info.strip
     unless out.empty?
-      puts "", " Debugging Info".rjust(75, '-'),
-        out, '-' * 75, ""
+      dash = "\u2500"
+      wid = ENV['GITHUB_ACTIONS'] ? 88 : 90
+      txt = " Debugging Info #{dash * 2}".rjust wid, dash
+      if ENV['GITHUB_ACTIONS']
+        puts "", "##[group]#{txt}", out, dash * wid, '', '::[endgroup]'
+      else
+        puts "", txt, out, dash * wid, ''
+      end
     end
   end
 end
@@ -198,9 +219,9 @@ module AggregatedResults
         hsh_s.each { |k,v|
           io.puts " #{k} #{dash * 2}".rjust 90, dash
           hsh_1 = v.group_by { |i| i.first.first }
-          hsh_1.each { |k,v|
-            io.puts "  #{k[/\/test\/(.*)/,1]}"
-            v.each { |item|
+          hsh_1.each { |k1,v1|
+            io.puts "  #{k1[/\/test\/(.*)/,1]}"
+            v1.each { |item|
               num += 1
               io.puts format("    %3s %-5s #{item[1]} #{item[2]}", "#{num})", ":#{item[0][1]}")
             }
