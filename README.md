@@ -275,7 +275,7 @@ If no configuration file is specified, Puma will look for a configuration file a
 If you want to prevent Puma from looking for a configuration file in those locations, include the `--no-config` flag:
 
 ```
-$ puma -C --no-config
+$ puma --no-config
 
 # or
 
