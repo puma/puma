@@ -356,7 +356,10 @@ module Puma
                 pool << client
               end
             end
-          rescue Object => e
+          rescue IOError, Errno::EBADF
+            # In the case that any of the sockets are unexpectedly close.
+            raise
+          rescue StandardError => e
             @events.unknown_error e, nil, "Listen loop"
           end
         end
