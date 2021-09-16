@@ -50,7 +50,7 @@ class TestIntegration < Minitest::Test
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
 
-  def cli_server(argv, unix: false, config: nil)
+  def cli_server(argv, unix: false, config: nil, merge_err: false)
     if config
       config_file = Tempfile.new(%w(config .rb))
       config_file.write config
@@ -64,7 +64,11 @@ class TestIntegration < Minitest::Test
       @tcp_port = UniquePort.call
       cmd = "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
     end
-    @server = IO.popen(cmd, "r")
+    if merge_err
+      @server = IO.popen(cmd, "r", :err=>[:child, :out])
+    else
+      @server = IO.popen(cmd, "r")
+    end
     wait_for_server_to_boot
     @pid = @server.pid
     @server
