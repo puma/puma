@@ -178,4 +178,29 @@ class TestIntegrationSingle < TestIntegration
     @server.close unless @server.closed?
     @server = nil
   end
+
+  # listener is closed 'externally' while Puma is in the IO.select statement
+  def test_closed_listener
+    skip_unless_signal_exist? :TERM
+
+    cli_server "test/rackup/close_listeners.ru", merge_err: true
+    read_body connect
+
+    begin
+      Timeout.timeout(5) do
+        begin
+          Process.kill :SIGTERM, @pid
+        rescue Errno::ESRCH
+        end
+        begin
+          Process.wait2 @pid
+        rescue Errno::ECHILD
+        end
+      end
+    rescue Timeout::Error
+      Process.kill :SIGKILL, @pid
+      assert false, "Process froze"
+    end
+    assert true
+  end
 end
