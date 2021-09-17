@@ -270,7 +270,7 @@ You can also provide a configuration file with the `-C` (or `--config`) flag:
 $ puma -C /path/to/config
 ```
 
-If no configuration file is specified, Puma will look for a configuration file at `config/puma.rb`. If an environment is specified, either via the `-e` and `--environment` flags, or through the `RACK_ENV` or the `RAILS_ENV` environment variables, Puma first looks for configuration at `config/puma/<environment_name>.rb`, and then falls back to `config/puma.rb`.
+If no configuration file is specified, Puma will look for a configuration file at `config/puma.rb`. If an environment is specified (via the `--environment` flag or through the `APP_ENV`, `RACK_ENV`, or `RAILS_ENV` environment variables) Puma looks for a configuration file at `config/puma/<environment_name>.rb` and then falls back to `config/puma.rb`.
 
 If you want to prevent Puma from looking for a configuration file in those locations, include the `--no-config` flag:
 
