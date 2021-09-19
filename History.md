@@ -1,3 +1,18 @@
+## 5.5.0 / 2021-09-19
+
+* Features
+  * Automatic SSL certificate provisioning for localhost, via localhost gem ([#2610], [#2257])
+  * add support for the PROXY protocol (v1 only) ([#2654], [#2651])
+  * Add a semantic CLI option for no config file ([#2689])
+
+* Bugfixes
+  * More elaborate exception handling - lets some dead pumas die. ([#2700], [#2699])
+  * allow multiple after_worker_fork hooks ([#2690])
+  * Preserve BUNDLE_APP_CONFIG on worker fork ([#2688], [#2687])
+
+* Performance
+  * Fix performance of server-side SSL connection close. ([#2675])
+
 ## 5.4.0 / 2021-07-28
 
 * Features
@@ -1769,7 +1784,17 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
-[#2656]:https://github.com/puma/puma/pull/2656     "PR by @olivierbellone, merged 2021-07-07"
+[#2610]:https://github.com/puma/puma/pull/2610     "PR by @ye-lin-aung, merged 2021-08-18"
+[#2257]:https://github.com/puma/puma/issues/2257   "Issue by @nateberkopec, closed 2021-08-18"
+[#2654]:https://github.com/puma/puma/pull/2654     "PR by @Roguelazer, merged 2021-09-07"
+[#2651]:https://github.com/puma/puma/issues/2651   "Issue by @Roguelazer, closed 2021-09-07"
+[#2689]:https://github.com/puma/puma/pull/2689     "PR by @jacobherrington, merged 2021-09-05"
+[#2700]:https://github.com/puma/puma/pull/2700     "PR by @ioquatix, merged 2021-09-16"
+[#2699]:https://github.com/puma/puma/issues/2699   "Issue by @ioquatix, closed 2021-09-16"
+[#2690]:https://github.com/puma/puma/pull/2690     "PR by @doits, merged 2021-09-06"
+[#2688]:https://github.com/puma/puma/pull/2688     "PR by @jdelStrother, merged 2021-09-03"
+[#2687]:https://github.com/puma/puma/issues/2687   "Issue by @jdelStrother, closed 2021-09-03"
+[#2675]:https://github.com/puma/puma/pull/2675     "PR by @devwout, merged 2021-09-08"
 [#2657]:https://github.com/puma/puma/pull/2657     "PR by @olivierbellone, merged 2021-07-13"
 [#2648]:https://github.com/puma/puma/pull/2648     "PR by @MSP-Greg, merged 2021-06-27"
 [#1412]:https://github.com/puma/puma/issues/1412   "Issue by @x-yuri, closed 2021-06-27"
@@ -1779,6 +1804,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2638]:https://github.com/puma/puma/issues/2638   "Issue by @gingerlime, closed 2021-06-27"
 [#2642]:https://github.com/puma/puma/pull/2642     "PR by @MSP-Greg, merged 2021-06-16"
 [#2633]:https://github.com/puma/puma/pull/2633     "PR by @onlined, merged 2021-06-04"
+[#2656]:https://github.com/puma/puma/pull/2656     "PR by @olivierbellone, merged 2021-07-07"
 [#2666]:https://github.com/puma/puma/pull/2666     "PR by @MSP-Greg, merged 2021-07-25"
 [#2630]:https://github.com/puma/puma/pull/2630     "PR by @seangoedecke, merged 2021-05-20"
 [#2626]:https://github.com/puma/puma/issues/2626   "Issue by @rorymckinley, closed 2021-05-20"
@@ -1802,8 +1828,8 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2552]:https://github.com/puma/puma/issues/2552   "Issue by @feliperaul, closed 2021-05-24"
 [#2606]:https://github.com/puma/puma/pull/2606     "PR by @wjordan, merged 2021-04-20"
 [#2574]:https://github.com/puma/puma/issues/2574   "Issue by @darkhelmet, closed 2021-04-20"
-[#2567]:https://github.com/puma/puma/pull/2567     "PR by @kddeisz, merged 2021-04-19"
-[#2566]:https://github.com/puma/puma/issues/2566   "Issue by @kddeisz, closed 2021-04-19"
+[#2567]:https://github.com/puma/puma/pull/2567     "PR by @kddnewton, merged 2021-04-19"
+[#2566]:https://github.com/puma/puma/issues/2566   "Issue by @kddnewton, closed 2021-04-19"
 [#2596]:https://github.com/puma/puma/pull/2596     "PR by @MSP-Greg, merged 2021-04-18"
 [#2588]:https://github.com/puma/puma/pull/2588     "PR by @dentarg, merged 2021-04-02"
 [#2556]:https://github.com/puma/puma/issues/2556   "Issue by @gamecreature, closed 2021-04-02"
