@@ -150,21 +150,26 @@ module Puma
         end
 
         begin
-          res_body.each do |part|
-            next if part.bytesize.zero?
-            if chunked
-               fast_write io, (part.bytesize.to_s(16) << line_ending)
-               fast_write io, part            # part may have different encoding
-               fast_write io, line_ending
-            else
-              fast_write io, part
+          if !chunked && content_length && res_body.is_a?(::File)
+            IO.copy_stream(res_body, io)
+            io.flush
+          else
+            res_body.each do |part|
+              next if part.bytesize.zero?
+              if chunked
+                 fast_write io, (part.bytesize.to_s(16) << line_ending)
+                 fast_write io, part            # part may have different encoding
+                 fast_write io, line_ending
+              else
+                fast_write io, part
+              end
+              io.flush
             end
-            io.flush
-          end
 
-          if chunked
-            fast_write io, CLOSE_CHUNKED
-            io.flush
+            if chunked
+              fast_write io, CLOSE_CHUNKED
+              io.flush
+            end
           end
         rescue SystemCallError, IOError
           raise ConnectionError, "Connection error detected during write"

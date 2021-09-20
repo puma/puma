@@ -132,6 +132,21 @@ class TestPumaServer < Minitest::Test
     assert_equal "Hello World", data.split("\n").last
   end
 
+  def test_file_body
+    random_bytes = Random.bytes(4096 * 32)
+    Tempfile.create do |file|
+      file.write(random_bytes)
+      file.close
+
+      server_run do |env|
+        [200, {}, File.open(file.path, "rb")]
+      end
+
+      data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+      assert_equal random_bytes, data.split("\r\n", 3).last
+    end
+  end
+
   def test_proper_stringio_body
     data = nil
 
