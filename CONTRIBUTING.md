@@ -4,11 +4,11 @@ By participating in this project, you agree to follow the [code of conduct].
 
 [code of conduct]: https://github.com/puma/puma/blob/master/CODE_OF_CONDUCT.md
 
-There are lots of ways to contribute to puma. Some examples include:
+There are lots of ways to contribute to Puma. Some examples include:
 
 * creating a [bug report] or [feature request]
 * verifying [existing bug reports] and adding [reproduction steps]
-* reviewing [pull requests] and testing the changes locally, on your own machine
+* reviewing [pull requests] and testing the changes locally on your machine
 * writing or editing [documentation]
 * improving test coverage
 * fixing a [reproducing bug] or adding a new feature
@@ -29,9 +29,12 @@ First step: join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/
 
 **If you're nervous, get stuck, need help, or want to know where to start and where you can help**, please don't hesitate to [book 30 minutes with maintainer @nateberkopec here](https://calendly.com/nate-berkopec/puma). He is happy to help!
 
-Clone down the Puma repository.
+Clone the Puma repository:
+```sh
+git clone git@github.com:puma/puma.git && cd puma
+```
 
-You will need to install [ragel] (use Ragel version 7.0.0.9) to generate puma's extension code.
+You need to install [ragel] (use Ragel version 7.0.0.9) to generate Puma's extension code.
 
 macOS:
 
@@ -49,27 +52,24 @@ Windows (Ruby 2.5 and later):
 ridk exec pacman -S mingw-w64-x86_64-openssl mingw-w64-x86_64-ragel
 ```
 
-**Note:** For all of the following commands you should be in your fork's directory.
-
-Install Ruby dependencies with:
-
+Install the Ruby dependencies:
 ```sh
 bundle install
 ```
 
-[ragel]: https://www.colm.net/open-source/ragel/
+To run Puma locally, you must compile the native extension.
 
-To run Puma, you will need to compile the native extension. To do this:
-
+Ubuntu, macOS, etc:
 ```sh
-# Ubuntu, macOS, etc
 bundle exec rake compile
+```
 
-# Windows
+Windows:
+```sh
 bundle exec rake -rdevkit compile
 ```
 
-Then, you will be able to run Puma using your local copy with:
+Now, you should be able to run Puma locally:
 
 ```sh
 bundle exec bin/puma test/rackup/hello.ru
@@ -85,70 +85,73 @@ gem "puma", path: "/path/to/local/puma"
 
 See the [Bundler docs](https://bundler.io/man/gemfile.5.html#PATH) for more details.
 
+[ragel]: https://www.colm.net/open-source/ragel/
+
 ## Running tests
 
-You can run the full test suite with:
-
+To run the entire test suite:
 ```sh
 bundle exec rake test:all
 ```
 
 To run a single test file:
-
 ```sh
 bundle exec ruby test/test_binder.rb
 ```
 
-Or use [`m`](https://github.com/qrush/m):
-
+You can also run tests with [`m`](https://github.com/qrush/m):
 ```sh
 bundle exec m test/test_binder.rb
 ```
 
-... which can also be used to run a single test case:
-
+To run a single test:
 ```sh
 bundle exec m test/test_binder.rb:37
 ```
 
 ## How to contribute
 
-Puma needs help in several areas.
+Puma could use your help in several areas!
 
-**The `contrib-wanted` label is applied to issues that maintainers think would be easier for first-time contributors.**
+**The [contrib-wanted] label indicates that an issue might approachable to first-time contributors.**\
 
-**Reproducing bug reports**: The `needs-repro` label is applied to issues that have a bug report but no reproduction steps. You can help by trying to reproduce the issue and then posting how you did it.
+**Reproducing bug reports**: The [needs-repro] label indicates than an issue lacks reproduction steps. You can help by reproducing the issue and sharing the steps you took in the comments.
 
-**Helping with our native extensions**: If you can write C or Java, we could really use your help. Check out the issue labels for c-extensions and JRuby.
+**Helping with our native extensions**: If you are interested in writing C or Java, we could really use your help. Check out the issue labels for [c-ext] and [JRuby].
 
-**Fixing bugs**: Issues with the `bug` label have working reproduction steps, which you can use to write a test and create a patch.
+**Fixing bugs**: Issues with the [bug] label have working reproduction steps, which you can use to write a test and submit a patch.
 
-**Writing features**: Issues with the `feature` label are requests for new functionality. Write tests and code up our new feature!
+**Writing features**: The [feature] label highlights requests for new functionality. Write tests and code up our new feature!
 
-**Code review**: Take a look at open pull requests and offer your feedback. Code review is not just for maintainers - we need your help and eyeballs!
+**Code review**: Take a look at open pull requests and offer your feedback. Code review is not just for maintainers. We need your help and eyeballs!
 
-**Write documentation**: Puma needs more docs in many areas, especially those where we have open issues labeled `docs`.
+**Write documentation**: Puma needs more docs in many areas, especially where we have open issues with the [docs] label.
+
+[bug]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Abug
+[c-ext]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Ac-ext
+[contrib-wanted]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Acontrib-wanted
+[docs]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Adocs
+[feature]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Afeature
+[jruby]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Ajruby
+[needs-repro]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Aneeds-repro
 
 ## Reproduction steps
 
 Reproducing a bug helps identify the root cause of that bug so it can be fixed.
+
 To get started, create a rackup file and config file and then run your test app
 with:
-
 ```sh
 bundle exec puma -C <path/to/config.rb> <path/to/rackup.ru>
 ```
 
-As an example, using one of the test rack apps:
-[`test/rackup/hello.ru`][rackup], and one of the test config files:
-[`test/config/settings.rb`][config], you would run the test app with:
-
+For example, using a test rack app ([`test/rackup/hello.ru`][rackup]) and a
+test config file ([`test/config/settings.rb`][config]):
 ```sh
 bundle exec puma -C test/config/settings.rb test/rackup/hello.ru
 ```
 
-There is also a Dockerfile available for reproducing Linux-specific issues. To use:
-
+There is also a Dockerfile available for reproducing Linux-specific issues:
 ```sh
 docker build -f tools/docker/Dockerfile -t puma .
 docker run -p 9292:9292 -it puma
@@ -163,9 +166,9 @@ Code contributions should generally include test coverage. If you aren't sure ho
 test your changes, please open a pull request and leave a comment asking for
 help.
 
-There's no need to update the changelog ([`History.md`](History.md)), as that is done [when a new release is made](Release.md).
+There's no need to update the changelog ([`History.md`](History.md)); that is done [when a new release is made](Release.md).
 
-Puma uses GitHub Actions for it's main CI testing.  Please consider running the CI in your fork before creating a PR.  A new repo (including forks) has Actions disabled.  It can be set from the 'Settings' tab on your repo's web page.
+Puma uses GitHub Actions for its main CI testing. Please consider running the CI in your fork before creating a PR. A new repo (including forks) has Actions disabled. It can be set from the 'Settings' tab on your repo's web page.
 
 ## Backports
 
