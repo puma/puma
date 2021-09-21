@@ -432,9 +432,10 @@ class TestCLI < Minitest::Test
     ENV['APP_ENV'] = 'test'
 
     cli = Puma::CLI.new []
+    cli.send(:setup_options)
 
-    assert_equal 'test', cli.environment
-
+    assert_equal 'test', cli.instance_variable_get(:@conf).environment.call
+  ensure
     ENV.delete 'APP_ENV'
     ENV.delete 'RAILS_ENV'
   end
