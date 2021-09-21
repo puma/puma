@@ -200,7 +200,7 @@ module Puma
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
         :remote_address => :socket,
         :tag => method(:infer_tag),
-        :environment => -> { ENV['RACK_ENV'] || ENV['RAILS_ENV'] || "development" },
+        :environment => -> { ENV['APP_ENV'] || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development' },
         :rackup => DefaultRackup,
         :logger => STDOUT,
         :persistent_timeout => Const::PERSISTENT_TIMEOUT,

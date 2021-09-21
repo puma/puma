@@ -466,6 +466,15 @@ class TestConfigFileWithFakeEnv < TestConfigFileBase
     File.write("config/puma/fake-env.rb", "")
   end
 
+  def test_config_files_with_app_env
+    with_env('APP_ENV' => 'fake-env') do
+      conf = Puma::Configuration.new do
+      end
+
+      assert_equal ['config/puma/fake-env.rb'], conf.config_files
+    end
+  end
+
   def test_config_files_with_rack_env
     with_env('RACK_ENV' => 'fake-env') do
       conf = Puma::Configuration.new do
