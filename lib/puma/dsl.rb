@@ -46,6 +46,14 @@ module Puma
         else ''
         end
 
+      if ['127.0.0.1', 'localhost'].include?(host)
+        key = "#{ENV["HOME"]}/.localhost/localhost.key"
+        cert = "#{ENV["HOME"]}/.localhost/localhost.crt"
+      end
+
+      key = opts[:key] if opts[:key]
+      cert = opts[:cert] if opts[:cert]
+
       ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
 
       if defined?(JRUBY_VERSION)
@@ -63,7 +71,7 @@ module Puma
         v_flags = (ary = opts[:verification_flags]) ?
           "&verification_flags=#{Array(ary).join ','}" : nil
 
-        "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}" \
+        "ssl://#{host}:#{port}?cert=#{cert}&key=#{key}" \
           "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}"
       end
     end
@@ -439,6 +447,12 @@ module Puma
     # Instead of `bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'` you
     # can also use the this method.
     #
+    # When binding on localhost you don't need to specify cert and key - it will assume you are
+    # using localhost gem and will try to load appropriate files for you
+    #
+    # @example
+    #   ssl_bind '127.0.0.1', '9292'
+    #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert: path_to_cert,
@@ -454,7 +468,8 @@ module Puma
     #     ssl_cipher_list: cipher_list,     # optional
     #     verify_mode: verify_mode          # default 'none'
     #   }
-    def ssl_bind(host, port, opts)
+    #
+    def ssl_bind(host, port, opts = {})
       bind self.class.ssl_bind_str(host, port, opts)
     end
 
