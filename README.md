@@ -187,29 +187,38 @@ Need a bit of security? Use SSL sockets:
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 ```
-#### Self-signed SSL certificates (via _localhost_ gem, for development use): 
+#### Self-signed SSL certificates (via the [`localhost`] gem, for development use): 
 
-Puma supports [localhost](https://github.com/socketry/localhost) gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, `localhost-authority` can be used only in MRI. 
+Puma supports the [`localhost`] gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, the integration can only be used in MRI. 
 
-To use [localhost](https://github.com/socketry/localhost), you have to `require "localhost/authority"`: 
+Puma automatically configures SSL when the [`localhost`] gem is loaded in a `development` environment:
 
 ```ruby
-# Easiest way, in your Gemfile:
+# Add the gem to your Gemfile
 group(:development) do 
-  gem 'localhost', require: 'localhost/authority'
-end 
+  gem 'localhost'
+end
 
-# Or in your config.ru:
+# And require it implicitly using bundler
+require "bundler"
+Bundler.require(:default, ENV["RACK_ENV"].to_sym)
+
+# Alternatively, you can require the gem in config.ru:
 require './app'
-require 'localhost/authority'
+require 'localhost'
 run Sinatra::Application
-
-...
-
-# Make sure you set up puma to run on an ssl socket:
-$ puma -b 'ssl://localhost:9292' config.ru
 ```
 
+Additionally, Puma must be listening to an SSL socket:
+
+```shell
+$ puma -b 'ssl://localhost:9292' config.ru
+
+# The following options allow you to reach Puma over HTTP as well:
+$ puma -b ssl://localhost:9292 -b tcp://localhost:9393 config.ru
+```
+
+[`localhost`]: https://github.com/socketry/localhost
 
 #### Controlling SSL Cipher Suites
 
