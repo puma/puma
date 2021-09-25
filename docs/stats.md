@@ -1,4 +1,4 @@
-## accessing stats
+## Accessing stats
 
 Stats can be accessed in two ways:
 
@@ -47,18 +47,18 @@ end
 
 ## Explanation of stats
 
-`Puma.stats` returns different information and a different structure depending on if Puma is in single vs cluster mode. There is one top-level attribute that is common to both modes:
+`Puma.stats` returns different information and a different structure depending on if Puma is in single vs. cluster mode. There is one top-level attribute that is common to both modes:
 
-* started_at: when puma was started
+* started_at: when Puma was started
 
 ### single mode and individual workers in cluster mode
 
-When Puma is run in single mode, these stats are available at the top level. When Puma is run in cluster mode, these stats are available within the `worker_status` array in a hash labeled `last_status`, in an array of hashes, one hash for each worker.
+When Puma runs in single mode, these stats are available at the top level. When Puma runs in cluster mode, these stats are available within the `worker_status` array in a hash labeled `last_status`, in an array of hashes where one hash represents each worker.
 
 * backlog: requests that are waiting for an available thread to be available. if this is above 0, you need more capacity [always true?]
 * running: how many threads are running
-* pool_capacity: the number of requests that the server is capable of taking right now. For example if the number is 5 then it means there are 5 threads sitting idle ready to take a request. If one request comes in, then the value would be 4 until it finishes processing. If the minimum threads allowed is zero, this number will still have a maximum value of the maximum threads allowed.
-* max_threads: the maximum number of threads puma is configured to spool up per worker 
+* pool_capacity: the number of requests that the server is capable of taking right now. For example, if the number is 5, then it means there are 5 threads sitting idle ready to take a request. If one request comes in, then the value would be 4 until it finishes processing. If the minimum threads allowed is zero, this number will still have a maximum value of the maximum threads allowed.
+* max_threads: the maximum number of threads Puma is configured to spool per worker
 * requests_count: the number of requests this worker has served since starting
 
 
@@ -72,9 +72,9 @@ When Puma is run in single mode, these stats are available at the top level. Whe
 
 ### worker status
 
-* started_at: when the worker was started
+* started_at: when the worker started
 * pid: the process id of the worker process
-* index: each worker gets a number. if puma is configured to have 3 workers, then this will be 0, 1, or 2
+* index: each worker gets a number. if Puma is configured to have 3 workers, then this will be 0, 1, or 2
 * booted: if it's done booting [?]
 * last_checkin: Last time the worker responded to the master process' heartbeat check.
 * last_status: a hash of info about the worker's state handling requests. See the explanation for this in "single mode and individual workers in cluster mode" section above.
