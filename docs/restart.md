@@ -1,8 +1,8 @@
-Puma provides three distinct kinds of restart operations, each for different use cases. Hot restarts and phased restarts are described here. The third kind of restart operation is called "refork" and is described in the documentation for [`fork_worker`](fork_worker.md).
+Puma provides three distinct kinds of restart operations, each for different use cases. This document describes "hot restarts" and "phased restarts." The third kind of restart operation is called "refork" and is described in the documentation for [`fork_worker`](fork_worker.md).
 
 ## Hot restart
 
-To perform a "hot" restart, Puma performs an `exec` operation to start the process up again, so no memory is shared between the old process and the new process. As a result, it is safe to issue a restart any place where you would manually stop Puma and start it again. In particular, it is safe to upgrade Puma itself using a hot restart.
+To perform a "hot" restart, Puma performs an `exec` operation to start the process up again, so no memory is shared between the old process and the new process. As a result, it is safe to issue a restart at any place where you would manually stop Puma and start it again. In particular, it is safe to upgrade Puma itself using a hot restart.
 
 If the new process is unable to load, it will simply exit. You should therefore run Puma under a process monitor when using it in production.
 
@@ -16,14 +16,14 @@ Any of the following will cause a Puma server to perform a hot restart:
 
 ### Supported configurations
 
-* Works in cluster mode and in single mode
+* Works in cluster mode and single mode
 * Supported on all platforms
 
 ### Client experience
 
-* All platforms: for clients with an in-flight request, those clients will be served responses before the connection is closed gracefully. Puma gracefully disconnects any idle HTTP persistent connections before restarting.
+* All platforms: clients with an in-flight request are served responses before the connection is closed gracefully. Puma gracefully disconnects any idle HTTP persistent connections before restarting.
 * On MRI or TruffleRuby on Linux and BSD: Clients who connect just before the server restarts may experience increased latency while the server stops and starts again, but their connections will not be closed prematurely.
-* On Windows and on JRuby: Clients who connect just before a restart may experience "connection reset" errors.
+* On Windows and JRuby: Clients who connect just before a restart may experience "connection reset" errors.
 
 ### Additional notes
 
@@ -32,7 +32,7 @@ Any of the following will cause a Puma server to perform a hot restart:
 
 ## Phased restart
 
-Phased restarts replace all running workers in a Puma cluster. This is a useful way to gracefully upgrade the application that Puma is serving. A phased restart works by first killing an old worker, then starting a new worker, waiting until the new worker has successfully started before proceeding to the next worker. This process continues until all workers have been replaced. The master process is not restarted.
+Phased restarts replace all running workers in a Puma cluster. This is a useful way to upgrade the application that Puma is serving gracefully. A phased restart works by first killing an old worker, then starting a new worker, waiting until the new worker has successfully started before proceeding to the next worker. This process continues until all workers are replaced. The master process is not restarted.
 
 ### How-to
 
