@@ -191,15 +191,15 @@ $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 
 Puma supports the [`localhost`] gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, the integration can only be used in MRI. 
 
-Puma will automatically configure SSL if you require the [`localhost`] gem when running in environment `development`:
+Puma automatically configures SSL when the [`localhost`] gem is loaded in a `development` environment:
 
 ```ruby
-# Add the localhost gem to your Gemfile
+# Add the gem to your Gemfile
 group(:development) do 
   gem 'localhost'
 end
 
-# config.ru:
+# Alternatively, you can require the gem in config.ru:
 
 # Require it implicitly using bundler
 require "bundler"
@@ -211,13 +211,12 @@ require 'localhost'
 run Sinatra::Application
 ```
 
-You also need to make sure Puma listens to an SSL socket:
+Additionally, Puma must be listening to an SSL socket:
 
 ```shell
 $ puma -b 'ssl://localhost:9292' config.ru
 
-# You can still have Puma being reachable over HTTP by repeating
-# the -b flag (tcp://), but you need to use a different port:
+# The following options allow you to reach Puma over HTTP as well:
 $ puma -b ssl://localhost:9292 -b tcp://localhost:9393 config.ru
 ```
 
