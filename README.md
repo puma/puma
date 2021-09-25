@@ -199,13 +199,11 @@ group(:development) do
   gem 'localhost'
 end
 
-# Alternatively, you can require the gem in config.ru:
-
-# Require it implicitly using bundler
+# And require it implicitly using bundler
 require "bundler"
 Bundler.require(:default, ENV["RACK_ENV"].to_sym)
 
-# Or require it explicitly
+# Alternatively, you can require the gem in config.ru:
 require './app'
 require 'localhost'
 run Sinatra::Application
