@@ -168,16 +168,6 @@ module Puma
         @launcher.config.run_hooks :after_worker_fork, idx, @launcher.events
         pid
       end
-
-      def wakeup!
-        return unless @wakeup
-
-        begin
-          @wakeup.write "!" unless @wakeup.closed?
-        rescue SystemCallError, IOError
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-        end
-      end
     end
   end
 end

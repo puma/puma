@@ -164,16 +164,6 @@ module Puma
       ].compact.min
     end
 
-    def wakeup!
-      return unless @wakeup
-
-      begin
-        @wakeup.write "!" unless @wakeup.closed?
-      rescue SystemCallError, IOError
-        Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
-      end
-    end
-
     def worker(index, master)
       @workers = []
 

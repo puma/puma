@@ -15,6 +15,16 @@ module Puma
       @app = nil
       @control = nil
       @started_at = Time.now
+      @wakeup = nil
+    end
+
+    def wakeup!
+      return unless @wakeup
+
+      @wakeup.write "!" unless @wakeup.closed?
+
+    rescue SystemCallError, IOError
+      Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
     end
 
     def development?
@@ -108,9 +118,7 @@ module Puma
       append = @options[:redirect_append]
 
       if stdout
-        unless Dir.exist?(File.dirname(stdout))
-          raise "Cannot redirect STDOUT to #{stdout}"
-        end
+        ensure_output_directory_exists(stdout, 'STDOUT')
 
         STDOUT.reopen stdout, (append ? "a" : "w")
         STDOUT.puts "=== puma startup: #{Time.now} ==="
@@ -118,9 +126,7 @@ module Puma
       end
 
       if stderr
-        unless Dir.exist?(File.dirname(stderr))
-          raise "Cannot redirect STDERR to #{stderr}"
-        end
+        ensure_output_directory_exists(stderr, 'STDERR')
 
         STDERR.reopen stderr, (append ? "a" : "w")
         STDERR.puts "=== puma startup: #{Time.now} ==="
@@ -158,6 +164,13 @@ module Puma
       server = Puma::Server.new app, @launcher.events, @options
       server.inherit_binder @launcher.binder
       server
+    end
+
+    private
+    def ensure_output_directory_exists(path, io_name)
+      unless Dir.exist?(File.dirname(path))
+        raise "Cannot redirect #{io_name} to #{path}"
+      end
     end
   end
 end
