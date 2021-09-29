@@ -24,7 +24,7 @@ module Puma
       @wakeup.write "!" unless @wakeup.closed?
 
     rescue SystemCallError, IOError
-      Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+      Puma::Util.purge_interrupt_queue
     end
 
     def development?

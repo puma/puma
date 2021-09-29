@@ -21,7 +21,7 @@ class TestOutOfBandServer < Minitest::Test
   def new_connection
     TCPSocket.new('127.0.0.1', @port).tap {|s| @ios << s}
   rescue IOError
-    Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+    Puma::Util.purge_interrupt_queue
     retry
   end
 
