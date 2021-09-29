@@ -168,7 +168,7 @@ help.
 
 There's no need to update the changelog ([`History.md`](History.md)); that is done [when a new release is made](Release.md).
 
-Puma uses GitHub Actions for its main CI testing. Please consider running the CI in your fork before creating a PR. A new repo (including forks) has Actions disabled. It can be set from the 'Settings' tab on your repo's web page.
+Puma uses [GitHub Actions](https://docs.github.com/en/actions) for CI testing. Please consider running the workflows in your fork before creating a PR. It is possible to enable GitHub Actions on your fork in the repositories' `Actions` tab.
 
 ## Backports
 
