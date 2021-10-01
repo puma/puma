@@ -10,6 +10,13 @@ module Puma
       IO.pipe
     end
 
+    # An instance method on Thread has been provided to address https://bugs.ruby-lang.org/issues/13632,
+    # which currently effects some older versions of Ruby: 2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1
+    # Additional context: https://github.com/puma/puma/pull/1345
+    def purge_interrupt_queue
+      Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+    end
+
     # Unescapes a URI escaped string with +encoding+. +encoding+ will be the
     # target encoding of the string returned, and it defaults to UTF-8
     if defined?(::Encoding)

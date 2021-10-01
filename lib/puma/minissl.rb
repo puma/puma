@@ -169,7 +169,7 @@ module Puma
             end
           end
         rescue IOError, SystemCallError
-          Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
+          Puma::Util.purge_interrupt_queue
           # nothing
         ensure
           @socket.close
