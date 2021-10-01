@@ -46,14 +46,6 @@ module Puma
         else ''
         end
 
-      if ['127.0.0.1', 'localhost'].include?(host)
-        key = "#{ENV["HOME"]}/.localhost/localhost.key"
-        cert = "#{ENV["HOME"]}/.localhost/localhost.crt"
-      end
-
-      key = opts[:key] if opts[:key]
-      cert = opts[:cert] if opts[:cert]
-
       ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
 
       if defined?(JRUBY_VERSION)
@@ -71,7 +63,7 @@ module Puma
         v_flags = (ary = opts[:verification_flags]) ?
           "&verification_flags=#{Array(ary).join ','}" : nil
 
-        "ssl://#{host}:#{port}?cert=#{cert}&key=#{key}" \
+        "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}" \
           "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}"
       end
     end

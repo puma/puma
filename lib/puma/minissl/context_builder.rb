@@ -6,6 +6,21 @@ module Puma
         @events = events
       end
 
+      def localhost_authority
+        @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority) && !Puma::IS_JRUBY
+      end
+
+      def localhost_authority_context
+        return unless localhost_authority
+
+        key_path, crt_path = if [:key_path, :certificate_path].all? { |m| localhost_authority.respond_to?(m) }
+          [localhost_authority.key_path, localhost_authority.certificate_path]
+        else
+          local_certificates_path = File.expand_path("~/.localhost")
+          [File.join(local_certificates_path, "localhost.key"), File.join(local_certificates_path, "localhost.crt")]
+        end
+      end
+
       def context
         ctx = MiniSSL::Context.new
 
@@ -24,13 +39,21 @@ module Puma
           ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
         else
           unless params['key']
-            events.error "Please specify the SSL key via 'key='"
+            if localhost_authority
+              params['key'] = localhost_authority_context[0]
+            else
+              events.error "Please specify the SSL key via 'key='"
+            end
           end
 
           ctx.key = params['key']
 
           unless params['cert']
-            events.error "Please specify the SSL cert via 'cert='"
+            if localhost_authority
+              params['cert'] = localhost_authority_context[1]
+            else
+              events.error "Please specify the SSL cert via 'cert='"
+            end
           end
 
           ctx.cert = params['cert']
