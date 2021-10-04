@@ -47,7 +47,7 @@ end
 RUBY
 
     @localhost_config = <<RUBY
-require 'localhost/authority'
+require 'localhost'
 
 ssl_bind '#{HOST}', '#{@bind_port}'
 
@@ -104,6 +104,8 @@ RUBY
   end
 
   def test_ssl_run_with_localhost_authority
+    skip_if :jruby
+
     body = nil
     start_server("#{BASE} bin/puma -C #{generate_config(@localhost_config)}")
     @http.start do
@@ -112,5 +114,5 @@ RUBY
     end
     assert_equal 'https', body
     stop_server
-  end unless ::Puma::IS_JRUBY
+  end
 end if ::Puma::HAS_SSL
