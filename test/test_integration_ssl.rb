@@ -15,18 +15,10 @@ class TestIntegrationSSL < TestIntegration
   require "net/http"
   require "openssl"
 
-  def teardown
-    @server.close unless @server.closed?
-    @server = nil
-    super
-  end
-
-  def generate_config(opts = nil)
+  def setup
     @bind_port = UniquePort.call
     @control_tcp_port = UniquePort.call
-
-    config = <<RUBY
-#{opts}
+    @default_config = <<RUBY
 if ::Puma.jruby?
   keystore =  '#{File.expand_path '../examples/puma/keystore.jks', __dir__}'
   keystore_pass = 'jruby_puma'
@@ -54,14 +46,35 @@ app do |env|
 end
 RUBY
 
+    @localhost_config = <<RUBY
+require 'localhost/authority'
+
+ssl_bind '#{HOST}', '#{@bind_port}'
+
+activate_control_app 'tcp://#{HOST}:#{@control_tcp_port}', { auth_token: '#{TOKEN}' }
+
+app do |env|
+  [200, {}, [env['rack.url_scheme']]]
+end
+RUBY
+
+    super
+  end
+
+  def teardown
+    @server.close unless @server.closed?
+    @server = nil
+    super
+  end
+
+  def generate_config(config)
     config_file = Tempfile.new %w(config .rb)
-    config_file.write config
+    config_file.write(config)
     config_file.close
     config_file.path
   end
 
-  def start_server(opts = nil)
-    cmd = "#{BASE} bin/puma -C #{generate_config opts}"
+  def start_server(cmd)
     @server = IO.popen cmd, 'r'
     wait_for_server_to_boot
     @pid = @server.pid
@@ -81,7 +94,7 @@ RUBY
 
   def test_ssl_run
     body = nil
-    start_server
+    start_server("#{BASE} bin/puma -C #{generate_config(@default_config)}")
     @http.start do
       req = Net::HTTP::Get.new '/', {}
       @http.request(req) { |resp| body = resp.body }
@@ -89,4 +102,15 @@ RUBY
     assert_equal 'https', body
     stop_server
   end
+
+  def test_ssl_run_with_localhost_authority
+    body = nil
+    start_server("#{BASE} bin/puma -C #{generate_config(@localhost_config)}")
+    @http.start do
+      req = Net::HTTP::Get.new '/', {}
+      @http.request(req) { |resp| body = resp.body }
+    end
+    assert_equal 'https', body
+    stop_server
+  end unless ::Puma::IS_JRUBY
 end if ::Puma::HAS_SSL

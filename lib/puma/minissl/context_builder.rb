@@ -38,7 +38,7 @@ module Puma
           ctx.keystore_pass = params['keystore-pass']
           ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
         else
-          unless params['key']
+          if params['key'].nil? || params['key'] == ""
             if localhost_authority
               params['key'] = localhost_authority_context[0]
             else
@@ -48,7 +48,7 @@ module Puma
 
           ctx.key = params['key']
 
-          unless params['cert']
+          if params['cert'].nil? || params['cert'] == ""
             if localhost_authority
               params['cert'] = localhost_authority_context[1]
             else
