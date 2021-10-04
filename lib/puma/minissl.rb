@@ -208,6 +208,10 @@ module Puma
       def initialize
         @no_tlsv1   = false
         @no_tlsv1_1 = false
+        @key = nil
+        @cert = nil
+        @key_object = nil
+        @cert_object = nil
       end
 
       if IS_JRUBY
@@ -230,6 +234,8 @@ module Puma
         attr_reader :key
         attr_reader :cert
         attr_reader :ca
+        attr_reader :cert_object
+        attr_reader :key_object
         attr_accessor :ssl_cipher_filter
         attr_accessor :verification_flags
 
@@ -248,9 +254,23 @@ module Puma
           @ca = ca
         end
 
+        def cert_object=(cert_object)
+          unless cert_object.is_a?(OpenSSL::X509::Certificate)
+            raise ArgumentError, "'cert_object' is not of type OpenSSL::X509::Certificate"
+          end
+          @cert_object = cert_object
+        end
+
+        def key_object=(key_object)
+          unless key_object.is_a?(OpenSSL::PKey::RSA)
+            raise ArgumentError, "'key_object' is not of type OpenSSL::PKey::RSA"
+          end
+          @key_object = key_object
+        end
+
         def check
-          raise "Key not configured" unless @key
-          raise "Cert not configured" unless @cert
+          raise "Key not configured" if @key.nil? && @key_object.nil?
+          raise "Cert not configured" if @cert.nil? && @cert_object.nil?
         end
       end
 

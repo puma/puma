@@ -25,5 +25,19 @@ class TestMiniSSL < Minitest::Test
       exception = assert_raises(ArgumentError) { ctx.cert = "/no/such/cert" }
       assert_equal("No such cert file '/no/such/cert'", exception.message)
     end
+
+    def test_raises_with_invalid_key_object
+      ctx = Puma::MiniSSL::Context.new
+
+      exception = assert_raises(ArgumentError) { ctx.key_object = "key" }
+      assert_equal("'key_object' is not of type OpenSSL::PKey::RSA", exception.message)
+    end
+
+    def test_raises_with_invalid_cert_object
+      ctx = Puma::MiniSSL::Context.new
+
+      exception = assert_raises(ArgumentError) { ctx.cert_object = "cert" }
+      assert_equal("'cert_object' is not of type OpenSSL::X509::Certificate", exception.message)
+    end
   end
 end if ::Puma::HAS_SSL
