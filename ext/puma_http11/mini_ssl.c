@@ -199,6 +199,9 @@ sslctx_alloc(VALUE klass) {
   return TypedData_Wrap_Struct(klass, &sslctx_type, ctx);
 }
 
+X509 *GetX509CertPtr(VALUE);
+EVP_PKEY *GetPrivPKeyPtr(VALUE);
+
 VALUE
 sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   SSL_CTX* ctx;
@@ -208,8 +211,10 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 #endif
   int ssl_options;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
-    verification_flags, session_id_bytes;
+    verification_flags, session_id_bytes, cert_object, key_object;
   DH *dh;
+  X509 *x509;
+  EVP_PKEY *pkey;
 
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
   EC_KEY *ecdh;
@@ -218,12 +223,14 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   TypedData_Get_Struct(self, SSL_CTX, &sslctx_type, ctx);
 
   key = rb_funcall(mini_ssl_ctx, rb_intern_const("key"), 0);
-  StringValue(key);
 
   cert = rb_funcall(mini_ssl_ctx, rb_intern_const("cert"), 0);
-  StringValue(cert);
 
   ca = rb_funcall(mini_ssl_ctx, rb_intern_const("ca"), 0);
+
+  cert_object = rb_funcall(mini_ssl_ctx, rb_intern_const("cert_object"), 0);
+
+  key_object = rb_funcall(mini_ssl_ctx, rb_intern_const("key_object"), 0);
 
   verify_mode = rb_funcall(mini_ssl_ctx, rb_intern_const("verify_mode"), 0);
 
@@ -233,8 +240,25 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   no_tlsv1_1 = rb_funcall(mini_ssl_ctx, rb_intern_const("no_tlsv1_1"), 0);
 
-  SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
-  SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
+  if (!NIL_P(cert)) {
+    StringValue(cert);
+    SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
+  }
+
+  if (!NIL_P(key)) {
+    StringValue(key);
+    SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
+  }
+
+  if (!NIL_P(cert_object)) {
+    x509 = GetX509CertPtr(cert_object);
+    SSL_CTX_use_certificate(ctx, x509);
+  }
+
+  if (!NIL_P(key_object)) {
+    pkey = GetPrivPKeyPtr(key_object);
+    SSL_CTX_use_PrivateKey(ctx, pkey);
+  }
 
   verification_flags = rb_funcall(mini_ssl_ctx, rb_intern_const("verification_flags"), 0);
 
