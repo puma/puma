@@ -262,7 +262,7 @@ class TestBinder < TestBinderBase
     env_hash = @binder.envs[@binder.ios.first]
 
     @binder.proto_env.each do |k,v|
-      assert_equal env_hash[k], v
+      assert env_hash[k] == v
     end
   end
 
