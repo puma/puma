@@ -53,7 +53,7 @@ jobs:
           }
           bundle install --jobs 4 --retry 3
 
-      - name: set SSL
+      - name: Compile Puma without SSL support
         if: matrix.no-ssl == ' no SSL'
         shell: bash
         run: echo 'DISABLE_SSL=true' >> $GITHUB_ENV
