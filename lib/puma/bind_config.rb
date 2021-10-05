@@ -53,9 +53,5 @@ module Puma
           URI::Generic.build(scheme: scheme, host: host, port: port, path: path, query: query).to_s
         end
     end
-
-    def ==(other)
-      uri == other.uri
-    end
   end
 end
