@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'puma/const'
+require 'puma/bind_config'
 
 module Puma
   # The methods that are available for use inside the configuration file.
@@ -33,40 +34,6 @@ module Puma
   #
   class DSL
     include ConfigDefault
-
-    # convenience method so logic can be used in CI
-    # @see ssl_bind
-    #
-    def self.ssl_bind_str(host, port, opts)
-      verify = opts.fetch(:verify_mode, 'none').to_s
-
-      tls_str =
-        if opts[:no_tlsv1_1]  then '&no_tlsv1_1=true'
-        elsif opts[:no_tlsv1] then '&no_tlsv1=true'
-        else ''
-        end
-
-      ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
-
-      if defined?(JRUBY_VERSION)
-        ssl_cipher_list = opts[:ssl_cipher_list] ?
-          "&ssl_cipher_list=#{opts[:ssl_cipher_list]}" : nil
-
-        keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
-
-        "ssl://#{host}:#{port}?#{keystore_additions}#{ssl_cipher_list}" \
-          "&verify_mode=#{verify}#{tls_str}#{ca_additions}"
-      else
-        ssl_cipher_filter = opts[:ssl_cipher_filter] ?
-          "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
-
-        v_flags = (ary = opts[:verification_flags]) ?
-          "&verification_flags=#{Array(ary).join ','}" : nil
-
-        "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}" \
-          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}"
-      end
-    end
 
     def initialize(options, config)
       @config  = config
@@ -447,6 +414,14 @@ module Puma
     #     verify_mode: verify_mode,         # default 'none'
     #     verification_flags: flags,        # optional, not supported by JRuby
     #   }
+    #
+    # Alternatively, you can provide the cert_object and key_object directly:
+    # @example
+    #   ssl_bind '127.0.0.1', '9292', {
+    #     cert_object: OpenSSL::X509::Certificate.new(File.read(path_to_cert)),
+    #     key_object: OpenSSL::PKey::RSA.new(File.read(path_to_key)),
+    #   }
+    #
     # @example For JRuby, two keys are required: keystore & keystore_pass.
     #   ssl_bind '127.0.0.1', '9292', {
     #     keystore: path_to_keystore,
@@ -455,7 +430,33 @@ module Puma
     #     verify_mode: verify_mode          # default 'none'
     #   }
     def ssl_bind(host, port, opts)
-      bind self.class.ssl_bind_str(host, port, opts)
+      params = {}
+      params['verify_mode'] = opts.fetch(:verify_mode, 'none').to_s
+
+      if opts[:no_tlsv1_1]
+        params['no_tlsv1_1'] = 'true'
+      elsif opts[:no_tlsv1]
+        params['no_tlsv1'] = 'true'
+      end
+
+      if ['peer', 'force_peer'].include?(params['verify_mode'])
+        params['ca'] = opts[:ca]
+      end
+
+      if defined?(JRUBY_VERSION)
+        params['ssl_cipher_list'] = opts[:ssl_cipher_list] if opts[:ssl_cipher_list]
+        params['keystore'] = opts[:keystore]
+        params['keystore-pass'] = opts[:keystore_pass]
+      else
+        params['ssl_cipher_filter'] = opts[:ssl_cipher_filter] if opts[:ssl_cipher_filter]
+        params['verification_flags'] = Array(opts[:verification_flags]).join(',') if opts[:verification_flags]
+        params['cert'] = opts[:cert] if opts[:cert]
+        params['key'] = opts[:key] if opts[:key]
+        params['cert_object'] = opts[:cert_object] if opts[:cert_object]
+        params['key_object'] = opts[:key_object] if opts[:key_object]
+      end
+
+      bind BindConfig.new(scheme: 'ssl', host: host, port: port, params: params)
     end
 
     # Use +path+ as the file to store the server info state. This is

@@ -152,24 +152,25 @@ module Puma
     end
 
     def parse(binds, logger, log_msg = 'Listening')
-      binds.each do |str|
-        uri = URI.parse str
-        case uri.scheme
+      binds.each do |bind|
+        # A `bind` can either be of a BindConfig type when passed via `ssl_bind`
+        # DSL or of a URI string type in any other case.
+        bc = bind.is_a?(BindConfig) ? bind : BindConfig.parse(bind)
+
+        case bc.scheme
         when "tcp"
-          if fd = @inherited_fds.delete(str)
-            io = inherit_tcp_listener uri.host, uri.port, fd
-            logger.log "* Inherited #{str}"
-          elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
-            io = inherit_tcp_listener uri.host, uri.port, sock
-            logger.log "* Activated #{str}"
+          if fd = @inherited_fds.delete(bc.uri)
+            io = inherit_tcp_listener bc.host, bc.port, fd
+            logger.log "* Inherited #{bc.uri}"
+          elsif sock = @activated_sockets.delete([ :tcp, bc.host, bc.port ])
+            io = inherit_tcp_listener bc.host, bc.port, sock
+            logger.log "* Activated #{bc.uri}"
           else
             ios_len = @ios.length
-            params = Util.parse_query uri.query
+            opt = bc.params.key?('low_latency') && bc.params['low_latency'] != 'false'
+            bak = bc.params.fetch('backlog', 1024).to_i
 
-            opt = params.key?('low_latency') && params['low_latency'] != 'false'
-            bak = params.fetch('backlog', 1024).to_i
-
-            io = add_tcp_listener uri.host, uri.port, opt, bak
+            io = add_tcp_listener bc.host, bc.port, opt, bak
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
@@ -177,84 +178,81 @@ module Puma
             end
           end
 
-          @listeners << [str, io] if io
+          @listeners << [bc, io] if io
         when "unix"
-          path = "#{uri.host}#{uri.path}".gsub("%20", " ")
+          path = "#{bc.host}#{bc.path}".gsub("%20", " ")
           abstract = false
-          if str.start_with? 'unix://@'
+          if bc.uri.start_with? 'unix://@'
             raise "OS does not support abstract UNIXSockets" unless Puma.abstract_unix_socket?
             abstract = true
             path = "@#{path}"
           end
 
-          if fd = @inherited_fds.delete(str)
+          if fd = @inherited_fds.delete(bc.uri)
             @unix_paths << path unless abstract
             io = inherit_unix_listener path, fd
-            logger.log "* Inherited #{str}"
+            logger.log "* Inherited #{bc.uri}"
           elsif sock = @activated_sockets.delete([ :unix, path ]) ||
               @activated_sockets.delete([ :unix, File.realdirpath(path) ])
             @unix_paths << path unless abstract || File.exist?(path)
             io = inherit_unix_listener path, sock
-            logger.log "* Activated #{str}"
+            logger.log "* Activated #{bc.uri}"
           else
             umask = nil
             mode = nil
             backlog = 1024
 
-            if uri.query
-              params = Util.parse_query uri.query
-              if u = params['umask']
+            unless bc.params.empty?
+              if u = bc.params['umask']
                 # Use Integer() to respect the 0 prefix as octal
                 umask = Integer(u)
               end
 
-              if u = params['mode']
+              if u = bc.params['mode']
                 mode = Integer('0'+u)
               end
 
-              if u = params['backlog']
+              if u = bc.params['backlog']
                 backlog = Integer(u)
               end
             end
 
             @unix_paths << path unless abstract || File.exist?(path)
             io = add_unix_listener path, umask, mode, backlog
-            logger.log "* #{log_msg} on #{str}"
+            logger.log "* #{log_msg} on #{bc.uri}"
           end
 
-          @listeners << [str, io]
+          @listeners << [bc, io]
         when "ssl"
 
           raise "Puma compiled without SSL support" unless HAS_SSL
 
-          params = Util.parse_query uri.query
-
           # If key and certs are not defined and localhost gem is required.
           # localhost gem will be used for self signed
           # Load localhost authority if not loaded.
-          ctx = localhost_authority && localhost_authority_context if params.empty?
+          ctx = localhost_authority && localhost_authority_context if bc.params.empty?
 
-          ctx ||= MiniSSL::ContextBuilder.new(params, @events).context
+          ctx ||= MiniSSL::ContextBuilder.new(bc.params, @events).context
 
-          if fd = @inherited_fds.delete(str)
-            logger.log "* Inherited #{str}"
+          if fd = @inherited_fds.delete(bc.uri)
+            logger.log "* Inherited #{bc.uri}"
             io = inherit_ssl_listener fd, ctx
-          elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
+          elsif sock = @activated_sockets.delete([ :tcp, bc.host, bc.port ])
             io = inherit_ssl_listener sock, ctx
-            logger.log "* Activated #{str}"
+            logger.log "* Activated #{bc.uri}"
           else
             ios_len = @ios.length
-            io = add_ssl_listener uri.host, uri.port, ctx
+            io = add_ssl_listener bc.host, bc.port, ctx
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
-              logger.log "* #{log_msg} on ssl://#{addr}?#{uri.query}"
+              logger.log "* #{log_msg} on ssl://#{addr}?#{bc.query}"
             end
           end
 
-          @listeners << [str, io] if io
+          @listeners << [bc, io] if io
         else
-          logger.error "Invalid URI: #{str}"
+          logger.error "Invalid URI: #{bc.uri}"
         end
       end
 
@@ -442,11 +440,10 @@ module Puma
     end
 
     def close_listeners
-      @listeners.each do |l, io|
+      @listeners.each do |bc, io|
         io.close unless io.closed?
-        uri = URI.parse l
-        next unless uri.scheme == 'unix'
-        unix_path = "#{uri.host}#{uri.path}"
+        next unless bc.scheme == 'unix'
+        unix_path = "#{bc.host}#{bc.path}"
         File.unlink unix_path if @unix_paths.include?(unix_path) && File.exist?(unix_path)
       end
     end
@@ -460,7 +457,7 @@ module Puma
     # @version 5.0.0
     def redirects_for_restart_env
       @listeners.each_with_object({}).with_index do |(listen, memo), i|
-        memo["PUMA_INHERIT_#{i}"] = "#{listen[1].to_i}:#{listen[0]}"
+        memo["PUMA_INHERIT_#{i}"] = "#{listen[1].to_i}:#{listen[0].uri}"
       end
     end
 

@@ -50,11 +50,11 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    bind_configuration = conf.options.file_options[:binds].first
+    bind_config = conf.options.file_options[:binds].first
     app = conf.app
 
-    assert bind_configuration =~ %r{ca=.*ca.crt}
-    assert bind_configuration =~ /verify_mode=peer/
+    assert_match %r{.*ca.crt}, bind_config.params['ca']
+    assert_equal 'peer', bind_config.params['verify_mode']
 
     assert_equal [200, {}, ["embedded app"]], app.call({})
   end
@@ -73,7 +73,7 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode"
+    ssl_binding = Puma::BindConfig.parse("ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode")
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
@@ -94,9 +94,9 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?keystore=/path/to/keystore" \
+    ssl_binding = Puma::BindConfig.parse("ssl://0.0.0.0:9292?keystore=/path/to/keystore" \
       "&keystore-pass=password&ssl_cipher_list=#{cipher_list}" \
-      "&verify_mode=the_verify_mode"
+      "&verify_mode=the_verify_mode")
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
@@ -118,7 +118,7 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1_1=true"
+    ssl_binding = Puma::BindConfig.parse("ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&no_tlsv1_1=true&verify_mode=the_verify_mode")
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
@@ -138,7 +138,7 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     ssl_binding = conf.options[:binds].first
-    assert ssl_binding.include?("&ssl_cipher_filter=#{cipher_filter}")
+    assert_equal cipher_filter, ssl_binding.params['ssl_cipher_filter']
   end
 
   def test_ssl_bind_with_verification_flags
@@ -156,7 +156,7 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     ssl_binding = conf.options[:binds].first
-    assert ssl_binding.include?("&verification_flags=TRUSTED_FIRST,NO_CHECK_TIME")
+    assert_equal "TRUSTED_FIRST,NO_CHECK_TIME", ssl_binding.params['verification_flags']
   end
 
   def test_ssl_bind_with_ca
@@ -173,8 +173,8 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     ssl_binding = conf.options[:binds].first
-    assert_match "ca=/path/to/ca", ssl_binding
-    assert_match "verify_mode=peer", ssl_binding
+    assert_equal "/path/to/ca", ssl_binding.params['ca']
+    assert_equal "peer", ssl_binding.params['verify_mode']
   end
 
   def test_lowlevel_error_handler_DSL
