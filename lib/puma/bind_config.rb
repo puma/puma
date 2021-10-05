@@ -6,11 +6,12 @@ module Puma
   class BindConfig
 
     # Builds a BindConfig object from a URI
-    def self.parse(uri)
-      uri = URI.parse(uri)
+    def self.parse(p_uri)
+      uri = URI.parse(p_uri)
+      _host = p_uri.start_with?('unix://@') ? "@#{uri.host}" : uri.host
       new(
         scheme: uri.scheme,
-        host: uri.host,
+        host: _host,
         port: uri.port,
         path: uri.path,
         query: uri.query,
@@ -48,7 +49,7 @@ module Puma
     def uri
       @uri ||=
         if scheme == 'unix'
-          "unix://#{path}"
+          "unix://#{host}#{path}"
         else
           URI::Generic.build(scheme: scheme, host: host, port: port, path: path, query: query).to_s
         end

@@ -182,10 +182,9 @@ module Puma
         when "unix"
           path = "#{bc.host}#{bc.path}".gsub("%20", " ")
           abstract = false
-          if bc.uri.start_with? 'unix://@'
+          if path.start_with? 'unix://@'
             raise "OS does not support abstract UNIXSockets" unless Puma.abstract_unix_socket?
             abstract = true
-            path = "@#{path}"
           end
 
           if fd = @inherited_fds.delete(bc.uri)
