@@ -5,7 +5,6 @@ require_relative "helpers/config_file"
 
 require "puma/configuration"
 require 'puma/events'
-require 'openssl'
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -84,8 +83,8 @@ class TestConfigFile < TestConfigFileBase
     skip_if :jruby
     skip_unless :ssl
 
-    cert_object = OpenSSL::X509::Certificate.new(File.read("#{CERT_PATH}/server.crt"))
-    key_object = OpenSSL::PKey::RSA.new(File.read("#{CERT_PATH}/server.key"))
+    cert_object = File.read("#{CERT_PATH}/server.crt")
+    key_object = File.read("#{CERT_PATH}/server.key")
 
     conf = Puma::Configuration.new do |c|
       c.ssl_bind "0.0.0.0", "9292", {
@@ -97,9 +96,7 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    cert_not_after = cert_object.not_after.utc.strftime('%Y-%m-%dT%H:%M:%S')
-    cert_serial = cert_object.serial.to_s
-    ssl_binding = "ssl://0.0.0.0:9292?cert_not_after=#{cert_not_after}&cert_serial=#{cert_serial}&verify_mode=the_verify_mode"
+    ssl_binding = "ssl://0.0.0.0:9292?cert_object=#{cert_object.hash}&key_object=#{key_object.hash}&verify_mode=the_verify_mode"
     assert_equal [ssl_binding], conf.options[:binds].map(&:uri)
   end
 

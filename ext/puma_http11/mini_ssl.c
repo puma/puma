@@ -199,9 +199,6 @@ sslctx_alloc(VALUE klass) {
   return TypedData_Wrap_Struct(klass, &sslctx_type, ctx);
 }
 
-X509 *GetX509CertPtr(VALUE);
-EVP_PKEY *GetPrivPKeyPtr(VALUE);
-
 VALUE
 sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   SSL_CTX* ctx;
@@ -213,6 +210,7 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
     verification_flags, session_id_bytes, cert_object, key_object;
   DH *dh;
+  BIO *bio;
   X509 *x509;
   EVP_PKEY *pkey;
 
@@ -251,12 +249,18 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   }
 
   if (!NIL_P(cert_object)) {
-    x509 = GetX509CertPtr(cert_object);
+    bio = BIO_new(BIO_s_mem());
+    BIO_puts(bio, RSTRING_PTR(cert_object));
+    x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+
     SSL_CTX_use_certificate(ctx, x509);
   }
 
   if (!NIL_P(key_object)) {
-    pkey = GetPrivPKeyPtr(key_object);
+    bio = BIO_new(BIO_s_mem());
+    BIO_puts(bio, RSTRING_PTR(key_object));
+    pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+
     SSL_CTX_use_PrivateKey(ctx, pkey);
   }
 

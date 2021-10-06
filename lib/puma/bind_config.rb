@@ -37,12 +37,10 @@ module Puma
           # Don't add cert and key objects in the query params
           query_params = @params.reject { |k, _v| CERT_OBJECT_KEYS.include?(k) }
 
-          # To properly handle file descriptors logic in binder, we need to
-          # uniquelly identify the BindConfig as URI using cert_object details.
-          if @params['cert_object']
-            query_params['cert_serial'] = @params['cert_object'].serial.to_s
-            query_params['cert_not_after'] = @params['cert_object'].not_after.utc.strftime('%Y-%m-%dT%H:%M:%S')
-          end
+          # To properly handle file descriptors logic for binder, we need to
+          # uniquely identify BindConfig as URI using cert and key object details.
+          query_params['cert_object'] = @params['cert_object'].hash if @params['cert_object']
+          query_params['key_object']  = @params['key_object'].hash if @params['key_object']
           query_params.empty? ? nil : query_params.sort.map { |k, v| "#{k}=#{v}"}.join('&')
         end
     end

@@ -255,16 +255,12 @@ module Puma
         end
 
         def cert_object=(cert_object)
-          unless cert_object.is_a?(OpenSSL::X509::Certificate)
-            raise ArgumentError, "'cert_object' is not of type OpenSSL::X509::Certificate"
-          end
+          raise ArgumentError, "'cert_object' is not a String" unless cert_object.is_a? String
           @cert_object = cert_object
         end
 
         def key_object=(key_object)
-          unless key_object.is_a?(OpenSSL::PKey::RSA)
-            raise ArgumentError, "'key_object' is not of type OpenSSL::PKey::RSA"
-          end
+          raise ArgumentError, "'key_object' is not a String" unless key_object.is_a? String
           @key_object = key_object
         end
 

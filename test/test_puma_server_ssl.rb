@@ -341,8 +341,8 @@ class TestPumaServerSSLWithCertAndKeyObjects < Minitest::Test
     host = "localhost"
     port = 0
     ctx = Puma::MiniSSL::Context.new.tap { |ctx|
-      ctx.key_object = OpenSSL::PKey::RSA.new(File.read("#{CERT_PATH}/server.key"))
-      ctx.cert_object = OpenSSL::X509::Certificate.new(File.read("#{CERT_PATH}/server.crt"))
+      ctx.key_object = File.read("#{CERT_PATH}/server.key")
+      ctx.cert_object = File.read("#{CERT_PATH}/server.crt")
     }
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }

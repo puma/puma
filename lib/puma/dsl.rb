@@ -418,8 +418,8 @@ module Puma
     # Alternatively, you can provide the cert_object and key_object directly:
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
-    #     cert_object: OpenSSL::X509::Certificate.new(File.read(path_to_cert)),
-    #     key_object: OpenSSL::PKey::RSA.new(File.read(path_to_key)),
+    #     cert_object: File.read(path_to_cert),
+    #     key_object: File.read(path_to_key),
     #   }
     #
     # @example For JRuby, two keys are required: keystore & keystore_pass.
