@@ -210,8 +210,8 @@ module Puma
         @no_tlsv1_1 = false
         @key = nil
         @cert = nil
-        @key_object = nil
-        @cert_object = nil
+        @key_pem = nil
+        @cert_pem = nil
       end
 
       if IS_JRUBY
@@ -234,8 +234,8 @@ module Puma
         attr_reader :key
         attr_reader :cert
         attr_reader :ca
-        attr_reader :cert_object
-        attr_reader :key_object
+        attr_reader :cert_pem
+        attr_reader :key_pem
         attr_accessor :ssl_cipher_filter
         attr_accessor :verification_flags
 
@@ -254,19 +254,19 @@ module Puma
           @ca = ca
         end
 
-        def cert_object=(cert_object)
-          raise ArgumentError, "'cert_object' is not a String" unless cert_object.is_a? String
-          @cert_object = cert_object
+        def cert_pem=(cert_pem)
+          raise ArgumentError, "'cert_pem' is not a String" unless cert_pem.is_a? String
+          @cert_pem = cert_pem
         end
 
-        def key_object=(key_object)
-          raise ArgumentError, "'key_object' is not a String" unless key_object.is_a? String
-          @key_object = key_object
+        def key_pem=(key_pem)
+          raise ArgumentError, "'key_pem' is not a String" unless key_pem.is_a? String
+          @key_pem = key_pem
         end
 
         def check
-          raise "Key not configured" if @key.nil? && @key_object.nil?
-          raise "Cert not configured" if @cert.nil? && @cert_object.nil?
+          raise "Key not configured" if @key.nil? && @key_pem.nil?
+          raise "Cert not configured" if @cert.nil? && @cert_pem.nil?
         end
       end
 

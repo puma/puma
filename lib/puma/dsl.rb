@@ -415,11 +415,11 @@ module Puma
     #     verification_flags: flags,        # optional, not supported by JRuby
     #   }
     #
-    # Alternatively, you can provide the cert_object and key_object directly:
+    # Alternatively, you can provide the cert_pem and key_pem:
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
-    #     cert_object: File.read(path_to_cert),
-    #     key_object: File.read(path_to_key),
+    #     cert_pem: File.read(path_to_cert),
+    #     key_pem: File.read(path_to_key),
     #   }
     #
     # @example For JRuby, two keys are required: keystore & keystore_pass.
@@ -452,8 +452,8 @@ module Puma
         params['verification_flags'] = Array(opts[:verification_flags]).join(',') if opts[:verification_flags]
         params['cert'] = opts[:cert] if opts[:cert]
         params['key'] = opts[:key] if opts[:key]
-        params['cert_object'] = opts[:cert_object] if opts[:cert_object]
-        params['key_object'] = opts[:key_object] if opts[:key_object]
+        params['cert_pem'] = opts[:cert_pem] if opts[:cert_pem]
+        params['key_pem'] = opts[:key_pem] if opts[:key_pem]
       end
 
       bind BindConfig.new(scheme: 'ssl', host: host, port: Integer(port), params: params)

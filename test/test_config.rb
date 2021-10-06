@@ -79,24 +79,24 @@ class TestConfigFile < TestConfigFileBase
     assert_equal [ssl_binding], conf.options[:binds].map(&:uri)
   end
 
-  def test_ssl_bind_with_cert_and_key_object
+  def test_ssl_bind_with_cert_and_key_pem
     skip_if :jruby
     skip_unless :ssl
 
-    cert_object = File.read("#{CERT_PATH}/server.crt")
-    key_object = File.read("#{CERT_PATH}/server.key")
+    cert_pem = File.read("#{CERT_PATH}/server.crt")
+    key_pem = File.read("#{CERT_PATH}/server.key")
 
     conf = Puma::Configuration.new do |c|
       c.ssl_bind "0.0.0.0", "9292", {
-        cert_object: cert_object,
-        key_object: key_object,
+        cert_pem: cert_pem,
+        key_pem: key_pem,
         verify_mode: "the_verify_mode",
       }
     end
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert_object=#{cert_object.hash}&key_object=#{key_object.hash}&verify_mode=the_verify_mode"
+    ssl_binding = "ssl://0.0.0.0:9292?cert_pem_hash=#{cert_pem.hash}&key_pem_hash=#{key_pem.hash}&verify_mode=the_verify_mode"
     assert_equal [ssl_binding], conf.options[:binds].map(&:uri)
   end
 

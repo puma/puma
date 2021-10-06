@@ -26,18 +26,18 @@ class TestMiniSSL < Minitest::Test
       assert_equal("No such cert file '/no/such/cert'", exception.message)
     end
 
-    def test_raises_with_invalid_key_object
+    def test_raises_with_invalid_key_pem
       ctx = Puma::MiniSSL::Context.new
 
-      exception = assert_raises(ArgumentError) { ctx.key_object = nil }
-      assert_equal("'key_object' is not a String", exception.message)
+      exception = assert_raises(ArgumentError) { ctx.key_pem = nil }
+      assert_equal("'key_pem' is not a String", exception.message)
     end
 
-    def test_raises_with_invalid_cert_object
+    def test_raises_with_invalid_cert_pem
       ctx = Puma::MiniSSL::Context.new
 
-      exception = assert_raises(ArgumentError) { ctx.cert_object = nil }
-      assert_equal("'cert_object' is not a String", exception.message)
+      exception = assert_raises(ArgumentError) { ctx.cert_pem = nil }
+      assert_equal("'cert_pem' is not a String", exception.message)
     end
   end
 end if ::Puma::HAS_SSL

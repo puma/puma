@@ -4,7 +4,7 @@ require 'puma/util'
 
 module Puma
   class BindConfig
-    CERT_OBJECT_KEYS = ['cert_object', 'key_object']
+    CERT_OBJECT_KEYS = ['cert_pem', 'key_pem']
 
     # Builds a BindConfig object from a URI
     def self.parse(p_uri)
@@ -39,8 +39,8 @@ module Puma
 
           # To properly handle file descriptors logic for binder, we need to
           # uniquely identify BindConfig as URI using cert and key object details.
-          query_params['cert_object'] = @params['cert_object'].hash if @params['cert_object']
-          query_params['key_object']  = @params['key_object'].hash if @params['key_object']
+          query_params['cert_pem_hash'] = @params['cert_pem'].hash if @params['cert_pem']
+          query_params['key_pem_hash']  = @params['key_pem'].hash if @params['key_pem']
           query_params.empty? ? nil : query_params.sort.map { |k, v| "#{k}=#{v}"}.join('&')
         end
     end

@@ -337,12 +337,12 @@ end if ::Puma::HAS_SSL
 class TestPumaServerSSLWithCertAndKeyObjects < Minitest::Test
   CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
 
-  def test_server_ssl_with_cert_and_key_objects
+  def test_server_ssl_with_cert_pem_and_key_pem
     host = "localhost"
     port = 0
     ctx = Puma::MiniSSL::Context.new.tap { |ctx|
-      ctx.key_object = File.read("#{CERT_PATH}/server.key")
-      ctx.cert_object = File.read("#{CERT_PATH}/server.crt")
+      ctx.cert_pem = File.read("#{CERT_PATH}/server.crt")
+      ctx.key_pem = File.read("#{CERT_PATH}/server.key")
     }
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }

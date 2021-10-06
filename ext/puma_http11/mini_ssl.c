@@ -208,7 +208,7 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 #endif
   int ssl_options;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
-    verification_flags, session_id_bytes, cert_object, key_object;
+    verification_flags, session_id_bytes, cert_pem, key_pem;
   DH *dh;
   BIO *bio;
   X509 *x509;
@@ -226,9 +226,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   ca = rb_funcall(mini_ssl_ctx, rb_intern_const("ca"), 0);
 
-  cert_object = rb_funcall(mini_ssl_ctx, rb_intern_const("cert_object"), 0);
+  cert_pem = rb_funcall(mini_ssl_ctx, rb_intern_const("cert_pem"), 0);
 
-  key_object = rb_funcall(mini_ssl_ctx, rb_intern_const("key_object"), 0);
+  key_pem = rb_funcall(mini_ssl_ctx, rb_intern_const("key_pem"), 0);
 
   verify_mode = rb_funcall(mini_ssl_ctx, rb_intern_const("verify_mode"), 0);
 
@@ -248,17 +248,17 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
   }
 
-  if (!NIL_P(cert_object)) {
+  if (!NIL_P(cert_pem)) {
     bio = BIO_new(BIO_s_mem());
-    BIO_puts(bio, RSTRING_PTR(cert_object));
+    BIO_puts(bio, RSTRING_PTR(cert_pem));
     x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 
     SSL_CTX_use_certificate(ctx, x509);
   }
 
-  if (!NIL_P(key_object)) {
+  if (!NIL_P(key_pem)) {
     bio = BIO_new(BIO_s_mem());
-    BIO_puts(bio, RSTRING_PTR(key_object));
+    BIO_puts(bio, RSTRING_PTR(key_pem));
     pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
 
     SSL_CTX_use_PrivateKey(ctx, pkey);
