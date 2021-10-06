@@ -334,7 +334,7 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 end if ::Puma::HAS_SSL
 
-class TestPumaServerSSLWithCertAndKeyObjects < Minitest::Test
+class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
   CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
 
   def test_server_ssl_with_cert_pem_and_key_pem
