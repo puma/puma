@@ -5,6 +5,7 @@ require_relative "helpers/config_file"
 
 require "puma/configuration"
 require 'puma/events'
+require 'openssl'
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!

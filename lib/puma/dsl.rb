@@ -456,7 +456,7 @@ module Puma
         params['key_object'] = opts[:key_object] if opts[:key_object]
       end
 
-      bind BindConfig.new(scheme: 'ssl', host: host, port: port, params: params)
+      bind BindConfig.new(scheme: 'ssl', host: host, port: Integer(port), params: params)
     end
 
     # Use +path+ as the file to store the server info state. This is
