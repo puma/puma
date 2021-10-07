@@ -432,16 +432,9 @@ module Puma
     def ssl_bind(host, port, opts)
       params = {}
       params['verify_mode'] = opts.fetch(:verify_mode, 'none').to_s
-
-      if opts[:no_tlsv1_1]
-        params['no_tlsv1_1'] = 'true'
-      elsif opts[:no_tlsv1]
-        params['no_tlsv1'] = 'true'
-      end
-
-      if ['peer', 'force_peer'].include?(params['verify_mode'])
-        params['ca'] = opts[:ca]
-      end
+      params['no_tlsv1_1'] = 'true' if opts[:no_tlsv1_1]
+      params['no_tlsv1'] = 'true' if opts[:no_tlsv1]
+      params['ca'] = opts[:ca] if ['peer', 'force_peer'].include?(params['verify_mode'])
 
       if defined?(JRUBY_VERSION)
         params['ssl_cipher_list'] = opts[:ssl_cipher_list] if opts[:ssl_cipher_list]
@@ -449,7 +442,9 @@ module Puma
         params['keystore-pass'] = opts[:keystore_pass]
       else
         params['ssl_cipher_filter'] = opts[:ssl_cipher_filter] if opts[:ssl_cipher_filter]
-        params['verification_flags'] = Array(opts[:verification_flags]).join(',') if opts[:verification_flags]
+        if opts[:verification_flags]
+          params['verification_flags'] = Array(opts[:verification_flags]).join(',')
+        end
         params['cert'] = opts[:cert] if opts[:cert]
         params['key'] = opts[:key] if opts[:key]
         params['cert_pem'] = opts[:cert_pem] if opts[:cert_pem]
