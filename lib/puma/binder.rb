@@ -178,7 +178,7 @@ module Puma
             end
           end
 
-          @listeners << [bc, io] if io
+          @listeners << [bc.uri, io] if io
         when "unix"
           path = "#{bc.host}#{bc.path}".gsub("%20", " ")
           abstract = false
@@ -221,7 +221,7 @@ module Puma
             logger.log "* #{log_msg} on #{bc.uri}"
           end
 
-          @listeners << [bc, io]
+          @listeners << [bc.uri, io]
         when "ssl"
 
           raise "Puma compiled without SSL support" unless HAS_SSL
@@ -249,7 +249,7 @@ module Puma
             end
           end
 
-          @listeners << [bc, io] if io
+          @listeners << [bc.uri, io] if io
         else
           logger.error "Invalid URI: #{bc.uri}"
         end
@@ -439,10 +439,11 @@ module Puma
     end
 
     def close_listeners
-      @listeners.each do |bc, io|
+      @listeners.each do |l, io|
         io.close unless io.closed?
-        next unless bc.scheme == 'unix'
-        unix_path = "#{bc.host}#{bc.path}"
+        uri = URI.parse l
+        next unless uri.scheme == 'unix'
+        unix_path = "#{uri.host}#{uri.path}"
         File.unlink unix_path if @unix_paths.include?(unix_path) && File.exist?(unix_path)
       end
     end
@@ -456,7 +457,7 @@ module Puma
     # @version 5.0.0
     def redirects_for_restart_env
       @listeners.each_with_object({}).with_index do |(listen, memo), i|
-        memo["PUMA_INHERIT_#{i}"] = "#{listen[1].to_i}:#{listen[0].uri}"
+        memo["PUMA_INHERIT_#{i}"] = "#{listen[1].to_i}:#{listen[0]}"
       end
     end
 
