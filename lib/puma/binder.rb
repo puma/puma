@@ -6,6 +6,7 @@ require 'socket'
 require 'puma/const'
 require 'puma/util'
 require 'puma/configuration'
+require 'puma/bind_config'
 
 module Puma
 
