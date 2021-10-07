@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'puma/const'
-require 'puma/bind_config'
 
 module Puma
   # The methods that are available for use inside the configuration file.
@@ -34,6 +33,40 @@ module Puma
   #
   class DSL
     include ConfigDefault
+
+    # convenience method so logic can be used in CI
+    # @see ssl_bind
+    #
+    def self.ssl_bind_str(host, port, opts)
+      verify = opts.fetch(:verify_mode, 'none').to_s
+
+      tls_str =
+        if opts[:no_tlsv1_1]  then '&no_tlsv1_1=true'
+        elsif opts[:no_tlsv1] then '&no_tlsv1=true'
+        else ''
+        end
+
+      ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
+
+      if defined?(JRUBY_VERSION)
+        ssl_cipher_list = opts[:ssl_cipher_list] ?
+          "&ssl_cipher_list=#{opts[:ssl_cipher_list]}" : nil
+
+        keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
+
+        "ssl://#{host}:#{port}?#{keystore_additions}#{ssl_cipher_list}" \
+          "&verify_mode=#{verify}#{tls_str}#{ca_additions}"
+      else
+        ssl_cipher_filter = opts[:ssl_cipher_filter] ?
+          "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
+
+        v_flags = (ary = opts[:verification_flags]) ?
+          "&verification_flags=#{Array(ary).join ','}" : nil
+
+        "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}" \
+          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}"
+      end
+    end
 
     def initialize(options, config)
       @config  = config
@@ -430,28 +463,8 @@ module Puma
     #     verify_mode: verify_mode          # default 'none'
     #   }
     def ssl_bind(host, port, opts)
-      params = {}
-      params['verify_mode'] = opts.fetch(:verify_mode, 'none').to_s
-      params['no_tlsv1_1'] = 'true' if opts[:no_tlsv1_1]
-      params['no_tlsv1'] = 'true' if opts[:no_tlsv1]
-      params['ca'] = opts[:ca] if ['peer', 'force_peer'].include?(params['verify_mode'])
-
-      if defined?(JRUBY_VERSION)
-        params['ssl_cipher_list'] = opts[:ssl_cipher_list] if opts[:ssl_cipher_list]
-        params['keystore'] = opts[:keystore]
-        params['keystore-pass'] = opts[:keystore_pass]
-      else
-        params['ssl_cipher_filter'] = opts[:ssl_cipher_filter] if opts[:ssl_cipher_filter]
-        if opts[:verification_flags]
-          params['verification_flags'] = Array(opts[:verification_flags]).join(',')
-        end
-        params['cert'] = opts[:cert] if opts[:cert]
-        params['key'] = opts[:key] if opts[:key]
-        params['cert_pem'] = opts[:cert_pem] if opts[:cert_pem]
-        params['key_pem'] = opts[:key_pem] if opts[:key_pem]
-      end
-
-      bind BindConfig.new(scheme: 'ssl', host: host, port: Integer(port), params: params)
+      add_pem_values_to_options_store(opts)
+      bind self.class.ssl_bind_str(host, port, opts)
     end
 
     # Use +path+ as the file to store the server info state. This is
@@ -922,6 +935,26 @@ module Puma
 
     def mutate_stdout_and_stderr_to_sync_on_write(enabled=true)
       @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
+    end
+
+    private
+
+    # To avoid adding cert_pem and key_pem as URI params, we store them on the
+    # options[:store] from where Puma binder knows how to find and extract them.
+    def add_pem_values_to_options_store(opts)
+      return if defined?(JRUBY_VERSION)
+
+      @options[:store] ||= []
+
+      # Store cert_pem and key_pem to options[:store] if present
+      [:cert, :key].each do |v|
+        opt_key = :"#{v}_pem"
+        if opts[opt_key]
+          index = @options[:store].length
+          @options[:store] << opts[opt_key]
+          opts[v] = "store:#{index}"
+        end
+      end
     end
   end
 end

@@ -9,8 +9,6 @@ require 'puma/events'
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
 
-  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
-
   def test_default_max_threads
     max_threads = 16
     max_threads = 5 if RUBY_ENGINE.nil? || RUBY_ENGINE == 'ruby'
@@ -52,11 +50,11 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    bind_config = conf.options.file_options[:binds].first
+    bind_configuration = conf.options.file_options[:binds].first
     app = conf.app
 
-    assert_match %r{.*ca.crt}, bind_config.params['ca']
-    assert_equal 'peer', bind_config.params['verify_mode']
+    assert bind_configuration =~ %r{ca=.*ca.crt}
+    assert bind_configuration =~ /verify_mode=peer/
 
     assert_equal [200, {}, ["embedded app"]], app.call({})
   end
@@ -76,15 +74,16 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode"
-    assert_equal [ssl_binding], conf.options[:binds].map(&:uri)
+    assert_equal [ssl_binding], conf.options[:binds]
   end
 
   def test_ssl_bind_with_cert_and_key_pem
     skip_if :jruby
     skip_unless :ssl
 
-    cert_pem = File.read("#{CERT_PATH}/server.crt")
-    key_pem = File.read("#{CERT_PATH}/server.key")
+    cert_path = File.expand_path "../examples/puma/client-certs", __dir__
+    cert_pem = File.read("#{cert_path}/server.crt")
+    key_pem = File.read("#{cert_path}/server.key")
 
     conf = Puma::Configuration.new do |c|
       c.ssl_bind "0.0.0.0", "9292", {
@@ -96,8 +95,8 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert_pem_hash=#{cert_pem.hash}&key_pem_hash=#{key_pem.hash}&verify_mode=the_verify_mode"
-    assert_equal [ssl_binding], conf.options[:binds].map(&:uri)
+    ssl_binding = "ssl://0.0.0.0:9292?cert=store:0&key=store:1&verify_mode=the_verify_mode"
+    assert_equal [ssl_binding], conf.options[:binds]
   end
 
   def test_ssl_bind_jruby
@@ -120,7 +119,7 @@ class TestConfigFile < TestConfigFileBase
     ssl_binding = "ssl://0.0.0.0:9292?keystore=/path/to/keystore" \
       "&keystore-pass=password&ssl_cipher_list=#{cipher_list}" \
       "&verify_mode=the_verify_mode"
-    assert_equal [ssl_binding], conf.options[:binds].map(&:uri)
+    assert_equal [ssl_binding], conf.options[:binds]
   end
 
 
@@ -141,8 +140,8 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&no_tlsv1_1=true&verify_mode=the_verify_mode"
-    assert_equal [ssl_binding], conf.options[:binds].map(&:uri)
+    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1_1=true"
+    assert_equal [ssl_binding], conf.options[:binds]
   end
 
   def test_ssl_bind_with_cipher_filter
@@ -161,7 +160,7 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     ssl_binding = conf.options[:binds].first
-    assert_equal cipher_filter, ssl_binding.params['ssl_cipher_filter']
+    assert ssl_binding.include?("&ssl_cipher_filter=#{cipher_filter}")
   end
 
   def test_ssl_bind_with_verification_flags
@@ -179,7 +178,7 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     ssl_binding = conf.options[:binds].first
-    assert_equal "TRUSTED_FIRST,NO_CHECK_TIME", ssl_binding.params['verification_flags']
+    assert ssl_binding.include?("&verification_flags=TRUSTED_FIRST,NO_CHECK_TIME")
   end
 
   def test_ssl_bind_with_ca
@@ -196,8 +195,8 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     ssl_binding = conf.options[:binds].first
-    assert_equal "/path/to/ca", ssl_binding.params['ca']
-    assert_equal "peer", ssl_binding.params['verify_mode']
+    assert_match "ca=/path/to/ca", ssl_binding
+    assert_match "verify_mode=peer", ssl_binding
   end
 
   def test_lowlevel_error_handler_DSL

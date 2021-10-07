@@ -289,7 +289,7 @@ class TestBinder < TestBinderBase
     @binder.parse ["tcp://127.0.0.1:0"], @events
 
     result = @binder.redirects_for_restart
-    ios = @binder.listeners.map { |_i, io| io.to_i }
+    ios = @binder.listeners.map { |_l, io| io.to_i }
 
     ios.each { |int| assert_equal int, result[int] }
     assert result[:close_others]
@@ -308,11 +308,11 @@ class TestBinder < TestBinderBase
   def test_close_listeners_closes_ios
     @binder.parse ["tcp://127.0.0.1:#{UniquePort.call}"], @events
 
-    refute @binder.listeners.any? { |_i, io| io.closed? }
+    refute @binder.listeners.any? { |_l, io| io.closed? }
 
     @binder.close_listeners
 
-    assert @binder.listeners.all? { |_i, io| io.closed? }
+    assert @binder.listeners.all? { |_l, io| io.closed? }
   end
 
   def test_close_listeners_closes_ios_unless_closed?
@@ -322,11 +322,11 @@ class TestBinder < TestBinderBase
     bomb.close
     def bomb.close; raise "Boom!"; end # the bomb has been planted
 
-    assert @binder.listeners.any? { |_i, io| io.closed? }
+    assert @binder.listeners.any? { |_l, io| io.closed? }
 
     @binder.close_listeners
 
-    assert @binder.listeners.all? { |_i, io| io.closed? }
+    assert @binder.listeners.all? { |_l, io| io.closed? }
   end
 
   def test_listeners_file_unlink_if_unix_listener
@@ -344,8 +344,8 @@ class TestBinder < TestBinderBase
     @binder.parse ["tcp://127.0.0.1:0"], @events
     removals = @binder.create_inherited_fds(@binder.redirects_for_restart_env)
 
-    @binder.listeners.each do |i, io|
-      assert_equal io.to_i, @binder.inherited_fds[i]
+    @binder.listeners.each do |l, io|
+      assert_equal io.to_i, @binder.inherited_fds[l]
     end
     assert_includes removals, "PUMA_INHERIT_0"
   end

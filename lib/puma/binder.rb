@@ -6,7 +6,6 @@ require 'socket'
 require 'puma/const'
 require 'puma/util'
 require 'puma/configuration'
-require 'puma/bind_config'
 
 module Puma
 
@@ -31,6 +30,7 @@ module Puma
 
     def initialize(events, conf = Configuration.new)
       @events = events
+      @conf = conf
       @listeners = []
       @inherited_fds = {}
       @activated_sockets = {}
@@ -153,25 +153,24 @@ module Puma
     end
 
     def parse(binds, logger, log_msg = 'Listening')
-      binds.each do |bind|
-        # A `bind` can be of type BindConfig when passed via `ssl_bind` DSL
-        # or of a URI string type in other cases.
-        bc = bind.is_a?(BindConfig) ? bind : BindConfig.parse(bind)
-
-        case bc.scheme
+      binds.each do |str|
+        uri = URI.parse str
+        case uri.scheme
         when "tcp"
-          if fd = @inherited_fds.delete(bc.uri)
-            io = inherit_tcp_listener bc.host, bc.port, fd
-            logger.log "* Inherited #{bc.uri}"
-          elsif sock = @activated_sockets.delete([ :tcp, bc.host, bc.port ])
-            io = inherit_tcp_listener bc.host, bc.port, sock
-            logger.log "* Activated #{bc.uri}"
+          if fd = @inherited_fds.delete(str)
+            io = inherit_tcp_listener uri.host, uri.port, fd
+            logger.log "* Inherited #{str}"
+          elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
+            io = inherit_tcp_listener uri.host, uri.port, sock
+            logger.log "* Activated #{str}"
           else
             ios_len = @ios.length
-            opt = bc.params.key?('low_latency') && bc.params['low_latency'] != 'false'
-            bak = bc.params.fetch('backlog', 1024).to_i
+            params = Util.parse_query uri.query
 
-            io = add_tcp_listener bc.host, bc.port, opt, bak
+            opt = params.key?('low_latency') && params['low_latency'] != 'false'
+            bak = params.fetch('backlog', 1024).to_i
+
+            io = add_tcp_listener uri.host, uri.port, opt, bak
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
@@ -179,80 +178,94 @@ module Puma
             end
           end
 
-          @listeners << [bc.uri, io] if io
+          @listeners << [str, io] if io
         when "unix"
-          path = "#{bc.host}#{bc.path}".gsub("%20", " ")
+          path = "#{uri.host}#{uri.path}".gsub("%20", " ")
           abstract = false
-          if path.start_with? 'unix://@'
+          if str.start_with? 'unix://@'
             raise "OS does not support abstract UNIXSockets" unless Puma.abstract_unix_socket?
             abstract = true
+            path = "@#{path}"
           end
 
-          if fd = @inherited_fds.delete(bc.uri)
+          if fd = @inherited_fds.delete(str)
             @unix_paths << path unless abstract
             io = inherit_unix_listener path, fd
-            logger.log "* Inherited #{bc.uri}"
+            logger.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :unix, path ]) ||
               @activated_sockets.delete([ :unix, File.realdirpath(path) ])
             @unix_paths << path unless abstract || File.exist?(path)
             io = inherit_unix_listener path, sock
-            logger.log "* Activated #{bc.uri}"
+            logger.log "* Activated #{str}"
           else
             umask = nil
             mode = nil
             backlog = 1024
 
-            unless bc.params.empty?
-              if u = bc.params['umask']
+            if uri.query
+              params = Util.parse_query uri.query
+              if u = params['umask']
                 # Use Integer() to respect the 0 prefix as octal
                 umask = Integer(u)
               end
 
-              if u = bc.params['mode']
+              if u = params['mode']
                 mode = Integer('0'+u)
               end
 
-              if u = bc.params['backlog']
+              if u = params['backlog']
                 backlog = Integer(u)
               end
             end
 
             @unix_paths << path unless abstract || File.exist?(path)
             io = add_unix_listener path, umask, mode, backlog
-            logger.log "* #{log_msg} on #{bc.uri}"
+            logger.log "* #{log_msg} on #{str}"
           end
 
-          @listeners << [bc.uri, io]
+          @listeners << [str, io]
         when "ssl"
 
           raise "Puma compiled without SSL support" unless HAS_SSL
 
+          params = Util.parse_query uri.query
+
           # If key and certs are not defined and localhost gem is required.
           # localhost gem will be used for self signed
           # Load localhost authority if not loaded.
-          ctx = localhost_authority && localhost_authority_context if bc.params.empty?
+          ctx = localhost_authority && localhost_authority_context if params.empty?
 
-          ctx ||= MiniSSL::ContextBuilder.new(bc.params, @events).context
+          ctx ||=
+            begin
+              # Extract cert_pem and key_pem from options[:store] if present
+              ['cert', 'key'].each do |v|
+                if params[v] && params[v].start_with?('store:')
+                  index = Integer(params.delete(v).split('store:').last)
+                  params["#{v}_pem"] = @conf.options[:store][index]
+                end
+              end
+              MiniSSL::ContextBuilder.new(params, @events).context
+            end
 
-          if fd = @inherited_fds.delete(bc.uri)
-            logger.log "* Inherited #{bc.uri}"
+          if fd = @inherited_fds.delete(str)
+            logger.log "* Inherited #{str}"
             io = inherit_ssl_listener fd, ctx
-          elsif sock = @activated_sockets.delete([ :tcp, bc.host, bc.port ])
+          elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
             io = inherit_ssl_listener sock, ctx
-            logger.log "* Activated #{bc.uri}"
+            logger.log "* Activated #{str}"
           else
             ios_len = @ios.length
-            io = add_ssl_listener bc.host, bc.port, ctx
+            io = add_ssl_listener uri.host, uri.port, ctx
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
-              logger.log "* #{log_msg} on ssl://#{addr}?#{bc.query}"
+              logger.log "* #{log_msg} on ssl://#{addr}?#{uri.query}"
             end
           end
 
-          @listeners << [bc.uri, io] if io
+          @listeners << [str, io] if io
         else
-          logger.error "Invalid URI: #{bc.uri}"
+          logger.error "Invalid URI: #{str}"
         end
       end
 
