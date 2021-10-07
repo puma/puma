@@ -154,8 +154,8 @@ module Puma
 
     def parse(binds, logger, log_msg = 'Listening')
       binds.each do |bind|
-        # A `bind` can either be of a BindConfig type when passed via `ssl_bind`
-        # DSL or of a URI string type in any other case.
+        # A `bind` can be of type BindConfig when passed via `ssl_bind` DSL
+        # or of a URI string type in other cases.
         bc = bind.is_a?(BindConfig) ? bind : BindConfig.parse(bind)
 
         case bc.scheme
