@@ -333,3 +333,44 @@ class TestPumaServerSSLClient < Minitest::Test
     end
   end
 end if ::Puma::HAS_SSL
+
+class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
+  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
+
+  def test_server_ssl_with_cert_pem_and_key_pem
+    host = "localhost"
+    port = 0
+    ctx = Puma::MiniSSL::Context.new.tap { |ctx|
+      ctx.cert_pem = File.read("#{CERT_PATH}/server.crt")
+      ctx.key_pem = File.read("#{CERT_PATH}/server.key")
+    }
+
+    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
+    events = SSLEventsHelper.new STDOUT, STDERR
+    server = Puma::Server.new app, events
+    server.add_ssl_listener host, port, ctx
+    host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
+    server.run
+
+    http = Net::HTTP.new host, server.connected_ports[0]
+    http.use_ssl = true
+    http.ca_file = "#{CERT_PATH}/ca.crt"
+
+    client_error = nil
+    begin
+      http.start do
+        req = Net::HTTP::Get.new "/", {}
+        http.request(req)
+      end
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET => e
+      # Errno::ECONNRESET TruffleRuby
+      client_error = e
+      # closes socket if open, may not close on error
+      http.send :do_finish
+    end
+
+    assert_nil client_error
+  ensure
+    server.stop(true) if server
+  end
+end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
