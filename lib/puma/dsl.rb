@@ -447,6 +447,14 @@ module Puma
     #     verify_mode: verify_mode,         # default 'none'
     #     verification_flags: flags,        # optional, not supported by JRuby
     #   }
+    #
+    # Alternatively, you can provide the cert_pem and key_pem:
+    # @example
+    #   ssl_bind '127.0.0.1', '9292', {
+    #     cert_pem: File.read(path_to_cert),
+    #     key_pem: File.read(path_to_key),
+    #   }
+    #
     # @example For JRuby, two keys are required: keystore & keystore_pass.
     #   ssl_bind '127.0.0.1', '9292', {
     #     keystore: path_to_keystore,
@@ -455,6 +463,7 @@ module Puma
     #     verify_mode: verify_mode          # default 'none'
     #   }
     def ssl_bind(host, port, opts)
+      add_pem_values_to_options_store(opts)
       bind self.class.ssl_bind_str(host, port, opts)
     end
 
@@ -926,6 +935,26 @@ module Puma
 
     def mutate_stdout_and_stderr_to_sync_on_write(enabled=true)
       @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
+    end
+
+    private
+
+    # To avoid adding cert_pem and key_pem as URI params, we store them on the
+    # options[:store] from where Puma binder knows how to find and extract them.
+    def add_pem_values_to_options_store(opts)
+      return if defined?(JRUBY_VERSION)
+
+      @options[:store] ||= []
+
+      # Store cert_pem and key_pem to options[:store] if present
+      [:cert, :key].each do |v|
+        opt_key = :"#{v}_pem"
+        if opts[opt_key]
+          index = @options[:store].length
+          @options[:store] << opts[opt_key]
+          opts[v] = "store:#{index}"
+        end
+      end
     end
   end
 end

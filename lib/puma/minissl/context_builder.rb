@@ -23,17 +23,19 @@ module Puma
           ctx.keystore_pass = params['keystore-pass']
           ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
         else
-          unless params['key']
-            events.error "Please specify the SSL key via 'key='"
+          if params['key'].nil? && params['key_pem'].nil?
+            events.error "Please specify the SSL key via 'key=' or 'key_pem='"
           end
 
-          ctx.key = params['key']
+          ctx.key = params['key'] if params['key']
+          ctx.key_pem = params['key_pem'] if params['key_pem']
 
-          unless params['cert']
-            events.error "Please specify the SSL cert via 'cert='"
+          if params['cert'].nil? && params['cert_pem'].nil?
+            events.error "Please specify the SSL cert via 'cert=' or 'cert_pem='"
           end
 
-          ctx.cert = params['cert']
+          ctx.cert = params['cert'] if params['cert']
+          ctx.cert_pem = params['cert_pem'] if params['cert_pem']
 
           if ['peer', 'force_peer'].include?(params['verify_mode'])
             unless params['ca']
