@@ -1,3 +1,8 @@
+## 5.5.2 / 2021-10-12
+
+* Bugfixes
+  * Allow UTF-8 in HTTP header values
+
 ## 5.5.1 / 2021-10-12
 
 * Security
