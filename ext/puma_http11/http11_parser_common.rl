@@ -43,7 +43,7 @@
 
   field_name = ( token -- ":" )+ >start_field $snake_upcase_field %write_field;
 
-  field_value = any* >start_value %write_value;
+  field_value = ( print | "\t" )* >start_value %write_value;
 
   message_header = field_name ":" " "* field_value :> CRLF;
 

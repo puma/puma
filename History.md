@@ -1,3 +1,8 @@
+## 4.3.9 / 2021-10-12
+
+* Security
+  * Do not allow LF as a line ending in a header (CVE-2021-41136)
+
 ## 4.3.8 / 2021-05-11
 
 * Security
