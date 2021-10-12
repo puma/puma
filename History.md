@@ -1,3 +1,8 @@
+## 5.5.1 / 2021-10-12
+
+* Security
+  * Do not allow LF as a line ending in a header (CVE-2021-41136)
+
 ## 5.5.0 / 2021-09-19
 
 * Features
@@ -250,6 +255,11 @@
   * JSON parse cluster worker stats instead of regex ([#2124])
   * Support parallel tests in verbose progress reporting ([#2223])
   * Refactor error handling in server accept loop ([#2239])
+
+## 4.3.9 / 2021-10-12
+
+* Security
+  * Do not allow LF as a line ending in a header (CVE-2021-41136)
 
 ## 4.3.8 / 2021-05-11
 

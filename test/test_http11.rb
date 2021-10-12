@@ -208,4 +208,34 @@ class Http11ParserTest < Minitest::Test
 
     assert_equal "Strip This", req["HTTP_X_STRIP_ME"]
   end
+
+  def test_newline_smuggler
+    parser = Puma::HttpParser.new
+    req = {}
+    http = "GET / HTTP/1.1\r\nHost: localhost:8080\r\nDummy: x\nDummy2: y\r\n\r\n"
+
+    parser.execute(req, http, 0) rescue nil # We test the raise elsewhere.
+
+    assert parser.error?, "Parser SHOULD have error"
+  end
+
+  def test_newline_smuggler_two
+    parser = Puma::HttpParser.new
+    req = {}
+    http = "GET / HTTP/1.1\r\nHost: localhost:8080\r\nDummy: x\r\nDummy: y\nDummy2: z\r\n\r\n"
+
+    parser.execute(req, http, 0) rescue nil
+
+    assert parser.error?, "Parser SHOULD have error"
+  end
+
+  def test_htab_in_header_val
+    parser = Puma::HttpParser.new
+    req = {}
+    http = "GET / HTTP/1.1\r\nHost: localhost:8080\r\nDummy: Valid\tValue\r\n\r\n"
+
+    parser.execute(req, http, 0)
+
+    assert_equal "Valid\tValue", req['HTTP_DUMMY']
+  end
 end
