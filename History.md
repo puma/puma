@@ -1,3 +1,8 @@
+## 4.3.10 / 2021-10-12
+
+* Bugfixes
+  * Allow UTF-8 in HTTP header values
+
 ## 4.3.9 / 2021-10-12
 
 * Security
