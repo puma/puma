@@ -367,6 +367,11 @@ module Puma
       @options[:log_requests] = which
     end
 
+    # Pass in a custom logging class instance
+    def logger(custom_logger)
+      @options[:logger] = custom_logger
+    end
+
     # Show debugging info
     #
     def debug
