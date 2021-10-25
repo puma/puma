@@ -5,6 +5,9 @@
 
 ## 5.5.1 / 2021-10-12
 
+* Feature (added as mistake - we don't normally do this on bugfix releases, sorry!)
+  * Allow setting APP_ENV in preference to RACK_ENV or RAILS_ENV ([#2702])
+
 * Security
   * Do not allow LF as a line ending in a header (CVE-2021-41136)
 
@@ -1804,6 +1807,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2702]:https://github.com/puma/puma/pull/2702     "PR by @jacobherrington, merged 2021-09-20" 
 [#2610]:https://github.com/puma/puma/pull/2610     "PR by @ye-lin-aung, merged 2021-08-18"
 [#2257]:https://github.com/puma/puma/issues/2257   "Issue by @nateberkopec, closed 2021-08-18"
 [#2654]:https://github.com/puma/puma/pull/2654     "PR by @Roguelazer, merged 2021-09-07"
