@@ -116,7 +116,7 @@ public class MiniSSL extends RubyObject {
 
       buffer.get(bss);
       buffer.clear();
-      return new ByteList(bss);
+      return new ByteList(bss, false);
     }
 
     @Override
