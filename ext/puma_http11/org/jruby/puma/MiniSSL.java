@@ -6,6 +6,7 @@ import org.jruby.RubyModule;
 import org.jruby.RubyObject;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
@@ -228,14 +229,9 @@ public class MiniSSL extends RubyObject {
 
   @JRubyMethod
   public IRubyObject inject(IRubyObject arg) {
-    try {
-      ByteList bytes = arg.convertToString().getByteList();
-      inboundNetData.put(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize());
-      return this;
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    ByteList bytes = arg.convertToString().getByteList();
+    inboundNetData.put(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize());
+    return this;
   }
 
   private enum SSLOperation {
@@ -341,22 +337,19 @@ public class MiniSSL extends RubyObject {
       }
 
       return RubyString.newString(getRuntime(), appDataByteList);
-    } catch (Exception e) {
-      throw getRuntime().newEOFError(e.getMessage());
+    } catch (SSLException e) {
+      RaiseException re = getRuntime().newEOFError(e.getMessage());
+      re.initCause(e);
+      throw re;
     }
   }
 
   @JRubyMethod
   public IRubyObject write(IRubyObject arg) {
-    try {
-      byte[] bls = arg.convertToString().getBytes();
-      outboundAppData = new MiniSSLBuffer(bls);
+    byte[] bls = arg.convertToString().getBytes();
+    outboundAppData = new MiniSSLBuffer(bls);
 
-      return getRuntime().newFixnum(bls.length);
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    return getRuntime().newFixnum(bls.length);
   }
 
   @JRubyMethod
@@ -379,9 +372,10 @@ public class MiniSSL extends RubyObject {
       }
 
       return RubyString.newString(context.runtime, dataByteList);
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
+    } catch (SSLException e) {
+      RaiseException ex = context.runtime.newRuntimeError(e.toString());
+      ex.initCause(e);
+      throw ex;
     }
   }
 
@@ -389,7 +383,7 @@ public class MiniSSL extends RubyObject {
   public IRubyObject peercert() throws CertificateEncodingException {
     try {
       return JavaEmbedUtils.javaToRuby(getRuntime(), engine.getSession().getPeerCertificates()[0].getEncoded());
-    } catch (SSLPeerUnverifiedException ex) {
+    } catch (SSLPeerUnverifiedException e) {
       return getRuntime().getNil();
     }
   }
