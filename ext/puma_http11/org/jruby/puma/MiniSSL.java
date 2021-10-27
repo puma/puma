@@ -297,7 +297,7 @@ public class MiniSSL extends RubyObject {
   }
 
   @JRubyMethod
-  public IRubyObject read() throws Exception {
+  public IRubyObject read() {
     try {
       inboundNetData.flip();
 
@@ -342,9 +342,7 @@ public class MiniSSL extends RubyObject {
         return getRuntime().getNil();
       }
 
-      RubyString str = getRuntime().newString("");
-      str.setValue(appDataByteList);
-      return str;
+      return RubyString.newString(getRuntime(), appDataByteList);
     } catch (Exception e) {
       throw getRuntime().newEOFError(e.getMessage());
     }
@@ -364,30 +362,25 @@ public class MiniSSL extends RubyObject {
   }
 
   @JRubyMethod
-  public IRubyObject extract() throws SSLException {
+  public IRubyObject extract(ThreadContext context) {
     try {
       ByteList dataByteList = outboundNetData.asByteList();
       if (dataByteList != null) {
-        RubyString str = getRuntime().newString("");
-        str.setValue(dataByteList);
-        return str;
+        return RubyString.newString(context.runtime, dataByteList);
       }
 
       if (!outboundAppData.hasRemaining()) {
-        return getRuntime().getNil();
+        return context.nil;
       }
 
       outboundNetData.clear();
       doOp(SSLOperation.WRAP, outboundAppData, outboundNetData);
       dataByteList = outboundNetData.asByteList();
       if (dataByteList == null) {
-        return getRuntime().getNil();
+        return context.nil;
       }
 
-      RubyString str = getRuntime().newString("");
-      str.setValue(dataByteList);
-
-      return str;
+      return RubyString.newString(context.runtime, dataByteList);
     } catch (Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
