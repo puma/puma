@@ -174,8 +174,6 @@ public class MiniSSL extends RubyObject {
   @JRubyMethod
   public IRubyObject initialize(ThreadContext threadContext, IRubyObject miniSSLContext)
       throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
-    KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-    KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
 
     String keystoreFile = miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString();
     KeyManagerFactory kmf = keyManagerFactoryMap.get(keystoreFile);
