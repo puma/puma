@@ -80,11 +80,11 @@ public class MiniSSL extends RubyObject {
     /**
      * Writes bytes to the buffer after ensuring there's room
      */
-    public void put(byte[] bytes) {
-      if (buffer.remaining() < bytes.length) {
-        resize(buffer.limit() + bytes.length);
+    private void put(byte[] bytes, final int offset, final int length) {
+      if (buffer.remaining() < length) {
+        resize(buffer.limit() + length);
       }
-      buffer.put(bytes);
+      buffer.put(bytes, offset, length);
     }
 
     /**
@@ -231,8 +231,8 @@ public class MiniSSL extends RubyObject {
   @JRubyMethod
   public IRubyObject inject(IRubyObject arg) {
     try {
-      byte[] bytes = arg.convertToString().getBytes();
-      inboundNetData.put(bytes);
+      ByteList bytes = arg.convertToString().getByteList();
+      inboundNetData.put(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize());
       return this;
     } catch (Exception e) {
       e.printStackTrace();
