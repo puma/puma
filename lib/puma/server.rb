@@ -220,7 +220,7 @@ module Puma
     # up in the background to handle requests. Otherwise requests
     # are handled synchronously.
     #
-    def run(background=true, thread_name: 'server')
+    def run(background=true, thread_name: 'srv')
       BasicSocket.do_not_reverse_lookup = true
 
       @events.fire :state, :booting

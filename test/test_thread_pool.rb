@@ -59,7 +59,7 @@ class TestThreadPool < Minitest::Test
     thread_name = nil
     pool = mutex_pool(0, 1) {thread_name = Thread.current.name}
     pool << 1
-    assert_equal('puma test threadpool 001', thread_name)
+    assert_equal('puma test tp 001', thread_name)
   end
 
   def test_converts_pool_sizes

@@ -69,7 +69,7 @@ module Puma
 
       control.binder.parse [str], self, 'Starting control server'
 
-      control.run thread_name: 'control'
+      control.run thread_name: 'ctl'
       @control = control
     end
 

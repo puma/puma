@@ -102,7 +102,7 @@ module Puma
       @spawned += 1
 
       th = Thread.new(@spawned) do |spawned|
-        Puma.set_thread_name '%s threadpool %03i' % [@name, spawned]
+        Puma.set_thread_name '%s tp %03i' % [@name, spawned]
         todo  = @todo
         block = @block
         mutex = @mutex

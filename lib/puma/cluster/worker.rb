@@ -34,7 +34,7 @@ module Puma
         Signal.trap "SIGCHLD", "DEFAULT"
 
        Thread.new do
-          Puma.set_thread_name "worker check pipe"
+          Puma.set_thread_name "wrkr check"
           @check_pipe.wait_readable
           log "! Detected parent died, dying"
           exit! 1
@@ -76,7 +76,7 @@ module Puma
           end
 
           Thread.new do
-            Puma.set_thread_name "worker fork pipe"
+            Puma.set_thread_name "wrkr fork"
             while (idx = @fork_pipe.gets)
               idx = idx.to_i
               if idx == -1 # stop server
@@ -114,7 +114,7 @@ module Puma
         while restart_server.pop
           server_thread = server.run
           stat_thread ||= Thread.new(@worker_write) do |io|
-            Puma.set_thread_name "stat payload"
+            Puma.set_thread_name "stat pld"
             base_payload = "p#{Process.pid}"
 
             while true

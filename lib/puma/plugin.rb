@@ -64,7 +64,7 @@ module Puma
     def fire_background
       @background.each_with_index do |b, i|
         Thread.new do
-          Puma.set_thread_name "plugin background #{i}"
+          Puma.set_thread_name "plgn bg #{i}"
           b.call
         end
       end
