@@ -97,6 +97,15 @@ module Puma
       write_response(status, headers, res_body, lines, requests, client)
     end
 
+    # Does the actual response writing for Request#handle_request and Server#client_error
+    #
+    # @param status [Integer] the status returned by the Rack application
+    # @param headers [Hash] the headers returned by the Rack application
+    # @param res_body [Array] the body returned by the Rack application
+    # @param lines [Puma::IOBuffer] modified in place
+    # @param requests [Integer] number of inline requests handled
+    # @param client [Puma::Client]
+    # @return [Boolean,:async]
     def write_response(status, headers, res_body, lines, requests, client)
       env = client.env
       io  = client.io
