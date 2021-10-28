@@ -102,6 +102,7 @@ module Puma
       io  = client.io
 
       return false if closed_socket?(io)
+      lines.clear
 
       head = env[REQUEST_METHOD] == HEAD
       after_reply = env[RACK_AFTER_REPLY] || []
