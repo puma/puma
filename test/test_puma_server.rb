@@ -1369,14 +1369,8 @@ EOF
     app = ->(env) { [200, nil, []] }
     server_run(**options, &app)
 
-    sock = send_http "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    _h = header sock
-
-    body = sock.gets
-
-    assert_match /error page/, body
-
-    sock.close
+    assert_match /error page/, data
   end
 end
