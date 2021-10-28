@@ -1362,4 +1362,21 @@ EOF
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
     assert_equal "user", data.split("\r\n").last
   end
+
+  # The server should send lowlevel_error handlers response to the client
+  def test_lowlevel_error
+    options = { lowlevel_error_handler: ->(err) { [200, {}, ["error page"]] } }
+    app = ->(env) { [200, nil, []] }
+    server_run(**options, &app)
+
+    sock = send_http "GET / HTTP/1.0\r\n\r\n"
+
+    _h = header sock
+
+    body = sock.gets
+
+    assert_match /error page/, body
+
+    sock.close
+  end
 end
