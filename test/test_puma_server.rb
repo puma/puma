@@ -1364,7 +1364,7 @@ EOF
   end
 
   # The server should send lowlevel_error handlers response to the client
-  def test_lowlevel_error
+  def test_lowlevel_error_handler
     options = { lowlevel_error_handler: ->(err) { [200, {}, ["error page"]] } }
     app = ->(env) { [200, nil, []] }
     server_run(**options, &app)
