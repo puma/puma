@@ -49,7 +49,7 @@ if ENV["MAKE_WARNINGS_INTO_ERRORS"]
   # Make all warnings into errors
   # Except `implicit-fallthrough` since most failures comes from ragel state machine generated code
   if respond_to?(:append_cflags, true) # Ruby 2.5 and later
-    append_cflags config_string 'WERRORFLAG'
+    append_cflags(config_string('WERRORFLAG') || '-Werror')
     append_cflags '-Wno-implicit-fallthrough'
   else
     # flag may not exist on some platforms, -Werror may not be defined on some platforms, but
