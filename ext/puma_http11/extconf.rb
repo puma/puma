@@ -54,7 +54,7 @@ if ENV["MAKE_WARNINGS_INTO_ERRORS"]
   else
     # flag may not exist on some platforms, -Werror may not be defined on some platforms, but
     # works with all in current CI
-    $CFLAGS << ((t = config_string 'WERRORFLAG') ? " #{t}" : ' -Werror')
+    $CFLAGS << " #{config_string('WERRORFLAG') || '-Werror'}"
     $CFLAGS << ' -Wno-implicit-fallthrough'
   end
 end
