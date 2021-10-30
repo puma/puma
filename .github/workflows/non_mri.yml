@@ -62,10 +62,6 @@ jobs:
       - name: compile
         run:  bundle exec rake compile
 
-      - name: rubocop
-        if: endsWith(matrix.ruby, '-head') == false
-        run: bundle exec rake rubocop
-
       - name: test
         id: test
         timeout-minutes: 12
