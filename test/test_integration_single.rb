@@ -182,6 +182,7 @@ class TestIntegrationSingle < TestIntegration
   # listener is closed 'externally' while Puma is in the IO.select statement
   def test_closed_listener
     skip_unless_signal_exist? :TERM
+    skip_if :darwin # been flaky with Ruby 2.2, 2.3, 2.4
 
     cli_server "test/rackup/close_listeners.ru", merge_err: true
     read_body connect
