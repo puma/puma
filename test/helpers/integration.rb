@@ -105,6 +105,8 @@ class TestIntegration < Minitest::Test
 
   # wait for server to say it booted
   def wait_for_server_to_boot(log: false)
+    # OSX 10.15 seems to need a little extra time, @server.gets fails
+    sleep 0.2 if Puma::IS_OSX
     if log
       puts "Waiting for server to boot..."
       begin
