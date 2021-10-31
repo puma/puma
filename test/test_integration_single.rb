@@ -184,7 +184,16 @@ class TestIntegrationSingle < TestIntegration
     skip_unless_signal_exist? :TERM
 
     cli_server "test/rackup/close_listeners.ru", merge_err: true
-    read_body connect
+    connection = fast_connect
+
+    if DARWIN && RUBY_VERSION < '2.5'
+      begin
+        read_body connection
+      rescue EOFError
+      end
+    else
+      read_body connection
+    end
 
     begin
       Timeout.timeout(5) do

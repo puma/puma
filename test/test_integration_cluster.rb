@@ -523,7 +523,7 @@ RUBY
   def thread_run_pid(replies, delay, sleep_time, mutex, refused, unix: false)
     begin
       sleep delay
-      s = connect "sleep#{sleep_time}", unix: unix
+      s = fast_connect "sleep#{sleep_time}", unix: unix
       body = read_body(s, 20)
       mutex.synchronize { replies << body }
     rescue Errno::ECONNRESET
