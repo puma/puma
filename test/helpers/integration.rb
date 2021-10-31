@@ -112,10 +112,10 @@ class TestIntegration < Minitest::Test
       begin
         line = @server.gets
         puts line if line && line.strip != ''
-      end while line !~ /Ctrl-C/
+      end until line.include? 'Ctrl-C'
       puts "Server booted!"
     else
-      true while @server.gets !~ /Ctrl-C/
+      true until @server.gets.include? 'Ctrl-C'
     end
   end
 
@@ -183,10 +183,10 @@ class TestIntegration < Minitest::Test
   def thread_run_refused(unix: false)
     if unix
       DARWIN ? [Errno::ENOENT, Errno::EPIPE, IOError] :
-      [Errno::ENOENT, IOError]
+        [IOError, Errno::ENOENT]
     else
       DARWIN ? [Errno::EBADF, Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
-        [Errno::ECONNREFUSED]
+        [IOError, Errno::ECONNREFUSED]
     end
   end
 
@@ -246,7 +246,7 @@ class TestIntegration < Minitest::Test
             else
               mutex.synchronize { replies[:unexpected_response] += 1 }
             end
-          rescue Errno::ECONNRESET, Errno::EBADF
+          rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN
             # connection was accepted but then closed
             # client would see an empty response
             # Errno::EBADF Windows may not be able to make a connection
@@ -308,15 +308,16 @@ class TestIntegration < Minitest::Test
       # 5 is default thread count in Puma?
       reset_max = num_threads * restart_count
       assert_operator reset_max, :>=, reset, "#{msg}Expected reset_max >= reset errors"
+      assert_operator 30, :>=,  replies[:refused], "#{msg}Too many refused connections"
     else
       assert_equal 0, reset, "#{msg}Expected no reset errors"
+      assert_equal 0, replies[:refused], "#{msg}Expected no refused connections"
     end
     assert_equal 0, replies[:unexpected_response], "#{msg}Unexpected response"
-    assert_equal 0, replies[:refused], "#{msg}Expected no refused connections"
     assert_equal 0, replies[:read_timeout], "#{msg}Expected no read timeouts"
 
     if Puma.windows?
-      assert_equal (num_threads * num_requests) - reset, replies[:success]
+      assert_equal (num_threads * num_requests) - reset - replies[:refused], replies[:success]
     else
       assert_equal (num_threads * num_requests), replies[:success]
     end
