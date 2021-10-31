@@ -30,6 +30,7 @@ module Puma
 
     def initialize(events, conf = Configuration.new)
       @events = events
+      @conf = conf
       @listeners = []
       @inherited_fds = {}
       @activated_sockets = {}
@@ -234,7 +235,17 @@ module Puma
           # Load localhost authority if not loaded.
           ctx = localhost_authority && localhost_authority_context if params.empty?
 
-          ctx ||= MiniSSL::ContextBuilder.new(params, @events).context
+          ctx ||=
+            begin
+              # Extract cert_pem and key_pem from options[:store] if present
+              ['cert', 'key'].each do |v|
+                if params[v] && params[v].start_with?('store:')
+                  index = Integer(params.delete(v).split('store:').last)
+                  params["#{v}_pem"] = @conf.options[:store][index]
+                end
+              end
+              MiniSSL::ContextBuilder.new(params, @events).context
+            end
 
           if fd = @inherited_fds.delete(str)
             logger.log "* Inherited #{str}"
