@@ -6,6 +6,7 @@ import org.jruby.RubyModule;
 import org.jruby.RubyObject;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
@@ -80,11 +81,11 @@ public class MiniSSL extends RubyObject {
     /**
      * Writes bytes to the buffer after ensuring there's room
      */
-    public void put(byte[] bytes) {
-      if (buffer.remaining() < bytes.length) {
-        resize(buffer.limit() + bytes.length);
+    private void put(byte[] bytes, final int offset, final int length) {
+      if (buffer.remaining() < length) {
+        resize(buffer.limit() + length);
       }
-      buffer.put(bytes);
+      buffer.put(bytes, offset, length);
     }
 
     /**
@@ -115,7 +116,7 @@ public class MiniSSL extends RubyObject {
 
       buffer.get(bss);
       buffer.clear();
-      return new ByteList(bss);
+      return new ByteList(bss, false);
     }
 
     @Override
@@ -174,8 +175,6 @@ public class MiniSSL extends RubyObject {
   @JRubyMethod
   public IRubyObject initialize(ThreadContext threadContext, IRubyObject miniSSLContext)
       throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
-    KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-    KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
 
     String keystoreFile = miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString();
     KeyManagerFactory kmf = keyManagerFactoryMap.get(keystoreFile);
@@ -230,14 +229,9 @@ public class MiniSSL extends RubyObject {
 
   @JRubyMethod
   public IRubyObject inject(IRubyObject arg) {
-    try {
-      byte[] bytes = arg.convertToString().getBytes();
-      inboundNetData.put(bytes);
-      return this;
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    ByteList bytes = arg.convertToString().getByteList();
+    inboundNetData.put(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize());
+    return this;
   }
 
   private enum SSLOperation {
@@ -297,7 +291,7 @@ public class MiniSSL extends RubyObject {
   }
 
   @JRubyMethod
-  public IRubyObject read() throws Exception {
+  public IRubyObject read() {
     try {
       inboundNetData.flip();
 
@@ -342,55 +336,46 @@ public class MiniSSL extends RubyObject {
         return getRuntime().getNil();
       }
 
-      RubyString str = getRuntime().newString("");
-      str.setValue(appDataByteList);
-      return str;
-    } catch (Exception e) {
-      throw getRuntime().newEOFError(e.getMessage());
+      return RubyString.newString(getRuntime(), appDataByteList);
+    } catch (SSLException e) {
+      RaiseException re = getRuntime().newEOFError(e.getMessage());
+      re.initCause(e);
+      throw re;
     }
   }
 
   @JRubyMethod
   public IRubyObject write(IRubyObject arg) {
-    try {
-      byte[] bls = arg.convertToString().getBytes();
-      outboundAppData = new MiniSSLBuffer(bls);
+    byte[] bls = arg.convertToString().getBytes();
+    outboundAppData = new MiniSSLBuffer(bls);
 
-      return getRuntime().newFixnum(bls.length);
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    return getRuntime().newFixnum(bls.length);
   }
 
   @JRubyMethod
-  public IRubyObject extract() throws SSLException {
+  public IRubyObject extract(ThreadContext context) {
     try {
       ByteList dataByteList = outboundNetData.asByteList();
       if (dataByteList != null) {
-        RubyString str = getRuntime().newString("");
-        str.setValue(dataByteList);
-        return str;
+        return RubyString.newString(context.runtime, dataByteList);
       }
 
       if (!outboundAppData.hasRemaining()) {
-        return getRuntime().getNil();
+        return context.nil;
       }
 
       outboundNetData.clear();
       doOp(SSLOperation.WRAP, outboundAppData, outboundNetData);
       dataByteList = outboundNetData.asByteList();
       if (dataByteList == null) {
-        return getRuntime().getNil();
+        return context.nil;
       }
 
-      RubyString str = getRuntime().newString("");
-      str.setValue(dataByteList);
-
-      return str;
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
+      return RubyString.newString(context.runtime, dataByteList);
+    } catch (SSLException e) {
+      RaiseException ex = context.runtime.newRuntimeError(e.toString());
+      ex.initCause(e);
+      throw ex;
     }
   }
 
@@ -398,7 +383,7 @@ public class MiniSSL extends RubyObject {
   public IRubyObject peercert() throws CertificateEncodingException {
     try {
       return JavaEmbedUtils.javaToRuby(getRuntime(), engine.getSession().getPeerCertificates()[0].getEncoded());
-    } catch (SSLPeerUnverifiedException ex) {
+    } catch (SSLPeerUnverifiedException e) {
       return getRuntime().getNil();
     }
   }
