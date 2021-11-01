@@ -134,7 +134,11 @@ module Puma
         line_ending = LINE_END
 
         content_length  = res_info[:content_length]
-        response_hijack = res_info[:response_hijack]
+        if res_body && !res_body.respond_to?(:each)
+          response_hijack = res_body
+        else
+          response_hijack = res_info[:response_hijack]
+        end
 
         if res_info[:no_body]
           if content_length and status != 204
