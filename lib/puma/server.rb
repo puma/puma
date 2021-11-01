@@ -315,16 +315,15 @@ module Puma
         queue_requests = @queue_requests
         drain = @options[:drain_on_shutdown] ? 0 : nil
 
-        remote_addr_value = nil
-        remote_addr_header = nil
-
-        case @options[:remote_address]
+        addr_send_name, addr_value = case @options[:remote_address]
         when :value
-          remote_addr_value = @options[:remote_address_value]
+          [:peerip=, @options[:remote_address_value]]
         when :header
-          remote_addr_header = @options[:remote_address_header]
+          [:remote_addr_header=, @options[:remote_address_header]]
         when :proxy_protocol
-          remote_addr_proxy_protocol = @options[:remote_address_proxy_protocol]
+          [:expect_proxy_proto=, @options[:remote_address_proxy_protocol]]
+        else
+          [nil, nil]
         end
 
         while @status == :run || (drain && shutting_down?)
@@ -344,16 +343,10 @@ module Puma
                   next
                 end
                 drain += 1 if shutting_down?
-                client = Client.new io, @binder.env(sock)
-                client.listener = sock
-                if remote_addr_value
-                  client.peerip = remote_addr_value
-                elsif remote_addr_header
-                  client.remote_addr_header = remote_addr_header
-                elsif remote_addr_proxy_protocol
-                  client.expect_proxy_proto = remote_addr_proxy_protocol
-                end
-                pool << client
+                pool << Client.new(io, @binder.env(sock)).tap { |c|
+                  c.listener = sock
+                  c.send(addr_send_name, addr_value) if addr_value
+                }
               end
             end
           rescue IOError, Errno::EBADF
