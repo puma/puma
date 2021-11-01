@@ -145,8 +145,7 @@ class TestThreadPool < Minitest::Test
     end
 
     start = Time.now
-    Thread.pass until pool.spawned == 1 ||
-      Time.now - start > 1
+    Thread.pass until pool.spawned == 1 || Time.now - start > 1
 
     assert_equal 1, pool.spawned
   end
@@ -211,8 +210,7 @@ class TestThreadPool < Minitest::Test
     pool << 2
 
     start = Time.now
-    Thread.pass until pool.spawned == 0 ||
-      Time.now - start > 1
+    Thread.pass until pool.spawned == 0 || Time.now - start > 1
 
     assert_equal 0, pool.spawned
   end
