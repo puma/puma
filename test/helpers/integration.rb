@@ -165,6 +165,8 @@ class TestIntegration < Minitest::Test
         sleep 0.01
       end
     end
+  rescue Timeout::Error
+    flunk "response read_body timeout error"
   end
 
   # gets worker pids from @server output

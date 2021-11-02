@@ -540,7 +540,7 @@ RUBY
     begin
       sleep delay
       s = connect "sleep#{sleep_time}-#{step}", unix: unix
-      body = read_body(s)
+      body = read_body(s, 15)
       if body[/\ASlept /]
         mutex.synchronize { replies[step] = :success }
       else
