@@ -364,14 +364,14 @@ EOF
   end
 
   def test_lowlevel_error_handler_custom_response
-    options = { lowlevel_error_handler: ->(_err) { [200, {}, ["error page"]] } }
+    options = { lowlevel_error_handler: ->(_err) { [500, {}, ["error page"]] } }
     # setting the headers argument to nil will trigger exception inside Puma
     broken_app = ->(_env) { [200, nil, []] }
     server_run(**options, &broken_app)
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match %r{HTTP/1.0 200 OK\r\nContent-Length: 10\r\n\r\nerror page}, data
+    assert_match %r{HTTP/1.0 500 Internal Server Error\r\nContent-Length: 10\r\n\r\nerror page}, data
   end
 
   def test_force_shutdown_error_default
