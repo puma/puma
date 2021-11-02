@@ -26,6 +26,9 @@ class TestCLI < Minitest::Test
 
   def wait_booted
     @wait.sysread 1
+  rescue Errno::EAGAIN
+    sleep 0.001
+    retry
   end
 
   def teardown
