@@ -4,7 +4,7 @@ class CustomLogger
   end
 
   def write(msg)
-    @output.puts msg
+    @output.print 'Custom logging: ' + msg
     @output.flush
   end
 end
