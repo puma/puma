@@ -132,9 +132,9 @@ class Http11ParserTest < Minitest::Test
     res = count.to_s + "/"
 
     if readable
-      res << Digest::SHA1.hexdigest(rand(count * 100).to_s) * (count / 40)
+      res << Digest(:SHA1).hexdigest(rand(count * 100).to_s) * (count / 40)
     else
-      res << Digest::SHA1.digest(rand(count * 100).to_s) * (count / 20)
+      res << Digest(:SHA1).digest(rand(count * 100).to_s) * (count / 20)
     end
 
     res
