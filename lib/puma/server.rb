@@ -375,13 +375,14 @@ module Puma
       rescue Exception => e
         @events.unknown_error e, nil, "Exception handling servers"
       ensure
-        begin
-          @check.close unless @check.closed?
-        rescue Errno::EBADF, RuntimeError
-          # RuntimeError is Ruby 2.2 issue, can't modify frozen IOError
-          # Errno::EBADF is infrequently raised
+        # RuntimeError is Ruby 2.2 issue, can't modify frozen IOError
+        # Errno::EBADF is infrequently raised
+        [@check, @notify].each do |io|
+          begin
+            io.close unless io.closed?
+          rescue Errno::EBADF, RuntimeError
+          end
         end
-        @notify.close
         @notify = nil
         @check = nil
       end
