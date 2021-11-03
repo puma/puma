@@ -104,18 +104,17 @@ class TestIntegration < Minitest::Test
   end
 
   # wait for server to say it booted
+  # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(log: false)
-    # OSX 10.15 seems to need a little extra time, @server.gets fails
-    sleep 0.2 if Puma::IS_OSX
     if log
       puts "Waiting for server to boot..."
       begin
-        line = @server.gets
+        line = @server && @server.gets
         puts line if line && line.strip != ''
-      end until line.include? 'Ctrl-C'
+      end until line && line.include?('Ctrl-C')
       puts "Server booted!"
     else
-      true until @server.gets.include? 'Ctrl-C'
+      true until @server && (@server.gets || '').include?('Ctrl-C')
     end
   end
 
