@@ -2,15 +2,19 @@
 
 require "puma/control_cli"
 require "open3"
+require "io/wait"
 require_relative 'tmp_path'
 
 # Only single mode tests go here. Cluster and pumactl tests
 # have their own files, use those instead
 class TestIntegration < Minitest::Test
   include TmpPath
-  DARWIN = !!RUBY_PLATFORM[/darwin/]
+  DARWIN = RUBY_PLATFORM.include? 'darwin'
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
+  RESP_READ_LEN = 65_536
+  RESP_READ_TIMEOUT = 10
+  RESP_SPLIT = "\r\n\r\n"
 
   BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
     "#{Gem.ruby} -Ilib"
@@ -122,7 +126,6 @@ class TestIntegration < Minitest::Test
     s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
     @ios_to_close << s
     s << "GET /#{path} HTTP/1.1\r\n\r\n"
-    true until s.gets == "\r\n"
     s
   end
 
@@ -155,17 +158,59 @@ class TestIntegration < Minitest::Test
     end
   end
 
-  def read_body(connection, time_out = 10)
-    Timeout.timeout(time_out) do
+  def read_body(connection, timeout = nil)
+    read_response(connection, timeout).last
+  end
+
+  def read_response(connection, timeout = nil)
+    timeout ||= RESP_READ_TIMEOUT
+    content_length = nil
+    chunked = nil
+    response = ''.dup
+    t_st = Process.clock_gettime Process::CLOCK_MONOTONIC
+    if connection.to_io.wait_readable timeout
       loop do
-        response = connection.readpartial(1024)
-        body = response.split("\r\n\r\n", 2).last
-        return body if body && !body.empty?
-        sleep 0.01
+        begin
+          part = connection.read_nonblock(RESP_READ_LEN, exception: false)
+          case part
+          when String
+            unless content_length || chunked
+              chunked ||= part.include? "\r\nTransfer-Encoding: chunked\r\n"
+              content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
+            end
+
+            response << part
+            hdrs, body = response.split RESP_SPLIT, 2
+            unless body.nil?
+              # below could be simplified, but allows for debugging...
+              ret =
+                if content_length
+                  body.bytesize == content_length
+                elsif chunked
+                  body.end_with? "\r\n0\r\n\r\n"
+                elsif !hdrs.empty? && !body.empty?
+                  true
+                else
+                  false
+                end
+              if ret
+                return [hdrs, body]
+              end
+            end
+            sleep 0.000_1
+          when :wait_readable, :wait_writable # :wait_writable for ssl
+            sleep 0.000_2
+          when nil
+            raise EOFError
+          end
+          if timeout < Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st
+            raise Timeout::Error, 'Client Read Timeout'
+          end
+        end
       end
+    else
+      raise Timeout::Error, 'Client Read Timeout'
     end
-  rescue Timeout::Error
-    flunk "response read_body timeout error"
   end
 
   # gets worker pids from @server output
