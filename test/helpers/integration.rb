@@ -354,7 +354,7 @@ class TestIntegration < Minitest::Test
       # 5 is default thread count in Puma?
       reset_max = num_threads * restart_count
       assert_operator reset_max, :>=, reset, "#{msg}Expected reset_max >= reset errors"
-      assert_operator 30, :>=,  replies[:refused], "#{msg}Too many refused connections"
+      assert_operator 40, :>=,  replies[:refused], "#{msg}Too many refused connections"
     else
       assert_equal 0, reset, "#{msg}Expected no reset errors"
       assert_equal 0, replies[:refused], "#{msg}Expected no refused connections"
