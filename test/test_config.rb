@@ -85,7 +85,7 @@ class TestConfigFile < TestConfigFileBase
       conf.options[:logger].write('test')
     end
 
-    assert_equal 'Custom logging: test', out
+    assert_match /Custom logging: test/, out
   end
 
   def test_ssl_bind
