@@ -118,7 +118,8 @@ class TestIntegration < Minitest::Test
       end until line && line.include?('Ctrl-C')
       puts "Server booted!"
     else
-      true until @server && (@server.gets || '').include?('Ctrl-C')
+      sleep 0.1 until @server.is_a?(IO)
+      true until (@server.gets || '').include?('Ctrl-C')
     end
   end
 
@@ -325,9 +326,10 @@ class TestIntegration < Minitest::Test
         else
           Process.kill :USR2, @pid
         end
+        sleep 0.5
         wait_for_server_to_boot
         restart_count += 1
-        sleep 1
+        sleep 0.5
       end
     end
 
@@ -374,6 +376,7 @@ class TestIntegration < Minitest::Test
       msg = "   restart_count #{restart_count}, reset #{reset}, success after restart #{replies[:restart]}"
       $debugging_info << "#{full_name}\n#{msg}\n"
     else
+      client_threads.each { |thr| thr.kill if thr.is_a? Thread }
       $debugging_info << "#{full_name}\n#{msg}\n"
     end
   end
