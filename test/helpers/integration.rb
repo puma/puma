@@ -20,12 +20,15 @@ class TestIntegration < Minitest::Test
     "#{Gem.ruby} -Ilib"
 
   def setup
+    @server = nil
     @ios_to_close = []
     @bind_path    = tmp_path('.sock')
   end
 
   def teardown
-    if defined?(@server) && @server && @pid
+    if @server && defined?(@control_tcp_port) && Puma.windows?
+      cli_pumactl 'stop'
+    elsif @server && @pid && !Puma.windows?
       stop_server @pid, signal: :INT
     end
 
@@ -42,7 +45,7 @@ class TestIntegration < Minitest::Test
     end
 
     # wait until the end for OS buffering?
-    if defined?(@server) && @server
+    if @server
       @server.close unless @server.closed?
       @server = nil
     end
@@ -280,7 +283,7 @@ class TestIntegration < Minitest::Test
 
     num_threads.times do |thread|
       client_threads << Thread.new do
-        num_requests.times do
+        num_requests.times do |req_num|
           begin
             socket = TCPSocket.new HOST, @tcp_port
             fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
@@ -329,7 +332,7 @@ class TestIntegration < Minitest::Test
         sleep 0.5
         wait_for_server_to_boot
         restart_count += 1
-        sleep 0.5
+        sleep(Puma.windows? ? 3 : 0.5)
       end
     end
 
