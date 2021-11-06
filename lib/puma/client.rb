@@ -161,7 +161,7 @@ module Puma
     def close
       begin
         @io.close
-      rescue IOError
+      rescue IOError, Errno::EBADF
         Puma::Util.purge_interrupt_queue
       end
     end
