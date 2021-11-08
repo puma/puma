@@ -235,7 +235,8 @@ class TestIntegration < Minitest::Test
       DARWIN ? [Errno::ENOENT, Errno::EPIPE, IOError] :
         [IOError, Errno::ENOENT]
     else
-      DARWIN ? [Errno::EBADF, Errno::ECONNREFUSED, Errno::EPIPE, EOFError] :
+      # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
+      DARWIN ? [Errno::EBADF, Errno::ECONNREFUSED, Errno::EPIPE, EOFError, Errno::ECONNABORTED] :
         [IOError, Errno::ECONNREFUSED]
     end
   end
