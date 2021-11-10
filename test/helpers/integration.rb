@@ -333,7 +333,7 @@ class TestIntegration < Minitest::Test
         sleep 0.5
         wait_for_server_to_boot
         restart_count += 1
-        sleep(Puma.windows? ? 3 : 0.5)
+        sleep(Puma.windows? ? 3.0 : 1.0)
       end
     end
 
