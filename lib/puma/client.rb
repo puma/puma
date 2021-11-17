@@ -63,11 +63,7 @@ module Puma
       @io = io
       @to_io = io.to_io
       @proto_env = env
-      if !env
-        @env = nil
-      else
-        @env = env.dup
-      end
+      @env = env ? env.dup : nil
 
       @parser = HttpParser.new
       @parsed_bytes = 0
