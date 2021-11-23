@@ -303,7 +303,7 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_client_unknown_ca
-    assert_ssl_client_error_match('self signed certificate in certificate chain', '/DC=net/DC=puma/CN=CAU') do |http|
+    assert_ssl_client_error_match(/self[- ]signed certificate in certificate chain/, '/DC=net/DC=puma/CN=CAU') do |http|
       key = "#{CERT_PATH}/client_unknown.key"
       crt = "#{CERT_PATH}/client_unknown.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
