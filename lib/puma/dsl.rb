@@ -736,6 +736,19 @@ module Puma
       @options[:tag] = string.to_s
     end
 
+    # Change the default interval for checking workers.
+    #
+    # The default value is 5 seconds.
+    #
+    # @note Cluster mode only.
+    # @example
+    #   worker_check_interval 5
+    # @see Puma::Cluster#check_workers
+    #
+    def worker_check_interval(interval)
+      @options[:worker_check_interval] = Integer(interval)
+    end
+
     # Verifies that all workers have checked in to the master process within
     # the given timeout. If not the worker process will be restarted. This is
     # not a request timeout, it is to protect against a hung or dead process.
@@ -750,7 +763,7 @@ module Puma
     #
     def worker_timeout(timeout)
       timeout = Integer(timeout)
-      min = Const::WORKER_CHECK_INTERVAL
+      min = @options.fetch(:worker_check_interval, Puma::ConfigDefault::DefaultWorkerCheckInterval)
 
       if timeout <= min
         raise "The minimum worker_timeout must be greater than the worker reporting interval (#{min})"

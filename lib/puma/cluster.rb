@@ -135,7 +135,7 @@ module Puma
     def check_workers
       return if @next_check >= Time.now
 
-      @next_check = Time.now + Const::WORKER_CHECK_INTERVAL
+      @next_check = Time.now + @options[:worker_check_interval]
 
       timeout_workers
       wait_workers

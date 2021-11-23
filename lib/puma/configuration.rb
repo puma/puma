@@ -11,6 +11,7 @@ module Puma
 
     DefaultTCPHost = "0.0.0.0"
     DefaultTCPPort = 9292
+    DefaultWorkerCheckInterval = 5
     DefaultWorkerTimeout = 60
     DefaultWorkerShutdownTimeout = 30
   end
@@ -195,6 +196,7 @@ module Puma
         :workers => Integer(ENV['WEB_CONCURRENCY'] || 0),
         :silence_single_worker_warning => false,
         :mode => :http,
+        :worker_check_interval => DefaultWorkerCheckInterval,
         :worker_timeout => DefaultWorkerTimeout,
         :worker_boot_timeout => DefaultWorkerTimeout,
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,

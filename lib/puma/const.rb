@@ -235,9 +235,6 @@ module Puma
 
     EARLY_HINTS = "rack.early_hints".freeze
 
-    # Minimum interval to checks worker health
-    WORKER_CHECK_INTERVAL = 5
-
     # Illegal character in the key or value of response header
     DQUOTE = "\"".freeze
     HTTP_HEADER_DELIMITER = Regexp.escape("(),/:;<=>?@[]{}\\").freeze
