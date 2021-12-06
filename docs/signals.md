@@ -42,6 +42,7 @@ Puma cluster responds to these signals:
 - `INT ` equivalent of sending Ctrl-C to cluster. Puma will attempt to finish then exit.
 - `CHLD`
 - `URG ` refork workers in phases from worker 0 if `fork_workers` option is enabled.
+- `INFO` print backtraces of all puma threads
 
 ## Callbacks order in case of different signals
 
