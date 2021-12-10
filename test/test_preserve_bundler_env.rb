@@ -86,7 +86,6 @@ class TestPreserveBundlerEnv < TestIntegration
     start_phased_restart
 
     connection = connect
-    connection.write "GET / HTTP/1.1\r\n\r\n"
     new_reply = read_body(connection)
     expected_gemfile = File.expand_path("bundle_preservation_test/version2/Gemfile", __dir__).inspect
     assert_equal(expected_gemfile, new_reply)

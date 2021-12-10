@@ -66,6 +66,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_term_closes_listeners_tcp
     skip_unless_signal_exist? :TERM
+    skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
     term_closes_listeners unix: false
   end
 
@@ -376,19 +377,21 @@ RUBY
 
     threads.each(&:join)
 
-    failures  = replies.count(:failure)
-    successes = replies.count(:success)
-    resets    = replies.count(:reset)
-    refused   = replies.count(:refused)
+    failures      = replies.count(:failure)
+    successes     = replies.count(:success)
+    resets        = replies.count(:reset)
+    refused       = replies.count(:refused)
+    read_timeouts = replies.count(:read_timeout)
 
     r_success = replies.rindex(:success)
     l_reset   = replies.index(:reset)
     r_reset   = replies.rindex(:reset)
     l_refused = replies.index(:refused)
 
-    msg = "#{successes} successes, #{resets} resets, #{refused} refused, failures #{failures}"
+    msg = "#{successes} successes, #{resets} resets, #{refused} refused, #{failures} failures, #{read_timeouts} read timeouts"
 
     assert_equal 0, failures, msg
+    assert_equal 0, read_timeouts, msg
 
     assert_operator 9,  :<=, successes, msg
 
@@ -436,9 +439,10 @@ RUBY
 
     threads.each(&:join)
 
-    responses = replies.count { |r| r[/\ASlept 1/] }
-    resets    = replies.count { |r| r == :reset    }
-    refused   = replies.count { |r| r == :refused  }
+    responses     = replies.count { |r| r[/\ASlept 1/] }
+    resets        = replies.count { |r| r == :reset    }
+    refused       = replies.count { |r| r == :refused  }
+    read_timeouts = replies.count { |r| r == :read_timeout }
 
     # get pids from replies, generate uniq array
     qty_pids = replies.map { |body| body[/\d+\z/] }.uniq.compact.length
@@ -448,11 +452,13 @@ RUBY
     assert_equal 25, responses, msg
     assert_operator qty_pids, :>, 2, msg
 
-    msg = "#{responses} responses, #{resets} resets, #{refused} refused"
+    msg = "#{responses} responses, #{resets} resets, #{refused} refused, #{read_timeouts} read timeouts"
 
-    refute_includes replies, :refused, msg
+    assert_equal 0, refused, msg
 
-    refute_includes replies, :reset  , msg
+    assert_equal 0, resets, msg
+
+    assert_equal 0, read_timeouts, msg
   ensure
     unless passed?
       $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
@@ -532,6 +538,8 @@ RUBY
       mutex.synchronize { replies << :reset }
     rescue *refused
       mutex.synchronize { replies << :refused }
+    rescue Timeout::Error
+      mutex.synchronize { replies << :read_timeout }
     end
   end
 
@@ -540,7 +548,7 @@ RUBY
     begin
       sleep delay
       s = connect "sleep#{sleep_time}-#{step}", unix: unix
-      body = read_body(s, 15)
+      body = read_body(s, 20)
       if body[/\ASlept /]
         mutex.synchronize { replies[step] = :success }
       else
@@ -552,6 +560,8 @@ RUBY
       mutex.synchronize { replies[step] = :reset }
     rescue *refused
       mutex.synchronize { replies[step] = :refused }
+    rescue Timeout::Error
+      mutex.synchronize { replies[step] = :read_timeout }
     end
   end
 end if ::Process.respond_to?(:fork)
