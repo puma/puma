@@ -107,6 +107,11 @@ To run a single test:
 bundle exec m test/test_binder.rb:37
 ```
 
+To run a single test with 5 seconds as the test case timeout:
+```sh
+TEST_CASE_TIMEOUT=5 bundle exec m test/test_binder.rb:37
+```
+
 ## How to contribute
 
 Puma could use your help in several areas!
