@@ -1,6 +1,8 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
+require "time"
+
 class TestIntegrationCluster < TestIntegration
   parallelize_me! if ::Puma.mri?
 
@@ -147,6 +149,21 @@ class TestIntegrationCluster < TestIntegration
     worker_respawn { |phase0_worker_pids| Process.kill :USR1, @pid }
   end
 
+  def test_worker_check_interval
+    @control_tcp_port = UniquePort.call
+    worker_check_interval = 1
+
+    cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
+
+    sleep worker_check_interval + 1
+    last_checkin_1 = Time.parse(get_stats["worker_status"].first["last_checkin"])
+
+    sleep worker_check_interval + 1
+    last_checkin_2 = Time.parse(get_stats["worker_status"].first["last_checkin"])
+
+    assert(last_checkin_2 > last_checkin_1)
+  end
+
   def test_worker_boot_timeout
     timeout = 1
     worker_timeout(timeout, 2, "worker failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
@@ -154,7 +171,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
-    timeout = Puma::Const::WORKER_CHECK_INTERVAL + 1
+    timeout = Puma::ConfigDefault::DefaultWorkerCheckInterval + 1
     worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<RUBY)
 worker_timeout #{timeout}
 on_worker_boot do

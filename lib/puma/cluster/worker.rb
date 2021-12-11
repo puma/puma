@@ -130,7 +130,7 @@ module Puma
                 Puma::Util.purge_interrupt_queue
                 break
               end
-              sleep Const::WORKER_CHECK_INTERVAL
+              sleep @options[:worker_check_interval]
             end
           end
           server_thread.join

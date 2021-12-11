@@ -148,7 +148,7 @@ class TestLauncher < Minitest::Test
     end
     launcher = launcher(conf)
     Thread.new do
-      sleep Puma::Const::WORKER_CHECK_INTERVAL + 1
+      sleep Puma::ConfigDefault::DefaultWorkerCheckInterval + 1
       status = Puma.stats_hash[:worker_status].first[:last_status]
       Puma::Server::STAT_METHODS.each do |stat|
         assert_includes status, stat

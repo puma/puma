@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "puma/control_cli"
+require "json"
 require "open3"
 require "io/wait"
 require_relative 'tmp_path'
@@ -253,6 +254,11 @@ class TestIntegration < Minitest::Test
     w.close
     @ios_to_close << r
     r
+  end
+
+  def get_stats
+    read_pipe = cli_pumactl "stats"
+    JSON.parse(read_pipe.readlines.last)
   end
 
   def hot_restart_does_not_drop_connections(num_threads: 1, total_requests: 500)
