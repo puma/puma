@@ -23,6 +23,9 @@ Thread.abort_on_exception = true
 
 $debugging_info = ''.dup
 $debugging_hold = false    # needed for TestCLI#test_control_clustered
+$test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
+  RUBY_ENGINE == "ruby" ? 45 : 60
+end.to_i
 
 require "puma"
 require "puma/detect"
@@ -77,14 +80,14 @@ module TimeoutEveryTestCase
     with_info_handler do
       time_it do
         capture_exceptions do
-          ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 45 : 60, TestTookTooLong) do
+          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
             before_setup; setup; after_setup
             self.send self.name
           end
         end
 
         capture_exceptions do
-          ::Timeout.timeout(RUBY_ENGINE == 'ruby' ? 45 : 60, TestTookTooLong) do
+          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
             Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
           end
         end
