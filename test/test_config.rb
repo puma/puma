@@ -15,7 +15,6 @@ class TestConfigFile < TestConfigFileBase
     assert_equal max_threads, Puma::Configuration.new.default_max_threads
   end
 
-
   def test_app_from_rackup
     conf = Puma::Configuration.new do |c|
       c.rackup "test/rackup/hello-bind.ru"
@@ -57,19 +56,6 @@ class TestConfigFile < TestConfigFileBase
     assert bind_configuration =~ /verify_mode=peer/
 
     assert_equal [200, {}, ["embedded app"]], app.call({})
-  end
-
-  def test_custom_logger_from_DSL
-    conf = Puma::Configuration.new do |c|
-      c.load "test/config/custom_logger.rb"
-    end
-
-    conf.load
-    out, _ = capture_subprocess_io do
-      conf.options[:logger].write('test')
-    end
-
-    assert_match /Custom logging: test/, out
   end
 
   def test_ssl_bind
@@ -420,6 +406,18 @@ class TestConfigFile < TestConfigFileBase
 
     conf.run_hooks hook_name, 'ARG', Puma::Events.strings
     assert_equal messages, ["#{hook_name} is called with ARG one time", "#{hook_name} is called with ARG a second time"]
+  end
+end
+
+# contains tests that cannot run parallel
+class TestConfigFileSingle < TestConfigFileBase
+  def test_custom_logger_from_DSL
+    conf = Puma::Configuration.new { |c| c.load 'test/config/custom_logger.rb' }
+
+    conf.load
+    out, _ = capture_subprocess_io { conf.options[:logger].write 'test' }
+
+    assert_equal 'Custom logging: test', out
   end
 end
 
