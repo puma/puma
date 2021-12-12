@@ -32,6 +32,12 @@ jobs:
       - name: repo checkout
         uses: actions/checkout@v2
 
+      - name: set JAVA_HOME
+        if: startsWith(matrix.os, 'macos')
+        shell: bash
+        run:  |
+          echo JAVA_HOME=$JAVA_HOME_11_X64 >> $GITHUB_ENV
+
       - name: load ruby, ragel
         uses: MSP-Greg/setup-ruby-pkgs@v1
         with:
@@ -39,16 +45,8 @@ jobs:
           apt-get: ragel
           brew: ragel
           mingw: _upgrade_ openssl ragel
-
-      - name: set JAVA_HOME
-        if: startsWith(matrix.os, 'macos')
-        shell: bash
-        run:  |
-          echo JAVA_HOME=$JAVA_HOME_11_X64 >> $GITHUB_ENV
-
-      - name: bundle install
-        timeout-minutes: 5
-        run:  bundle install --jobs 4 --retry 3
+          bundler-cache: true
+        timeout-minutes: 10
 
       - name: Compile Puma without SSL support
         if: matrix.no-ssl == ' no SSL'
