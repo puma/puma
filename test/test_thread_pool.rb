@@ -10,12 +10,12 @@ class TestThreadPool < Minitest::Test
 
   def new_pool(min, max, &block)
     block = proc { } unless block
-    @pool = Puma::ThreadPool.new('test', min, max, &block)
+    @pool = Puma::ThreadPool.new('tst', min, max, &block)
   end
 
   def mutex_pool(min, max, &block)
     block = proc { } unless block
-    @pool = MutexPool.new('test', min, max, &block)
+    @pool = MutexPool.new('tst', min, max, &block)
   end
 
   # Wraps ThreadPool work in mutex for better concurrency control.
@@ -59,7 +59,32 @@ class TestThreadPool < Minitest::Test
     thread_name = nil
     pool = mutex_pool(0, 1) {thread_name = Thread.current.name}
     pool << 1
-    assert_equal('puma test threadpool 001', thread_name)
+    assert_equal('puma tst tp 001', thread_name)
+  end
+
+  def test_thread_name_linux
+    skip 'Thread.name not supported' unless Thread.current.respond_to?(:name)
+
+    task_dir = File.join('', 'proc', Process.pid.to_s, 'task')
+    skip 'This test only works under Linux with appropriate permissions' if !(File.directory?(task_dir) && File.readable?(task_dir))
+
+    expected_thread_name = 'puma tst tp 001'
+    found_thread = false
+    pool = mutex_pool(0, 1) do
+      # Read every /proc/<pid>/task/<tid>/comm file to find the thread name
+      Dir.entries(task_dir).select {|tid| File.directory?(File.join(task_dir, tid))}.each do |tid|
+        comm_file = File.join(task_dir, tid, 'comm')
+        next unless File.file?(comm_file) && File.readable?(comm_file)
+
+        if File.read(comm_file).strip == expected_thread_name
+          found_thread = true
+          break
+        end
+      end
+    end
+    pool << 1
+
+    assert(found_thread, "Did not find thread with name '#{expected_thread_name}'")
   end
 
   def test_converts_pool_sizes

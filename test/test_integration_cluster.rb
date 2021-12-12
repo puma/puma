@@ -177,7 +177,7 @@ worker_timeout #{timeout}
 on_worker_boot do
   Thread.new do
     sleep 1
-    Thread.list.find {|t| t.name == 'puma stat payload'}.kill
+    Thread.list.find {|t| t.name == 'puma stat pld'}.kill
   end
 end
 RUBY
