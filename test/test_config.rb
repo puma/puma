@@ -59,6 +59,19 @@ class TestConfigFile < TestConfigFileBase
     assert_equal [200, {}, ["embedded app"]], app.call({})
   end
 
+  def test_custom_logger_from_DSL
+    conf = Puma::Configuration.new do |c|
+      c.load "test/config/custom_logger.rb"
+    end
+
+    conf.load
+    out, _ = capture_subprocess_io do
+      conf.options[:logger].write('test')
+    end
+
+    assert_match /Custom logging: test/, out
+  end
+
   def test_ssl_bind
     skip_if :jruby
     skip_unless :ssl
@@ -121,9 +134,6 @@ class TestConfigFile < TestConfigFileBase
       "&verify_mode=the_verify_mode"
     assert_equal [ssl_binding], conf.options[:binds]
   end
-
-
-
 
   def test_ssl_bind_no_tlsv1_1
     skip_if :jruby
