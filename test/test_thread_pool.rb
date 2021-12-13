@@ -63,10 +63,10 @@ class TestThreadPool < Minitest::Test
   end
 
   def test_thread_name_linux
-    skip 'Thread.name not supported' unless Thread.current.respond_to?(:name) && Puma::IS_MRI
+    skip 'Thread.name not supported' unless Thread.current.respond_to?(:name)
 
     task_dir = File.join('', 'proc', Process.pid.to_s, 'task')
-    skip 'This test only works under Linux and MRI Ruby with appropriate permissions' if !(File.directory?(task_dir) && File.readable?(task_dir)) && Puma::IS_MRI
+    skip 'This test only works under Linux and MRI Ruby with appropriate permissions' if !(File.directory?(task_dir) && File.readable?(task_dir) && Puma::IS_MRI)
 
     expected_thread_name = 'puma tst tp 001'
     found_thread = false
