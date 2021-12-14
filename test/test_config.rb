@@ -121,6 +121,9 @@ class TestConfigFile < TestConfigFileBase
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
+
+
+
   def test_ssl_bind_no_tlsv1_1
     skip_if :jruby
     skip_unless :ssl
