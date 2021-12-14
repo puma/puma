@@ -30,10 +30,10 @@ module Puma
         title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
         $0 = title
 
-        Puma::Util.safe_signal_trap "SIGINT", "IGNORE"
-        Puma::Util.safe_signal_trap "SIGCHLD", "DEFAULT"
+        Signal.trap "SIGINT", "IGNORE"
+        Signal.trap "SIGCHLD", "DEFAULT"
 
-       Thread.new do
+        Thread.new do
           Puma.set_thread_name "wrkr check"
           @check_pipe.wait_readable
           log "! Detected parent died, dying"
