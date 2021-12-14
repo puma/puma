@@ -121,9 +121,6 @@ class TestConfigFile < TestConfigFileBase
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
-
-
-
   def test_ssl_bind_no_tlsv1_1
     skip_if :jruby
     skip_unless :ssl
@@ -409,18 +406,6 @@ class TestConfigFile < TestConfigFileBase
 
     conf.run_hooks hook_name, 'ARG', Puma::Events.strings
     assert_equal messages, ["#{hook_name} is called with ARG one time", "#{hook_name} is called with ARG a second time"]
-  end
-end
-
-# contains tests that cannot run parallel
-class TestConfigFileSingle < TestConfigFileBase
-  def test_custom_logger_from_DSL
-    conf = Puma::Configuration.new { |c| c.load 'test/config/custom_logger.rb' }
-
-    conf.load
-    out, _ = capture_subprocess_io { conf.options[:logger].write 'test' }
-
-    assert_equal 'Custom logging: test', out
   end
 end
 
