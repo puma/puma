@@ -79,7 +79,6 @@ module Puma
           begin
             old_handler.call
           rescue Exception
-            puts $!.inspect
           end
         end
 
