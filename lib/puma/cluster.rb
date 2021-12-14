@@ -266,7 +266,7 @@ module Puma
     # of the signals handlers as small as possible.
     def setup_signals
       if @options[:fork_worker]
-        Signal.trap "SIGURG" do
+        Puma::Util.safe_signal_trap "SIGURG" do
           fork_worker!
         end
 
@@ -280,23 +280,23 @@ module Puma
         end
       end
 
-      Signal.trap "SIGCHLD" do
+      Puma::Util.safe_signal_trap "SIGCHLD" do
         wakeup!
       end
 
-      Signal.trap "TTIN" do
+      Puma::Util.safe_signal_trap "TTIN" do
         @options[:workers] += 1
         wakeup!
       end
 
-      Signal.trap "TTOU" do
+      Puma::Util.safe_signal_trap "TTOU" do
         @options[:workers] -= 1 if @options[:workers] >= 2
         wakeup!
       end
 
       master_pid = Process.pid
 
-      Signal.trap "SIGTERM" do
+      Puma::Util.safe_signal_trap "SIGTERM" do
         # The worker installs their own SIGTERM when booted.
         # Until then, this is run by the worker and the worker
         # should just exit if they get it.
@@ -396,7 +396,7 @@ module Puma
 
       spawn_workers
 
-      Signal.trap "SIGINT" do
+      Puma::Util.safe_signal_trap "SIGINT" do
         stop
       end
 

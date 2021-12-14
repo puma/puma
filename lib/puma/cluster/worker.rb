@@ -30,8 +30,8 @@ module Puma
         title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
         $0 = title
 
-        Signal.trap "SIGINT", "IGNORE"
-        Signal.trap "SIGCHLD", "DEFAULT"
+        Puma::Util.safe_signal_trap "SIGINT", "IGNORE"
+        Puma::Util.safe_signal_trap.trap "SIGCHLD", "DEFAULT"
 
        Thread.new do
           Puma.set_thread_name "wrkr check"
@@ -69,7 +69,7 @@ module Puma
         if fork_worker
           restart_server.clear
           worker_pids = []
-          Signal.trap "SIGCHLD" do
+          Puma::Util.safe_signal_trap "SIGCHLD" do
             wakeup! if worker_pids.reject! do |p|
               Process.wait(p, Process::WNOHANG) rescue true
             end
@@ -96,7 +96,7 @@ module Puma
           end
         end
 
-        Signal.trap "SIGTERM" do
+        Puma::Util.safe_signal_trap "SIGTERM" do
           @worker_write << "e#{Process.pid}\n" rescue nil
           restart_server.clear
           server.stop
