@@ -31,7 +31,7 @@ module Puma
         $0 = title
 
         Puma::Util.safe_signal_trap "SIGINT", "IGNORE"
-        Puma::Util.safe_signal_trap.trap "SIGCHLD", "DEFAULT"
+        Puma::Util.safe_signal_trap "SIGCHLD", "DEFAULT"
 
        Thread.new do
           Puma.set_thread_name "wrkr check"
