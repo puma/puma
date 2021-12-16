@@ -14,7 +14,7 @@ module Puma
       name = signame(sig)
       ::Signal.trap(name) do
         invoke_custom_signal_handlers(name)
-        handler.call
+        yield handler
       end
     end
 
@@ -29,7 +29,7 @@ module Puma
 
     def invoke_custom_signal_handlers(signame)
       Array(custom_signal_handlers[signame]).each do |handler|
-        handler.call
+        yield handler
       end
     end
     module_function :invoke_custom_signal_handlers
