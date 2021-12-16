@@ -7,6 +7,7 @@ require 'puma/single'
 require 'puma/const'
 require 'puma/binder'
 require 'puma/util'
+require 'puma/signal'
 
 module Puma
   # Puma::Launcher is the single entry point for starting a Puma server based on user
@@ -455,7 +456,7 @@ module Puma
 
     def setup_signals
       begin
-        Puma::Util.safe_signal_trap "SIGUSR2" do
+        Puma::Signal.trap "SIGUSR2" do
           restart
         end
       rescue Exception
@@ -464,7 +465,7 @@ module Puma
 
       unless Puma.jruby?
         begin
-          Puma::Util.safe_signal_trap "SIGUSR1" do
+          Puma::Signal.trap "SIGUSR1" do
             phased_restart
           end
         rescue Exception
@@ -473,7 +474,7 @@ module Puma
       end
 
       begin
-        Puma::Util.safe_signal_trap "SIGTERM" do
+        Puma::Signal.trap "SIGTERM" do
           graceful_stop
 
           raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
@@ -483,7 +484,7 @@ module Puma
       end
 
       begin
-        Puma::Util.safe_signal_trap "SIGINT" do
+        Puma::Signal.trap "SIGINT" do
           stop
         end
       rescue Exception
@@ -491,7 +492,7 @@ module Puma
       end
 
       begin
-        Puma::Util.safe_signal_trap "SIGHUP" do
+        Puma::Signal.trap "SIGHUP" do
           if @runner.redirected_io?
             @runner.redirect_io
           else
@@ -504,7 +505,7 @@ module Puma
 
       begin
         unless Puma.jruby? # INFO in use by JVM already
-          Puma::Util.safe_signal_trap "SIGINFO" do
+          Puma::Signal.trap "SIGINFO" do
             thread_status do |name, backtrace|
               @events.log name
               @events.log backtrace.map { |bt| "  #{bt}" }

@@ -71,21 +71,6 @@ module Puma
       params
     end
 
-    # Signal.trap that does not replace
-    # the existing puma handlers
-    def safe_signal_trap(sig)
-      old_handler = Signal.trap(sig) do
-        if old_handler.respond_to?(:call)
-          begin
-            old_handler.call
-          rescue Exception
-          end
-        end
-
-        yield
-      end
-    end
-
     # A case-insensitive Hash that preserves the original case of a
     # header when set.
     class HeaderHash < Hash

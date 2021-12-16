@@ -30,8 +30,12 @@ module Puma
         title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
         $0 = title
 
-        Signal.trap "SIGINT", "IGNORE"
-        Signal.trap "SIGCHLD", "DEFAULT"
+        Puma::Signal.trap "SIGINT" do
+        end
+
+        Puma::Signal.trap "SIGCHLD" do |signal|
+          raise SignalException, signal
+        end
 
         Thread.new do
           Puma.set_thread_name "wrkr check"
@@ -55,7 +59,7 @@ module Puma
         @launcher.config.run_hooks :before_worker_boot, index, @launcher.events
 
         begin
-        server = @server ||= start_server
+          server = @server ||= start_server
         rescue Exception => e
           log "! Unable to start worker"
           log e.backtrace[0]
@@ -69,7 +73,7 @@ module Puma
         if fork_worker
           restart_server.clear
           worker_pids = []
-          Puma::Util.safe_signal_trap "SIGCHLD" do
+          Puma::Signal.trap "SIGCHLD" do
             wakeup! if worker_pids.reject! do |p|
               Process.wait(p, Process::WNOHANG) rescue true
             end
@@ -96,7 +100,7 @@ module Puma
           end
         end
 
-        Puma::Util.safe_signal_trap "SIGTERM" do
+        Puma::Signal.trap "SIGTERM" do
           @worker_write << "e#{Process.pid}\n" rescue nil
           restart_server.clear
           server.stop
