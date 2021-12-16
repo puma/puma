@@ -6,7 +6,6 @@ require 'puma/cluster'
 require 'puma/single'
 require 'puma/const'
 require 'puma/binder'
-require 'puma/util'
 require 'puma/signal'
 
 module Puma
