@@ -795,6 +795,30 @@ module Puma
       @options[:worker_shutdown_timeout] = Integer(timeout)
     end
 
+    # Set the strategy for worker culling.
+    #
+    # There are two possible values:
+    #
+    # 1. **:youngest** - the youngest workers (i.e. the workers that were
+    #    the most recently started) will be culled.
+    # 2. **:oldest** - the oldest workers (i.e. the workers that were started
+    #    the longest time ago) will be culled.
+    #
+    # @note Cluster mode only.
+    # @example
+    #   worker_culling_strategy :oldest
+    # @see Puma::Cluster#cull_workers
+    #
+    def worker_culling_strategy(strategy)
+      stategy = strategy.to_sym
+
+      if ![:youngest, :oldest].include?(strategy)
+        raise "Invalid value for worker_culling_strategy - #{stategy}"
+      end
+
+      @options[:worker_culling_strategy] = strategy
+    end
+
     # When set to true (the default), workers accept all requests
     # and queue them before passing them to the handlers.
     # When set to false, each worker process accepts exactly as
