@@ -137,6 +137,11 @@ This code can be used to setup the process before booting the application, allow
 you to do some Puma-specific things that you don't want to embed in your application.
 For instance, you could fire a log notification that a worker booted or send something to statsd. This can be called multiple times.
 
+Note that constants loaded by your application (such as Rails) will not be available in `on_worker_boot` unless you are
+preloading the app. Preloading can be enabled explicitely with `preload_app!`, or will automatically be used if
+using 2 or more workers. If `preload_app!` is not explicitely enabled, and 1 worker is used, then `on_worker_boot`
+will fire, but the code will not be preloaded, and constants will not be available.
+
 `before_fork` specifies a block to be run before workers are forked:
 
 ```ruby
