@@ -98,6 +98,21 @@ class TestConfigFile < TestConfigFileBase
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
+  def test_ssl_bind_with_backlog
+    skip_unless :ssl
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        backlog: "2048",
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=&key=&verify_mode=none&backlog=2048"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
   def test_ssl_bind_jruby
     skip_unless :jruby
     skip_unless :ssl

@@ -275,6 +275,23 @@ class TestBinder < TestBinderBase
     assert_equal @events.stderr, env_hash["rack.errors"]
   end
 
+  def test_ssl_binder_sets_backlog
+    skip_unless :ssl
+
+    host = '127.0.0.1'
+    port = UniquePort.call
+    tcp_server = TCPServer.new(host, port)
+    tcp_server.define_singleton_method(:listen) do |backlog|
+      Thread.current[:backlog] = backlog
+    end
+
+    TCPServer.stub(:new, tcp_server) do
+      @binder.parse ["ssl://#{host}:#{port}?#{ssl_query}&backlog=2048"], @events
+    end
+
+    assert_equal 2048, Thread.current[:backlog]
+  end
+
   def test_close_calls_close_on_ios
     @mocked_ios = [Minitest::Mock.new, Minitest::Mock.new]
     @mocked_ios.each { |m| m.expect(:close, true) }

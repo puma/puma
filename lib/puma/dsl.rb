@@ -46,6 +46,8 @@ module Puma
         else ''
         end
 
+      backlog_str = opts[:backlog] ? "&backlog=#{opts[:backlog]}" : ''
+
       ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
 
       if defined?(JRUBY_VERSION)
@@ -55,7 +57,7 @@ module Puma
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
 
         "ssl://#{host}:#{port}?#{keystore_additions}#{ssl_cipher_list}" \
-          "&verify_mode=#{verify}#{tls_str}#{ca_additions}"
+          "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{backlog_str}"
       else
         ssl_cipher_filter = opts[:ssl_cipher_filter] ?
           "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
@@ -64,7 +66,7 @@ module Puma
           "&verification_flags=#{Array(ary).join ','}" : nil
 
         "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}" \
-          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}"
+          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
       end
     end
 
