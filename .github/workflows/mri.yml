@@ -59,6 +59,13 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
 
+      # Fix RubyGems warnings about required_ruby_version bug with Bundler
+      - name: update rubygems for Ruby 2.2
+        if: matrix.ruby >= '2.3' && matrix.ruby < '2.6'
+        run: gem update --system 3.2.3 --no-document
+        continue-on-error: true
+        timeout-minutes: 5
+
       - name: Compile Puma without SSL support
         if: matrix.no-ssl == ' no SSL'
         shell: bash
