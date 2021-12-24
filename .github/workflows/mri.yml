@@ -72,8 +72,6 @@ jobs:
         run:  bundle exec rake compile
 
       - name: rubocop
-        # 2021-05-20 - RuboCop won't run with Psych 4.0 - remove when fixed
-        if: (endsWith(matrix.ruby, 'head') == false) && (endsWith(matrix.ruby, 'ucrt') == false)
         run: bundle exec rake rubocop
 
       - name: Use yjit
