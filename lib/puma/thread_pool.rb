@@ -72,7 +72,7 @@ module Puma
     attr_accessor :out_of_band_hook # @version 5.0.0
 
     def self.clean_thread_locals
-      Thread.current.keys.each do |key| # rubocop: disable Performance/HashEachMethods
+      Thread.current.keys.each do |key| # rubocop: disable Style/HashEachMethods
         Thread.current[key] = nil unless key == :__recursive_key__
       end
     end
