@@ -60,7 +60,7 @@ jobs:
         timeout-minutes: 5
 
       # Fix RubyGems warnings about required_ruby_version bug with Bundler
-      - name: update rubygems for Ruby 2.2
+      - name: update rubygems for Ruby 2.3 - 2.5
         if: matrix.ruby >= '2.3' && matrix.ruby < '2.6'
         run: gem update --system 3.2.3 --no-document
         continue-on-error: true
