@@ -46,9 +46,9 @@ module Puma
         else ''
         end
 
-      backlog_str = opts[:backlog] ? "&backlog=#{opts[:backlog]}" : ''
-
       ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
+
+      backlog_str = opts[:backlog] ? "&backlog=#{Integer(opts[:backlog])}" : ''
 
       if defined?(JRUBY_VERSION)
         ssl_cipher_list = opts[:ssl_cipher_list] ?
