@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, macos-11, windows-2022 ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', head ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, head ]
         no-ssl: ['']
         yjit: ['']
         include:
