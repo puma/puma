@@ -4,6 +4,7 @@ require_relative "helpers/tmp_path"
 
 require "puma/cli"
 require "json"
+require "psych"
 
 class TestCLI < Minitest::Test
   include SSLHelper if ::Puma::HAS_SSL
@@ -347,9 +348,21 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["--state", @tmp_path, "--control-url", "auto"]
     cli.launcher.write_state
 
-    data = YAML.load File.read(@tmp_path)
+    opts = cli.launcher.instance_variable_get(:@options)
 
-    assert_equal Process.pid, data["pid"]
+    data = Psych.load_file @tmp_path
+
+    Puma::StateFile::ALLOWED_FIELDS.each do |key|
+      val =
+        case key
+        when 'pid'          then Process.pid
+        when 'running_from' then File.expand_path('.') # same as Launcher
+        else                     opts[key.to_sym]
+        end
+      assert_equal val, data[key]
+    end
+
+    assert_equal (Puma::StateFile::ALLOWED_FIELDS & data.keys).sort, data.keys.sort
 
     url = data["control_url"]
 
@@ -364,10 +377,9 @@ class TestCLI < Minitest::Test
                           "--state", @tmp_path ]
     cli.launcher.write_state
 
-    data = YAML.load_file(@tmp_path)
+    data = Psych.load_file @tmp_path
 
-    keys_not_stripped = data.keys & Puma::CLI::KEYS_NOT_TO_PERSIST_IN_STATE
-    assert_empty keys_not_stripped
+    assert_equal (Puma::StateFile::ALLOWED_FIELDS & data.keys).sort, data.keys.sort
   end
 
   def test_log_formatter_default_single
@@ -401,7 +413,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["--state", @tmp_path, "--control-url", url]
     cli.launcher.write_state
 
-    data = YAML.load File.read(@tmp_path)
+    data = Psych.load_file @tmp_path
 
     assert_equal Process.pid, data["pid"]
     assert_equal url, data["control_url"]
