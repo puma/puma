@@ -11,30 +11,7 @@ gemspec = Gem::Specification.load("puma.gemspec")
 Gem::PackageTask.new(gemspec).define
 
 # Add rubocop task
-RuboCop::RakeTask.new do
-  require 'rubocop'
-
-  # Patch RuboCop::ConfigLoader.yaml_safe_load to work with Psych >= 4.0.
-  module RuboCop
-    class ConfigLoader
-      class << self
-        def yaml_safe_load(yaml_code, filename)
-          if Gem::Version.new(Psych::VERSION) >= Gem::Version.new('3.1.0')
-            YAML.safe_load(
-              yaml_code,
-              permitted_classes: [Regexp, Symbol],
-              permitted_symbols: [],
-              aliases: true,
-              filename: filename
-            )
-          else
-            YAML.safe_load(yaml_code, [Regexp, Symbol], [], true, filename)
-          end
-        end
-      end
-    end
-  end
-end
+RuboCop::RakeTask.new
 
 # generate extension code using Ragel (C and Java)
 desc "Generate extension code (C and Java) using Ragel"
