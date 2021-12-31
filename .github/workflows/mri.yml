@@ -59,6 +59,13 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
 
+      # Fix RubyGems warnings about required_ruby_version bug with Bundler
+      - name: update rubygems for Ruby 2.3 - 2.5
+        if: matrix.ruby >= '2.3' && matrix.ruby < '2.6'
+        run: gem update --system 3.2.3 --no-document
+        continue-on-error: true
+        timeout-minutes: 5
+
       - name: Compile Puma without SSL support
         if: matrix.no-ssl == ' no SSL'
         shell: bash
@@ -72,8 +79,6 @@ jobs:
         run:  bundle exec rake compile
 
       - name: rubocop
-        # 2021-05-20 - RuboCop won't run with Psych 4.0 - remove when fixed
-        if: (endsWith(matrix.ruby, 'head') == false) && (endsWith(matrix.ruby, 'ucrt') == false)
         run: bundle exec rake rubocop
 
       - name: Use yjit
