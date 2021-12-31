@@ -349,7 +349,6 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
     events = SSLEventsHelper.new STDOUT, STDERR
     server = Puma::Server.new app, events
     server.add_ssl_listener host, port, ctx
-    host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
     server.run
 
     http = Net::HTTP.new host, server.connected_ports[0]
