@@ -283,6 +283,7 @@ class TestBinder < TestBinderBase
     tcp_server = TCPServer.new(host, port)
     tcp_server.define_singleton_method(:listen) do |backlog|
       Thread.current[:backlog] = backlog
+      super(backlog)
     end
 
     TCPServer.stub(:new, tcp_server) do
