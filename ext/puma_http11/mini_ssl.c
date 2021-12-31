@@ -608,7 +608,10 @@ void Init_mini_ssl(VALUE puma) {
   ERR_load_crypto_strings();
 
   mod = rb_define_module_under(puma, "MiniSSL");
+
   eng = rb_define_class_under(mod, "Engine", rb_cObject);
+  rb_undef_alloc_func(eng);
+
   sslctx = rb_define_class_under(mod, "SSLContext", rb_cObject);
   rb_define_alloc_func(sslctx, sslctx_alloc);
   rb_define_method(sslctx, "initialize", sslctx_initialize, 1);
