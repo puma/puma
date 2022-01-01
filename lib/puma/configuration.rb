@@ -200,6 +200,7 @@ module Puma
         :worker_timeout => DefaultWorkerTimeout,
         :worker_boot_timeout => DefaultWorkerTimeout,
         :worker_shutdown_timeout => DefaultWorkerShutdownTimeout,
+        :worker_culling_strategy => :youngest,
         :remote_address => :socket,
         :tag => method(:infer_tag),
         :environment => -> { ENV['APP_ENV'] || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development' },

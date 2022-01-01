@@ -111,7 +111,14 @@ module Puma
 
       debug "Culling #{diff.inspect} workers"
 
-      workers_to_cull = @workers[-diff,diff]
+      workers_to_cull =
+        case @options[:worker_culling_strategy]
+        when :youngest
+          @workers.sort_by(&:started_at)[-diff,diff]
+        when :oldest
+          @workers.sort_by(&:started_at)[0,diff]
+        end
+
       debug "Workers to cull: #{workers_to_cull.inspect}"
 
       workers_to_cull.each do |worker|
@@ -122,10 +129,10 @@ module Puma
 
     # @!attribute [r] next_worker_index
     def next_worker_index
-      all_positions =  0...@options[:workers]
-      occupied_positions = @workers.map { |w| w.index }
-      available_positions = all_positions.to_a - occupied_positions
-      available_positions.first
+      occupied_positions = @workers.map(&:index)
+      idx = 0
+      idx += 1 until !occupied_positions.include?(idx)
+      idx
     end
 
     def all_workers_booted?
