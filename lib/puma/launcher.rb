@@ -15,6 +15,7 @@ module Puma
   # It is responsible for either launching a cluster of Puma workers or a single
   # puma server.
   class Launcher
+    # @deprecated 6.0.0
     KEYS_NOT_TO_PERSIST_IN_STATE = [
        :logger, :lowlevel_error_handler,
        :before_worker_shutdown, :before_worker_boot, :before_worker_fork,
