@@ -21,6 +21,7 @@ module Puma
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI
+    # @deprecated 6.0.0
     KEYS_NOT_TO_PERSIST_IN_STATE = Launcher::KEYS_NOT_TO_PERSIST_IN_STATE
 
     # Create a new CLI object using +argv+ as the command line
