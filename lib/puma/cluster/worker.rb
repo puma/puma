@@ -33,7 +33,7 @@ module Puma
         Signal.trap "SIGINT", "IGNORE"
         Signal.trap "SIGCHLD", "DEFAULT"
 
-       Thread.new do
+        Thread.new do
           Puma.set_thread_name "wrkr check"
           @check_pipe.wait_readable
           log "! Detected parent died, dying"
