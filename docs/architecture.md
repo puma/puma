@@ -31,10 +31,10 @@ _workers_, and we sometimes call the threads created by Puma's
 ![https://bit.ly/2zwzhEK](images/puma-connection-flow.png)
 
 * Upon startup, Puma listens on a TCP or UNIX socket.
-  * The backlog of this socket is configured (with a default of 1024). The
-    backlog determines the size of the queue for unaccepted connections.
-    Generally, you'll never hit the backlog cap in production. If the backlog is
-    full, the operating system refuses new connections.
+  * The backlog of this socket is configured with a default of 1024, but the
+    actual backlog value is capped by the `net.core.somaxconn` sysctl value.
+    The backlog determines the size of the queue for unaccepted connections. If
+    the backlog is full, the operating system is not accepting new connections.
   * This socket backlog is distinct from the `backlog` of work as reported by
     `Puma.stats` or the control server. The backlog that `Puma.stats` refers to
     represents the number of connections in the process' `todo` set waiting for

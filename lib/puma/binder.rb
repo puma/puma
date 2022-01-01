@@ -168,9 +168,9 @@ module Puma
             params = Util.parse_query uri.query
 
             opt = params.key?('low_latency') && params['low_latency'] != 'false'
-            bak = params.fetch('backlog', 1024).to_i
+            backlog = params.fetch('backlog', 1024).to_i
 
-            io = add_tcp_listener uri.host, uri.port, opt, bak
+            io = add_tcp_listener uri.host, uri.port, opt, backlog
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
@@ -255,7 +255,8 @@ module Puma
             logger.log "* Activated #{str}"
           else
             ios_len = @ios.length
-            io = add_ssl_listener uri.host, uri.port, ctx
+            backlog = params.fetch('backlog', 1024).to_i
+            io = add_ssl_listener uri.host, uri.port, ctx, optimize_for_latency = true, backlog
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
