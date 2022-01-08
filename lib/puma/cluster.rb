@@ -281,7 +281,6 @@ module Puma
         if (fork_requests = @options[:fork_worker].to_i) > 0
           @launcher.events.register(:ping!) do |w|
             fork_worker! if w.index == 0 &&
-              w.phase == 0 &&
               w.last_status[:requests_count] >= fork_requests
           end
         end
