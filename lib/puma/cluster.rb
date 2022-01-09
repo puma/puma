@@ -447,7 +447,7 @@ module Puma
                   workers_not_booted -= 1
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
-                  w.instance_variable_set :@term, true
+                  w.term!
                 when "t"
                   w.term unless w.term?
                 when "p"

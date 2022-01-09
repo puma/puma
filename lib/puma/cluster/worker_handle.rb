@@ -40,6 +40,10 @@ module Puma
         @stage = :booted
       end
 
+      def term!
+        @term = true
+      end
+
       def term?
         @term
       end
