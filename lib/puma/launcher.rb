@@ -74,7 +74,7 @@ module Puma
 
       generate_restart_data
 
-      if clustered? && !Process.respond_to?(:fork)
+      if clustered? && !Puma.forkable?
         unsupported "worker mode not supported on #{RUBY_ENGINE} on this platform"
       end
 
