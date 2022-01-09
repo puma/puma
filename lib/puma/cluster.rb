@@ -109,21 +109,24 @@ module Puma
       diff = @workers.size - @options[:workers]
       return if diff < 1
 
-      debug "Culling #{diff.inspect} workers"
+      debug "Culling #{diff} workers"
 
-      workers_to_cull =
-        case @options[:worker_culling_strategy]
-        when :youngest
-          @workers.sort_by(&:started_at)[-diff,diff]
-        when :oldest
-          @workers.sort_by(&:started_at)[0,diff]
-        end
+      workers_to_cull = @workers.sort_by(&:started_at)[cull_start_index(diff), diff]
 
       debug "Workers to cull: #{workers_to_cull.inspect}"
 
       workers_to_cull.each do |worker|
         log "- Worker #{worker.index} (PID: #{worker.pid}) terminating"
         worker.term
+      end
+    end
+
+    def cull_start_index(diff)
+      case @options[:worker_culling_strategy]
+      when :oldest
+        @options[:fork_worker] ? 1 : 0
+      else # :youngest
+        -diff
       end
     end
 
