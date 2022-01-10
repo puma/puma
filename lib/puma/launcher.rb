@@ -490,7 +490,9 @@ module Puma
 
       begin
         Signal.trap "SIGTERM" do
-          graceful_stop
+          # This is a shortcut in control flow in case
+          # raise_exception_on_sigterm is true
+          do_graceful_stop
 
           raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
         end
