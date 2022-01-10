@@ -108,22 +108,33 @@ module Puma
     def cull_workers
       diff = @workers.size - @options[:workers]
       return if diff < 1
+      debug "Culling #{diff} workers"
 
-      debug "Culling #{diff.inspect} workers"
+      workers = workers_to_cull(diff)
+      debug "Workers to cull: #{workers.inspect}"
 
-      workers_to_cull =
-        case @options[:worker_culling_strategy]
-        when :youngest
-          @workers.sort_by(&:started_at)[-diff,diff]
-        when :oldest
-          @workers.sort_by(&:started_at)[0,diff]
-        end
-
-      debug "Workers to cull: #{workers_to_cull.inspect}"
-
-      workers_to_cull.each do |worker|
+      workers.each do |worker|
         log "- Worker #{worker.index} (PID: #{worker.pid}) terminating"
         worker.term
+      end
+    end
+
+    def workers_to_cull(diff)
+      workers = @workers.sort_by(&:started_at)
+
+      # In fork_worker mode, worker 0 acts as our master process.
+      # We should avoid culling it to preserve copy-on-write memory gains.
+      workers.reject! { |w| w.index == 0 } if @options[:fork_worker]
+
+      workers[cull_start_index(diff), diff]
+    end
+
+    def cull_start_index(diff)
+      case @options[:worker_culling_strategy]
+      when :oldest
+        0
+      else # :youngest
+        -diff
       end
     end
 

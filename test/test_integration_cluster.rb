@@ -401,6 +401,25 @@ RUBY
     assert_match(/Worker 0 \(PID: \d+\) terminating/, line)
   end
 
+  def test_culling_strategy_oldest_fork_worker
+    cli_server "-w 2 test/rackup/hello.ru", config: <<RUBY
+worker_culling_strategy :oldest
+fork_worker
+RUBY
+
+    get_worker_pids # to consume server logs
+
+    Process.kill :TTIN, @pid
+
+    line = @server.gets
+    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+
+    Process.kill :TTOU, @pid
+
+    line = @server.gets
+    assert_match(/Worker 1 \(PID: \d+\) terminating/, line)
+  end
+
   private
 
   def worker_timeout(timeout, iterations, details, config)
