@@ -121,7 +121,11 @@ module Puma
 
     def workers_to_cull(diff)
       workers = @workers.sort_by(&:started_at)
+
+      # In fork_worker mode, worker 0 acts as our master process.
+      # We should avoid culling it to preserve copy-on-write memory gains.
       workers.reject! { |w| w.index == 0 } if @options[:fork_worker]
+
       workers[cull_start_index(diff), diff]
     end
 
