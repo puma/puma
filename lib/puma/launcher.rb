@@ -71,7 +71,7 @@ module Puma
       @options = @config.options
       @config.clamp
 
-      @log_writer.formatter = Events::PidFormatter.new if clustered?
+      @log_writer.formatter = LogWriter::PidFormatter.new if clustered?
       @log_writer.formatter = options[:log_formatter] if @options[:log_formatter]
 
       generate_restart_data
