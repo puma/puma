@@ -61,9 +61,9 @@ module Puma
 
     # Create a server for the rack app +app+.
     #
-    # +log_writer+ is a Puma::LogWriter object used to log .
+    # +log_writer+ is a Puma::LogWriter object used to log info and error messages.
     #
-    # +events+ is a Puma::Events object .
+    # +events+ is a Puma::Events object used to notify application status events.
     #
     # Server#run returns a thread that you can join on to wait for the server
     # to do its work.
@@ -74,8 +74,8 @@ module Puma
     #
     def initialize(app, log_writer=LogWriter.stdio, events=Events.new, options={})
       @app = app
-      @events = events
       @log_writer = log_writer
+      @events = events
 
       @check, @notify = nil
       @status = :stop
