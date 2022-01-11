@@ -21,7 +21,9 @@ class TestCLI < Minitest::Test
 
     @wait, @ready = IO.pipe
 
-    @events = Puma::Events.strings
+    @log_writer = Puma::LogWriter.strings
+
+    @events = Puma::Events.new
     @events.on_booted { @ready << "!" }
   end
 
@@ -47,7 +49,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:0",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new do
       cli.run
@@ -82,7 +84,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:0",
                          "--control-url", control_url,
                          "--control-token", token,
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new do
       cli.run
@@ -118,7 +120,7 @@ class TestCLI < Minitest::Test
                          "-w", "2",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     # without this, Minitest.after_run will trigger on this test ?
     $debugging_hold = true
@@ -150,8 +152,8 @@ class TestCLI < Minitest::Test
 
       done = nil
       until done
-        @events.stdout.rewind
-        log = @events.stdout.readlines.join ''
+        @log_writer.stdout.rewind
+        log = @log_writer.stdout.readlines.join ''
         done = log[/ - Goodbye!/]
       end
 
@@ -166,7 +168,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new { cli.run }
 
@@ -193,7 +195,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new { cli.run }
 
@@ -217,7 +219,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new do
       cli.run
@@ -258,7 +260,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new { cli.run }
 
@@ -279,7 +281,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", uri,
                          "--control-url", cntl,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new do
       cli.run
@@ -384,28 +386,28 @@ class TestCLI < Minitest::Test
 
   def test_log_formatter_default_single
     cli = Puma::CLI.new [ ]
-    assert_instance_of Puma::Events::DefaultFormatter, cli.launcher.events.formatter
+    assert_instance_of Puma::LogWriter::DefaultFormatter, cli.launcher.log_writer.formatter
   end
 
   def test_log_formatter_default_clustered
     skip_unless :fork
 
     cli = Puma::CLI.new [ "-w 2" ]
-    assert_instance_of Puma::Events::PidFormatter, cli.launcher.events.formatter
+    assert_instance_of Puma::LogWriter::PidFormatter, cli.launcher.log_writer.formatter
   end
 
   def test_log_formatter_custom_single
     cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb" ]
-    assert_instance_of Proc, cli.launcher.events.formatter
-    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.events.format('test'))
+    assert_instance_of Proc, cli.launcher.log_writer.formatter
+    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.log_writer.format('test'))
   end
 
   def test_log_formatter_custom_clustered
     skip_unless :fork
 
     cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb", "-w 2" ]
-    assert_instance_of Proc, cli.launcher.events.formatter
-    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.events.format('test'))
+    assert_instance_of Proc, cli.launcher.log_writer.formatter
+    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.log_writer.format('test'))
   end
 
   def test_state

@@ -17,8 +17,8 @@ module Puma
   # via the `spawn_workers` method call. Each worker will have it's own
   # instance of a `Puma::Server`.
   class Cluster < Runner
-    def initialize(cli, events)
-      super cli, events
+    def initialize(launcher)
+      super(launcher)
 
       @phase = 0
       @workers = []
@@ -92,7 +92,7 @@ module Puma
 
     # @version 5.0.0
     def spawn_worker(idx, master)
-      @launcher.config.run_hooks :before_worker_fork, idx, @launcher.events
+      @launcher.config.run_hooks(:before_worker_fork, idx, @launcher.log_writer)
 
       pid = fork { worker(idx, master) }
       if !pid
@@ -101,7 +101,7 @@ module Puma
         exit! 1
       end
 
-      @launcher.config.run_hooks :after_worker_fork, idx, @launcher.events
+      @launcher.config.run_hooks(:after_worker_fork, idx, @launcher.log_writer)
       pid
     end
 
@@ -409,8 +409,8 @@ module Puma
 
       @master_read, @worker_write = read, @wakeup
 
-      @launcher.config.run_hooks :before_fork, nil, @launcher.events
-      Puma::Util.nakayoshi_gc @events if @options[:nakayoshi_fork]
+      @launcher.config.run_hooks(:before_fork, nil, @launcher.log_writer)
+      Puma::Util.nakayoshi_gc(@log_writer) if @options[:nakayoshi_fork]
 
       spawn_workers
 

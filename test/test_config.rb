@@ -4,7 +4,7 @@ require_relative "helper"
 require_relative "helpers/config_file"
 
 require "puma/configuration"
-require 'puma/events'
+require 'puma/log_writer'
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -357,11 +357,11 @@ class TestConfigFile < TestConfigFileBase
       end
     end
     conf.load
-    events = Puma::Events.strings
+    log_writer = Puma::LogWriter.strings
 
-    conf.run_hooks :on_restart, 'ARG', events
+    conf.run_hooks(:on_restart, 'ARG', log_writer)
     expected = /WARNING hook on_restart failed with exception \(RuntimeError\) Error from hook/
-    assert_match expected, events.stdout.string
+    assert_match expected, log_writer.stdout.string
   end
 
   def test_config_does_not_load_workers_by_default
@@ -403,7 +403,7 @@ class TestConfigFile < TestConfigFileBase
       messages << "#{hook_name} is called with #{a}"
     }
 
-    conf.run_hooks hook_name, 'ARG', Puma::Events.strings
+    conf.run_hooks(hook_name, 'ARG', Puma::LogWriter.strings)
     assert_equal messages, ["#{hook_name} is called with ARG"]
 
     # test multiple
@@ -419,7 +419,7 @@ class TestConfigFile < TestConfigFileBase
     end
     conf.load
 
-    conf.run_hooks hook_name, 'ARG', Puma::Events.strings
+    conf.run_hooks(hook_name, 'ARG', Puma::LogWriter.strings)
     assert_equal messages, ["#{hook_name} is called with ARG one time", "#{hook_name} is called with ARG a second time"]
   end
 end

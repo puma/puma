@@ -28,8 +28,8 @@ module Puma
 
     RACK_VERSION = [1,6].freeze
 
-    def initialize(events, conf = Configuration.new)
-      @events = events
+    def initialize(log_writer, conf = Configuration.new)
+      @log_writer = log_writer
       @conf = conf
       @listeners = []
       @inherited_fds = {}
@@ -38,7 +38,7 @@ module Puma
 
       @proto_env = {
         "rack.version".freeze => RACK_VERSION,
-        "rack.errors".freeze => events.stderr,
+        "rack.errors".freeze => log_writer.stderr,
         "rack.multithread".freeze => conf.options[:max_threads] > 1,
         "rack.multiprocess".freeze => conf.options[:workers] >= 1,
         "rack.run_once".freeze => false,
@@ -98,7 +98,7 @@ module Puma
     # @version 5.0.0
     #
     def create_activated_fds(env_hash)
-      @events.debug "ENV['LISTEN_FDS'] #{ENV['LISTEN_FDS'].inspect}  env_hash['LISTEN_PID'] #{env_hash['LISTEN_PID'].inspect}"
+      @log_writer.debug "ENV['LISTEN_FDS'] #{ENV['LISTEN_FDS'].inspect}  env_hash['LISTEN_PID'] #{env_hash['LISTEN_PID'].inspect}"
       return [] unless env_hash['LISTEN_FDS'] && env_hash['LISTEN_PID'].to_i == $$
       env_hash['LISTEN_FDS'].to_i.times do |index|
         sock = TCPServer.for_fd(socket_activation_fd(index))
@@ -110,7 +110,7 @@ module Puma
           [:tcp, addr, port]
         end
         @activated_sockets[key] = sock
-        @events.debug "Registered #{key.join ':'} for activation from LISTEN_FDS"
+        @log_writer.debug "Registered #{key.join ':'} for activation from LISTEN_FDS"
       end
       ["LISTEN_FDS", "LISTEN_PID"] # Signal to remove these keys from ENV
     end
@@ -152,17 +152,17 @@ module Puma
       end
     end
 
-    def parse(binds, logger, log_msg = 'Listening')
+    def parse(binds, log_writer, log_msg = 'Listening')
       binds.each do |str|
         uri = URI.parse str
         case uri.scheme
         when "tcp"
           if fd = @inherited_fds.delete(str)
             io = inherit_tcp_listener uri.host, uri.port, fd
-            logger.log "* Inherited #{str}"
+            log_writer.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
             io = inherit_tcp_listener uri.host, uri.port, sock
-            logger.log "* Activated #{str}"
+            log_writer.log "* Activated #{str}"
           else
             ios_len = @ios.length
             params = Util.parse_query uri.query
@@ -174,7 +174,7 @@ module Puma
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
-              logger.log "* #{log_msg} on http://#{addr}"
+              log_writer.log "* #{log_msg} on http://#{addr}"
             end
           end
 
@@ -191,12 +191,12 @@ module Puma
           if fd = @inherited_fds.delete(str)
             @unix_paths << path unless abstract
             io = inherit_unix_listener path, fd
-            logger.log "* Inherited #{str}"
+            log_writer.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :unix, path ]) ||
               @activated_sockets.delete([ :unix, File.realdirpath(path) ])
             @unix_paths << path unless abstract || File.exist?(path)
             io = inherit_unix_listener path, sock
-            logger.log "* Activated #{str}"
+            log_writer.log "* Activated #{str}"
           else
             umask = nil
             mode = nil
@@ -220,7 +220,7 @@ module Puma
 
             @unix_paths << path unless abstract || File.exist?(path)
             io = add_unix_listener path, umask, mode, backlog
-            logger.log "* #{log_msg} on #{str}"
+            log_writer.log "* #{log_msg} on #{str}"
           end
 
           @listeners << [str, io]
@@ -244,15 +244,15 @@ module Puma
                   params["#{v}_pem"] = @conf.options[:store][index]
                 end
               end
-              MiniSSL::ContextBuilder.new(params, @events).context
+              MiniSSL::ContextBuilder.new(params, @log_writer).context
             end
 
           if fd = @inherited_fds.delete(str)
-            logger.log "* Inherited #{str}"
+            log_writer.log "* Inherited #{str}"
             io = inherit_ssl_listener fd, ctx
           elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
             io = inherit_ssl_listener sock, ctx
-            logger.log "* Activated #{str}"
+            log_writer.log "* Activated #{str}"
           else
             ios_len = @ios.length
             backlog = params.fetch('backlog', 1024).to_i
@@ -260,20 +260,20 @@ module Puma
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
-              logger.log "* #{log_msg} on ssl://#{addr}?#{uri.query}"
+              log_writer.log "* #{log_msg} on ssl://#{addr}?#{uri.query}"
             end
           end
 
           @listeners << [str, io] if io
         else
-          logger.error "Invalid URI: #{str}"
+          log_writer.error "Invalid URI: #{str}"
         end
       end
 
       # If we inherited fds but didn't use them (because of a
       # configuration change), then be sure to close them.
       @inherited_fds.each do |str, fd|
-        logger.log "* Closing unused inherited connection: #{str}"
+        log_writer.log "* Closing unused inherited connection: #{str}"
 
         begin
           IO.for_fd(fd).close
@@ -293,7 +293,7 @@ module Puma
         fds = @ios.map(&:to_i)
         @activated_sockets.each do |key, sock|
           next if fds.include? sock.to_i
-          logger.log "* Closing unused activated socket: #{key.first}://#{key[1..-1].join ':'}"
+          log_writer.log "* Closing unused activated socket: #{key.first}://#{key[1..-1].join ':'}"
           begin
             sock.close
           rescue SystemCallError
@@ -317,7 +317,7 @@ module Puma
         local_certificates_path = File.expand_path("~/.localhost")
         [File.join(local_certificates_path, "localhost.key"), File.join(local_certificates_path, "localhost.crt")]
       end
-      MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path }, @events).context
+      MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path }, @log_writer).context
     end
 
     # Tell the server to listen on host +host+, port +port+.

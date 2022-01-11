@@ -291,13 +291,13 @@ module Puma
       @plugins.create name
     end
 
-    def run_hooks(key, arg, events)
+    def run_hooks(key, arg, log_writer)
       @options.all_of(key).each do |b|
         begin
           b.call arg
         rescue => e
-          events.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
-          events.debug e.backtrace.join("\n")
+          log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
+          log_writer.debug e.backtrace.join("\n")
         end
       end
     end

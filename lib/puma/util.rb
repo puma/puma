@@ -31,14 +31,14 @@ module Puma
     module_function :unescape
 
     # @version 5.0.0
-    def nakayoshi_gc(events)
-      events.log "! Promoting existing objects to old generation..."
+    def nakayoshi_gc(log_writer)
+      log_writer.log "! Promoting existing objects to old generation..."
       4.times { GC.start(full_mark: false) }
       if GC.respond_to?(:compact)
-        events.log "! Compacting..."
+        log_writer.log "! Compacting..."
         GC.compact
       end
-      events.log "! Friendly fork preparation complete."
+      log_writer.log "! Friendly fork preparation complete."
     end
 
     DEFAULT_SEP = /[&;] */n

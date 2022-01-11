@@ -2,7 +2,7 @@ require_relative "helper"
 require_relative "helpers/tmp_path"
 
 require "puma/configuration"
-require 'puma/events'
+require 'puma/log_writer'
 
 class TestLauncher < Minitest::Test
   include TmpPath
@@ -161,17 +161,17 @@ class TestLauncher < Minitest::Test
   def test_log_config_enabled
     ENV['PUMA_LOG_CONFIG'] = "1"
 
-    assert_match(/Configuration:/, launcher.events.stdout.string)
+    assert_match(/Configuration:/, launcher.log_writer.stdout.string)
 
     launcher.config.final_options.each do |config_key, _value|
-      assert_match(/#{config_key}/, launcher.events.stdout.string)
+      assert_match(/#{config_key}/, launcher.log_writer.stdout.string)
     end
 
     ENV.delete('PUMA_LOG_CONFIG')
   end
 
   def test_log_config_disabled
-    refute_match(/Configuration:/, launcher.events.stdout.string)
+    refute_match(/Configuration:/, launcher.log_writer.stdout.string)
   end
 
   def test_fire_on_stopped
@@ -196,11 +196,11 @@ class TestLauncher < Minitest::Test
 
   private
 
-  def events
-    @events ||= Puma::Events.strings
+  def log_writer
+    @log_writer ||= Puma::LogWriter.strings
   end
 
-  def launcher(config = Puma::Configuration.new, evts = events)
-    @launcher ||= Puma::Launcher.new(config, events: evts)
+  def launcher(config = Puma::Configuration.new, lw = log_writer)
+    @launcher ||= Puma::Launcher.new(config, log_writer: lw)
   end
 end

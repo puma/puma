@@ -8,8 +8,8 @@ app = proc {|env|
   p env['puma.peercert']
   [200, {}, [ env['puma.peercert'] ]]
 }
-events = Puma::Events.new($stdout, $stderr)
-server = Puma::Server.new(app, events)
+log_writer = Puma::LogWriter.new($stdout, $stderr)
+server = Puma::Server.new(app, log_writer)
 
 context = Puma::MiniSSL::Context.new
 context.key         = "certs/server.key"

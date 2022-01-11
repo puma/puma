@@ -293,13 +293,13 @@ module Puma
       run_args += ["-C", @config_file] if @config_file
       run_args += ["-e", @environment] if @environment
 
-      events = Puma::Events.new @stdout, @stderr
+      log_writer = Puma::LogWriter.new(@stdout, @stderr)
 
       # replace $0 because puma use it to generate restart command
       puma_cmd = $0.gsub(/pumactl$/, 'puma')
       $0 = puma_cmd if File.exist?(puma_cmd)
 
-      cli = Puma::CLI.new run_args, events
+      cli = Puma::CLI.new run_args, log_writer
       cli.run
     end
   end
