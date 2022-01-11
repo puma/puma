@@ -15,7 +15,8 @@ class TestPumaServer < Minitest::Test
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
     @log_writer = Puma::LogWriter.strings
-    @server = Puma::Server.new @app, @log_writer
+    @events = Puma::Events.new
+    @server = Puma::Server.new @app, @log_writer, @events
   end
 
   def teardown
@@ -24,7 +25,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def server_run(**options, &block)
-    @server = Puma::Server.new block || @app, @events, options
+    @server = Puma::Server.new block || @app, @log_writer, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?
@@ -346,7 +347,7 @@ EOF
 
   def test_lowlevel_error_message
     skip_if :windows
-    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+    @server = Puma::Server.new @app, @log_writer, @events, {:force_shutdown_after => 2}
 
     server_run do
       require 'json'
@@ -499,7 +500,7 @@ EOF
   end
 
   def test_no_timeout_after_data_received_no_queue
-    @server = Puma::Server.new @app, @events, queue_requests: false
+    @server = Puma::Server.new @app, @log_writer, @events, queue_requests: false
     test_no_timeout_after_data_received
   end
 
@@ -1316,7 +1317,7 @@ EOF
   def test_custom_io_selector
     backend = NIO::Selector.backends.first
 
-    @server = Puma::Server.new @app, @events, {:io_selector_backend => backend}
+    @server = Puma::Server.new @app, @log_writer, @events, {:io_selector_backend => backend}
     @server.run
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)
@@ -1365,9 +1366,9 @@ EOF
     @port = UniquePort.call
     opts = { rack_url_scheme: 'user', binds: ["tcp://#{@host}:#{@port}"] }
     conf = Puma::Configuration.new(opts).tap(&:clamp)
-    @server = Puma::Server.new @app, @events, conf.options
-    @server.inherit_binder Puma::Binder.new(@events, conf)
-    @server.binder.parse conf.options[:binds], @events
+    @server = Puma::Server.new @app, @log_writer, @events, conf.options
+    @server.inherit_binder Puma::Binder.new(@log_writer, conf)
+    @server.binder.parse conf.options[:binds], @log_writer
     @server.run
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"

@@ -152,17 +152,17 @@ module Puma
       end
     end
 
-    def parse(binds, logger, log_msg = 'Listening')
+    def parse(binds, log_writer, log_msg = 'Listening')
       binds.each do |str|
         uri = URI.parse str
         case uri.scheme
         when "tcp"
           if fd = @inherited_fds.delete(str)
             io = inherit_tcp_listener uri.host, uri.port, fd
-            logger.log "* Inherited #{str}"
+            log_writer.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
             io = inherit_tcp_listener uri.host, uri.port, sock
-            logger.log "* Activated #{str}"
+            log_writer.log "* Activated #{str}"
           else
             ios_len = @ios.length
             params = Util.parse_query uri.query
@@ -174,7 +174,7 @@ module Puma
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
-              logger.log "* #{log_msg} on http://#{addr}"
+              log_writer.log "* #{log_msg} on http://#{addr}"
             end
           end
 
@@ -191,12 +191,12 @@ module Puma
           if fd = @inherited_fds.delete(str)
             @unix_paths << path unless abstract
             io = inherit_unix_listener path, fd
-            logger.log "* Inherited #{str}"
+            log_writer.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :unix, path ]) ||
               @activated_sockets.delete([ :unix, File.realdirpath(path) ])
             @unix_paths << path unless abstract || File.exist?(path)
             io = inherit_unix_listener path, sock
-            logger.log "* Activated #{str}"
+            log_writer.log "* Activated #{str}"
           else
             umask = nil
             mode = nil
@@ -220,7 +220,7 @@ module Puma
 
             @unix_paths << path unless abstract || File.exist?(path)
             io = add_unix_listener path, umask, mode, backlog
-            logger.log "* #{log_msg} on #{str}"
+            log_writer.log "* #{log_msg} on #{str}"
           end
 
           @listeners << [str, io]
@@ -248,11 +248,11 @@ module Puma
             end
 
           if fd = @inherited_fds.delete(str)
-            logger.log "* Inherited #{str}"
+            log_writer.log "* Inherited #{str}"
             io = inherit_ssl_listener fd, ctx
           elsif sock = @activated_sockets.delete([ :tcp, uri.host, uri.port ])
             io = inherit_ssl_listener sock, ctx
-            logger.log "* Activated #{str}"
+            log_writer.log "* Activated #{str}"
           else
             ios_len = @ios.length
             backlog = params.fetch('backlog', 1024).to_i
@@ -260,20 +260,20 @@ module Puma
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
-              logger.log "* #{log_msg} on ssl://#{addr}?#{uri.query}"
+              log_writer.log "* #{log_msg} on ssl://#{addr}?#{uri.query}"
             end
           end
 
           @listeners << [str, io] if io
         else
-          logger.error "Invalid URI: #{str}"
+          log_writer.error "Invalid URI: #{str}"
         end
       end
 
       # If we inherited fds but didn't use them (because of a
       # configuration change), then be sure to close them.
       @inherited_fds.each do |str, fd|
-        logger.log "* Closing unused inherited connection: #{str}"
+        log_writer.log "* Closing unused inherited connection: #{str}"
 
         begin
           IO.for_fd(fd).close
@@ -293,7 +293,7 @@ module Puma
         fds = @ios.map(&:to_i)
         @activated_sockets.each do |key, sock|
           next if fds.include? sock.to_i
-          logger.log "* Closing unused activated socket: #{key.first}://#{key[1..-1].join ':'}"
+          log_writer.log "* Closing unused activated socket: #{key.first}://#{key[1..-1].join ':'}"
           begin
             sock.close
           rescue SystemCallError

@@ -50,7 +50,7 @@ module Puma
       @original_argv = @argv.dup
       @config        = conf
 
-      @binder        = Binder.new(@events, conf)
+      @binder        = Binder.new(@log_writer, conf)
       @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
       @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
 
