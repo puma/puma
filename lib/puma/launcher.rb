@@ -6,6 +6,7 @@ require 'puma/cluster'
 require 'puma/single'
 require 'puma/const'
 require 'puma/binder'
+require 'puma/launcher/bundle_pruner'
 
 module Puma
   # Puma::Launcher is the single entry point for starting a Puma server based on user
@@ -80,7 +81,7 @@ module Puma
 
       Dir.chdir(@restart_dir)
 
-      prune_bundler if prune_bundler?
+      prune_bundler!
 
       @environment = @options[:environment] if @options[:environment]
       set_rack_environment
@@ -279,67 +280,10 @@ module Puma
       end
     end
 
-    # @!attribute [r] files_to_require_after_prune
-    def files_to_require_after_prune
-      puma = spec_for_gem("puma")
-
-      require_paths_for_gem(puma) + extra_runtime_deps_directories
-    end
-
-    # @!attribute [r] extra_runtime_deps_directories
-    def extra_runtime_deps_directories
-      Array(@options[:extra_runtime_dependencies]).map do |d_name|
-        if (spec = spec_for_gem(d_name))
-          require_paths_for_gem(spec)
-        else
-          log "* Could not load extra dependency: #{d_name}"
-          nil
-        end
-      end.flatten.compact
-    end
-
-    # @!attribute [r] puma_wild_location
-    def puma_wild_location
-      puma = spec_for_gem("puma")
-      dirs = require_paths_for_gem(puma)
-      puma_lib_dir = dirs.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
-      File.expand_path(File.join(puma_lib_dir, "../bin/puma-wild"))
-    end
-
-    def prune_bundler
-      return if ENV['PUMA_BUNDLER_PRUNED']
-      return unless defined?(Bundler)
-      require_rubygems_min_version!(Gem::Version.new("2.2"), "prune_bundler")
-      unless puma_wild_location
-        log "! Unable to prune Bundler environment, continuing"
-        return
-      end
-
-      dirs = files_to_require_after_prune
-
-      log '* Pruning Bundler environment'
-      home = ENV['GEM_HOME']
-      bundle_gemfile = Bundler.original_env['BUNDLE_GEMFILE']
-      bundle_app_config = Bundler.original_env['BUNDLE_APP_CONFIG']
-      with_unbundled_env do
-        ENV['GEM_HOME'] = home
-        ENV['BUNDLE_GEMFILE'] = bundle_gemfile
-        ENV['PUMA_BUNDLER_PRUNED'] = '1'
-        ENV["BUNDLE_APP_CONFIG"] = bundle_app_config
-        args = [Gem.ruby, puma_wild_location, '-I', dirs.join(':')] + @original_argv
-        # Ruby 2.0+ defaults to true which breaks socket activation
-        args += [{:close_others => false}]
-        Kernel.exec(*args)
-      end
-    end
-
-    #
     # Puma's systemd integration allows Puma to inform systemd:
     #  1. when it has successfully started
     #  2. when it is starting shutdown
     #  3. periodically for a liveness check with a watchdog thread
-    #
-
     def integrate_with_systemd
       return unless ENV["NOTIFY_SOCKET"]
 
@@ -355,14 +299,6 @@ module Puma
       systemd = Systemd.new(@events)
       systemd.hook_events
       systemd.start_watchdog
-    end
-
-    def spec_for_gem(gem_name)
-      Bundler.rubygems.loaded_specs(gem_name)
-    end
-
-    def require_paths_for_gem(gem_spec)
-      gem_spec.full_require_paths
     end
 
     def log(str)
@@ -406,6 +342,11 @@ module Puma
 
     def prune_bundler?
       @options[:prune_bundler] && clustered? && !@options[:preload_app]
+    end
+
+    def prune_bundler!
+      return unless prune_bundler?
+      BundlePruner.new(@original_argv, @options[:extra_runtime_dependencies], @events).prune
     end
 
     def generate_restart_data
@@ -514,23 +455,6 @@ module Puma
       rescue Exception
         # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
         # to see this constantly on Linux.
-      end
-    end
-
-    def require_rubygems_min_version!(min_version, feature)
-      return if min_version <= Gem::Version.new(Gem::VERSION)
-
-      raise "#{feature} is not supported on your version of RubyGems. " \
-              "You must have RubyGems #{min_version}+ to use this feature."
-    end
-
-    # @version 5.0.0
-    def with_unbundled_env
-      bundler_ver = Gem::Version.new(Bundler::VERSION)
-      if bundler_ver < Gem::Version.new('2.1.0')
-        Bundler.with_clean_env { yield }
-      else
-        Bundler.with_unbundled_env { yield }
       end
     end
 
