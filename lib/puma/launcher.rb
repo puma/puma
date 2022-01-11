@@ -87,11 +87,11 @@ module Puma
       set_rack_environment
 
       if clustered?
-        @options[:logger] = @events
+        @options[:logger] = @log_writer
 
-        @runner = Cluster.new(self, @events)
+        @runner = Cluster.new(self)
       else
-        @runner = Single.new(self, @events)
+        @runner = Single.new(self)
       end
       Puma.stats_object = @runner
 
@@ -100,7 +100,7 @@ module Puma
       log_config if ENV['PUMA_LOG_CONFIG']
     end
 
-    attr_reader :binder, :events, :config, :options, :restart_dir
+    attr_reader :binder, :log_writer, :events, :config, :options, :restart_dir
 
     # Return stats about the server
     def stats
@@ -353,7 +353,7 @@ module Puma
 
       log "* Enabling systemd notification integration"
 
-      systemd = Systemd.new(@events)
+      systemd = Systemd.new(@log_writer, @events)
       systemd.hook_events
       systemd.start_watchdog
     end

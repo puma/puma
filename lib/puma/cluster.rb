@@ -17,8 +17,8 @@ module Puma
   # via the `spawn_workers` method call. Each worker will have it's own
   # instance of a `Puma::Server`.
   class Cluster < Runner
-    def initialize(cli, events)
-      super cli, events
+    def initialize(launcher)
+      super(launcher)
 
       @phase = 0
       @workers = []

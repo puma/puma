@@ -12,7 +12,7 @@ module Puma
       attr_reader :index, :master
 
       def initialize(index:, master:, launcher:, pipes:, server: nil)
-        super launcher, launcher.events
+        super(launcher)
 
         @index = index
         @master = master
