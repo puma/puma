@@ -359,7 +359,7 @@ class TestConfigFile < TestConfigFileBase
     conf.load
     log_writer = Puma::LogWriter.strings
 
-    conf.run_hooks :on_restart, 'ARG', log_writer
+    conf.run_hooks(:on_restart, 'ARG', log_writer)
     expected = /WARNING hook on_restart failed with exception \(RuntimeError\) Error from hook/
     assert_match expected, log_writer.stdout.string
   end
@@ -403,7 +403,7 @@ class TestConfigFile < TestConfigFileBase
       messages << "#{hook_name} is called with #{a}"
     }
 
-    conf.run_hooks hook_name, 'ARG', Puma::LogWriter.strings
+    conf.run_hooks(hook_name, 'ARG', Puma::LogWriter.strings)
     assert_equal messages, ["#{hook_name} is called with ARG"]
 
     # test multiple
@@ -419,7 +419,7 @@ class TestConfigFile < TestConfigFileBase
     end
     conf.load
 
-    conf.run_hooks hook_name, 'ARG', Puma::LogWriter.strings
+    conf.run_hooks(hook_name, 'ARG', Puma::LogWriter.strings)
     assert_equal messages, ["#{hook_name} is called with ARG one time", "#{hook_name} is called with ARG a second time"]
   end
 end

@@ -259,7 +259,7 @@ module Puma
 
     def restart!
       @events.fire_on_restart!
-      @config.run_hooks :on_restart, self, @events
+      @config.run_hooks :on_restart, self, @log_writer
 
       if Puma.jruby?
         close_binder_listeners

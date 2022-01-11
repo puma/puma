@@ -52,7 +52,7 @@ module Puma
 
         # Invoke any worker boot hooks so they can get
         # things in shape before booting the app.
-        @launcher.config.run_hooks :before_worker_boot, index, @launcher.events
+        @launcher.config.run_hooks(:before_worker_boot, index, @launcher.log_writer)
 
         begin
         server = @server ||= start_server
@@ -83,8 +83,8 @@ module Puma
                 if restart_server.length > 0
                   restart_server.clear
                   server.begin_restart(true)
-                  @launcher.config.run_hooks :before_refork, nil, @launcher.events
-                  Puma::Util.nakayoshi_gc @events if @options[:nakayoshi_fork]
+                  @launcher.config.run_hooks(:before_refork, nil, @launcher.log_writer)
+                  Puma::Util.nakayoshi_gc(@log_writer) if @options[:nakayoshi_fork]
                 end
               elsif idx == 0 # restart server
                 restart_server << true << false
@@ -138,7 +138,7 @@ module Puma
 
         # Invoke any worker shutdown hooks so they can prevent the worker
         # exiting until any background operations are completed
-        @launcher.config.run_hooks :before_worker_shutdown, index, @launcher.events
+        @launcher.config.run_hooks(:before_worker_shutdown, index, @launcher.log_writer)
       ensure
         @worker_write << "t#{Process.pid}\n" rescue nil
         @worker_write.close
@@ -147,7 +147,7 @@ module Puma
       private
 
       def spawn_worker(idx)
-        @launcher.config.run_hooks :before_worker_fork, idx, @launcher.events
+        @launcher.config.run_hooks(:before_worker_fork, idx, @launcher.log_writer)
 
         pid = fork do
           new_worker = Worker.new index: idx,
@@ -165,7 +165,7 @@ module Puma
           exit! 1
         end
 
-        @launcher.config.run_hooks :after_worker_fork, idx, @launcher.events
+        @launcher.config.run_hooks(:after_worker_fork, idx, @launcher.log_writer)
         pid
       end
     end
