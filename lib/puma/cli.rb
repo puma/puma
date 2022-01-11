@@ -30,11 +30,11 @@ module Puma
     # +stdout+ and +stderr+ can be set to IO-like objects which
     # this object will report status on.
     #
-    def initialize(argv, events=Events.stdio)
+    def initialize(argv, log_writer=LogWriter.stdio)
       @debug = false
       @argv = argv.dup
 
-      @events = events
+      @log_writer = log_writer
 
       @conf = nil
 
@@ -69,7 +69,7 @@ module Puma
         end
       end
 
-      @launcher = Puma::Launcher.new(@conf, :events => @events, :argv => argv)
+      @launcher = Puma::Launcher.new(@conf, :log_writer => @log_writer, :argv => argv)
     end
 
     attr_reader :launcher
@@ -83,7 +83,7 @@ module Puma
 
     private
     def unsupported(str)
-      @events.error(str)
+      @log_writer.error(str)
       raise UnsupportedOption
     end
 

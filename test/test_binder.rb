@@ -13,8 +13,8 @@ class TestBinderBase < Minitest::Test
   include TmpPath
 
   def setup
-    @events = Puma::Events.strings
-    @binder = Puma::Binder.new(@events)
+    @log_writer = Puma::LogWriter.strings
+    @binder = Puma::Binder.new(@log_writer)
   end
 
   def teardown
@@ -120,7 +120,7 @@ class TestBinder < TestBinderBase
   def test_correct_zero_port
     @binder.parse ["tcp://localhost:0"], @events
 
-    m = %r!http://127.0.0.1:(\d+)!.match(@events.stdout.string)
+    m = %r!http://127.0.0.1:(\d+)!.match(@log_writer.stdout.string)
     port = m[1].to_i
 
     refute_equal 0, port
@@ -133,7 +133,7 @@ class TestBinder < TestBinderBase
 
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
-    port = ssl_regex.match(@events.stdout.string)[1].to_i
+    port = ssl_regex.match(@log_writer.stdout.string)[1].to_i
 
     refute_equal 0, port
   end
@@ -141,9 +141,9 @@ class TestBinder < TestBinderBase
   def test_logs_all_localhost_bindings
     @binder.parse ["tcp://localhost:0"], @events
 
-    assert_match %r!http://127.0.0.1:(\d+)!, @events.stdout.string
+    assert_match %r!http://127.0.0.1:(\d+)!, @log_writer.stdout.string
     if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
-      assert_match %r!http://\[::1\]:(\d+)!, @events.stdout.string
+      assert_match %r!http://\[::1\]:(\d+)!, @log_writer.stdout.string
     end
   end
 
@@ -152,9 +152,9 @@ class TestBinder < TestBinderBase
 
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @events
 
-    assert_match %r!ssl://127.0.0.1:(\d+)!, @events.stdout.string
+    assert_match %r!ssl://127.0.0.1:(\d+)!, @log_writer.stdout.string
     if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
-      assert_match %r!ssl://\[::1\]:(\d+)!, @events.stdout.string
+      assert_match %r!ssl://\[::1\]:(\d+)!, @log_writer.stdout.string
     end
   end
 
@@ -178,7 +178,7 @@ class TestBinder < TestBinderBase
     File.open(unix_path, mode: 'wb') { |f| f.puts 'pre existing' }
     @binder.parse ["unix://#{unix_path}"], @events
 
-    assert_match %r!unix://#{unix_path}!, @events.stdout.string
+    assert_match %r!unix://#{unix_path}!, @log_writer.stdout.string
 
     refute_includes @binder.unix_paths, unix_path
 
@@ -272,7 +272,7 @@ class TestBinder < TestBinderBase
 
     env_hash = @binder.envs[@binder.ios.first]
 
-    assert_equal @events.stderr, env_hash["rack.errors"]
+    assert_equal @log_writer.stderr, env_hash["rack.errors"]
   end
 
   def test_ssl_binder_sets_backlog
@@ -430,7 +430,7 @@ class TestBinder < TestBinderBase
 
   def assert_activates_sockets(path: nil, port: nil, url: nil, sock: nil)
     hash = { "LISTEN_FDS" => 1, "LISTEN_PID" => $$ }
-    @events.instance_variable_set(:@debug, true)
+    @log_writer.instance_variable_set(:@debug, true)
 
     @binder.instance_variable_set(:@sock_fd, sock.fileno)
     def @binder.socket_activation_fd(int); @sock_fd; end
@@ -440,7 +440,7 @@ class TestBinder < TestBinderBase
     ary = path ? [:unix, path] : [:tcp, url, port]
 
     assert_kind_of TCPServer, @binder.activated_sockets[ary]
-    assert_match "Registered #{ary.join(":")} for activation from LISTEN_FDS", @events.stdout.string
+    assert_match "Registered #{ary.join(":")} for activation from LISTEN_FDS", @log_writer.stdout.string
     assert_equal ["LISTEN_FDS", "LISTEN_PID"], @result
   end
 
@@ -462,7 +462,7 @@ class TestBinder < TestBinderBase
     tested_paths = [prepared_paths[order[0]], prepared_paths[order[1]]]
 
     @binder.parse tested_paths, @events
-    stdout = @events.stdout.string
+    stdout = @log_writer.stdout.string
 
     order.each do |prot|
       assert_match expected_logs[prot], stdout

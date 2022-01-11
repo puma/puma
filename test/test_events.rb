@@ -3,42 +3,42 @@ require_relative "helper"
 
 class TestEvents < Minitest::Test
   def test_null
-    events = Puma::Events.null
+    log_writer = Puma::LogWriter.null
 
-    assert_instance_of Puma::NullIO, events.stdout
-    assert_instance_of Puma::NullIO, events.stderr
-    assert_equal events.stdout, events.stderr
+    assert_instance_of Puma::NullIO, log_writer.stdout
+    assert_instance_of Puma::NullIO, log_writer.stderr
+    assert_equal log_writer.stdout, log_writer.stderr
   end
 
   def test_strings
-    events = Puma::Events.strings
+    log_writer = Puma::LogWriter.strings
 
-    assert_instance_of StringIO, events.stdout
-    assert_instance_of StringIO, events.stderr
+    assert_instance_of StringIO, log_writer.stdout
+    assert_instance_of StringIO, log_writer.stderr
   end
 
   def test_stdio
-    events = Puma::Events.stdio
+    log_writer = Puma::LogWriter.stdio
 
-    assert_equal STDOUT, events.stdout
-    assert_equal STDERR, events.stderr
+    assert_equal STDOUT, log_writer.stdout
+    assert_equal STDERR, log_writer.stderr
   end
 
   def test_stdio_respects_sync
-    events = Puma::Events.stdio
+    log_writer = Puma::LogWriter.stdio
 
-    assert_equal STDOUT.sync, events.stdout.sync
-    assert_equal STDERR.sync, events.stderr.sync
-    assert_equal STDOUT, events.stdout
-    assert_equal STDERR, events.stderr
+    assert_equal STDOUT.sync, log_writer.stdout.sync
+    assert_equal STDERR.sync, log_writer.stderr.sync
+    assert_equal STDOUT, log_writer.stdout
+    assert_equal STDERR, log_writer.stderr
   end
 
   def test_register_callback_with_block
     res = false
 
-    events = Puma::Events.null
+    log_writer = Puma::LogWriter.null
 
-    events.register(:exec) { res = true }
+    log_writer.register(:exec) { res = true }
 
     events.fire(:exec)
 
@@ -56,9 +56,9 @@ class TestEvents < Minitest::Test
       @res = true
     end
 
-    events = Puma::Events.null
+    log_writer = Puma::LogWriter.null
 
-    events.register(:exec, obj)
+    log_writer.register(:exec, obj)
 
     events.fire(:exec)
 
@@ -68,9 +68,9 @@ class TestEvents < Minitest::Test
   def test_fire_callback_with_multiple_arguments
     res = []
 
-    events = Puma::Events.null
+    log_writer = Puma::LogWriter.null
 
-    events.register(:exec) { |*args| res.concat(args) }
+    log_writer.register(:exec) { |*args| res.concat(args) }
 
     events.fire(:exec, :foo, :bar, :baz)
 
@@ -80,18 +80,18 @@ class TestEvents < Minitest::Test
   def test_on_booted_callback
     res = false
 
-    events = Puma::Events.null
+    log_writer = Puma::LogWriter.null
 
-    events.on_booted { res = true }
+    log_writer.on_booted { res = true }
 
-    events.fire_on_booted!
+    log_writer.fire_on_booted!
 
     assert res
   end
 
   def test_log_writes_to_stdout
     out, _ = capture_io do
-      Puma::Events.stdio.log("ready")
+      Puma::LogWriter.stdio.log("ready")
     end
 
     assert_equal "ready\n", out
@@ -99,7 +99,7 @@ class TestEvents < Minitest::Test
 
   def test_null_log_does_nothing
     out, _ = capture_io do
-      Puma::Events.null.log("ready")
+      Puma::LogWriter.null.log("ready")
     end
 
     assert_equal "", out
@@ -107,7 +107,7 @@ class TestEvents < Minitest::Test
 
   def test_write_writes_to_stdout
     out, _ = capture_io do
-      Puma::Events.stdio.write("ready")
+      Puma::LogWriter.stdio.write("ready")
     end
 
     assert_equal "ready", out
@@ -117,7 +117,7 @@ class TestEvents < Minitest::Test
     original_debug, ENV["PUMA_DEBUG"] = ENV["PUMA_DEBUG"], "1"
 
     out, _ = capture_io do
-      Puma::Events.stdio.debug("ready")
+      Puma::LogWriter.stdio.debug("ready")
     end
 
     assert_equal "% ready\n", out
@@ -127,7 +127,7 @@ class TestEvents < Minitest::Test
 
   def test_debug_not_write_to_stdout_if_env_is_not_present
     out, _ = capture_io do
-      Puma::Events.stdio.debug("ready")
+      Puma::LogWriter.stdio.debug("ready")
     end
 
     assert_empty out
@@ -138,7 +138,7 @@ class TestEvents < Minitest::Test
 
     _, err = capture_io do
       begin
-        Puma::Events.stdio.error("interrupted")
+        Puma::LogWriter.stdio.error("interrupted")
       rescue SystemExit
         did_exit = true
       ensure
@@ -153,11 +153,11 @@ class TestEvents < Minitest::Test
     pid = Process.pid
 
     out, _ = capture_io do
-      events = Puma::Events.stdio
+      log_writer = Puma::LogWriter.stdio
 
-      events.formatter = Puma::Events::PidFormatter.new
+      log_writer.formatter = Puma::Events::PidFormatter.new
 
-      events.write("ready")
+      log_writer.write("ready")
     end
 
     assert_equal "[#{ pid }] ready", out
@@ -167,11 +167,11 @@ class TestEvents < Minitest::Test
     custom_formatter = proc { |str| "-> #{ str }" }
 
     out, _ = capture_io do
-      events = Puma::Events.stdio
+      log_writer = Puma::LogWriter.stdio
 
-      events.formatter = custom_formatter
+      log_writer.formatter = custom_formatter
 
-      events.write("ready")
+      log_writer.write("ready")
     end
 
     assert_equal "-> ready", out
@@ -181,8 +181,8 @@ class TestEvents < Minitest::Test
     port = 0
     host = "127.0.0.1"
     app = proc { |env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
-    events = Puma::Events.strings
-    server = Puma::Server.new app, events
+    log_writer = Puma::LogWriter.strings
+    server = Puma::Server.new app, log_writer
 
     port = (server.add_tcp_listener host, 0).addr[1]
     server.run
@@ -194,8 +194,8 @@ class TestEvents < Minitest::Test
     sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
     sock.read
     sleep 0.1 # important so that the previous data is sent as a packet
-    assert_match %r!HTTP parse error, malformed request!, events.stderr.string
-    assert_match %r!\("GET #{path}" - \(-\)\)!, events.stderr.string
+    assert_match %r!HTTP parse error, malformed request!, log_writer.stderr.string
+    assert_match %r!\("GET #{path}" - \(-\)\)!, log_writer.stderr.string
   ensure
     sock.close if sock && !sock.closed?
     server.stop true
@@ -205,7 +205,7 @@ class TestEvents < Minitest::Test
   # but it mocks the actual error code.  This test the code, but it will
   # break if the logged message changes
   def test_ssl_error
-    events = Puma::Events.strings
+    log_writer = Puma::LogWriter.strings
 
     ssl_mock = -> (addr, subj) {
       obj = Object.new
@@ -220,16 +220,16 @@ class TestEvents < Minitest::Test
       obj
     }
 
-    events.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(['127.0.0.1'], 'test_cert')
-    error = events.stderr.string
+    log_writer.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(['127.0.0.1'], 'test_cert')
+    error = log_writer.stderr.string
     assert_includes error, "SSL error"
     assert_includes error, "peer: 127.0.0.1"
     assert_includes error, "cert: test_cert"
 
-    events.stderr.string = ''
+    log_writer.stderr.string = ''
 
-    events.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(nil, nil)
-    error = events.stderr.string
+    log_writer.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(nil, nil)
+    error = log_writer.stderr.string
     assert_includes error, "SSL error"
     assert_includes error, "peer: <unknown>"
     assert_includes error, "cert: :"

@@ -14,8 +14,8 @@ class TestPumaServer < Minitest::Test
 
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
-    @events = Puma::Events.strings
-    @server = Puma::Server.new @app, @events
+    @log_writer = Puma::LogWriter.strings
+    @server = Puma::Server.new @app, @log_writer
   end
 
   def teardown
@@ -281,7 +281,7 @@ EOF
     sleep 0.1
 
     # Expect no errors in stderr
-    assert @events.stderr.pos.zero?, "Server didn't swallow the connection error"
+    assert @log_writer.stderr.pos.zero?, "Server didn't swallow the connection error"
   end
 
   def test_early_hints_is_off_by_default
@@ -326,7 +326,7 @@ EOF
     new_connection.close # Make a connection and close without writing
 
     @server.stop(true)
-    stderr = @events.stderr.string
+    stderr = @log_writer.stderr.string
     assert stderr.empty?, "Expected stderr from server to be empty but it was #{stderr.inspect}"
   end
 
@@ -450,7 +450,7 @@ EOF
 
     states = []
 
-    @events.register(:state) { |s| states << s }
+    @log_writer.register(:state) { |s| states << s }
 
     server_run { [200, {}, [""]] }
 
@@ -1235,7 +1235,7 @@ EOF
   # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
   def test_accept_emfile
     stub_accept_nonblock Errno::EMFILE.new('accept(2)')
-    refute_empty @events.stderr.string, "Expected EMFILE error not logged"
+    refute_empty @log_writer.stderr.string, "Expected EMFILE error not logged"
   end
 
   # Retryable errors such as ECONNABORTED should be silently swallowed by accept loop.
@@ -1243,7 +1243,7 @@ EOF
     # Match Ruby #accept_nonblock implementation, ECONNABORTED error is extended by IO::WaitReadable.
     error = Errno::ECONNABORTED.new('accept(2) would block').tap {|e| e.extend IO::WaitReadable}
     stub_accept_nonblock(error)
-    assert_empty @events.stderr.string
+    assert_empty @log_writer.stderr.string
   end
 
   # see      https://github.com/puma/puma/issues/2390
@@ -1251,7 +1251,7 @@ EOF
   #
   def test_client_quick_close_no_lowlevel_error_handler_call
     handler = ->(err, env, status) {
-      @events.stdout.write "LLEH #{err.message}"
+      @log_writer.stdout.write "LLEH #{err.message}"
       [500, {"Content-Type" => "application/json"}, ["{}\n"]]
     }
 
@@ -1265,21 +1265,21 @@ EOF
     sock.close
     assert_match 'Hello World', resp
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
 
     # valid req, close
     sock = TCPSocket.new @host, @port
     sock.syswrite "GET / HTTP/1.0\r\n\r\n"
     sock.close
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
 
     # invalid req, close
     sock = TCPSocket.new @host, @port
     sock.syswrite "GET / HTTP"
     sock.close
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
   end
 
   def test_idle_connections_closed_immediately_on_shutdown
@@ -1307,7 +1307,7 @@ EOF
     @server.run
     @server.halt
     done = Queue.new
-    @server.events.register(:state) do |state|
+    @server.log_writer.register(:state) do |state|
       done << @server.instance_variable_get(:@status) if state == :done
     end
     assert_equal :halt, done.pop

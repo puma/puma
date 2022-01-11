@@ -63,9 +63,9 @@ module Rack
       def self.run(app, **options)
         conf   = self.config(app, options)
 
-        events = options.delete(:Silent) ? ::Puma::Events.strings : ::Puma::Events.stdio
+        log_writer = options.delete(:Silent) ? ::Puma::LogWriter.strings : ::Puma::LogWriter.stdio
 
-        launcher = ::Puma::Launcher.new(conf, :events => events)
+        launcher = ::Puma::Launcher.new(conf, :log_writer => log_writer)
 
         yield launcher if block_given?
         begin

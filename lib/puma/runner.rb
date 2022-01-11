@@ -36,7 +36,7 @@ module Puma
     end
 
     def log(str)
-      @events.log str
+      @log_writer.log str
     end
 
     # @version 5.0.0
@@ -45,11 +45,11 @@ module Puma
     end
 
     def error(str)
-      @events.error str
+      @log_writer.error str
     end
 
     def debug(str)
-      @events.log "- #{str}" if @options[:debug]
+      @log_writer.log "- #{str}" if @options[:debug]
     end
 
     def start_control

@@ -37,6 +37,7 @@ module Puma
 
     attr_reader :thread
     attr_reader :events
+    attr_reader :log_writer
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
 
@@ -60,8 +61,9 @@ module Puma
 
     # Create a server for the rack app +app+.
     #
-    # +events+ is an object which will be called when certain error events occur
-    # to be handled. See Puma::Events for the list of current methods to implement.
+    # +log_writer+ is a Puma::LogWriter object used to log .
+    #
+    # +events+ is a Puma::Events object .
     #
     # Server#run returns a thread that you can join on to wait for the server
     # to do its work.
@@ -70,9 +72,10 @@ module Puma
     #   and have default values set via +fetch+.  Normally the values are set via
     #   `::Puma::Configuration.puma_default_options`.
     #
-    def initialize(app, events=Events.stdio, options={})
+    def initialize(app, log_writer=LogWriter.stdio, events=Events.new, options={})
       @app = app
       @events = events
+      @log_writer = log_writer
 
       @check, @notify = nil
       @status = :stop
@@ -97,7 +100,7 @@ module Puma
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
 
-      @binder = Binder.new(events)
+      @binder = Binder.new(log_writer)
 
       ENV['RACK_ENV'] ||= "development"
 
@@ -353,11 +356,11 @@ module Puma
             # In the case that any of the sockets are unexpectedly close.
             raise
           rescue StandardError => e
-            @events.unknown_error e, nil, "Listen loop"
+            @log_writer.unknown_error e, nil, "Listen loop"
           end
         end
 
-        @events.debug "Drained #{drain} additional connections." if drain
+        @log_writer.debug "Drained #{drain} additional connections." if drain
         @events.fire :state, @status
 
         if queue_requests
@@ -366,7 +369,7 @@ module Puma
         end
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
-        @events.unknown_error e, nil, "Exception handling servers"
+        @log_writer.unknown_error e, nil, "Exception handling servers"
       ensure
         # RuntimeError is Ruby 2.2 issue, can't modify frozen IOError
         # Errno::EBADF is infrequently raised
@@ -488,7 +491,7 @@ module Puma
           Puma::Util.purge_interrupt_queue
           # Already closed
         rescue StandardError => e
-          @events.unknown_error e, nil, "Client"
+          @log_writer.unknown_error e, nil, "Client"
         end
       end
     end
@@ -510,15 +513,15 @@ module Puma
 
       case e
       when MiniSSL::SSLError
-        @events.ssl_error e, client.io
+        @log_writer.ssl_error e, client.io
       when HttpParserError
         status, headers, res_body = lowlevel_error(e, client.env, 400)
         write_response(status, headers, res_body, buffer, requests, client)
-        @events.parse_error e, client
+        @log_writer.parse_error e, client
       else
         status, headers, res_body = lowlevel_error(e, client.env)
         write_response(status, headers, res_body, buffer, requests, client)
-        @events.unknown_error e, nil, "Read"
+        @log_writer.unknown_error e, nil, "Read"
       end
     end
 

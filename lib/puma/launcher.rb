@@ -26,7 +26,7 @@ module Puma
     # +conf+ A Puma::Configuration object indicating how to run the server.
     #
     # +launcher_args+ A Hash that currently has one required key `:events`,
-    # this is expected to hold an object similar to an `Puma::Events.stdio`,
+    # this is expected to hold an object similar to an `Puma::LogWriter.stdio`,
     # this object will be responsible for broadcasting Puma's internal state
     # to a logging destination. An optional key `:argv` can be supplied,
     # this should be an array of strings, these arguments are re-used when
@@ -40,10 +40,11 @@ module Puma
     #       [200, {}, ["hello world"]]
     #     end
     #   end
-    #   Puma::Launcher.new(conf, events: Puma::Events.stdio).run
+    #   Puma::Launcher.new(conf, log_writer: Puma::LogWriter.stdio).run
     def initialize(conf, launcher_args={})
       @runner        = nil
-      @events        = launcher_args[:events] || Events::DEFAULT
+      @log_writer    = launcher_args[:log_writer] || LogWriter::DEFAULT
+      @events        = launcher_args[:events] || Events.new
       @argv          = launcher_args[:argv] || []
       @original_argv = @argv.dup
       @config        = conf
@@ -69,8 +70,8 @@ module Puma
       @options = @config.options
       @config.clamp
 
-      @events.formatter = Events::PidFormatter.new if clustered?
-      @events.formatter = options[:log_formatter] if @options[:log_formatter]
+      @log_writer.formatter = Events::PidFormatter.new if clustered?
+      @log_writer.formatter = options[:log_formatter] if @options[:log_formatter]
 
       generate_restart_data
 
@@ -366,7 +367,7 @@ module Puma
     end
 
     def log(str)
-      @events.log str
+      @log_writer.log(str)
     end
 
     def clustered?
@@ -374,7 +375,7 @@ module Puma
     end
 
     def unsupported(str)
-      @events.error(str)
+      @log_writer.error(str)
       raise UnsupportedOption
     end
 
@@ -506,8 +507,8 @@ module Puma
         unless Puma.jruby? # INFO in use by JVM already
           Signal.trap "SIGINFO" do
             thread_status do |name, backtrace|
-              @events.log name
-              @events.log backtrace.map { |bt| "  #{bt}" }
+              @log_writer.log(name)
+              @log_writer.log(backtrace.map { |bt| "  #{bt}" })
             end
           end
         end
