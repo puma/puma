@@ -25,6 +25,21 @@ module Puma
       end
     end
 
+    attr_reader :stdout,
+                :stderr
+
+    attr_accessor :formatter
+
+    # Create a LogWriter that prints to +stdout+ and +stderr+.
+    def initialize(stdout, stderr)
+      @formatter = DefaultFormatter.new
+      @stdout = stdout
+      @stderr = stderr
+
+      @debug = ENV.key?('PUMA_DEBUG')
+      @error_logger = ErrorLogger.new(@stderr)
+    end
+
     DEFAULT = new(STDOUT, STDERR)
 
     # Returns an Events object which writes its status to 2 StringIO objects.
@@ -39,21 +54,6 @@ module Puma
     def self.null
       n = NullIO.new
       LogWriter.new(n, n)
-    end
-
-    attr_reader :stdout,
-                :stderr
-
-    attr_accessor :formatter
-
-    # Create a LogWriter that prints to +stdout+ and +stderr+.
-    def initialize(stdout, stderr)
-      @formatter = DefaultFormatter.new
-      @stdout = stdout
-      @stderr = stderr
-
-      @debug = ENV.key?('PUMA_DEBUG')
-      @error_logger = ErrorLogger.new(@stderr)
     end
 
     # Write +str+ to +@stdout+
