@@ -53,7 +53,7 @@ class TestBusyWorker < Minitest::Test
       end
     end
 
-    @server = Puma::Server.new request_handler, Puma::LogWriter.strings, **options
+    @server = Puma::Server.new request_handler, Puma::LogWriter.strings, Puma::Events.new, **options
     @server.min_threads = options[:min_threads] || 0
     @server.max_threads = options[:max_threads] || 10
     @port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]

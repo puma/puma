@@ -127,7 +127,7 @@ class TestLauncher < Minitest::Test
       c.clear_binds!
     end
     launcher = launcher(conf)
-    launcher.log_writer.on_booted {
+    launcher.events.on_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
@@ -181,11 +181,11 @@ class TestLauncher < Minitest::Test
     end
 
     launcher = launcher(conf)
-    launcher.log_writer.on_booted {
+    launcher.events.on_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
-    launcher.log_writer.on_stopped { puts 'on_stopped called' }
+    launcher.events.on_stopped { puts 'on_stopped called' }
 
     out, = capture_io do
       launcher.run
