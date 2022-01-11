@@ -8,7 +8,6 @@ require 'puma/configuration'
 require 'puma/launcher'
 require 'puma/const'
 require 'puma/log_writer'
-require 'puma/events'
 
 module Puma
   class << self

@@ -386,14 +386,14 @@ class TestCLI < Minitest::Test
 
   def test_log_formatter_default_single
     cli = Puma::CLI.new [ ]
-    assert_instance_of Puma::Events::DefaultFormatter, cli.launcher.log_writer.formatter
+    assert_instance_of Puma::LogWriter::DefaultFormatter, cli.launcher.log_writer.formatter
   end
 
   def test_log_formatter_default_clustered
     skip_unless :fork
 
     cli = Puma::CLI.new [ "-w 2" ]
-    assert_instance_of Puma::Events::PidFormatter, cli.launcher.log_writer.formatter
+    assert_instance_of Puma::LogWriter::PidFormatter, cli.launcher.log_writer.formatter
   end
 
   def test_log_formatter_custom_single

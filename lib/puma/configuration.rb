@@ -291,7 +291,7 @@ module Puma
       @plugins.create name
     end
 
-    def run_hooks(key, arg, events)
+    def run_hooks(key, arg, log_writer)
       @options.all_of(key).each do |b|
         begin
           b.call arg

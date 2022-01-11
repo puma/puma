@@ -14,7 +14,6 @@ module Rack
         require 'puma'
         require 'puma/configuration'
         require 'puma/log_writer'
-        require 'puma/events'
         require 'puma/launcher'
 
         default_options = DEFAULT_OPTIONS.dup

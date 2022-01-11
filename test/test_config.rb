@@ -5,7 +5,6 @@ require_relative "helpers/config_file"
 
 require "puma/configuration"
 require 'puma/log_writer'
-require 'puma/events'
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -360,7 +359,7 @@ class TestConfigFile < TestConfigFileBase
     conf.load
     log_writer = Puma::LogWriter.strings
 
-    conf.run_hooks :on_restart, 'ARG', events
+    conf.run_hooks :on_restart, 'ARG', log_writer
     expected = /WARNING hook on_restart failed with exception \(RuntimeError\) Error from hook/
     assert_match expected, log_writer.stdout.string
   end
