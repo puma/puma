@@ -451,7 +451,7 @@ EOF
 
     states = []
 
-    @log_writer.register(:state) { |s| states << s }
+    @events.register(:state) { |s| states << s }
 
     server_run { [200, {}, [""]] }
 
@@ -1308,7 +1308,7 @@ EOF
     @server.run
     @server.halt
     done = Queue.new
-    @server.log_writer.register(:state) do |state|
+    @server.events.register(:state) do |state|
       done << @server.instance_variable_get(:@status) if state == :done
     end
     assert_equal :halt, done.pop

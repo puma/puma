@@ -37,8 +37,8 @@ module Puma
     extend Forwardable
 
     attr_reader :thread
-    attr_reader :events
     attr_reader :log_writer
+    attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
 
