@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'puma/log_writer'
 require 'puma/events'
 require 'puma/detect'
 require 'puma/cluster'

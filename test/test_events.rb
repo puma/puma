@@ -1,3 +1,4 @@
+require 'puma/log_writer'
 require 'puma/events'
 require_relative "helper"
 

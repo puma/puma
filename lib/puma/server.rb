@@ -4,6 +4,7 @@ require 'stringio'
 
 require 'puma/thread_pool'
 require 'puma/const'
+require 'puma/log_writer'
 require 'puma/events'
 require 'puma/null_io'
 require 'puma/reactor'

@@ -2,6 +2,7 @@ require_relative "helper"
 require_relative "helpers/tmp_path"
 
 require "puma/configuration"
+require 'puma/log_writer'
 require 'puma/events'
 
 class TestLauncher < Minitest::Test
