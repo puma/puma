@@ -44,14 +44,14 @@ jobs:
         uses: actions/checkout@v2
 
       - name: load ruby
-        uses: MSP-Greg/setup-ruby-pkgs@win-ucrt-2
+        uses: MSP-Greg/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
           mingw: openssl ragel
           bundler-cache: true
-          setup-ruby-ref: MSP-Greg/ruby-setup-ruby/win-ucrt-1
+          setup-ruby-ref: MSP-Greg/ruby-setup-ruby/gem-update
         timeout-minutes: 10
 
       # Windows error thrown, doesn't affect CI
