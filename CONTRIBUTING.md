@@ -156,7 +156,7 @@ bundle exec puma -C test/config/settings.rb test/rackup/hello.ru
 
 There is also a Dockerfile available for reproducing Linux-specific issues:
 ```sh
-docker build -f tools/docker/Dockerfile -t puma .
+docker build -f tools/Dockerfile -t puma .
 docker run -p 9292:9292 -it puma
 ```
 
