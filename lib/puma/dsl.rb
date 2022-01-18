@@ -193,7 +193,7 @@ module Puma
     end
 
     # Bind the server to +url+. "tcp://", "unix://" and "ssl://" are the only
-    # accepted protocols. Multiple urls can be bound to, calling `bind` does
+    # accepted protocols. Multiple urls can be bound to, calling +bind+ does
     # not overwrite previous bindings.
     #
     # The default is "tcp://0.0.0.0:9292".
@@ -438,8 +438,15 @@ module Puma
       @options[:max_threads] = max
     end
 
-    # Instead of `bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'` you
-    # can also use the this method.
+    # Instead of using +bind+ and manually constructing a URI like:
+    #
+    #    bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'
+    #
+    # you can use the this method.
+    #
+    # When binding on localhost you don't need to specify +cert+ and +key+,
+    # Puma will assume you are using the +localhost+ gem and try to load the
+    # appropriate files.
     #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
@@ -450,21 +457,23 @@ module Puma
     #     verification_flags: flags,        # optional, not supported by JRuby
     #   }
     #
-    # Alternatively, you can provide the cert_pem and key_pem:
-    # @example
+    # @example Using self-signed certificate with the +localhost+ gem:
+    #   ssl_bind '127.0.0.1', '9292'
+    #
+    # @example Alternatively, you can provide +cert_pem+ and +key_pem+:
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert_pem: File.read(path_to_cert),
     #     key_pem: File.read(path_to_key),
     #   }
     #
-    # @example For JRuby, two keys are required: keystore & keystore_pass.
+    # @example For JRuby, two keys are required: +keystore+ & +keystore_pass+
     #   ssl_bind '127.0.0.1', '9292', {
     #     keystore: path_to_keystore,
     #     keystore_pass: password,
     #     ssl_cipher_list: cipher_list,     # optional
     #     verify_mode: verify_mode          # default 'none'
     #   }
-    def ssl_bind(host, port, opts)
+    def ssl_bind(host, port, opts = {})
       add_pem_values_to_options_store(opts)
       bind self.class.ssl_bind_str(host, port, opts)
     end

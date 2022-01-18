@@ -233,7 +233,9 @@ module Puma
           # If key and certs are not defined and localhost gem is required.
           # localhost gem will be used for self signed
           # Load localhost authority if not loaded.
-          ctx = localhost_authority && localhost_authority_context if params.empty?
+          if params.values_at('cert', 'key').all? { |v| v.to_s.empty? }
+            ctx = localhost_authority && localhost_authority_context
+          end
 
           ctx ||=
             begin
