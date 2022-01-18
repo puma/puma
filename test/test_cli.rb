@@ -475,4 +475,11 @@ class TestCLI < Minitest::Test
   ensure
     ENV.delete 'RAILS_ENV'
   end
+
+  def test_silent
+    cli = Puma::CLI.new ['--silent']
+    cli.send(:setup_options)
+
+    assert_equal cli.instance_variable_get(:@events).class, Puma::Events.null.class
+  end
 end

@@ -185,6 +185,10 @@ module Puma
             user_config.restart_command cmd
           end
 
+          o.on "-s", "--silent", "Do not log prompt messages" do |arg|
+            @events = Events.null
+          end
+
           o.on "-S", "--state PATH", "Where to store the state details" do |arg|
             user_config.state_path arg
           end
