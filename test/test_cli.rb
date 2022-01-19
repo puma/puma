@@ -480,6 +480,10 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ['--silent']
     cli.send(:setup_options)
 
-    assert_equal cli.instance_variable_get(:@events).class, Puma::Events.null.class
+    events = cli.instance_variable_get(:@events)
+
+    assert_equal events.class, Puma::Events.null.class
+    assert_equal events.stdout.class, Puma::NullIO
+    assert_equal events.stderr, $stderr
   end
 end

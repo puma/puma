@@ -185,8 +185,8 @@ module Puma
             user_config.restart_command cmd
           end
 
-          o.on "-s", "--silent", "Do not log prompt messages" do |arg|
-            @events = Events.null
+          o.on "-s", "--silent", "Do not log prompt messages other than errors" do |arg|
+            @events = Events.new NullIO.new, $stderr
           end
 
           o.on "-S", "--state PATH", "Where to store the state details" do |arg|
