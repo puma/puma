@@ -27,10 +27,15 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 First step: join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org)
 
+
+#### Clone the repo 
+
 Clone the Puma repository:
 ```sh
 git clone git@github.com:puma/puma.git && cd puma
 ```
+
+#### Ragel
 
 You need to install [ragel] (use Ragel version 7.0.0.9) to generate Puma's extension code.
 
@@ -50,12 +55,16 @@ Windows (Ruby 2.5 and later):
 ridk exec pacman -S mingw-w64-x86_64-openssl mingw-w64-x86_64-ragel
 ```
 
+#### Install Ruby depedencies
+
 Install the Ruby dependencies:
 ```sh
 bundle install
 ```
 
-To run Puma locally, you must compile the native extension.
+#### Compile the native extensions
+
+To run Puma locally, you must compile the native extension. Running the `test` rake task does this automatically, but you may need to manually run the compile command if you want to run Puma and haven't run the tests yet:
 
 Ubuntu, macOS, etc:
 ```sh
@@ -66,6 +75,8 @@ Windows:
 ```sh
 bundle exec rake -rdevkit compile
 ```
+
+#### Run your local Puma
 
 Now, you should be able to run Puma locally:
 
@@ -111,6 +122,18 @@ To run a single test with 5 seconds as the test case timeout:
 ```sh
 TEST_CASE_TIMEOUT=5 bundle exec m test/test_binder.rb:37
 ```
+
+#### File limits
+
+Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open file" errors when running the Puma test suite.
+
+Check your file limit:
+
+```
+ulimit -Sn
+```
+
+We find that values of 4000 or more work well. [Learn more about your file limits and how to change them here.](https://wilsonmar.github.io/maximum-limits/)
 
 ## How to contribute
 
