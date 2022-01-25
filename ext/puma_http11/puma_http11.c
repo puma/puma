@@ -451,7 +451,7 @@ VALUE HttpParser_body(VALUE self) {
 void Init_mini_ssl(VALUE mod);
 #endif
 
-void Init_puma_http11()
+void Init_puma_http11(void)
 {
 
   VALUE mPuma = rb_define_module("Puma");
