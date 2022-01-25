@@ -55,7 +55,7 @@ Windows (Ruby 2.5 and later):
 ridk exec pacman -S mingw-w64-x86_64-openssl mingw-w64-x86_64-ragel
 ```
 
-#### Install Ruby depedencies
+#### Install Ruby dependencies
 
 Install the Ruby dependencies:
 ```sh
