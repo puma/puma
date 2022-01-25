@@ -50,7 +50,7 @@ const rb_data_type_t engine_data_type = {
 };
 
 #ifndef HAVE_SSL_GET1_PEER_CERTIFICATE
-DH *get_dh2048() {
+DH *get_dh2048(void) {
   /* `openssl dhparam -C 2048`
    * -----BEGIN DH PARAMETERS-----
    * MIIBCAKCAQEAjmh1uQHdTfxOyxEbKAV30fUfzqMDF/ChPzjfyzl2jcrqQMhrk76o
