@@ -46,7 +46,11 @@ module Puma
       env[HIJACK_P] = true
       env[HIJACK] = client
 
-      env[RACK_INPUT] = client.body
+      body = client.body
+
+      head = env[REQUEST_METHOD] == HEAD
+
+      env[RACK_INPUT] = body
       env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
@@ -65,58 +69,36 @@ module Puma
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
       #
-      env[RACK_AFTER_REPLY] = []
+      after_reply = env[RACK_AFTER_REPLY] = []
 
       begin
-        status, headers, res_body = @thread_pool.with_force_shutdown do
-          @app.call(env)
-        end
-
-        return :async if client.hijacked
-
-        status = status.to_i
-
-        if status == -1
-          unless headers.empty? and res_body == []
-            raise "async response must have empty headers and body"
+        begin
+          status, headers, res_body = @thread_pool.with_force_shutdown do
+            @app.call(env)
           end
 
-          return :async
+          return :async if client.hijacked
+
+          status = status.to_i
+
+          if status == -1
+            unless headers.empty? and res_body == []
+              raise "async response must have empty headers and body"
+            end
+
+            return :async
+          end
+        rescue ThreadPool::ForceShutdown => e
+          @events.unknown_error e, client, "Rack app"
+          @events.log "Detected force shutdown of a thread"
+
+          status, headers, res_body = lowlevel_error(e, env, 503)
+        rescue Exception => e
+          @events.unknown_error e, client, "Rack app"
+
+          status, headers, res_body = lowlevel_error(e, env, 500)
         end
-      rescue ThreadPool::ForceShutdown => e
-        @events.unknown_error e, client, "Rack app"
-        @events.log "Detected force shutdown of a thread"
 
-        status, headers, res_body = lowlevel_error(e, env, 503)
-      rescue Exception => e
-        @events.unknown_error e, client, "Rack app"
-
-        status, headers, res_body = lowlevel_error(e, env, 500)
-      end
-
-      write_response(status, headers, res_body, lines, requests, client)
-    end
-
-    # Does the actual response writing for Request#handle_request and Server#client_error
-    #
-    # @param status [Integer] the status returned by the Rack application
-    # @param headers [Hash] the headers returned by the Rack application
-    # @param res_body [Array] the body returned by the Rack application
-    # @param lines [Puma::IOBuffer] modified in place
-    # @param requests [Integer] number of inline requests handled
-    # @param client [Puma::Client]
-    # @return [Boolean,:async]
-    def write_response(status, headers, res_body, lines, requests, client)
-      env = client.env
-      io  = client.io
-
-      return false if closed_socket?(io)
-      lines.clear
-
-      head = env[REQUEST_METHOD] == HEAD
-      after_reply = env[RACK_AFTER_REPLY] || []
-
-      begin
         res_info = {}
         res_info[:content_length] = nil
         res_info[:no_body] = head
@@ -167,9 +149,9 @@ module Puma
           res_body.each do |part|
             next if part.bytesize.zero?
             if chunked
-                fast_write io, (part.bytesize.to_s(16) << line_ending)
-                fast_write io, part            # part may have different encoding
-                fast_write io, line_ending
+               fast_write io, (part.bytesize.to_s(16) << line_ending)
+               fast_write io, part            # part may have different encoding
+               fast_write io, line_ending
             else
               fast_write io, part
             end
@@ -187,7 +169,7 @@ module Puma
       ensure
         uncork_socket io
 
-        client.body.close if client.body
+        body.close
         client.tempfile.unlink if client.tempfile
         res_body.close if res_body.respond_to? :close
 

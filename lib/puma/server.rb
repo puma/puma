@@ -476,7 +476,7 @@ module Puma
         end
         true
       rescue StandardError => e
-        client_error(e, client, buffer, requests)
+        client_error(e, client)
         # The ensure tries to close +client+ down
         requests > 0
       ensure
@@ -504,36 +504,34 @@ module Puma
     # :nocov:
 
     # Handle various error types thrown by Client I/O operations.
-    def client_error(e, client, buffer = ::Puma::IOBuffer.new, requests = 1)
+    def client_error(e, client)
       # Swallow, do not log
       return if [ConnectionError, EOFError].include?(e.class)
 
+      lowlevel_error(e, client.env)
       case e
       when MiniSSL::SSLError
         @events.ssl_error e, client.io
       when HttpParserError
-        status, headers, res_body = lowlevel_error(e, client.env, 400)
-        write_response(status, headers, res_body, buffer, requests, client)
+        client.write_error(400)
         @events.parse_error e, client
       else
-        status, headers, res_body = lowlevel_error(e, client.env)
-        write_response(status, headers, res_body, buffer, requests, client)
+        client.write_error(500)
         @events.unknown_error e, nil, "Read"
       end
     end
 
     # A fallback rack response if +@app+ raises as exception.
     #
-    def lowlevel_error(e, env, status = 500)
+    def lowlevel_error(e, env, status=500)
       if handler = @options[:lowlevel_error_handler]
         if handler.arity == 1
-          handler_status, headers, res_body = handler.call(e)
+          return handler.call(e)
         elsif handler.arity == 2
-          handler_status, headers, res_body = handler.call(e, env)
+          return handler.call(e, env)
         else
-          handler_status, headers, res_body = handler.call(e, env, status)
+          return handler.call(e, env, status)
         end
-        return [handler_status || status, headers || {}, res_body || []]
       end
 
       if @leak_stack_on_error
