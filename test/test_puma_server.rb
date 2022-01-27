@@ -349,6 +349,11 @@ EOF
     @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
 
     server_run do
+      if TestSkips::TRUFFLE
+        # SystemStackError is too brittle, use something more reliable
+        raise Exception, "error"
+      end
+
       require 'json'
 
       # will raise fatal: machine stack overflow in critical region

@@ -45,6 +45,9 @@ jobs:
           apt-get: ragel
           brew: ragel
           mingw: _upgrade_ openssl ragel
+          # Use the bundler shipped with that ruby,
+          # temporary workaround for https://github.com/oracle/truffleruby/issues/2586
+          bundler: none
           bundler-cache: true
         timeout-minutes: 10
 
