@@ -110,11 +110,8 @@ module Puma
       env = client.env
       io  = client.io
 
-      return false if closed_socket?(io)
-      lines.clear
-
       head = env[REQUEST_METHOD] == HEAD
-      after_reply = env[RACK_AFTER_REPLY] || []
+      after_reply = env[RACK_AFTER_REPLY] ||= []
 
       begin
         res_info = {}
