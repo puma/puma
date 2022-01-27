@@ -1,3 +1,8 @@
+## 5.6.1 / 2022-01-26
+
+* Bugfixes
+  * Reverted a commit which appeared to be causing occasional blank header values ([#2809])
+
 ## 5.6.0 / 2022-01-25
 
 * Features
@@ -1830,6 +1835,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2809]:https://github.com/puma/puma/pull/2809     "PR by @dentarg, merged 2022-01-26"
 [#2764]:https://github.com/puma/puma/pull/2764     "PR by @dentarg, merged 2022-01-18"
 [#2708]:https://github.com/puma/puma/issues/2708   "Issue by @erikaxel, closed 2022-01-18"
 [#2780]:https://github.com/puma/puma/pull/2780     "PR by @dalibor, merged 2022-01-01"
