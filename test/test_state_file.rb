@@ -20,8 +20,8 @@ running_from: "/path/to/app"
     sf.load(state_path)
     assert_equal 123456, sf.pid
     assert_equal '/path/to/app', sf.running_from
-    assert_nil, sf.control_url
-    assert_nil, sf.control_auth_token
+    assert_nil sf.control_url
+    assert_nil sf.control_auth_token
 
   end
 end
