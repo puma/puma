@@ -376,7 +376,7 @@ EOF
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match %r{HTTP/1.0 500 Internal Server Error\r\nContent-Length: 10\r\n\r\nerror page}, data
+    assert_match %r{\AHTTP/1.0 500 Internal Server Error\r\nContent-Length: 10\r\n\r\nerror page}, data
   end
 
   def test_force_shutdown_error_default

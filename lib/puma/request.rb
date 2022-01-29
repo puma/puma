@@ -113,85 +113,79 @@ module Puma
       head = env[REQUEST_METHOD] == HEAD
       after_reply = env[RACK_AFTER_REPLY] ||= []
 
-      begin
-        res_info = {}
-        res_info[:content_length] = nil
-        res_info[:no_body] = head
+      res_info = {}
+      res_info[:no_body] = head
 
-        res_info[:content_length] = if res_body.kind_of? Array and res_body.size == 1
-          res_body[0].bytesize
-        else
-          nil
-        end
+      res_info[:content_length] = res_body.kind_of?(Array) && res_body.size == 1 ?
+        res_body[0].bytesize : nil
 
-        cork_socket io
+      cork_socket io
 
-        str_headers(env, status, headers, res_info, lines, requests, client)
+      str_headers(env, status, headers, res_info, lines, requests, client)
 
-        line_ending = LINE_END
+      line_ending = LINE_END
 
-        content_length  = res_info[:content_length]
-        response_hijack = res_info[:response_hijack]
+      content_length  = res_info[:content_length]
+      response_hijack = res_info[:response_hijack]
 
-        if res_info[:no_body]
-          if content_length and status != 204
-            lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
-          end
-
-          lines << LINE_END
-          fast_write io, lines.to_s
-          return res_info[:keep_alive]
-        end
-
-        if content_length
+      if res_info[:no_body]
+        if content_length and status != 204
           lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
-          chunked = false
-        elsif !response_hijack and res_info[:allow_chunked]
-          lines << TRANSFER_ENCODING_CHUNKED
-          chunked = true
         end
 
-        lines << line_ending
-
+        lines << LINE_END
         fast_write io, lines.to_s
-
-        if response_hijack
-          response_hijack.call io
-          return :async
-        end
-
-        begin
-          res_body.each do |part|
-            next if part.bytesize.zero?
-            if chunked
-                fast_write io, (part.bytesize.to_s(16) << line_ending)
-                fast_write io, part            # part may have different encoding
-                fast_write io, line_ending
-            else
-              fast_write io, part
-            end
-            io.flush
-          end
-
-          if chunked
-            fast_write io, CLOSE_CHUNKED
-            io.flush
-          end
-        rescue SystemCallError, IOError
-          raise ConnectionError, "Connection error detected during write"
-        end
-
-      ensure
-        uncork_socket io
-
-        client.body.close if client.body
-        client.tempfile.unlink if client.tempfile
-        res_body.close if res_body.respond_to? :close
-
-        after_reply.each { |o| o.call }
+        return res_info[:keep_alive]
       end
 
+      if content_length
+        lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+        chunked = false
+      elsif !response_hijack and res_info[:allow_chunked]
+        lines << TRANSFER_ENCODING_CHUNKED
+        chunked = true
+      end
+
+      lines << line_ending
+
+      fast_write io, lines.to_s
+
+      if response_hijack
+        response_hijack.call io
+        return :async
+      end
+
+      begin
+        res_body.each do |part|
+          next if part.bytesize.zero?
+          if chunked
+            fast_write io, (part.bytesize.to_s(16) << line_ending)
+            fast_write io, part            # part may have different encoding
+            fast_write io, line_ending
+          else
+            fast_write io, part
+          end
+          io.flush
+        end
+
+        if chunked
+          fast_write io, CLOSE_CHUNKED
+          io.flush
+        end
+      rescue SystemCallError, IOError
+        raise ConnectionError, "Connection error detected during write"
+      end
       res_info[:keep_alive]
+
+    ensure
+      uncork_socket io
+      # lines must be reset if an error is raised
+      lines.reset
+      client.body.close if client.body
+      client.tempfile.unlink if client.tempfile
+      res_body.close if res_body.respond_to? :close
+
+      after_reply.each { |o| o.call }
     end
 
     # @param env [Hash] see Puma::Client#env, from request

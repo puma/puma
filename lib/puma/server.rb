@@ -533,10 +533,8 @@ module Puma
         else
           handler_status, headers, res_body = handler.call(e, env, status)
         end
-        return [handler_status || status, headers || {}, res_body || []]
-      end
-
-      if @leak_stack_on_error
+        [handler_status || status, headers || {}, res_body || []]
+      elsif @leak_stack_on_error
         backtrace = e.backtrace.nil? ? '<no backtrace available>' : e.backtrace.join("\n")
         [status, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{backtrace}"]]
       else
