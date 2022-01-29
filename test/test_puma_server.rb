@@ -116,6 +116,21 @@ class TestPumaServer < Minitest::Test
     assert_equal "[::1]\n80", data.split("\r\n").last
   end
 
+  def test_streaming_body
+    server_run do |env|
+      body = lambda do |stream|
+        stream.write("Hello World")
+        stream.close
+      end
+
+      [200, {}, body]
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+
+    assert_equal "Hello World", data.split("\n").last
+  end
+
   def test_proper_stringio_body
     data = nil
 
