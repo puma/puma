@@ -139,7 +139,7 @@ We find that values of 4000 or more work well. [Learn more about your file limit
 
 Puma could use your help in several areas!
 
-**The [contrib-wanted] label indicates that an issue might approachable to first-time contributors.**\
+**The [contrib-wanted] label indicates that an issue might approachable to first-time contributors.**
 
 **Reproducing bug reports**: The [needs-repro] label indicates than an issue lacks reproduction steps. You can help by reproducing the issue and sharing the steps you took in the comments.
 
