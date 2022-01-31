@@ -18,6 +18,10 @@ module Puma
       @wakeup = nil
     end
 
+    # Returns the hash of configuration options.
+    # @return [Puma::UserFileDefaultOptions]
+    attr_reader :options
+
     def wakeup!
       return unless @wakeup
 
