@@ -19,6 +19,10 @@ module Puma
       @wakeup = nil
     end
 
+    # Returns the hash of configuration options.
+    # @return [Puma::UserFileDefaultOptions]
+    attr_reader :options
+
     def wakeup!
       return unless @wakeup
 
@@ -95,12 +99,13 @@ module Puma
     def output_header(mode)
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
+      environment = @options[:environment]
 
       log "Puma starting in #{mode} mode..."
       log "* Puma version: #{Puma::Const::PUMA_VERSION} (#{ruby_engine}) (\"#{Puma::Const::CODE_NAME}\")"
       log "*  Min threads: #{min_t}"
       log "*  Max threads: #{max_t}"
-      log "*  Environment: #{ENV['RACK_ENV']}"
+      log "*  Environment: #{environment}"
 
       if mode == "cluster"
         log "*   Master PID: #{Process.pid}"

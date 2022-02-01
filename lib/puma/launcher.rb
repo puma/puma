@@ -163,16 +163,7 @@ module Puma
 
     # Run the server. This blocks until the server is stopped
     def run
-      previous_env =
-        if defined?(Bundler)
-          env = Bundler::ORIGINAL_ENV.dup
-          # add -rbundler/setup so we load from Gemfile when restarting
-          bundle = "-rbundler/setup"
-          env["RUBYOPT"] = [env["RUBYOPT"], bundle].join(" ").lstrip unless env["RUBYOPT"].to_s.include?(bundle)
-          env
-        else
-          ENV.to_h
-        end
+      previous_env = get_env
 
       @config.clamp
 
@@ -181,23 +172,11 @@ module Puma
       setup_signals
       set_process_title
       integrate_with_systemd
+
+      # This blocks until the server is stopped
       @runner.run
 
-      case @status
-      when :halt
-        log "* Stopping immediately!"
-        @runner.stop_control
-      when :run, :stop
-        graceful_stop
-      when :restart
-        log "* Restarting..."
-        ENV.replace(previous_env)
-        @runner.stop_control
-        restart!
-      when :exit
-        # nothing
-      end
-      close_binder_listeners unless @status == :restart
+      do_run_finished(previous_env)
     end
 
     # Return all tcp ports the launcher may be using, TCP or SSL
@@ -241,20 +220,46 @@ module Puma
 
     private
 
-    # If configured, write the pid of the current process out
-    # to a file.
-    def write_pid
-      path = @options[:pidfile]
-      return unless path
-      cur_pid = Process.pid
-      File.write path, cur_pid, mode: 'wb:UTF-8'
-      at_exit do
-        delete_pidfile if cur_pid == Process.pid
+    def get_env
+      if defined?(Bundler)
+        env = Bundler::ORIGINAL_ENV.dup
+        # add -rbundler/setup so we load from Gemfile when restarting
+        bundle = "-rbundler/setup"
+        env["RUBYOPT"] = [env["RUBYOPT"], bundle].join(" ").lstrip unless env["RUBYOPT"].to_s.include?(bundle)
+        env
+      else
+        ENV.to_h
       end
     end
 
-    def reload_worker_directory
-      @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
+    def do_run_finished(previous_env)
+      case @status
+      when :halt
+        do_forceful_stop
+      when :run, :stop
+        do_graceful_stop
+      when :restart
+        do_restart(previous_env)
+      end
+
+      close_binder_listeners unless @status == :restart
+    end
+
+    def do_forceful_stop
+      log "* Stopping immediately!"
+      @runner.stop_control
+    end
+
+    def do_graceful_stop
+      @events.fire_on_stopped!
+      @runner.stop_blocked
+    end
+
+    def do_restart(previous_env)
+      log "* Restarting..."
+      ENV.replace(previous_env)
+      @runner.stop_control
+      restart!
     end
 
     def restart!
@@ -279,6 +284,22 @@ module Puma
         argv += [@binder.redirects_for_restart]
         Kernel.exec(*argv)
       end
+    end
+
+    # If configured, write the pid of the current process out
+    # to a file.
+    def write_pid
+      path = @options[:pidfile]
+      return unless path
+      cur_pid = Process.pid
+      File.write path, cur_pid, mode: 'wb:UTF-8'
+      at_exit do
+        delete_pidfile if cur_pid == Process.pid
+      end
+    end
+
+    def reload_worker_directory
+      @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
     end
 
     # @!attribute [r] files_to_require_after_prune
@@ -380,11 +401,6 @@ module Puma
       raise UnsupportedOption
     end
 
-    def graceful_stop
-      @events.fire_on_stopped!
-      @runner.stop_blocked
-    end
-
     def set_process_title
       Process.respond_to?(:setproctitle) ? Process.setproctitle(title) : $0 = title
     end
@@ -476,7 +492,8 @@ module Puma
 
       begin
         Signal.trap "SIGTERM" do
-          graceful_stop
+          # Shortcut the control flow in case raise_exception_on_sigterm is true
+          do_graceful_stop
 
           raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
         end

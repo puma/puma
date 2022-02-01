@@ -27,6 +27,10 @@ module Puma
       @phased_restart = false
     end
 
+    # Returns the list of cluster worker handles.
+    # @return [Array<Puma::Cluster::WorkerHandle>]
+    attr_reader :workers
+
     def stop_workers
       log "- Gracefully shutting down workers..."
       @workers.each { |x| x.term }
