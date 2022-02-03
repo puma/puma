@@ -49,7 +49,8 @@ const rb_data_type_t engine_data_type = {
     0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
 };
 
-DH *get_dh2048() {
+#ifndef HAVE_SSL_GET1_PEER_CERTIFICATE
+DH *get_dh2048(void) {
   /* `openssl dhparam -C 2048`
    * -----BEGIN DH PARAMETERS-----
    * MIIBCAKCAQEAjmh1uQHdTfxOyxEbKAV30fUfzqMDF/ChPzjfyzl2jcrqQMhrk76o
@@ -119,6 +120,7 @@ DH *get_dh2048() {
 
   return dh;
 }
+#endif
 
 static void
 sslctx_free(void *ptr) {
@@ -209,7 +211,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   int ssl_options;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
     verification_flags, session_id_bytes, cert_pem, key_pem;
+#ifndef HAVE_SSL_GET1_PEER_CERTIFICATE
   DH *dh;
+#endif
   BIO *bio;
   X509 *x509;
   EVP_PKEY *pkey;
@@ -317,9 +321,6 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL@STRENGTH");
   }
 
-  dh = get_dh2048();
-  SSL_CTX_set_tmp_dh(ctx, dh);
-
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
   // Remove this case if OpenSSL 1.0.1 (now EOL) support is no
   // longer needed.
@@ -353,6 +354,15 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
                                  SSL_MAX_SSL_SESSION_ID_LENGTH);
 
   // printf("\ninitialize end security_level %d\n", SSL_CTX_get_security_level(ctx));
+
+#ifdef HAVE_SSL_GET1_PEER_CERTIFICATE
+  // https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_dh_auto.html
+  SSL_CTX_set_dh_auto(ctx, 1);
+#else
+  dh = get_dh2048();
+  SSL_CTX_set_tmp_dh(ctx, dh);
+#endif
+
   rb_obj_freeze(self);
   return self;
 }
@@ -551,7 +561,11 @@ VALUE engine_peercert(VALUE self) {
 
   TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
+#ifdef HAVE_SSL_GET1_PEER_CERTIFICATE
+  cert = SSL_get1_peer_certificate(conn->ssl);
+#else
   cert = SSL_get_peer_certificate(conn->ssl);
+#endif
   if(!cert) {
     /*
      * See if there was a failed certificate associated with this client.

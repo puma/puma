@@ -122,4 +122,28 @@ RUBY
       assert_equal 'https', body
     end
   end
+
+  def test_ssl_run_with_localhost_authority
+    skip_if :jruby
+
+    config = <<RUBY
+  require 'localhost'
+  ssl_bind '#{HOST}', '#{bind_port}'
+
+activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+
+app do |env|
+  [200, {}, [env['rack.url_scheme']]]
+end
+RUBY
+
+    with_server(config) do |http|
+      body = nil
+      http.start do
+        req = Net::HTTP::Get.new '/', {}
+        http.request(req) { |resp| body = resp.body }
+      end
+      assert_equal 'https', body
+    end
+  end
 end if ::Puma::HAS_SSL
