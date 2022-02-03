@@ -6,11 +6,8 @@ require 'stringio'
 
 module Puma
 
-  # The default implement of an event sink object used by Server
-  # for when certain kinds of events occur in the life of the server.
-  #
-  # The methods available are the events that the Server fires.
-  #
+  # Handles logging concerns for both standard messages
+  # (+stdout+) and errors (+stderr+).
   class LogWriter
 
     class DefaultFormatter
@@ -42,7 +39,8 @@ module Puma
 
     DEFAULT = new(STDOUT, STDERR)
 
-    # Returns an Events object which writes its status to 2 StringIO objects.
+    # Returns an LogWriter object which writes its status to
+    # two StringIO objects.
     def self.strings
       LogWriter.new(StringIO.new, StringIO.new)
     end

@@ -2,9 +2,10 @@
 
 module Puma
 
-  # The default implement of an event sink object used by Server
-  # for when certain kinds of events occur in the life of the server.
-  # The methods available are the events that the Server fires.
+  # This is an event sink used by `Puma::Server` to handle
+  # lifecycle events such as :on_booted, :on_restart, and :on_stopped.
+  # Using `Puma::DSL` it is possible to register callback hooks
+  # for each event type.
   class Events
 
     def initialize
