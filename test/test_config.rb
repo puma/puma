@@ -58,6 +58,22 @@ class TestConfigFile < TestConfigFileBase
     assert_equal [200, {}, ["embedded app"]], app.call({})
   end
 
+  def test_ssl_self_signed_configuration_from_DSL
+    skip_if :jruby
+    skip_unless :ssl
+    conf = Puma::Configuration.new do |config|
+      config.load "test/config/ssl_self_signed_config.rb"
+    end
+
+    conf.load
+
+    bind_configuration = conf.options.file_options[:binds].first
+    app = conf.app
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=&key=&verify_mode=none"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
   def test_ssl_bind
     skip_if :jruby
     skip_unless :ssl

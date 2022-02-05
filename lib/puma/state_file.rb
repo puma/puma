@@ -50,6 +50,7 @@ module Puma
         v = v.strip
         @options[k] =
           case v
+          when ''              then nil
           when /\A\d+\z/       then v.to_i
           when /\A\d+\.\d+\z/  then v.to_f
           else                      v.gsub(/\A"|"\z/, '')

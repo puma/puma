@@ -477,4 +477,15 @@ class TestCLI < Minitest::Test
   ensure
     ENV.delete 'RAILS_ENV'
   end
+
+  def test_silent
+    cli = Puma::CLI.new ['--silent']
+    cli.send(:setup_options)
+
+    log_writer = cli.instance_variable_get(:@log_writer)
+
+    assert_equal log_writer.class, Puma::LogWriter.null.class
+    assert_equal log_writer.stdout.class, Puma::NullIO
+    assert_equal log_writer.stderr, $stderr
+  end
 end

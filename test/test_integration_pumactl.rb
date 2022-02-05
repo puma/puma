@@ -89,7 +89,7 @@ class TestIntegrationPumactl < TestIntegration
 
     _, status = Process.wait2(@pid)
     assert_equal 0, status
-    assert_operator Time.now - start, :<, (DARWIN ? 8 : 5)
+    assert_operator Time.now - start, :<, (DARWIN ? 8 : 6)
     @server = nil
   end
 
