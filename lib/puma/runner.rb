@@ -8,10 +8,11 @@ module Puma
   # serve requests. This class spawns a new instance of `Puma::Server` via
   # a call to `start_server`.
   class Runner
-    def initialize(cli, events)
-      @launcher = cli
-      @events = events
-      @options = cli.options
+    def initialize(launcher)
+      @launcher = launcher
+      @log_writer = launcher.log_writer
+      @events = launcher.events
+      @options = launcher.options
       @app = nil
       @control = nil
       @started_at = Time.now
@@ -40,7 +41,7 @@ module Puma
     end
 
     def log(str)
-      @events.log str
+      @log_writer.log str
     end
 
     # @version 5.0.0
@@ -49,11 +50,11 @@ module Puma
     end
 
     def error(str)
-      @events.error str
+      @log_writer.error str
     end
 
     def debug(str)
-      @events.log "- #{str}" if @options[:debug]
+      @log_writer.log "- #{str}" if @options[:debug]
     end
 
     def start_control
@@ -68,7 +69,7 @@ module Puma
 
       app = Puma::App::Status.new @launcher, token
 
-      control = Puma::Server.new app, @launcher.events,
+      control = Puma::Server.new app, @log_writer, @events,
         { min_threads: 0, max_threads: 1, queue_requests: false }
 
       control.binder.parse [str], self, 'Starting control server'
@@ -166,8 +167,8 @@ module Puma
     end
 
     def start_server
-      server = Puma::Server.new app, @launcher.events, @options
-      server.inherit_binder @launcher.binder
+      server = Puma::Server.new(app, @log_writer, @events, @options)
+      server.inherit_binder(@launcher.binder)
       server
     end
 

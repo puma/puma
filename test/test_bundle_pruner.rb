@@ -52,6 +52,6 @@ class TestBundlePruner < Minitest::Test
   private
 
   def bundle_pruner(original_argv = nil, extra_runtime_dependencies = nil)
-    @bundle_pruner ||= Puma::Launcher::BundlePruner.new(original_argv, extra_runtime_dependencies, Puma::Events.null)
+    @bundle_pruner ||= Puma::Launcher::BundlePruner.new(original_argv, extra_runtime_dependencies, Puma::LogWriter.null)
   end
 end

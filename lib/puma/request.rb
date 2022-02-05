@@ -58,7 +58,7 @@ module Puma
           begin
             fast_write io, str_early_hints(headers)
           rescue ConnectionError => e
-            @events.debug_error e
+            @log_writer.debug_error e
             # noop, if we lost the socket we just won't send the early hints
           end
         }
@@ -89,12 +89,12 @@ module Puma
             return :async
           end
         rescue ThreadPool::ForceShutdown => e
-          @events.unknown_error e, client, "Rack app"
-          @events.log "Detected force shutdown of a thread"
+          @log_writer.unknown_error e, client, "Rack app"
+          @log_writer.log "Detected force shutdown of a thread"
 
           status, headers, res_body = lowlevel_error(e, env, 503)
         rescue Exception => e
-          @events.unknown_error e, client, "Rack app"
+          @log_writer.unknown_error e, client, "Rack app"
 
           status, headers, res_body = lowlevel_error(e, env, 500)
         end

@@ -4,7 +4,8 @@ require 'sd_notify'
 
 module Puma
   class Systemd
-    def initialize(events)
+    def initialize(log_writer, events)
+      @log_writer = log_writer
       @events = events
     end
 
@@ -40,7 +41,7 @@ module Puma
     end
 
     def log(str)
-      @events.log str
+      @log_writer.log(str)
     end
   end
 end

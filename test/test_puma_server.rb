@@ -14,8 +14,9 @@ class TestPumaServer < Minitest::Test
 
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
-    @events = Puma::Events.strings
-    @server = Puma::Server.new @app, @events
+    @log_writer = Puma::LogWriter.strings
+    @events = Puma::Events.new
+    @server = Puma::Server.new @app, @log_writer, @events
   end
 
   def teardown
@@ -24,7 +25,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def server_run(**options, &block)
-    @server = Puma::Server.new block || @app, @events, options
+    @server = Puma::Server.new block || @app, @log_writer, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?
@@ -296,7 +297,7 @@ EOF
     sleep 0.1
 
     # Expect no errors in stderr
-    assert @events.stderr.pos.zero?, "Server didn't swallow the connection error"
+    assert @log_writer.stderr.pos.zero?, "Server didn't swallow the connection error"
   end
 
   def test_early_hints_is_off_by_default
@@ -341,7 +342,7 @@ EOF
     new_connection.close # Make a connection and close without writing
 
     @server.stop(true)
-    stderr = @events.stderr.string
+    stderr = @log_writer.stderr.string
     assert stderr.empty?, "Expected stderr from server to be empty but it was #{stderr.inspect}"
   end
 
@@ -361,7 +362,7 @@ EOF
 
   def test_lowlevel_error_message
     skip_if :windows
-    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+    @server = Puma::Server.new @app, @log_writer, @events, {:force_shutdown_after => 2}
 
     server_run do
       if TestSkips::TRUFFLE
@@ -508,7 +509,7 @@ EOF
   end
 
   def test_no_timeout_after_data_received_no_queue
-    @server = Puma::Server.new @app, @events, queue_requests: false
+    @server = Puma::Server.new @app, @log_writer, @events, queue_requests: false
     test_no_timeout_after_data_received
   end
 
@@ -1244,7 +1245,7 @@ EOF
   # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
   def test_accept_emfile
     stub_accept_nonblock Errno::EMFILE.new('accept(2)')
-    refute_empty @events.stderr.string, "Expected EMFILE error not logged"
+    refute_empty @log_writer.stderr.string, "Expected EMFILE error not logged"
   end
 
   # Retryable errors such as ECONNABORTED should be silently swallowed by accept loop.
@@ -1252,7 +1253,7 @@ EOF
     # Match Ruby #accept_nonblock implementation, ECONNABORTED error is extended by IO::WaitReadable.
     error = Errno::ECONNABORTED.new('accept(2) would block').tap {|e| e.extend IO::WaitReadable}
     stub_accept_nonblock(error)
-    assert_empty @events.stderr.string
+    assert_empty @log_writer.stderr.string
   end
 
   # see      https://github.com/puma/puma/issues/2390
@@ -1260,7 +1261,7 @@ EOF
   #
   def test_client_quick_close_no_lowlevel_error_handler_call
     handler = ->(err, env, status) {
-      @events.stdout.write "LLEH #{err.message}"
+      @log_writer.stdout.write "LLEH #{err.message}"
       [500, {"Content-Type" => "application/json"}, ["{}\n"]]
     }
 
@@ -1274,21 +1275,21 @@ EOF
     sock.close
     assert_match 'Hello World', resp
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
 
     # valid req, close
     sock = TCPSocket.new @host, @port
     sock.syswrite "GET / HTTP/1.0\r\n\r\n"
     sock.close
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
 
     # invalid req, close
     sock = TCPSocket.new @host, @port
     sock.syswrite "GET / HTTP"
     sock.close
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
   end
 
   def test_idle_connections_closed_immediately_on_shutdown
@@ -1325,7 +1326,7 @@ EOF
   def test_custom_io_selector
     backend = NIO::Selector.backends.first
 
-    @server = Puma::Server.new @app, @events, {:io_selector_backend => backend}
+    @server = Puma::Server.new @app, @log_writer, @events, {:io_selector_backend => backend}
     @server.run
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)
@@ -1374,9 +1375,9 @@ EOF
     @port = UniquePort.call
     opts = { rack_url_scheme: 'user', binds: ["tcp://#{@host}:#{@port}"] }
     conf = Puma::Configuration.new(opts).tap(&:clamp)
-    @server = Puma::Server.new @app, @events, conf.options
-    @server.inherit_binder Puma::Binder.new(@events, conf)
-    @server.binder.parse conf.options[:binds], @events
+    @server = Puma::Server.new @app, @log_writer, @events, conf.options
+    @server.inherit_binder Puma::Binder.new(@log_writer, conf)
+    @server.binder.parse conf.options[:binds], @log_writer
     @server.run
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"

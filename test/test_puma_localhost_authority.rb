@@ -30,8 +30,8 @@ class TestPumaLocalhostAuthority < Minitest::Test
     @host = "localhost"
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    @events = SSLEventsHelper.new STDOUT, STDERR
-    @server = Puma::Server.new app, @events
+    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    @server = Puma::Server.new app, @log_writer
     @server.app = app
     @server.add_ssl_listener @host, 0,nil
     @http = Net::HTTP.new @host, @server.connected_ports[0]
@@ -61,9 +61,9 @@ class TestPumaSSLLocalhostAuthority < Minitest::Test
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    @events = SSLEventsHelper.new STDOUT, STDERR
+    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
 
-    @server = Puma::Server.new app, @events
+    @server = Puma::Server.new app, @log_writer
     @server.app = app
 
     @server.add_ssl_listener @host, 0,nil

@@ -59,7 +59,7 @@ class TestOutOfBandServer < Minitest::Test
       [200, {}, [""]]
     end
 
-    @server = Puma::Server.new app, Puma::Events.strings, out_of_band: [oob], **options
+    @server = Puma::Server.new app, Puma::LogWriter.strings, Puma::Events.new, out_of_band: [oob], **options
     @server.min_threads = options[:min_threads] || 1
     @server.max_threads = options[:max_threads] || 1
     @port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]

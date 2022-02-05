@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'puma/log_writer'
 require 'puma/events'
 require 'puma/detect'
 require 'puma/cluster'
@@ -27,7 +28,7 @@ module Puma
     # +conf+ A Puma::Configuration object indicating how to run the server.
     #
     # +launcher_args+ A Hash that currently has one required key `:events`,
-    # this is expected to hold an object similar to an `Puma::Events.stdio`,
+    # this is expected to hold an object similar to an `Puma::LogWriter.stdio`,
     # this object will be responsible for broadcasting Puma's internal state
     # to a logging destination. An optional key `:argv` can be supplied,
     # this should be an array of strings, these arguments are re-used when
@@ -41,15 +42,16 @@ module Puma
     #       [200, {}, ["hello world"]]
     #     end
     #   end
-    #   Puma::Launcher.new(conf, events: Puma::Events.stdio).run
+    #   Puma::Launcher.new(conf, log_writer: Puma::LogWriter.stdio).run
     def initialize(conf, launcher_args={})
       @runner        = nil
-      @events        = launcher_args[:events] || Events::DEFAULT
+      @log_writer    = launcher_args[:log_writer] || LogWriter::DEFAULT
+      @events        = launcher_args[:events] || Events.new
       @argv          = launcher_args[:argv] || []
       @original_argv = @argv.dup
       @config        = conf
 
-      @binder        = Binder.new(@events, conf)
+      @binder        = Binder.new(@log_writer, conf)
       @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
       @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
 
@@ -70,8 +72,8 @@ module Puma
       @options = @config.options
       @config.clamp
 
-      @events.formatter = Events::PidFormatter.new if clustered?
-      @events.formatter = options[:log_formatter] if @options[:log_formatter]
+      @log_writer.formatter = LogWriter::PidFormatter.new if clustered?
+      @log_writer.formatter = options[:log_formatter] if @options[:log_formatter]
 
       generate_restart_data
 
@@ -87,11 +89,11 @@ module Puma
       set_rack_environment
 
       if clustered?
-        @options[:logger] = @events
+        @options[:logger] = @log_writer
 
-        @runner = Cluster.new(self, @events)
+        @runner = Cluster.new(self)
       else
-        @runner = Single.new(self, @events)
+        @runner = Single.new(self)
       end
       Puma.stats_object = @runner
 
@@ -100,7 +102,7 @@ module Puma
       log_config if ENV['PUMA_LOG_CONFIG']
     end
 
-    attr_reader :binder, :events, :config, :options, :restart_dir
+    attr_reader :binder, :log_writer, :events, :config, :options, :restart_dir
 
     # Return stats about the server
     def stats
@@ -263,7 +265,7 @@ module Puma
 
     def restart!
       @events.fire_on_restart!
-      @config.run_hooks :on_restart, self, @events
+      @config.run_hooks :on_restart, self, @log_writer
 
       if Puma.jruby?
         close_binder_listeners
@@ -317,13 +319,13 @@ module Puma
 
       log "* Enabling systemd notification integration"
 
-      systemd = Systemd.new(@events)
+      systemd = Systemd.new(@log_writer, @events)
       systemd.hook_events
       systemd.start_watchdog
     end
 
     def log(str)
-      @events.log str
+      @log_writer.log(str)
     end
 
     def clustered?
@@ -331,7 +333,7 @@ module Puma
     end
 
     def unsupported(str)
-      @events.error(str)
+      @log_writer.error(str)
       raise UnsupportedOption
     end
 
@@ -362,7 +364,7 @@ module Puma
 
     def prune_bundler!
       return unless prune_bundler?
-      BundlePruner.new(@original_argv, @options[:extra_runtime_dependencies], @events).prune
+      BundlePruner.new(@original_argv, @options[:extra_runtime_dependencies], @log_writer).prune
     end
 
     def generate_restart_data
@@ -464,8 +466,8 @@ module Puma
         unless Puma.jruby? # INFO in use by JVM already
           Signal.trap "SIGINFO" do
             thread_status do |name, backtrace|
-              @events.log name
-              @events.log backtrace.map { |bt| "  #{bt}" }
+              @log_writer.log(name)
+              @log_writer.log(backtrace.map { |bt| "  #{bt}" })
             end
           end
         end

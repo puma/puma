@@ -55,8 +55,8 @@ class TestPumaServerSSL < Minitest::Test
 
     yield ctx if block_given?
 
-    @events = SSLEventsHelper.new STDOUT, STDERR
-    @server = Puma::Server.new app, @events
+    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    @server = Puma::Server.new app, @log_writer
     @port = (@server.add_ssl_listener @host, 0, ctx).addr[1]
     @server.run
 
@@ -148,7 +148,7 @@ class TestPumaServerSSL < Minitest::Test
     end
     unless Puma.jruby?
       msg = /wrong version number|no protocols available|version too low|unknown SSL method/
-      assert_match(msg, @events.error.message) if @events.error
+      assert_match(msg, @log_writer.error.message) if @log_writer.error
     end
   end
 
@@ -169,7 +169,7 @@ class TestPumaServerSSL < Minitest::Test
     end
     unless Puma.jruby?
       msg = /wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
-      assert_match(msg, @events.error.message) if @events.error
+      assert_match(msg, @log_writer.error.message) if @log_writer.error
     end
   end
 
@@ -189,7 +189,7 @@ class TestPumaServerSSL < Minitest::Test
     end
     unless Puma.jruby?
       msg = /wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
-      assert_match(msg, @events.error.message) if @events.error
+      assert_match(msg, @log_writer.error.message) if @log_writer.error
     end
   end
 
@@ -258,8 +258,8 @@ class TestPumaServerSSLClient < Minitest::Test
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    events = SSLEventsHelper.new STDOUT, STDERR
-    server = Puma::Server.new app, events
+    log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    server = Puma::Server.new app, log_writer
     server.add_ssl_listener host, port, CTX
     host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
     server.run
@@ -288,9 +288,9 @@ class TestPumaServerSSLClient < Minitest::Test
     # The JRuby MiniSSL implementation lacks error capturing currently,
     # so we can't inspect the messages here
     unless Puma.jruby?
-      assert_match error, events.error.message if error
-      assert_includes host_addrs, events.addr if error
-      assert_equal subject, events.cert.subject.to_s if subject
+      assert_match error, log_writer.error.message if error
+      assert_includes host_addrs, log_writer.addr if error
+      assert_equal subject, log_writer.cert.subject.to_s if subject
     end
   ensure
     server.stop(true) if server
@@ -346,8 +346,8 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
     }
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
-    events = SSLEventsHelper.new STDOUT, STDERR
-    server = Puma::Server.new app, events
+    log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    server = Puma::Server.new app, log_writer
     server.add_ssl_listener host, port, ctx
     server.run
 

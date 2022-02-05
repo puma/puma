@@ -7,7 +7,7 @@ require 'puma'
 require 'puma/configuration'
 require 'puma/launcher'
 require 'puma/const'
-require 'puma/events'
+require 'puma/log_writer'
 
 module Puma
   class << self
@@ -30,10 +30,10 @@ module Puma
     # +stdout+ and +stderr+ can be set to IO-like objects which
     # this object will report status on.
     #
-    def initialize(argv, events=Events.stdio)
+    def initialize(argv, log_writer = LogWriter.stdio, events = Events.new)
       @debug = false
       @argv = argv.dup
-
+      @log_writer = log_writer
       @events = events
 
       @conf = nil
@@ -69,7 +69,7 @@ module Puma
         end
       end
 
-      @launcher = Puma::Launcher.new(@conf, :events => @events, :argv => argv)
+      @launcher = Puma::Launcher.new(@conf, :log_writer => @log_writer, :events => @events, :argv => argv)
     end
 
     attr_reader :launcher
@@ -83,7 +83,7 @@ module Puma
 
     private
     def unsupported(str)
-      @events.error(str)
+      @log_writer.error(str)
       raise UnsupportedOption
     end
 
@@ -186,7 +186,7 @@ module Puma
           end
 
           o.on "-s", "--silent", "Do not log prompt messages other than errors" do
-            @events = Events.new NullIO.new, $stderr
+            @log_writer = LogWriter.new(NullIO.new, $stderr)
           end
 
           o.on "-S", "--state PATH", "Where to store the state details" do |arg|
