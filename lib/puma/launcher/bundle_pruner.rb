@@ -7,10 +7,10 @@ module Puma
     # application restarts.
     class BundlePruner
 
-      def initialize(original_argv, extra_runtime_dependencies, events)
+      def initialize(original_argv, extra_runtime_dependencies, log_writer)
         @original_argv = Array(original_argv)
         @extra_runtime_dependencies = Array(extra_runtime_dependencies)
-        @events = events
+        @log_writer = log_writer
       end
 
       def prune
@@ -96,7 +96,7 @@ module Puma
       end
 
       def log(str)
-        @events.log(str)
+        @log_writer.log(str)
       end
     end
   end

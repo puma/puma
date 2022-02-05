@@ -364,7 +364,7 @@ module Puma
 
     def prune_bundler!
       return unless prune_bundler?
-      BundlePruner.new(@original_argv, @options[:extra_runtime_dependencies], @events).prune
+      BundlePruner.new(@original_argv, @options[:extra_runtime_dependencies], @log_writer).prune
     end
 
     def generate_restart_data
