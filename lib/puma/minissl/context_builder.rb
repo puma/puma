@@ -1,9 +1,9 @@
 module Puma
   module MiniSSL
     class ContextBuilder
-      def initialize(params, events)
+      def initialize(params, log_writer)
         @params = params
-        @events = events
+        @log_writer = log_writer
       end
 
       def context
@@ -75,7 +75,7 @@ module Puma
 
       private
 
-      attr_reader :params, :events
+      attr_reader :params, :log_writer
     end
   end
 end
