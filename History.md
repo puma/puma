@@ -297,6 +297,11 @@
   * Support parallel tests in verbose progress reporting ([#2223])
   * Refactor error handling in server accept loop ([#2239])
 
+## 4.3.11 / 2022-02-11
+
+* Security
+  * Always close the response body (GHSA-rmj8-8hhh-gv5h)
+
 ## 4.3.10 / 2021-10-12
 
 * Bugfixes
