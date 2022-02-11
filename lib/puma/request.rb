@@ -171,11 +171,16 @@ module Puma
         end
 
       ensure
-        uncork_socket io
+        begin
+          uncork_socket io
 
-        body.close
-        client.tempfile.unlink if client.tempfile
-        res_body.close if res_body.respond_to? :close
+          body.close
+          client.tempfile.unlink if client.tempfile
+        ensure
+          # Whatever happens, we MUST call `close` on the response body.
+          # Otherwise Rack::BodyProxy callbacks may not fire and lead to various state leaks
+          res_body.close if res_body.respond_to? :close
+        end
 
         after_reply.each { |o| o.call }
       end
