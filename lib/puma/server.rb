@@ -873,11 +873,14 @@ module Puma
         end
 
       ensure
-        uncork_socket client
+        begin
+          uncork_socket client
 
-        body.close
-        req.tempfile.unlink if req.tempfile
-        res_body.close if res_body.respond_to? :close
+          body.close
+          req.tempfile.unlink if req.tempfile
+        ensure
+          res_body.close if res_body.respond_to? :close
+        end
 
         after_reply.each { |o| o.call }
       end
