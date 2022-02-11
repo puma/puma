@@ -1,3 +1,8 @@
+## 4.3.11 / 2022-02-11
+
+* Security
+  * Always close the response body (GHSA-rmj8-8hhh-gv5h)
+
 ## 4.3.10 / 2021-10-12
 
 * Bugfixes
