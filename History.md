@@ -1,3 +1,8 @@
+## 5.6.2 / 2022-02-11
+
+* Bugfix/Security
+  * Response body will always be `close`d. (GHSA-rmj8-8hhh-gv5h, related to [#2809])
+
 ## 5.6.1 / 2022-01-26
 
 * Bugfixes
