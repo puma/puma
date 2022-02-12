@@ -22,7 +22,8 @@ Gem::Specification.new do |s|
       "bug_tracker_uri" => "https://github.com/puma/puma/issues",
       "changelog_uri" => "https://github.com/puma/puma/blob/master/History.md",
       "homepage_uri" => "https://puma.io",
-      "source_code_uri" => "https://github.com/puma/puma"
+      "source_code_uri" => "https://github.com/puma/puma",
+      "rubygems_mfa_required" => "true"
     }
   end
 
