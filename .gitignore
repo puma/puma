@@ -11,6 +11,7 @@ pkg
 tmp
 t/
 .rbx/
+vendor/
 Gemfile.lock
 .idea/
 /test/test_puma.state
