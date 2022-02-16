@@ -106,6 +106,31 @@ class TestUserSuppliedOptionsHostIsSet < Minitest::Test
   end
 end
 
+class TestUserSuppliedOptionsHostDontOverridePort < Minitest::Test
+  def setup
+    @options = {}
+    @options[:user_supplied_options] = [:Host]
+  end
+
+  def test_port_from_config_wins_over_default
+    file_port = 6001
+
+    Dir.mktmpdir do |d|
+      Dir.chdir(d) do
+        FileUtils.mkdir("config")
+        File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
+
+        @options[:Host] = '127.0.0.1'
+        conf = Rack::Handler::Puma.config(->{}, @options)
+        conf.load
+
+        assert_equal ["tcp://127.0.0.1:#{file_port}"], conf.options[:binds]
+      end
+    end
+  end
+end
+
+
 class TestUserSuppliedOptionsIsEmpty < Minitest::Test
   def setup
     @options = {}
