@@ -22,6 +22,14 @@ unless ENV["DISABLE_SSL"]
     # with versions after 1.1.1
     have_func  "TLS_server_method"            , "openssl/ssl.h"
     have_macro "SSL_CTX_set_min_proto_version", "openssl/ssl.h"
+
+    # Random.bytes available in Ruby 2.5 and later, Random::DEFAULT deprecated in 3.0
+    if Random.respond_to?(:bytes)
+      $defs.push("-DHAVE_RANDOM_BYTES")
+      puts "checking for Random.bytes... yes"
+    else
+      puts "checking for Random.bytes... no"
+    end
   end
 end
 
