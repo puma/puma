@@ -189,7 +189,7 @@ module Puma
           end
 
           if fd = @inherited_fds.delete(str)
-            @unix_paths << path unless abstract
+            @unix_paths << path unless abstract || File.exist?(path)
             io = inherit_unix_listener path, fd
             log_writer.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :unix, path ]) ||
