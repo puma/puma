@@ -29,6 +29,29 @@ module Puma
       end
     end
 
+    def start_status_loop
+      instance = self
+      sleep_time = 1.0
+      log "Sending status to systemd every #{sleep_time.round(1)} sec"
+
+      Thread.new do
+        loop do
+          sleep sleep_time
+          # TODO: error handling?
+          SdNotify.status(instance.status)
+        end
+      end
+    end
+
+    def status
+      common = "workers: #{running}/#{max_threads} threads, #{pool_capacity} available, #{backlog} backlog"
+      if clustered?
+        "Puma #{Puma::Const::VERSION} cluster: #{booted_workers}/#{workers} #{common}"
+      else
+        "Puma #{Puma::Const::VERSION}: #{common}"
+      end
+    end
+
     private
 
     def watchdog_sleep_time
@@ -42,6 +65,38 @@ module Puma
 
     def log(str)
       @log_writer.log(str)
+    end
+
+    def stats
+      Puma.stats_hash
+    end
+
+    def clustered?
+      stats.has_key?('workers')
+    end
+
+    def workers
+      stats.fetch('workers', 1)
+    end
+
+    def booted_workers
+      stats.fetch('booted_workers', 1)
+    end
+
+    def running
+      stats['running']
+    end
+
+    def backlog
+      stats['backlog']
+    end
+
+    def pool_capacity
+      stats['pool_capacity']
+    end
+
+    def max_threads
+      stats['max_threads']
     end
   end
 end
