@@ -324,6 +324,7 @@ module Puma
 
       systemd = Systemd.new(@log_writer, @events)
       systemd.hook_events
+      systemd.start_status_loop
       systemd.start_watchdog
     end
 
