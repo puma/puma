@@ -414,8 +414,8 @@ case 2:
 		_goto_targ = 1;
 		continue _goto;
 	}
+case 3:
 case 4:
-case 5:
 	}
 	break; }
 	}
