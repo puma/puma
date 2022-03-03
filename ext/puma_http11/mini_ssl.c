@@ -92,13 +92,13 @@ DH *get_dh2048(void) {
   static unsigned char dh2048_g[] = { 0x02 };
 
   DH *dh;
-#if !(OPENSSL_VERSION_NUMBER < 0x10100005L || defined(LIBRESSL_VERSION_NUMBER))
+#if !(OPENSSL_VERSION_NUMBER < 0x10100005L)
   BIGNUM *p, *g;
 #endif
 
   dh = DH_new();
 
-#if OPENSSL_VERSION_NUMBER < 0x10100005L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100005L
   dh->p = BN_bin2bn(dh2048_p, sizeof(dh2048_p), NULL);
   dh->g = BN_bin2bn(dh2048_g, sizeof(dh2048_g), NULL);
 
