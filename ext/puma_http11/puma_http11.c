@@ -41,8 +41,8 @@ static VALUE global_request_path;
 
 /** Defines common length and error messages for input length validation. */
 #define QUOTE(s) #s
-#define EXPLAIN_MAX_LENGTH_VALUE(s) QUOTE(s)
-#define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " EXPLAIN_MAX_LENGTH_VALUE(length) " allowed length (was %d)"
+#define EXPAND_MAX_LENGTH_VALUE(s) QUOTE(s)
+#define DEF_MAX_LENGTH(N,length) const size_t MAX_##N##_LENGTH = length; const char *MAX_##N##_LENGTH_ERR = "HTTP element " # N  " is longer than the " EXPAND_MAX_LENGTH_VALUE(length) " allowed length (was %d)"
 
 /** Validates the max length of given input and throws an HttpParserError exception if over. */
 #define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, MAX_##N##_LENGTH_ERR, len); }
