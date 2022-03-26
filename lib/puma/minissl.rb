@@ -241,16 +241,22 @@ module Puma
 
         def key=(key)
           raise ArgumentError, "No such key file '#{key}'" unless File.exist? key
+          raise ArgumentError, "Key file '#{key}' is not readable" unless File.readable? key
+
           @key = key
         end
 
         def cert=(cert)
           raise ArgumentError, "No such cert file '#{cert}'" unless File.exist? cert
+          raise ArgumentError, "Cert file '#{key}' is not readable" unless File.readable? cert
+
           @cert = cert
         end
 
         def ca=(ca)
           raise ArgumentError, "No such ca file '#{ca}'" unless File.exist? ca
+          raise ArgumentError, "ca file '#{ca}' is not readable" unless File.readable? ca
+
           @ca = ca
         end
 
