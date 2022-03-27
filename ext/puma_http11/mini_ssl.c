@@ -30,6 +30,12 @@ typedef struct {
 
 VALUE eError;
 
+NORETURN(void raise_file_error(const char* caller, const char *filename));
+
+void raise_file_error(const char* caller, const char *filename) {
+  rb_raise(eError, "%s: error in file '%s': %s", caller, filename, ERR_error_string(ERR_get_error(), NULL));
+}
+
 void engine_free(void *ptr) {
   ms_conn *conn = ptr;
   ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
@@ -244,12 +250,18 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   if (!NIL_P(cert)) {
     StringValue(cert);
-    SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
+
+    if (SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert)) != 1) {
+      raise_file_error("SSL_CTX_use_certificate_chain_file", RSTRING_PTR(cert));
+    }
   }
 
   if (!NIL_P(key)) {
     StringValue(key);
-    SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
+
+    if (SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM) != 1) {
+      raise_file_error("SSL_CTX_use_PrivateKey_file", RSTRING_PTR(key));
+    }
   }
 
   if (!NIL_P(cert_pem)) {
@@ -257,7 +269,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     BIO_puts(bio, RSTRING_PTR(cert_pem));
     x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 
-    SSL_CTX_use_certificate(ctx, x509);
+    if (SSL_CTX_use_certificate(ctx, x509) != 1) {
+      raise_file_error("SSL_CTX_use_certificate", RSTRING_PTR(cert_pem));
+    }
   }
 
   if (!NIL_P(key_pem)) {
@@ -265,7 +279,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     BIO_puts(bio, RSTRING_PTR(key_pem));
     pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
 
-    SSL_CTX_use_PrivateKey(ctx, pkey);
+    if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+      raise_file_error("SSL_CTX_use_PrivateKey", RSTRING_PTR(key_pem));
+    }
   }
 
   verification_flags = rb_funcall(mini_ssl_ctx, rb_intern_const("verification_flags"), 0);
@@ -278,7 +294,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   if (!NIL_P(ca)) {
     StringValue(ca);
-    SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL);
+    if (SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL) != 1) {
+      raise_file_error("SSL_CTX_load_verify_locations", RSTRING_PTR(ca));
+    }
   }
 
   ssl_options = SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_COMPRESSION;
