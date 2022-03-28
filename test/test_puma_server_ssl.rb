@@ -231,6 +231,46 @@ class TestPumaServerSSL < Minitest::Test
 
     assert busy_threads.zero?, "Our connection is wasn't dropped"
   end
+
+  unless Puma.jruby?
+    def test_invalid_cert
+      assert_raises(Puma::MiniSSL::SSLError) do
+        start_server { |ctx| ctx.cert = __FILE__ }
+      end
+    end
+
+    def test_invalid_key
+      assert_raises(Puma::MiniSSL::SSLError) do
+        start_server { |ctx| ctx.key = __FILE__ }
+      end
+    end
+
+    def test_invalid_cert_pem
+      assert_raises(Puma::MiniSSL::SSLError) do
+        start_server { |ctx|
+          ctx.instance_variable_set(:@cert, nil)
+          ctx.cert_pem = 'Not a valid pem'
+        }
+      end
+    end
+
+    def test_invalid_key_pem
+      assert_raises(Puma::MiniSSL::SSLError) do
+        start_server { |ctx|
+          ctx.instance_variable_set(:@key, nil)
+          ctx.key_pem = 'Not a valid pem'
+        }
+      end
+    end
+
+    def test_invalid_ca
+      assert_raises(Puma::MiniSSL::SSLError) do
+        start_server { |ctx|
+          ctx.ca = __FILE__
+        }
+      end
+    end
+  end
 end if ::Puma::HAS_SSL
 
 # client-side TLS authentication tests
