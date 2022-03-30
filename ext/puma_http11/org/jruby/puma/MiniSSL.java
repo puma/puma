@@ -184,14 +184,21 @@ public class MiniSSL extends RubyObject {
   }
 
   @JRubyMethod
-  public IRubyObject initialize(ThreadContext threadContext, IRubyObject miniSSLContext)
+  public IRubyObject initialize(ThreadContext context, IRubyObject miniSSLContext)
       throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
 
-    String keystoreFile = miniSSLContext.callMethod(threadContext, "keystore").convertToString().asJavaString();
+    String keystoreFile = miniSSLContext.callMethod(context, "keystore").convertToString().asJavaString();
     KeyManagerFactory kmf = keyManagerFactoryMap.get(keystoreFile);
-    TrustManagerFactory tmf = trustManagerFactoryMap.get(keystoreFile);
-    if(kmf == null || tmf == null) {
-      throw new KeyStoreException("Could not find KeyManagerFactory/TrustManagerFactory for keystore: " + keystoreFile);
+    String truststoreFile;
+    IRubyObject truststore = miniSSLContext.callMethod(context, "truststore");
+    if (truststore.isNil()) {
+      truststoreFile = keystoreFile;
+    } else {
+      truststoreFile = truststore.convertToString().asJavaString();
+    }
+    TrustManagerFactory tmf = trustManagerFactoryMap.get(truststoreFile);
+    if (kmf == null || tmf == null) {
+      throw new KeyStoreException("Could not find KeyManagerFactory/TrustManagerFactory for keystore: " + keystoreFile + " truststore: " + truststoreFile);
     }
 
     SSLContext sslCtx = SSLContext.getInstance("TLS");
@@ -202,20 +209,20 @@ public class MiniSSL extends RubyObject {
     engine = sslCtx.createSSLEngine();
 
     String[] protocols;
-    if(miniSSLContext.callMethod(threadContext, "no_tlsv1").isTrue()) {
+    if (miniSSLContext.callMethod(context, "no_tlsv1").isTrue()) {
         protocols = new String[] { "TLSv1.1", "TLSv1.2" };
     } else {
         protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" };
     }
 
-    if(miniSSLContext.callMethod(threadContext, "no_tlsv1_1").isTrue()) {
+    if (miniSSLContext.callMethod(context, "no_tlsv1_1").isTrue()) {
         protocols = new String[] { "TLSv1.2" };
     }
 
     engine.setEnabledProtocols(protocols);
     engine.setUseClientMode(false);
 
-    long verify_mode = miniSSLContext.callMethod(threadContext, "verify_mode").convertToInteger("to_i").getLongValue();
+    long verify_mode = miniSSLContext.callMethod(context, "verify_mode").convertToInteger("to_i").getLongValue();
     if ((verify_mode & 0x1) != 0) { // 'peer'
         engine.setWantClientAuth(true);
     }
@@ -223,7 +230,7 @@ public class MiniSSL extends RubyObject {
         engine.setNeedClientAuth(true);
     }
 
-    IRubyObject sslCipherListObject = miniSSLContext.callMethod(threadContext, "ssl_cipher_list");
+    IRubyObject sslCipherListObject = miniSSLContext.callMethod(context, "ssl_cipher_list");
     if (!sslCipherListObject.isNil()) {
       String[] sslCipherList = sslCipherListObject.convertToString().asJavaString().split(",");
       engine.setEnabledCipherSuites(sslCipherList);
