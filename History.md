@@ -1,4 +1,4 @@
-## 5.6.3 / 2022-03-30
+## 5.6.4 / 2022-03-30
 
 * Security
   * Close several HTTP Request Smuggling exploits (CVE-2022-24790)
