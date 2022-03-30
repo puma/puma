@@ -142,29 +142,40 @@ public class MiniSSL extends RubyObject {
       throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException {
     // Create the KeyManagerFactory and TrustManagerFactory for this server
     String keystoreFile = miniSSLContext.callMethod(context, "keystore").convertToString().asJavaString();
-    char[] password = miniSSLContext.callMethod(context, "keystore_pass").convertToString().asJavaString().toCharArray();
+    char[] keystorePass = miniSSLContext.callMethod(context, "keystore_pass").convertToString().asJavaString().toCharArray();
+
+    String truststoreFile;
+    char[] truststorePass;
+    IRubyObject truststore = miniSSLContext.callMethod(context, "truststore");
+    if (truststore.isNil()) {
+      truststoreFile = keystoreFile;
+      truststorePass = keystorePass;
+    } else {
+      truststoreFile = truststore.convertToString().asJavaString();
+      truststorePass = miniSSLContext.callMethod(context, "truststore_pass").convertToString().asJavaString().toCharArray();
+    }
 
     KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
     InputStream is = new FileInputStream(keystoreFile);
     try {
-      ks.load(is, password);
+      ks.load(is, keystorePass);
     } finally {
       is.close();
     }
     KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-    kmf.init(ks, password);
+    kmf.init(ks, keystorePass);
     keyManagerFactoryMap.put(keystoreFile, kmf);
 
     KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
-    is = new FileInputStream(keystoreFile);
+    is = new FileInputStream(truststoreFile);
     try {
-      ts.load(is, password);
+      ts.load(is, truststorePass);
     } finally {
       is.close();
     }
     TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
     tmf.init(ts);
-    trustManagerFactoryMap.put(keystoreFile, tmf);
+    trustManagerFactoryMap.put(truststoreFile, tmf);
 
     RubyClass klass = (RubyClass) recv;
     return klass.newInstance(context,
