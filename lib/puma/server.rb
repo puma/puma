@@ -515,6 +515,9 @@ module Puma
       when HttpParserError
         client.write_error(400)
         @events.parse_error e, client
+      when HttpParserError501
+        client.write_error(501)
+        @events.parse_error e, client
       else
         client.write_error(500)
         @events.unknown_error e, nil, "Read"

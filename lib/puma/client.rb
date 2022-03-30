@@ -23,6 +23,8 @@ module Puma
 
   class ConnectionError < RuntimeError; end
 
+  class HttpParserError501 < IOError; end
+
   # An instance of this class represents a unique request from a client.
   # For example, this could be a web request from a browser or from CURL.
   #
@@ -35,7 +37,21 @@ module Puma
   # Instances of this class are responsible for knowing if
   # the header and body are fully buffered via the `try_to_finish` method.
   # They can be used to "time out" a response via the `timeout_at` reader.
+  #
   class Client
+
+    # this tests all values but the last, which must be chunked
+    ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze
+
+    # chunked body validation
+    CHUNK_SIZE_INVALID = /[^\h]/.freeze
+    CHUNK_VALID_ENDING = "\r\n".freeze
+
+    # Content-Length header value validation
+    CONTENT_LENGTH_VALUE_INVALID = /[^\d]/.freeze
+
+    TE_ERR_MSG = 'Invalid Transfer-Encoding'
+
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new
@@ -302,16 +318,27 @@ module Puma
       body = @parser.body
 
       te = @env[TRANSFER_ENCODING2]
-
       if te
-        if te.include?(",")
-          te.split(",").each do |part|
-            if CHUNKED.casecmp(part.strip) == 0
-              return setup_chunked_body(body)
-            end
+        te_lwr = te.downcase
+        if te.include? ','
+          te_ary = te_lwr.split ','
+          te_count = te_ary.count CHUNKED
+          te_valid = te_ary[0..-2].all? { |e| ALLOWED_TRANSFER_ENCODING.include? e }
+          if te_ary.last == CHUNKED && te_count == 1 && te_valid
+            @env.delete TRANSFER_ENCODING2
+            return setup_chunked_body body
+          elsif te_count >= 1
+            raise HttpParserError   , "#{TE_ERR_MSG}, multiple chunked: '#{te}'"
+          elsif !te_valid
+            raise HttpParserError501, "#{TE_ERR_MSG}, unknown value: '#{te}'"
           end
-        elsif CHUNKED.casecmp(te) == 0
-          return setup_chunked_body(body)
+        elsif te_lwr == CHUNKED
+          @env.delete TRANSFER_ENCODING2
+          return setup_chunked_body body
+        elsif ALLOWED_TRANSFER_ENCODING.include? te_lwr
+          raise HttpParserError     , "#{TE_ERR_MSG}, single value must be chunked: '#{te}'"
+        else
+          raise HttpParserError501  , "#{TE_ERR_MSG}, unknown value: '#{te}'"
         end
       end
 
@@ -319,7 +346,12 @@ module Puma
 
       cl = @env[CONTENT_LENGTH]
 
-      unless cl
+      if cl
+        # cannot contain characters that are not \d
+        if cl =~ CONTENT_LENGTH_VALUE_INVALID
+          raise HttpParserError, "Invalid Content-Length: #{cl.inspect}"
+        end
+      else
         @buffer = body.empty? ? nil : body
         @body = EmptyBody
         set_ready
@@ -478,7 +510,13 @@ module Puma
       while !io.eof?
         line = io.gets
         if line.end_with?("\r\n")
-          len = line.strip.to_i(16)
+          # Puma doesn't process chunk extensions, but should parse if they're
+          # present, which is the reason for the semicolon regex
+          chunk_hex = line.strip[/\A[^;]+/]
+          if chunk_hex =~ CHUNK_SIZE_INVALID
+            raise HttpParserError, "Invalid chunk size: '#{chunk_hex}'"
+          end
+          len = chunk_hex.to_i(16)
           if len == 0
             @in_last_chunk = true
             @body.rewind
@@ -509,7 +547,12 @@ module Puma
 
           case
           when got == len
-            write_chunk(part[0..-3]) # to skip the ending \r\n
+            # proper chunked segment must end with "\r\n"
+            if part.end_with? CHUNK_VALID_ENDING
+              write_chunk(part[0..-3]) # to skip the ending \r\n
+            else
+              raise HttpParserError, "Chunk size mismatch"
+            end
           when got <= len - 2
             write_chunk(part)
             @partial_part_left = len - part.size
