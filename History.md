@@ -302,6 +302,11 @@
   * Support parallel tests in verbose progress reporting ([#2223])
   * Refactor error handling in server accept loop ([#2239])
 
+## 4.3.12 / 2022-03-30
+
+* Security
+  * Close several HTTP Request Smuggling exploits (CVE-2022-24790)
+
 ## 4.3.11 / 2022-02-11
 
 * Security
