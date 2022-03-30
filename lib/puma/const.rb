@@ -76,7 +76,7 @@ module Puma
     508 => 'Loop Detected',
     510 => 'Not Extended',
     511 => 'Network Authentication Required'
-  }
+  }.freeze
 
   # For some HTTP status codes the client only expects headers.
   #
@@ -85,7 +85,7 @@ module Puma
     204 => true,
     205 => true,
     304 => true
-  }
+  }.freeze
 
   # Frequently used constants when constructing requests or responses.  Many times
   # the constant just refers to a string with the same contents.  Using these constants
@@ -145,9 +145,11 @@ module Puma
       408 => "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\n".freeze,
       # Indicate that there was an internal error, obviously.
       500 => "HTTP/1.1 500 Internal Server Error\r\n\r\n".freeze,
+      # Incorrect or invalid header value
+      501 => "HTTP/1.1 501 Not Implemented\r\n\r\n".freeze,
       # A common header for indicating the server is too busy.  Not used yet.
       503 => "HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
-    }
+    }.freeze
 
     # The basic max request size we'll try to read.
     CHUNK_SIZE = 16 * 1024
