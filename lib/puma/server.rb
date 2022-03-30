@@ -530,7 +530,12 @@ module Puma
         client.write_error(400)
 
         @events.parse_error self, client.env, e
+      rescue HttpParserError501 => e
+        lowlevel_error(e, client.env)
 
+        client.write_error(501)
+
+        @events.parse_error self, client.env, e
       # Server error
       rescue StandardError => e
         lowlevel_error(e, client.env)
