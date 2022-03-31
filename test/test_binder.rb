@@ -454,7 +454,7 @@ class TestBinderParallel < TestBinderBase
   end
 end
 
-class TestBinderSinigle < TestBinderBase
+class TestBinderSingle < TestBinderBase
   def test_ssl_binder_sets_backlog
     skip_unless :ssl
 
