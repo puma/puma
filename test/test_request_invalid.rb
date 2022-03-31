@@ -35,9 +35,8 @@ class TestRequestInvalid < Minitest::Test
       [200, {}, [body]]
     }
 
-    @log_writer = Puma::LogWriter.strings
-    events = Puma::Events.new
-    @server = Puma::Server.new app, @log_writer, events
+    events = Puma::Events.strings
+    @server = Puma::Server.new app, events
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?
