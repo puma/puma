@@ -217,8 +217,10 @@ module Puma
       if IS_JRUBY
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
         attr_reader :keystore
+        attr_reader :keystore_type
         attr_accessor :keystore_pass
         attr_reader :truststore
+        attr_reader :truststore_type
         attr_accessor :truststore_pass
         attr_accessor :ssl_cipher_list
 
@@ -230,6 +232,16 @@ module Puma
         def truststore=(truststore)
           raise ArgumentError, "No such truststore file '#{truststore}'" unless File.exist? truststore
           @truststore = truststore
+        end
+
+        def keystore_type=(type)
+          raise ArgumentError, "Invalid keystore type: #{type.inspect}" unless ['pkcs12', 'jks', nil].include?(type)
+          @keystore_type = type
+        end
+
+        def truststore_type=(type)
+          raise ArgumentError, "Invalid truststore type: #{type.inspect}" unless ['pkcs12', 'jks', nil].include?(type)
+          @truststore_type = type
         end
 
         def check

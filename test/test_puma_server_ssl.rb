@@ -252,7 +252,7 @@ class TestPumaServerSSLClient < Minitest::Test
     ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER | Puma::MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
   }
 
-  def assert_ssl_client_error_match(error, subject=nil, &blk)
+  def assert_ssl_client_error_match(error, subject: nil, context: CTX, &blk)
     host = "localhost"
     port = 0
 
@@ -260,7 +260,7 @@ class TestPumaServerSSLClient < Minitest::Test
 
     log_writer = SSLLogWriterHelper.new STDOUT, STDERR
     server = Puma::Server.new app, log_writer
-    server.add_ssl_listener host, port, CTX
+    server.add_ssl_listener host, port, context
     host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
     server.run
 
@@ -303,7 +303,7 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_client_unknown_ca
-    assert_ssl_client_error_match(/self[- ]signed certificate in certificate chain/, '/DC=net/DC=puma/CN=CAU') do |http|
+    assert_ssl_client_error_match(/self[- ]signed certificate in certificate chain/, subject: '/DC=net/DC=puma/CN=CAU') do |http|
       key = "#{CERT_PATH}/client_unknown.key"
       crt = "#{CERT_PATH}/client_unknown.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
@@ -313,7 +313,7 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_client_expired_cert
-    assert_ssl_client_error_match('certificate has expired', '/DC=net/DC=puma/CN=localhost') do |http|
+    assert_ssl_client_error_match('certificate has expired', subject: '/DC=net/DC=puma/CN=localhost') do |http|
       key = "#{CERT_PATH}/client_expired.key"
       crt = "#{CERT_PATH}/client_expired.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
@@ -332,6 +332,26 @@ class TestPumaServerSSLClient < Minitest::Test
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
   end
+
+  def test_verify_client_cert_using_truststore
+    ctx = Puma::MiniSSL::Context.new
+    ctx.keystore =  "#{CERT_PATH}/server.p12"
+    ctx.keystore_type = 'pkcs12'
+    ctx.keystore_pass = 'jruby_puma'
+    ctx.truststore =  "#{CERT_PATH}/ca_store.p12"
+    ctx.truststore_type = 'pkcs12'
+    ctx.truststore_pass = 'jruby_puma'
+
+    assert_ssl_client_error_match(nil, context: ctx) do |http|
+      key = "#{CERT_PATH}/client.key"
+      crt = "#{CERT_PATH}/client.crt"
+      http.key = OpenSSL::PKey::RSA.new File.read(key)
+      http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+      http.ca_file = "#{CERT_PATH}/ca.crt"
+      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    end
+  end if Puma.jruby?
+
 end if ::Puma::HAS_SSL
 
 class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test

@@ -143,19 +143,28 @@ public class MiniSSL extends RubyObject {
     // Create the KeyManagerFactory and TrustManagerFactory for this server
     String keystoreFile = miniSSLContext.callMethod(context, "keystore").convertToString().asJavaString();
     char[] keystorePass = miniSSLContext.callMethod(context, "keystore_pass").convertToString().asJavaString().toCharArray();
+    String keystoreType;
+    if (miniSSLContext.callMethod(context, "keystore_type").isNil()) {
+      keystoreType = KeyStore.getDefaultType(); // backwards compatibility
+    } else {
+      keystoreType = miniSSLContext.callMethod(context, "keystore_type").convertToString().asJavaString();
+    }
 
     String truststoreFile;
     char[] truststorePass;
+    String truststoreType;
     IRubyObject truststore = miniSSLContext.callMethod(context, "truststore");
     if (truststore.isNil()) {
       truststoreFile = keystoreFile;
       truststorePass = keystorePass;
+      truststoreType = keystoreType;
     } else {
       truststoreFile = truststore.convertToString().asJavaString();
       truststorePass = miniSSLContext.callMethod(context, "truststore_pass").convertToString().asJavaString().toCharArray();
+      truststoreType = miniSSLContext.callMethod(context, "truststore_type").convertToString().asJavaString();
     }
 
-    KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+    KeyStore ks = KeyStore.getInstance(keystoreType);
     InputStream is = new FileInputStream(keystoreFile);
     try {
       ks.load(is, keystorePass);
@@ -166,7 +175,7 @@ public class MiniSSL extends RubyObject {
     kmf.init(ks, keystorePass);
     keyManagerFactoryMap.put(keystoreFile, kmf);
 
-    KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
+    KeyStore ts = KeyStore.getInstance(truststoreType);
     is = new FileInputStream(truststoreFile);
     try {
       ts.load(is, truststorePass);
