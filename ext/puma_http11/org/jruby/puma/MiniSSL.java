@@ -36,6 +36,7 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static javax.net.ssl.SSLEngineResult.Status;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -141,14 +142,9 @@ public class MiniSSL extends RubyObject {
   public static synchronized IRubyObject server(ThreadContext context, IRubyObject recv, IRubyObject miniSSLContext)
       throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException {
     // Create the KeyManagerFactory and TrustManagerFactory for this server
-    String keystoreFile = miniSSLContext.callMethod(context, "keystore").convertToString().asJavaString();
-    char[] keystorePass = miniSSLContext.callMethod(context, "keystore_pass").convertToString().asJavaString().toCharArray();
-    String keystoreType;
-    if (miniSSLContext.callMethod(context, "keystore_type").isNil()) {
-      keystoreType = KeyStore.getDefaultType(); // backwards compatibility
-    } else {
-      keystoreType = miniSSLContext.callMethod(context, "keystore_type").convertToString().asJavaString();
-    }
+    String keystoreFile = asStringValue(miniSSLContext.callMethod(context, "keystore"), null);
+    char[] keystorePass = asStringValue(miniSSLContext.callMethod(context, "keystore_pass"), null).toCharArray();
+    String keystoreType = asStringValue(miniSSLContext.callMethod(context, "keystore_type"), KeyStore::getDefaultType);
 
     String truststoreFile;
     char[] truststorePass;
@@ -160,8 +156,8 @@ public class MiniSSL extends RubyObject {
       truststoreType = keystoreType;
     } else {
       truststoreFile = truststore.convertToString().asJavaString();
-      truststorePass = miniSSLContext.callMethod(context, "truststore_pass").convertToString().asJavaString().toCharArray();
-      truststoreType = miniSSLContext.callMethod(context, "truststore_type").convertToString().asJavaString();
+      truststorePass = asStringValue(miniSSLContext.callMethod(context, "truststore_pass"), null).toCharArray();
+      truststoreType = asStringValue(miniSSLContext.callMethod(context, "truststore_type"), KeyStore::getDefaultType);
     }
 
     KeyStore ks = KeyStore.getInstance(keystoreType);
@@ -187,9 +183,12 @@ public class MiniSSL extends RubyObject {
     trustManagerFactoryMap.put(truststoreFile, tmf);
 
     RubyClass klass = (RubyClass) recv;
-    return klass.newInstance(context,
-        new IRubyObject[] { miniSSLContext },
-        Block.NULL_BLOCK);
+    return klass.newInstance(context, miniSSLContext, Block.NULL_BLOCK);
+  }
+
+  private static String asStringValue(IRubyObject value, Supplier<String> defaultValue) {
+    if (defaultValue != null && value.isNil()) return defaultValue.get();
+    return value.convertToString().asJavaString();
   }
 
   @JRubyMethod
@@ -198,13 +197,7 @@ public class MiniSSL extends RubyObject {
 
     String keystoreFile = miniSSLContext.callMethod(context, "keystore").convertToString().asJavaString();
     KeyManagerFactory kmf = keyManagerFactoryMap.get(keystoreFile);
-    String truststoreFile;
-    IRubyObject truststore = miniSSLContext.callMethod(context, "truststore");
-    if (truststore.isNil()) {
-      truststoreFile = keystoreFile;
-    } else {
-      truststoreFile = truststore.convertToString().asJavaString();
-    }
+    String truststoreFile = asStringValue(miniSSLContext.callMethod(context, "truststore"), () -> keystoreFile);
     TrustManagerFactory tmf = trustManagerFactoryMap.get(truststoreFile);
     if (kmf == null || tmf == null) {
       throw new KeyStoreException("Could not find KeyManagerFactory/TrustManagerFactory for keystore: " + keystoreFile + " truststore: " + truststoreFile);
