@@ -214,6 +214,11 @@ module Puma
         @cert_pem = nil
       end
 
+      def check_file(file, desc)
+        raise ArgumentError, "#{desc} file '#{file}' does not exist" unless File.exist? file
+        raise ArgumentError, "#{desc} file '#{file}' is not readable" unless File.readable? file
+      end
+
       if IS_JRUBY
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
         attr_reader :keystore
@@ -221,7 +226,7 @@ module Puma
         attr_accessor :ssl_cipher_list
 
         def keystore=(keystore)
-          raise ArgumentError, "No such keystore file '#{keystore}'" unless File.exist? keystore
+          check_file keystore, 'Keystore'
           @keystore = keystore
         end
 
@@ -240,17 +245,17 @@ module Puma
         attr_accessor :verification_flags
 
         def key=(key)
-          raise ArgumentError, "No such key file '#{key}'" unless File.exist? key
+          check_file key, 'Key'
           @key = key
         end
 
         def cert=(cert)
-          raise ArgumentError, "No such cert file '#{cert}'" unless File.exist? cert
+          check_file cert, 'Cert'
           @cert = cert
         end
 
         def ca=(ca)
-          raise ArgumentError, "No such ca file '#{ca}'" unless File.exist? ca
+          check_file ca, 'ca'
           @ca = ca
         end
 
