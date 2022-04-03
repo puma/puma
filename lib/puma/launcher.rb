@@ -75,6 +75,8 @@ module Puma
       @log_writer.formatter = LogWriter::PidFormatter.new if clustered?
       @log_writer.formatter = options[:log_formatter] if @options[:log_formatter]
 
+      @log_writer.custom_logger = options[:logger] if @options[:logger]
+
       generate_restart_data
 
       if clustered? && !Puma.forkable?

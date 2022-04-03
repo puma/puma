@@ -25,7 +25,7 @@ module Puma
     attr_reader :stdout,
                 :stderr
 
-    attr_accessor :formatter
+    attr_accessor :formatter, :custom_logger
 
     # Create a LogWriter that prints to +stdout+ and +stderr+.
     def initialize(stdout, stderr)
@@ -59,6 +59,8 @@ module Puma
       @stdout.puts(format(str)) if @stdout.respond_to? :puts
 
       @stdout.flush unless @stdout.sync
+
+      @custom_logger.write(format(str)) if @custom_logger
     rescue Errno::EPIPE
     end
 
