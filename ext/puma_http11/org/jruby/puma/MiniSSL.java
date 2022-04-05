@@ -315,7 +315,7 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
           res = engine.unwrap(src.getRawBuffer(), dst.getRawBuffer());
           break;
         default:
-          throw new IllegalStateException("Unknown SSLOperation: " + sslOp);
+          throw new AssertionError("Unknown SSLOperation: " + sslOp);
       }
 
       switch (res.getStatus()) {
