@@ -15,6 +15,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -22,6 +23,7 @@ import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
+import javax.net.ssl.X509TrustManager;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.IOException;
@@ -32,8 +34,10 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -204,7 +208,7 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
 
     SSLContext sslCtx = SSLContext.getInstance("TLS");
 
-    sslCtx.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+    sslCtx.init(kmf.getKeyManagers(), getTrustManagers(tmf), null);
     closed = false;
     handshake = false;
     engine = sslCtx.createSSLEngine();
@@ -244,6 +248,47 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
     outboundNetData = new MiniSSLBuffer(session.getPacketBufferSize());
 
     return this;
+  }
+
+  private TrustManager[] getTrustManagers(TrustManagerFactory factory) {
+    final TrustManager[] tms = factory.getTrustManagers();
+    if (tms != null) {
+      for (int i=0; i<tms.length; i++) {
+        final TrustManager tm = tms[i];
+        if (tm instanceof X509TrustManager) {
+          tms[i] = new TrustManagerWrapper((X509TrustManager) tm);
+        }
+      }
+    }
+    return tms;
+  }
+
+  private volatile transient X509Certificate[] lastCheckedChain;
+
+  private class TrustManagerWrapper implements X509TrustManager {
+
+    private final X509TrustManager delegate;
+
+    TrustManagerWrapper(X509TrustManager delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+      lastCheckedChain = chain.clone();
+      delegate.checkClientTrusted(chain, authType);
+    }
+
+    @Override
+    public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+      delegate.checkServerTrusted(chain, authType);
+    }
+
+    @Override
+    public X509Certificate[] getAcceptedIssuers() {
+      return delegate.getAcceptedIssuers();
+    }
+
   }
 
   @JRubyMethod
@@ -395,12 +440,18 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
   }
 
   @JRubyMethod
-  public IRubyObject peercert() throws CertificateEncodingException {
+  public IRubyObject peercert(ThreadContext context) throws CertificateEncodingException {
+    Certificate peerCert;
     try {
-      return JavaEmbedUtils.javaToRuby(getRuntime(), engine.getSession().getPeerCertificates()[0].getEncoded());
+      peerCert = engine.getSession().getPeerCertificates()[0];
     } catch (SSLPeerUnverifiedException e) {
-      return getRuntime().getNil();
+      if (lastCheckedChain != null) {
+        peerCert = lastCheckedChain[0];
+      } else {
+        peerCert = null;
+      }
     }
+    return peerCert == null ? context.nil : JavaEmbedUtils.javaToRuby(context.runtime, peerCert.getEncoded());
   }
 
   @JRubyMethod(name = "init?")

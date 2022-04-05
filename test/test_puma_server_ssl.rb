@@ -287,11 +287,9 @@ class TestPumaServerSSLClient < Minitest::Test
     assert_equal !!error, !!client_error, client_error
     # The JRuby MiniSSL implementation lacks error capturing currently,
     # so we can't inspect the messages here
-    unless Puma.jruby?
-      assert_match error, log_writer.error.message if error
-      assert_includes host_addrs, log_writer.addr if error
-      assert_equal subject, log_writer.cert.subject.to_s if subject
-    end
+    assert_match error, log_writer.error.message if error
+    assert_includes host_addrs, log_writer.addr if error
+    assert_equal subject, log_writer.cert.subject.to_s if subject
   ensure
     server.stop(true) if server
   end
@@ -304,7 +302,9 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_client_unknown_ca
-    assert_ssl_client_error_match(/self[- ]signed certificate in certificate chain/, subject: '/DC=net/DC=puma/CN=CAU') do |http|
+    error = Puma.jruby? ? /No trusted certificate found/ : /self[- ]signed certificate in certificate chain/
+    cert_subject = Puma.jruby? ? '/DC=net/DC=puma/CN=localhost' : '/DC=net/DC=puma/CN=CAU'
+    assert_ssl_client_error_match(error, subject: cert_subject) do |http|
       key = "#{CERT_PATH}/client_unknown.key"
       crt = "#{CERT_PATH}/client_unknown.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
