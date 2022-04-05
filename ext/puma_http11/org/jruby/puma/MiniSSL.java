@@ -52,11 +52,10 @@ public class MiniSSL extends RubyObject {
     RubyModule mPuma = runtime.defineModule("Puma");
     RubyModule ssl = mPuma.defineModuleUnder("MiniSSL");
 
-    mPuma.defineClassUnder("SSLError",
-                           runtime.getClass("IOError"),
-                           runtime.getClass("IOError").getAllocator());
+    // Puma::MiniSSL::SSLError
+    ssl.defineClassUnder("SSLError", runtime.getStandardError(), runtime.getStandardError().getAllocator());
 
-    RubyClass eng = ssl.defineClassUnder("Engine",runtime.getObject(),ALLOCATOR);
+    RubyClass eng = ssl.defineClassUnder("Engine", runtime.getObject(), ALLOCATOR);
     eng.defineAnnotatedMethods(MiniSSL.class);
   }
 
