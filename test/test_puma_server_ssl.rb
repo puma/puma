@@ -276,15 +276,15 @@ class TestPumaServerSSLClient < Minitest::Test
         req = Net::HTTP::Get.new "/", {}
         http.request(req)
       end
-    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET => e
       # Errno::ECONNRESET TruffleRuby
-      client_error = true
+      client_error = e
       # closes socket if open, may not close on error
       http.send :do_finish
     end
 
     sleep 0.1
-    assert_equal !!error, client_error
+    assert_equal !!error, !!client_error, client_error
     # The JRuby MiniSSL implementation lacks error capturing currently,
     # so we can't inspect the messages here
     unless Puma.jruby?
@@ -297,7 +297,8 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_no_client_cert
-    assert_ssl_client_error_match 'peer did not return a certificate' do |http|
+    error = Puma.jruby? ? /Empty server certificate chain/ : 'peer did not return a certificate'
+    assert_ssl_client_error_match(error) do |http|
       # nothing
     end
   end
@@ -313,7 +314,8 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_client_expired_cert
-    assert_ssl_client_error_match('certificate has expired', subject: '/DC=net/DC=puma/CN=localhost') do |http|
+    error = Puma.jruby? ? /NotAfter:/ : 'certificate has expired'
+    assert_ssl_client_error_match(error, subject: '/DC=net/DC=puma/CN=localhost') do |http|
       key = "#{CERT_PATH}/client_expired.key"
       crt = "#{CERT_PATH}/client_expired.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
@@ -323,7 +325,7 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_client_cert
-    assert_ssl_client_error_match(nil) do |http|
+    assert_ssl_client_error_match(false) do |http|
       key = "#{CERT_PATH}/client.key"
       crt = "#{CERT_PATH}/client.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
@@ -333,16 +335,16 @@ class TestPumaServerSSLClient < Minitest::Test
     end
   end
 
-  def test_verify_client_cert_using_truststore
+  def test_verify_client_cert_with_truststore
     ctx = Puma::MiniSSL::Context.new
-    ctx.keystore =  "#{CERT_PATH}/server.p12"
+    ctx.keystore = "#{CERT_PATH}/server.p12"
     ctx.keystore_type = 'pkcs12'
     ctx.keystore_pass = 'jruby_puma'
     ctx.truststore =  "#{CERT_PATH}/ca_store.p12"
     ctx.truststore_type = 'pkcs12'
     ctx.truststore_pass = 'jruby_puma'
 
-    assert_ssl_client_error_match(nil, context: ctx) do |http|
+    assert_ssl_client_error_match(false, context: ctx) do |http|
       key = "#{CERT_PATH}/client.key"
       crt = "#{CERT_PATH}/client.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)

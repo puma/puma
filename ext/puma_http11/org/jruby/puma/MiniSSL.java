@@ -41,7 +41,7 @@ import java.util.function.Supplier;
 import static javax.net.ssl.SSLEngineResult.Status;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
-public class MiniSSL extends RubyObject {
+public class MiniSSL extends RubyObject { // MiniSSL::Engine
   private static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
     public IRubyObject allocate(Ruby runtime, RubyClass klass) {
       return new MiniSSL(runtime, klass);
@@ -357,9 +357,7 @@ public class MiniSSL extends RubyObject {
 
       return RubyString.newString(getRuntime(), appDataByteList);
     } catch (SSLException e) {
-      RaiseException re = getRuntime().newEOFError(e.getMessage());
-      re.initCause(e);
-      throw re;
+      throw newSSLError(getRuntime(), e);
     }
   }
 
@@ -392,9 +390,7 @@ public class MiniSSL extends RubyObject {
 
       return RubyString.newString(context.runtime, dataByteList);
     } catch (SSLException e) {
-      RaiseException ex = context.runtime.newRuntimeError(e.toString());
-      ex.initCause(e);
-      throw ex;
+      throw newSSLError(getRuntime(), e);
     }
   }
 
@@ -423,4 +419,19 @@ public class MiniSSL extends RubyObject {
       return getRuntime().getFalse();
     }
   }
+
+  private static RubyClass getSSLError(Ruby runtime) {
+    return (RubyClass) ((RubyModule) runtime.getModule("Puma").getConstantAt("MiniSSL")).getConstantAt("SSLError");
+  }
+
+  private static RaiseException newSSLError(Ruby runtime, SSLException cause) {
+    return newError(runtime, getSSLError(runtime), cause.toString(), cause);
+  }
+
+  private static RaiseException newError(Ruby runtime, RubyClass errorClass, String message, Throwable cause) {
+    RaiseException ex = new RaiseException(runtime, errorClass, message, true);
+    ex.initCause(cause);
+    return ex;
+  }
+
 }
