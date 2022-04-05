@@ -263,7 +263,7 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
     return tms;
   }
 
-  private volatile transient X509Certificate[] lastCheckedChain;
+  private volatile transient X509Certificate lastCheckedCert0;
 
   private class TrustManagerWrapper implements X509TrustManager {
 
@@ -275,7 +275,7 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
 
     @Override
     public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-      lastCheckedChain = chain.clone();
+      lastCheckedCert0 = chain.length > 0 ? chain[0] : null;
       delegate.checkClientTrusted(chain, authType);
     }
 
@@ -445,11 +445,7 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
     try {
       peerCert = engine.getSession().getPeerCertificates()[0];
     } catch (SSLPeerUnverifiedException e) {
-      if (lastCheckedChain != null) {
-        peerCert = lastCheckedChain[0];
-      } else {
-        peerCert = null;
-      }
+      peerCert = lastCheckedCert0; // null if trust check did not happen
     }
     return peerCert == null ? context.nil : JavaEmbedUtils.javaToRuby(context.runtime, peerCert.getEncoded());
   }
