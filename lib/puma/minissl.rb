@@ -195,10 +195,6 @@ module Puma
     if IS_JRUBY
       OPENSSL_NO_SSL3 = false
       OPENSSL_NO_TLS1 = false
-
-      class SSLError < StandardError
-        # Define this for jruby even though it isn't used.
-      end
     end
 
     class Context
@@ -222,7 +218,11 @@ module Puma
       if IS_JRUBY
         # jruby-specific Context properties: java uses a keystore and password pair rather than a cert/key pair
         attr_reader :keystore
+        attr_reader :keystore_type
         attr_accessor :keystore_pass
+        attr_reader :truststore
+        attr_reader :truststore_type
+        attr_accessor :truststore_pass
         attr_accessor :ssl_cipher_list
 
         def keystore=(keystore)
@@ -230,8 +230,24 @@ module Puma
           @keystore = keystore
         end
 
+        def truststore=(truststore)
+          raise ArgumentError, "No such truststore file '#{truststore}'" unless File.exist? truststore
+          @truststore = truststore
+        end
+
+        def keystore_type=(type)
+          raise ArgumentError, "Invalid keystore type: #{type.inspect}" unless ['pkcs12', 'jks', nil].include?(type)
+          @keystore_type = type
+        end
+
+        def truststore_type=(type)
+          raise ArgumentError, "Invalid truststore type: #{type.inspect}" unless ['pkcs12', 'jks', nil].include?(type)
+          @truststore_type = type
+        end
+
         def check
           raise "Keystore not configured" unless @keystore
+          # @truststore defaults to @keystore due backwards compatibility
         end
 
       else
