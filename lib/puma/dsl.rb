@@ -66,8 +66,8 @@ module Puma
         v_flags = (ary = opts[:verification_flags]) ?
           "&verification_flags=#{Array(ary).join ','}" : nil
 
-        cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(opts[:cert])}" : nil
-        key_flags = (cert = opts[:key]) ? "&key=#{Puma::Util.escape(opts[:key])}" : nil
+        cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
+        key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
 
         "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}" \
           "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
