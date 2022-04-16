@@ -1,0 +1,68 @@
+name: ragel
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  ragel:
+    name: >-
+      ragel ${{ matrix.os }} ${{ matrix.ruby }}
+
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-20.04 , ruby: head }
+          - { os: macos-11     , ruby: head }
+          - { os: windows-2022 , ruby: ucrt }
+
+    steps:
+      # windows git will convert \n to \r\n
+      - name: git config
+        if: startsWith(matrix.os, 'windows')
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - name: repo checkout
+        uses: actions/checkout@v3
+
+      - name: load ruby
+        uses: MSP-Greg/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          apt-get: ragel
+          brew: ragel
+          bundler-cache: true
+        timeout-minutes: 10
+
+      - name: check ragel generation
+        shell: pwsh
+        run:  |
+          ragel --version
+          Remove-Item -Path ext/puma_http11/http11_parser.c
+          Remove-Item -Path ext/puma_http11/org/jruby/puma/Http11Parser.java
+          rake ragel
+          if ($IsWindows) {
+            dos2unix ext/puma_http11/http11_parser.c
+            dos2unix ext/puma_http11/org/jruby/puma/Http11Parser.java
+          }
+          $git_out = $(git status --porcelain)
+          if ($git_out -ne $null) {
+            echo "** $git_out **`n"
+            git --no-pager diff
+            echo "`nbundle exec ragel changes a file"
+            exit 1
+          }
+
+      - name: save ragel generated files on fail
+        uses: actions/upload-artifact@v3
+        if: ${{ failure() }}
+        with:
+          name: ${{ matrix.os }}-ragel-generated-files
+          path: |
+            ext/puma_http11/http11_parser.c
+            ext/puma_http11/org/jruby/puma/Http11Parser.java
