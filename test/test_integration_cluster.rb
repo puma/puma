@@ -43,6 +43,26 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
+  def test_pre_existing_unix_stop_after_restart
+    skip_unless :unix
+
+    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+
+    cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix
+    connection = connect(nil, unix: true)
+    restart_server connection
+
+    connect(nil, unix: true)
+    stop_server
+
+    assert File.exist?(@bind_path)
+
+  ensure
+    if UNIX_SKT_EXIST
+      File.unlink @bind_path if File.exist? @bind_path
+    end
+  end
+
   def test_siginfo_thread_print
     skip_unless_signal_exist? :INFO
 
@@ -349,6 +369,75 @@ RUBY
     end
 
     refute_match(/WARNING: Detected running cluster mode with 1 worker/, output.join)
+  end
+
+  def test_signal_ttin
+    cli_server "-w 2 test/rackup/hello.ru"
+    get_worker_pids # to consume server logs
+
+    Process.kill :TTIN, @pid
+
+    line = @server.gets
+    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+  end
+
+  def test_signal_ttou
+    cli_server "-w 2 test/rackup/hello.ru"
+    get_worker_pids # to consume server logs
+
+    Process.kill :TTOU, @pid
+
+    line = @server.gets
+    assert_match(/Worker 1 \(PID: \d+\) terminating/, line)
+  end
+
+  def test_culling_strategy_youngest
+    cli_server "-w 2 test/rackup/hello.ru", config: "worker_culling_strategy :youngest"
+    get_worker_pids # to consume server logs
+
+    Process.kill :TTIN, @pid
+
+    line = @server.gets
+    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+
+    Process.kill :TTOU, @pid
+
+    line = @server.gets
+    assert_match(/Worker 2 \(PID: \d+\) terminating/, line)
+  end
+
+  def test_culling_strategy_oldest
+    cli_server "-w 2 test/rackup/hello.ru", config: "worker_culling_strategy :oldest"
+    get_worker_pids # to consume server logs
+
+    Process.kill :TTIN, @pid
+
+    line = @server.gets
+    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+
+    Process.kill :TTOU, @pid
+
+    line = @server.gets
+    assert_match(/Worker 0 \(PID: \d+\) terminating/, line)
+  end
+
+  def test_culling_strategy_oldest_fork_worker
+    cli_server "-w 2 test/rackup/hello.ru", config: <<RUBY
+worker_culling_strategy :oldest
+fork_worker
+RUBY
+
+    get_worker_pids # to consume server logs
+
+    Process.kill :TTIN, @pid
+
+    line = @server.gets
+    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+
+    Process.kill :TTOU, @pid
+
+    line = @server.gets
+    assert_match(/Worker 1 \(PID: \d+\) terminating/, line)
   end
 
   private

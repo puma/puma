@@ -14,8 +14,9 @@ class TestPumaServer < Minitest::Test
 
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
-    @events = Puma::Events.strings
-    @server = Puma::Server.new @app, @events
+    @log_writer = Puma::LogWriter.strings
+    @events = Puma::Events.new
+    @server = Puma::Server.new @app, @log_writer, @events
   end
 
   def teardown
@@ -24,7 +25,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def server_run(**options, &block)
-    @server = Puma::Server.new block || @app, @events, options
+    @server = Puma::Server.new block || @app, @log_writer, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?
@@ -114,6 +115,21 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::1]\r\n\r\n"
     assert_equal "[::1]\n80", data.split("\r\n").last
+  end
+
+  def test_streaming_body
+    server_run do |env|
+      body = lambda do |stream|
+        stream.write("Hello World")
+        stream.close
+      end
+
+      [200, {}, body]
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+
+    assert_equal "Hello World", data.split("\n").last
   end
 
   def test_proper_stringio_body
@@ -281,7 +297,7 @@ EOF
     sleep 0.1
 
     # Expect no errors in stderr
-    assert @events.stderr.pos.zero?, "Server didn't swallow the connection error"
+    assert @log_writer.stderr.pos.zero?, "Server didn't swallow the connection error"
   end
 
   def test_early_hints_is_off_by_default
@@ -326,7 +342,7 @@ EOF
     new_connection.close # Make a connection and close without writing
 
     @server.stop(true)
-    stderr = @events.stderr.string
+    stderr = @log_writer.stderr.string
     assert stderr.empty?, "Expected stderr from server to be empty but it was #{stderr.inspect}"
   end
 
@@ -346,9 +362,14 @@ EOF
 
   def test_lowlevel_error_message
     skip_if :windows
-    @server = Puma::Server.new @app, @events, {:force_shutdown_after => 2}
+    @server = Puma::Server.new @app, @log_writer, @events, {:force_shutdown_after => 2}
 
     server_run do
+      if TestSkips::TRUFFLE
+        # SystemStackError is too brittle, use something more reliable
+        raise Exception, "error"
+      end
+
       require 'json'
 
       # will raise fatal: machine stack overflow in critical region
@@ -361,17 +382,6 @@ EOF
 
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
     assert (data.size > 0), "Expected response message to be not empty"
-  end
-
-  def test_lowlevel_error_handler_custom_response
-    options = { lowlevel_error_handler: ->(_err) { [500, {}, ["error page"]] } }
-    # setting the headers argument to nil will trigger exception inside Puma
-    broken_app = ->(_env) { [200, nil, []] }
-    server_run(**options, &broken_app)
-
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-
-    assert_match %r{HTTP/1.0 500 Internal Server Error\r\nContent-Length: 10\r\n\r\nerror page}, data
   end
 
   def test_force_shutdown_error_default
@@ -499,7 +509,7 @@ EOF
   end
 
   def test_no_timeout_after_data_received_no_queue
-    @server = Puma::Server.new @app, @events, queue_requests: false
+    @server = Puma::Server.new @app, @log_writer, @events, queue_requests: false
     test_no_timeout_after_data_received
   end
 
@@ -613,17 +623,20 @@ EOF
   def test_chunked_request
     body = nil
     content_length = nil
+    transfer_encoding = nil
     server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
+      transfer_encoding = env['HTTP_TRANSFER_ENCODING']
       [200, {}, [""]]
     }
 
-    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
     assert_equal "5", content_length
+    assert_nil transfer_encoding
   end
 
   def test_large_chunked_request
@@ -1235,7 +1248,7 @@ EOF
   # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
   def test_accept_emfile
     stub_accept_nonblock Errno::EMFILE.new('accept(2)')
-    refute_empty @events.stderr.string, "Expected EMFILE error not logged"
+    refute_empty @log_writer.stderr.string, "Expected EMFILE error not logged"
   end
 
   # Retryable errors such as ECONNABORTED should be silently swallowed by accept loop.
@@ -1243,7 +1256,7 @@ EOF
     # Match Ruby #accept_nonblock implementation, ECONNABORTED error is extended by IO::WaitReadable.
     error = Errno::ECONNABORTED.new('accept(2) would block').tap {|e| e.extend IO::WaitReadable}
     stub_accept_nonblock(error)
-    assert_empty @events.stderr.string
+    assert_empty @log_writer.stderr.string
   end
 
   # see      https://github.com/puma/puma/issues/2390
@@ -1251,7 +1264,7 @@ EOF
   #
   def test_client_quick_close_no_lowlevel_error_handler_call
     handler = ->(err, env, status) {
-      @events.stdout.write "LLEH #{err.message}"
+      @log_writer.stdout.write "LLEH #{err.message}"
       [500, {"Content-Type" => "application/json"}, ["{}\n"]]
     }
 
@@ -1265,21 +1278,21 @@ EOF
     sock.close
     assert_match 'Hello World', resp
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
 
     # valid req, close
     sock = TCPSocket.new @host, @port
     sock.syswrite "GET / HTTP/1.0\r\n\r\n"
     sock.close
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
 
     # invalid req, close
     sock = TCPSocket.new @host, @port
     sock.syswrite "GET / HTTP"
     sock.close
     sleep 0.5
-    assert_empty @events.stdout.string
+    assert_empty @log_writer.stdout.string
   end
 
   def test_idle_connections_closed_immediately_on_shutdown
@@ -1316,7 +1329,7 @@ EOF
   def test_custom_io_selector
     backend = NIO::Selector.backends.first
 
-    @server = Puma::Server.new @app, @events, {:io_selector_backend => backend}
+    @server = Puma::Server.new @app, @log_writer, @events, {:io_selector_backend => backend}
     @server.run
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)
@@ -1365,12 +1378,25 @@ EOF
     @port = UniquePort.call
     opts = { rack_url_scheme: 'user', binds: ["tcp://#{@host}:#{@port}"] }
     conf = Puma::Configuration.new(opts).tap(&:clamp)
-    @server = Puma::Server.new @app, @events, conf.options
-    @server.inherit_binder Puma::Binder.new(@events, conf)
-    @server.binder.parse conf.options[:binds], @events
+    @server = Puma::Server.new @app, @log_writer, @events, conf.options
+    @server.inherit_binder Puma::Binder.new(@log_writer, conf)
+    @server.binder.parse conf.options[:binds], @log_writer
     @server.run
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
     assert_equal "user", data.split("\r\n").last
+  end
+
+  def test_remote_address_header
+    server_run(remote_address: :header, remote_address_header: 'HTTP_X_REMOTE_IP') do |env|
+      [200, {}, [env['REMOTE_ADDR']]]
+    end
+    remote_addr = send_http_and_read("GET / HTTP/1.1\r\nX-Remote-IP: 1.2.3.4\r\n\r\n").split("\r\n").last
+    assert_equal '1.2.3.4', remote_addr
+
+    # TODO: it would be great to test a connection from a non-localhost IP, but we can't really do that. For
+    # now, at least test that it doesn't return garbage.
+    remote_addr = send_http_and_read("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
+    assert_equal @host, remote_addr
   end
 end

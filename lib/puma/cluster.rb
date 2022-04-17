@@ -18,8 +18,8 @@ module Puma
   # via the `spawn_workers` method call. Each worker will have it's own
   # instance of a `Puma::Server`.
   class Cluster < Runner
-    def initialize(cli, events)
-      super cli, events
+    def initialize(launcher)
+      super(launcher)
 
       @phase = 0
       @workers = []
@@ -27,6 +27,10 @@ module Puma
 
       @phased_restart = false
     end
+
+    # Returns the list of cluster worker handles.
+    # @return [Array<Puma::Cluster::WorkerHandle>]
+    attr_reader :workers
 
     def stop_workers
       log "- Gracefully shutting down workers..."
@@ -93,7 +97,7 @@ module Puma
 
     # @version 5.0.0
     def spawn_worker(idx, master)
-      @launcher.config.run_hooks :before_worker_fork, idx, @launcher.events
+      @launcher.config.run_hooks(:before_worker_fork, idx, @launcher.log_writer)
 
       pid = fork { worker(idx, master) }
       if !pid
@@ -102,31 +106,49 @@ module Puma
         exit! 1
       end
 
-      @launcher.config.run_hooks :after_worker_fork, idx, @launcher.events
+      @launcher.config.run_hooks(:after_worker_fork, idx, @launcher.log_writer)
       pid
     end
 
     def cull_workers
       diff = @workers.size - @options[:workers]
       return if diff < 1
+      debug "Culling #{diff} workers"
 
-      debug "Culling #{diff.inspect} workers"
+      workers = workers_to_cull(diff)
+      debug "Workers to cull: #{workers.inspect}"
 
-      workers_to_cull = @workers[-diff,diff]
-      debug "Workers to cull: #{workers_to_cull.inspect}"
-
-      workers_to_cull.each do |worker|
+      workers.each do |worker|
         log "- Worker #{worker.index} (PID: #{worker.pid}) terminating"
         worker.term
       end
     end
 
+    def workers_to_cull(diff)
+      workers = @workers.sort_by(&:started_at)
+
+      # In fork_worker mode, worker 0 acts as our master process.
+      # We should avoid culling it to preserve copy-on-write memory gains.
+      workers.reject! { |w| w.index == 0 } if @options[:fork_worker]
+
+      workers[cull_start_index(diff), diff]
+    end
+
+    def cull_start_index(diff)
+      case @options[:worker_culling_strategy]
+      when :oldest
+        0
+      else # :youngest
+        -diff
+      end
+    end
+
     # @!attribute [r] next_worker_index
     def next_worker_index
-      all_positions =  0...@options[:workers]
-      occupied_positions = @workers.map { |w| w.index }
-      available_positions = all_positions.to_a - occupied_positions
-      available_positions.first
+      occupied_positions = @workers.map(&:index)
+      idx = 0
+      idx += 1 until !occupied_positions.include?(idx)
+      idx
     end
 
     def all_workers_booted?
@@ -392,8 +414,8 @@ module Puma
 
       @master_read, @worker_write = read, @wakeup
 
-      @launcher.config.run_hooks :before_fork, nil, @launcher.events
-      Puma::Util.nakayoshi_gc @events if @options[:nakayoshi_fork]
+      @launcher.config.run_hooks(:before_fork, nil, @launcher.log_writer)
+      Puma::Util.nakayoshi_gc(@log_writer) if @options[:nakayoshi_fork]
 
       spawn_workers
 
@@ -441,7 +463,7 @@ module Puma
                   workers_not_booted -= 1
                 when "e"
                   # external term, see worker method, Signal.trap "SIGTERM"
-                  w.instance_variable_set :@term, true
+                  w.term!
                 when "t"
                   w.term unless w.term?
                 when "p"

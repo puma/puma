@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, macos-11, windows-2022 ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', head ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, head ]
         no-ssl: ['']
         yjit: ['']
         include:
@@ -33,23 +33,25 @@ jobs:
           - { os: windows-2022 , ruby: head }
           - { os: macos-10.15  , ruby: 2.6  }
           - { os: macos-10.15  , ruby: 2.7  }
-          - { os: macos-10.15  , ruby: '3.0' }
+          - { os: macos-10.15  , ruby: '3.0'}
+          - { os: macos-10.15  , ruby: 3.1  }
           - { os: macos-11     , ruby: 2.2  }
           - { os: macos-11     , ruby: 2.3  }
+          - { os: macos-11     , ruby: 2.4  }
 
     steps:
       - name: repo checkout
         uses: actions/checkout@v2
 
       - name: load ruby
-        uses: MSP-Greg/setup-ruby-pkgs@win-ucrt-2
+        uses: MSP-Greg/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
           mingw: openssl ragel
           bundler-cache: true
-          setup-ruby-ref: MSP-Greg/ruby-setup-ruby/win-ucrt-1
+          setup-ruby-ref: MSP-Greg/ruby-setup-ruby/gem-update
         timeout-minutes: 10
 
       # Windows error thrown, doesn't affect CI
@@ -72,8 +74,6 @@ jobs:
         run:  bundle exec rake compile
 
       - name: rubocop
-        # 2021-05-20 - RuboCop won't run with Psych 4.0 - remove when fixed
-        if: (endsWith(matrix.ruby, 'head') == false) && (endsWith(matrix.ruby, 'ucrt') == false)
         run: bundle exec rake rubocop
 
       - name: Use yjit

@@ -4,6 +4,7 @@ require 'stringio'
 
 require 'puma/thread_pool'
 require 'puma/const'
+require 'puma/log_writer'
 require 'puma/events'
 require 'puma/null_io'
 require 'puma/reactor'
@@ -36,6 +37,7 @@ module Puma
     extend Forwardable
 
     attr_reader :thread
+    attr_reader :log_writer
     attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
@@ -60,8 +62,9 @@ module Puma
 
     # Create a server for the rack app +app+.
     #
-    # +events+ is an object which will be called when certain error events occur
-    # to be handled. See Puma::Events for the list of current methods to implement.
+    # +log_writer+ is a Puma::LogWriter object used to log info and error messages.
+    #
+    # +events+ is a Puma::Events object used to notify application status events.
     #
     # Server#run returns a thread that you can join on to wait for the server
     # to do its work.
@@ -70,8 +73,9 @@ module Puma
     #   and have default values set via +fetch+.  Normally the values are set via
     #   `::Puma::Configuration.puma_default_options`.
     #
-    def initialize(app, events=Events.stdio, options={})
+    def initialize(app, log_writer=LogWriter.stdio, events=Events.new, options={})
       @app = app
+      @log_writer = log_writer
       @events = events
 
       @check, @notify = nil
@@ -97,7 +101,7 @@ module Puma
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
 
-      @binder = Binder.new(events)
+      @binder = Binder.new(log_writer)
 
       ENV['RACK_ENV'] ||= "development"
 
@@ -353,11 +357,11 @@ module Puma
             # In the case that any of the sockets are unexpectedly close.
             raise
           rescue StandardError => e
-            @events.unknown_error e, nil, "Listen loop"
+            @log_writer.unknown_error e, nil, "Listen loop"
           end
         end
 
-        @events.debug "Drained #{drain} additional connections." if drain
+        @log_writer.debug "Drained #{drain} additional connections." if drain
         @events.fire :state, @status
 
         if queue_requests
@@ -366,7 +370,7 @@ module Puma
         end
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
-        @events.unknown_error e, nil, "Exception handling servers"
+        @log_writer.unknown_error e, nil, "Exception handling servers"
       ensure
         # RuntimeError is Ruby 2.2 issue, can't modify frozen IOError
         # Errno::EBADF is infrequently raised
@@ -476,7 +480,7 @@ module Puma
         end
         true
       rescue StandardError => e
-        client_error(e, client, buffer, requests)
+        client_error(e, client)
         # The ensure tries to close +client+ down
         requests > 0
       ensure
@@ -488,7 +492,7 @@ module Puma
           Puma::Util.purge_interrupt_queue
           # Already closed
         rescue StandardError => e
-          @events.unknown_error e, nil, "Client"
+          @log_writer.unknown_error e, nil, "Client"
         end
       end
     end
@@ -504,36 +508,37 @@ module Puma
     # :nocov:
 
     # Handle various error types thrown by Client I/O operations.
-    def client_error(e, client, buffer = ::Puma::IOBuffer.new, requests = 1)
+    def client_error(e, client)
       # Swallow, do not log
       return if [ConnectionError, EOFError].include?(e.class)
 
+      lowlevel_error(e, client.env)
       case e
       when MiniSSL::SSLError
-        @events.ssl_error e, client.io
+        @log_writer.ssl_error e, client.io
       when HttpParserError
-        status, headers, res_body = lowlevel_error(e, client.env, 400)
-        write_response(status, headers, res_body, buffer, requests, client)
-        @events.parse_error e, client
+        client.write_error(400)
+        @log_writer.parse_error e, client
+      when HttpParserError501
+        client.write_error(501)
+        @log_writer.parse_error e, client
       else
-        status, headers, res_body = lowlevel_error(e, client.env)
-        write_response(status, headers, res_body, buffer, requests, client)
-        @events.unknown_error e, nil, "Read"
+        client.write_error(500)
+        @log_writer.unknown_error e, nil, "Read"
       end
     end
 
     # A fallback rack response if +@app+ raises as exception.
     #
-    def lowlevel_error(e, env, status = 500)
+    def lowlevel_error(e, env, status=500)
       if handler = @options[:lowlevel_error_handler]
         if handler.arity == 1
-          handler_status, headers, res_body = handler.call(e)
+          return handler.call(e)
         elsif handler.arity == 2
-          handler_status, headers, res_body = handler.call(e, env)
+          return handler.call(e, env)
         else
-          handler_status, headers, res_body = handler.call(e, env, status)
+          return handler.call(e, env, status)
         end
-        return [handler_status || status, headers || {}, res_body || []]
       end
 
       if @leak_stack_on_error

@@ -33,11 +33,14 @@ unless ENV["DISABLE_SSL"]
     have_func  "SSL_CTX_set_min_proto_version(NULL, 0)", "openssl/ssl.h"
 
     have_func  "X509_STORE_up_ref"
-    have_func("SSL_CTX_set_ecdh_auto(NULL, 0)", "openssl/ssl.h")
+    have_func "SSL_CTX_set_ecdh_auto(NULL, 0)"         , "openssl/ssl.h"
+
+    # below are yes for 3.0.0 & later, use for OpenSSL 3 detection
+    have_func "SSL_get1_peer_certificate"              , "openssl/ssl.h"
 
     # Random.bytes available in Ruby 2.5 and later, Random::DEFAULT deprecated in 3.0
     if Random.respond_to?(:bytes)
-      $defs.push("-DHAVE_RANDOM_BYTES")
+      $defs.push "-DHAVE_RANDOM_BYTES"
       puts "checking for Random.bytes... yes"
     else
       puts "checking for Random.bytes... no"

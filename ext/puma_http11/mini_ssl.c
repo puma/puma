@@ -30,6 +30,12 @@ typedef struct {
 
 VALUE eError;
 
+NORETURN(void raise_file_error(const char* caller, const char *filename));
+
+void raise_file_error(const char* caller, const char *filename) {
+  rb_raise(eError, "%s: error in file '%s': %s", caller, filename, ERR_error_string(ERR_get_error(), NULL));
+}
+
 void engine_free(void *ptr) {
   ms_conn *conn = ptr;
   ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
@@ -49,7 +55,8 @@ const rb_data_type_t engine_data_type = {
     0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
 };
 
-DH *get_dh2048() {
+#ifndef HAVE_SSL_GET1_PEER_CERTIFICATE
+DH *get_dh2048(void) {
   /* `openssl dhparam -C 2048`
    * -----BEGIN DH PARAMETERS-----
    * MIIBCAKCAQEAjmh1uQHdTfxOyxEbKAV30fUfzqMDF/ChPzjfyzl2jcrqQMhrk76o
@@ -91,13 +98,13 @@ DH *get_dh2048() {
   static unsigned char dh2048_g[] = { 0x02 };
 
   DH *dh;
-#if !(OPENSSL_VERSION_NUMBER < 0x10100005L || defined(LIBRESSL_VERSION_NUMBER))
+#if !(OPENSSL_VERSION_NUMBER < 0x10100005L)
   BIGNUM *p, *g;
 #endif
 
   dh = DH_new();
 
-#if OPENSSL_VERSION_NUMBER < 0x10100005L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100005L
   dh->p = BN_bin2bn(dh2048_p, sizeof(dh2048_p), NULL);
   dh->g = BN_bin2bn(dh2048_g, sizeof(dh2048_g), NULL);
 
@@ -119,6 +126,7 @@ DH *get_dh2048() {
 
   return dh;
 }
+#endif
 
 static void
 sslctx_free(void *ptr) {
@@ -209,7 +217,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   int ssl_options;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
     verification_flags, session_id_bytes, cert_pem, key_pem;
+#ifndef HAVE_SSL_GET1_PEER_CERTIFICATE
   DH *dh;
+#endif
   BIO *bio;
   X509 *x509;
   EVP_PKEY *pkey;
@@ -240,12 +250,18 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   if (!NIL_P(cert)) {
     StringValue(cert);
-    SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert));
+
+    if (SSL_CTX_use_certificate_chain_file(ctx, RSTRING_PTR(cert)) != 1) {
+      raise_file_error("SSL_CTX_use_certificate_chain_file", RSTRING_PTR(cert));
+    }
   }
 
   if (!NIL_P(key)) {
     StringValue(key);
-    SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
+
+    if (SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM) != 1) {
+      raise_file_error("SSL_CTX_use_PrivateKey_file", RSTRING_PTR(key));
+    }
   }
 
   if (!NIL_P(cert_pem)) {
@@ -253,7 +269,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     BIO_puts(bio, RSTRING_PTR(cert_pem));
     x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 
-    SSL_CTX_use_certificate(ctx, x509);
+    if (SSL_CTX_use_certificate(ctx, x509) != 1) {
+      raise_file_error("SSL_CTX_use_certificate", RSTRING_PTR(cert_pem));
+    }
   }
 
   if (!NIL_P(key_pem)) {
@@ -261,7 +279,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     BIO_puts(bio, RSTRING_PTR(key_pem));
     pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
 
-    SSL_CTX_use_PrivateKey(ctx, pkey);
+    if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+      raise_file_error("SSL_CTX_use_PrivateKey", RSTRING_PTR(key_pem));
+    }
   }
 
   verification_flags = rb_funcall(mini_ssl_ctx, rb_intern_const("verification_flags"), 0);
@@ -274,7 +294,9 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   if (!NIL_P(ca)) {
     StringValue(ca);
-    SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL);
+    if (SSL_CTX_load_verify_locations(ctx, RSTRING_PTR(ca), NULL) != 1) {
+      raise_file_error("SSL_CTX_load_verify_locations", RSTRING_PTR(ca));
+    }
   }
 
   ssl_options = SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_COMPRESSION;
@@ -317,9 +339,6 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL@STRENGTH");
   }
 
-  dh = get_dh2048();
-  SSL_CTX_set_tmp_dh(ctx, dh);
-
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
   // Remove this case if OpenSSL 1.0.1 (now EOL) support is no
   // longer needed.
@@ -353,6 +372,15 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
                                  SSL_MAX_SSL_SESSION_ID_LENGTH);
 
   // printf("\ninitialize end security_level %d\n", SSL_CTX_get_security_level(ctx));
+
+#ifdef HAVE_SSL_GET1_PEER_CERTIFICATE
+  // https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_dh_auto.html
+  SSL_CTX_set_dh_auto(ctx, 1);
+#else
+  dh = get_dh2048();
+  SSL_CTX_set_tmp_dh(ctx, dh);
+#endif
+
   rb_obj_freeze(self);
   return self;
 }
@@ -551,7 +579,11 @@ VALUE engine_peercert(VALUE self) {
 
   TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
+#ifdef HAVE_SSL_GET1_PEER_CERTIFICATE
+  cert = SSL_get1_peer_certificate(conn->ssl);
+#else
   cert = SSL_get_peer_certificate(conn->ssl);
+#endif
   if(!cert) {
     /*
      * See if there was a failed certificate associated with this client.
@@ -608,7 +640,10 @@ void Init_mini_ssl(VALUE puma) {
   ERR_load_crypto_strings();
 
   mod = rb_define_module_under(puma, "MiniSSL");
+
   eng = rb_define_class_under(mod, "Engine", rb_cObject);
+  rb_undef_alloc_func(eng);
+
   sslctx = rb_define_class_under(mod, "SSLContext", rb_cObject);
   rb_define_alloc_func(sslctx, sslctx_alloc);
   rb_define_method(sslctx, "initialize", sslctx_initialize, 1);

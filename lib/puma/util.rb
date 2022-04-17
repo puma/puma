@@ -17,28 +17,37 @@ module Puma
       Thread.current.purge_interrupt_queue if Thread.current.respond_to? :purge_interrupt_queue
     end
 
-    # Unescapes a URI escaped string with +encoding+. +encoding+ will be the
-    # target encoding of the string returned, and it defaults to UTF-8
+    # Escapes and unescapes a URI escaped string with
+    # +encoding+. +encoding+ will be the target encoding of the string
+    # returned, and it defaults to UTF-8
     if defined?(::Encoding)
+      def escape(s, encoding = Encoding::UTF_8)
+        URI.encode_www_form_component(s, encoding)
+      end
+
       def unescape(s, encoding = Encoding::UTF_8)
         URI.decode_www_form_component(s, encoding)
       end
     else
+      def escape(s, encoding = nil)
+        URI.encode_www_form_component(s, encoding)
+      end
+
       def unescape(s, encoding = nil)
         URI.decode_www_form_component(s, encoding)
       end
     end
-    module_function :unescape
+    module_function :unescape, :escape
 
     # @version 5.0.0
-    def nakayoshi_gc(events)
-      events.log "! Promoting existing objects to old generation..."
+    def nakayoshi_gc(log_writer)
+      log_writer.log "! Promoting existing objects to old generation..."
       4.times { GC.start(full_mark: false) }
       if GC.respond_to?(:compact)
-        events.log "! Compacting..."
+        log_writer.log "! Compacting..."
         GC.compact
       end
-      events.log "! Friendly fork preparation complete."
+      log_writer.log "! Friendly fork preparation complete."
     end
 
     DEFAULT_SEP = /[&;] */n

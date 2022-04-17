@@ -7,7 +7,6 @@
 [![Actions MRI](https://github.com/puma/puma/workflows/MRI/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3AMRI)
 [![Actions non MRI](https://github.com/puma/puma/workflows/non_MRI/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3Anon_MRI)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
-[![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=puma&package-manager=bundler&version-scheme=semver)](https://dependabot.com/compatibility-score.html?dependency-name=puma&package-manager=bundler&version-scheme=semver)
 [![StackOverflow](https://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( https://stackoverflow.com/questions/tagged/puma )
 
 Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server for Ruby/Rack applications**.
@@ -136,6 +135,11 @@ end
 This code can be used to setup the process before booting the application, allowing
 you to do some Puma-specific things that you don't want to embed in your application.
 For instance, you could fire a log notification that a worker booted or send something to statsd. This can be called multiple times.
+
+Constants loaded by your application (such as `Rails`) will not be available in `on_worker_boot`.
+However, these constants _will_ be available if `preload_app!` is enabled, either explicitly in your `puma` config or automatically if
+using 2 or more workers in cluster mode.
+If `preload_app!` is not enabled and 1 worker is used, then `on_worker_boot` will fire, but your app will not be preloaded and constants will not be available.
 
 `before_fork` specifies a block to be run before workers are forked:
 

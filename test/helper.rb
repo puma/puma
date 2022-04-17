@@ -33,8 +33,8 @@ require "puma/detect"
 # used in various ssl test files, see test_puma_server_ssl.rb and
 # test_puma_localhost_authority.rb
 if Puma::HAS_SSL
-  require "puma/events"
-  class SSLEventsHelper < ::Puma::Events
+  require 'puma/log_writer'
+  class SSLLogWriterHelper < ::Puma::LogWriter
     attr_accessor :addr, :cert, :error
 
     def ssl_error(error, ssl_socket)
@@ -174,6 +174,9 @@ end
 Minitest::Test.include TestSkips
 
 class Minitest::Test
+
+  REPO_NAME = ENV['GITHUB_REPOSITORY'] ? ENV['GITHUB_REPOSITORY'][/[^\/]+\z/] : 'puma'
+
   def self.run(reporter, options = {}) # :nodoc:
     prove_it!
     super

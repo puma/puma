@@ -1,3 +1,41 @@
+## 5.6.4 / 2022-03-30
+
+* Security
+  * Close several HTTP Request Smuggling exploits (CVE-2022-24790)
+
+## 5.6.2 / 2022-02-11
+
+* Bugfix/Security
+  * Response body will always be `close`d. (GHSA-rmj8-8hhh-gv5h, related to [#2809])
+
+## 5.6.1 / 2022-01-26
+
+* Bugfixes
+  * Reverted a commit which appeared to be causing occasional blank header values ([#2809])
+
+## 5.6.0 / 2022-01-25
+
+* Features
+  * Support `localhost` integration in `ssl_bind` ([#2764], [#2708])
+  * Allow backlog parameter to be set with ssl_bind DSL ([#2780])
+  * Remove yaml (psych) requirement in StateFile ([#2784])
+  * Allow culling of oldest workers, previously was only youngest ([#2773], [#2794])
+  * Add worker_check_interval configuration option ([#2759])
+  * Always send lowlevel_error response to client ([#2731], [#2341])
+  * Support for cert_pem and key_pem with ssl_bind DSL ([#2728])
+
+* Bugfixes
+  * Keep thread names under 15 characters, prevents breakage on some OSes ([#2733])
+  * Fix two 'old-style-definition' compile warning ([#2807], [#2806])
+  * Log environment correctly using option value ([#2799])
+  * Fix warning from Ruby master (will be 3.2.0) ([#2785])
+  * extconf.rb - fix openssl with old Windows builds ([#2757])
+  * server.rb - rescue handling (`Errno::EBADF`) for `@notify.close` ([#2745])
+
+* Refactor
+  * server.rb - refactor code using @options[:remote_address] ([#2742])
+  * [jruby] a couple refactorings - avoid copy-ing bytes ([#2730])
+
 ## 5.5.2 / 2021-10-12
 
 * Bugfixes
@@ -263,6 +301,16 @@
   * JSON parse cluster worker stats instead of regex ([#2124])
   * Support parallel tests in verbose progress reporting ([#2223])
   * Refactor error handling in server accept loop ([#2239])
+
+## 4.3.12 / 2022-03-30
+
+* Security
+  * Close several HTTP Request Smuggling exploits (CVE-2022-24790)
+
+## 4.3.11 / 2022-02-11
+
+* Security
+  * Always close the response body (GHSA-rmj8-8hhh-gv5h)
 
 ## 4.3.10 / 2021-10-12
 
@@ -1807,7 +1855,27 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
-[#2702]:https://github.com/puma/puma/pull/2702     "PR by @jacobherrington, merged 2021-09-20" 
+[#2809]:https://github.com/puma/puma/pull/2809     "PR by @dentarg, merged 2022-01-26"
+[#2764]:https://github.com/puma/puma/pull/2764     "PR by @dentarg, merged 2022-01-18"
+[#2708]:https://github.com/puma/puma/issues/2708   "Issue by @erikaxel, closed 2022-01-18"
+[#2780]:https://github.com/puma/puma/pull/2780     "PR by @dalibor, merged 2022-01-01"
+[#2784]:https://github.com/puma/puma/pull/2784     "PR by @MSP-Greg, merged 2022-01-01"
+[#2773]:https://github.com/puma/puma/pull/2773     "PR by @ob-stripe, merged 2022-01-01"
+[#2794]:https://github.com/puma/puma/pull/2794     "PR by @johnnyshields, merged 2022-01-10"
+[#2759]:https://github.com/puma/puma/pull/2759     "PR by @ob-stripe, merged 2021-12-11"
+[#2731]:https://github.com/puma/puma/pull/2731     "PR by @baelter, merged 2021-11-02"
+[#2341]:https://github.com/puma/puma/issues/2341   "Issue by @cjlarose, closed 2021-11-02"
+[#2728]:https://github.com/puma/puma/pull/2728     "PR by @dalibor, merged 2021-10-31"
+[#2733]:https://github.com/puma/puma/pull/2733     "PR by @ob-stripe, merged 2021-12-12"
+[#2807]:https://github.com/puma/puma/pull/2807     "PR by @MSP-Greg, merged 2022-01-25"
+[#2806]:https://github.com/puma/puma/issues/2806   "Issue by @olleolleolle, closed 2022-01-25"
+[#2799]:https://github.com/puma/puma/pull/2799     "PR by @ags, merged 2022-01-22"
+[#2785]:https://github.com/puma/puma/pull/2785     "PR by @MSP-Greg, merged 2022-01-02"
+[#2757]:https://github.com/puma/puma/pull/2757     "PR by @MSP-Greg, merged 2021-11-24"
+[#2745]:https://github.com/puma/puma/pull/2745     "PR by @MSP-Greg, merged 2021-11-03"
+[#2742]:https://github.com/puma/puma/pull/2742     "PR by @MSP-Greg, merged 2021-12-12"
+[#2730]:https://github.com/puma/puma/pull/2730     "PR by @kares, merged 2021-11-01"
+[#2702]:https://github.com/puma/puma/pull/2702     "PR by @jacobherrington, merged 2021-09-21"
 [#2610]:https://github.com/puma/puma/pull/2610     "PR by @ye-lin-aung, merged 2021-08-18"
 [#2257]:https://github.com/puma/puma/issues/2257   "Issue by @nateberkopec, closed 2021-08-18"
 [#2654]:https://github.com/puma/puma/pull/2654     "PR by @Roguelazer, merged 2021-09-07"

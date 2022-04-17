@@ -4,6 +4,7 @@ require_relative "helpers/tmp_path"
 
 require "puma/cli"
 require "json"
+require "psych"
 
 class TestCLI < Minitest::Test
   include SSLHelper if ::Puma::HAS_SSL
@@ -20,7 +21,9 @@ class TestCLI < Minitest::Test
 
     @wait, @ready = IO.pipe
 
-    @events = Puma::Events.strings
+    @log_writer = Puma::LogWriter.strings
+
+    @events = Puma::Events.new
     @events.on_booted { @ready << "!" }
   end
 
@@ -46,7 +49,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:0",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new do
       cli.run
@@ -81,7 +84,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:0",
                          "--control-url", control_url,
                          "--control-token", token,
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new do
       cli.run
@@ -117,7 +120,7 @@ class TestCLI < Minitest::Test
                          "-w", "2",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     # without this, Minitest.after_run will trigger on this test ?
     $debugging_hold = true
@@ -149,8 +152,8 @@ class TestCLI < Minitest::Test
 
       done = nil
       until done
-        @events.stdout.rewind
-        log = @events.stdout.readlines.join ''
+        @log_writer.stdout.rewind
+        log = @log_writer.stdout.readlines.join ''
         done = log[/ - Goodbye!/]
       end
 
@@ -165,7 +168,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new { cli.run }
 
@@ -192,7 +195,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new { cli.run }
 
@@ -216,7 +219,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new do
       cli.run
@@ -257,7 +260,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new { cli.run }
 
@@ -278,7 +281,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", uri,
                          "--control-url", cntl,
                          "--control-token", "",
-                         "test/rackup/lobster.ru"], @events
+                         "test/rackup/lobster.ru"], @log_writer, @events
 
     t = Thread.new do
       cli.run
@@ -347,9 +350,21 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["--state", @tmp_path, "--control-url", "auto"]
     cli.launcher.write_state
 
-    data = YAML.load File.read(@tmp_path)
+    opts = cli.launcher.instance_variable_get(:@options)
 
-    assert_equal Process.pid, data["pid"]
+    data = Psych.load_file @tmp_path
+
+    Puma::StateFile::ALLOWED_FIELDS.each do |key|
+      val =
+        case key
+        when 'pid'          then Process.pid
+        when 'running_from' then File.expand_path('.') # same as Launcher
+        else                     opts[key.to_sym]
+        end
+      assert_equal val, data[key]
+    end
+
+    assert_equal (Puma::StateFile::ALLOWED_FIELDS & data.keys).sort, data.keys.sort
 
     url = data["control_url"]
 
@@ -364,36 +379,35 @@ class TestCLI < Minitest::Test
                           "--state", @tmp_path ]
     cli.launcher.write_state
 
-    data = YAML.load_file(@tmp_path)
+    data = Psych.load_file @tmp_path
 
-    keys_not_stripped = data.keys & Puma::CLI::KEYS_NOT_TO_PERSIST_IN_STATE
-    assert_empty keys_not_stripped
+    assert_equal (Puma::StateFile::ALLOWED_FIELDS & data.keys).sort, data.keys.sort
   end
 
   def test_log_formatter_default_single
     cli = Puma::CLI.new [ ]
-    assert_instance_of Puma::Events::DefaultFormatter, cli.launcher.events.formatter
+    assert_instance_of Puma::LogWriter::DefaultFormatter, cli.launcher.log_writer.formatter
   end
 
   def test_log_formatter_default_clustered
     skip_unless :fork
 
     cli = Puma::CLI.new [ "-w 2" ]
-    assert_instance_of Puma::Events::PidFormatter, cli.launcher.events.formatter
+    assert_instance_of Puma::LogWriter::PidFormatter, cli.launcher.log_writer.formatter
   end
 
   def test_log_formatter_custom_single
     cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb" ]
-    assert_instance_of Proc, cli.launcher.events.formatter
-    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.events.format('test'))
+    assert_instance_of Proc, cli.launcher.log_writer.formatter
+    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.log_writer.format('test'))
   end
 
   def test_log_formatter_custom_clustered
     skip_unless :fork
 
     cli = Puma::CLI.new [ "--config", "test/config/custom_log_formatter.rb", "-w 2" ]
-    assert_instance_of Proc, cli.launcher.events.formatter
-    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.events.format('test'))
+    assert_instance_of Proc, cli.launcher.log_writer.formatter
+    assert_match(/^\[.*\] \[.*\] .*: test$/, cli.launcher.log_writer.format('test'))
   end
 
   def test_state
@@ -401,7 +415,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["--state", @tmp_path, "--control-url", url]
     cli.launcher.write_state
 
-    data = YAML.load File.read(@tmp_path)
+    data = Psych.load_file @tmp_path
 
     assert_equal Process.pid, data["pid"]
     assert_equal url, data["control_url"]
@@ -462,5 +476,16 @@ class TestCLI < Minitest::Test
     assert_equal @environment, cli.instance_variable_get(:@conf).environment.call
   ensure
     ENV.delete 'RAILS_ENV'
+  end
+
+  def test_silent
+    cli = Puma::CLI.new ['--silent']
+    cli.send(:setup_options)
+
+    log_writer = cli.instance_variable_get(:@log_writer)
+
+    assert_equal log_writer.class, Puma::LogWriter.null.class
+    assert_equal log_writer.stdout.class, Puma::NullIO
+    assert_equal log_writer.stderr, $stderr
   end
 end

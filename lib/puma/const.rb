@@ -76,7 +76,7 @@ module Puma
     508 => 'Loop Detected',
     510 => 'Not Extended',
     511 => 'Network Authentication Required'
-  }
+  }.freeze
 
   # For some HTTP status codes the client only expects headers.
   #
@@ -85,7 +85,7 @@ module Puma
     204 => true,
     205 => true,
     304 => true
-  }
+  }.freeze
 
   # Frequently used constants when constructing requests or responses.  Many times
   # the constant just refers to a string with the same contents.  Using these constants
@@ -100,8 +100,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "5.5.2".freeze
-    CODE_NAME = "Zawgyi".freeze
+    PUMA_VERSION = VERSION = "5.6.4".freeze
+    CODE_NAME = "Birdie's Version".freeze
 
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
@@ -145,9 +145,11 @@ module Puma
       408 => "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\n".freeze,
       # Indicate that there was an internal error, obviously.
       500 => "HTTP/1.1 500 Internal Server Error\r\n\r\n".freeze,
+      # Incorrect or invalid header value
+      501 => "HTTP/1.1 501 Not Implemented\r\n\r\n".freeze,
       # A common header for indicating the server is too busy.  Not used yet.
       503 => "HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY".freeze
-    }
+    }.freeze
 
     # The basic max request size we'll try to read.
     CHUNK_SIZE = 16 * 1024
@@ -175,7 +177,10 @@ module Puma
     PORT_80 = "80".freeze
     PORT_443 = "443".freeze
     LOCALHOST = "localhost".freeze
-    LOCALHOST_IP = "127.0.0.1".freeze
+    LOCALHOST_IPV4 = "127.0.0.1".freeze
+    LOCALHOST_IPV6 = "::1".freeze
+    UNSPECIFIED_IPV4 = "0.0.0.0".freeze
+    UNSPECIFIED_IPV6 = "::".freeze
 
     SERVER_PROTOCOL = "SERVER_PROTOCOL".freeze
     HTTP_11 = "HTTP/1.1".freeze

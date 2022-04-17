@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'puma/const'
+require 'puma/util'
 
 module Puma
   # The methods that are available for use inside the configuration file.
@@ -46,7 +47,9 @@ module Puma
         else ''
         end
 
-      ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
+      ca_additions = "&ca=#{Puma::Util.escape(opts[:ca])}" if ['peer', 'force_peer'].include?(verify)
+
+      backlog_str = opts[:backlog] ? "&backlog=#{Integer(opts[:backlog])}" : ''
 
       if defined?(JRUBY_VERSION)
         ssl_cipher_list = opts[:ssl_cipher_list] ?
@@ -55,7 +58,7 @@ module Puma
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
 
         "ssl://#{host}:#{port}?#{keystore_additions}#{ssl_cipher_list}" \
-          "&verify_mode=#{verify}#{tls_str}#{ca_additions}"
+          "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{backlog_str}"
       else
         ssl_cipher_filter = opts[:ssl_cipher_filter] ?
           "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
@@ -63,8 +66,11 @@ module Puma
         v_flags = (ary = opts[:verification_flags]) ?
           "&verification_flags=#{Array(ary).join ','}" : nil
 
-        "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}" \
-          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}"
+        cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
+        key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
+
+        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}" \
+          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
       end
     end
 
@@ -191,7 +197,7 @@ module Puma
     end
 
     # Bind the server to +url+. "tcp://", "unix://" and "ssl://" are the only
-    # accepted protocols. Multiple urls can be bound to, calling `bind` does
+    # accepted protocols. Multiple urls can be bound to, calling +bind+ does
     # not overwrite previous bindings.
     #
     # The default is "tcp://0.0.0.0:9292".
@@ -365,11 +371,6 @@ module Puma
       @options[:log_requests] = which
     end
 
-    # Pass in a custom logging class instance
-    def logger(custom_logger)
-      @options[:logger] = custom_logger
-    end
-
     # Show debugging info
     #
     def debug
@@ -441,8 +442,15 @@ module Puma
       @options[:max_threads] = max
     end
 
-    # Instead of `bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'` you
-    # can also use the this method.
+    # Instead of using +bind+ and manually constructing a URI like:
+    #
+    #    bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'
+    #
+    # you can use the this method.
+    #
+    # When binding on localhost you don't need to specify +cert+ and +key+,
+    # Puma will assume you are using the +localhost+ gem and try to load the
+    # appropriate files.
     #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
@@ -453,21 +461,23 @@ module Puma
     #     verification_flags: flags,        # optional, not supported by JRuby
     #   }
     #
-    # Alternatively, you can provide the cert_pem and key_pem:
-    # @example
+    # @example Using self-signed certificate with the +localhost+ gem:
+    #   ssl_bind '127.0.0.1', '9292'
+    #
+    # @example Alternatively, you can provide +cert_pem+ and +key_pem+:
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert_pem: File.read(path_to_cert),
     #     key_pem: File.read(path_to_key),
     #   }
     #
-    # @example For JRuby, two keys are required: keystore & keystore_pass.
+    # @example For JRuby, two keys are required: +keystore+ & +keystore_pass+
     #   ssl_bind '127.0.0.1', '9292', {
     #     keystore: path_to_keystore,
     #     keystore_pass: password,
     #     ssl_cipher_list: cipher_list,     # optional
     #     verify_mode: verify_mode          # default 'none'
     #   }
-    def ssl_bind(host, port, opts)
+    def ssl_bind(host, port, opts = {})
       add_pem_values_to_options_store(opts)
       bind self.class.ssl_bind_str(host, port, opts)
     end
@@ -800,6 +810,30 @@ module Puma
       @options[:worker_shutdown_timeout] = Integer(timeout)
     end
 
+    # Set the strategy for worker culling.
+    #
+    # There are two possible values:
+    #
+    # 1. **:youngest** - the youngest workers (i.e. the workers that were
+    #    the most recently started) will be culled.
+    # 2. **:oldest** - the oldest workers (i.e. the workers that were started
+    #    the longest time ago) will be culled.
+    #
+    # @note Cluster mode only.
+    # @example
+    #   worker_culling_strategy :oldest
+    # @see Puma::Cluster#cull_workers
+    #
+    def worker_culling_strategy(strategy)
+      stategy = strategy.to_sym
+
+      if ![:youngest, :oldest].include?(strategy)
+        raise "Invalid value for worker_culling_strategy - #{stategy}"
+      end
+
+      @options[:worker_culling_strategy] = strategy
+    end
+
     # When set to true (the default), workers accept all requests
     # and queue them before passing them to the handlers.
     # When set to false, each worker process accepts exactly as
@@ -848,13 +882,16 @@ module Puma
     # There are 5 possible values:
     #
     # 1. **:socket** (the default) - read the peername from the socket using the
-    #    syscall. This is the normal behavior.
+    #    syscall. This is the normal behavior. If this fails for any reason (e.g.,
+    #    if the peer disconnects between the connection being accepted and the getpeername
+    #    system call), Puma will return "0.0.0.0"
     # 2. **:localhost** - set the remote address to "127.0.0.1"
     # 3. **header: <http_header>**- set the remote address to the value of the
     #    provided http header. For instance:
     #    `set_remote_address header: "X-Real-IP"`.
     #    Only the first word (as separated by spaces or comma) is used, allowing
-    #    headers such as X-Forwarded-For to be used as well.
+    #    headers such as X-Forwarded-For to be used as well. If this header is absent,
+    #    Puma will fall back to the behavior of :socket
     # 4. **proxy_protocol: :v1**- set the remote address to the value read from the
     #    HAproxy PROXY protocol, version 1. If the request does not have the PROXY
     #    protocol attached to it, will fall back to :socket

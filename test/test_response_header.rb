@@ -12,8 +12,8 @@ class TestResponseHeader < Minitest::Test
 
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
-    @events = Puma::Events.strings
-    @server = Puma::Server.new @app, @events
+    @log_writer = Puma::LogWriter.strings
+    @server = Puma::Server.new @app, @log_writer
   end
 
   def teardown
@@ -45,7 +45,7 @@ class TestResponseHeader < Minitest::Test
     server_run app: ->(env) { [200, { 1 => 'Boo'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_match(/HTTP\/1.1 500 Internal Server Error/, data)
   end
 
   # The header must respond to each
@@ -53,7 +53,7 @@ class TestResponseHeader < Minitest::Test
     server_run app: ->(env) { [200, nil, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_match(/HTTP\/1.1 500 Internal Server Error/, data)
   end
 
   # The values of the header must be Strings

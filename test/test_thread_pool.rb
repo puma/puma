@@ -5,7 +5,7 @@ require "puma/thread_pool"
 class TestThreadPool < Minitest::Test
 
   def teardown
-    @pool.shutdown(1) if @pool
+    @pool.shutdown(1) if defined?(@pool)
   end
 
   def new_pool(min, max, &block)

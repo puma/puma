@@ -114,7 +114,6 @@ class Http11ParserTest < Minitest::Test
   end
 
   def test_semicolon_in_path
-    skip_if :jruby # Not yet supported on JRuby, see https://github.com/puma/puma/issues/1978
     parser = Puma::HttpParser.new
     req = {}
     get = "GET /forums/1/path;stillpath/2375?page=1 HTTP/1.1\r\n\r\n"

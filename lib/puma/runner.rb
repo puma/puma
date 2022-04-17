@@ -8,15 +8,20 @@ module Puma
   # serve requests. This class spawns a new instance of `Puma::Server` via
   # a call to `start_server`.
   class Runner
-    def initialize(cli, events)
-      @launcher = cli
-      @events = events
-      @options = cli.options
+    def initialize(launcher)
+      @launcher = launcher
+      @log_writer = launcher.log_writer
+      @events = launcher.events
+      @options = launcher.options
       @app = nil
       @control = nil
       @started_at = Time.now
       @wakeup = nil
     end
+
+    # Returns the hash of configuration options.
+    # @return [Puma::UserFileDefaultOptions]
+    attr_reader :options
 
     def wakeup!
       return unless @wakeup
@@ -36,7 +41,7 @@ module Puma
     end
 
     def log(str)
-      @events.log str
+      @log_writer.log str
     end
 
     # @version 5.0.0
@@ -45,11 +50,11 @@ module Puma
     end
 
     def error(str)
-      @events.error str
+      @log_writer.error str
     end
 
     def debug(str)
-      @events.log "- #{str}" if @options[:debug]
+      @log_writer.log "- #{str}" if @options[:debug]
     end
 
     def start_control
@@ -64,7 +69,7 @@ module Puma
 
       app = Puma::App::Status.new @launcher, token
 
-      control = Puma::Server.new app, @launcher.events,
+      control = Puma::Server.new app, @log_writer, @events,
         { min_threads: 0, max_threads: 1, queue_requests: false }
 
       control.binder.parse [str], self, 'Starting control server'
@@ -94,12 +99,13 @@ module Puma
     def output_header(mode)
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
+      environment = @options[:environment]
 
       log "Puma starting in #{mode} mode..."
       log "* Puma version: #{Puma::Const::PUMA_VERSION} (#{ruby_engine}) (\"#{Puma::Const::CODE_NAME}\")"
       log "*  Min threads: #{min_t}"
       log "*  Max threads: #{max_t}"
-      log "*  Environment: #{ENV['RACK_ENV']}"
+      log "*  Environment: #{environment}"
 
       if mode == "cluster"
         log "*   Master PID: #{Process.pid}"
@@ -161,8 +167,8 @@ module Puma
     end
 
     def start_server
-      server = Puma::Server.new app, @launcher.events, @options
-      server.inherit_binder @launcher.binder
+      server = Puma::Server.new(app, @log_writer, @events, @options)
+      server.inherit_binder(@launcher.binder)
       server
     end
 
