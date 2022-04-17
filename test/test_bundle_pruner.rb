@@ -1,7 +1,6 @@
 require_relative 'helper'
 
 require 'puma/events'
-require 'puma/launcher/bundle_pruner'
 
 class TestBundlePruner < Minitest::Test
 
@@ -13,18 +12,18 @@ class TestBundlePruner < Minitest::Test
     assert_equal(2, dirs.length)
     assert_match(%r{#{REPO_NAME}/lib$}, dirs[0]) # lib dir
     assert_match(%r{puma-#{Puma::Const::PUMA_VERSION}$}, dirs[1]) # native extension dir
-    refute_match(%r{gems/rdoc-[\d.]+/lib$}, dirs[2])
+    refute_match(%r{gems/minitest-[\d.]+/lib$}, dirs[2])
   end
 
   def test_paths_to_require_after_prune_is_correctly_built_with_extra_deps
     skip_if :no_bundler
 
-    dirs = bundle_pruner([], ['rdoc']).send(:paths_to_require_after_prune)
+    dirs = bundle_pruner([], ['minitest']).send(:paths_to_require_after_prune)
 
     assert_equal(3, dirs.length)
     assert_match(%r{#{REPO_NAME}/lib$}, dirs[0]) # lib dir
     assert_match(%r{puma-#{Puma::Const::PUMA_VERSION}$}, dirs[1]) # native extension dir
-    assert_match(%r{gems/rdoc-[\d.]+/lib$}, dirs[2]) # rdoc dir
+    assert_match(%r{gems/minitest-[\d.]+/lib$}, dirs[2]) # minitest dir
   end
 
   def test_extra_runtime_deps_paths_is_empty_for_no_config
@@ -34,10 +33,10 @@ class TestBundlePruner < Minitest::Test
   def test_extra_runtime_deps_paths_is_correctly_built
     skip_if :no_bundler
 
-    dep_dirs = bundle_pruner([], ['rdoc']).send(:extra_runtime_deps_paths)
+    dep_dirs = bundle_pruner([], ['minitest']).send(:extra_runtime_deps_paths)
 
     assert_equal(1, dep_dirs.length)
-    assert_match(%r{gems/rdoc-[\d.]+/lib$}, dep_dirs.first)
+    assert_match(%r{gems/minitest-[\d.]+/lib$}, dep_dirs.first)
   end
 
   def test_puma_wild_path_is_an_absolute_path
