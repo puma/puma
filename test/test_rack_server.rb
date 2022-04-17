@@ -144,7 +144,7 @@ class TestRackServer < Minitest::Test
     # * If we would block trying to read from the socket, we can assume that
     #   the erroneous 500 response wasn't/won't be written.
     sleep 0.1
-    assert_raises IO::EAGAINWaitReadable do
+    assert_raises IO::WaitReadable do
       content = socket.read_nonblock(12)
       refute_includes content, "500"
     end
