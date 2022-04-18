@@ -67,9 +67,6 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    bind_configuration = conf.options.file_options[:binds].first
-    app = conf.app
-
     ssl_binding = "ssl://0.0.0.0:9292?&verify_mode=none"
     assert_equal [ssl_binding], conf.options[:binds]
   end
