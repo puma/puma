@@ -55,7 +55,7 @@ const rb_data_type_t engine_data_type = {
     0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
 };
 
-#ifndef HAVE_SSL_GET1_PEER_CERTIFICATE
+#ifndef HAVE_SSL_CTX_SET_DH_AUTO
 DH *get_dh2048(void) {
   /* `openssl dhparam -C 2048`
    * -----BEGIN DH PARAMETERS-----
@@ -217,7 +217,7 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   int ssl_options;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
     verification_flags, session_id_bytes, cert_pem, key_pem;
-#ifndef HAVE_SSL_GET1_PEER_CERTIFICATE
+#ifndef HAVE_SSL_CTX_SET_DH_AUTO
   DH *dh;
 #endif
   BIO *bio;
@@ -373,7 +373,7 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   // printf("\ninitialize end security_level %d\n", SSL_CTX_get_security_level(ctx));
 
-#ifdef HAVE_SSL_GET1_PEER_CERTIFICATE
+#ifdef HAVE_SSL_CTX_SET_DH_AUTO
   // https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_dh_auto.html
   SSL_CTX_set_dh_auto(ctx, 1);
 #else
