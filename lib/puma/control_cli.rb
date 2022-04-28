@@ -32,11 +32,13 @@ module Puma
     # @deprecated 6.0.0
     COMMANDS = CMD_PATH_SIG_MAP.keys.freeze
 
+    # Uncomment below statement & clause in run method statement if needed
+    #
     # commands that cannot be used in a request
-    NO_REQ_COMMANDS = %w{refork}.freeze
+    # NO_REQ_COMMANDS = %w[].freeze
 
     # @version 5.0.0
-    PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}.freeze
+    PRINTABLE_COMMANDS = %w[gc-stats stats thread-backtraces].freeze
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
@@ -185,8 +187,6 @@ module Puma
 
       if @command == 'status'
         message 'Puma is started'
-      elsif NO_REQ_COMMANDS.include? @command
-        raise "Invalid request command: #{@command}"
       else
         url = "/#{@command}"
 
@@ -268,7 +268,7 @@ module Puma
       return start if @command == 'start'
       prepare_configuration
 
-      if Puma.windows? || @control_url
+      if Puma.windows? || @control_url # && !NO_REQ_COMMANDS.include?(@command)
         send_request
       else
         send_signal

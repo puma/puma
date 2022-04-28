@@ -39,6 +39,9 @@ module Puma
           when 'phased-restart'
             @launcher.phased_restart ? 200 : 404
 
+          when 'refork'
+            @launcher.refork ? 200 : 404
+
           when 'reload-worker-directory'
             @launcher.send(:reload_worker_directory) ? 200 : 404
 

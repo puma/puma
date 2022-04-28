@@ -93,6 +93,43 @@ class TestIntegrationPumactl < TestIntegration
     @server = nil
   end
 
+  def test_refork_cluster
+    skip_unless :fork
+    wrkrs = 3
+    cli_server "-q -w #{wrkrs} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}",
+      config: 'fork_worker 50',
+      unix: true
+
+    start = Time.now
+
+    s = UNIXSocket.new @bind_path
+    @ios_to_close << s
+    s << "GET /sleep1 HTTP/1.0\r\n\r\n"
+
+    # Get the PIDs of the phase 0 workers.
+    phase0_worker_pids = get_worker_pids 0, wrkrs
+    assert File.exist? @bind_path
+
+    cli_pumactl "refork", unix: true
+
+    # Get the PIDs of the phase 1 workers.
+    phase1_worker_pids = get_worker_pids 1, wrkrs - 1
+
+    msg = "phase 0 pids #{phase0_worker_pids.inspect}  phase 1 pids #{phase1_worker_pids.inspect}"
+
+    assert_equal wrkrs    , phase0_worker_pids.length, msg
+    assert_equal wrkrs - 1, phase1_worker_pids.length, msg
+    assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
+    assert File.exist?(@bind_path), "Bind path must exist after phased refork"
+
+    cli_pumactl "stop", unix: true
+
+    _, status = Process.wait2(@pid)
+    assert_equal 0, status
+    assert_operator Time.now - start, :<, (DARWIN ? 8 : 6)
+    @server = nil
+  end
+
   def test_prune_bundler_with_multiple_workers
     skip_unless :fork
 
