@@ -19,7 +19,7 @@ class TestPumaControlCli < TestConfigFileBase
 
   def teardown
     @wait.close
-    @ready.close
+    @ready.close unless @ready.closed?
   end
 
   def with_config_file(path_to_config, port)
@@ -185,6 +185,41 @@ class TestPumaControlCli < TestConfigFileBase
     assert_command_cli_output opts + ["stop"], "Command stop sent success"
 
     assert_kind_of Thread, t.join, "server didn't stop"
+  end
+
+  # This checks that a 'signal only' command is sent
+  # they are defined by the `Puma::ControlCLI::NO_REQ_COMMANDS` array
+  #
+  def test_control_url_with_signal_only_cmd
+    skip_if :windows
+    host = "127.0.0.1"
+    port = UniquePort.call
+    url = "tcp://#{host}:#{port}/"
+
+    opts = [
+      "--control-url", url,
+      "--control-token", "ctrl",
+      "--config-file", "test/config/app.rb",
+      "--pid", "1234"
+    ]
+    cmd = 'refork'
+    log = ''.dup
+    control_cli = Puma::ControlCLI.new (opts + [cmd]), @ready, @ready
+
+    def control_cli.send_signal
+      message "send_signal #{@command}\n"
+    end
+    def control_cli.send_request
+      message "send_request #{@command}\n"
+    end
+
+    control_cli.run
+    @ready.close
+
+    log = @wait.read
+
+    assert_includes log, "send_signal #{cmd}"
+    refute_includes log, 'send_request'
   end
 
   def test_control_ssl

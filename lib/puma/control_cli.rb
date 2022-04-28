@@ -268,7 +268,7 @@ module Puma
       return start if @command == 'start'
       prepare_configuration
 
-      if Puma.windows? || @control_url
+      if Puma.windows? || @control_url && !NO_REQ_COMMANDS.include?(@command)
         send_request
       else
         send_signal
