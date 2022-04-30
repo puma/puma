@@ -71,8 +71,32 @@ module Puma
         cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
         key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
 
+        reuse_flag =
+          if (reuse = opts[:reuse])
+            if reuse == true
+              '&reuse=dflt'
+            elsif reuse.is_a?(Hash) && (reuse.key?(:size) || reuse.key?(:timeout))
+              val = ''.dup
+              if (size = reuse[:size]) && Integer === size
+                val << size.to_s
+              end
+              if (timeout = reuse[:timeout]) && Integer === timeout
+                val << ",#{timeout}"
+              end
+              if val.empty?
+                nil
+              else
+                "&reuse=#{val}"
+              end
+            else
+              nil
+            end
+          else
+            nil
+          end
+
         "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{ssl_cipher_filter}" \
-          "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
+          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
       end
     end
 
@@ -454,6 +478,10 @@ module Puma
     # Puma will assume you are using the +localhost+ gem and try to load the
     # appropriate files.
     #
+    # When using the options hash parameter, the `reuse:` value is either
+    # `true`, which sets reuse 'on' with default values, or a hash, with `:size`
+    # and/or `:timeout` keys, each with integer values.
+    #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert: path_to_cert,
@@ -461,6 +489,7 @@ module Puma
     #     ssl_cipher_filter: cipher_filter, # optional
     #     verify_mode: verify_mode,         # default 'none'
     #     verification_flags: flags,        # optional, not supported by JRuby
+    #     reuse: true                       # optional
     #   }
     #
     # @example Using self-signed certificate with the +localhost+ gem:
@@ -470,6 +499,7 @@ module Puma
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert_pem: File.read(path_to_cert),
     #     key_pem: File.read(path_to_key),
+    #     reuse: {size: 2_000, timeout: 20}
     #   }
     #
     # @example For JRuby, two keys are required: +keystore+ & +keystore_pass+

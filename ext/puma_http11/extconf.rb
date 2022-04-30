@@ -30,13 +30,14 @@ unless ENV["PUMA_DISABLE_SSL"]
     have_header "openssl/bio.h"
 
     # below is  yes for 1.0.2 & later
-    have_func  "DTLS_method"                           , "openssl/ssl.h"
+    have_func "DTLS_method"                            , "openssl/ssl.h"
+    have_func "SSL_CTX_set_session_cache_mode(NULL, 0)", "openssl/ssl.h"
 
     # below are yes for 1.1.0 & later
-    have_func  "TLS_server_method"                     , "openssl/ssl.h"
-    have_func  "SSL_CTX_set_min_proto_version(NULL, 0)", "openssl/ssl.h"
+    have_func "TLS_server_method"                      , "openssl/ssl.h"
+    have_func "SSL_CTX_set_min_proto_version(NULL, 0)" , "openssl/ssl.h"
 
-    have_func  "X509_STORE_up_ref"
+    have_func "X509_STORE_up_ref"
     have_func "SSL_CTX_set_ecdh_auto(NULL, 0)"         , "openssl/ssl.h"
 
     # below exists in 1.1.0 and later, but isn't documented until 3.0.0
