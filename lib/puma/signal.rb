@@ -10,11 +10,20 @@ module Puma
 
     # Signal.trap that does not replace
     # the existing puma handlers
-    def trap(sig, &handler)
+    def trap(sig, handler_str=nil, &handler)
       name = signame(sig)
       ::Signal.trap(name) do
         invoke_custom_signal_handlers(name)
-        yield handler
+
+        if handler.respond_to?(:call)
+          handler.call
+        else
+          # dirty hack to call string handlers
+          # especially for DEFAULT and SYSTEM_DEFAULT
+          current_trap = ::Signal.trap(name, handler_str)
+          Process.kill(name, Process.pid)
+          ::Signal.trap(name, current_trap)
+        end
       end
     end
 

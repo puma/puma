@@ -30,12 +30,9 @@ module Puma
         title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
         $0 = title
 
-        Puma::Signal.trap "SIGINT" do
-        end
+        Puma::Signal.trap "SIGINT", "IGNORE"
 
-        Puma::Signal.trap "SIGCHLD" do |signal|
-          raise SignalException, signal
-        end
+        Puma::Signal.trap "SIGCHLD", "DEFAULT"
 
         Thread.new do
           Puma.set_thread_name "wrkr check"
