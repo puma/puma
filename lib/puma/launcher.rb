@@ -8,7 +8,6 @@ require 'puma/single'
 require 'puma/const'
 require 'puma/binder'
 require 'puma/signal'
-require 'puma/launcher/bundle_pruner'
 
 module Puma
   # Puma::Launcher is the single entry point for starting a Puma server based on user
@@ -18,6 +17,8 @@ module Puma
   # It is responsible for either launching a cluster of Puma workers or a single
   # puma server.
   class Launcher
+    autoload :BundlePruner, 'puma/launcher/bundle_pruner'
+
     # @deprecated 6.0.0
     KEYS_NOT_TO_PERSIST_IN_STATE = [
        :logger, :lowlevel_error_handler,

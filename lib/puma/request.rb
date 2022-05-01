@@ -182,7 +182,11 @@ module Puma
           res_body.close if res_body.respond_to? :close
         end
 
-        after_reply.each { |o| o.call }
+        begin
+          after_reply.each { |o| o.call }
+        rescue StandardError => e
+          @log_writer.debug_error e
+        end
       end
 
       res_info[:keep_alive]

@@ -2,7 +2,6 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "rdoc"
 gem "rake-compiler", "~> 1.1.1"
 
 gem "json", "~> 2.3"

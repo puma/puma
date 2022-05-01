@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: repo checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: load ruby
         uses: MSP-Greg/setup-ruby-pkgs@v1
@@ -49,9 +49,9 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
+          # below is only needed for Rubies 2.4 and earlier
           mingw: openssl ragel
           bundler-cache: true
-          setup-ruby-ref: MSP-Greg/ruby-setup-ruby/gem-update
         timeout-minutes: 10
 
       # Windows error thrown, doesn't affect CI

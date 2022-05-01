@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: repo checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: set JAVA_HOME
         if: startsWith(matrix.os, 'macos')
