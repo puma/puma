@@ -16,7 +16,7 @@ module Puma
         invoke_custom_signal_handlers(name)
 
         if handler.respond_to?(:call)
-          handler.call
+          yield handler
         else
           # dirty hack to call string handlers
           # especially for DEFAULT and SYSTEM_DEFAULT
