@@ -26,6 +26,7 @@ jobs:
   ragel:
     name: >-
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
+    needs: rubocop
 
     runs-on: ${{ matrix.os }}
     if: |
