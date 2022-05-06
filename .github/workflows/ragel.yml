@@ -22,7 +22,7 @@ jobs:
           ruby-version: 2.6
           bundler-cache: true # `bundle install` and cache
       - name: rubocop
-        run: bundle exec rake rubocop
+        run: bundle exec rake rubocop ext
   ragel:
     name: >-
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
