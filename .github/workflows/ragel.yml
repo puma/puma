@@ -1,8 +1,28 @@
 name: ragel
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths:
+      - 'ext/**'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'ext/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
+  rubocop:
+    name: 'Rubocop linting'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: MSP-Greg/setup-ruby-pkgs@v1
+        with:
+          ruby-version: 2.6
+          bundler-cache: true # `bundle install` and cache
+      - name: rubocop
+        run: bundle exec rake rubocop
   ragel:
     name: >-
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
