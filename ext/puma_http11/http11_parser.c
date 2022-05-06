@@ -297,7 +297,7 @@ case 13:
 tr18:
 #line 65 "ext/puma_http11/http11_parser.rl"
 	{
-    parser->http_version(parser, PTR_TO(mark), LEN(mark, p));
+    parser->server_protocol(parser, PTR_TO(mark), LEN(mark, p));
   }
 	goto st14;
 tr26:

@@ -38,8 +38,8 @@
   Method = ( upper | digit | safe ){1,20} >mark %request_method;
 
   http_number = ( digit+ "." digit+ ) ;
-  HTTP_Version = ( "HTTP/" http_number ) >mark %http_version ;
-  Request_Line = ( Method " " Request_URI ("#" Fragment){0,1} " " HTTP_Version CRLF ) ;
+  Server_Protocol = ( "HTTP/" http_number ) >mark %server_protocol ;
+  Request_Line = ( Method " " Request_URI ("#" Fragment){0,1} " " Server_Protocol CRLF ) ;
 
   field_name = ( token -- ":" )+ >start_field $snake_upcase_field %write_field;
 

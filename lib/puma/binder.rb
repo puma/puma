@@ -51,7 +51,6 @@ module Puma
         # infer properly.
 
         "QUERY_STRING".freeze => "",
-        SERVER_PROTOCOL => HTTP_11,
         SERVER_SOFTWARE => PUMA_SERVER_STRING,
         GATEWAY_INTERFACE => CGI_VER
       }
