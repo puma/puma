@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'ext/**'
-      - '.github/workflows/**'
+      - '.github/workflows/ragel.yml'
   pull_request:
     paths:
       - 'ext/**'
@@ -12,21 +12,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  rubocop:
-    name: 'Rubocop linting'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 2.6
-          bundler-cache: true # `bundle install` and cache
-      - name: rubocop
-        run: bundle exec rubocop ext
   ragel:
     name: >-
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
-    needs: rubocop
 
     runs-on: ${{ matrix.os }}
     if: |
