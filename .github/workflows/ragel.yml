@@ -8,7 +8,7 @@ on:
   pull_request:
     paths:
       - 'ext/**'
-      - '.github/workflows/**'
+      - '.github/workflows/ragel.yml'
   workflow_dispatch:
 
 jobs:
