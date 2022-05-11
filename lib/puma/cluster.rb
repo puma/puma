@@ -269,7 +269,7 @@ module Puma
         booted_workers: worker_status.count { |w| w[:booted] },
         old_workers: old_worker_count,
         worker_status: worker_status,
-      }
+      }.merge(super)
     end
 
     def preload?
