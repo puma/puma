@@ -1,6 +1,15 @@
 name: ragel
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths:
+      - 'ext/**'
+      - '.github/workflows/ragel.yml'
+  pull_request:
+    paths:
+      - 'ext/**'
+      - '.github/workflows/ragel.yml'
+  workflow_dispatch:
 
 jobs:
   ragel:
