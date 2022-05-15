@@ -62,7 +62,7 @@ class TestIntegrationPumactl < TestIntegration
     skip_unless :fork
     cli_server "-q -w #{workers} test/rackup/sleep.ru --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
 
-    start = Time.now
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
     s = UNIXSocket.new @bind_path
     @ios_to_close << s
@@ -89,7 +89,7 @@ class TestIntegrationPumactl < TestIntegration
 
     _, status = Process.wait2(@pid)
     assert_equal 0, status
-    assert_operator Time.now - start, :<, (DARWIN ? 8 : 6)
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, :<, (DARWIN ? 8 : 7)
     @server = nil
   end
 
