@@ -39,6 +39,8 @@ jobs:
           - { os: windows-2022 , ruby: 2.7  , no-ssl: ' no SSL' }
           - { os: ubuntu-20.04 , ruby: head , yjit: ' yjit' }
           - { os: ubuntu-20.04 , ruby: 2.7  , no-ssl: ' no SSL' }
+          - { os: ubuntu-22.04 , ruby: 3.1  }
+          - { os: ubuntu-22.04 , ruby: head }
 
         exclude:
           - { os: ubuntu-20.04 , ruby: 2.2  }
