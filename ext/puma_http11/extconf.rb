@@ -14,6 +14,8 @@ unless ENV["DISABLE_SSL"]
   found_ssl = if (!$mingw || RUBY_VERSION >= '2.4') && (t = pkg_config 'openssl')
     puts 'using OpenSSL pkgconfig (openssl.pc)'
     true
+  elsif have_library('libcrypto', 'BIO_read') && have_library('libssl', 'SSL_CTX_new')
+    true
   elsif %w'crypto libeay32'.find {|crypto| have_library(crypto, 'BIO_read')} &&
       %w'ssl ssleay32'.find {|ssl| have_library(ssl, 'SSL_CTX_new')}
     true
