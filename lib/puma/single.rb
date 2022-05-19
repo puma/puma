@@ -17,7 +17,7 @@ module Puma
     def stats
       {
         started_at: @started_at.utc.iso8601
-      }.merge(@server.stats)
+      }.merge(@server.stats).merge(super)
     end
 
     def restart
