@@ -53,8 +53,9 @@ module Puma
       self
     end
 
+    # This is used as singleton class, so can't have state.
     def closed?
-      true
+      false
     end
   end
 end
