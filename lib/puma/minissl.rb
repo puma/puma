@@ -231,7 +231,11 @@ module Puma
         end
 
         def truststore=(truststore)
-          raise ArgumentError, "No such truststore file '#{truststore}'" unless File.exist? truststore
+          # NOTE: historically truststore was assumed the same as keystore, this is kept for backwards
+          # compatibility, to rely on JVM's trust defaults we allow setting `truststore = :default`
+          unless truststore.eql?(:default)
+            raise ArgumentError, "No such truststore file '#{truststore}'" unless File.exist?(truststore)
+          end
           @truststore = truststore
         end
 

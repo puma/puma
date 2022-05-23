@@ -405,7 +405,26 @@ class TestPumaServerSSLClient < Minitest::Test
     ctx.truststore_pass = 'jruby_puma'
     ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER
 
-    assert_ssl_client_error_match(true, context: ctx) do |http| # TODO
+    assert_ssl_client_error_match(true, context: ctx) do |http|
+      key = "#{CERT_PATH}/client.key"
+      crt = "#{CERT_PATH}/client.crt"
+      http.key = OpenSSL::PKey::RSA.new File.read(key)
+      http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+      http.ca_file = "#{CERT_PATH}/ca.crt"
+      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    end
+  end if Puma.jruby?
+
+  def test_allows_using_default_truststore
+    ctx = Puma::MiniSSL::Context.new
+    ctx.keystore = "#{CERT_PATH}/server.p12"
+    ctx.keystore_type = 'pkcs12'
+    ctx.keystore_pass = 'jruby_puma'
+    ctx.truststore = :default
+    # NOTE: a little hard to test - we're at least asserting that setting :default does not raise errors
+    ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
+
+    assert_ssl_client_error_match(false, context: ctx) do |http|
       key = "#{CERT_PATH}/client.key"
       crt = "#{CERT_PATH}/client.crt"
       http.key = OpenSSL::PKey::RSA.new File.read(key)
