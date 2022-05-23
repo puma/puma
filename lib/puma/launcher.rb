@@ -59,6 +59,10 @@ module Puma
 
       @environment = conf.environment
 
+      if ENV["NOTIFY_SOCKET"]
+        @config.plugins.create('systemd')
+      end
+
       if @config.options[:bind_to_activated_sockets]
         @config.options[:binds] = @binder.synthesize_binds_from_activated_fs(
           @config.options[:binds],
@@ -180,7 +184,6 @@ module Puma
 
       setup_signals
       set_process_title
-      integrate_with_systemd
 
       # This blocks until the server is stopped
       @runner.run
@@ -309,28 +312,6 @@ module Puma
 
     def reload_worker_directory
       @runner.reload_worker_directory if @runner.respond_to?(:reload_worker_directory)
-    end
-
-    # Puma's systemd integration allows Puma to inform systemd:
-    #  1. when it has successfully started
-    #  2. when it is starting shutdown
-    #  3. periodically for a liveness check with a watchdog thread
-    def integrate_with_systemd
-      return unless ENV["NOTIFY_SOCKET"]
-
-      begin
-        require_relative 'systemd'
-      rescue LoadError
-        log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have sd_notify gem installed"
-        return
-      end
-
-      log "* Enabling systemd notification integration"
-
-      systemd = Systemd.new(@log_writer, @events)
-      systemd.hook_events
-      systemd.start_status_loop
-      systemd.start_watchdog
     end
 
     def log(str)
