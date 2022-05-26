@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'puma/const'
+require 'puma/util'
 
 module Puma
   # The methods that are available for use inside the configuration file.
@@ -46,7 +47,7 @@ module Puma
         else ''
         end
 
-      ca_additions = "&ca=#{opts[:ca]}" if ['peer', 'force_peer'].include?(verify)
+      ca_additions = "&ca=#{Puma::Util.escape(opts[:ca])}" if ['peer', 'force_peer'].include?(verify)
 
       backlog_str = opts[:backlog] ? "&backlog=#{Integer(opts[:backlog])}" : ''
 
@@ -65,7 +66,10 @@ module Puma
         v_flags = (ary = opts[:verification_flags]) ?
           "&verification_flags=#{Array(ary).join ','}" : nil
 
-        "ssl://#{host}:#{port}?cert=#{opts[:cert]}&key=#{opts[:key]}" \
+        cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
+        key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
+
+        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}" \
           "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
       end
     end

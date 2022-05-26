@@ -298,7 +298,7 @@ RUBY
     while (line = @server.gets) =~ /^LOAD_PATH/
       load_path << line.gsub(/^LOAD_PATH: /, '')
     end
-    assert_match(%r{gems/rdoc-[\d.]+/lib$}, load_path.last)
+    assert_match(%r{gems/minitest-[\d.]+/lib$}, load_path.last)
   end
 
   def test_load_path_does_not_include_nio4r

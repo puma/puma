@@ -14,6 +14,8 @@ unless ENV["DISABLE_SSL"]
   found_ssl = if (!$mingw || RUBY_VERSION >= '2.4') && (t = pkg_config 'openssl')
     puts 'using OpenSSL pkgconfig (openssl.pc)'
     true
+  elsif have_library('libcrypto', 'BIO_read') && have_library('libssl', 'SSL_CTX_new')
+    true
   elsif %w'crypto libeay32'.find {|crypto| have_library(crypto, 'BIO_read')} &&
       %w'ssl ssleay32'.find {|ssl| have_library(ssl, 'SSL_CTX_new')}
     true
@@ -35,7 +37,10 @@ unless ENV["DISABLE_SSL"]
     have_func  "X509_STORE_up_ref"
     have_func "SSL_CTX_set_ecdh_auto(NULL, 0)"         , "openssl/ssl.h"
 
-    # below are yes for 3.0.0 & later, use for OpenSSL 3 detection
+    # below exists in 1.1.0 and later, but isn't documented until 3.0.0
+    have_func "SSL_CTX_set_dh_auto(NULL, 0)"           , "openssl/ssl.h"
+
+    # below is yes for 3.0.0 & later
     have_func "SSL_get1_peer_certificate"              , "openssl/ssl.h"
 
     # Random.bytes available in Ruby 2.5 and later, Random::DEFAULT deprecated in 3.0

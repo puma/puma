@@ -68,10 +68,7 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    bind_configuration = conf.options.file_options[:binds].first
-    app = conf.app
-
-    ssl_binding = "ssl://0.0.0.0:9292?cert=&key=&verify_mode=none"
+    ssl_binding = "ssl://0.0.0.0:9292?&verify_mode=none"
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
@@ -102,7 +99,26 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode"
+    ssl_binding = "ssl://0.0.0.0:9292?cert=%2Fpath%2Fto%2Fcert&key=%2Fpath%2Fto%2Fkey&verify_mode=the_verify_mode"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
+  def test_ssl_bind_with_escaped_filenames
+    skip_if :jruby
+    skip_unless :ssl
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "/path/to/cert+1",
+        ca: "/path/to/ca+1",
+        key: "/path/to/key+1",
+        verify_mode: :peer
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?cert=%2Fpath%2Fto%2Fcert%2B1&key=%2Fpath%2Fto%2Fkey%2B1&verify_mode=peer&ca=%2Fpath%2Fto%2Fca%2B1"
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
@@ -124,7 +140,7 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=store:0&key=store:1&verify_mode=the_verify_mode"
+    ssl_binding = "ssl://0.0.0.0:9292?cert=store%3A0&key=store%3A1&verify_mode=the_verify_mode"
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
@@ -181,7 +197,7 @@ class TestConfigFile < TestConfigFileBase
 
     conf.load
 
-    ssl_binding = "ssl://0.0.0.0:9292?cert=/path/to/cert&key=/path/to/key&verify_mode=the_verify_mode&no_tlsv1_1=true"
+    ssl_binding = "ssl://0.0.0.0:9292?cert=%2Fpath%2Fto%2Fcert&key=%2Fpath%2Fto%2Fkey&verify_mode=the_verify_mode&no_tlsv1_1=true"
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
@@ -236,8 +252,8 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     ssl_binding = conf.options[:binds].first
-    assert_match "ca=/path/to/ca", ssl_binding
-    assert_match "verify_mode=peer", ssl_binding
+    assert_includes ssl_binding, Puma::Util.escape("/path/to/ca")
+    assert_includes ssl_binding, "verify_mode=peer"
   end
 
   def test_lowlevel_error_handler_DSL

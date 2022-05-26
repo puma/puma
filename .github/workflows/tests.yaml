@@ -1,0 +1,177 @@
+name: Tests
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  rubocop:
+    name: 'Rubocop linting'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+          bundler-cache: true # `bundle install` and cache
+      - name: rubocop
+        run: bundle exec rake rubocop
+
+  test_mri:
+    name: >-
+      MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}
+    needs: rubocop
+    env:
+      CI: true
+      TESTOPTS: -v
+      PUMA_NO_RUBOCOP: true
+
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]'))
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, macos-11, windows-2022 ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, head ]
+        no-ssl: ['']
+        yjit: ['']
+        include:
+          - { os: windows-2022 , ruby: ucrt }
+          - { os: windows-2022 , ruby: mswin }
+          - { os: windows-2022 , ruby: 2.7  , no-ssl: ' no SSL' }
+          - { os: ubuntu-20.04 , ruby: head , yjit: ' yjit' }
+          - { os: ubuntu-20.04 , ruby: 2.7  , no-ssl: ' no SSL' }
+          - { os: ubuntu-22.04 , ruby: 3.1  }
+          - { os: ubuntu-22.04 , ruby: head }
+
+        exclude:
+          - { os: ubuntu-20.04 , ruby: 2.2  }
+          - { os: ubuntu-20.04 , ruby: 2.3  }
+          - { os: windows-2022 , ruby: head }
+          - { os: macos-10.15  , ruby: 2.6  }
+          - { os: macos-10.15  , ruby: 2.7  }
+          - { os: macos-10.15  , ruby: '3.0'}
+          - { os: macos-10.15  , ruby: 3.1  }
+          - { os: macos-11     , ruby: 2.2  }
+          - { os: macos-11     , ruby: 2.3  }
+          - { os: macos-11     , ruby: 2.4  }
+
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v3
+
+      - name: load ruby
+        uses: ruby/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          apt-get: ragel
+          brew: ragel
+          # below is only needed for Rubies 2.4 and earlier
+          mingw: openssl ragel
+          bundler-cache: true
+        timeout-minutes: 10
+
+      # Windows error thrown, doesn't affect CI
+      - name: update rubygems for Ruby 2.2
+        if: matrix.ruby < '2.3'
+        run: gem update --system 2.7.11 --no-document
+        continue-on-error: true
+        timeout-minutes: 5
+
+      - name: Compile Puma without SSL support
+        if: matrix.no-ssl == ' no SSL'
+        shell: bash
+        run: echo 'DISABLE_SSL=true' >> $GITHUB_ENV
+
+      - name: set WERRORFLAG
+        shell: bash
+        run: echo 'MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
+
+      - name: compile
+        run:  bundle exec rake compile
+
+      - name: Use yjit
+        if: matrix.yjit == ' yjit'
+        shell: bash
+        run: echo 'RUBYOPT=--yjit' >> $GITHUB_ENV
+
+      - name: test
+        timeout-minutes: 10
+        run: bundle exec rake test:all
+  test_non_mri:
+    name: >-
+      NON-MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
+    needs: rubocop
+    env:
+      CI: true
+      TESTOPTS: -v
+      PUMA_NO_RUBOCOP: true
+
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-20.04 , ruby: jruby }
+          - { os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
+          - { os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
+          - { os: ubuntu-20.04 , ruby: truffleruby }
+          - { os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
+          - { os: macos-10.15  , ruby: jruby }
+          - { os: macos-10.15  , ruby: truffleruby }
+          - { os: macos-11     , ruby: jruby }
+          - { os: macos-11     , ruby: truffleruby }
+
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v3
+
+      - name: set JAVA_HOME
+        if: startsWith(matrix.os, 'macos')
+        shell: bash
+        run:  |
+          echo JAVA_HOME=$JAVA_HOME_11_X64 >> $GITHUB_ENV
+
+      - name: load ruby, ragel
+        uses: ruby/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          apt-get: ragel
+          brew: ragel
+          bundler: none
+          bundler-cache: true
+        timeout-minutes: 10
+
+      - name: Compile Puma without SSL support
+        if: matrix.no-ssl == ' no SSL'
+        shell: bash
+        run: echo 'DISABLE_SSL=true' >> $GITHUB_ENV
+
+      - name: set WERRORFLAG
+        shell: bash
+        run: echo 'MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
+
+      - name: compile
+        run:  bundle exec rake compile
+
+      - name: test
+        id: test
+        timeout-minutes: 12
+        continue-on-error: ${{ matrix.allow-failure || false }}
+        if: success() # only run if previous steps have succeeded
+        run: bundle exec rake test:all
+
+      - name: >-
+          Test outcome: ${{ steps.test.outcome }}
+        # every step must define a `uses` or `run` key
+        run: echo NOOP

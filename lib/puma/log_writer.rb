@@ -3,6 +3,7 @@
 require 'puma/null_io'
 require 'puma/error_logger'
 require 'stringio'
+require 'io/wait'
 
 module Puma
 
@@ -59,14 +60,18 @@ module Puma
       if @custom_logger
         @custom_logger.write(format(str))
       else
+        @stdout.is_a?(IO) and @stdout.wait_writable(1)
         @stdout.puts(format(str)) if @stdout.respond_to? :puts
         @stdout.flush unless @stdout.sync
       end
-    rescue Errno::EPIPE
+    rescue Errno::EPIPE, Errno::EBADF
     end
 
     def write(str)
+      @stdout.is_a?(IO) and @stdout.wait_writable(1)
       @stdout.write(format(str))
+      @stdout.flush unless @stdout.sync
+    rescue Errno::EPIPE, Errno::EBADF
     end
 
     def debug(str)
