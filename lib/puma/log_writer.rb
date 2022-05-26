@@ -56,11 +56,12 @@ module Puma
 
     # Write +str+ to +@stdout+
     def log(str)
-      @stdout.puts(format(str)) if @stdout.respond_to? :puts
-
-      @stdout.flush unless @stdout.sync
-
-      @custom_logger.write(format(str)) if @custom_logger
+      if @custom_logger
+        @custom_logger.write(format(str))
+      else
+        @stdout.puts(format(str)) if @stdout.respond_to? :puts
+        @stdout.flush unless @stdout.sync
+      end
     rescue Errno::EPIPE
     end
 
