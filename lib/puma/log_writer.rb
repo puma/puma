@@ -57,18 +57,22 @@ module Puma
 
     # Write +str+ to +@stdout+
     def log(str)
-      @stdout.is_a?(IO) and @stdout.wait_writable(1)
-      @stdout.puts(format(str)) if @stdout.respond_to? :puts
-      @stdout.flush unless @stdout.sync
-    rescue Errno::EPIPE, Errno::EBADF
+      if @stdout.respond_to? :puts
+        internal_write { @stdout.puts format(str) }
+      end
     end
 
     def write(str)
+      internal_write { @stdout.write format(str) }
+    end
+
+    def internal_write
       @stdout.is_a?(IO) and @stdout.wait_writable(1)
-      @stdout.write(format(str))
+      yield
       @stdout.flush unless @stdout.sync
     rescue Errno::EPIPE, Errno::EBADF
     end
+    private :internal_write
 
     def debug(str)
       log("% #{str}") if @debug
