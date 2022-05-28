@@ -85,6 +85,13 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
 
+      # fixes 'has a bug that prevents `required_ruby_version`'
+      - name: update rubygems for Ruby 2.3 - 2.5
+        if: contains('2.3 2.4 2.5', matrix.ruby)
+        run: gem update --system 3.3.14 --no-document
+        continue-on-error: true
+        timeout-minutes: 5
+
       - name: Compile Puma without SSL support
         if: matrix.no-ssl == ' no SSL'
         shell: bash
