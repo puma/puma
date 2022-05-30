@@ -56,8 +56,14 @@ module Puma
           "&ssl_cipher_list=#{opts[:ssl_cipher_list]}" : nil
 
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
+        keystore_additions = "#{keystore_additions}&keystore-type=#{opts[:keystore_type]}" if opts[:keystore_type]
+        if opts[:truststore]
+          truststore_additions = "&truststore=#{opts[:truststore]}"
+          truststore_additions = "#{truststore_additions}&truststore-pass=#{opts[:truststore_pass]}" if opts[:truststore_pass]
+          truststore_additions = "#{truststore_additions}&truststore-type=#{opts[:truststore_type]}" if opts[:truststore_type]
+        end
 
-        "ssl://#{host}:#{port}?#{keystore_additions}#{ssl_cipher_list}" \
+        "ssl://#{host}:#{port}?#{keystore_additions}#{truststore_additions}#{ssl_cipher_list}" \
           "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{backlog_str}"
       else
         ssl_cipher_filter = opts[:ssl_cipher_filter] ?
