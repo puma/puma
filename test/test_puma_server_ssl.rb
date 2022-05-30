@@ -335,8 +335,8 @@ class TestPumaServerSSLClient < Minitest::Test
         req = Net::HTTP::Get.new "/", {}
         http.request(req)
       end
-    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET => e
-      # Errno::ECONNRESET TruffleRuby
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET, IOError => e
+      # Errno::ECONNRESET TruffleRuby, IOError macOS JRuby
       client_error = e
       # closes socket if open, may not close on error
       http.send :do_finish
