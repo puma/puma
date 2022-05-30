@@ -118,11 +118,12 @@ module TestSkips
 
   SIGNAL_LIST = Signal.list.keys.map(&:to_sym) - (Puma.windows? ? [:INT, :TERM] : [])
 
-  JRUBY_HEAD = Puma::IS_JRUBY && RUBY_DESCRIPTION =~ /SNAPSHOT/
+  JRUBY_HEAD = Puma::IS_JRUBY && RUBY_DESCRIPTION.include?('SNAPSHOT')
 
   DARWIN = RUBY_PLATFORM.include? 'darwin'
 
   TRUFFLE = RUBY_ENGINE == 'truffleruby'
+  TRUFFLE_HEAD = TRUFFLE && RUBY_DESCRIPTION.include?('-dev-')
 
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
