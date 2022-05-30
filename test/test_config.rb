@@ -168,6 +168,30 @@ class TestConfigFile < TestConfigFileBase
     assert_equal [ssl_binding], conf.options[:binds]
   end
 
+  def test_ssl_bind_jruby_with_truststore
+    skip_unless :jruby
+    skip_unless :ssl
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+          keystore: "/path/to/keystore",
+          keystore_type: "pkcs12",
+          keystore_pass: "password",
+          truststore: "default",
+          truststore_type: "jks",
+          verify_mode: "none"
+      }
+    end
+
+    conf.load
+
+    ssl_binding = "ssl://0.0.0.0:9292?keystore=/path/to/keystore" \
+      "&keystore-pass=password&keystore-type=pkcs12" \
+      "&truststore=default&truststore-type=jks" \
+      "&verify_mode=none"
+    assert_equal [ssl_binding], conf.options[:binds]
+  end
+
   def test_ssl_bind_no_tlsv1_1
     skip_if :jruby
     skip_unless :ssl
