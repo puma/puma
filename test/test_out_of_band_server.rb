@@ -15,7 +15,15 @@ class TestOutOfBandServer < Minitest::Test
     @oob_finished.broadcast
     @app_finished.broadcast
     @server.stop(true) if @server
-    @ios.each {|i| i.close unless i.closed?}
+
+    @ios.each do |io|
+      begin
+        io.close if io.is_a?(IO) && !io.closed?
+      rescue
+      ensure
+        io = nil
+      end
+    end
   end
 
   def new_connection

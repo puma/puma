@@ -22,6 +22,7 @@ class TestIntegration < Minitest::Test
 
   def setup
     @server = nil
+    @pid = nil
     @ios_to_close = []
     @bind_path    = tmp_path('.sock')
   end
@@ -35,8 +36,12 @@ class TestIntegration < Minitest::Test
 
     if @ios_to_close
       @ios_to_close.each do |io|
-        io.close if io.is_a?(IO) && !io.closed?
-        io = nil
+        begin
+          io.close if io.is_a?(IO) && !io.closed?
+        rescue
+        ensure
+          io = nil
+        end
       end
     end
 
@@ -47,8 +52,12 @@ class TestIntegration < Minitest::Test
 
     # wait until the end for OS buffering?
     if @server
-      @server.close unless @server.closed?
-      @server = nil
+      begin
+        @server.close unless @server.closed?
+      rescue
+      ensure
+        @server = nil
+      end
     end
   end
 
@@ -114,6 +123,8 @@ class TestIntegration < Minitest::Test
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(log: false)
+    sleep 0.05 until @server.is_a?(IO)
+    @server.wait_readable 1
     if log
       puts "Waiting for server to boot..."
       begin
@@ -122,7 +133,6 @@ class TestIntegration < Minitest::Test
       end until line && line.include?('Ctrl-C')
       puts "Server booted!"
     else
-      sleep 0.1 until @server.is_a?(IO)
       true until (@server.gets || '').include?('Ctrl-C')
     end
   end
