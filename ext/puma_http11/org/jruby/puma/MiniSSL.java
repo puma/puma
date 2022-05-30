@@ -226,13 +226,13 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
 
     String[] protocols;
     if (miniSSLContext.callMethod(context, "no_tlsv1").isTrue()) {
-        protocols = new String[] { "TLSv1.1", "TLSv1.2" };
+        protocols = new String[] { "TLSv1.1", "TLSv1.2", "TLSv1.3" };
     } else {
-        protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" };
+        protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3" };
     }
 
     if (miniSSLContext.callMethod(context, "no_tlsv1_1").isTrue()) {
-        protocols = new String[] { "TLSv1.2" };
+        protocols = new String[] { "TLSv1.2", "TLSv1.3" };
     }
 
     engine.setEnabledProtocols(protocols);

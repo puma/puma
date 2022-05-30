@@ -193,6 +193,25 @@ class TestPumaServerSSL < Minitest::Test
     end
   end
 
+  def test_tls_v1_3
+    skip("TLSv1.3 protocol can not be set") unless OpenSSL::SSL::SSLContext.instance_methods(false).include?(:min_version=)
+
+    start_server
+
+    @http.min_version = :TLS1_3
+
+    body = nil
+    @http.start do
+      req = Net::HTTP::Get.new '/'
+      @http.request(req) do |rep|
+        assert_equal 'OK', rep.message
+        body = rep.body
+      end
+    end
+
+    assert_equal "https", body
+  end
+
   def test_http_rejection
     body_http  = nil
     body_https = nil
@@ -316,8 +335,8 @@ class TestPumaServerSSLClient < Minitest::Test
         req = Net::HTTP::Get.new "/", {}
         http.request(req)
       end
-    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET => e
-      # Errno::ECONNRESET TruffleRuby
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET, IOError => e
+      # Errno::ECONNRESET TruffleRuby, IOError macOS JRuby
       client_error = e
       # closes socket if open, may not close on error
       http.send :do_finish
@@ -335,7 +354,7 @@ class TestPumaServerSSLClient < Minitest::Test
   end
 
   def test_verify_fail_if_no_client_cert
-    error = Puma.jruby? ? /Empty server certificate chain/ : 'peer did not return a certificate'
+    error = Puma.jruby? ? /Empty client certificate chain/ : 'peer did not return a certificate'
     assert_ssl_client_error_match(error) do |http|
       # nothing
     end
