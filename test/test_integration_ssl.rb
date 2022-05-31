@@ -16,7 +16,7 @@ class TestIntegrationSSL < TestIntegration
   require "openssl"
 
   def teardown
-    @server.close unless @server.closed?
+    @server.close if @server && !@server.closed?
     @server = nil
     super
   end
@@ -101,6 +101,63 @@ RUBY
     end
   end
 
+  def test_repro
+    skip_if :windows; require 'stringio'
+
+    app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
+    server = ::Puma::Server.new(app)
+    server.max_threads = 1
+    if ::Puma.jruby?
+      ssl_params = {
+          'keystore'      => File.expand_path('../examples/puma/client-certs/keystore.jks', __dir__),
+          'keystore-pass' => 'jruby_puma', # keystore includes server.p12 as well as ca.crt
+
+          # 'truststore'      => File.expand_path('../examples/puma/client-certs/ca_store.p12', __dir__),
+          # 'truststore-type' => 'pkcs12',
+      }
+    else
+      ssl_params = {
+          'cert' => File.expand_path('../examples/puma/client-certs/server.crt', __dir__),
+          'key'  => File.expand_path('../examples/puma/client-certs/server.key', __dir__),
+          'ca'   => File.expand_path('../examples/puma/client-certs/ca.crt', __dir__),
+      }
+    end
+    ssl_params['verify_mode'] = 'force_peer' # 'peer'
+    out_err = StringIO.new
+    ssl_context = Puma::MiniSSL::ContextBuilder.new(ssl_params, Puma::LogWriter.new(out_err, out_err)).context
+    server.add_ssl_listener(HOST, bind_port, ssl_context)
+
+    server.run(true)
+    begin
+      # http = Net::HTTP.new HOST, bind_port
+      # http.use_ssl = true
+      # http.ca_file = File.expand_path('../examples/puma/client-certs/ca.crt', __dir__)
+      # http.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path('../examples/puma/client-certs/client.crt', __dir__))
+      # http.key = OpenSSL::PKey::RSA.new File.read(File.expand_path('../examples/puma/client-certs/client.key', __dir__))
+      # http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      # body = nil
+      # http.start do
+      #   req = Net::HTTP::Get.new '/', {}
+      #   http.request(req) { |resp| body = resp.body }
+      # end
+
+      ca = File.expand_path('../examples/puma/client-certs/ca.crt', __dir__)
+      cert = File.expand_path('../examples/puma/client-certs/client.crt', __dir__)
+      key = File.expand_path('../examples/puma/client-certs/client.key', __dir__)
+      # NOTE: JRuby used to end up in a hang with TLS peer verification enabled
+      # it's easier to reproduce using an external client such as CURL (using net/http client the bug isn't triggered)
+      # also the "hang", being buffering related, seems to showcase better with TLS 1.2 than 1.3
+      body = curl_and_get_response "https://localhost:#{bind_port}",
+                                   args: "--cacert #{ca} --cert #{cert} --key #{key} --tlsv1.2 --tls-max 1.2"
+
+      warn out_err.string unless out_err.string.empty?
+      assert_equal 'HELLO THERE', body
+    ensure
+      server.stop(true)
+    end
+    assert_equal '', out_err.string
+  end
+
   def test_ssl_run_with_pem
     skip_if :jruby
 
@@ -154,4 +211,28 @@ RUBY
       assert_equal 'https', body
     end
   end
+
+  private
+
+  def curl_and_get_response(url, method: :get, args: nil); require 'open3'
+    cmd = "curl -s -v --show-error #{args} -X #{method.to_s.upcase} -k #{url}"
+    begin
+      out, err, status = Open3.capture3(cmd)
+    rescue Errno::ENOENT
+      fail "curl not available, make sure curl binary is installed and available on $PATH"
+    end
+
+    if status.success?
+      http_status = err.match(/< HTTP\/1.1 (.*?)/)[1] || '0' # < HTTP/1.1 200 OK\r\n
+      if http_status.strip[0].to_i > 2
+        warn out
+        fail "#{cmd.inspect} unexpected response: #{http_status}\n\n#{err}"
+      end
+      return out
+    else
+      warn out
+      fail "#{cmd.inspect} process failed: #{status}\n\n#{err}"
+    end
+  end
+
 end if ::Puma::HAS_SSL
