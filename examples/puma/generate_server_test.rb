@@ -40,6 +40,8 @@ module Generate
       cert.not_before = Time.new yr  , mo, 1, 0, 0, 0, zone
       cert.not_after  = Time.new yr+4, mo, 1, 0, 0, 0, zone
       cert.public_key = key.public_key
+      ef = OpenSSL::X509::ExtensionFactory.new
+      cert.add_extension(ef.create_extension('subjectAltName', 'DNS:localhost, IP:127.0.0.1', false))
       cert.sign ca_key, SIGN_ALGORITHM.new
       puts "New:", cert.to_text, ""
 
@@ -48,7 +50,7 @@ module Generate
         File.write FNK, key.to_pem , mode: 'wb'
       end
     rescue => e
-        puts "error: #{e.message}"
+      puts "error: #{e.inspect}"
     end
   end
 end
