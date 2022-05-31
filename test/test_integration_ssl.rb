@@ -101,19 +101,16 @@ RUBY
     end
   end
 
-  def test_repro
+  def test_ssl_run_with_curl_client
     skip_if :windows; require 'stringio'
 
     app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
-    server = ::Puma::Server.new(app)
+    server = Puma::Server.new(app)
     server.max_threads = 1
-    if ::Puma.jruby?
+    if Puma.jruby?
       ssl_params = {
           'keystore'      => File.expand_path('../examples/puma/client-certs/keystore.jks', __dir__),
           'keystore-pass' => 'jruby_puma', # keystore includes server.p12 as well as ca.crt
-
-          # 'truststore'      => File.expand_path('../examples/puma/client-certs/ca_store.p12', __dir__),
-          # 'truststore-type' => 'pkcs12',
       }
     else
       ssl_params = {
@@ -129,18 +126,6 @@ RUBY
 
     server.run(true)
     begin
-      # http = Net::HTTP.new HOST, bind_port
-      # http.use_ssl = true
-      # http.ca_file = File.expand_path('../examples/puma/client-certs/ca.crt', __dir__)
-      # http.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path('../examples/puma/client-certs/client.crt', __dir__))
-      # http.key = OpenSSL::PKey::RSA.new File.read(File.expand_path('../examples/puma/client-certs/client.key', __dir__))
-      # http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      # body = nil
-      # http.start do
-      #   req = Net::HTTP::Get.new '/', {}
-      #   http.request(req) { |resp| body = resp.body }
-      # end
-
       ca = File.expand_path('../examples/puma/client-certs/ca.crt', __dir__)
       cert = File.expand_path('../examples/puma/client-certs/client.crt', __dir__)
       key = File.expand_path('../examples/puma/client-certs/client.key', __dir__)
