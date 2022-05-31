@@ -17,25 +17,27 @@ module Puma
     CMD_PATH_SIG_MAP = {
       'gc'       => nil,
       'gc-stats' => nil,
-      'halt'     => 'SIGQUIT',
-      'phased-restart' => 'SIGUSR1',
-      'refork'   => 'SIGURG',
+      'halt'              => 'SIGQUIT',
+      'info'              => 'SIGINFO',
+      'phased-restart'    => 'SIGUSR1',
+      'refork'            => 'SIGURG',
       'reload-worker-directory' => nil,
-      'restart'  => 'SIGUSR2',
+      'reopen-log'        => 'SIGHUP',
+      'restart'           => 'SIGUSR2',
       'start'    => nil,
       'stats'    => nil,
       'status'   => '',
-      'stop'     => 'SIGTERM',
-      'thread-backtraces' => nil
+      'stop'              => 'SIGTERM',
+      'thread-backtraces' => nil,
+      'worker-count-down' => 'SIGTTOU',
+      'worker-count-up'   => 'SIGTTIN'
     }.freeze
 
     # @deprecated 6.0.0
     COMMANDS = CMD_PATH_SIG_MAP.keys.freeze
 
-    # Uncomment below statement & clause in run method statement if needed
-    #
     # commands that cannot be used in a request
-    # NO_REQ_COMMANDS = %w[].freeze
+    NO_REQ_COMMANDS = %w[info reopen-log worker-count-down worker-count-up].freeze
 
     # @version 5.0.0
     PRINTABLE_COMMANDS = %w[gc-stats stats thread-backtraces].freeze
@@ -268,7 +270,7 @@ module Puma
       return start if @command == 'start'
       prepare_configuration
 
-      if Puma.windows? || @control_url # && !NO_REQ_COMMANDS.include?(@command)
+      if Puma.windows? || @control_url && !NO_REQ_COMMANDS.include?(@command)
         send_request
       else
         send_signal
