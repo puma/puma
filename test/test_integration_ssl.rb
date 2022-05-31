@@ -56,14 +56,6 @@ class TestIntegrationSSL < TestIntegration
   end
 
   def test_ssl_run
-    do_test_ssl_run('none')
-  end
-
-  def test_ssl_run_verify_peer
-    do_test_ssl_run('peer')
-  end
-
-  def do_test_ssl_run(verify_mode)
     config = <<RUBY
 if ::Puma.jruby?
   keystore =  '#{File.expand_path '../examples/puma/keystore.jks', __dir__}'
@@ -72,7 +64,7 @@ if ::Puma.jruby?
   ssl_bind '#{HOST}', '#{bind_port}', {
     keystore: keystore,
     keystore_pass:  keystore_pass,
-    verify_mode: '#{verify_mode}'
+    verify_mode: 'none'
   }
 else
   key  = '#{File.expand_path '../examples/puma/puma_keypair.pem', __dir__}'
@@ -81,7 +73,7 @@ else
   ssl_bind '#{HOST}', '#{bind_port}', {
     cert: cert,
     key:  key,
-    verify_mode: '#{verify_mode}'
+    verify_mode: 'none'
   }
 end
 
