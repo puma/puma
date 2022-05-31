@@ -244,7 +244,11 @@ module Puma
           @stdout.flush unless @stdout.sync
           return
         elsif sig.start_with? 'SIG'
-          Process.kill sig, @pid
+          if Signal.list.key? sig.sub(/\ASIG/, '')
+            Process.kill sig, @pid
+          else
+            raise "Signal '#{sig}' not available'"
+          end
         elsif @command == 'status'
           begin
             Process.kill 0, @pid
