@@ -279,14 +279,6 @@ public class MiniSSL extends RubyObject {
       }
     }
 
-    // after each op, run any delegated tasks if needed
-    if(res.getHandshakeStatus() == HandshakeStatus.NEED_TASK) {
-      Runnable runnable;
-      while ((runnable = engine.getDelegatedTask()) != null) {
-        runnable.run();
-      }
-    }
-
     return res;
   }
 
@@ -304,11 +296,12 @@ public class MiniSSL extends RubyObject {
 
       HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
       boolean done = false;
-      SSLEngineResult res = null;
       while (!done) {
+        SSLEngineResult res;
         switch (handshakeStatus) {
           case NEED_WRAP:
             res = doOp(SSLOperation.WRAP, inboundAppData, outboundNetData);
+            handshakeStatus = res.getHandshakeStatus();
             break;
           case NEED_UNWRAP:
             res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
@@ -316,12 +309,17 @@ public class MiniSSL extends RubyObject {
               // need more data before we can shake more hands
               done = true;
             }
+            handshakeStatus = res.getHandshakeStatus();
+            break;
+          case NEED_TASK:
+            Runnable runnable;
+            while ((runnable = engine.getDelegatedTask()) != null) {
+              runnable.run();
+            }
+            handshakeStatus = engine.getHandshakeStatus();
             break;
           default:
             done = true;
-        }
-        if (!done) {
-          handshakeStatus = res.getHandshakeStatus();
         }
       }
 
