@@ -9,9 +9,11 @@ if $mingw && RUBY_VERSION >= '2.4'
 end
 
 unless ENV["DISABLE_SSL"]
-  dir_config("openssl")
+  # don't use pkg_config('openssl') if '--with-openssl-dir' is used
+  has_openssl_dir = dir_config('openssl').any?
+  found_pkg_config = !has_openssl_dir && pkg_config('openssl')
 
-  found_ssl = if (!$mingw || RUBY_VERSION >= '2.4') && (t = pkg_config 'openssl')
+  found_ssl = if (!$mingw || RUBY_VERSION >= '2.4') && found_pkg_config
     puts 'using OpenSSL pkgconfig (openssl.pc)'
     true
   elsif have_library('libcrypto', 'BIO_read') && have_library('libssl', 'SSL_CTX_new')

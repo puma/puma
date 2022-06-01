@@ -13,9 +13,9 @@ module Puma
     # Define constant at runtime, as it's easy to determine at built time,
     # but Puma could (it shouldn't) be loaded with an older OpenSSL version
     # @version 5.0.0
-    HAS_TLS1_3 = !IS_JRUBY &&
-      (OPENSSL_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) != -1 &&
-      (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) !=-1
+    HAS_TLS1_3 = IS_JRUBY ||
+        ((OPENSSL_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) != -1 &&
+         (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) !=-1)
 
     class Socket
       def initialize(socket, engine)
@@ -50,7 +50,7 @@ module Puma
       # is made with TLSv1.3 as an available protocol
       # @version 5.0.0
       def bad_tlsv1_3?
-        HAS_TLS1_3 && @engine.ssl_vers_st == ['TLSv1.3', 'SSLERR']
+        HAS_TLS1_3 && ssl_version_state == ['TLSv1.3', 'SSLERR']
       end
       private :bad_tlsv1_3?
 
@@ -231,7 +231,11 @@ module Puma
         end
 
         def truststore=(truststore)
-          raise ArgumentError, "No such truststore file '#{truststore}'" unless File.exist? truststore
+          # NOTE: historically truststore was assumed the same as keystore, this is kept for backwards
+          # compatibility, to rely on JVM's trust defaults we allow setting `truststore = :default`
+          unless truststore.eql?(:default)
+            raise ArgumentError, "No such truststore file '#{truststore}'" unless File.exist?(truststore)
+          end
           @truststore = truststore
         end
 

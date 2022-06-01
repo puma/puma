@@ -885,6 +885,7 @@ EOF
   end
 
   def test_chunked_keep_alive_two_back_to_back
+    skip("Fails on TruffleRuby (not head)") unless !TRUFFLE || Gem::Version.new(RUBY_ENGINE_VERSION) > Gem::Version.new('22.1')
     body = nil
     content_length = nil
     server_run { |env|
