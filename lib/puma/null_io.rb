@@ -52,5 +52,10 @@ module Puma
     def flush
       self
     end
+
+    # This is used as singleton class, so can't have state.
+    def closed?
+      false
+    end
   end
 end
