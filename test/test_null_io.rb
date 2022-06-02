@@ -65,7 +65,7 @@ class TestNullIO < Minitest::Test
     assert_equal nio, nio.flush
   end
 
-  def test_closed_returns_true
-    assert_equal true, nio.closed?
+  def test_closed_returns_false
+    assert_equal false, nio.closed?
   end
 end
