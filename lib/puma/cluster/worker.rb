@@ -58,7 +58,8 @@ module Puma
         server = @server ||= start_server
         rescue Exception => e
           log "! Unable to start worker"
-          log e.backtrace[0]
+          log e
+          log e.backtrace.join("\n    ")
           exit 1
         end
 
