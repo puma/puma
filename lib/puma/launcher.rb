@@ -159,6 +159,17 @@ module Puma
       true
     end
 
+    # Begin a refork if supported
+    def refork
+      if clustered? && @runner.respond_to?(:fork_worker!) && @options[:fork_worker]
+        @runner.fork_worker!
+        true
+      else
+        log "* refork called but not available."
+        false
+      end
+    end
+
     # Run the server. This blocks until the server is stopped
     def run
       previous_env =

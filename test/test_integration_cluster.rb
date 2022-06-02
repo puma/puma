@@ -229,7 +229,7 @@ RUBY
   end
 
   # use three workers to keep accepting clients
-  def test_refork
+  def test_fork_worker_on_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<RUBY
