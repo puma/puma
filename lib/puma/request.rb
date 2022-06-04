@@ -12,6 +12,13 @@ module Puma
   #
   module Request
 
+    LEN_BUFFER   = 1_024 * 256
+    STRM_LEN_MAX = 1_024 * 1_024 * 4
+
+    SKT_WRITE_ERR_MSG = "Socket timeout writing data"
+
+    CUSTOM_STAT = 'CUSTOM'
+
     include Puma::Const
 
     # Takes the request contained in +client+, invokes the Rack application to construct
@@ -46,17 +53,13 @@ module Puma
       env[HIJACK_P] = true
       env[HIJACK] = client
 
-      body = client.body
-
-      head = env[REQUEST_METHOD] == HEAD
-
-      env[RACK_INPUT] = body
+      env[RACK_INPUT] = client.body
       env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
           begin
-            fast_write io, str_early_hints(headers)
+            fast_write_str io, str_early_hints(headers)
           rescue ConnectionError => e
             @log_writer.debug_error e
             # noop, if we lost the socket we just won't send the early hints
@@ -69,137 +72,112 @@ module Puma
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
       #
-      after_reply = env[RACK_AFTER_REPLY] = []
+      env[RACK_AFTER_REPLY] ||= []
 
       begin
-        begin
-          if SUPPORTED_HTTP_METHODS.include?(env[REQUEST_METHOD])
-            status, headers, res_body = @thread_pool.with_force_shutdown do
-              @app.call(env)
-            end
-          else
-            @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
-            status, headers, res_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
+        if SUPPORTED_HTTP_METHODS.include?(env[REQUEST_METHOD])
+          status, headers, res_body = @thread_pool.with_force_shutdown do
+            @app.call(env)
           end
-
-          return :async if client.hijacked
-
-          status = status.to_i
-
-          if status == -1
-            unless headers.empty? and res_body == []
-              raise "async response must have empty headers and body"
-            end
-
-            return :async
-          end
-        rescue ThreadPool::ForceShutdown => e
-          @log_writer.unknown_error e, client, "Rack app"
-          @log_writer.log "Detected force shutdown of a thread"
-
-          status, headers, res_body = lowlevel_error(e, env, 503)
-        rescue Exception => e
-          @log_writer.unknown_error e, client, "Rack app"
-
-          status, headers, res_body = lowlevel_error(e, env, 500)
-        end
-
-        res_info = {}
-        res_info[:content_length] = nil
-        res_info[:no_body] = head
-
-        res_info[:content_length] = if res_body.kind_of? Array and res_body.size == 1
-          res_body[0].bytesize
         else
-          nil
+          @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
+          status, headers, res_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
         end
 
-        cork_socket io
+        return :async if client.hijacked
 
-        str_headers(env, status, headers, res_info, lines, requests, client)
+        status = status.to_i
 
-        line_ending = LINE_END
-
-        content_length  = res_info[:content_length]
-        if res_body && !res_body.respond_to?(:each)
-          response_hijack = res_body
-        else
-          response_hijack = res_info[:response_hijack]
-        end
-
-        if res_info[:no_body]
-          if content_length and status != 204
-            lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+        if status == -1
+          unless headers.empty? and res_body == []
+            raise "async response must have empty headers and body"
           end
 
-          lines << LINE_END
-          fast_write io, lines.to_s
-          return res_info[:keep_alive]
-        end
-
-        if content_length
-          lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
-          chunked = false
-        elsif !response_hijack and res_info[:allow_chunked]
-          lines << TRANSFER_ENCODING_CHUNKED
-          chunked = true
-        end
-
-        lines << line_ending
-
-        fast_write io, lines.to_s
-
-        if response_hijack
-          response_hijack.call io
           return :async
         end
+      rescue ThreadPool::ForceShutdown => e
+        @log_writer.unknown_error e, client, "Rack app"
+        @log_writer.log "Detected force shutdown of a thread"
+        status, headers, res_body = lowlevel_error(e, env, 503)
+      rescue Exception => e
+        @log_writer.unknown_error e, client, "Rack app"
 
-        begin
-          if !chunked && content_length && res_body.is_a?(::File)
-            IO.copy_stream(res_body, io)
-            io.flush
-          else
-            res_body.each do |part|
-              next if part.bytesize.zero?
-              if chunked
-                 fast_write io, (part.bytesize.to_s(16) << line_ending)
-                 fast_write io, part            # part may have different encoding
-                 fast_write io, line_ending
-              else
-                fast_write io, part
-              end
-              io.flush
-            end
+        status, headers, res_body = lowlevel_error(e, env, 500)
+      end
+      write_response(status, headers, res_body, lines, requests, client)
+    end
 
-            if chunked
-              fast_write io, CLOSE_CHUNKED
-              io.flush
-            end
-          end
-        rescue SystemCallError, IOError
-          raise ConnectionError, "Connection error detected during write"
-        end
+    # Does the actual response writing for Request#handle_request and Server#client_error
+    #
+    # @param status [Integer] the status returned by the Rack application
+    # @param headers [Hash] the headers returned by the Rack application
+    # @param res_body [Array] the body returned by the Rack application
+    # @param lines [Puma::IOBuffer] modified in place
+    # @param requests [Integer] number of inline requests handled
+    # @param client [Puma::Client]
+    # @return [Boolean,:async]
+    def write_response(status, headers, res_body, lines, requests, client)
+      env = client.env
+      io  = client.io
 
-      ensure
-        begin
-          uncork_socket io
+      after_reply = env[RACK_AFTER_REPLY] || []
 
-          body.close
-          client.tempfile.unlink if client.tempfile
-        ensure
-          # Whatever happens, we MUST call `close` on the response body.
-          # Otherwise Rack::BodyProxy callbacks may not fire and lead to various state leaks
-          res_body.close if res_body.respond_to? :close
-        end
+      return false if closed_socket?(io)
 
-        begin
-          after_reply.each { |o| o.call }
-        rescue StandardError => e
-          @log_writer.debug_error e
-        end
+      res_info = str_headers(env, status, headers, res_body, lines, requests, client)
+
+      line_ending = LINE_END
+
+      content_length = res_info[:content_length]
+      keep_alive     = res_info[:keep_alive]
+
+      if res_body && !res_body.respond_to?(:each)
+        response_hijack = res_body
+      else
+        response_hijack = res_info[:response_hijack]
       end
 
-      res_info[:keep_alive]
+      if res_info[:no_body]
+        if content_length and status != 204
+          lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+        end
+
+        lines << LINE_END
+        fast_write_str io, lines.to_s
+        return keep_alive
+      end
+
+      if content_length
+        lines.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+        chunked = false
+      elsif !response_hijack and res_info[:allow_chunked]
+        lines << TRANSFER_ENCODING_CHUNKED
+        chunked = true
+      end
+
+      lines << line_ending
+
+      if response_hijack
+        fast_write_str io, lines.to_s
+        response_hijack.call io
+        return :async
+      end
+      fast_write_response io, res_body, lines, chunked
+      io.flush
+      keep_alive
+    ensure
+      lines.reset
+
+      res_info = nil
+
+      client.tempfile.unlink if client.tempfile
+      res_body.close if res_body.respond_to? :close
+
+      begin
+        after_reply.each { |o| o.call }
+      rescue StandardError => e
+        @log_writer.debug_error e
+      end unless after_reply.empty?
     end
 
     # @param env [Hash] see Puma::Client#env, from request
@@ -213,39 +191,100 @@ module Puma
       end
     end
 
-    # Writes to an io (normally Client#io) using #syswrite
-    # @param io [#syswrite] the io to write to
+    # Used to write 'early hints', 'no body' responses, 'hijacked' responses,
+    # and body segments (called by `fast_write_response`).
+    # Writes a string to an io (normally `Client#io`) using `write_nonblock`.
+    # Large strings may not be written in one pass, especially if `io` is a
+    # `MiniSSL::Socket`.
+    # @param io [#write_nonblock] the io to write to
     # @param str [String] the string written to the io
     # @raise [ConnectionError]
     #
-    def fast_write(io, str)
+    def fast_write_str(io, str)
       n = 0
-      while true
+      byte_size = str.bytesize
+      while n < byte_size
         begin
-          n = io.syswrite str
+          n += io.syswrite(n.zero? ? str : str.byteslice(n..-1))
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
           unless io.wait_writable WRITE_TIMEOUT
-            raise ConnectionError, "Socket timeout writing data"
+            raise ConnectionError, SKT_WRITE_ERR_MSG
           end
-
           retry
         rescue  Errno::EPIPE, SystemCallError, IOError
-          raise ConnectionError, "Socket timeout writing data"
+          raise ConnectionError, SKT_WRITE_ERR_MSG
         end
-
-        return if n == str.bytesize
-        str = str.byteslice(n..-1)
       end
     end
-    private :fast_write
 
-    # @param status [Integer] status from the app
-    # @return [String] the text description from Puma::HTTP_STATUS_CODES
+    # Used to write headers and body.
+    # Writes to an io (normally `Client#io`) using `#fast_write_str`.
+    # Accumulates `body` items into `strm`, then writes to io.
+    # @param io [#write] the io to write to
+    # @param body [Enumerable, File] the body object
+    # @param strm [Puma::IOBuffer] strm, contains headers
+    # @param chunk [Boolean]
+    # @raise [ConnectionError]
     #
-    def fetch_status_code(status)
-      HTTP_STATUS_CODES.fetch(status) { 'CUSTOM' }
+    def fast_write_response(io, body, strm, chunked)
+      if body.is_a?(::File) || body.respond_to?(:read) || body.respond_to?(:readpartial)
+        if chunked  # would this ever happen?
+          while part = body.read(LEN_BUFFER)
+            strm.append part.bytesize.to_s(16), LINE_END, part, LINE_END
+          end
+          strm << CLOSE_CHUNKED
+          fast_write_str io, strm.to_s
+        else
+          if body.respond_to?(:size) && body.size <= 10_240
+            IO.copy_stream body, strm
+            fast_write_str io, strm.to_s
+          else
+            fast_write_str io, strm.to_s
+            IO.copy_stream body, io
+          end
+        end
+      elsif body.respond_to?(:to_ary) && body.length == 1
+        body_first = body.first
+        if body_first.is_a?(::String) && body_first.bytesize >= LEN_BUFFER
+          # large body, write both header & body to io
+          fast_write_str io, strm.to_s
+          fast_write_str io, body_first
+        else
+          # smaller body, write to stream first
+          strm.write body_first
+          fast_write_str io, strm.to_s
+        end
+      else
+        # for array bodies, flush stream to io when size is 1mB or more
+        if chunked
+          body.each do |part|
+            next if (byte_size = part.bytesize).zero?
+            strm.append byte_size.to_s(16), LINE_END, part, LINE_END
+            if strm.length > STRM_LEN_MAX
+              fast_write_str io, strm.to_s
+              strm.reset
+            end
+          end
+          strm.write CLOSE_CHUNKED
+        else
+          body.each do |part|
+            next if part.bytesize.zero?
+            strm.write part
+            if strm.length > STRM_LEN_MAX
+              fast_write_str io, strm.to_s
+              strm.reset
+            end
+          end
+        end
+        fast_write_str(io, strm.to_s) unless strm.length.zero?
+      end
+    rescue Errno::EAGAIN, Errno::EWOULDBLOCK
+      raise ConnectionError, SKT_WRITE_ERR_MSG
+    rescue  Errno::EPIPE, SystemCallError, IOError
+      raise ConnectionError, SKT_WRITE_ERR_MSG
     end
-    private :fetch_status_code
+
+    private :fast_write_str, :fast_write_response
 
     # Given a Hash +env+ for the request read from +client+, add
     # and fixup keys to comply with Rack's env guidelines.
@@ -397,19 +436,32 @@ module Puma
     end
     private :str_early_hints
 
+    # @param status [Integer] status from the app
+    # @return [String] the text description from Puma::HTTP_STATUS_CODES
+    #
+    def fetch_status_code(status)
+      HTTP_STATUS_CODES.fetch(status) { CUSTOM_STAT }
+    end
+    private :fetch_status_code
+
     # Processes and write headers to the IOBuffer.
     # @param env [Hash] see Puma::Client#env, from request
     # @param status [Integer] the status returned by the Rack application
     # @param headers [Hash] the headers returned by the Rack application
-    # @param res_info [Hash] used to pass info between this method and #handle_request
+    # @param content_length [Integer,nil] content length if it can be determined from the
+    #   response body
     # @param lines [Puma::IOBuffer] modified inn place
     # @param requests [Integer] number of inline requests handled
     # @param client [Puma::Client]
+    # @return [Hash] res_info
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_info, lines, requests, client)
+    def str_headers(env, status, headers, res_body, lines, requests, client)
       line_ending = LINE_END
       colon = COLON
+
+      res_info = {}
+      res_info[:no_body] = env[REQUEST_METHOD] == HEAD
 
       http_11 = env[HTTP_VERSION] == HTTP_11
       if http_11
@@ -423,8 +475,7 @@ module Puma
         if status == 200
           lines << HTTP_11_200
         else
-          lines.append "HTTP/1.1 ", status.to_s, " ",
-                       fetch_status_code(status), line_ending
+          lines.append "#{HTTP_11} #{status} ", fetch_status_code(status), line_ending
 
           res_info[:no_body] ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
         end
@@ -437,7 +488,7 @@ module Puma
         if status == 200
           lines << HTTP_10_200
         else
-          lines.append "HTTP/1.0 ", status.to_s, " ",
+          lines.append "HTTP/1.0 #{status} ",
                        fetch_status_code(status), line_ending
 
           res_info[:no_body] ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
@@ -493,6 +544,10 @@ module Puma
         end
       end
 
+      if !res_info.key?(:content_length) && res_body.respond_to?(:to_ary) && !res_body.empty?
+        res_info[:content_length] = res_body.to_ary.inject(0) { |sum, el| sum + el.bytesize }
+      end
+
       # HTTP/1.1 & 1.0 assume different defaults:
       # - HTTP 1.0 assumes the connection will be closed if not specified
       # - HTTP 1.1 assumes the connection will be kept alive if not specified.
@@ -503,6 +558,7 @@ module Puma
       else
         lines << CONNECTION_KEEP_ALIVE if res_info[:keep_alive]
       end
+      res_info
     end
     private :str_headers
   end
