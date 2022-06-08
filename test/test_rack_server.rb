@@ -154,6 +154,49 @@ class TestRackServer < Minitest::Test
     stop
   end
 
+  def test_body_proxy
+    closed = false
+    body = Rack::BodyProxy.new(["Hello"]) { closed = true }
+
+    @server.app = lambda { |env| [200, { "X-Header" => "Works" }, body] }
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal true, closed
+  end
+
+  def test_body_proxy_content_length
+    str = "Hello"
+    body = Rack::BodyProxy.new([str]) { }
+
+    @server.app = lambda { |env| [200, { "X-Header" => "Works" }, body] }
+
+    @server.run
+
+    socket = TCPSocket.open "127.0.0.1", @port
+    socket.puts "GET /test HTTP/1.1\r\n"
+    socket.puts "Connection: Keep-Alive\r\n"
+    socket.puts "\r\n"
+
+    headers = socket.readline("\r\n\r\n")
+      .split("\r\n")
+      .drop(1)
+      .map { |line| line.split(/:\s?/) }
+      .to_h
+
+    content_length = headers["Content-Length"].to_i
+
+    socket.close
+
+    stop
+
+    assert_equal str.bytesize, content_length
+  end
+
   def test_common_logger
     log = StringIO.new
 

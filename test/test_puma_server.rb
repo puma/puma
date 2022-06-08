@@ -324,7 +324,7 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_doesnt_print_backtrace_in_production
@@ -987,7 +987,7 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_request_body_wait

@@ -103,15 +103,21 @@ module Puma
         res_info[:content_length] = nil
         res_info[:no_body] = head
 
-        res_info[:content_length] = if res_body.kind_of? Array and res_body.size == 1
-          res_body[0].bytesize
-        else
-          nil
+        str_headers(env, status, headers, res_info, lines, requests, client)
+
+        if !res_info[:content_length] && !res_info[:transfer_encoding] && status != 204
+          if res_body.respond_to?(:to_ary)
+            if array_body = res_body.to_ary
+              res_info[:content_length] = array_body.map(&:bytesize).inject(0, :+)
+            elsif res_body.respond_to?(:each)
+              length = 0
+              res_body.each { |part| length += part.bytesize }
+              res_info[:content_length] = length
+            end
+          end
         end
 
         cork_socket io
-
-        str_headers(env, status, headers, res_info, lines, requests, client)
 
         line_ending = LINE_END
 
@@ -457,6 +463,7 @@ module Puma
         when TRANSFER_ENCODING
           res_info[:allow_chunked] = false
           res_info[:content_length] = nil
+          res_info[:transfer_encoding] = vs
         when HIJACK
           res_info[:response_hijack] = vs
           next

@@ -93,6 +93,7 @@ class TestPersistent < Minitest::Test
 
   def test_chunked
     @body << "Chunked"
+    @body = @body.to_enum
 
     @client << @valid_request
 
@@ -102,6 +103,7 @@ class TestPersistent < Minitest::Test
   def test_chunked_with_empty_part
     @body << ""
     @body << "Chunked"
+    @body = @body.to_enum
 
     @client << @valid_request
 
@@ -110,6 +112,7 @@ class TestPersistent < Minitest::Test
 
   def test_no_chunked_in_http10
     @body << "Chunked"
+    @body = @body.to_enum
 
     @client << @http10_request
 
@@ -120,6 +123,7 @@ class TestPersistent < Minitest::Test
   def test_hex
     str = "This is longer and will be in hex"
     @body << str
+    @body = @body.to_enum
 
     @client << @valid_request
 
