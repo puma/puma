@@ -5,7 +5,7 @@ require "nio"
 require "ipaddr"
 
 class TestPumaServer < Minitest::Test
-  parallelize_me! unless JRUBY_HEAD
+  parallelize_me!
 
   def setup
     @host = "127.0.0.1"
@@ -25,6 +25,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def server_run(**options, &block)
+    options[:min_threads] ||= 1
     @server = Puma::Server.new block || @app, @log_writer, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
@@ -137,10 +138,13 @@ class TestPumaServer < Minitest::Test
     path = Tempfile.open { |f| f.path }
     File.binwrite path, random_bytes
 
+    #server_run { |env| [200, {'content-length' => random_bytes.bytesize}, File.open(path, 'rb')] }
     server_run { |env| [200, {}, File.open(path, 'rb')] }
 
     data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
-    assert_equal random_bytes, data.split("\r\n", 3).last
+    ary = data.split("\r\n\r\n", 2)
+
+    assert_equal random_bytes, ary.last
   ensure
     File.delete(path) if File.exist?(path)
   end
@@ -337,7 +341,7 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_doesnt_print_backtrace_in_production
@@ -1000,7 +1004,7 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_request_body_wait
