@@ -53,6 +53,17 @@ class TestIntegrationSingle < TestIntegration
     assert_equal 0, status
   end
 
+  def test_conf_is_loaded_before_passing_it_to_binder
+    skip_unless_signal_exist? :TERM
+
+    cli_server("-C test/config/rack_url_scheme.rb test/rackup/url_scheme.ru")
+
+    reply = read_body(connect)
+    stop_server
+
+    assert_match("https", reply)
+  end
+
   def test_prefer_rackup_file_specified_by_cli
     skip_unless_signal_exist? :TERM
 
