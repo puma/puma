@@ -1368,26 +1368,6 @@ EOF
     test_drain_on_shutdown false
   end
 
-  def test_rack_url_scheme_dflt
-    server_run
-
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "http", data.split("\r\n").last
-  end
-
-  def test_rack_url_scheme_user
-    @port = UniquePort.call
-    opts = { rack_url_scheme: 'user', binds: ["tcp://#{@host}:#{@port}"] }
-    conf = Puma::Configuration.new(opts).tap(&:clamp)
-    @server = Puma::Server.new @app, @log_writer, @events, conf.options
-    @server.inherit_binder Puma::Binder.new(@log_writer, conf)
-    @server.binder.parse conf.options[:binds], @log_writer
-    @server.run
-
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "user", data.split("\r\n").last
-  end
-
   def test_remote_address_header
     server_run(remote_address: :header, remote_address_header: 'HTTP_X_REMOTE_IP') do |env|
       [200, {}, [env['REMOTE_ADDR']]]
