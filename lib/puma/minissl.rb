@@ -223,7 +223,8 @@ module Puma
         attr_reader :truststore
         attr_reader :truststore_type
         attr_accessor :truststore_pass
-        attr_accessor :ssl_cipher_list
+        attr_reader :cipher_suites
+        attr_reader :protocols
 
         def keystore=(keystore)
           check_file keystore, 'Keystore'
@@ -247,6 +248,20 @@ module Puma
         def truststore_type=(type)
           raise ArgumentError, "Invalid truststore type: #{type.inspect}" unless ['pkcs12', 'jks', nil].include?(type)
           @truststore_type = type
+        end
+
+        def cipher_suites=(list)
+          list = list.split(',').map(&:strip) if list.is_a?(String)
+          @cipher_suites = list
+        end
+
+        # aliases for backwards compatibility
+        alias_method :ssl_cipher_list, :cipher_suites
+        alias_method :ssl_cipher_list=, :cipher_suites=
+
+        def protocols=(list)
+          list = list.split(',').map(&:strip) if list.is_a?(String)
+          @protocols = list
         end
 
         def check
