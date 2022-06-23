@@ -52,8 +52,9 @@ module Puma
       backlog_str = opts[:backlog] ? "&backlog=#{Integer(opts[:backlog])}" : ''
 
       if defined?(JRUBY_VERSION)
-        ssl_cipher_list = opts[:ssl_cipher_list] ?
-          "&ssl_cipher_list=#{opts[:ssl_cipher_list]}" : nil
+        cipher_suites = opts[:ssl_cipher_list] ? "&ssl_cipher_list=#{opts[:ssl_cipher_list]}" : nil # old name
+        cipher_suites = "#{cipher_suites}&cipher_suites=#{opts[:cipher_suites]}" if opts[:cipher_suites]
+        protocols = opts[:protocols] ? "&protocols=#{opts[:protocols]}" : nil
 
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
         keystore_additions = "#{keystore_additions}&keystore-type=#{opts[:keystore_type]}" if opts[:keystore_type]
@@ -63,20 +64,17 @@ module Puma
           truststore_additions = "#{truststore_additions}&truststore-type=#{opts[:truststore_type]}" if opts[:truststore_type]
         end
 
-        "ssl://#{host}:#{port}?#{keystore_additions}#{truststore_additions}#{ssl_cipher_list}" \
+        "ssl://#{host}:#{port}?#{keystore_additions}#{truststore_additions}#{cipher_suites}#{protocols}" \
           "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{backlog_str}"
       else
-        ssl_cipher_filter = opts[:ssl_cipher_filter] ?
-          "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
-
-        v_flags = (ary = opts[:verification_flags]) ?
-          "&verification_flags=#{Array(ary).join ','}" : nil
+        ssl_cipher_filter = opts[:ssl_cipher_filter] ? "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
+        v_flags = (ary = opts[:verification_flags]) ? "&verification_flags=#{Array(ary).join ','}" : nil
 
         cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
         key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
 
-        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}" \
-          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
+        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{ssl_cipher_filter}" \
+          "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
       end
     end
 
