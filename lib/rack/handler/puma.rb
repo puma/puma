@@ -11,10 +11,10 @@ module Rack
       }
 
       def self.config(app, options = {})
-        require 'puma'
-        require 'puma/configuration'
-        require 'puma/log_writer'
-        require 'puma/launcher'
+        require_relative '../../puma'
+        require_relative '../../puma/configuration'
+        require_relative '../../puma/log_writer'
+        require_relative '../../puma/launcher'
 
         default_options = DEFAULT_OPTIONS.dup
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'puma/const'
-require 'puma/util'
+require_relative 'const'
+require_relative 'util'
 
 module Puma
   # The methods that are available for use inside the configuration file.

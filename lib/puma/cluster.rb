@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'puma/runner'
-require 'puma/util'
-require 'puma/plugin'
-require 'puma/cluster/worker_handle'
-require 'puma/cluster/worker'
+require_relative 'runner'
+require_relative 'util'
+require_relative 'plugin'
+require_relative 'cluster/worker_handle'
+require_relative 'cluster/worker'
 
 require 'time'
 

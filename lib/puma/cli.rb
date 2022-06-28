@@ -3,11 +3,11 @@
 require 'optparse'
 require 'uri'
 
-require 'puma'
-require 'puma/configuration'
-require 'puma/launcher'
-require 'puma/const'
-require 'puma/log_writer'
+require_relative '../puma'
+require_relative 'configuration'
+require_relative 'launcher'
+require_relative 'const'
+require_relative 'log_writer'
 
 module Puma
   class << self

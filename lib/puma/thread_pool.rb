@@ -2,7 +2,7 @@
 
 require 'thread'
 
-require 'puma/io_buffer'
+require_relative 'io_buffer'
 
 module Puma
   # Internal Docs for A simple thread pool management object.

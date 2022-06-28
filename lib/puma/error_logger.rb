@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'puma/const'
+require_relative 'const'
 
 module Puma
   # The implementation of a detailed error logging.

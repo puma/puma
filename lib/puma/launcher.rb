@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'puma/log_writer'
-require 'puma/events'
-require 'puma/detect'
-require 'puma/cluster'
-require 'puma/single'
-require 'puma/const'
-require 'puma/binder'
+require_relative 'log_writer'
+require_relative 'events'
+require_relative 'detect'
+require_relative 'cluster'
+require_relative 'single'
+require_relative 'const'
+require_relative 'binder'
 
 module Puma
   # Puma::Launcher is the single entry point for starting a Puma server based on user
@@ -113,7 +113,7 @@ module Puma
       permission = @options[:state_permission]
       return unless path
 
-      require 'puma/state_file'
+      require_relative 'state_file'
 
       sf = StateFile.new
       sf.pid = Process.pid
@@ -276,7 +276,7 @@ module Puma
       if Puma.jruby?
         close_binder_listeners
 
-        require 'puma/jruby_restart'
+        require_relative 'jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, restart_args)
       elsif Puma.windows?
         close_binder_listeners
@@ -317,7 +317,7 @@ module Puma
       return unless ENV["NOTIFY_SOCKET"]
 
       begin
-        require 'puma/systemd'
+        require_relative 'systemd'
       rescue LoadError
         log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have sd_notify gem installed"
         return

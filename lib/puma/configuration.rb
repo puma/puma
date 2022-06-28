@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-require 'puma/rack/builder'
-require 'puma/plugin'
-require 'puma/const'
+require_relative 'rack/builder'
+require_relative 'plugin'
+require_relative 'const'
+# note that dsl is loaded at end of file, requires ConfigDefault constants
 
 module Puma
   # A class used for storing "leveled" configuration options.
@@ -285,7 +286,7 @@ module Puma
       found = options[:app] || load_rackup
 
       if @options[:log_requests]
-        require 'puma/commonlogger'
+        require_relative 'commonlogger'
         logger = @options[:logger]
         found = CommonLogger.new(found, logger)
       end
@@ -383,4 +384,4 @@ module Puma
   end
 end
 
-require 'puma/dsl'
+require_relative 'dsl'
