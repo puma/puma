@@ -489,6 +489,25 @@ class TestPumaServerSSLClient < Minitest::Test
     end
   end if Puma.jruby?
 
+  def test_verify_client_cert_with_truststore_without_pass
+    ctx = Puma::MiniSSL::Context.new
+    ctx.keystore = "#{CERT_PATH}/server.p12"
+    ctx.keystore_type = 'pkcs12'
+    ctx.keystore_pass = 'jruby_puma'
+    ctx.truststore =  "#{CERT_PATH}/ca_store.jks" # cert entry can be read without password
+    ctx.truststore_type = 'jks'
+    ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER
+
+    assert_ssl_client_error_match(false, context: ctx) do |http|
+      key = "#{CERT_PATH}/client.key"
+      crt = "#{CERT_PATH}/client.crt"
+      http.key = OpenSSL::PKey::RSA.new File.read(key)
+      http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+      http.ca_file = "#{CERT_PATH}/ca.crt"
+      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    end
+  end if Puma.jruby?
+
 end if ::Puma::HAS_SSL
 
 class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test

@@ -160,7 +160,12 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
       truststoreType = keystoreType;
     } else if (!isDefaultSymbol(context, truststore)) {
       truststoreFile = truststore.convertToString().asJavaString();
-      truststorePass = asStringValue(miniSSLContext.callMethod(context, "truststore_pass"), null).toCharArray();
+      IRubyObject pass = miniSSLContext.callMethod(context, "truststore_pass");
+      if (pass.isNil()) {
+        truststorePass = null;
+      } else {
+        truststorePass = asStringValue(pass, null).toCharArray();
+      }
       truststoreType = asStringValue(miniSSLContext.callMethod(context, "truststore_type"), KeyStore::getDefaultType);
     } else { // self.truststore = :default
       truststoreFile = null;
