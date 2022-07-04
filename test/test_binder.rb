@@ -478,13 +478,26 @@ class TestBinderJRuby < TestBinderBase
   def test_binder_parses_jruby_ssl_options
     skip_unless :ssl
 
-    keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
-    ssl_cipher_list = "TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+    cipher_suites = ['TLS_DHE_RSA_WITH_AES_128_CBC_SHA', 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256']
 
     @binder.parse ["ssl://0.0.0.0:8080?#{ssl_query}"], @log_writer
 
-    assert_equal keystore, ssl_context_for_binder.keystore
-    assert_equal ssl_cipher_list, ssl_context_for_binder.ssl_cipher_list
+    assert_equal @keystore, ssl_context_for_binder.keystore
+    assert_equal cipher_suites, ssl_context_for_binder.cipher_suites
+    assert_equal cipher_suites, ssl_context_for_binder.ssl_cipher_list
+  end
+
+  def test_binder_parses_jruby_ssl_protocols_and_cipher_suites_options
+    skip_unless :ssl
+
+    keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
+    cipher = "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+    ssl_query = "keystore=#{keystore}&keystore-pass=jruby_puma&cipher_suites=#{cipher}&protocols=TLSv1.3,TLSv1.2"
+
+    @binder.parse ["ssl://0.0.0.0:8080?#{ssl_query}"], @log_writer
+
+    assert_equal [ 'TLSv1.3', 'TLSv1.2' ], ssl_context_for_binder.protocols
+    assert_equal [ cipher ], ssl_context_for_binder.cipher_suites
   end
 end if ::Puma::IS_JRUBY
 

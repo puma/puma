@@ -29,7 +29,8 @@ module Puma
             ctx.truststore_type = params['truststore-type']
           end
 
-          ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
+          ctx.cipher_suites = params['cipher_suites'] || params['ssl_cipher_list']
+          ctx.protocols = params['protocols'] if params['protocols']
         else
           if params['key'].nil? && params['key_pem'].nil?
             log_writer.error "Please specify the SSL key via 'key=' or 'key_pem='"
