@@ -316,6 +316,7 @@ module Puma
         check = @check
         sockets = [check] + @binder.ios
         pool = @thread_pool
+        binder = @binder
         queue_requests = @queue_requests
         drain = @options[:drain_on_shutdown] ? 0 : nil
 
@@ -330,9 +331,10 @@ module Puma
           [nil, nil]
         end
 
-        while @status == :run || (drain && shutting_down?)
+        shd = false
+        while @status == :run || (drain && (shd = shutting_down?))
           begin
-            ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : nil)
+            ios = IO.select sockets, nil, nil, (shd ? 0 : nil)
             break unless ios
             ios.first.each do |sock|
               if sock == check
@@ -346,11 +348,12 @@ module Puma
                 rescue IO::WaitReadable
                   next
                 end
-                drain += 1 if shutting_down?
-                pool << Client.new(io, @binder.env(sock)).tap { |c|
-                  c.listener = sock
-                  c.send(addr_send_name, addr_value) if addr_value
-                }
+                drain += 1 if shd
+                c = Client.new(io, binder.env(sock))
+                c.listener = sock
+                c.send(addr_send_name, addr_value) if addr_value
+
+                pool << c
               end
             end
           rescue IOError, Errno::EBADF
