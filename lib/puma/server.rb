@@ -331,10 +331,10 @@ module Puma
           [nil, nil]
         end
 
-        shd = false
-        while @status == :run || (drain && (shd = shutting_down?))
+        is_shutting_down = false
+        while @status == :run || (drain && (is_shutting_down = shutting_down?))
           begin
-            ios = IO.select sockets, nil, nil, (shd ? 0 : nil)
+            ios = IO.select sockets, nil, nil, (is_shutting_down ? 0 : nil)
             break unless ios
             ios.first.each do |sock|
               if sock == check
@@ -348,7 +348,7 @@ module Puma
                 rescue IO::WaitReadable
                   next
                 end
-                drain += 1 if shd
+                drain += 1 if is_shutting_down
                 c = Client.new(io, binder.env(sock))
                 c.listener = sock
                 c.send(addr_send_name, addr_value) if addr_value
