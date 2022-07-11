@@ -57,9 +57,8 @@ module Puma
     EmptyBody = NullIO.new
 
     include Puma::Const
-    extend Forwardable
 
-    def initialize(io, env=nil)
+    def initialize(io, env = nil, listener = nil)
       @io = io
       @to_io = io.to_io
       @proto_env = env
@@ -87,7 +86,7 @@ module Puma
 
       @peerip = nil
       @peer_family = nil
-      @listener = nil
+      @listener = listener
       @remote_addr_header = nil
       @expect_proxy_proto = false
 
@@ -103,7 +102,9 @@ module Puma
 
     attr_accessor :remote_addr_header, :listener
 
-    def_delegators :@io, :closed?
+    def closed?
+      @io.closed?
+    end
 
     # Test to see if io meets a bare minimum of functioning, @to_io needs to be
     # used for MiniSSL::Socket

@@ -320,39 +320,54 @@ module Puma
         queue_requests = @queue_requests
         drain = @options[:drain_on_shutdown] ? 0 : nil
 
-        addr_send_name, addr_value = case @options[:remote_address]
-        when :value
-          [:peerip=, @options[:remote_address_value]]
-        when :header
-          [:remote_addr_header=, @options[:remote_address_header]]
-        when :proxy_protocol
-          [:expect_proxy_proto=, @options[:remote_address_proxy_protocol]]
-        else
-          [nil, nil]
-        end
+        # option to local variables
+        wait_for_less_busy_worker = @options[:wait_for_less_busy_worker]
+        wait_for_less_busy_worker_enabled = !@options[:wait_for_less_busy_worker].nil?
+
+        addr_send_name, addr_value = \
+          case @options[:remote_address]
+          when :value
+            [:peerip=, @options[:remote_address_value]]
+          when :header
+            [:remote_addr_header=, @options[:remote_address_header]]
+          when :proxy_protocol
+            [:expect_proxy_proto=, @options[:remote_address_proxy_protocol]]
+          else
+            [nil, nil]
+          end
 
         is_shutting_down = false
         while @status == :run || (drain && (is_shutting_down = shutting_down?))
           begin
-            ios = IO.select sockets, nil, nil, (is_shutting_down ? 0 : nil)
+            ios = IO.select(sockets, nil, nil, (is_shutting_down ? 0 : nil))
             break unless ios
             ios.first.each do |sock|
               if sock == check
                 break if handle_check
               else
                 pool.wait_until_not_full
-                pool.wait_for_less_busy_worker(@options[:wait_for_less_busy_worker])
 
-                io = begin
-                  sock.accept_nonblock
-                rescue IO::WaitReadable
-                  next
+                # Wait for less busy worker?
+                if wait_for_less_busy_worker_enabled
+                  pool.wait_for_less_busy_worker(wait_for_less_busy_worker)
                 end
+
+                io = \
+                  begin
+                    sock.accept_nonblock
+                  rescue IO::WaitReadable
+                    next
+                  end
+
+                # if 'drain_on_shutdown' is enabled:
+                # - increment drain counter when the server is shutting down
                 drain += 1 if drain && shutting_down?
-                c = Client.new(io, binder.env(sock))
-                c.listener = sock
+
+                # initialize new client
+                c = Client.new(io, binder.env(sock), sock)
                 c.send(addr_send_name, addr_value) if addr_value
 
+                # push client to the thread pool
                 pool << c
               end
             end
