@@ -10,7 +10,7 @@ Puma 5 introduces an experimental new cluster-mode configuration option, `fork_w
 10004           \_ puma: cluster worker 3: 10000 [puma]
 ```
 
-Similar to the `preload_app!` option, the `fork_worker` option allows your application to be initialized only once for copy-on-write memory savings, and it has two additional advantages:
+The `fork_worker` option allows your application to be initialized only once for copy-on-write memory savings, and it has two additional advantages:
 
 1. **Compatible with phased restart.** Because the master process itself doesn't preload the application, this mode works with phased restart (`SIGUSR1` or `pumactl phased-restart`). When worker 0 reloads as part of a phased restart, it initializes a new copy of your application first, then the other workers reload by forking from this new worker already containing the new preloaded application.
 
@@ -23,8 +23,6 @@ Similar to the `preload_app!` option, the `fork_worker` option allows your appli
    You can trigger a refork by sending the cluster the `SIGURG` signal or running the `pumactl refork` command at any time. A refork will also automatically trigger once, after a certain number of requests have been processed by worker 0 (default 1000). To configure the number of requests before the auto-refork, pass a positive integer argument to `fork_worker` (e.g., `fork_worker 1000`), or `0` to disable.
 
 ### Limitations
-
-- Not compatible with the `preload_app!` option
 
 - This mode is still very experimental so there may be bugs or edge-cases, particularly around expected behavior of existing hooks. Please open a [bug report](https://github.com/puma/puma/issues/new?template=bug_report.md) if you encounter any issues.
 
