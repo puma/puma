@@ -348,7 +348,7 @@ module Puma
                 rescue IO::WaitReadable
                   next
                 end
-                drain += 1 if is_shutting_down
+                drain += 1 if drain && shutting_down?
                 c = Client.new(io, binder.env(sock))
                 c.listener = sock
                 c.send(addr_send_name, addr_value) if addr_value
