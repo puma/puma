@@ -113,7 +113,9 @@ RUBY
     end
     ssl_params['verify_mode'] = 'force_peer' # 'peer'
     out_err = StringIO.new
-    ssl_context = Puma::MiniSSL::ContextBuilder.new(ssl_params, Puma::LogWriter.new(out_err, out_err)).context
+    ssl_context = defined?(Puma::LogWriter) ?
+      Puma::MiniSSL::ContextBuilder.new(ssl_params, Puma::LogWriter.new(out_err, out_err)).context :
+      Puma::MiniSSL::ContextBuilder.new(ssl_params, Puma::Events.new(out_err, out_err)).context
     server.add_ssl_listener(HOST, bind_port, ssl_context)
 
     server.run(true)
