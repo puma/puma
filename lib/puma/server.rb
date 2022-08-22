@@ -39,6 +39,7 @@ module Puma
     attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
+    attr_reader :log_writer                 # to help with backports
 
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
@@ -73,6 +74,7 @@ module Puma
     def initialize(app, events=Events.stdio, options={})
       @app = app
       @events = events
+      @log_writer = events
 
       @check, @notify = nil
       @status = :stop
