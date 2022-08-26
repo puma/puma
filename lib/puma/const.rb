@@ -1,4 +1,4 @@
-#encoding: utf-8
+# encoding: utf-8
 # frozen_string_literal: true
 
 module Puma
@@ -100,8 +100,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "5.6.5".freeze
-    CODE_NAME = "Birdie's Version".freeze
+    PUMA_VERSION = VERSION = "5.7.0".freeze
+    CODE_NAME = "Sunflower".freeze
 
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
