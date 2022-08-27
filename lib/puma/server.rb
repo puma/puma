@@ -15,7 +15,7 @@ require 'puma/io_buffer'
 require 'puma/request'
 
 require 'socket'
-require 'io/wait'
+require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 require 'forwardable'
 
 module Puma

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 begin
-  require 'io/wait'
+  require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 rescue LoadError
 end
 
