@@ -67,7 +67,7 @@ class TestIntegration < Minitest::Test
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
 
-  def cli_server(argv, unix: false, config: nil, merge_err: false)
+  def cli_server(argv, unix: false, config: nil, merge_err: false, log: false)
     if config
       config_file = Tempfile.new(%w(config .rb))
       config_file.write config
@@ -86,7 +86,7 @@ class TestIntegration < Minitest::Test
     else
       @server = IO.popen(cmd, "r")
     end
-    wait_for_server_to_boot
+    wait_for_server_to_boot(log: log)
     @pid = @server.pid
     @server
   end

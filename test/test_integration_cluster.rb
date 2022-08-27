@@ -421,6 +421,22 @@ RUBY
     assert_match(/Worker 1 \(PID: \d+\) terminating/, line)
   end
 
+  def test_hook_data
+    skip_unless_signal_exist? :TERM
+
+    cli_server "-C test/config/hook_data.rb test/rackup/hello.ru"
+    get_worker_pids 0, 2
+    stop_server
+
+    file = 'hook_data-0.txt'
+    assert_equal 'index 0 data 0', File.read(file, mode: 'rb:UTF-8')
+    File.unlink file if File.file? file
+
+    file = 'hook_data-1.txt'
+    assert_equal 'index 1 data 1', File.read(file, mode: 'rb:UTF-8')
+    File.unlink file if File.file? file
+  end
+
   private
 
   def worker_timeout(timeout, iterations, details, config)
