@@ -1,8 +1,10 @@
 ## 5.6.5 / 2022-08-23
 
+* Feature
+  * Puma::ControlCLI - allow refork command to be sent as a request ([#2868], [#2866])
+
 * Bugfixes
   * NullIO#closed should return false ([#2883])
-  * Puma::ControlCLI - allow refork command to be sent as a request ([#2868], [#2866])
   * [jruby] Fix TLS verification hang ([#2890], [#2729])
   * extconf.rb - don't use pkg_config('openssl') if '--with-openssl-dir' is used ([#2885], [#2839])
   * MiniSSL - detect SSL_CTX_set_dh_auto ([#2864], [#2863])
