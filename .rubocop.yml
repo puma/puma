@@ -1,3 +1,5 @@
+require: rubocop-performance
+
 AllCops:
   DisabledByDefault: true
   TargetRubyVersion: 2.4
@@ -9,6 +11,8 @@ AllCops:
     - 'examples/**/*'
     - 'pkg/**/*'
     - 'Rakefile'
+  SuggestExtensions: false
+  NewCops: disable
 
 # ————————————————————————————————————————— disabled cops
 
@@ -16,6 +20,9 @@ Performance/RegexpMatch:
   Enabled: false
 
 Performance/UnfreezeString:
+  Enabled: false
+
+Style/RedundantReturn:
   Enabled: false
 
 # ————————————————————————————————————————— enabled cops
@@ -36,10 +43,10 @@ Layout/SpaceBeforeFirstArg:
 Layout/SpaceInsideParens:
   Enabled: true
 
-Layout/Tab:
+Layout/IndentationStyle:
   Enabled: true
 
-Layout/TrailingBlankLines:
+Layout/TrailingEmptyLines:
   Enabled: true
 
 Layout/TrailingWhitespace:
@@ -87,5 +94,3 @@ Style/WhileUntilModifier:
 Style/TernaryParentheses:
   Enabled: true
 
-Style/RedundantReturn:
-  Enabled: true
