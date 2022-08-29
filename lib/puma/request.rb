@@ -110,8 +110,15 @@ module Puma
             if array_body = res_body.to_ary
               res_info[:content_length] = array_body.map(&:bytesize).inject(0, :+)
             elsif res_body.respond_to?(:each)
-              length = 0
-              res_body.each { |part| length += part.bytesize }
+              original_body = res_body
+              new_body, length = [], 0
+              res_body.each { |part| new_body << part ; length += part.bytesize }
+
+              require 'rack/body_proxy'
+              res_body = ::Rack::BodyProxy.new(new_body) do
+                original_body.close if original_body.respond_to?(:close)
+              end
+
               res_info[:content_length] = length
             end
           end
