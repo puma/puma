@@ -1,6 +1,6 @@
 AllCops:
   DisabledByDefault: true
-  TargetRubyVersion: 2.2
+  TargetRubyVersion: 2.4
   DisplayCopNames: true
   StyleGuideCopsOnly: false
   Exclude:
@@ -9,6 +9,16 @@ AllCops:
     - 'examples/**/*'
     - 'pkg/**/*'
     - 'Rakefile'
+
+# ————————————————————————————————————————— disabled cops
+
+Performance/RegexpMatch:
+  Enabled: false
+
+Performance/UnfreezeString:
+  Enabled: false
+
+# ————————————————————————————————————————— enabled cops
 
 Layout/SpaceAfterColon:
   Enabled: true
