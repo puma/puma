@@ -115,12 +115,13 @@ module Puma
     #
     # @param status [Integer] the status returned by the Rack application
     # @param headers [Hash] the headers returned by the Rack application
-    # @param res_body [Array] the body returned by the Rack application
+    # @param app_body [Array] the body returned by the Rack application or
+    #   a call to `lowlevel_error`
     # @param io_buffer [Puma::IOBuffer] modified in place
     # @param requests [Integer] number of inline requests handled
     # @param client [Puma::Client]
     # @return [Boolean,:async]
-    def write_response(status, headers, res_body, io_buffer, requests, client)
+    def write_response(status, headers, app_body, io_buffer, requests, client)
       env = client.env
       socket  = client.io
 
@@ -128,15 +129,22 @@ module Puma
 
       return false if closed_socket?(socket)
 
-      resp_info = str_headers(env, status, headers, res_body, io_buffer, requests, client)
+      resp_info = str_headers(env, status, headers, app_body, io_buffer, requests, client)
+
+      if !resp_info.key?(:content_length) && app_body.respond_to?(:to_ary) && !app_body.empty?
+        body = app_body.to_ary
+        resp_info[:content_length] = body.inject(0) { |sum, el| sum + el.bytesize }
+      else
+        body = app_body
+      end
 
       line_ending = LINE_END
 
       content_length = resp_info[:content_length]
       keep_alive     = resp_info[:keep_alive]
 
-      if res_body && !res_body.respond_to?(:each)
-        response_hijack = res_body
+      if app_body && !app_body.respond_to?(:each)
+        response_hijack = app_body
       else
         response_hijack = resp_info[:response_hijack]
       end
@@ -166,7 +174,7 @@ module Puma
         response_hijack.call socket
         return :async
       end
-      fast_write_response socket, res_body, io_buffer, chunked
+      fast_write_response socket, body, io_buffer, chunked
       socket.flush
       keep_alive
     ensure
@@ -175,7 +183,7 @@ module Puma
       resp_info = nil
 
       client.tempfile.unlink if client.tempfile
-      res_body.close if res_body.respond_to? :close
+      app_body.close if app_body.respond_to? :close
 
       begin
         after_reply.each { |o| o.call }
@@ -547,10 +555,6 @@ module Puma
         else
           io_buffer.append k, colon, line_ending
         end
-      end
-
-      if !resp_info.key?(:content_length) && res_body.respond_to?(:to_ary) && !res_body.empty?
-        resp_info[:content_length] = res_body.to_ary.inject(0) { |sum, el| sum + el.bytesize }
       end
 
       # HTTP/1.1 & 1.0 assume different defaults:
