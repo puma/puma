@@ -38,8 +38,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, macos-11, windows-2022 ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, head ]
+        os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, macos-11, macos-12, windows-2022 ]
+        ruby: [ 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, head ]
         no-ssl: ['']
         yjit: ['']
         include:
@@ -52,16 +52,16 @@ jobs:
           - { os: ubuntu-22.04 , ruby: head }
 
         exclude:
-          - { os: ubuntu-20.04 , ruby: 2.2  }
-          - { os: ubuntu-20.04 , ruby: 2.3  }
           - { os: windows-2022 , ruby: head }
-          - { os: macos-10.15  , ruby: 2.6  }
           - { os: macos-10.15  , ruby: 2.7  }
           - { os: macos-10.15  , ruby: '3.0'}
           - { os: macos-10.15  , ruby: 3.1  }
-          - { os: macos-11     , ruby: 2.2  }
-          - { os: macos-11     , ruby: 2.3  }
+          - { os: macos-10.15  , ruby: head }
           - { os: macos-11     , ruby: 2.4  }
+          - { os: macos-11     , ruby: 2.5  }
+          - { os: macos-12     , ruby: 2.4  }
+          - { os: macos-12     , ruby: 2.5  }
+          - { os: macos-12     , ruby: 2.6  }
 
     steps:
       - name: repo checkout
@@ -73,21 +73,14 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
-          # below is only needed for Rubies 2.4 and earlier
-          mingw: openssl ragel
+          # below is only needed for Ruby 2.4
+          mingw: openssl
           bundler-cache: true
         timeout-minutes: 10
 
-      # Windows error thrown, doesn't affect CI
-      - name: update rubygems for Ruby 2.2
-        if: matrix.ruby < '2.3'
-        run: gem update --system 2.7.11 --no-document
-        continue-on-error: true
-        timeout-minutes: 5
-
       # fixes 'has a bug that prevents `required_ruby_version`'
-      - name: update rubygems for Ruby 2.3 - 2.5
-        if: contains('2.3 2.4 2.5', matrix.ruby)
+      - name: update rubygems for Ruby 2.4 - 2.5
+        if: contains('2.4 2.5', matrix.ruby)
         run: gem update --system 3.3.14 --no-document
         continue-on-error: true
         timeout-minutes: 5
