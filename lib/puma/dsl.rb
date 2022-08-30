@@ -682,6 +682,23 @@ module Puma
       process_hook :before_refork, key, block, 'on_refork'
     end
 
+    # Code to run immediately before a thread exits. The worker does not
+    # accept new requests until this code finishes.
+    #
+    # This hook is useful for cleaning up thread local resources when a thread
+    # is trimmed.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @example
+    #   on_thread_exit do
+    #     puts 'On thread exit...'
+    #   end
+    def on_thread_exit(&block)
+      @options[:before_thread_exit] ||= []
+      @options[:before_thread_exit] << block
+    end
+
     # Code to run out-of-band when the worker is idle.
     # These hooks run immediately after a request has finished
     # processing and there are no busy threads on the worker.
