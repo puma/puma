@@ -131,9 +131,26 @@ module Puma
 
       resp_info = str_headers(env, status, headers, app_body, io_buffer, requests, client)
 
-      if !resp_info.key?(:content_length) && app_body.respond_to?(:to_ary) && !app_body.empty?
-        body = app_body.to_ary
-        resp_info[:content_length] = body.inject(0) { |sum, el| sum + el.bytesize }
+      # below converts app_body into body, dependent on app_body's characteristics, and
+      # resp_info[:content_length] will be set if it can be determined
+      if !resp_info[:content_length] && !resp_info[:transfer_encoding] && status != 204
+        if app_body.respond_to?(:to_ary)
+          length = 0
+          if array_body = app_body.to_ary
+            body = array_body.map { |part| length += part.bytesize; part }
+          elsif app_body.is_a?(::File) && app_body.respond_to?(:size)
+            length = app_body.size
+          elsif app_body.respond_to?(:each)
+            body = []
+            app_body.each { |part| length += part.bytesize; body << part }
+          end
+          resp_info[:content_length] = length
+        elsif app_body.is_a?(File) && app_body.respond_to?(:size)
+          resp_info[:content_length] = app_body.size
+          body = app_body
+        else
+          body = app_body
+        end
       else
         body = app_body
       end
@@ -533,6 +550,7 @@ module Puma
         when TRANSFER_ENCODING
           resp_info[:allow_chunked] = false
           resp_info[:content_length] = nil
+          resp_info[:transfer_encoding] = vs
         when HIJACK
           resp_info[:response_hijack] = vs
           next
