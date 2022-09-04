@@ -133,7 +133,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_file_body
-    random_bytes = Random.bytes(4096 * 32)
+    random_bytes = SecureRandom.random_bytes(4096 * 32)
     Tempfile.create do |file|
       file.write(random_bytes)
       file.close
