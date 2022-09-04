@@ -8,7 +8,7 @@ if $mingw && RUBY_VERSION >= '2.4'
   have_library 'ssp'
 end
 
-unless ENV["DISABLE_SSL"]
+unless ENV["PUMA_DISABLE_SSL"]
   # don't use pkg_config('openssl') if '--with-openssl-dir' is used
   has_openssl_dir = dir_config('openssl').any?
   found_pkg_config = !has_openssl_dir && pkg_config('openssl')
@@ -55,7 +55,7 @@ unless ENV["DISABLE_SSL"]
   end
 end
 
-if ENV["MAKE_WARNINGS_INTO_ERRORS"]
+if ENV["PUMA_MAKE_WARNINGS_INTO_ERRORS"]
   # Make all warnings into errors
   # Except `implicit-fallthrough` since most failures comes from ragel state machine generated code
   if respond_to?(:append_cflags, true) # Ruby 2.5 and later
