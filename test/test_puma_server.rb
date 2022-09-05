@@ -138,7 +138,6 @@ class TestPumaServer < Minitest::Test
     path = Tempfile.open { |f| f.path }
     File.binwrite path, random_bytes
 
-    #server_run { |env| [200, {'content-length' => random_bytes.bytesize}, File.open(path, 'rb')] }
     server_run { |env| [200, {}, File.open(path, 'rb')] }
 
     data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
@@ -148,6 +147,27 @@ class TestPumaServer < Minitest::Test
   ensure
     File.delete(path) if File.exist?(path)
   end
+
+  def test_file_to_path
+    random_bytes = SecureRandom.random_bytes(4096 * 32)
+    path = Tempfile.open { |f| f.path }
+    File.binwrite path, random_bytes
+
+    obj = Object.new
+    obj.singleton_class.send(:define_method, :to_path) { path }
+    obj.singleton_class.send(:define_method, :each) { path } # dummy, method needs to exist
+
+    server_run { |env| [200, {}, obj] }
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    ary = data.split("\r\n\r\n", 2)
+
+    assert_equal random_bytes, ary.last
+  ensure
+    File.delete(path) if File.exist?(path)
+  end
+
+
 
   def test_proper_stringio_body
     data = nil
