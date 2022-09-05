@@ -282,7 +282,7 @@ module Puma
           end
         end
         body.close unless body.closed?
-      elsif body.respond_to?(:to_ary) && body.length == 1
+      elsif body.is_a?(::Array) && body.length == 1
         body_first = body.first
         if body_first.is_a?(::String) && body_first.bytesize >= BODY_LEN_MAX
           # large body, write both header & body to socket
