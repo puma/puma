@@ -3,10 +3,18 @@ require_relative "helper"
 require "net/http"
 
 require "rack"
+require "rack/chunked" if Rack::RELEASE >= '3'
+
 require "nio"
+require "securerandom"
+require "open3"
 
 class TestRackServer < Minitest::Test
   parallelize_me!
+
+  TRANSFER_ENCODING_CHUNKED = 'transfer-encoding: chunked'
+
+  STR_1KB = "──#{SecureRandom.hex 507}─\n".freeze
 
   class ErrorChecker
     def initialize(app)
@@ -219,4 +227,39 @@ class TestRackServer < Minitest::Test
 
     assert_match %r!GET /test HTTP/1\.1!, log.string
   end
+
+  def test_rack_chunked_array1
+    body = [STR_1KB]
+    app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
+    rack_app = Rack::Chunked.new app
+    @server.app = rack_app
+    @server.run
+
+    resp_body, headers, _status = Open3.capture3 "curl -v #{@tcp}/"
+    assert_includes headers.downcase, TRANSFER_ENCODING_CHUNKED
+    assert_equal STR_1KB, resp_body
+  end if Rack::RELEASE < '3.1'
+
+  def test_rack_chunked_array10
+    body = Array.new 10, STR_1KB
+    app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
+    rack_app = Rack::Chunked.new app
+    @server.app = rack_app
+    @server.run
+
+    resp_body, headers, _status = Open3.capture3 "curl -v #{@tcp}/"
+    assert_includes headers.downcase, TRANSFER_ENCODING_CHUNKED
+    assert_equal STR_1KB * 10, resp_body
+  end if Rack::RELEASE < '3.1'
+
+  def test_puma_enum
+    body = Array.new(10, STR_1KB).to_enum
+    @server.app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
+    @server.run
+
+    resp_body, headers, _status = Open3.capture3 "curl -v #{@tcp}/"
+    assert_includes headers.downcase, TRANSFER_ENCODING_CHUNKED
+    assert_equal STR_1KB * 10, resp_body
+  end
+
 end
