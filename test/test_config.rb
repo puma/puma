@@ -5,6 +5,7 @@ require_relative "helpers/config_file"
 
 require "puma/configuration"
 require 'puma/log_writer'
+require 'rack'
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -16,6 +17,7 @@ class TestConfigFile < TestConfigFileBase
   end
 
   def test_app_from_rackup
+    skip_if :rack3
     conf = Puma::Configuration.new do |c|
       c.rackup "test/rackup/hello-bind.ru"
     end
