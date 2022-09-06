@@ -272,5 +272,4 @@ if Rack::RELEASE < '3'
       assert_equal user_log_requests_config, conf.options[:log_requests]
     end
   end
-
-end
+end # if Rack::RELEASE < '3'
