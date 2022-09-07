@@ -27,14 +27,18 @@ class TestRackServer < Minitest::Test
 
   class ServerLint < Rack::Lint
     def call(env)
-      check_env env
+      if Rack::RELEASE < '3'
+        check_env env
+      else
+        Wrapper.new(@app, env).check_environment env
+      end
 
       @app.call(env)
     end
   end
 
   def setup
-    @simple = lambda { |env| [200, { "X-Header" => "Works" }, ["Hello"]] }
+    @simple = lambda { |env| [200, { "x-header" => "Works" }, ["Hello"]] }
     @server = Puma::Server.new @simple
     @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
     @tcp = "http://127.0.0.1:#{@port}"
