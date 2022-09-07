@@ -55,7 +55,7 @@ else
   # override it so we can select the files
   class ::Rake::JavaExtensionTask
     def source_files
-      if ENV["DISABLE_SSL"]
+      if ENV["PUMA_DISABLE_SSL"]
         # uses no_ssl/PumaHttp11Service.java, removes MiniSSL.java
         FileList[
           File.join(@ext_dir, "no_ssl/PumaHttp11Service.java"),
