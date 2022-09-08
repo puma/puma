@@ -464,8 +464,15 @@ module Puma
           next
         end
 
-        if vs.respond_to?(:to_s) && !vs.to_s.empty?
-          vs.to_s.split(NEWLINE).each do |v|
+        ary = if vs.is_a?(::Array) && !vs.empty?
+          vs
+        elsif vs.respond_to?(:to_s) && !vs.to_s.empty?
+          vs.to_s.split NEWLINE
+        else
+          nil
+        end
+        if ary
+          ary.each do |v|
             next if illegal_header_value?(v)
             lines.append k, colon, v, line_ending
           end
