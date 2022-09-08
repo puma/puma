@@ -1,9 +1,13 @@
 require_relative "helper"
 require "puma/events"
 require "net/http"
+require "nio"
 
 class TestResponseHeader < Minitest::Test
   parallelize_me!
+
+  # this file has limited response length, so 10kB works.
+  CLIENT_SYSREAD_LENGTH = 10_240
 
   def setup
     @host = "127.0.0.1"
@@ -13,7 +17,7 @@ class TestResponseHeader < Minitest::Test
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
     @log_writer = Puma::LogWriter.strings
-    @server = Puma::Server.new @app, @log_writer
+    @server = Puma::Server.new @app, @log_writer, ::Puma::Events.new, {min_threads: 1}
   end
 
   def teardown
@@ -29,7 +33,7 @@ class TestResponseHeader < Minitest::Test
   end
 
   def send_http_and_read(req)
-    send_http(req).read
+    send_http(req).sysread CLIENT_SYSREAD_LENGTH
   end
 
   def send_http(req)
@@ -140,5 +144,13 @@ class TestResponseHeader < Minitest::Test
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     refute_match("X-header: First\000 line\r\nX-header: Second Lin\037e\r\n", data)
+  end
+
+  def test_header_value_array
+    server_run app: ->(env) { [200, {'set-cookie' => ['z=1', 'a=2']}, ['Hello']] }
+    data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
+
+    resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\nContent-Length: 5\r\n\r\n"
+    assert_includes data, resp
   end
 end
