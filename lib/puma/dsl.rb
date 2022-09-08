@@ -949,23 +949,6 @@ module Puma
       @options[:fork_worker] = Integer(after_requests)
     end
 
-    # When enabled, Puma will GC 4 times before forking workers.
-    # If available (Ruby 2.7+), we will also call GC.compact.
-    # Not recommended for non-MRI Rubies.
-    #
-    # Based on the work of Koichi Sasada and Aaron Patterson, this option may
-    # decrease memory utilization of preload-enabled cluster-mode Pumas. It will
-    # also increase time to boot and fork. See your logs for details on how much
-    # time this adds to your boot process. For most apps, it will be less than one
-    # second.
-    #
-    # @see Puma::Cluster#nakayoshi_gc
-    # @version 5.0.0
-    #
-    def nakayoshi_fork(enabled=true)
-      @options[:nakayoshi_fork] = enabled
-    end
-
     # The number of requests to attempt inline before sending a client back to
     # the reactor to be subject to normal ordering.
     #
