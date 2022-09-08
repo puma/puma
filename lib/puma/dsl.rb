@@ -33,8 +33,6 @@ module Puma
   # +test/config+.
   #
   class DSL
-    include ConfigDefault
-
     # convenience method so logic can be used in CI
     # @see ssl_bind
     #
@@ -110,7 +108,7 @@ module Puma
     end
 
     def default_host
-      @options[:default_host] || Configuration::DefaultTCPHost
+      @options[:default_host] || Configuration::DEFAULTS[:tcp_host]
     end
 
     def inject(&blk)
@@ -782,7 +780,7 @@ module Puma
     #
     def worker_timeout(timeout)
       timeout = Integer(timeout)
-      min = @options.fetch(:worker_check_interval, Puma::ConfigDefault::DefaultWorkerCheckInterval)
+      min = @options.fetch(:worker_check_interval, Configuration::DEFAULTS[:worker_check_interval])
 
       if timeout <= min
         raise "The minimum worker_timeout must be greater than the worker reporting interval (#{min})"

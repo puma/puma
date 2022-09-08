@@ -64,7 +64,7 @@ class TestCLI < Minitest::Test
 
     assert_equal Puma.stats_hash, JSON.parse(Puma.stats, symbolize_names: true)
 
-    dmt = Puma::Configuration.new.default_max_threads
+    dmt = Puma::Configuration::DEFAULTS[:max_threads]
     assert_match(/\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt},"requests_count":0,"versions":\{"puma":"\d+.\d+.\d+","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/, body.split(/\r?\n/).last)
 
   ensure
@@ -101,7 +101,7 @@ class TestCLI < Minitest::Test
       body = http.request(req).body
     end
 
-    dmt = Puma::Configuration.new.default_max_threads
+    dmt = Puma::Configuration::DEFAULTS[:max_threads]
     expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt}/
     assert_match(expected_stats, body.split(/\r?\n/).last)
 
@@ -179,7 +179,7 @@ class TestCLI < Minitest::Test
     body = s.read
     s.close
 
-    dmt = Puma::Configuration.new.default_max_threads
+    dmt = Puma::Configuration::DEFAULTS[:max_threads]
     assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt},"requests_count":0,"versions":\{"puma":"\d+.\d+.\d+","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/, body.split(/\r?\n/).last)
   ensure
     if UNIX_SKT_EXIST
@@ -451,7 +451,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal 'test', cli.instance_variable_get(:@conf).environment.call
+    assert_equal 'test', cli.instance_variable_get(:@conf).environment
   ensure
     ENV.delete 'APP_ENV'
     ENV.delete 'RAILS_ENV'
@@ -463,7 +463,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal @environment, cli.instance_variable_get(:@conf).environment.call
+    assert_equal @environment, cli.instance_variable_get(:@conf).environment
   end
 
   def test_environment_rails_env
@@ -473,7 +473,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal @environment, cli.instance_variable_get(:@conf).environment.call
+    assert_equal @environment, cli.instance_variable_get(:@conf).environment
   ensure
     ENV.delete 'RAILS_ENV'
   end

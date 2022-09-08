@@ -191,7 +191,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
-    timeout = Puma::ConfigDefault::DefaultWorkerCheckInterval + 1
+    timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<RUBY)
 worker_timeout #{timeout}
 on_worker_boot do

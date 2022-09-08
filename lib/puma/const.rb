@@ -107,24 +107,9 @@ module Puma
 
     FAST_TRACK_KA_TIMEOUT = 0.2
 
-    # The default number of seconds for another request within a persistent
-    # session.
-    PERSISTENT_TIMEOUT = 20
-
-    # The default number of seconds to wait until we get the first data
-    # for the request
-    FIRST_DATA_TIMEOUT = 30
-
     # How long to wait when getting some write blocking on the socket when
     # sending data back
     WRITE_TIMEOUT = 10
-
-    # How many requests to attempt inline before sending a client back to
-    # the reactor to be subject to normal ordering. The idea here is that
-    # we amortize the cost of going back to the reactor for a well behaved
-    # but very "greedy" client across 10 requests. This prevents a not
-    # well behaved client from monopolizing the thread forever.
-    MAX_FAST_INLINE = 10
 
     # The original URI requested by the client.
     REQUEST_URI= 'REQUEST_URI'.freeze
