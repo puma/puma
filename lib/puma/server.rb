@@ -32,6 +32,15 @@ module Puma
   # Each `Puma::Server` will have one reactor and one thread pool.
   class Server
 
+    THREAD_POOL_OPTIONS = [
+      :auto_trim_time,
+      :clean_thread_locals,
+      :max_threads,
+      :min_threads,
+      :out_of_band_hook,
+      :reaping_time,
+    ]
+
     include Puma::Const
     include Request
     extend Forwardable
@@ -80,9 +89,6 @@ module Puma
 
       @check, @notify = nil
       @status = :stop
-
-      @auto_trim_time = 30
-      @reaping_time = 1
 
       @thread = nil
       @thread_pool = nil
@@ -235,29 +241,15 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(
-        thread_name,
-        @min_threads,
-        @max_threads,
-        ::Puma::IOBuffer,
-        &method(:process_client)
-      )
-
-      @thread_pool.out_of_band_hook = @options[:out_of_band]
-      @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
+      @thread_pool = ThreadPool.new(thread_name, @options.slice(THREAD_POOL_OPTIONS).merge(block: method(:process_client)))
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend, &method(:reactor_wakeup))
         @reactor.run
       end
 
-      if @reaping_time
-        @thread_pool.auto_reap!(@reaping_time)
-      end
-
-      if @auto_trim_time
-        @thread_pool.auto_trim!(@auto_trim_time)
-      end
+      @thread_pool.auto_reap! if @options[:reaping_time]
+      @thread_pool.auto_trim! if @options[:auto_trim_time]
 
       @check, @notify = Puma::Util.pipe unless @notify
 

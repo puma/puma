@@ -1,5 +1,6 @@
 require_relative "helper"
 require "puma/events"
+require "puma/server"
 require "net/http"
 require "nio"
 require "ipaddr"

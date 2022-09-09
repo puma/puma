@@ -2,6 +2,8 @@
 
 require 'thread'
 
+require 'puma/io_buffer'
+
 module Puma
   # Internal Docs for A simple thread pool management object.
   #
@@ -29,7 +31,7 @@ module Puma
     # The block passed is the work that will be performed in each
     # thread.
     #
-    def initialize(name, min, max, *extra, &block)
+    def initialize(name, options = {})
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
@@ -40,10 +42,14 @@ module Puma
       @waiting = 0
 
       @name = name
-      @min = Integer(min)
-      @max = Integer(max)
-      @block = block
-      @extra = extra
+      @min = Integer(options[:min_threads])
+      @max = Integer(options[:max_threads])
+      @block = options[:block]
+      @extra = [::Puma::IOBuffer]
+      @out_of_band_hook = options[:out_of_band_hook]
+      @clean_thread_locals = options[:clean_thread_locals]
+      @reaping_time = options[:reaping_time]
+      @auto_trim_time = options[:auto_trim_time]
 
       @shutdown = false
 
@@ -62,7 +68,6 @@ module Puma
         end
       end
 
-      @clean_thread_locals = false
       @force_shutdown = false
       @shutdown_mutex = Mutex.new
     end
@@ -319,12 +324,12 @@ module Puma
       end
     end
 
-    def auto_trim!(timeout=30)
+    def auto_trim!(timeout=@auto_trim_time)
       @auto_trim = Automaton.new(self, timeout, "#{@name} threadpool trimmer", :trim)
       @auto_trim.start!
     end
 
-    def auto_reap!(timeout=5)
+    def auto_reap!(timeout=@reaping_time)
       @reaper = Automaton.new(self, timeout, "#{@name} threadpool reaper", :reap)
       @reaper.start!
     end
