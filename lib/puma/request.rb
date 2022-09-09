@@ -16,7 +16,10 @@ module Puma
     # also fixes max size of chunked body read when bosy is an IO.
     BODY_LEN_MAX   = 1_024 * 256
 
-    # max size for io_buufer, force write when exceeded
+    # size divide for using copy_stream on body
+    IO_BODY_MAX = 1_024 * 64
+
+    # max size for io_buffer, force write when exceeded
     IO_BUFFER_LEN_MAX = 1_024 * 1_024 * 4
 
     SOCKET_WRITE_ERR_MSG = "Socket timeout writing data"
@@ -102,6 +105,7 @@ module Puma
       rescue ThreadPool::ForceShutdown => e
         @log_writer.unknown_error e, client, "Rack app"
         @log_writer.log "Detected force shutdown of a thread"
+
         status, headers, res_body = lowlevel_error(e, env, 503)
       rescue Exception => e
         @log_writer.unknown_error e, client, "Rack app"
@@ -156,7 +160,7 @@ module Puma
         else
           body = app_body
         end
-      elsif app_body.respond_to?(:to_path) && app_body.respond_to?(:each) &&
+      elsif !app_body.is_a?(::File) && app_body.respond_to?(:to_path) && app_body.respond_to?(:each) &&
           File.readable?(fn = app_body.to_path)
         body = File.open fn, 'rb'
         resp_info[:content_length] = body.size
@@ -174,6 +178,8 @@ module Puma
       else
         response_hijack = resp_info[:response_hijack]
       end
+
+      cork_socket socket
 
       if resp_info[:no_body]
         if content_length and status != 204
@@ -200,16 +206,14 @@ module Puma
         return :async
       end
 
-      fast_write_response socket, body, io_buffer, chunked
-      socket.flush
+      fast_write_response socket, body, io_buffer, chunked, content_length.to_i
       keep_alive
     ensure
       io_buffer.reset
-
       resp_info = nil
-
-      client.tempfile.unlink if client.tempfile
+      uncork_socket socket
       app_body.close if app_body.respond_to? :close
+      client.tempfile.unlink if client.tempfile
 
       begin
         after_reply.each { |o| o.call }
@@ -264,7 +268,7 @@ module Puma
     # @param chunk [Boolean]
     # @raise [ConnectionError]
     #
-    def fast_write_response(socket, body, io_buffer, chunked)
+    def fast_write_response(socket, body, io_buffer, chunked, content_length)
       if body.is_a?(::File) || body.respond_to?(:read) || body.respond_to?(:readpartial)
         if chunked  # would this ever happen?
           while part = body.read(BODY_LEN_MAX)
@@ -273,15 +277,15 @@ module Puma
           io_buffer << CLOSE_CHUNKED
           fast_write_str socket, io_buffer.to_s
         else
-          if body.respond_to?(:size) && body.size <= 10_240
-            IO.copy_stream body, io_buffer
+          if content_length <= IO_BODY_MAX
+            io_buffer.write body.sysread(content_length)
             fast_write_str socket, io_buffer.to_s
           else
             fast_write_str socket, io_buffer.to_s
             IO.copy_stream body, socket
           end
         end
-        body.close unless body.closed?
+        body.close
       elsif body.is_a?(::Array) && body.length == 1
         body_first = body.first
         if body_first.is_a?(::String) && body_first.bytesize >= BODY_LEN_MAX
@@ -503,7 +507,7 @@ module Puma
       resp_info = {}
       resp_info[:no_body] = env[REQUEST_METHOD] == HEAD
 
-      http_11 = env[HTTP_VERSION] == HTTP_11
+      http_11 = env[SERVER_PROTOCOL] == HTTP_11
       if http_11
         resp_info[:allow_chunked] = true
         resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
