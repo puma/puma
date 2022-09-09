@@ -25,8 +25,7 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 ## Setup
 
-First step: join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org)
-
+Any questions about contributing may be asked in our [Discussions](https://github.com/puma/puma/discussions).
 
 #### Clone the repo 
 
@@ -139,6 +138,8 @@ We find that values of 4000 or more work well. [Learn more about your file limit
 
 Puma could use your help in several areas!
 
+**Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
+
 **The [contrib-wanted] label indicates that an issue might approachable to first-time contributors.**
 
 **Reproducing bug reports**: The [needs-repro] label indicates than an issue lacks reproduction steps. You can help by reproducing the issue and sharing the steps you took in the comments.
@@ -188,6 +189,8 @@ docker run -p 9292:9292 -it puma
 
 ## Pull requests
 
+Please open draft PRs as soon as you are ready for feedback from the community.
+
 Code contributions should generally include test coverage. If you aren't sure how to
 test your changes, please open a pull request and leave a comment asking for
 help.
@@ -204,7 +207,7 @@ As a contributor, you may make pull requests against `-stable` branches to backp
 
 ## Join the community
 
-If you're looking to contribute to Puma, please join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org).
+If you're looking to contribute to Puma, please join us in [Discussions](https://github.com/puma/puma/discussions).
 
 ## Bibliography/Reading
 
