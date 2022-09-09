@@ -132,6 +132,19 @@ class TestPumaServer < Minitest::Test
     assert_equal "Hello World", data.split("\n").last
   end
 
+  def test_file_body
+    random_bytes = SecureRandom.random_bytes(4096 * 32)
+    path = Tempfile.open { |f| f.path }
+    File.binwrite path, random_bytes
+
+    server_run { |env| [200, {}, File.open(path, 'rb')] }
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    assert_equal random_bytes, data.split("\r\n", 3).last
+  ensure
+    File.delete(path) if File.exist?(path)
+  end
+
   def test_proper_stringio_body
     data = nil
 
