@@ -414,7 +414,6 @@ module Puma
       @master_read, @worker_write = read, @wakeup
 
       @launcher.config.run_hooks(:before_fork, nil, @launcher.log_writer)
-      Puma::Util.nakayoshi_gc(@log_writer) if @options[:nakayoshi_fork]
 
       spawn_workers
 
