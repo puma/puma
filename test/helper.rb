@@ -165,6 +165,7 @@ module TestSkips
       when :fork    then MSG_FORK                       unless HAS_FORK
       when :unix    then MSG_UNIX                       unless Puma::HAS_UNIX_SOCKET
       when :aunix   then MSG_AUNIX                      unless Puma.abstract_unix_socket?
+      when :rack3   then "Skipped unless Rack >= 3.x"   unless ::Rack::RELEASE >= '3'
       else false
     end
     skip skip_msg, bt if skip_msg
