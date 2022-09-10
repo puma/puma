@@ -97,9 +97,15 @@ See the [Bundler docs](https://bundler.io/man/gemfile.5.html#PATH) for more deta
 
 ## Running tests
 
-To run the entire test suite:
+To run rubocop + tests:
+
 ```sh
-bundle exec rake test:all
+bundle exec rake 
+```
+
+To run the test suite only:
+```sh
+bundle exec rake test
 ```
 
 To run a single test file:
@@ -120,6 +126,12 @@ bundle exec m test/test_binder.rb:37
 To run a single test with 5 seconds as the test case timeout:
 ```sh
 TEST_CASE_TIMEOUT=5 bundle exec m test/test_binder.rb:37
+```
+
+If you would like more information about extension building, SSL versions, your local Ruby version, and more, use the PUMA_DEBUG env variable:
+
+```sh
+PUMA_DEBUG=1 bundle exec rake test
 ```
 
 #### File limits

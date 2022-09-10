@@ -22,7 +22,7 @@ require_relative "helpers/apps"
 Thread.abort_on_exception = true
 
 $debugging_info = ''.dup
-$debugging_hold = false    # needed for TestCLI#test_control_clustered
+$debugging_hold = false   # needed for TestCLI#test_control_clustered
 $test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
   RUBY_ENGINE == "ruby" ? 45 : 60
 end.to_i
@@ -192,7 +192,7 @@ end
 
 Minitest.after_run do
   # needed for TestCLI#test_control_clustered
-  unless $debugging_hold
+  if !$debugging_hold && ENV['PUMA_DEBUG']
     out = $debugging_info.strip
     unless out.empty?
       dash = "\u2500"

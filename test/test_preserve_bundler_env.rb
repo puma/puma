@@ -3,6 +3,7 @@ require_relative "helpers/integration"
 
 class TestPreserveBundlerEnv < TestIntegration
   def setup
+    skip
     skip_unless :fork
     super
   end
@@ -29,7 +30,7 @@ class TestPreserveBundlerEnv < TestIntegration
     Dir.chdir(File.expand_path("bundle_preservation_test", __dir__)) do
       @server = IO.popen(env, cmd.split, "r")
     end
-    wait_for_server_to_boot
+    wait_for_server_to_boot(log: true)
     @pid = @server.pid
     connection = connect
     initial_reply = read_body(connection)
