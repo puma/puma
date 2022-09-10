@@ -46,7 +46,7 @@ module Puma
       @max = Integer(options[:max_threads])
       @block = options[:block]
       @extra = [::Puma::IOBuffer]
-      @out_of_band_hook = options[:out_of_band_hook]
+      @out_of_band = options[:out_of_band]
       @clean_thread_locals = options[:clean_thread_locals]
       @reaping_time = options[:reaping_time]
       @auto_trim_time = options[:auto_trim_time]
@@ -73,8 +73,6 @@ module Puma
     end
 
     attr_reader :spawned, :trim_requested, :waiting
-    attr_accessor :clean_thread_locals
-    attr_accessor :out_of_band_hook # @version 5.0.0
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Style/HashEachMethods
@@ -165,12 +163,12 @@ module Puma
 
     # @version 5.0.0
     def trigger_out_of_band_hook
-      return false unless out_of_band_hook && out_of_band_hook.any?
+      return false unless @out_of_band && @out_of_band.any?
 
       # we execute on idle hook when all threads are free
       return false unless @spawned == @waiting
 
-      out_of_band_hook.each(&:call)
+      @out_of_band.each(&:call)
       true
     rescue Exception => e
       STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"

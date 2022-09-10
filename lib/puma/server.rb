@@ -37,7 +37,7 @@ module Puma
       :clean_thread_locals,
       :max_threads,
       :min_threads,
-      :out_of_band_hook,
+      :out_of_band,
       :reaping_time,
     ]
 
@@ -240,13 +240,15 @@ module Puma
       @events.fire :state, :booting
 
       @status = :run
-
-      @thread_pool = ThreadPool.new(thread_name, @options.slice(THREAD_POOL_OPTIONS).merge(block: method(:process_client)))
+      
+      thread_pool_opts = @options.slice(THREAD_POOL_OPTIONS).merge(block: method(:process_client))
+      @thread_pool = ThreadPool.new(thread_name, thread_pool_opts)
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend, &method(:reactor_wakeup))
         @reactor.run
       end
+
 
       @thread_pool.auto_reap! if @options[:reaping_time]
       @thread_pool.auto_trim! if @options[:auto_trim_time]
