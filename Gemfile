@@ -21,7 +21,7 @@ unless ENV['PUMA_NO_RUBOCOP'] || RUBY_PLATFORM.include?('mswin')
   gem 'rubocop-performance', require: false
 end
 
-if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
+if RUBY_VERSION == '2.4.1'
   gem "stopgap_13632", "~> 1.0", :platforms => ["mri", "mingw", "x64_mingw"]
 end
 
