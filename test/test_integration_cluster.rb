@@ -88,7 +88,6 @@ class TestIntegrationCluster < TestIntegration
 
   def test_term_closes_listeners_tcp
     skip_unless_signal_exist? :TERM
-    skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
     term_closes_listeners unix: false
   end
 
@@ -132,8 +131,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_term_worker_clean_exit
-    skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
-
     cli_server "-w #{workers} test/rackup/hello.ru"
 
     # Get the PIDs of the child workers.

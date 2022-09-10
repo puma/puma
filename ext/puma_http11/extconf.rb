@@ -2,7 +2,7 @@ require 'mkmf'
 
 dir_config("puma_http11")
 
-if $mingw && RUBY_VERSION >= '2.4'
+if $mingw
   append_cflags  '-fstack-protector-strong -D_FORTIFY_SOURCE=2'
   append_ldflags '-fstack-protector-strong -l:libssp.a'
   have_library 'ssp'
@@ -13,7 +13,7 @@ unless ENV["PUMA_DISABLE_SSL"]
   has_openssl_dir = dir_config('openssl').any?
   found_pkg_config = !has_openssl_dir && pkg_config('openssl')
 
-  found_ssl = if (!$mingw || RUBY_VERSION >= '2.4') && found_pkg_config
+  found_ssl = if !$mingw && found_pkg_config
     puts 'using OpenSSL pkgconfig (openssl.pc)'
     true
   elsif have_library('libcrypto', 'BIO_read') && have_library('libssl', 'SSL_CTX_new')

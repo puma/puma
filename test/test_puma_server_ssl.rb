@@ -140,8 +140,7 @@ class TestPumaServerSSL < Minitest::Test
     skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
     start_server
     @http.ssl_version= :SSLv3
-    # Ruby 2.4.5 on Travis raises ArgumentError
-    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+    assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
         Net::HTTP::Get.new '/'
       end
@@ -161,8 +160,7 @@ class TestPumaServerSSL < Minitest::Test
     else
       @http.ssl_version = :TLSv1
     end
-    # Ruby 2.4.5 on Travis raises ArgumentError
-    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+    assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
         Net::HTTP::Get.new '/'
       end
@@ -181,8 +179,7 @@ class TestPumaServerSSL < Minitest::Test
     else
       @http.ssl_version = :TLSv1_1
     end
-    # Ruby 2.4.5 on Travis raises ArgumentError
-    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+    assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
         Net::HTTP::Get.new '/'
       end
