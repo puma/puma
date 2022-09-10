@@ -151,7 +151,7 @@ module Puma
       min_threads: 0,
       mode: :http,
       mutate_stdout_and_stderr_to_sync_on_write: true,
-      out_of_band_hook: [],
+      out_of_band: [],
       # Number of seconds for another request within a persistent session.
       persistent_timeout: 20,
       queue_requests: true,
