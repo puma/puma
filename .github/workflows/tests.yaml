@@ -28,7 +28,7 @@ jobs:
     needs: rubocop
     env:
       CI: true
-      PUMA_DEBUG: true
+      PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
 

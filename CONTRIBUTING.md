@@ -128,10 +128,10 @@ To run a single test with 5 seconds as the test case timeout:
 TEST_CASE_TIMEOUT=5 bundle exec m test/test_binder.rb:37
 ```
 
-If you would like more information about extension building, SSL versions, your local Ruby version, and more, use the PUMA_DEBUG env variable:
+If you would like more information about extension building, SSL versions, your local Ruby version, and more, use the PUMA_TEST_DEBUG env variable:
 
 ```sh
-PUMA_DEBUG=1 bundle exec rake test
+PUMA_TEST_DEBUG=1 bundle exec rake test
 ```
 
 #### File limits

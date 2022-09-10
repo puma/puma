@@ -4,7 +4,7 @@
 # loaded so HAS_SSL is defined
 require_relative "helper"
 
-if ::Puma::HAS_SSL && ENV['PUMA_DEBUG']
+if ::Puma::HAS_SSL && ENV['PUMA_TEST_DEBUG']
   require "puma/minissl"
   require "net/http"
 

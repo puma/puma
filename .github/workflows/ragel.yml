@@ -17,7 +17,7 @@ jobs:
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
     env:
       PUMA_NO_RUBOCOP: true
-      PUMA_DEBUG: true
+      PUMA_TEST_DEBUG: true
 
     runs-on: ${{ matrix.os }}
     if: |

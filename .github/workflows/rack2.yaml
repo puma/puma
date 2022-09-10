@@ -16,7 +16,7 @@ jobs:
     env:
       CI: true
       TESTOPTS: -v
-      PUMA_DEBUG: true
+      PUMA_TEST_DEBUG: true
       PUMA_NO_RUBOCOP: true
       PUMA_CI_RACK_2: true
 

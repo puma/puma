@@ -16,7 +16,7 @@ end
 gemspec = Gem::Specification.load("puma.gemspec")
 Gem::PackageTask.new(gemspec).define
 
-Rake::FileUtilsExt.verbose_flag = !!ENV['PUMA_DEBUG']
+Rake::FileUtilsExt.verbose_flag = !!ENV['PUMA_TEST_DEBUG']
 # generate extension code using Ragel (C and Java)
 desc "Generate extension code (C and Java) using Ragel"
 task :ragel

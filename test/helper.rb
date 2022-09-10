@@ -192,7 +192,7 @@ end
 
 Minitest.after_run do
   # needed for TestCLI#test_control_clustered
-  if !$debugging_hold && ENV['PUMA_DEBUG']
+  if !$debugging_hold && ENV['PUMA_TEST_DEBUG']
     out = $debugging_info.strip
     unless out.empty?
       dash = "\u2500"
