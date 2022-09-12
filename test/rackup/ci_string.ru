@@ -24,9 +24,9 @@ env_len = (t = ENV['CI_BODY_CONF']) ? t[/\d+\z/].to_i : 10
 run lambda { |env|
   info = if (dly = env[hdr_dly])
     sleep dly.to_f
-    "#{Process.pid}\nHello World\nSlept #{dly}\n"
+    "#{Process.pid}\nHello World\nSlept #{dly}\n".dup
   else
-    "#{Process.pid}\nHello World\n"
+    "#{Process.pid}\nHello World\n".dup
   end
   info_len_adj = 1023 - info.bytesize
 
