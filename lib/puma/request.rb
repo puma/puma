@@ -73,8 +73,13 @@ module Puma
 
       begin
         begin
-          status, headers, res_body = @thread_pool.with_force_shutdown do
-            @app.call(env)
+          if SUPPORTED_HTTP_METHODS.include?(env[REQUEST_METHOD])
+            status, headers, res_body = @thread_pool.with_force_shutdown do
+              @app.call(env)
+            end
+          else
+            @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
+            status, headers, res_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
           end
 
           return :async if client.hijacked
@@ -271,14 +276,12 @@ module Puma
         uri = URI.parse(env[REQUEST_URI])
         env[REQUEST_PATH] = uri.path
 
-        raise "No REQUEST PATH" unless env[REQUEST_PATH]
-
         # A nil env value will cause a LintError (and fatal errors elsewhere),
         # so only set the env value if there actually is a value.
         env[QUERY_STRING] = uri.query if uri.query
       end
 
-      env[PATH_INFO] = env[REQUEST_PATH]
+      env[PATH_INFO] = env[REQUEST_PATH].to_s # #to_s in case it's nil
 
       # From https://www.ietf.org/rfc/rfc3875 :
       # "Script authors should be aware that the REMOTE_ADDR and

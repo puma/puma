@@ -79,6 +79,20 @@ class WebServerTest < Minitest::Test
     socket.close
   end
 
+  def test_unsupported_method
+    socket = do_test("CONNECT www.zedshaw.com:443 HTTP/1.1\r\nConnection: close\r\n\r\n", 100)
+    response = socket.read
+    assert_match "Not Implemented", response
+    socket.close
+  end
+
+  def test_nonexistent_method
+    socket = do_test("FOOBARBAZ www.zedshaw.com:443 HTTP/1.1\r\nConnection: close\r\n\r\n", 100)
+    response = socket.read
+    assert_match "Not Implemented", response
+    socket.close
+  end
+
   private
 
   def do_test(string, chunk)
