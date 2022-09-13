@@ -54,10 +54,12 @@ module Puma
 
           ctx.ca = params['ca'] if params['ca']
           ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
+
+          ctx.reuse = params['reuse'] if params['reuse']
         end
 
-        ctx.no_tlsv1 = true if params['no_tlsv1'] == 'true'
-        ctx.no_tlsv1_1 = true if params['no_tlsv1_1'] == 'true'
+        ctx.no_tlsv1   = params['no_tlsv1'] == 'true'
+        ctx.no_tlsv1_1 = params['no_tlsv1_1'] == 'true'
 
         if params['verify_mode']
           ctx.verify_mode = case params['verify_mode']
