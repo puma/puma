@@ -96,7 +96,7 @@ class TestResponseHeader < Minitest::Test
     server_run app: ->(env) { [200, {'Teapot-Status' => 'Boiling'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nTeapot-Status: Boiling\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\nTeapot-Status: Boiling\r\nContent-Length: 0\r\n\r\n/, data)
   end
 
   # Special headers starting “rack.” are for communicating with the server, and must not be sent back to the client.
@@ -109,7 +109,7 @@ class TestResponseHeader < Minitest::Test
     server_run app: ->(env) { [200, {'Racket' => 'Bouncy'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nRacket: Bouncy\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\nRacket: Bouncy\r\nContent-Length: 0\r\n\r\n/, data)
   end
 
   # testing header key must conform rfc token specification

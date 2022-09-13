@@ -5,7 +5,7 @@ require "nio"
 require "ipaddr"
 
 class TestPumaServer < Minitest::Test
-  parallelize_me! unless JRUBY_HEAD
+  parallelize_me!
 
   def setup
     @host = "127.0.0.1"
@@ -25,6 +25,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def server_run(**options, &block)
+    options[:min_threads] ||= 1
     @server = Puma::Server.new block || @app, @log_writer, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
@@ -140,10 +141,33 @@ class TestPumaServer < Minitest::Test
     server_run { |env| [200, {}, File.open(path, 'rb')] }
 
     data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
-    assert_equal random_bytes, data.split("\r\n", 3).last
+    ary = data.split("\r\n\r\n", 2)
+
+    assert_equal random_bytes, ary.last
   ensure
     File.delete(path) if File.exist?(path)
   end
+
+  def test_file_to_path
+    random_bytes = SecureRandom.random_bytes(4096 * 32)
+    path = Tempfile.open { |f| f.path }
+    File.binwrite path, random_bytes
+
+    obj = Object.new
+    obj.singleton_class.send(:define_method, :to_path) { path }
+    obj.singleton_class.send(:define_method, :each) { path } # dummy, method needs to exist
+
+    server_run { |env| [200, {}, obj] }
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    ary = data.split("\r\n\r\n", 2)
+
+    assert_equal random_bytes, ary.last
+  ensure
+    File.delete(path) if File.exist?(path)
+  end
+
+
 
   def test_proper_stringio_body
     data = nil
@@ -337,7 +361,7 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_doesnt_print_backtrace_in_production
@@ -1000,7 +1024,7 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_request_body_wait
