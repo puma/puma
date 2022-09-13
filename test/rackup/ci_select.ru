@@ -8,7 +8,7 @@ require 'securerandom'
 require 'tmpdir'
 
 headers = {}
-headers['Content-Type'] = 'text/plain; charset=utf-8'
+headers['Content-Type'] = 'text/plain; charset=utf-8'.freeze
 25.times { |i| headers["X-My-Header-#{i}"] = SecureRandom.hex(25) }
 
 hdr_dly = 'HTTP_DLY'
@@ -18,15 +18,21 @@ hdr_content_length = 'Content-Length'
 # length = 1018  bytesize = 1024
 str_1kb = "──#{SecureRandom.hex 507}─\n".freeze
 
-fn_format = "#{Dir.tmpdir}/.puma_response_body_io/body_io_%04d.txt"
+fn_format = "#{Dir.tmpdir}/.puma_response_body_io/body_io_%04d.txt".freeze
 
 body_types = %w[a c i s].freeze
 
+cache_array   = {}
+cache_chunked = {}
+cache_string  = {}
+
 run lambda { |env|
   info = if (dly = env[hdr_dly])
+    hash_key = "#{dly},".dup
     sleep dly.to_f
     "#{Process.pid}\nHello World\nSlept #{dly}\n".dup
   else
+    hash_key = ",".dup
     "#{Process.pid}\nHello World\n".dup
   end
   info_len_adj = 1023 - info.bytesize
@@ -44,24 +50,33 @@ run lambda { |env|
     len  = 1
   end
 
+  hash_key << len.to_s
+
   case type
   when :a      # body is an array
     headers[hdr_content_length] = (1_024 * len).to_s
-    body = Array.new len, str_1kb
-    body[0] = info + str_1kb.byteslice(0, info_len_adj) + "\n"
+    body = cache_array[hash_key] ||= begin
+      temp = Array.new len, str_1kb
+      temp[0] = info + str_1kb.byteslice(0, info_len_adj) + "\n"
+      temp
+    end
   when :c      # body is chunked
     headers.delete hdr_content_length
-    temp = Array.new len, str_1kb
-    temp[0] = info + str_1kb.byteslice(0, info_len_adj) + "\n"
-    body = temp.to_enum
+    body = cache_chunked[hash_key] ||= begin
+      temp = Array.new len, str_1kb
+      temp[0] = info + str_1kb.byteslice(0, info_len_adj) + "\n"
+      temp.to_enum
+    end
   when :i      # body is an io
     headers[hdr_content_length] = (1_024 * len).to_s
     fn = format fn_format, len
     body = File.open fn, 'rb'
   when :s      # body is a single string in an array
     headers[hdr_content_length] = (1_024 * len).to_s
-    info << str_1kb.byteslice(0, info_len_adj) << "\n" << (str_1kb * (len-1))
-    body = [info]
+    body = cache_string[hash_key] ||= begin
+      info << str_1kb.byteslice(0, info_len_adj) << "\n" << (str_1kb * (len-1))
+      [info]
+    end
   end
   [200, headers, body]
 }
