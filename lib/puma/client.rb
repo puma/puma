@@ -315,7 +315,7 @@ module Puma
     private
 
     def setup_body
-      @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
+      @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
       if @env[HTTP_EXPECT] == CONTINUE
         # TODO allow a hook here to check the headers before
@@ -587,7 +587,7 @@ module Puma
 
     def set_ready
       if @body_read_start
-        @env['puma.request_body_wait'] = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond) - @body_read_start
+        @env['puma.request_body_wait'] = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond) - @body_read_start
       end
       @requests_served += 1
       @ready = true
