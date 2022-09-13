@@ -9,7 +9,7 @@ require 'securerandom'
 env_len = (t = ENV['CI_BODY_CONF']) ? t[/\d+\z/].to_i : 10
 
 headers = {}
-headers['Content-Type'] = 'text/plain; charset=utf-8'
+headers['Content-Type'] = 'text/plain; charset=utf-8'.freeze
 25.times { |i| headers["X-My-Header-#{i}"] = SecureRandom.hex(25) }
 
 hdr_dly = 'HTTP_DLY'
@@ -21,18 +21,27 @@ str_1kb = "──#{SecureRandom.hex 507}─\n".freeze
 
 env_len = (t = ENV['CI_BODY_CONF']) ? t[/\d+\z/].to_i : 10
 
+cache_string = {}
+
 run lambda { |env|
   info = if (dly = env[hdr_dly])
+    hash_key = "#{dly},".dup
     sleep dly.to_f
     "#{Process.pid}\nHello World\nSlept #{dly}\n".dup
   else
+    hash_key = ",".dup
     "#{Process.pid}\nHello World\n".dup
   end
   info_len_adj = 1023 - info.bytesize
 
   len = (t = env[hdr_body_conf]) ? t[/\d+\z/].to_i : env_len
 
-  info << str_1kb.byteslice(0, info_len_adj) << "\n" << (str_1kb * (len-1))
+  hash_key << len.to_s
+
   headers[hdr_content_length] = (1_024 * len).to_s
-  [200, headers, [info]]
+  body = cache_string[hash_key] ||= begin
+    info << str_1kb.byteslice(0, info_len_adj) << "\n" << (str_1kb * (len-1))
+    [info]
+  end
+  [200, headers, body]
 }
