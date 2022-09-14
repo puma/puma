@@ -88,10 +88,6 @@ module Puma
         .merge(file_options)
         .merge(user_options)
     end
-
-    def slice(keys)
-      final_options.slice(*keys)
-    end
   end
 
   # The main configuration class of Puma.

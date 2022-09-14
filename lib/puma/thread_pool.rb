@@ -31,7 +31,7 @@ module Puma
     # The block passed is the work that will be performed in each
     # thread.
     #
-    def initialize(name, options = {})
+    def initialize(name, options = {}, &block)
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
@@ -44,7 +44,7 @@ module Puma
       @name = name
       @min = Integer(options[:min_threads])
       @max = Integer(options[:max_threads])
-      @block = options[:block]
+      @block = block
       @extra = [::Puma::IOBuffer]
       @out_of_band = options[:out_of_band]
       @clean_thread_locals = options[:clean_thread_locals]

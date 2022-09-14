@@ -31,16 +31,6 @@ module Puma
   #
   # Each `Puma::Server` will have one reactor and one thread pool.
   class Server
-
-    THREAD_POOL_OPTIONS = [
-      :auto_trim_time,
-      :clean_thread_locals,
-      :max_threads,
-      :min_threads,
-      :out_of_band,
-      :reaping_time,
-    ]
-
     include Puma::Const
     include Request
     extend Forwardable
@@ -240,9 +230,8 @@ module Puma
       @events.fire :state, :booting
 
       @status = :run
-      
-      thread_pool_opts = @options.slice(THREAD_POOL_OPTIONS).merge(block: method(:process_client))
-      @thread_pool = ThreadPool.new(thread_name, thread_pool_opts)
+
+      @thread_pool = ThreadPool.new(thread_name, @options, &method(:process_client))
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend, &method(:reactor_wakeup))
