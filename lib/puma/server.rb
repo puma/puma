@@ -325,6 +325,11 @@ module Puma
         drain = @options[:drain_on_shutdown] ? 0 : nil
 
         # option to local variables
+        # Using local variables avoid calling `@options#[]` method each time we need the value
+        remote_address_option = @options[:remote_address]
+        remote_address_value_option = @options[:remote_address_value]
+        remote_address_header_option = @options[:remote_address_header]
+        remote_address_proxy_protocol_option = @options[:remote_address_proxy_protocol]
         wait_for_less_busy_worker = @options[:wait_for_less_busy_worker]
         wait_for_less_busy_worker_enabled = !@options[:wait_for_less_busy_worker].nil?
 
@@ -362,13 +367,14 @@ module Puma
                 c.listener = sock
 
                 # set client remote address
-                case @options[:remote_address]
+                # Prefer using direct method/setter instead of calling `#send` method
+                case remote_address_option
                 when :value
-                  c.peerip = @options[:remote_address_value]
+                  c.peerip = remote_address_value_option
                 when :header
-                  c.remote_addr_header = @options[:remote_address_header]
+                  c.remote_addr_header = remote_address_header_option
                 when :proxy_protocol
-                  c.expect_proxy_proto = @options[:remote_address_proxy_protocol]
+                  c.expect_proxy_proto = remote_address_proxy_protocol_option
                 end
 
                 # push client to the thread pool
