@@ -15,7 +15,7 @@ require 'puma/io_buffer'
 require 'puma/request'
 
 require 'socket'
-require 'io/wait'
+require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 require 'forwardable'
 
 module Puma
@@ -73,7 +73,7 @@ module Puma
     #   and have default values set via +fetch+.  Normally the values are set via
     #   `::Puma::Configuration.puma_default_options`.
     #
-    def initialize(app, log_writer=LogWriter.stdio, events=Events.new, options={})
+    def initialize(app, log_writer=LogWriter.stdio, events=Events.new, options = {})
       @app = app
       @log_writer = log_writer
       @events = events
@@ -87,16 +87,20 @@ module Puma
       @thread = nil
       @thread_pool = nil
 
-      @options = options
+      @options = if options.is_a?(UserFileDefaultOptions)
+        options
+      else
+        UserFileDefaultOptions.new(options, Configuration::DEFAULTS)
+      end
 
-      @early_hints         = options.fetch :early_hints, nil
-      @first_data_timeout  = options.fetch :first_data_timeout, FIRST_DATA_TIMEOUT
-      @min_threads         = options.fetch :min_threads, 0
-      @max_threads         = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
-      @persistent_timeout  = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
-      @queue_requests      = options.fetch :queue_requests, true
-      @max_fast_inline     = options.fetch :max_fast_inline, MAX_FAST_INLINE
-      @io_selector_backend = options.fetch :io_selector_backend, :auto
+      @early_hints         = @options[:early_hints]
+      @first_data_timeout  = @options[:first_data_timeout]
+      @min_threads         = @options[:min_threads]
+      @max_threads         = @options[:max_threads]
+      @persistent_timeout  = @options[:persistent_timeout]
+      @queue_requests      = @options[:queue_requests]
+      @max_fast_inline     = @options[:max_fast_inline]
+      @io_selector_backend = @options[:io_selector_backend]
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -390,12 +394,11 @@ module Puma
       rescue Exception => e
         @log_writer.unknown_error e, nil, "Exception handling servers"
       ensure
-        # RuntimeError is Ruby 2.2 issue, can't modify frozen IOError
         # Errno::EBADF is infrequently raised
         [@check, @notify].each do |io|
           begin
             io.close unless io.closed?
-          rescue Errno::EBADF, RuntimeError
+          rescue Errno::EBADF
           end
         end
         @notify = nil

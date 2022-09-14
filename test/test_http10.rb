@@ -15,7 +15,7 @@ class Http10ParserTest < Minitest::Test
     assert nread == parser.nread, "Number read returned from execute does not match"
 
     assert_equal '/', req['REQUEST_PATH']
-    assert_equal 'HTTP/1.0', req['HTTP_VERSION']
+    assert_equal 'HTTP/1.0', req['SERVER_PROTOCOL']
     assert_equal '/', req['REQUEST_URI']
     assert_equal 'GET', req['REQUEST_METHOD']
     assert_nil req['FRAGMENT']

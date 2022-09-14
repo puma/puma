@@ -69,9 +69,7 @@ module Puma
     @get_stats.stats
   end
 
-  # Thread name is new in Ruby 2.3
   def self.set_thread_name(name)
-    return unless Thread.current.respond_to?(:name=)
     Thread.current.name = "puma #{name}"
   end
 end

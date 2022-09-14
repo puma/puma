@@ -5,6 +5,7 @@ require_relative "helpers/config_file"
 
 require "puma/configuration"
 require 'puma/log_writer'
+require 'rack'
 
 class TestConfigFile < TestConfigFileBase
   parallelize_me!
@@ -12,10 +13,11 @@ class TestConfigFile < TestConfigFileBase
   def test_default_max_threads
     max_threads = 16
     max_threads = 5 if RUBY_ENGINE.nil? || RUBY_ENGINE == 'ruby'
-    assert_equal max_threads, Puma::Configuration.new.default_max_threads
+    assert_equal max_threads, Puma::Configuration.new.options.default_options[:max_threads]
   end
 
   def test_app_from_rackup
+    skip_if :rack3
     conf = Puma::Configuration.new do |c|
       c.rackup "test/rackup/hello-bind.ru"
     end
@@ -510,7 +512,7 @@ class TestEnvModifificationConfig < TestConfigFileBase
     port = (rand(10_000) + 30_000).to_s
     with_env("PORT" => port) do
       conf = Puma::Configuration.new do |user_config, file_config, default_config|
-        user_config.bind "tcp://#{Puma::Configuration::DefaultTCPHost}:#{port}"
+        user_config.bind "tcp://#{Puma::Configuration::DEFAULTS[:tcp_host]}:#{port}"
         file_config.load "test/config/app.rb"
       end
 
@@ -537,7 +539,6 @@ class TestConfigEnvVariables < TestConfigFileBase
 
   def test_config_loads_correct_max_threads
     conf = Puma::Configuration.new
-    assert_equal conf.default_max_threads, conf.options.default_options[:max_threads]
 
     with_env("MAX_THREADS" => "7") do
       conf = Puma::Configuration.new

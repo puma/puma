@@ -277,7 +277,6 @@ class TestIntegration < Minitest::Test
  - file descriptors are not preserved on exec on JRuby; connection reset errors are expected during restarts
     MSG
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
-    skip "Undiagnosed failures on Ruby 2.2" if RUBY_VERSION < '2.3'
 
     args = "-w #{workers} -t 0:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?

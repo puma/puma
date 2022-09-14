@@ -4,7 +4,7 @@
 # loaded so HAS_SSL is defined
 require_relative "helper"
 
-if ::Puma::HAS_SSL
+if ::Puma::HAS_SSL && ENV['PUMA_TEST_DEBUG']
   require "puma/minissl"
   require "net/http"
 
@@ -140,8 +140,7 @@ class TestPumaServerSSL < Minitest::Test
     skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
     start_server
     @http.ssl_version= :SSLv3
-    # Ruby 2.4.5 on Travis raises ArgumentError
-    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+    assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
         Net::HTTP::Get.new '/'
       end
@@ -161,8 +160,7 @@ class TestPumaServerSSL < Minitest::Test
     else
       @http.ssl_version = :TLSv1
     end
-    # Ruby 2.4.5 on Travis raises ArgumentError
-    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+    assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
         Net::HTTP::Get.new '/'
       end
@@ -181,8 +179,7 @@ class TestPumaServerSSL < Minitest::Test
     else
       @http.ssl_version = :TLSv1_1
     end
-    # Ruby 2.4.5 on Travis raises ArgumentError
-    assert_raises(OpenSSL::SSL::SSLError, ArgumentError) do
+    assert_raises(OpenSSL::SSL::SSLError) do
       @http.start do
         Net::HTTP::Get.new '/'
       end
@@ -486,6 +483,25 @@ class TestPumaServerSSLClient < Minitest::Test
 
       http.ssl_version = :TLSv1_2
       http.ciphers = [ 'TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384' ]
+    end
+  end if Puma.jruby?
+
+  def test_verify_client_cert_with_truststore_without_pass
+    ctx = Puma::MiniSSL::Context.new
+    ctx.keystore = "#{CERT_PATH}/server.p12"
+    ctx.keystore_type = 'pkcs12'
+    ctx.keystore_pass = 'jruby_puma'
+    ctx.truststore =  "#{CERT_PATH}/ca_store.jks" # cert entry can be read without password
+    ctx.truststore_type = 'jks'
+    ctx.verify_mode = Puma::MiniSSL::VERIFY_PEER
+
+    assert_ssl_client_error_match(false, context: ctx) do |http|
+      key = "#{CERT_PATH}/client.key"
+      crt = "#{CERT_PATH}/client.crt"
+      http.key = OpenSSL::PKey::RSA.new File.read(key)
+      http.cert = OpenSSL::X509::Certificate.new File.read(crt)
+      http.ca_file = "#{CERT_PATH}/ca.crt"
+      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
   end if Puma.jruby?
 

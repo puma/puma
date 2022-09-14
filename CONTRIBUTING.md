@@ -25,8 +25,7 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 ## Setup
 
-First step: join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org)
-
+Any questions about contributing may be asked in our [Discussions](https://github.com/puma/puma/discussions).
 
 #### Clone the repo 
 
@@ -98,9 +97,15 @@ See the [Bundler docs](https://bundler.io/man/gemfile.5.html#PATH) for more deta
 
 ## Running tests
 
-To run the entire test suite:
+To run rubocop + tests:
+
 ```sh
-bundle exec rake test:all
+bundle exec rake 
+```
+
+To run the test suite only:
+```sh
+bundle exec rake test
 ```
 
 To run a single test file:
@@ -123,6 +128,12 @@ To run a single test with 5 seconds as the test case timeout:
 TEST_CASE_TIMEOUT=5 bundle exec m test/test_binder.rb:37
 ```
 
+If you would like more information about extension building, SSL versions, your local Ruby version, and more, use the PUMA_TEST_DEBUG env variable:
+
+```sh
+PUMA_TEST_DEBUG=1 bundle exec rake test
+```
+
 #### File limits
 
 Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open file" errors when running the Puma test suite.
@@ -138,6 +149,8 @@ We find that values of 4000 or more work well. [Learn more about your file limit
 ## How to contribute
 
 Puma could use your help in several areas!
+
+**Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
 
 **The [contrib-wanted] label indicates that an issue might approachable to first-time contributors.**
 
@@ -188,6 +201,8 @@ docker run -p 9292:9292 -it puma
 
 ## Pull requests
 
+Please open draft PRs as soon as you are ready for feedback from the community.
+
 Code contributions should generally include test coverage. If you aren't sure how to
 test your changes, please open a pull request and leave a comment asking for
 help.
@@ -204,7 +219,7 @@ As a contributor, you may make pull requests against `-stable` branches to backp
 
 ## Join the community
 
-If you're looking to contribute to Puma, please join us on Matrix at [#puma-contrib:matrix.org](https://matrix.to/#/!blREBEDhVeXTYdjTVT:matrix.org?via=matrix.org).
+If you're looking to contribute to Puma, please join us in [Discussions](https://github.com/puma/puma/discussions).
 
 ## Bibliography/Reading
 

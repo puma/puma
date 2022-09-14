@@ -52,16 +52,16 @@ module Puma
       @original_argv = @argv.dup
       @config        = conf
 
+      # Advertise the Configuration
+      Puma.cli_config = @config if defined?(Puma.cli_config)
+
+      @config.load
+
       @binder        = Binder.new(@log_writer, conf)
       @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
       @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
 
       @environment = conf.environment
-
-      # Advertise the Configuration
-      Puma.cli_config = @config if defined?(Puma.cli_config)
-
-      @config.load
 
       if @config.options[:bind_to_activated_sockets]
         @config.options[:binds] = @binder.synthesize_binds_from_activated_fs(
