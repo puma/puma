@@ -324,18 +324,6 @@ module Puma
         wait_for_less_busy_worker = @options[:wait_for_less_busy_worker]
         wait_for_less_busy_worker_enabled = !@options[:wait_for_less_busy_worker].nil?
 
-        addr_send_name, addr_value = \
-          case @options[:remote_address]
-          when :value
-            [:peerip=, @options[:remote_address_value]]
-          when :header
-            [:remote_addr_header=, @options[:remote_address_header]]
-          when :proxy_protocol
-            [:expect_proxy_proto=, @options[:remote_address_proxy_protocol]]
-          else
-            [nil, nil]
-          end
-
         is_shutting_down = false
         while @status == :run || (drain && (is_shutting_down = shutting_down?))
           begin
@@ -364,8 +352,20 @@ module Puma
                 drain += 1 if drain && shutting_down?
 
                 # initialize new client
-                c = Client.new(io, binder.env(sock), sock)
-                c.send(addr_send_name, addr_value) if addr_value
+                c = Client.new(io, binder.env(sock))
+
+                # set listener socket
+                c.listener = sock
+
+                # set client remote address
+                case @options[:remote_address]
+                when :value
+                  c.peerip = @options[:remote_address_value]
+                when :header
+                  c.remote_addr_header = @options[:remote_address_header]
+                when :proxy_protocol
+                  c.expect_proxy_proto = @options[:remote_address_proxy_protocol]
+                end
 
                 # push client to the thread pool
                 pool << c

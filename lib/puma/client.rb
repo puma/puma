@@ -58,7 +58,7 @@ module Puma
 
     include Puma::Const
 
-    def initialize(io, env = nil, listener = nil)
+    def initialize(io, env = nil)
       @io = io
       @to_io = io.to_io
       @proto_env = env
@@ -86,7 +86,7 @@ module Puma
 
       @peerip = nil
       @peer_family = nil
-      @listener = listener
+      @listener = nil
       @remote_addr_header = nil
       @expect_proxy_proto = false
 
