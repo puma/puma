@@ -2,7 +2,7 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
+if RUBY_VERSION == '2.4.1'
   begin
     require 'stopgap_13632'
   rescue LoadError
@@ -22,7 +22,7 @@ require_relative "helpers/apps"
 Thread.abort_on_exception = true
 
 $debugging_info = ''.dup
-$debugging_hold = false    # needed for TestCLI#test_control_clustered
+$debugging_hold = false   # needed for TestCLI#test_control_clustered
 $test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
   RUBY_ENGINE == "ruby" ? 45 : 60
 end.to_i
@@ -149,6 +149,7 @@ module TestSkips
         when :fork        then "Skipped if Kernel.fork exists"   if HAS_FORK
         when :unix        then "Skipped if UNIXSocket exists"    if Puma::HAS_UNIX_SOCKET
         when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
+        when :rack3       then "Skipped if Rack 3.x"             if Rack::RELEASE >= '3'
         else false
       end
       skip skip_msg, bt if skip_msg
@@ -166,6 +167,7 @@ module TestSkips
       when :fork    then MSG_FORK                       unless HAS_FORK
       when :unix    then MSG_UNIX                       unless Puma::HAS_UNIX_SOCKET
       when :aunix   then MSG_AUNIX                      unless Puma.abstract_unix_socket?
+      when :rack3   then "Skipped unless Rack >= 3.x"   unless ::Rack::RELEASE >= '3'
       else false
     end
     skip skip_msg, bt if skip_msg
@@ -190,7 +192,7 @@ end
 
 Minitest.after_run do
   # needed for TestCLI#test_control_clustered
-  unless $debugging_hold
+  if !$debugging_hold && ENV['PUMA_TEST_DEBUG']
     out = $debugging_info.strip
     unless out.empty?
       dash = "\u2500"

@@ -88,7 +88,6 @@ class TestIntegrationCluster < TestIntegration
 
   def test_term_closes_listeners_tcp
     skip_unless_signal_exist? :TERM
-    skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
     term_closes_listeners unix: false
   end
 
@@ -132,8 +131,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_term_worker_clean_exit
-    skip "Intermittent failure on Ruby 2.2" if RUBY_VERSION < '2.3'
-
     cli_server "-w #{workers} test/rackup/hello.ru"
 
     # Get the PIDs of the child workers.
@@ -191,7 +188,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
-    timeout = Puma::ConfigDefault::DefaultWorkerCheckInterval + 1
+    timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<RUBY)
 worker_timeout #{timeout}
 on_worker_boot do
@@ -266,22 +263,6 @@ app do |_|
 end
 RUBY
     assert_equal '0', read_body(connect)
-  end
-
-  def test_nakayoshi
-    cli_server "-w #{workers} test/rackup/hello.ru", config: <<RUBY
-    nakayoshi_fork true
-RUBY
-
-    output = nil
-    Timeout.timeout(10) do
-      until output
-        output = @server.gets[/Friendly fork preparation complete/]
-        sleep(0.01)
-      end
-    end
-
-    assert output, "Friendly fork didn't run"
   end
 
   def test_prune_bundler_with_multiple_workers

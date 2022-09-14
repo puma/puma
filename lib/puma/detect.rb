@@ -8,6 +8,8 @@ module Puma
   # @version 5.2.1
   HAS_FORK = ::Process.respond_to? :fork
 
+  HAS_NATIVE_IO_WAIT = ::IO.public_instance_methods(false).include? :wait_readable
+
   IS_JRUBY = Object.const_defined? :JRUBY_VERSION
 
   IS_OSX = RUBY_PLATFORM.include? 'darwin'

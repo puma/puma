@@ -85,7 +85,6 @@ module Puma
                   restart_server.clear
                   server.begin_restart(true)
                   @launcher.config.run_hooks(:before_refork, nil, @launcher.log_writer)
-                  Puma::Util.nakayoshi_gc(@log_writer) if @options[:nakayoshi_fork]
                 end
               elsif idx == 0 # restart server
                 restart_server << true << false

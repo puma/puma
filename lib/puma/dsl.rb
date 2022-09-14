@@ -33,8 +33,6 @@ module Puma
   # +test/config+.
   #
   class DSL
-    include ConfigDefault
-
     # convenience method so logic can be used in CI
     # @see ssl_bind
     #
@@ -73,8 +71,32 @@ module Puma
         cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
         key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
 
+        reuse_flag =
+          if (reuse = opts[:reuse])
+            if reuse == true
+              '&reuse=dflt'
+            elsif reuse.is_a?(Hash) && (reuse.key?(:size) || reuse.key?(:timeout))
+              val = ''.dup
+              if (size = reuse[:size]) && Integer === size
+                val << size.to_s
+              end
+              if (timeout = reuse[:timeout]) && Integer === timeout
+                val << ",#{timeout}"
+              end
+              if val.empty?
+                nil
+              else
+                "&reuse=#{val}"
+              end
+            else
+              nil
+            end
+          else
+            nil
+          end
+
         "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{ssl_cipher_filter}" \
-          "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
+          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
       end
     end
 
@@ -110,7 +132,7 @@ module Puma
     end
 
     def default_host
-      @options[:default_host] || Configuration::DefaultTCPHost
+      @options[:default_host] || Configuration::DEFAULTS[:tcp_host]
     end
 
     def inject(&blk)
@@ -456,6 +478,10 @@ module Puma
     # Puma will assume you are using the +localhost+ gem and try to load the
     # appropriate files.
     #
+    # When using the options hash parameter, the `reuse:` value is either
+    # `true`, which sets reuse 'on' with default values, or a hash, with `:size`
+    # and/or `:timeout` keys, each with integer values.
+    #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert: path_to_cert,
@@ -463,6 +489,7 @@ module Puma
     #     ssl_cipher_filter: cipher_filter, # optional
     #     verify_mode: verify_mode,         # default 'none'
     #     verification_flags: flags,        # optional, not supported by JRuby
+    #     reuse: true                       # optional
     #   }
     #
     # @example Using self-signed certificate with the +localhost+ gem:
@@ -472,6 +499,7 @@ module Puma
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert_pem: File.read(path_to_cert),
     #     key_pem: File.read(path_to_key),
+    #     reuse: {size: 2_000, timeout: 20}
     #   }
     #
     # @example For JRuby, two keys are required: +keystore+ & +keystore_pass+
@@ -782,7 +810,7 @@ module Puma
     #
     def worker_timeout(timeout)
       timeout = Integer(timeout)
-      min = @options.fetch(:worker_check_interval, Puma::ConfigDefault::DefaultWorkerCheckInterval)
+      min = @options.fetch(:worker_check_interval, Configuration::DEFAULTS[:worker_check_interval])
 
       if timeout <= min
         raise "The minimum worker_timeout must be greater than the worker reporting interval (#{min})"
@@ -947,23 +975,6 @@ module Puma
     #
     def fork_worker(after_requests=1000)
       @options[:fork_worker] = Integer(after_requests)
-    end
-
-    # When enabled, Puma will GC 4 times before forking workers.
-    # If available (Ruby 2.7+), we will also call GC.compact.
-    # Not recommended for non-MRI Rubies.
-    #
-    # Based on the work of Koichi Sasada and Aaron Patterson, this option may
-    # decrease memory utilization of preload-enabled cluster-mode Pumas. It will
-    # also increase time to boot and fork. See your logs for details on how much
-    # time this adds to your boot process. For most apps, it will be less than one
-    # second.
-    #
-    # @see Puma::Cluster#nakayoshi_gc
-    # @version 5.0.0
-    #
-    def nakayoshi_fork(enabled=true)
-      @options[:nakayoshi_fork] = enabled
     end
 
     # The number of requests to attempt inline before sending a client back to

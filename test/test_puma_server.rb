@@ -5,7 +5,7 @@ require "nio"
 require "ipaddr"
 
 class TestPumaServer < Minitest::Test
-  parallelize_me! unless JRUBY_HEAD
+  parallelize_me!
 
   def setup
     @host = "127.0.0.1"
@@ -25,6 +25,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def server_run(**options, &block)
+    options[:min_threads] ||= 1
     @server = Puma::Server.new block || @app, @log_writer, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
@@ -131,6 +132,42 @@ class TestPumaServer < Minitest::Test
 
     assert_equal "Hello World", data.split("\n").last
   end
+
+  def test_file_body
+    random_bytes = SecureRandom.random_bytes(4096 * 32)
+    path = Tempfile.open { |f| f.path }
+    File.binwrite path, random_bytes
+
+    server_run { |env| [200, {}, File.open(path, 'rb')] }
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    ary = data.split("\r\n\r\n", 2)
+
+    assert_equal random_bytes, ary.last
+  ensure
+    File.delete(path) if File.exist?(path)
+  end
+
+  def test_file_to_path
+    random_bytes = SecureRandom.random_bytes(4096 * 32)
+    path = Tempfile.open { |f| f.path }
+    File.binwrite path, random_bytes
+
+    obj = Object.new
+    obj.singleton_class.send(:define_method, :to_path) { path }
+    obj.singleton_class.send(:define_method, :each) { path } # dummy, method needs to exist
+
+    server_run { |env| [200, {}, obj] }
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    ary = data.split("\r\n\r\n", 2)
+
+    assert_equal random_bytes, ary.last
+  ensure
+    File.delete(path) if File.exist?(path)
+  end
+
+
 
   def test_proper_stringio_body
     data = nil
@@ -324,7 +361,7 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_doesnt_print_backtrace_in_production
@@ -885,7 +922,6 @@ EOF
   end
 
   def test_chunked_keep_alive_two_back_to_back
-    skip("Fails on TruffleRuby (not head)") unless !TRUFFLE || Gem::Version.new(RUBY_ENGINE_VERSION) > Gem::Version.new('22.1')
     body = nil
     content_length = nil
     server_run { |env|
@@ -909,6 +945,7 @@ EOF
     assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
     assert_equal "hello", body
     assert_equal "5", content_length
+    sleep 0.05 if TRUFFLE
     assert_equal true, last_crlf_written
 
     last_crlf_writer.join
@@ -987,7 +1024,7 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\n\r\n", data
+    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_request_body_wait
@@ -1003,6 +1040,7 @@ EOF
 
     sock.gets
 
+    assert request_body_wait.is_a?(Float)
     # Could be 1000 but the tests get flaky. We don't care if it's extremely precise so much as that
     # it is set to a reasonable number.
     assert_operator request_body_wait, :>=, 900
@@ -1366,26 +1404,6 @@ EOF
 
   def test_not_drain_on_shutdown
     test_drain_on_shutdown false
-  end
-
-  def test_rack_url_scheme_dflt
-    server_run
-
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "http", data.split("\r\n").last
-  end
-
-  def test_rack_url_scheme_user
-    @port = UniquePort.call
-    opts = { rack_url_scheme: 'user', binds: ["tcp://#{@host}:#{@port}"] }
-    conf = Puma::Configuration.new(opts).tap(&:clamp)
-    @server = Puma::Server.new @app, @log_writer, @events, conf.options
-    @server.inherit_binder Puma::Binder.new(@log_writer, conf)
-    @server.binder.parse conf.options[:binds], @log_writer
-    @server.run
-
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "user", data.split("\r\n").last
   end
 
   def test_remote_address_header

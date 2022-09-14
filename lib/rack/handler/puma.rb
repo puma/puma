@@ -93,16 +93,16 @@ module Rack
           config.bind "unix://#{host}"
         elsif host && host =~ /^ssl:\/\//
           uri = URI.parse(host)
-          uri.port ||= port || ::Puma::Configuration::DefaultTCPPort
+          uri.port ||= port || ::Puma::Configuration::DEFAULTS[:tcp_port]
           config.bind uri.to_s
         else
 
           if host
-            port ||= ::Puma::Configuration::DefaultTCPPort
+            port ||= ::Puma::Configuration::DEFAULTS[:tcp_port]
           end
 
           if port
-            host ||= ::Puma::Configuration::DefaultTCPHost
+            host ||= ::Puma::Configuration::DEFAULTS[:tcp_host]
             config.port port, host
           end
         end
