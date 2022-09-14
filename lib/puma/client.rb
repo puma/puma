@@ -51,6 +51,7 @@ module Puma
     CONTENT_LENGTH_VALUE_INVALID = /[^\d]/.freeze
 
     TE_ERR_MSG = 'Invalid Transfer-Encoding'
+    PUMA_REQUEST_BODY_WAIT_ENV_KEY = 'puma.request_body_wait'.freeze
 
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
@@ -584,7 +585,7 @@ module Puma
 
     def set_ready
       if @body_read_start
-        @env['puma.request_body_wait'] = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond) - @body_read_start
+        @env[PUMA_REQUEST_BODY_WAIT_ENV_KEY] = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond) - @body_read_start
       end
       @requests_served += 1
       @ready = true
