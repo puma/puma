@@ -126,7 +126,9 @@ module Puma
   # configuration files.
   class Configuration
     DEFAULTS = {
+      auto_trim_time: 30,
       binds: ['tcp://0.0.0.0:9292'.freeze],
+      clean_thread_locals: false,
       debug: false,
       early_hints: nil,
       environment: 'development'.freeze,
@@ -145,11 +147,13 @@ module Puma
       min_threads: 0,
       mode: :http,
       mutate_stdout_and_stderr_to_sync_on_write: true,
+      out_of_band: [],
       # Number of seconds for another request within a persistent session.
       persistent_timeout: 20,
       queue_requests: true,
       rackup: 'config.ru'.freeze,
       raise_exception_on_sigterm: true,
+      reaping_time: 1,
       remote_address: :socket,
       silence_single_worker_warning: false,
       tag: File.basename(Dir.getwd),
