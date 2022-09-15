@@ -46,11 +46,6 @@ module Puma
       :leak_stack_on_error,
       :persistent_timeout, :reaping_time
 
-    # @deprecated v6.0.0
-    attr_writer :auto_trim_time, :early_hints, :first_data_timeout,
-      :leak_stack_on_error, :min_threads, :max_threads,
-      :persistent_timeout, :reaping_time
-
     attr_accessor :app
     attr_accessor :binder
 
