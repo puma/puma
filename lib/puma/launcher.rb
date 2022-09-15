@@ -18,12 +18,6 @@ module Puma
   class Launcher
     autoload :BundlePruner, 'puma/launcher/bundle_pruner'
 
-    # @deprecated 6.0.0
-    KEYS_NOT_TO_PERSIST_IN_STATE = [
-       :logger, :lowlevel_error_handler,
-       :before_worker_shutdown, :before_worker_boot, :before_worker_fork,
-       :after_worker_boot, :before_fork, :on_restart
-     ]
     # Returns an instance of Launcher
     #
     # +conf+ A Puma::Configuration object indicating how to run the server.
