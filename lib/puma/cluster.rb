@@ -213,8 +213,8 @@ module Puma
       stop
     end
 
-    def phased_restart
-      return false if @options[:preload_app]
+    def phased_restart(refork = false)
+      return false if @options[:preload_app] && !refork
 
       @phased_restart = true
       wakeup!
@@ -281,7 +281,7 @@ module Puma
       if (worker = @workers.find { |w| w.index == 0 })
         worker.phase += 1
       end
-      phased_restart
+      phased_restart(true)
     end
 
     # We do this in a separate method to keep the lambda scope
