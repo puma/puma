@@ -1,4 +1,5 @@
 require_relative "helper"
+require "puma/log_writer"
 
 class TestPersistent < Minitest::Test
 
@@ -23,9 +24,9 @@ class TestPersistent < Minitest::Test
       [status, @headers, @body]
     end
 
-    @server = Puma::Server.new @simple
+    opts = {max_threads: 1}
+    @server = Puma::Server.new @simple, Puma::LogWriter.stdio, Puma::Events.new, opts
     @port = (@server.add_tcp_listener HOST, 0).addr[1]
-    @server.max_threads = 1
     @server.run
     sleep 0.15 if Puma.jruby?
     @client = TCPSocket.new HOST, @port
@@ -156,7 +157,7 @@ class TestPersistent < Minitest::Test
   end
 
   def test_persistent_timeout
-    @server.persistent_timeout = 1
+    @server.instance_variable_set(:@persistent_timeout, 1)
     @client << @valid_request
     sz = @body[0].size.to_s
 
@@ -193,7 +194,7 @@ class TestPersistent < Minitest::Test
 
 
   def test_two_requests_in_one_chunk
-    @server.persistent_timeout = 3
+    @server.instance_variable_set(:@persistent_timeout, 3)
 
     req = @valid_request.to_s
     req += "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
@@ -210,7 +211,7 @@ class TestPersistent < Minitest::Test
   end
 
   def test_second_request_not_in_first_req_body
-    @server.persistent_timeout = 3
+    @server.instance_variable_set(:@persistent_timeout, 3)
 
     req = @valid_request.to_s
     req += "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"

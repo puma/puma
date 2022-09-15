@@ -529,7 +529,7 @@ EOF
 
   # https://github.com/puma/puma/issues/2574
   def test_no_timeout_after_data_received
-    @server.first_data_timeout = 1
+    @server.instance_variable_set(:@first_data_timeout, 1)
     server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 11\r\n\r\n"

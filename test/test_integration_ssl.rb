@@ -1,5 +1,6 @@
 require_relative 'helper'
 require_relative "helpers/integration"
+require "puma/log_writer"
 
 # These tests are used to verify that Puma works with SSL sockets.  Only
 # integration tests isolate the server from the test environment, so there
@@ -97,8 +98,8 @@ RUBY
     skip_if :windows; require 'stringio'
 
     app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
-    server = Puma::Server.new(app)
-    server.max_threads = 1
+    opts = {max_threads: 1}
+    server = Puma::Server.new app, Puma::LogWriter.stdio, Puma::Events.new, opts
     if Puma.jruby?
       ssl_params = {
           'keystore'      => File.expand_path('../examples/puma/client-certs/keystore.jks', __dir__),
