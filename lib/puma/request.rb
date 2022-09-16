@@ -334,7 +334,6 @@ module Puma
     # and fixup keys to comply with Rack's env guidelines.
     # @param env [Hash] see Puma::Client#env, from request
     # @param client [Puma::Client] only needed for Client#peerip
-    # @todo make private in 6.0.0
     #
     def normalize_env(env, client)
       if host = env[HTTP_HOST]
@@ -404,7 +403,7 @@ module Puma
       # Rack v4 may remove using HTTP_VERSION.  If so, remove this line.
       env[HTTP_VERSION] = env[SERVER_PROTOCOL]
     end
-    # private :normalize_env
+    private :normalize_env
 
     # @param header_key [#to_s]
     # @return [Boolean]
