@@ -15,9 +15,6 @@ module Puma
 
     ALLOWED_FIELDS = %w!control_url control_auth_token pid running_from!
 
-    # @deprecated 6.0.0
-    FIELDS = ALLOWED_FIELDS
-
     def initialize
       @options = {}
     end
