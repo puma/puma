@@ -302,10 +302,18 @@ module Puma
       @plugins.create name
     end
 
-    def run_hooks(key, arg, log_writer)
+    # @param key [:Symbol] hook to run
+    # @param arg [Launcher, Int] `:on_restart` passes Launcher
+    #
+    def run_hooks(key, arg, log_writer, hook_data = nil)
       @options.all_of(key).each do |b|
         begin
-          b.call arg
+          if Array === b
+            hook_data[b[1]] ||= Hash.new
+            b[0].call arg, hook_data[b[1]]
+          else
+            b.call arg
+          end
         rescue => e
           log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
           log_writer.debug e.backtrace.join("\n")
