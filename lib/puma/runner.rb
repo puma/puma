@@ -69,7 +69,7 @@ module Puma
 
       app = Puma::App::Status.new @launcher, token
 
-      control = Puma::Server.new app, @log_writer, @events,
+      control = Puma::Server.new app, @events,
         { min_threads: 0, max_threads: 1, queue_requests: false }
 
       control.binder.parse [str], self, 'Starting control server'
@@ -167,7 +167,7 @@ module Puma
     end
 
     def start_server
-      server = Puma::Server.new(app, @log_writer, @events, @options)
+      server = Puma::Server.new(app, @events, @options)
       server.inherit_binder(@launcher.binder)
       server
     end

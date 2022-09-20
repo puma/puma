@@ -67,10 +67,13 @@ module Puma
     #   and have default values set via +fetch+.  Normally the values are set via
     #   `::Puma::Configuration.puma_default_options`.
     #
-    def initialize(app, log_writer=LogWriter.stdio, events=Events.new, options = {})
+    # @note The `events` parameter is set to nil, and set to `Events.new` in code.
+    #   Often `options` needs to be passed, but `events` does not.  Using nil allows
+    #   calling code to not require events.rb.
+    #
+    def initialize(app, events = nil, options = {})
       @app = app
-      @log_writer = log_writer
-      @events = events
+      @events = events || Events.new
 
       @check, @notify = nil
       @status = :stop
@@ -84,6 +87,7 @@ module Puma
         UserFileDefaultOptions.new(options, Configuration::DEFAULTS)
       end
 
+      @log_writer          = @options.fetch :log_writer, LogWriter.stdio
       @early_hints         = @options[:early_hints]
       @first_data_timeout  = @options[:first_data_timeout]
       @min_threads         = @options[:min_threads]
