@@ -188,6 +188,8 @@ class Minitest::Test
   def full_name
     "#{self.class.name}##{name}"
   end
+
+  at_exit { GC.start }
 end
 
 Minitest.after_run do
@@ -205,6 +207,7 @@ Minitest.after_run do
       end
     end
   end
+  GC.start
 end
 
 module AggregatedResults

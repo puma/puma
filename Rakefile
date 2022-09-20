@@ -104,6 +104,12 @@ namespace :test do
   desc "Run all tests"
 
   task :all => :test
+
+  if ENV['PUMA_RUBY_MEMCHECK'] && RUBY_PLATFORM.include?('linux')
+    require 'ruby_memcheck'
+    RubyMemcheck.config(binary_name: 'puma_http11')
+    RubyMemcheck::TestTask.new(valgrind: :compile)
+  end
 end
 
 task :default => [:rubocop, "test:all"]

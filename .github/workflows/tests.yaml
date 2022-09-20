@@ -176,3 +176,16 @@ jobs:
           Test outcome: ${{ steps.test.outcome }}
         # every step must define a `uses` or `run` key
         run: echo NOOP
+
+  valgrind:
+    runs-on: ubuntu-latest
+    env:
+      PUMA_RUBY_MEMCHECK: true
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+          apt-get: valgrind
+      - run: bundle exec rake test:valgrind
