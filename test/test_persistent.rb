@@ -1,5 +1,4 @@
 require_relative "helper"
-require "puma/log_writer"
 
 class TestPersistent < Minitest::Test
 
@@ -25,7 +24,7 @@ class TestPersistent < Minitest::Test
     end
 
     opts = {max_threads: 1}
-    @server = Puma::Server.new @simple, Puma::LogWriter.stdio, Puma::Events.new, opts
+    @server = Puma::Server.new @simple, nil, opts
     @port = (@server.add_tcp_listener HOST, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?

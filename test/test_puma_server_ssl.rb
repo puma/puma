@@ -56,7 +56,7 @@ class TestPumaServerSSL < Minitest::Test
     yield ctx if block_given?
 
     @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    @server = Puma::Server.new app, @log_writer
+    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
     @port = (@server.add_ssl_listener @host, 0, ctx).addr[1]
     @server.run
 
@@ -315,7 +315,7 @@ class TestPumaServerSSLClient < Minitest::Test
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    server = Puma::Server.new app, log_writer
+    server = Puma::Server.new app, nil, {log_writer: log_writer}
     server.add_ssl_listener host, port, context
     host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
     server.run
@@ -520,7 +520,7 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
     log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    server = Puma::Server.new app, log_writer
+    server = Puma::Server.new app, nil, {log_writer: log_writer}
     server.add_ssl_listener host, port, ctx
     server.run
 
