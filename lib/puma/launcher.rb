@@ -46,6 +46,8 @@ module Puma
       @original_argv = @argv.dup
       @config        = conf
 
+      @config.options[:log_writer] = @log_writer
+
       # Advertise the Configuration
       Puma.cli_config = @config if defined?(Puma.cli_config)
 

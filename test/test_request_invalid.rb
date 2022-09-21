@@ -1,5 +1,4 @@
 require_relative "helper"
-require "puma/events"
 
 # These tests check for invalid request headers and metadata.
 # Content-Length, Transfer-Encoding, and chunked body size
@@ -36,8 +35,7 @@ class TestRequestInvalid < Minitest::Test
     }
 
     @log_writer = Puma::LogWriter.strings
-    events = Puma::Events.new
-    @server = Puma::Server.new app, @log_writer, events
+    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?

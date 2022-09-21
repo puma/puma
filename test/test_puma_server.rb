@@ -17,7 +17,7 @@ class TestPumaServer < Minitest::Test
 
     @log_writer = Puma::LogWriter.strings
     @events = Puma::Events.new
-    @server = Puma::Server.new @app, @log_writer, @events
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer}
   end
 
   def teardown
@@ -26,8 +26,9 @@ class TestPumaServer < Minitest::Test
   end
 
   def server_run(**options, &block)
+    options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
-    @server = Puma::Server.new block || @app, @log_writer, @events, options
+    @server = Puma::Server.new block || @app, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?
@@ -400,7 +401,7 @@ EOF
 
   def test_lowlevel_error_message
     skip_if :windows
-    @server = Puma::Server.new @app, @log_writer, @events, {:force_shutdown_after => 2}
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :force_shutdown_after => 2}
 
     server_run do
       if TestSkips::TRUFFLE
@@ -547,7 +548,7 @@ EOF
   end
 
   def test_no_timeout_after_data_received_no_queue
-    @server = Puma::Server.new @app, @log_writer, @events, queue_requests: false
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, queue_requests: false}
     test_no_timeout_after_data_received
   end
 
@@ -1369,7 +1370,7 @@ EOF
   def test_custom_io_selector
     backend = NIO::Selector.backends.first
 
-    @server = Puma::Server.new @app, @log_writer, @events, {:io_selector_backend => backend}
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :io_selector_backend => backend}
     @server.run
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)

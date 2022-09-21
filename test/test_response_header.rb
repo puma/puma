@@ -17,7 +17,7 @@ class TestResponseHeader < Minitest::Test
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
     @log_writer = Puma::LogWriter.strings
-    @server = Puma::Server.new @app, @log_writer, ::Puma::Events.new, {min_threads: 1}
+    @server = Puma::Server.new @app, ::Puma::Events.new, {log_writer: @log_writer, min_threads: 1}
   end
 
   def teardown

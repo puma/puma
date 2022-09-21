@@ -23,7 +23,7 @@ class WebServerTest < Minitest::Test
 
   def setup
     @tester = TestHandler.new
-    @server = Puma::Server.new @tester, Puma::LogWriter.strings
+    @server = Puma::Server.new @tester, nil, {log_writer: Puma::LogWriter.strings}
     @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
     @tcp = "http://127.0.0.1:#{@port}"
     @server.run
