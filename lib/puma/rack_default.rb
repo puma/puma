@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rack/handler/puma'
+require_relative '../rack/handler/puma'
 
 module Rack::Handler
   def self.default(options = {})

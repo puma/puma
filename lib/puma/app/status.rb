@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-require 'puma/json_serialization'
+require_relative '../json_serialization'
 
 module Puma
   module App

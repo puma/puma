@@ -10,14 +10,16 @@ require 'stringio'
 
 require 'thread'
 
+# use require, see https://github.com/puma/puma/pull/2381
 require 'puma/puma_http11'
-require 'puma/detect'
-require 'puma/json_serialization'
+
+require_relative 'puma/detect'
+require_relative 'puma/json_serialization'
 
 module Puma
-  autoload :Const, 'puma/const'
-  autoload :Server, 'puma/server'
-  autoload :Launcher, 'puma/launcher'
+  autoload :Const,    "#{__dir__}/puma/const"
+  autoload :Server,   "#{__dir__}/puma/server"
+  autoload :Launcher, "#{__dir__}/puma/launcher"
 
   # at present, MiniSSL::Engine is only defined in extension code (puma_http11),
   # not in minissl.rb
@@ -26,7 +28,7 @@ module Puma
   HAS_UNIX_SOCKET = Object.const_defined? :UNIXSocket
 
   if HAS_SSL
-    require 'puma/minissl'
+    require_relative 'puma/minissl'
   else
     module MiniSSL
       # this class is defined so that it exists when Puma is compiled

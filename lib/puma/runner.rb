@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'puma/server'
-require 'puma/const'
+require_relative 'server'
+require_relative 'const'
 
 module Puma
   # Generic class that is used by `Puma::Cluster` and `Puma::Single` to
@@ -61,7 +61,7 @@ module Puma
       str = @options[:control_url]
       return unless str
 
-      require 'puma/app/status'
+      require_relative 'app/status'
 
       if token = @options[:control_auth_token]
         token = nil if token.empty? || token == 'none'

@@ -284,7 +284,7 @@ module Puma
 
     private
     def start
-      require 'puma/cli'
+      require_relative 'cli'
 
       run_args = []
 

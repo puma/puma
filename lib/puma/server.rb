@@ -2,17 +2,17 @@
 
 require 'stringio'
 
-require 'puma/thread_pool'
-require 'puma/const'
-require 'puma/log_writer'
-require 'puma/events'
-require 'puma/null_io'
-require 'puma/reactor'
-require 'puma/client'
-require 'puma/binder'
-require 'puma/util'
-require 'puma/io_buffer'
-require 'puma/request'
+require_relative 'thread_pool'
+require_relative 'const'
+require_relative 'log_writer'
+require_relative 'events'
+require_relative 'null_io'
+require_relative 'reactor'
+require_relative 'client'
+require_relative 'binder'
+require_relative 'util'
+require_relative 'io_buffer'
+require_relative 'request'
 
 require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT

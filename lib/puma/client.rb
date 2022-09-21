@@ -8,7 +8,7 @@ class IO
   end
 end
 
-require 'puma/detect'
+require_relative 'detect'
 require 'tempfile'
 require 'forwardable'
 

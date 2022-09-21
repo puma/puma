@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'puma/null_io'
-require 'puma/error_logger'
+require_relative 'null_io'
+require_relative 'error_logger'
 require 'stringio'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 

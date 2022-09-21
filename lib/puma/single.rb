@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'puma/runner'
-require 'puma/detect'
-require 'puma/plugin'
+require_relative 'runner'
+require_relative 'detect'
+require_relative 'plugin'
 
 module Puma
   # This class is instantiated by the `Puma::Launcher` and used

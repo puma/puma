@@ -6,6 +6,7 @@ rescue LoadError
 end
 
 # need for Puma::MiniSSL::OPENSSL constants used in `HAS_TLS1_3`
+# use require, see https://github.com/puma/puma/pull/2381
 require 'puma/puma_http11'
 
 module Puma

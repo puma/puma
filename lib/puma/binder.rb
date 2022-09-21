@@ -3,15 +3,15 @@
 require 'uri'
 require 'socket'
 
-require 'puma/const'
-require 'puma/util'
-require 'puma/configuration'
+require_relative 'const'
+require_relative 'util'
+require_relative 'configuration'
 
 module Puma
 
   if HAS_SSL
-    require 'puma/minissl'
-    require 'puma/minissl/context_builder'
+    require_relative 'minissl'
+    require_relative 'minissl/context_builder'
   end
 
   class Binder

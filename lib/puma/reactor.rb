@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'puma/queue_close' unless ::Queue.instance_methods.include? :close
+require_relative 'queue_close' unless ::Queue.instance_methods.include? :close
 
 module Puma
   class UnsupportedBackend < StandardError; end
