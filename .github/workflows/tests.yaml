@@ -183,9 +183,9 @@ jobs:
       PUMA_RUBY_MEMCHECK: true
     steps:
       - uses: actions/checkout@v2
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby-pkgs@v1
         with:
           ruby-version: '3.0'
           bundler-cache: true
-          apt-get: valgrind
+          apt-get: ragel valgrind
       - run: bundle exec rake test:valgrind
