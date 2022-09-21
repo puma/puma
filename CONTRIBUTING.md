@@ -152,6 +152,8 @@ Puma could use your help in several areas!
 
 **Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
 
+**New to systems programming? That's ok!** Puma deals with concepts you may not have been familiar with before, like sockets, TCP, UDP, SSL, and Threads. That's ok! You can learn by contributing. Also, see the "Bibliography" section at the end of this document.
+
 **The [contrib-wanted] label indicates that an issue might approachable to first-time contributors.**
 
 **Reproducing bug reports**: The [needs-repro] label indicates than an issue lacks reproduction steps. You can help by reproducing the issue and sharing the steps you took in the comments.
@@ -227,5 +229,6 @@ Puma can be a bit intimidating for your first contribution because there's a lot
 
 * [Puma's Architecture docs](https://github.com/puma/puma/blob/master/docs/architecture.md)
 * [The Rack specification](https://github.com/rack/rack/blob/master/SPEC.rdoc)
+* [Working with...](https://workingwithruby.com/) "Working With" is a excellent (and now free) Ruby book series about working with Threads, TCP and Unix Sockets.
 * The Ruby docs for IO.pipe, TCPServer/Socket.
 * [nio4r documentation](https://github.com/socketry/nio4r/wiki/Getting-Started)
