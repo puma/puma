@@ -17,9 +17,12 @@ require_relative 'puma/detect'
 require_relative 'puma/json_serialization'
 
 module Puma
-  autoload :Const,    "#{__dir__}/puma/const"
-  autoload :Server,   "#{__dir__}/puma/server"
-  autoload :Launcher, "#{__dir__}/puma/launcher"
+  # when Puma is loaded via `Puma::CLI`, all files are loaded via
+  # `require_relative`.  The below are for non-standard loading
+  autoload :Const,     "#{__dir__}/puma/const"
+  autoload :Server,    "#{__dir__}/puma/server"
+  autoload :Launcher,  "#{__dir__}/puma/launcher"
+  autoload :LogWriter, "#{__dir__}/puma/log_writer"
 
   # at present, MiniSSL::Engine is only defined in extension code (puma_http11),
   # not in minissl.rb
