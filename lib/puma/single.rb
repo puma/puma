@@ -55,7 +55,7 @@ module Puma
       log "Use Ctrl-C to stop"
       redirect_io
 
-      @launcher.events.fire_on_booted!
+      @events.fire_on_booted!
 
       begin
         server_thread.join
