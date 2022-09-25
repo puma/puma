@@ -129,9 +129,9 @@ jobs:
           - { os: ubuntu-20.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
           - { os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
           - { os: macos-10.15  , ruby: jruby }
-          - { os: macos-10.15  , ruby: truffleruby }
+          - { os: macos-10.15  , ruby: truffleruby, allow-failure: true }
           - { os: macos-11     , ruby: jruby }
-          - { os: macos-11     , ruby: truffleruby }
+          - { os: macos-11     , ruby: truffleruby, allow-failure: true }
 
     steps:
       - name: repo checkout
