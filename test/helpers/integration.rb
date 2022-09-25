@@ -124,16 +124,24 @@ class TestIntegration < Minitest::Test
   # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(log: false)
     sleep 0.05 until @server.is_a?(IO)
-    @server.wait_readable 1
-    if log
-      puts "Waiting for server to boot..."
-      begin
-        line = @server && @server.gets
-        puts line if line && line.strip != ''
-      end until line && line.include?('Ctrl-C')
-      puts "Server booted!"
-    else
-      true until (@server.gets || '').include?('Ctrl-C')
+    retry_cntr = 0
+    begin
+      @server.wait_readable 1
+      if log
+        puts "Waiting for server to boot..."
+        begin
+          line = @server && @server.gets
+          puts line if line && line.strip != ''
+        end until line && line.include?('Ctrl-C')
+        puts "Server booted!"
+      else
+        true until (@server.gets || '').include?('Ctrl-C')
+      end
+    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+      retry_cntr += 1
+      raise e if retry_cntr > 10
+      sleep 0.1
+      retry
     end
   end
 
@@ -278,7 +286,7 @@ class TestIntegration < Minitest::Test
     MSG
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
 
-    args = "-w #{workers} -t 0:5 -q test/rackup/hello_with_delay.ru"
+    args = "-w #{workers} -t 5:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?
       @control_tcp_port = UniquePort.call
       cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} #{args}"
@@ -348,7 +356,7 @@ class TestIntegration < Minitest::Test
         sleep 0.5
         wait_for_server_to_boot
         restart_count += 1
-        sleep(Puma.windows? ? 3.0 : 1.0)
+        sleep(Puma.windows? ? 2.0 : 1.0)
       end
     end
 
