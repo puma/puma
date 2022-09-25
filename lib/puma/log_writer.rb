@@ -23,6 +23,8 @@ module Puma
       end
     end
 
+    LOG_QUEUE = Queue.new
+
     attr_reader :stdout,
                 :stderr
 
@@ -57,20 +59,24 @@ module Puma
 
     # Write +str+ to +@stdout+
     def log(str)
-      if @stdout.respond_to? :puts
-        internal_write { @stdout.puts format(str) }
-      end
+      internal_write "#{@formatter.call str}\n"
     end
 
     def write(str)
-      internal_write { @stdout.write format(str) }
+      internal_write @formatter.call(str)
     end
 
-    def internal_write
-      @stdout.is_a?(IO) and @stdout.wait_writable(1)
-      yield
-      @stdout.flush unless @stdout.sync
-    rescue Errno::EPIPE, Errno::EBADF
+    def internal_write(str)
+      LOG_QUEUE << str
+      while (w_str = LOG_QUEUE.pop(true)) do
+        begin
+          @stdout.is_a?(IO) and @stdout.wait_writable(1)
+          @stdout.write w_str
+          @stdout.flush unless @stdout.sync
+        rescue Errno::EPIPE, Errno::EBADF, IOError
+        end
+      end
+    rescue ThreadError
     end
     private :internal_write
 
@@ -80,7 +86,7 @@ module Puma
 
     # Write +str+ to +@stderr+
     def error(str)
-      @error_logger.info(text: format("ERROR: #{str}"))
+      @error_logger.info(text: @formatter.call("ERROR: #{str}"))
       exit 1
     end
 
