@@ -11,6 +11,9 @@ on:
       - '.github/workflows/ragel.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
 jobs:
   ragel:
     name: >-
