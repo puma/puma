@@ -37,7 +37,7 @@ class TestIntegration < Minitest::Test
     if @ios_to_close
       @ios_to_close.each do |io|
         begin
-          io.close if io.is_a?(IO) && !io.closed?
+          io.close if io.respond_to?(:close) && !io.closed?
         rescue
         ensure
           io = nil
