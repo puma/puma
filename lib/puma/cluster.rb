@@ -381,7 +381,7 @@ module Puma
           exit 1
         end
 
-        @launcher.binder.parse @options[:binds], self
+        @launcher.binder.parse @options[:binds]
       end
 
       read, @wakeup = Puma::Util.pipe
