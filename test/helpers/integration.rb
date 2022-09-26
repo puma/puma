@@ -123,19 +123,24 @@ class TestIntegration < Minitest::Test
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(log: false)
+    wait_for_server_to_include 'Ctrl-C'
+  end
+
+  # Returns true if and when server log includes str.
+  # Will timeout or raise an error otherwise
+  def wait_for_server_to_include(str, log: false)
     sleep 0.05 until @server.is_a?(IO)
     retry_cntr = 0
     begin
       @server.wait_readable 1
       if log
-        puts "Waiting for server to boot..."
+        puts "Waiting for '#{str}'"
         begin
           line = @server && @server.gets
-          puts line if line && line.strip != ''
-        end until line && line.include?('Ctrl-C')
-        puts "Server booted!"
+          puts line if line && !line.strip.empty?
+        end until line && line.include?(str)
       else
-        true until (@server.gets || '').include?('Ctrl-C')
+        true until (@server.gets || '').include?(str)
       end
     rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
       retry_cntr += 1
@@ -143,6 +148,7 @@ class TestIntegration < Minitest::Test
       sleep 0.1
       retry
     end
+    true
   end
 
   def connect(path = nil, unix: false)

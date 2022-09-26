@@ -12,16 +12,15 @@ class TestPlugin < TestIntegration
     cli_server "-b tcp://#{HOST}:#{@tcp_bind} --control-url tcp://#{HOST}:#{@tcp_ctrl} --control-token #{TOKEN} -C test/config/plugin1.rb test/rackup/hello.ru"
     File.open('tmp/restart.txt', mode: 'wb') { |f| f.puts "Restart #{Time.now}" }
 
-    true while (l = @server.gets) !~ /Restarting\.\.\./
-    assert_match(/Restarting\.\.\./, l)
+    assert wait_for_server_to_include('Restarting...')
 
-    true while (l = @server.gets) !~ /Ctrl-C/
-    assert_match(/Ctrl-C/, l)
+    assert wait_for_server_to_boot
 
     out = StringIO.new
 
     cli_pumactl "-C tcp://#{HOST}:#{@tcp_ctrl} -T #{TOKEN} stop"
-    true while (l = @server.gets) !~ /Goodbye/
+
+    assert wait_for_server_to_include('Goodbye')
 
     @server.close
     @server = nil

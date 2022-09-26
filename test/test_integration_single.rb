@@ -100,7 +100,7 @@ class TestIntegrationSingle < TestIntegration
     sleep 1 # ensure curl send a request
 
     Process.kill :TERM, @pid
-    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
+    assert wait_for_server_to_include('Gracefully stopping') # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
     _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
@@ -199,7 +199,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_pumactl 'stop'
 
-    assert_equal "hello\n", @server.gets
+    assert wait_for_server_to_include("hello\n")
     assert_includes @server.read, 'Goodbye!'
 
     @server.close unless @server.closed?
