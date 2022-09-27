@@ -1282,16 +1282,16 @@ EOF
   def stub_accept_nonblock(error)
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     io = @server.binder.ios.last
+
     accept_old = io.method(:accept_nonblock)
-    accept_stub = -> do
+    io.singleton_class.send :define_method, :accept_nonblock do
       accept_old.call.close
       raise error
     end
-    io.stub(:accept_nonblock, accept_stub) do
-      @server.run
-      new_connection
-      sleep 0.01
-    end
+
+    @server.run
+    new_connection
+    sleep 0.01
   end
 
   # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
