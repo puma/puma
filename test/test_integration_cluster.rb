@@ -424,20 +424,22 @@ RUBY
   def test_hook_data
     skip_unless_signal_exist? :TERM
 
+    file0 = 'hook_data-0.txt'
+    file1 = 'hook_data-1.txt'
+
     cli_server "-C test/config/hook_data.rb test/rackup/hello.ru"
     get_worker_pids 0, 2
     stop_server
 
-    # helpful for mon MRI Rubies
+    # helpful for non MRI Rubies
     assert wait_for_server_to_include('puma shutdown')
 
-    file = 'hook_data-0.txt'
-    assert_equal 'index 0 data 0', File.read(file, mode: 'rb:UTF-8')
-    File.unlink file if File.file? file
+    assert_equal 'index 0 data 0', File.read(file0, mode: 'rb:UTF-8')
+    assert_equal 'index 1 data 1', File.read(file1, mode: 'rb:UTF-8')
 
-    file = 'hook_data-1.txt'
-    assert_equal 'index 1 data 1', File.read(file, mode: 'rb:UTF-8')
-    File.unlink file if File.file? file
+  ensure
+    File.unlink file0 if File.file? file0
+    File.unlink file1 if File.file? file1
   end
 
   private
