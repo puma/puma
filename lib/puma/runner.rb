@@ -12,6 +12,7 @@ module Puma
       @launcher = launcher
       @log_writer = launcher.log_writer
       @events = launcher.events
+      @config = launcher.config
       @options = launcher.options
       @app = nil
       @control = nil
@@ -146,13 +147,13 @@ module Puma
     end
 
     def load_and_bind
-      unless @launcher.config.app_configured?
+      unless @config.app_configured?
         error "No application configured, nothing to run"
         exit 1
       end
 
       begin
-        @app = @launcher.config.app
+        @app = @config.app
       rescue Exception => e
         log "! Unable to load application: #{e.class}: #{e.message}"
         raise e
@@ -163,7 +164,7 @@ module Puma
 
     # @!attribute [r] app
     def app
-      @app ||= @launcher.config.app
+      @app ||= @config.app
     end
 
     def start_server
