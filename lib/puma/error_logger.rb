@@ -13,6 +13,8 @@ module Puma
 
     REQUEST_FORMAT = %{"%s %s%s" - (%s)}
 
+    LOG_QUEUE = Queue.new
+
     def initialize(ioerr)
       @ioerr = ioerr
 
@@ -31,7 +33,7 @@ module Puma
     #   and before all remaining info.
     #
     def info(options={})
-      log title(options)
+      internal_write title(options)
     end
 
     # Print occurred error details only if
@@ -53,7 +55,7 @@ module Puma
       string_block << request_dump(req) if request_parsed?(req)
       string_block << error.backtrace if error
 
-      log string_block.join("\n")
+      internal_write string_block.join("\n")
     end
 
     def title(options={})
@@ -93,12 +95,18 @@ module Puma
       req && req.env[REQUEST_METHOD]
     end
 
-    private
-
-    def log(str)
-      ioerr.puts str
-
-      ioerr.flush unless ioerr.sync
+    def internal_write(str)
+      LOG_QUEUE << str
+      while (w_str = LOG_QUEUE.pop(true)) do
+        begin
+          @ioerr.is_a?(IO) and @ioerr.wait_writable(1)
+          @ioerr.write "#{w_str}\n"
+          @ioerr.flush unless @ioerr.sync
+        rescue Errno::EPIPE, Errno::EBADF, IOError
+        end
+      end
+    rescue ThreadError
     end
+    private :internal_write
   end
 end
