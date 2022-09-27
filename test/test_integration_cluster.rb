@@ -428,6 +428,9 @@ RUBY
     get_worker_pids 0, 2
     stop_server
 
+    # helpful for mon MRI Rubies
+    assert wait_for_server_to_include('puma shutdown')
+
     file = 'hook_data-0.txt'
     assert_equal 'index 0 data 0', File.read(file, mode: 'rb:UTF-8')
     File.unlink file if File.file? file

@@ -3,6 +3,7 @@ require_relative "helper"
 require "net/http"
 
 require "rack"
+require "rack/body_proxy"
 require "rack/chunked" if Rack::RELEASE >= '3'
 
 require "nio"

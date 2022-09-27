@@ -7,11 +7,16 @@ class TestIntegrationSingle < TestIntegration
   def workers ; 0 ; end
 
   def test_hot_restart_does_not_drop_connections_threads
-    hot_restart_does_not_drop_connections num_threads: 5, total_requests: 1_000
+    ttl_reqs = Puma.windows? ? 500 : 1_000
+    hot_restart_does_not_drop_connections num_threads: 5, total_requests: ttl_reqs
   end
 
   def test_hot_restart_does_not_drop_connections
-    hot_restart_does_not_drop_connections
+    if Puma.windows?
+      hot_restart_does_not_drop_connections total_requests: 300
+    else
+      hot_restart_does_not_drop_connections
+    end
   end
 
   def test_usr2_restart
@@ -95,7 +100,7 @@ class TestIntegrationSingle < TestIntegration
     sleep 1 # ensure curl send a request
 
     Process.kill :TERM, @pid
-    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
+    assert wait_for_server_to_include('Gracefully stopping') # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
     _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
@@ -194,7 +199,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_pumactl 'stop'
 
-    assert_equal "hello\n", @server.gets
+    assert wait_for_server_to_include("hello\n")
     assert_includes @server.read, 'Goodbye!'
 
     @server.close unless @server.closed?

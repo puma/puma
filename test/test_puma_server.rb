@@ -22,7 +22,15 @@ class TestPumaServer < Minitest::Test
 
   def teardown
     @server.stop(true)
-    @ios.each { |io| io.close if io && !io.closed? }
+    # Errno::EBADF raised on macOS
+    @ios.each do |io|
+      begin
+        io.close if io.respond_to?(:close) && !io.closed?
+      rescue Errno::EBADF
+      ensure
+        io = nil
+      end
+    end
   end
 
   def server_run(**options, &block)

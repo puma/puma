@@ -37,7 +37,7 @@ class TestIntegration < Minitest::Test
     if @ios_to_close
       @ios_to_close.each do |io|
         begin
-          io.close if io.is_a?(IO) && !io.closed?
+          io.close if io.respond_to?(:close) && !io.closed?
         rescue
         ensure
           io = nil
@@ -123,18 +123,59 @@ class TestIntegration < Minitest::Test
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(log: false)
+    wait_for_server_to_include 'Ctrl-C'
+  end
+
+  # Returns true if and when server log includes str.
+  # Will timeout or raise an error otherwise
+  def wait_for_server_to_include(str, log: false)
     sleep 0.05 until @server.is_a?(IO)
-    @server.wait_readable 1
-    if log
-      puts "Waiting for server to boot..."
-      begin
-        line = @server && @server.gets
-        puts line if line && line.strip != ''
-      end until line && line.include?('Ctrl-C')
-      puts "Server booted!"
-    else
-      true until (@server.gets || '').include?('Ctrl-C')
+    retry_cntr = 0
+    begin
+      @server.wait_readable 1
+      if log
+        puts "Waiting for '#{str}'"
+        begin
+          line = @server && @server.gets
+          puts line if line && !line.strip.empty?
+        end until line && line.include?(str)
+      else
+        true until (@server.gets || '').include?(str)
+      end
+    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+      retry_cntr += 1
+      raise e if retry_cntr > 10
+      sleep 0.1
+      retry
     end
+    true
+  end
+
+  # Returns line if and when server log matches re, unless idx is specified,
+  # then returns regex match.
+  # Will timeout or raise an error otherwise
+  def wait_for_server_to_match(re, idx = nil, log: false)
+    sleep 0.05 until @server.is_a?(IO)
+    retry_cntr = 0
+    line = nil
+    begin
+      @server.wait_readable 1
+      if log
+        puts "Waiting for '#{re.inspect}'"
+        begin
+          line = @server && @server.gets
+          puts line if line && !line.strip.empty?
+        end until line && line.match?(re)
+      else
+        true until (line = @server.gets || '').match?(re)
+      end
+    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+      retry_cntr += 1
+      raise e if retry_cntr > 10
+      sleep 0.1
+      retry
+    end
+    idx ? line[re, idx] : line
   end
 
   def connect(path = nil, unix: false)
@@ -233,7 +274,7 @@ class TestIntegration < Minitest::Test
     pids = []
     re = /PID: (\d+)\) booted in [.0-9]+s, phase: #{phase}/
     while pids.size < size
-      if pid = @server.gets[re, 1]
+      if pid = wait_for_server_to_match(re, 1)
         pids << pid
       end
     end
@@ -278,7 +319,7 @@ class TestIntegration < Minitest::Test
     MSG
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
 
-    args = "-w #{workers} -t 0:5 -q test/rackup/hello_with_delay.ru"
+    args = "-w #{workers} -t 5:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?
       @control_tcp_port = UniquePort.call
       cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} #{args}"
@@ -348,7 +389,7 @@ class TestIntegration < Minitest::Test
         sleep 0.5
         wait_for_server_to_boot
         restart_count += 1
-        sleep(Puma.windows? ? 3.0 : 1.0)
+        sleep(Puma.windows? ? 2.0 : 1.0)
       end
     end
 
