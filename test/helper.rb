@@ -30,6 +30,10 @@ end.to_i
 require "puma"
 require "puma/detect"
 
+unless ::Puma::HAS_NATIVE_IO_WAIT
+  require "io/wait"
+end
+
 # used in various ssl test files, see test_puma_server_ssl.rb and
 # test_puma_localhost_authority.rb
 if Puma::HAS_SSL

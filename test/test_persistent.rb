@@ -237,10 +237,7 @@ class TestPersistent < Minitest::Test
     c2 = TCPSocket.new HOST, @port
     c2 << @valid_request
 
-    out = IO.select([c2], nil, nil, 1)
-
-    assert out, "select returned nil"
-    assert_equal c2, out.first.first
+    assert c2.wait_readable(1), "2nd request starved"
 
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4, c2)
     assert_equal "Hello", c2.read(5)

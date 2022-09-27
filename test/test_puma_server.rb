@@ -525,7 +525,7 @@ EOF
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
 
-    sock << "Hello" unless IO.select([sock], nil, nil, 1.15)
+    sock << "Hello" unless sock.wait_readable(1.15)
 
     data = sock.gets
 
@@ -1209,9 +1209,9 @@ EOF
     assert_match(s1_response, s1.gets) if s1_response
 
     # Send s2 after shutdown begins
-    s2 << "\r\n" unless IO.select([s2], nil, nil, 0.2)
+    s2 << "\r\n" unless s2.wait_readable(0.2)
 
-    assert IO.select([s2], nil, nil, 10), 'timeout waiting for response'
+    assert s2.wait_readable(10), 'timeout waiting for response'
     s2_result = begin
       s2.gets
     rescue Errno::ECONNABORTED, Errno::ECONNRESET
@@ -1350,7 +1350,7 @@ EOF
     sleep 0.5 # give enough time for new connection to enter reactor
     @server.stop false
 
-    assert IO.select([sock], nil, nil, 1), 'Unexpected timeout'
+    assert sock.wait_readable(1), 'Unexpected timeout'
     assert_raises EOFError do
       sock.read_nonblock(256)
     end
