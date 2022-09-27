@@ -70,10 +70,12 @@ module Puma
 
       app = Puma::App::Status.new @launcher, token
 
-      control = Puma::Server.new app, @events,
-        { min_threads: 0, max_threads: 1, queue_requests: false }
+      # A Reactor is not created aand nio4r is not loaded when 'queue_requests: false'
+      # Use `nil` for events, no hooks in control server
+      control = Puma::Server.new app, nil,
+        { min_threads: 0, max_threads: 1, queue_requests: false, log_writer: @log_writer }
 
-      control.binder.parse [str], self, 'Starting control server'
+      control.binder.parse [str], nil, 'Starting control server'
 
       control.run thread_name: 'ctl'
       @control = control
@@ -159,7 +161,7 @@ module Puma
         raise e
       end
 
-      @launcher.binder.parse @options[:binds], self
+      @launcher.binder.parse @options[:binds]
     end
 
     # @!attribute [r] app

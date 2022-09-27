@@ -142,7 +142,8 @@ module Puma
       end
     end
 
-    def parse(binds, log_writer, log_msg = 'Listening')
+    def parse(binds, log_writer = nil, log_msg = 'Listening')
+      log_writer ||= @log_writer
       binds.each do |str|
         uri = URI.parse str
         case uri.scheme
