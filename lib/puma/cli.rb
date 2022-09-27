@@ -24,9 +24,6 @@ module Puma
     # Create a new CLI object using +argv+ as the command line
     # arguments.
     #
-    # +stdout+ and +stderr+ can be set to IO-like objects which
-    # this object will report status on.
-    #
     def initialize(argv, log_writer = LogWriter.stdio, events = Events.new)
       @debug = false
       @argv = argv.dup
