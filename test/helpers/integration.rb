@@ -200,7 +200,7 @@ class TestIntegration < Minitest::Test
       begin
         n = io.syswrite str
       rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
-        if !IO.select(nil, [io], nil, 5)
+        unless io.wait_writable 5
           raise e
         end
 
