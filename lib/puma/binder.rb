@@ -216,6 +216,7 @@ module Puma
 
           @listeners << [str, io]
         when "ssl"
+          cert_key = %w[cert key]
 
           raise "Puma compiled without SSL support" unless HAS_SSL
 
@@ -224,14 +225,15 @@ module Puma
           # If key and certs are not defined and localhost gem is required.
           # localhost gem will be used for self signed
           # Load localhost authority if not loaded.
-          if params.values_at('cert', 'key').all? { |v| v.to_s.empty? }
+          # Ruby 3 `values_at` accepts an array, earlier do not
+          if params.values_at(*cert_key).all? { |v| v.to_s.empty? }
             ctx = localhost_authority && localhost_authority_context
           end
 
           ctx ||=
             begin
               # Extract cert_pem and key_pem from options[:store] if present
-              ['cert', 'key'].each do |v|
+              cert_key.each do |v|
                 if params[v]&.start_with?('store:')
                   index = Integer(params.delete(v).split('store:').last)
                   params["#{v}_pem"] = @conf.options[:store][index]
