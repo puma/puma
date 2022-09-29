@@ -355,7 +355,7 @@ module Puma
 
       if cl
         # cannot contain characters that are not \d
-        if cl =~ CONTENT_LENGTH_VALUE_INVALID
+        if CONTENT_LENGTH_VALUE_INVALID.match? cl
           raise HttpParserError, "Invalid Content-Length: #{cl.inspect}"
         end
       else
@@ -520,7 +520,7 @@ module Puma
           # Puma doesn't process chunk extensions, but should parse if they're
           # present, which is the reason for the semicolon regex
           chunk_hex = line.strip[/\A[^;]+/]
-          if chunk_hex =~ CHUNK_SIZE_INVALID
+          if CHUNK_SIZE_INVALID.match? chunk_hex
             raise HttpParserError, "Invalid chunk size: '#{chunk_hex}'"
           end
           len = chunk_hex.to_i(16)
