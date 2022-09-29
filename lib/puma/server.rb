@@ -230,10 +230,10 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(thread_name, @options, &method(:process_client))
+      @thread_pool = ThreadPool.new(thread_name, @options) { |a, b| process_client a, b }
 
       if @queue_requests
-        @reactor = Reactor.new(@io_selector_backend, &method(:reactor_wakeup))
+        @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
         @reactor.run
       end
 
