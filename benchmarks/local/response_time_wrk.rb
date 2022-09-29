@@ -113,7 +113,7 @@ module TestPuma
     def run_summaries(summaries)
       digits = [4 - Math.log10(@max_100_time).to_i, 3].min
 
-      fmt_vals = "%-6s %6d".dup
+      fmt_vals = +'%-6s %6d'
       fmt_vals << (digits < 0 ? "  %6d" : "  %6.#{digits}f")*5
       fmt_vals << '  %8d'
 

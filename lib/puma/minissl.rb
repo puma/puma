@@ -125,7 +125,7 @@ module Puma
         while true
           wrote = @engine.write data
 
-          enc_wr = ''.dup
+          enc_wr = +''
           while (enc = @engine.extract)
             enc_wr << enc
           end

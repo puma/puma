@@ -28,12 +28,12 @@ cache_string  = {}
 
 run lambda { |env|
   info = if (dly = env[hdr_dly])
-    hash_key = "#{dly},".dup
+    hash_key = +"#{dly},"
     sleep dly.to_f
-    "#{Process.pid}\nHello World\nSlept #{dly}\n".dup
+    +"#{Process.pid}\nHello World\nSlept #{dly}\n"
   else
-    hash_key = ",".dup
-    "#{Process.pid}\nHello World\n".dup
+    hash_key = +","
+    +"#{Process.pid}\nHello World\n"
   end
   info_len_adj = 1023 - info.bytesize
 

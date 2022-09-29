@@ -222,7 +222,7 @@ class TestIntegration < Minitest::Test
     timeout ||= RESP_READ_TIMEOUT
     content_length = nil
     chunked = nil
-    response = ''.dup
+    response = +''
     t_st = Process.clock_gettime Process::CLOCK_MONOTONIC
     if connection.to_io.wait_readable timeout
       loop do

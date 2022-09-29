@@ -462,7 +462,7 @@ module Puma
     # @version 5.0.3
     #
     def str_early_hints(headers)
-      eh_str = "HTTP/1.1 103 Early Hints\r\n".dup
+      eh_str = +"HTTP/1.1 103 Early Hints\r\n"
       headers.each_pair do |k, vs|
         next if illegal_header_key?(k)
 

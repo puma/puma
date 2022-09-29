@@ -204,7 +204,7 @@ class TestPumaControlCli < TestConfigFileBase
       "--pid", "1234"
     ]
     cmd = Puma::ControlCLI::NO_REQ_COMMANDS.first
-    log = ''.dup
+    log = +''
     control_cli = Puma::ControlCLI.new (opts + [cmd]), @ready, @ready
 
     def control_cli.send_signal

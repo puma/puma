@@ -24,7 +24,7 @@ class TestRequestInvalid < Minitest::Test
 
     # this app should never be called, used for debugging
     app = ->(env) {
-      body = ''.dup
+      body = +''
       env.each do |k,v|
         body << "#{k} = #{v}\n"
         if k == 'rack.input'
