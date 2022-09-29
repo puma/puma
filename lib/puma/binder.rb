@@ -232,7 +232,7 @@ module Puma
             begin
               # Extract cert_pem and key_pem from options[:store] if present
               ['cert', 'key'].each do |v|
-                if params[v] && params[v].start_with?('store:')
+                if params[v]&.start_with?('store:')
                   index = Integer(params.delete(v).split('store:').last)
                   params["#{v}_pem"] = @conf.options[:store][index]
                 end

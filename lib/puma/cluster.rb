@@ -230,7 +230,7 @@ module Puma
     def stop_blocked
       @status = :stop if @status == :run
       wakeup!
-      @control.stop(true) if @control
+      @control&.stop true
       Process.waitall
     end
 

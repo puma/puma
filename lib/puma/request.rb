@@ -213,7 +213,7 @@ module Puma
       resp_info = nil
       uncork_socket socket
       app_body.close if app_body.respond_to? :close
-      client.tempfile.unlink if client.tempfile
+      client.tempfile&.unlink
 
       begin
         after_reply.each { |o| o.call }

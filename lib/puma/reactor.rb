@@ -61,7 +61,7 @@ module Puma
         @selector.wakeup
       rescue IOError # Ignore if selector is already closed
       end
-      @thread.join if @thread
+      @thread&.join
     end
 
     private

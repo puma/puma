@@ -102,7 +102,7 @@ module Puma::Rack
       begin
         info = []
         server = Rack::Handler.get(options[:server]) || Rack::Handler.default(options)
-        if server && server.respond_to?(:valid_options)
+        if server&.respond_to?(:valid_options)
           info << ""
           info << "Server-specific options for #{server.name}:"
 
@@ -276,7 +276,7 @@ module Puma::Rack
       app = @map ? generate_map(@run, @map) : @run
       fail "missing run or map statement" unless app
       app = @use.reverse.inject(app) { |a,e| e[a] }
-      @warmup.call(app) if @warmup
+      @warmup&.call app
       app
     end
 

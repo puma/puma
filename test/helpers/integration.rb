@@ -34,14 +34,12 @@ class TestIntegration < Minitest::Test
       stop_server @pid, signal: :INT
     end
 
-    if @ios_to_close
-      @ios_to_close.each do |io|
-        begin
-          io.close if io.respond_to?(:close) && !io.closed?
-        rescue
-        ensure
-          io = nil
-        end
+    @ios_to_close&.each do |io|
+      begin
+        io.close if io.respond_to?(:close) && !io.closed?
+      rescue
+      ensure
+        io = nil
       end
     end
 
@@ -136,9 +134,9 @@ class TestIntegration < Minitest::Test
       if log
         puts "Waiting for '#{str}'"
         begin
-          line = @server && @server.gets
-          puts line if line && !line.strip.empty?
-        end until line && line.include?(str)
+          line = @server&.gets
+          puts line if !line&.strip.empty?
+        end until line&.include?(str)
       else
         true until (@server.gets || '').include?(str)
       end
@@ -163,9 +161,9 @@ class TestIntegration < Minitest::Test
       if log
         puts "Waiting for '#{re.inspect}'"
         begin
-          line = @server && @server.gets
-          puts line if line && !line.strip.empty?
-        end until line && line.match?(re)
+          line = @server&.gets
+          puts line if !line&.strip.empty?
+        end until line&.match?(re)
       else
         true until (line = @server.gets || '').match?(re)
       end

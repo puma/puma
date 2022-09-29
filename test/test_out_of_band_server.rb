@@ -13,7 +13,7 @@ class TestOutOfBandServer < Minitest::Test
   def teardown
     @oob_finished.broadcast
     @app_finished.broadcast
-    @server.stop(true) if @server
+    @server&.stop true
 
     @ios.each do |io|
       begin

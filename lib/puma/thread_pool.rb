@@ -163,7 +163,7 @@ module Puma
 
     # @version 5.0.0
     def trigger_out_of_band_hook
-      return false unless @out_of_band && @out_of_band.any?
+      return false unless @out_of_band&.any?
 
       # we execute on idle hook when all threads are free
       return false unless @spawned == @waiting
@@ -357,8 +357,8 @@ module Puma
         @not_empty.broadcast
         @not_full.broadcast
 
-        @auto_trim.stop if @auto_trim
-        @reaper.stop if @reaper
+        @auto_trim&.stop
+        @reaper&.stop
         # dup workers so that we join them all safely
         @workers.dup
       end

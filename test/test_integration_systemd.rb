@@ -23,7 +23,7 @@ class TestIntegrationSystemd < TestIntegration
 
   def teardown
     return if skipped?
-    @socket.close if @socket
+    @socket&.close
     File.unlink(@sockaddr) if @sockaddr
     @socket = nil
     @sockaddr = nil

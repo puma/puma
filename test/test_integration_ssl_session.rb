@@ -22,7 +22,7 @@ class TestIntegrationSSLSession < TestIntegration
   CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
 
   def teardown
-    @server.close unless @server && @server.closed?
+    @server.close unless @server&.closed?
     @server = nil
     super
   end

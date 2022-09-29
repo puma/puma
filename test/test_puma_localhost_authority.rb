@@ -21,8 +21,8 @@ class TestPumaLocalhostAuthority < Minitest::Test
   end
 
   def teardown
-    @http.finish if @http && @http.started?
-    @server.stop(true) if @server
+    @http.finish if @http&.started?
+    @server&.stop true
   end
 
   # yields ctx to block, use for ctx setup & configuration

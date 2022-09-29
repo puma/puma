@@ -47,7 +47,7 @@ module Puma
 
     # @version 5.0.0
     def stop_control
-      @control.stop(true) if @control
+      @control&.stop true
     end
 
     def error(str)
