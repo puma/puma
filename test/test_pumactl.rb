@@ -14,7 +14,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def wait_booted
-    line = @wait.gets until line =~ /Use Ctrl-C to stop/
+    line = @wait.gets until line&.include?('Use Ctrl-C to stop')
   end
 
   def teardown

@@ -96,7 +96,7 @@ module Puma
           [:unix, Socket.unpack_sockaddr_un(sock.getsockname)]
         rescue ArgumentError # Try to parse as a port/ip
           port, addr = Socket.unpack_sockaddr_in(sock.getsockname)
-          addr = "[#{addr}]" if addr =~ /\:/
+          addr = "[#{addr}]" if addr&.include? ':'
           [:tcp, addr, port]
         end
         @activated_sockets[key] = sock
