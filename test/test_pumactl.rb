@@ -43,71 +43,71 @@ class TestPumaControlCli < TestConfigFileBase
 
   def test_config_file
     control_cli = Puma::ControlCLI.new ["--config-file", "test/config/state_file_testing_config.rb", "halt"]
-    assert_equal "t3-pid", control_cli.instance_variable_get("@pidfile")
+    assert_equal "t3-pid", control_cli.instance_variable_get(:@pidfile)
     File.unlink "t3-pid" if File.file? "t3-pid"
   end
 
   def test_app_env_without_environment
     with_env('APP_ENV' => 'test') do
       control_cli = Puma::ControlCLI.new ['halt']
-      assert_equal 'test', control_cli.instance_variable_get('@environment')
+      assert_equal 'test', control_cli.instance_variable_get(:@environment)
     end
   end
 
   def test_rack_env_without_environment
     with_env("RACK_ENV" => "test") do
       control_cli = Puma::ControlCLI.new ["halt"]
-      assert_equal "test", control_cli.instance_variable_get("@environment")
+      assert_equal "test", control_cli.instance_variable_get(:@environment)
     end
   end
 
   def test_app_env_precedence
     with_env('APP_ENV' => nil, 'RACK_ENV' => nil, 'RAILS_ENV' => 'production') do
       control_cli = Puma::ControlCLI.new ['halt']
-      assert_equal 'production', control_cli.instance_variable_get('@environment')
+      assert_equal 'production', control_cli.instance_variable_get(:@environment)
     end
 
     with_env('APP_ENV' => nil, 'RACK_ENV' => 'test', 'RAILS_ENV' => 'production') do
       control_cli = Puma::ControlCLI.new ['halt']
-      assert_equal 'test', control_cli.instance_variable_get('@environment')
+      assert_equal 'test', control_cli.instance_variable_get(:@environment)
     end
 
     with_env('APP_ENV' => 'development', 'RACK_ENV' => 'test', 'RAILS_ENV' => 'production') do
       control_cli = Puma::ControlCLI.new ['halt']
-      assert_equal 'development', control_cli.instance_variable_get('@environment')
+      assert_equal 'development', control_cli.instance_variable_get(:@environment)
 
       control_cli = Puma::ControlCLI.new ['-e', 'test', 'halt']
-      assert_equal 'test', control_cli.instance_variable_get('@environment')
+      assert_equal 'test', control_cli.instance_variable_get(:@environment)
     end
   end
 
   def test_environment_without_app_env
     with_env('APP_ENV' => nil, 'RACK_ENV' => nil, 'RAILS_ENV' => nil) do
       control_cli = Puma::ControlCLI.new ['halt']
-      assert_nil control_cli.instance_variable_get('@environment')
+      assert_nil control_cli.instance_variable_get(:@environment)
 
       control_cli = Puma::ControlCLI.new ['-e', 'test', 'halt']
-      assert_equal 'test', control_cli.instance_variable_get('@environment')
+      assert_equal 'test', control_cli.instance_variable_get(:@environment)
     end
   end
 
   def test_environment_without_rack_env
     with_env("RACK_ENV" => nil, 'RAILS_ENV' => nil) do
       control_cli = Puma::ControlCLI.new ["halt"]
-      assert_nil control_cli.instance_variable_get("@environment")
+      assert_nil control_cli.instance_variable_get(:@environment)
 
       control_cli = Puma::ControlCLI.new ["-e", "test", "halt"]
-      assert_equal "test", control_cli.instance_variable_get("@environment")
+      assert_equal "test", control_cli.instance_variable_get(:@environment)
     end
   end
 
   def test_environment_with_rack_env
     with_env("RACK_ENV" => "production") do
       control_cli = Puma::ControlCLI.new ["halt"]
-      assert_equal "production", control_cli.instance_variable_get("@environment")
+      assert_equal "production", control_cli.instance_variable_get(:@environment)
 
       control_cli = Puma::ControlCLI.new ["-e", "test", "halt"]
-      assert_equal "test", control_cli.instance_variable_get("@environment")
+      assert_equal "test", control_cli.instance_variable_get(:@environment)
     end
   end
 
@@ -119,12 +119,12 @@ class TestPumaControlCli < TestConfigFileBase
     with_env("RACK_ENV" => nil) do
       with_config_file(puma_config_file, port) do
         control_cli = Puma::ControlCLI.new ["-e", "production", "halt"]
-        assert_equal puma_config_file, control_cli.instance_variable_get("@config_file")
+        assert_equal puma_config_file, control_cli.instance_variable_get(:@config_file)
       end
 
       with_config_file(production_config_file, port) do
         control_cli = Puma::ControlCLI.new ["-e", "production", "halt"]
-        assert_equal production_config_file, control_cli.instance_variable_get("@config_file")
+        assert_equal production_config_file, control_cli.instance_variable_get(:@config_file)
       end
     end
   end
@@ -137,12 +137,12 @@ class TestPumaControlCli < TestConfigFileBase
     with_env("RACK_ENV" => nil, 'RAILS_ENV' => nil) do
       with_config_file(puma_config_file, port) do
         control_cli = Puma::ControlCLI.new ["halt"]
-        assert_equal puma_config_file, control_cli.instance_variable_get("@config_file")
+        assert_equal puma_config_file, control_cli.instance_variable_get(:@config_file)
       end
 
       with_config_file(development_config_file, port) do
         control_cli = Puma::ControlCLI.new ["halt"]
-        assert_equal development_config_file, control_cli.instance_variable_get("@config_file")
+        assert_equal development_config_file, control_cli.instance_variable_get(:@config_file)
       end
     end
   end
@@ -154,7 +154,7 @@ class TestPumaControlCli < TestConfigFileBase
     ]
 
     control_cli = Puma::ControlCLI.new opts, @ready, @ready
-    assert_equal 'none', control_cli.instance_variable_get("@control_auth_token")
+    assert_equal 'none', control_cli.instance_variable_get(:@control_auth_token)
   end
 
   def test_control_url_and_status

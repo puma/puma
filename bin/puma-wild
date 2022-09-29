@@ -16,7 +16,7 @@ end
 
 module Puma; end
 
-Puma.const_set("WILD_ARGS", ["-I", inc])
+Puma.const_set(:WILD_ARGS, ["-I", inc])
 
 require 'puma/cli'
 
