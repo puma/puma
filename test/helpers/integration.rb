@@ -340,8 +340,13 @@ class TestIntegration < Minitest::Test
       client_threads << Thread.new do
         num_requests.times do |req_num|
           begin
-            socket = TCPSocket.new HOST, @tcp_port
-            fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+            begin
+              socket = TCPSocket.new HOST, @tcp_port
+              fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+            rescue => e
+              replies[:write_error] += 1
+              raise e
+            end
             body = read_body(socket, 10)
             if body == "Hello World"
               mutex.synchronize {
@@ -377,7 +382,7 @@ class TestIntegration < Minitest::Test
     run = true
 
     restart_thread = Thread.new do
-      sleep 0.30  # let some connections in before 1st restart
+      sleep 0.2  # let some connections in before 1st restart
       while run
         if Puma.windows?
           cli_pumactl 'restart'
@@ -387,7 +392,7 @@ class TestIntegration < Minitest::Test
         sleep 0.5
         wait_for_server_to_boot
         restart_count += 1
-        sleep(Puma.windows? ? 2.0 : 1.0)
+        sleep(Puma.windows? ? 2.0 : 0.5)
       end
     end
 
@@ -410,22 +415,24 @@ class TestIntegration < Minitest::Test
     msg << "   %4d success after restart\n" % replies.fetch(:restart,0)
     msg << "   %4d restart count\n"         % restart_count
 
-    reset = replies[:reset]
+    refused = replies[:refused]
+    reset   = replies[:reset]
 
     if Puma.windows?
       # 5 is default thread count in Puma?
       reset_max = num_threads * restart_count
       assert_operator reset_max, :>=, reset, "#{msg}Expected reset_max >= reset errors"
-      assert_operator 40, :>=,  replies[:refused], "#{msg}Too many refused connections"
+      assert_operator 40, :>=,  refused, "#{msg}Too many refused connections"
     else
       assert_equal 0, reset, "#{msg}Expected no reset errors"
-      assert_equal 0, replies[:refused], "#{msg}Expected no refused connections"
+      max_refused = (0.001 * replies.fetch(:success,0)).round
+      assert_operator max_refused, :>=, refused, "#{msg}Expected no than #{max_refused} refused connections"
     end
     assert_equal 0, replies[:unexpected_response], "#{msg}Unexpected response"
     assert_equal 0, replies[:read_timeout], "#{msg}Expected no read timeouts"
 
     if Puma.windows?
-      assert_equal (num_threads * num_requests) - reset - replies[:refused], replies[:success]
+      assert_equal (num_threads * num_requests) - reset - refused, replies[:success]
     else
       assert_equal (num_threads * num_requests), replies[:success]
     end
@@ -433,7 +440,7 @@ class TestIntegration < Minitest::Test
   ensure
     return if skipped
     if passed?
-      msg = "   restart_count #{restart_count}, reset #{reset}, success after restart #{replies[:restart]}"
+      msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
       $debugging_info << "#{full_name}\n#{msg}\n"
     else
       client_threads.each { |thr| thr.kill if thr.is_a? Thread }
