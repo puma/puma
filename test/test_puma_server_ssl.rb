@@ -513,10 +513,9 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
   def test_server_ssl_with_cert_pem_and_key_pem
     host = "localhost"
     port = 0
-    ctx = Puma::MiniSSL::Context.new.tap { |ctx|
-      ctx.cert_pem = File.read("#{CERT_PATH}/server.crt")
-      ctx.key_pem = File.read("#{CERT_PATH}/server.key")
-    }
+    ctx = Puma::MiniSSL::Context.new
+    ctx.cert_pem = File.read "#{CERT_PATH}/server.crt"
+    ctx.key_pem  = File.read "#{CERT_PATH}/server.key"
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
     log_writer = SSLLogWriterHelper.new STDOUT, STDERR
