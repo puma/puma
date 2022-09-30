@@ -124,7 +124,9 @@ module TestPuma
           end
 
           if (sizes = arg[SIZES_RE])
-            @body_sizes = sizes.split(',').map(&:to_i).sort
+            @body_sizes = sizes.split(',')
+            @body_sizes.map!(&:to_i)
+            @body_sizes.sort!
           end
         end
 

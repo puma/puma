@@ -70,7 +70,7 @@ module Puma
     # @!attribute [r] connected_ports
     # @version 5.0.0
     def connected_ports
-      ios.map { |io| io.addr[1] }.uniq
+      t = ios.map { |io| io.addr[1] }; t.uniq!; t
     end
 
     # @version 5.0.0
@@ -475,9 +475,10 @@ module Puma
 
     # @!attribute [r] loopback_addresses
     def loopback_addresses
-      Socket.ip_address_list.select do |addrinfo|
+      t = Socket.ip_address_list.select do |addrinfo|
         addrinfo.ipv6_loopback? || addrinfo.ipv4_loopback?
-      end.map { |addrinfo| addrinfo.ip_address }.uniq
+      end
+      t.map! { |addrinfo| addrinfo.ip_address }; t.uniq!; t
     end
 
     def loc_addr_str(io)

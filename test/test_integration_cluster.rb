@@ -553,7 +553,9 @@ RUBY
     read_timeouts = replies.count { |r| r == :read_timeout }
 
     # get pids from replies, generate uniq array
-    qty_pids = replies.map { |body| body[/\d+\z/] }.uniq.compact.length
+    t = replies.map { |body| body[/\d+\z/] }
+    t.uniq!; t.compact!
+    qty_pids = t.length
 
     msg = "#{responses} responses, #{qty_pids} uniq pids"
 
@@ -630,7 +632,7 @@ RUBY
       rescue Errno::ESRCH
         nil
       end
-    end.compact
+    end.compact!
   end
 
   # used in loop to create several 'requests'

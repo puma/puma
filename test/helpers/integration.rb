@@ -397,8 +397,10 @@ class TestIntegration < Minitest::Test
     if Puma.windows?
       cli_pumactl 'stop'
       Process.wait @server.pid
-      @server = nil
+    else
+      stop_server
     end
+    @server = nil
 
     msg = ("   %4d unexpected_response\n"   % replies.fetch(:unexpected_response,0)).dup
     msg << "   %4d refused\n"               % replies.fetch(:refused,0)

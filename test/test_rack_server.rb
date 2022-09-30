@@ -64,6 +64,12 @@ class TestRackServer < Minitest::Test
     @server.stop(true) unless @stopped
   end
 
+  def header_hash(socket)
+    t = socket.readline("\r\n\r\n").split("\r\n")
+    t.shift; t.map! { |line| line.split(/:\s?/) }
+    t.to_h
+  end
+
   def test_lint
     @checker = ErrorChecker.new ServerLint.new(@simple)
     @server.app = @checker
@@ -135,11 +141,7 @@ class TestRackServer < Minitest::Test
     socket.puts "Connection: Keep-Alive\r\n"
     socket.puts "\r\n"
 
-    headers = socket.readline("\r\n\r\n")
-      .split("\r\n")
-      .drop(1)
-      .map { |line| line.split(/:\s?/) }
-      .to_h
+    headers = header_hash socket
 
     content_length = headers["Content-Length"].to_i
     real_response_body = socket.read(content_length)
@@ -198,11 +200,7 @@ class TestRackServer < Minitest::Test
     socket.puts "Connection: Keep-Alive\r\n"
     socket.puts "\r\n"
 
-    headers = socket.readline("\r\n\r\n")
-      .split("\r\n")
-      .drop(1)
-      .map { |line| line.split(/:\s?/) }
-      .to_h
+    headers = header_hash socket
 
     content_length = headers["Content-Length"].to_i
 
