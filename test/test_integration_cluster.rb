@@ -626,13 +626,14 @@ RUBY
   # Process.kill should raise the Errno::ESRCH exception, indicating the
   # process is dead and has been reaped.
   def bad_exit_pids(pids)
-    pids.map do |pid|
+    t = pids.map do |pid|
       begin
         pid if Process.kill 0, pid
       rescue Errno::ESRCH
         nil
       end
-    end.compact!
+    end
+    t.compact!; t
   end
 
   # used in loop to create several 'requests'
