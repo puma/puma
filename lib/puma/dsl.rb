@@ -94,7 +94,7 @@ module Puma
             if reuse == true
               '&reuse=dflt'
             elsif reuse.is_a?(Hash) && (reuse.key?(:size) || reuse.key?(:timeout))
-              val = ''.dup
+              val = +''
               if (size = reuse[:size]) && Integer === size
                 val << size.to_s
               end

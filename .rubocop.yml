@@ -16,16 +16,13 @@ AllCops:
 
 # ————————————————————————————————————————— disabled cops
 
-Performance/RegexpMatch:
-  Enabled: false
-
-Performance/UnfreezeString:
-  Enabled: false
-
-Style/RedundantReturn:
-  Enabled: false
-
 # ————————————————————————————————————————— enabled cops
+
+Layout/AccessModifierIndentation:
+  EnforcedStyle: indent
+
+Layout/IndentationStyle:
+  Enabled: true
 
 Layout/SpaceAfterColon:
   Enabled: true
@@ -43,9 +40,6 @@ Layout/SpaceBeforeFirstArg:
 Layout/SpaceInsideParens:
   Enabled: true
 
-Layout/IndentationStyle:
-  Enabled: true
-
 Layout/TrailingEmptyLines:
   Enabled: true
 
@@ -54,6 +48,9 @@ Layout/TrailingWhitespace:
 
 Lint/Debugger:
   Enabled: true
+
+Metrics/ParameterLists:
+  Max: 7
 
 Naming/MethodName:
   Enabled: true
@@ -64,17 +61,23 @@ Naming/MethodName:
 Naming/VariableName:
   Enabled: true
 
-Style/MethodDefParentheses:
-  Enabled: true
-
-Style/TrailingCommaInArguments:
-  Enabled: true
-
 Performance:
   Enabled: true
 
-Metrics/ParameterLists:
-  Max: 7
+Performance/ChainArrayAllocation:
+  Enabled: true
+
+Performance/CollectionLiteralInLoop:
+  Enabled: true
+
+Performance/DeletePrefix:
+  Enabled: true
+
+Performance/DeleteSuffix:
+  Enabled: true
+
+Performance/MethodObjectAsBlock:
+  Enabled: true
 
 Performance/RedundantMatch:
   Enabled: true
@@ -82,15 +85,26 @@ Performance/RedundantMatch:
 Performance/RedundantBlockCall:
   Enabled: true
 
+Performance/StringIdentifierArgument:
+  Enabled: true
+
+Performance/StringInclude:
+  Enabled: true
+
 Performance/StringReplacement:
   Enabled: true
 
-Layout/AccessModifierIndentation:
-  EnforcedStyle: indent
+Style/MethodDefParentheses:
+  Enabled: true
 
-Style/WhileUntilModifier:
+Style/SafeNavigation:
   Enabled: true
 
 Style/TernaryParentheses:
   Enabled: true
 
+Style/TrailingCommaInArguments:
+  Enabled: true
+
+Style/WhileUntilModifier:
+  Enabled: true

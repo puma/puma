@@ -196,12 +196,12 @@ module Puma
 
     # @!attribute [r] backlog
     def backlog
-      @thread_pool and @thread_pool.backlog
+      @thread_pool&.backlog
     end
 
     # @!attribute [r] running
     def running
-      @thread_pool and @thread_pool.spawned
+      @thread_pool&.spawned
     end
 
 
@@ -214,7 +214,7 @@ module Puma
     # value would be 4 until it finishes processing.
     # @!attribute [r] pool_capacity
     def pool_capacity
-      @thread_pool and @thread_pool.pool_capacity
+      @thread_pool&.pool_capacity
     end
 
     # Runs the server.
@@ -230,10 +230,10 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(thread_name, @options, &method(:process_client))
+      @thread_pool = ThreadPool.new(thread_name, @options) { |a, b| process_client a, b }
 
       if @queue_requests
-        @reactor = Reactor.new(@io_selector_backend, &method(:reactor_wakeup))
+        @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
         @reactor.run
       end
 

@@ -55,7 +55,7 @@ class TestConfigFile < TestConfigFileBase
     app = conf.app
 
     assert bind_configuration =~ %r{ca=.*ca.crt}
-    assert bind_configuration =~ /verify_mode=peer/
+    assert bind_configuration&.include?('verify_mode=peer')
 
     assert_equal [200, {}, ["embedded app"]], app.call({})
   end

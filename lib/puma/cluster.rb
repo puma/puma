@@ -180,10 +180,10 @@ module Puma
         end
       end
 
-      @next_check = [
-        @workers.reject(&:term?).map(&:ping_timeout).min,
-        @next_check
-      ].compact.min
+      t = @workers.reject(&:term?)
+      t.map!(&:ping_timeout)
+
+      @next_check = [t.min, @next_check].compact.min
     end
 
     def worker(index, master)
@@ -230,7 +230,7 @@ module Puma
     def stop_blocked
       @status = :stop if @status == :run
       wakeup!
-      @control.stop(true) if @control
+      @control&.stop true
       Process.waitall
     end
 

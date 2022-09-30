@@ -70,7 +70,7 @@ module Puma
     # @!attribute [r] connected_ports
     # @version 5.0.0
     def connected_ports
-      ios.map { |io| io.addr[1] }.uniq
+      t = ios.map { |io| io.addr[1] }; t.uniq!; t
     end
 
     # @version 5.0.0
@@ -96,7 +96,7 @@ module Puma
           [:unix, Socket.unpack_sockaddr_un(sock.getsockname)]
         rescue ArgumentError # Try to parse as a port/ip
           port, addr = Socket.unpack_sockaddr_in(sock.getsockname)
-          addr = "[#{addr}]" if addr =~ /\:/
+          addr = "[#{addr}]" if addr&.include? ':'
           [:tcp, addr, port]
         end
         @activated_sockets[key] = sock
@@ -216,6 +216,7 @@ module Puma
 
           @listeners << [str, io]
         when "ssl"
+          cert_key = %w[cert key]
 
           raise "Puma compiled without SSL support" unless HAS_SSL
 
@@ -224,15 +225,16 @@ module Puma
           # If key and certs are not defined and localhost gem is required.
           # localhost gem will be used for self signed
           # Load localhost authority if not loaded.
-          if params.values_at('cert', 'key').all? { |v| v.to_s.empty? }
+          # Ruby 3 `values_at` accepts an array, earlier do not
+          if params.values_at(*cert_key).all? { |v| v.to_s.empty? }
             ctx = localhost_authority && localhost_authority_context
           end
 
           ctx ||=
             begin
               # Extract cert_pem and key_pem from options[:store] if present
-              ['cert', 'key'].each do |v|
-                if params[v] && params[v].start_with?('store:')
+              cert_key.each do |v|
+                if params[v]&.start_with?('store:')
                   index = Integer(params.delete(v).split('store:').last)
                   params["#{v}_pem"] = @conf.options[:store][index]
                 end
@@ -473,9 +475,10 @@ module Puma
 
     # @!attribute [r] loopback_addresses
     def loopback_addresses
-      Socket.ip_address_list.select do |addrinfo|
+      t = Socket.ip_address_list.select do |addrinfo|
         addrinfo.ipv6_loopback? || addrinfo.ipv4_loopback?
-      end.map { |addrinfo| addrinfo.ip_address }.uniq
+      end
+      t.map! { |addrinfo| addrinfo.ip_address }; t.uniq!; t
     end
 
     def loc_addr_str(io)

@@ -9,7 +9,7 @@ class TestBusyWorker < Minitest::Test
 
   def teardown
     return if skipped?
-    @server.stop(true) if @server
+    @server&.stop true
     @ios.each {|i| i.close unless i.closed?}
   end
 

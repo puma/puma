@@ -31,8 +31,8 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def teardown
-    @http.finish if @http && @http.started?
-    @server.stop(true) if @server
+    @http.finish if @http&.started?
+    @server&.stop true
   end
 
   # yields ctx to block, use for ctx setup & configuration
@@ -347,7 +347,7 @@ class TestPumaServerSSLClient < Minitest::Test
     end
     assert_equal subject, log_writer.cert.subject.to_s if subject
   ensure
-    server.stop(true) if server
+    server&.stop true
   end
 
   def test_verify_fail_if_no_client_cert
@@ -543,6 +543,6 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
 
     assert_nil client_error
   ensure
-    server.stop(true) if server
+    server&.stop true
   end
 end if ::Puma::HAS_SSL && !Puma::IS_JRUBY

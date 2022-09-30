@@ -21,7 +21,7 @@ require_relative "helpers/apps"
 
 Thread.abort_on_exception = true
 
-$debugging_info = ''.dup
+$debugging_info = +''
 $debugging_hold = false   # needed for TestCLI#test_control_clustered
 $test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
   RUBY_ENGINE == "ruby" ? 45 : 60

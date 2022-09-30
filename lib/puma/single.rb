@@ -21,21 +21,21 @@ module Puma
     end
 
     def restart
-      @server.begin_restart
+      @server&.begin_restart
     end
 
     def stop
-      @server.stop(false) if @server
+      @server&.stop false
     end
 
     def halt
-      @server.halt
+      @server&.halt
     end
 
     def stop_blocked
       log "- Gracefully stopping, waiting for requests to finish"
-      @control.stop(true) if @control
-      @server.stop(true) if @server
+      @control&.stop true
+      @server&.stop true
     end
 
     def run

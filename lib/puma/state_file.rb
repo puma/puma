@@ -20,7 +20,7 @@ module Puma
     end
 
     def save(path, permission = nil)
-      contents = "---\n".dup
+      contents = +"---\n"
       @options.each do |k,v|
         next unless ALLOWED_FIELDS.include? k
         case v
