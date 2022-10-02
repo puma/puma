@@ -259,3 +259,15 @@ module AggregatedResults
   end
 end
 Minitest::SummaryReporter.prepend AggregatedResults
+
+module TestTempFile
+  require "tempfile"
+  def tempfile_create(basename, data, mode: File::BINARY)
+    fio = Tempfile.create(basename, mode: mode)
+    fio.syswrite data
+    fio.rewind
+    @ios << fio
+    fio
+  end
+end
+Minitest::Test.include TestTempFile
