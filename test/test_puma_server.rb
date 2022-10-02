@@ -1,4 +1,6 @@
 require_relative "helper"
+
+require "securerandom"
 require "puma/events"
 require "puma/server"
 require "net/http"
