@@ -215,14 +215,14 @@ RUBY
 
     stop_server(Integer(File.read("t3-pid")))
 
+    assert(worker_pid_was_present)
+    assert(worker_index_within_number_of_workers)
+  ensure
     File.unlink "t3-pid" if File.file? "t3-pid"
     File.unlink "t3-worker-0-pid" if File.file? "t3-worker-0-pid"
     File.unlink "t3-worker-1-pid" if File.file? "t3-worker-1-pid"
     File.unlink "t3-worker-2-pid" if File.file? "t3-worker-2-pid"
     File.unlink "t3-worker-3-pid" if File.file? "t3-worker-3-pid"
-
-    assert(worker_pid_was_present)
-    assert(worker_index_within_number_of_workers)
   end
 
   # use three workers to keep accepting clients

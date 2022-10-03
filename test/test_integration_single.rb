@@ -163,20 +163,18 @@ class TestIntegrationSingle < TestIntegration
 
     log = File.read('t1-stdout')
 
-    File.unlink 't1-stdout' if File.file? 't1-stdout'
-    File.unlink 't1-pid' if File.file? 't1-pid'
-
     assert_match(%r!GET / HTTP/1\.1!, log)
+  ensure
+    File.unlink 't1-stdout' if File.file? 't1-stdout'
+    File.unlink 't1-pid'    if File.file? 't1-pid'
   end
 
   def test_puma_started_log_writing
     skip_unless_signal_exist? :TERM
 
-    suppress_output = '> /dev/null 2>&1'
-
     cli_server '-C test/config/t2_conf.rb test/rackup/hello.ru'
 
-    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
 
     out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
 
@@ -184,11 +182,11 @@ class TestIntegrationSingle < TestIntegration
 
     log = File.read('t2-stdout')
 
-    File.unlink 't2-stdout' if File.file? 't2-stdout'
-
     assert_match(%r!GET / HTTP/1\.1!, log)
     assert(!File.file?("t2-pid"))
     assert_equal("Puma is started\n", out)
+  ensure
+    File.unlink 't2-stdout' if File.file? 't2-stdout'
   end
 
   def test_application_logs_are_flushed_on_write
