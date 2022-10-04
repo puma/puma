@@ -7,7 +7,6 @@ require "rack/body_proxy"
 require "rack/chunked" if Rack::RELEASE >= '3'
 
 require "nio"
-require "securerandom"
 require "open3"
 
 class TestRackServer < Minitest::Test

@@ -11,6 +11,8 @@ if RUBY_VERSION == '2.4.1'
   end
 end
 
+require "securerandom"
+
 require_relative "minitest/verbose"
 require "minitest/autorun"
 require "minitest/pride"
