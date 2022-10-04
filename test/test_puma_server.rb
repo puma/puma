@@ -408,27 +408,35 @@ EOF
   end
 
   def test_lowlevel_error_message
-    skip_if :windows
     @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :force_shutdown_after => 2}
 
     server_run do
-      if TestSkips::TRUFFLE
-        # SystemStackError is too brittle, use something more reliable
-        raise Exception, "error"
-      end
-
-      require 'json'
-
-      # will raise fatal: machine stack overflow in critical region
-      obj = {}
-      obj['cycle'] = obj
-      ::JSON.dump(obj)
+      raise NoMethodError, "Oh no an error"
     end
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
-    assert (data.size > 0), "Expected response message to be not empty"
+    assert_match(/Puma caught this error: Oh no an error.*\(NoMethodError\).*test\/test_puma_server.rb/m, data)
+  end
+
+  class WithoutBacktraceError < StandardError
+    def backtrace; nil; end
+    def message; "no backtrace error"; end
+    def class; "WithoutBacktraceError"; end
+  end
+
+  def test_lowlevel_error_message_without_backtrace
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :force_shutdown_after => 2}
+
+    server_run do
+      raise WithoutBacktraceError.new
+    end
+
+    data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
+    assert_match(/HTTP\/1.1 500 Internal Server Error/, data)
+    assert_match(/Puma caught this error: no backtrace error.*\(WithoutBacktraceError\)/, data)
+    assert_match(/<no backtrace available>/, data)
   end
 
   def test_force_shutdown_error_default
