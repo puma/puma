@@ -138,10 +138,12 @@ PUMA_TEST_DEBUG=1 bundle exec rake test
 
 Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open file" errors when running the Puma test suite.
 
-Check your file limit:
-
 ```
-ulimit -Sn
+# check your file limit
+ulimit -S -n
+
+# change file limit for the current session
+ulimit -S -n <value>
 ```
 
 We find that values of 4000 or more work well. [Learn more about your file limits and how to change them here.](https://wilsonmar.github.io/maximum-limits/)
