@@ -25,6 +25,9 @@ module Puma
 
   class HttpParserError501 < IOError; end
 
+  #———————————————————————— DO NOT USE — this class is for internal use only ———
+
+
   # An instance of this class represents a unique request from a client.
   # For example, this could be a web request from a browser or from CURL.
   #
@@ -38,7 +41,7 @@ module Puma
   # the header and body are fully buffered via the `try_to_finish` method.
   # They can be used to "time out" a response via the `timeout_at` reader.
   #
-  class Client
+  class Client # :nodoc:
 
     # this tests all values but the last, which must be chunked
     ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze

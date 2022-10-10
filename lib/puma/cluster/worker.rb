@@ -2,13 +2,16 @@
 
 module Puma
   class Cluster < Puma::Runner
+    #—————————————————————— DO NOT USE — this class is for internal use only ———
+
+
     # This class is instantiated by the `Puma::Cluster` and represents a single
     # worker process.
     #
     # At the core of this class is running an instance of `Puma::Server` which
     # gets created via the `start_server` method from the `Puma::Runner` class
     # that this inherits from.
-    class Worker < Puma::Runner
+    class Worker < Puma::Runner # :nodoc:
       attr_reader :index, :master
 
       def initialize(index:, master:, launcher:, pipes:, server: nil)
