@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Puma
+  #———————————————————————— DO NOT USE — this class is for internal use only ———
+
 
   # The methods here are included in Server, but are separated into this file.
   # All the methods here pertain to passing the request to the app, then
@@ -10,7 +12,7 @@ module Puma
   # #handle_request, which is called in Server#process_client.
   # @version 5.0.3
   #
-  module Request
+  module Request # :nodoc:
 
     # determines whether to write body to io_buffer first, or straight to socket
     # also fixes max size of chunked body read when bosy is an IO.
