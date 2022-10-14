@@ -1,4 +1,4 @@
-## 6.0.0 / 2022-10-XX
+## 6.0.0 / 2022-10-14
 
 * Breaking Changes
   * Dropping Ruby 2.2 and 2.3 support (now 2.4+) ([#2919])
@@ -9,6 +9,7 @@
   * Prefix all environment variables with `PUMA_` ([#2924], [#2853])
   * Removed some constants ([#2957], [#2958], [#2959], [#2960])
   * The following classes are now part of Puma's private API: `Client`, `Cluster::Worker`, `Cluster::Worker`, `HandleRequest`. ([#2988])
+  * Configuration constants like `DefaultRackup` removed ([#2928])
 
 * Features
   * Increase throughput on large (100kb+) response bodies by 3-10x ([#2896], [#2892])
@@ -1915,6 +1916,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2928]:https://github.com/puma/puma/pull/2928     "PR by @nateberkopec, merged 2022-09-10"
 [#2919]:https://github.com/puma/puma/pull/2919     "PR by @MSP-Greg, merged 2022-08-30"
 [#2652]:https://github.com/puma/puma/issues/2652   "Issue by @Roguelazer, closed 2022-09-04"
 [#2653]:https://github.com/puma/puma/pull/2653     "PR by @Roguelazer, closed 2022-03-07"
