@@ -1,4 +1,4 @@
-## 6.0.0 / 2022-10-XX
+## 6.0.0 / 2022-10-14
 
 * Breaking Changes
   * Dropping Ruby 2.2 and 2.3 support (now 2.4+) ([#2919])
