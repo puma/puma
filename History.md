@@ -10,6 +10,8 @@
   * Removed some constants ([#2957], [#2958], [#2959], [#2960])
   * The following classes are now part of Puma's private API: `Client`, `Cluster::Worker`, `Cluster::Worker`, `HandleRequest`. ([#2988])
   * Configuration constants like `DefaultRackup` removed ([#2928])
+  * Extracted `LogWriter` from `Events` ([#2798])
+
 
 * Features
   * Increase throughput on large (100kb+) response bodies by 3-10x ([#2896], [#2892])
@@ -35,7 +37,6 @@
 
 * Refactor
   * log_writer.rb - add internal_write method ([#2888])
-  * [WIP] Refactor: Split out LogWriter from Events (no logic change) ([#2798])
   * Extract prune_bundler code into it's own class. ([#2797])
   * Refactor Launcher#run to increase readability (no logic change) ([#2795])
   * Ruby 3.2 will have native IO#wait_* methods, don't require io/wait ([#2903])
