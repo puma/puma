@@ -27,6 +27,8 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 Any questions about contributing may be asked in our [Discussions](https://github.com/puma/puma/discussions).
 
+**If you're nervous, get stuck, need help, or want to know where to start and where you can help**, please don't hesitate to [book 30 minutes with maintainer @nateberkopec here](https://fantastical.app/nateberkopec/weekdays). He is happy to help!
+
 #### Clone the repo 
 
 Clone the Puma repository:
