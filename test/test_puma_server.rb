@@ -154,6 +154,8 @@ class TestPumaServer < Minitest::Test
     ary = data.split("\r\n\r\n", 2)
 
     assert_equal random_bytes, ary.last
+  ensure
+    tf.close
   end
 
   def test_file_to_path
@@ -161,7 +163,6 @@ class TestPumaServer < Minitest::Test
 
     tf = tempfile_create("test_file_to_path", random_bytes)
     path = tf.path
-    tf.close # for Windows
 
     obj = Object.new
     obj.singleton_class.send(:define_method, :to_path) { path }
@@ -173,6 +174,8 @@ class TestPumaServer < Minitest::Test
     ary = data.split("\r\n\r\n", 2)
 
     assert_equal random_bytes, ary.last
+  ensure
+    tf.close
   end
 
   def test_proper_stringio_body
