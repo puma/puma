@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, macos-11, macos-12, windows-2022 ]
+        os: [ ubuntu-20.04, ubuntu-18.04, macos-11, macos-12, windows-2022 ]
         ruby: [ 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, head ]
         no-ssl: ['']
         yjit: ['']
@@ -57,15 +57,9 @@ jobs:
 
         exclude:
           - { os: windows-2022 , ruby: head }
-          - { os: macos-10.15  , ruby: 2.7  }
-          - { os: macos-10.15  , ruby: '3.0'}
-          - { os: macos-10.15  , ruby: 3.1  }
-          - { os: macos-10.15  , ruby: head }
           - { os: macos-11     , ruby: 2.4  }
           - { os: macos-11     , ruby: 2.5  }
-          - { os: macos-12     , ruby: 2.4  }
-          - { os: macos-12     , ruby: 2.5  }
-          - { os: macos-12     , ruby: 2.6  }
+          - { os: macos-11     , ruby: head }
 
     steps:
       - name: repo checkout
@@ -131,10 +125,11 @@ jobs:
           - { os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
           - { os: ubuntu-20.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
           - { os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
-          - { os: macos-10.15  , ruby: jruby }
-          - { os: macos-10.15  , ruby: truffleruby, allow-failure: true }
           - { os: macos-11     , ruby: jruby }
           - { os: macos-11     , ruby: truffleruby, allow-failure: true }
+          - { os: macos-12     , ruby: jruby }
+          - { os: macos-12     , ruby: truffleruby, allow-failure: true }
+
 
     steps:
       - name: repo checkout
