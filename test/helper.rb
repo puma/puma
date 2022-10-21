@@ -264,7 +264,8 @@ module TestTempFile
   require "tempfile"
   def tempfile_create(basename, data, mode: File::BINARY)
     fio = Tempfile.create(basename, mode: mode)
-    fio.syswrite data
+    fio.write data
+    fio.flush
     fio.rewind
     @ios << fio
     fio

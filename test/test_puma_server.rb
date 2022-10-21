@@ -146,13 +146,18 @@ class TestPumaServer < Minitest::Test
 
   def test_file_body
     random_bytes = SecureRandom.random_bytes(4096 * 32)
+
     tf = tempfile_create("test_file_body", random_bytes)
 
     server_run { |env| [200, {}, tf] }
 
-    data = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n").sysread(1_024)
+    data = +''
+    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
+    data << skt.sysread(65_536) while skt.wait_readable(0.1)
+
     ary = data.split("\r\n\r\n", 2)
 
+    assert_equal random_bytes.bytesize, ary.last.bytesize
     assert_equal random_bytes, ary.last
   ensure
     tf.close
@@ -170,9 +175,12 @@ class TestPumaServer < Minitest::Test
 
     server_run { |env| [200, {}, obj] }
 
-    data = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n").sysread(1_024)
+    data = +''
+    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
+    data << skt.sysread(65_536) while skt.wait_readable(0.1)
     ary = data.split("\r\n\r\n", 2)
 
+    assert_equal random_bytes.bytesize, ary.last.bytesize
     assert_equal random_bytes, ary.last
   ensure
     tf.close
