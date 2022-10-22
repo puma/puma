@@ -10,7 +10,7 @@ class TestBundlePruner < Minitest::Test
     dirs = bundle_pruner.send(:paths_to_require_after_prune)
 
     assert_equal(2, dirs.length)
-    assert_match(%r{#{REPO_NAME}/lib$}, dirs[0]) # lib dir
+    assert_equal(File.join(PROJECT_ROOT, "lib"), dirs[0]) # lib dir
     assert_match(%r{puma-#{Puma::Const::PUMA_VERSION}$}, dirs[1]) # native extension dir
     refute_match(%r{gems/minitest-[\d.]+/lib$}, dirs[2])
   end
@@ -21,7 +21,7 @@ class TestBundlePruner < Minitest::Test
     dirs = bundle_pruner([], ['minitest']).send(:paths_to_require_after_prune)
 
     assert_equal(3, dirs.length)
-    assert_match(%r{#{REPO_NAME}/lib$}, dirs[0]) # lib dir
+    assert_equal(File.join(PROJECT_ROOT, "lib"), dirs[0]) # lib dir
     assert_match(%r{puma-#{Puma::Const::PUMA_VERSION}$}, dirs[1]) # native extension dir
     assert_match(%r{gems/minitest-[\d.]+/lib$}, dirs[2]) # minitest dir
   end
