@@ -26,6 +26,7 @@ class TestPumaServer < Minitest::Test
     @ios.each do |io|
       begin
         io.close if io.respond_to?(:close) && !io.closed?
+        File.unlink io.path if io.is_a? File
       rescue Errno::EBADF
       ensure
         io = nil
@@ -140,28 +141,33 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "Hello World", data.split("\n").last
+    assert_equal "Hello World", data.split("\r\n\r\n", 2).last
   end
 
   def test_file_body
     random_bytes = SecureRandom.random_bytes(4096 * 32)
-    path = Tempfile.open { |f| f.path }
-    File.binwrite path, random_bytes
 
-    server_run { |env| [200, {}, File.open(path, 'rb')] }
+    tf = tempfile_create("test_file_body", random_bytes)
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    server_run { |env| [200, {}, tf] }
+
+    data = +''
+    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
+    data << skt.sysread(65_536) while skt.wait_readable(0.1)
+
     ary = data.split("\r\n\r\n", 2)
 
+    assert_equal random_bytes.bytesize, ary.last.bytesize
     assert_equal random_bytes, ary.last
   ensure
-    File.delete(path) if File.exist?(path)
+    tf.close
   end
 
   def test_file_to_path
     random_bytes = SecureRandom.random_bytes(4096 * 32)
-    path = Tempfile.open { |f| f.path }
-    File.binwrite path, random_bytes
+
+    tf = tempfile_create("test_file_to_path", random_bytes)
+    path = tf.path
 
     obj = Object.new
     obj.singleton_class.send(:define_method, :to_path) { path }
@@ -169,15 +175,16 @@ class TestPumaServer < Minitest::Test
 
     server_run { |env| [200, {}, obj] }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    data = +''
+    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
+    data << skt.sysread(65_536) while skt.wait_readable(0.1)
     ary = data.split("\r\n\r\n", 2)
 
+    assert_equal random_bytes.bytesize, ary.last.bytesize
     assert_equal random_bytes, ary.last
   ensure
-    File.delete(path) if File.exist?(path)
+    tf.close
   end
-
-
 
   def test_proper_stringio_body
     data = nil
