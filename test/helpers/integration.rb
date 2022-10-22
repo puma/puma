@@ -126,6 +126,11 @@ class TestIntegration < Minitest::Test
 
   # Returns true if and when server log includes str.
   # Will timeout or raise an error otherwise
+  # @note Integration tests read server output via the IO returned by `IO.popen`.
+  #   When hot-restarting a server, sometimes (maybe a very short time) the IO
+  #   may be `nil`.  Not sure, but there have been infrequent intermittent
+  #   failures due it.
+  #
   def wait_for_server_to_include(str, log: false)
     sleep 0.05 until @server.is_a?(IO)
     retry_cntr = 0
@@ -140,7 +145,7 @@ class TestIntegration < Minitest::Test
       else
         true until (@server.gets || '').include?(str)
       end
-    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+    rescue NoMethodError, Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
       retry_cntr += 1
       raise e if retry_cntr > 10
       sleep 0.1
@@ -152,6 +157,11 @@ class TestIntegration < Minitest::Test
   # Returns line if and when server log matches re, unless idx is specified,
   # then returns regex match.
   # Will timeout or raise an error otherwise
+  # @note Integration tests read server output via the IO returned by `IO.popen`.
+  #   When hot-restarting a server, sometimes (maybe a very short time) the IO
+  #   may be `nil`.  Not sure, but there have been infrequent intermittent
+  #   failures due it.
+  #
   def wait_for_server_to_match(re, idx = nil, log: false)
     sleep 0.05 until @server.is_a?(IO)
     retry_cntr = 0
@@ -167,7 +177,7 @@ class TestIntegration < Minitest::Test
       else
         true until (line = @server.gets || '').match?(re)
       end
-    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+    rescue NoMethodError, Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
       retry_cntr += 1
       raise e if retry_cntr > 10
       sleep 0.1
