@@ -120,8 +120,11 @@ class TestIntegration < Minitest::Test
 
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
-  def wait_for_server_to_boot(log: false)
-    wait_for_server_to_include 'Ctrl-C'
+  def wait_for_server_to_boot(log: false, allow_fail: false)
+    wait_for_server_to_include 'Ctrl-C', log: log
+  # should match errors in `wait_for_server_to_*` methods
+  rescue NoMethodError. Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+    raise e unless allow_fail
   end
 
   # Returns true if and when server log includes str.
@@ -140,7 +143,7 @@ class TestIntegration < Minitest::Test
       else
         true until (@server.gets || '').include?(str)
       end
-    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+    rescue NoMethodError. Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
       retry_cntr += 1
       raise e if retry_cntr > 10
       sleep 0.1
@@ -167,7 +170,7 @@ class TestIntegration < Minitest::Test
       else
         true until (line = @server.gets || '').match?(re)
       end
-    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+    rescue NoMethodError. Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
       retry_cntr += 1
       raise e if retry_cntr > 10
       sleep 0.1
@@ -390,9 +393,11 @@ class TestIntegration < Minitest::Test
           Process.kill :USR2, @pid
         end
         sleep 0.5
-        wait_for_server_to_boot
-        restart_count += 1
-        sleep(Puma.windows? ? 2.0 : 0.5)
+        if run
+          wait_for_server_to_boot allow_fail: true
+          restart_count += 1
+          sleep(Puma.windows? ? 2.0 : 0.5)
+        end
       end
     end
 
