@@ -184,7 +184,7 @@ Minitest::Test.include TestSkips
 
 class Minitest::Test
 
-  REPO_NAME = ENV['GITHUB_REPOSITORY'] ? ENV['GITHUB_REPOSITORY'][/[^\/]+\z/] : 'puma'
+  PROJECT_ROOT = File.dirname(__dir__)
 
   def self.run(reporter, options = {}) # :nodoc:
     prove_it!
