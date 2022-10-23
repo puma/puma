@@ -7,6 +7,11 @@ require "net/http"
 require "nio"
 require "ipaddr"
 
+class WithoutBacktraceError < StandardError
+  def backtrace; nil; end
+  def message; "no backtrace error"; end
+end
+
 class TestPumaServer < Minitest::Test
   parallelize_me!
 
@@ -428,12 +433,6 @@ EOF
 
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
     assert_match(/Puma caught this error: Oh no an error.*\(NoMethodError\).*test\/test_puma_server.rb/m, data)
-  end
-
-  class WithoutBacktraceError < StandardError
-    def backtrace; nil; end
-    def message; "no backtrace error"; end
-    def class; "WithoutBacktraceError"; end
   end
 
   def test_lowlevel_error_message_without_backtrace
