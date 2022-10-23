@@ -48,13 +48,13 @@ module TestPuma
       while n < byte_size
         begin
           n += syswrite(n.zero? ? str : str.byteslice(n..-1))
-        rescue Errno::EAGAIN, Errno::EWOULDBLOCK
+        rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
           unless wait_writable WRITE_TIMEOUT
-            raise ConnectionError, SKT_WRITE_ERR_MSG
+            raise e
           end
           retry
-        rescue  Errno::EPIPE, SystemCallError, IOError
-          raise ConnectionError, SKT_WRITE_ERR_MSG
+        rescue => e
+          raise e
         end
       end
     end
