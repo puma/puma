@@ -246,7 +246,7 @@ RUBY
       sleep 0.004
     }
 
-    socks.each { |s| read_body s }
+    socks.each { |s| s.read_body }
 
     refute_includes pids, get_worker_pids(1, wrkrs - 1)
   end
@@ -262,12 +262,12 @@ app do |_|
   [200, {}, [exitstatus.to_s]]
 end
 RUBY
-    assert_equal '0', read_body(connect)
+    assert_equal '0', connect.read_body
   end
 
   def test_prune_bundler_with_multiple_workers
     cli_server "-C test/config/prune_bundler_with_multiple_workers.rb"
-    reply = read_body(connect)
+    reply = connect.read_body
 
     assert reply, "embedded app"
   end
@@ -533,7 +533,7 @@ RUBY
     mutex = Mutex.new
 
     s = connect "sleep1", unix: unix
-    replies << read_body(s)
+    replies << s.read_body
 
     Process.kill :USR1, @pid
 
@@ -641,7 +641,7 @@ RUBY
     begin
       sleep delay
       s = fast_connect "sleep#{sleep_time}", unix: unix
-      body = read_body(s, 20)
+      body = s.read_body 20
       mutex.synchronize { replies << body }
     rescue Errno::ECONNRESET
       # connection was accepted but then closed
@@ -659,7 +659,7 @@ RUBY
     begin
       sleep delay
       s = connect "sleep#{sleep_time}-#{step}", unix: unix
-      body = read_body(s, 20)
+      body = s.read_body 20
       if body[/\ASlept /]
         mutex.synchronize { replies[step] = :success }
       else

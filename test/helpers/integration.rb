@@ -106,9 +106,9 @@ class TestIntegration < Minitest::Test
   def restart_server_and_listen(argv)
     cli_server argv
     connection = connect
-    initial_reply = read_body(connection)
+    initial_reply = connection.read_body
     restart_server connection
-    [initial_reply, read_body(connect)]
+    [initial_reply, connect.read_body]
   end
 
   # reuses an existing connection to make sure that works
@@ -143,7 +143,7 @@ class TestIntegration < Minitest::Test
       else
         true until (@server.gets || '').include?(str)
       end
-    rescue NoMethodError. Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+    rescue NoMethodError, Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
       retry_cntr += 1
       raise e if retry_cntr > 10
       sleep 0.1
@@ -170,7 +170,7 @@ class TestIntegration < Minitest::Test
       else
         true until (line = @server.gets || '').match?(re)
       end
-    rescue NoMethodError. Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+    rescue NoMethodError, Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
       retry_cntr += 1
       raise e if retry_cntr > 10
       sleep 0.1
@@ -180,7 +180,7 @@ class TestIntegration < Minitest::Test
   end
 
   def connect(path = nil, unix: false)
-    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    s = unix ? TestPuma::SktUNIX.new(@bind_path) : TestPuma::SktTCP.new(HOST, @tcp_port)
     @ios_to_close << s
     s << "GET /#{path} HTTP/1.1\r\n\r\n"
     s
@@ -189,10 +189,9 @@ class TestIntegration < Minitest::Test
   # use only if all socket writes are fast
   # does not wait for a read
   def fast_connect(path = nil, unix: false)
-    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    s = unix ? TestPuma::SktUNIX.new(@bind_path) : TestPuma::SktTCP.new(HOST, @tcp_port)
     @ios_to_close << s
-    fast_write s, "GET /#{path} HTTP/1.1\r\n\r\n"
-    s
+    s << "GET /#{path} HTTP/1.1\r\n\r\n"
   end
 
   def fast_write(io, str)
@@ -212,61 +211,6 @@ class TestIntegration < Minitest::Test
 
       return if n == str.bytesize
       str = str.byteslice(n..-1)
-    end
-  end
-
-  def read_body(connection, timeout = nil)
-    read_response(connection, timeout).last
-  end
-
-  def read_response(connection, timeout = nil)
-    timeout ||= RESP_READ_TIMEOUT
-    content_length = nil
-    chunked = nil
-    response = +''
-    t_st = Process.clock_gettime Process::CLOCK_MONOTONIC
-    if connection.to_io.wait_readable timeout
-      loop do
-        begin
-          part = connection.read_nonblock(RESP_READ_LEN, exception: false)
-          case part
-          when String
-            unless content_length || chunked
-              chunked ||= part.include? "\r\nTransfer-Encoding: chunked\r\n"
-              content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
-            end
-
-            response << part
-            hdrs, body = response.split RESP_SPLIT, 2
-            unless body.nil?
-              # below could be simplified, but allows for debugging...
-              ret =
-                if content_length
-                  body.bytesize == content_length
-                elsif chunked
-                  body.end_with? "\r\n0\r\n\r\n"
-                elsif !hdrs.empty? && !body.empty?
-                  true
-                else
-                  false
-                end
-              if ret
-                return [hdrs, body]
-              end
-            end
-            sleep 0.000_1
-          when :wait_readable, :wait_writable # :wait_writable for ssl
-            sleep 0.000_2
-          when nil
-            raise EOFError
-          end
-          if timeout < Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st
-            raise Timeout::Error, 'Client Read Timeout'
-          end
-        end
-      end
-    else
-      raise Timeout::Error, 'Client Read Timeout'
     end
   end
 
@@ -344,13 +288,13 @@ class TestIntegration < Minitest::Test
         num_requests.times do |req_num|
           begin
             begin
-              socket = TCPSocket.new HOST, @tcp_port
+              socket = TestPuma::SktTCP.new HOST, @tcp_port
               fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
             rescue => e
               replies[:write_error] += 1
               raise e
             end
-            body = read_body(socket, 10)
+            body = socket.read_body 10
             if body == "Hello World"
               mutex.synchronize {
                 replies[:success] += 1

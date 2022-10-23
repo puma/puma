@@ -64,7 +64,7 @@ class TestIntegrationPumactl < TestIntegration
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-    s = UNIXSocket.new @bind_path
+    s = TestPuma::SktUNIX.new @bind_path
     @ios_to_close << s
     s << "GET /sleep1 HTTP/1.0\r\n\r\n"
 
@@ -102,7 +102,7 @@ class TestIntegrationPumactl < TestIntegration
 
     start = Time.now
 
-    s = UNIXSocket.new @bind_path
+    s = TestPuma::SktUNIX.new @bind_path
     @ios_to_close << s
     s << "GET /sleep1 HTTP/1.0\r\n\r\n"
 
@@ -135,7 +135,7 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_server "-q -C test/config/prune_bundler_with_multiple_workers.rb --control-url unix://#{@control_path} --control-token #{TOKEN} -S #{@state_path}", unix: true
 
-    s = UNIXSocket.new @bind_path
+    s = TestPuma::SktUNIX.new @bind_path
     @ios_to_close << s
     s << "GET / HTTP/1.0\r\n\r\n"
 

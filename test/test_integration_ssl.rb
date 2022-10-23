@@ -48,7 +48,7 @@ class TestIntegrationSSL < TestIntegration
     yield http
 
     # stop server
-    sock = TCPSocket.new HOST, control_tcp_port
+    sock = TestPuma::SktTCP.new HOST, control_tcp_port
     @ios_to_close << sock
     sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
     sock.read

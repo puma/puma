@@ -32,10 +32,10 @@ class TestPreserveBundlerEnv < TestIntegration
     wait_for_server_to_boot
     @pid = @server.pid
     connection = connect
-    initial_reply = read_body(connection)
+    initial_reply = connection.read_body
     assert_match("Gemfile.bundle_env_preservation_test", initial_reply)
     restart_server connection
-    new_reply = read_body(connection)
+    new_reply = connection.read_body
     assert_match("Gemfile.bundle_env_preservation_test", new_reply)
   end
 
@@ -56,7 +56,7 @@ class TestPreserveBundlerEnv < TestIntegration
     end
     wait_for_server_to_boot
     @pid = @server.pid
-    reply = read_body(connect)
+    reply = connect.read_body
     assert_equal("Hello World", reply)
   end
 
@@ -78,7 +78,7 @@ class TestPreserveBundlerEnv < TestIntegration
     connection = connect
 
     # Bundler itself sets ENV['BUNDLE_GEMFILE'] to the Gemfile it finds if ENV['BUNDLE_GEMFILE'] was unspecified
-    initial_reply = read_body(connection)
+    initial_reply = connection.read_body
     expected_gemfile = File.expand_path("bundle_preservation_test/version1/Gemfile", __dir__).inspect
     assert_equal(expected_gemfile, initial_reply)
 
@@ -86,7 +86,7 @@ class TestPreserveBundlerEnv < TestIntegration
     start_phased_restart
 
     connection = connect
-    new_reply = read_body(connection)
+    new_reply = connection.read_body
     expected_gemfile = File.expand_path("bundle_preservation_test/version2/Gemfile", __dir__).inspect
     assert_equal(expected_gemfile, new_reply)
   end

@@ -100,7 +100,7 @@ class TestWorkerGemIndependence < TestIntegration
     end
 
     connection = connect
-    initial_reply = read_body(connection)
+    initial_reply = connection.read_body
     assert_equal old_version, initial_reply
 
     before_restart&.call
@@ -115,7 +115,7 @@ class TestWorkerGemIndependence < TestIntegration
     start_phased_restart
 
     connection = connect
-    new_reply = read_body(connection)
+    new_reply = connection.read_body
     assert_equal new_version, new_reply
   end
 

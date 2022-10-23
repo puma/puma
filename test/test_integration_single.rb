@@ -63,7 +63,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server("test/rackup/url_scheme.ru")
 
-    reply = read_body(connect)
+    reply = connect.read_body
     stop_server
 
     assert_match("http", reply)
@@ -74,7 +74,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server("-C test/config/rack_url_scheme.rb test/rackup/url_scheme.ru")
 
-    reply = read_body(connect)
+    reply = connect.read_body
     stop_server
 
     assert_match("https", reply)
@@ -84,7 +84,7 @@ class TestIntegrationSingle < TestIntegration
     skip_unless_signal_exist? :TERM
 
     cli_server "-C test/config/with_rackup_from_dsl.rb test/rackup/hello.ru"
-    reply = read_body(connect)
+    reply = connect.read_body
     stop_server
 
     assert_match("Hello World", reply)
@@ -125,7 +125,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server 'test/rackup/hello.ru'
     begin
-      sock = TCPSocket.new(HOST, @tcp_port)
+      sock = TestPuma::SktTCP.new(HOST, @tcp_port)
       sock.close
     rescue => ex
       fail("Port didn't open properly: #{ex.message}")
@@ -134,7 +134,7 @@ class TestIntegrationSingle < TestIntegration
     Process.kill :INT, @pid
     Process.wait @pid
 
-    assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
+    assert_raises(Errno::ECONNREFUSED) { TestPuma::SktTCP.new(HOST, @tcp_port) }
   end
 
   def test_siginfo_thread_print
@@ -193,7 +193,7 @@ class TestIntegrationSingle < TestIntegration
     @control_tcp_port = UniquePort.call
     cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/write_to_stdout.ru"
 
-    read_body connect
+    connect.read_body
 
     cli_pumactl 'stop'
 
@@ -213,11 +213,11 @@ class TestIntegrationSingle < TestIntegration
 
     if DARWIN && RUBY_VERSION < '2.5'
       begin
-        read_body connection
+        connection.read_body
       rescue EOFError
       end
     else
-      read_body connection
+      connection.read_body
     end
 
     begin
