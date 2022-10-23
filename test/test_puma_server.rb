@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require "puma/events"
 require "puma/server"
@@ -55,7 +57,15 @@ class TestPumaServer < Minitest::Test
   end
 
   def send_http_and_read(req)
-    send_http(req).read
+    send_http(req).read_raw
+  end
+
+  def send_http_read_body(req)
+    send_http(req).read_body
+  end
+
+  def send_http_read_resp(req)
+    send_http(req).read_response
   end
 
   def send_http(req)
@@ -78,7 +88,7 @@ class TestPumaServer < Minitest::Test
 
 
   def new_connection
-    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
+    TestPuma::SktTCP.new(@host, @port).tap {|sock| @ios << sock}
   end
 
   def test_normalize_host_header_missing
@@ -86,8 +96,8 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "localhost\n80", data.split("\r\n").last
+    body = send_http_read_body "GET / HTTP/1.0\r\n\r\n"
+    assert_equal "localhost\n80", body
   end
 
   def test_normalize_host_header_hostname
@@ -95,11 +105,11 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: example.com:456\r\n\r\n"
-    assert_equal "example.com\n456", data.split("\r\n").last
+    body = send_http_read_body "GET / HTTP/1.0\r\nHost: example.com:456\r\n\r\n"
+    assert_equal "example.com\n456", body
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n"
-    assert_equal "example.com\n80", data.split("\r\n").last
+    body = send_http_read_body "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n"
+    assert_equal "example.com\n80", body
   end
 
   def test_normalize_host_header_ipv4
@@ -107,11 +117,11 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
-    assert_equal "123.123.123.123\n456", data.split("\r\n").last
+    body = send_http_read_body "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
+    assert_equal "123.123.123.123\n456", body
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123\r\n\r\n"
-    assert_equal "123.123.123.123\n80", data.split("\r\n").last
+    body = send_http_read_body "GET / HTTP/1.0\r\nHost: 123.123.123.123\r\n\r\n"
+    assert_equal "123.123.123.123\n80", body
   end
 
   def test_normalize_host_header_ipv6
@@ -119,14 +129,14 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
-    assert_equal "[::ffff:127.0.0.1]\n9292", data.split("\r\n").last
+    body = send_http_read_body "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    assert_equal "[::ffff:127.0.0.1]\n9292", body
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::1]:9292\r\n\r\n"
-    assert_equal "[::1]\n9292", data.split("\r\n").last
+    body = send_http_read_body "GET / HTTP/1.0\r\nHost: [::1]:9292\r\n\r\n"
+    assert_equal "[::1]\n9292", body
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::1]\r\n\r\n"
-    assert_equal "[::1]\n80", data.split("\r\n").last
+    body = send_http_read_body "GET / HTTP/1.0\r\nHost: [::1]\r\n\r\n"
+    assert_equal "[::1]\n80", body
   end
 
   def test_streaming_body
@@ -139,9 +149,9 @@ class TestPumaServer < Minitest::Test
       [200, {}, body]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+    body = send_http_read_body "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "Hello World", data.split("\r\n\r\n", 2).last
+    assert_equal "Hello World", body
   end
 
   def test_file_body
@@ -151,14 +161,10 @@ class TestPumaServer < Minitest::Test
 
     server_run { |env| [200, {}, tf] }
 
-    data = +''
-    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
-    data << skt.sysread(65_536) while skt.wait_readable(0.1)
+    body = send_http_read_body "GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n"
 
-    ary = data.split("\r\n\r\n", 2)
-
-    assert_equal random_bytes.bytesize, ary.last.bytesize
-    assert_equal random_bytes, ary.last
+    assert_equal random_bytes.bytesize, body.bytesize
+    assert_equal random_bytes, body
   ensure
     tf.close
   end
@@ -175,13 +181,10 @@ class TestPumaServer < Minitest::Test
 
     server_run { |env| [200, {}, obj] }
 
-    data = +''
-    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
-    data << skt.sysread(65_536) while skt.wait_readable(0.1)
-    ary = data.split("\r\n\r\n", 2)
+    body = send_http_read_body "GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n"
 
-    assert_equal random_bytes.bytesize, ary.last.bytesize
-    assert_equal random_bytes, ary.last
+    assert_equal random_bytes.bytesize, body.bytesize
+    assert_equal random_bytes, body
   ensure
     tf.close
   end
@@ -440,10 +443,10 @@ EOF
       raise WithoutBacktraceError.new
     end
 
-    data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
-    assert_match(/HTTP\/1.1 500 Internal Server Error/, data)
-    assert_match(/Puma caught this error: no backtrace error.*\(WithoutBacktraceError\)/, data)
-    assert_match(/<no backtrace available>/, data)
+    hdrs, body = send_http_read_resp "GET / HTTP/1.1\r\n\r\n"
+    assert_match(/HTTP\/1.1 500 Internal Server Error/, hdrs)
+    assert_match(/Puma caught this error: no backtrace error.*\(WithoutBacktraceError\)/, body)
+    assert_match(/<no backtrace available>/, body)
   end
 
   def test_force_shutdown_error_default
@@ -1141,7 +1144,7 @@ EOF
   def assert_does_not_allow_http_injection(app, opts = {})
     server_run(early_hints: opts[:early_hints], &app)
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_and_read("HEAD / HTTP/1.0\r\n\r\n")
 
     refute_match(/[\r\n]Cookie: hack[\r\n]/, data)
   end
@@ -1335,7 +1338,7 @@ EOF
     server_run(lowlevel_error_handler: handler) { [200, {}, ['Hello World']] }
 
     # valid req & read, close
-    sock = TCPSocket.new @host, @port
+    sock = TestPuma::SktTCP.new @host, @port
     sock.syswrite "GET / HTTP/1.0\r\n\r\n"
     sleep 0.05  # macOS TruffleRuby may not get the body without
     resp = sock.sysread 256
@@ -1345,7 +1348,7 @@ EOF
     assert_empty @log_writer.stdout.string
 
     # valid req, close
-    sock = TCPSocket.new @host, @port
+    sock = TestPuma::SktTCP.new @host, @port
     sock.syswrite "GET / HTTP/1.0\r\n\r\n"
     sock.close
     sleep 0.5
@@ -1435,12 +1438,12 @@ EOF
     server_run(remote_address: :header, remote_address_header: 'HTTP_X_REMOTE_IP') do |env|
       [200, {}, [env['REMOTE_ADDR']]]
     end
-    remote_addr = send_http_and_read("GET / HTTP/1.1\r\nX-Remote-IP: 1.2.3.4\r\n\r\n").split("\r\n").last
+    remote_addr = send_http_read_body "GET / HTTP/1.1\r\nX-Remote-IP: 1.2.3.4\r\n\r\n"
     assert_equal '1.2.3.4', remote_addr
 
     # TODO: it would be great to test a connection from a non-localhost IP, but we can't really do that. For
     # now, at least test that it doesn't return garbage.
-    remote_addr = send_http_and_read("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
+    remote_addr = send_http_read_body "GET / HTTP/1.1\r\n\r\n"
     assert_equal @host, remote_addr
   end
 end

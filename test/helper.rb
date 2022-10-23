@@ -20,6 +20,7 @@ require "minitest/proveit"
 require "minitest/stub_const"
 require "net/http"
 require_relative "helpers/apps"
+require_relative "helpers/sockets"
 
 Thread.abort_on_exception = true
 
