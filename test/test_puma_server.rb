@@ -1471,4 +1471,73 @@ EOF
     remote_addr = send_http_and_sysread("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
     assert_equal @host, remote_addr
   end
+
+  def get_chunk_times
+    body = +''
+    times = []
+    Net::HTTP.start @host, @port do |http|
+      req = Net::HTTP::Get.new '/'
+      http.request req do |resp|
+        resp.read_body do |chunk|
+          next if chunk.empty?
+          body << chunk
+          times << Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        end
+
+      end
+    end
+    [body, times]
+  end
+
+  # see https://github.com/sinatra/sinatra/blob/master/examples/stream.ru
+  def test_streaming_enum_body_1
+    str = "Hello Puma World"
+    body_len = str.bytesize * 3
+
+    server_run do |env|
+      hdrs = {}
+      hdrs['Content-Type'] = "text; charset=utf-8"
+
+      body = Enumerator.new do |yielder|
+          yielder << str
+          sleep 0.5
+          yielder << str
+          sleep 1.5
+          yielder << str
+      end
+      [200, hdrs, body]
+    end
+
+    resp_body, times = get_chunk_times
+    assert_equal body_len, resp_body.bytesize
+    assert_equal str * 3, resp_body
+    assert times[1] - times[0] > 0.4
+    assert times[1] - times[0] < 1
+    assert times[2] - times[1] > 1
+  end
+
+  # similar to a longer running app passing its output thru an enum body
+  # example - https://github.com/dentarg/testssl.web
+  def test_streaming_enum_body_2
+    str = "Hello Puma World"
+    loops = 10
+    body_len = str.bytesize * loops
+
+    server_run do |env|
+      hdrs = {}
+      hdrs['Content-Type'] = "text; charset=utf-8"
+
+      body = Enumerator.new do |yielder|
+        loops.times do |i|
+          sleep 0.15 unless i.zero?
+          yielder << str
+        end
+      end
+      [200, hdrs, body]
+    end
+    resp_body, times = get_chunk_times
+    assert_equal body_len, resp_body.bytesize
+    assert_equal str * loops, resp_body
+    assert_operator times.last - times.first, :>, 1.0
+  end
 end
