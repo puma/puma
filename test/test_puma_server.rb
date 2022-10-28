@@ -448,7 +448,7 @@ EOF
     assert_includes data, 'HTTP/1.0 500 Internal Server Error'
     assert_includes data, "Puma caught this error: undefined method `to_i' for [0, 1]:Array"
     refute_includes data, 'lowlevel_error'
-    sleep 0.1 if TRUFFLE
+    sleep 0.1 unless ::Puma::IS_MRI
     assert app_body.closed?
   end
 
