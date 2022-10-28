@@ -154,7 +154,7 @@ We find that values of 4000 or more work well. [Learn more about your file limit
 
 Puma could use your help in several areas!
 
-**Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
+**Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. The issue tracker is almost always kept updated, so if there is an open issue, it is ready for you to contribute (unless you have questions about how to close issue - then please ask!). Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
 
 **New to systems programming? That's ok!** Puma deals with concepts you may not have been familiar with before, like sockets, TCP, UDP, SSL, and Threads. That's ok! You can learn by contributing. Also, see the "Bibliography" section at the end of this document.
 
