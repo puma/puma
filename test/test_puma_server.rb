@@ -424,6 +424,34 @@ EOF
     assert_match(/{}\n$/, data)
   end
 
+  class ArrayClose < Array
+    attr_reader :is_closed
+    def closed?
+      @is_closed
+    end
+
+    def close
+      @is_closed = true
+    end
+  end
+
+  # returns status as an array, which throws lowlevel error
+  def test_lowlevel_error_body_close
+    app_body = ArrayClose.new(['lowlevel_error'])
+
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
+      [[0,1], {}, app_body]
+    end
+
+    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
+
+    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
+    assert_includes data, "Puma caught this error: undefined method `to_i' for [0, 1]:Array"
+    refute_includes data, 'lowlevel_error'
+    sleep 0.1 if TRUFFLE
+    assert app_body.closed?
+  end
+
   def test_lowlevel_error_message
     server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
       raise NoMethodError, "Oh no an error"
