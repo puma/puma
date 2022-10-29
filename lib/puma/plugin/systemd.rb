@@ -9,29 +9,24 @@ require_relative '../plugin'
 #  4. periodically set the status
 Puma::Plugin.create do
   def start(launcher)
-    begin
-      require 'sd_notify'
-    rescue LoadError
-      launcher.log_writer.log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have sd_notify gem installed"
-      return
-    end
+    require_relative '../sd_notify'
 
     launcher.log_writer.log "* Enabling systemd notification integration"
 
     # hook_events
-    launcher.events.on_booted { SdNotify.ready }
-    launcher.events.on_stopped { SdNotify.stopping }
-    launcher.events.on_restart { SdNotify.reloading }
+    launcher.events.on_booted { Puma::SdNotify.ready }
+    launcher.events.on_stopped { Puma::SdNotify.stopping }
+    launcher.events.on_restart { Puma::SdNotify.reloading }
 
     # start watchdog
-    if SdNotify.watchdog?
+    if Puma::SdNotify.watchdog?
       ping_f = watchdog_sleep_time
 
       in_background do
         launcher.log_writer.log "Pinging systemd watchdog every #{ping_f.round(1)} sec"
         loop do
           sleep ping_f
-          SdNotify.watchdog
+          Puma::SdNotify.watchdog
         end
       end
     end
@@ -45,17 +40,20 @@ Puma::Plugin.create do
       loop do
         sleep sleep_time
         # TODO: error handling?
-        SdNotify.status(instance.status)
+        Puma::SdNotify.status(instance.status)
       end
     end
   end
 
   def status
-    common = "workers: #{running}/#{max_threads} threads, #{pool_capacity} available, #{backlog} backlog"
     if clustered?
-      "Puma #{Puma::Const::VERSION} cluster: #{booted_workers}/#{workers} #{common}"
+      messages = stats[:worker_status].map do |worker|
+        common_message(worker[:last_status])
+      end.join(',')
+
+      "Puma #{Puma::Const::VERSION}: cluster: #{booted_workers}/#{workers}, worker_status: [#{messages}]"
     else
-      "Puma #{Puma::Const::VERSION}: #{common}"
+      "Puma #{Puma::Const::VERSION}: worker: #{common_message(stats)}"
     end
   end
 
@@ -75,30 +73,18 @@ Puma::Plugin.create do
   end
 
   def clustered?
-    stats.has_key?('workers')
+    stats.has_key?(:workers)
   end
 
   def workers
-    stats.fetch('workers', 1)
+    stats.fetch(:workers, 1)
   end
 
   def booted_workers
-    stats.fetch('booted_workers', 1)
+    stats.fetch(:booted_workers, 1)
   end
 
-  def running
-    stats['running']
-  end
-
-  def backlog
-    stats['backlog']
-  end
-
-  def pool_capacity
-    stats['pool_capacity']
-  end
-
-  def max_threads
-    stats['max_threads']
+  def common_message(stats)
+    "{ #{stats[:running]}/#{stats[:max_threads]} threads, #{stats[:pool_capacity]} available, #{stats[:backlog]} backlog }"
   end
 end
