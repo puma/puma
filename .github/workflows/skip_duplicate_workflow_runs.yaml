@@ -28,6 +28,5 @@ jobs:
         with:
           paths_ignore: '["**.md"]'
           paths: ${{ inputs.paths }}
-          cancel_others: 'true'
-          concurrent_skipping: 'same_content_newer'
+          concurrent_skipping: 'same_content_newer' # skip newer runs with same content
           skip_after_successful_duplicate: 'true'
