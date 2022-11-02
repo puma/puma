@@ -250,6 +250,7 @@ module Puma
     #
     # * Set the socket backlog depth with +backlog+, default is 1024.
     # * Set up an SSL certificate with +key+ & +cert+.
+    # * Set up an SSL certificate for mTLS with +key+, +cert+, +ca+ and +verify_mode+.
     # * Set whether to optimize for low latency instead of throughput with
     #   +low_latency+, default is to not optimize for low latency. This is done
     #   via +Socket::TCP_NODELAY+.
@@ -259,6 +260,8 @@ module Puma
     #   bind 'unix:///var/run/puma.sock?backlog=512'
     # @example SSL cert
     #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem'
+    # @example SSL cert for mutual TLS (mTLS)
+    #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem&ca=ca.pem&verify_mode=force_peer'
     # @example Disable optimization for low latency
     #   bind 'tcp://0.0.0.0:9292?low_latency=false'
     # @example Socket permissions
