@@ -1,21 +1,18 @@
 name: Rack_v2
 
-on:
-  push:
-    paths-ignore:
-      - '**.md'
-  pull_request:
-    paths-ignore:
-      - '**.md'
-  workflow_dispatch:
+on: [push, pull_request, workflow_dispatch]
 
 permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
+  skip_duplicate_runs:
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+    
   rack_v2:
     name: >-
       Rack_v2: ${{ matrix.os }} ${{ matrix.ruby }}
+    needs: skip_duplicate_runs
     env:
       CI: true
       TESTOPTS: -v
@@ -35,9 +32,11 @@ jobs:
 
     steps:
       - name: repo checkout
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: actions/checkout@v3
 
       - name: load ruby
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: ruby/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -50,18 +49,23 @@ jobs:
 
       # fixes 'has a bug that prevents `required_ruby_version`'
       - name: update rubygems for Ruby 2.4 - 2.5
-        if: contains('2.4 2.5', matrix.ruby)
+        if: |
+          contains('2.4 2.5', matrix.ruby) &&
+          (needs.skip_duplicate_runs.outputs.should_skip != 'true')
         run: gem update --system 3.3.14 --no-document
         continue-on-error: true
         timeout-minutes: 5
 
       - name: set WERRORFLAG
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
       - name: compile
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         run:  bundle exec rake compile
 
       - name: test
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         timeout-minutes: 10
         run: bundle exec rake test:all
