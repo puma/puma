@@ -1,0 +1,92 @@
+name: turbo-rails
+
+# Note: turbo-rails often returns an ActionDispatch::Response::RackBody for the
+# body.  Also, Rack::BodyProxy or Sprockets::Asset
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+  skip_duplicate_runs:
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+
+  turbo-rails:
+    name: >-
+      ${{ matrix.os }} Ruby ${{ matrix.ruby }} Rails ${{ matrix.rails-version }}
+    needs: skip_duplicate_runs
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]')
+        || (needs.skip_duplicate_runs.outputs.should_skip == 'true'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '6.1', abi: '3.1.0'   }
+          - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '7.0', abi: '3.1.0'   }
+          - { os: ubuntu-22.04 , ruby: head , rails-version: '7.0', abi: '3.2.0+3' }
+    env:
+      CI: true
+      PUMA_NO_RUBOCOP: true
+      RAILS_VERSION: "${{ matrix.rails-version }}"
+      RUBY_ABI: ${{ matrix.abi }}
+      PUMA_VERS: 6.0.0
+
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v3
+
+      - name: load ruby
+        uses: ruby/setup-ruby-pkgs@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          apt-get: ragel
+          bundler-cache: true
+        timeout-minutes: 10
+
+      - name: compile
+        run:  bundle exec rake compile
+
+      - name: turbo-rails git clone
+        run: |
+          git clone -q --depth=1 --no-tags --branch=main https://github.com/hotwired/turbo-rails.git $GITHUB_WORKSPACE/../../turbo-rails
+
+      - name: turbo-rails bundle install
+        working-directory: ../../turbo-rails
+        run: |
+          # fix Puma version, copying files from repo lib later
+          SRC="gem 'puma'"
+          DST="gem 'puma', '$PUMA_VERS'"
+          sed -i "s/$SRC/$DST/" Gemfile
+          # use `stdio` for log_writer, always have one thread existing
+          SRC="Silent: true"
+          DST="Silent: false, Threads: '1:4'"
+          sed -i "s/$SRC/$DST/" test/application_system_test_case.rb
+          SRC="visit echo_messages_path"
+          DST="visit echo_messages_path; sleep 0.001"
+          sed -i "s/$SRC/$DST/" test/system/broadcasts_test.rb
+          bundle config set --local path vendor/bundle
+          bundle config set --local with test
+          bundle install --jobs 4 --retry 3
+          # copy Puma lib files
+          rm -rf vendor/bundle/ruby/$RUBY_ABI/gems/puma-$PUMA_VERS/lib/*
+          cp -r $GITHUB_WORKSPACE/lib/* vendor/bundle/ruby/$RUBY_ABI/gems/puma-$PUMA_VERS/lib
+
+      - name: Puma version check
+        working-directory: ../../turbo-rails
+        run: bundle exec puma --version
+
+      - name: turbo-rails test
+        id: test
+        working-directory: ../../turbo-rails
+        run: bin/test test/**/*_test.rb -v
+        continue-on-error: true
+        if: success()
+
+      - name: >-
+          Test outcome: ${{ steps.test.outcome }}
+        # every step must define a `uses` or `run` key
+        run: echo NOOP
