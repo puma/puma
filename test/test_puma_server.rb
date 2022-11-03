@@ -59,6 +59,11 @@ class TestPumaServer < Minitest::Test
     header
   end
 
+  # only for shorter bodies!
+  def send_http_and_sysread(req)
+    send_http(req).sysread 2_048
+  end
+
   def send_http_and_read(req)
     send_http(req).read
   end
@@ -419,30 +424,54 @@ EOF
     assert_match(/{}\n$/, data)
   end
 
-  def test_lowlevel_error_message
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :force_shutdown_after => 2}
+  class ArrayClose < Array
+    attr_reader :is_closed
+    def closed?
+      @is_closed
+    end
 
-    server_run do
+    def close
+      @is_closed = true
+    end
+  end
+
+  # returns status as an array, which throws lowlevel error
+  def test_lowlevel_error_body_close
+    app_body = ArrayClose.new(['lowlevel_error'])
+
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
+      [[0,1], {}, app_body]
+    end
+
+    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
+
+    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
+    assert_includes data, "Puma caught this error: undefined method `to_i' for [0, 1]:Array"
+    refute_includes data, 'lowlevel_error'
+    sleep 0.1 unless ::Puma::IS_MRI
+    assert app_body.closed?
+  end
+
+  def test_lowlevel_error_message
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
       raise NoMethodError, "Oh no an error"
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
     assert_match(/Puma caught this error: Oh no an error.*\(NoMethodError\).*test\/test_puma_server.rb/m, data)
   end
 
   def test_lowlevel_error_message_without_backtrace
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :force_shutdown_after => 2}
-
-    server_run do
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
       raise WithoutBacktraceError.new
     end
 
-    data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
-    assert_match(/HTTP\/1.1 500 Internal Server Error/, data)
-    assert_match(/Puma caught this error: no backtrace error.*\(WithoutBacktraceError\)/, data)
-    assert_match(/<no backtrace available>/, data)
+    data = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    assert_includes data, 'HTTP/1.1 500 Internal Server Error'
+    assert_includes data, 'Puma caught this error: no backtrace error (WithoutBacktraceError)'
+    assert_includes data, '<no backtrace available>'
   end
 
   def test_force_shutdown_error_default
@@ -1439,7 +1468,7 @@ EOF
 
     # TODO: it would be great to test a connection from a non-localhost IP, but we can't really do that. For
     # now, at least test that it doesn't return garbage.
-    remote_addr = send_http_and_read("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
+    remote_addr = send_http_and_sysread("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
     assert_equal @host, remote_addr
   end
 end
