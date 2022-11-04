@@ -50,7 +50,7 @@ module Puma
       @input << client
       @selector.wakeup
       true
-    rescue ClosedQueueError
+    rescue ClosedQueueError, IOError # Ignore if selector is already closed
       false
     end
 
