@@ -11,7 +11,6 @@ require_relative 'reactor'
 require_relative 'client'
 require_relative 'binder'
 require_relative 'util'
-require_relative 'io_buffer'
 require_relative 'request'
 
 require 'socket'
@@ -230,7 +229,7 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(thread_name, @options) { |a, b| process_client a, b }
+      @thread_pool = ThreadPool.new(thread_name, @options) { |client| process_client client }
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
@@ -401,7 +400,7 @@ module Puma
     # returning.
     #
     # Return true if one or more requests were processed.
-    def process_client(client, buffer)
+    def process_client(client)
       # Advertise this server into the thread
       Thread.current[ThreadLocalKey] = self
 
@@ -427,15 +426,13 @@ module Puma
 
         while true
           @requests_count += 1
-          case handle_request(client, buffer, requests + 1)
+          case handle_request(client, requests + 1)
           when false
             break
           when :async
             close_socket = false
             break
           when true
-            buffer.reset
-
             ThreadPool.clean_thread_locals if clean_thread_locals
 
             requests += 1
@@ -469,7 +466,7 @@ module Puma
         # The ensure tries to close +client+ down
         requests > 0
       ensure
-        buffer.reset
+        client.io_buffer.reset
 
         begin
           client.close if close_socket
