@@ -102,7 +102,7 @@ module Puma
     PUMA_VERSION = VERSION = "6.0.0"
     CODE_NAME = "Sunflower"
 
-    PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
+    PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2
 
@@ -111,12 +111,12 @@ module Puma
     WRITE_TIMEOUT = 10
 
     # The original URI requested by the client.
-    REQUEST_URI= 'REQUEST_URI'
-    REQUEST_PATH = 'REQUEST_PATH'
-    QUERY_STRING = 'QUERY_STRING'
+    REQUEST_URI= "REQUEST_URI"
+    REQUEST_PATH = "REQUEST_PATH"
+    QUERY_STRING = "QUERY_STRING"
     CONTENT_LENGTH = "CONTENT_LENGTH"
 
-    PATH_INFO = 'PATH_INFO'
+    PATH_INFO = "PATH_INFO"
 
     PUMA_TMP_BASE = "puma"
 
