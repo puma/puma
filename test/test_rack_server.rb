@@ -230,14 +230,14 @@ class TestRackServer < Minitest::Test
 
     socket1 = TCPSocket.new "127.0.0.1", @port
     socket1.syswrite "GET / HTTP/1.1\r\n\r\n"
-    sleep 0.25 if Puma::IS_WINDOWS || !Puma::IS_MRI
+    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.25 : 0.1)
     resp1 = socket1.sysread 1_024
 
     sleep 0.01 # time for close block to be called ?
 
     socket2 = TCPSocket.new "127.0.0.1", @port
     socket2.syswrite "GET / HTTP/1.1\r\n\r\n"
-    sleep 0.25 if Puma::IS_WINDOWS || !Puma::IS_MRI
+    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.25 : 0.1)
     resp2 = socket2.sysread 1_024
 
     assert_operator resp1, :end_with?, 'hijacked'
