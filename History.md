@@ -11,7 +11,7 @@
   * The following classes are now part of Puma's private API: `Client`, `Cluster::Worker`, `Cluster::Worker`, `HandleRequest`. ([#2988])
   * Configuration constants like `DefaultRackup` removed ([#2928])
   * Extracted `LogWriter` from `Events` ([#2798])
-
+  * Only accept the standard 8 HTTP methods, others rejected with 501. ([#2932])
 
 * Features
   * Increase throughput on large (100kb+) response bodies by 3-10x ([#2896], [#2892])
