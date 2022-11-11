@@ -121,7 +121,7 @@ class TestIntegration < Minitest::Test
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(log: false)
-    wait_for_server_to_include 'Ctrl-C'
+    wait_for_server_to_include 'Ctrl-C', log: log
   end
 
   # Returns true if and when server log includes str.
