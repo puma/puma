@@ -41,12 +41,12 @@ module Puma
     #
     # Finally, it'll return +true+ on keep-alive connections.
     # @param client [Puma::Client]
-    # @param io_buffer [Puma::IOBuffer]
     # @param requests [Integer]
     # @return [Boolean,:async]
     #
-    def handle_request(client, io_buffer, requests)
+    def handle_request(client, requests)
       env = client.env
+      io_buffer = client.io_buffer
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
 
@@ -119,7 +119,7 @@ module Puma
 
         status, headers, res_body = lowlevel_error(e, env, 500)
       end
-      prepare_response(status, headers, res_body, io_buffer, requests, client)
+      prepare_response(status, headers, res_body, requests, client)
     ensure
       io_buffer.reset
       uncork_socket client.io
@@ -140,17 +140,25 @@ module Puma
     # @param headers [Hash] the headers returned by the Rack application
     # @param res_body [Array] the body returned by the Rack application or
     #   a call to `lowlevel_error`
-    # @param io_buffer [Puma::IOBuffer] modified in place
     # @param requests [Integer] number of inline requests handled
     # @param client [Puma::Client]
     # @return [Boolean,:async]
-    def prepare_response(status, headers, res_body, io_buffer, requests, client)
+    def prepare_response(status, headers, res_body, requests, client)
       env = client.env
       socket = client.io
+      io_buffer = client.io_buffer
 
       return false if closed_socket?(socket)
 
-      resp_info = str_headers(env, status, headers, res_body, io_buffer, requests, client)
+      # Close the connection after a reasonable number of inline requests
+      # if the server is at capacity and the listener has a new connection ready.
+      # This allows Puma to service connections fairly when the number
+      # of concurrent connections exceeds the size of the threadpool.
+      force_keep_alive = requests < @max_fast_inline ||
+        @thread_pool.busy_threads < @max_threads ||
+        !client.listener.to_io.wait_readable(0)
+
+      resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
       # below converts app_body into body, dependent on app_body's characteristics, and
       # resp_info[:content_length] will be set if it can be determined
@@ -498,12 +506,12 @@ module Puma
     # @param content_length [Integer,nil] content length if it can be determined from the
     #   response body
     # @param io_buffer [Puma::IOBuffer] modified inn place
-    # @param requests [Integer] number of inline requests handled
-    # @param client [Puma::Client]
+    # @param force_keep_alive [Boolean] 'anded' with keep_alive, based on system
+    #   status and `@max_fast_inline`
     # @return [Hash] resp_info
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_body, io_buffer, requests, client)
+    def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
       line_ending = LINE_END
       colon = COLON
 
@@ -546,13 +554,8 @@ module Puma
       # if running without request queueing
       resp_info[:keep_alive] &&= @queue_requests
 
-      # Close the connection after a reasonable number of inline requests
-      # if the server is at capacity and the listener has a new connection ready.
-      # This allows Puma to service connections fairly when the number
-      # of concurrent connections exceeds the size of the threadpool.
-      resp_info[:keep_alive] &&= requests < @max_fast_inline ||
-        @thread_pool.busy_threads < @max_threads ||
-        !client.listener.to_io.wait_readable(0)
+      # see prepare_response
+      resp_info[:keep_alive] &&= force_keep_alive
 
       resp_info[:response_hijack] = nil
 

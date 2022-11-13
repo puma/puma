@@ -45,7 +45,6 @@ module Puma
       @min = Integer(options[:min_threads])
       @max = Integer(options[:max_threads])
       @block = block
-      @extra = [::Puma::IOBuffer]
       @out_of_band = options[:out_of_band]
       @clean_thread_locals = options[:clean_thread_locals]
       @reaping_time = options[:reaping_time]
@@ -112,8 +111,6 @@ module Puma
         not_empty = @not_empty
         not_full = @not_full
 
-        extra = @extra.map { |i| i.new }
-
         while true
           work = nil
 
@@ -147,7 +144,7 @@ module Puma
           end
 
           begin
-            @out_of_band_pending = true if block.call(work, *extra)
+            @out_of_band_pending = true if block.call(work)
           rescue Exception => e
             STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
           end
