@@ -33,9 +33,6 @@ module Puma
       'worker-count-up'   => 'SIGTTIN'
     }.freeze
 
-    # @deprecated 6.0.0
-    COMMANDS = CMD_PATH_SIG_MAP.keys.freeze
-
     # commands that cannot be used in a request
     NO_REQ_COMMANDS = %w[info reopen-log worker-count-down worker-count-up].freeze
 
@@ -287,7 +284,7 @@ module Puma
 
     private
     def start
-      require 'puma/cli'
+      require_relative 'cli'
 
       run_args = []
 

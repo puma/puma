@@ -1,8 +1,14 @@
 require_relative "helper"
 require "puma/events"
+require "puma/server"
 require "net/http"
 require "nio"
 require "ipaddr"
+
+class WithoutBacktraceError < StandardError
+  def backtrace; nil; end
+  def message; "no backtrace error"; end
+end
 
 class TestPumaServer < Minitest::Test
   parallelize_me!
@@ -16,17 +22,27 @@ class TestPumaServer < Minitest::Test
 
     @log_writer = Puma::LogWriter.strings
     @events = Puma::Events.new
-    @server = Puma::Server.new @app, @log_writer, @events
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer}
   end
 
   def teardown
     @server.stop(true)
-    @ios.each { |io| io.close if io && !io.closed? }
+    # Errno::EBADF raised on macOS
+    @ios.each do |io|
+      begin
+        io.close if io.respond_to?(:close) && !io.closed?
+        File.unlink io.path if io.is_a? File
+      rescue Errno::EBADF
+      ensure
+        io = nil
+      end
+    end
   end
 
   def server_run(**options, &block)
+    options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
-    @server = Puma::Server.new block || @app, @log_writer, @events, options
+    @server = Puma::Server.new block || @app, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?
@@ -41,6 +57,11 @@ class TestPumaServer < Minitest::Test
     end
 
     header
+  end
+
+  # only for shorter bodies!
+  def send_http_and_sysread(req)
+    send_http(req).sysread 2_048
   end
 
   def send_http_and_read(req)
@@ -130,28 +151,33 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "Hello World", data.split("\n").last
+    assert_equal "Hello World", data.split("\r\n\r\n", 2).last
   end
 
   def test_file_body
     random_bytes = SecureRandom.random_bytes(4096 * 32)
-    path = Tempfile.open { |f| f.path }
-    File.binwrite path, random_bytes
 
-    server_run { |env| [200, {}, File.open(path, 'rb')] }
+    tf = tempfile_create("test_file_body", random_bytes)
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    server_run { |env| [200, {}, tf] }
+
+    data = +''
+    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
+    data << skt.sysread(65_536) while skt.wait_readable(0.1)
+
     ary = data.split("\r\n\r\n", 2)
 
+    assert_equal random_bytes.bytesize, ary.last.bytesize
     assert_equal random_bytes, ary.last
   ensure
-    File.delete(path) if File.exist?(path)
+    tf.close
   end
 
   def test_file_to_path
     random_bytes = SecureRandom.random_bytes(4096 * 32)
-    path = Tempfile.open { |f| f.path }
-    File.binwrite path, random_bytes
+
+    tf = tempfile_create("test_file_to_path", random_bytes)
+    path = tf.path
 
     obj = Object.new
     obj.singleton_class.send(:define_method, :to_path) { path }
@@ -159,15 +185,16 @@ class TestPumaServer < Minitest::Test
 
     server_run { |env| [200, {}, obj] }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    data = +''
+    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
+    data << skt.sysread(65_536) while skt.wait_readable(0.1)
     ary = data.split("\r\n\r\n", 2)
 
+    assert_equal random_bytes.bytesize, ary.last.bytesize
     assert_equal random_bytes, ary.last
   ensure
-    File.delete(path) if File.exist?(path)
+    tf.close
   end
-
-
 
   def test_proper_stringio_body
     data = nil
@@ -397,28 +424,54 @@ EOF
     assert_match(/{}\n$/, data)
   end
 
-  def test_lowlevel_error_message
-    skip_if :windows
-    @server = Puma::Server.new @app, @log_writer, @events, {:force_shutdown_after => 2}
-
-    server_run do
-      if TestSkips::TRUFFLE
-        # SystemStackError is too brittle, use something more reliable
-        raise Exception, "error"
-      end
-
-      require 'json'
-
-      # will raise fatal: machine stack overflow in critical region
-      obj = {}
-      obj['cycle'] = obj
-      ::JSON.dump(obj)
+  class ArrayClose < Array
+    attr_reader :is_closed
+    def closed?
+      @is_closed
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    def close
+      @is_closed = true
+    end
+  end
 
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
-    assert (data.size > 0), "Expected response message to be not empty"
+  # returns status as an array, which throws lowlevel error
+  def test_lowlevel_error_body_close
+    app_body = ArrayClose.new(['lowlevel_error'])
+
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
+      [[0,1], {}, app_body]
+    end
+
+    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
+
+    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
+    assert_includes data, "Puma caught this error: undefined method `to_i' for [0, 1]:Array"
+    refute_includes data, 'lowlevel_error'
+    sleep 0.1 unless ::Puma::IS_MRI
+    assert app_body.closed?
+  end
+
+  def test_lowlevel_error_message
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
+      raise NoMethodError, "Oh no an error"
+    end
+
+    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
+
+    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
+    assert_match(/Puma caught this error: Oh no an error.*\(NoMethodError\).*test\/test_puma_server.rb/m, data)
+  end
+
+  def test_lowlevel_error_message_without_backtrace
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
+      raise WithoutBacktraceError.new
+    end
+
+    data = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    assert_includes data, 'HTTP/1.1 500 Internal Server Error'
+    assert_includes data, 'Puma caught this error: no backtrace error (WithoutBacktraceError)'
+    assert_includes data, '<no backtrace available>'
   end
 
   def test_force_shutdown_error_default
@@ -515,7 +568,7 @@ EOF
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
 
-    sock << "Hello" unless IO.select([sock], nil, nil, 1.15)
+    sock << "Hello" unless sock.wait_readable(1.15)
 
     data = sock.gets
 
@@ -528,7 +581,7 @@ EOF
 
   # https://github.com/puma/puma/issues/2574
   def test_no_timeout_after_data_received
-    @server.first_data_timeout = 1
+    @server.instance_variable_set(:@first_data_timeout, 1)
     server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 11\r\n\r\n"
@@ -546,7 +599,7 @@ EOF
   end
 
   def test_no_timeout_after_data_received_no_queue
-    @server = Puma::Server.new @app, @log_writer, @events, queue_requests: false
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, queue_requests: false}
     test_no_timeout_after_data_received
   end
 
@@ -1199,9 +1252,9 @@ EOF
     assert_match(s1_response, s1.gets) if s1_response
 
     # Send s2 after shutdown begins
-    s2 << "\r\n" unless IO.select([s2], nil, nil, 0.2)
+    s2 << "\r\n" unless s2.wait_readable(0.2)
 
-    assert IO.select([s2], nil, nil, 10), 'timeout waiting for response'
+    assert s2.wait_readable(10), 'timeout waiting for response'
     s2_result = begin
       s2.gets
     rescue Errno::ECONNABORTED, Errno::ECONNRESET
@@ -1272,16 +1325,16 @@ EOF
   def stub_accept_nonblock(error)
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     io = @server.binder.ios.last
+
     accept_old = io.method(:accept_nonblock)
-    accept_stub = -> do
+    io.singleton_class.send :define_method, :accept_nonblock do
       accept_old.call.close
       raise error
     end
-    io.stub(:accept_nonblock, accept_stub) do
-      @server.run
-      new_connection
-      sleep 0.01
-    end
+
+    @server.run
+    new_connection
+    sleep 0.01
   end
 
   # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
@@ -1340,7 +1393,7 @@ EOF
     sleep 0.5 # give enough time for new connection to enter reactor
     @server.stop false
 
-    assert IO.select([sock], nil, nil, 1), 'Unexpected timeout'
+    assert sock.wait_readable(1), 'Unexpected timeout'
     assert_raises EOFError do
       sock.read_nonblock(256)
     end
@@ -1368,7 +1421,7 @@ EOF
   def test_custom_io_selector
     backend = NIO::Selector.backends.first
 
-    @server = Puma::Server.new @app, @log_writer, @events, {:io_selector_backend => backend}
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :io_selector_backend => backend}
     @server.run
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)
@@ -1415,7 +1468,7 @@ EOF
 
     # TODO: it would be great to test a connection from a non-localhost IP, but we can't really do that. For
     # now, at least test that it doesn't return garbage.
-    remote_addr = send_http_and_read("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
+    remote_addr = send_http_and_sysread("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
     assert_equal @host, remote_addr
   end
 end

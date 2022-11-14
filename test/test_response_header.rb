@@ -17,7 +17,7 @@ class TestResponseHeader < Minitest::Test
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
     @log_writer = Puma::LogWriter.strings
-    @server = Puma::Server.new @app, @log_writer, ::Puma::Events.new, {min_threads: 1}
+    @server = Puma::Server.new @app, ::Puma::Events.new, {log_writer: @log_writer, min_threads: 1}
   end
 
   def teardown
@@ -28,7 +28,7 @@ class TestResponseHeader < Minitest::Test
   def server_run(app: @app, early_hints: false)
     @server.app = app
     @port = (@server.add_tcp_listener @host, 0).addr[1]
-    @server.early_hints = true if early_hints
+    @server.instance_variable_set(:@early_hints, true) if early_hints
     @server.run
   end
 

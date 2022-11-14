@@ -3,10 +3,10 @@ require_relative "helper"
 require "net/http"
 
 require "rack"
+require "rack/body_proxy"
 require "rack/chunked" if Rack::RELEASE >= '3'
 
 require "nio"
-require "securerandom"
 require "open3"
 
 class TestRackServer < Minitest::Test
@@ -61,6 +61,12 @@ class TestRackServer < Minitest::Test
 
   def teardown
     @server.stop(true) unless @stopped
+  end
+
+  def header_hash(socket)
+    t = socket.readline("\r\n\r\n").split("\r\n")
+    t.shift; t.map! { |line| line.split(/:\s?/) }
+    t.to_h
   end
 
   def test_lint
@@ -134,11 +140,7 @@ class TestRackServer < Minitest::Test
     socket.puts "Connection: Keep-Alive\r\n"
     socket.puts "\r\n"
 
-    headers = socket.readline("\r\n\r\n")
-      .split("\r\n")
-      .drop(1)
-      .map { |line| line.split(/:\s?/) }
-      .to_h
+    headers = header_hash socket
 
     content_length = headers["Content-Length"].to_i
     real_response_body = socket.read(content_length)
@@ -197,11 +199,7 @@ class TestRackServer < Minitest::Test
     socket.puts "Connection: Keep-Alive\r\n"
     socket.puts "\r\n"
 
-    headers = socket.readline("\r\n\r\n")
-      .split("\r\n")
-      .drop(1)
-      .map { |line| line.split(/:\s?/) }
-      .to_h
+    headers = header_hash socket
 
     content_length = headers["Content-Length"].to_i
 
@@ -210,6 +208,43 @@ class TestRackServer < Minitest::Test
     stop
 
     assert_equal str_ary_bytes, content_length
+  end
+
+  def test_hijack_body_close
+    available = true
+    @server.app = ->(env) {
+      if available
+        available = false
+        hijack_lambda = ->(io) {
+          io.syswrite 'hijacked'
+          io.close
+        }
+        [200, { 'Content-Type' => 'text/plain', 'rack.hijack' => hijack_lambda},
+          ::Rack::BodyProxy.new([]) { available = true }]
+      else
+        [500, { 'Content-Type' => 'text/plain' }, ['incorrect']]
+      end
+    }
+
+    @server.run
+
+    socket1 = TCPSocket.new "127.0.0.1", @port
+    socket1.syswrite "GET / HTTP/1.1\r\n\r\n"
+    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.25 : 0.1)
+    resp1 = socket1.sysread 1_024
+
+    sleep 0.01 # time for close block to be called ?
+
+    socket2 = TCPSocket.new "127.0.0.1", @port
+    socket2.syswrite "GET / HTTP/1.1\r\n\r\n"
+    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.25 : 0.1)
+    resp2 = socket2.sysread 1_024
+
+    assert_operator resp1, :end_with?, 'hijacked'
+    assert_operator resp2, :end_with?, 'hijacked'
+
+    socket1.close
+    socket2.close
   end
 
   def test_common_logger
@@ -261,5 +296,4 @@ class TestRackServer < Minitest::Test
     assert_includes headers.downcase, TRANSFER_ENCODING_CHUNKED
     assert_equal STR_1KB * 10, resp_body
   end
-
 end

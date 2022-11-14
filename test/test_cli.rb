@@ -106,8 +106,9 @@ class TestCLI < Minitest::Test
     assert_match(expected_stats, body.split(/\r?\n/).last)
 
   ensure
-    cli.launcher.stop if cli
-    t.join if t
+    # always called, even if skipped
+    cli&.launcher&.stop
+    t&.join
   end
 
   def test_control_clustered

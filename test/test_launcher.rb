@@ -23,7 +23,7 @@ class TestLauncher < Minitest::Test
     launcher(conf).write_state
 
     assert_equal File.read(pid_path).strip.to_i, Process.pid
-
+  ensure
     File.unlink pid_path
   end
 

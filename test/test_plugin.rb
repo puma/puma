@@ -4,36 +4,24 @@ require_relative "helpers/integration"
 class TestPlugin < TestIntegration
   def test_plugin
     skip "Skipped on Windows Ruby < 2.5.0, Ruby bug" if windows? && RUBY_VERSION < '2.5.0'
-    @tcp_bind = UniquePort.call
-    @tcp_ctrl = UniquePort.call
+    @control_tcp_port = UniquePort.call
 
     Dir.mkdir("tmp") unless Dir.exist?("tmp")
 
-    cli_server "-b tcp://#{HOST}:#{@tcp_bind} --control-url tcp://#{HOST}:#{@tcp_ctrl} --control-token #{TOKEN} -C test/config/plugin1.rb test/rackup/hello.ru"
+    cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru",
+      config: "plugin 'tmp_restart'"
+
     File.open('tmp/restart.txt', mode: 'wb') { |f| f.puts "Restart #{Time.now}" }
 
-    true while (l = @server.gets) !~ /Restarting\.\.\./
-    assert_match(/Restarting\.\.\./, l)
+    assert wait_for_server_to_include('Restarting...')
 
-    true while (l = @server.gets) !~ /Ctrl-C/
-    assert_match(/Ctrl-C/, l)
+    assert wait_for_server_to_boot
 
-    out = StringIO.new
+    cli_pumactl "stop"
 
-    cli_pumactl "-C tcp://#{HOST}:#{@tcp_ctrl} -T #{TOKEN} stop"
-    true while (l = @server.gets) !~ /Goodbye/
+    assert wait_for_server_to_include('Goodbye')
 
     @server.close
     @server = nil
-    out.close
-  end
-
-  private
-
-  def cli_pumactl(argv)
-    pumactl = IO.popen("#{BASE} bin/pumactl #{argv}", "r")
-    @ios_to_close << pumactl
-    Process.wait pumactl.pid
-    pumactl
   end
 end

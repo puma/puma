@@ -275,8 +275,11 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 
     if (SSL_CTX_use_certificate(ctx, x509) != 1) {
+      BIO_free(bio);
       raise_file_error("SSL_CTX_use_certificate", RSTRING_PTR(cert_pem));
     }
+    X509_free(x509);
+    BIO_free(bio);
   }
 
   if (!NIL_P(key_pem)) {
@@ -285,8 +288,11 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
 
     if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+      BIO_free(bio);
       raise_file_error("SSL_CTX_use_PrivateKey", RSTRING_PTR(key_pem));
     }
+    EVP_PKEY_free(pkey);
+    BIO_free(bio);
   }
 
   verification_flags = rb_funcall(mini_ssl_ctx, rb_intern_const("verification_flags"), 0);

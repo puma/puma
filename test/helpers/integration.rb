@@ -34,14 +34,12 @@ class TestIntegration < Minitest::Test
       stop_server @pid, signal: :INT
     end
 
-    if @ios_to_close
-      @ios_to_close.each do |io|
-        begin
-          io.close if io.is_a?(IO) && !io.closed?
-        rescue
-        ensure
-          io = nil
-        end
+    @ios_to_close&.each do |io|
+      begin
+        io.close if io.respond_to?(:close) && !io.closed?
+      rescue
+      ensure
+        io = nil
       end
     end
 
@@ -67,7 +65,7 @@ class TestIntegration < Minitest::Test
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
 
-  def cli_server(argv, unix: false, config: nil, merge_err: false)
+  def cli_server(argv, unix: false, config: nil, merge_err: false, log: false)
     if config
       config_file = Tempfile.new(%w(config .rb))
       config_file.write config
@@ -86,7 +84,7 @@ class TestIntegration < Minitest::Test
     else
       @server = IO.popen(cmd, "r")
     end
-    wait_for_server_to_boot
+    wait_for_server_to_boot(log: log)
     @pid = @server.pid
     @server
   end
@@ -123,18 +121,59 @@ class TestIntegration < Minitest::Test
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(log: false)
+    wait_for_server_to_include 'Ctrl-C', log: log
+  end
+
+  # Returns true if and when server log includes str.
+  # Will timeout or raise an error otherwise
+  def wait_for_server_to_include(str, log: false)
     sleep 0.05 until @server.is_a?(IO)
-    @server.wait_readable 1
-    if log
-      puts "Waiting for server to boot..."
-      begin
-        line = @server && @server.gets
-        puts line if line && line.strip != ''
-      end until line && line.include?('Ctrl-C')
-      puts "Server booted!"
-    else
-      true until (@server.gets || '').include?('Ctrl-C')
+    retry_cntr = 0
+    begin
+      @server.wait_readable 1
+      if log
+        puts "Waiting for '#{str}'"
+        begin
+          line = @server&.gets
+          puts line if !line&.strip.empty?
+        end until line&.include?(str)
+      else
+        true until (@server.gets || '').include?(str)
+      end
+    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+      retry_cntr += 1
+      raise e if retry_cntr > 10
+      sleep 0.1
+      retry
     end
+    true
+  end
+
+  # Returns line if and when server log matches re, unless idx is specified,
+  # then returns regex match.
+  # Will timeout or raise an error otherwise
+  def wait_for_server_to_match(re, idx = nil, log: false)
+    sleep 0.05 until @server.is_a?(IO)
+    retry_cntr = 0
+    line = nil
+    begin
+      @server.wait_readable 1
+      if log
+        puts "Waiting for '#{re.inspect}'"
+        begin
+          line = @server&.gets
+          puts line if !line&.strip.empty?
+        end until line&.match?(re)
+      else
+        true until (line = @server.gets || '').match?(re)
+      end
+    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+      retry_cntr += 1
+      raise e if retry_cntr > 10
+      sleep 0.1
+      retry
+    end
+    idx ? line[re, idx] : line
   end
 
   def connect(path = nil, unix: false)
@@ -159,7 +198,7 @@ class TestIntegration < Minitest::Test
       begin
         n = io.syswrite str
       rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
-        if !IO.select(nil, [io], nil, 5)
+        unless io.wait_writable 5
           raise e
         end
 
@@ -181,7 +220,7 @@ class TestIntegration < Minitest::Test
     timeout ||= RESP_READ_TIMEOUT
     content_length = nil
     chunked = nil
-    response = ''.dup
+    response = +''
     t_st = Process.clock_gettime Process::CLOCK_MONOTONIC
     if connection.to_io.wait_readable timeout
       loop do
@@ -233,7 +272,7 @@ class TestIntegration < Minitest::Test
     pids = []
     re = /PID: (\d+)\) booted in [.0-9]+s, phase: #{phase}/
     while pids.size < size
-      if pid = @server.gets[re, 1]
+      if pid = wait_for_server_to_match(re, 1)
         pids << pid
       end
     end
@@ -278,7 +317,7 @@ class TestIntegration < Minitest::Test
     MSG
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
 
-    args = "-w #{workers} -t 0:5 -q test/rackup/hello_with_delay.ru"
+    args = "-w #{workers} -t 5:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?
       @control_tcp_port = UniquePort.call
       cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} #{args}"
@@ -301,8 +340,13 @@ class TestIntegration < Minitest::Test
       client_threads << Thread.new do
         num_requests.times do |req_num|
           begin
-            socket = TCPSocket.new HOST, @tcp_port
-            fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+            begin
+              socket = TCPSocket.new HOST, @tcp_port
+              fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+            rescue => e
+              replies[:write_error] += 1
+              raise e
+            end
             body = read_body(socket, 10)
             if body == "Hello World"
               mutex.synchronize {
@@ -338,7 +382,7 @@ class TestIntegration < Minitest::Test
     run = true
 
     restart_thread = Thread.new do
-      sleep 0.30  # let some connections in before 1st restart
+      sleep 0.2  # let some connections in before 1st restart
       while run
         if Puma.windows?
           cli_pumactl 'restart'
@@ -348,7 +392,7 @@ class TestIntegration < Minitest::Test
         sleep 0.5
         wait_for_server_to_boot
         restart_count += 1
-        sleep(Puma.windows? ? 3.0 : 1.0)
+        sleep(Puma.windows? ? 2.0 : 0.5)
       end
     end
 
@@ -358,8 +402,10 @@ class TestIntegration < Minitest::Test
     if Puma.windows?
       cli_pumactl 'stop'
       Process.wait @server.pid
-      @server = nil
+    else
+      stop_server
     end
+    @server = nil
 
     msg = ("   %4d unexpected_response\n"   % replies.fetch(:unexpected_response,0)).dup
     msg << "   %4d refused\n"               % replies.fetch(:refused,0)
@@ -369,22 +415,24 @@ class TestIntegration < Minitest::Test
     msg << "   %4d success after restart\n" % replies.fetch(:restart,0)
     msg << "   %4d restart count\n"         % restart_count
 
-    reset = replies[:reset]
+    refused = replies[:refused]
+    reset   = replies[:reset]
 
     if Puma.windows?
       # 5 is default thread count in Puma?
       reset_max = num_threads * restart_count
       assert_operator reset_max, :>=, reset, "#{msg}Expected reset_max >= reset errors"
-      assert_operator 40, :>=,  replies[:refused], "#{msg}Too many refused connections"
+      assert_operator 40, :>=,  refused, "#{msg}Too many refused connections"
     else
       assert_equal 0, reset, "#{msg}Expected no reset errors"
-      assert_equal 0, replies[:refused], "#{msg}Expected no refused connections"
+      max_refused = (0.001 * replies.fetch(:success,0)).round
+      assert_operator max_refused, :>=, refused, "#{msg}Expected no than #{max_refused} refused connections"
     end
     assert_equal 0, replies[:unexpected_response], "#{msg}Unexpected response"
     assert_equal 0, replies[:read_timeout], "#{msg}Expected no read timeouts"
 
     if Puma.windows?
-      assert_equal (num_threads * num_requests) - reset - replies[:refused], replies[:success]
+      assert_equal (num_threads * num_requests) - reset - refused, replies[:success]
     else
       assert_equal (num_threads * num_requests), replies[:success]
     end
@@ -392,7 +440,7 @@ class TestIntegration < Minitest::Test
   ensure
     return if skipped
     if passed?
-      msg = "   restart_count #{restart_count}, reset #{reset}, success after restart #{replies[:restart]}"
+      msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
       $debugging_info << "#{full_name}\n#{msg}\n"
     else
       client_threads.each { |thr| thr.kill if thr.is_a? Thread }

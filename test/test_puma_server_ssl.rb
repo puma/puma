@@ -31,8 +31,8 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def teardown
-    @http.finish if @http && @http.started?
-    @server.stop(true) if @server
+    @http.finish if @http&.started?
+    @server&.stop true
   end
 
   # yields ctx to block, use for ctx setup & configuration
@@ -56,7 +56,7 @@ class TestPumaServerSSL < Minitest::Test
     yield ctx if block_given?
 
     @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    @server = Puma::Server.new app, @log_writer
+    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
     @port = (@server.add_ssl_listener @host, 0, ctx).addr[1]
     @server.run
 
@@ -315,7 +315,7 @@ class TestPumaServerSSLClient < Minitest::Test
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    server = Puma::Server.new app, log_writer
+    server = Puma::Server.new app, nil, {log_writer: log_writer}
     server.add_ssl_listener host, port, context
     host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
     server.run
@@ -347,7 +347,7 @@ class TestPumaServerSSLClient < Minitest::Test
     end
     assert_equal subject, log_writer.cert.subject.to_s if subject
   ensure
-    server.stop(true) if server
+    server&.stop true
   end
 
   def test_verify_fail_if_no_client_cert
@@ -513,14 +513,13 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
   def test_server_ssl_with_cert_pem_and_key_pem
     host = "localhost"
     port = 0
-    ctx = Puma::MiniSSL::Context.new.tap { |ctx|
-      ctx.cert_pem = File.read("#{CERT_PATH}/server.crt")
-      ctx.key_pem = File.read("#{CERT_PATH}/server.key")
-    }
+    ctx = Puma::MiniSSL::Context.new
+    ctx.cert_pem = File.read "#{CERT_PATH}/server.crt"
+    ctx.key_pem  = File.read "#{CERT_PATH}/server.key"
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
     log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    server = Puma::Server.new app, log_writer
+    server = Puma::Server.new app, nil, {log_writer: log_writer}
     server.add_ssl_listener host, port, ctx
     server.run
 
@@ -543,6 +542,6 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
 
     assert_nil client_error
   ensure
-    server.stop(true) if server
+    server&.stop true
   end
 end if ::Puma::HAS_SSL && !Puma::IS_JRUBY

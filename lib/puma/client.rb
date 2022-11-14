@@ -8,7 +8,8 @@ class IO
   end
 end
 
-require 'puma/detect'
+require_relative 'detect'
+require_relative 'io_buffer'
 require 'tempfile'
 require 'forwardable'
 
@@ -25,6 +26,9 @@ module Puma
 
   class HttpParserError501 < IOError; end
 
+  #———————————————————————— DO NOT USE — this class is for internal use only ———
+
+
   # An instance of this class represents a unique request from a client.
   # For example, this could be a web request from a browser or from CURL.
   #
@@ -38,7 +42,7 @@ module Puma
   # the header and body are fully buffered via the `try_to_finish` method.
   # They can be used to "time out" a response via the `timeout_at` reader.
   #
-  class Client
+  class Client # :nodoc:
 
     # this tests all values but the last, which must be chunked
     ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze
@@ -62,6 +66,7 @@ module Puma
     def initialize(io, env = nil)
       @io = io
       @to_io = io.to_io
+      @io_buffer = IOBuffer.new
       @proto_env = env
       @env = env ? env.dup : nil
 
@@ -93,7 +98,7 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile
+                :tempfile, :io_buffer
 
     attr_writer :peerip
 
@@ -137,6 +142,7 @@ module Puma
 
     def reset(fast_check=true)
       @parser.reset
+      @io_buffer.reset
       @read_header = true
       @read_proxy = !!@expect_proxy_proto
       @env = @proto_env.dup
@@ -357,7 +363,7 @@ module Puma
 
       if cl
         # cannot contain characters that are not \d
-        if cl =~ CONTENT_LENGTH_VALUE_INVALID
+        if CONTENT_LENGTH_VALUE_INVALID.match? cl
           raise HttpParserError, "Invalid Content-Length: #{cl.inspect}"
         end
       else
@@ -522,7 +528,7 @@ module Puma
           # Puma doesn't process chunk extensions, but should parse if they're
           # present, which is the reason for the semicolon regex
           chunk_hex = line.strip[/\A[^;]+/]
-          if chunk_hex =~ CHUNK_SIZE_INVALID
+          if CHUNK_SIZE_INVALID.match? chunk_hex
             raise HttpParserError, "Invalid chunk size: '#{chunk_hex}'"
           end
           len = chunk_hex.to_i(16)

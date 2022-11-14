@@ -1,20 +1,20 @@
 name: ragel
 
-on:
-  push:
-    paths:
-      - 'ext/**'
-      - '.github/workflows/ragel.yml'
-  pull_request:
-    paths:
-      - 'ext/**'
-      - '.github/workflows/ragel.yml'
-  workflow_dispatch:
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
 
 jobs:
+  skip_duplicate_runs:
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+    with:
+      paths: '["ext/**", ".github/workflows/ragel.yml"]'
+
   ragel:
     name: >-
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
+    needs: skip_duplicate_runs
     env:
       PUMA_NO_RUBOCOP: true
       PUMA_TEST_DEBUG: true
@@ -34,15 +34,19 @@ jobs:
     steps:
       # windows git will convert \n to \r\n
       - name: git config
-        if: startsWith(matrix.os, 'windows')
+        if: |
+          startsWith(matrix.os, 'windows') &&
+          (needs.skip_duplicate_runs.outputs.should_skip != 'true')
         run: |
           git config --global core.autocrlf false
           git config --global core.eol lf
 
       - name: repo checkout
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: actions/checkout@v3
 
       - name: load ruby
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: ruby/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -52,6 +56,7 @@ jobs:
         timeout-minutes: 10
 
       - name: check ragel generation
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         shell: pwsh
         run:  |
           ragel --version

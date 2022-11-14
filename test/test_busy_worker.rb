@@ -1,5 +1,4 @@
 require_relative "helper"
-require "puma/events"
 
 class TestBusyWorker < Minitest::Test
   def setup
@@ -10,7 +9,7 @@ class TestBusyWorker < Minitest::Test
 
   def teardown
     return if skipped?
-    @server.stop(true) if @server
+    @server&.stop true
     @ios.each {|i| i.close unless i.closed?}
   end
 
@@ -53,9 +52,11 @@ class TestBusyWorker < Minitest::Test
       end
     end
 
-    @server = Puma::Server.new request_handler, Puma::LogWriter.strings, Puma::Events.new, **options
-    @server.min_threads = options[:min_threads] || 0
-    @server.max_threads = options[:max_threads] || 10
+    options[:min_threads] ||= 0
+    options[:max_threads] ||= 10
+    options[:log_writer]  ||= Puma::LogWriter.strings
+
+    @server = Puma::Server.new request_handler, nil, **options
     @port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]
     @server.run
   end

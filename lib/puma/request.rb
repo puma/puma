@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Puma
+  #———————————————————————— DO NOT USE — this class is for internal use only ———
+
 
   # The methods here are included in Server, but are separated into this file.
   # All the methods here pertain to passing the request to the app, then
@@ -10,7 +12,7 @@ module Puma
   # #handle_request, which is called in Server#process_client.
   # @version 5.0.3
   #
-  module Request
+  module Request # :nodoc:
 
     # determines whether to write body to io_buffer first, or straight to socket
     # also fixes max size of chunked body read when bosy is an IO.
@@ -39,13 +41,14 @@ module Puma
     #
     # Finally, it'll return +true+ on keep-alive connections.
     # @param client [Puma::Client]
-    # @param io_buffer [Puma::IOBuffer]
     # @param requests [Integer]
     # @return [Boolean,:async]
     #
-    def handle_request(client, io_buffer, requests)
+    def handle_request(client, requests)
       env = client.env
+      io_buffer = client.io_buffer
       socket  = client.io   # io may be a MiniSSL::Socket
+      app_body = nil
 
       return false if closed_socket?(socket)
 
@@ -83,13 +86,17 @@ module Puma
 
       begin
         if SUPPORTED_HTTP_METHODS.include?(env[REQUEST_METHOD])
-          status, headers, res_body = @thread_pool.with_force_shutdown do
+          status, headers, app_body = @thread_pool.with_force_shutdown do
             @app.call(env)
           end
         else
           @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
-          status, headers, res_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
+          status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
         end
+
+        # app_body needs to always be closed, hold value in case lowlevel_error
+        # is called
+        res_body = app_body
 
         return :async if client.hijacked
 
@@ -112,7 +119,18 @@ module Puma
 
         status, headers, res_body = lowlevel_error(e, env, 500)
       end
-      prepare_response(status, headers, res_body, io_buffer, requests, client)
+      prepare_response(status, headers, res_body, requests, client)
+    ensure
+      io_buffer.reset
+      uncork_socket client.io
+      app_body.close if app_body.respond_to? :close
+      client.tempfile&.unlink
+      after_reply = env[RACK_AFTER_REPLY] || []
+      begin
+        after_reply.each { |o| o.call }
+      rescue StandardError => e
+        @log_writer.debug_error e
+      end unless after_reply.empty?
     end
 
     # Assembles the headers and prepares the body for actually sending the
@@ -120,52 +138,58 @@ module Puma
     #
     # @param status [Integer] the status returned by the Rack application
     # @param headers [Hash] the headers returned by the Rack application
-    # @param app_body [Array] the body returned by the Rack application or
+    # @param res_body [Array] the body returned by the Rack application or
     #   a call to `lowlevel_error`
-    # @param io_buffer [Puma::IOBuffer] modified in place
     # @param requests [Integer] number of inline requests handled
     # @param client [Puma::Client]
     # @return [Boolean,:async]
-    def prepare_response(status, headers, app_body, io_buffer, requests, client)
+    def prepare_response(status, headers, res_body, requests, client)
       env = client.env
-      socket  = client.io
-
-      after_reply = env[RACK_AFTER_REPLY] || []
+      socket = client.io
+      io_buffer = client.io_buffer
 
       return false if closed_socket?(socket)
 
-      resp_info = str_headers(env, status, headers, app_body, io_buffer, requests, client)
+      # Close the connection after a reasonable number of inline requests
+      # if the server is at capacity and the listener has a new connection ready.
+      # This allows Puma to service connections fairly when the number
+      # of concurrent connections exceeds the size of the threadpool.
+      force_keep_alive = requests < @max_fast_inline ||
+        @thread_pool.busy_threads < @max_threads ||
+        !client.listener.to_io.wait_readable(0)
+
+      resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
       # below converts app_body into body, dependent on app_body's characteristics, and
       # resp_info[:content_length] will be set if it can be determined
       if !resp_info[:content_length] && !resp_info[:transfer_encoding] && status != 204
-        if app_body.respond_to?(:to_ary)
+        if res_body.respond_to?(:to_ary)
           length = 0
-          if array_body = app_body.to_ary
+          if array_body = res_body.to_ary
             body = array_body.map { |part| length += part.bytesize; part }
-          elsif app_body.is_a?(::File) && app_body.respond_to?(:size)
-            length = app_body.size
-          elsif app_body.respond_to?(:each)
+          elsif res_body.is_a?(::File) && res_body.respond_to?(:size)
+            length = res_body.size
+          elsif res_body.respond_to?(:each)
             body = []
-            app_body.each { |part| length += part.bytesize; body << part }
+            res_body.each { |part| length += part.bytesize; body << part }
           end
           resp_info[:content_length] = length
-        elsif app_body.is_a?(File) && app_body.respond_to?(:size)
-          resp_info[:content_length] = app_body.size
-          body = app_body
-        elsif app_body.respond_to?(:to_path) && app_body.respond_to?(:each) &&
-            File.readable?(fn = app_body.to_path)
+        elsif res_body.is_a?(File) && res_body.respond_to?(:size)
+          resp_info[:content_length] = res_body.size
+          body = res_body
+        elsif res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
+            File.readable?(fn = res_body.to_path)
           body = File.open fn, 'rb'
           resp_info[:content_length] = body.size
         else
-          body = app_body
+          body = res_body
         end
-      elsif !app_body.is_a?(::File) && app_body.respond_to?(:to_path) && app_body.respond_to?(:each) &&
-          File.readable?(fn = app_body.to_path)
+      elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
+          File.readable?(fn = res_body.to_path)
         body = File.open fn, 'rb'
         resp_info[:content_length] = body.size
       else
-        body = app_body
+        body = res_body
       end
 
       line_ending = LINE_END
@@ -173,8 +197,8 @@ module Puma
       content_length = resp_info[:content_length]
       keep_alive     = resp_info[:keep_alive]
 
-      if app_body && !app_body.respond_to?(:each)
-        response_hijack = app_body
+      if res_body && !res_body.respond_to?(:each)
+        response_hijack = res_body
       else
         response_hijack = resp_info[:response_hijack]
       end
@@ -208,18 +232,6 @@ module Puma
 
       fast_write_response socket, body, io_buffer, chunked, content_length.to_i
       keep_alive
-    ensure
-      io_buffer.reset
-      resp_info = nil
-      uncork_socket socket
-      app_body.close if app_body.respond_to? :close
-      client.tempfile.unlink if client.tempfile
-
-      begin
-        after_reply.each { |o| o.call }
-      rescue StandardError => e
-        @log_writer.debug_error e
-      end unless after_reply.empty?
     end
 
     # @param env [Hash] see Puma::Client#env, from request
@@ -334,7 +346,6 @@ module Puma
     # and fixup keys to comply with Rack's env guidelines.
     # @param env [Hash] see Puma::Client#env, from request
     # @param client [Puma::Client] only needed for Client#peerip
-    # @todo make private in 6.0.0
     #
     def normalize_env(env, client)
       if host = env[HTTP_HOST]
@@ -404,7 +415,7 @@ module Puma
       # Rack v4 may remove using HTTP_VERSION.  If so, remove this line.
       env[HTTP_VERSION] = env[SERVER_PROTOCOL]
     end
-    # private :normalize_env
+    private :normalize_env
 
     # @param header_key [#to_s]
     # @return [Boolean]
@@ -463,7 +474,7 @@ module Puma
     # @version 5.0.3
     #
     def str_early_hints(headers)
-      eh_str = "HTTP/1.1 103 Early Hints\r\n".dup
+      eh_str = +"HTTP/1.1 103 Early Hints\r\n"
       headers.each_pair do |k, vs|
         next if illegal_header_key?(k)
 
@@ -495,12 +506,12 @@ module Puma
     # @param content_length [Integer,nil] content length if it can be determined from the
     #   response body
     # @param io_buffer [Puma::IOBuffer] modified inn place
-    # @param requests [Integer] number of inline requests handled
-    # @param client [Puma::Client]
+    # @param force_keep_alive [Boolean] 'anded' with keep_alive, based on system
+    #   status and `@max_fast_inline`
     # @return [Hash] resp_info
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_body, io_buffer, requests, client)
+    def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
       line_ending = LINE_END
       colon = COLON
 
@@ -543,13 +554,8 @@ module Puma
       # if running without request queueing
       resp_info[:keep_alive] &&= @queue_requests
 
-      # Close the connection after a reasonable number of inline requests
-      # if the server is at capacity and the listener has a new connection ready.
-      # This allows Puma to service connections fairly when the number
-      # of concurrent connections exceeds the size of the threadpool.
-      resp_info[:keep_alive] &&= requests < @max_fast_inline ||
-        @thread_pool.busy_threads < @max_threads ||
-        !client.listener.to_io.wait_readable(0)
+      # see prepare_response
+      resp_info[:keep_alive] &&= force_keep_alive
 
       resp_info[:response_hijack] = nil
 

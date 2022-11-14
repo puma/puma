@@ -43,8 +43,8 @@ if Rack::RELEASE < '3'
 
       yield @launcher
     ensure
-      @launcher.stop if @launcher
-      thread.join if thread
+      @launcher&.stop
+      thread&.join
     end
 
     def test_handler_boots

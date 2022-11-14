@@ -7,11 +7,16 @@ class TestIntegrationSingle < TestIntegration
   def workers ; 0 ; end
 
   def test_hot_restart_does_not_drop_connections_threads
-    hot_restart_does_not_drop_connections num_threads: 5, total_requests: 1_000
+    ttl_reqs = Puma.windows? ? 500 : 1_000
+    hot_restart_does_not_drop_connections num_threads: 5, total_requests: ttl_reqs
   end
 
   def test_hot_restart_does_not_drop_connections
-    hot_restart_does_not_drop_connections
+    if Puma.windows?
+      hot_restart_does_not_drop_connections total_requests: 300
+    else
+      hot_restart_does_not_drop_connections
+    end
   end
 
   def test_usr2_restart
@@ -95,7 +100,7 @@ class TestIntegrationSingle < TestIntegration
     sleep 1 # ensure curl send a request
 
     Process.kill :TERM, @pid
-    true while @server.gets !~ /Gracefully stopping/ # wait for server to begin graceful shutdown
+    assert wait_for_server_to_include('Gracefully stopping') # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
     _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
@@ -107,7 +112,7 @@ class TestIntegrationSingle < TestIntegration
     rejected_curl_wait_thread.join
 
     assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused/, rejected_curl_stderr.read)
+    assert_match(/Connection refused|Couldn't connect to server/, rejected_curl_stderr.read)
 
     Process.wait(@server.pid)
     @server.close unless @server.closed?
@@ -158,20 +163,18 @@ class TestIntegrationSingle < TestIntegration
 
     log = File.read('t1-stdout')
 
-    File.unlink 't1-stdout' if File.file? 't1-stdout'
-    File.unlink 't1-pid' if File.file? 't1-pid'
-
     assert_match(%r!GET / HTTP/1\.1!, log)
+  ensure
+    File.unlink 't1-stdout' if File.file? 't1-stdout'
+    File.unlink 't1-pid'    if File.file? 't1-pid'
   end
 
   def test_puma_started_log_writing
     skip_unless_signal_exist? :TERM
 
-    suppress_output = '> /dev/null 2>&1'
-
     cli_server '-C test/config/t2_conf.rb test/rackup/hello.ru'
 
-    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
 
     out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
 
@@ -179,11 +182,11 @@ class TestIntegrationSingle < TestIntegration
 
     log = File.read('t2-stdout')
 
-    File.unlink 't2-stdout' if File.file? 't2-stdout'
-
     assert_match(%r!GET / HTTP/1\.1!, log)
     assert(!File.file?("t2-pid"))
     assert_equal("Puma is started\n", out)
+  ensure
+    File.unlink 't2-stdout' if File.file? 't2-stdout'
   end
 
   def test_application_logs_are_flushed_on_write
@@ -194,7 +197,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_pumactl 'stop'
 
-    assert_equal "hello\n", @server.gets
+    assert wait_for_server_to_include("hello\n")
     assert_includes @server.read, 'Goodbye!'
 
     @server.close unless @server.closed?

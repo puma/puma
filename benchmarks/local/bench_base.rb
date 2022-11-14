@@ -124,7 +124,9 @@ module TestPuma
           end
 
           if (sizes = arg[SIZES_RE])
-            @body_sizes = sizes.split(',').map(&:to_i).sort
+            @body_sizes = sizes.split(',')
+            @body_sizes.map!(&:to_i)
+            @body_sizes.sort!
           end
         end
 
@@ -366,7 +368,7 @@ module TestPuma
     # @param summaries [Hash] generated in subclasses
     #
     def overall_summary(summaries)
-      names = ''.dup
+      names = +''
       @body_types.each { |_, t_desc| names << t_desc.rjust(8) }
 
       puts "\nBody    ────────── req/sec ──────────   ─────── req 50% times ───────" \

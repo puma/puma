@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-require 'puma/rack/builder'
-require 'puma/plugin'
-require 'puma/const'
+require_relative 'rack/builder'
+require_relative 'plugin'
+require_relative 'const'
+# note that dsl is loaded at end of file, requires ConfigDefault constants
 
 module Puma
   # A class used for storing "leveled" configuration options.
@@ -126,7 +127,9 @@ module Puma
   # configuration files.
   class Configuration
     DEFAULTS = {
+      auto_trim_time: 30,
       binds: ['tcp://0.0.0.0:9292'.freeze],
+      clean_thread_locals: false,
       debug: false,
       early_hints: nil,
       environment: 'development'.freeze,
@@ -145,11 +148,13 @@ module Puma
       min_threads: 0,
       mode: :http,
       mutate_stdout_and_stderr_to_sync_on_write: true,
+      out_of_band: [],
       # Number of seconds for another request within a persistent session.
       persistent_timeout: 20,
       queue_requests: true,
       rackup: 'config.ru'.freeze,
       raise_exception_on_sigterm: true,
+      reaping_time: 1,
       remote_address: :socket,
       silence_single_worker_warning: false,
       tag: File.basename(Dir.getwd),
@@ -281,7 +286,7 @@ module Puma
       found = options[:app] || load_rackup
 
       if @options[:log_requests]
-        require 'puma/commonlogger'
+        require_relative 'commonlogger'
         logger = @options[:logger]
         found = CommonLogger.new(found, logger)
       end
@@ -298,10 +303,18 @@ module Puma
       @plugins.create name
     end
 
-    def run_hooks(key, arg, log_writer)
+    # @param key [:Symbol] hook to run
+    # @param arg [Launcher, Int] `:on_restart` passes Launcher
+    #
+    def run_hooks(key, arg, log_writer, hook_data = nil)
       @options.all_of(key).each do |b|
         begin
-          b.call arg
+          if Array === b
+            hook_data[b[1]] ||= Hash.new
+            b[0].call arg, hook_data[b[1]]
+          else
+            b.call arg
+          end
         rescue => e
           log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
           log_writer.debug e.backtrace.join("\n")
@@ -371,4 +384,4 @@ module Puma
   end
 end
 
-require 'puma/dsl'
+require_relative 'dsl'

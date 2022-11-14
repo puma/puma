@@ -103,7 +103,7 @@ class TestWorkerGemIndependence < TestIntegration
     initial_reply = read_body(connection)
     assert_equal old_version, initial_reply
 
-    before_restart.call if before_restart
+    before_restart&.call
 
     set_release_symlink File.expand_path(new_app_dir, __dir__)
     Dir.chdir(current_release_symlink) do

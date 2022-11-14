@@ -6,6 +6,7 @@ rescue LoadError
 end
 
 # need for Puma::MiniSSL::OPENSSL constants used in `HAS_TLS1_3`
+# use require, see https://github.com/puma/puma/pull/2381
 require 'puma/puma_http11'
 
 module Puma
@@ -124,7 +125,7 @@ module Puma
         while true
           wrote = @engine.write data
 
-          enc_wr = ''.dup
+          enc_wr = +''
           while (enc = @engine.extract)
             enc_wr << enc
           end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'puma/plugin'
+require_relative '../plugin'
 
 Puma::Plugin.create do
   def start(launcher)

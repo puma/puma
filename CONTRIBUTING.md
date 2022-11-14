@@ -27,6 +27,8 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 Any questions about contributing may be asked in our [Discussions](https://github.com/puma/puma/discussions).
 
+**If you're nervous, get stuck, need help, or want to know where to start and where you can help**, please don't hesitate to [book 30 minutes with maintainer @nateberkopec here](https://fantastical.app/nateberkopec/weekdays). He is happy to help!
+
 #### Clone the repo 
 
 Clone the Puma repository:
@@ -138,10 +140,12 @@ PUMA_TEST_DEBUG=1 bundle exec rake test
 
 Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open file" errors when running the Puma test suite.
 
-Check your file limit:
-
 ```
-ulimit -Sn
+# check your file limit
+ulimit -S -n
+
+# change file limit for the current session
+ulimit -S -n <value>
 ```
 
 We find that values of 4000 or more work well. [Learn more about your file limits and how to change them here.](https://wilsonmar.github.io/maximum-limits/)
@@ -150,7 +154,9 @@ We find that values of 4000 or more work well. [Learn more about your file limit
 
 Puma could use your help in several areas!
 
-**Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
+**Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. The issue tracker is almost always kept updated, so if there is an open issue, it is ready for you to contribute (unless you have questions about how to close issue - then please ask!). Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
+
+**New to systems programming? That's ok!** Puma deals with concepts you may not have been familiar with before, like sockets, TCP, UDP, SSL, and Threads. That's ok! You can learn by contributing. Also, see the "Bibliography" section at the end of this document.
 
 **The [contrib-wanted] label indicates that an issue might approachable to first-time contributors.**
 
@@ -227,5 +233,6 @@ Puma can be a bit intimidating for your first contribution because there's a lot
 
 * [Puma's Architecture docs](https://github.com/puma/puma/blob/master/docs/architecture.md)
 * [The Rack specification](https://github.com/rack/rack/blob/master/SPEC.rdoc)
+* [Working with...](https://workingwithruby.com/) "Working With" is a excellent (and now free) Ruby book series about working with Threads, TCP and Unix Sockets.
 * The Ruby docs for IO.pipe, TCPServer/Socket.
 * [nio4r documentation](https://github.com/socketry/nio4r/wiki/Getting-Started)

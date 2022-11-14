@@ -73,14 +73,15 @@ module Puma
       end
 
       def extra_runtime_deps_paths
-        @extra_runtime_dependencies.map do |dep_name|
+        t = @extra_runtime_dependencies.map do |dep_name|
           if (spec = spec_for_gem(dep_name))
             require_paths_for_gem(spec)
           else
             log "* Could not load extra dependency: #{dep_name}"
             nil
           end
-        end.flatten.compact
+        end
+        t.flatten!; t.compact!; t
       end
 
       def puma_require_paths

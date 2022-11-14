@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'puma/const'
-require 'puma/util'
+require_relative 'const'
+require_relative 'util'
 
 module Puma
   # The methods that are available for use inside the configuration file.
@@ -32,7 +32,25 @@ module Puma
   # You can also find many examples being used by the test suite in
   # +test/config+.
   #
+  # Puma v6 adds the option to specify a key name (String or Symbol) to the
+  # hooks that run inside the forked workers.  All the hooks run inside the
+  # {Puma::Cluster::Worker#run} method.
+  #
+  # Previously, the worker index and the LogWriter instance were passed to the
+  # hook blocks/procs.  If a key name is specified, a hash is passed as the last
+  # parameter.  This allows storage of data, typically objects that are created
+  # before the worker that need to be passed to the hook when the worker is shutdown.
+  #
+  # The following hooks have been updated:
+  #
+  #     | DSL Method         |  Options Key            | Fork Block Location |
+  #     | on_worker_boot     | :before_worker_boot     | inside, before      |
+  #     | on_worker_shutdown | :before_worker_shutdown | inside, after       |
+  #     | on_refork          | :before_refork          | inside              |
+  #
   class DSL
+    ON_WORKER_KEY = [String, Symbol].freeze
+
     # convenience method so logic can be used in CI
     # @see ssl_bind
     #
@@ -76,7 +94,7 @@ module Puma
             if reuse == true
               '&reuse=dflt'
             elsif reuse.is_a?(Hash) && (reuse.key?(:size) || reuse.key?(:timeout))
-              val = ''.dup
+              val = +''
               if (size = reuse[:size]) && Integer === size
                 val << size.to_s
               end
@@ -232,6 +250,7 @@ module Puma
     #
     # * Set the socket backlog depth with +backlog+, default is 1024.
     # * Set up an SSL certificate with +key+ & +cert+.
+    # * Set up an SSL certificate for mTLS with +key+, +cert+, +ca+ and +verify_mode+.
     # * Set whether to optimize for low latency instead of throughput with
     #   +low_latency+, default is to not optimize for low latency. This is done
     #   via +Socket::TCP_NODELAY+.
@@ -241,6 +260,8 @@ module Puma
     #   bind 'unix:///var/run/puma.sock?backlog=512'
     # @example SSL cert
     #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem'
+    # @example SSL cert for mutual TLS (mTLS)
+    #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem&ca=ca.pem&verify_mode=force_peer'
     # @example Disable optimization for low latency
     #   bind 'tcp://0.0.0.0:9292?low_latency=false'
     # @example Socket permissions
@@ -499,7 +520,7 @@ module Puma
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert_pem: File.read(path_to_cert),
     #     key_pem: File.read(path_to_key),
-    #     reuse: {size: 2_000, timeout: 20}
+    #     reuse: {size: 2_000, timeout: 20} # optional
     #   }
     #
     # @example For JRuby, two keys are required: +keystore+ & +keystore_pass+
@@ -592,9 +613,8 @@ module Puma
     #   on_worker_boot do
     #     puts 'Before worker boot...'
     #   end
-    def on_worker_boot(&block)
-      @options[:before_worker_boot] ||= []
-      @options[:before_worker_boot] << block
+    def on_worker_boot(key = nil, &block)
+      process_hook :before_worker_boot, key, block, 'on_worker_boot'
     end
 
     # Code to run immediately before a worker shuts
@@ -609,9 +629,8 @@ module Puma
     #   on_worker_shutdown do
     #     puts 'On worker shutdown...'
     #   end
-    def on_worker_shutdown(&block)
-      @options[:before_worker_shutdown] ||= []
-      @options[:before_worker_shutdown] << block
+    def on_worker_shutdown(key = nil, &block)
+      process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown'
     end
 
     # Code to run in the master right before a worker is started. The worker's
@@ -625,8 +644,7 @@ module Puma
     #     puts 'Before worker fork...'
     #   end
     def on_worker_fork(&block)
-      @options[:before_worker_fork] ||= []
-      @options[:before_worker_fork] << block
+      process_hook :before_worker_fork, nil, block, 'on_worker_fork'
     end
 
     # Code to run in the master after a worker has been started. The worker's
@@ -640,8 +658,7 @@ module Puma
     #     puts 'After worker fork...'
     #   end
     def after_worker_fork(&block)
-      @options[:after_worker_fork] ||= []
-      @options[:after_worker_fork] << block
+      process_hook :after_worker_fork, nil, block, 'after_worker_fork'
     end
 
     alias_method :after_worker_boot, :after_worker_fork
@@ -664,9 +681,8 @@ module Puma
     #   end
     # @version 5.0.0
     #
-    def on_refork(&block)
-      @options[:before_refork] ||= []
-      @options[:before_refork] << block
+    def on_refork(key = nil, &block)
+      process_hook :before_refork, key, block, 'on_refork'
     end
 
     # Code to run out-of-band when the worker is idle.
@@ -679,8 +695,7 @@ module Puma
     #
     # This can be called multiple times to add several hooks.
     def out_of_band(&block)
-      @options[:out_of_band] ||= []
-      @options[:out_of_band] << block
+      process_hook :out_of_band, nil, block, 'out_of_band'
     end
 
     # The directory to operate out of.
@@ -1024,6 +1039,17 @@ module Puma
           @options[:store] << opts[opt_key]
           opts[v] = "store:#{index}"
         end
+      end
+    end
+
+    def process_hook(options_key, key, block, meth)
+      @options[options_key] ||= []
+      if ON_WORKER_KEY.include? key.class
+        @options[options_key] << [block, key.to_sym]
+      elsif key.nil?
+        @options[options_key] << block
+      else
+        raise "'#{method}' key must be String or Symbol"
       end
     end
   end

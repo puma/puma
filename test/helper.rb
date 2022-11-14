@@ -11,6 +11,8 @@ if RUBY_VERSION == '2.4.1'
   end
 end
 
+require "securerandom"
+
 require_relative "minitest/verbose"
 require "minitest/autorun"
 require "minitest/pride"
@@ -21,7 +23,7 @@ require_relative "helpers/apps"
 
 Thread.abort_on_exception = true
 
-$debugging_info = ''.dup
+$debugging_info = []
 $debugging_hold = false   # needed for TestCLI#test_control_clustered
 $test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
   RUBY_ENGINE == "ruby" ? 45 : 60
@@ -29,6 +31,10 @@ end.to_i
 
 require "puma"
 require "puma/detect"
+
+unless ::Puma::HAS_NATIVE_IO_WAIT
+  require "io/wait"
+end
 
 # used in various ssl test files, see test_puma_server_ssl.rb and
 # test_puma_localhost_authority.rb
@@ -178,7 +184,7 @@ Minitest::Test.include TestSkips
 
 class Minitest::Test
 
-  REPO_NAME = ENV['GITHUB_REPOSITORY'] ? ENV['GITHUB_REPOSITORY'][/[^\/]+\z/] : 'puma'
+  PROJECT_ROOT = File.dirname(__dir__)
 
   def self.run(reporter, options = {}) # :nodoc:
     prove_it!
@@ -193,7 +199,8 @@ end
 Minitest.after_run do
   # needed for TestCLI#test_control_clustered
   if !$debugging_hold && ENV['PUMA_TEST_DEBUG']
-    out = $debugging_info.strip
+    $debugging_info.sort!
+    out = $debugging_info.join.strip
     unless out.empty?
       dash = "\u2500"
       wid = ENV['GITHUB_ACTIONS'] ? 88 : 90
@@ -252,3 +259,16 @@ module AggregatedResults
   end
 end
 Minitest::SummaryReporter.prepend AggregatedResults
+
+module TestTempFile
+  require "tempfile"
+  def tempfile_create(basename, data, mode: File::BINARY)
+    fio = Tempfile.create(basename, mode: mode)
+    fio.write data
+    fio.flush
+    fio.rewind
+    @ios << fio
+    fio
+  end
+end
+Minitest::Test.include TestTempFile

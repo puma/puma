@@ -3,11 +3,11 @@
 require 'optparse'
 require 'uri'
 
-require 'puma'
-require 'puma/configuration'
-require 'puma/launcher'
-require 'puma/const'
-require 'puma/log_writer'
+require_relative '../puma'
+require_relative 'configuration'
+require_relative 'launcher'
+require_relative 'const'
+require_relative 'log_writer'
 
 module Puma
   class << self
@@ -21,14 +21,8 @@ module Puma
   # Handles invoke a Puma::Server in a command line style.
   #
   class CLI
-    # @deprecated 6.0.0
-    KEYS_NOT_TO_PERSIST_IN_STATE = Launcher::KEYS_NOT_TO_PERSIST_IN_STATE
-
     # Create a new CLI object using +argv+ as the command line
     # arguments.
-    #
-    # +stdout+ and +stderr+ can be set to IO-like objects which
-    # this object will report status on.
     #
     def initialize(argv, log_writer = LogWriter.stdio, events = Events.new)
       @debug = false

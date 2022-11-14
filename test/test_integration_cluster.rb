@@ -215,14 +215,14 @@ RUBY
 
     stop_server(Integer(File.read("t3-pid")))
 
+    assert(worker_pid_was_present)
+    assert(worker_index_within_number_of_workers)
+  ensure
     File.unlink "t3-pid" if File.file? "t3-pid"
     File.unlink "t3-worker-0-pid" if File.file? "t3-worker-0-pid"
     File.unlink "t3-worker-1-pid" if File.file? "t3-worker-1-pid"
     File.unlink "t3-worker-2-pid" if File.file? "t3-worker-2-pid"
     File.unlink "t3-worker-3-pid" if File.file? "t3-worker-3-pid"
-
-    assert(worker_pid_was_present)
-    assert(worker_index_within_number_of_workers)
   end
 
   # use three workers to keep accepting clients
@@ -421,6 +421,27 @@ RUBY
     assert_match(/Worker 1 \(PID: \d+\) terminating/, line)
   end
 
+  def test_hook_data
+    skip_unless_signal_exist? :TERM
+
+    file0 = 'hook_data-0.txt'
+    file1 = 'hook_data-1.txt'
+
+    cli_server "-C test/config/hook_data.rb test/rackup/hello.ru"
+    get_worker_pids 0, 2
+    stop_server
+
+    # helpful for non MRI Rubies
+    assert wait_for_server_to_include('puma shutdown')
+
+    assert_equal 'index 0 data 0', File.read(file0, mode: 'rb:UTF-8')
+    assert_equal 'index 1 data 1', File.read(file1, mode: 'rb:UTF-8')
+
+  ensure
+    File.unlink file0 if File.file? file0
+    File.unlink file1 if File.file? file1
+  end
+
   private
 
   def worker_timeout(timeout, iterations, details, config)
@@ -532,7 +553,9 @@ RUBY
     read_timeouts = replies.count { |r| r == :read_timeout }
 
     # get pids from replies, generate uniq array
-    qty_pids = replies.map { |body| body[/\d+\z/] }.uniq.compact.length
+    t = replies.map { |body| body[/\d+\z/] }
+    t.uniq!; t.compact!
+    qty_pids = t.length
 
     msg = "#{responses} responses, #{qty_pids} uniq pids"
 
@@ -603,13 +626,14 @@ RUBY
   # Process.kill should raise the Errno::ESRCH exception, indicating the
   # process is dead and has been reaped.
   def bad_exit_pids(pids)
-    pids.map do |pid|
+    t = pids.map do |pid|
       begin
         pid if Process.kill 0, pid
       rescue Errno::ESRCH
         nil
       end
-    end.compact
+    end
+    t.compact!; t
   end
 
   # used in loop to create several 'requests'
