@@ -324,14 +324,20 @@ module Puma
         queue_requests = @queue_requests
         drain = @options[:drain_on_shutdown] ? 0 : nil
 
+        addr_send_name, addr_value = \
+          case @options[:remote_address]
+          when :value
+            [:peerip=, @options[:remote_address_value]]
+          when :header
+            [:remote_addr_header=, @options[:remote_address_header]]
+          when :proxy_protocol
+            [:expect_proxy_proto=, @options[:remote_address_proxy_protocol]]
+          else
+            [nil, nil]
+          end
+
         # option to local variables
-        # Using local variables avoid calling `@options#[]` method each time we need the value
-        remote_address_option = @options[:remote_address]
-        remote_address_value_option = @options[:remote_address_value]
-        remote_address_header_option = @options[:remote_address_header]
-        remote_address_proxy_protocol_option = @options[:remote_address_proxy_protocol]
         wait_for_less_busy_worker = @options[:wait_for_less_busy_worker]
-        wait_for_less_busy_worker_enabled = !@options[:wait_for_less_busy_worker].nil?
 
         is_shutting_down = false
         while @status == :run || (drain && (is_shutting_down = shutting_down?))
@@ -345,9 +351,7 @@ module Puma
                 pool.wait_until_not_full
 
                 # Wait for less busy worker?
-                if wait_for_less_busy_worker_enabled
-                  pool.wait_for_less_busy_worker(wait_for_less_busy_worker)
-                end
+                pool.wait_for_less_busy_worker(wait_for_less_busy_worker)
 
                 io = \
                   begin
@@ -367,15 +371,7 @@ module Puma
                 c.listener = sock
 
                 # set client remote address
-                # Prefer using direct method/setter instead of calling `#send` method
-                case remote_address_option
-                when :value
-                  c.peerip = remote_address_value_option
-                when :header
-                  c.remote_addr_header = remote_address_header_option
-                when :proxy_protocol
-                  c.expect_proxy_proto = remote_address_proxy_protocol_option
-                end
+                c.send(addr_send_name, addr_value) if addr_value
 
                 # push client to the thread pool
                 pool << c
