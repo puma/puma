@@ -59,7 +59,7 @@ module Puma
 
     # Write +str+ to +@stdout+
     def log(str)
-      if @custom_logger && @custom_logger.respond_to?(:write)
+      if @custom_logger&.respond_to?(:write)
         @custom_logger.write(format(str))
       else
         internal_write "#{@formatter.call str}\n"
