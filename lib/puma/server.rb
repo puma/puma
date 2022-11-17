@@ -2,20 +2,19 @@
 
 require 'stringio'
 
-require 'puma/thread_pool'
-require 'puma/const'
-require 'puma/log_writer'
-require 'puma/events'
-require 'puma/null_io'
-require 'puma/reactor'
-require 'puma/client'
-require 'puma/binder'
-require 'puma/util'
-require 'puma/io_buffer'
-require 'puma/request'
+require_relative 'thread_pool'
+require_relative 'const'
+require_relative 'log_writer'
+require_relative 'events'
+require_relative 'null_io'
+require_relative 'reactor'
+require_relative 'client'
+require_relative 'binder'
+require_relative 'util'
+require_relative 'request'
 
 require 'socket'
-require 'io/wait'
+require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 require 'forwardable'
 
 module Puma
@@ -31,7 +30,6 @@ module Puma
   #
   # Each `Puma::Server` will have one reactor and one thread pool.
   class Server
-
     include Puma::Const
     include Request
     extend Forwardable
@@ -45,11 +43,6 @@ module Puma
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
       :leak_stack_on_error,
-      :persistent_timeout, :reaping_time
-
-    # @deprecated v6.0.0
-    attr_writer :auto_trim_time, :early_hints, :first_data_timeout,
-      :leak_stack_on_error, :min_threads, :max_threads,
       :persistent_timeout, :reaping_time
 
     attr_accessor :app
@@ -73,30 +66,35 @@ module Puma
     #   and have default values set via +fetch+.  Normally the values are set via
     #   `::Puma::Configuration.puma_default_options`.
     #
-    def initialize(app, log_writer=LogWriter.stdio, events=Events.new, options={})
+    # @note The `events` parameter is set to nil, and set to `Events.new` in code.
+    #   Often `options` needs to be passed, but `events` does not.  Using nil allows
+    #   calling code to not require events.rb.
+    #
+    def initialize(app, events = nil, options = {})
       @app = app
-      @log_writer = log_writer
-      @events = events
+      @events = events || Events.new
 
       @check, @notify = nil
       @status = :stop
 
-      @auto_trim_time = 30
-      @reaping_time = 1
-
       @thread = nil
       @thread_pool = nil
 
-      @options = options
+      @options = if options.is_a?(UserFileDefaultOptions)
+        options
+      else
+        UserFileDefaultOptions.new(options, Configuration::DEFAULTS)
+      end
 
-      @early_hints         = options.fetch :early_hints, nil
-      @first_data_timeout  = options.fetch :first_data_timeout, FIRST_DATA_TIMEOUT
-      @min_threads         = options.fetch :min_threads, 0
-      @max_threads         = options.fetch :max_threads , (Puma.mri? ? 5 : 16)
-      @persistent_timeout  = options.fetch :persistent_timeout, PERSISTENT_TIMEOUT
-      @queue_requests      = options.fetch :queue_requests, true
-      @max_fast_inline     = options.fetch :max_fast_inline, MAX_FAST_INLINE
-      @io_selector_backend = options.fetch :io_selector_backend, :auto
+      @log_writer          = @options.fetch :log_writer, LogWriter.stdio
+      @early_hints         = @options[:early_hints]
+      @first_data_timeout  = @options[:first_data_timeout]
+      @min_threads         = @options[:min_threads]
+      @max_threads         = @options[:max_threads]
+      @persistent_timeout  = @options[:persistent_timeout]
+      @queue_requests      = @options[:queue_requests]
+      @max_fast_inline     = @options[:max_fast_inline]
+      @io_selector_backend = @options[:io_selector_backend]
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -197,12 +195,12 @@ module Puma
 
     # @!attribute [r] backlog
     def backlog
-      @thread_pool and @thread_pool.backlog
+      @thread_pool&.backlog
     end
 
     # @!attribute [r] running
     def running
-      @thread_pool and @thread_pool.spawned
+      @thread_pool&.spawned
     end
 
 
@@ -215,7 +213,7 @@ module Puma
     # value would be 4 until it finishes processing.
     # @!attribute [r] pool_capacity
     def pool_capacity
-      @thread_pool and @thread_pool.pool_capacity
+      @thread_pool&.pool_capacity
     end
 
     # Runs the server.
@@ -231,29 +229,16 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(
-        thread_name,
-        @min_threads,
-        @max_threads,
-        ::Puma::IOBuffer,
-        &method(:process_client)
-      )
-
-      @thread_pool.out_of_band_hook = @options[:out_of_band]
-      @thread_pool.clean_thread_locals = @options[:clean_thread_locals]
+      @thread_pool = ThreadPool.new(thread_name, @options) { |client| process_client client }
 
       if @queue_requests
-        @reactor = Reactor.new(@io_selector_backend, &method(:reactor_wakeup))
+        @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
         @reactor.run
       end
 
-      if @reaping_time
-        @thread_pool.auto_reap!(@reaping_time)
-      end
 
-      if @auto_trim_time
-        @thread_pool.auto_trim!(@auto_trim_time)
-      end
+      @thread_pool.auto_reap! if @options[:reaping_time]
+      @thread_pool.auto_trim! if @options[:auto_trim_time]
 
       @check, @notify = Puma::Util.pipe unless @notify
 
@@ -372,12 +357,11 @@ module Puma
       rescue Exception => e
         @log_writer.unknown_error e, nil, "Exception handling servers"
       ensure
-        # RuntimeError is Ruby 2.2 issue, can't modify frozen IOError
         # Errno::EBADF is infrequently raised
         [@check, @notify].each do |io|
           begin
             io.close unless io.closed?
-          rescue Errno::EBADF, RuntimeError
+          rescue Errno::EBADF
           end
         end
         @notify = nil
@@ -416,7 +400,7 @@ module Puma
     # returning.
     #
     # Return true if one or more requests were processed.
-    def process_client(client, buffer)
+    def process_client(client)
       # Advertise this server into the thread
       Thread.current[ThreadLocalKey] = self
 
@@ -442,15 +426,13 @@ module Puma
 
         while true
           @requests_count += 1
-          case handle_request(client, buffer, requests + 1)
+          case handle_request(client, requests + 1)
           when false
             break
           when :async
             close_socket = false
             break
           when true
-            buffer.reset
-
             ThreadPool.clean_thread_locals if clean_thread_locals
 
             requests += 1
@@ -484,7 +466,7 @@ module Puma
         # The ensure tries to close +client+ down
         requests > 0
       ensure
-        buffer.reset
+        client.io_buffer.reset
 
         begin
           client.close if close_socket

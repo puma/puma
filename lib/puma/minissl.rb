@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 begin
-  require 'io/wait'
+  require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 rescue LoadError
 end
 
 # need for Puma::MiniSSL::OPENSSL constants used in `HAS_TLS1_3`
+# use require, see https://github.com/puma/puma/pull/2381
 require 'puma/puma_http11'
 
 module Puma
@@ -22,6 +23,7 @@ module Puma
         @socket = socket
         @engine = engine
         @peercert = nil
+        @reuse = nil
       end
 
       # @!attribute [r] to_io
@@ -123,7 +125,7 @@ module Puma
         while true
           wrote = @engine.write data
 
-          enc_wr = ''.dup
+          enc_wr = +''
           while (enc = @engine.extract)
             enc_wr << enc
           end
@@ -208,6 +210,9 @@ module Puma
         @cert = nil
         @key_pem = nil
         @cert_pem = nil
+        @reuse = nil
+        @reuse_cache_size = nil
+        @reuse_timeout = nil
       end
 
       def check_file(file, desc)
@@ -223,7 +228,8 @@ module Puma
         attr_reader :truststore
         attr_reader :truststore_type
         attr_accessor :truststore_pass
-        attr_accessor :ssl_cipher_list
+        attr_reader :cipher_suites
+        attr_reader :protocols
 
         def keystore=(keystore)
           check_file keystore, 'Keystore'
@@ -249,6 +255,20 @@ module Puma
           @truststore_type = type
         end
 
+        def cipher_suites=(list)
+          list = list.split(',').map(&:strip) if list.is_a?(String)
+          @cipher_suites = list
+        end
+
+        # aliases for backwards compatibility
+        alias_method :ssl_cipher_list, :cipher_suites
+        alias_method :ssl_cipher_list=, :cipher_suites=
+
+        def protocols=(list)
+          list = list.split(',').map(&:strip) if list.is_a?(String)
+          @protocols = list
+        end
+
         def check
           raise "Keystore not configured" unless @keystore
           # @truststore defaults to @keystore due backwards compatibility
@@ -263,6 +283,8 @@ module Puma
         attr_reader :key_pem
         attr_accessor :ssl_cipher_filter
         attr_accessor :verification_flags
+
+        attr_reader :reuse, :reuse_cache_size, :reuse_timeout
 
         def key=(key)
           check_file key, 'Key'
@@ -292,6 +314,35 @@ module Puma
         def check
           raise "Key not configured" if @key.nil? && @key_pem.nil?
           raise "Cert not configured" if @cert.nil? && @cert_pem.nil?
+        end
+
+        # Controls session reuse.  Allowed values are as follows:
+        # * 'off' - matches the behavior of Puma 5.6 and earlier.  This is included
+        #   in case reuse 'on' is made the default in future Puma versions.
+        # * 'dflt' - sets session reuse on, with OpenSSL default cache size of
+        #   20k and default timeout of 300 seconds.
+        # * 's,t' - where s and t are integer strings, for size and timeout.
+        # * 's' - where s is an integer strings for size.
+        # * ',t' - where t is an integer strings for timeout.
+        #
+        def reuse=(reuse_str)
+          case reuse_str
+          when 'off'
+            @reuse = nil
+          when 'dflt'
+            @reuse = true
+          when /\A\d+\z/
+            @reuse = true
+            @reuse_cache_size = reuse_str.to_i
+          when /\A\d+,\d+\z/
+            @reuse = true
+            size, time = reuse_str.split ','
+            @reuse_cache_size = size.to_i
+            @reuse_timeout = time.to_i
+          when /\A,\d+\z/
+            @reuse = true
+            @reuse_timeout = reuse_str.delete(',').to_i
+          end
         end
       end
 

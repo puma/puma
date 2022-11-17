@@ -1,6 +1,7 @@
 package org.jruby.puma;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
 import org.jruby.RubyObject;
@@ -159,7 +160,12 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
       truststoreType = keystoreType;
     } else if (!isDefaultSymbol(context, truststore)) {
       truststoreFile = truststore.convertToString().asJavaString();
-      truststorePass = asStringValue(miniSSLContext.callMethod(context, "truststore_pass"), null).toCharArray();
+      IRubyObject pass = miniSSLContext.callMethod(context, "truststore_pass");
+      if (pass.isNil()) {
+        truststorePass = null;
+      } else {
+        truststorePass = asStringValue(pass, null).toCharArray();
+      }
       truststoreType = asStringValue(miniSSLContext.callMethod(context, "truststore_type"), KeyStore::getDefaultType);
     } else { // self.truststore = :default
       truststoreFile = null;
@@ -224,18 +230,25 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
     handshake = false;
     engine = sslCtx.createSSLEngine();
 
-    String[] protocols;
-    if (miniSSLContext.callMethod(context, "no_tlsv1").isTrue()) {
-        protocols = new String[] { "TLSv1.1", "TLSv1.2", "TLSv1.3" };
+    String[] enabledProtocols;
+    IRubyObject protocols = miniSSLContext.callMethod(context, "protocols");
+    if (protocols.isNil()) {
+      if (miniSSLContext.callMethod(context, "no_tlsv1").isTrue()) {
+        enabledProtocols = new String[] { "TLSv1.1", "TLSv1.2", "TLSv1.3" };
+      } else {
+        enabledProtocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3" };
+      }
+
+      if (miniSSLContext.callMethod(context, "no_tlsv1_1").isTrue()) {
+        enabledProtocols = new String[] { "TLSv1.2", "TLSv1.3" };
+      }
+    } else if (protocols instanceof RubyArray) {
+      enabledProtocols = (String[]) ((RubyArray) protocols).toArray(new String[0]);
     } else {
-        protocols = new String[] { "TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3" };
+      throw context.runtime.newTypeError(protocols, context.runtime.getArray());
     }
+    engine.setEnabledProtocols(enabledProtocols);
 
-    if (miniSSLContext.callMethod(context, "no_tlsv1_1").isTrue()) {
-        protocols = new String[] { "TLSv1.2", "TLSv1.3" };
-    }
-
-    engine.setEnabledProtocols(protocols);
     engine.setUseClientMode(false);
 
     long verify_mode = miniSSLContext.callMethod(context, "verify_mode").convertToInteger("to_i").getLongValue();
@@ -246,10 +259,11 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
         engine.setNeedClientAuth(true);
     }
 
-    IRubyObject sslCipherListObject = miniSSLContext.callMethod(context, "ssl_cipher_list");
-    if (!sslCipherListObject.isNil()) {
-      String[] sslCipherList = sslCipherListObject.convertToString().asJavaString().split(",");
-      engine.setEnabledCipherSuites(sslCipherList);
+    IRubyObject cipher_suites = miniSSLContext.callMethod(context, "cipher_suites");
+    if (cipher_suites instanceof RubyArray) {
+      engine.setEnabledCipherSuites((String[]) ((RubyArray) cipher_suites).toArray(new String[0]));
+    } else if (!cipher_suites.isNil()) {
+      throw context.runtime.newTypeError(cipher_suites, context.runtime.getArray());
     }
 
     SSLSession session = engine.getSession();

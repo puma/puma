@@ -2,6 +2,8 @@
 
 require 'thread'
 
+require_relative 'io_buffer'
+
 module Puma
   # Internal Docs for A simple thread pool management object.
   #
@@ -29,7 +31,7 @@ module Puma
     # The block passed is the work that will be performed in each
     # thread.
     #
-    def initialize(name, min, max, *extra, &block)
+    def initialize(name, options = {}, &block)
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
@@ -40,10 +42,13 @@ module Puma
       @waiting = 0
 
       @name = name
-      @min = Integer(min)
-      @max = Integer(max)
+      @min = Integer(options[:min_threads])
+      @max = Integer(options[:max_threads])
       @block = block
-      @extra = extra
+      @out_of_band = options[:out_of_band]
+      @clean_thread_locals = options[:clean_thread_locals]
+      @reaping_time = options[:reaping_time]
+      @auto_trim_time = options[:auto_trim_time]
 
       @shutdown = false
 
@@ -62,14 +67,11 @@ module Puma
         end
       end
 
-      @clean_thread_locals = false
       @force_shutdown = false
       @shutdown_mutex = Mutex.new
     end
 
     attr_reader :spawned, :trim_requested, :waiting
-    attr_accessor :clean_thread_locals
-    attr_accessor :out_of_band_hook # @version 5.0.0
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Style/HashEachMethods
@@ -109,8 +111,6 @@ module Puma
         not_empty = @not_empty
         not_full = @not_full
 
-        extra = @extra.map { |i| i.new }
-
         while true
           work = nil
 
@@ -144,7 +144,7 @@ module Puma
           end
 
           begin
-            @out_of_band_pending = true if block.call(work, *extra)
+            @out_of_band_pending = true if block.call(work)
           rescue Exception => e
             STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
           end
@@ -160,12 +160,12 @@ module Puma
 
     # @version 5.0.0
     def trigger_out_of_band_hook
-      return false unless out_of_band_hook && out_of_band_hook.any?
+      return false unless @out_of_band&.any?
 
       # we execute on idle hook when all threads are free
       return false unless @spawned == @waiting
 
-      out_of_band_hook.each(&:call)
+      @out_of_band.each(&:call)
       true
     rescue Exception => e
       STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"
@@ -319,12 +319,12 @@ module Puma
       end
     end
 
-    def auto_trim!(timeout=30)
+    def auto_trim!(timeout=@auto_trim_time)
       @auto_trim = Automaton.new(self, timeout, "#{@name} threadpool trimmer", :trim)
       @auto_trim.start!
     end
 
-    def auto_reap!(timeout=5)
+    def auto_reap!(timeout=@reaping_time)
       @reaper = Automaton.new(self, timeout, "#{@name} threadpool reaper", :reap)
       @reaper.start!
     end
@@ -354,8 +354,8 @@ module Puma
         @not_empty.broadcast
         @not_full.broadcast
 
-        @auto_trim.stop if @auto_trim
-        @reaper.stop if @reaper
+        @auto_trim&.stop
+        @reaper&.stop
         # dup workers so that we join them all safely
         @workers.dup
       end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'puma/server'
-require 'puma/const'
+require_relative 'server'
+require_relative 'const'
 
 module Puma
   # Generic class that is used by `Puma::Cluster` and `Puma::Single` to
@@ -12,6 +12,7 @@ module Puma
       @launcher = launcher
       @log_writer = launcher.log_writer
       @events = launcher.events
+      @config = launcher.config
       @options = launcher.options
       @app = nil
       @control = nil
@@ -46,7 +47,7 @@ module Puma
 
     # @version 5.0.0
     def stop_control
-      @control.stop(true) if @control
+      @control&.stop true
     end
 
     def error(str)
@@ -61,7 +62,7 @@ module Puma
       str = @options[:control_url]
       return unless str
 
-      require 'puma/app/status'
+      require_relative 'app/status'
 
       if token = @options[:control_auth_token]
         token = nil if token.empty? || token == 'none'
@@ -69,10 +70,12 @@ module Puma
 
       app = Puma::App::Status.new @launcher, token
 
-      control = Puma::Server.new app, @log_writer, @events,
-        { min_threads: 0, max_threads: 1, queue_requests: false }
+      # A Reactor is not created aand nio4r is not loaded when 'queue_requests: false'
+      # Use `nil` for events, no hooks in control server
+      control = Puma::Server.new app, nil,
+        { min_threads: 0, max_threads: 1, queue_requests: false, log_writer: @log_writer }
 
-      control.binder.parse [str], self, 'Starting control server'
+      control.binder.parse [str], nil, 'Starting control server'
 
       control.run thread_name: 'ctl'
       @control = control
@@ -146,28 +149,28 @@ module Puma
     end
 
     def load_and_bind
-      unless @launcher.config.app_configured?
+      unless @config.app_configured?
         error "No application configured, nothing to run"
         exit 1
       end
 
       begin
-        @app = @launcher.config.app
+        @app = @config.app
       rescue Exception => e
         log "! Unable to load application: #{e.class}: #{e.message}"
         raise e
       end
 
-      @launcher.binder.parse @options[:binds], self
+      @launcher.binder.parse @options[:binds]
     end
 
     # @!attribute [r] app
     def app
-      @app ||= @launcher.config.app
+      @app ||= @config.app
     end
 
     def start_server
-      server = Puma::Server.new(app, @log_writer, @events, @options)
+      server = Puma::Server.new(app, @events, @options)
       server.inherit_binder(@launcher.binder)
       server
     end

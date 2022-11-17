@@ -383,7 +383,7 @@ case 1:
 	case 11:
 // line 42 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.http_version(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
+    Http11.server_protocol(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
   }
 	break;
 	case 12:

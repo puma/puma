@@ -12,7 +12,7 @@ module Minitest
   class VerboseProgressReporter < Reporter
     def prerecord(klass, name)
       @current ||= nil
-      @current = [klass.name, name].tap(&method(:print_start))
+      @current = [klass.name, name].tap { |t| print_start t }
     end
 
     def record(result)

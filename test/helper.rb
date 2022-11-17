@@ -2,7 +2,7 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
+if RUBY_VERSION == '2.4.1'
   begin
     require 'stopgap_13632'
   rescue LoadError
@@ -10,6 +10,8 @@ if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
     exit(1)
   end
 end
+
+require "securerandom"
 
 require_relative "minitest/verbose"
 require "minitest/autorun"
@@ -21,14 +23,18 @@ require_relative "helpers/apps"
 
 Thread.abort_on_exception = true
 
-$debugging_info = ''.dup
-$debugging_hold = false    # needed for TestCLI#test_control_clustered
+$debugging_info = []
+$debugging_hold = false   # needed for TestCLI#test_control_clustered
 $test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
   RUBY_ENGINE == "ruby" ? 45 : 60
 end.to_i
 
 require "puma"
 require "puma/detect"
+
+unless ::Puma::HAS_NATIVE_IO_WAIT
+  require "io/wait"
+end
 
 # used in various ssl test files, see test_puma_server_ssl.rb and
 # test_puma_localhost_authority.rb
@@ -149,6 +155,7 @@ module TestSkips
         when :fork        then "Skipped if Kernel.fork exists"   if HAS_FORK
         when :unix        then "Skipped if UNIXSocket exists"    if Puma::HAS_UNIX_SOCKET
         when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
+        when :rack3       then "Skipped if Rack 3.x"             if Rack::RELEASE >= '3'
         else false
       end
       skip skip_msg, bt if skip_msg
@@ -166,6 +173,7 @@ module TestSkips
       when :fork    then MSG_FORK                       unless HAS_FORK
       when :unix    then MSG_UNIX                       unless Puma::HAS_UNIX_SOCKET
       when :aunix   then MSG_AUNIX                      unless Puma.abstract_unix_socket?
+      when :rack3   then "Skipped unless Rack >= 3.x"   unless ::Rack::RELEASE >= '3'
       else false
     end
     skip skip_msg, bt if skip_msg
@@ -176,7 +184,7 @@ Minitest::Test.include TestSkips
 
 class Minitest::Test
 
-  REPO_NAME = ENV['GITHUB_REPOSITORY'] ? ENV['GITHUB_REPOSITORY'][/[^\/]+\z/] : 'puma'
+  PROJECT_ROOT = File.dirname(__dir__)
 
   def self.run(reporter, options = {}) # :nodoc:
     prove_it!
@@ -190,8 +198,9 @@ end
 
 Minitest.after_run do
   # needed for TestCLI#test_control_clustered
-  unless $debugging_hold
-    out = $debugging_info.strip
+  if !$debugging_hold && ENV['PUMA_TEST_DEBUG']
+    $debugging_info.sort!
+    out = $debugging_info.join.strip
     unless out.empty?
       dash = "\u2500"
       wid = ENV['GITHUB_ACTIONS'] ? 88 : 90
@@ -250,3 +259,16 @@ module AggregatedResults
   end
 end
 Minitest::SummaryReporter.prepend AggregatedResults
+
+module TestTempFile
+  require "tempfile"
+  def tempfile_create(basename, data, mode: File::BINARY)
+    fio = Tempfile.create(basename, mode: mode)
+    fio.write data
+    fio.flush
+    fio.rewind
+    @ios << fio
+    fio
+  end
+end
+Minitest::Test.include TestTempFile

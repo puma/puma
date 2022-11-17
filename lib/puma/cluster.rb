@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'puma/runner'
-require 'puma/util'
-require 'puma/plugin'
-require 'puma/cluster/worker_handle'
-require 'puma/cluster/worker'
+require_relative 'runner'
+require_relative 'util'
+require_relative 'plugin'
+require_relative 'cluster/worker_handle'
+require_relative 'cluster/worker'
 
 require 'time'
 
@@ -96,7 +96,7 @@ module Puma
 
     # @version 5.0.0
     def spawn_worker(idx, master)
-      @launcher.config.run_hooks(:before_worker_fork, idx, @launcher.log_writer)
+      @config.run_hooks(:before_worker_fork, idx, @log_writer)
 
       pid = fork { worker(idx, master) }
       if !pid
@@ -105,7 +105,7 @@ module Puma
         exit! 1
       end
 
-      @launcher.config.run_hooks(:after_worker_fork, idx, @launcher.log_writer)
+      @config.run_hooks(:after_worker_fork, idx, @log_writer)
       pid
     end
 
@@ -180,10 +180,10 @@ module Puma
         end
       end
 
-      @next_check = [
-        @workers.reject(&:term?).map(&:ping_timeout).min,
-        @next_check
-      ].compact.min
+      t = @workers.reject(&:term?)
+      t.map!(&:ping_timeout)
+
+      @next_check = [t.min, @next_check].compact.min
     end
 
     def worker(index, master)
@@ -213,8 +213,8 @@ module Puma
       stop
     end
 
-    def phased_restart
-      return false if @options[:preload_app]
+    def phased_restart(refork = false)
+      return false if @options[:preload_app] && !refork
 
       @phased_restart = true
       wakeup!
@@ -230,7 +230,7 @@ module Puma
     def stop_blocked
       @status = :stop if @status == :run
       wakeup!
-      @control.stop(true) if @control
+      @control&.stop true
       Process.waitall
     end
 
@@ -281,7 +281,7 @@ module Puma
       if (worker = @workers.find { |w| w.index == 0 })
         worker.phase += 1
       end
-      phased_restart
+      phased_restart(true)
     end
 
     # We do this in a separate method to keep the lambda scope
@@ -294,7 +294,7 @@ module Puma
 
         # Auto-fork after the specified number of requests.
         if (fork_requests = @options[:fork_worker].to_i) > 0
-          @launcher.events.register(:ping!) do |w|
+          @events.register(:ping!) do |w|
             fork_worker! if w.index == 0 &&
               w.phase == 0 &&
               w.last_status[:requests_count] >= fork_requests
@@ -376,12 +376,12 @@ module Puma
       else
         log "*     Restarts: (\u2714) hot (\u2714) phased"
 
-        unless @launcher.config.app_configured?
+        unless @config.app_configured?
           error "No application configured, nothing to run"
           exit 1
         end
 
-        @launcher.binder.parse @options[:binds], self
+        @launcher.binder.parse @options[:binds]
       end
 
       read, @wakeup = Puma::Util.pipe
@@ -413,8 +413,7 @@ module Puma
 
       @master_read, @worker_write = read, @wakeup
 
-      @launcher.config.run_hooks(:before_fork, nil, @launcher.log_writer)
-      Puma::Util.nakayoshi_gc(@log_writer) if @options[:nakayoshi_fork]
+      @config.run_hooks(:before_fork, nil, @log_writer)
 
       spawn_workers
 
@@ -467,9 +466,9 @@ module Puma
                   w.term unless w.term?
                 when "p"
                   w.ping!(result.sub(/^\d+/,'').chomp)
-                  @launcher.events.fire(:ping!, w)
+                  @events.fire(:ping!, w)
                   if !booted && @workers.none? {|worker| worker.last_status.empty?}
-                    @launcher.events.fire_on_booted!
+                    @events.fire_on_booted!
                     booted = true
                   end
                 end

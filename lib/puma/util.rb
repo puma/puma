@@ -39,17 +39,6 @@ module Puma
     end
     module_function :unescape, :escape
 
-    # @version 5.0.0
-    def nakayoshi_gc(log_writer)
-      log_writer.log "! Promoting existing objects to old generation..."
-      4.times { GC.start(full_mark: false) }
-      if GC.respond_to?(:compact)
-        log_writer.log "! Compacting..."
-        GC.compact
-      end
-      log_writer.log "! Friendly fork preparation complete."
-    end
-
     DEFAULT_SEP = /[&;] */n
 
     # Stolen from Mongrel, with some small modifications:

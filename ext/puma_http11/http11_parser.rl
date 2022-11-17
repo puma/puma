@@ -62,8 +62,8 @@ static void snake_upcase_char(char *c)
     parser->query_string(parser, PTR_TO(query_start), LEN(query_start, fpc));
   }
 
-  action http_version {
-    parser->http_version(parser, PTR_TO(mark), LEN(mark, fpc));
+  action server_protocol {
+    parser->server_protocol(parser, PTR_TO(mark), LEN(mark, fpc));
   }
 
   action request_path {

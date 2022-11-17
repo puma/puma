@@ -39,8 +39,8 @@ public class Http11Parser {
     Http11.query_string(runtime, parser.data, parser.buffer, parser.query_start, fpc-parser.query_start);
   }
 
-  action http_version {
-    Http11.http_version(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+  action server_protocol {
+    Http11.server_protocol(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
   }
 
   action request_path {

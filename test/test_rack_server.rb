@@ -3,9 +3,18 @@ require_relative "helper"
 require "net/http"
 
 require "rack"
+require "rack/body_proxy"
+require "rack/chunked" if Rack::RELEASE >= '3'
+
+require "nio"
+require "open3"
 
 class TestRackServer < Minitest::Test
   parallelize_me!
+
+  TRANSFER_ENCODING_CHUNKED = 'transfer-encoding: chunked'
+
+  STR_1KB = "──#{SecureRandom.hex 507}─\n".freeze
 
   class ErrorChecker
     def initialize(app)
@@ -27,14 +36,18 @@ class TestRackServer < Minitest::Test
 
   class ServerLint < Rack::Lint
     def call(env)
-      check_env env
+      if Rack::RELEASE < '3'
+        check_env env
+      else
+        Wrapper.new(@app, env).check_environment env
+      end
 
       @app.call(env)
     end
   end
 
   def setup
-    @simple = lambda { |env| [200, { "X-Header" => "Works" }, ["Hello"]] }
+    @simple = lambda { |env| [200, { "x-header" => "Works" }, ["Hello"]] }
     @server = Puma::Server.new @simple
     @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
     @tcp = "http://127.0.0.1:#{@port}"
@@ -48,6 +61,12 @@ class TestRackServer < Minitest::Test
 
   def teardown
     @server.stop(true) unless @stopped
+  end
+
+  def header_hash(socket)
+    t = socket.readline("\r\n\r\n").split("\r\n")
+    t.shift; t.map! { |line| line.split(/:\s?/) }
+    t.to_h
   end
 
   def test_lint
@@ -121,11 +140,7 @@ class TestRackServer < Minitest::Test
     socket.puts "Connection: Keep-Alive\r\n"
     socket.puts "\r\n"
 
-    headers = socket.readline("\r\n\r\n")
-      .split("\r\n")
-      .drop(1)
-      .map { |line| line.split(/:\s?/) }
-      .to_h
+    headers = header_hash socket
 
     content_length = headers["Content-Length"].to_i
     real_response_body = socket.read(content_length)
@@ -154,6 +169,84 @@ class TestRackServer < Minitest::Test
     stop
   end
 
+  def test_rack_body_proxy
+    closed = false
+    body = Rack::BodyProxy.new(["Hello"]) { closed = true }
+
+    @server.app = lambda { |env| [200, { "X-Header" => "Works" }, body] }
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal true, closed
+  end
+
+  def test_rack_body_proxy_content_length
+    str_ary = %w[0123456789 0123456789 0123456789 0123456789]
+    str_ary_bytes = str_ary.to_ary.inject(0) { |sum, el| sum + el.bytesize }
+
+    body = Rack::BodyProxy.new(str_ary) { }
+
+    @server.app = lambda { |env| [200, { "X-Header" => "Works" }, body] }
+
+    @server.run
+
+    socket = TCPSocket.open "127.0.0.1", @port
+    socket.puts "GET /test HTTP/1.1\r\n"
+    socket.puts "Connection: Keep-Alive\r\n"
+    socket.puts "\r\n"
+
+    headers = header_hash socket
+
+    content_length = headers["Content-Length"].to_i
+
+    socket.close
+
+    stop
+
+    assert_equal str_ary_bytes, content_length
+  end
+
+  def test_hijack_body_close
+    available = true
+    @server.app = ->(env) {
+      if available
+        available = false
+        hijack_lambda = ->(io) {
+          io.syswrite 'hijacked'
+          io.close
+        }
+        [200, { 'Content-Type' => 'text/plain', 'rack.hijack' => hijack_lambda},
+          ::Rack::BodyProxy.new([]) { available = true }]
+      else
+        [500, { 'Content-Type' => 'text/plain' }, ['incorrect']]
+      end
+    }
+
+    @server.run
+
+    socket1 = TCPSocket.new "127.0.0.1", @port
+    socket1.syswrite "GET / HTTP/1.1\r\n\r\n"
+    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.25 : 0.1)
+    resp1 = socket1.sysread 1_024
+
+    sleep 0.01 # time for close block to be called ?
+
+    socket2 = TCPSocket.new "127.0.0.1", @port
+    socket2.syswrite "GET / HTTP/1.1\r\n\r\n"
+    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.25 : 0.1)
+    resp2 = socket2.sysread 1_024
+
+    assert_operator resp1, :end_with?, 'hijacked'
+    assert_operator resp2, :end_with?, 'hijacked'
+
+    socket1.close
+    socket2.close
+  end
+
   def test_common_logger
     log = StringIO.new
 
@@ -168,5 +261,39 @@ class TestRackServer < Minitest::Test
     stop
 
     assert_match %r!GET /test HTTP/1\.1!, log.string
+  end
+
+  def test_rack_chunked_array1
+    body = [STR_1KB]
+    app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
+    rack_app = Rack::Chunked.new app
+    @server.app = rack_app
+    @server.run
+
+    resp_body, headers, _status = Open3.capture3 "curl -v #{@tcp}/"
+    assert_includes headers.downcase, TRANSFER_ENCODING_CHUNKED
+    assert_equal STR_1KB, resp_body
+  end if Rack::RELEASE < '3.1'
+
+  def test_rack_chunked_array10
+    body = Array.new 10, STR_1KB
+    app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
+    rack_app = Rack::Chunked.new app
+    @server.app = rack_app
+    @server.run
+
+    resp_body, headers, _status = Open3.capture3 "curl -v #{@tcp}/"
+    assert_includes headers.downcase, TRANSFER_ENCODING_CHUNKED
+    assert_equal STR_1KB * 10, resp_body
+  end if Rack::RELEASE < '3.1'
+
+  def test_puma_enum
+    body = Array.new(10, STR_1KB).to_enum
+    @server.app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
+    @server.run
+
+    resp_body, headers, _status = Open3.capture3 "curl -v #{@tcp}/"
+    assert_includes headers.downcase, TRANSFER_ENCODING_CHUNKED
+    assert_equal STR_1KB * 10, resp_body
   end
 end

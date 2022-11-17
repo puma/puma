@@ -102,13 +102,13 @@ module Puma::Rack
       begin
         info = []
         server = Rack::Handler.get(options[:server]) || Rack::Handler.default(options)
-        if server && server.respond_to?(:valid_options)
+        if server&.respond_to?(:valid_options)
           info << ""
           info << "Server-specific options for #{server.name}:"
 
           has_options = false
           server.valid_options.each do |name, description|
-            next if name.to_s =~ /^(Host|Port)[^a-zA-Z]/ # ignore handler's host and port options, we do our own.
+            next if /^(Host|Port)[^a-zA-Z]/.match? name.to_s  # ignore handler's host and port options, we do our own.
 
             info << "  -O %-21s %s" % [name, description]
             has_options = true
@@ -276,7 +276,7 @@ module Puma::Rack
       app = @map ? generate_map(@run, @map) : @run
       fail "missing run or map statement" unless app
       app = @use.reverse.inject(app) { |a,e| e[a] }
-      @warmup.call(app) if @warmup
+      @warmup&.call app
       app
     end
 
@@ -287,7 +287,7 @@ module Puma::Rack
     private
 
     def generate_map(default_app, mapping)
-      require 'puma/rack/urlmap'
+      require_relative 'urlmap'
 
       mapped = default_app ? {'/' => default_app} : {}
       mapping.each { |r,b| mapped[r] = self.class.new(default_app, &b).to_app }

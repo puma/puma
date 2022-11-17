@@ -15,15 +15,12 @@ module Puma
 
     ALLOWED_FIELDS = %w!control_url control_auth_token pid running_from!
 
-    # @deprecated 6.0.0
-    FIELDS = ALLOWED_FIELDS
-
     def initialize
       @options = {}
     end
 
     def save(path, permission = nil)
-      contents = "---\n".dup
+      contents = +"---\n"
       @options.each do |k,v|
         next unless ALLOWED_FIELDS.include? k
         case v

@@ -17,26 +17,27 @@ module Puma
     CMD_PATH_SIG_MAP = {
       'gc'       => nil,
       'gc-stats' => nil,
-      'halt'     => 'SIGQUIT',
-      'phased-restart' => 'SIGUSR1',
-      'refork'   => 'SIGURG',
+      'halt'              => 'SIGQUIT',
+      'info'              => 'SIGINFO',
+      'phased-restart'    => 'SIGUSR1',
+      'refork'            => 'SIGURG',
       'reload-worker-directory' => nil,
-      'restart'  => 'SIGUSR2',
+      'reopen-log'        => 'SIGHUP',
+      'restart'           => 'SIGUSR2',
       'start'    => nil,
       'stats'    => nil,
       'status'   => '',
-      'stop'     => 'SIGTERM',
-      'thread-backtraces' => nil
+      'stop'              => 'SIGTERM',
+      'thread-backtraces' => nil,
+      'worker-count-down' => 'SIGTTOU',
+      'worker-count-up'   => 'SIGTTIN'
     }.freeze
 
-    # @deprecated 6.0.0
-    COMMANDS = CMD_PATH_SIG_MAP.keys.freeze
-
     # commands that cannot be used in a request
-    NO_REQ_COMMANDS = %w{refork}.freeze
+    NO_REQ_COMMANDS = %w[info reopen-log worker-count-down worker-count-up].freeze
 
     # @version 5.0.0
-    PRINTABLE_COMMANDS = %w{gc-stats stats thread-backtraces}.freeze
+    PRINTABLE_COMMANDS = %w[gc-stats stats thread-backtraces].freeze
 
     def initialize(argv, stdout=STDOUT, stderr=STDERR)
       @state = nil
@@ -185,8 +186,6 @@ module Puma
 
       if @command == 'status'
         message 'Puma is started'
-      elsif NO_REQ_COMMANDS.include? @command
-        raise "Invalid request command: #{@command}"
       else
         url = "/#{@command}"
 
@@ -242,7 +241,11 @@ module Puma
           @stdout.flush unless @stdout.sync
           return
         elsif sig.start_with? 'SIG'
-          Process.kill sig, @pid
+          if Signal.list.key? sig.sub(/\ASIG/, '')
+            Process.kill sig, @pid
+          else
+            raise "Signal '#{sig}' not available'"
+          end
         elsif @command == 'status'
           begin
             Process.kill 0, @pid
@@ -268,7 +271,7 @@ module Puma
       return start if @command == 'start'
       prepare_configuration
 
-      if Puma.windows? || @control_url
+      if Puma.windows? || @control_url && !NO_REQ_COMMANDS.include?(@command)
         send_request
       else
         send_signal
@@ -281,7 +284,7 @@ module Puma
 
     private
     def start
-      require 'puma/cli'
+      require_relative 'cli'
 
       run_args = []
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'puma/queue_close' unless ::Queue.instance_methods.include? :close
+require_relative 'queue_close' unless ::Queue.instance_methods.include? :close
 
 module Puma
   class UnsupportedBackend < StandardError; end
@@ -50,7 +50,7 @@ module Puma
       @input << client
       @selector.wakeup
       true
-    rescue ClosedQueueError
+    rescue ClosedQueueError, IOError # Ignore if selector is already closed
       false
     end
 
@@ -61,7 +61,7 @@ module Puma
         @selector.wakeup
       rescue IOError # Ignore if selector is already closed
       end
-      @thread.join if @thread
+      @thread&.join
     end
 
     private
@@ -76,7 +76,7 @@ module Puma
 
           # Wakeup all objects that timed out.
           timed_out = @timeouts.take_while {|t| t.timeout == 0}
-          timed_out.each(&method(:wakeup!))
+          timed_out.each { |c| wakeup! c }
 
           unless @input.empty?
             until @input.empty?

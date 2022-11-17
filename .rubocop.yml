@@ -1,6 +1,8 @@
+require: rubocop-performance
+
 AllCops:
   DisabledByDefault: true
-  TargetRubyVersion: 2.2
+  TargetRubyVersion: 2.4
   DisplayCopNames: true
   StyleGuideCopsOnly: false
   Exclude:
@@ -9,6 +11,18 @@ AllCops:
     - 'examples/**/*'
     - 'pkg/**/*'
     - 'Rakefile'
+  SuggestExtensions: false
+  NewCops: disable
+
+# ————————————————————————————————————————— disabled cops
+
+# ————————————————————————————————————————— enabled cops
+
+Layout/AccessModifierIndentation:
+  EnforcedStyle: indent
+
+Layout/IndentationStyle:
+  Enabled: true
 
 Layout/SpaceAfterColon:
   Enabled: true
@@ -26,10 +40,7 @@ Layout/SpaceBeforeFirstArg:
 Layout/SpaceInsideParens:
   Enabled: true
 
-Layout/Tab:
-  Enabled: true
-
-Layout/TrailingBlankLines:
+Layout/TrailingEmptyLines:
   Enabled: true
 
 Layout/TrailingWhitespace:
@@ -37,6 +48,9 @@ Layout/TrailingWhitespace:
 
 Lint/Debugger:
   Enabled: true
+
+Metrics/ParameterLists:
+  Max: 7
 
 Naming/MethodName:
   Enabled: true
@@ -47,17 +61,23 @@ Naming/MethodName:
 Naming/VariableName:
   Enabled: true
 
-Style/MethodDefParentheses:
-  Enabled: true
-
-Style/TrailingCommaInArguments:
-  Enabled: true
-
 Performance:
   Enabled: true
 
-Metrics/ParameterLists:
-  Max: 7
+Performance/ChainArrayAllocation:
+  Enabled: true
+
+Performance/CollectionLiteralInLoop:
+  Enabled: true
+
+Performance/DeletePrefix:
+  Enabled: true
+
+Performance/DeleteSuffix:
+  Enabled: true
+
+Performance/MethodObjectAsBlock:
+  Enabled: true
 
 Performance/RedundantMatch:
   Enabled: true
@@ -65,17 +85,26 @@ Performance/RedundantMatch:
 Performance/RedundantBlockCall:
   Enabled: true
 
+Performance/StringIdentifierArgument:
+  Enabled: true
+
+Performance/StringInclude:
+  Enabled: true
+
 Performance/StringReplacement:
   Enabled: true
 
-Layout/AccessModifierIndentation:
-  EnforcedStyle: indent
+Style/MethodDefParentheses:
+  Enabled: true
 
-Style/WhileUntilModifier:
+Style/SafeNavigation:
   Enabled: true
 
 Style/TernaryParentheses:
   Enabled: true
 
-Style/RedundantReturn:
+Style/TrailingCommaInArguments:
+  Enabled: true
+
+Style/WhileUntilModifier:
   Enabled: true

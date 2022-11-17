@@ -1,3 +1,4 @@
+require 'puma/detect'
 require 'puma/log_writer'
 require_relative "helper"
 
@@ -124,7 +125,7 @@ class TestLogWriter < Minitest::Test
   def test_parse_error
     app = proc { |_env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
     log_writer = Puma::LogWriter.strings
-    server = Puma::Server.new app, log_writer
+    server = Puma::Server.new app, nil, {log_writer: log_writer}
 
     host = '127.0.0.1'
     port = (server.add_tcp_listener host, 0).addr[1]

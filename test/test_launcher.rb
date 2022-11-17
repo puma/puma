@@ -23,7 +23,7 @@ class TestLauncher < Minitest::Test
     launcher(conf).write_state
 
     assert_equal File.read(pid_path).strip.to_i, Process.pid
-
+  ensure
     File.unlink pid_path
   end
 
@@ -99,7 +99,7 @@ class TestLauncher < Minitest::Test
     end
     launcher = launcher(conf)
     Thread.new do
-      sleep Puma::ConfigDefault::DefaultWorkerCheckInterval + 1
+      sleep Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
       status = Puma.stats_hash[:worker_status].first[:last_status]
       Puma::Server::STAT_METHODS.each do |stat|
         assert_includes status, stat

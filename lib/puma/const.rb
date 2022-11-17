@@ -100,31 +100,16 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "5.6.4".freeze
-    CODE_NAME = "Birdie's Version".freeze
+    PUMA_VERSION = VERSION = "6.0.0".freeze
+    CODE_NAME = "Sunflower".freeze
 
     PUMA_SERVER_STRING = ['puma', PUMA_VERSION, CODE_NAME].join(' ').freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2
 
-    # The default number of seconds for another request within a persistent
-    # session.
-    PERSISTENT_TIMEOUT = 20
-
-    # The default number of seconds to wait until we get the first data
-    # for the request
-    FIRST_DATA_TIMEOUT = 30
-
     # How long to wait when getting some write blocking on the socket when
     # sending data back
     WRITE_TIMEOUT = 10
-
-    # How many requests to attempt inline before sending a client back to
-    # the reactor to be subject to normal ordering. The idea here is that
-    # we amortize the cost of going back to the reactor for a well behaved
-    # but very "greedy" client across 10 requests. This prevents a not
-    # well behaved client from monopolizing the thread forever.
-    MAX_FAST_INLINE = 10
 
     # The original URI requested by the client.
     REQUEST_URI= 'REQUEST_URI'.freeze
@@ -163,6 +148,14 @@ module Puma
 
     REQUEST_METHOD = "REQUEST_METHOD".freeze
     HEAD = "HEAD".freeze
+    GET = "GET".freeze
+    POST = "POST".freeze
+    PUT = "PUT".freeze
+    DELETE = "DELETE".freeze
+    OPTIONS = "OPTIONS".freeze
+    TRACE = "TRACE".freeze
+    PATCH = "PATCH".freeze
+    SUPPORTED_HTTP_METHODS = [HEAD, GET, POST, PUT, DELETE, OPTIONS, TRACE, PATCH].freeze
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
     LINE_END = "\r\n".freeze
     REMOTE_ADDR = "REMOTE_ADDR".freeze

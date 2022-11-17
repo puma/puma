@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'puma/const'
-require 'puma/util'
+require_relative 'const'
+require_relative 'util'
 
 module Puma
   # The methods that are available for use inside the configuration file.
@@ -32,8 +32,24 @@ module Puma
   # You can also find many examples being used by the test suite in
   # +test/config+.
   #
+  # Puma v6 adds the option to specify a key name (String or Symbol) to the
+  # hooks that run inside the forked workers.  All the hooks run inside the
+  # {Puma::Cluster::Worker#run} method.
+  #
+  # Previously, the worker index and the LogWriter instance were passed to the
+  # hook blocks/procs.  If a key name is specified, a hash is passed as the last
+  # parameter.  This allows storage of data, typically objects that are created
+  # before the worker that need to be passed to the hook when the worker is shutdown.
+  #
+  # The following hooks have been updated:
+  #
+  #     | DSL Method         |  Options Key            | Fork Block Location |
+  #     | on_worker_boot     | :before_worker_boot     | inside, before      |
+  #     | on_worker_shutdown | :before_worker_shutdown | inside, after       |
+  #     | on_refork          | :before_refork          | inside              |
+  #
   class DSL
-    include ConfigDefault
+    ON_WORKER_KEY = [String, Symbol].freeze
 
     # convenience method so logic can be used in CI
     # @see ssl_bind
@@ -52,8 +68,9 @@ module Puma
       backlog_str = opts[:backlog] ? "&backlog=#{Integer(opts[:backlog])}" : ''
 
       if defined?(JRUBY_VERSION)
-        ssl_cipher_list = opts[:ssl_cipher_list] ?
-          "&ssl_cipher_list=#{opts[:ssl_cipher_list]}" : nil
+        cipher_suites = opts[:ssl_cipher_list] ? "&ssl_cipher_list=#{opts[:ssl_cipher_list]}" : nil # old name
+        cipher_suites = "#{cipher_suites}&cipher_suites=#{opts[:cipher_suites]}" if opts[:cipher_suites]
+        protocols = opts[:protocols] ? "&protocols=#{opts[:protocols]}" : nil
 
         keystore_additions = "keystore=#{opts[:keystore]}&keystore-pass=#{opts[:keystore_pass]}"
         keystore_additions = "#{keystore_additions}&keystore-type=#{opts[:keystore_type]}" if opts[:keystore_type]
@@ -63,20 +80,41 @@ module Puma
           truststore_additions = "#{truststore_additions}&truststore-type=#{opts[:truststore_type]}" if opts[:truststore_type]
         end
 
-        "ssl://#{host}:#{port}?#{keystore_additions}#{truststore_additions}#{ssl_cipher_list}" \
+        "ssl://#{host}:#{port}?#{keystore_additions}#{truststore_additions}#{cipher_suites}#{protocols}" \
           "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{backlog_str}"
       else
-        ssl_cipher_filter = opts[:ssl_cipher_filter] ?
-          "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
-
-        v_flags = (ary = opts[:verification_flags]) ?
-          "&verification_flags=#{Array(ary).join ','}" : nil
+        ssl_cipher_filter = opts[:ssl_cipher_filter] ? "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
+        v_flags = (ary = opts[:verification_flags]) ? "&verification_flags=#{Array(ary).join ','}" : nil
 
         cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
         key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
 
-        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}" \
-          "#{ssl_cipher_filter}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
+        reuse_flag =
+          if (reuse = opts[:reuse])
+            if reuse == true
+              '&reuse=dflt'
+            elsif reuse.is_a?(Hash) && (reuse.key?(:size) || reuse.key?(:timeout))
+              val = +''
+              if (size = reuse[:size]) && Integer === size
+                val << size.to_s
+              end
+              if (timeout = reuse[:timeout]) && Integer === timeout
+                val << ",#{timeout}"
+              end
+              if val.empty?
+                nil
+              else
+                "&reuse=#{val}"
+              end
+            else
+              nil
+            end
+          else
+            nil
+          end
+
+        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{ssl_cipher_filter}" \
+          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
       end
     end
 
@@ -112,7 +150,7 @@ module Puma
     end
 
     def default_host
-      @options[:default_host] || Configuration::DefaultTCPHost
+      @options[:default_host] || Configuration::DEFAULTS[:tcp_host]
     end
 
     def inject(&blk)
@@ -212,6 +250,7 @@ module Puma
     #
     # * Set the socket backlog depth with +backlog+, default is 1024.
     # * Set up an SSL certificate with +key+ & +cert+.
+    # * Set up an SSL certificate for mTLS with +key+, +cert+, +ca+ and +verify_mode+.
     # * Set whether to optimize for low latency instead of throughput with
     #   +low_latency+, default is to not optimize for low latency. This is done
     #   via +Socket::TCP_NODELAY+.
@@ -221,6 +260,8 @@ module Puma
     #   bind 'unix:///var/run/puma.sock?backlog=512'
     # @example SSL cert
     #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem'
+    # @example SSL cert for mutual TLS (mTLS)
+    #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem&ca=ca.pem&verify_mode=force_peer'
     # @example Disable optimization for low latency
     #   bind 'tcp://0.0.0.0:9292?low_latency=false'
     # @example Socket permissions
@@ -463,6 +504,10 @@ module Puma
     # Puma will assume you are using the +localhost+ gem and try to load the
     # appropriate files.
     #
+    # When using the options hash parameter, the `reuse:` value is either
+    # `true`, which sets reuse 'on' with default values, or a hash, with `:size`
+    # and/or `:timeout` keys, each with integer values.
+    #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert: path_to_cert,
@@ -470,6 +515,7 @@ module Puma
     #     ssl_cipher_filter: cipher_filter, # optional
     #     verify_mode: verify_mode,         # default 'none'
     #     verification_flags: flags,        # optional, not supported by JRuby
+    #     reuse: true                       # optional
     #   }
     #
     # @example Using self-signed certificate with the +localhost+ gem:
@@ -479,6 +525,7 @@ module Puma
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert_pem: File.read(path_to_cert),
     #     key_pem: File.read(path_to_key),
+    #     reuse: {size: 2_000, timeout: 20} # optional
     #   }
     #
     # @example For JRuby, two keys are required: +keystore+ & +keystore_pass+
@@ -571,9 +618,8 @@ module Puma
     #   on_worker_boot do
     #     puts 'Before worker boot...'
     #   end
-    def on_worker_boot(&block)
-      @options[:before_worker_boot] ||= []
-      @options[:before_worker_boot] << block
+    def on_worker_boot(key = nil, &block)
+      process_hook :before_worker_boot, key, block, 'on_worker_boot'
     end
 
     # Code to run immediately before a worker shuts
@@ -588,9 +634,8 @@ module Puma
     #   on_worker_shutdown do
     #     puts 'On worker shutdown...'
     #   end
-    def on_worker_shutdown(&block)
-      @options[:before_worker_shutdown] ||= []
-      @options[:before_worker_shutdown] << block
+    def on_worker_shutdown(key = nil, &block)
+      process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown'
     end
 
     # Code to run in the master right before a worker is started. The worker's
@@ -604,8 +649,7 @@ module Puma
     #     puts 'Before worker fork...'
     #   end
     def on_worker_fork(&block)
-      @options[:before_worker_fork] ||= []
-      @options[:before_worker_fork] << block
+      process_hook :before_worker_fork, nil, block, 'on_worker_fork'
     end
 
     # Code to run in the master after a worker has been started. The worker's
@@ -619,8 +663,7 @@ module Puma
     #     puts 'After worker fork...'
     #   end
     def after_worker_fork(&block)
-      @options[:after_worker_fork] ||= []
-      @options[:after_worker_fork] << block
+      process_hook :after_worker_fork, nil, block, 'after_worker_fork'
     end
 
     alias_method :after_worker_boot, :after_worker_fork
@@ -643,9 +686,8 @@ module Puma
     #   end
     # @version 5.0.0
     #
-    def on_refork(&block)
-      @options[:before_refork] ||= []
-      @options[:before_refork] << block
+    def on_refork(key = nil, &block)
+      process_hook :before_refork, key, block, 'on_refork'
     end
 
     # Code to run out-of-band when the worker is idle.
@@ -658,8 +700,7 @@ module Puma
     #
     # This can be called multiple times to add several hooks.
     def out_of_band(&block)
-      @options[:out_of_band] ||= []
-      @options[:out_of_band] << block
+      process_hook :out_of_band, nil, block, 'out_of_band'
     end
 
     # The directory to operate out of.
@@ -789,7 +830,7 @@ module Puma
     #
     def worker_timeout(timeout)
       timeout = Integer(timeout)
-      min = @options.fetch(:worker_check_interval, Puma::ConfigDefault::DefaultWorkerCheckInterval)
+      min = @options.fetch(:worker_check_interval, Configuration::DEFAULTS[:worker_check_interval])
 
       if timeout <= min
         raise "The minimum worker_timeout must be greater than the worker reporting interval (#{min})"
@@ -956,23 +997,6 @@ module Puma
       @options[:fork_worker] = Integer(after_requests)
     end
 
-    # When enabled, Puma will GC 4 times before forking workers.
-    # If available (Ruby 2.7+), we will also call GC.compact.
-    # Not recommended for non-MRI Rubies.
-    #
-    # Based on the work of Koichi Sasada and Aaron Patterson, this option may
-    # decrease memory utilization of preload-enabled cluster-mode Pumas. It will
-    # also increase time to boot and fork. See your logs for details on how much
-    # time this adds to your boot process. For most apps, it will be less than one
-    # second.
-    #
-    # @see Puma::Cluster#nakayoshi_gc
-    # @version 5.0.0
-    #
-    def nakayoshi_fork(enabled=true)
-      @options[:nakayoshi_fork] = enabled
-    end
-
     # The number of requests to attempt inline before sending a client back to
     # the reactor to be subject to normal ordering.
     #
@@ -1020,6 +1044,17 @@ module Puma
           @options[:store] << opts[opt_key]
           opts[v] = "store:#{index}"
         end
+      end
+    end
+
+    def process_hook(options_key, key, block, meth)
+      @options[options_key] ||= []
+      if ON_WORKER_KEY.include? key.class
+        @options[options_key] << [block, key.to_sym]
+      elsif key.nil?
+        @options[options_key] << block
+      else
+        raise "'#{method}' key must be String or Symbol"
       end
     end
   end

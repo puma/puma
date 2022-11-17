@@ -46,7 +46,7 @@ public class Http11 extends RubyObject {
     public static final ByteList FRAGMENT_BYTELIST = new ByteList(ByteList.plain("FRAGMENT"));
     public static final ByteList REQUEST_PATH_BYTELIST = new ByteList(ByteList.plain("REQUEST_PATH"));
     public static final ByteList QUERY_STRING_BYTELIST = new ByteList(ByteList.plain("QUERY_STRING"));
-    public static final ByteList HTTP_VERSION_BYTELIST = new ByteList(ByteList.plain("HTTP_VERSION"));
+    public static final ByteList SERVER_PROTOCOL_BYTELIST = new ByteList(ByteList.plain("SERVER_PROTOCOL"));
 
     private static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
@@ -153,9 +153,9 @@ public class Http11 extends RubyObject {
         req.fastASet(RubyString.newStringShared(runtime, QUERY_STRING_BYTELIST),val);
     }
 
-    public static void http_version(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
+    public static void server_protocol(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
         RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
-        req.fastASet(RubyString.newStringShared(runtime, HTTP_VERSION_BYTELIST),val);
+        req.fastASet(RubyString.newStringShared(runtime, SERVER_PROTOCOL_BYTELIST),val);
     }
 
     public void header_done(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {

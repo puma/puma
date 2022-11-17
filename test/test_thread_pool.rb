@@ -10,12 +10,20 @@ class TestThreadPool < Minitest::Test
 
   def new_pool(min, max, &block)
     block = proc { } unless block
-    @pool = Puma::ThreadPool.new('tst', min, max, &block)
+    options = {
+      min_threads: min,
+      max_threads: max
+    }
+    @pool = Puma::ThreadPool.new('tst', options, &block)
   end
 
   def mutex_pool(min, max, &block)
     block = proc { } unless block
-    @pool = MutexPool.new('tst', min, max, &block)
+    options = {
+      min_threads: min,
+      max_threads: max
+    }
+    @pool = MutexPool.new('tst', options, &block)
   end
 
   # Wraps ThreadPool work in mutex for better concurrency control.
@@ -184,7 +192,7 @@ class TestThreadPool < Minitest::Test
       Thread.current[:foo] = :hai
     }
 
-    pool.clean_thread_locals = true
+    pool.instance_variable_set :@clean_thread_locals, true
 
     pool << [1] * n
 

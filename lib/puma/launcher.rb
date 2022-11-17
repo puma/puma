@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'puma/log_writer'
-require 'puma/events'
-require 'puma/detect'
-require 'puma/cluster'
-require 'puma/single'
-require 'puma/const'
-require 'puma/binder'
+require_relative 'log_writer'
+require_relative 'events'
+require_relative 'detect'
+require_relative 'cluster'
+require_relative 'single'
+require_relative 'const'
+require_relative 'binder'
 
 module Puma
   # Puma::Launcher is the single entry point for starting a Puma server based on user
@@ -18,12 +18,6 @@ module Puma
   class Launcher
     autoload :BundlePruner, 'puma/launcher/bundle_pruner'
 
-    # @deprecated 6.0.0
-    KEYS_NOT_TO_PERSIST_IN_STATE = [
-       :logger, :lowlevel_error_handler,
-       :before_worker_shutdown, :before_worker_boot, :before_worker_fork,
-       :after_worker_boot, :before_fork, :on_restart
-     ]
     # Returns an instance of Launcher
     #
     # +conf+ A Puma::Configuration object indicating how to run the server.
@@ -52,16 +46,18 @@ module Puma
       @original_argv = @argv.dup
       @config        = conf
 
-      @binder        = Binder.new(@log_writer, conf)
-      @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
-      @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
-
-      @environment = conf.environment
+      @config.options[:log_writer] = @log_writer
 
       # Advertise the Configuration
       Puma.cli_config = @config if defined?(Puma.cli_config)
 
       @config.load
+
+      @binder        = Binder.new(@log_writer, conf)
+      @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
+      @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
+
+      @environment = conf.environment
 
       if @config.options[:bind_to_activated_sockets]
         @config.options[:binds] = @binder.synthesize_binds_from_activated_fs(
@@ -121,7 +117,7 @@ module Puma
       permission = @options[:state_permission]
       return unless path
 
-      require 'puma/state_file'
+      require_relative 'state_file'
 
       sf = StateFile.new
       sf.pid = Process.pid
@@ -163,6 +159,17 @@ module Puma
         return restart
       end
       true
+    end
+
+    # Begin a refork if supported
+    def refork
+      if clustered? && @runner.respond_to?(:fork_worker!) && @options[:fork_worker]
+        @runner.fork_worker!
+        true
+      else
+        log "* refork called but not available."
+        false
+      end
     end
 
     # Run the server. This blocks until the server is stopped
@@ -273,7 +280,7 @@ module Puma
       if Puma.jruby?
         close_binder_listeners
 
-        require 'puma/jruby_restart'
+        require_relative 'jruby_restart'
         JRubyRestart.chdir_exec(@restart_dir, restart_args)
       elsif Puma.windows?
         close_binder_listeners
@@ -314,7 +321,7 @@ module Puma
       return unless ENV["NOTIFY_SOCKET"]
 
       begin
-        require 'puma/systemd'
+        require_relative 'systemd'
       rescue LoadError
         log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have sd_notify gem installed"
         return

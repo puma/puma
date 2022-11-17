@@ -1,5 +1,4 @@
 require_relative "helper"
-require "puma/events"
 
 class TestOutOfBandServer < Minitest::Test
   parallelize_me!
@@ -14,7 +13,7 @@ class TestOutOfBandServer < Minitest::Test
   def teardown
     @oob_finished.broadcast
     @app_finished.broadcast
-    @server.stop(true) if @server
+    @server&.stop true
 
     @ios.each do |io|
       begin
@@ -67,9 +66,11 @@ class TestOutOfBandServer < Minitest::Test
       [200, {}, [""]]
     end
 
-    @server = Puma::Server.new app, Puma::LogWriter.strings, Puma::Events.new, out_of_band: [oob], **options
-    @server.min_threads = options[:min_threads] || 1
-    @server.max_threads = options[:max_threads] || 1
+    options[:min_threads] ||= 1
+    options[:max_threads] ||= 1
+    options[:log_writer]  ||= Puma::LogWriter.strings
+
+    @server = Puma::Server.new app, nil, out_of_band: [oob], **options
     @port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?

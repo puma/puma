@@ -210,25 +210,28 @@ sslctx_alloc(VALUE klass) {
 VALUE
 sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   SSL_CTX* ctx;
-
-#ifdef HAVE_SSL_CTX_SET_MIN_PROTO_VERSION
-  int min;
-#endif
   int ssl_options;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
     verification_flags, session_id_bytes, cert_pem, key_pem;
-#ifndef HAVE_SSL_CTX_SET_DH_AUTO
-  DH *dh;
-#endif
   BIO *bio;
   X509 *x509;
   EVP_PKEY *pkey;
-
+#ifdef HAVE_SSL_CTX_SET_MIN_PROTO_VERSION
+  int min;
+#endif
+#ifndef HAVE_SSL_CTX_SET_DH_AUTO
+  DH *dh;
+#endif
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
   EC_KEY *ecdh;
 #endif
+#ifdef HAVE_SSL_CTX_SET_SESSION_CACHE_MODE
+  VALUE reuse, reuse_cache_size, reuse_timeout;
 
-  TypedData_Get_Struct(self, SSL_CTX, &sslctx_type, ctx);
+  reuse = rb_funcall(mini_ssl_ctx, rb_intern_const("reuse"), 0);
+  reuse_cache_size = rb_funcall(mini_ssl_ctx, rb_intern_const("reuse_cache_size"), 0);
+  reuse_timeout = rb_funcall(mini_ssl_ctx, rb_intern_const("reuse_timeout"), 0);
+#endif
 
   key = rb_funcall(mini_ssl_ctx, rb_intern_const("key"), 0);
 
@@ -247,6 +250,8 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   no_tlsv1 = rb_funcall(mini_ssl_ctx, rb_intern_const("no_tlsv1"), 0);
 
   no_tlsv1_1 = rb_funcall(mini_ssl_ctx, rb_intern_const("no_tlsv1_1"), 0);
+
+  TypedData_Get_Struct(self, SSL_CTX, &sslctx_type, ctx);
 
   if (!NIL_P(cert)) {
     StringValue(cert);
@@ -270,8 +275,11 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 
     if (SSL_CTX_use_certificate(ctx, x509) != 1) {
+      BIO_free(bio);
       raise_file_error("SSL_CTX_use_certificate", RSTRING_PTR(cert_pem));
     }
+    X509_free(x509);
+    BIO_free(bio);
   }
 
   if (!NIL_P(key_pem)) {
@@ -280,8 +288,11 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
 
     if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+      BIO_free(bio);
       raise_file_error("SSL_CTX_use_PrivateKey", RSTRING_PTR(key_pem));
     }
+    EVP_PKEY_free(pkey);
+    BIO_free(bio);
   }
 
   verification_flags = rb_funcall(mini_ssl_ctx, rb_intern_const("verification_flags"), 0);
@@ -314,8 +325,6 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   SSL_CTX_set_min_proto_version(ctx, min);
 
-  SSL_CTX_set_options(ctx, ssl_options);
-
 #else
   /* As of 1.0.2f, SSL_OP_SINGLE_DH_USE key use is always on */
   ssl_options |= SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_SINGLE_DH_USE;
@@ -326,10 +335,23 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   if(RTEST(no_tlsv1_1)) {
     ssl_options |= SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1;
   }
-  SSL_CTX_set_options(ctx, ssl_options);
 #endif
 
-  SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+#ifdef HAVE_SSL_CTX_SET_SESSION_CACHE_MODE
+  if (!NIL_P(reuse)) {
+    SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
+    if (!NIL_P(reuse_cache_size)) {
+      SSL_CTX_sess_set_cache_size(ctx, NUM2INT(reuse_cache_size));
+    }
+    if (!NIL_P(reuse_timeout)) {
+      SSL_CTX_set_timeout(ctx, NUM2INT(reuse_timeout));
+    }
+  } else {
+    SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+  }
+#endif
+
+  SSL_CTX_set_options(ctx, ssl_options);
 
   if (!NIL_P(ssl_cipher_filter)) {
     StringValue(ssl_cipher_filter);
@@ -340,8 +362,7 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   }
 
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
-  // Remove this case if OpenSSL 1.0.1 (now EOL) support is no
-  // longer needed.
+  // Remove this case if OpenSSL 1.0.1 (now EOL) support is no longer needed.
   ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
   if (ecdh) {
     SSL_CTX_set_tmp_ecdh(ctx, ecdh);
