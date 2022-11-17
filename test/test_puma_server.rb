@@ -623,17 +623,20 @@ EOF
   def test_chunked_request
     body = nil
     content_length = nil
+    transfer_encoding = nil
     server_run { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
+      transfer_encoding = env['HTTP_TRANSFER_ENCODING']
       [200, {}, [""]]
     }
 
-    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
     assert_equal "5", content_length
+    assert_nil transfer_encoding
   end
 
   def test_large_chunked_request
@@ -882,6 +885,7 @@ EOF
   end
 
   def test_chunked_keep_alive_two_back_to_back
+    skip("Fails on TruffleRuby (not head)") unless !TRUFFLE || Gem::Version.new(RUBY_ENGINE_VERSION) > Gem::Version.new('22.1')
     body = nil
     content_length = nil
     server_run { |env|

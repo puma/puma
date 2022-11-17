@@ -21,6 +21,14 @@ module Puma
           end
 
           ctx.keystore_pass = params['keystore-pass']
+          ctx.keystore_type = params['keystore-type']
+
+          if truststore = params['truststore']
+            ctx.truststore = truststore.eql?('default') ? :default : truststore
+            ctx.truststore_pass = params['truststore-pass']
+            ctx.truststore_type = params['truststore-type']
+          end
+
           ctx.ssl_cipher_list = params['ssl_cipher_list'] if params['ssl_cipher_list']
         else
           if params['key'].nil? && params['key_pem'].nil?

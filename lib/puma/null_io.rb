@@ -52,5 +52,9 @@ module Puma
     def flush
       self
     end
+
+    def closed?
+      true
+    end
   end
 end

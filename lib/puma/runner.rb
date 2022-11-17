@@ -178,5 +178,18 @@ module Puma
         raise "Cannot redirect #{io_name} to #{path}"
       end
     end
+
+    def stats
+      {
+        versions: {
+          puma: Puma::Const::PUMA_VERSION,
+          ruby: {
+            engine: RUBY_ENGINE,
+            version: RUBY_VERSION,
+            patchlevel: RUBY_PATCHLEVEL
+          }
+        }
+      }
+    end
   end
 end

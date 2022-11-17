@@ -4,8 +4,7 @@
 
 # Puma: A Ruby Web Server Built For Parallelism
 
-[![Actions MRI](https://github.com/puma/puma/workflows/MRI/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3AMRI)
-[![Actions non MRI](https://github.com/puma/puma/workflows/non_MRI/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3Anon_MRI)
+[![Actions](https://github.com/puma/puma/workflows/Tests/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3ATests)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![StackOverflow](https://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( https://stackoverflow.com/questions/tagged/puma )
 
@@ -107,15 +106,23 @@ Puma also offers "clustered mode". Clustered mode `fork`s workers from a master 
 $ puma -t 8:32 -w 3
 ```
 
+Or with the `WEB_CONCURRENCY` environment variable:
+
+```
+$ WEB_CONCURRENCY=3 puma -t 8:32
+```
+
 Note that threads are still used in clustered mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will spawn 32 threads in total, with 16 in each worker process.
 
-In clustered mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write) (Ruby 2.0+ only). Use the `--preload` flag from the command line:
+In clustered mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
+
+If the `WEB_CONCURRENCY` environment variable is set to a value > 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
 
 ```
 $ puma -w 3 --preload
 ```
 
-If you're using a configuration file, use the `preload_app!` method:
+Or, if you're using a configuration file, you can use the `preload_app!` method:
 
 ```ruby
 # config/puma.rb
@@ -123,7 +130,9 @@ workers 3
 preload_app!
 ```
 
-Additionally, you can specify a block in your configuration file that will be run on boot of each worker:
+Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preloading copies the code of master into the workers.
+
+When using clustered mode, you can specify a block in your configuration file that will be run on boot of each worker:
 
 ```ruby
 # config/puma.rb
@@ -136,12 +145,10 @@ This code can be used to setup the process before booting the application, allow
 you to do some Puma-specific things that you don't want to embed in your application.
 For instance, you could fire a log notification that a worker booted or send something to statsd. This can be called multiple times.
 
-Constants loaded by your application (such as `Rails`) will not be available in `on_worker_boot`.
-However, these constants _will_ be available if `preload_app!` is enabled, either explicitly in your `puma` config or automatically if
-using 2 or more workers in cluster mode.
-If `preload_app!` is not enabled and 1 worker is used, then `on_worker_boot` will fire, but your app will not be preloaded and constants will not be available.
+Constants loaded by your application (such as `Rails`) will not be available in `on_worker_boot`
+unless preloading is enabled.
 
-`before_fork` specifies a block to be run before workers are forked:
+You can also specify a block to be run before workers are forked, using `before_fork`:
 
 ```ruby
 # config/puma.rb
@@ -149,8 +156,6 @@ before_fork do
   # configuration here
 end
 ```
-
-Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and `preload_app!` copies the code of master into the workers.
 
 ### Error handling
 
@@ -191,15 +196,15 @@ Need a bit of security? Use SSL sockets:
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 ```
-#### Self-signed SSL certificates (via the [`localhost`] gem, for development use): 
+#### Self-signed SSL certificates (via the [`localhost`] gem, for development use):
 
-Puma supports the [`localhost`] gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, the integration can only be used in MRI. 
+Puma supports the [`localhost`] gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, the integration can only be used in MRI.
 
 Puma automatically configures SSL when the [`localhost`] gem is loaded in a `development` environment:
 
 ```ruby
 # Add the gem to your Gemfile
-group(:development) do 
+group(:development) do
   gem 'localhost'
 end
 
@@ -349,7 +354,7 @@ reliability in production environments:
 * [rc.d](docs/jungle/rc.d/README.md)
 * [systemd](docs/systemd.md)
 
-Community guides: 
+Community guides:
 
 * [Deploying Puma on OpenBSD using relayd and httpd](https://gist.github.com/anon987654321/4532cf8d6c59c1f43ec8973faa031103)
 
