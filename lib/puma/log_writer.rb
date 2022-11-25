@@ -33,6 +33,7 @@ module Puma
     # Create a LogWriter that prints to +stdout+ and +stderr+.
     def initialize(stdout, stderr)
       @formatter = DefaultFormatter.new
+      @custom_logger = nil
       @stdout = stdout
       @stderr = stderr
 
