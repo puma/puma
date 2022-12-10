@@ -299,7 +299,7 @@ module Puma
       end
 
       log_writer.debug("Loaded Extensions:")
-      $LOADED_FEATURES.grep(/\.(so|dylib|dll)/i).each { |f| log_writer.debug("    #{f}") }
+      $LOADED_FEATURES.grep(/\.(so|dylib|dll)\z/i).each { |f| log_writer.debug("    #{f}") }
     end
 
     def localhost_authority
