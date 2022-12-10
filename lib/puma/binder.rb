@@ -297,6 +297,9 @@ module Puma
           File.unlink key[1] if key.first == :unix
         end
       end
+
+      log_writer.debug("Loaded Extensions:")
+      $LOADED_FEATURES.grep(/\.(so|dylib|dll)/i).each { |f| log_writer.debug("    #{f}") }
     end
 
     def localhost_authority
