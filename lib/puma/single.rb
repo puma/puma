@@ -57,6 +57,8 @@ module Puma
 
       @events.fire_on_booted!
 
+      debug_loaded_extensions("────────────────────────────────── Loaded Extensions:") if @log_writer.debug?
+
       begin
         server_thread.join
       rescue Interrupt

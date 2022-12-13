@@ -80,6 +80,10 @@ module Puma
     end
     private :internal_write
 
+    def debug?
+      @debug
+    end
+
     def debug(str)
       log("% #{str}") if @debug
     end
