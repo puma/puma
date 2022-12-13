@@ -115,6 +115,9 @@ module Puma
 
         while restart_server.pop
           server_thread = server.run
+
+          debug_loaded_extensions("Loaded Extensions - worker 0:") if index == 0
+
           stat_thread ||= Thread.new(@worker_write) do |io|
             Puma.set_thread_name "stat pld"
             base_payload = "p#{Process.pid}"

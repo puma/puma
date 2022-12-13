@@ -52,6 +52,8 @@ module Puma
       @server = server = start_server
       server_thread = server.run
 
+      debug_loaded_extensions("Loaded Extensions:")
+
       log "Use Ctrl-C to stop"
       redirect_io
 

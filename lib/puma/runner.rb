@@ -194,5 +194,13 @@ module Puma
         }
       }
     end
+
+    def debug_loaded_extensions(str)
+      if @log_writer.debug?
+        @log_writer.debug str
+        re_ext = /\.#{RbConfig::CONFIG['DLEXT']}\z/i
+        $LOADED_FEATURES.grep(re_ext).each { |f| @log_writer.debug("    #{f}") }
+      end
+    end
   end
 end
