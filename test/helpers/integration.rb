@@ -65,7 +65,7 @@ class TestIntegration < Minitest::Test
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
 
-  def cli_server(argv, unix: false, config: nil, merge_err: false, log: false)
+  def cli_server(argv, unix: false, config: nil, merge_err: false, log: false, no_wait: false, puma_debug: nil)
     if config
       config_file = Tempfile.new(%w(config .rb))
       config_file.write config
@@ -79,12 +79,15 @@ class TestIntegration < Minitest::Test
       @tcp_port = UniquePort.call
       cmd = "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
     end
+
+    env = puma_debug ? {'PUMA_DEBUG' => 'true' } : {}
+
     if merge_err
-      @server = IO.popen(cmd, "r", :err=>[:child, :out])
+      @server = IO.popen(env, cmd, "r", :err=>[:child, :out])
     else
-      @server = IO.popen(cmd, "r")
+      @server = IO.popen(env, cmd, "r")
     end
-    wait_for_server_to_boot(log: log)
+    wait_for_server_to_boot(log: log) unless no_wait
     @pid = @server.pid
     @server
   end
@@ -288,6 +291,17 @@ class TestIntegration < Minitest::Test
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
       DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
                [IOError, Errno::ECONNREFUSED, Errno::EPIPE]
+    end
+  end
+
+
+  def set_pumactl_args(unix: false)
+    if unix
+      @control_path = tmp_path('.cntl_sock')
+      "--control-url unix://#{@control_path} --control-token #{TOKEN}"
+    else
+      @control_tcp_port = UniquePort.call
+      "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
     end
   end
 
