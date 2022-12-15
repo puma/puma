@@ -83,9 +83,9 @@ class TestIntegration < Minitest::Test
     env = puma_debug ? {'PUMA_DEBUG' => 'true' } : {}
 
     if merge_err
-      @server = IO.popen(env, cmd, "r", :err=>[:child, :out])
+      @server = IO.popen(env, cmd, :err=>[:child, :out])
     else
-      @server = IO.popen(env, cmd, "r")
+      @server = IO.popen(env, cmd)
     end
     wait_for_server_to_boot(log: log) unless no_wait
     @pid = @server.pid
