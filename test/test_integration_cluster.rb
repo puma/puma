@@ -1,10 +1,21 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
-require "time"
-
 class TestIntegrationCluster < TestIntegration
   parallelize_me! if ::Puma.mri?
+
+  # Ruby 3.2 can parse iso8601 strings, others can't or throw error
+  begin
+    if Time.new(2022, 12, 12, 12, 12, 12, '+00:00') == Time.new('2022-12-12T12:12:12Z')
+      TIME_METH = Time.method :new
+    else
+      require "time"
+      TIME_METH = Time.method :parse
+    end
+  rescue
+    require "time"
+    TIME_METH = Time.method :parse
+  end
 
   def workers ; 2 ; end
 
@@ -173,10 +184,13 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
 
     sleep worker_check_interval + 1
-    last_checkin_1 = Time.parse(get_stats["worker_status"].first["last_checkin"])
+    last_checkin_1 = TIME_METH.call get_stats["worker_status"].first["last_checkin"]
 
     sleep worker_check_interval + 1
-    last_checkin_2 = Time.parse(get_stats["worker_status"].first["last_checkin"])
+    last_checkin_2 = TIME_METH.call get_stats["worker_status"].first["last_checkin"]
+
+    assert_kind_of Time, last_checkin_1
+    assert_kind_of Time, last_checkin_2
 
     assert(last_checkin_2 > last_checkin_1)
   end
