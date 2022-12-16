@@ -2,9 +2,10 @@
  
 * Bugfixes
   * Handle waking up a closed selector in Reactor#add ([#3005])
-  * Add IOBuffer to Client, remove from ThreadPool thread instances ([#3013])
   * Fixup response processing, enumerable bodies ([#3004], [#3000])
   * Correctly close app body for all code paths ([#3002], [#2999])
+* Refactor 
+  * Add IOBuffer to Client, remove from ThreadPool thread instances ([#3013])
 
 ## 6.0.0 / 2022-10-14
 
