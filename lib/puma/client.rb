@@ -86,6 +86,9 @@ module Puma
       @requests_served = 0
       @hijacked = false
 
+      @http_content_length_limit = nil
+      @http_content_length_limit_exceeded = false
+
       @peerip = nil
       @peer_family = nil
       @listener = nil
@@ -98,9 +101,9 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded
 
-    attr_writer :peerip
+    attr_writer :peerip, :http_content_length_limit
 
     attr_accessor :remote_addr_header, :listener
 
@@ -210,6 +213,15 @@ module Puma
     end
 
     def try_to_finish
+      @http_content_length_limit_exceeded = env[CONTENT_LENGTH].to_i > @http_content_length_limit if env[CONTENT_LENGTH] && @http_content_length_limit
+
+      if @http_content_length_limit_exceeded
+        @buffer = nil
+        @body = EmptyBody
+        set_ready
+        return true
+      end
+
       return read_body if in_data_phase
 
       begin

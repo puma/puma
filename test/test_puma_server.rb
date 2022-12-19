@@ -383,6 +383,20 @@ EOF
     assert_equal expected_data, data
   end
 
+  def test_request_payload_too_large
+    server_run(http_content_length_limit: 10)
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 19\r\n\r\n"
+    sleep 0.5
+
+    sock << "hello world foo bar"
+    sleep 0.5
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 413 Payload Too Large\r\n", data
+  end
+
   def test_GET_with_no_body_has_sane_chunking
     server_run { [200, {}, []] }
 

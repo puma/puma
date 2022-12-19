@@ -1022,6 +1022,16 @@ module Puma
       @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
     end
 
+    # Specify how big the request payload should be.
+    # This limit is compared against CONTENT_LENGTH HTTP header.
+    # If the payload size (CONTENT_LENGTH) is larger than http_content_length_limit,
+    # HTTP 413 status code is returned.
+    #
+    # The default value for http_content_length_limit is nil.
+    def http_content_length_limit(limit)
+      @options[:http_content_length_limit] = limit
+    end
+
     private
 
     # To avoid adding cert_pem and key_pem as URI params, we store them on the
