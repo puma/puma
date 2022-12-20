@@ -88,6 +88,7 @@ module Puma
 
       @http_content_length_limit = nil
       @http_content_length_limit_exceeded = false
+      @http_content_length_size = 0
 
       @peerip = nil
       @peer_family = nil
@@ -154,6 +155,7 @@ module Puma
       @body_remain = 0
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
+      @http_content_length_size = 0
 
       if @buffer
         return false unless try_to_parse_proxy_protocol
@@ -213,7 +215,9 @@ module Puma
     end
 
     def try_to_finish
-      @http_content_length_limit_exceeded = env[CONTENT_LENGTH].to_i > @http_content_length_limit if env[CONTENT_LENGTH] && @http_content_length_limit
+      if env[CONTENT_LENGTH] && @http_content_length_limit
+        @http_content_length_limit_exceeded = env[CONTENT_LENGTH].to_i > @http_content_length_limit
+      end
 
       if @http_content_length_limit_exceeded
         @buffer = nil
@@ -250,6 +254,10 @@ module Puma
       return false unless try_to_parse_proxy_protocol
 
       @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
+
+      if @parser.finished? && @http_content_length_limit && (@parser.body.bytesize > @http_content_length_limit)
+        @http_content_length_limit_exceeded = true
+      end
 
       if @parser.finished?
         return setup_body

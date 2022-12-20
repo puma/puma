@@ -1023,10 +1023,13 @@ module Puma
     end
 
     # Specify how big the request payload should be.
-    # This limit is compared against CONTENT_LENGTH HTTP header.
+    # This limit is compared against Content-Length HTTP header.
     # If the payload size (CONTENT_LENGTH) is larger than http_content_length_limit,
     # HTTP 413 status code is returned.
     #
+    # When no Content-Length http header is present, it is compared against the
+    # size of the body of the request.
+     #
     # The default value for http_content_length_limit is nil.
     def http_content_length_limit(limit)
       @options[:http_content_length_limit] = limit
