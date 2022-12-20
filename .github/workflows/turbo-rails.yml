@@ -33,6 +33,8 @@ jobs:
       PUMA_NO_RUBOCOP: true
       RAILS_VERSION: "${{ matrix.rails-version }}"
       RUBY_ABI: ${{ matrix.abi }}
+      # below needs to be a recent released gem version, code below copies
+      # relevant Puma code into gem's install folder
       PUMA_VERS: 6.0.0
 
     steps:
