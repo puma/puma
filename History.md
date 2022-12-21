@@ -1,4 +1,4 @@
-## 6.0.1 / 2022-12-12
+## 6.0.1 / 2022-12-20
  
 * Bugfixes
   * Handle waking up a closed selector in Reactor#add ([#3005])
