@@ -86,15 +86,16 @@ module Puma
         UserFileDefaultOptions.new(options, Configuration::DEFAULTS)
       end
 
-      @log_writer          = @options.fetch :log_writer, LogWriter.stdio
-      @early_hints         = @options[:early_hints]
-      @first_data_timeout  = @options[:first_data_timeout]
-      @min_threads         = @options[:min_threads]
-      @max_threads         = @options[:max_threads]
-      @persistent_timeout  = @options[:persistent_timeout]
-      @queue_requests      = @options[:queue_requests]
-      @max_fast_inline     = @options[:max_fast_inline]
-      @io_selector_backend = @options[:io_selector_backend]
+      @log_writer              = @options.fetch :log_writer, LogWriter.stdio
+      @early_hints             = @options[:early_hints]
+      @first_data_timeout      = @options[:first_data_timeout]
+      @min_threads             = @options[:min_threads]
+      @max_threads             = @options[:max_threads]
+      @persistent_timeout      = @options[:persistent_timeout]
+      @queue_requests          = @options[:queue_requests]
+      @max_fast_inline         = @options[:max_fast_inline]
+      @io_selector_backend     = @options[:io_selector_backend]
+      @supported_http_methods  = @options[:supported_http_methods]
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true

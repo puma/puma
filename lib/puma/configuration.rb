@@ -133,6 +133,7 @@ module Puma
       debug: false,
       early_hints: nil,
       environment: 'development'.freeze,
+      supported_http_methods: Puma::Const::DEFAULT_SUPPORTED_HTTP_METHODS,
       # Number of seconds to wait until we get the first data for the request
       first_data_timeout: 30,
       io_selector_backend: :auto,

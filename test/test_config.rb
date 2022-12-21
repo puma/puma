@@ -473,6 +473,15 @@ class TestConfigFile < TestConfigFileBase
     assert_equal true, conf.options[:silence_single_worker_warning]
   end
 
+  def test_supported_http_methods_overwrite
+    conf = Puma::Configuration.new do |c|
+      c.supported_http_methods %w[PROPFIND PROPPATCH].to_set.freeze
+    end
+    conf.load
+
+    assert_equal %w[PROPFIND PROPPATCH].to_set.freeze, conf.options[:supported_http_methods]
+  end
+
   private
 
   def assert_run_hooks(hook_name, options = {})

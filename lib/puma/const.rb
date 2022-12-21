@@ -1,6 +1,8 @@
 #encoding: utf-8
 # frozen_string_literal: true
 
+require "set"
+
 module Puma
   class UnsupportedOption < RuntimeError
   end
@@ -147,15 +149,7 @@ module Puma
     MAX_BODY = MAX_HEADER
 
     REQUEST_METHOD = "REQUEST_METHOD".freeze
-    HEAD = "HEAD".freeze
-    GET = "GET".freeze
-    POST = "POST".freeze
-    PUT = "PUT".freeze
-    DELETE = "DELETE".freeze
-    OPTIONS = "OPTIONS".freeze
-    TRACE = "TRACE".freeze
-    PATCH = "PATCH".freeze
-    SUPPORTED_HTTP_METHODS = [HEAD, GET, POST, PUT, DELETE, OPTIONS, TRACE, PATCH].freeze
+    DEFAULT_SUPPORTED_HTTP_METHODS = %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH].to_set.freeze
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
     LINE_END = "\r\n".freeze
     REMOTE_ADDR = "REMOTE_ADDR".freeze

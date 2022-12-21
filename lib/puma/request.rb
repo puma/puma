@@ -88,7 +88,7 @@ module Puma
       env[RACK_AFTER_REPLY] ||= []
 
       begin
-        if SUPPORTED_HTTP_METHODS.include?(env[REQUEST_METHOD])
+        if @supported_http_methods.include?(env[REQUEST_METHOD])
           status, headers, app_body = @thread_pool.with_force_shutdown do
             @app.call(env)
           end
@@ -547,7 +547,7 @@ module Puma
       colon = COLON
 
       resp_info = {}
-      resp_info[:no_body] = env[REQUEST_METHOD] == HEAD
+      resp_info[:no_body] = env[REQUEST_METHOD] == "HEAD"
 
       http_11 = env[SERVER_PROTOCOL] == HTTP_11
       if http_11
