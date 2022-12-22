@@ -387,10 +387,7 @@ EOF
     server_run(http_content_length_limit: 10)
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 19\r\n\r\n"
-    sleep 0.5
-
     sock << "hello world foo bar"
-    sleep 0.5
 
     data = sock.gets
 
