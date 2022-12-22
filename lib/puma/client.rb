@@ -156,6 +156,7 @@ module Puma
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
       @http_content_length_size = 0
+      @http_content_length_limit_exceeded = false
 
       if @buffer
         return false unless try_to_parse_proxy_protocol
