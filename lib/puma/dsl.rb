@@ -1022,7 +1022,7 @@ module Puma
       @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
     end
 
-    # Specify how big the request payload should be.
+    # Specify how big the request payload should be, in bytes.
     # This limit is compared against Content-Length HTTP header.
     # If the payload size (CONTENT_LENGTH) is larger than http_content_length_limit,
     # HTTP 413 status code is returned.
