@@ -9,6 +9,7 @@ class IO
 end
 
 require_relative 'detect'
+require_relative 'io_buffer'
 require 'tempfile'
 require 'forwardable'
 
@@ -65,6 +66,7 @@ module Puma
     def initialize(io, env=nil)
       @io = io
       @to_io = io.to_io
+      @io_buffer = IOBuffer.new
       @proto_env = env
       @env = env ? env.dup : nil
 
@@ -96,7 +98,7 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile
+                :tempfile, :io_buffer
 
     attr_writer :peerip
 
@@ -138,6 +140,7 @@ module Puma
 
     def reset(fast_check=true)
       @parser.reset
+      @io_buffer.reset
       @read_header = true
       @read_proxy = !!@expect_proxy_proto
       @env = @proto_env.dup

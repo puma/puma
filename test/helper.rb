@@ -116,7 +116,7 @@ end
 module TestSkips
 
   HAS_FORK = ::Process.respond_to? :fork
-  UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
+  UNIX_SKT_EXIST = Object.const_defined?(:UNIXSocket) && !Puma::IS_WINDOWS
 
   MSG_FORK = "Kernel.fork isn't available on #{RUBY_ENGINE} on #{RUBY_PLATFORM}"
   MSG_UNIX = "UNIXSockets aren't available on the #{RUBY_PLATFORM} platform"

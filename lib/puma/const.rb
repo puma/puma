@@ -99,9 +99,9 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "6.0.0"
+    PUMA_VERSION = VERSION = "6.0.1"
     CODE_NAME = "Sunflower"
-
+    
     PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
 
     FAST_TRACK_KA_TIMEOUT = 0.2

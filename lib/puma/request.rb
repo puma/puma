@@ -14,15 +14,18 @@ module Puma
   #
   module Request # :nodoc:
 
-    # determines whether to write body to io_buffer first, or straight to socket
-    # also fixes max size of chunked body read when bosy is an IO.
-    BODY_LEN_MAX   = 1_024 * 256
+    # Single element array body: smaller bodies are written to io_buffer first,
+    # then a single write from io_buffer. Larger sizes are written separately.
+    # Also fixes max size of chunked file body read.
+    BODY_LEN_MAX = 1_024 * 256
 
-    # size divide for using copy_stream on body
+    # File body: smaller bodies are combined with io_buffer, then written to
+    # socket.  Larger bodies are written separately using `copy_stream`
     IO_BODY_MAX = 1_024 * 64
 
-    # max size for io_buffer, force write when exceeded
-    IO_BUFFER_LEN_MAX = 1_024 * 1_024 * 4
+    # Array body: elements are collected in io_buffer.  When io_buffer's size
+    # exceeds value, they are written to the socket.
+    IO_BUFFER_LEN_MAX = 1_024 * 512
 
     SOCKET_WRITE_ERR_MSG = "Socket timeout writing data"
 
@@ -41,12 +44,12 @@ module Puma
     #
     # Finally, it'll return +true+ on keep-alive connections.
     # @param client [Puma::Client]
-    # @param io_buffer [Puma::IOBuffer]
     # @param requests [Integer]
     # @return [Boolean,:async]
     #
-    def handle_request(client, io_buffer, requests)
+    def handle_request(client, requests)
       env = client.env
+      io_buffer = client.io_buffer
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
 
@@ -119,7 +122,7 @@ module Puma
 
         status, headers, res_body = lowlevel_error(e, env, 500)
       end
-      prepare_response(status, headers, res_body, io_buffer, requests, client)
+      prepare_response(status, headers, res_body, requests, client)
     ensure
       io_buffer.reset
       uncork_socket client.io
@@ -134,45 +137,48 @@ module Puma
     end
 
     # Assembles the headers and prepares the body for actually sending the
-    # response via #fast_write_response.
+    # response via `#fast_write_response`.
     #
     # @param status [Integer] the status returned by the Rack application
     # @param headers [Hash] the headers returned by the Rack application
     # @param res_body [Array] the body returned by the Rack application or
-    #   a call to `lowlevel_error`
-    # @param io_buffer [Puma::IOBuffer] modified in place
+    #   a call to `Server#lowlevel_error`
     # @param requests [Integer] number of inline requests handled
     # @param client [Puma::Client]
-    # @return [Boolean,:async]
-    def prepare_response(status, headers, res_body, io_buffer, requests, client)
+    # @return [Boolean,:async] keep-alive status or `:async`
+    def prepare_response(status, headers, res_body, requests, client)
       env = client.env
       socket = client.io
+      io_buffer = client.io_buffer
 
       return false if closed_socket?(socket)
 
-      resp_info = str_headers(env, status, headers, res_body, io_buffer, requests, client)
+      # Close the connection after a reasonable number of inline requests
+      # if the server is at capacity and the listener has a new connection ready.
+      # This allows Puma to service connections fairly when the number
+      # of concurrent connections exceeds the size of the threadpool.
+      force_keep_alive = requests < @max_fast_inline ||
+        @thread_pool.busy_threads < @max_threads ||
+        !client.listener.to_io.wait_readable(0)
+
+      resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
+
+      close_body = false
 
       # below converts app_body into body, dependent on app_body's characteristics, and
       # resp_info[:content_length] will be set if it can be determined
       if !resp_info[:content_length] && !resp_info[:transfer_encoding] && status != 204
-        if res_body.respond_to?(:to_ary)
-          length = 0
-          if array_body = res_body.to_ary
-            body = array_body.map { |part| length += part.bytesize; part }
-          elsif res_body.is_a?(::File) && res_body.respond_to?(:size)
-            length = res_body.size
-          elsif res_body.respond_to?(:each)
-            body = []
-            res_body.each { |part| length += part.bytesize; body << part }
-          end
-          resp_info[:content_length] = length
+        if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary)
+          body = array_body
+          resp_info[:content_length] = body.sum(&:bytesize)
         elsif res_body.is_a?(File) && res_body.respond_to?(:size)
-          resp_info[:content_length] = res_body.size
           body = res_body
+          resp_info[:content_length] = body.size
         elsif res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
             File.readable?(fn = res_body.to_path)
           body = File.open fn, 'rb'
           resp_info[:content_length] = body.size
+          close_body = true
         else
           body = res_body
         end
@@ -180,6 +186,17 @@ module Puma
           File.readable?(fn = res_body.to_path)
         body = File.open fn, 'rb'
         resp_info[:content_length] = body.size
+        close_body = true
+      elsif !res_body.is_a?(::File) && res_body.respond_to?(:filename) && res_body.respond_to?(:each) &&
+          res_body.respond_to?(:bytesize) && File.readable?(fn = res_body.filename)
+        # Sprockets::Asset
+        resp_info[:content_length] = res_body.bytesize unless resp_info[:content_length]
+        if res_body.to_hash[:source]   # use each to return @source
+          body = res_body
+        else                           # avoid each and use a File object
+          body = File.open fn, 'rb'
+          close_body = true
+        end
       else
         body = res_body
       end
@@ -203,7 +220,8 @@ module Puma
         end
 
         io_buffer << LINE_END
-        fast_write_str socket, io_buffer.to_s
+        fast_write_str socket, io_buffer.read_and_reset
+        socket.flush
         return keep_alive
       end
       if content_length
@@ -217,12 +235,13 @@ module Puma
       io_buffer << line_ending
 
       if response_hijack
-        fast_write_str socket, io_buffer.to_s
+        fast_write_str socket, io_buffer.read_and_reset
         response_hijack.call socket
         return :async
       end
 
       fast_write_response socket, body, io_buffer, chunked, content_length.to_i
+      body.close if close_body
       keep_alive
     end
 
@@ -239,10 +258,10 @@ module Puma
 
     # Used to write 'early hints', 'no body' responses, 'hijacked' responses,
     # and body segments (called by `fast_write_response`).
-    # Writes a string to an io (normally `Client#io`) using `write_nonblock`.
+    # Writes a string to a socket (normally `Client#io`) using `write_nonblock`.
     # Large strings may not be written in one pass, especially if `io` is a
     # `MiniSSL::Socket`.
-    # @param io [#write_nonblock] the io to write to
+    # @param socket [#write_nonblock] the request/response socket
     # @param str [String] the string written to the io
     # @raise [ConnectionError]
     #
@@ -251,7 +270,7 @@ module Puma
       byte_size = str.bytesize
       while n < byte_size
         begin
-          n += socket.syswrite(n.zero? ? str : str.byteslice(n..-1))
+          n += socket.write_nonblock(n.zero? ? str : str.byteslice(n..-1))
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK
           unless socket.wait_writable WRITE_TIMEOUT
             raise ConnectionError, SOCKET_WRITE_ERR_MSG
@@ -269,39 +288,41 @@ module Puma
     # @param socket [#write] the response socket
     # @param body [Enumerable, File] the body object
     # @param io_buffer [Puma::IOBuffer] contains headers
-    # @param chunk [Boolean]
+    # @param chunked [Boolean]
+    # @paramn content_length [Integer
     # @raise [ConnectionError]
     #
     def fast_write_response(socket, body, io_buffer, chunked, content_length)
-      if body.is_a?(::File) || body.respond_to?(:read) || body.respond_to?(:readpartial)
+      if body.is_a?(::File) && body.respond_to?(:read)
         if chunked  # would this ever happen?
           while part = body.read(BODY_LEN_MAX)
             io_buffer.append part.bytesize.to_s(16), LINE_END, part, LINE_END
           end
-          io_buffer << CLOSE_CHUNKED
-          fast_write_str socket, io_buffer.to_s
+          fast_write_str socket, CLOSE_CHUNKED
         else
           if content_length <= IO_BODY_MAX
-            io_buffer.write body.sysread(content_length)
-            fast_write_str socket, io_buffer.to_s
+            io_buffer.write body.read(content_length)
+            fast_write_str socket, io_buffer.read_and_reset
           else
-            fast_write_str socket, io_buffer.to_s
+            fast_write_str socket, io_buffer.read_and_reset
             IO.copy_stream body, socket
           end
         end
-        body.close
       elsif body.is_a?(::Array) && body.length == 1
-        body_first = body.first
-        if body_first.is_a?(::String) && body_first.bytesize >= BODY_LEN_MAX
-          # large body, write both header & body to socket
-          fast_write_str socket, io_buffer.to_s
-          fast_write_str socket, body_first
-        else
-          # smaller body, write to stream first
+        body_first = nil
+        # using body_first = body.first causes issues?
+        body.each { |str| body_first ||= str }
+
+        if body_first.is_a?(::String) && body_first.bytesize < BODY_LEN_MAX
+          # smaller body, write to io_buffer first
           io_buffer.write body_first
-          fast_write_str socket, io_buffer.to_s
+          fast_write_str socket, io_buffer.read_and_reset
+        else
+          # large body, write both header & body to socket
+          fast_write_str socket, io_buffer.read_and_reset
+          fast_write_str socket, body_first
         end
-      else
+      elsif body.is_a?(::Array)
         # for array bodies, flush io_buffer to socket when size is greater than
         # IO_BUFFER_LEN_MAX
         if chunked
@@ -309,8 +330,7 @@ module Puma
             next if (byte_size = part.bytesize).zero?
             io_buffer.append byte_size.to_s(16), LINE_END, part, LINE_END
             if io_buffer.length > IO_BUFFER_LEN_MAX
-              fast_write_str socket, io_buffer.to_s
-              io_buffer.reset
+              fast_write_str socket, io_buffer.read_and_reset
             end
           end
           io_buffer.write CLOSE_CHUNKED
@@ -319,13 +339,31 @@ module Puma
             next if part.bytesize.zero?
             io_buffer.write part
             if io_buffer.length > IO_BUFFER_LEN_MAX
-              fast_write_str socket, io_buffer.to_s
-              io_buffer.reset
+              fast_write_str socket, io_buffer.read_and_reset
             end
           end
         end
-        fast_write_str(socket, io_buffer.to_s) unless io_buffer.length.zero?
+        # may write last body part for non-chunked, also headers if array is empty
+        fast_write_str(socket, io_buffer.read_and_reset) unless io_buffer.length.zero?
+      else
+        # for enum bodies
+        fast_write_str socket, io_buffer.read_and_reset
+        if chunked
+          body.each do |part|
+            next if (byte_size = part.bytesize).zero?
+             fast_write_str socket, (byte_size.to_s(16) << LINE_END)
+             fast_write_str socket, part
+             fast_write_str socket, LINE_END
+          end
+          fast_write_str socket, CLOSE_CHUNKED
+        else
+          body.each do |part|
+            next if part.bytesize.zero?
+            fast_write_str socket, part
+          end
+        end
       end
+      socket.flush
     rescue Errno::EAGAIN, Errno::EWOULDBLOCK
       raise ConnectionError, SOCKET_WRITE_ERR_MSG
     rescue  Errno::EPIPE, SystemCallError, IOError
@@ -498,12 +536,13 @@ module Puma
     # @param content_length [Integer,nil] content length if it can be determined from the
     #   response body
     # @param io_buffer [Puma::IOBuffer] modified inn place
-    # @param requests [Integer] number of inline requests handled
-    # @param client [Puma::Client]
+    # @param force_keep_alive [Boolean] 'anded' with keep_alive, based on system
+    #   status and `@max_fast_inline`
     # @return [Hash] resp_info
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_body, io_buffer, requests, client)
+    def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
+
       line_ending = LINE_END
       colon = COLON
 
@@ -546,13 +585,8 @@ module Puma
       # if running without request queueing
       resp_info[:keep_alive] &&= @queue_requests
 
-      # Close the connection after a reasonable number of inline requests
-      # if the server is at capacity and the listener has a new connection ready.
-      # This allows Puma to service connections fairly when the number
-      # of concurrent connections exceeds the size of the threadpool.
-      resp_info[:keep_alive] &&= requests < @max_fast_inline ||
-        @thread_pool.busy_threads < @max_threads ||
-        !client.listener.to_io.wait_readable(0)
+      # see prepare_response
+      resp_info[:keep_alive] &&= force_keep_alive
 
       resp_info[:response_hijack] = nil
 
@@ -562,7 +596,8 @@ module Puma
         case k.downcase
         when CONTENT_LENGTH2
           next if illegal_header_value?(vs)
-          resp_info[:content_length] = vs
+          # nil.to_i is 0, nil&.to_i is nil
+          resp_info[:content_length] = vs&.to_i
           next
         when TRANSFER_ENCODING
           resp_info[:allow_chunked] = false
