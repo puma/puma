@@ -3,8 +3,6 @@
 # Standard libraries
 require 'socket'
 require 'tempfile'
-require 'time'
-require 'etc'
 require 'uri'
 require 'stringio'
 

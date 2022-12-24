@@ -6,8 +6,6 @@ require_relative 'plugin'
 require_relative 'cluster/worker_handle'
 require_relative 'cluster/worker'
 
-require 'time'
-
 module Puma
   # This class is instantiated by the `Puma::Launcher` and used
   # to boot and serve a Ruby application when puma "workers" are needed
@@ -252,18 +250,18 @@ module Puma
       old_worker_count = @workers.count { |w| w.phase != @phase }
       worker_status = @workers.map do |w|
         {
-          started_at: w.started_at.utc.iso8601,
+          started_at: utc_iso8601(w.started_at),
           pid: w.pid,
           index: w.index,
           phase: w.phase,
           booted: w.booted?,
-          last_checkin: w.last_checkin.utc.iso8601,
+          last_checkin: utc_iso8601(w.last_checkin),
           last_status: w.last_status,
         }
       end
 
       {
-        started_at: @started_at.utc.iso8601,
+        started_at: utc_iso8601(@started_at),
         workers: @workers.size,
         phase: @phase,
         booted_workers: worker_status.count { |w| w[:booted] },

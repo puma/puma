@@ -16,7 +16,7 @@ module Puma
     # @!attribute [r] stats
     def stats
       {
-        started_at: @started_at.utc.iso8601
+        started_at: utc_iso8601(@started_at)
       }.merge(@server.stats).merge(super)
     end
 
