@@ -10,9 +10,7 @@ jobs:
     uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
 
   rubocop:
-    name: 'Rubocop linting'
-    needs: skip_duplicate_runs
-    if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+    name: RuboCop linting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
