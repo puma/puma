@@ -27,6 +27,7 @@ jobs:
         include:
           - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '6.1', abi: '3.1.0'   }
           - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '7.0', abi: '3.1.0'   }
+          - { os: ubuntu-20.04 , ruby: '3.2', rails-version: '7.0', abi: '3.2.0'   }
           - { os: ubuntu-22.04 , ruby: head , rails-version: '7.0', abi: '3.2.0+3' }
     env:
       CI: true
