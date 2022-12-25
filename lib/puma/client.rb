@@ -88,7 +88,6 @@ module Puma
 
       @http_content_length_limit = nil
       @http_content_length_limit_exceeded = false
-      @http_content_length_size = 0
 
       @peerip = nil
       @peer_family = nil
@@ -155,7 +154,6 @@ module Puma
       @body_remain = 0
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
-      @http_content_length_size = 0
       @http_content_length_limit_exceeded = false
 
       if @buffer
