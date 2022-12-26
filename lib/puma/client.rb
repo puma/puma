@@ -214,8 +214,8 @@ module Puma
     end
 
     def try_to_finish
-      if env[CONTENT_LENGTH] && @http_content_length_limit
-        @http_content_length_limit_exceeded = env[CONTENT_LENGTH].to_i > @http_content_length_limit
+      if env[CONTENT_LENGTH] && above_http_content_limit(env[CONTENT_LENGTH].to_i)
+        @http_content_length_limit_exceeded = true
       end
 
       if @http_content_length_limit_exceeded
@@ -254,7 +254,7 @@ module Puma
 
       @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
 
-      if @parser.finished? && @http_content_length_limit && (@parser.body.bytesize > @http_content_length_limit)
+      if @parser.finished? && above_http_content_limit(@parser.body.bytesize)
         @http_content_length_limit_exceeded = true
       end
 
@@ -612,6 +612,10 @@ module Puma
       end
       @requests_served += 1
       @ready = true
+    end
+
+    def above_http_content_limit(value)
+      @http_content_length_limit&.< value
     end
   end
 end
