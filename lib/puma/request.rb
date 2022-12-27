@@ -547,7 +547,7 @@ module Puma
       colon = COLON
 
       resp_info = {}
-      resp_info[:no_body] = env[REQUEST_METHOD] == "HEAD"
+      resp_info[:no_body] = env[REQUEST_METHOD] == HEAD
 
       http_11 = env[SERVER_PROTOCOL] == HTTP_11
       if http_11

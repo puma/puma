@@ -149,6 +149,7 @@ module Puma
     MAX_BODY = MAX_HEADER
 
     REQUEST_METHOD = "REQUEST_METHOD".freeze
+    HEAD = "HEAD"
     DEFAULT_SUPPORTED_HTTP_METHODS = %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH].to_set.freeze
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
     LINE_END = "\r\n".freeze
