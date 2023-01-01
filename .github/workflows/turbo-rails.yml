@@ -25,15 +25,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '6.1', abi: '3.1.0'   }
-          - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '7.0', abi: '3.1.0'   }
-          - { os: ubuntu-20.04 , ruby: '3.2', rails-version: '7.0', abi: '3.2.0'   }
-          - { os: ubuntu-22.04 , ruby: head , rails-version: '7.0', abi: '3.2.0+3' }
+          - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '6.1' }
+          - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '7.0' }
+          - { os: ubuntu-20.04 , ruby: '3.2', rails-version: '7.0' }
+          - { os: ubuntu-22.04 , ruby: head , rails-version: '7.0' }
     env:
       CI: true
       PUMA_NO_RUBOCOP: true
       RAILS_VERSION: "${{ matrix.rails-version }}"
-      RUBY_ABI: ${{ matrix.abi }}
       # below needs to be a recent released gem version, code below copies
       # relevant Puma code into gem's install folder
       PUMA_VERS: 6.0.0
@@ -60,6 +59,7 @@ jobs:
       - name: turbo-rails bundle install
         working-directory: ../../turbo-rails
         run: |
+          RUBY_ABI=$(ruby -e 'STDOUT.write RbConfig::CONFIG["ruby_version"]')
           # fix Puma version, copying files from repo lib later
           SRC="gem 'puma'"
           DST="gem 'puma', '$PUMA_VERS'"
