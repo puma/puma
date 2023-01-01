@@ -117,7 +117,7 @@ module Puma
           server_thread = server.run
 
           if @log_writer.debug? && index == 0
-            debug_loaded_extensions "────────────────────────────────── Loaded Extensions - worker 0:"
+            debug_loaded_extensions "Loaded Extensions - worker 0:"
           end
 
           stat_thread ||= Thread.new(@worker_write) do |io|
