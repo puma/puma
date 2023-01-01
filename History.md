@@ -1,3 +1,9 @@
+## 6.0.2 / 2023-01-01
+
+* Refactor
+  * Remove use of etc and time gems in Puma ([#3035], [#3033])
+  * Refactor const.rb - freeze ([#3016])
+
 ## 6.0.1 / 2022-12-20
  
 * Bugfixes
@@ -1926,12 +1932,15 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3035]:https://github.com/puma/puma/pull/3035     "PR by @MSP-Greg, merged 2022-12-24"
+[#3033]:https://github.com/puma/puma/issues/3033   "Issue by @jules-w2, closed 2022-12-24"
+[#3016]:https://github.com/puma/puma/pull/3016     "PR by @MSP-Greg, merged 2022-12-24"
 [#3005]:https://github.com/puma/puma/pull/3005     "PR by @JuanitoFatas, merged 2022-11-04"
-[#3013]:https://github.com/puma/puma/pull/3013     "PR by @MSP-Greg, merged 2022-11-13"
 [#3004]:https://github.com/puma/puma/pull/3004     "PR by @MSP-Greg, merged 2022-11-24"
 [#3000]:https://github.com/puma/puma/issues/3000   "Issue by @dentarg, closed 2022-11-24"
 [#3002]:https://github.com/puma/puma/pull/3002     "PR by @MSP-Greg, merged 2022-11-03"
 [#2999]:https://github.com/puma/puma/issues/2999   "Issue by @aymeric-ledorze, closed 2022-11-03"
+[#3013]:https://github.com/puma/puma/pull/3013     "PR by @MSP-Greg, merged 2022-11-13"
 [#2919]:https://github.com/puma/puma/pull/2919     "PR by @MSP-Greg, merged 2022-08-30"
 [#2652]:https://github.com/puma/puma/issues/2652   "Issue by @Roguelazer, closed 2022-09-04"
 [#2653]:https://github.com/puma/puma/pull/2653     "PR by @Roguelazer, closed 2022-03-07"
