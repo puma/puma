@@ -167,6 +167,7 @@ module Puma
       worker_shutdown_timeout: 30,
       worker_timeout: 60,
       workers: 0,
+      http_content_length_limit: nil
     }
 
     def initialize(user_options={}, default_options = {}, &block)

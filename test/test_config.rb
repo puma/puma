@@ -473,6 +473,14 @@ class TestConfigFile < TestConfigFileBase
     assert_equal true, conf.options[:silence_single_worker_warning]
   end
 
+  def test_http_content_length_limit
+    assert_nil Puma::Configuration.new.options.default_options[:http_content_length_limit]
+
+    conf = Puma::Configuration.new({ http_content_length_limit: 10000})
+
+    assert_equal 10000, conf.final_options[:http_content_length_limit]
+  end
+
   private
 
   def assert_run_hooks(hook_name, options = {})

@@ -95,6 +95,7 @@ module Puma
       @queue_requests      = @options[:queue_requests]
       @max_fast_inline     = @options[:max_fast_inline]
       @io_selector_backend = @options[:io_selector_backend]
+      @http_content_length_limit = @options[:http_content_length_limit]
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -334,6 +335,7 @@ module Puma
                 drain += 1 if shutting_down?
                 pool << Client.new(io, @binder.env(sock)).tap { |c|
                   c.listener = sock
+                  c.http_content_length_limit = @http_content_length_limit
                   c.send(addr_send_name, addr_value) if addr_value
                 }
               end
