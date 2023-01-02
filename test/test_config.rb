@@ -480,8 +480,8 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     assert_equal 2, conf.options[:supported_http_methods].size
-    assert_includes(conf.options[:supported_http_methods], "PROPFIND")
-    assert_includes(conf.options[:supported_http_methods], "PROPPATCH")
+    assert_includes conf.options[:supported_http_methods], "PROPFIND"
+    assert_includes conf.options[:supported_http_methods], "PROPPATCH"
   end
 
   private
