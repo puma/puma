@@ -182,6 +182,10 @@ module Puma
       end
     end
 
+    def utc_iso8601(val)
+      "#{val.utc.strftime '%FT%T'}Z"
+    end
+
     def stats
       {
         versions: {

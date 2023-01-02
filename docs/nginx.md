@@ -2,7 +2,7 @@
 
 This is a very common setup using an upstream. It was adapted from some Capistrano recipe I found on the Internet a while ago.
 
-```
+```nginx
 upstream myapp {
   server unix:///myapp/tmp/puma.sock;
 }
