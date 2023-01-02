@@ -399,7 +399,7 @@ module Puma
     # List of HTTP methods that will be considered valid.
     # Any other method will raise "501 Not Implemented".
     #
-    # The default is %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH].to_set.freeze
+    # The default is %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH]
     #
     # @example
     #   # If you need to support all extended HTTP methods (as described in
@@ -411,9 +411,9 @@ module Puma
     #     MKREDIRECTREF MKWORKSPACE MOVE OPTIONS ORDERPATCH PATCH POST
     #     PRI PROPFIND PROPPATCH PUT REBIND REPORT SEARCH TRACE UNBIND
     #     UNCHECKOUT UNLINK UNLOCK UPDATE UPDATEREDIRECTREF VERSION-CONTROL
-    #   ].to_set.freeze
+    #   ]
     def supported_http_methods(methods)
-      @options[:supported_http_methods] = methods
+      @options[:supported_http_methods] = methods.zip([nil]).to_h.freeze
     end
 
     # Store the pid of the server in the file at "path".

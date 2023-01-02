@@ -1,8 +1,6 @@
 #encoding: utf-8
 # frozen_string_literal: true
 
-require "set"
-
 module Puma
   class UnsupportedOption < RuntimeError
   end
@@ -150,7 +148,7 @@ module Puma
 
     REQUEST_METHOD = "REQUEST_METHOD".freeze
     HEAD = "HEAD"
-    DEFAULT_SUPPORTED_HTTP_METHODS = %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH].to_set.freeze
+    DEFAULT_SUPPORTED_HTTP_METHODS = %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH].zip([nil]).to_h.freeze
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
     LINE_END = "\r\n".freeze
     REMOTE_ADDR = "REMOTE_ADDR".freeze

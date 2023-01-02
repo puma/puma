@@ -475,11 +475,13 @@ class TestConfigFile < TestConfigFileBase
 
   def test_supported_http_methods_overwrite
     conf = Puma::Configuration.new do |c|
-      c.supported_http_methods %w[PROPFIND PROPPATCH].to_set.freeze
+      c.supported_http_methods %w[PROPFIND PROPPATCH]
     end
     conf.load
 
-    assert_equal %w[PROPFIND PROPPATCH].to_set.freeze, conf.options[:supported_http_methods]
+    assert_equal 2, conf.options[:supported_http_methods].size
+    assert_includes(conf.options[:supported_http_methods], "PROPFIND")
+    assert_includes(conf.options[:supported_http_methods], "PROPPATCH")
   end
 
   private
