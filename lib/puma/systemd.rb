@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'sd_notify'
+require_relative 'sd_notify'
 
 module Puma
   class Systemd

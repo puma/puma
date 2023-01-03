@@ -12,7 +12,6 @@ gem "minitest", "~> 5.11"
 gem "minitest-retry"
 gem "minitest-proveit"
 gem "minitest-stub-const"
-gem "sd_notify"
 
 gem "jruby-openssl", :platform => "jruby"
 
