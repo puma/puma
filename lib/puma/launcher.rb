@@ -318,12 +318,7 @@ module Puma
     def integrate_with_systemd
       return unless ENV["NOTIFY_SOCKET"]
 
-      begin
-        require_relative 'systemd'
-      rescue LoadError
-        log "Systemd integration failed. It looks like you're trying to use systemd notify but don't have sd_notify gem installed"
-        return
-      end
+      require_relative 'systemd'
 
       log "* Enabling systemd notification integration"
 

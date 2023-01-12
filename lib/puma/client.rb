@@ -86,6 +86,9 @@ module Puma
       @requests_served = 0
       @hijacked = false
 
+      @http_content_length_limit = nil
+      @http_content_length_limit_exceeded = false
+
       @peerip = nil
       @peer_family = nil
       @listener = nil
@@ -98,9 +101,9 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded
 
-    attr_writer :peerip
+    attr_writer :peerip, :http_content_length_limit
 
     attr_accessor :remote_addr_header, :listener
 
@@ -151,6 +154,7 @@ module Puma
       @body_remain = 0
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
+      @http_content_length_limit_exceeded = false
 
       if @buffer
         return false unless try_to_parse_proxy_protocol
@@ -210,6 +214,17 @@ module Puma
     end
 
     def try_to_finish
+      if env[CONTENT_LENGTH] && above_http_content_limit(env[CONTENT_LENGTH].to_i)
+        @http_content_length_limit_exceeded = true
+      end
+
+      if @http_content_length_limit_exceeded
+        @buffer = nil
+        @body = EmptyBody
+        set_ready
+        return true
+      end
+
       return read_body if in_data_phase
 
       begin
@@ -238,6 +253,10 @@ module Puma
       return false unless try_to_parse_proxy_protocol
 
       @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
+
+      if @parser.finished? && above_http_content_limit(@parser.body.bytesize)
+        @http_content_length_limit_exceeded = true
+      end
 
       if @parser.finished?
         return setup_body
@@ -593,6 +612,10 @@ module Puma
       end
       @requests_served += 1
       @ready = true
+    end
+
+    def above_http_content_limit(value)
+      @http_content_length_limit&.< value
     end
   end
 end

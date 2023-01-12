@@ -1,8 +1,6 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
-require 'sd_notify'
-
 class TestIntegrationSystemd < TestIntegration
   def setup
     skip "Skipped because Systemd support is linux-only" if windows? || osx?

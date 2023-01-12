@@ -53,7 +53,12 @@ module Puma
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
 
+
       return false if closed_socket?(socket)
+
+      if client.http_content_length_limit_exceeded
+        return prepare_response(413, {}, ["Payload Too Large"], requests, client)
+      end
 
       normalize_env env, client
 
