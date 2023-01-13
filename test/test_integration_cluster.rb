@@ -448,6 +448,14 @@ RUBY
     File.unlink file1 if File.file? file1
   end
 
+  def test_puma_debug_loaded_exts
+    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true
+
+    assert wait_for_server_to_include('Loaded Extensions - worker 0:')
+    assert wait_for_server_to_include('Loaded Extensions - master:')
+    @pid = @server.pid
+  end
+
   private
 
   def worker_timeout(timeout, iterations, details, config)

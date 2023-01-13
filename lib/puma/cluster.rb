@@ -467,6 +467,7 @@ module Puma
                   @events.fire(:ping!, w)
                   if !booted && @workers.none? {|worker| worker.last_status.empty?}
                     @events.fire_on_booted!
+                    debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
                     booted = true
                   end
                 end
@@ -476,6 +477,7 @@ module Puma
             end
             if in_phased_restart && workers_not_booted.zero?
               @events.fire_on_booted!
+              debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
               in_phased_restart = false
             end
 
