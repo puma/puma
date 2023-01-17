@@ -1,5 +1,4 @@
-
-name: Ensure pull requests are labeled
+name: Ensure pull requests are labelled
 on:
   pull_request:
     types: [opened, labeled, unlabeled]
@@ -13,16 +12,17 @@ jobs:
       - uses: actions/github-script@v6
         with:
           script: |
-            const {data: allLabels} = await github.rest.issues.listLabelsOnIssue({
+            const {data: labels} = await github.rest.issues.listLabelsOnIssue({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
             })
+
+            console.log(labels)
             
-            const labels = allLabels.filter(label => !label.name.includes("waiting"))
+            const requiredLabels = ["security", "feature", "bug", "perf", "refactor", "maintenance", "docs"]
+            const labelsPresent = labels.some((label) => requiredLabels.includes(label.name))
             
-            if (labels.length > 0) {
-              console.log(labels)
-            } else {
-              throw new Error("All pull requests require at least one label")
+            if (!labelsPresent) {
+              throw new Error(`All pull requests require at least one of the required labels ${requiredLabels}`)
             }
