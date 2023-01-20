@@ -78,7 +78,7 @@ jobs:
       # fixes 'has a bug that prevents `required_ruby_version`'
       - name: update rubygems for Ruby 2.4 - 2.5
         if: |
-          contains('2.4 2.5', matrix.ruby) && 
+          contains('2.4 2.5 2.6', matrix.ruby) && 
           (needs.skip_duplicate_runs.outputs.should_skip != 'true')
         run: gem update --system 3.3.14 --no-document
         continue-on-error: true
