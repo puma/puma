@@ -2,6 +2,7 @@
 
 require_relative '../rack/handler/puma'
 
+# rackup was removed in Rack 3, it is now a separate gem
 if Object.const_defined? :Rackup
   module Rackup
     module Handler
@@ -10,7 +11,7 @@ if Object.const_defined? :Rackup
       end
     end
   end
-else
+elsif Object.const_defined?(:Rack) && Rack::RELEASE < '3'
   module Rack
     module Handler
       def self.default(options = {})
@@ -18,4 +19,6 @@ else
       end
     end
   end
+else
+  raise "Rack 3 must be used with the Rackup gem"
 end
