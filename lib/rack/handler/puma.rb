@@ -1,26 +1,18 @@
 # frozen_string_literal: true
 
-# Code below is 'odd', but don't want to define a top level constant
-
-if Object.const_defined? :Rackup
-  require 'rackup/handler'
-  ::Rackup::Handler
-else
-  require 'rack/handler'
-  ::Rack::Handler
-end.module_eval <<'HEREDOC'
-  module Puma
+# This module is used as an 'include' file in code at bottom of file
+module Puma
+  module RackHandler
     DEFAULT_OPTIONS = {
       :Verbose => false,
       :Silent  => false
     }
 
-    def self.config(app, options = {})
-      # `require_relative` won't work with `module_eval`
-      require 'puma'
-      require 'puma/configuration'
-      require 'puma/log_writer'
-      require 'puma/launcher'
+    def config(app, options = {})
+      require_relative '../../puma'
+      require_relative '../../puma/configuration'
+      require_relative '../../puma/log_writer'
+      require_relative '../../puma/launcher'
 
       default_options = DEFAULT_OPTIONS.dup
 
@@ -66,7 +58,7 @@ end.module_eval <<'HEREDOC'
       conf
     end
 
-    def self.run(app, **options)
+    def run(app, **options)
       conf   = self.config(app, options)
 
       log_writer = options.delete(:Silent) ? ::Puma::LogWriter.strings : ::Puma::LogWriter.stdio
@@ -83,7 +75,7 @@ end.module_eval <<'HEREDOC'
       end
     end
 
-    def self.valid_options
+    def valid_options
       {
         "Host=HOST"       => "Hostname to listen on (default: localhost)",
         "Port=PORT"       => "Port to listen on (default: 8080)",
@@ -92,7 +84,7 @@ end.module_eval <<'HEREDOC'
       }
     end
 
-    def self.set_host_port_to_config(host, port, config)
+    def set_host_port_to_config(host, port, config)
       config.clear_binds! if host || port
 
       if host && (host[0,1] == '.' || host[0,1] == '/')
@@ -114,5 +106,31 @@ end.module_eval <<'HEREDOC'
       end
     end
   end
-  register :puma, Puma
-HEREDOC
+end
+
+# rackup was removed in Rack 3, it is now a separate gem
+if Object.const_defined? :Rackup
+  module Rackup
+    module Handler
+      module Puma
+        class << self
+          include ::Puma::RackHandler
+        end
+      end
+      register :puma, Puma
+    end
+  end
+elsif Object.const_defined?(:Rack) && Rack::RELEASE < '3'
+  module Rack
+    module Handler
+      module Puma
+        class << self
+          include ::Puma::RackHandler
+        end
+      end
+      register :puma, Puma
+    end
+  end
+else
+  raise "Rack 3 must be used with the Rackup gem"
+end
