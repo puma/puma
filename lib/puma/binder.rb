@@ -251,7 +251,8 @@ module Puma
           else
             ios_len = @ios.length
             backlog = params.fetch('backlog', 1024).to_i
-            io = add_ssl_listener uri.host, uri.port, ctx, optimize_for_latency = true, backlog
+            opt = params.key?('low_latency') && params['low_latency'] != 'false'
+            io = add_ssl_listener uri.host, uri.port, ctx, opt, backlog
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
