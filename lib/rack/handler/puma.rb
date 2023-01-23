@@ -132,5 +132,5 @@ elsif Object.const_defined?(:Rack) && Rack::RELEASE < '3'
     end
   end
 else
-  raise "Rack 3 must be used with the Rackup gem"
+  raise "You must install the rackup gem when using Rack 3"
 end

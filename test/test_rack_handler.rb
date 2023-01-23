@@ -1,16 +1,15 @@
 require_relative "helper"
 
-require "rack"
-
 module TestRackUp
-  if Rack::RELEASE < '3'
-    require "rack/handler/puma"
+  if ENV.key? "PUMA_CI_RACK_2"
+    require "rack"
     RACK_HANDLER_MOD = ::Rack::Handler
   else
     require "rackup"
-    require "rack/handler/puma"
     RACK_HANDLER_MOD = ::Rackup::Handler
   end
+
+  require "rack/handler/puma"
 
   class TestHandlerGetStrSym < Minitest::Test
     def test_handler
