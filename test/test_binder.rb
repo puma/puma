@@ -192,6 +192,15 @@ class TestBinderParallel < TestBinderBase
     end
   end
 
+  def test_binder_defaults_to_low_latency_off
+    skip_if :jruby
+    @binder.parse ["tcp://0.0.0.0:0"], @log_writer
+
+    socket = @binder.listeners.first.last
+
+    refute socket.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY).bool
+  end
+
   def test_binder_parses_nil_low_latency
     skip_if :jruby
     @binder.parse ["tcp://0.0.0.0:0?low_latency"], @log_writer
@@ -217,6 +226,26 @@ class TestBinderParallel < TestBinderBase
     socket = @binder.listeners.first.last
 
     refute socket.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY).bool
+  end
+
+  def test_binder_defaults_to_low_latency_off_ssl
+    skip_unless :ssl
+    skip_if :jruby
+    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}"], @log_writer
+
+    socket = @binder.listeners.first.last
+
+    refute socket.to_io.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY).bool
+  end
+
+  def test_binder_parses_false_low_latency_ssl
+    skip_unless :ssl
+    skip_if :jruby
+    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&low_latency=false"], @log_writer
+
+    socket = @binder.listeners.first.last
+
+    refute socket.to_io.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY).bool
   end
 
   def test_binder_parses_tlsv1_disabled
