@@ -11,7 +11,7 @@ jobs:
 
   rack-conform:
     name: >-
-      rack-conform ${{ matrix.os }} Ruby ${{ matrix.ruby }}
+      ${{ matrix.os }} Ruby ${{ matrix.ruby }} rack-conform
     needs: skip_duplicate_runs
     runs-on: ${{ matrix.os }}
     if: |
@@ -32,7 +32,7 @@ jobs:
       RACK_CONFORM_ENDPOINT: http://localhost:9292
 
     steps:
-      - name: repo checkout
+      - name: checkout rack-conform
         uses: actions/checkout@v3
         with:
           repository: socketry/rack-conform
@@ -40,22 +40,20 @@ jobs:
 
       - name: Update gems/puma-head-rack-v3.rb
         run: |
-          # fix Puma version, copying files from repo lib later
-          SRC="gem \"puma\", git: \"https://github.com/puma/puma.git\""
+          # use Puma from current repo (may be a fork) & sha
+          SRC="gem ['\"]puma['\"].*"
           DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
           sed -i "s#$SRC#$DST#" gems/puma-head-rack-v3.rb
-          cat gems/puma-head-rack-v3.rb
 
       - name: load ruby
-        uses: ruby/setup-ruby-pkgs@v1
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          apt-get: ragel
           bundler-cache: true
         timeout-minutes: 10
 
-      - name: Puma version check
-        run: bundle exec puma --version
+      - name: cat gems/puma-head-rack-v3.rb.lock
+        run: cat gems/puma-head-rack-v3.rb.lock
 
       - name: rack-conform test
         id: test
