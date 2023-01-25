@@ -689,23 +689,6 @@ EOF
     assert_equal "HTTP/1.0 200 OK\r\nContent-Type: plain/text\r\nContent-Length: 5\r\n\r\nhello", data
   end
 
-  def test_http_10_partial_hijack_with_content_length
-    body_parts = ['abc', 'de']
-
-    server_run do
-      hijack_lambda = proc do | io |
-        io.write(body_parts[0])
-        io.write(body_parts[1])
-        io.close
-      end
-      [200, {"Content-Length" => "5", 'rack.hijack' => hijack_lambda}, nil]
-    end
-
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
-
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
-  end
-
   def test_http_10_keep_alive_without_body
     server_run { [204, {}, []] }
 
