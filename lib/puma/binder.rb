@@ -158,10 +158,10 @@ module Puma
             ios_len = @ios.length
             params = Util.parse_query uri.query
 
-            opt = params.key?('low_latency') && params['low_latency'] != 'false'
+            low_latency = params.key?('low_latency') && params['low_latency'] != 'false'
             backlog = params.fetch('backlog', 1024).to_i
 
-            io = add_tcp_listener uri.host, uri.port, opt, backlog
+            io = add_tcp_listener uri.host, uri.port, low_latency, backlog
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
@@ -251,8 +251,8 @@ module Puma
           else
             ios_len = @ios.length
             backlog = params.fetch('backlog', 1024).to_i
-            opt = params.key?('low_latency') && params['low_latency'] != 'false'
-            io = add_ssl_listener uri.host, uri.port, ctx, opt, backlog
+            low_latency = params.key?('low_latency') && params['low_latency'] != 'false'
+            io = add_ssl_listener uri.host, uri.port, ctx, low_latency, backlog
 
             @ios[ios_len..-1].each do |i|
               addr = loc_addr_str i
