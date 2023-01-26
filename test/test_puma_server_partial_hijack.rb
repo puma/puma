@@ -71,8 +71,7 @@ class TestPumaServerPartialHijack < Minitest::Test
     }
 
     body = -> (io) {
-      echo = io.sysread 256
-      io.syswrite echo
+      io.syswrite io.sysread(256)
       io.close
     }
 
@@ -97,8 +96,7 @@ class TestPumaServerPartialHijack < Minitest::Test
       'Sec-WebSocket-Accept' => 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=',
       'Sec-WebSocket-Protocol' => 'chat',
       'rack.hijack' => -> (io) {
-        echo = io.sysread 256
-        io.syswrite echo
+        io.syswrite io.sysread(256)
         io.close
       }
     }
