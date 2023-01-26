@@ -81,8 +81,6 @@ module Puma
   #
 
   STATUS_WITH_NO_ENTITY_BODY = {
-    100 => true,
-    102 => true,
     204 => true,
     205 => true,
     304 => true

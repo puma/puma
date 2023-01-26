@@ -241,7 +241,6 @@ module Puma
 
       if response_hijack
         fast_write_str socket, io_buffer.read_and_reset
-        uncork_socket socket
         response_hijack.call socket
         return :async
       end
@@ -569,7 +568,7 @@ module Puma
         else
           io_buffer.append "#{HTTP_11} #{status} ", fetch_status_code(status), line_ending
 
-          resp_info[:no_body] ||= STATUS_WITH_NO_ENTITY_BODY[status]
+          resp_info[:no_body] ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
         end
       else
         resp_info[:allow_chunked] = false
@@ -583,7 +582,7 @@ module Puma
           io_buffer.append "HTTP/1.0 #{status} ",
                        fetch_status_code(status), line_ending
 
-          resp_info[:no_body] ||= STATUS_WITH_NO_ENTITY_BODY[status]
+          resp_info[:no_body] ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
         end
       end
 
