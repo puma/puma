@@ -33,7 +33,6 @@ class TestIntegrationSSL < TestIntegration
     config_file = Tempfile.new %w(config .rb)
     config_file.write config
     config_file.close
-    config_file.path
 
     # start server
     cmd = "#{BASE} bin/puma -C #{config_file.path}"
@@ -187,6 +186,33 @@ RUBY
       end
       assert_equal 'https', body
     end
+  end
+
+  def test_ssl_run_with_localhost_authority_in_cluster_mode
+    skip_if :jruby
+
+    cmd = "#{BASE} bin/puma -b \"ssl://0.0.0.0:9292\" -t 5:5 -w 2 test/rackup/self_signed.ru"
+    @server = IO.popen cmd, 'r'
+    wait_for_server_to_boot
+    @pid = @server.pid
+
+    http = Net::HTTP.new HOST, bind_port
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+    body = nil
+    http.start do
+      req = Net::HTTP::Get.new '/', {}
+      http.request(req) { |resp| body = resp.body }
+    end
+    assert_equal 'https', body
+
+    # stop server
+    sock = TCPSocket.new HOST, control_tcp_port
+    @ios_to_close << sock
+    sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
+    sock.read
+    assert_match 'Goodbye!', @server.read
   end
 
   private
