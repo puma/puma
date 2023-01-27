@@ -71,7 +71,9 @@ class TestPumaServerPartialHijack < Minitest::Test
     }
 
     body = -> (io) {
-      io.wait_readable 0.1 # TRUFFLE
+      # below for TruffleRuby error with io.sysread
+      # Read Errno::EAGAIN: Resource temporarily unavailable
+      io.wait_readable 0.1
       io.syswrite io.sysread(256)
       io.close
     }
@@ -97,7 +99,9 @@ class TestPumaServerPartialHijack < Minitest::Test
       'Sec-WebSocket-Accept' => 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=',
       'Sec-WebSocket-Protocol' => 'chat',
       'rack.hijack' => -> (io) {
-        io.wait_readable 0.1 # TRUFFLE
+        # below for TruffleRuby error with io.sysread
+        # Read Errno::EAGAIN: Resource temporarily unavailable
+        io.wait_readable 0.1
         io.syswrite io.sysread(256)
         io.close
       }
