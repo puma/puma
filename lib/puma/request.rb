@@ -223,7 +223,7 @@ module Puma
         # 101 (Switching Protocols) doesn't return here or have content_length,
         # it should be using `response_hijack`
         unless status == 101
-          if content_length and status != 204
+          if content_length && status != 204
             io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
           end
 
@@ -236,7 +236,7 @@ module Puma
         if content_length
           io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
           chunked = false
-        elsif !response_hijack and resp_info[:allow_chunked]
+        elsif !response_hijack && resp_info[:allow_chunked]
           io_buffer << TRANSFER_ENCODING_CHUNKED
           chunked = true
         end
@@ -487,7 +487,7 @@ module Puma
       to_add = nil
 
       env.each do |k,v|
-        if k.start_with?("HTTP_") and k.include?(",") and k != "HTTP_TRANSFER,ENCODING"
+        if k.start_with?("HTTP_") && k.include?(",") && k != "HTTP_TRANSFER,ENCODING"
           if to_delete
             to_delete << k
           else
