@@ -42,7 +42,6 @@ class TestPumaServerPartialHijack < Minitest::Test
     @server = Puma::Server.new block || @app, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
-    sleep 0.15 if Puma.jruby?
   end
 
   # only for shorter bodies!
