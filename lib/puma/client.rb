@@ -98,6 +98,8 @@ module Puma
       @body_remain = 0
 
       @in_last_chunk = false
+
+      @read_buffer = +""
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
@@ -433,7 +435,7 @@ module Puma
       end
 
       begin
-        chunk = @io.read_nonblock(want)
+        chunk = @io.read_nonblock(want, @read_buffer)
       rescue IO::WaitReadable
         return false
       rescue SystemCallError, IOError
@@ -465,7 +467,7 @@ module Puma
     def read_chunked_body
       while true
         begin
-          chunk = @io.read_nonblock(4096)
+          chunk = @io.read_nonblock(4096, @read_buffer)
         rescue IO::WaitReadable
           return false
         rescue SystemCallError, IOError
