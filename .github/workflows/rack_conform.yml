@@ -1,0 +1,67 @@
+name: rack-conform
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+  skip_duplicate_runs:
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+
+  rack-conform:
+    name: >-
+      ${{ matrix.os }} Ruby ${{ matrix.ruby }} rack-conform
+    needs: skip_duplicate_runs
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]')
+        || (needs.skip_duplicate_runs.outputs.should_skip == 'true'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-20.04 , ruby: '2.7' }
+          - { os: ubuntu-22.04 , ruby: '3.2' }
+          - { os: ubuntu-22.04 , ruby: head  }
+
+    env:
+      BUNDLE_GEMFILE: gems/puma-head-rack-v3.rb
+      RACK_CONFORM_SERVER: puma
+      RACK_CONFORM_ENDPOINT: http://localhost:9292
+
+    steps:
+      - name: checkout rack-conform
+        uses: actions/checkout@v3
+        with:
+          repository: socketry/rack-conform
+
+      - name: Update gems/puma-head-rack-v3.rb
+        run: |
+          # use Puma from current repo (may be a fork) & sha
+          SRC="gem ['\"]puma['\"].*"
+          DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
+          sed -i "s#$SRC#$DST#" gems/puma-head-rack-v3.rb
+
+      - name: load ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+        timeout-minutes: 10
+
+      - name: cat gems/puma-head-rack-v3.rb.lock
+        run: cat gems/puma-head-rack-v3.rb.lock
+
+      - name: rack-conform test
+        id: test
+        timeout-minutes: 10
+        run: bundle exec bake test
+        continue-on-error: true
+        if: success()
+
+      - name: >-
+          Test outcome: ${{ steps.test.outcome }}
+        # every step must define a `uses` or `run` key
+        run: cat server.log
