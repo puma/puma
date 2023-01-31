@@ -147,6 +147,38 @@ class TestConfigFile < TestConfigFileBase
     assert ssl_binding.include?('&backlog=2048')
   end
 
+  def test_ssl_bind_with_low_latency_true
+    skip_unless :ssl
+    skip_if :jruby
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        low_latency: true
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert ssl_binding.include?('&low_latency=true')
+  end
+
+  def test_ssl_bind_with_low_latency_false
+    skip_unless :ssl
+    skip_if :jruby
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        low_latency: false
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert ssl_binding.include?('&low_latency=false')
+  end
+
   def test_ssl_bind_jruby
     skip_unless :jruby
     skip_unless :ssl
