@@ -17,9 +17,16 @@ class TestConfigFile < TestConfigFileBase
   end
 
   def test_app_from_rackup
-    skip_if :rack3
+    if Rack::RELEASE >= '3'
+      fn = "test/rackup/hello-bind_rack3.ru"
+      bind = "tcp://0.0.0.0:9292"
+    else
+      fn = "test/rackup/hello-bind.ru"
+      bind = "tcp://127.0.0.1:9292"
+    end
+
     conf = Puma::Configuration.new do |c|
-      c.rackup "test/rackup/hello-bind.ru"
+      c.rackup fn
     end
     conf.load
 
@@ -29,7 +36,9 @@ class TestConfigFile < TestConfigFileBase
       conf.app
     end
 
-    assert_equal ["tcp://127.0.0.1:9292"], conf.options[:binds]
+    assert_equal [200, {"Content-Type"=>"text/plain"}, ["Hello World"]], conf.app.call({})
+
+    assert_equal [bind], conf.options[:binds]
   end
 
   def test_app_from_app_DSL
