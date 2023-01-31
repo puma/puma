@@ -251,7 +251,7 @@ module Puma
           else
             ios_len = @ios.length
             backlog = params.fetch('backlog', 1024).to_i
-            low_latency = params.key?('low_latency') && params['low_latency'] != 'false'
+            low_latency = params['low_latency'] != 'false'
             io = add_ssl_listener uri.host, uri.port, ctx, low_latency, backlog
 
             @ios[ios_len..-1].each do |i|
