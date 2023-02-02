@@ -172,40 +172,42 @@ module Puma
       content_length = resp_info[:content_length]
       keep_alive     = resp_info[:keep_alive]
 
-      # below converts app_body into body, dependent on app_body's characteristics, and
-      # resp_info[:content_length] will be set if it can be determined
-      if !content_length && !resp_info[:transfer_encoding] && status != 204
-        if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary) && array_body.is_a?(Array)
-          body = array_body
-          content_length = body.sum(&:bytesize)
-        elsif res_body.is_a?(File) && res_body.respond_to?(:size)
-          body = res_body
-          content_length = body.size
-        elsif res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
+      if res_body.respond_to? :each
+        # below converts app_body into body, dependent on app_body's characteristics, and
+        # resp_info[:content_length] will be set if it can be determined
+        if !content_length && !resp_info[:transfer_encoding] && status != 204
+          if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary) &&
+              array_body.is_a?(Array)
+            body = array_body
+            content_length = body.sum(&:bytesize)
+          elsif res_body.is_a?(File) && res_body.respond_to?(:size)
+            body = res_body
+            content_length = body.size
+          elsif res_body.respond_to?(:to_path) && File.readable?(fn = res_body.to_path)
+            body = File.open fn, 'rb'
+            content_length = body.size
+            close_body = true
+          else
+            body = res_body
+          end
+        elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) &&
             File.readable?(fn = res_body.to_path)
           body = File.open fn, 'rb'
           content_length = body.size
           close_body = true
+        elsif !res_body.is_a?(::File) && res_body.respond_to?(:filename) &&
+            res_body.respond_to?(:bytesize) && File.readable?(fn = res_body.filename)
+          # Sprockets::Asset
+          content_length = res_body.bytesize unless content_length
+          if res_body.to_hash[:source]   # use each to return @source
+            body = res_body
+          else                           # avoid each and use a File object
+            body = File.open fn, 'rb'
+            close_body = true
+          end
         else
           body = res_body
         end
-      elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
-          File.readable?(fn = res_body.to_path)
-        body = File.open fn, 'rb'
-        content_length = body.size
-        close_body = true
-      elsif !res_body.is_a?(::File) && res_body.respond_to?(:filename) && res_body.respond_to?(:each) &&
-          res_body.respond_to?(:bytesize) && File.readable?(fn = res_body.filename)
-        # Sprockets::Asset
-        content_length = res_body.bytesize unless content_length
-        if res_body.to_hash[:source]   # use each to return @source
-          body = res_body
-        else                           # avoid each and use a File object
-          body = File.open fn, 'rb'
-          close_body = true
-        end
-      else
-        body = res_body
       end
 
       line_ending = LINE_END
