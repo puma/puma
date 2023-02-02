@@ -25,45 +25,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '6.1' }
+          - { os: ubuntu-20.04 , ruby: '2.7', rails-version: '6.1' }
           - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '7.0' }
           - { os: ubuntu-20.04 , ruby: '3.2', rails-version: '7.0' }
           - { os: ubuntu-22.04 , ruby: head , rails-version: '7.0' }
     env:
       CI: true
-      PUMA_NO_RUBOCOP: true
       RAILS_VERSION: "${{ matrix.rails-version }}"
-      # below needs to be a recent released gem version, code below copies
-      # relevant Puma code into gem's install folder
-      PUMA_VERS: 6.0.0
 
     steps:
-      - name: repo checkout
+      - name: checkout hotwired/turbo-rails
         uses: actions/checkout@v3
-
-      - name: load ruby
-        uses: ruby/setup-ruby-pkgs@v1
         with:
-          ruby-version: ${{ matrix.ruby }}
-          apt-get: ragel
-          bundler-cache: true
-        timeout-minutes: 10
+          repository: hotwired/turbo-rails
+          ref: main
 
-      - name: compile
-        run:  bundle exec rake compile
-
-      - name: turbo-rails git clone
+      - name: turbo-rails updates
         run: |
-          git clone -q --depth=1 --no-tags --branch=main https://github.com/hotwired/turbo-rails.git $GITHUB_WORKSPACE/../../turbo-rails
-
-      - name: turbo-rails bundle install
-        working-directory: ../../turbo-rails
-        run: |
-          RUBY_ABI=$(ruby -e 'STDOUT.write RbConfig::CONFIG["ruby_version"]')
-          # fix Puma version, copying files from repo lib later
-          SRC="gem 'puma'"
-          DST="gem 'puma', '$PUMA_VERS'"
-          sed -i "s/$SRC/$DST/" Gemfile
+          SRC="gem ['\"]puma['\"].*"
+          DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
+          sed -i "s#$SRC#$DST#" Gemfile
           # use `stdio` for log_writer, always have one thread existing
           SRC="Silent: true"
           DST="Silent: false, Threads: '1:4'"
@@ -71,20 +52,20 @@ jobs:
           SRC="visit echo_messages_path"
           DST="visit echo_messages_path; sleep 0.001"
           sed -i "s/$SRC/$DST/" test/system/broadcasts_test.rb
-          bundle config set --local path vendor/bundle
-          bundle config set --local with test
-          bundle install --jobs 4 --retry 3
-          # copy Puma lib files
-          rm -rf vendor/bundle/ruby/$RUBY_ABI/gems/puma-$PUMA_VERS/lib/*
-          cp -r $GITHUB_WORKSPACE/lib/* vendor/bundle/ruby/$RUBY_ABI/gems/puma-$PUMA_VERS/lib
 
-      - name: Puma version check
-        working-directory: ../../turbo-rails
-        run: bundle exec puma --version
+      - name: load ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler: latest
+          bundler-cache: true
+        timeout-minutes: 10
+
+      - name: turbo-rails Gemfile.lock
+        run: cat Gemfile.lock
 
       - name: turbo-rails test
         id: test
-        working-directory: ../../turbo-rails
         run: bin/test test/**/*_test.rb -v
         continue-on-error: true
         if: success()
