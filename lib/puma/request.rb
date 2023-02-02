@@ -106,6 +106,7 @@ module Puma
         # is called
         res_body = app_body
 
+        # full hijack, app called env['rack.hijack']
         return :async if client.hijacked
 
         status = status.to_i
@@ -245,6 +246,8 @@ module Puma
 
       io_buffer << line_ending
 
+      # partial hijack, we write headers, then hand the socket to the app via
+      # response_hijack.call
       if response_hijack
         fast_write_str socket, io_buffer.read_and_reset
         uncork_socket socket
