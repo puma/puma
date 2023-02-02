@@ -200,8 +200,8 @@ module Puma
             res_body.respond_to?(:bytesize) && File.readable?(fn = res_body.filename)
           # Sprockets::Asset
           content_length = res_body.bytesize unless content_length
-          if res_body.to_hash[:source]   # use each to return @source
-            body = res_body
+          if (body_str = res_body.to_hash[:source])
+            body = [body_str]
           else                           # avoid each and use a File object
             body = File.open fn, 'rb'
             close_body = true
