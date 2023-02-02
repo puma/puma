@@ -612,7 +612,7 @@ module Puma
       if @body_read_start
         @env['puma.request_body_wait'] = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond) - @body_read_start
       end
-      if @env[HTTP_X_QUEUE_START].nil?
+      if @env[HTTP_X_QUEUE_START].nil? && @env[HTTP_X_REQUEST_START].nil?
         @env[HTTP_X_QUEUE_START] = "t=#{Process.clock_gettime(Process::CLOCK_REALTIME, :float_second)}"
       end
       @requests_served += 1
