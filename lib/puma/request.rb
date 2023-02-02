@@ -169,10 +169,11 @@ module Puma
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
       close_body = false
+      response_hijack = nil
       content_length = resp_info[:content_length]
       keep_alive     = resp_info[:keep_alive]
 
-      if res_body.respond_to? :each
+      if res_body.respond_to?(:each) && !resp_info[:response_hijack]
         # below converts app_body into body, dependent on app_body's characteristics, and
         # resp_info[:content_length] will be set if it can be determined
         if !content_length && !resp_info[:transfer_encoding] && status != 204
@@ -208,15 +209,14 @@ module Puma
         else
           body = res_body
         end
+      else
+        # partial hijack, from Rack spec:
+        #   Servers must ignore the body part of the response tuple when the
+        #   rack.hijack response header is present.
+        response_hijack = resp_info[:response_hijack] || res_body
       end
 
       line_ending = LINE_END
-
-      if res_body && !res_body.respond_to?(:each)
-        response_hijack = res_body
-      else
-        response_hijack = resp_info[:response_hijack]
-      end
 
       cork_socket socket
 
