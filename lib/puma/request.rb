@@ -169,20 +169,22 @@ module Puma
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
       close_body = false
+      content_length = resp_info[:content_length]
+      keep_alive     = resp_info[:keep_alive]
 
       # below converts app_body into body, dependent on app_body's characteristics, and
       # resp_info[:content_length] will be set if it can be determined
-      if !resp_info[:content_length] && !resp_info[:transfer_encoding] && status != 204
+      if !content_length && !resp_info[:transfer_encoding] && status != 204
         if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary) && array_body.is_a?(Array)
           body = array_body
-          resp_info[:content_length] = body.sum(&:bytesize)
+          content_length = body.sum(&:bytesize)
         elsif res_body.is_a?(File) && res_body.respond_to?(:size)
           body = res_body
-          resp_info[:content_length] = body.size
+          content_length = body.size
         elsif res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
             File.readable?(fn = res_body.to_path)
           body = File.open fn, 'rb'
-          resp_info[:content_length] = body.size
+          content_length = body.size
           close_body = true
         else
           body = res_body
@@ -190,12 +192,12 @@ module Puma
       elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
           File.readable?(fn = res_body.to_path)
         body = File.open fn, 'rb'
-        resp_info[:content_length] = body.size
+        content_length = body.size
         close_body = true
       elsif !res_body.is_a?(::File) && res_body.respond_to?(:filename) && res_body.respond_to?(:each) &&
           res_body.respond_to?(:bytesize) && File.readable?(fn = res_body.filename)
         # Sprockets::Asset
-        resp_info[:content_length] = res_body.bytesize unless resp_info[:content_length]
+        content_length = res_body.bytesize unless content_length
         if res_body.to_hash[:source]   # use each to return @source
           body = res_body
         else                           # avoid each and use a File object
@@ -207,9 +209,6 @@ module Puma
       end
 
       line_ending = LINE_END
-
-      content_length = resp_info[:content_length]
-      keep_alive     = resp_info[:keep_alive]
 
       if res_body && !res_body.respond_to?(:each)
         response_hijack = res_body
