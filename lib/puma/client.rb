@@ -122,9 +122,9 @@ module Puma
       "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"
     end
 
-    # For the hijack protocol (allows us to just put the Client object
-    # into the env)
-    def call
+    # For the full hijack protocol, `env['rack.hijack']` is set to
+    # `client.method :full_hijack`
+    def full_hijack
       @hijacked = true
       env[HIJACK_IO] ||= @io
     end

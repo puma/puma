@@ -53,7 +53,6 @@ module Puma
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
 
-
       return false if closed_socket?(socket)
 
       if client.http_content_length_limit_exceeded
@@ -69,7 +68,7 @@ module Puma
       end
 
       env[HIJACK_P] = true
-      env[HIJACK] = client
+      env[HIJACK] = client.method :full_hijack
 
       env[RACK_INPUT] = client.body
       env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
