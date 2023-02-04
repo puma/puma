@@ -3,13 +3,22 @@ require "puma/events"
 require "puma/server"
 require "net/http"
 require "nio"
-require "ipaddr"
 
-class TestPumaServerPartialHijack < Minitest::Test
+require "rack"
+require "rack/body_proxy"
+
+# Tests check both the proper passing of the socket to the app, and also calling
+# of `body.close` on the response body.  Rack spec is unclear as to whether
+# calling close is expected.
+#
+# The sleep statements may not be needed for local CI, but are needed
+# for use with GitHub Actions...
+
+class TestPumaServerHijack < Minitest::Test
   parallelize_me!
 
   def setup
-    @host = "127.0.0.1"
+    @@host = "127.0.0.1"
 
     @ios = []
 
@@ -40,7 +49,7 @@ class TestPumaServerPartialHijack < Minitest::Test
     options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
     @server = Puma::Server.new block || @app, @events, options
-    @port = (@server.add_tcp_listener @host, 0).addr[1]
+    @port = (@server.add_tcp_listener @@host, 0).addr[1]
     @server.run
   end
 
@@ -54,11 +63,37 @@ class TestPumaServerPartialHijack < Minitest::Test
   end
 
   def send_http(req)
-    new_connection << req
+    t = new_connection
+    t.syswrite req
+    t
   end
 
   def new_connection
-    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
+    TCPSocket.new(@@host, @port).tap {|sock| @ios << sock}
+  end
+
+  # Full hijack does not return headers
+  def test_full_hijack_body_close
+    @body_closed = false
+    server_run do |env|
+      io = env['rack.hijack'].call
+      io.syswrite 'Server listening'
+      io.wait_readable 2
+      io.syswrite io.sysread(256)
+      body = ::Rack::BodyProxy.new([]) { @body_closed = true }
+      [200, {}, body]
+    end
+
+    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+
+    sock.wait_readable 2
+    assert_equal "Server listening", sock.sysread(256)
+
+    sock.syswrite "this should echo"
+    assert_equal "this should echo", sock.sysread(256)
+    Thread.pass
+    sleep 0.001 # intermittent failure, may need to increase in CI
+    assert @body_closed, "Reponse body must be closed"
   end
 
   def test_101_body
@@ -81,8 +116,7 @@ class TestPumaServerPartialHijack < Minitest::Test
       [101, headers, body]
     end
 
-    sock = new_connection
-    sock.syswrite "GET / HTTP/1.1\r\n\r\n"
+    sock = send_http "GET / HTTP/1.1\r\n\r\n"
     resp = sock.sysread 1_024
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
@@ -110,8 +144,7 @@ class TestPumaServerPartialHijack < Minitest::Test
       [101, headers, []]
     end
 
-    sock = new_connection
-    sock.syswrite "GET / HTTP/1.1\r\n\r\n"
+    sock = send_http "GET / HTTP/1.1\r\n\r\n"
     resp = sock.sysread 1_024
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
@@ -132,8 +165,56 @@ class TestPumaServerPartialHijack < Minitest::Test
       [200, {"Content-Length" => "5", 'rack.hijack' => hijack_lambda}, nil]
     end
 
+    # using sysread may only receive part of the response
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
+  end
+
+  def test_partial_hijack_body_closes_body
+    @available = true
+    hdrs = { 'Content-Type' => 'text/plain' }
+    body = ::Rack::BodyProxy.new(HIJACK_LAMBDA) { @available = true }
+    partial_hijack_closes_body(hdrs, body)
+  end
+
+  def test_partial_hijack_header_closes_body_correct_precedence
+    @available = true
+    incorrect_lambda = ->(io) {
+      io.syswrite 'incorrect body.call'
+      io.close
+    }
+    hdrs = { 'Content-Type' => 'text/plain', 'rack.hijack' => HIJACK_LAMBDA}
+    body = ::Rack::BodyProxy.new(incorrect_lambda) { @available = true }
+    partial_hijack_closes_body(hdrs, body)
+  end
+
+  HIJACK_LAMBDA = ->(io) {
+    io.syswrite 'hijacked'
+    io.close
+  }
+
+  def partial_hijack_closes_body(hdrs, body)
+    server_run do
+      if @available
+        @available = false
+        [200, hdrs, body]
+      else
+        [500, { 'Content-Type' => 'text/plain' }, ['incorrect']]
+      end
+    end
+
+    sock1 = send_http "GET / HTTP/1.1\r\n\r\n"
+    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.3 : 0.1)
+    resp1 = sock1.sysread 1_024
+
+    sleep 0.01 # time for close block to be called ?
+
+    sock2 = send_http "GET / HTTP/1.1\r\n\r\n"
+    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.3 : 0.1)
+    resp2 = sock2.sysread 1_024
+
+    assert_operator resp1, :end_with?, 'hijacked'
+    assert_operator resp2, :end_with?, 'hijacked'
   end
 end
