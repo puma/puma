@@ -18,7 +18,7 @@ class TestPumaServerHijack < Minitest::Test
   parallelize_me!
 
   def setup
-    @@host = "127.0.0.1"
+    @host = "127.0.0.1"
 
     @ios = []
 
@@ -49,7 +49,7 @@ class TestPumaServerHijack < Minitest::Test
     options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
     @server = Puma::Server.new block || @app, @events, options
-    @port = (@server.add_tcp_listener @@host, 0).addr[1]
+    @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
   end
 
@@ -69,7 +69,7 @@ class TestPumaServerHijack < Minitest::Test
   end
 
   def new_connection
-    TCPSocket.new(@@host, @port).tap {|sock| @ios << sock}
+    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
   end
 
   # Full hijack does not return headers
