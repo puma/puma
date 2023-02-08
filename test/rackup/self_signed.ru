@@ -1,2 +1,2 @@
 require "localhost"
-run proc { [200, {"Content-Type" => "text/plain"}, ["Hello, World!"]] }
+run proc { |env| [200, {"Content-Type" => "text/plain"}, [env['rack.url_scheme']]] }

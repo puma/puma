@@ -227,6 +227,10 @@ $ puma -b 'ssl://localhost:9292' config.ru
 $ puma -b ssl://localhost:9292 -b tcp://localhost:9393 config.ru
 ```
 
+There is a known limitation to the [`localhost`] gem in Puma. Puma can't start in cluster 
+mode when the user didn't preload the app or requires the [`localhost`] gem in a 
+configuration file.
+
 [`localhost`]: https://github.com/socketry/localhost
 
 #### Controlling SSL Cipher Suites

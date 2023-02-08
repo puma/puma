@@ -188,31 +188,13 @@ RUBY
     end
   end
 
-  def test_ssl_run_with_localhost_authority_in_cluster_mode
+  def test_ssl_run_with_localhost_authority_in_cluster_mode; require "open3"
     skip_if :jruby
 
-    cmd = "#{BASE} bin/puma -b \"ssl://0.0.0.0:9292\" -t 5:5 -w 2 test/rackup/self_signed.ru"
-    @server = IO.popen cmd, 'r'
-    wait_for_server_to_boot
-    @pid = @server.pid
-
-    http = Net::HTTP.new HOST, bind_port
-    http.use_ssl = true
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-
-    body = nil
-    http.start do
-      req = Net::HTTP::Get.new '/', {}
-      http.request(req) { |resp| body = resp.body }
-    end
-    assert_equal 'https', body
-
-    # stop server
-    sock = TCPSocket.new HOST, control_tcp_port
-    @ios_to_close << sock
-    sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
-    sock.read
-    assert_match 'Goodbye!', @server.read
+    cmd = "#{BASE} bin/puma -b \"ssl://0.0.0.0:#{bind_port}\" -t 5:5 -w 2 test/rackup/self_signed.ru"
+    _stdin, _stdout, stderr, _wait_thr = Open3.popen3(cmd)
+    error_message = stderr.read.chomp
+    assert_match(/If you are using the 'localhost' gem and run Puma in cluster mode please use a config file and load it there so it is accessable for Puma/, error_message)
   end
 
   private

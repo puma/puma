@@ -33,7 +33,7 @@ module Puma
           ctx.protocols = params['protocols'] if params['protocols']
         else
           if params['key'].nil? && params['key_pem'].nil?
-            log_writer.error "Please specify the SSL key via 'key=' or 'key_pem='"
+            log_writer.error "Please specify the SSL key via 'key=' or 'key_pem='\nIf you are using the 'localhost' gem and run Puma in cluster mode please use a config file and load it there so it is accessable for Puma."
           end
 
           ctx.key = params['key'] if params['key']
