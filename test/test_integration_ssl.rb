@@ -188,13 +188,31 @@ RUBY
     end
   end
 
-  def test_ssl_run_with_localhost_authority_in_cluster_mode; require "open3"
-    skip_if :jruby
+  def test_ssl_run_without_any_key_and_authority; require 'logger'
+    skip_if :windows; require 'stringio'
 
-    cmd = "#{BASE} bin/puma -b \"ssl://0.0.0.0:#{bind_port}\" -t 5:5 -w 2 test/rackup/self_signed.ru"
-    _stdin, _stdout, stderr, _wait_thr = Open3.popen3(cmd)
-    error_message = stderr.read.chomp
-    assert_match(/If you are using the 'localhost' gem and run Puma in cluster mode please use a config file and load it there so it is accessable for Puma/, error_message)
+    app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
+    opts = {max_threads: 1}
+    server = Puma::Server.new app, nil, opts
+    if Puma.jruby?
+      ssl_params = {
+          'keystore'      => nil,
+          'keystore-pass' => nil
+      }
+    else
+      ssl_params = {
+          'cert' => nil,
+          'key'  => nil,
+          'ca'   => nil,
+      }
+    end
+    ssl_params['verify_mode'] = 'force_peer' # 'peer'
+    out_err = StringIO.new
+    Puma::MiniSSL::ContextBuilder.new(ssl_params, Logger.new(out_err)).context
+    assert_match(/Please specify the SSL key via 'key=' or 'key_pem=', or require the 'localhost' gem in your Puma config for automatic self-signed certificates/, out_err.string)
+    assert_match(/Please specify the SSL cert via 'cert=' or 'cert_pem='/, out_err.string)
+    assert_match(/Please specify the SSL ca via 'ca='/, out_err.string)
+
   end
 
   private

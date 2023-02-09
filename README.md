@@ -198,9 +198,9 @@ $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 ```
 #### Self-signed SSL certificates (via the [`localhost`] gem, for development use):
 
-Puma supports the [`localhost`] gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, the integration can only be used in MRI.
+Puma supports the [`localhost`] gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, the integration can only be used in MRI and you need to require the [`localhost`] gem in your Puma configuration file and not in your rackup file [`config.ru`].
 
-Puma automatically configures SSL when the [`localhost`] gem is loaded in a `development` environment:
+Puma automatically configures SSL when the [`localhost`] gem is loaded:
 
 ```ruby
 # Add the gem to your Gemfile
@@ -226,10 +226,6 @@ $ puma -b 'ssl://localhost:9292' config.ru
 # The following options allow you to reach Puma over HTTP as well:
 $ puma -b ssl://localhost:9292 -b tcp://localhost:9393 config.ru
 ```
-
-There is a known limitation to the [`localhost`] gem in Puma. Puma can't start in cluster 
-mode when the user didn't preload the app or requires the [`localhost`] gem in a 
-configuration file.
 
 [`localhost`]: https://github.com/socketry/localhost
 
