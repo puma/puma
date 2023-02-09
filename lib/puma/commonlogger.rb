@@ -25,10 +25,17 @@ module Puma
 
     HIJACK_FORMAT = %{%s - %s [%s] "%s %s%s %s" HIJACKED -1 %0.4f\n}
 
-    CONTENT_LENGTH = 'Content-Length'.freeze
-    PATH_INFO      = 'PATH_INFO'.freeze
-    QUERY_STRING   = 'QUERY_STRING'.freeze
-    REQUEST_METHOD = 'REQUEST_METHOD'.freeze
+    LOG_TIME_FORMAT = '%d/%b/%Y:%H:%M:%S %z'
+
+    CONTENT_LENGTH       = 'Content-Length' # should be lower case from app,
+                                            # Util::HeaderHash allows mixed
+    HTTP_VERSION         = Const::HTTP_VERSION
+    HTTP_X_FORWARDED_FOR = Const::HTTP_X_FORWARDED_FOR
+    PATH_INFO            = Const::PATH_INFO
+    QUERY_STRING         = Const::QUERY_STRING
+    REMOTE_ADDR          = Const::REMOTE_ADDR
+    REMOTE_USER          = 'REMOTE_USER'
+    REQUEST_METHOD       = Const::REQUEST_METHOD
 
     def initialize(app, logger=nil)
       @app = app
@@ -57,13 +64,13 @@ module Puma
       now = Time.now
 
       msg = HIJACK_FORMAT % [
-        env['HTTP_X_FORWARDED_FOR'] || env["REMOTE_ADDR"] || "-",
-        env["REMOTE_USER"] || "-",
-        now.strftime("%d/%b/%Y %H:%M:%S"),
+        env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR] || "-",
+        env[REMOTE_USER] || "-",
+        now.strftime(LOG_TIME_FORMAT),
         env[REQUEST_METHOD],
         env[PATH_INFO],
         env[QUERY_STRING].empty? ? "" : "?#{env[QUERY_STRING]}",
-        env["HTTP_VERSION"],
+        env[HTTP_VERSION],
         now - began_at ]
 
       write(msg)
@@ -74,13 +81,13 @@ module Puma
       length = extract_content_length(header)
 
       msg = FORMAT % [
-        env['HTTP_X_FORWARDED_FOR'] || env["REMOTE_ADDR"] || "-",
-        env["REMOTE_USER"] || "-",
-        now.strftime("%d/%b/%Y:%H:%M:%S %z"),
+        env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR] || "-",
+        env[REMOTE_USER] || "-",
+        now.strftime(LOG_TIME_FORMAT),
         env[REQUEST_METHOD],
         env[PATH_INFO],
         env[QUERY_STRING].empty? ? "" : "?#{env[QUERY_STRING]}",
-        env["HTTP_VERSION"],
+        env[HTTP_VERSION],
         status.to_s[0..3],
         length,
         now - began_at ]
