@@ -1,7 +1,7 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
-class TestIntegrationSystemd < TestIntegration
+class TestPluginSystemd < TestIntegration
   def setup
     skip "Skipped because Systemd support is linux-only" if windows? || osx?
     skip_unless :unix
@@ -55,6 +55,27 @@ class TestIntegrationSystemd < TestIntegration
     assert_match(socket_message, "STOPPING=1")
   end
 
+  def test_systemd_notify
+    cli_server "test/rackup/hello.ru"
+    assert_equal(socket_message, "READY=1")
+
+    assert_equal(socket_message(70),
+                    "STATUS=Puma #{Puma::Const::VERSION}: worker: { 0/5 threads, 5 available, 0 backlog }")
+
+    stop_server
+    assert_match(socket_message, "STOPPING=1")
+  end
+
+  def test_systemd_cluster_notify
+    cli_server "-w 2 -q test/rackup/hello.ru"
+    assert_equal(socket_message, "READY=1")
+    assert_equal(socket_message(130),
+                    "STATUS=Puma #{Puma::Const::VERSION}: cluster: 2/2, worker_status: [{ 0/5 threads, 5 available, 0 backlog },{ 0/5 threads, 5 available, 0 backlog }]")
+
+    stop_server
+    assert_match(socket_message, "STOPPING=1")
+  end
+
   private
 
   def assert_restarts_with_systemd(signal, workers: 2)
@@ -75,7 +96,7 @@ class TestIntegrationSystemd < TestIntegration
     assert_equal socket_message, 'STOPPING=1'
   end
 
-  def socket_message
-    @socket.recvfrom(15)[0]
+  def socket_message(len = 15)
+    @socket.recvfrom(len)[0]
   end
 end
