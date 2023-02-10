@@ -190,10 +190,11 @@ RUBY
 
   def test_ssl_run_without_any_key_and_authority; require 'logger'
     skip_if :windows; require 'stringio'
+    skip_if :jruby
 
     app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
     opts = {max_threads: 1}
-    server = Puma::Server.new app, nil, opts
+    Puma::Server.new app, nil, opts
     if Puma.jruby?
       ssl_params = {
           'keystore'      => nil,
