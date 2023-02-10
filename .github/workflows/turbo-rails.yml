@@ -14,7 +14,7 @@ jobs:
 
   turbo-rails:
     name: >-
-      ${{ matrix.os }} Ruby ${{ matrix.ruby }} Rails ${{ matrix.rails-version }}
+      ${{ matrix.os }} Ruby ${{ matrix.ruby }} Rails ${{ matrix.rails }}
     needs: skip_duplicate_runs
     runs-on: ${{ matrix.os }}
     if: |
@@ -25,13 +25,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: '2.7', rails-version: '6.1' }
-          - { os: ubuntu-20.04 , ruby: '3.1', rails-version: '7.0' }
-          - { os: ubuntu-20.04 , ruby: '3.2', rails-version: '7.0' }
-          - { os: ubuntu-22.04 , ruby: head , rails-version: '7.0' }
+          - { os: ubuntu-20.04 , ruby: '2.7', rails: '6.1' }
+          - { os: ubuntu-20.04 , ruby: '3.1', rails: '7.0' }
+          - { os: ubuntu-20.04 , ruby: '3.2', rails: '7.0' }
+          - { os: ubuntu-22.04 , ruby: head , rails: '7.0' }
     env:
       CI: true
-      RAILS_VERSION: "${{ matrix.rails-version }}"
+      RAILS_VERSION: "${{ matrix.rails }}"
 
     steps:
       - name: checkout hotwired/turbo-rails
@@ -49,9 +49,6 @@ jobs:
           SRC="Silent: true"
           DST="Silent: false, Threads: '1:4'"
           sed -i "s/$SRC/$DST/" test/application_system_test_case.rb
-          SRC="visit echo_messages_path"
-          DST="visit echo_messages_path; sleep 0.001"
-          sed -i "s/$SRC/$DST/" test/system/broadcasts_test.rb
 
       - name: load ruby
         uses: ruby/setup-ruby@v1
@@ -66,11 +63,4 @@ jobs:
 
       - name: turbo-rails test
         id: test
-        run: bin/test test/**/*_test.rb -v
-        continue-on-error: true
-        if: success()
-
-      - name: >-
-          Test outcome: ${{ steps.test.outcome }}
-        # every step must define a `uses` or `run` key
-        run: echo NOOP
+        run: bin/test test/**/*_test.rb -vd
