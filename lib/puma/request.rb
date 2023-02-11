@@ -306,8 +306,8 @@ module Puma
     def fast_write_response(socket, body, io_buffer, chunked, content_length)
       if body.is_a?(::File) && body.respond_to?(:read)
         if chunked  # would this ever happen?
-          while part = body.read(BODY_LEN_MAX)
-            io_buffer.append part.bytesize.to_s(16), LINE_END, part, LINE_END
+          while chunk = body.read(BODY_LEN_MAX)
+            io_buffer.append chunk.bytesize.to_s(16), LINE_END, chunk, LINE_END
           end
           fast_write_str socket, CLOSE_CHUNKED
         else

@@ -65,6 +65,7 @@ module Puma
 
       ca_additions = "&ca=#{Puma::Util.escape(opts[:ca])}" if ['peer', 'force_peer'].include?(verify)
 
+      low_latency_str = opts.key?(:low_latency) ? "&low_latency=#{opts[:low_latency]}" : ''
       backlog_str = opts[:backlog] ? "&backlog=#{Integer(opts[:backlog])}" : ''
 
       if defined?(JRUBY_VERSION)
@@ -114,7 +115,7 @@ module Puma
           end
 
         "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{ssl_cipher_filter}" \
-          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
+          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}#{low_latency_str}"
       end
     end
 
