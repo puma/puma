@@ -2,6 +2,10 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestPluginSystemd < TestIntegration
+
+  THREAD_LOG = TRUFFLE ? "{ 0/16 threads, 16 available, 0 backlog }" :
+    "{ 0/5 threads, 5 available, 0 backlog }"
+
   def setup
     skip "Skipped because Systemd support is linux-only" if windows? || osx?
     skip_unless :unix
@@ -47,56 +51,57 @@ class TestPluginSystemd < TestIntegration
     ENV["WATCHDOG_USEC"] = "1_000_000"
 
     cli_server "test/rackup/hello.ru"
-    assert_equal(socket_message, "READY=1")
+    assert_message "READY=1"
 
-    assert_equal(socket_message, "WATCHDOG=1")
+    assert_message "WATCHDOG=1"
 
     stop_server
-    assert_match(socket_message, "STOPPING=1")
+    assert_includes @socket.recvfrom(15)[0], "STOPPING=1"
   end
 
   def test_systemd_notify
     cli_server "test/rackup/hello.ru"
-    assert_equal(socket_message, "READY=1")
+    assert_message "READY=1"
 
-    assert_equal(socket_message(70),
-                    "STATUS=Puma #{Puma::Const::VERSION}: worker: { 0/5 threads, 5 available, 0 backlog }")
+    assert_message "STATUS=Puma #{Puma::Const::VERSION}: worker: #{THREAD_LOG}", 70
 
     stop_server
-    assert_match(socket_message, "STOPPING=1")
+    assert_message "STOPPING=1"
   end
 
   def test_systemd_cluster_notify
-    cli_server "-w 2 -q test/rackup/hello.ru"
-    assert_equal(socket_message, "READY=1")
-    assert_equal(socket_message(130),
-                    "STATUS=Puma #{Puma::Const::VERSION}: cluster: 2/2, worker_status: [{ 0/5 threads, 5 available, 0 backlog },{ 0/5 threads, 5 available, 0 backlog }]")
+    skip_unless :fork
+    cli_server "-w2 test/rackup/hello.ru"
+    assert_message "READY=1"
+    assert_message(
+      "STATUS=Puma #{Puma::Const::VERSION}: cluster: 2/2, worker_status: [#{THREAD_LOG},#{THREAD_LOG}]", 130)
 
     stop_server
-    assert_match(socket_message, "STOPPING=1")
+    assert_message "STOPPING=1"
   end
 
   private
 
   def assert_restarts_with_systemd(signal, workers: 2)
+    skip_unless(:fork) unless workers.zero?
     cli_server "-w#{workers} test/rackup/hello.ru"
-    assert_equal socket_message, 'READY=1'
+    assert_message 'READY=1'
 
     Process.kill signal, @pid
     connect.write "GET / HTTP/1.1\r\n\r\n"
-    assert_equal socket_message, 'RELOADING=1'
-    assert_equal socket_message, 'READY=1'
+    assert_message 'RELOADING=1'
+    assert_message 'READY=1'
 
     Process.kill signal, @pid
     connect.write "GET / HTTP/1.1\r\n\r\n"
-    assert_equal socket_message, 'RELOADING=1'
-    assert_equal socket_message, 'READY=1'
+    assert_message 'RELOADING=1'
+    assert_message 'READY=1'
 
     stop_server
-    assert_equal socket_message, 'STOPPING=1'
+    assert_message 'STOPPING=1'
   end
 
-  def socket_message(len = 15)
-    @socket.recvfrom(len)[0]
+  def assert_message(msg, len = 15)
+    assert_equal msg, @socket.recvfrom(len)[0]
   end
 end
