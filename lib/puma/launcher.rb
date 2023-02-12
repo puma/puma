@@ -59,7 +59,10 @@ module Puma
 
       @environment = conf.environment
 
-      if ENV["NOTIFY_SOCKET"] && RUBY_PLATFORM != "java"
+      # Load the systemd integration if we detect systemd's NOTIFY_SOCKET.
+      # Skip this on JRuby though, because it is incompatible with the systemd
+      # integration due to https://github.com/jruby/jruby/issues/6504
+      if ENV["NOTIFY_SOCKET"] && !Puma.jruby?
         @config.plugins.create('systemd')
       end
 
