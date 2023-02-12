@@ -1,3 +1,19 @@
+## 6.1.0 / 2022-02-12
+
+* Features
+  * WebSocket support via partial hijack ([#3058], [#3007])
+  * Add built-in systemd notify support ([#3011])
+  * Periodically send status to systemd ([#3006], [#2604])
+  * Introduce the ability to return 413: payload too large for requests ([#3040])
+  * Log loaded extensions when `PUMA_DEBUG` is set ([#3036], [#3020])
+
+* Bugfixes
+  * Fix issue with rack 3 compatibility re: rackup ([#3061], [#3057])
+  * Allow setting TCP low_latency with SSL listener ([#3065])
+
+* Performance
+  * Reduce memory usage for large file uploads ([#3062])
+
 ## 6.0.2 / 2023-01-01
 
 * Refactor
@@ -1932,6 +1948,18 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3058]:https://github.com/puma/puma/pull/3058     "PR by @dentarg, merged 2023-01-29"
+[#3007]:https://github.com/puma/puma/issues/3007   "Issue by @MSP-Greg, closed 2023-01-29"
+[#3011]:https://github.com/puma/puma/pull/3011     "PR by @joaomarcos96, merged 2023-01-03"
+[#3006]:https://github.com/puma/puma/pull/3006     "PR by @QWYNG, merged 2023-02-09"
+[#2604]:https://github.com/puma/puma/issues/2604   "Issue by @dgoetz, closed 2023-02-09"
+[#3040]:https://github.com/puma/puma/pull/3040     "PR by @shayonj, merged 2023-01-02"
+[#3036]:https://github.com/puma/puma/pull/3036     "PR by @MSP-Greg, merged 2023-01-13"
+[#3020]:https://github.com/puma/puma/issues/3020   "Issue by @dentarg, closed 2023-01-13"
+[#3061]:https://github.com/puma/puma/pull/3061     "PR by @MSP-Greg, merged 2023-02-12"
+[#3057]:https://github.com/puma/puma/issues/3057   "Issue by @mmarvb8h, closed 2023-02-12"
+[#3065]:https://github.com/puma/puma/pull/3065     "PR by @MSP-Greg, merged 2023-02-11"
+[#3062]:https://github.com/puma/puma/pull/3062     "PR by @willkoehler, merged 2023-01-29"
 [#3035]:https://github.com/puma/puma/pull/3035     "PR by @MSP-Greg, merged 2022-12-24"
 [#3033]:https://github.com/puma/puma/issues/3033   "Issue by @jules-w2, closed 2022-12-24"
 [#3016]:https://github.com/puma/puma/pull/3016     "PR by @MSP-Greg, merged 2022-12-24"
