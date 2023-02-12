@@ -59,7 +59,7 @@ module Puma
 
       @environment = conf.environment
 
-      if ENV["NOTIFY_SOCKET"]
+      if ENV["NOTIFY_SOCKET"] && RUBY_PLATFORM != "java"
         @config.plugins.create('systemd')
       end
 
