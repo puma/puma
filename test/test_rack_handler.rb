@@ -1,17 +1,22 @@
 require_relative "helper"
 
-require "rack"
-
-if Rack::RELEASE < '3'
+module TestRackUp
+  if ENV.key? "PUMA_CI_RACK_2"
+    require "rack"
+    RACK_HANDLER_MOD = ::Rack::Handler
+  else
+    require "rackup"
+    RACK_HANDLER_MOD = ::Rackup::Handler
+  end
 
   require "rack/handler/puma"
 
   class TestHandlerGetStrSym < Minitest::Test
     def test_handler
-      handler = Rack::Handler.get(:puma)
-      assert_equal Rack::Handler::Puma, handler
-      handler = Rack::Handler.get('Puma')
-      assert_equal Rack::Handler::Puma, handler
+      handler = RACK_HANDLER_MOD.get(:puma)
+      assert_equal RACK_HANDLER_MOD::Puma, handler
+      handler = RACK_HANDLER_MOD.get('Puma')
+      assert_equal RACK_HANDLER_MOD::Puma, handler
     end
   end
 
@@ -30,7 +35,7 @@ if Rack::RELEASE < '3'
 
       @launcher = nil
       thread = Thread.new do
-        Rack::Handler::Puma.run(app, **options) do |s, p|
+        RACK_HANDLER_MOD::Puma.run(app, **options) do |s, p|
           @launcher = s
         end
       end
@@ -74,7 +79,7 @@ if Rack::RELEASE < '3'
           File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
           @options[:Port] = user_port
-          conf = Rack::Handler::Puma.config(->{}, @options)
+          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
@@ -95,7 +100,7 @@ if Rack::RELEASE < '3'
 
       @options[:Host] = user_host
       @options[:Port] = user_port
-      conf = Rack::Handler::Puma.config(->{}, @options)
+      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://#{user_host}:#{user_port}"], conf.options[:binds]
@@ -103,7 +108,7 @@ if Rack::RELEASE < '3'
 
     def test_ipv6_host_supplied_port_default
       @options[:Host] = "::1"
-      conf = Rack::Handler::Puma.config(->{}, @options)
+      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://[::1]:9292"], conf.options[:binds]
@@ -126,7 +131,7 @@ if Rack::RELEASE < '3'
           File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
           @options[:Port] = user_port
-          conf = Rack::Handler::Puma.config(->{}, @options)
+          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
@@ -145,7 +150,7 @@ if Rack::RELEASE < '3'
 
           @options[:Host] = "localhost"
           @options[:Port] = user_port
-          conf = Rack::Handler::Puma.config(->{}, @options)
+          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://localhost:#{file_port}"], conf.options[:binds]
@@ -164,7 +169,7 @@ if Rack::RELEASE < '3'
 
           @options[:Host] = "localhost"
           @options[:Port] = user_port
-          conf = Rack::Handler::Puma.config(->{}, @options)
+          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://1.2.3.4:#{file_port}"], conf.options[:binds]
@@ -179,7 +184,7 @@ if Rack::RELEASE < '3'
     end
 
     def test_default_port_when_no_config_file
-      conf = Rack::Handler::Puma.config(->{}, @options)
+      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://0.0.0.0:9292"], conf.options[:binds]
@@ -193,7 +198,7 @@ if Rack::RELEASE < '3'
           FileUtils.mkdir("config")
           File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
-          conf = Rack::Handler::Puma.config(->{}, @options)
+          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
@@ -205,7 +210,7 @@ if Rack::RELEASE < '3'
       user_port = 5001
       @options[:user_supplied_options] = []
       @options[:Port] = user_port
-      conf = Rack::Handler::Puma.config(->{}, @options)
+      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
@@ -214,7 +219,7 @@ if Rack::RELEASE < '3'
     def test_user_port_wins_over_default
       user_port = 5001
       @options[:Port] = user_port
-      conf = Rack::Handler::Puma.config(->{}, @options)
+      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
@@ -230,7 +235,7 @@ if Rack::RELEASE < '3'
           File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
           @options[:Port] = user_port
-          conf = Rack::Handler::Puma.config(->{}, @options)
+          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
@@ -239,7 +244,7 @@ if Rack::RELEASE < '3'
     end
 
     def test_default_log_request_when_no_config_file
-      conf = Rack::Handler::Puma.config(->{}, @options)
+      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
       conf.load
 
       assert_equal false, conf.options[:log_requests]
@@ -252,7 +257,7 @@ if Rack::RELEASE < '3'
         'test/config/t1_conf.rb'
       ]
 
-      conf = Rack::Handler::Puma.config(->{}, @options)
+      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
       conf.load
 
       assert_equal file_log_requests_config, conf.options[:log_requests]
@@ -266,10 +271,10 @@ if Rack::RELEASE < '3'
         'test/config/t1_conf.rb'
       ]
 
-      conf = Rack::Handler::Puma.config(->{}, @options)
+      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
       conf.load
 
       assert_equal user_log_requests_config, conf.options[:log_requests]
     end
   end
-end # if Rack::RELEASE < '3'
+end
