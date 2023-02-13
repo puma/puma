@@ -274,16 +274,21 @@ module TestRackUp
     end
 
     def test_bin
-      skip_if :windows
       # JRuby & TruffleRuby take a long time using IO.popen
       skip_unless :mri
       io = IO.popen "rackup -p 0"
       io.wait_readable 2
       sleep 0.7
       log = io.sysread 2_048
+      pid = log[/PID: (\d+)/, 1] || io.pid
       assert_includes log, 'Puma version'
       assert_includes log, 'Use Ctrl-C to stop'
-      system "kill #{io.pid}"
+    ensure
+      if Puma::IS_WINDOWS
+        `taskkill /F /PID #{pid}`
+      else
+        `kill #{pid}`
+      end
     end
   end
 end
