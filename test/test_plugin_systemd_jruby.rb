@@ -17,7 +17,7 @@ class TestPluginSystemdJruby < TestIntegration
     ENV["NOTIFY_SOCKET"] = "/tmp/doesntmatter"
   end
 
-  def test_systemd_skipped
+  def test_systemd_plugin_not_loaded
     cli_server "test/rackup/hello.ru"
 
     assert_nil Puma::Plugins.instance_variable_get(:@plugins)["systemd"]
