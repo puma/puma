@@ -7,7 +7,7 @@ class TestPluginSystemd < TestIntegration
     "{ 0/5 threads, 5 available, 0 backlog }"
 
   def setup
-    skip "Skipped because Systemd support is linux-only" if windows? || osx?
+    skip_unless :linux
     skip_unless :unix
     skip_unless_signal_exist? :TERM
     skip_if :jruby

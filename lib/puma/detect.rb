@@ -17,6 +17,8 @@ module Puma
   IS_WINDOWS = !!(RUBY_PLATFORM =~ /mswin|ming|cygwin/) ||
     IS_JRUBY && RUBY_DESCRIPTION.include?('mswin')
 
+  IS_LINUX = !(IS_OSX || IS_WINDOWS)
+
   # @version 5.2.0
   IS_MRI = (RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil?)
 
