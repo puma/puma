@@ -188,26 +188,6 @@ RUBY
     end
   end
 
-  def test_ssl_run_without_any_key_and_authority
-    skip_if :jruby
-    require 'logger'
-    require 'puma/minissl/context_builder'
-
-    ssl_params = {
-      'cert' => nil,
-      'key'  => nil,
-      'ca'   => nil,
-      'verify_mode' => 'peer',
-    }
-
-    out_err = StringIO.new
-    Puma::MiniSSL::ContextBuilder.new(ssl_params, Logger.new(out_err)).context
-    out_str = out_err.string
-    assert_includes out_str, "Please specify the SSL key via 'key=' or 'key_pem=', or require the 'localhost' gem in your Puma config for automatic self-signed certificates"
-    assert_includes out_str, "Please specify the SSL cert via 'cert=' or 'cert_pem='"
-    assert_includes out_str, "Please specify the SSL ca via 'ca='"
-  end
-
   private
 
   def curl_and_get_response(url, method: :get, args: nil); require 'open3'
