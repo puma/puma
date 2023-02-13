@@ -182,6 +182,10 @@ module Puma
       end
     end
 
+    def utc_iso8601(val)
+      "#{val.utc.strftime '%FT%T'}Z"
+    end
+
     def stats
       {
         versions: {
@@ -193,6 +197,13 @@ module Puma
           }
         }
       }
+    end
+
+    # this method call should always be guarded by `@log_writer.debug?`
+    def debug_loaded_extensions(str)
+      @log_writer.debug "────────────────────────────────── #{str}"
+      re_ext = /\.#{RbConfig::CONFIG['DLEXT']}\z/i
+      $LOADED_FEATURES.grep(re_ext).each { |f| @log_writer.debug("    #{f}") }
     end
   end
 end

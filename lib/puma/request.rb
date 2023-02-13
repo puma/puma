@@ -53,7 +53,12 @@ module Puma
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
 
+
       return false if closed_socket?(socket)
+
+      if client.http_content_length_limit_exceeded
+        return prepare_response(413, {}, ["Payload Too Large"], requests, client)
+      end
 
       normalize_env env, client
 
@@ -168,7 +173,7 @@ module Puma
       # below converts app_body into body, dependent on app_body's characteristics, and
       # resp_info[:content_length] will be set if it can be determined
       if !resp_info[:content_length] && !resp_info[:transfer_encoding] && status != 204
-        if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary)
+        if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary) && array_body.is_a?(Array)
           body = array_body
           resp_info[:content_length] = body.sum(&:bytesize)
         elsif res_body.is_a?(File) && res_body.respond_to?(:size)
@@ -215,27 +220,33 @@ module Puma
       cork_socket socket
 
       if resp_info[:no_body]
-        if content_length and status != 204
-          io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
-        end
+        # 101 (Switching Protocols) doesn't return here or have content_length,
+        # it should be using `response_hijack`
+        unless status == 101
+          if content_length && status != 204
+            io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+          end
 
-        io_buffer << LINE_END
-        fast_write_str socket, io_buffer.read_and_reset
-        socket.flush
-        return keep_alive
-      end
-      if content_length
-        io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
-        chunked = false
-      elsif !response_hijack and resp_info[:allow_chunked]
-        io_buffer << TRANSFER_ENCODING_CHUNKED
-        chunked = true
+          io_buffer << LINE_END
+          fast_write_str socket, io_buffer.read_and_reset
+          socket.flush
+          return keep_alive
+        end
+      else
+        if content_length
+          io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+          chunked = false
+        elsif !response_hijack && resp_info[:allow_chunked]
+          io_buffer << TRANSFER_ENCODING_CHUNKED
+          chunked = true
+        end
       end
 
       io_buffer << line_ending
 
       if response_hijack
         fast_write_str socket, io_buffer.read_and_reset
+        uncork_socket socket
         response_hijack.call socket
         return :async
       end
@@ -295,8 +306,8 @@ module Puma
     def fast_write_response(socket, body, io_buffer, chunked, content_length)
       if body.is_a?(::File) && body.respond_to?(:read)
         if chunked  # would this ever happen?
-          while part = body.read(BODY_LEN_MAX)
-            io_buffer.append part.bytesize.to_s(16), LINE_END, part, LINE_END
+          while chunk = body.read(BODY_LEN_MAX)
+            io_buffer.append chunk.bytesize.to_s(16), LINE_END, chunk, LINE_END
           end
           fast_write_str socket, CLOSE_CHUNKED
         else
@@ -476,7 +487,7 @@ module Puma
       to_add = nil
 
       env.each do |k,v|
-        if k.start_with?("HTTP_") and k.include?(",") and k != "HTTP_TRANSFER,ENCODING"
+        if k.start_with?("HTTP_") && k.include?(",") && k != "HTTP_TRANSFER,ENCODING"
           if to_delete
             to_delete << k
           else

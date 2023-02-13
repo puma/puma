@@ -17,9 +17,16 @@ class TestConfigFile < TestConfigFileBase
   end
 
   def test_app_from_rackup
-    skip_if :rack3
+    if Rack::RELEASE >= '3'
+      fn = "test/rackup/hello-bind_rack3.ru"
+      bind = "tcp://0.0.0.0:9292"
+    else
+      fn = "test/rackup/hello-bind.ru"
+      bind = "tcp://127.0.0.1:9292"
+    end
+
     conf = Puma::Configuration.new do |c|
-      c.rackup "test/rackup/hello-bind.ru"
+      c.rackup fn
     end
     conf.load
 
@@ -29,7 +36,9 @@ class TestConfigFile < TestConfigFileBase
       conf.app
     end
 
-    assert_equal ["tcp://127.0.0.1:9292"], conf.options[:binds]
+    assert_equal [200, {"Content-Type"=>"text/plain"}, ["Hello World"]], conf.app.call({})
+
+    assert_equal [bind], conf.options[:binds]
   end
 
   def test_app_from_app_DSL
@@ -145,6 +154,38 @@ class TestConfigFile < TestConfigFileBase
 
     ssl_binding = conf.options[:binds].first
     assert ssl_binding.include?('&backlog=2048')
+  end
+
+  def test_ssl_bind_with_low_latency_true
+    skip_unless :ssl
+    skip_if :jruby
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        low_latency: true
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert ssl_binding.include?('&low_latency=true')
+  end
+
+  def test_ssl_bind_with_low_latency_false
+    skip_unless :ssl
+    skip_if :jruby
+
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        low_latency: false
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert ssl_binding.include?('&low_latency=false')
   end
 
   def test_ssl_bind_jruby
@@ -471,6 +512,14 @@ class TestConfigFile < TestConfigFileBase
     conf.load
 
     assert_equal true, conf.options[:silence_single_worker_warning]
+  end
+
+  def test_http_content_length_limit
+    assert_nil Puma::Configuration.new.options.default_options[:http_content_length_limit]
+
+    conf = Puma::Configuration.new({ http_content_length_limit: 10000})
+
+    assert_equal 10000, conf.final_options[:http_content_length_limit]
   end
 
   private

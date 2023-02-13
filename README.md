@@ -365,6 +365,7 @@ Community guides:
 * [puma-metrics](https://github.com/harmjanblok/puma-metrics) — export Puma metrics to Prometheus
 * [puma-plugin-statsd](https://github.com/yob/puma-plugin-statsd) — send Puma metrics to statsd
 * [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog
+* [puma-plugin-telemetry](https://github.com/babbel/puma-plugin-telemetry) - telemetry plugin for Puma offering various targets to publish
 
 ### Monitoring
 

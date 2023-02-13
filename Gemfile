@@ -10,9 +10,9 @@ gem "minitest", "~> 5.11"
 gem "minitest-retry"
 gem "minitest-proveit"
 gem "minitest-stub-const"
-gem "sd_notify"
 
 gem "rack", (ENV['PUMA_CI_RACK_2'] ? "~> 2.2" : ">= 2.2")
+gem "rackup" unless ENV['PUMA_CI_RACK_2']
 
 gem "jruby-openssl", :platform => "jruby"
 

@@ -65,6 +65,7 @@ module Puma
 
       ca_additions = "&ca=#{Puma::Util.escape(opts[:ca])}" if ['peer', 'force_peer'].include?(verify)
 
+      low_latency_str = opts.key?(:low_latency) ? "&low_latency=#{opts[:low_latency]}" : ''
       backlog_str = opts[:backlog] ? "&backlog=#{Integer(opts[:backlog])}" : ''
 
       if defined?(JRUBY_VERSION)
@@ -114,7 +115,7 @@ module Puma
           end
 
         "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{ssl_cipher_filter}" \
-          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
+          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}#{low_latency_str}"
       end
     end
 
@@ -1025,6 +1026,19 @@ module Puma
 
     def mutate_stdout_and_stderr_to_sync_on_write(enabled=true)
       @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
+    end
+
+    # Specify how big the request payload should be, in bytes.
+    # This limit is compared against Content-Length HTTP header.
+    # If the payload size (CONTENT_LENGTH) is larger than http_content_length_limit,
+    # HTTP 413 status code is returned.
+    #
+    # When no Content-Length http header is present, it is compared against the
+    # size of the body of the request.
+     #
+    # The default value for http_content_length_limit is nil.
+    def http_content_length_limit(limit)
+      @options[:http_content_length_limit] = limit
     end
 
     private

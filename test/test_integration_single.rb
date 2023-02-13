@@ -190,8 +190,7 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_application_logs_are_flushed_on_write
-    @control_tcp_port = UniquePort.call
-    cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/write_to_stdout.ru"
+    cli_server "#{set_pumactl_args} test/rackup/write_to_stdout.ru"
 
     read_body connect
 
@@ -236,5 +235,13 @@ class TestIntegrationSingle < TestIntegration
       assert false, "Process froze"
     end
     assert true
+  end
+
+  def test_puma_debug_loaded_exts
+    cli_server "#{set_pumactl_args} test/rackup/hello.ru", puma_debug: true
+
+    assert wait_for_server_to_include('Loaded Extensions:')
+
+    cli_pumactl 'stop'
   end
 end

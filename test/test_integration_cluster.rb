@@ -167,16 +167,22 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_worker_check_interval
+    # iso8601 2022-12-14T00:05:49Z
+    re_8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/
     @control_tcp_port = UniquePort.call
     worker_check_interval = 1
 
     cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
 
     sleep worker_check_interval + 1
-    last_checkin_1 = Time.parse(get_stats["worker_status"].first["last_checkin"])
+    checkin_1 = get_stats["worker_status"].first["last_checkin"]
+    assert_match re_8601, checkin_1
+    last_checkin_1 = Time.parse checkin_1
 
     sleep worker_check_interval + 1
-    last_checkin_2 = Time.parse(get_stats["worker_status"].first["last_checkin"])
+    checkin_2 = get_stats["worker_status"].first["last_checkin"]
+    assert_match re_8601, checkin_2
+    last_checkin_2 = Time.parse checkin_2
 
     assert(last_checkin_2 > last_checkin_1)
   end
@@ -440,6 +446,14 @@ RUBY
   ensure
     File.unlink file0 if File.file? file0
     File.unlink file1 if File.file? file1
+  end
+
+  def test_puma_debug_loaded_exts
+    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true
+
+    assert wait_for_server_to_include('Loaded Extensions - worker 0:')
+    assert wait_for_server_to_include('Loaded Extensions - master:')
+    @pid = @server.pid
   end
 
   private
