@@ -65,7 +65,14 @@ class TestIntegration < Minitest::Test
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
 
-  def cli_server(argv, unix: false, config: nil, merge_err: false, log: false, no_wait: false, puma_debug: nil)
+  def cli_server(argv,  # rubocop:disable Metrics/ParameterLists
+      unix: false,      # uses a UNIXSocket for the server listener when true
+      config: nil,      # string to use for config file
+      merge_err: false, # merge STDERR into STDOUT
+      log: false,       # output server log to console (for debugging)
+      no_wait: false,   # don't wait for server to boot
+      puma_debug: nil,  # set env['PUMA_DEBUG'] = 'true'
+      env: {})          # pass env setting to Puma process in IO.popen
     if config
       config_file = Tempfile.new(%w(config .rb))
       config_file.write config
@@ -80,7 +87,7 @@ class TestIntegration < Minitest::Test
       cmd = "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
     end
 
-    env = puma_debug ? {'PUMA_DEBUG' => 'true' } : {}
+    env['PUMA_DEBUG'] = 'true' if puma_debug
 
     if merge_err
       @server = IO.popen(env, cmd, :err=>[:child, :out])
