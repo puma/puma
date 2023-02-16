@@ -2,8 +2,11 @@
 require_relative "helper"
 require "net/http"
 
-require "rack"
+# don't load Rack, as it autoloads everything
 require "rack/body_proxy"
+require "rack/lint"
+require "rack/version"
+require "rack/common_logger"
 
 # Rack::Chunked is loaded by Rack v2, needs to be required by Rack 3.0,
 # and is removed in Rack 3.1
