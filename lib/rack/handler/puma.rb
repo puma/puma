@@ -120,7 +120,8 @@ if Object.const_defined? :Rackup
       register :puma, Puma
     end
   end
-elsif Object.const_defined?(:Rack) && Rack::RELEASE < '3'
+else
+  do_register = Object.const_defined?(:Rack) && Rack::RELEASE < '3'
   module Rack
     module Handler
       module Puma
@@ -128,9 +129,7 @@ elsif Object.const_defined?(:Rack) && Rack::RELEASE < '3'
           include ::Puma::RackHandler
         end
       end
-      register :puma, Puma
     end
   end
-else
-  raise "You must install the rackup gem when using Rack 3"
+  ::Rack::Handler.register(:puma, ::Rack::Handler::Puma) if do_register
 end

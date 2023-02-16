@@ -1,24 +1,9 @@
 require_relative "helper"
 
+# Most tests check that ::Rack::Handler::Puma works by itself
+# RackUp#test_bin runs Puma using the rackup bin file
 module TestRackUp
-  if ENV.key? "PUMA_CI_RACK_2"
-    require "rack"
-    RACK_HANDLER_MOD = ::Rack::Handler
-  else
-    require "rackup"
-    RACK_HANDLER_MOD = ::Rackup::Handler
-  end
-
   require "rack/handler/puma"
-
-  class TestHandlerGetStrSym < Minitest::Test
-    def test_handler
-      handler = RACK_HANDLER_MOD.get(:puma)
-      assert_equal RACK_HANDLER_MOD::Puma, handler
-      handler = RACK_HANDLER_MOD.get('Puma')
-      assert_equal RACK_HANDLER_MOD::Puma, handler
-    end
-  end
 
   class TestPathHandler < Minitest::Test
     def app
@@ -35,7 +20,7 @@ module TestRackUp
 
       @launcher = nil
       thread = Thread.new do
-        RACK_HANDLER_MOD::Puma.run(app, **options) do |s, p|
+        ::Rack::Handler::Puma.run(app, **options) do |s, p|
           @launcher = s
         end
       end
@@ -79,7 +64,7 @@ module TestRackUp
           File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
           @options[:Port] = user_port
-          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+          conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
@@ -100,7 +85,7 @@ module TestRackUp
 
       @options[:Host] = user_host
       @options[:Port] = user_port
-      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://#{user_host}:#{user_port}"], conf.options[:binds]
@@ -108,7 +93,7 @@ module TestRackUp
 
     def test_ipv6_host_supplied_port_default
       @options[:Host] = "::1"
-      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://[::1]:9292"], conf.options[:binds]
@@ -131,7 +116,7 @@ module TestRackUp
           File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
           @options[:Port] = user_port
-          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+          conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
@@ -150,7 +135,7 @@ module TestRackUp
 
           @options[:Host] = "localhost"
           @options[:Port] = user_port
-          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+          conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://localhost:#{file_port}"], conf.options[:binds]
@@ -169,7 +154,7 @@ module TestRackUp
 
           @options[:Host] = "localhost"
           @options[:Port] = user_port
-          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+          conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://1.2.3.4:#{file_port}"], conf.options[:binds]
@@ -184,7 +169,7 @@ module TestRackUp
     end
 
     def test_default_port_when_no_config_file
-      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://0.0.0.0:9292"], conf.options[:binds]
@@ -198,7 +183,7 @@ module TestRackUp
           FileUtils.mkdir("config")
           File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
-          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+          conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
@@ -210,7 +195,7 @@ module TestRackUp
       user_port = 5001
       @options[:user_supplied_options] = []
       @options[:Port] = user_port
-      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
@@ -219,7 +204,7 @@ module TestRackUp
     def test_user_port_wins_over_default
       user_port = 5001
       @options[:Port] = user_port
-      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
 
       assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
@@ -235,7 +220,7 @@ module TestRackUp
           File.open("config/puma.rb", "w") { |f| f << "port #{file_port}" }
 
           @options[:Port] = user_port
-          conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+          conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
 
           assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
@@ -244,7 +229,7 @@ module TestRackUp
     end
 
     def test_default_log_request_when_no_config_file
-      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
 
       assert_equal false, conf.options[:log_requests]
@@ -257,7 +242,7 @@ module TestRackUp
         'test/config/t1_conf.rb'
       ]
 
-      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
 
       assert_equal file_log_requests_config, conf.options[:log_requests]
@@ -271,10 +256,39 @@ module TestRackUp
         'test/config/t1_conf.rb'
       ]
 
-      conf = RACK_HANDLER_MOD::Puma.config(->{}, @options)
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
 
       assert_equal user_log_requests_config, conf.options[:log_requests]
+    end
+  end
+
+  # Run using IO.popen so we don't load Rack and/or Rackup in the main process
+  class RackUp < Minitest::Test
+    def setup
+      FileUtils.copy_file 'test/rackup/hello.ru', 'config.ru'
+    end
+
+    def teardown
+      FileUtils.rm 'config.ru'
+    end
+
+    def test_bin
+      # JRuby & TruffleRuby take a long time using IO.popen
+      skip_unless :mri
+      io = IO.popen "rackup -p 0"
+      io.wait_readable 2
+      sleep 0.7
+      log = io.sysread 2_048
+      pid = log[/PID: (\d+)/, 1] || io.pid
+      assert_includes log, 'Puma version'
+      assert_includes log, 'Use Ctrl-C to stop'
+    ensure
+      if Puma::IS_WINDOWS
+        `taskkill /F /PID #{pid}`
+      else
+        `kill #{pid}`
+      end
     end
   end
 end
