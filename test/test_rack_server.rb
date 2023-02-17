@@ -215,43 +215,6 @@ class TestRackServer < Minitest::Test
     assert_equal str_ary_bytes, content_length
   end
 
-  def test_hijack_body_close
-    available = true
-    @server.app = ->(env) {
-      if available
-        available = false
-        hijack_lambda = ->(io) {
-          io.syswrite 'hijacked'
-          io.close
-        }
-        [200, { 'Content-Type' => 'text/plain', 'rack.hijack' => hijack_lambda},
-          ::Rack::BodyProxy.new([]) { available = true }]
-      else
-        [500, { 'Content-Type' => 'text/plain' }, ['incorrect']]
-      end
-    }
-
-    @server.run
-
-    socket1 = TCPSocket.new HOST, @port
-    socket1.syswrite "GET / HTTP/1.1\r\n\r\n"
-    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.25 : 0.1)
-    resp1 = socket1.sysread 1_024
-
-    sleep 0.01 # time for close block to be called ?
-
-    socket2 = TCPSocket.new HOST, @port
-    socket2.syswrite "GET / HTTP/1.1\r\n\r\n"
-    sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.25 : 0.1)
-    resp2 = socket2.sysread 1_024
-
-    assert_operator resp1, :end_with?, 'hijacked'
-    assert_operator resp2, :end_with?, 'hijacked'
-
-    socket1.close
-    socket2.close
-  end
-
   def test_common_logger
     log = StringIO.new
 

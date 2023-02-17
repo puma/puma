@@ -106,6 +106,7 @@ module Puma
         # is called
         res_body = app_body
 
+        # full hijack, app called env['rack.hijack']
         return :async if client.hijacked
 
         status = status.to_i
@@ -169,53 +170,54 @@ module Puma
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
       close_body = false
-
-      # below converts app_body into body, dependent on app_body's characteristics, and
-      # resp_info[:content_length] will be set if it can be determined
-      if !resp_info[:content_length] && !resp_info[:transfer_encoding] && status != 204
-        if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary) && array_body.is_a?(Array)
-          body = array_body
-          resp_info[:content_length] = body.sum(&:bytesize)
-        elsif res_body.is_a?(File) && res_body.respond_to?(:size)
-          body = res_body
-          resp_info[:content_length] = body.size
-        elsif res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
-            File.readable?(fn = res_body.to_path)
-          body = File.open fn, 'rb'
-          resp_info[:content_length] = body.size
-          close_body = true
-        else
-          body = res_body
-        end
-      elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) && res_body.respond_to?(:each) &&
-          File.readable?(fn = res_body.to_path)
-        body = File.open fn, 'rb'
-        resp_info[:content_length] = body.size
-        close_body = true
-      elsif !res_body.is_a?(::File) && res_body.respond_to?(:filename) && res_body.respond_to?(:each) &&
-          res_body.respond_to?(:bytesize) && File.readable?(fn = res_body.filename)
-        # Sprockets::Asset
-        resp_info[:content_length] = res_body.bytesize unless resp_info[:content_length]
-        if res_body.to_hash[:source]   # use each to return @source
-          body = res_body
-        else                           # avoid each and use a File object
-          body = File.open fn, 'rb'
-          close_body = true
-        end
-      else
-        body = res_body
-      end
-
-      line_ending = LINE_END
-
+      response_hijack = nil
       content_length = resp_info[:content_length]
       keep_alive     = resp_info[:keep_alive]
 
-      if res_body && !res_body.respond_to?(:each)
-        response_hijack = res_body
+      if res_body.respond_to?(:each) && !resp_info[:response_hijack]
+        # below converts app_body into body, dependent on app_body's characteristics, and
+        # content_length will be set if it can be determined
+        if !content_length && !resp_info[:transfer_encoding] && status != 204
+          if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary) &&
+              array_body.is_a?(Array)
+            body = array_body
+            content_length = body.sum(&:bytesize)
+          elsif res_body.is_a?(File) && res_body.respond_to?(:size)
+            body = res_body
+            content_length = body.size
+          elsif res_body.respond_to?(:to_path) && File.readable?(fn = res_body.to_path)
+            body = File.open fn, 'rb'
+            content_length = body.size
+            close_body = true
+          else
+            body = res_body
+          end
+        elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) &&
+            File.readable?(fn = res_body.to_path)
+          body = File.open fn, 'rb'
+          content_length = body.size
+          close_body = true
+        elsif !res_body.is_a?(::File) && res_body.respond_to?(:filename) &&
+            res_body.respond_to?(:bytesize) && File.readable?(fn = res_body.filename)
+          # Sprockets::Asset
+          content_length = res_body.bytesize unless content_length
+          if (body_str = res_body.to_hash[:source])
+            body = [body_str]
+          else                           # avoid each and use a File object
+            body = File.open fn, 'rb'
+            close_body = true
+          end
+        else
+          body = res_body
+        end
       else
-        response_hijack = resp_info[:response_hijack]
+        # partial hijack, from Rack spec:
+        #   Servers must ignore the body part of the response tuple when the
+        #   rack.hijack response header is present.
+        response_hijack = resp_info[:response_hijack] || res_body
       end
+
+      line_ending = LINE_END
 
       cork_socket socket
 
@@ -244,6 +246,8 @@ module Puma
 
       io_buffer << line_ending
 
+      # partial hijack, we write headers, then hand the socket to the app via
+      # response_hijack.call
       if response_hijack
         fast_write_str socket, io_buffer.read_and_reset
         uncork_socket socket
@@ -358,16 +362,15 @@ module Puma
         fast_write_str(socket, io_buffer.read_and_reset) unless io_buffer.length.zero?
       else
         # for enum bodies
-        fast_write_str socket, io_buffer.read_and_reset
         if chunked
           body.each do |part|
             next if (byte_size = part.bytesize).zero?
-             fast_write_str socket, (byte_size.to_s(16) << LINE_END)
-             fast_write_str socket, part
-             fast_write_str socket, LINE_END
+            io_buffer.append byte_size.to_s(16), LINE_END, part, LINE_END
+            fast_write_str socket, io_buffer.read_and_reset
           end
           fast_write_str socket, CLOSE_CHUNKED
         else
+          fast_write_str socket, io_buffer.read_and_reset
           body.each do |part|
             next if part.bytesize.zero?
             fast_write_str socket, part
