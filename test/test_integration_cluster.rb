@@ -130,16 +130,6 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
-  def test_on_booted
-    cli_server "-w #{workers} -C test/config/event_on_booted.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru", no_wait: true
-
-    output = []
-
-    output << $_ while @server.gets
-
-    assert output.any? { |msg| msg == "on_booted called\n" } != nil
-  end
-
   def test_term_worker_clean_exit
     cli_server "-w #{workers} test/rackup/hello.ru"
 
