@@ -664,6 +664,16 @@ module Puma
 
     alias_method :after_worker_boot, :after_worker_fork
 
+    # Code to run after puma is booted (works for both: single and clustered)
+    #
+    # @example
+    #   on_booted do
+    #     puts 'After booting...'
+    #   end
+    def on_booted(&block)
+      @config.options[:events].on_booted(&block)
+    end
+
     # When `fork_worker` is enabled, code to run in Worker 0
     # before all other workers are re-forked from this process,
     # after the server has temporarily stopped serving requests

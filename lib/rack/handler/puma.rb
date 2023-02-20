@@ -27,7 +27,7 @@ module Puma
         end
       end
 
-      conf = ::Puma::Configuration.new(options, default_options) do |user_config, file_config, default_config|
+      conf = ::Puma::Configuration.new(options, default_options.merge({events: @events})) do |user_config, file_config, default_config|
         if options.delete(:Verbose)
           require 'rack/common_logger'
           app = Rack::CommonLogger.new(app, STDOUT)
@@ -63,8 +63,8 @@ module Puma
 
       log_writer = options.delete(:Silent) ? ::Puma::LogWriter.strings : ::Puma::LogWriter.stdio
 
-      launcher = ::Puma::Launcher.new(conf, :log_writer => log_writer)
-
+      launcher = ::Puma::Launcher.new(conf, :log_writer => log_writer, events: @events)
+      
       yield launcher if block_given?
       begin
         launcher.run

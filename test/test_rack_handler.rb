@@ -4,6 +4,48 @@ require_relative "helper"
 # RackUp#test_bin runs Puma using the rackup bin file
 module TestRackUp
   require "rack/handler/puma"
+  require "puma/events"
+
+  class TestHandlerGetStrSym < Minitest::Test
+    def test_handler
+      handler = Rack::Handler.get(:puma)
+      assert_equal Rack::Handler::Puma, handler
+      handler = Rack::Handler.get('Puma')
+      assert_equal Rack::Handler::Puma, handler
+    end
+  end
+
+  class TestOnBootedHandler < Minitest::Test
+    def app
+      Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
+    end
+
+    def test_on_booted
+      on_booted = false
+      events = Puma::Events.new
+      events.on_booted do
+        on_booted = true
+      end
+
+      launcher = nil
+      thread = Thread.new do
+        Rack::Handler::Puma.run(app, events: events, Silent: true) do |l|
+          launcher = l
+        end
+      end
+
+      # Wait for launcher to boot
+      Timeout.timeout(10) do
+        sleep 0.5 until launcher
+      end
+      sleep 1.5 unless Puma::IS_MRI
+
+      launcher.stop
+      thread.join
+
+      assert_equal on_booted, true
+    end
+  end
 
   class TestPathHandler < Minitest::Test
     def app

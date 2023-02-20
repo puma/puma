@@ -157,6 +157,15 @@ before_fork do
 end
 ```
 
+You can also specify a block to be run after puma is booted using `on_booted`:
+
+```ruby
+# config/puma.rb
+on_booted do
+  # configuration here
+end
+```
+
 ### Error handling
 
 If puma encounters an error outside of the context of your application, it will respond with a 500 and a simple
