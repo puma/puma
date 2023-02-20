@@ -64,7 +64,7 @@ module Puma
       log_writer = options.delete(:Silent) ? ::Puma::LogWriter.strings : ::Puma::LogWriter.stdio
 
       launcher = ::Puma::Launcher.new(conf, :log_writer => log_writer, events: @events)
-      
+
       yield launcher if block_given?
       begin
         launcher.run
