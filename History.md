@@ -1,4 +1,10 @@
-## 6.1.0 / 2022-02-12
+## 6.1.1 / 2023-02-28
+
+* Bugfixes
+  * We no longer try to use the systemd plugin for JRuby ([#3079])
+  * Allow ::Rack::Handler::Puma.run to work regardless of whether Rack/Rackup are loaded ([#3080])
+
+## 6.1.0 / 2023-02-12
 
 * Features
   * WebSocket support via partial hijack ([#3058], [#3007])
@@ -1948,6 +1954,8 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3079]:https://github.com/puma/puma/pull/3079     "PR by @mohamedhafez, merged 2023-02-24"
+[#3080]:https://github.com/puma/puma/pull/3080     "PR by @MSP-Greg, merged 2023-02-16"
 [#3058]:https://github.com/puma/puma/pull/3058     "PR by @dentarg, merged 2023-01-29"
 [#3007]:https://github.com/puma/puma/issues/3007   "Issue by @MSP-Greg, closed 2023-01-29"
 [#3011]:https://github.com/puma/puma/pull/3011     "PR by @joaomarcos96, merged 2023-01-03"
