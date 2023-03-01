@@ -10,4 +10,4 @@ class CustomLogger
 end
 
 log_requests
-logger CustomLogger.new(STDOUT)
+custom_logger CustomLogger.new(STDOUT)
