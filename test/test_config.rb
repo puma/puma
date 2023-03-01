@@ -563,7 +563,7 @@ class TestConfigFileSingle < TestConfigFileBase
     conf.load
     out, _ = capture_subprocess_io { conf.options[:custom_logger].write 'test' }
 
-    assert_equal 'Custom logging: test', out
+    assert_equal "Custom logging: test\n", out
   end
 end
 
