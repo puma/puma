@@ -420,8 +420,8 @@ module Puma
     end
 
     # Pass in a custom logging class instance
-    def logger(custom_logger)
-      @options[:logger] = custom_logger
+    def custom_logger(custom_logger)
+      @options[:custom_logger] = custom_logger
     end
 
     # Show debugging info
