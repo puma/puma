@@ -561,7 +561,7 @@ class TestConfigFileSingle < TestConfigFileBase
     conf = Puma::Configuration.new { |c| c.load 'test/config/custom_logger.rb' }
 
     conf.load
-    out, _ = capture_subprocess_io { conf.options[:logger].write 'test' }
+    out, _ = capture_subprocess_io { conf.options[:custom_logger].write 'test' }
 
     assert_equal 'Custom logging: test', out
   end
