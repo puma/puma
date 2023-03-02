@@ -102,7 +102,8 @@ module Puma
           @ioerr.is_a?(IO) and @ioerr.wait_writable(1)
           @ioerr.write "#{w_str}\n"
           @ioerr.flush unless @ioerr.sync
-        rescue Errno::EPIPE, Errno::EBADF, IOError
+        rescue Errno::EPIPE, Errno::EBADF, IOError, Errno::EINVAL
+        # 'Invalid argument' (Errno::EINVAL) may be raised by flush
         end
       end
     rescue ThreadError
