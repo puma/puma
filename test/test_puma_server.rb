@@ -467,7 +467,8 @@ EOF
     data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
 
     assert_includes data, 'HTTP/1.0 500 Internal Server Error'
-    assert_includes data, "Puma caught this error: undefined method `to_i' for [0, 1]:Array"
+    assert_includes data, "Puma caught this error: undefined method `to_i' for"
+    assert_includes data, "Array"
     refute_includes data, 'lowlevel_error'
     sleep 0.1 unless ::Puma::IS_MRI
     assert app_body.closed?

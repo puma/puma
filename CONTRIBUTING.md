@@ -29,6 +29,8 @@ Any questions about contributing may be asked in our [Discussions](https://githu
 
 **If you're nervous, get stuck, need help, or want to know where to start and where you can help**, please don't hesitate to [book 30 minutes with maintainer @nateberkopec here](https://fantastical.app/nateberkopec/weekdays). He is happy to help!
 
+Nate also [gave a 40 minute conference talk in 2022](https://www.youtube.com/watch?v=w4X_oBuPmTM) detailing how Puma works, a brief overview of its internals, and a quick guide on how to contribute.
+
 #### Clone the repo 
 
 Clone the Puma repository:

@@ -27,7 +27,9 @@ module Puma
         end
       end
 
-      conf = ::Puma::Configuration.new(options, default_options) do |user_config, file_config, default_config|
+      @events = options[:events] || ::Puma::Events.new
+
+      conf = ::Puma::Configuration.new(options, default_options.merge({events: @events})) do |user_config, file_config, default_config|
         if options.delete(:Verbose)
           require 'rack/common_logger'
           app = Rack::CommonLogger.new(app, STDOUT)
@@ -59,11 +61,11 @@ module Puma
     end
 
     def run(app, **options)
-      conf   = self.config(app, options)
+      conf = self.config(app, options)
 
       log_writer = options.delete(:Silent) ? ::Puma::LogWriter.strings : ::Puma::LogWriter.stdio
 
-      launcher = ::Puma::Launcher.new(conf, :log_writer => log_writer)
+      launcher = ::Puma::Launcher.new(conf, :log_writer => log_writer, events: @events)
 
       yield launcher if block_given?
       begin
@@ -120,7 +122,8 @@ if Object.const_defined? :Rackup
       register :puma, Puma
     end
   end
-elsif Object.const_defined?(:Rack) && Rack::RELEASE < '3'
+else
+  do_register = Object.const_defined?(:Rack) && Rack::RELEASE < '3'
   module Rack
     module Handler
       module Puma
@@ -128,9 +131,7 @@ elsif Object.const_defined?(:Rack) && Rack::RELEASE < '3'
           include ::Puma::RackHandler
         end
       end
-      register :puma, Puma
     end
   end
-else
-  raise "You must install the rackup gem when using Rack 3"
+  ::Rack::Handler.register(:puma, ::Rack::Handler::Puma) if do_register
 end

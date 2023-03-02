@@ -2,12 +2,13 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestPluginSystemd < TestIntegration
+  parallelize_me! if ::Puma.mri?
 
   THREAD_LOG = TRUFFLE ? "{ 0/16 threads, 16 available, 0 backlog }" :
     "{ 0/5 threads, 5 available, 0 backlog }"
 
   def setup
-    skip "Skipped because Systemd support is linux-only" if windows? || osx?
+    skip_unless :linux
     skip_unless :unix
     skip_unless_signal_exist? :TERM
     skip_if :jruby
@@ -19,7 +20,7 @@ class TestPluginSystemd < TestIntegration
       @socket = Socket.new(:UNIX, :DGRAM, 0)
       socket_ai = Addrinfo.unix(sockaddr)
       @socket.bind(socket_ai)
-      ENV["NOTIFY_SOCKET"] = sockaddr
+      @env = {"NOTIFY_SOCKET" => sockaddr }
     end
   end
 
@@ -29,8 +30,6 @@ class TestPluginSystemd < TestIntegration
     File.unlink(@sockaddr) if @sockaddr
     @socket = nil
     @sockaddr = nil
-    ENV["NOTIFY_SOCKET"] = nil
-    ENV["WATCHDOG_USEC"] = nil
   end
 
   def test_systemd_notify_usr1_phased_restart_cluster
@@ -48,9 +47,8 @@ class TestPluginSystemd < TestIntegration
   end
 
   def test_systemd_watchdog
-    ENV["WATCHDOG_USEC"] = "1_000_000"
-
-    cli_server "test/rackup/hello.ru"
+    wd_env = @env.merge({"WATCHDOG_USEC" => "1_000_000"})
+    cli_server "test/rackup/hello.ru", env: wd_env
     assert_message "READY=1"
 
     assert_message "WATCHDOG=1"
@@ -60,10 +58,10 @@ class TestPluginSystemd < TestIntegration
   end
 
   def test_systemd_notify
-    cli_server "test/rackup/hello.ru"
+    cli_server "test/rackup/hello.ru", env: @env
     assert_message "READY=1"
 
-    assert_message "STATUS=Puma #{Puma::Const::VERSION}: worker: #{THREAD_LOG}", 70
+    assert_message "STATUS=Puma #{Puma::Const::VERSION}: worker: #{THREAD_LOG}"
 
     stop_server
     assert_message "STOPPING=1"
@@ -71,10 +69,11 @@ class TestPluginSystemd < TestIntegration
 
   def test_systemd_cluster_notify
     skip_unless :fork
-    cli_server "-w2 test/rackup/hello.ru"
+    cli_server "-w2 test/rackup/hello.ru", env: @env
     assert_message "READY=1"
+
     assert_message(
-      "STATUS=Puma #{Puma::Const::VERSION}: cluster: 2/2, worker_status: [#{THREAD_LOG},#{THREAD_LOG}]", 130)
+      "STATUS=Puma #{Puma::Const::VERSION}: cluster: 2/2, worker_status: [#{THREAD_LOG},#{THREAD_LOG}]")
 
     stop_server
     assert_message "STOPPING=1"
@@ -84,7 +83,7 @@ class TestPluginSystemd < TestIntegration
 
   def assert_restarts_with_systemd(signal, workers: 2)
     skip_unless(:fork) unless workers.zero?
-    cli_server "-w#{workers} test/rackup/hello.ru"
+    cli_server "-w#{workers} test/rackup/hello.ru", env: @env
     assert_message 'READY=1'
 
     Process.kill signal, @pid
@@ -101,7 +100,8 @@ class TestPluginSystemd < TestIntegration
     assert_message 'STOPPING=1'
   end
 
-  def assert_message(msg, len = 15)
-    assert_equal msg, @socket.recvfrom(len)[0]
+  def assert_message(msg)
+    @socket.wait_readable 1
+    assert_equal msg, @socket.recvfrom(msg.bytesize)[0]
   end
 end

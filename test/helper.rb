@@ -145,6 +145,7 @@ module TestSkips
   def skip_if(*engs, suffix: '', bt: caller)
     engs.each do |eng|
       skip_msg = case eng
+        when :linux       then "Skipped if Linux#{suffix}"       if Puma::IS_LINUX
         when :darwin      then "Skipped if darwin#{suffix}"      if Puma::IS_OSX
         when :jruby       then "Skipped if JRuby#{suffix}"       if Puma::IS_JRUBY
         when :truffleruby then "Skipped if TruffleRuby#{suffix}" if TRUFFLE
@@ -165,6 +166,7 @@ module TestSkips
   # called with only one param
   def skip_unless(eng, bt: caller)
     skip_msg = case eng
+      when :linux   then "Skip unless Linux"            unless Puma::IS_LINUX
       when :darwin  then "Skip unless darwin"           unless Puma::IS_OSX
       when :jruby   then "Skip unless JRuby"            unless Puma::IS_JRUBY
       when :windows then "Skip unless Windows"          unless Puma::IS_WINDOWS
