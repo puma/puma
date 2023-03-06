@@ -455,22 +455,32 @@ class TestConfigFile < TestConfigFileBase
 
   def test_run_hooks_before_worker_fork
     assert_run_hooks :before_worker_fork, configured_with: :on_worker_fork
+
+    assert_warning_for_hooks_defined_in_single_mode :on_worker_fork
   end
 
   def test_run_hooks_after_worker_fork
     assert_run_hooks :after_worker_fork
+
+    assert_warning_for_hooks_defined_in_single_mode :after_worker_fork
   end
 
   def test_run_hooks_before_worker_boot
     assert_run_hooks :before_worker_boot, configured_with: :on_worker_boot
+
+    assert_warning_for_hooks_defined_in_single_mode :on_worker_boot
   end
 
   def test_run_hooks_before_worker_shutdown
     assert_run_hooks :before_worker_shutdown, configured_with: :on_worker_shutdown
+
+    assert_warning_for_hooks_defined_in_single_mode :on_worker_shutdown
   end
 
   def test_run_hooks_before_fork
     assert_run_hooks :before_fork
+
+    assert_warning_for_hooks_defined_in_single_mode :before_fork
   end
 
   def test_run_hooks_and_exception
@@ -514,6 +524,22 @@ class TestConfigFile < TestConfigFileBase
     assert_equal true, conf.options[:silence_single_worker_warning]
   end
 
+  def test_silence_fork_callback_warning_default
+    conf = Puma::Configuration.new
+    conf.load
+
+    assert_equal false, conf.options[:silence_fork_callback_warning]
+  end
+
+  def test_silence_fork_callback_warning_overwrite
+    conf = Puma::Configuration.new do |c|
+      c.silence_fork_callback_warning
+    end
+    conf.load
+
+    assert_equal true, conf.options[:silence_fork_callback_warning]
+  end
+
   def test_http_content_length_limit
     assert_nil Puma::Configuration.new.options.default_options[:http_content_length_limit]
 
@@ -529,7 +555,9 @@ class TestConfigFile < TestConfigFileBase
 
     # test single, not an array
     messages = []
-    conf = Puma::Configuration.new
+    conf = Puma::Configuration.new do |c|
+      c.silence_fork_callback_warning
+    end
     conf.options[hook_name] = -> (a) {
       messages << "#{hook_name} is called with #{a}"
     }
@@ -540,6 +568,8 @@ class TestConfigFile < TestConfigFileBase
     # test multiple
     messages = []
     conf = Puma::Configuration.new do |c|
+      c.silence_fork_callback_warning
+
       c.send(configured_with) do |a|
         messages << "#{hook_name} is called with #{a} one time"
       end
@@ -552,6 +582,16 @@ class TestConfigFile < TestConfigFileBase
 
     conf.run_hooks(hook_name, 'ARG', Puma::LogWriter.strings)
     assert_equal messages, ["#{hook_name} is called with ARG one time", "#{hook_name} is called with ARG a second time"]
+  end
+
+  def assert_warning_for_hooks_defined_in_single_mode(hook_name)
+    out, _ = capture_io do
+      conf = Puma::Configuration.new do |c|
+        c.send(hook_name)
+      end
+    end
+
+    assert_match "your `#{hook_name}` block did not run\n", out
   end
 end
 

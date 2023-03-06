@@ -157,6 +157,7 @@ module Puma
       reaping_time: 1,
       remote_address: :socket,
       silence_single_worker_warning: false,
+      silence_fork_callback_warning: false,
       tag: File.basename(Dir.getwd),
       tcp_host: '0.0.0.0'.freeze,
       tcp_port: 9292,
