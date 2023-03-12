@@ -1695,4 +1695,19 @@ class TestPumaServer < Minitest::Test
     [out_w, err_w].each(&:close)
     [out_r, err_r, pid]
   end
+
+  def test_lowlevel_error_handler_response
+    options = {
+      lowlevel_error_handler: ->(_error) do
+        [500, {}, ["something wrong happened"]]
+      end
+    }
+    broken_app = ->(_env) { [200, nil, []] }
+
+    server_run(**options, &broken_app)
+
+    data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
+
+    assert_match(/something wrong happened/, data)
+  end
 end
