@@ -354,11 +354,13 @@ end
 
 ## Deployment
 
-Puma has support for Capistrano with an [external gem](https://github.com/seuros/capistrano-puma).
+ * Puma has support for Capistrano with an [external gem](https://github.com/seuros/capistrano-puma).
+
+ * Additionally, Puma has support for built-in daemonization via the [puma-daemon](https://github.com/kigster/puma-daemon) ruby gem. The gem restores the `daemonize` option that was removed from Puma starting version 5, but only for MRI Ruby.
+
 
 It is common to use process monitors with Puma. Modern process monitors like systemd or rc.d
-provide continuous monitoring and restarts for increased
-reliability in production environments:
+provide continuous monitoring and restarts for increased reliability in production environments:
 
 * [rc.d](docs/jungle/rc.d/README.md)
 * [systemd](docs/systemd.md)
