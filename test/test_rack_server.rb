@@ -10,7 +10,7 @@ require "rack/common_logger"
 
 # Rack::Chunked is loaded by Rack v2, needs to be required by Rack 3.0,
 # and is removed in Rack 3.1
-require "rack/chunked" if Rack::RELEASE.between?('3', '3.1')
+require "rack/chunked" if Rack::RELEASE.start_with? '3.0'
 
 require "nio"
 
