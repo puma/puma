@@ -404,6 +404,18 @@ module Puma
       false
     end
 
+    if ENV['PUMA_FIBER_PER_REQUEST']
+      def process_client_request(client, requests)
+        Fiber.new do
+          handle_request(client, requests + 1)
+        end.resume
+      end
+    else
+      def process_client_request(client, requests)
+        handle_request(client, requests + 1)
+      end
+    end
+
     # Given a connection on +client+, handle the incoming requests,
     # or queue the connection in the Reactor if no request is available.
     #
@@ -440,7 +452,9 @@ module Puma
 
         while true
           @requests_count += 1
-          case handle_request(client, requests + 1)
+          result = process_client_request(client, requests)
+
+          case result
           when false
             break
           when :async
