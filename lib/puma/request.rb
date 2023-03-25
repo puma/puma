@@ -93,13 +93,8 @@ module Puma
       env[RACK_AFTER_REPLY] ||= []
 
       begin
-        if SUPPORTED_HTTP_METHODS.include?(env[REQUEST_METHOD])
-          status, headers, app_body = @thread_pool.with_force_shutdown do
-            @app.call(env)
-          end
-        else
-          @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
-          status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
+        status, headers, app_body = @thread_pool.with_force_shutdown do
+          @app.call(env)
         end
 
         # app_body needs to always be closed, hold value in case lowlevel_error
