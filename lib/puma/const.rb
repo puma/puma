@@ -147,7 +147,11 @@ module Puma
 
     REQUEST_METHOD = "REQUEST_METHOD"
     HEAD = "HEAD"
+
+    # based on https://www.rfc-editor.org/rfc/rfc9110.html#name-overview,
+    # with CONNECT removed, and PATCH added
     SUPPORTED_HTTP_METHODS = %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH].freeze
+
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
     LINE_END = "\r\n"
     REMOTE_ADDR = "REMOTE_ADDR"

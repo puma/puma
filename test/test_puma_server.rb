@@ -1632,6 +1632,24 @@ EOF
     assert_equal out_r.read.bytesize, req_body.bytesize
   end
 
+  def test_supported_http_methods_match
+    server_run(supported_http_methods: ['PROPFIND', 'PROPPATCH']) do |env|
+      body = [env['REQUEST_METHOD']]
+      [200, {}, body]
+    end
+    resp = send_http_and_read "PROPFIND / HTTP/1.0\r\n\r\n"
+    assert_match 'PROPFIND', resp
+  end
+
+  def test_supported_http_methods_no_match
+    server_run(supported_http_methods: ['PROPFIND', 'PROPPATCH']) do |env|
+      body = [env['REQUEST_METHOD']]
+      [200, {}, body]
+    end
+    resp = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    assert_match "Not Implemented", resp
+  end
+
   def spawn_cmd(env = {}, cmd)
     opts = {}
 

@@ -93,7 +93,7 @@ module Puma
       env[RACK_AFTER_REPLY] ||= []
 
       begin
-        if SUPPORTED_HTTP_METHODS.include?(env[REQUEST_METHOD])
+        if @supported_http_methods.key?(env[REQUEST_METHOD])
           status, headers, app_body = @thread_pool.with_force_shutdown do
             @app.call(env)
           end

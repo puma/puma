@@ -1067,6 +1067,21 @@ module Puma
       @options[:http_content_length_limit] = limit
     end
 
+    # Supported http methods, which will replace SUPPORTED_HTTP_METHODS.
+    # Must be an array of strings.  Note that methods are all uppercase.
+    # @example
+    #   supported_http_methods(Puma::Const:SUPPORTED_HTTP_METHODS + ['PROPFIND'])
+    # @example
+    #   supported_http_methods %w[HEAD GET POST PUT DELETE OPTIONS PROPFIND]
+    #
+    def supported_http_methods(methods)
+      if Array === methods && methods == (ary = methods.grep(String).uniq)
+        @options[:supported_http_methods] = ary
+      else
+        raise "supported_http_methods must be a unique array of strings"
+      end
+    end
+
     private
 
     # To avoid adding cert_pem and key_pem as URI params, we store them on the

@@ -97,6 +97,14 @@ module Puma
       @io_selector_backend = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
 
+      # make this a hash, since we prefer `key?` over `include?`
+      @supported_http_methods =
+        if (ary = @options[:supported_http_methods])
+          ary
+        else
+           SUPPORTED_HTTP_METHODS
+        end.sort.product([nil]).to_h.freeze
+
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
 
