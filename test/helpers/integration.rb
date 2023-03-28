@@ -3,7 +3,6 @@
 require "puma/control_cli"
 require "json"
 require "open3"
-require "io/wait"
 require_relative 'tmp_path'
 
 # Only single mode tests go here. Cluster and pumactl tests

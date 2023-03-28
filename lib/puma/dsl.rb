@@ -590,6 +590,11 @@ module Puma
       @options[:silence_single_worker_warning] = true
     end
 
+    # Disable warning message when running single mode with callback hook defined.
+    def silence_fork_callback_warning
+      @options[:silence_fork_callback_warning] = true
+    end
+
     # Code to run immediately before master process
     # forks workers (once on boot). These hooks can block if necessary
     # to wait for background operations unknown to Puma to finish before
@@ -605,6 +610,8 @@ module Puma
     #     puts "Starting workers..."
     #   end
     def before_fork(&block)
+      warn_if_in_single_mode('before_fork')
+
       @options[:before_fork] ||= []
       @options[:before_fork] << block
     end
@@ -620,6 +627,8 @@ module Puma
     #     puts 'Before worker boot...'
     #   end
     def on_worker_boot(key = nil, &block)
+      warn_if_in_single_mode('on_worker_boot')
+
       process_hook :before_worker_boot, key, block, 'on_worker_boot'
     end
 
@@ -636,6 +645,8 @@ module Puma
     #     puts 'On worker shutdown...'
     #   end
     def on_worker_shutdown(key = nil, &block)
+      warn_if_in_single_mode('on_worker_shutdown')
+
       process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown'
     end
 
@@ -650,6 +661,8 @@ module Puma
     #     puts 'Before worker fork...'
     #   end
     def on_worker_fork(&block)
+      warn_if_in_single_mode('on_worker_fork')
+
       process_hook :before_worker_fork, nil, block, 'on_worker_fork'
     end
 
@@ -664,6 +677,8 @@ module Puma
     #     puts 'After worker fork...'
     #   end
     def after_worker_fork(&block)
+      warn_if_in_single_mode('after_worker_fork')
+
       process_hook :after_worker_fork, nil, block, 'after_worker_fork'
     end
 
@@ -1078,7 +1093,20 @@ module Puma
       elsif key.nil?
         @options[options_key] << block
       else
-        raise "'#{method}' key must be String or Symbol"
+        raise "'#{meth}' key must be String or Symbol"
+      end
+    end
+
+    def warn_if_in_single_mode(hook_name)
+      return if @options[:silence_fork_callback_warning]
+
+      if (@options[:workers] || 0) == 0
+        log_string =
+          "Warning: You specified code to run in a `#{hook_name}` block, " \
+          "but Puma is configured to run in cluster mode, " \
+          "so your `#{hook_name}` block did not run"
+
+        LogWriter.stdio.log(log_string)
       end
     end
   end

@@ -78,7 +78,8 @@ module Puma
           @stdout.is_a?(IO) and @stdout.wait_writable(1)
           @stdout.write w_str
           @stdout.flush unless @stdout.sync
-        rescue Errno::EPIPE, Errno::EBADF, IOError
+        rescue Errno::EPIPE, Errno::EBADF, IOError, Errno::EINVAL
+        # 'Invalid argument' (Errno::EINVAL) may be raised by flush
         end
       end
     rescue ThreadError

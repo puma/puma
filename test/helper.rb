@@ -108,9 +108,35 @@ module TimeoutEveryTestCase
 end
 
 Minitest::Test.prepend TimeoutEveryTestCase
+
 if ENV['CI']
   require 'minitest/retry'
+
+  SUMMARY_FILE = ENV['GITHUB_STEP_SUMMARY']
+
   Minitest::Retry.use!
+
+  if SUMMARY_FILE && ENV['GITHUB_ACTIONS'] == 'true'
+
+    GITHUB_STEP_SUMMARY_MUTEX = Mutex.new
+
+    Minitest::Retry.on_failure do |klass, test_name, result|
+      full_method = "#{klass}##{test_name}"
+      result_str = result.to_s.gsub(/#{full_method}:?\s*/, '').dup
+      result_str.gsub!(/\A(Failure:|Error:)\s/, '\1 ')
+      issue = result_str[/\A[^\n]+/]
+      result_str.gsub!(issue, '')
+      # shorten directory lists
+      result_str.gsub! ENV['GITHUB_WORKSPACE'], 'puma'
+      result_str.gsub! ENV['RUNNER_TOOL_CACHE'], ''
+      # remove indent
+      result_str.gsub!(/^ +/, '')
+      str = "\n**#{full_method}**\n**#{issue}**\n```\n#{result_str.strip}\n```\n"
+      GITHUB_STEP_SUMMARY_MUTEX.synchronize {
+        File.write SUMMARY_FILE, str, mode: 'a+'
+      }
+    end
+  end
 end
 
 module TestSkips
