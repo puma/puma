@@ -1,3 +1,16 @@
+## 6.2.0 / 2023-03-29
+
+* Features
+  * Ability to supply a custom logger ([#2770], [#2511])
+  * Warn when clustered-only hooks are defined in single mode ([#3089])
+  * Adds the on_booted event ([#2709])
+
+* Bugfixes
+  * Loggers - internal_write - catch Errno::EINVAL ([#3091])
+  * commonlogger.rb - fix HIJACK time format, use constants, not strings ([#3074])
+  * Fixed some edge cases regarding request hijacking ([#3072])
+
+
 ## 6.1.1 / 2023-02-28
 
 * Bugfixes
@@ -1954,6 +1967,13 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#2770]:https://github.com/puma/puma/pull/2770     "PR by @vzajkov, merged 2023-03-29"
+[#2511]:https://github.com/puma/puma/issues/2511   "Issue by @jchristie55332, closed 2021-12-12"
+[#3089]:https://github.com/puma/puma/pull/3089     "PR by @Vuta, merged 2023-03-06"
+[#2709]:https://github.com/puma/puma/pull/2709     "PR by @rodzyn, merged 2023-02-20"
+[#3091]:https://github.com/puma/puma/pull/3091     "PR by @MSP-Greg, merged 2023-03-28"
+[#3074]:https://github.com/puma/puma/pull/3074     "PR by @MSP-Greg, merged 2023-03-14"
+[#3072]:https://github.com/puma/puma/pull/3072     "PR by @MSP-Greg, merged 2023-02-17"
 [#3079]:https://github.com/puma/puma/pull/3079     "PR by @mohamedhafez, merged 2023-02-24"
 [#3080]:https://github.com/puma/puma/pull/3080     "PR by @MSP-Greg, merged 2023-02-16"
 [#3058]:https://github.com/puma/puma/pull/3058     "PR by @dentarg, merged 2023-01-29"
