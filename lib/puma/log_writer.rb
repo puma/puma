@@ -28,11 +28,12 @@ module Puma
     attr_reader :stdout,
                 :stderr
 
-    attr_accessor :formatter
+    attr_accessor :formatter, :custom_logger
 
     # Create a LogWriter that prints to +stdout+ and +stderr+.
     def initialize(stdout, stderr)
       @formatter = DefaultFormatter.new
+      @custom_logger = nil
       @stdout = stdout
       @stderr = stderr
 
@@ -59,7 +60,11 @@ module Puma
 
     # Write +str+ to +@stdout+
     def log(str)
-      internal_write "#{@formatter.call str}\n"
+      if @custom_logger&.respond_to?(:write)
+        @custom_logger.write(format(str))
+      else
+        internal_write "#{@formatter.call str}\n"
+      end
     end
 
     def write(str)

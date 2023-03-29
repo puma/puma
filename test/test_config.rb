@@ -595,6 +595,18 @@ class TestConfigFile < TestConfigFileBase
   end
 end
 
+# contains tests that cannot run parallel
+class TestConfigFileSingle < TestConfigFileBase
+  def test_custom_logger_from_DSL
+    conf = Puma::Configuration.new { |c| c.load 'test/config/custom_logger.rb' }
+
+    conf.load
+    out, _ = capture_subprocess_io { conf.options[:custom_logger].write 'test' }
+
+    assert_equal "Custom logging: test\n", out
+  end
+end
+
 # Thread unsafe modification of ENV
 class TestEnvModifificationConfig < TestConfigFileBase
   def test_double_bind_port
