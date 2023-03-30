@@ -180,7 +180,7 @@ module Puma
         if !content_length && !resp_info[:transfer_encoding] && status != 204
           if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary) &&
               array_body.is_a?(Array)
-            body = array_body
+            body = array_body.compact
             content_length = body.sum(&:bytesize)
           elsif res_body.is_a?(File) && res_body.respond_to?(:size)
             body = res_body
@@ -362,15 +362,22 @@ module Puma
         fast_write_str(socket, io_buffer.read_and_reset) unless io_buffer.length.zero?
       else
         # for enum bodies
-        fast_write_str socket, io_buffer.read_and_reset
         if chunked
+          empty_body = true
           body.each do |part|
-            next if (byte_size = part.bytesize).zero?
+            next if part.nil? || (byte_size = part.bytesize).zero?
+            empty_body = false
             io_buffer.append byte_size.to_s(16), LINE_END, part, LINE_END
             fast_write_str socket, io_buffer.read_and_reset
           end
-          fast_write_str socket, CLOSE_CHUNKED
+          if empty_body
+            io_buffer << CLOSE_CHUNKED
+            fast_write_str socket, io_buffer.read_and_reset
+          else
+            fast_write_str socket, CLOSE_CHUNKED
+          end
         else
+          fast_write_str socket, io_buffer.read_and_reset
           body.each do |part|
             next if part.bytesize.zero?
             fast_write_str socket, part
