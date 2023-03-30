@@ -362,6 +362,7 @@ module Puma
         fast_write_str(socket, io_buffer.read_and_reset) unless io_buffer.length.zero?
       else
         # for enum bodies
+        fast_write_str socket, io_buffer.read_and_reset
         if chunked
           body.each do |part|
             next if (byte_size = part.bytesize).zero?
@@ -370,7 +371,6 @@ module Puma
           end
           fast_write_str socket, CLOSE_CHUNKED
         else
-          fast_write_str socket, io_buffer.read_and_reset
           body.each do |part|
             next if part.bytesize.zero?
             fast_write_str socket, part
