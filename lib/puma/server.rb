@@ -105,6 +105,8 @@ module Puma
            SUPPORTED_HTTP_METHODS
         end.sort.product([nil]).to_h.freeze
 
+      @do_not_check_http_methods = @supported_http_methods.keys.empty?
+
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
 

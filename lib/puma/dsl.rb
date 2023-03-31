@@ -1067,12 +1067,23 @@ module Puma
       @options[:http_content_length_limit] = limit
     end
 
-    # Supported http methods, which will replace SUPPORTED_HTTP_METHODS.
+    # Supported http methods, which will replace `Puma::Const::SUPPORTED_HTTP_METHODS`.
     # Must be an array of strings.  Note that methods are all uppercase.
-    # @example
-    #   supported_http_methods(Puma::Const:SUPPORTED_HTTP_METHODS + ['PROPFIND'])
-    # @example
+    # `Puma::Const::SUPPORTED_HTTP_METHODS` is conservative, if you want a
+    # complete set of methods, the methods defined by the
+    # [IANA Method Registry](https://www.iana.org/assignments/http-methods/http-methods.xhtml)
+    # are pre-defined as the constant `Puma::Const::IANA_HTTP_METHODS`.
+    # @note If the `methods` value is an empty array, no method check with be
+    #   performed, similar to Puma v5 and earlier.
+    #
+    # @example Adds 'PROPFIND' to existing supported methods
+    #   supported_http_methods(Puma::Const::SUPPORTED_HTTP_METHODS + ['PROPFIND'])
+    # @example Restricts methods to the array elemnts
     #   supported_http_methods %w[HEAD GET POST PUT DELETE OPTIONS PROPFIND]
+    # @example Restricts methods to the methods in the IANA Registry
+    #   supported_http_methods Puma::Const::IANA_HTTP_METHODS
+    # @example Allows any method
+    #   supported_http_methods []
     #
     def supported_http_methods(methods)
       if Array === methods && methods == (ary = methods.grep(String).uniq)
