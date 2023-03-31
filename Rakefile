@@ -75,6 +75,7 @@ else
 
   Rake::JavaExtensionTask.new("puma_http11", gemspec) do |ext|
     ext.lib_dir = "lib/puma"
+    ext.release = '8'
   end
 end
 
