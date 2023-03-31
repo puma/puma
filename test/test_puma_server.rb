@@ -1545,4 +1545,25 @@ EOF
     assert_equal str * loops, resp_body
     assert_operator times.last - times.first, :>, 1.0
   end
+
+  def test_empty_body_array_content_length_0
+    server_run { |env| [404, {'Content-Length' => '0'}, []] }
+
+    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    assert_equal "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n", resp
+  end
+
+  def test_empty_body_array_no_content_length
+    server_run { |env| [404, {}, []] }
+
+    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    assert_equal "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n", resp
+  end
+
+  def test_empty_body_enum
+    server_run { |env| [404, {}, [].to_enum] }
+
+    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    assert_equal "HTTP/1.1 404 Not Found\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", resp
+  end
 end
