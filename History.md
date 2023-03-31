@@ -1,3 +1,10 @@
+## 6.2.1 / 2023-03-31
+
+* Bugfixes
+  * Fix java 8 compatibility ([#3109], [#3108])
+  * Always write io_buffer when in "enum bodies" branch. ([#3113], [#3112])
+  * Fix warn_if_in_single_mode incorrect message ([#3111])
+
 ## 6.2.0 / 2023-03-29
 
 * Features
@@ -1967,6 +1974,11 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3109]:https://github.com/puma/puma/pull/3109     "PR by @ahorek, merged 2023-03-31"
+[#3108]:https://github.com/puma/puma/issues/3108   "Issue by @treviateo, closed 2023-03-31"
+[#3113]:https://github.com/puma/puma/pull/3113     "PR by @collinsauve, merged 2023-03-31"
+[#3112]:https://github.com/puma/puma/issues/3112   "Issue by @dmke, closed 2023-03-31"
+[#3111]:https://github.com/puma/puma/pull/3111     "PR by @adzap, merged 2023-03-30"
 [#2770]:https://github.com/puma/puma/pull/2770     "PR by @vzajkov, merged 2023-03-29"
 [#2511]:https://github.com/puma/puma/issues/2511   "Issue by @jchristie55332, closed 2021-12-12"
 [#3089]:https://github.com/puma/puma/pull/3089     "PR by @Vuta, merged 2023-03-06"
