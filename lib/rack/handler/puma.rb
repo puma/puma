@@ -32,7 +32,7 @@ module Puma
       conf = ::Puma::Configuration.new(options, default_options.merge({events: @events})) do |user_config, file_config, default_config|
         if options.delete(:Verbose)
           require 'rack/common_logger'
-          app = Rack::CommonLogger.new(app, STDOUT)
+          app = ::Rack::CommonLogger.new(app, STDOUT)
         end
 
         if options[:environment]
