@@ -11,6 +11,8 @@ module TestRackUp
       Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
     end
 
+    # `Verbose: true` is included for `NameError`,
+    # see https://github.com/puma/puma/pull/3118
     def test_on_booted
       on_booted = false
       events = Puma::Events.new
@@ -20,7 +22,7 @@ module TestRackUp
 
       launcher = nil
       thread = Thread.new do
-        Rack::Handler::Puma.run(app, events: events, Silent: true) do |l|
+        Rack::Handler::Puma.run(app, events: events, Verbose: true, Silent: true) do |l|
           launcher = l
         end
       end
