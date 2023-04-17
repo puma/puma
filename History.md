@@ -1,3 +1,8 @@
+## 6.2.2 / 2023-04-17
+
+* Bugfixes
+  * Fix Rack-related NameError by adding :: operator ([#3118], [#3117])
+
 ## 6.2.1 / 2023-03-31
 
 * Bugfixes
@@ -1974,6 +1979,8 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3118]:https://github.com/puma/puma/pull/3118     "PR by @ninoseki, merged 2023-04-01"
+[#3117]:https://github.com/puma/puma/issues/3117   "Issue by @ninoseki, closed 2023-04-01"
 [#3109]:https://github.com/puma/puma/pull/3109     "PR by @ahorek, merged 2023-03-31"
 [#3108]:https://github.com/puma/puma/issues/3108   "Issue by @treviateo, closed 2023-03-31"
 [#3113]:https://github.com/puma/puma/pull/3113     "PR by @collinsauve, merged 2023-03-31"
