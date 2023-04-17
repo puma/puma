@@ -125,7 +125,7 @@ module Puma
     def ssl_error(error, ssl_socket)
       peeraddr = ssl_socket.peeraddr.last rescue "<unknown>"
       peercert = ssl_socket.peercert
-      subject = peercert ? peercert.subject : nil
+      subject = peercert&.subject
       @error_logger.info(error: error, text: "SSL error, peer: #{peeraddr}, peer cert: #{subject}")
     end
 

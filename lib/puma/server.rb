@@ -51,7 +51,7 @@ module Puma
     def_delegators :@binder, :add_tcp_listener, :add_ssl_listener,
       :add_unix_listener, :connected_ports
 
-    ThreadLocalKey = :puma_server
+    THREAD_LOCAL_KEY = :puma_server
 
     # Create a server for the rack app +app+.
     #
@@ -118,7 +118,7 @@ module Puma
     class << self
       # @!attribute [r] current
       def current
-        Thread.current[ThreadLocalKey]
+        Thread.current[THREAD_LOCAL_KEY]
       end
 
       # :nodoc:
@@ -404,7 +404,7 @@ module Puma
     # Return true if one or more requests were processed.
     def process_client(client)
       # Advertise this server into the thread
-      Thread.current[ThreadLocalKey] = self
+      Thread.current[THREAD_LOCAL_KEY] = self
 
       clean_thread_locals = @options[:clean_thread_locals]
       close_socket = true
