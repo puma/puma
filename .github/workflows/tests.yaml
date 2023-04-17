@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.6
+          ruby-version: 3.1
           bundler-cache: true # `bundle install` and cache
       - name: rubocop
         run: bundle exec rake rubocop

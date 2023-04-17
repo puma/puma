@@ -17,7 +17,7 @@ gem "rackup" unless ENV['PUMA_CI_RACK_2']
 gem "jruby-openssl", :platform => "jruby"
 
 unless ENV['PUMA_NO_RUBOCOP'] || RUBY_PLATFORM.include?('mswin')
-  gem "rubocop", "1.12.1"
+  gem "rubocop"
   gem 'rubocop-performance', require: false
 end
 
