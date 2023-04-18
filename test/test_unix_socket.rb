@@ -2,9 +2,11 @@
 
 require_relative "helper"
 require_relative "helpers/tmp_path"
+require_relative "helpers/puma_socket"
 
 class TestPumaUnixSocket < Minitest::Test
   include TmpPath
+  include PumaTest::PumaSocket
 
   App = lambda { |env| [200, {}, ["Works"]] }
 
@@ -14,33 +16,31 @@ class TestPumaUnixSocket < Minitest::Test
   end
 
   def server_unix(type)
-    @tmp_socket_path = type == :unix ? tmp_path('.sock') : "@TestPumaUnixSocket"
-    @server = Puma::Server.new App
-    @server.add_unix_listener @tmp_socket_path
+    @bind_path = type == :unix ? tmp_path('.sock') : "@TestPumaUnixSocket"
+    @server = Puma::Server.new App, nil, {min_threads: 1}
+    @server.add_unix_listener @bind_path
     @server.run
   end
 
   def test_server_unix
     skip_unless :unix
     server_unix :unix
-    sock = UNIXSocket.new @tmp_socket_path
 
-    sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
+    resp = send_http_read_response "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
 
     expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
 
-    assert_equal expected, sock.read(expected.size)
+    assert_equal expected, resp
   end
 
   def test_server_aunix
     skip_unless :aunix
     server_unix :aunix
-    sock = UNIXSocket.new @tmp_socket_path.sub(/\A@/, "\0")
 
-    sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
+    resp = send_http_read_response "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
 
     expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
 
-    assert_equal expected, sock.read(expected.size)
+    assert_equal expected, resp
   end
 end

@@ -1,4 +1,5 @@
 require_relative "helper"
+require_relative "helpers/puma_socket"
 
 # These tests check for invalid request headers and metadata.
 # Content-Length, Transfer-Encoding, and chunked body size
@@ -14,13 +15,13 @@ class TestRequestInvalid < Minitest::Test
   # running parallel seems to take longer...
   # parallelize_me! unless JRUBY_HEAD
 
+  include PumaTest::PumaSocket
+
   GET_PREFIX = "GET / HTTP/1.1\r\nConnection: close\r\n"
   CHUNKED = "1\r\nH\r\n4\r\nello\r\n5\r\nWorld\r\n0\r\n\r\n"
 
   def setup
     @host = '127.0.0.1'
-
-    @ios = []
 
     # this app should never be called, used for debugging
     app = ->(env) {
@@ -43,19 +44,6 @@ class TestRequestInvalid < Minitest::Test
 
   def teardown
     @server.stop(true)
-    @ios.each { |io| io.close if io && !io.closed? }
-  end
-
-  def send_http_and_read(req)
-    send_http(req).read
-  end
-
-  def send_http(req)
-    new_connection << req
-  end
-
-  def new_connection
-    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
   end
 
   def assert_status(str, status = 400)
@@ -70,33 +58,33 @@ class TestRequestInvalid < Minitest::Test
       'Content-Length: 5'
     ].join "\r\n"
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   def test_content_length_bad_characters_1
     te = 'Content-Length: 5.01'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   def test_content_length_bad_characters_2
     te = 'Content-Length: +5'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   def test_content_length_bad_characters_3
     te = 'Content-Length: 5 test'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   # ──────────────────────────────────── below are invalid Transfer-Encoding
@@ -107,9 +95,9 @@ class TestRequestInvalid < Minitest::Test
       'Transfer-Encoding: gzip'
     ].join "\r\n"
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
 
-    assert_status data
+    assert_status resp
   end
 
   def test_transfer_encoding_chunked_multiple
@@ -119,17 +107,17 @@ class TestRequestInvalid < Minitest::Test
       'Transfer-Encoding: chunked'
     ].join "\r\n"
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
 
-    assert_status data
+    assert_status resp
   end
 
   def test_transfer_encoding_invalid_single
     te = 'Transfer-Encoding: xchunked'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
 
-    assert_status data, 501
+    assert_status resp, 501
   end
 
   def test_transfer_encoding_invalid_multiple
@@ -139,17 +127,17 @@ class TestRequestInvalid < Minitest::Test
       'Transfer-Encoding: chunked'
     ].join "\r\n"
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
 
-    assert_status data, 501
+    assert_status resp, 501
   end
 
   def test_transfer_encoding_single_not_chunked
     te = 'Transfer-Encoding: gzip'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}"
 
-    assert_status data
+    assert_status resp
   end
 
   # ──────────────────────────────────── below are invalid chunked size
@@ -158,36 +146,36 @@ class TestRequestInvalid < Minitest::Test
     te = 'Transfer-Encoding: chunked'
     chunked ='5.01'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   def test_chunked_size_bad_characters_2
     te = 'Transfer-Encoding: chunked'
     chunked ='+5'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   def test_chunked_size_bad_characters_3
     te = 'Transfer-Encoding: chunked'
     chunked ='5 bad'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   def test_chunked_size_bad_characters_4
     te = 'Transfer-Encoding: chunked'
     chunked ='0xA'
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHelloHello\r\n0\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHelloHello\r\n0\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   # size is less than bytesize
@@ -198,9 +186,9 @@ class TestRequestInvalid < Minitest::Test
       "4\r\nWorld\r\n" \
       "0"
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 
   # size is greater than bytesize
@@ -211,8 +199,8 @@ class TestRequestInvalid < Minitest::Test
       "6\r\nWorld\r\n" \
       "0"
 
-    data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}\r\n\r\n"
+    resp = send_http_read_response "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}\r\n\r\n"
 
-    assert_status data
+    assert_status resp
   end
 end

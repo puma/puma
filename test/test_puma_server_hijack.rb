@@ -1,4 +1,6 @@
 require_relative "helper"
+require_relative "helpers/puma_socket"
+
 require "puma/events"
 require "puma/server"
 require "net/http"
@@ -16,6 +18,8 @@ require "rack/body_proxy"
 
 class TestPumaServerHijack < Minitest::Test
   parallelize_me!
+
+  include PumaTest::PumaSocket
 
   def setup
     @host = "127.0.0.1"
@@ -53,25 +57,6 @@ class TestPumaServerHijack < Minitest::Test
     @server.run
   end
 
-  # only for shorter bodies!
-  def send_http_and_sysread(req)
-    send_http(req).sysread 2_048
-  end
-
-  def send_http_and_read(req)
-    send_http(req).read
-  end
-
-  def send_http(req)
-    t = new_connection
-    t.syswrite req
-    t
-  end
-
-  def new_connection
-    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
-  end
-
   # Full hijack does not return headers
   def test_full_hijack_body_close
     @body_closed = false
@@ -91,8 +76,8 @@ class TestPumaServerHijack < Minitest::Test
 
     sock.syswrite "this should echo"
     assert_equal "this should echo", sock.sysread(256)
-    Thread.pass
-    sleep 0.001 # intermittent failure, may need to increase in CI
+
+    sleep 0.005 # intermittent failure, may need to increase in CI
     assert @body_closed, "Reponse body must be closed"
   end
 
@@ -119,7 +104,7 @@ class TestPumaServerHijack < Minitest::Test
     sock = send_http "GET / HTTP/1.1\r\n\r\n"
     resp = sock.sysread 1_024
     echo_msg = "This should echo..."
-    sock.syswrite echo_msg
+    sock << echo_msg
 
     assert_includes resp, 'Connection: Upgrade'
     assert_equal echo_msg, sock.sysread(256)
@@ -147,7 +132,7 @@ class TestPumaServerHijack < Minitest::Test
     sock = send_http "GET / HTTP/1.1\r\n\r\n"
     resp = sock.sysread 1_024
     echo_msg = "This should echo..."
-    sock.syswrite echo_msg
+    sock << echo_msg
 
     assert_includes resp, 'Connection: Upgrade'
     assert_equal echo_msg, sock.sysread(256)
@@ -166,7 +151,7 @@ class TestPumaServerHijack < Minitest::Test
     end
 
     # using sysread may only receive part of the response
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
   end
