@@ -4,6 +4,8 @@ require 'puma/events'
 
 class TestBundlePruner < Minitest::Test
 
+  RE_PUMA_VERS = /puma-#{Puma::Const::PUMA_VERSION}$/o
+
   def test_paths_to_require_after_prune_is_correctly_built_for_no_extra_deps
     skip_if :no_bundler
 
@@ -11,7 +13,7 @@ class TestBundlePruner < Minitest::Test
 
     assert_equal(2, dirs.length)
     assert_equal(File.join(PROJECT_ROOT, "lib"), dirs[0]) # lib dir
-    assert_match(%r{puma-#{Puma::Const::PUMA_VERSION}$}, dirs[1]) # native extension dir
+    assert_match(RE_PUMA_VERS, dirs[1]) # native extension dir
     refute_match(%r{gems/minitest-[\d.]+/lib$}, dirs[2])
   end
 
@@ -22,7 +24,7 @@ class TestBundlePruner < Minitest::Test
 
     assert_equal(3, dirs.length)
     assert_equal(File.join(PROJECT_ROOT, "lib"), dirs[0]) # lib dir
-    assert_match(%r{puma-#{Puma::Const::PUMA_VERSION}$}, dirs[1]) # native extension dir
+    assert_match(RE_PUMA_VERS, dirs[1]) # native extension dir
     assert_match(%r{gems/minitest-[\d.]+/lib$}, dirs[2]) # minitest dir
   end
 
