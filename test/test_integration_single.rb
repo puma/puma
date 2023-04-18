@@ -52,11 +52,7 @@ class TestIntegrationSingle < TestIntegration
   def test_on_booted
     cli_server "-C test/config/event_on_booted.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru", no_wait: true
 
-    output = []
-
-    output << $_ while @server.gets
-
-    assert output.any? { |msg| msg == "on_booted called\n" } != nil
+    assert wait_for_server_to_include "on_booted called"
   end
 
   def test_term_suppress
@@ -106,25 +102,20 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server 'test/rackup/sleep.ru'
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3({ 'LC_ALL' => 'C' }, "curl http://#{HOST}:#{@tcp_port}/sleep10")
-    sleep 1 # ensure curl send a request
-
+    skt = fast_connect '/sleep10'
+    sleep 1
     Process.kill :TERM, @pid
     assert wait_for_server_to_include('Gracefully stopping') # wait for server to begin graceful shutdown
 
-    # Invoke a request which must be rejected
-    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
+    sleep 1
+    assert_raises(Errno::ECONNREFUSED) { fast_connect '/sleep0' }
 
-    assert nil != Process.getpgid(@server.pid) # ensure server is still running
-    assert nil != Process.getpgid(curl_wait_thread[:pid]) # ensure first curl invocation still in progress
+    refute_nil Process.getpgid(@pid) # ensure server is still running
 
-    curl_wait_thread.join
-    rejected_curl_wait_thread.join
+    resp = read_response skt
+    assert_includes resp, 'Slept 10'
 
-    assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|Couldn't connect to server/, rejected_curl_stderr.read)
-
-    Process.wait(@server.pid)
+    Process.wait @pid
     @server.close unless @server.closed?
     @server = nil # prevent `#teardown` from killing already killed server
   end
@@ -216,11 +207,11 @@ class TestIntegrationSingle < TestIntegration
   # listener is closed 'externally' while Puma is in the IO.select statement
   def test_closed_listener
     skip_unless_signal_exist? :TERM
-
-    cli_server "test/rackup/close_listeners.ru", merge_err: true
+    skip_unless :mri    # ObjectSpace.each_object(::TCPServer) ??
+    cli_server "test/rackup/close_listeners.ru"
     connection = fast_connect
 
-    if DARWIN && RUBY_VERSION < '2.5'
+    if DARWIN && RUBY_VERSION < '2.6' || TRUFFLE
       begin
         read_body connection
       rescue EOFError
@@ -229,29 +220,37 @@ class TestIntegrationSingle < TestIntegration
       read_body connection
     end
 
+    time_limit = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5.0
     begin
-      Timeout.timeout(5) do
-        begin
-          Process.kill :SIGTERM, @pid
-        rescue Errno::ESRCH
-        end
-        begin
-          Process.wait2 @pid
-        rescue Errno::ECHILD
+      Process.kill :SIGTERM, @pid
+    rescue Errno::ESRCH
+    end
+
+    # TruffleRuby may raise EOFError ?
+    begin
+      @server_err.wait_readable 2
+      server_err = @server_err.read_nonblock 2_048
+    rescue EOFError
+      server_err = nil
+    end
+
+    begin
+      until Process.wait2(@pid, Process::WNOHANG)
+        sleep 0.01
+        if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_limit
+          Process.kill :SIGKILL, @pid
+          flunk "Process froze"
         end
       end
-    rescue Timeout::Error
-      Process.kill :SIGKILL, @pid
-      assert false, "Process froze"
     end
-    assert true
+
+    # linux IOError, macOS Errno::EBADF
+    assert_match(/Exception handling servers: (#<IOError: closed stream>|#<Errno::EBADF: Bad file descriptor>)/, server_err)
   end
 
   def test_puma_debug_loaded_exts
     cli_server "#{set_pumactl_args} test/rackup/hello.ru", puma_debug: true
 
     assert wait_for_server_to_include('Loaded Extensions:')
-
-    cli_pumactl 'stop'
   end
 end

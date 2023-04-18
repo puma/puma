@@ -18,7 +18,6 @@ class TestIntegrationSSL < TestIntegration
   def teardown
     @server.close if @server && !@server.closed?
     @server = nil
-    super
   end
 
   def bind_port
@@ -30,16 +29,7 @@ class TestIntegrationSSL < TestIntegration
   end
 
   def with_server(config)
-    config_file = Tempfile.new %w(config .rb)
-    config_file.write config
-    config_file.close
-    config_file.path
-
-    # start server
-    cmd = "#{BASE} bin/puma -C #{config_file.path}"
-    @server = IO.popen cmd, 'r'
-    wait_for_server_to_boot
-    @pid = @server.pid
+    cli_server '', config: config, config_bind: true
 
     http = Net::HTTP.new HOST, bind_port
     http.use_ssl = true
@@ -94,7 +84,7 @@ RUBY
   end
 
   def test_ssl_run_with_curl_client
-    skip_if :windows; require 'stringio'
+    require 'stringio'
 
     app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
     opts = {max_threads: 1}
@@ -118,9 +108,9 @@ RUBY
 
     server.run(true)
     begin
-      ca = File.expand_path('../examples/puma/client-certs/ca.crt', __dir__)
-      cert = File.expand_path('../examples/puma/client-certs/client.crt', __dir__)
-      key = File.expand_path('../examples/puma/client-certs/client.key', __dir__)
+      ca   = File.expand_path '../examples/puma/client-certs/ca.crt'    , __dir__
+      cert = File.expand_path '../examples/puma/client-certs/client.crt', __dir__
+      key  = File.expand_path '../examples/puma/client-certs/client.key', __dir__
       # NOTE: JRuby used to end up in a hang with TLS peer verification enabled
       # it's easier to reproduce using an external client such as CURL (using net/http client the bug isn't triggered)
       # also the "hang", being buffering related, seems to showcase better with TLS 1.2 than 1.3
@@ -257,24 +247,28 @@ RUBY
 
   private
 
-  def curl_and_get_response(url, method: :get, args: nil); require 'open3'
+  def curl_and_get_response(url, method: :get, args: nil)
     cmd = "curl -s -v --show-error #{args} -X #{method.to_s.upcase} -k #{url}"
+
     begin
-      out, err, status = Open3.capture3(cmd)
+      io_out, io_err, pid = spawn_cmd cmd
     rescue Errno::ENOENT
-      fail "curl not available, make sure curl binary is installed and available on $PATH"
+      flunk "curl not available, make sure curl binary is installed and available on $PATH"
     end
 
+    _, status = Process.wait2 pid
+    out = io_out.read
+    err = io_err.read
     if status.success?
       http_status = err.match(/< HTTP\/1.1 (.*?)/)[1] || '0' # < HTTP/1.1 200 OK\r\n
       if http_status.strip[0].to_i > 2
         warn out
-        fail "#{cmd.inspect} unexpected response: #{http_status}\n\n#{err}"
+        flunk "#{cmd.inspect} unexpected response: #{http_status}\n#{err}\n"
       end
       return out
     else
       warn out
-      fail "#{cmd.inspect} process failed: #{status}\n\n#{err}"
+      flunk "#{cmd.inspect} process failed: #{status}\n#{err}\n"
     end
   end
 
