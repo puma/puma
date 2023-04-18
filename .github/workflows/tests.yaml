@@ -46,17 +46,21 @@ jobs:
           - { os: windows-2022 , ruby: ucrt }
           - { os: windows-2022 , ruby: mswin }
           - { os: windows-2022 , ruby: 2.7  , no-ssl: ' no SSL' }
-          - { os: ubuntu-20.04 , ruby: head , yjit: ' yjit' }
           - { os: ubuntu-20.04 , ruby: 2.7  , no-ssl: ' no SSL' }
           - { os: ubuntu-22.04 , ruby: 3.1  }
           - { os: ubuntu-22.04 , ruby: 3.2  }
           - { os: ubuntu-22.04 , ruby: head }
+          - { os: ubuntu-22.04 , ruby: head , yjit: ' yjit' }
+          - { os: macos-13     , ruby: 2.7  }
+          - { os: macos-13     , ruby: 3.2  }
 
         exclude:
           - { os: windows-2022 , ruby: head }
-          - { os: macos-11     , ruby: 2.4  }
-          - { os: macos-11     , ruby: 2.5  }
-          - { os: macos-11     , ruby: head }
+          - { os: macos-11     , ruby:  2.5  }
+          - { os: macos-11     , ruby:  2.6  }
+          - { os: macos-11     , ruby: '3.0' }
+          - { os: macos-11     , ruby: '3.1' }
+          - { os: macos-11     , ruby:  head }
 
     steps:
       - name: repo checkout
@@ -75,10 +79,14 @@ jobs:
           bundler-cache: true
         timeout-minutes: 10
 
+      - name: Repo & Commit Info
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        run: ruby .github/workflows/github_actions_info.rb
+
       # fixes 'has a bug that prevents `required_ruby_version`'
       - name: update rubygems for Ruby 2.4 - 2.5
         if: |
-          contains('2.4 2.5 2.6', matrix.ruby) && 
+          contains('2.4 2.5 2.6', matrix.ruby) &&
           (needs.skip_duplicate_runs.outputs.should_skip != 'true')
         run: gem update --system 3.3.14 --no-document
         continue-on-error: true
@@ -92,7 +100,7 @@ jobs:
         run: echo 'PUMA_DISABLE_SSL=true' >> $GITHUB_ENV
 
       - name: set WERRORFLAG
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }} 
+        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
@@ -109,9 +117,9 @@ jobs:
 
       - name: test
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        timeout-minutes: 10
+        timeout-minutes: 6
         run: bundle exec rake test:all
-  
+
   test_non_mri:
     name: >-
       NON-MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
@@ -129,16 +137,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: jruby }
-          - { os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
-          - { os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
-          - { os: ubuntu-20.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
-          - { os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
-          - { os: macos-11     , ruby: jruby }
-          - { os: macos-11     , ruby: truffleruby, allow-failure: true }
-          - { os: macos-12     , ruby: jruby }
-          - { os: macos-12     , ruby: truffleruby, allow-failure: true }
-
+          # tto - test timeout
+          - { tto: 6 , os: ubuntu-20.04 , ruby: jruby }
+          - { tto: 6 , os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
+          - { tto: 6 , os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
+          - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
+          - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
+          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
+          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby-head, allow-failure: true }
+          - { tto: 8 , os: macos-12     , ruby: jruby }
+          - { tto: 8 , os: macos-12     , ruby: truffleruby, allow-failure: true }
 
     steps:
       - name: repo checkout
@@ -182,10 +190,10 @@ jobs:
 
       - name: test
         id: test
-        timeout-minutes: 12
+        timeout-minutes: ${{ matrix.tto }}
         continue-on-error: ${{ matrix.allow-failure || false }}
         if: | # only run if previous steps have succeeded
-          success() && 
+          success() &&
           (needs.skip_duplicate_runs.outputs.should_skip != 'true')
         run: bundle exec rake test:all
 
