@@ -140,10 +140,13 @@ class TestBinderParallel < TestBinderBase
 
   def test_logs_all_localhost_bindings
     @binder.parse ["tcp://localhost:0"], @log_writer
+    sleep 0.005 unless ::Puma::IS_MRI
 
-    assert_match %r!http://127.0.0.1:(\d+)!, @log_writer.stdout.string
-    if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
-      assert_match %r!http://\[::1\]:(\d+)!, @log_writer.stdout.string
+    log = @log_writer.stdout.string
+
+    assert_match %r!http://127.0.0.1:\d+!, log
+    if HAS_IPV6
+      assert_match %r!http://\[::1\]:\d+!, log
     end
   end
 
@@ -153,7 +156,7 @@ class TestBinderParallel < TestBinderBase
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @log_writer
 
     assert_match %r!ssl://127.0.0.1:(\d+)!, @log_writer.stdout.string
-    if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
+    if HAS_IPV6
       assert_match %r!ssl://\[::1\]:(\d+)!, @log_writer.stdout.string
     end
   end
@@ -489,17 +492,17 @@ class TestBinderSingle < TestBinderBase
 
     host = '127.0.0.1'
     port = UniquePort.call
+    backlog_set = 0
     tcp_server = TCPServer.new(host, port)
     tcp_server.define_singleton_method(:listen) do |backlog|
-      Thread.current[:backlog] = backlog
-      super(backlog)
+      backlog_set = backlog
+      super backlog
     end
 
     TCPServer.stub(:new, tcp_server) do
       @binder.parse ["ssl://#{host}:#{port}?#{ssl_query}&backlog=2048"], @log_writer
     end
-
-    assert_equal 2048, Thread.current[:backlog]
+    assert_equal 2048, backlog_set
   end
 end
 

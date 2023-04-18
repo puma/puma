@@ -586,9 +586,7 @@ class TestConfigFile < TestConfigFileBase
 
   def assert_warning_for_hooks_defined_in_single_mode(hook_name)
     out, _ = capture_io do
-      Puma::Configuration.new do |c|
-        c.send(hook_name)
-      end
+      Puma::Configuration.new { |c| c.send hook_name }
     end
 
     assert_match "your `#{hook_name}` block did not run\n", out

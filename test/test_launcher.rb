@@ -110,15 +110,11 @@ class TestLauncher < Minitest::Test
   end
 
   def test_log_config_enabled
-    ENV['PUMA_LOG_CONFIG'] = "1"
-
-    assert_match(/Configuration:/, launcher.log_writer.stdout.string)
+    assert_match(/Configuration:/, launcher(puma_log_config: '1').log_writer.stdout.string)
 
     launcher.config.final_options.each do |config_key, _value|
       assert_match(/#{config_key}/, launcher.log_writer.stdout.string)
     end
-
-    ENV.delete('PUMA_LOG_CONFIG')
   end
 
   def test_log_config_disabled
@@ -131,18 +127,19 @@ class TestLauncher < Minitest::Test
       c.port UniquePort.call
     end
 
+    called_str = '** on_stopped called **'
+
     launcher = launcher(conf)
     launcher.events.on_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
-    launcher.events.on_stopped { puts 'on_stopped called' }
+    launcher.events.on_stopped { @log_writer.log called_str }
 
-    out, = capture_io do
-      launcher.run
-    end
+    launcher.run
+
     sleep 0.2 unless Puma.mri?
-    assert_equal 'on_stopped called', out.strip
+    assert_includes @log_writer.stdout.string, "\n#{called_str}\n"
   end
 
   private
@@ -151,7 +148,10 @@ class TestLauncher < Minitest::Test
     @log_writer ||= Puma::LogWriter.strings
   end
 
-  def launcher(config = Puma::Configuration.new, lw = log_writer)
+  def launcher(config = Puma::Configuration.new, lw = log_writer, puma_log_config: nil)
+    ENV['PUMA_LOG_CONFIG'] = puma_log_config if puma_log_config
     @launcher ||= Puma::Launcher.new(config, log_writer: lw)
+    ENV.delete 'PUMA_LOG_CONFIG' if puma_log_config
+    @launcher
   end
 end

@@ -14,7 +14,33 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def wait_booted
-    line = @wait.gets until line&.include?('Use Ctrl-C to stop')
+    wait_for_io_to_include 'Use Ctrl-C to stop'
+  end
+
+  def wait_for_io_to_include(str, io: @wait, ret_false_str: nil, log: false)
+    sleep 0.05 until io.is_a?(IO)
+    retry_cntr = 0
+    begin
+      io.wait_readable 1
+      if log
+        puts "Waiting for '#{str}'"
+        begin
+          line = io&.gets
+          puts line if !line&.strip.empty?
+        end until line&.include?(str)
+      else
+        while true do
+          line = io&.gets || ''
+          return true if line.include?(str)
+          return false if (ret_false_str && line.include?(ret_false_str))
+        end
+      end
+    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+      retry_cntr += 1
+      flunk "server did not output '#{str}' in allowed time #{e.class}" if retry_cntr > 20
+      sleep 0.1
+      retry
+    end
   end
 
   def teardown
@@ -186,6 +212,8 @@ class TestPumaControlCli < TestConfigFileBase
     assert_command_cli_output opts + ["stop"], "Command stop sent success"
 
     assert_kind_of Thread, t.join, "server didn't stop"
+  ensure
+    s.close
   end
 
   # This checks that a 'signal only' command is sent
