@@ -2,15 +2,16 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestWorkerGemIndependence < TestIntegration
+
+  PUMA_TTO = true # use Timeout.timeout on each test
+
   def setup
     skip_unless :fork
-    super
   end
 
   def teardown
     return if skipped?
     FileUtils.rm current_release_symlink, force: true
-    super
   end
 
   def test_changing_nio4r_version_during_phased_restart

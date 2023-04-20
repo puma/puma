@@ -104,10 +104,11 @@ module TimeoutEveryTestCase
   end
 
   def run
+    use_timeout = self.class.const_defined?(:PUMA_TTO) && self.class::PUMA_TTO
+
     with_info_handler do
       time_it do
-        # remove ::Timeout.timeout when (if) tests become stable
-        if ::Puma::IS_MRI
+        if use_timeout
           capture_exceptions do
             ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
               before_setup; setup; after_setup
@@ -122,16 +123,12 @@ module TimeoutEveryTestCase
           end
         else
           capture_exceptions do
-            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-              before_setup; setup; after_setup
-              self.send self.name
-            end
+            before_setup; setup; after_setup
+            self.send self.name
           end
 
           capture_exceptions do
-            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-              Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
-            end
+            Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
           end
         end
         if respond_to? :clean_tmp_paths
