@@ -6,7 +6,7 @@ require "digest"
 
 require "puma/puma_http11"
 
-class Http11ParserTest < Minitest::Test
+class TestHttp11Parser < Minitest::Test
 
   parallelize_me!
 
