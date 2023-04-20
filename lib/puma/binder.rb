@@ -48,7 +48,6 @@ module Puma
 
       @envs = {}
       @ios = []
-      localhost_authority
     end
 
     attr_reader :ios
