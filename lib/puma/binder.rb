@@ -450,11 +450,14 @@ module Puma
 
     def close_listeners
       @listeners.each do |l, io|
-        io.close unless io.closed?
-        uri = URI.parse l
-        next unless uri.scheme == 'unix'
-        unix_path = "#{uri.host}#{uri.path}"
-        File.unlink unix_path if @unix_paths.include?(unix_path) && File.exist?(unix_path)
+        begin
+          io.close unless io.closed?
+          uri = URI.parse l
+          next unless uri.scheme == 'unix'
+          unix_path = "#{uri.host}#{uri.path}"
+          File.unlink unix_path if @unix_paths.include?(unix_path) && File.exist?(unix_path)
+        rescue Errno::EBADF
+        end
       end
     end
 
