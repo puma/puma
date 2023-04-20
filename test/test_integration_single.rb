@@ -72,7 +72,7 @@ class TestIntegrationSingle < TestIntegration
     reply = read_body(connect)
     stop_server
 
-    assert_match("http", reply)
+    assert_equal 'http', reply
   end
 
   def test_conf_is_loaded_before_passing_it_to_binder
@@ -83,7 +83,7 @@ class TestIntegrationSingle < TestIntegration
     reply = read_body(connect)
     stop_server
 
-    assert_match("https", reply)
+    assert_equal 'https', reply
   end
 
   def test_prefer_rackup_file_specified_by_cli
@@ -93,7 +93,7 @@ class TestIntegrationSingle < TestIntegration
     reply = read_body(connect)
     stop_server
 
-    assert_match("Hello World", reply)
+    assert_equal 'Hello World', reply
   end
 
   def test_term_not_accepts_new_connections
@@ -148,7 +148,7 @@ class TestIntegrationSingle < TestIntegration
     Process.kill :INT , @pid
     t.join
 
-    assert_match "Thread: TID", output.join
+    assert_includes output.join, 'Thread: TID'
   end
 
   def test_write_to_log
@@ -164,7 +164,7 @@ class TestIntegrationSingle < TestIntegration
 
     log = File.read('t1-stdout')
 
-    assert_match(%r!GET / HTTP/1\.1!, log)
+    assert_includes log, '"GET / HTTP/1.1"'
   ensure
     File.unlink 't1-stdout' if File.file? 't1-stdout'
     File.unlink 't1-pid'    if File.file? 't1-pid'
@@ -183,7 +183,7 @@ class TestIntegrationSingle < TestIntegration
 
     log = File.read('t2-stdout')
 
-    assert_match(%r!GET / HTTP/1\.1!, log)
+    assert_includes log, '"GET / HTTP/1.1"'
     assert(!File.file?("t2-pid"))
     assert_equal("Puma is started\n", out)
   ensure
