@@ -54,7 +54,7 @@ class TestPumaServerBase < Minitest::Test
   end
 end
 
-class TestPumaServerP < TestPumaServerBase
+class TestPumaServer < TestPumaServerBase
   parallelize_me!
 
   def test_normalize_host_header_missing
@@ -1344,7 +1344,7 @@ EOF
   end
 
   def test_custom_io_selector
-    backend = NIO::Selector.backends.first
+    backend = ::NIO::Selector.backends.first
 
     @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :io_selector_backend => backend}
     @server.run
@@ -1354,43 +1354,104 @@ EOF
     assert_equal selector.backend, backend
   end
 
-  def test_drain_on_shutdown(drain=true)
+  def test_drain_on_shutdown_http10(drain = true)
+    req = "GET / HTTP/1.0\r\n\r\n"
+    good_response = "HTTP/1.0 200 OK\r\nContent-Length: 4\r\n\r\nDONE"
+    dropped = "Errno::ECONNRESET EOFError"
+
     num_connections = 10
 
     wait = Queue.new
-    server_run(drain_on_shutdown: drain, max_threads: 1) do
+    server_run(drain_on_shutdown: drain, min_threads: 2, max_threads: 2) do
       wait.pop
       [200, {}, ["DONE"]]
     end
-    connections = Array.new(num_connections) { send_http "GET / HTTP/1.0\r\n\r\n" }
+    connections = Array.new(num_connections) { send_http req }
     @server.stop
-    sleep 0.01
     wait.close
 
-    threads =  []
-    bad = Queue.new
+    results = connections.map { |skt|
+      begin
+        skt.read_response
+      rescue StandardError => e
+        e.class.to_s
+      end
+    }
+    results_msg = results.map(&:inspect).join "\n"
 
-    connections.each do |s|
-      threads << Thread.new {
-        begin
-          bad.push nil unless 'DONE' == s.read_body
-        rescue Exception
-          bad.push nil
-        end
-      }
-    end
-    threads.each { |th| th.join }
+    good    = results.count { |e| e == good_response }
+    dropped = results.count { |e| dropped.include? e }
+
+    msg = "#{results_msg}\nGood req (#{good}) and Dropped req (#{dropped}) should total #{num_connections}"
+    assert_equal num_connections, (good + dropped), msg
 
     if drain
-      assert_equal 0, bad.length
+      assert_equal 0, dropped, "#{results_msg}\nThere should be no dropped requests, there were #{dropped}"
     else
-      refute_equal 0, bad.length
+      refute_equal 0, dropped, "#{results_msg}\nThere should be at least 1 dropped request, there were #{dropped}"
     end
-    bad.close
   end
 
-  def test_not_drain_on_shutdown
-    test_drain_on_shutdown false
+  def test_not_drain_on_shutdown_http10
+    test_drain_on_shutdown_http10 false
+  end
+
+  # send two requests with each client/socket
+  def test_drain_on_shutdown_http11(drain = true)
+    req = "GET / HTTP/1.1\r\n\r\n"
+    good_response   = "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nDONE"
+    closed_response = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nDONE"
+    dropped = "Errno::ECONNRESET EOFError"
+
+    num_connections = 10
+
+    wait = Queue.new
+    server_run(drain_on_shutdown: drain, min_threads: 2, max_threads: 2) do
+      wait.pop
+      [200, {}, ["DONE"]]
+    end
+    connections = Array.new(num_connections) { send_http (req * 2) }
+    @server.stop
+    wait.close
+    sleep (::Puma::IS_MRI ? 0.01 : 0.1) # needed to allow 2nd requests to be processed?
+
+    results = connections.map { |skt|
+      begin
+        skt.read_response
+      rescue StandardError => e
+        e.class.to_s
+      end
+    }
+    results_msg = results.map(&:inspect).join "\n"
+
+    good        = results.count { |e| e == (good_response) }
+    good_good   = results.count { |e| e == (good_response * 2) }
+    good_closed = results.count { |e| e == "#{good_response}#{closed_response}" }
+    closed      = results.count { |e| e == closed_response }
+    dropped     = results.count { |e| dropped.include? e }
+
+    if drain
+      msg = "#{results_msg}\n#{good} good + #{good_good} good_good " \
+        "+ #{good_closed} good_closed + #{closed} closed should equal #{num_connections}"
+      assert_equal num_connections, (good + good_good + good_closed + closed), msg
+
+      msg = "#{results_msg}\nThere should be 8 or more good_good responses, there were #{good_good}"
+      assert_operator 8, :<=, good_good, msg
+
+      msg = "#{results_msg}\nNo requests should have been dropped"
+      assert_equal 0, dropped, msg
+    else
+      msg = "#{results_msg}\n#{good} good + #{good_good} good_good " \
+        "+ #{good_closed} good_closed + #{closed} closed + #{dropped} dropped should equal #{num_connections}"
+      assert_equal num_connections, (good + good_good + good_closed + closed + dropped), msg
+
+      msg = "#{results_msg}\nSome requests should have been dropped"
+      refute_equal 0, dropped, msg
+    end
+  end
+
+  def test_not_drain_on_shutdown_http11
+    test_drain_on_shutdown_http11 false
   end
 
   def test_remote_address_header
@@ -1578,15 +1639,13 @@ EOF
     [out_w, err_w].each(&:close)
     [out_r, err_r, pid]
   end
-end
 
-class TestPumaServerS < TestPumaServerBase
   def stub_accept_nonblock(error)
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     io = @server.binder.ios.last
 
     accept_old = io.method(:accept_nonblock)
-    io.singleton_class.send :define_method, :accept_nonblock do
+    io.define_singleton_method :accept_nonblock do
       accept_old.call.close
       raise error
     end
