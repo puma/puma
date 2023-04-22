@@ -136,7 +136,7 @@ module Puma
       # Number of seconds to wait until we get the first data for the request
       first_data_timeout: 30,
       io_selector_backend: :auto,
-      hide_header: false,
+      hide_version_header: false,
       log_requests: false,
       logger: STDOUT,
       # How many requests to attempt inline before sending a client back to

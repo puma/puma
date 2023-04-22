@@ -1,1 +1,1 @@
-hide_header true
+hide_version_header false
