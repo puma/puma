@@ -169,8 +169,8 @@ module Puma
     end
 
     # Option to hide the server header output per OWASP recommendation
-    def hide_version_header(hide=false)
-      @options[:hide_version_header] = hide
+    def silence_version_header(silence=false)
+      @options[:silence_version_header] = silence
     end
 
     # Use an object or block as the rack application. This allows the

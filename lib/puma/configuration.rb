@@ -136,7 +136,6 @@ module Puma
       # Number of seconds to wait until we get the first data for the request
       first_data_timeout: 30,
       io_selector_backend: :auto,
-      hide_version_header: false,
       log_requests: false,
       logger: STDOUT,
       # How many requests to attempt inline before sending a client back to
@@ -159,6 +158,7 @@ module Puma
       remote_address: :socket,
       silence_single_worker_warning: false,
       silence_fork_callback_warning: false,
+      silence_version_header: false,
       tag: File.basename(Dir.getwd),
       tcp_host: '0.0.0.0'.freeze,
       tcp_port: 9292,
