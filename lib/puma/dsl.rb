@@ -168,6 +168,11 @@ module Puma
       @plugins << @config.load_plugin(name)
     end
 
+    # Option to hide the server header output per OWASP recommendation
+    def hide_header(hide=false)
+      @options[:hide_header] = hide
+    end
+
     # Use an object or block as the rack application. This allows the
     # configuration file to be the application itself.
     #

@@ -1,3 +1,4 @@
+# coding: utf-8
 # frozen_string_literal: true
 
 require_relative 'server'
@@ -103,9 +104,10 @@ module Puma
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
       environment = @options[:environment]
+      hide_header = @options[:hide_header]
 
       log "Puma starting in #{mode} mode..."
-      log "* Puma version: #{Puma::Const::PUMA_VERSION} (#{ruby_engine}) (\"#{Puma::Const::CODE_NAME}\")"
+      log "* Puma version: #{Puma::Const::PUMA_VERSION} (#{ruby_engine}) (\"#{Puma::Const::CODE_NAME}\")" unless hide_header
       log "*  Min threads: #{min_t}"
       log "*  Max threads: #{max_t}"
       log "*  Environment: #{environment}"
