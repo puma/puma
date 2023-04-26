@@ -5,6 +5,7 @@ begin
 rescue LoadError
 end
 
+require 'open3'
 # need for Puma::MiniSSL::OPENSSL constants used in `HAS_TLS1_3`
 # use require, see https://github.com/puma/puma/pull/2381
 require 'puma/puma_http11'
@@ -277,6 +278,7 @@ module Puma
       else
         # non-jruby Context properties
         attr_reader :key
+        attr_reader :key_password_command
         attr_reader :cert
         attr_reader :ca
         attr_reader :cert_pem
@@ -289,6 +291,10 @@ module Puma
         def key=(key)
           check_file key, 'Key'
           @key = key
+        end
+
+        def key_password_command=(key_password_command)
+          @key_password_command = key_password_command
         end
 
         def cert=(cert)
@@ -314,6 +320,17 @@ module Puma
         def check
           raise "Key not configured" if @key.nil? && @key_pem.nil?
           raise "Cert not configured" if @cert.nil? && @cert_pem.nil?
+        end
+
+        # Executes the command to return the password needed to decrypt the key.
+        def key_password
+          raise "Key password command not configured" if @key_password_command.nil?
+
+          stdout_str, stderr_str, status = Open3.capture3(key_password_command)
+
+          return stdout_str.chomp if status.success?
+
+          raise "Key password failed with code #{status.exitstatus}: #{stderr_str}"
         end
 
         # Controls session reuse.  Allowed values are as follows:
