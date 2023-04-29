@@ -85,7 +85,6 @@ class TestPumaServer < Minitest::Test
     end
   end
 
-
   def new_connection
     TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
   end
@@ -1565,5 +1564,88 @@ EOF
 
     resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
     assert_equal "HTTP/1.1 404 Not Found\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", resp
+  end
+
+  def test_form_data_encoding_windows_bom
+    req_body = nil
+
+    str = "──── Hello,World,From,Puma ────\r\n"
+
+    file_contents = str * 5_500 # req body is > 256 kB
+
+    file_bytesize = file_contents.bytesize + 3 # 3 = BOM byte size
+
+    fio = Tempfile.create 'win_bom_utf8_'
+
+    temp_file_path = fio.path
+    fio.close
+
+    File.open temp_file_path, "wb:UTF-8" do |f|
+      f.write "\xEF\xBB\xBF#{file_contents}"
+    end
+
+    server_run do |env|
+      req_body = env['rack.input'].read
+      [200, {}, [req_body]]
+    end
+
+    cmd = "curl -H 'transfer-encoding: chunked' --form data=@#{temp_file_path} http://127.0.0.1:#{@port}/"
+
+    out_r, _, _ = spawn_cmd cmd
+
+    out_r.wait_readable 3
+
+    form_file_data = req_body.split("\r\n\r\n", 2)[1].sub(/\r\n----\S+\r\n\z/, '')
+
+    assert_equal file_bytesize, form_file_data.bytesize
+    assert_equal out_r.read.bytesize, req_body.bytesize
+  end
+
+  def test_form_data_encoding_windows
+    req_body = nil
+
+    str = "──── Hello,World,From,Puma ────\r\n"
+
+    file_contents = str * 5_500 # req body is > 256 kB
+
+    file_bytesize = file_contents.bytesize
+
+    fio = tempfile_create 'win_utf8_', file_contents
+
+    temp_file_path = fio.path
+    fio.close
+
+    server_run do |env|
+      req_body = env['rack.input'].read
+      [200, {}, [req_body]]
+    end
+
+    cmd = "curl -H 'transfer-encoding: chunked' --form data=@#{temp_file_path} http://127.0.0.1:#{@port}/"
+
+    out_r, _, _ = spawn_cmd cmd
+
+    out_r.wait_readable 3
+
+    form_file_data = req_body.split("\r\n\r\n", 2)[1].sub(/\r\n----\S+\r\n\z/, '')
+
+    assert_equal file_bytesize, form_file_data.bytesize
+    assert_equal out_r.read.bytesize, req_body.bytesize
+  end
+
+  def spawn_cmd(env = {}, cmd)
+    opts = {}
+
+    out_r, out_w = IO.pipe
+    opts[:out] = out_w
+
+    err_r, err_w = IO.pipe
+    opts[:err] = err_w
+
+    out_r.binmode
+    err_r.binmode
+
+    pid = spawn(env, cmd, opts)
+    [out_w, err_w].each(&:close)
+    [out_r, err_r, pid]
   end
 end
