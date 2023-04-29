@@ -190,12 +190,13 @@ RUBY
   end
 
   def test_ssl_run_with_encrypted_key
-    skip_if :jruby, :windows
+    skip_if :jruby
 
     config = <<RUBY
   key_path  = '#{File.expand_path '../examples/puma/encrypted_puma_keypair.pem', __dir__}'
   cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
-  key_command = '#{File.expand_path '../examples/puma/key_password_command.sh', __dir__}'
+  key_command = ::Puma::IS_WINDOWS ? 'echo hello world' :
+    '#{File.expand_path '../examples/puma/key_password_command.sh', __dir__}'
 
   ssl_bind '#{HOST}', '#{bind_port}', {
     cert: cert_path,
@@ -222,12 +223,13 @@ RUBY
   end
 
   def test_ssl_run_with_encrypted_pem
-    skip_if :jruby, :windows
+    skip_if :jruby
 
     config = <<RUBY
   key_path  = '#{File.expand_path '../examples/puma/encrypted_puma_keypair.pem', __dir__}'
   cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
-  key_command = '#{File.expand_path '../examples/puma/key_password_command.sh', __dir__}'
+  key_command = ::Puma::IS_WINDOWS ? 'echo hello world' :
+    '#{File.expand_path '../examples/puma/key_password_command.sh', __dir__}'
 
   ssl_bind '#{HOST}', '#{bind_port}', {
     cert_pem: File.read(cert_path),

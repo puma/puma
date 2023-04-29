@@ -326,7 +326,7 @@ module Puma
         def key_password
           raise "Key password command not configured" if @key_password_command.nil?
 
-          stdout_str, stderr_str, status = Open3.capture3(key_password_command)
+          stdout_str, stderr_str, status = Open3.capture3(@key_password_command)
 
           return stdout_str.chomp if status.success?
 
