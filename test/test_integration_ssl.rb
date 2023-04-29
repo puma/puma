@@ -190,7 +190,7 @@ RUBY
   end
 
   def test_ssl_run_with_encrypted_key
-    skip_if :jruby
+    skip_if :jruby, :windows
 
     config = <<RUBY
   key_path  = '#{File.expand_path '../examples/puma/encrypted_puma_keypair.pem', __dir__}'
@@ -222,7 +222,7 @@ RUBY
   end
 
   def test_ssl_run_with_encrypted_pem
-    skip_if :jruby
+    skip_if :jruby, :windows
 
     config = <<RUBY
   key_path  = '#{File.expand_path '../examples/puma/encrypted_puma_keypair.pem', __dir__}'
