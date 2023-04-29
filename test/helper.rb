@@ -244,13 +244,18 @@ end
 
 module AggregatedResults
   def aggregated_results(io)
+    is_github_actions = ENV['GITHUB_ACTIONS'] == 'true'
     filtered_results = results.dup
 
     if options[:verbose]
       skips = filtered_results.select(&:skipped?)
       unless skips.empty?
         dash = "\u2500"
-        io.puts '', "Skips:"
+        if is_github_actions
+          puts "", "##[group]Skips:"
+        else
+          io.puts '', 'Skips:'
+        end
         hsh = skips.group_by { |f| f.failures.first.error.message }
         hsh_s = {}
         hsh.each { |k, ary|
@@ -272,6 +277,7 @@ module AggregatedResults
             puts ''
           }
         }
+        puts '::[endgroup]' if is_github_actions
       end
     end
 
