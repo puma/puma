@@ -99,7 +99,8 @@ module Puma
 
       @in_last_chunk = false
 
-      @read_buffer = +""
+      # need unfrozen ASCII-8BIT, +'' is UTF-8
+      @read_buffer = String.new # rubocop: disable Performance/UnfreezeString
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
