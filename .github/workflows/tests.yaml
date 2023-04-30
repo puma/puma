@@ -144,9 +144,9 @@ jobs:
       matrix:
         include:
           # tto - test timeout
-          - { tto: 6 , os: ubuntu-20.04 , ruby: jruby }
-          - { tto: 6 , os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
-          - { tto: 6 , os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
+          - { tto: 6 , os: ubuntu-22.04 , ruby: jruby }
+          - { tto: 6 , os: ubuntu-22.04 , ruby: jruby, no-ssl: ' no SSL' }
+          - { tto: 6 , os: ubuntu-22.04 , ruby: jruby-head, allow-failure: true }
           - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
           - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
           - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
