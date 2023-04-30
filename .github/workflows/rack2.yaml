@@ -67,5 +67,5 @@ jobs:
 
       - name: test
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        timeout-minutes: 10
+        timeout-minutes: 6
         run: bundle exec rake test:all
