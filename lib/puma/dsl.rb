@@ -89,6 +89,7 @@ module Puma
 
         cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
         key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
+        password_flags = (password_command = opts[:key_password_command]) ? "&key_password_command=#{Puma::Util.escape(password_command)}" : nil
 
         reuse_flag =
           if (reuse = opts[:reuse])
@@ -114,7 +115,7 @@ module Puma
             nil
           end
 
-        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{ssl_cipher_filter}" \
+        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{password_flags}#{ssl_cipher_filter}" \
           "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}#{low_latency_str}"
       end
     end

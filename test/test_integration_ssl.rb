@@ -189,6 +189,72 @@ RUBY
     end
   end
 
+  def test_ssl_run_with_encrypted_key
+    skip_if :jruby
+
+    config = <<RUBY
+  key_path  = '#{File.expand_path '../examples/puma/encrypted_puma_keypair.pem', __dir__}'
+  cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
+  key_command = ::Puma::IS_WINDOWS ? 'echo hello world' :
+    '#{File.expand_path '../examples/puma/key_password_command.sh', __dir__}'
+
+  ssl_bind '#{HOST}', '#{bind_port}', {
+    cert: cert_path,
+    key: key_path,
+    verify_mode: 'none',
+    key_password_command: key_command
+  }
+
+activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+
+app do |env|
+  [200, {}, [env['rack.url_scheme']]]
+end
+RUBY
+
+    with_server(config) do |http|
+      body = nil
+      http.start do
+        req = Net::HTTP::Get.new '/', {}
+        http.request(req) { |resp| body = resp.body }
+      end
+      assert_equal 'https', body
+    end
+  end
+
+  def test_ssl_run_with_encrypted_pem
+    skip_if :jruby
+
+    config = <<RUBY
+  key_path  = '#{File.expand_path '../examples/puma/encrypted_puma_keypair.pem', __dir__}'
+  cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
+  key_command = ::Puma::IS_WINDOWS ? 'echo hello world' :
+    '#{File.expand_path '../examples/puma/key_password_command.sh', __dir__}'
+
+  ssl_bind '#{HOST}', '#{bind_port}', {
+    cert_pem: File.read(cert_path),
+    key_pem: File.read(key_path),
+    verify_mode: 'none',
+    key_password_command: key_command
+  }
+
+activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+
+app do |env|
+  [200, {}, [env['rack.url_scheme']]]
+end
+RUBY
+
+    with_server(config) do |http|
+      body = nil
+      http.start do
+        req = Net::HTTP::Get.new '/', {}
+        http.request(req) { |resp| body = resp.body }
+      end
+      assert_equal 'https', body
+    end
+  end
+
   private
 
   def curl_and_get_response(url, method: :get, args: nil); require 'open3'

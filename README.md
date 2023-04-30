@@ -279,6 +279,30 @@ $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&verification_f
 List of available flags: `USE_CHECK_TIME`, `CRL_CHECK`, `CRL_CHECK_ALL`, `IGNORE_CRITICAL`, `X509_STRICT`, `ALLOW_PROXY_CERTS`, `POLICY_CHECK`, `EXPLICIT_POLICY`, `INHIBIT_ANY`, `INHIBIT_MAP`, `NOTIFY_POLICY`, `EXTENDED_CRL_SUPPORT`, `USE_DELTAS`, `CHECK_SS_SIGNATURE`, `TRUSTED_FIRST`, `SUITEB_128_LOS_ONLY`, `SUITEB_192_LOS`, `SUITEB_128_LOS`, `PARTIAL_CHAIN`, `NO_ALT_CHAINS`, `NO_CHECK_TIME`
 (see https://www.openssl.org/docs/manmaster/man3/X509_VERIFY_PARAM_set_hostflags.html#VERIFICATION-FLAGS).
 
+#### Controlling OpenSSL Password Decryption
+
+To enable runtime decryption of an encrypted SSL key (not available for JRuby), use `key_password_command`:
+
+```
+$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&key_password_command=/path/to/command.sh'
+```
+
+`key_password_command` must:
+
+1. Be executable by Puma.
+2. Print the decryption password to stdout.
+
+ For example:
+
+```shell
+#!/bin/sh
+
+echo "this is my password"
+```
+
+`key_password_command` can be used with `key` or `key_pem`. If the key
+is not encrypted, the executable will not be called.
+
 ### Control/Status Server
 
 Puma has a built-in status and control app that can be used to query and control Puma.
