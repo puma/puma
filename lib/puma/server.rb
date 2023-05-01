@@ -109,7 +109,29 @@ module Puma
       @precheck_closing = true
 
       @requests_count = 0
+
+      unless Client.const_defined? :ERROR_RESPONSE
+        define_client_error_response
+      end
     end
+
+    # Creates Client::ERROR_RESPONSE, which is a hash of response strings
+    # used when the request is invalid, and before `app.call`.
+    # @see `Client#write_error`
+    def define_client_error_response
+      err_hash = {}
+      server_val = @options[:puma_server_header_value]&.strip
+      show_header = server_val && !server_val.empty?
+      [400, 408, 413, 500, 501].each do |status|
+        err_hash[status] = show_header ?
+          "HTTP/1.1 #{status} #{HTTP_STATUS_CODES[status]}\r\nConnection: close\r\n" \
+            "Server: #{server_val}\r\n\r\n" :
+          "HTTP/1.1 #{status} #{HTTP_STATUS_CODES[status]}\r\nConnection: close\r\n\r\n"
+      end
+      err_hash.freeze
+      Client.const_set :ERROR_RESPONSE, err_hash
+    end
+    private :define_client_error_response
 
     def inherit_binder(bind)
       @binder = bind

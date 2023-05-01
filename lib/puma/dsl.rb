@@ -1110,5 +1110,14 @@ module Puma
         LogWriter.stdio.log(log_string)
       end
     end
+
+    # Puma will write responses to requests that are invalid.  This is done
+    # before the app is called.  This setting allows specifying a response
+    #`Server:` header value in those responses.  Normally it is only used if the
+    # app specifies one.
+    #
+    def server_header_value(val = nil)
+      @options[:puma_server_header_value] = val.strip if val.is_a? String
+    end
   end
 end
