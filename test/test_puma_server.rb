@@ -152,6 +152,21 @@ class TestPumaServer < Minitest::Test
     assert_equal "Hello World", data.split("\r\n\r\n", 2).last
   end
 
+  def test_request_logs_with_custom_logger
+    conf = Puma::Configuration.new { |c| c.load 'test/config/custom_logger.rb' }
+    conf.load
+
+    server_run(custom_logger: conf.options[:custom_logger], log_requests: true) do |env|
+      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
+    end
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
+    assert_equal "Custom logging: GET / HTTP/1.0", data.split("\r\n").first
+
+    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123\r\n\r\n"
+    assert_equal "Custom logging: GET / HTTP/1.0", data.split("\r\n").first
+  end
+
   def test_file_body
     random_bytes = SecureRandom.random_bytes(4096 * 32)
 
