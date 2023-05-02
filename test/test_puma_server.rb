@@ -161,10 +161,9 @@ class TestPumaServer < Minitest::Test
     end
 
     data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
-    assert_equal "Custom logging: GET / HTTP/1.0", data.split("\r\n").first
-
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123\r\n\r\n"
-    assert_equal "Custom logging: GET / HTTP/1.0", data.split("\r\n").first
+    assert_match(%r!Custom logging: 127\.0\.0\.1.*GET / HTTP/1\.0.*Host: 123\.123\.123\.123:456!, data)
+    data = send_http_and_read "GET / HTTP/1.1\r\nHost: 123.123.123.123\r\n\r\n"
+    assert_match(%r!Custom logging: 127\.0\.0\.1.*GET / HTTP/1\.1.*Host: 123\.123\.123\.123!, data)
   end
 
   def test_file_body
