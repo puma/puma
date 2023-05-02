@@ -317,12 +317,12 @@ class TestIntegration < Minitest::Test
   # used to define correct 'refused' errors
   def thread_run_refused(unix: false)
     if unix
-      DARWIN ? [IOError, Errno::ENOENT, Errno::EPIPE] :
-               [IOError, Errno::ENOENT]
+      DARWIN ? [IOError, Errno::ENOENT, Errno::EPIPE, Errno::ENOTSOCK] :
+               [IOError, Errno::ENOENT, Errno::ENOTSOCK]
     else
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
-      DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
-               [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF]
+      DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED, Errno::ENOTSOCK] :
+               [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, Errno::ENOTSOCK]
     end
   end
 
@@ -407,7 +407,7 @@ class TestIntegration < Minitest::Test
           # client would see an empty response
           # Errno::EBADF Windows may not be able to make a connection
           mutex.synchronize { replies[:reset] += 1 }
-        rescue *refused, IOError
+        rescue *refused
           # IOError intermittently thrown by Ubuntu, add to allow retry
           mutex.synchronize { replies[:refused] += 1 }
         rescue ::Timeout::Error
