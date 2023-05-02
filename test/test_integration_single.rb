@@ -199,6 +199,26 @@ class TestIntegrationSingle < TestIntegration
     File.unlink 't2-stdout' if File.file? 't2-stdout'
   end
 
+  def test_puma_started_log_writing_with_custom_logging
+    skip_unless_signal_exist? :TERM
+
+    cli_server '-C test/config/t4_conf.rb test/rackup/hello.ru'
+
+    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
+
+    out=`#{BASE} bin/pumactl -F test/config/t4_conf.rb status`
+
+    stop_server
+
+    log = File.read('t4-stdout')
+
+    assert_match(%r!Custom logging: 127\.0\.0\.1.*GET / HTTP/1\.1!, log)
+    assert(!File.file?("t4-pid"))
+    assert_equal("Puma is started\n", out)
+  ensure
+    File.unlink 't4-stdout' if File.file? 't4-stdout'
+  end
+
   def test_application_logs_are_flushed_on_write
     cli_server "#{set_pumactl_args} test/rackup/write_to_stdout.ru"
 
