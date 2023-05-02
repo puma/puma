@@ -586,7 +586,7 @@ class TestConfigFile < TestConfigFileBase
 
   def assert_warning_for_hooks_defined_in_single_mode(hook_name)
     out, _ = capture_io do
-      conf = Puma::Configuration.new do |c|
+      Puma::Configuration.new do |c|
         c.send(hook_name)
       end
     end

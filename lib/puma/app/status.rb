@@ -80,7 +80,7 @@ module Puma
 
       def authenticate(env)
         return true unless @auth_token
-        env['QUERY_STRING'].to_s.split(/&;/).include?("token=#{@auth_token}")
+        env['QUERY_STRING'].to_s.split('&;').include? "token=#{@auth_token}"
       end
 
       def rack_response(status, body, content_type='application/json')

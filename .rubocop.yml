@@ -1,4 +1,5 @@
-require: rubocop-performance
+require:
+  - rubocop-performance
 
 AllCops:
   DisabledByDefault: true
@@ -12,12 +13,15 @@ AllCops:
     - 'pkg/**/*'
     - 'Rakefile'
   SuggestExtensions: false
-  NewCops: disable
+  NewCops: enable
+
+# enable all Performance cops
+Performance:
+  Enabled: true
 
 # ————————————————————————————————————————— disabled cops
 
 # ————————————————————————————————————————— enabled cops
-
 Layout/AccessModifierIndentation:
   EnforcedStyle: indent
 
@@ -52,6 +56,9 @@ Lint/Debugger:
 Metrics/ParameterLists:
   Max: 7
 
+Naming/ConstantName:
+  Enabled: true
+
 Naming/MethodName:
   Enabled: true
   EnforcedStyle: snake_case
@@ -59,39 +66,6 @@ Naming/MethodName:
     - 'test/**/**'
 
 Naming/VariableName:
-  Enabled: true
-
-Performance:
-  Enabled: true
-
-Performance/ChainArrayAllocation:
-  Enabled: true
-
-Performance/CollectionLiteralInLoop:
-  Enabled: true
-
-Performance/DeletePrefix:
-  Enabled: true
-
-Performance/DeleteSuffix:
-  Enabled: true
-
-Performance/MethodObjectAsBlock:
-  Enabled: true
-
-Performance/RedundantMatch:
-  Enabled: true
-
-Performance/RedundantBlockCall:
-  Enabled: true
-
-Performance/StringIdentifierArgument:
-  Enabled: true
-
-Performance/StringInclude:
-  Enabled: true
-
-Performance/StringReplacement:
   Enabled: true
 
 Style/MethodDefParentheses:
