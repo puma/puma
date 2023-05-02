@@ -143,7 +143,7 @@ class TestIntegrationPumactl_S < TestIntegrationPumactlBase
     send_http_read_response "GET /sleep1 HTTP/1.0\r\n\r\n"
 
     # Get the PIDs of the phase 0 workers.
-    phase0_worker_pids = get_worker_pids 0, log: false
+    phase0_worker_pids = get_worker_pids 0
 
     assert File.exist? @bind_path
 
@@ -151,7 +151,7 @@ class TestIntegrationPumactl_S < TestIntegrationPumactlBase
     cli_pumactl 'phased-restart', unix: true
 
     # Get the PIDs of the phase 1 workers.
-    phase1_worker_pids = get_worker_pids 1, log: false
+    phase1_worker_pids = get_worker_pids 1
 
     msg = "phase 0 pids #{phase0_worker_pids.inspect}  phase 1 pids #{phase1_worker_pids.inspect}"
 

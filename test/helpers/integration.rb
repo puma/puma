@@ -79,7 +79,6 @@ class TestIntegration < Minitest::Test
   def cli_server(argv,    # rubocop:disable Metrics/ParameterLists
       unix: false,        # uses a UNIXSocket for the server listener when true
       config: nil,        # string to use for config file
-      log: false,         # output server log to console (for debugging)
       no_wait: false,     # don't wait for server to boot
       puma_debug: nil,    # set env['PUMA_DEBUG'] = 'true'
       config_bind: false, # use bind from config
@@ -111,7 +110,7 @@ class TestIntegration < Minitest::Test
 
     @ios_to_close << @server << @server_err
 
-    wait_for_server_to_boot(log: log) unless no_wait
+    wait_for_server_to_boot unless no_wait
     @server
   end
 
@@ -139,70 +138,79 @@ class TestIntegration < Minitest::Test
   end
 
   # reuses an existing connection to make sure that works
-  def restart_server(connection, log: false)
+  def restart_server(connection)
     Process.kill :USR2, @pid
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
-    wait_for_server_to_boot(log: log)
+    wait_for_server_to_boot
   end
 
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
-  def wait_for_server_to_boot(log: false, no_error: false)
-    wait_for_server_to_include 'Ctrl-C', log: log
+  def wait_for_server_to_boot(no_error: false)
+    wait_for_server_to_include 'Ctrl-C'
   rescue => e
     raise e.message unless no_error
   end
 
   # Returns true if and when server log includes str.
   # Will timeout or raise an error otherwise
-  def wait_for_server_to_include(str, io: @server, ret_false_str: nil, log: false)
-    t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  def wait_for_server_to_include(str, io: @server, ret_false_str: nil)
+    wait_readable_timeouts = 0
+    log_out = +''
+    log_out << "Waiting for '#{str}'"
     sleep 0.05 until io.is_a?(IO)
-    puts "Waiting for '#{str}'" if log
+    t_end = Process.clock_gettime(Process::CLOCK_MONOTONIC) + WAIT_SERVER_TIMEOUT
     begin
       loop do
         if io.wait_readable 2
           line = io&.gets
-          puts line if log && !line&.strip.empty?
+          log_out << line
           return true if line&.include?(str)
-        elsif WAIT_SERVER_TIMEOUT < Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st
+        elsif t_end < Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          unless wait_readable_timeouts.zero?
+            log_out << "#{wait_readable_timeouts} io.wait_readable timeouts, 2 sec each\n"
+          end
+          STDOUT.syswrite "\n#{log_out}\n"
           raise "Waited too long for server log to include '#{str}'"
+        else
+          wait_readable_timeouts += 1
         end
       end
-    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError
-      if WAIT_SERVER_TIMEOUT < Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st
-        raise "Waited too long for server log to include '#{str}'"
-      end
-      sleep 0.1
-      retry
+    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
+      STDOUT.syswrite "\n#{log_out}\n"
+      raise "#{e.class} #{e.message}\n  while waiting for server log to include '#{str}'"
     end
   end
 
   # Returns line if and when server log matches re, unless idx is specified,
   # then returns regex match.
   # Will timeout or raise an error otherwise
-  def wait_for_server_to_match(re, idx = nil, io: @server, log: false, ret_false_re: nil)
-    t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  def wait_for_server_to_match(re, idx = nil, io: @server, ret_false_re: nil)
+    wait_readable_timeouts = 0
+    log_out = +''
+    log_out << "Waiting for '#{re.inspect}'"
     sleep 0.05 until io.is_a?(IO)
-    retry_cntr = 0
-    line = nil
-    puts "Waiting for '#{re.inspect}'" if log
+    t_end = Process.clock_gettime(Process::CLOCK_MONOTONIC) + WAIT_SERVER_TIMEOUT
     begin
       loop do
         if io.wait_readable 2
           line = io&.gets
-          puts line if log && !line&.strip.empty?
+          log_out << line
           return false if ret_false_re&.match? line
           return (idx ? line[re, idx] : line) if line&.match?(re)
-        elsif WAIT_SERVER_TIMEOUT < Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st
+        elsif t_end < Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          unless wait_readable_timeouts.zero?
+            log_out << "#{wait_readable_timeouts} io.wait_readable timeouts, 2 sec each\n"
+          end
+          STDOUT.syswrite "\n#{log_out}\n"
           raise "Waited too long for server log to match '#{re.inspect}'"
+        else
+          wait_readable_timeouts += 1
         end
       end
     rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
-      retry_cntr += 1
-      flunk "server output did not match '#{re}' in allowed time #{e.class}" if retry_cntr > 20
-      sleep 0.1
-      retry
+      STDOUT.syswrite "\n#{log_out}\n"
+      raise "#{e.class} #{e.message}\n  while waiting for server log to match '#{re.inspect}'"
     end
   end
 
@@ -302,12 +310,11 @@ class TestIntegration < Minitest::Test
   end
 
   # gets worker pids from @server output
-  def get_worker_pids(phase = 0, size = workers, log: false)
-    STDOUT.syswrite "\n" if log
+  def get_worker_pids(phase = 0, size = workers)
     pids = []
     re = /\(PID: (\d+)\) booted in [.0-9]+s, phase: #{phase}/
     while pids.size < size
-      if pid = wait_for_server_to_match(re, 1, log: log)
+      if pid = wait_for_server_to_match(re, 1)
         pids << pid
       end
     end
