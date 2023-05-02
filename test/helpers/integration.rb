@@ -14,7 +14,11 @@ class TestIntegration < Minitest::Test
   RESP_READ_TIMEOUT = 10
   RESP_SPLIT = "\r\n\r\n"
 
-  WAIT_SERVER_TIMEOUT = ::Puma::IS_JRUBY ? 20 : 15
+  WAIT_SERVER_TIMEOUT =
+    if    ::Puma::IS_MRI  ; 15
+    elsif ::Puma::IS_JRUBY; 25
+    else                  ; 20 # TruffleRuby
+    end
 
   BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
     "#{Gem.ruby} -Ilib"
@@ -154,7 +158,6 @@ class TestIntegration < Minitest::Test
   def wait_for_server_to_include(str, io: @server, ret_false_str: nil, log: false)
     t_st = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     sleep 0.05 until io.is_a?(IO)
-    retry_cntr = 0
     puts "Waiting for '#{str}'" if log
     begin
       loop do
@@ -166,9 +169,10 @@ class TestIntegration < Minitest::Test
           raise "Waited too long for server log to include '#{str}'"
         end
       end
-    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
-      retry_cntr += 1
-      raise "server did not output '#{str}' in allowed time #{e.class}\n#{e.message}" if retry_cntr > 20
+    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError
+      if WAIT_SERVER_TIMEOUT < Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st
+        raise "Waited too long for server log to include '#{str}'"
+      end
       sleep 0.1
       retry
     end
