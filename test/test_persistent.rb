@@ -109,7 +109,11 @@ class TestPersistent < Minitest::Test
     @client << HTTP10_REQUEST
 
     expected = "HTTP/1.0 200 OK\r\nX-Header: Works\r\n\r\nHelloChunked"
-    Thread.pass if Puma::IS_JRUBY # may only receive the first element ('Hello')
+
+    # may only receive the first element ('Hello')
+    Thread.pass if Puma::IS_JRUBY
+    sleep 0.01
+
     assert_equal expected, @client.read_response
   end
 
