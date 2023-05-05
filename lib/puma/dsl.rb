@@ -1078,7 +1078,7 @@ module Puma
     #
     # @example Adds 'PROPFIND' to existing supported methods
     #   supported_http_methods(Puma::Const::SUPPORTED_HTTP_METHODS + ['PROPFIND'])
-    # @example Restricts methods to the array elemnts
+    # @example Restricts methods to the array elements
     #   supported_http_methods %w[HEAD GET POST PUT DELETE OPTIONS PROPFIND]
     # @example Restricts methods to the methods in the IANA Registry
     #   supported_http_methods Puma::Const::IANA_HTTP_METHODS
