@@ -1068,13 +1068,16 @@ module Puma
     end
 
     # Supported http methods, which will replace `Puma::Const::SUPPORTED_HTTP_METHODS`.
-    # Must be an array of strings.  Note that methods are all uppercase.
+    # The value of `:any` will allows all methods, otherwise, the value must be
+    # an array of strings.  Note that methods are all uppercase.
+    #
     # `Puma::Const::SUPPORTED_HTTP_METHODS` is conservative, if you want a
     # complete set of methods, the methods defined by the
     # [IANA Method Registry](https://www.iana.org/assignments/http-methods/http-methods.xhtml)
     # are pre-defined as the constant `Puma::Const::IANA_HTTP_METHODS`.
-    # @note If the `methods` value is an empty array, no method check with be
-    #   performed, similar to Puma v5 and earlier.
+    #
+    # @note If the `methods` value is `:any`, no method check with be performed,
+    #   similar to Puma v5 and earlier.
     #
     # @example Adds 'PROPFIND' to existing supported methods
     #   supported_http_methods(Puma::Const::SUPPORTED_HTTP_METHODS + ['PROPFIND'])
@@ -1083,13 +1086,16 @@ module Puma
     # @example Restricts methods to the methods in the IANA Registry
     #   supported_http_methods Puma::Const::IANA_HTTP_METHODS
     # @example Allows any method
-    #   supported_http_methods []
+    #   supported_http_methods :any
     #
     def supported_http_methods(methods)
-      if Array === methods && methods == (ary = methods.grep(String).uniq)
+      if methods == :any
+        @options[:supported_http_methods] = :any
+      elsif Array === methods && methods == (ary = methods.grep(String).uniq) &&
+        !ary.empty?
         @options[:supported_http_methods] = ary
       else
-        raise "supported_http_methods must be a unique array of strings"
+        raise "supported_http_methods must be ':any' or a unique array of strings"
       end
     end
 

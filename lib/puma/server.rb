@@ -99,13 +99,15 @@ module Puma
 
       # make this a hash, since we prefer `key?` over `include?`
       @supported_http_methods =
-        if (ary = @options[:supported_http_methods])
-          ary
+        if @options[:supported_http_methods] == :any
+          :any
         else
-           SUPPORTED_HTTP_METHODS
-        end.sort.product([nil]).to_h.freeze
-
-      @do_not_check_http_methods = @supported_http_methods.keys.empty?
+          if (ary = @options[:supported_http_methods])
+            ary
+          else
+            SUPPORTED_HTTP_METHODS
+          end.sort.product([nil]).to_h.freeze
+        end
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
