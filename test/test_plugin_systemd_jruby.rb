@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
@@ -15,6 +17,10 @@ class TestPluginSystemdJruby < TestIntegration
     super
 
     ENV["NOTIFY_SOCKET"] = "/tmp/doesntmatter"
+  end
+
+  def teardown
+    super unless skipped?
   end
 
   def test_systemd_plugin_not_loaded
