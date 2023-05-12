@@ -2,7 +2,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestPluginSystemd < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me! if ::Puma::IS_MRI && ::Puma::IS_LINUX
 
   THREAD_LOG = TRUFFLE ? "{ 0/16 threads, 16 available, 0 backlog }" :
     "{ 0/5 threads, 5 available, 0 backlog }"
@@ -12,8 +12,6 @@ class TestPluginSystemd < TestIntegration
     skip_unless :unix
     skip_unless_signal_exist? :TERM
     skip_if :jruby
-
-    super
 
     ::Dir::Tmpname.create("puma_socket") do |sockaddr|
       @sockaddr = sockaddr
@@ -26,6 +24,7 @@ class TestPluginSystemd < TestIntegration
 
   def teardown
     return if skipped?
+
     @socket&.close
     File.unlink(@sockaddr) if @sockaddr
     @socket = nil

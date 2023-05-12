@@ -29,6 +29,8 @@ class TestIntegrationCluster < TestIntegration
   def test_pre_existing_unix
     skip_unless :unix
 
+    @bind_path = tmp_path '.bind'
+
     File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
 
     cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix
@@ -45,6 +47,8 @@ class TestIntegrationCluster < TestIntegration
 
   def test_pre_existing_unix_stop_after_restart
     skip_unless :unix
+
+    @bind_path = tmp_path '.bind'
 
     File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
 
@@ -68,13 +72,9 @@ class TestIntegrationCluster < TestIntegration
 
     cli_server "-w #{workers} -q test/rackup/hello.ru"
     worker_pids = get_worker_pids
-    output = []
-    t = Thread.new { output << @server.readlines }
-    Process.kill :INFO, worker_pids.first
-    Process.kill :INT , @pid
-    t.join
 
-    assert_match "Thread: TID", output.join
+    Process.kill :INFO, worker_pids.first
+    assert wait_for_server_to_include("Thread: TID")
   end
 
   def test_usr2_restart
@@ -160,12 +160,11 @@ class TestIntegrationCluster < TestIntegration
     skip_unless_signal_exist? :TERM
 
     worker_respawn(0) do |phase0_worker_pids|
-      last = phase0_worker_pids.last
       # test is tricky if only one worker is TERM'd, so kill all but
       # spread out, so all aren't killed at once
       phase0_worker_pids.each do |pid|
         Process.kill :TERM, pid
-        sleep 4 unless pid == last
+        Process.wait(pid, Process::WNOHANG) rescue nil
       end
     end
   end
@@ -182,7 +181,7 @@ class TestIntegrationCluster < TestIntegration
     @control_tcp_port = UniquePort.call
     worker_check_interval = 1
 
-    cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
+    cli_server "-w1 -t1:1 #{set_pumactl_args} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
 
     sleep worker_check_interval + 1
     checkin_1 = get_stats["worker_status"].first["last_checkin"]
@@ -327,8 +326,7 @@ RUBY
 
   def test_nio4r_gem_not_required_in_master_process_when_using_control_server
     @control_tcp_port = UniquePort.call
-    control_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
-    cli_server "-w #{workers} #{control_opts} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} #{set_pumactl_args} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
 
     line = @server.gets
     assert_match(/Starting control server/, line)
@@ -338,34 +336,23 @@ RUBY
   end
 
   def test_application_is_loaded_exactly_once_if_using_preload_app
-    cli_server "-w #{workers} --preload test/rackup/write_to_stdout_on_boot.ru"
+    cli_server "-w #{workers} --preload test/rackup/write_to_stdout_on_boot.ru", no_wait: true
 
-    worker_load_count = 0
-    worker_load_count += 1 while @server.gets =~ /^Loading app/
-
-    assert_equal 0, worker_load_count
+    assert wait_for_server_to_match(/^Loading app/)
+    refute wait_for_server_to_match(/^Loading app/, ret_false_re: /Worker 1 \(PID:/)
   end
 
   def test_warning_message_outputted_when_single_worker
     cli_server "-w 1 test/rackup/hello.ru"
 
-    output = []
-    while (line = @server.gets) && line !~ /Worker \d \(PID/
-      output << line
-    end
-
-    assert_match(/WARNING: Detected running cluster mode with 1 worker/, output.join)
+    assert wait_for_server_to_include('WARNING: Detected running cluster mode with 1 worker')
   end
 
   def test_warning_message_not_outputted_when_single_worker_silenced
     cli_server "-w 1 test/rackup/hello.ru", config: "silence_single_worker_warning"
 
-    output = []
-    while (line = @server.gets) && line !~ /Worker \d \(PID/
-      output << line
-    end
-
-    refute_match(/WARNING: Detected running cluster mode with 1 worker/, output.join)
+    refute wait_for_server_to_match(/WARNING: Detected running cluster mode with 1 worker/m,
+      ret_false_re: /Worker \d \(PID/)
   end
 
   def test_signal_ttin
@@ -374,8 +361,7 @@ RUBY
 
     Process.kill :TTIN, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) booted in/)
   end
 
   def test_signal_ttou
@@ -384,8 +370,7 @@ RUBY
 
     Process.kill :TTOU, @pid
 
-    line = @server.gets
-    assert_match(/Worker 1 \(PID: \d+\) terminating/, line)
+    assert wait_for_server_to_match(/Worker 1 \(PID: \d+\) terminating/)
   end
 
   def test_culling_strategy_youngest
@@ -394,13 +379,11 @@ RUBY
 
     Process.kill :TTIN, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) booted in/)
 
     Process.kill :TTOU, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) terminating/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) terminating/)
   end
 
   def test_culling_strategy_oldest
@@ -409,20 +392,18 @@ RUBY
 
     Process.kill :TTIN, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) booted in/)
 
     Process.kill :TTOU, @pid
 
-    line = @server.gets
-    assert_match(/Worker 0 \(PID: \d+\) terminating/, line)
+    assert wait_for_server_to_match(/Worker 0 \(PID: \d+\) terminating/)
   end
 
   def test_culling_strategy_oldest_fork_worker
-    cli_server "-w 2 test/rackup/hello.ru", config: <<RUBY
-worker_culling_strategy :oldest
-fork_worker
-RUBY
+    cli_server "-w 2 test/rackup/hello.ru", config: <<~RUBY
+      worker_culling_strategy :oldest
+      fork_worker
+    RUBY
 
     get_worker_pids # to consume server logs
 
@@ -447,8 +428,8 @@ RUBY
     get_worker_pids 0, 2
     stop_server
 
-    # helpful for non MRI Rubies
-    assert wait_for_server_to_include('puma shutdown')
+    # helpful for non MRI Rubies, may hang on MRI Rubies
+    assert(wait_for_server_to_include 'puma shutdown') unless Puma::IS_MRI
 
     assert_equal 'index 0 data 0', File.read(file0, mode: 'rb:UTF-8')
     assert_equal 'index 1 data 1', File.read(file1, mode: 'rb:UTF-8')
@@ -463,7 +444,6 @@ RUBY
 
     assert wait_for_server_to_include('Loaded Extensions - worker 0:')
     assert wait_for_server_to_include('Loaded Extensions - master:')
-    @pid = @server.pid
   end
 
   private
@@ -472,10 +452,21 @@ RUBY
     cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: config
 
     pids = []
-    Timeout.timeout(iterations * timeout + 1) do
-      (pids << @server.gets[/Terminating timed out worker \(#{details}\): (\d+)/, 1]).compact! while pids.size < workers * iterations
-      pids.map!(&:to_i)
+    time_limit = Process.clock_gettime(Process::CLOCK_MONOTONIC) + (iterations * timeout + 1)
+    ok = true
+    wanted_size = workers * iterations
+    while pids.size < wanted_size
+      if @server.wait_readable 0.1
+        (pids << @server.gets[/Terminating timed out worker \(#{details}\): (\d+)/, 1]).compact!
+      end
+      sleep 0.1
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_limit
+        ok = false
+        break
+      end
     end
+    assert ok, "Failed within #{iterations * timeout + 1} seconds, terminated workers #{pids.size}"
+    pids.map!(&:to_i)
 
     assert_equal pids, pids.uniq
   end
@@ -487,7 +478,7 @@ RUBY
 
     cli_server "-w #{workers} -t 0:6 -q test/rackup/sleep_step.ru", unix: unix
     threads = []
-    replies = []
+    replies = Array.new 41, nil
     mutex = Mutex.new
     div   = 10
 
@@ -509,27 +500,37 @@ RUBY
 
     threads.each(&:join)
 
-    failures      = replies.count(:failure)
-    successes     = replies.count(:success)
-    resets        = replies.count(:reset)
-    refused       = replies.count(:refused)
-    read_timeouts = replies.count(:read_timeout)
+    failures      = replies.count :failure
+    successes     = replies.count :success
+    rd_resets     = replies.count :rd_reset
+    wr_resets     = replies.count :wr_reset
+    rd_refused    = replies.count :rd_refused
+    wr_refused    = replies.count :wr_refused
+    read_timeouts = replies.count :read_timeout
 
-    r_success = replies.rindex(:success)
-    l_reset   = replies.index(:reset)
-    r_reset   = replies.rindex(:reset)
-    l_refused = replies.index(:refused)
+    # save for debug
+    #STDOUT.syswrite "\n  rd_resets #{rd_resets}" \
+    #                "\n  wr_resets #{wr_resets}" \
+    #                "\n  rd_refused #{rd_refused}" \
+    #                "\n  wr_refused #{wr_refused}\n"
 
-    msg = "#{successes} successes, #{resets} resets, #{refused} refused, #{failures} failures, #{read_timeouts} read timeouts"
+    r_success = replies.rindex :success
+    l_reset   = replies.index  :rd_reset
+    r_reset   = replies.rindex :rd_reset
+    l_refused = replies.index  :wr_refused
+
+    msg = "#{successes} successes, #{wr_resets} wr_resets, #{wr_refused} wr_refused,  #{rd_resets} rd_resets, #{rd_refused} rd_refused, #{failures} failures, #{read_timeouts} read timeouts"
 
     assert_equal 0, failures, msg
     assert_equal 0, read_timeouts, msg
 
-    assert_operator 9,  :<=, successes, msg
+    assert_operator 9 , :<=, successes, msg
 
-    assert_operator 10, :>=, resets   , msg
+    assert_operator 5 , :>=, rd_resets   , msg
+    assert_operator 1 , :>=, rd_refused  , msg
 
-    assert_operator 20, :<=, refused  , msg
+    assert_operator 1 , :>=, wr_resets   , msg
+    assert_operator 24, :<=, wr_refused  , msg
 
     # Interleaved asserts
     # UNIX binders do not generate :reset items
@@ -575,24 +576,25 @@ RUBY
     resets        = replies.count { |r| r == :reset    }
     refused       = replies.count { |r| r == :refused  }
     read_timeouts = replies.count { |r| r == :read_timeout }
+    unknown       = replies.count { |r| r == :unknown  }
 
     # get pids from replies, generate uniq array
     t = replies.map { |body| body[/\d+\z/] }
     t.uniq!; t.compact!
     qty_pids = t.length
 
-    msg = "#{responses} responses, #{qty_pids} uniq pids"
+    msg = "#{responses} responses, #{qty_pids} uniq pids, #{resets} resets, #{refused} refused, #{read_timeouts} read timeouts, #{unknown} unknown"
 
     assert_equal 25, responses, msg
     assert_operator qty_pids, :>, 2, msg
-
-    msg = "#{responses} responses, #{resets} resets, #{refused} refused, #{read_timeouts} read timeouts"
 
     assert_equal 0, refused, msg
 
     assert_equal 0, resets, msg
 
     assert_equal 0, read_timeouts, msg
+
+    assert_equal 0, unknown, msg
   ensure
     unless passed?
       $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
@@ -675,6 +677,8 @@ RUBY
       mutex.synchronize { replies << :refused }
     rescue Timeout::Error
       mutex.synchronize { replies << :read_timeout }
+    rescue
+      mutex.synchronize { replies << :unknown }
     end
   end
 
@@ -682,21 +686,23 @@ RUBY
   def thread_run_step(replies, delay, sleep_time, step, mutex, refused, unix: false)
     begin
       sleep delay
-      s = connect "sleep#{sleep_time}-#{step}", unix: unix
+      write_error = true
+      s = fast_connect "sleep#{sleep_time}-#{step}", unix: unix
+      write_error = false
       body = read_body(s, 20)
       if body[/\ASlept /]
-        mutex.synchronize { replies[step] = :success }
+        replies[step] = :success
       else
-        mutex.synchronize { replies[step] = :failure }
+        replies[step] = :failure
       end
     rescue Errno::ECONNRESET
       # connection was accepted but then closed
       # client would see an empty response
-      mutex.synchronize { replies[step] = :reset }
+      replies[step] = write_error ? :wr_reset : :rd_reset
     rescue *refused
-      mutex.synchronize { replies[step] = :refused }
+      replies[step] = write_error ? :wr_refused : :rd_refused
     rescue Timeout::Error
-      mutex.synchronize { replies[step] = :read_timeout }
+      replies[step] = :read_timeout
     end
   end
 end if ::Process.respond_to?(:fork)

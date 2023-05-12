@@ -26,6 +26,7 @@ end
 class TestPumaServerSSL < Minitest::Test
   parallelize_me!
   def setup
+    @app = nil
     @http = nil
     @server = nil
   end
@@ -39,7 +40,7 @@ class TestPumaServerSSL < Minitest::Test
   def start_server
     @host = "127.0.0.1"
 
-    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
+    app = @app || lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     ctx = Puma::MiniSSL::Context.new
 
@@ -102,14 +103,14 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_very_large_return
-    start_server
-    giant = "x" * 2056610
-
-    @server.app = proc do
+    giant = "x" * 2_056_610
+    @app = proc do
       [200, {}, [giant]]
     end
 
-    body = nil
+    start_server
+
+    body = ''
     @http.start do
       req = Net::HTTP::Get.new "/"
       @http.request(req) do |rep|
@@ -215,15 +216,16 @@ class TestPumaServerSSL < Minitest::Test
 
     start_server
 
-    http = Net::HTTP.new @host, @server.connected_ports[0]
-    http.use_ssl = false
-    http.read_timeout = 6
+    body_http = +''
+    skt_tcp = nil
 
+    # nothing to read after 6 seconds
     tcp = Thread.new do
-      req_http = Net::HTTP::Get.new "/", {}
-      # Net::ReadTimeout - TruffleRuby
-      assert_raises(Errno::ECONNREFUSED, EOFError, Net::ReadTimeout, Net::OpenTimeout) do
-        http.start.request(req_http) { |rep| body_http = rep.body }
+      skt_tcp = TCPSocket.new @host, @server.connected_ports[0]
+      skt_tcp.syswrite "GET / HTTP/1.1\r\n\r\n"
+      begin
+        body_http << skt_tcp.read_nonblock(1_024) while skt_tcp.wait_readable 6
+      rescue EOFError
       end
     end
 
@@ -236,16 +238,18 @@ class TestPumaServerSSL < Minitest::Test
 
     tcp.join
     ssl.join
-    http.finish
-    sleep 1.0
 
-    assert_nil body_http
+    assert_empty body_http
     assert_equal "https", body_https
 
+    # CI - may need some time to drop connection
+    sleep 1
     thread_pool = @server.instance_variable_get(:@thread_pool)
     busy_threads = thread_pool.spawned - thread_pool.waiting
 
     assert busy_threads.zero?, "Our connection is wasn't dropped"
+  ensure
+    skt_tcp.close if skt_tcp.respond_to? :close
   end
 
   unless Puma.jruby?
@@ -332,7 +336,7 @@ class TestPumaServerSSLClient < Minitest::Test
         req = Net::HTTP::Get.new "/", {}
         http.request(req)
       end
-    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET, IOError => e
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNABORTED, Errno::ECONNRESET, IOError => e
       # Errno::ECONNRESET TruffleRuby, IOError macOS JRuby
       client_error = e
       # closes socket if open, may not close on error

@@ -5,6 +5,7 @@ require 'puma/events'
 class TestBundlePruner < Minitest::Test
 
   PUMA_VERS = "puma-#{Puma::Const::PUMA_VERSION}"
+  PUMA_TTO = true # use Timeout.timeout on each test
 
   def test_paths_to_require_after_prune_is_correctly_built_for_no_extra_deps
     skip_if :no_bundler

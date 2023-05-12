@@ -2,7 +2,7 @@ require_relative "helper"
 
 require "puma/puma_http11"
 
-class Http10ParserTest < Minitest::Test
+class TestHttp10Parser < Minitest::Test
   def test_parse_simple
     parser = Puma::HttpParser.new
     req = {}

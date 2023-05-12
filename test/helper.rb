@@ -68,32 +68,66 @@ def hit(uris)
   end
 end
 
+# Some platforms may repeat port numbers when selecting several at once.
 module UniquePort
+  MUTEX = Mutex.new
+  SELECTED_PORTS = {}
   def self.call
-    TCPServer.open('127.0.0.1', 0) do |server|
-      server.connect_address.ip_port
+    port = 0
+    MUTEX.synchronize do
+      begin
+        TCPServer.open('127.0.0.1', 0) { |server|
+          port = server.connect_address.ip_port
+          server.close
+        }
+      rescue Errno::EINTR
+        sleep 0.000_1
+        retry
+      end while SELECTED_PORTS.key? port
+      SELECTED_PORTS[port] = nil
     end
+    port
   end
 end
 
 require "timeout"
 module TimeoutEveryTestCase
+
+  # ANSI color codes for highlighting debugging when frustrated...
+  YELLOW = "\e[93m"
+  RED    = "\e[91m"
+  GREEN  = "\e[92m"
+  RESET  = "\e[0m"
+
   # our own subclass so we never confused different timeouts
   class TestTookTooLong < Timeout::Error
   end
 
   def run
+    use_timeout = self.class.const_defined?(:PUMA_TTO) && self.class::PUMA_TTO
+
     with_info_handler do
       time_it do
-        capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+        if use_timeout
+          capture_exceptions do
+            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+              before_setup; setup; after_setup
+              self.send self.name
+            end
+          end
+
+          capture_exceptions do
+            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+              Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
+            end
+          end
+        else
+          capture_exceptions do
             before_setup; setup; after_setup
             self.send self.name
           end
-        end
 
-        capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+          capture_exceptions do
             Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
           end
         end
@@ -140,7 +174,6 @@ if ENV['CI']
 end
 
 module TestSkips
-
   HAS_FORK = ::Process.respond_to? :fork
   UNIX_SKT_EXIST = Object.const_defined?(:UNIXSocket) && !Puma::IS_WINDOWS
 
@@ -156,6 +189,8 @@ module TestSkips
 
   TRUFFLE = RUBY_ENGINE == 'truffleruby'
   TRUFFLE_HEAD = TRUFFLE && RUBY_DESCRIPTION.include?('-dev-')
+
+  HAS_IPV6 = Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
 
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
@@ -185,7 +220,10 @@ module TestSkips
         when :rack3       then "Skipped if Rack 3.x"             if Rack::RELEASE >= '3'
         else false
       end
-      skip skip_msg, bt if skip_msg
+      if skip_msg
+        @skip = true
+        skip skip_msg, bt
+      end
     end
   end
 
@@ -201,10 +239,15 @@ module TestSkips
       when :fork    then MSG_FORK                       unless HAS_FORK
       when :unix    then MSG_UNIX                       unless Puma::HAS_UNIX_SOCKET
       when :aunix   then MSG_AUNIX                      unless Puma.abstract_unix_socket?
+      when :ipv6    then "Skip unless IPv6 available"   unless HAS_IPV6
       when :rack3   then "Skipped unless Rack >= 3.x"   unless ::Rack::RELEASE >= '3'
       else false
     end
-    skip skip_msg, bt if skip_msg
+
+    if skip_msg
+      @skip = true
+      skip skip_msg, bt
+    end
   end
 end
 
@@ -225,6 +268,7 @@ class Minitest::Test
 end
 
 Minitest.after_run do
+  # puts "UniquePort::SELECTED_PORTS #{UniquePort::SELECTED_PORTS.length}", UniquePort::SELECTED_PORTS.sort
   # needed for TestCLI#test_control_clustered
   if !$debugging_hold && ENV['PUMA_TEST_DEBUG']
     $debugging_info.sort!
@@ -301,7 +345,7 @@ module TestTempFile
     fio.write data
     fio.flush
     fio.rewind
-    @ios << fio
+    @ios_to_close << fio if defined?(@ios_to_close)
     fio
   end
 end

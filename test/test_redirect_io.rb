@@ -45,7 +45,7 @@ class TestRedirectIO < TestIntegration
 
     log_rotate_output_files
 
-    Process.kill :HUP, @server.pid
+    Process.kill :HUP, @pid
 
     wait_until_file_has_content @out_file_path
     assert_match 'puma startup', File.read(@out_file_path)
@@ -73,7 +73,7 @@ class TestRedirectIO < TestIntegration
 
     log_rotate_output_files
 
-    Process.kill :HUP, @server.pid
+    Process.kill :HUP, @pid
 
     wait_until_file_has_content @out_file_path
     assert_match 'puma startup', File.read(@out_file_path)

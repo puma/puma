@@ -1,4 +1,6 @@
 require_relative "helper"
+require_relative "helpers/integration"
+require_relative "helpers/puma_socket"
 
 # Most tests check that ::Rack::Handler::Puma works by itself
 # RackUp#test_bin runs Puma using the rackup bin file
@@ -29,9 +31,8 @@ module TestRackUp
 
       # Wait for launcher to boot
       Timeout.timeout(10) do
-        sleep 0.5 until launcher
+        sleep 0.5 until launcher && launcher.log_writer.stdout.string.include?('Use Ctrl-C to stop')
       end
-      sleep 1.5 unless Puma::IS_MRI
 
       launcher.stop
       thread.join
@@ -41,6 +42,8 @@ module TestRackUp
   end
 
   class TestPathHandler < Minitest::Test
+    include PumaTest::PumaSocket
+
     def app
       Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
     end
@@ -60,11 +63,18 @@ module TestRackUp
         end
       end
 
-      # Wait for launcher to boot
-      Timeout.timeout(10) do
-        sleep 0.5 until @launcher
+      time_limit = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 10.0
+      booted = false
+
+      while Process.clock_gettime(Process::CLOCK_MONOTONIC) < time_limit
+        if @launcher && @launcher.log_writer.stdout.string.include?('Use Ctrl-C to stop')
+          booted = true
+          break
+        else
+          sleep 0.1
+        end
       end
-      sleep 1.5 unless Puma::IS_MRI
+      assert booted, 'Puma did not boot in 10 seconds?'
 
       yield @launcher
     ensure
@@ -77,7 +87,7 @@ module TestRackUp
       port = UniquePort.call
       opts = { Host: host, Port: port }
       in_handler(app, opts) do |launcher|
-        hit(["http://#{host}:#{port}/test"])
+        send_http_read_response "GET /test HTTP/1.1\r\n\r\n", port: port
         assert_equal("/test", @input["PATH_INFO"])
       end
     end
@@ -299,31 +309,40 @@ module TestRackUp
   end
 
   # Run using IO.popen so we don't load Rack and/or Rackup in the main process
-  class RackUp < Minitest::Test
+#  class RackUp < Minitest::Test
+  class RackUp < TestIntegration
     def setup
-      FileUtils.copy_file 'test/rackup/hello.ru', 'config.ru'
     end
 
     def teardown
-      FileUtils.rm 'config.ru'
+      return if skipped?
+      Dir.chdir "tmp/rackup" do
+        FileUtils.rm 'config.ru'
+      end
+
+      if Puma::IS_WINDOWS
+        `taskkill /F /PID #{@pid}`
+      else
+        Process.kill :KILL, @pid
+        begin
+          Process.wait2 @pid
+        rescue Errno::ECHILD
+        end
+      end
+      @out.close unless @out.closed?
+      @err.close unless @err.closed?
     end
 
     def test_bin
-      # JRuby & TruffleRuby take a long time using IO.popen
       skip_unless :mri
-      io = IO.popen "rackup -p 0"
-      io.wait_readable 2
-      sleep 0.7
-      log = io.sysread 2_048
-      pid = log[/PID: (\d+)/, 1] || io.pid
-      assert_includes log, 'Puma version'
-      assert_includes log, 'Use Ctrl-C to stop'
-    ensure
-      if Puma::IS_WINDOWS
-        `taskkill /F /PID #{pid}`
-      else
-        `kill #{pid}`
-      end
+
+      Dir.mkdir 'tmp/rackup' unless Dir.exist? 'tmp/rackup'
+      FileUtils.copy_file 'test/rackup/hello.ru', 'tmp/rackup/config.ru'
+
+      Dir.chdir('tmp/rackup') { @out, @err, @pid = spawn_cmd "bundle exec rackup -p 0" }
+
+      assert wait_for_server_to_include 'Puma version', io: @out
+      assert wait_for_server_to_include 'Use Ctrl-C to stop', io: @out
     end
   end
 end

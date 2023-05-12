@@ -8,22 +8,28 @@ class TestThreadPool < Minitest::Test
     @pool.shutdown(1) if defined?(@pool)
   end
 
-  def new_pool(min, max, &block)
+  def new_pool(min, max, grace_time = nil, &block)
     block = proc { } unless block
     options = {
       min_threads: min,
-      max_threads: max
+      max_threads: max,
+      pool_shutdown_grace_time: grace_time
     }
     @pool = Puma::ThreadPool.new('tst', options, &block)
+    sleep 0.05 until @pool.spawned == min.to_i # TruffleRuby
+    @pool
   end
 
-  def mutex_pool(min, max, &block)
+  def mutex_pool(min, max, grace_time = nil, &block)
     block = proc { } unless block
     options = {
       min_threads: min,
-      max_threads: max
+      max_threads: max,
+      pool_shutdown_grace_time: grace_time
     }
     @pool = MutexPool.new('tst', options, &block)
+    sleep 0.05 until @pool.spawned == min.to_i # TruffleRuby
+    @pool
   end
 
   # Wraps ThreadPool work in mutex for better concurrency control.
@@ -47,7 +53,7 @@ class TestThreadPool < Minitest::Test
     # If +wait+ is true, wait until the trim request is completed before returning.
     def trim(force=false, wait: true)
       super(force)
-      Thread.pass until @trim_requested == 0 if wait
+      Thread.pass until @trim_requested.zero? if wait
     end
   end
 
@@ -279,7 +285,7 @@ class TestThreadPool < Minitest::Test
     grace = 0.01
 
     rescued = []
-    pool = mutex_pool(2, 2) do
+    pool = mutex_pool(2, 2, grace) do
       begin
         pool.with_force_shutdown do
           pool.signal
@@ -294,9 +300,8 @@ class TestThreadPool < Minitest::Test
     pool << 1
     pool << 2
 
-    Puma::ThreadPool.stub_const(:SHUTDOWN_GRACE_TIME, grace) do
-      pool.shutdown(timeout)
-    end
+    pool.shutdown(timeout)
+
     assert_equal 0, pool.spawned
     assert_equal 2, rescued.length
     refute rescued.compact.any?(&:alive?)

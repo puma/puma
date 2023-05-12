@@ -1,6 +1,7 @@
 require_relative "helper"
 require_relative "helpers/ssl" if ::Puma::HAS_SSL
 require_relative "helpers/tmp_path"
+require_relative "helpers/puma_socket"
 
 require "puma/cli"
 require "json"
@@ -9,6 +10,7 @@ require "psych"
 class TestCLI < Minitest::Test
   include SSLHelper if ::Puma::HAS_SSL
   include TmpPath
+  include PumaTest::PumaSocket
 
   def setup
     @environment = 'production'
@@ -59,10 +61,9 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    s = TCPSocket.new "127.0.0.1", cntl
+    s = new_connection port: cntl
     s << "GET /stats HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
+    body = s.read_body
 
     assert_equal Puma.stats_hash, JSON.parse(Puma.stats, symbolize_names: true)
 
@@ -132,20 +133,14 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    s = UNIXSocket.new @tmp_path
-    s << "GET /stats HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
+    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
 
     require 'json'
     status = JSON.parse(body.split("\n").last)
 
     assert_equal 2, status["workers"]
 
-    s = UNIXSocket.new @tmp_path
-    s << "GET /stats HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
+    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
 
     assert_match(/\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","workers":2,"phase":0,"booted_workers":2,"old_workers":0,"worker_status":\[\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","pid":\d+,"index":0,"phase":0,"booted":true,"last_checkin":"[^"]+","last_status":\{"backlog":0,"running":2,"pool_capacity":2,"max_threads":2,"requests_count":0\}\},\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","pid":\d+,"index":1,"phase":0,"booted":true,"last_checkin":"[^"]+","last_status":\{"backlog":0,"running":2,"pool_capacity":2,"max_threads":2,"requests_count":0\}\}\],"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/, body.split("\r\n").last)
   ensure
@@ -177,10 +172,7 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    s = UNIXSocket.new @tmp_path
-    s << "GET /stats HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
+    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
 
     dmt = Puma::Configuration::DEFAULTS[:max_threads]
     assert_match(/{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt},"requests_count":0,"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/, body.split(/\r?\n/).last)
@@ -204,10 +196,7 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    s = UNIXSocket.new @tmp_path
-    s << "GET /stop HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
+    body = send_http_read_resp_body "GET /stop HTTP/1.0\r\n\r\n", path: @tmp_path
 
     assert_equal '{ "status": "ok" }', body.split("\r\n").last
   ensure
@@ -215,12 +204,11 @@ class TestCLI < Minitest::Test
   end
 
   def test_control_requests_count
-    tcp  = UniquePort.call
-    cntl = UniquePort.call
-    url = "tcp://127.0.0.1:#{cntl}/"
+    @port = UniquePort.call
+    cntl  = UniquePort.call
 
-    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{tcp}",
-                         "--control-url", url,
+    cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{@port}",
+                         "--control-url", "tcp://127.0.0.1:#{cntl}/",
                          "--control-token", "",
                          "test/rackup/hello.ru"], @log_writer, @events
 
@@ -230,25 +218,16 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    s = TCPSocket.new "127.0.0.1", cntl
-    s << "GET /stats HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
+    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", port: cntl
 
     assert_equal 0, JSON.parse(body.split(/\r?\n/).last)['requests_count']
 
     # send real requests to server
     3.times do
-      s = TCPSocket.new "127.0.0.1", tcp
-      s << "GET / HTTP/1.0\r\n\r\n"
-      body = s.read
-      s.close
+      send_http_read_resp_body "GET / HTTP/1.0\r\n\r\n"
     end
 
-    s = TCPSocket.new "127.0.0.1", cntl
-    s << "GET /stats HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
+    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", port: cntl
 
     assert_equal 3, JSON.parse(body.split(/\r?\n/).last)['requests_count']
   ensure
@@ -269,10 +248,7 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    s = UNIXSocket.new @tmp_path
-    s << "GET /thread-backtraces HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
+    body = send_http_read_resp_body "GET /thread-backtraces HTTP/1.0\r\n\r\n", path: @tmp_path
 
     assert_match %r{Thread: TID-}, body.split("\r\n").last
   ensure
@@ -294,7 +270,7 @@ class TestCLI < Minitest::Test
 
     s = yield
     s << "GET /gc-stats HTTP/1.0\r\n\r\n"
-    body = s.read
+    body = s.read_body
     s.close
 
     lines = body.split("\r\n")
@@ -309,12 +285,12 @@ class TestCLI < Minitest::Test
 
     s = yield
     s << "GET /gc HTTP/1.0\r\n\r\n"
-    body = s.read # Ignored
+    body = s.read_body # Ignored
     s.close
 
     s = yield
     s << "GET /gc-stats HTTP/1.0\r\n\r\n"
-    body = s.read
+    body = s.read_body
     s.close
 
     lines = body.split("\r\n")
@@ -335,7 +311,7 @@ class TestCLI < Minitest::Test
     cntl_port = UniquePort.call
     cntl = "tcp://127.0.0.1:#{cntl_port}/"
 
-    control_gc_stats(uri, cntl) { TCPSocket.new "127.0.0.1", cntl_port }
+    control_gc_stats(uri, cntl) { new_connection port: cntl_port }
   end
 
   def test_control_gc_stats_unix
@@ -344,7 +320,7 @@ class TestCLI < Minitest::Test
     uri  = "unix://#{@tmp_path2}"
     cntl = "unix://#{@tmp_path}"
 
-    control_gc_stats(uri, cntl) { UNIXSocket.new @tmp_path }
+    control_gc_stats(uri, cntl) { new_connection path: @tmp_path }
   end
 
   def test_tmp_control
@@ -491,4 +467,5 @@ class TestCLI < Minitest::Test
     assert_equal log_writer.stdout.class, Puma::NullIO
     assert_equal log_writer.stderr, $stderr
   end
+
 end
