@@ -23,7 +23,7 @@ module Puma
       @selector = if backend == :auto 
         @selector = ::NIO::Selector.new 
       elsif !::NIO::Selector.backends.include?(backend)
-        raise ArgumentError("unsupported IO selector backend: #{backend} (available backends: #{::NIO::Selector.backends.join(', ')})")
+        raise ArgumentError.new("unsupported IO selector backend: #{backend} (available backends: #{::NIO::Selector.backends.join(', ')})")
       else
         ::NIO::Selector.new(backend)
       end
