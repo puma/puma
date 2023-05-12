@@ -20,10 +20,12 @@ module Puma
     # its timeout elapses, or when the Reactor shuts down.
     def initialize(backend, &block)
       require 'nio'
-      unless backend == :auto || ::NIO::Selector.backends.include?(backend)
-        raise "unsupported IO selector backend: #{backend} (available backends: #{::NIO::Selector.backends.join(', ')})"
+      valid_backends = [:auto, *::NIO::Selector.backends]
+      unless valid_backends.include?(backend)
+        raise ArgumentError.new("unsupported IO selector backend: #{backend} (available backends: #{valid_backends.join(', ')})")
       end
-      @selector = backend == :auto ? ::NIO::Selector.new : ::NIO::Selector.new(backend)
+
+      @selector = ::NIO::Selector.new(NIO::Selector.backends.delete(backend))
       @input = Queue.new
       @timeouts = []
       @block = block
