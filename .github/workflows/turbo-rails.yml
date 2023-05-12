@@ -42,9 +42,16 @@ jobs:
 
       - name: turbo-rails updates
         run: |
+          # use repo & commit being tested, $GITHUB_REPOSITORY allows forks to work
           SRC="gem ['\"]puma['\"].*"
           DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
           sed -i "s#$SRC#$DST#" Gemfile
+          #
+          # allow using capybara from the repo, either a branch or a commit
+          SRC="gem ['\"]capybara['\"].*"
+          DST="kw =\n    if RUBY_VERSION.start_with? '3'\n      {git: 'https://github.com/teamcapybara/capybara.git', ref: '43e32a8495'}\n    else\n      {}\n    end\n  gem 'capybara', **kw"
+          sed -i "s#$SRC#$DST#" Gemfile
+          #
           # use `stdio` for log_writer, always have one thread existing
           SRC="Silent: true"
           DST="Silent: false, Threads: '1:4'"

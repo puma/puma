@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'helper'
 require_relative 'helpers/integration'
 
@@ -12,8 +14,11 @@ require_relative 'helpers/integration'
 class TestIntegrationSSLSession < TestIntegration
   parallelize_me! if Puma::IS_MRI
 
-  require "net/http"
-  require "openssl"
+  require "openssl" unless defined?(::OpenSSL::SSL)
+
+  OSSL = ::OpenSSL::SSL
+
+  CLIENT_HAS_TLS1_3 = OSSL.const_defined? :TLS1_3_VERSION
 
   GET = "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
@@ -22,6 +27,14 @@ class TestIntegrationSSLSession < TestIntegration
   CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
 
   def teardown
+    return if skipped?
+    # stop server
+    sock = TCPSocket.new HOST, control_tcp_port
+    @ios_to_close << sock
+    sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
+    sock.read
+    assert_match 'Goodbye!', @server.read
+
     @server.close unless @server&.closed?
     @server = nil
     super
@@ -36,25 +49,25 @@ class TestIntegrationSSLSession < TestIntegration
   end
 
   def set_reuse(reuse)
-<<RUBY
-  key  = '#{File.expand_path '../examples/puma/client-certs/server.key', __dir__}'
-  cert = '#{File.expand_path '../examples/puma/client-certs/server.crt', __dir__}'
-  ca   = '#{File.expand_path '../examples/puma/client-certs/ca.crt', __dir__}'
+    <<~RUBY
+      key  = '#{File.expand_path '../examples/puma/client-certs/server.key', __dir__}'
+      cert = '#{File.expand_path '../examples/puma/client-certs/server.crt', __dir__}'
+      ca   = '#{File.expand_path '../examples/puma/client-certs/ca.crt', __dir__}'
 
-  ssl_bind '#{HOST}', '#{bind_port}', {
-    cert: cert,
-    key:  key,
-    ca: ca,
-    verify_mode: 'none',
-    reuse: #{reuse}
-  }
+      ssl_bind '#{HOST}', '#{bind_port}', {
+        cert: cert,
+        key:  key,
+        ca: ca,
+        verify_mode: 'none',
+        reuse: #{reuse}
+      }
 
-  activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
 
-  app do |env|
-    [200, {}, [env['rack.url_scheme']]]
-  end
-RUBY
+      app do |env|
+        [200, {}, [env['rack.url_scheme']]]
+      end
+    RUBY
   end
 
   def with_server(config)
@@ -66,34 +79,16 @@ RUBY
     # start server
     cmd = "#{BASE} bin/puma -C #{config_file.path}"
     @server = IO.popen cmd, 'r'
-    wait_for_server_to_boot
+    wait_for_server_to_boot log: false
     @pid = @server.pid
 
     yield
-
-  ensure
-    # stop server
-    sock = TCPSocket.new HOST, control_tcp_port
-    @ios_to_close << sock
-    sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
-    sock.read
-    assert_match 'Goodbye!', @server.read
   end
 
   def run_session(reuse, tls = nil)
     config = set_reuse reuse
 
-    with_server(config) do
-
-      uri = "https://#{HOST}:#{@bind_port}/"
-
-      curl_cmd = %(curl -k -v --http1.1 -H "Connection: close" #{tls} #{uri} #{uri})
-
-      curl = ''
-      IO.popen(curl_cmd, :err=>[:child, :out]) { |io| curl = io.read }
-
-      curl.include? '* SSL re-using session ID'
-    end
+    with_server(config) { ssl_client tls_vers: tls }
   end
 
   def test_dflt
@@ -102,37 +97,85 @@ RUBY
   end
 
   def test_dflt_tls1_2
-    reused = run_session true, '--tls-max 1.2'
+    reused = run_session true, :TLS1_2
+    assert reused, 'session was not reused'
+  end
+
+  def test_dflt_tls1_3
+    skip 'TLSv1.3 unavailable' unless Puma::MiniSSL::HAS_TLS1_3 && CLIENT_HAS_TLS1_3
+    reused = run_session true, :TLS1_3
     assert reused, 'session was not reused'
   end
 
   def test_1000_tls1_2
-    reused = run_session '{size: 1_000}', '--tls-max 1.2'
+    reused = run_session '{size: 1_000}', :TLS1_2
     assert reused, 'session was not reused'
   end
 
   def test_1000_10_tls1_2
-    reused = run_session '{size: 1000, timeout: 10}', '--tls-max 1.2'
+    reused = run_session '{size: 1000, timeout: 10}', :TLS1_2
     assert reused, 'session was not reused'
   end
 
   def test__10_tls1_2
-    reused = run_session '{timeout: 10}', '--tls-max 1.2'
+    reused = run_session '{timeout: 10}', :TLS1_2
     assert reused, 'session was not reused'
   end
 
-  # session reuse has always worked with TLSv1.3
   def test_off_tls1_2
     ssl_vers = Puma::MiniSSL::OPENSSL_LIBRARY_VERSION
     old_ssl = ssl_vers.include?(' 1.0.') || ssl_vers.match?(/ 1\.1\.1[ a-e]/)
     skip 'Requires 1.1.1f or later' if old_ssl
-    reused = run_session 'nil', '--tls-max 1.2'
-    refute reused, 'session was reused'
+    reused = run_session 'nil', :TLS1_2
+    assert reused, 'session was not reused'
   end
 
+  # TLSv1.3 reuse is always on
   def test_off_tls1_3
-    skip 'TLSv1.3 unavailable' unless Puma::MiniSSL::HAS_TLS1_3
+    skip 'TLSv1.3 unavailable' unless Puma::MiniSSL::HAS_TLS1_3 && CLIENT_HAS_TLS1_3
     reused = run_session 'nil'
     assert reused, 'TLSv1.3 session was not reused'
+  end
+
+  def client_skt(tls_vers = nil, session_pems = [])
+    ctx = OSSL::SSLContext.new
+    ctx.verify_mode = OSSL::VERIFY_NONE
+    ctx.session_cache_mode = OSSL::SSLContext::SESSION_CACHE_CLIENT
+    if tls_vers
+      if ctx.respond_to? :max_version=
+        ctx.max_version = tls_vers
+        ctx.min_version = tls_vers
+      else
+        ctx.ssl_version = tls_vers.to_s.sub('TLS', 'TLSv').to_sym
+      end
+    end
+    ctx.session_new_cb = ->(ary) { session_pems << ary.last.to_pem }
+
+    skt = OSSL::SSLSocket.new TCPSocket.new(HOST, bind_port), ctx
+    skt.sync_close = true
+    skt
+  end
+
+  def ssl_client(tls_vers: nil)
+    session_pems = []
+    skt = client_skt tls_vers, session_pems
+    skt.connect
+
+    skt.syswrite GET
+    skt.to_io.wait_readable 2
+    assert_equal RESP, skt.sysread(1_024)
+    skt.sysclose
+
+    skt = client_skt tls_vers, session_pems
+    skt.session = OSSL::Session.new(session_pems[0])
+    skt.connect
+
+    skt.syswrite GET
+    skt.to_io.wait_readable 2
+    assert_equal RESP, skt.sysread(1_024)
+
+    skt.session_reused?
+  ensure
+    skt&.sysclose unless skt&.closed?
   end
 end if Puma::HAS_SSL && Puma::IS_MRI
