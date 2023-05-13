@@ -7,8 +7,15 @@ module TmpPath
 
   private
 
+  # With some macOS configurations, the following error may be raised when
+  # creating a UNIXSocket:
+  #
+  # too long unix socket path (106 bytes given but 104 bytes max) (ArgumentError)
+  #
+  PUMA_TMPDIR = RUBY_PLATFORM.include? 'darwin' ? './tmp' : nil
+
   def tmp_path(extension=nil)
-    path = Tempfile.create(['', extension], './tmp') { |f| f.path }
+    path = Tempfile.create(['', extension], PUMA_TMPDIR) { |f| f.path }
     tmp_paths << path
     path
   end
