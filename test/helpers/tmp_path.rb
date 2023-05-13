@@ -8,7 +8,7 @@ module TmpPath
   private
 
   def tmp_path(extension=nil)
-    path = Tempfile.create(['', extension]) { |f| f.path }
+    path = Tempfile.create(['', extension], './tmp') { |f| f.path }
     tmp_paths << path
     path
   end
