@@ -64,6 +64,12 @@ class WebServerTest < Minitest::Test
     socket.close
   end
 
+  def test_bad_path
+    socket = do_test("GET : HTTP/1.1\r\n\r\n", 3)
+    assert_match "HTTP/1.1 400 Bad Request\r\n\r\n", socket.read
+    socket.close
+  end
+
   def test_header_is_too_long
     long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
     assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
