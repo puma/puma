@@ -418,7 +418,11 @@ module Puma
 
       unless env[REQUEST_PATH]
         # it might be a dumbass full host request header
-        uri = URI.parse(env[REQUEST_URI])
+        uri = begin
+          URI.parse(env[REQUEST_URI])
+        rescue URI::InvalidURIError
+          raise Puma::HttpParserError
+        end
         env[REQUEST_PATH] = uri.path
 
         # A nil env value will cause a LintError (and fatal errors elsewhere),
