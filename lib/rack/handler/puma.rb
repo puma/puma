@@ -123,7 +123,7 @@ if Object.const_defined? :Rackup
     end
   end
 else
-  do_register = Object.const_defined?(:Rack) && Rack::RELEASE < '3'
+  do_register = Object.const_defined?(:Rack) && Rack.release < '3'
   module Rack
     module Handler
       module Puma

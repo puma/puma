@@ -10,7 +10,7 @@ require "rack/common_logger"
 
 # Rack::Chunked is loaded by Rack v2, needs to be required by Rack 3.0,
 # and is removed in Rack 3.1
-require "rack/chunked" if Rack::RELEASE.start_with? '3.0'
+require "rack/chunked" if Rack.release.start_with? '3.0'
 
 require "nio"
 
@@ -41,7 +41,7 @@ class TestRackServer < Minitest::Test
 
   class ServerLint < Rack::Lint
     def call(env)
-      if Rack::RELEASE < '3'
+      if Rack.release < '3'
         check_env env
       else
         Wrapper.new(@app, env).check_environment env
@@ -241,7 +241,7 @@ class TestRackServer < Minitest::Test
     resp = Net::HTTP.get_response URI(@tcp)
     assert_equal 'chunked', resp['transfer-encoding']
     assert_equal STR_1KB, resp.body.force_encoding(Encoding::UTF_8)
-  end if Rack::RELEASE < '3.1'
+  end if Rack.release < '3.1'
 
   def test_rack_chunked_array10
     body = Array.new 10, STR_1KB
@@ -253,7 +253,7 @@ class TestRackServer < Minitest::Test
     resp = Net::HTTP.get_response URI(@tcp)
     assert_equal 'chunked', resp['transfer-encoding']
     assert_equal STR_1KB * 10, resp.body.force_encoding(Encoding::UTF_8)
-  end if Rack::RELEASE < '3.1'
+  end if Rack.release < '3.1'
 
   def test_puma_enum
     body = Array.new(10, STR_1KB).to_enum

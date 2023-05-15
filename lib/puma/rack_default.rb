@@ -11,7 +11,7 @@ if Object.const_defined? :Rackup
       end
     end
   end
-elsif Object.const_defined?(:Rack) && Rack::RELEASE < '3'
+elsif Object.const_defined?(:Rack) && Rack.release < '3'
   module Rack
     module Handler
       def self.default(options = {})

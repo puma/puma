@@ -17,7 +17,7 @@ class TestConfigFile < TestConfigFileBase
   end
 
   def test_app_from_rackup
-    if Rack::RELEASE >= '3'
+    if Rack.release >= '3'
       fn = "test/rackup/hello-bind_rack3.ru"
       bind = "tcp://0.0.0.0:9292"
     else
