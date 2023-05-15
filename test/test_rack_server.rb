@@ -3,10 +3,14 @@ require_relative "helper"
 require "net/http"
 
 # don't load Rack, as it autoloads everything
-require "rack/body_proxy"
-require "rack/lint"
-require "rack/version"
-require "rack/common_logger"
+begin
+  require "rack/body_proxy"
+  require "rack/lint"
+  require "rack/version"
+  require "rack/common_logger"
+rescue LoadError # Rack 1.6
+  require "rack"
+end
 
 # Rack::Chunked is loaded by Rack v2, needs to be required by Rack 3.0,
 # and is removed in Rack 3.1
@@ -206,13 +210,15 @@ class TestRackServer < Minitest::Test
 
     headers = header_hash socket
 
-    content_length = headers["Content-Length"].to_i
-
     socket.close
 
     stop
 
-    assert_equal str_ary_bytes, content_length
+    if Rack.release.start_with? '1.'
+      assert_equal "chunked", headers["Transfer-Encoding"]
+    else
+      assert_equal str_ary_bytes, headers["Content-Length"].to_i
+    end
   end
 
   def test_common_logger
