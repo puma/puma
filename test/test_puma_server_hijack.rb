@@ -29,6 +29,7 @@ class TestPumaServerHijack < Minitest::Test
   end
 
   def teardown
+    return if skipped?
     @server.stop(true)
     assert_empty @log_writer.stdout.string
     assert_empty @log_writer.stderr.string
@@ -172,6 +173,7 @@ class TestPumaServerHijack < Minitest::Test
   end
 
   def test_partial_hijack_body_closes_body
+    skip 'Not supported with Rack 1.x' if Rack.release.start_with? '1.'
     @available = true
     hdrs = { 'Content-Type' => 'text/plain' }
     body = ::Rack::BodyProxy.new(HIJACK_LAMBDA) { @available = true }
@@ -179,6 +181,7 @@ class TestPumaServerHijack < Minitest::Test
   end
 
   def test_partial_hijack_header_closes_body_correct_precedence
+    skip 'Not supported with Rack 1.x' if Rack.release.start_with? '1.'
     @available = true
     incorrect_lambda = ->(io) {
       io.syswrite 'incorrect body.call'
