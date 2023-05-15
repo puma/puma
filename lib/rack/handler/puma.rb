@@ -31,7 +31,11 @@ module Puma
 
       conf = ::Puma::Configuration.new(options, default_options.merge({events: @events})) do |user_config, file_config, default_config|
         if options.delete(:Verbose)
-          require 'rack/common_logger'
+          begin
+            require 'rack/commonlogger'  # Rack 1.x
+          rescue LoadError
+            require 'rack/common_logger' # Rack 2 and later
+          end
           app = ::Rack::CommonLogger.new(app, STDOUT)
         end
 
