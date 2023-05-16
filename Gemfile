@@ -11,8 +11,20 @@ gem "minitest-retry"
 gem "minitest-proveit"
 gem "minitest-stub-const"
 
-gem "rack", (ENV['PUMA_CI_RACK_2'] ? "~> 2.2" : ">= 2.2")
-gem "rackup" unless ENV['PUMA_CI_RACK_2']
+use_rackup = false
+rack_vers =
+  case ENV['PUMA_CI_RACK']&.strip
+  when 'rack2'
+    '~> 2.2'
+  when 'rack1'
+    '~> 1.6'
+  else
+    use_rackup = true
+    '>= 2.2'
+  end
+
+gem "rack", rack_vers
+gem "rackup" if use_rackup
 
 gem "jruby-openssl", :platform => "jruby"
 
