@@ -205,15 +205,15 @@ class TestIntegrationCluster < TestIntegration
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
-    worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<RUBY)
-worker_timeout #{timeout}
-on_worker_boot do
-  Thread.new do
-    sleep 1
-    Thread.list.find {|t| t.name == 'puma stat pld'}.kill
-  end
-end
-RUBY
+    worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<~RUBY)
+      worker_timeout #{timeout}
+      on_worker_boot do
+        Thread.new do
+          sleep 1
+          Thread.list.find {|t| t.name == 'puma stat pld'}.kill
+        end
+      end
+    RUBY
   end
 
   def test_worker_index_is_with_in_options_limit
@@ -245,10 +245,11 @@ RUBY
   def test_fork_worker_on_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
-    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<RUBY
-fork_worker 20
-on_refork { File.write '#{refork.path}', 'Reforked' }
-RUBY
+    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~RUBY
+      fork_worker 20
+      on_refork { File.write '#{refork.path}', 'Reforked' }
+    RUBY
+
     pids = get_worker_pids 0, wrkrs
 
     socks = []
@@ -268,16 +269,16 @@ RUBY
   end
 
   def test_fork_worker_spawn
-    cli_server '', config: <<RUBY
-workers 1
-fork_worker 0
-app do |_|
-  pid = spawn('ls', [:out, :err]=>'/dev/null')
-  sleep 0.01
-  exitstatus = Process.detach(pid).value.exitstatus
-  [200, {}, [exitstatus.to_s]]
-end
-RUBY
+    cli_server '', config: <<~RUBY
+      workers 1
+      fork_worker 0
+      app do |_|
+        pid = spawn('ls', [:out, :err]=>'/dev/null')
+        sleep 0.01
+        exitstatus = Process.detach(pid).value.exitstatus
+        [200, {}, [exitstatus.to_s]]
+      end
+    RUBY
     assert_equal '0', read_body(connect)
   end
 
@@ -419,10 +420,10 @@ RUBY
   end
 
   def test_culling_strategy_oldest_fork_worker
-    cli_server "-w 2 test/rackup/hello.ru", config: <<RUBY
-worker_culling_strategy :oldest
-fork_worker
-RUBY
+    cli_server "-w 2 test/rackup/hello.ru", config: <<~RUBY
+      worker_culling_strategy :oldest
+      fork_worker
+    RUBY
 
     get_worker_pids # to consume server logs
 
