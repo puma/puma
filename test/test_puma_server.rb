@@ -326,16 +326,15 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    expected_data = (<<EOF
-HTTP/1.1 103 Early Hints
-Link: </style.css>; rel=preload; as=style
-Link: </script.js>; rel=preload
+    expected_data = <<~EOF.gsub("\n", "\r\n") + "\r\n"
+      HTTP/1.1 103 Early Hints
+      Link: </style.css>; rel=preload; as=style
+      Link: </script.js>; rel=preload
 
-HTTP/1.0 200 OK
-X-Hello: World
-Content-Length: 12
-EOF
-).split("\n").join("\r\n") + "\r\n\r\n"
+      HTTP/1.0 200 OK
+      X-Hello: World
+      Content-Length: 12
+    EOF
 
     assert_equal true, @server.early_hints
     assert_equal expected_data, data
@@ -370,12 +369,11 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    expected_data = (<<EOF
-HTTP/1.0 200 OK
-X-Hello: World
-Content-Length: 12
-EOF
-).split("\n").join("\r\n") + "\r\n\r\n"
+    expected_data = <<~EOF.gsub("\n", "\r\n") + "\r\n"
+      HTTP/1.0 200 OK
+      X-Hello: World
+      Content-Length: 12
+    EOF
 
     assert_nil @server.early_hints
     assert_equal expected_data, data
