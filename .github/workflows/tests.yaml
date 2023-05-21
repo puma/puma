@@ -109,7 +109,7 @@ jobs:
         if: |
           contains('2.4 2.5 2.6', matrix.ruby) &&
           (needs.skip_duplicate_runs.outputs.should_skip != 'true')
-        run: gem update --system 3.3.14 --no-document
+        run: gem update --system 3.3.26 --no-document
         continue-on-error: true
         timeout-minutes: 5
 
