@@ -13,6 +13,8 @@ end
 class TestPumaServer < Minitest::Test
   parallelize_me!
 
+  STATUS_CODES = ::Puma::HTTP_STATUS_CODES
+
   def setup
     @host = "127.0.0.1"
 
@@ -387,7 +389,8 @@ class TestPumaServer < Minitest::Test
 
     data = sock.gets
 
-    assert_equal "HTTP/1.1 413 Payload Too Large\r\n", data
+    # Content Too Large
+    assert_equal "HTTP/1.1 413 #{STATUS_CODES[413]}\r\n", data
   end
 
   def test_http_11_keep_alive_with_large_payload
@@ -397,7 +400,8 @@ class TestPumaServer < Minitest::Test
     sock << "hello world foo bar"
     h = header sock
 
-    assert_equal ["HTTP/1.1 413 Payload Too Large", "Content-Length: 17"], h
+    # Content Too Large
+    assert_equal ["HTTP/1.1 413 #{STATUS_CODES[413]}", "Content-Length: 17"], h
 
   end
 
@@ -478,7 +482,8 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
 
-    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
+    # Internal Server Error
+    assert_includes data, "HTTP/1.0 500 #{STATUS_CODES[500]}"
     assert_match(/Puma caught this error: Oh no an error.*\(NoMethodError\).*test\/test_puma_server.rb/m, data)
   end
 
@@ -488,7 +493,8 @@ class TestPumaServer < Minitest::Test
     end
 
     data = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
-    assert_includes data, 'HTTP/1.1 500 Internal Server Error'
+    # Internal Server Error
+    assert_includes data, "HTTP/1.1 500 #{STATUS_CODES[500]}"
     assert_includes data, 'Puma caught this error: no backtrace error (WithoutBacktraceError)'
     assert_includes data, '<no backtrace available>'
   end
@@ -591,7 +597,8 @@ class TestPumaServer < Minitest::Test
 
     data = sock.gets
 
-    assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
+    # Request Timeout
+    assert_equal "HTTP/1.1 408 #{STATUS_CODES[408]}\r\n", data
   end
 
   def test_timeout_data_no_queue
@@ -652,7 +659,8 @@ class TestPumaServer < Minitest::Test
 
     h = header sock
 
-    assert_equal ["HTTP/1.1 204 No Content"], h
+    # No Content
+    assert_equal ["HTTP/1.1 204 #{STATUS_CODES[204]}"], h
   end
 
   def test_http_11_close_without_body
@@ -662,7 +670,8 @@ class TestPumaServer < Minitest::Test
 
     h = header sock
 
-    assert_equal ["HTTP/1.1 204 No Content", "Connection: close"], h
+    # No Content
+    assert_equal ["HTTP/1.1 204 #{STATUS_CODES[204]}", "Connection: close"], h
   end
 
   def test_http_10_keep_alive_with_body
@@ -1547,21 +1556,24 @@ class TestPumaServer < Minitest::Test
     server_run { |env| [404, {'Content-Length' => '0'}, []] }
 
     resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
-    assert_equal "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n", resp
+    # Not Found
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nContent-Length: 0\r\n\r\n", resp
   end
 
   def test_empty_body_array_no_content_length
     server_run { |env| [404, {}, []] }
 
     resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
-    assert_equal "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n", resp
+    # Not Found
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nContent-Length: 0\r\n\r\n", resp
   end
 
   def test_empty_body_enum
     server_run { |env| [404, {}, [].to_enum] }
 
     resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
-    assert_equal "HTTP/1.1 404 Not Found\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", resp
+    # Not Found
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", resp
   end
 
   def test_form_data_encoding_windows_bom
