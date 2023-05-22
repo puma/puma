@@ -77,7 +77,9 @@ module Puma
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
           begin
-            fast_write_str socket, str_early_hints(headers)
+            unless (str = str_early_hints headers).empty?
+              fast_write_str socket, "HTTP/1.1 103 Early Hints\r\n#{str}\r\n"
+            end
           rescue ConnectionError => e
             @log_writer.debug_error e
             # noop, if we lost the socket we just won't send the early hints
@@ -529,7 +531,7 @@ module Puma
     # @version 5.0.3
     #
     def str_early_hints(headers)
-      eh_str = +"HTTP/1.1 103 Early Hints\r\n"
+      eh_str = +""
       headers.each_pair do |k, vs|
         next if illegal_header_key?(k)
 
@@ -538,11 +540,11 @@ module Puma
             next if illegal_header_value?(v)
             eh_str << "#{k}: #{v}\r\n"
           end
-        else
+        elsif !(vs.to_s.empty? || !illegal_header_value?(vs))
           eh_str << "#{k}: #{vs}\r\n"
         end
       end
-      "#{eh_str}\r\n".freeze
+      eh_str.freeze
     end
     private :str_early_hints
 
