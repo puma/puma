@@ -125,15 +125,15 @@ module Puma
       # Indicate that we couldn't parse the request
       400 => "HTTP/1.1 400 Bad Request\r\n\r\n",
       # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-      404 => "HTTP/1.1 404 Not Found\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\nNOT FOUND",
+      404 => "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n",
       # The standard empty 408 response for requests that timed out.
-      408 => "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nServer: Puma #{PUMA_VERSION}\r\n\r\n",
+      408 => "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\n\r\n",
       # Indicate that there was an internal error, obviously.
       500 => "HTTP/1.1 500 Internal Server Error\r\n\r\n",
       # Incorrect or invalid header value
       501 => "HTTP/1.1 501 Not Implemented\r\n\r\n",
       # A common header for indicating the server is too busy.  Not used yet.
-      503 => "HTTP/1.1 503 Service Unavailable\r\n\r\nBUSY"
+      503 => "HTTP/1.1 503 Service Unavailable\r\n\r\n"
     }.freeze
 
     # The basic max request size we'll try to read.
