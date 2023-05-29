@@ -148,7 +148,55 @@ module Puma
 
     REQUEST_METHOD = "REQUEST_METHOD"
     HEAD = "HEAD"
+
+    # based on https://www.rfc-editor.org/rfc/rfc9110.html#name-overview,
+    # with CONNECT removed, and PATCH added
     SUPPORTED_HTTP_METHODS = %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH].freeze
+
+    # list from https://www.iana.org/assignments/http-methods/http-methods.xhtml
+    # as of 04-May-23
+    IANA_HTTP_METHODS = %w[
+      ACL
+      BASELINE-CONTROL
+      BIND
+      CHECKIN
+      CHECKOUT
+      CONNECT
+      COPY
+      DELETE
+      GET
+      HEAD
+      LABEL
+      LINK
+      LOCK
+      MERGE
+      MKACTIVITY
+      MKCALENDAR
+      MKCOL
+      MKREDIRECTREF
+      MKWORKSPACE
+      MOVE
+      OPTIONS
+      ORDERPATCH
+      PATCH
+      POST
+      PRI
+      PROPFIND
+      PROPPATCH
+      PUT
+      REBIND
+      REPORT
+      SEARCH
+      TRACE
+      UNBIND
+      UNCHECKOUT
+      UNLINK
+      UNLOCK
+      UPDATE
+      UPDATEREDIRECTREF
+      VERSION-CONTROL
+    ].freeze
+
     # ETag is based on the apache standard of hex mtime-size-inode (inode is 0 on win32)
     LINE_END = "\r\n"
     REMOTE_ADDR = "REMOTE_ADDR"
