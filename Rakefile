@@ -1,8 +1,7 @@
-require "bundler/setup"
-require "rake/testtask"
-require "rake/extensiontask"
-require "rake/javaextensiontask"
-require "rubocop/rake_task"
+require 'bundler/setup'
+require 'rake/testtask'
+require 'rake/extensiontask'
+require 'rake/javaextensiontask'
 require_relative 'lib/puma/detect'
 require 'rubygems/package_task'
 require 'bundler/gem_tasks'
@@ -10,8 +9,12 @@ require 'bundler/gem_tasks'
 gemspec = Gem::Specification.load("puma.gemspec")
 Gem::PackageTask.new(gemspec).define
 
-# Add rubocop task
-RuboCop::RakeTask.new
+begin
+  # Add rubocop task
+  require "rubocop/rake_task"
+  RuboCop::RakeTask.new
+rescue LoadError
+end
 
 # generate extension code using Ragel (C and Java)
 desc "Generate extension code (C and Java) using Ragel"
