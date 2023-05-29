@@ -54,6 +54,15 @@ class TestIntegration < Minitest::Test
 
   private
 
+  def with_unbundled_env
+    bundler_ver = Gem::Version.new(Bundler::VERSION)
+    if bundler_ver < Gem::Version.new('2.1.0')
+      Bundler.with_clean_env { yield }
+    else
+      Bundler.with_unbundled_env { yield }
+    end
+  end
+
   def silent_and_checked_system_command(*args)
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
