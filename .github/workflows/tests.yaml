@@ -22,9 +22,22 @@ jobs:
       - name: rubocop
         run: bundle exec rake rubocop
 
+#      macOS MRI jobs
+#       11   12   13
+# 2.2    x
+# 2.3    x
+# 2.4    x    x
+# 2.5    x    x
+# 2.6    x         x
+# 2.7    x         x
+# 3.0              x
+# 3.1              x
+# 3.2    x         x
+# head        x    x
+
   test_mri:
     name: >-
-      MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}
+      MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}${{ matrix.rack-v }}
     needs: rubocop
     env:
       CI: true
@@ -38,34 +51,46 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-18.04, macos-10.15, macos-11, windows-2022 ]
-        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, head ]
+        os: [ ubuntu-20.04, macos-11, macos-12, macos-13, windows-2022 ]
+        ruby: [ 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, 3.2, head ]
         no-ssl: ['']
         yjit: ['']
+        rack-v: ['']
         include:
+          - { os: ubuntu-20.04 , ruby: 2.4  , rack-v: ' rack1' }
+          - { os: ubuntu-20.04 , ruby: 2.7  , no-ssl: ' no SSL' }
+          - { os: ubuntu-22.04 , ruby: 3.1  }
+          - { os: ubuntu-22.04 , ruby: 3.2  }
+          - { os: ubuntu-22.04 , ruby: head }
+          - { os: ubuntu-22.04 , ruby: head , yjit: ' yjit' }
           - { os: windows-2022 , ruby: ucrt }
           - { os: windows-2022 , ruby: mswin }
           - { os: windows-2022 , ruby: 2.7  , no-ssl: ' no SSL' }
-          - { os: ubuntu-20.04 , ruby: head , yjit: ' yjit' }
-          - { os: ubuntu-20.04 , ruby: 2.7  , no-ssl: ' no SSL' }
-          - { os: ubuntu-22.04 , ruby: 3.1  }
-          - { os: ubuntu-22.04 , ruby: head }
 
         exclude:
-          - { os: ubuntu-20.04 , ruby: 2.2  }
-          - { os: ubuntu-20.04 , ruby: 2.3  }
+          - { os: macos-11     , ruby: 3.0  }
+          - { os: macos-11     , ruby: 3.1  }
+          - { os: macos-11     , ruby: head }
+          - { os: macos-12     , ruby: 2.2  }
+          - { os: macos-12     , ruby: 2.3  }
+          - { os: macos-12     , ruby: 2.6  }
+          - { os: macos-12     , ruby: 2.7  }
+          - { os: macos-12     , ruby: 3.0  }
+          - { os: macos-12     , ruby: 3.1  }
+          - { os: macos-12     , ruby: 3.2  }
+          - { os: macos-13     , ruby: 2.2  }
+          - { os: macos-13     , ruby: 2.3  }
+          - { os: macos-13     , ruby: 2.4  }
+          - { os: macos-13     , ruby: 2.5  }
           - { os: windows-2022 , ruby: head }
-          - { os: macos-10.15  , ruby: 2.6  }
-          - { os: macos-10.15  , ruby: 2.7  }
-          - { os: macos-10.15  , ruby: '3.0'}
-          - { os: macos-10.15  , ruby: 3.1  }
-          - { os: macos-11     , ruby: 2.2  }
-          - { os: macos-11     , ruby: 2.3  }
-          - { os: macos-11     , ruby: 2.4  }
 
     steps:
       - name: repo checkout
         uses: actions/checkout@v3
+
+      - name: Set Rack version, see Gemfile
+        shell: bash
+        run: echo 'PUMA_CI_RACK=${{ matrix.rack-v }}' >> $GITHUB_ENV
 
       - name: load ruby
         uses: ruby/setup-ruby-pkgs@v1
@@ -80,15 +105,24 @@ jobs:
 
       # Windows error thrown, doesn't affect CI
       - name: update rubygems for Ruby 2.2
-        if: matrix.ruby < '2.3'
+        if: matrix.ruby == '2.2'
         run: gem update --system 2.7.11 --no-document
         continue-on-error: true
         timeout-minutes: 5
 
       # fixes 'has a bug that prevents `required_ruby_version`'
-      - name: update rubygems for Ruby 2.3 - 2.5
-        if: contains('2.3 2.4 2.5', matrix.ruby)
+      - name: update rubygems for Ruby 2.3
+        if: matrix.ruby == '2.3'
         run: gem update --system 3.3.14 --no-document
+        continue-on-error: true
+        timeout-minutes: 5
+
+      # fixes 'has a bug that prevents `required_ruby_version`'
+      - name: update rubygems for Ruby 2.4 - 2.6
+        if: |
+          contains('2.4 2.5 2.6', matrix.ruby) &&
+          (needs.skip_duplicate_runs.outputs.should_skip != 'true')
+        run: gem update --system 3.3.26 --no-document
         continue-on-error: true
         timeout-minutes: 5
 
@@ -132,12 +166,12 @@ jobs:
           - { os: ubuntu-20.04 , ruby: jruby }
           - { os: ubuntu-20.04 , ruby: jruby, no-ssl: ' no SSL' }
           - { os: ubuntu-20.04 , ruby: jruby-head, allow-failure: true }
-          - { os: ubuntu-20.04 , ruby: truffleruby }
+          - { os: ubuntu-20.04 , ruby: truffleruby, allow-failure: true }
           - { os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
-          - { os: macos-10.15  , ruby: jruby }
-          - { os: macos-10.15  , ruby: truffleruby }
-          - { os: macos-11     , ruby: jruby }
-          - { os: macos-11     , ruby: truffleruby }
+          - { os: macos-11 , ruby: jruby }
+          - { os: macos-11 , ruby: truffleruby, allow-failure: true }
+          - { os: macos-12 , ruby: jruby }
+          - { os: macos-12 , ruby: truffleruby, allow-failure: true }
 
     steps:
       - name: repo checkout
