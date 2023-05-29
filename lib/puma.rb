@@ -14,6 +14,8 @@ require 'puma/puma_http11'
 require 'puma/detect'
 require 'puma/json_serialization'
 
+require 'rack/version_restriction'
+
 module Puma
   autoload :Const, 'puma/const'
   autoload :Server, 'puma/server'
