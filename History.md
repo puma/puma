@@ -10,6 +10,7 @@
   * Handle malformed request path ([#3155], [#3148])
   * Misc lib file fixes - trapping additional errors, CI helper ([#3129])
   * Fixup req form data file upload with "r\n" line endings ([#3137])
+  * Restore rack 1.6 compatibility Restore rack 1.6 compatibility ([#3156])
 
 * Refactor
   * const.rb - Update Puma::HTTP_STATUS_CODES ([#3162])
@@ -2006,6 +2007,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#3148]:https://github.com/puma/puma/issues/3148   "Issue by @dentarg, closed 2023-05-14"
 [#3129]:https://github.com/puma/puma/pull/3129     "PR by @MSP-Greg, merged 2023-05-02"
 [#3137]:https://github.com/puma/puma/pull/3137     "PR by @MSP-Greg, merged 2023-04-30"
+[#3156]:https://github.com/puma/puma/pull/3156     "PR by @severin, merged 2023-05-16"
 [#3162]:https://github.com/puma/puma/pull/3162     "PR by @MSP-Greg, merged 2023-05-23"
 [#3151]:https://github.com/puma/puma/pull/3151     "PR by @nateberkopec, merged 2023-05-12"
 [#3118]:https://github.com/puma/puma/pull/3118     "PR by @ninoseki, merged 2023-04-01"
