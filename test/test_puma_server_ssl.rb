@@ -544,20 +544,4 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
   ensure
     server&.stop true
   end
-
-  # def test_server_ssl_with_cert_pem_chain_and_key_pem
-  #   ctx = Puma::MiniSSL::Context.new
-  #   cert_path = File.expand_path "../examples/puma/client-certs", __dir__
-  #   cert_pem = File.read("#{cert_path}/server.crt")
-  #   ca_cert  = File.read("#{cert_path}/ca.crt")
-  #   cert_pem += ca_cert
-
-  #   bad_pem = cert_pem[0..-10]
-  #   puts bad_pem
-
-  #   exception = assert_raises(ArgumentError) { ctx.cert_pem = bad_pem }
-  #   assert_equal("'cert_pem' is not a String", exception.message)
-  # end
-
-
 end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
