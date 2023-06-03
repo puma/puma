@@ -84,6 +84,18 @@ class TestMiniSSL < Minitest::Test
       assert_equal("'cert_pem' is not a String", exception.message)
     end
 
+    def test_raises_with_invalid_cert_chain_pem
+      ctx = Puma::MiniSSL::Context.new
+      cert_path = File.expand_path "../examples/puma/client-certs", __dir__
+      cert_pem = File.read("#{cert_path}/server.crt")
+      ca_cert  = File.read("#{cert_path}/ca.crt")
+      #cert_pem += ca_cert[0..(ca_cert.length / 2)]
+      cert_pem += ca_cert
+
+      exception = assert_raises(ArgumentError) { ctx.cert_pem = cert_pem }
+      assert_equal("'cert_pem' is not a String", exception.message)
+    end
+
     def test_raises_with_invalid_key_password_command
       ctx = Puma::MiniSSL::Context.new
       ctx.key_password_command = '/unreadable/decrypt_command'
