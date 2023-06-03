@@ -3,7 +3,6 @@
 #include <ruby.h>
 #include <ruby/version.h>
 #include <ruby/io.h>
-#include <stdio.h>
 
 #ifdef HAVE_OPENSSL_BIO_H
 
@@ -308,7 +307,6 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     X509 *ca = NULL;
     unsigned long err;
 
-    fprintf(stderr,"cert_pem= starting\n");
     bio = BIO_new(BIO_s_mem());
     BIO_puts(bio, RSTRING_PTR(cert_pem));
 
@@ -319,7 +317,6 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
     /* first read the cert as the first item in the pem file */
     x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-    fprintf(stderr,"cert_pem: read x509\n");
     if (NULL == x509) {
       BIO_free_all(bio);
       raise_param_error("PEM_read_bio_X509", "cert_pem");
@@ -331,7 +328,6 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
       BIO_free_all(bio);
       raise_param_error("SSL_CTX_use_certificate", "cert_pem");
     }
-    fprintf(stderr,"cert_pem: stored certificate\n");
 
     X509_free(x509); /* no longer need our reference */
 
@@ -341,22 +337,18 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
       BIO_free_all(bio);
       raise_param_error("SSL_CTX_clear_chain_certs","cert_pem");
     }
-    fprintf(stderr,"cert_pem: cleared chain certificate\n");
 
     while (1) {
       ca = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 
       if (NULL == ca) {
-        fprintf(stderr,"cert_pem: ca is NULL\n");
         break;
       }
-      fprintf(stderr,"cert_pem: read ca\n");
 
       if (0 == SSL_CTX_add0_chain_cert(ctx, ca)) {
         BIO_free_all(bio);
         raise_param_error("SSL_CTX_add0_chain_cert","cert_pem");
       }
-      fprintf(stderr,"cert_pem: added ca to chain\n");
       /* don't free ca - its now owned by the context */
     }
 
@@ -365,15 +357,12 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
     /* If its the end of the file - then we are done, in any case free the bio */
     BIO_free_all(bio);
-    fprintf(stderr,"cert_pem: BIO_free_all\n");
 
     if ((ERR_GET_LIB(err) == ERR_LIB_PEM) && (ERR_GET_REASON(err) == PEM_R_NO_START_LINE)) {
-      fprintf(stderr,"cert_pem: EOF\n");
       ERR_clear_error();
     } else {
       raise_param_error("PEM_read_bio_X509","cert_pem");
     }
-    fprintf(stderr,"cert_pem: end\n");
   }
 
   if (!NIL_P(key_pem)) {
