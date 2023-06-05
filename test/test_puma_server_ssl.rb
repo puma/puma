@@ -568,7 +568,7 @@ class TestPumaSSLCertChain < Minitest::Test
     @server = Puma::Server.new app, nil, {log_writer: @log_writer}
 
     mini_ctx = Puma::MiniSSL::Context.new
-    mini_ctx.key  = "#{CHAIN_DIR}/cert_keypair.pem"
+    mini_ctx.key  = "#{CHAIN_DIR}/cert.key"
     yield mini_ctx
 
     @port = (@server.add_ssl_listener @host, 0, mini_ctx).addr[1]
@@ -592,7 +592,7 @@ class TestPumaSSLCertChain < Minitest::Test
 
   def test_single_cert_file_with_ca
     cert_chain { |mini_ctx|
-      mini_ctx.cert = "#{CHAIN_DIR}/cert.pem"
+      mini_ctx.cert = "#{CHAIN_DIR}/cert.crt"
       mini_ctx.ca   = "#{CHAIN_DIR}/ca_chain.pem"
     }
   end
@@ -603,7 +603,7 @@ class TestPumaSSLCertChain < Minitest::Test
 
   def test_single_cert_string_with_ca
     cert_chain { |mini_ctx|
-      mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert.pem"
+      mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert.crt"
       mini_ctx.ca   = "#{CHAIN_DIR}/ca_chain.pem"
     }
   end
