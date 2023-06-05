@@ -546,6 +546,13 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
   end
 end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
 
+#
+# Test certificate chain support, The certs and the whole certificate chain for
+# this tests are located in ../examples/puma/chain_cert and were generated with
+# the following commands:
+#
+#   bundle exec ruby ../examples/puma/chain_cert/generate_chain_test.rb
+#
 class TestPumaSSLCertChain < Minitest::Test
   CHAIN_DIR = File.expand_path '../examples/puma/chain_cert', __dir__
 
