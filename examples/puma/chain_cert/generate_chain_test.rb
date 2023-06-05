@@ -93,7 +93,6 @@ module Generate
       cert
     end
 
-    require 'debug'
     def run
       cert = generate_cert
 
