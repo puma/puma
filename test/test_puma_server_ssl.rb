@@ -561,7 +561,7 @@ class TestPumaSSLCertChain < Minitest::Test
     @server = Puma::Server.new app, nil, {log_writer: @log_writer}
 
     mini_ctx = Puma::MiniSSL::Context.new
-    mini_ctx.key  = "#{CHAIN_DIR}/key.pem"
+    mini_ctx.key  = "#{CHAIN_DIR}/cert_keypair.pem"
     yield mini_ctx
 
     @port = (@server.add_ssl_listener @host, 0, mini_ctx).addr[1]
@@ -580,28 +580,28 @@ class TestPumaSSLCertChain < Minitest::Test
     ssl_skt.sysclose
     @server&.stop true
 
-    assert_equal ['anchor.lcl.host', 'SubCA', 'AnchorCA'], subj_map
+    assert_equal ['test.puma.localhost', 'intermediate.puma.localhost', 'ca.puma.localhost'], subj_map
   end
 
   def test_single_cert_file_with_ca
     cert_chain { |mini_ctx|
-      mini_ctx.cert = "#{CHAIN_DIR}/cert.crt"
-      mini_ctx.ca   = "#{CHAIN_DIR}/ca.crt"
+      mini_ctx.cert = "#{CHAIN_DIR}/cert.pem"
+      mini_ctx.ca   = "#{CHAIN_DIR}/ca_chain.pem"
     }
   end
 
   def test_chain_cert_file_without_ca
-    cert_chain { |mini_ctx| mini_ctx.cert = "#{CHAIN_DIR}/cert_chain.crt" }
+    cert_chain { |mini_ctx| mini_ctx.cert = "#{CHAIN_DIR}/cert_chain.pem" }
   end
 
   def test_single_cert_string_with_ca
     cert_chain { |mini_ctx|
-      mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert.crt"
-      mini_ctx.ca   = "#{CHAIN_DIR}/ca.crt"
+      mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert.pem"
+      mini_ctx.ca   = "#{CHAIN_DIR}/ca_chain.pem"
     }
   end
 
   def test_chain_cert_string_without_ca
-    cert_chain { |mini_ctx| mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert_chain.crt" }
+    cert_chain { |mini_ctx| mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert_chain.pem" }
   end
 end if ::Puma::HAS_SSL && !::Puma::IS_JRUBY
