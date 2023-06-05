@@ -17,12 +17,12 @@ require 'certificate_authority'
 
 module Generate
 
-  CA               = "ca.pem"
-  CA_KEY           = "ca_keypair.pem"
-  INTERMEDIATE     = "intermediate.pem"
-  INTERMEDIATE_KEY = "intermediate_keypair.pem"
-  CERT             = "cert.pem"
-  CERT_KEY         = "cert_keypair.pem"
+  CA               = "ca.crt"
+  CA_KEY           = "ca.key"
+  INTERMEDIATE     = "intermediate.crt"
+  INTERMEDIATE_KEY = "intermediate.key"
+  CERT             = "cert.crt"
+  CERT_KEY         = "cert.key"
 
   CA_CHAIN         = "ca_chain.pem"
   CERT_CHAIN       = "cert_chain.pem"
