@@ -17,18 +17,15 @@ require 'certificate_authority'
 
 module Generate
 
-  CA = "ca.pem"
-  CA_KEY = "ca_keypair.pem"
+  CA               = "ca.pem"
+  CA_KEY           = "ca_keypair.pem"
+  INTERMEDIATE     = "intermediate.pem"
+  INTERMEDIATE_KEY = "intermediate_keypair.pem"
+  CERT             = "cert.pem"
+  CERT_KEY         = "cert_keypair.pem"
 
-  INTERMEDIATE = "intermediate.pem"
-  SUB_CA_KEY = "intermediate.pem"
-
-  CA_CHAIN = "ca_chain.pem"
-
-  CERT = "cert.crt"
-  CERT_KEY = "cert_keypair.pem"
-
-  CERT_CHAIN = "cert_chain.pem"
+  CA_CHAIN         = "ca_chain.pem"
+  CERT_CHAIN       = "cert_chain.pem"
 
   class << self
 
@@ -101,20 +98,20 @@ module Generate
       cert = generate_cert
 
       Dir.chdir path do
-        File.write "ca.pem", root_ca.to_pem, mode: 'wb'
-        File.write "ca_keypair.pem", root_ca.key_material.private_key.to_pem, mode: 'wb'
+        File.write CA, root_ca.to_pem, mode: 'wb'
+        File.write CA_KEY, root_ca.key_material.private_key.to_pem, mode: 'wb'
 
-        File.write "intermediate.pem", intermediate_ca.to_pem, mode: 'wb'
-        File.write "intermediate_keypair.pem", intermediate_ca.key_material.private_key.to_pem, mode: 'wb'
+        File.write INTERMEDIATE, intermediate_ca.to_pem, mode: 'wb'
+        File.write INTERMEDIATE_KEY, intermediate_ca.key_material.private_key.to_pem, mode: 'wb'
 
-        File.write "cert.pem", cert.to_pem, mode: 'wb'
-        File.write "cert_keypair.pem", cert.key_material.private_key.to_pem, mode: 'wb'
+        File.write CERT, cert.to_pem, mode: 'wb'
+        File.write CERT_KEY, cert.key_material.private_key.to_pem, mode: 'wb'
 
         ca_chain = intermediate_ca.to_pem + root_ca.to_pem
-        File.write "ca_chain.pem", ca_chain, mode: 'wb'
+        File.write CA_CHAIN, ca_chain, mode: 'wb'
 
         cert_chain = cert.to_pem + ca_chain
-        File.write "cert_chain.pem", cert_chain, mode: 'wb'
+        File.write CERT_CHAIN, cert_chain, mode: 'wb'
       end
 
     rescue => e
