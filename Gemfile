@@ -39,4 +39,3 @@ end
 
 gem 'm'
 gem "localhost", require: false
-gem "certificate_authority", "~> 1.0", require: false

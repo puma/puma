@@ -13,7 +13,14 @@ expires in 4 years
 
 =end
 
+require 'bundler/inline'
+
+
 require 'certificate_authority'
+gemfile do
+  source 'https://rubygems.org'
+  gem 'certificate_authority'
+end
 
 module Generate
 
