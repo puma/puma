@@ -54,11 +54,20 @@ class TestIntegration < Minitest::Test
 
   private
 
+  def with_unbundled_env
+    bundler_ver = Gem::Version.new(Bundler::VERSION)
+    if bundler_ver < Gem::Version.new('2.1.0')
+      Bundler.with_clean_env { yield }
+    else
+      Bundler.with_unbundled_env { yield }
+    end
+  end
+
   def silent_and_checked_system_command(*args)
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
 
-  def cli_server(argv, unix: false, config: nil, merge_err: false)
+  def cli_server(argv, unix: false, config: nil, merge_err: false, skip_waiting: false)
     if config
       config_file = Tempfile.new(%w(config .rb))
       config_file.write config
@@ -77,7 +86,7 @@ class TestIntegration < Minitest::Test
     else
       @server = IO.popen(cmd, "r")
     end
-    wait_for_server_to_boot
+    wait_for_server_to_boot unless skip_waiting
     @pid = @server.pid
     @server
   end
