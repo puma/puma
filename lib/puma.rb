@@ -10,9 +10,11 @@ require 'stringio'
 
 require 'thread'
 
+# extension files should not be loaded with `require_relative`
 require 'puma/puma_http11'
-require 'puma/detect'
-require 'puma/json_serialization'
+require_relative 'puma/detect'
+require_relative 'puma/json_serialization'
+require_relative 'rack/version_restriction'
 
 module Puma
   autoload :Const, 'puma/const'
