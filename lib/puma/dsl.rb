@@ -510,6 +510,12 @@ module Puma
     # `true`, which sets reuse 'on' with default values, or a hash, with `:size`
     # and/or `:timeout` keys, each with integer values.
     #
+    # The `cert:` options hash parameter can be the path to a certificate
+    # file including all intermediate certificates in PEM format.
+    #
+    # The `cert_pem:` options hash parameter can be String containing the
+    # cerificate and all intermediate certificates in PEM format.
+    #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert: path_to_cert,
