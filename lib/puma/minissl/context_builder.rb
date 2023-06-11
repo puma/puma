@@ -51,6 +51,8 @@ module Puma
             unless params['ca']
               log_writer.error "Please specify the SSL ca via 'ca='"
             end
+            # needed for Puma::MiniSSL::Socket#peercert, env['puma.peercert']
+            require 'openssl' unless Object.const_defined? :OpenSSL
           end
 
           ctx.ca = params['ca'] if params['ca']
