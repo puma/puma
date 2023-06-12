@@ -102,7 +102,7 @@ module TestPuma
 
     # Parses header lines from HTTP response.  Includes the status line.
     # @param resp [String] the HTTP response.
-    # @returns [Array<String>] array of header lines in the response.
+    # @return [Array<String>] array of header lines in the response.
     def headers(resp)
       resp.split(RESP_SPLIT, 2).first.split "\r\n"
     end
@@ -114,7 +114,7 @@ module TestPuma
     # @!macro req
     # @!macro skt
     # @!macro resp
-    # # @returns [Array<String>] array of header lines in the response
+    # @return [Array<String>] array of header lines in the response
     def send_http_read_resp_headers(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil, decode_chunked: nil, times: nil)
       skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
@@ -155,7 +155,12 @@ module TestPuma
       skt
     end
 
-    # Only works when Socket::TCP_INFO is defined, linux/Ubuntu
+    # Determines whether the socket has been closed by the server.  Only works when
+    # `Socket::TCP_INFO is defined`, linux/Ubuntu
+    # @param socket [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket]
+    # @return [Boolean] true if closed by server, false is indeterminate, as
+    #   it may not be writable
+    #
     def skt_closed_by_server(socket)
       skt = socket.to_io
       return false unless skt.kind_of?(TCPSocket)
@@ -255,6 +260,7 @@ module TestPuma
 
     # Helper for creating an `OpenSSL::SSL::SSLContext`.
     # @param &blk [Block] Passed the SSLContext.
+    # @yield [OpenSSL::SSL::SSLContext]
     # @return [OpenSSL::SSL::SSLContext] The new socket
     def new_ctx(&blk)
       ctx = OpenSSL::SSL::SSLContext.new
@@ -303,7 +309,11 @@ module TestPuma
     end
 
     # Creates an array of sockets, sending a request on each
-    def send_http_array(len, req = GET_11, dly: 0.000_1, max_retries: 5)
+    # @param req [String] the request
+    # @param len [Integer] the number of requests to send
+    # @return [Array<OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket>]
+    #
+    def send_http_array(req = GET_11, len, dly: 0.000_1, max_retries: 5)
       Array.new(len) {
         retries = 0
         begin
@@ -368,6 +378,11 @@ module TestPuma
       results
     end
 
+    # Decodes a chunked body, does not modify the headers
+    # @param hdrs [String] the header section of the response
+    # @param body [String] the chunked encoded body
+    # @return [String] the updated response
+    #
     def self.chunked_body(hdrs, body)
       body = body.byteslice 0, body.bytesize - 5   # remove terminating bytes
       decoded = String.new  # rubocop: disable Performance/UnfreezeString
