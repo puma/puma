@@ -1,6 +1,13 @@
 require_relative 'helper'
 require_relative "helpers/integration"
 
+if ::Puma::HAS_SSL # don't load any files if no ssl support
+  require "net/http"
+  require "openssl"
+  require_relative "helpers/constants"
+  require_relative "helpers/puma_socket"
+end
+
 # These tests are used to verify that Puma works with SSL sockets.  Only
 # integration tests isolate the server from the test environment, so there
 # should be a few SSL tests.
@@ -12,8 +19,7 @@ require_relative "helpers/integration"
 class TestIntegrationSSL < TestIntegration
   parallelize_me! if ::Puma.mri?
 
-  require "net/http"
-  require "openssl"
+  include TestPuma::PumaSocket
 
   def teardown
     @server.close if @server && !@server.closed?
@@ -92,6 +98,50 @@ class TestIntegrationSSL < TestIntegration
       end
       assert_equal 'https', body
     end
+  end
+
+  def test_verify_client_cert_roundtrip
+    cert_path = File.expand_path '../examples/puma/client-certs', __dir__
+    bind_port
+
+    config = <<~RUBY
+      if ::Puma::IS_JRUBY
+        ssl_bind '#{HOST}', '#{@bind_port}', {
+          keystore: '#{cert_path}/keystore.jks',
+          keystore_pass: 'jruby_puma',
+          verify_mode: 'force_peer'
+        }
+      else
+        ssl_bind '#{HOST}', '#{@bind_port}', {
+          cert: '#{cert_path}/server.crt',
+          key:  '#{cert_path}/server.key',
+          ca:   '#{cert_path}/ca.crt',
+          verify_mode: 'force_peer'
+        }
+      end
+      threads 1, 5
+
+      app do |env|
+        [200, {}, [env['puma.peercert'].to_s]]
+      end
+    RUBY
+
+    cli_server "-t1:5 #{set_pumactl_args}", config: config, no_bind: true
+
+    body = send_http_read_resp_body port: @bind_port, ctx: new_ctx { |c|
+        ca   = "#{cert_path}/ca.crt"
+        cert = "#{cert_path}/client.crt"
+        key  = "#{cert_path}/client.key"
+        c.ca_file = ca
+        c.cert = ::OpenSSL::X509::Certificate.new File.read(cert)
+        c.key  = ::OpenSSL::PKey::RSA.new File.read(key)
+        c.verify_mode = ::OpenSSL::SSL::VERIFY_PEER
+      }
+
+    assert_equal File.read("#{cert_path}/client.crt"), body
+    # stop server
+  ensure
+    cli_pumactl 'stop'
   end
 
   def test_ssl_run_with_curl_client
