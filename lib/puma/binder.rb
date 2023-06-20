@@ -330,7 +330,7 @@ module Puma
         return
       end
 
-      host = host[1..-2] if host and host[0..0] == '['
+      host = host[1..-2] if host&.start_with? '['
       tcp_server = TCPServer.new(host, port)
 
       if optimize_for_latency
@@ -364,7 +364,7 @@ module Puma
         return
       end
 
-      host = host[1..-2] if host[0..0] == '['
+      host = host[1..-2] if host&.start_with? '['
       s = TCPServer.new(host, port)
       if optimize_for_latency
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
