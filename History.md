@@ -121,6 +121,11 @@
   * Ruby 3.2 will have native IO#wait_* methods, don't require io/wait ([#2903])
   * Various internal API refactorings ([#2942], [#2921], [#2922], [#2955])
 
+## 5.6.6 / 2023-06-21
+
+* Bugfix
+  * Allow Puma to be loaded with Rack 3 ([#3166])
+
 ## 5.6.5 / 2022-08-23
 
 * Feature
@@ -2094,6 +2099,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#2921]:https://github.com/puma/puma/issues/2921   "Issue by @MSP-Greg, closed 2022-09-15"
 [#2922]:https://github.com/puma/puma/issues/2922   "Issue by @MSP-Greg, closed 2022-09-10"
 [#2955]:https://github.com/puma/puma/pull/2955     "PR by @cafedomancer, merged 2022-09-15"
+[#3166]:https://github.com/puma/puma/issues/3166   "Issue by @JoeDupuis, merged 2023-06-08"
 [#2868]:https://github.com/puma/puma/pull/2868     "PR by @MSP-Greg, merged 2022-06-02"
 [#2866]:https://github.com/puma/puma/issues/2866   "Issue by @slondr, closed 2022-06-02"
 [#2883]:https://github.com/puma/puma/pull/2883     "PR by @MSP-Greg, merged 2022-06-02"
