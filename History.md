@@ -1,3 +1,8 @@
+## 5.6.6 / 2023-06-21
+
+* Bugfix
+  * Allow Puma to be loaded with Rack 3 ([#3166])
+
 ## 5.6.5 / 2022-08-23
 
 * Feature
@@ -1863,6 +1868,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3166]:https://github.com/puma/puma/issues/3166   "Issue by @JoeDupuis, merged 2023-06-08"
 [#2883]:https://github.com/puma/puma/pull/2883     "PR by @MSP-Greg, merged 2022-06-02"
 [#2868]:https://github.com/puma/puma/pull/2868     "PR by @MSP-Greg, merged 2022-06-02"
 [#2866]:https://github.com/puma/puma/issues/2866   "Issue by @slondr, closed 2022-06-02"
