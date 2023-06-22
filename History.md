@@ -124,7 +124,7 @@
 ## 5.6.6 / 2023-06-21
 
 * Bugfix
-  * Allow Puma to be loaded with Rack 3 ([#3166])
+  * Prevent loading with rack 3 ([#3166])
 
 ## 5.6.5 / 2022-08-23
 
