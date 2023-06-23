@@ -69,8 +69,8 @@ def hit(uris)
 end
 
 module UniquePort
-  def self.call
-    TCPServer.open('127.0.0.1', 0) do |server|
+  def self.call(host = '127.0.0.1')
+    TCPServer.open(host, 0) do |server|
       server.connect_address.ip_port
     end
   end
