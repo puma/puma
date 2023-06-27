@@ -10,7 +10,7 @@
   * Handle malformed request path ([#3155], [#3148])
   * Misc lib file fixes - trapping additional errors, CI helper ([#3129])
   * Fixup req form data file upload with "r\n" line endings ([#3137])
-  * Restore rack 1.6 compatibility Restore rack 1.6 compatibility ([#3156])
+  * Restore rack 1.6 compatibility ([#3156])
 
 * Refactor
   * const.rb - Update Puma::HTTP_STATUS_CODES ([#3162])
