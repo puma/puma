@@ -1,11 +1,8 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require_relative 'state_file'     # created in prepare_configuration
 require_relative 'const'
 require_relative 'detect'
-require_relative 'configuration'  # created in initialize
-require_relative 'log_writer'     # created in start
 require 'uri'
 require 'socket'
 
@@ -127,6 +124,9 @@ module Puma
         end
 
         if @config_file
+          require_relative 'configuration'
+          require_relative 'log_writer'
+
           config = Puma::Configuration.new({ config_files: [@config_file] }, {})
           config.load
           @state              ||= config.options[:state]
@@ -149,6 +149,8 @@ module Puma
         unless File.exist? @state
           raise "State file not found: #{@state}"
         end
+
+        require_relative 'state_file'
 
         sf = Puma::StateFile.new
         sf.load @state
