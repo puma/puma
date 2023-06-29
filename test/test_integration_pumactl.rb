@@ -169,4 +169,41 @@ class TestIntegrationPumactl < TestIntegration
     assert_match(/No pid '\d+' found|bad URI\(is not URI\?\)/, sout.readlines.join(""))
     assert_equal(1, e.status)
   end
+
+  # calls pumactl with both a config file and a state file,  making sure that
+  # puma files are required, see https://github.com/puma/puma/issues/3186
+  def test_require_dependencies
+    skip_if :jruby
+    conf_path = tmp_path '.config.rb'
+    @tcp_port = UniquePort.call
+    @control_tcp_port = UniquePort.call
+
+    File.write conf_path , <<~CONF
+      state_path "#{@state_path}"
+      bind "tcp://127.0.0.1:#{@tcp_port}"
+
+      workers 0
+
+      before_fork do
+      end
+
+      activate_control_app "tcp://127.0.0.1:#{@control_tcp_port}", auth_token: "#{TOKEN}"
+
+      app do |env|
+        [200, {}, ["Hello World"]]
+      end
+    CONF
+
+    cli_server "-q -C #{conf_path}", no_bind: true, merge_err: true
+
+    out = cli_pumactl_spawn "-F #{conf_path} restart", no_bind: true
+
+    assert_includes out.read, "Command restart sent success"
+
+    sleep 0.5 # give some time to restart
+    read_response connect
+
+    out = cli_pumactl_spawn "-S #{@state_path} status", no_bind: true
+    assert_includes out.read, "Puma is started"
+  end
 end
