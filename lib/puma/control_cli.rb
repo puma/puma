@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require_relative 'state_file'
+require_relative 'state_file'     # created in prepare_configuration
 require_relative 'const'
 require_relative 'detect'
-require_relative 'configuration'
+require_relative 'configuration'  # created in initialize
+require_relative 'log_writer'     # created in start
 require 'uri'
 require 'socket'
 
