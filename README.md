@@ -226,9 +226,8 @@ Bundler.require(:default, ENV["RACK_ENV"].to_sym)
 
 Alternatively, you can require the gem in your configuration file, either `config/puma/development.rb`, `config/puma.rb`, or set via the `-C` cli option:
 ```ruby
-require './app'
 require 'localhost'
-run Sinatra::Application
+# configuration methods (from Puma::DSL) as needed
 ```
 
 Additionally, Puma must be listening to an SSL socket:
