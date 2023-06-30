@@ -211,29 +211,32 @@ Puma supports the [`localhost`] gem for self-signed certificates. This is partic
 
 Puma automatically configures SSL when the [`localhost`] gem is loaded in a `development` environment:
 
+Add the gem to your Gemfile:
 ```ruby
-# Add the gem to your Gemfile
 group(:development) do
   gem 'localhost'
 end
+```
 
-# And require it implicitly using bundler
+And require it implicitly using bundler:
+```ruby
 require "bundler"
 Bundler.require(:default, ENV["RACK_ENV"].to_sym)
+```
 
-# Alternatively, you can require the gem in config.ru:
-require './app'
+Alternatively, you can require the gem in your configuration file, either `config/puma/development.rb`, `config/puma.rb`, or set via the `-C` cli option:
+```ruby
 require 'localhost'
-run Sinatra::Application
+# configuration methods (from Puma::DSL) as needed
 ```
 
 Additionally, Puma must be listening to an SSL socket:
 
 ```shell
-$ puma -b 'ssl://localhost:9292' config.ru
+$ puma -b 'ssl://localhost:9292' -C config/use_local_host.rb
 
 # The following options allow you to reach Puma over HTTP as well:
-$ puma -b ssl://localhost:9292 -b tcp://localhost:9393 config.ru
+$ puma -b ssl://localhost:9292 -b tcp://localhost:9393 -C config/use_local_host.rb
 ```
 
 [`localhost`]: https://github.com/socketry/localhost
