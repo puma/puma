@@ -11,7 +11,6 @@ end
 require_relative 'detect'
 require_relative 'io_buffer'
 require 'tempfile'
-require 'forwardable'
 
 if Puma::IS_JRUBY
   # We have to work around some OpenSSL buffer/io-readiness bugs
@@ -61,7 +60,6 @@ module Puma
     EmptyBody = NullIO.new
 
     include Puma::Const
-    extend Forwardable
 
     def initialize(io, env=nil)
       @io = io
@@ -110,7 +108,10 @@ module Puma
 
     attr_accessor :remote_addr_header, :listener
 
-    def_delegators :@io, :closed?
+    # Remove in Puma 7?
+    def closed?
+      @to_io.closed?
+    end
 
     # Test to see if io meets a bare minimum of functioning, @to_io needs to be
     # used for MiniSSL::Socket
