@@ -36,6 +36,12 @@ void raise_file_error(const char* caller, const char *filename) {
   rb_raise(eError, "%s: error in file '%s': %s", caller, filename, ERR_error_string(ERR_get_error(), NULL));
 }
 
+NORETURN(void raise_param_error(const char* caller, const char *param));
+
+void raise_param_error(const char* caller, const char *param) {
+  rb_raise(eError, "%s: error with parameter '%s': %s", caller, param, ERR_error_string(ERR_get_error(), NULL));
+}
+
 void engine_free(void *ptr) {
   ms_conn *conn = ptr;
   ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
@@ -185,6 +191,18 @@ static int engine_verify_callback(int preverify_ok, X509_STORE_CTX* ctx) {
   return preverify_ok;
 }
 
+static int password_callback(char *buf, int size, int rwflag, void *userdata) {
+    const char *password = (const char *) userdata;
+    size_t len = strlen(password);
+
+    if (len > (size_t) size) {
+      return 0;
+    }
+
+    memcpy(buf, password, len);
+    return (int) len;
+}
+
 static VALUE
 sslctx_alloc(VALUE klass) {
   SSL_CTX *ctx;
@@ -212,10 +230,12 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   SSL_CTX* ctx;
   int ssl_options;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, no_tlsv1, no_tlsv1_1,
-    verification_flags, session_id_bytes, cert_pem, key_pem;
+    verification_flags, session_id_bytes, cert_pem, key_pem, key_password_command, key_password;
   BIO *bio;
-  X509 *x509;
+  X509 *x509 = NULL;
   EVP_PKEY *pkey;
+  pem_password_cb *password_cb = NULL;
+  const char *password = NULL;
 #ifdef HAVE_SSL_CTX_SET_MIN_PROTO_VERSION
   int min;
 #endif
@@ -234,6 +254,8 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 #endif
 
   key = rb_funcall(mini_ssl_ctx, rb_intern_const("key"), 0);
+
+  key_password_command = rb_funcall(mini_ssl_ctx, rb_intern_const("key_password_command"), 0);
 
   cert = rb_funcall(mini_ssl_ctx, rb_intern_const("cert"), 0);
 
@@ -261,6 +283,18 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     }
   }
 
+  if (!NIL_P(key_password_command)) {
+      key_password = rb_funcall(mini_ssl_ctx, rb_intern_const("key_password"), 0);
+
+      if (!NIL_P(key_password)) {
+          StringValue(key_password);
+          password_cb = password_callback;
+          password = RSTRING_PTR(key_password);
+          SSL_CTX_set_default_passwd_cb(ctx, password_cb);
+          SSL_CTX_set_default_passwd_cb_userdata(ctx, (void *) password);
+      }
+  }
+
   if (!NIL_P(key)) {
     StringValue(key);
 
@@ -270,22 +304,71 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   }
 
   if (!NIL_P(cert_pem)) {
+    X509 *ca = NULL;
+    unsigned long err;
+
     bio = BIO_new(BIO_s_mem());
     BIO_puts(bio, RSTRING_PTR(cert_pem));
-    x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 
-    if (SSL_CTX_use_certificate(ctx, x509) != 1) {
-      BIO_free(bio);
-      raise_file_error("SSL_CTX_use_certificate", RSTRING_PTR(cert_pem));
+    /**
+     * Much of this pulled as a simplified version of the `use_certificate_chain_file` method
+     * from openssl's `ssl_rsa.c` file.
+     */
+
+    /* first read the cert as the first item in the pem file */
+    x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+    if (NULL == x509) {
+      BIO_free_all(bio);
+      raise_param_error("PEM_read_bio_X509", "cert_pem");
     }
-    X509_free(x509);
-    BIO_free(bio);
+
+    /* Add the cert to the context */
+    /* 1 is success - otherwise check the error codes */
+    if (1 != SSL_CTX_use_certificate(ctx, x509)) {
+      BIO_free_all(bio);
+      raise_param_error("SSL_CTX_use_certificate", "cert_pem");
+    }
+
+    X509_free(x509); /* no longer need our reference */
+
+    /* Now lets load up the rest of the certificate chain */
+    /* 1 is success 0 is error */
+    if (0 == SSL_CTX_clear_chain_certs(ctx)) {
+      BIO_free_all(bio);
+      raise_param_error("SSL_CTX_clear_chain_certs","cert_pem");
+    }
+
+    while (1) {
+      ca = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+
+      if (NULL == ca) {
+        break;
+      }
+
+      if (0 == SSL_CTX_add0_chain_cert(ctx, ca)) {
+        BIO_free_all(bio);
+        raise_param_error("SSL_CTX_add0_chain_cert","cert_pem");
+      }
+      /* don't free ca - its now owned by the context */
+    }
+
+    /* ca is NULL - so its either the end of the file or an error */
+    err = ERR_peek_last_error();
+
+    /* If its the end of the file - then we are done, in any case free the bio */
+    BIO_free_all(bio);
+
+    if ((ERR_GET_LIB(err) == ERR_LIB_PEM) && (ERR_GET_REASON(err) == PEM_R_NO_START_LINE)) {
+      ERR_clear_error();
+    } else {
+      raise_param_error("PEM_read_bio_X509","cert_pem");
+    }
   }
 
   if (!NIL_P(key_pem)) {
     bio = BIO_new(BIO_s_mem());
     BIO_puts(bio, RSTRING_PTR(key_pem));
-    pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+    pkey = PEM_read_bio_PrivateKey(bio, NULL, password_cb, (void *) password);
 
     if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
       BIO_free(bio);

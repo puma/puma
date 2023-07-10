@@ -9,6 +9,7 @@ class IO
 end
 
 require_relative 'detect'
+require_relative 'io_buffer'
 require 'tempfile'
 require 'forwardable'
 
@@ -25,6 +26,9 @@ module Puma
 
   class HttpParserError501 < IOError; end
 
+  #———————————————————————— DO NOT USE — this class is for internal use only ———
+
+
   # An instance of this class represents a unique request from a client.
   # For example, this could be a web request from a browser or from CURL.
   #
@@ -38,7 +42,7 @@ module Puma
   # the header and body are fully buffered via the `try_to_finish` method.
   # They can be used to "time out" a response via the `timeout_at` reader.
   #
-  class Client
+  class Client # :nodoc:
 
     # this tests all values but the last, which must be chunked
     ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze
@@ -62,8 +66,9 @@ module Puma
     def initialize(io, env=nil)
       @io = io
       @to_io = io.to_io
+      @io_buffer = IOBuffer.new
       @proto_env = env
-      @env = env ? env.dup : nil
+      @env = env&.dup
 
       @parser = HttpParser.new
       @parsed_bytes = 0
@@ -81,6 +86,9 @@ module Puma
       @requests_served = 0
       @hijacked = false
 
+      @http_content_length_limit = nil
+      @http_content_length_limit_exceeded = false
+
       @peerip = nil
       @peer_family = nil
       @listener = nil
@@ -90,12 +98,15 @@ module Puma
       @body_remain = 0
 
       @in_last_chunk = false
+
+      # need unfrozen ASCII-8BIT, +'' is UTF-8
+      @read_buffer = String.new # rubocop: disable Performance/UnfreezeString
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded
 
-    attr_writer :peerip
+    attr_writer :peerip, :http_content_length_limit
 
     attr_accessor :remote_addr_header, :listener
 
@@ -135,6 +146,7 @@ module Puma
 
     def reset(fast_check=true)
       @parser.reset
+      @io_buffer.reset
       @read_header = true
       @read_proxy = !!@expect_proxy_proto
       @env = @proto_env.dup
@@ -145,6 +157,7 @@ module Puma
       @body_remain = 0
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
+      @http_content_length_limit_exceeded = false
 
       if @buffer
         return false unless try_to_parse_proxy_protocol
@@ -204,6 +217,17 @@ module Puma
     end
 
     def try_to_finish
+      if env[CONTENT_LENGTH] && above_http_content_limit(env[CONTENT_LENGTH].to_i)
+        @http_content_length_limit_exceeded = true
+      end
+
+      if @http_content_length_limit_exceeded
+        @buffer = nil
+        @body = EmptyBody
+        set_ready
+        return true
+      end
+
       return read_body if in_data_phase
 
       begin
@@ -232,6 +256,10 @@ module Puma
       return false unless try_to_parse_proxy_protocol
 
       @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
+
+      if @parser.finished? && above_http_content_limit(@parser.body.bytesize)
+        @http_content_length_limit_exceeded = true
+      end
 
       if @parser.finished?
         return setup_body
@@ -408,7 +436,7 @@ module Puma
       end
 
       begin
-        chunk = @io.read_nonblock(want)
+        chunk = @io.read_nonblock(want, @read_buffer)
       rescue IO::WaitReadable
         return false
       rescue SystemCallError, IOError
@@ -440,7 +468,7 @@ module Puma
     def read_chunked_body
       while true
         begin
-          chunk = @io.read_nonblock(4096)
+          chunk = @io.read_nonblock(4096, @read_buffer)
         rescue IO::WaitReadable
           return false
         rescue SystemCallError, IOError
@@ -587,6 +615,10 @@ module Puma
       end
       @requests_served += 1
       @ready = true
+    end
+
+    def above_http_content_limit(value)
+      @http_content_length_limit&.< value
     end
   end
 end

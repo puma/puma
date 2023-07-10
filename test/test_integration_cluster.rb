@@ -130,6 +130,16 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
+  def test_on_booted
+    cli_server "-w #{workers} -C test/config/event_on_booted.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru", no_wait: true
+
+    output = []
+
+    output << $_ while @server.gets
+
+    assert output.any? { |msg| msg == "on_booted called\n" } != nil
+  end
+
   def test_term_worker_clean_exit
     cli_server "-w #{workers} test/rackup/hello.ru"
 
@@ -167,16 +177,22 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_worker_check_interval
+    # iso8601 2022-12-14T00:05:49Z
+    re_8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/
     @control_tcp_port = UniquePort.call
     worker_check_interval = 1
 
     cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
 
     sleep worker_check_interval + 1
-    last_checkin_1 = Time.parse(get_stats["worker_status"].first["last_checkin"])
+    checkin_1 = get_stats["worker_status"].first["last_checkin"]
+    assert_match re_8601, checkin_1
+    last_checkin_1 = Time.parse checkin_1
 
     sleep worker_check_interval + 1
-    last_checkin_2 = Time.parse(get_stats["worker_status"].first["last_checkin"])
+    checkin_2 = get_stats["worker_status"].first["last_checkin"]
+    assert_match re_8601, checkin_2
+    last_checkin_2 = Time.parse checkin_2
 
     assert(last_checkin_2 > last_checkin_1)
   end
@@ -189,15 +205,15 @@ class TestIntegrationCluster < TestIntegration
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
-    worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<RUBY)
-worker_timeout #{timeout}
-on_worker_boot do
-  Thread.new do
-    sleep 1
-    Thread.list.find {|t| t.name == 'puma stat pld'}.kill
-  end
-end
-RUBY
+    worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<~RUBY)
+      worker_timeout #{timeout}
+      on_worker_boot do
+        Thread.new do
+          sleep 1
+          Thread.list.find {|t| t.name == 'puma stat pld'}.kill
+        end
+      end
+    RUBY
   end
 
   def test_worker_index_is_with_in_options_limit
@@ -215,24 +231,25 @@ RUBY
 
     stop_server(Integer(File.read("t3-pid")))
 
+    assert(worker_pid_was_present)
+    assert(worker_index_within_number_of_workers)
+  ensure
     File.unlink "t3-pid" if File.file? "t3-pid"
     File.unlink "t3-worker-0-pid" if File.file? "t3-worker-0-pid"
     File.unlink "t3-worker-1-pid" if File.file? "t3-worker-1-pid"
     File.unlink "t3-worker-2-pid" if File.file? "t3-worker-2-pid"
     File.unlink "t3-worker-3-pid" if File.file? "t3-worker-3-pid"
-
-    assert(worker_pid_was_present)
-    assert(worker_index_within_number_of_workers)
   end
 
   # use three workers to keep accepting clients
   def test_fork_worker_on_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
-    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<RUBY
-fork_worker 20
-on_refork { File.write '#{refork.path}', 'Reforked' }
-RUBY
+    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~RUBY
+      fork_worker 20
+      on_refork { File.write '#{refork.path}', 'Reforked' }
+    RUBY
+
     pids = get_worker_pids 0, wrkrs
 
     socks = []
@@ -252,16 +269,16 @@ RUBY
   end
 
   def test_fork_worker_spawn
-    cli_server '', config: <<RUBY
-workers 1
-fork_worker 0
-app do |_|
-  pid = spawn('ls', [:out, :err]=>'/dev/null')
-  sleep 0.01
-  exitstatus = Process.detach(pid).value.exitstatus
-  [200, {}, [exitstatus.to_s]]
-end
-RUBY
+    cli_server '', config: <<~RUBY
+      workers 1
+      fork_worker 0
+      app do |_|
+        pid = spawn('ls', [:out, :err]=>'/dev/null')
+        sleep 0.01
+        exitstatus = Process.detach(pid).value.exitstatus
+        [200, {}, [exitstatus.to_s]]
+      end
+    RUBY
     assert_equal '0', read_body(connect)
   end
 
@@ -403,10 +420,10 @@ RUBY
   end
 
   def test_culling_strategy_oldest_fork_worker
-    cli_server "-w 2 test/rackup/hello.ru", config: <<RUBY
-worker_culling_strategy :oldest
-fork_worker
-RUBY
+    cli_server "-w 2 test/rackup/hello.ru", config: <<~RUBY
+      worker_culling_strategy :oldest
+      fork_worker
+    RUBY
 
     get_worker_pids # to consume server logs
 
@@ -440,6 +457,14 @@ RUBY
   ensure
     File.unlink file0 if File.file? file0
     File.unlink file1 if File.file? file1
+  end
+
+  def test_puma_debug_loaded_exts
+    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true
+
+    assert wait_for_server_to_include('Loaded Extensions - worker 0:')
+    assert wait_for_server_to_include('Loaded Extensions - master:')
+    @pid = @server.pid
   end
 
   private

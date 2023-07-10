@@ -28,11 +28,12 @@ module Puma
     attr_reader :stdout,
                 :stderr
 
-    attr_accessor :formatter
+    attr_accessor :formatter, :custom_logger
 
     # Create a LogWriter that prints to +stdout+ and +stderr+.
     def initialize(stdout, stderr)
       @formatter = DefaultFormatter.new
+      @custom_logger = nil
       @stdout = stdout
       @stderr = stderr
 
@@ -59,7 +60,11 @@ module Puma
 
     # Write +str+ to +@stdout+
     def log(str)
-      internal_write "#{@formatter.call str}\n"
+      if @custom_logger&.respond_to?(:write)
+        @custom_logger.write(format(str))
+      else
+        internal_write "#{@formatter.call str}\n"
+      end
     end
 
     def write(str)
@@ -73,12 +78,17 @@ module Puma
           @stdout.is_a?(IO) and @stdout.wait_writable(1)
           @stdout.write w_str
           @stdout.flush unless @stdout.sync
-        rescue Errno::EPIPE, Errno::EBADF, IOError
+        rescue Errno::EPIPE, Errno::EBADF, IOError, Errno::EINVAL
+        # 'Invalid argument' (Errno::EINVAL) may be raised by flush
         end
       end
     rescue ThreadError
     end
     private :internal_write
+
+    def debug?
+      @debug
+    end
 
     def debug(str)
       log("% #{str}") if @debug
@@ -115,7 +125,7 @@ module Puma
     def ssl_error(error, ssl_socket)
       peeraddr = ssl_socket.peeraddr.last rescue "<unknown>"
       peercert = ssl_socket.peercert
-      subject = peercert ? peercert.subject : nil
+      subject = peercert&.subject
       @error_logger.info(error: error, text: "SSL error, peer: #{peeraddr}, peer cert: #{subject}")
     end
 

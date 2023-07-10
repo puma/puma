@@ -2,13 +2,16 @@
 
 module Puma
   class Cluster < Puma::Runner
+    #—————————————————————— DO NOT USE — this class is for internal use only ———
+
+
     # This class is instantiated by the `Puma::Cluster` and represents a single
     # worker process.
     #
     # At the core of this class is running an instance of `Puma::Server` which
     # gets created via the `start_server` method from the `Puma::Runner` class
     # that this inherits from.
-    class Worker < Puma::Runner
+    class Worker < Puma::Runner # :nodoc:
       attr_reader :index, :master
 
       def initialize(index:, master:, launcher:, pipes:, server: nil)
@@ -112,6 +115,11 @@ module Puma
 
         while restart_server.pop
           server_thread = server.run
+
+          if @log_writer.debug? && index == 0
+            debug_loaded_extensions "Loaded Extensions - worker 0:"
+          end
+
           stat_thread ||= Thread.new(@worker_write) do |io|
             Puma.set_thread_name "stat pld"
             base_payload = "p#{Process.pid}"

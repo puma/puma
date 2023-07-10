@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'queue_close' unless ::Queue.instance_methods.include? :close
-
 module Puma
   class UnsupportedBackend < StandardError; end
 
@@ -22,10 +20,12 @@ module Puma
     # its timeout elapses, or when the Reactor shuts down.
     def initialize(backend, &block)
       require 'nio'
-      unless backend == :auto || NIO::Selector.backends.include?(backend)
-        raise "unsupported IO selector backend: #{backend} (available backends: #{NIO::Selector.backends.join(', ')})"
+      valid_backends = [:auto, *::NIO::Selector.backends]
+      unless valid_backends.include?(backend)
+        raise ArgumentError.new("unsupported IO selector backend: #{backend} (available backends: #{valid_backends.join(', ')})")
       end
-      @selector = backend == :auto ? NIO::Selector.new : NIO::Selector.new(backend)
+
+      @selector = ::NIO::Selector.new(NIO::Selector.backends.delete(backend))
       @input = Queue.new
       @timeouts = []
       @block = block
@@ -50,7 +50,7 @@ module Puma
       @input << client
       @selector.wakeup
       true
-    rescue ClosedQueueError
+    rescue ClosedQueueError, IOError # Ignore if selector is already closed
       false
     end
 
@@ -67,6 +67,7 @@ module Puma
     private
 
     def select_loop
+      close_selector = true
       begin
         until @input.closed? && @input.empty?
           # Wakeup any registered object that receives incoming data.
@@ -89,11 +90,19 @@ module Puma
       rescue StandardError => e
         STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
-        retry
+
+        # NoMethodError may be rarely raised when calling @selector.select, which
+        # is odd.  Regardless, it may continue for thousands of calls if retried.
+        # Also, when it raises, @selector.close also raises an error.
+        if NoMethodError === e
+          close_selector = false
+        else
+          retry
+        end
       end
       # Wakeup all remaining objects on shutdown.
       @timeouts.each(&@block)
-      @selector.close
+      @selector.close if close_selector
     end
 
     # Start monitoring the object.

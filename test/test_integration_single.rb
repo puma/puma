@@ -49,6 +49,16 @@ class TestIntegrationSingle < TestIntegration
     assert_equal 15, status
   end
 
+  def test_on_booted
+    cli_server "-C test/config/event_on_booted.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru", no_wait: true
+
+    output = []
+
+    output << $_ while @server.gets
+
+    assert output.any? { |msg| msg == "on_booted called\n" } != nil
+  end
+
   def test_term_suppress
     skip_unless_signal_exist? :TERM
 
@@ -112,7 +122,7 @@ class TestIntegrationSingle < TestIntegration
     rejected_curl_wait_thread.join
 
     assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused/, rejected_curl_stderr.read)
+    assert_match(/Connection refused|Couldn't connect to server/, rejected_curl_stderr.read)
 
     Process.wait(@server.pid)
     @server.close unless @server.closed?
@@ -163,20 +173,18 @@ class TestIntegrationSingle < TestIntegration
 
     log = File.read('t1-stdout')
 
-    File.unlink 't1-stdout' if File.file? 't1-stdout'
-    File.unlink 't1-pid' if File.file? 't1-pid'
-
     assert_match(%r!GET / HTTP/1\.1!, log)
+  ensure
+    File.unlink 't1-stdout' if File.file? 't1-stdout'
+    File.unlink 't1-pid'    if File.file? 't1-pid'
   end
 
   def test_puma_started_log_writing
     skip_unless_signal_exist? :TERM
 
-    suppress_output = '> /dev/null 2>&1'
-
     cli_server '-C test/config/t2_conf.rb test/rackup/hello.ru'
 
-    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
 
     out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
 
@@ -184,16 +192,15 @@ class TestIntegrationSingle < TestIntegration
 
     log = File.read('t2-stdout')
 
-    File.unlink 't2-stdout' if File.file? 't2-stdout'
-
     assert_match(%r!GET / HTTP/1\.1!, log)
     assert(!File.file?("t2-pid"))
     assert_equal("Puma is started\n", out)
+  ensure
+    File.unlink 't2-stdout' if File.file? 't2-stdout'
   end
 
   def test_application_logs_are_flushed_on_write
-    @control_tcp_port = UniquePort.call
-    cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/write_to_stdout.ru"
+    cli_server "#{set_pumactl_args} test/rackup/write_to_stdout.ru"
 
     read_body connect
 
@@ -238,5 +245,13 @@ class TestIntegrationSingle < TestIntegration
       assert false, "Process froze"
     end
     assert true
+  end
+
+  def test_puma_debug_loaded_exts
+    cli_server "#{set_pumactl_args} test/rackup/hello.ru", puma_debug: true
+
+    assert wait_for_server_to_include('Loaded Extensions:')
+
+    cli_pumactl 'stop'
   end
 end

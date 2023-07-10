@@ -44,8 +44,11 @@ module Puma
       @name = name
       @min = Integer(options[:min_threads])
       @max = Integer(options[:max_threads])
+      # Not an 'exposed' option, options[:pool_shutdown_grace_time] is used in CI
+      # to shorten @shutdown_grace_time from SHUTDOWN_GRACE_TIME. Parallel CI
+      # makes stubbing constants difficult.
+      @shutdown_grace_time = Float(options[:pool_shutdown_grace_time] || SHUTDOWN_GRACE_TIME)
       @block = block
-      @extra = [::Puma::IOBuffer]
       @out_of_band = options[:out_of_band]
       @clean_thread_locals = options[:clean_thread_locals]
       @before_thread_exit = options[:before_thread_exit]
@@ -113,8 +116,6 @@ module Puma
         not_empty = @not_empty
         not_full = @not_full
 
-        extra = @extra.map { |i| i.new }
-
         while true
           work = nil
 
@@ -149,7 +150,7 @@ module Puma
           end
 
           begin
-            @out_of_band_pending = true if block.call(work, *extra)
+            @out_of_band_pending = true if block.call(work)
           rescue Exception => e
             STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
           end
@@ -364,8 +365,8 @@ module Puma
 
     # Tell all threads in the pool to exit and wait for them to finish.
     # Wait +timeout+ seconds then raise +ForceShutdown+ in remaining threads.
-    # Next, wait an extra +grace+ seconds then force-kill remaining threads.
-    # Finally, wait +kill_grace+ seconds for remaining threads to exit.
+    # Next, wait an extra +@shutdown_grace_time+ seconds then force-kill remaining
+    # threads. Finally, wait 1 second for remaining threads to exit.
     #
     def shutdown(timeout=-1)
       threads = with_mutex do
@@ -402,7 +403,7 @@ module Puma
             t.raise ForceShutdown if t[:with_force_shutdown]
           end
         end
-        join.call(SHUTDOWN_GRACE_TIME)
+        join.call(@shutdown_grace_time)
 
         # If threads are _still_ running, forcefully kill them and wait to finish.
         threads.each(&:kill)

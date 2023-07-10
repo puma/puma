@@ -545,3 +545,70 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
     server&.stop true
   end
 end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
+
+#
+# Test certificate chain support, The certs and the whole certificate chain for
+# this tests are located in ../examples/puma/chain_cert and were generated with
+# the following commands:
+#
+#   bundle exec ruby ../examples/puma/chain_cert/generate_chain_test.rb
+#
+class TestPumaSSLCertChain < Minitest::Test
+  CHAIN_DIR = File.expand_path '../examples/puma/chain_cert', __dir__
+
+  # OpenSSL::X509::Name#to_utf8 only available in Ruby 2.5 and later
+  USE_TO_UTFT8 = OpenSSL::X509::Name.instance_methods(false).include? :to_utf8
+
+  def cert_chain(&blk)
+    @host = "127.0.0.1"
+
+    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
+
+    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
+
+    mini_ctx = Puma::MiniSSL::Context.new
+    mini_ctx.key  = "#{CHAIN_DIR}/cert.key"
+    yield mini_ctx
+
+    @port = (@server.add_ssl_listener @host, 0, mini_ctx).addr[1]
+    @server.run
+
+    tcp_skt = TCPSocket.new @host, @port
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    ssl_skt = OpenSSL::SSL::SSLSocket.new tcp_skt, ctx
+    ssl_skt.sync_close = true
+    ssl_skt.connect
+    subj_chain = ssl_skt.peer_cert_chain.map(&:subject)
+    subj_map = USE_TO_UTFT8 ?
+      subj_chain.map { |subj| subj.to_utf8[/CN=(.+ - )?([^,]+)/,2] } :
+      subj_chain.map { |subj| subj.to_s(OpenSSL::X509::Name::RFC2253)[/CN=(.+ - )?([^,]+)/,2] }
+    ssl_skt.sysclose
+    @server&.stop true
+
+    assert_equal ['test.puma.localhost', 'intermediate.puma.localhost', 'ca.puma.localhost'], subj_map
+  end
+
+  def test_single_cert_file_with_ca
+    cert_chain { |mini_ctx|
+      mini_ctx.cert = "#{CHAIN_DIR}/cert.crt"
+      mini_ctx.ca   = "#{CHAIN_DIR}/ca_chain.pem"
+    }
+  end
+
+  def test_chain_cert_file_without_ca
+    cert_chain { |mini_ctx| mini_ctx.cert = "#{CHAIN_DIR}/cert_chain.pem" }
+  end
+
+  def test_single_cert_string_with_ca
+    cert_chain { |mini_ctx|
+      mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert.crt"
+      mini_ctx.ca   = "#{CHAIN_DIR}/ca_chain.pem"
+    }
+  end
+
+  def test_chain_cert_string_without_ca
+    cert_chain { |mini_ctx| mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert_chain.pem" }
+  end
+end if ::Puma::HAS_SSL && !::Puma::IS_JRUBY

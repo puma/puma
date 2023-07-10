@@ -16,7 +16,7 @@ module Puma
     # @!attribute [r] stats
     def stats
       {
-        started_at: @started_at.utc.iso8601
+        started_at: utc_iso8601(@started_at)
       }.merge(@server.stats).merge(super)
     end
 
@@ -56,6 +56,8 @@ module Puma
       redirect_io
 
       @events.fire_on_booted!
+
+      debug_loaded_extensions("Loaded Extensions:") if @log_writer.debug?
 
       begin
         server_thread.join

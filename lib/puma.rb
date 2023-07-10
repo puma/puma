@@ -3,8 +3,6 @@
 # Standard libraries
 require 'socket'
 require 'tempfile'
-require 'time'
-require 'etc'
 require 'uri'
 require 'stringio'
 
@@ -28,7 +26,7 @@ module Puma
   # not in minissl.rb
   HAS_SSL = const_defined?(:MiniSSL, false) && MiniSSL.const_defined?(:Engine, false)
 
-  HAS_UNIX_SOCKET = Object.const_defined? :UNIXSocket
+  HAS_UNIX_SOCKET = Object.const_defined?(:UNIXSocket) && !IS_WINDOWS
 
   if HAS_SSL
     require_relative 'puma/minissl'

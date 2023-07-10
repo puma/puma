@@ -1,0 +1,74 @@
+name: turbo-rails
+
+# Note: turbo-rails often returns an ActionDispatch::Response::RackBody for the
+# body.  Also, Rack::BodyProxy or Sprockets::Asset
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+  skip_duplicate_runs:
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+
+  turbo-rails:
+    name: >-
+      ${{ matrix.os }} Ruby ${{ matrix.ruby }} Rails ${{ matrix.rails }}
+    needs: skip_duplicate_runs
+    runs-on: ${{ matrix.os }}
+    if: |
+      !(   contains(github.event.pull_request.title,  '[ci skip]')
+        || contains(github.event.pull_request.title,  '[skip ci]')
+        || (needs.skip_duplicate_runs.outputs.should_skip == 'true'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-20.04 , ruby: '2.7', rails: '6.1' }
+          - { os: ubuntu-20.04 , ruby: '3.1', rails: '7.0' }
+          - { os: ubuntu-20.04 , ruby: '3.2', rails: '7.0' }
+          - { os: ubuntu-22.04 , ruby: head , rails: '7.0' }
+    env:
+      CI: true
+      RAILS_VERSION: "${{ matrix.rails }}"
+
+    steps:
+      - name: checkout hotwired/turbo-rails
+        uses: actions/checkout@v3
+        with:
+          repository: hotwired/turbo-rails
+          ref: main
+
+      - name: turbo-rails updates
+        run: |
+          # use repo & commit being tested, $GITHUB_REPOSITORY allows forks to work
+          SRC="gem ['\"]puma['\"].*"
+          DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
+          sed -i "s#$SRC#$DST#" Gemfile
+          #
+          # allow using capybara from the repo, either a branch or a commit
+          # comment out if CI works with current release
+          # SRC="gem ['\"]capybara['\"].*"
+          # DST="kw =\n    if RUBY_VERSION.start_with? '3'\n      {git: 'https://github.com/teamcapybara/capybara.git', ref: '43e32a8495'}\n    else\n      {}\n    end\n  gem 'capybara', **kw"
+          # sed -i "s#$SRC#$DST#" Gemfile
+          #
+          # use `stdio` for log_writer, always have one thread existing
+          SRC="Silent: true"
+          DST="Silent: false, Threads: '1:4'"
+          sed -i "s/$SRC/$DST/" test/application_system_test_case.rb
+
+      - name: load ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler: latest
+          bundler-cache: true
+        timeout-minutes: 10
+
+      - name: turbo-rails Gemfile.lock
+        run: cat Gemfile.lock
+
+      - name: turbo-rails test
+        id: test
+        run: bin/test test/**/*_test.rb -vd

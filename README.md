@@ -157,6 +157,15 @@ before_fork do
 end
 ```
 
+You can also specify a block to be run after puma is booted using `on_booted`:
+
+```ruby
+# config/puma.rb
+on_booted do
+  # configuration here
+end
+```
+
 ### Error handling
 
 If puma encounters an error outside of the context of your application, it will respond with a 500 and a simple
@@ -202,29 +211,32 @@ Puma supports the [`localhost`] gem for self-signed certificates. This is partic
 
 Puma automatically configures SSL when the [`localhost`] gem is loaded in a `development` environment:
 
+Add the gem to your Gemfile:
 ```ruby
-# Add the gem to your Gemfile
 group(:development) do
   gem 'localhost'
 end
+```
 
-# And require it implicitly using bundler
+And require it implicitly using bundler:
+```ruby
 require "bundler"
 Bundler.require(:default, ENV["RACK_ENV"].to_sym)
+```
 
-# Alternatively, you can require the gem in config.ru:
-require './app'
+Alternatively, you can require the gem in your configuration file, either `config/puma/development.rb`, `config/puma.rb`, or set via the `-C` cli option:
+```ruby
 require 'localhost'
-run Sinatra::Application
+# configuration methods (from Puma::DSL) as needed
 ```
 
 Additionally, Puma must be listening to an SSL socket:
 
 ```shell
-$ puma -b 'ssl://localhost:9292' config.ru
+$ puma -b 'ssl://localhost:9292' -C config/use_local_host.rb
 
 # The following options allow you to reach Puma over HTTP as well:
-$ puma -b ssl://localhost:9292 -b tcp://localhost:9393 config.ru
+$ puma -b ssl://localhost:9292 -b tcp://localhost:9393 -C config/use_local_host.rb
 ```
 
 [`localhost`]: https://github.com/socketry/localhost
@@ -269,6 +281,30 @@ $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&verification_f
 
 List of available flags: `USE_CHECK_TIME`, `CRL_CHECK`, `CRL_CHECK_ALL`, `IGNORE_CRITICAL`, `X509_STRICT`, `ALLOW_PROXY_CERTS`, `POLICY_CHECK`, `EXPLICIT_POLICY`, `INHIBIT_ANY`, `INHIBIT_MAP`, `NOTIFY_POLICY`, `EXTENDED_CRL_SUPPORT`, `USE_DELTAS`, `CHECK_SS_SIGNATURE`, `TRUSTED_FIRST`, `SUITEB_128_LOS_ONLY`, `SUITEB_192_LOS`, `SUITEB_128_LOS`, `PARTIAL_CHAIN`, `NO_ALT_CHAINS`, `NO_CHECK_TIME`
 (see https://www.openssl.org/docs/manmaster/man3/X509_VERIFY_PARAM_set_hostflags.html#VERIFICATION-FLAGS).
+
+#### Controlling OpenSSL Password Decryption
+
+To enable runtime decryption of an encrypted SSL key (not available for JRuby), use `key_password_command`:
+
+```
+$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&key_password_command=/path/to/command.sh'
+```
+
+`key_password_command` must:
+
+1. Be executable by Puma.
+2. Print the decryption password to stdout.
+
+ For example:
+
+```shell
+#!/bin/sh
+
+echo "this is my password"
+```
+
+`key_password_command` can be used with `key` or `key_pem`. If the key
+is not encrypted, the executable will not be called.
 
 ### Control/Status Server
 
@@ -345,11 +381,13 @@ end
 
 ## Deployment
 
-Puma has support for Capistrano with an [external gem](https://github.com/seuros/capistrano-puma).
+ * Puma has support for Capistrano with an [external gem](https://github.com/seuros/capistrano-puma).
+
+ * Additionally, Puma has support for built-in daemonization via the [puma-daemon](https://github.com/kigster/puma-daemon) ruby gem. The gem restores the `daemonize` option that was removed from Puma starting version 5, but only for MRI Ruby.
+
 
 It is common to use process monitors with Puma. Modern process monitors like systemd or rc.d
-provide continuous monitoring and restarts for increased
-reliability in production environments:
+provide continuous monitoring and restarts for increased reliability in production environments:
 
 * [rc.d](docs/jungle/rc.d/README.md)
 * [systemd](docs/systemd.md)
@@ -364,7 +402,8 @@ Community guides:
 
 * [puma-metrics](https://github.com/harmjanblok/puma-metrics) — export Puma metrics to Prometheus
 * [puma-plugin-statsd](https://github.com/yob/puma-plugin-statsd) — send Puma metrics to statsd
-* [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog
+* [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog. Puma 5.1.0 integrated notify and watchdog, which probably conflicts with this plugin. Puma 6.1.0 added status support which obsoletes the plugin entirely.
+* [puma-plugin-telemetry](https://github.com/babbel/puma-plugin-telemetry) - telemetry plugin for Puma offering various targets to publish
 
 ### Monitoring
 

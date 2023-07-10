@@ -65,6 +65,7 @@ module Puma
 
       ca_additions = "&ca=#{Puma::Util.escape(opts[:ca])}" if ['peer', 'force_peer'].include?(verify)
 
+      low_latency_str = opts.key?(:low_latency) ? "&low_latency=#{opts[:low_latency]}" : ''
       backlog_str = opts[:backlog] ? "&backlog=#{Integer(opts[:backlog])}" : ''
 
       if defined?(JRUBY_VERSION)
@@ -88,6 +89,7 @@ module Puma
 
         cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
         key_flags = (key = opts[:key]) ? "&key=#{Puma::Util.escape(key)}" : nil
+        password_flags = (password_command = opts[:key_password_command]) ? "&key_password_command=#{Puma::Util.escape(password_command)}" : nil
 
         reuse_flag =
           if (reuse = opts[:reuse])
@@ -113,8 +115,8 @@ module Puma
             nil
           end
 
-        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{ssl_cipher_filter}" \
-          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}"
+        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{password_flags}#{ssl_cipher_filter}" \
+          "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}#{low_latency_str}"
       end
     end
 
@@ -250,6 +252,7 @@ module Puma
     #
     # * Set the socket backlog depth with +backlog+, default is 1024.
     # * Set up an SSL certificate with +key+ & +cert+.
+    # * Set up an SSL certificate for mTLS with +key+, +cert+, +ca+ and +verify_mode+.
     # * Set whether to optimize for low latency instead of throughput with
     #   +low_latency+, default is to not optimize for low latency. This is done
     #   via +Socket::TCP_NODELAY+.
@@ -259,6 +262,8 @@ module Puma
     #   bind 'unix:///var/run/puma.sock?backlog=512'
     # @example SSL cert
     #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem'
+    # @example SSL cert for mutual TLS (mTLS)
+    #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem&ca=ca.pem&verify_mode=force_peer'
     # @example Disable optimization for low latency
     #   bind 'tcp://0.0.0.0:9292?low_latency=false'
     # @example Socket permissions
@@ -415,6 +420,11 @@ module Puma
       @options[:log_requests] = which
     end
 
+    # Pass in a custom logging class instance
+    def custom_logger(custom_logger)
+      @options[:custom_logger] = custom_logger
+    end
+
     # Show debugging info
     #
     def debug
@@ -500,6 +510,12 @@ module Puma
     # `true`, which sets reuse 'on' with default values, or a hash, with `:size`
     # and/or `:timeout` keys, each with integer values.
     #
+    # The `cert:` options hash parameter can be the path to a certificate
+    # file including all intermediate certificates in PEM format.
+    #
+    # The `cert_pem:` options hash parameter can be String containing the
+    # cerificate and all intermediate certificates in PEM format.
+    #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
     #     cert: path_to_cert,
@@ -581,6 +597,11 @@ module Puma
       @options[:silence_single_worker_warning] = true
     end
 
+    # Disable warning message when running single mode with callback hook defined.
+    def silence_fork_callback_warning
+      @options[:silence_fork_callback_warning] = true
+    end
+
     # Code to run immediately before master process
     # forks workers (once on boot). These hooks can block if necessary
     # to wait for background operations unknown to Puma to finish before
@@ -596,6 +617,8 @@ module Puma
     #     puts "Starting workers..."
     #   end
     def before_fork(&block)
+      warn_if_in_single_mode('before_fork')
+
       @options[:before_fork] ||= []
       @options[:before_fork] << block
     end
@@ -611,6 +634,8 @@ module Puma
     #     puts 'Before worker boot...'
     #   end
     def on_worker_boot(key = nil, &block)
+      warn_if_in_single_mode('on_worker_boot')
+
       process_hook :before_worker_boot, key, block, 'on_worker_boot'
     end
 
@@ -627,6 +652,8 @@ module Puma
     #     puts 'On worker shutdown...'
     #   end
     def on_worker_shutdown(key = nil, &block)
+      warn_if_in_single_mode('on_worker_shutdown')
+
       process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown'
     end
 
@@ -641,6 +668,8 @@ module Puma
     #     puts 'Before worker fork...'
     #   end
     def on_worker_fork(&block)
+      warn_if_in_single_mode('on_worker_fork')
+
       process_hook :before_worker_fork, nil, block, 'on_worker_fork'
     end
 
@@ -655,10 +684,22 @@ module Puma
     #     puts 'After worker fork...'
     #   end
     def after_worker_fork(&block)
+      warn_if_in_single_mode('after_worker_fork')
+
       process_hook :after_worker_fork, nil, block, 'after_worker_fork'
     end
 
     alias_method :after_worker_boot, :after_worker_fork
+
+    # Code to run after puma is booted (works for both: single and clustered)
+    #
+    # @example
+    #   on_booted do
+    #     puts 'After booting...'
+    #   end
+    def on_booted(&block)
+      @config.options[:events].on_booted(&block)
+    end
 
     # When `fork_worker` is enabled, code to run in Worker 0
     # before all other workers are re-forked from this process,
@@ -1036,6 +1077,51 @@ module Puma
       @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
     end
 
+    # Specify how big the request payload should be, in bytes.
+    # This limit is compared against Content-Length HTTP header.
+    # If the payload size (CONTENT_LENGTH) is larger than http_content_length_limit,
+    # HTTP 413 status code is returned.
+    #
+    # When no Content-Length http header is present, it is compared against the
+    # size of the body of the request.
+     #
+    # The default value for http_content_length_limit is nil.
+    def http_content_length_limit(limit)
+      @options[:http_content_length_limit] = limit
+    end
+
+    # Supported http methods, which will replace `Puma::Const::SUPPORTED_HTTP_METHODS`.
+    # The value of `:any` will allows all methods, otherwise, the value must be
+    # an array of strings.  Note that methods are all uppercase.
+    #
+    # `Puma::Const::SUPPORTED_HTTP_METHODS` is conservative, if you want a
+    # complete set of methods, the methods defined by the
+    # [IANA Method Registry](https://www.iana.org/assignments/http-methods/http-methods.xhtml)
+    # are pre-defined as the constant `Puma::Const::IANA_HTTP_METHODS`.
+    #
+    # @note If the `methods` value is `:any`, no method check with be performed,
+    #   similar to Puma v5 and earlier.
+    #
+    # @example Adds 'PROPFIND' to existing supported methods
+    #   supported_http_methods(Puma::Const::SUPPORTED_HTTP_METHODS + ['PROPFIND'])
+    # @example Restricts methods to the array elements
+    #   supported_http_methods %w[HEAD GET POST PUT DELETE OPTIONS PROPFIND]
+    # @example Restricts methods to the methods in the IANA Registry
+    #   supported_http_methods Puma::Const::IANA_HTTP_METHODS
+    # @example Allows any method
+    #   supported_http_methods :any
+    #
+    def supported_http_methods(methods)
+      if methods == :any
+        @options[:supported_http_methods] = :any
+      elsif Array === methods && methods == (ary = methods.grep(String).uniq) &&
+        !ary.empty?
+        @options[:supported_http_methods] = ary
+      else
+        raise "supported_http_methods must be ':any' or a unique array of strings"
+      end
+    end
+
     private
 
     # To avoid adding cert_pem and key_pem as URI params, we store them on the
@@ -1063,7 +1149,20 @@ module Puma
       elsif key.nil?
         @options[options_key] << block
       else
-        raise "'#{method}' key must be String or Symbol"
+        raise "'#{meth}' key must be String or Symbol"
+      end
+    end
+
+    def warn_if_in_single_mode(hook_name)
+      return if @options[:silence_fork_callback_warning]
+
+      if (@options[:workers] || 0) == 0
+        log_string =
+          "Warning: You specified code to run in a `#{hook_name}` block, " \
+          "but Puma is not configured to run in cluster mode (worker count > 0 ), " \
+          "so your `#{hook_name}` block did not run"
+
+        LogWriter.stdio.log(log_string)
       end
     end
   end

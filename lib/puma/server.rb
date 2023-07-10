@@ -11,7 +11,6 @@ require_relative 'reactor'
 require_relative 'client'
 require_relative 'binder'
 require_relative 'util'
-require_relative 'io_buffer'
 require_relative 'request'
 
 require 'socket'
@@ -52,7 +51,7 @@ module Puma
     def_delegators :@binder, :add_tcp_listener, :add_ssl_listener,
       :add_unix_listener, :connected_ports
 
-    ThreadLocalKey = :puma_server
+    THREAD_LOCAL_KEY = :puma_server
 
     # Create a server for the rack app +app+.
     #
@@ -96,6 +95,19 @@ module Puma
       @queue_requests      = @options[:queue_requests]
       @max_fast_inline     = @options[:max_fast_inline]
       @io_selector_backend = @options[:io_selector_backend]
+      @http_content_length_limit = @options[:http_content_length_limit]
+
+      # make this a hash, since we prefer `key?` over `include?`
+      @supported_http_methods =
+        if @options[:supported_http_methods] == :any
+          :any
+        else
+          if (ary = @options[:supported_http_methods])
+            ary
+          else
+            SUPPORTED_HTTP_METHODS
+          end.sort.product([nil]).to_h.freeze
+        end
 
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
@@ -118,7 +130,7 @@ module Puma
     class << self
       # @!attribute [r] current
       def current
-        Thread.current[ThreadLocalKey]
+        Thread.current[THREAD_LOCAL_KEY]
       end
 
       # :nodoc:
@@ -230,7 +242,7 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(thread_name, @options) { |a, b| process_client a, b }
+      @thread_pool = ThreadPool.new(thread_name, @options) { |client| process_client client }
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
@@ -335,6 +347,7 @@ module Puma
                 drain += 1 if shutting_down?
                 pool << Client.new(io, @binder.env(sock)).tap { |c|
                   c.listener = sock
+                  c.http_content_length_limit = @http_content_length_limit
                   c.send(addr_send_name, addr_value) if addr_value
                 }
               end
@@ -401,9 +414,9 @@ module Puma
     # returning.
     #
     # Return true if one or more requests were processed.
-    def process_client(client, buffer)
+    def process_client(client)
       # Advertise this server into the thread
-      Thread.current[ThreadLocalKey] = self
+      Thread.current[THREAD_LOCAL_KEY] = self
 
       clean_thread_locals = @options[:clean_thread_locals]
       close_socket = true
@@ -427,15 +440,13 @@ module Puma
 
         while true
           @requests_count += 1
-          case handle_request(client, buffer, requests + 1)
+          case handle_request(client, requests + 1)
           when false
             break
           when :async
             close_socket = false
             break
           when true
-            buffer.reset
-
             ThreadPool.clean_thread_locals if clean_thread_locals
 
             requests += 1
@@ -469,7 +480,7 @@ module Puma
         # The ensure tries to close +client+ down
         requests > 0
       ensure
-        buffer.reset
+        client.io_buffer.reset
 
         begin
           client.close if close_socket
@@ -567,7 +578,7 @@ module Puma
 
     def notify_safely(message)
       @notify << message
-    rescue IOError, NoMethodError, Errno::EPIPE
+    rescue IOError, NoMethodError, Errno::EPIPE, Errno::EBADF
       # The server, in another thread, is shutting down
       Puma::Util.purge_interrupt_queue
     rescue RuntimeError => e

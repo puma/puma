@@ -35,7 +35,7 @@ class TestThreadPool < Minitest::Test
       work = [work] unless work.is_a?(Array)
       with_mutex do
         work.each {|arg| super arg}
-        yield if block_given?
+        yield if block
         @not_full.wait(@mutex)
       end
     end

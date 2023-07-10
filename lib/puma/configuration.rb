@@ -157,6 +157,7 @@ module Puma
       reaping_time: 1,
       remote_address: :socket,
       silence_single_worker_warning: false,
+      silence_fork_callback_warning: false,
       tag: File.basename(Dir.getwd),
       tcp_host: '0.0.0.0'.freeze,
       tcp_port: 9292,
@@ -167,6 +168,7 @@ module Puma
       worker_shutdown_timeout: 30,
       worker_timeout: 60,
       workers: 0,
+      http_content_length_limit: nil
     }
 
     def initialize(user_options={}, default_options = {}, &block)

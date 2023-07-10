@@ -22,6 +22,16 @@ module Puma
       read
     end
 
+    # Read & Reset - returns contents and resets
+    # @return [String] StringIO contents
+    def read_and_reset
+      rewind
+      str = read
+      truncate 0
+      rewind
+      str
+    end
+
     alias_method :clear, :reset
 
     # before Ruby 2.5, `write` would only take one argument

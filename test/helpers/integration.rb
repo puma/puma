@@ -3,7 +3,6 @@
 require "puma/control_cli"
 require "json"
 require "open3"
-require "io/wait"
 require_relative 'tmp_path'
 
 # Only single mode tests go here. Cluster and pumactl tests
@@ -65,26 +64,42 @@ class TestIntegration < Minitest::Test
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
 
-  def cli_server(argv, unix: false, config: nil, merge_err: false, log: false)
+  def cli_server(argv,  # rubocop:disable Metrics/ParameterLists
+      unix: false,      # uses a UNIXSocket for the server listener when true
+      config: nil,      # string to use for config file
+      no_bind: nil,     # bind is defined by args passed
+      merge_err: false, # merge STDERR into STDOUT
+      log: false,       # output server log to console (for debugging)
+      no_wait: false,   # don't wait for server to boot
+      puma_debug: nil,  # set env['PUMA_DEBUG'] = 'true'
+      env: {})          # pass env setting to Puma process in IO.popen
     if config
       config_file = Tempfile.new(%w(config .rb))
       config_file.write config
       config_file.close
       config = "-C #{config_file.path}"
     end
+
     puma_path = File.expand_path '../../../bin/puma', __FILE__
-    if unix
-      cmd = "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
-    else
-      @tcp_port = UniquePort.call
-      cmd = "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
-    end
+
+    cmd =
+      if no_bind
+        "#{BASE} #{puma_path} #{config} #{argv}"
+      elsif unix
+        "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
+      else
+        @tcp_port = UniquePort.call
+        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+      end
+
+    env['PUMA_DEBUG'] = 'true' if puma_debug
+
     if merge_err
-      @server = IO.popen(cmd, "r", :err=>[:child, :out])
+      @server = IO.popen(env, cmd, :err=>[:child, :out])
     else
-      @server = IO.popen(cmd, "r")
+      @server = IO.popen(env, cmd)
     end
-    wait_for_server_to_boot(log: log)
+    wait_for_server_to_boot(log: log) unless no_wait
     @pid = @server.pid
     @server
   end
@@ -121,7 +136,7 @@ class TestIntegration < Minitest::Test
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(log: false)
-    wait_for_server_to_include 'Ctrl-C'
+    wait_for_server_to_include 'Ctrl-C', log: log
   end
 
   # Returns true if and when server log includes str.
@@ -291,18 +306,51 @@ class TestIntegration < Minitest::Test
     end
   end
 
-  def cli_pumactl(argv, unix: false)
+
+  def set_pumactl_args(unix: false)
+    if unix
+      @control_path = tmp_path('.cntl_sock')
+      "--control-url unix://#{@control_path} --control-token #{TOKEN}"
+    else
+      @control_tcp_port = UniquePort.call
+      "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    end
+  end
+
+  def cli_pumactl(argv, unix: false, no_bind: nil)
     arg =
-      if unix
+      if no_bind
+        argv.split(/ +/)
+      elsif unix
         %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
       else
         %W[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
       end
+
     r, w = IO.pipe
     Thread.new { Puma::ControlCLI.new(arg, w, w).run }.join
     w.close
     @ios_to_close << r
     r
+  end
+
+  def cli_pumactl_spawn(argv, unix: false, no_bind: nil)
+    arg =
+      if no_bind
+        argv
+      elsif unix
+        %Q[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
+      else
+        %Q[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+      end
+
+    pumactl_path = File.expand_path '../../../bin/pumactl', __FILE__
+
+    cmd = "#{BASE} #{pumactl_path} #{arg}"
+
+    io = IO.popen(cmd, :err=>[:child, :out])
+    @ios_to_close << io
+    io
   end
 
   def get_stats

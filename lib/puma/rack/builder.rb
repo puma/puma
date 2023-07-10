@@ -173,7 +173,7 @@ module Puma::Rack
         TOPLEVEL_BINDING, file, 0
     end
 
-    def initialize(default_app = nil,&block)
+    def initialize(default_app = nil, &block)
       @use, @map, @run, @warmup = [], nil, default_app, nil
 
       # Conditionally load rack now, so that any rack middlewares,
@@ -183,7 +183,7 @@ module Puma::Rack
       rescue LoadError
       end
 
-      instance_eval(&block) if block_given?
+      instance_eval(&block) if block
     end
 
     def self.app(default_app = nil, &block)

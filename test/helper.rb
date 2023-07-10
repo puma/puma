@@ -11,6 +11,8 @@ if RUBY_VERSION == '2.4.1'
   end
 end
 
+require "securerandom"
+
 require_relative "minitest/verbose"
 require "minitest/autorun"
 require "minitest/pride"
@@ -67,8 +69,8 @@ def hit(uris)
 end
 
 module UniquePort
-  def self.call
-    TCPServer.open('127.0.0.1', 0) do |server|
+  def self.call(host = '127.0.0.1')
+    TCPServer.open(host, 0) do |server|
       server.connect_address.ip_port
     end
   end
@@ -106,15 +108,41 @@ module TimeoutEveryTestCase
 end
 
 Minitest::Test.prepend TimeoutEveryTestCase
+
 if ENV['CI']
   require 'minitest/retry'
+
+  SUMMARY_FILE = ENV['GITHUB_STEP_SUMMARY']
+
   Minitest::Retry.use!
+
+  if SUMMARY_FILE && ENV['GITHUB_ACTIONS'] == 'true'
+
+    GITHUB_STEP_SUMMARY_MUTEX = Mutex.new
+
+    Minitest::Retry.on_failure do |klass, test_name, result|
+      full_method = "#{klass}##{test_name}"
+      result_str = result.to_s.gsub(/#{full_method}:?\s*/, '').dup
+      result_str.gsub!(/\A(Failure:|Error:)\s/, '\1 ')
+      issue = result_str[/\A[^\n]+/]
+      result_str.gsub!(issue, '')
+      # shorten directory lists
+      result_str.gsub! ENV['GITHUB_WORKSPACE'], 'puma'
+      result_str.gsub! ENV['RUNNER_TOOL_CACHE'], ''
+      # remove indent
+      result_str.gsub!(/^ +/, '')
+      str = "\n**#{full_method}**\n**#{issue}**\n```\n#{result_str.strip}\n```\n"
+      GITHUB_STEP_SUMMARY_MUTEX.synchronize {
+        File.write SUMMARY_FILE, str, mode: 'a+'
+      }
+    end
+  end
 end
 
 module TestSkips
 
   HAS_FORK = ::Process.respond_to? :fork
-  UNIX_SKT_EXIST = Object.const_defined? :UNIXSocket
+  UNIX_SKT_EXIST = Object.const_defined?(:UNIXSocket) && !Puma::IS_WINDOWS
 
   MSG_FORK = "Kernel.fork isn't available on #{RUBY_ENGINE} on #{RUBY_PLATFORM}"
   MSG_UNIX = "UNIXSockets aren't available on the #{RUBY_PLATFORM} platform"
@@ -143,6 +171,7 @@ module TestSkips
   def skip_if(*engs, suffix: '', bt: caller)
     engs.each do |eng|
       skip_msg = case eng
+        when :linux       then "Skipped if Linux#{suffix}"       if Puma::IS_LINUX
         when :darwin      then "Skipped if darwin#{suffix}"      if Puma::IS_OSX
         when :jruby       then "Skipped if JRuby#{suffix}"       if Puma::IS_JRUBY
         when :truffleruby then "Skipped if TruffleRuby#{suffix}" if TRUFFLE
@@ -153,7 +182,7 @@ module TestSkips
         when :fork        then "Skipped if Kernel.fork exists"   if HAS_FORK
         when :unix        then "Skipped if UNIXSocket exists"    if Puma::HAS_UNIX_SOCKET
         when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
-        when :rack3       then "Skipped if Rack 3.x"             if Rack::RELEASE >= '3'
+        when :rack3       then "Skipped if Rack 3.x"             if Rack.release >= '3'
         else false
       end
       skip skip_msg, bt if skip_msg
@@ -163,6 +192,7 @@ module TestSkips
   # called with only one param
   def skip_unless(eng, bt: caller)
     skip_msg = case eng
+      when :linux   then "Skip unless Linux"            unless Puma::IS_LINUX
       when :darwin  then "Skip unless darwin"           unless Puma::IS_OSX
       when :jruby   then "Skip unless JRuby"            unless Puma::IS_JRUBY
       when :windows then "Skip unless Windows"          unless Puma::IS_WINDOWS
@@ -171,7 +201,7 @@ module TestSkips
       when :fork    then MSG_FORK                       unless HAS_FORK
       when :unix    then MSG_UNIX                       unless Puma::HAS_UNIX_SOCKET
       when :aunix   then MSG_AUNIX                      unless Puma.abstract_unix_socket?
-      when :rack3   then "Skipped unless Rack >= 3.x"   unless ::Rack::RELEASE >= '3'
+      when :rack3   then "Skipped unless Rack >= 3.x"   unless ::Rack.release >= '3'
       else false
     end
     skip skip_msg, bt if skip_msg
@@ -182,7 +212,7 @@ Minitest::Test.include TestSkips
 
 class Minitest::Test
 
-  REPO_NAME = ENV['GITHUB_REPOSITORY'] ? ENV['GITHUB_REPOSITORY'][/[^\/]+\z/] : 'puma'
+  PROJECT_ROOT = File.dirname(__dir__)
 
   def self.run(reporter, options = {}) # :nodoc:
     prove_it!
@@ -214,13 +244,18 @@ end
 
 module AggregatedResults
   def aggregated_results(io)
+    is_github_actions = ENV['GITHUB_ACTIONS'] == 'true'
     filtered_results = results.dup
 
     if options[:verbose]
       skips = filtered_results.select(&:skipped?)
       unless skips.empty?
         dash = "\u2500"
-        io.puts '', "Skips:"
+        if is_github_actions
+          puts "", "##[group]Skips:"
+        else
+          io.puts '', 'Skips:'
+        end
         hsh = skips.group_by { |f| f.failures.first.error.message }
         hsh_s = {}
         hsh.each { |k, ary|
@@ -242,6 +277,7 @@ module AggregatedResults
             puts ''
           }
         }
+        puts '::[endgroup]' if is_github_actions
       end
     end
 
@@ -257,3 +293,16 @@ module AggregatedResults
   end
 end
 Minitest::SummaryReporter.prepend AggregatedResults
+
+module TestTempFile
+  require "tempfile"
+  def tempfile_create(basename, data, mode: File::BINARY)
+    fio = Tempfile.create(basename, mode: mode)
+    fio.write data
+    fio.flush
+    fio.rewind
+    @ios << fio
+    fio
+  end
+end
+Minitest::Test.include TestTempFile

@@ -38,6 +38,7 @@ module Puma
 
           ctx.key = params['key'] if params['key']
           ctx.key_pem = params['key_pem'] if params['key_pem']
+          ctx.key_password_command = params['key_password_command'] if params['key_password_command']
 
           if params['cert'].nil? && params['cert_pem'].nil?
             log_writer.error "Please specify the SSL cert via 'cert=' or 'cert_pem='"

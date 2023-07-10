@@ -5,8 +5,15 @@ require "net/http"
 require "nio"
 require "ipaddr"
 
+class WithoutBacktraceError < StandardError
+  def backtrace; nil; end
+  def message; "no backtrace error"; end
+end
+
 class TestPumaServer < Minitest::Test
   parallelize_me!
+
+  STATUS_CODES = ::Puma::HTTP_STATUS_CODES
 
   def setup
     @host = "127.0.0.1"
@@ -26,6 +33,7 @@ class TestPumaServer < Minitest::Test
     @ios.each do |io|
       begin
         io.close if io.respond_to?(:close) && !io.closed?
+        File.unlink io.path if io.is_a? File
       rescue Errno::EBADF
       ensure
         io = nil
@@ -39,7 +47,6 @@ class TestPumaServer < Minitest::Test
     @server = Puma::Server.new block || @app, @events, options
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
-    sleep 0.15 if Puma.jruby?
   end
 
   def header(sock)
@@ -51,6 +58,11 @@ class TestPumaServer < Minitest::Test
     end
 
     header
+  end
+
+  # only for shorter bodies!
+  def send_http_and_sysread(req)
+    send_http(req).sysread 2_048
   end
 
   def send_http_and_read(req)
@@ -74,7 +86,6 @@ class TestPumaServer < Minitest::Test
       conn << ("PROXY #{family} #{remote_ip} #{target} 10000 80\r\n" + req)
     end
   end
-
 
   def new_connection
     TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
@@ -140,28 +151,33 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "Hello World", data.split("\n").last
+    assert_equal "Hello World", data.split("\r\n\r\n", 2).last
   end
 
   def test_file_body
     random_bytes = SecureRandom.random_bytes(4096 * 32)
-    path = Tempfile.open { |f| f.path }
-    File.binwrite path, random_bytes
 
-    server_run { |env| [200, {}, File.open(path, 'rb')] }
+    tf = tempfile_create("test_file_body", random_bytes)
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    server_run { |env| [200, {}, tf] }
+
+    data = +''
+    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
+    data << skt.sysread(65_536) while skt.wait_readable(0.1)
+
     ary = data.split("\r\n\r\n", 2)
 
+    assert_equal random_bytes.bytesize, ary.last.bytesize
     assert_equal random_bytes, ary.last
   ensure
-    File.delete(path) if File.exist?(path)
+    tf.close
   end
 
   def test_file_to_path
     random_bytes = SecureRandom.random_bytes(4096 * 32)
-    path = Tempfile.open { |f| f.path }
-    File.binwrite path, random_bytes
+
+    tf = tempfile_create("test_file_to_path", random_bytes)
+    path = tf.path
 
     obj = Object.new
     obj.singleton_class.send(:define_method, :to_path) { path }
@@ -169,15 +185,16 @@ class TestPumaServer < Minitest::Test
 
     server_run { |env| [200, {}, obj] }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    data = +''
+    skt = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
+    data << skt.sysread(65_536) while skt.wait_readable(0.1)
     ary = data.split("\r\n\r\n", 2)
 
+    assert_equal random_bytes.bytesize, ary.last.bytesize
     assert_equal random_bytes, ary.last
   ensure
-    File.delete(path) if File.exist?(path)
+    tf.close
   end
-
-
 
   def test_proper_stringio_body
     data = nil
@@ -311,16 +328,15 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    expected_data = (<<EOF
-HTTP/1.1 103 Early Hints
-Link: </style.css>; rel=preload; as=style
-Link: </script.js>; rel=preload
+    expected_data = <<~EOF.gsub("\n", "\r\n") + "\r\n"
+      HTTP/1.1 103 Early Hints
+      Link: </style.css>; rel=preload; as=style
+      Link: </script.js>; rel=preload
 
-HTTP/1.0 200 OK
-X-Hello: World
-Content-Length: 12
-EOF
-).split("\n").join("\r\n") + "\r\n\r\n"
+      HTTP/1.0 200 OK
+      X-Hello: World
+      Content-Length: 12
+    EOF
 
     assert_equal true, @server.early_hints
     assert_equal expected_data, data
@@ -355,15 +371,38 @@ EOF
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
-    expected_data = (<<EOF
-HTTP/1.0 200 OK
-X-Hello: World
-Content-Length: 12
-EOF
-).split("\n").join("\r\n") + "\r\n\r\n"
+    expected_data = <<~EOF.gsub("\n", "\r\n") + "\r\n"
+      HTTP/1.0 200 OK
+      X-Hello: World
+      Content-Length: 12
+    EOF
 
     assert_nil @server.early_hints
     assert_equal expected_data, data
+  end
+
+  def test_request_payload_too_large
+    server_run(http_content_length_limit: 10)
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 19\r\n\r\n"
+    sock << "hello world foo bar"
+
+    data = sock.gets
+
+    # Content Too Large
+    assert_equal "HTTP/1.1 413 #{STATUS_CODES[413]}\r\n", data
+  end
+
+  def test_http_11_keep_alive_with_large_payload
+    server_run(http_content_length_limit: 10) { [204, {}, []] }
+
+    sock = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 17\r\n\r\n"
+    sock << "hello world foo bar"
+    h = header sock
+
+    # Content Too Large
+    assert_equal ["HTTP/1.1 413 #{STATUS_CODES[413]}", "Content-Length: 17"], h
+
   end
 
   def test_GET_with_no_body_has_sane_chunking
@@ -407,28 +446,57 @@ EOF
     assert_match(/{}\n$/, data)
   end
 
-  def test_lowlevel_error_message
-    skip_if :windows
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :force_shutdown_after => 2}
-
-    server_run do
-      if TestSkips::TRUFFLE
-        # SystemStackError is too brittle, use something more reliable
-        raise Exception, "error"
-      end
-
-      require 'json'
-
-      # will raise fatal: machine stack overflow in critical region
-      obj = {}
-      obj['cycle'] = obj
-      ::JSON.dump(obj)
+  class ArrayClose < Array
+    attr_reader :is_closed
+    def closed?
+      @is_closed
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    def close
+      @is_closed = true
+    end
+  end
 
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
-    assert (data.size > 0), "Expected response message to be not empty"
+  # returns status as an array, which throws lowlevel error
+  def test_lowlevel_error_body_close
+    app_body = ArrayClose.new(['lowlevel_error'])
+
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
+      [[0,1], {}, app_body]
+    end
+
+    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
+
+    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
+    assert_includes data, "Puma caught this error: undefined method `to_i' for"
+    assert_includes data, "Array"
+    refute_includes data, 'lowlevel_error'
+    sleep 0.1 unless ::Puma::IS_MRI
+    assert app_body.closed?
+  end
+
+  def test_lowlevel_error_message
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
+      raise NoMethodError, "Oh no an error"
+    end
+
+    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
+
+    # Internal Server Error
+    assert_includes data, "HTTP/1.0 500 #{STATUS_CODES[500]}"
+    assert_match(/Puma caught this error: Oh no an error.*\(NoMethodError\).*test\/test_puma_server.rb/m, data)
+  end
+
+  def test_lowlevel_error_message_without_backtrace
+    server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
+      raise WithoutBacktraceError.new
+    end
+
+    data = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    # Internal Server Error
+    assert_includes data, "HTTP/1.1 500 #{STATUS_CODES[500]}"
+    assert_includes data, 'Puma caught this error: no backtrace error (WithoutBacktraceError)'
+    assert_includes data, '<no backtrace available>'
   end
 
   def test_force_shutdown_error_default
@@ -529,7 +597,8 @@ EOF
 
     data = sock.gets
 
-    assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
+    # Request Timeout
+    assert_equal "HTTP/1.1 408 #{STATUS_CODES[408]}\r\n", data
   end
 
   def test_timeout_data_no_queue
@@ -590,7 +659,8 @@ EOF
 
     h = header sock
 
-    assert_equal ["HTTP/1.1 204 No Content"], h
+    # No Content
+    assert_equal ["HTTP/1.1 204 #{STATUS_CODES[204]}"], h
   end
 
   def test_http_11_close_without_body
@@ -600,7 +670,8 @@ EOF
 
     h = header sock
 
-    assert_equal ["HTTP/1.1 204 No Content", "Connection: close"], h
+    # No Content
+    assert_equal ["HTTP/1.1 204 #{STATUS_CODES[204]}", "Connection: close"], h
   end
 
   def test_http_10_keep_alive_with_body
@@ -622,23 +693,6 @@ EOF
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Type: plain/text\r\nContent-Length: 5\r\n\r\nhello", data
-  end
-
-  def test_http_10_partial_hijack_with_content_length
-    body_parts = ['abc', 'de']
-
-    server_run do
-      hijack_lambda = proc do | io |
-        io.write(body_parts[0])
-        io.write(body_parts[1])
-        io.close
-      end
-      [200, {"Content-Length" => "5", 'rack.hijack' => hijack_lambda}, nil]
-    end
-
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
-
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
   end
 
   def test_http_10_keep_alive_without_body
@@ -1425,7 +1479,220 @@ EOF
 
     # TODO: it would be great to test a connection from a non-localhost IP, but we can't really do that. For
     # now, at least test that it doesn't return garbage.
-    remote_addr = send_http_and_read("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
+    remote_addr = send_http_and_sysread("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
     assert_equal @host, remote_addr
+  end
+
+  def get_chunk_times
+    body = +''
+    times = []
+    Net::HTTP.start @host, @port do |http|
+      req = Net::HTTP::Get.new '/'
+      http.request req do |resp|
+        resp.read_body do |chunk|
+          next if chunk.empty?
+          body << chunk
+          times << Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        end
+
+      end
+    end
+    [body, times]
+  end
+
+  # see https://github.com/sinatra/sinatra/blob/master/examples/stream.ru
+  def test_streaming_enum_body_1
+    str = "Hello Puma World"
+    body_len = str.bytesize * 3
+
+    server_run do |env|
+      hdrs = {}
+      hdrs['Content-Type'] = "text; charset=utf-8"
+
+      body = Enumerator.new do |yielder|
+          yielder << str
+          sleep 0.5
+          yielder << str
+          sleep 1.5
+          yielder << str
+      end
+      [200, hdrs, body]
+    end
+
+    resp_body, times = get_chunk_times
+    assert_equal body_len, resp_body.bytesize
+    assert_equal str * 3, resp_body
+    assert times[1] - times[0] > 0.4
+    assert times[1] - times[0] < 1
+    assert times[2] - times[1] > 1
+  end
+
+  # similar to a longer running app passing its output thru an enum body
+  # example - https://github.com/dentarg/testssl.web
+  def test_streaming_enum_body_2
+    str = "Hello Puma World"
+    loops = 10
+    body_len = str.bytesize * loops
+
+    server_run do |env|
+      hdrs = {}
+      hdrs['Content-Type'] = "text; charset=utf-8"
+
+      body = Enumerator.new do |yielder|
+        loops.times do |i|
+          sleep 0.15 unless i.zero?
+          yielder << str
+        end
+      end
+      [200, hdrs, body]
+    end
+    resp_body, times = get_chunk_times
+    assert_equal body_len, resp_body.bytesize
+    assert_equal str * loops, resp_body
+    assert_operator times.last - times.first, :>, 1.0
+  end
+
+  def test_empty_body_array_content_length_0
+    server_run { |env| [404, {'Content-Length' => '0'}, []] }
+
+    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    # Not Found
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nContent-Length: 0\r\n\r\n", resp
+  end
+
+  def test_empty_body_array_no_content_length
+    server_run { |env| [404, {}, []] }
+
+    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    # Not Found
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nContent-Length: 0\r\n\r\n", resp
+  end
+
+  def test_empty_body_enum
+    server_run { |env| [404, {}, [].to_enum] }
+
+    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    # Not Found
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", resp
+  end
+
+  def test_form_data_encoding_windows_bom
+    req_body = nil
+
+    str = "──── Hello,World,From,Puma ────\r\n"
+
+    file_contents = str * 5_500 # req body is > 256 kB
+
+    file_bytesize = file_contents.bytesize + 3 # 3 = BOM byte size
+
+    fio = Tempfile.create 'win_bom_utf8_'
+
+    temp_file_path = fio.path
+    fio.close
+
+    File.open temp_file_path, "wb:UTF-8" do |f|
+      f.write "\xEF\xBB\xBF#{file_contents}"
+    end
+
+    server_run do |env|
+      req_body = env['rack.input'].read
+      [200, {}, [req_body]]
+    end
+
+    cmd = "curl -H 'transfer-encoding: chunked' --form data=@#{temp_file_path} http://127.0.0.1:#{@port}/"
+
+    out_r, _, _ = spawn_cmd cmd
+
+    out_r.wait_readable 3
+
+    form_file_data = req_body.split("\r\n\r\n", 2)[1].sub(/\r\n----\S+\r\n\z/, '')
+
+    assert_equal file_bytesize, form_file_data.bytesize
+    assert_equal out_r.read.bytesize, req_body.bytesize
+  end
+
+  def test_form_data_encoding_windows
+    req_body = nil
+
+    str = "──── Hello,World,From,Puma ────\r\n"
+
+    file_contents = str * 5_500 # req body is > 256 kB
+
+    file_bytesize = file_contents.bytesize
+
+    fio = tempfile_create 'win_utf8_', file_contents
+
+    temp_file_path = fio.path
+    fio.close
+
+    server_run do |env|
+      req_body = env['rack.input'].read
+      [200, {}, [req_body]]
+    end
+
+    cmd = "curl -H 'transfer-encoding: chunked' --form data=@#{temp_file_path} http://127.0.0.1:#{@port}/"
+
+    out_r, _, _ = spawn_cmd cmd
+
+    out_r.wait_readable 3
+
+    form_file_data = req_body.split("\r\n\r\n", 2)[1].sub(/\r\n----\S+\r\n\z/, '')
+
+    assert_equal file_bytesize, form_file_data.bytesize
+    assert_equal out_r.read.bytesize, req_body.bytesize
+  end
+
+  def test_supported_http_methods_match
+    server_run(supported_http_methods: ['PROPFIND', 'PROPPATCH']) do |env|
+      body = [env['REQUEST_METHOD']]
+      [200, {}, body]
+    end
+    resp = send_http_and_read "PROPFIND / HTTP/1.0\r\n\r\n"
+    assert_match 'PROPFIND', resp
+  end
+
+  def test_supported_http_methods_no_match
+    server_run(supported_http_methods: ['PROPFIND', 'PROPPATCH']) do |env|
+      body = [env['REQUEST_METHOD']]
+      [200, {}, body]
+    end
+    resp = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    assert_match 'Not Implemented', resp
+  end
+
+  def test_supported_http_methods_accept_all
+    server_run(supported_http_methods: :any) do |env|
+      body = [env['REQUEST_METHOD']]
+      [200, {}, body]
+    end
+    resp = send_http_and_read "YOUR_SPECIAL_METHOD / HTTP/1.0\r\n\r\n"
+    assert_match 'YOUR_SPECIAL_METHOD', resp
+  end
+
+  def test_supported_http_methods_empty
+    server_run(supported_http_methods: []) do |env|
+      body = [env['REQUEST_METHOD']]
+      [200, {}, body]
+    end
+    resp = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    assert_match(/\AHTTP\/1\.0 501 Not Implemented/, resp)
+  end
+
+
+  def spawn_cmd(env = {}, cmd)
+    opts = {}
+
+    out_r, out_w = IO.pipe
+    opts[:out] = out_w
+
+    err_r, err_w = IO.pipe
+    opts[:err] = err_w
+
+    out_r.binmode
+    err_r.binmode
+
+    pid = spawn(env, cmd, opts)
+    [out_w, err_w].each(&:close)
+    [out_r, err_r, pid]
   end
 end
