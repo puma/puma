@@ -483,6 +483,10 @@ class TestConfigFile < TestConfigFileBase
     assert_warning_for_hooks_defined_in_single_mode :before_fork
   end
 
+  def test_run_hooks_before_thread_exit
+    assert_run_hooks :before_thread_exit, configured_with: :on_thread_exit
+  end
+
   def test_run_hooks_and_exception
     conf = Puma::Configuration.new do |c|
       c.on_restart do |a|
