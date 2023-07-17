@@ -723,6 +723,23 @@ module Puma
       process_hook :before_refork, key, block, 'on_refork'
     end
 
+    # Code to run immediately before a thread starts. The worker does not
+    # start new threads until this code finishes.
+    #
+    # This hook is useful for doing something when a thread
+    # starts.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @example
+    #   on_thread_start do
+    #     puts 'On thread start...'
+    #   end
+    def on_thread_start(&block)
+      @options[:before_thread_start] ||= []
+      @options[:before_thread_start] << block
+    end
+
     # Code to run immediately before a thread exits. The worker does not
     # accept new requests until this code finishes.
     #

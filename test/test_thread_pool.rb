@@ -117,6 +117,26 @@ class TestThreadPool < Minitest::Test
     assert_equal 3, pool.backlog
   end
 
+  def test_thread_start_hook
+    started = Queue.new
+    options = {
+      min_threads: 0,
+      max_threads: 1,
+      before_thread_start: [
+        proc do
+          started << 1
+        end
+      ]
+    }
+    block = proc { }
+    pool = MutexPool.new('tst', options, &block)
+
+    pool << 1
+
+    assert_equal 1, pool.spawned
+    assert_equal 1, started.length
+  end
+
   def test_trim
     pool = mutex_pool(0, 1)
 
