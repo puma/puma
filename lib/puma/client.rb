@@ -342,12 +342,19 @@ module Puma
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
       if @env[HTTP_EXPECT] == CONTINUE
-        # TODO allow a hook here to check the headers before
-        # going forward
-        @io << HTTP_11_100
-        @io.flush
+        # Determine if a redirect is needed, this could be a function call that encapsulates 
+        # the redirect logic.
+        redirect_url = env['HTTP_X_REDIRECT_URL']
+    
+        if redirect_url
+          # Move this to const
+          # Do i need to check if this url is valid?
+          @io << "HTTP/1.1 307 Temporary Redirect\r\nLocation: #{redirect_url}\r\n\r\n"
+          @io.flush
+        else
+          @expect_continue = true
+        end
       end
-
       @read_header = false
 
       body = @parser.body
@@ -421,6 +428,12 @@ module Puma
     end
 
     def read_body
+      # Send 100 Continue response before reading the body, if the client expects it.
+      if @expect_continue
+        @io << HTTP_11_100
+        @io.flush
+      end
+
       if @chunked_body
         return read_chunked_body
       end
@@ -622,3 +635,4 @@ module Puma
     end
   end
 end
+
