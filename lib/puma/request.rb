@@ -581,19 +581,21 @@ module Puma
         resp_info[:allow_chunked] = true
         resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
 
+        if expect_100_continue
+          io_buffer << HTTP_11_100
+        end
         # An optimization. The most common response is 200, so we can
         # reply with the proper 200 status without having to compute
         # the response header.
         #
-        if status == 200 && !expect_100_continue
+        if status == 200
           io_buffer << HTTP_11_200
-        elsif status == 200 && expect_100_continue
-          io_buffer << HTTP_11_100
         else
           io_buffer.append "#{HTTP_11} #{status} ", fetch_status_code(status), line_ending
 
           resp_info[:no_body] ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
         end
+
       else
         resp_info[:allow_chunked] = false
         resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase == KEEP_ALIVE
