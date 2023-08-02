@@ -104,6 +104,12 @@ module Puma
           status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
         end
 
+        if client.http_expect_100_continue_header_present
+          # Not sure how to handle from here, should i send HTTP_11_100 for all 200 responses
+          # and leave the server to respond with all non 200 request?
+          return prepare_response(status, headers, [], requests, client)
+        end
+
         # app_body needs to always be closed, hold value in case lowlevel_error
         # is called
         res_body = app_body
