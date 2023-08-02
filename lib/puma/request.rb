@@ -160,12 +160,6 @@ module Puma
       io_buffer = client.io_buffer
       expect_100_continue = client.http_expect_100_continue_header_present
 
-      if client.http_expect_100_continue_header_present
-        # Not sure how to handle from here, should i send HTTP_11_100 for all 200 responses from app
-        # and leave the server to respond with default HTTP_11_100 for all non 200 responses?
-        return prepare_response(status, HTTP_11_100, [], requests, client)
-      end
-
       return false if closed_socket?(socket)
 
       # Close the connection after a reasonable number of inline requests
@@ -576,7 +570,6 @@ module Puma
     # @version 5.0.3
     #
     def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive, expect_100_continue)
-
       line_ending = LINE_END
       colon = COLON
 
@@ -588,18 +581,14 @@ module Puma
         resp_info[:allow_chunked] = true
         resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
 
-        if expect_100_continue
-          # Not sure how to handle from here, should i send HTTP_11_100 for all 200 responses from app
-          # and leave the server to respond with default HTTP_11_100 for all non 200 responses?
-          io_buffer << HTTP_11_100
-        end
-
         # An optimization. The most common response is 200, so we can
         # reply with the proper 200 status without having to compute
         # the response header.
         #
-        if status == 200
+        if status == 200 && !expect_100_continue
           io_buffer << HTTP_11_200
+        elsif status == 200 && expect_100_continue
+          io_buffer << HTTP_11_100
         else
           io_buffer.append "#{HTTP_11} #{status} ", fetch_status_code(status), line_ending
 

@@ -346,9 +346,6 @@ module Puma
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
       if @env[HTTP_EXPECT] == CONTINUE
-        # ideally send this req to application, if it doesn't raise any error(eg: auth) 
-        # or any other response(eg: redirect) then respond with HTTP_11_100 otherwise
-        # respond with error/response
         @http_expect_100_continue_header_present = true
       end
 
