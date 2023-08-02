@@ -104,12 +104,6 @@ module Puma
           status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
         end
 
-        if client.http_expect_100_continue_header_present
-          # Not sure how to handle from here, should i send HTTP_11_100 for all 200 responses
-          # and leave the server to respond with all non 200 request?
-          return prepare_response(status, headers, [], requests, client)
-        end
-
         # app_body needs to always be closed, hold value in case lowlevel_error
         # is called
         res_body = app_body
@@ -164,6 +158,13 @@ module Puma
       env = client.env
       socket = client.io
       io_buffer = client.io_buffer
+      expect_100_continue = client.http_expect_100_continue_header_present
+
+      if client.http_expect_100_continue_header_present
+        # Not sure how to handle from here, should i send HTTP_11_100 for all 200 responses from app
+        # and leave the server to respond with default HTTP_11_100 for all non 200 responses?
+        return prepare_response(status, HTTP_11_100, [], requests, client)
+      end
 
       return false if closed_socket?(socket)
 
@@ -175,7 +176,7 @@ module Puma
         @thread_pool.busy_threads < @max_threads ||
         !client.listener.to_io.wait_readable(0)
 
-      resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
+      resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive, expect_100_continue)
 
       close_body = false
       response_hijack = nil
@@ -574,7 +575,7 @@ module Puma
     # @return [Hash] resp_info
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
+    def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive, expect_100_continue)
 
       line_ending = LINE_END
       colon = COLON
@@ -586,6 +587,12 @@ module Puma
       if http_11
         resp_info[:allow_chunked] = true
         resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
+
+        if expect_100_continue
+          # Not sure how to handle from here, should i send HTTP_11_100 for all 200 responses from app
+          # and leave the server to respond with default HTTP_11_100 for all non 200 responses?
+          io_buffer << HTTP_11_100
+        end
 
         # An optimization. The most common response is 200, so we can
         # reply with the proper 200 status without having to compute
