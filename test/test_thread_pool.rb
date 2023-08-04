@@ -167,6 +167,29 @@ class TestThreadPool < Minitest::Test
     assert_equal 0, pool.trim_requested
   end
 
+  def test_trim_thread_start_hook
+    exited = Queue.new
+    options = {
+      min_threads: 0,
+      max_threads: 1,
+      before_thread_start: [
+        proc do
+          exited << 1
+        end
+      ]
+    }
+    block = proc { }
+    pool = MutexPool.new('tst', options, &block)
+
+    pool << 1
+
+    assert_equal 1, pool.spawned
+
+    pool.trim
+    assert_equal 0, pool.spawned
+    assert_equal 1, exited.length
+  end
+
   def test_trim_thread_exit_hook
     exited = Queue.new
     options = {
