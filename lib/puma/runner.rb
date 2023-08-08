@@ -75,7 +75,6 @@ module Puma
       control = Puma::Server.new app, nil,
         { min_threads: 0, max_threads: 1, queue_requests: false, log_writer: @log_writer }
 
-      #control.binder.parse [str], nil, 'Starting control server'
       begin
         control.binder.parse [str], nil, 'Starting control server'
       rescue Errno::EADDRINUSE => e
