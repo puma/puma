@@ -75,7 +75,12 @@ module Puma
       control = Puma::Server.new app, nil,
         { min_threads: 0, max_threads: 1, queue_requests: false, log_writer: @log_writer }
 
-      control.binder.parse [str], nil, 'Starting control server'
+      #control.binder.parse [str], nil, 'Starting control server'
+      begin
+        control.binder.parse [str], nil, 'Starting control server'
+      rescue Errno::EADDRINUSE => e
+        raise "Error: Control server address '#{str}' is already in use. You're trying to start a control server but the control server port is taken."
+      end
 
       control.run thread_name: 'ctl'
       @control = control
