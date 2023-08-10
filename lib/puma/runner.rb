@@ -77,8 +77,8 @@ module Puma
 
       begin
         control.binder.parse [str], nil, 'Starting control server'
-      rescue Errno::EADDRINUSE => e
-        raise "Error: Control server address '#{str}' is already in use. You're trying to start a control server but the control server port is taken."
+      rescue StandardError => e
+        raise e, "Error: Control server address '#{str}' is already in use. You're trying to start a control server but the control server port is taken."
       end
 
       control.run thread_name: 'ctl'
