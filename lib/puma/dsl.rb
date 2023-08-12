@@ -315,16 +315,22 @@ module Puma
       bind URI::Generic.build(scheme: 'tcp', host: host, port: Integer(port)).to_s
     end
 
+    # Define how long the tcp socket stays open, if no data has been received.
+    # @see Puma::Server.new
+    def first_data_timeout(seconds)
+      @options[:first_data_timeout] = Integer(seconds)
+    end
+
     # Define how long persistent connections can be idle before Puma closes them.
     # @see Puma::Server.new
     def persistent_timeout(seconds)
       @options[:persistent_timeout] = Integer(seconds)
     end
 
-    # Define how long the tcp socket stays open, if no data has been received.
+    # Define how long to wait since the last request before shutting down.
     # @see Puma::Server.new
-    def first_data_timeout(seconds)
-      @options[:first_data_timeout] = Integer(seconds)
+    def idle_timeout(seconds)
+      @options[:idle_timeout] = Integer(seconds)
     end
 
     # Work around leaky apps that leave garbage in Thread locals

@@ -86,15 +86,16 @@ module Puma
         UserFileDefaultOptions.new(options, Configuration::DEFAULTS)
       end
 
-      @log_writer          = @options.fetch :log_writer, LogWriter.stdio
-      @early_hints         = @options[:early_hints]
-      @first_data_timeout  = @options[:first_data_timeout]
-      @min_threads         = @options[:min_threads]
-      @max_threads         = @options[:max_threads]
-      @persistent_timeout  = @options[:persistent_timeout]
-      @queue_requests      = @options[:queue_requests]
-      @max_fast_inline     = @options[:max_fast_inline]
-      @io_selector_backend = @options[:io_selector_backend]
+      @log_writer                = @options.fetch :log_writer, LogWriter.stdio
+      @early_hints               = @options[:early_hints]
+      @first_data_timeout        = @options[:first_data_timeout]
+      @persistent_timeout        = @options[:persistent_timeout]
+      @idle_timeout              = @options[:idle_timeout]
+      @min_threads               = @options[:min_threads]
+      @max_threads               = @options[:max_threads]
+      @queue_requests            = @options[:queue_requests]
+      @max_fast_inline           = @options[:max_fast_inline]
+      @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
 
       # make this a hash, since we prefer `key?` over `include?`
@@ -330,8 +331,11 @@ module Puma
 
         while @status == :run || (drain && shutting_down?)
           begin
-            ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : nil)
-            break unless ios
+            ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : timeout_for_idle)
+            unless ios
+              @status = :stop if timeout_for_idle&.zero?
+              break
+            end
             ios.first.each do |sock|
               if sock == check
                 break if handle_check
@@ -352,6 +356,7 @@ module Puma
                 }
               end
             end
+            set_timeout_for_idle(@idle_timeout)
           rescue IOError, Errno::EBADF
             # In the case that any of the sockets are unexpectedly close.
             raise
@@ -597,6 +602,21 @@ module Puma
       end
     end
     private :notify_safely
+
+    def set_timeout_for_idle(idle_timeout)
+      return unless idle_timeout
+
+      @idle_timeout_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + idle_timeout
+    end
+    private :set_timeout_for_idle
+
+    # Number of seconds until the idle timeout elapses.
+    def timeout_for_idle
+      return unless defined?(@idle_timeout_at)
+
+      [@idle_timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
+    end
+    private :timeout_for_idle
 
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.

@@ -629,6 +629,102 @@ class TestPumaServer < Minitest::Test
     test_no_timeout_after_data_received
   end
 
+  def test_idle_timeout_before_request_received
+    server_run(idle_timeout: 1)
+
+    sleep 1.15
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+
+    sock << "hello world!"
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 200 OK\r\n", data
+  end
+
+  def test_idle_timeout_before_data_received
+    server_run(idle_timeout: 1)
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+
+    sleep 1.15
+
+    sock << "hello world!"
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 200 OK\r\n", data
+  end
+
+  def test_idle_timeout_between_data
+    server_run(idle_timeout: 1)
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+
+    sock << "hello"
+
+    sleep 1.15
+
+    sock << " world!"
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 200 OK\r\n", data
+  end
+
+  def test_idle_timeout_after_request
+    server_run(idle_timeout: 1)
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+
+    sock << "hello world!"
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 200 OK\r\n", data
+
+    sleep 1.15
+
+    assert @server.shutting_down?
+
+    assert sock.wait_readable(1), 'Unexpected timeout'
+    assert_raises Errno::ECONNREFUSED do
+      send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+    end
+  end
+
+  def test_idle_timeout_between_requests
+    server_run(idle_timeout: 1)
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+
+    sock << "hello world!"
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 200 OK\r\n", data
+
+    sleep 0.5
+
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+
+    sock << "hello world!"
+
+    data = sock.gets
+
+    assert_equal "HTTP/1.1 200 OK\r\n", data
+
+    sleep 1.15
+
+    assert @server.shutting_down?
+
+    assert sock.wait_readable(1), 'Unexpected timeout'
+    assert_raises Errno::ECONNREFUSED do
+      send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+    end
+  end
+
   def test_http_11_keep_alive_with_body
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
