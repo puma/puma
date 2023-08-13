@@ -254,4 +254,30 @@ class TestIntegrationSingle < TestIntegration
 
     cli_pumactl 'stop'
   end
+
+  def test_pre_existing_unix_after_idle_timeout
+    skip_unless :unix
+
+    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+
+    cli_server "-q test/rackup/hello.ru", unix: :unix, config: "idle_timeout 1"
+
+    sleep 1.15 # ensure the timeout isn't set until the first connection
+
+    sock = connection = connect(nil, unix: true)
+    read_body(connection)
+
+    sleep 1.15
+
+    assert sock.wait_readable(1), 'Unexpected timeout'
+    assert_raises Errno::ECONNREFUSED do
+      connection = connect(nil, unix: true)
+    end
+
+    assert File.exist?(@bind_path)
+  ensure
+    if UNIX_SKT_EXIST
+      File.unlink @bind_path if File.exist? @bind_path
+    end
+  end
 end
