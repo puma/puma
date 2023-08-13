@@ -270,7 +270,7 @@ class TestIntegrationSingle < TestIntegration
     sleep 1.15
 
     assert sock.wait_readable(1), 'Unexpected timeout'
-    assert_raises Errno::ECONNREFUSED do
+    assert_raises Puma.jruby? ? IOError : Errno::ECONNREFUSED, "Connection refused" do
       connection = connect(nil, unix: true)
     end
 
