@@ -217,7 +217,12 @@ module Puma
       @runner.close_control_listeners
       @binder.close_listeners
       unless @status == :restart
-        log "=== puma shutdown: #{Time.now} ==="
+        # Formatting the timestamp using .strftime so that we don't trigger
+        # an ActiveSupport deprecation warning "Using a :default format for
+        # Time#to_s is deprecated. Please use Time#to_fs instead." in 7.0.7
+        # and above Rails apps.
+        timestamp = Time.now.strftime("%Y-%m-%d %H:%M:%S %z")
+        log "=== puma shutdown: #{timestamp} ==="
         log "- Goodbye!"
       end
     end
