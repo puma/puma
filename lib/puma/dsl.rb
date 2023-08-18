@@ -328,7 +328,8 @@ module Puma
     end
 
     # Use a clean fiber per request which ensures a clean slate for thread
-    # locals, fiber locals and fiber storage.
+    # locals, fiber locals and fiber storage. Also provides a cleaner
+    # backtrace with less Puma internal stack frames.
     def fiber_per_request(which=true)
       @options[:fiber_per_request] = which
     end
