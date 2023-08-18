@@ -21,7 +21,7 @@ class FiberLocalApplicationTest < Minitest::Test
 
   def setup
     @tester = FiberLocalApplication.new
-    @server = Puma::Server.new @tester, nil, {log_writer: Puma::LogWriter.strings}
+    @server = Puma::Server.new @tester, nil, {log_writer: Puma::LogWriter.strings, fiber_per_request: true}
     @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
     @tcp = "http://127.0.0.1:#{@port}"
     @server.run
