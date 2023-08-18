@@ -627,7 +627,7 @@ EOF
       [200, {}, [""]]
     }
 
-    header = "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+    header = "GET / HTTP/1.1\r\nConnection: close\r\nContent-Length: 200\r\nTransfer-Encoding: chunked\r\n\r\n"
 
     chunk_header_size = 6 # 4fb8\r\n
     # Current implementation reads one chunk of CHUNK_SIZE, then more chunks of size 4096.
@@ -1364,5 +1364,45 @@ EOF
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
     assert_equal "user", data.split("\r\n").last
+  end
+
+  def test_cl_empty_string
+    server_run do |env|
+      [200, {}, [""]]
+    end
+
+    empty_cl_request = "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length:\r\n\r\nGET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
+
+    data = send_http_and_read empty_cl_request
+    assert_operator data, :start_with?, 'HTTP/1.1 400 Bad Request'
+  end
+
+  def test_crlf_trailer_smuggle
+    server_run do |env|
+      [200, {}, [""]]
+    end
+
+    smuggled_payload = "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nHost: whatever\r\n\r\n0\r\nX:POST / HTTP/1.1\r\nHost: whatever\r\n\r\nGET / HTTP/1.1\r\nHost: whatever\r\n\r\n"
+
+    data = send_http_and_read smuggled_payload
+    assert_equal 2, data.scan("HTTP/1.1 200 OK").size
+  end
+
+  # test to check if content-length is ignored when 'transfer-encoding: chunked'
+  # is used.  See also test_large_chunked_request
+  def test_cl_and_te_smuggle
+    body = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    req = "POST /search HTTP/1.1\r\nHost: vulnerable-website.com\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 4\r\nTransfer-Encoding: chunked\r\n\r\n7b\r\nGET /404 HTTP/1.1\r\nHost: vulnerable-website.com\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 144\r\n\r\nx=\r\n0\r\n\r\n"
+
+    data = send_http_and_read req
+
+    assert_includes body, "GET /404 HTTP/1.1\r\n"
+    assert_includes body, "Content-Length: 144\r\n"
+    assert_equal 1, data.scan("HTTP/1.1 200 OK").size
   end
 end

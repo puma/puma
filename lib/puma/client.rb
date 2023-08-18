@@ -45,7 +45,8 @@ module Puma
 
     # chunked body validation
     CHUNK_SIZE_INVALID = /[^\h]/.freeze
-    CHUNK_VALID_ENDING = "\r\n".freeze
+    CHUNK_VALID_ENDING = Const::LINE_END
+    CHUNK_VALID_ENDING_SIZE = CHUNK_VALID_ENDING.bytesize
 
     # Content-Length header value validation
     CONTENT_LENGTH_VALUE_INVALID = /[^\d]/.freeze
@@ -347,8 +348,8 @@ module Puma
       cl = @env[CONTENT_LENGTH]
 
       if cl
-        # cannot contain characters that are not \d
-        if cl =~ CONTENT_LENGTH_VALUE_INVALID
+        # cannot contain characters that are not \d, or be empty
+        if cl =~ CONTENT_LENGTH_VALUE_INVALID || cl.empty?
           raise HttpParserError, "Invalid Content-Length: #{cl.inspect}"
         end
       else
@@ -509,7 +510,7 @@ module Puma
 
       while !io.eof?
         line = io.gets
-        if line.end_with?("\r\n")
+        if line.end_with?(CHUNK_VALID_ENDING)
           # Puma doesn't process chunk extensions, but should parse if they're
           # present, which is the reason for the semicolon regex
           chunk_hex = line.strip[/\A[^;]+/]
@@ -521,13 +522,19 @@ module Puma
             @in_last_chunk = true
             @body.rewind
             rest = io.read
-            last_crlf_size = "\r\n".bytesize
-            if rest.bytesize < last_crlf_size
+            if rest.bytesize < CHUNK_VALID_ENDING_SIZE
               @buffer = nil
-              @partial_part_left = last_crlf_size - rest.bytesize
+              @partial_part_left = CHUNK_VALID_ENDING_SIZE - rest.bytesize
               return false
             else
-              @buffer = rest[last_crlf_size..-1]
+              # if the next character is a CRLF, set buffer to everything after that CRLF
+              start_of_rest = if rest.start_with?(CHUNK_VALID_ENDING)
+                CHUNK_VALID_ENDING_SIZE
+              else # we have started a trailer section, which we do not support. skip it!
+                rest.index(CHUNK_VALID_ENDING*2) + CHUNK_VALID_ENDING_SIZE*2
+              end
+
+              @buffer = rest[start_of_rest..-1]
               @buffer = nil if @buffer.empty?
               set_ready
               return true
