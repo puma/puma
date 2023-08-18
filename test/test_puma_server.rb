@@ -749,7 +749,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, [""]]
     }
 
-    header = "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+    header = "GET / HTTP/1.1\r\nConnection: close\r\nContent-Length: 200\r\nTransfer-Encoding: chunked\r\n\r\n"
 
     chunk_header_size = 6 # 4fb8\r\n
     # Current implementation reads one chunk of CHUNK_SIZE, then more chunks of size 4096.
@@ -1709,5 +1709,83 @@ class TestPumaServer < Minitest::Test
     data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
 
     assert_match(/something wrong happened/, data)
+  end
+
+  def test_cl_empty_string
+    server_run do |env|
+      [200, {}, [""]]
+    end
+
+    # rubocop:disable Layout/TrailingWhitespace
+    empty_cl_request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.1
+      Host: localhost
+      Content-Length: 
+      
+      GET / HTTP/1.1
+      Host: localhost
+      
+    REQ
+    # rubocop:enable Layout/TrailingWhitespace
+
+    data = send_http_and_read empty_cl_request
+    assert_operator data, :start_with?, 'HTTP/1.1 400 Bad Request'
+  end
+
+  def test_crlf_trailer_smuggle
+    server_run do |env|
+      [200, {}, [""]]
+    end
+
+    smuggled_payload = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.1
+      Transfer-Encoding: chunked
+      Host: whatever
+
+      0
+      X:POST / HTTP/1.1
+      Host: whatever
+
+      GET / HTTP/1.1
+      Host: whatever
+
+    REQ
+
+    data = send_http_and_read smuggled_payload
+    assert_equal 2, data.scan("HTTP/1.1 200 OK").size
+  end
+
+  # test to check if content-length is ignored when 'transfer-encoding: chunked'
+  # is used.  See also test_large_chunked_request
+  def test_cl_and_te_smuggle
+    body = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    req = <<~REQ.gsub("\n", "\r\n")
+      POST /search HTTP/1.1
+      Host: vulnerable-website.com
+      Content-Type: application/x-www-form-urlencoded
+      Content-Length: 4
+      Transfer-Encoding: chunked
+
+      7b
+      GET /404 HTTP/1.1
+      Host: vulnerable-website.com
+      Content-Type: application/x-www-form-urlencoded
+      Content-Length: 144
+
+      x=
+      0
+
+    REQ
+
+    data = send_http_and_read req
+
+    assert_includes body, "GET /404 HTTP/1.1\r\n"
+    assert_includes body, "Content-Length: 144\r\n"
+    assert_equal 1, data.scan("HTTP/1.1 200 OK").size
   end
 end
