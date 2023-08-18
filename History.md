@@ -1,3 +1,8 @@
+## 6.3.1 / 2023-08-18
+
+* Security 
+  * Address HTTP request smuggling vulnerabilities with zero-length Content Length header and trailer fields ([GHSA-68xg-gqqm-vgj8](https://github.com/puma/puma/security/advisories/GHSA-68xg-gqqm-vgj8))
+
 ## 6.3.0 / 2023-05-31
 
 * Features
