@@ -68,4 +68,8 @@ class TestNullIO < Minitest::Test
   def test_closed_returns_false
     assert_equal false, nio.closed?
   end
+
+  def test_set_encoding
+    assert_equal nio, nio.set_encoding(Encoding::BINARY)
+  end
 end
