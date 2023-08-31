@@ -15,7 +15,6 @@ require_relative 'request'
 
 require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
-require 'forwardable'
 
 module Puma
 
@@ -32,7 +31,6 @@ module Puma
   class Server
     include Puma::Const
     include Request
-    extend Forwardable
 
     attr_reader :thread
     attr_reader :log_writer
@@ -47,9 +45,6 @@ module Puma
 
     attr_accessor :app
     attr_accessor :binder
-
-    def_delegators :@binder, :add_tcp_listener, :add_ssl_listener,
-      :add_unix_listener, :connected_ports
 
     THREAD_LOCAL_KEY = :puma_server
 
@@ -629,6 +624,28 @@ module Puma
     # @!attribute [r] stats
     def stats
       STAT_METHODS.map {|name| [name, send(name) || 0]}.to_h
+    end
+
+    # below are 'delegations' to binder
+    # remove in Puma 7?
+
+
+    def add_tcp_listener(host, port, optimize_for_latency = true, backlog = 1024)
+      @binder.add_tcp_listener host, port, optimize_for_latency, backlog
+    end
+
+    def add_ssl_listener(host, port, ctx, optimize_for_latency = true,
+                         backlog = 1024)
+      @binder.add_ssl_listener host, port, ctx, optimize_for_latency, backlog
+    end
+
+    def add_unix_listener(path, umask = nil, mode = nil, backlog = 1024)
+      @binder.add_unix_listener path, umask, mode, backlog
+    end
+
+    # @!attribute [r] connected_ports
+    def connected_ports
+      @binder.connected_ports
     end
   end
 end
