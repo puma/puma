@@ -121,6 +121,7 @@ module Puma
 
       @precheck_closing = true
 
+      @ios_count = 0
       @requests_count = 0
     end
 
@@ -331,11 +332,13 @@ module Puma
 
         while @status == :run || (drain && shutting_down?)
           begin
-            ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : timeout_for_idle)
+            ios = IO.select sockets, nil, nil, select_timeout
             unless ios
-              @status = :stop if timeout_for_idle&.zero?
+              @status = :stop unless shutting_down?
               break
             end
+
+            @ios_count += 1
             ios.first.each do |sock|
               if sock == check
                 break if handle_check
@@ -356,7 +359,6 @@ module Puma
                 }
               end
             end
-            set_timeout_for_idle(@idle_timeout)
           rescue IOError, Errno::EBADF
             # In the case that any of the sockets are unexpectedly close.
             raise
@@ -603,20 +605,12 @@ module Puma
     end
     private :notify_safely
 
-    def set_timeout_for_idle(idle_timeout)
-      return unless idle_timeout
+    def select_timeout
+      return 0 if shutting_down?
 
-      @idle_timeout_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + idle_timeout
+      @idle_timeout if @ios_count > 0
     end
-    private :set_timeout_for_idle
-
-    # Number of seconds until the idle timeout elapses.
-    def timeout_for_idle
-      return unless defined?(@idle_timeout_at)
-
-      [@idle_timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
-    end
-    private :timeout_for_idle
+    private :select_timeout
 
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.
