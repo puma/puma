@@ -471,7 +471,7 @@ module Puma
         end
         true
       rescue StandardError => e
-        client_error(e, client)
+        client_error(e, client, requests)
         # The ensure tries to close +client+ down
         requests > 0
       ensure
@@ -499,22 +499,22 @@ module Puma
     # :nocov:
 
     # Handle various error types thrown by Client I/O operations.
-    def client_error(e, client)
+    def client_error(e, client, requests = 1)
       # Swallow, do not log
       return if [ConnectionError, EOFError].include?(e.class)
 
-      lowlevel_error(e, client.env)
       case e
       when MiniSSL::SSLError
+        lowlevel_error(e, client.env)
         @log_writer.ssl_error e, client.io
       when HttpParserError
-        client.write_error(400)
+        response_to_error(client, requests, e, 400)
         @log_writer.parse_error e, client
       when HttpParserError501
-        client.write_error(501)
+        response_to_error(client, requests, e, 501)
         @log_writer.parse_error e, client
       else
-        client.write_error(500)
+        response_to_error(client, requests, e, 500)
         @log_writer.unknown_error e, nil, "Read"
       end
     end
@@ -536,9 +536,16 @@ module Puma
         backtrace = e.backtrace.nil? ? '<no backtrace available>' : e.backtrace.join("\n")
         [status, {}, ["Puma caught this error: #{e.message} (#{e.class})\n#{backtrace}"]]
       else
-        [status, {}, ["An unhandled lowlevel error occurred. The application logs may have details.\n"]]
+        [status, {}, [""]]
       end
     end
+
+    def response_to_error(client, requests, err, status_code)
+      status, headers, res_body = lowlevel_error(err, client.env, status_code)
+      prepare_response(status, headers, res_body, requests, client)
+      client.write_error(status_code)
+    end
+    private :response_to_error
 
     # Wait for all outstanding requests to finish.
     #

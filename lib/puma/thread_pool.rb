@@ -51,6 +51,8 @@ module Puma
       @block = block
       @out_of_band = options[:out_of_band]
       @clean_thread_locals = options[:clean_thread_locals]
+      @before_thread_start = options[:before_thread_start]
+      @before_thread_exit = options[:before_thread_exit]
       @reaping_time = options[:reaping_time]
       @auto_trim_time = options[:auto_trim_time]
 
@@ -107,6 +109,7 @@ module Puma
     def spawn_thread
       @spawned += 1
 
+      trigger_before_thread_start_hooks
       th = Thread.new(@spawned) do |spawned|
         Puma.set_thread_name '%s tp %03i' % [@name, spawned]
         todo  = @todo
@@ -125,6 +128,7 @@ module Puma
                 @spawned -= 1
                 @workers.delete th
                 not_full.signal
+                trigger_before_thread_exit_hooks
                 Thread.exit
               end
 
@@ -161,6 +165,36 @@ module Puma
     end
 
     private :spawn_thread
+
+    def trigger_before_thread_start_hooks
+      return unless @before_thread_start&.any?
+
+      @before_thread_start.each do |b|
+        begin
+          b.call
+        rescue Exception => e
+          STDERR.puts "WARNING before_thread_start hook failed with exception (#{e.class}) #{e.message}"
+        end
+      end
+      nil
+    end
+
+    private :trigger_before_thread_start_hooks
+
+    def trigger_before_thread_exit_hooks
+      return unless @before_thread_exit&.any?
+
+      @before_thread_exit.each do |b|
+        begin
+          b.call
+        rescue Exception => e
+          STDERR.puts "WARNING before_thread_exit hook failed with exception (#{e.class}) #{e.message}"
+        end
+      end
+      nil
+    end
+
+    private :trigger_before_thread_exit_hooks
 
     # @version 5.0.0
     def trigger_out_of_band_hook
