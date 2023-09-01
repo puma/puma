@@ -634,13 +634,11 @@ class TestPumaServer < Minitest::Test
 
     sleep 1.15
 
-    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+    assert @server.shutting_down?
 
-    sock << "hello world!"
-
-    data = sock.gets
-
-    assert_equal "HTTP/1.1 200 OK\r\n", data
+    assert_raises Errno::ECONNREFUSED do
+      send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
+    end
   end
 
   def test_idle_timeout_before_first_request_data

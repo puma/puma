@@ -135,7 +135,7 @@ module Puma
       environment: 'development'.freeze,
       # Number of seconds to wait until we get the first data for the request.
       first_data_timeout: 30,
-      # Number of seconds to wait since the last request before shutting down.
+      # Number of seconds to wait until the next request before shutting down.
       idle_timeout: nil,
       io_selector_backend: :auto,
       log_requests: false,

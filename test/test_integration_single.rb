@@ -262,8 +262,6 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server "-q test/rackup/hello.ru", unix: :unix, config: "idle_timeout 1"
 
-    sleep 1.15 # ensure the timeout isn't set until the first connection
-
     sock = connection = connect(nil, unix: true)
     read_body(connection)
 

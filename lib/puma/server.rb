@@ -121,7 +121,6 @@ module Puma
 
       @precheck_closing = true
 
-      @ios_count = 0
       @requests_count = 0
     end
 
@@ -332,13 +331,12 @@ module Puma
 
         while @status == :run || (drain && shutting_down?)
           begin
-            ios = IO.select sockets, nil, nil, select_timeout
+            ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : @idle_timeout)
             unless ios
               @status = :stop unless shutting_down?
               break
             end
 
-            @ios_count += 1
             ios.first.each do |sock|
               if sock == check
                 break if handle_check
@@ -604,13 +602,6 @@ module Puma
       end
     end
     private :notify_safely
-
-    def select_timeout
-      return 0 if shutting_down?
-
-      @idle_timeout if @ios_count > 0
-    end
-    private :select_timeout
 
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.

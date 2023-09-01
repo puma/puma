@@ -144,7 +144,7 @@ module Puma
             $LOAD_PATH.unshift(*arg.split(':'))
           end
 
-          o.on "--idle-timeout SECONDS", "Time since last request before automatic shutdown" do |arg|
+          o.on "--idle-timeout SECONDS", "Number of seconds until the next request before automatic shutdown" do |arg|
             user_config.idle_timeout arg
           end
 
