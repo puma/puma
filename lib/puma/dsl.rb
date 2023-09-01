@@ -327,7 +327,7 @@ module Puma
       @options[:persistent_timeout] = Integer(seconds)
     end
 
-    # Define how long to wait since the last request before shutting down.
+    # If a new request is not received within this number of seconds, begin shutting down.
     # @see Puma::Server.new
     def idle_timeout(seconds)
       @options[:idle_timeout] = Integer(seconds)
