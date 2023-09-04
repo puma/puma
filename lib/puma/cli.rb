@@ -144,6 +144,10 @@ module Puma
             $LOAD_PATH.unshift(*arg.split(':'))
           end
 
+          o.on "--idle-timeout SECONDS", "Number of seconds until the next request before automatic shutdown" do |arg|
+            user_config.idle_timeout arg
+          end
+
           o.on "-p", "--port PORT", "Define the TCP port to bind to",
             "Use -b for more advanced options" do |arg|
             user_config.bind "tcp://#{Configuration::DEFAULTS[:tcp_host]}:#{arg}"
