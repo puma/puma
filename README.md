@@ -114,6 +114,8 @@ $ WEB_CONCURRENCY=3 puma -t 8:32
 
 Note that threads are still used in clustered mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will spawn 32 threads in total, with 16 in each worker process.
 
+For an in-depth discussion of the tradeoffs of thread and process count settings, [see our docs](https://github.com/puma/puma/blob/9282a8efa5a0c48e39c60d22ca70051a25df9f55/docs/kubernetes.md#workers-per-pod-and-other-config-issues).
+
 In clustered mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
 
 If the `WEB_CONCURRENCY` environment variable is set to a value > 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
