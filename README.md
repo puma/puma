@@ -12,11 +12,15 @@ Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server fo
 
 ## Built For Speed &amp; Parallelism
 
-Puma processes requests using a C-optimized Ragel extension (inherited from Mongrel) that provides fast, accurate HTTP 1.1 protocol parsing in a portable way. Puma then serves the request using a thread pool. Each request is served in a separate thread, so truly parallel Ruby implementations (JRuby, Rubinius) will use all available CPU cores.
+Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is: 
+* **Multi-threaded**. Each request is served in a separate thread. This helps you serve more requests per second with less memory use.
+* **Multi-process**. "Pre-forks" in cluster mode, using less memory per-process thanks to copy-on-write memory.
+* **Standalone**. With SSL support, zero-downtime rolling restarts and a built-in request bufferer, you can deploy Puma without any reverse proxy.
+* **Battle-tested**. Our HTTP parser is inherited from Mongrel and has over 15 years of production use. Puma is currently the most popular Ruby webserver, and is the default server for Ruby on Rails.
 
 Originally designed as a server for [Rubinius](https://github.com/rubinius/rubinius), Puma also works well with Ruby (MRI) and JRuby.
 
-On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing IO waiting to be done in parallel.
+On MRI, there is a Global VM Lock (GVL) that ensures only one thread can run Ruby code at a time. But if you're doing a lot of blocking IO (such as HTTP calls to external APIs like Twitter), Puma still improves MRI's throughput by allowing IO waiting to be done in parallel. Truly parallel Ruby implementations (Truffle, JRuby) don't have this limitation.
 
 ## Quick Start
 
