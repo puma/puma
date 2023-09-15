@@ -78,7 +78,7 @@ end
 
 require "timeout"
 module TimeoutEveryTestCase
-  # our own subclass so we never confused different timeouts
+  # our own subclass so we never confuse different timeouts
   class TestTookTooLong < Timeout::Error
   end
 

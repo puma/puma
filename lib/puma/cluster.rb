@@ -85,9 +85,7 @@ module Puma
         @workers << WorkerHandle.new(idx, pid, @phase, @options)
       end
 
-      if @options[:fork_worker] &&
-        @workers.all? {|x| x.phase == @phase}
-
+      if @options[:fork_worker] && all_workers_in_phase?
         @fork_writer << "0\n"
       end
     end
@@ -148,8 +146,16 @@ module Puma
       idx
     end
 
+    def worker_at(idx)
+      @workers.find { |w| w.index == idx }
+    end
+
     def all_workers_booted?
       @workers.count { |w| !w.booted? } == 0
+    end
+
+    def all_workers_in_phase?
+      @workers.all? { |w| w.phase == @phase }
     end
 
     def check_workers
@@ -276,7 +282,7 @@ module Puma
 
     # @version 5.0.0
     def fork_worker!
-      if (worker = @workers.find { |w| w.index == 0 })
+      if (worker = worker_at 0)
         worker.phase += 1
       end
       phased_restart(true)
@@ -446,7 +452,7 @@ module Puma
 
               if req == "b" || req == "f"
                 pid, idx = result.split(':').map(&:to_i)
-                w = @workers.find {|x| x.index == idx}
+                w = worker_at idx
                 w.pid = pid if w.pid.nil?
               end
 
@@ -463,8 +469,15 @@ module Puma
                 when "t"
                   w.term unless w.term?
                 when "p"
-                  w.ping!(result.sub(/^\d+/,'').chomp)
+                  status = result.sub(/^\d+/,'').chomp
+                  w.ping!(status)
                   @events.fire(:ping!, w)
+
+                  if in_phased_restart && workers_not_booted.positive? && w0 = worker_at(0)
+                    w0.ping!(status)
+                    @events.fire(:ping!, w0)
+                  end
+
                   if !booted && @workers.none? {|worker| worker.last_status.empty?}
                     @events.fire_on_booted!
                     debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
@@ -536,9 +549,9 @@ module Puma
       @workers.each do |w|
         if !w.term? && w.ping_timeout <= Time.now
           details = if w.booted?
-                      "(worker failed to check in within #{@options[:worker_timeout]} seconds)"
+                      "(Worker #{w.index} failed to check in within #{@options[:worker_timeout]} seconds)"
                     else
-                      "(worker failed to boot within #{@options[:worker_boot_timeout]} seconds)"
+                      "(Worker #{w.index} failed to boot within #{@options[:worker_boot_timeout]} seconds)"
                     end
           log "! Terminating timed out worker #{details}: #{w.pid}"
           w.kill
