@@ -1,6 +1,8 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
+require "puma/configuration"
+
 require "time"
 
 class TestIntegrationCluster < TestIntegration
