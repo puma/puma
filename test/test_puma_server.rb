@@ -49,10 +49,11 @@ class TestPumaServer < Minitest::Test
     @server.run
   end
 
-  def header(sock)
+  def header(skt)
     header = []
     while true
-      line = sock.gets
+      skt.wait_readable 5
+      line = skt.gets
       break if line == "\r\n"
       header << line.strip
     end
@@ -62,11 +63,15 @@ class TestPumaServer < Minitest::Test
 
   # only for shorter bodies!
   def send_http_and_sysread(req)
-    send_http(req).sysread 2_048
+    skt = send_http(req)
+    skt.wait_readable 5
+    skt.sysread 2_048
   end
 
   def send_http_and_read(req)
-    send_http(req).read
+    skt = send_http req
+    skt.wait_readable 5
+    skt.read
   end
 
   def send_http(req)
@@ -1583,7 +1588,11 @@ class TestPumaServer < Minitest::Test
     bad = 0
     connections.each do |s|
       begin
-        assert_match 'DONE', s.read
+        if s.wait_readable(1) and drain # JRuby may hang on read with drain is false
+          assert_match 'DONE', s.read
+        else
+          bad += 1
+        end
       rescue Errno::ECONNRESET
         bad += 1
       end
@@ -1845,17 +1854,15 @@ class TestPumaServer < Minitest::Test
       [200, {}, [""]]
     end
 
-    # rubocop:disable Layout/TrailingWhitespace
     empty_cl_request = <<~REQ.gsub("\n", "\r\n")
       GET / HTTP/1.1
       Host: localhost
-      Content-Length: 
-      
+      Content-Length:
+
       GET / HTTP/1.1
       Host: localhost
-      
+
     REQ
-    # rubocop:enable Layout/TrailingWhitespace
 
     data = send_http_and_read empty_cl_request
     assert_operator data, :start_with?, 'HTTP/1.1 400 Bad Request'
