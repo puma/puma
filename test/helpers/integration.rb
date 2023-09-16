@@ -16,11 +16,18 @@ class TestIntegration < Minitest::Test
   RESP_READ_TIMEOUT = 10
   RESP_SPLIT = "\r\n\r\n"
 
+  # used in wait_for_server_to_* methods
+  LOG_TIMEOUT   = Puma::IS_JRUBY ? 20 : 10
+  LOG_WAIT_READ = Puma::IS_JRUBY ? 5 : 2
+  LOG_ERROR_SLEEP = 0.2
+  LOG_ERROR_QTY   = 5
+
   BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
     "#{Gem.ruby} -Ilib"
 
   def setup
     @server = nil
+    @server_log = +''
     @pid = nil
     @ios_to_close = []
     @bind_path    = tmp_path('.sock')
@@ -118,11 +125,11 @@ class TestIntegration < Minitest::Test
     end
   end
 
-  def restart_server_and_listen(argv)
+  def restart_server_and_listen(argv, log: false)
     cli_server argv
     connection = connect
     initial_reply = read_body(connection)
-    restart_server connection
+    restart_server connection, log: log
     [initial_reply, read_body(connect)]
   end
 
@@ -130,7 +137,7 @@ class TestIntegration < Minitest::Test
   def restart_server(connection, log: false)
     Process.kill :USR2, @pid
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
-    wait_for_server_to_boot(log: log)
+    wait_for_server_to_boot log: log
   end
 
   # wait for server to say it booted
@@ -139,56 +146,53 @@ class TestIntegration < Minitest::Test
     wait_for_server_to_include 'Ctrl-C', log: log
   end
 
-  # Returns true if and when server log includes str.
-  # Will timeout or raise an error otherwise
-  def wait_for_server_to_include(str, log: false)
-    sleep 0.05 until @server.is_a?(IO)
-    retry_cntr = 0
-    begin
-      @server.wait_readable 1
-      if log
-        puts "Waiting for '#{str}'"
-        begin
-          line = @server&.gets
-          puts line if !line&.strip.empty?
-        end until line&.include?(str)
-      else
-        true until (@server.gets || '').include?(str)
-      end
-    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
-      retry_cntr += 1
-      raise e if retry_cntr > 10
-      sleep 0.1
-      retry
-    end
+  # Returns true if and when server log includes str.  Will timeout otherwise.
+  def wait_for_server_to_include(str, timeout: LOG_TIMEOUT, log: false)
+    time_timeout = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    line = ''
+
+    puts "\n——— #{full_name} waiting for '#{str}'" if log
+    line = server_gets(str, time_timeout, log: log) until line&.include?(str)
     true
   end
 
   # Returns line if and when server log matches re, unless idx is specified,
-  # then returns regex match.
-  # Will timeout or raise an error otherwise
-  def wait_for_server_to_match(re, idx = nil, log: false)
-    sleep 0.05 until @server.is_a?(IO)
-    retry_cntr = 0
-    line = nil
+  # then returns regex match.  Will timeout otherwise.
+  def wait_for_server_to_match(re, idx = nil, timeout: LOG_TIMEOUT, log: false)
+    time_timeout = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    line = ''
+
+    puts "\n——— #{full_name} waiting for '#{re.inspect}'" if log
+    line = server_gets(re, time_timeout, log: log) until line&.match?(re)
+    idx ? line[re, idx] : line
+  end
+
+  def server_gets(match_obj, time_timeout, log: false)
+    error_retries = 0
+    line = ''
+
+    sleep 0.05 unless @server.is_a?(IO) or Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
+
+    raise Minitest::Assertion,  "@server is not an IO" unless @server.is_a?(IO)
+    if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
+      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}"
+    end
+
     begin
-      @server.wait_readable 1
-      if log
-        puts "Waiting for '#{re.inspect}'"
-        begin
-          line = @server&.gets
-          puts line if !line&.strip.empty?
-        end until line&.match?(re)
-      else
-        true until (line = @server.gets || '').match?(re)
+      if @server.wait_readable(LOG_WAIT_READ) and line = @server&.gets
+        @server_log << line
+        puts "    #{line}" if log
       end
-    rescue Errno::EBADF, Errno::ECONNREFUSED, Errno::ECONNRESET, IOError => e
-      retry_cntr += 1
-      raise e if retry_cntr > 10
-      sleep 0.1
+    rescue Exception => e
+      error_retries += 1
+      raise(e, "Waiting for server to log #{match_obj.inspect}") if error_retries == LOG_ERROR_QTY
+      sleep LOG_ERROR_SLEEP
       retry
     end
-    idx ? line[re, idx] : line
+    if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
+      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}"
+    end
+    line
   end
 
   def connect(path = nil, unix: false)
@@ -283,11 +287,11 @@ class TestIntegration < Minitest::Test
   end
 
   # gets worker pids from @server output
-  def get_worker_pids(phase = 0, size = workers)
+  def get_worker_pids(phase = 0, size = workers, log: false)
     pids = []
     re = /PID: (\d+)\) booted in [.0-9]+s, phase: #{phase}/
     while pids.size < size
-      if pid = wait_for_server_to_match(re, 1)
+      if pid = wait_for_server_to_match(re, 1, log: log)
         pids << pid
       end
     end
