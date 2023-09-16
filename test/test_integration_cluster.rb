@@ -290,23 +290,24 @@ class TestIntegrationCluster < TestIntegration
   def test_fork_worker_phased_restart_with_high_worker_count
     cli_server "test/rackup/hello.ru", config: <<~RUBY
       fork_worker 0
+      worker_check_interval 1
+      # lower worker timeout from default (60) to avoid test timeout
+      worker_timeout 2
       # to simulate worker 0 timeout, total boot time for all workers
       # needs to exceed single worker timeout
-      workers 11
-      # lower worker timeout from default (60) to avoid test timeout
-      worker_timeout 6
+      workers 16
     RUBY
 
     while (line = @server.gets).include?("phase: 0")
       # wait till all the workers are up
-      break if line.include?("Worker 10")
+      break if line.include?("Worker 15")
     end
 
     Process.kill :USR1, @pid
 
     while (line = @server.gets)
       refute line.include?("Terminating timed out worker")
-      break if line.include?("Worker 10")
+      break if line.include?("Worker 15")
     end
   end
 
