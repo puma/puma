@@ -3,6 +3,8 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
+require 'puma/plugin'
+
 class TestPluginSystemdJruby < TestIntegration
 
   THREAD_LOG = TRUFFLE ? "{ 0/16 threads, 16 available, 0 backlog }" :
