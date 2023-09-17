@@ -299,8 +299,9 @@ class TestIntegrationCluster < TestIntegration
       no_wait: true
 
     load_path = []
-    while (line = @server.gets) =~ /^LOAD_PATH/
-      load_path << line.gsub(/^LOAD_PATH: /, '')
+    load_path << wait_for_server_to_match(/\ALOAD_PATH: (.+)/, 1)
+    while (line = @server.gets).start_with? 'LOAD_PATH: '
+      load_path << line.sub(/\ALOAD_PATH: /, '')
     end
     assert_match(%r{gems/minitest-[\d.]+/lib$}, load_path.last)
   end
@@ -310,8 +311,9 @@ class TestIntegrationCluster < TestIntegration
       no_wait: true
 
     load_path = []
-    while (line = @server.gets) =~ /^LOAD_PATH/
-      load_path << line.gsub(/^LOAD_PATH: /, '')
+    load_path << wait_for_server_to_match(/\ALOAD_PATH: (.+)/, 1)
+    while (line = @server.gets).start_with? 'LOAD_PATH: '
+      load_path << line.sub(/\ALOAD_PATH: /, '')
     end
 
     load_path.each do |path|
