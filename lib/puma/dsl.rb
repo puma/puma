@@ -894,7 +894,8 @@ module Puma
     # not a request timeout, it is to protect against a hung or dead process.
     # Setting this value will not protect against slow requests.
     #
-    # The minimum value is 6 seconds, the default value is 60 seconds.
+    # This value must be greater than worker_check_interval.
+    # The default value is 60 seconds.
     #
     # @note Cluster mode only.
     # @example
