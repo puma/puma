@@ -4,8 +4,7 @@ require_relative "helpers/integration"
 if ::Puma::HAS_SSL # don't load any files if no ssl support
   require "net/http"
   require "openssl"
-  require_relative "helpers/constants"
-  require_relative "helpers/puma_socket"
+  require_relative "helpers/test_puma/puma_socket"
 end
 
 # These tests are used to verify that Puma works with SSL sockets.  Only
@@ -18,6 +17,8 @@ end
 
 class TestIntegrationSSL < TestIntegration
   parallelize_me! if ::Puma.mri?
+
+  LOCALHOST = ENV.fetch 'PUMA_CI_DFLT_HOST', 'localhost'
 
   include TestPuma::PumaSocket
 
@@ -100,19 +101,20 @@ class TestIntegrationSSL < TestIntegration
     end
   end
 
-  def test_verify_client_cert_roundtrip
+  # should use TLSv1.3 with OpenSSL 1.1 or later
+  def test_verify_client_cert_roundtrip(tls1_2 = nil)
     cert_path = File.expand_path '../examples/puma/client-certs', __dir__
     bind_port
 
-    config = <<~RUBY
+    config = <<~CONFIG
       if ::Puma::IS_JRUBY
-        ssl_bind '#{HOST}', '#{@bind_port}', {
+        ssl_bind '#{LOCALHOST}', '#{@bind_port}', {
           keystore: '#{cert_path}/keystore.jks',
           keystore_pass: 'jruby_puma',
           verify_mode: 'force_peer'
         }
       else
-        ssl_bind '#{HOST}', '#{@bind_port}', {
+        ssl_bind '#{LOCALHOST}', '#{@bind_port}', {
           cert: '#{cert_path}/server.crt',
           key:  '#{cert_path}/server.key',
           ca:   '#{cert_path}/ca.crt',
@@ -124,24 +126,35 @@ class TestIntegrationSSL < TestIntegration
       app do |env|
         [200, {}, [env['puma.peercert'].to_s]]
       end
-    RUBY
+    CONFIG
 
     cli_server "-t1:5 #{set_pumactl_args}", config: config, no_bind: true
 
-    body = send_http_read_resp_body port: @bind_port, ctx: new_ctx { |c|
+    client_cert = File.read "#{cert_path}/client.crt"
+
+    body = send_http_read_resp_body host: LOCALHOST, port: @bind_port, ctx: new_ctx { |c|
         ca   = "#{cert_path}/ca.crt"
-        cert = "#{cert_path}/client.crt"
         key  = "#{cert_path}/client.key"
         c.ca_file = ca
-        c.cert = ::OpenSSL::X509::Certificate.new File.read(cert)
+        c.cert = ::OpenSSL::X509::Certificate.new client_cert
         c.key  = ::OpenSSL::PKey::RSA.new File.read(key)
         c.verify_mode = ::OpenSSL::SSL::VERIFY_PEER
+        if tls1_2
+          if c.respond_to? :max_version=
+            c.max_version = :TLS1_2
+          else
+            c.ssl_version = :TLSv1_2
+          end
+        end
       }
 
-    assert_equal File.read("#{cert_path}/client.crt"), body
-    # stop server
+    assert_equal client_cert, body
   ensure
     cli_pumactl 'stop'
+  end
+
+  def test_verify_client_cert_roundtrip_tls1_2
+    test_verify_client_cert_roundtrip true
   end
 
   def test_ssl_run_with_curl_client
@@ -165,7 +178,7 @@ class TestIntegrationSSL < TestIntegration
     ssl_params['verify_mode'] = 'force_peer' # 'peer'
     out_err = StringIO.new
     ssl_context = Puma::MiniSSL::ContextBuilder.new(ssl_params, Puma::LogWriter.new(out_err, out_err)).context
-    server.add_ssl_listener(HOST, bind_port, ssl_context)
+    server.add_ssl_listener(LOCALHOST, bind_port, ssl_context)
 
     server.run(true)
     begin
@@ -175,7 +188,7 @@ class TestIntegrationSSL < TestIntegration
       # NOTE: JRuby used to end up in a hang with TLS peer verification enabled
       # it's easier to reproduce using an external client such as CURL (using net/http client the bug isn't triggered)
       # also the "hang", being buffering related, seems to showcase better with TLS 1.2 than 1.3
-      body = curl_and_get_response "https://localhost:#{bind_port}",
+      body = curl_and_get_response "https://#{LOCALHOST}:#{bind_port}",
                                    args: "--cacert #{ca} --cert #{cert} --key #{key} --tlsv1.2 --tls-max 1.2"
 
       warn out_err.string unless out_err.string.empty?
