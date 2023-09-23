@@ -730,13 +730,13 @@ module Puma
     end
 
     # Provide a block to be executed just before a thread is added to the thread
-    # pool. Be careful: while the block executes, thread creation is delayed, and 
-    # probably a request will have to wait too! The new thread will not be added to 
-    # the threadpool until the provided block returns. 
+    # pool. Be careful: while the block executes, thread creation is delayed, and
+    # probably a request will have to wait too! The new thread will not be added to
+    # the threadpool until the provided block returns.
     #
-    # Return values are ignored. 
+    # Return values are ignored.
     # Raising an exception will log a warning.
-    # 
+    #
     # This hook is useful for doing something when the thread pool grows.
     #
     # This can be called multiple times to add several hooks.
@@ -750,14 +750,14 @@ module Puma
       @options[:before_thread_start] << block
     end
 
-    # Provide a block to be executed after a thread is trimmed from the thread 
-    # pool. Be careful: while this block executes, Puma's main loop is 
+    # Provide a block to be executed after a thread is trimmed from the thread
+    # pool. Be careful: while this block executes, Puma's main loop is
     # blocked, so no new requests will be picked up.
-    # 
-    # This hook only runs when a thread in the threadpool is trimmed by Puma. 
+    #
+    # This hook only runs when a thread in the threadpool is trimmed by Puma.
     # It does not run when a thread dies due to exceptions or any other cause.
     #
-    # Return values are ignored. 
+    # Return values are ignored.
     # Raising an exception will log a warning.
     #
     # This hook is useful for cleaning up thread local resources when a thread
