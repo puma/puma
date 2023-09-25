@@ -183,7 +183,7 @@ class TestIntegration < Minitest::Test
         @server_log << line
         puts "    #{line}" if log
       end
-    rescue Exception => e
+    rescue StandardError => e
       error_retries += 1
       raise(e, "Waiting for server to log #{match_obj.inspect}") if error_retries == LOG_ERROR_QTY
       sleep LOG_ERROR_SLEEP
