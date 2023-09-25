@@ -3,7 +3,7 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
-require 'puma/plugin'
+require "puma/plugin"
 
 class TestPluginSystemdJruby < TestIntegration
 
