@@ -1,6 +1,8 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
+require "puma/configuration"
+
 require "time"
 
 class TestIntegrationCluster < TestIntegration
@@ -116,6 +118,8 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_term_exit_code
+    skip_unless_signal_exist? :TERM
+
     cli_server "-w #{workers} test/rackup/hello.ru"
     _, status = stop_server
 
@@ -123,6 +127,8 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_term_suppress
+    skip_unless_signal_exist? :TERM
+
     cli_server "-w #{workers} -C test/config/suppress_exception.rb test/rackup/hello.ru"
 
     _, status = stop_server
@@ -131,16 +137,15 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_on_booted
-    cli_server "-w #{workers} -C test/config/event_on_booted.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru", no_wait: true
+    skip_unless_signal_exist? :TERM
+    cli_server "-w #{workers} -C test/config/event_on_booted.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru",
+      no_wait: true
 
-    output = []
-
-    output << $_ while @server.gets
-
-    assert output.any? { |msg| msg == "on_booted called\n" } != nil
+    assert wait_for_server_to_include('on_booted called')
   end
 
   def test_term_worker_clean_exit
+    skip_unless_signal_exist? :TERM
     cli_server "-w #{workers} test/rackup/hello.ru"
 
     # Get the PIDs of the child workers.
@@ -290,21 +295,25 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_load_path_includes_extra_deps
-    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru",
+      no_wait: true
 
     load_path = []
-    while (line = @server.gets) =~ /^LOAD_PATH/
-      load_path << line.gsub(/^LOAD_PATH: /, '')
+    load_path << wait_for_server_to_match(/\ALOAD_PATH: (.+)/, 1)
+    while (line = @server.gets).start_with? 'LOAD_PATH: '
+      load_path << line.sub(/\ALOAD_PATH: /, '')
     end
     assert_match(%r{gems/minitest-[\d.]+/lib$}, load_path.last)
   end
 
   def test_load_path_does_not_include_nio4r
-    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru",
+      no_wait: true
 
     load_path = []
-    while (line = @server.gets) =~ /^LOAD_PATH/
-      load_path << line.gsub(/^LOAD_PATH: /, '')
+    load_path << wait_for_server_to_match(/\ALOAD_PATH: (.+)/, 1)
+    while (line = @server.gets).start_with? 'LOAD_PATH: '
+      load_path << line.sub(/\ALOAD_PATH: /, '')
     end
 
     load_path.each do |path|
