@@ -67,12 +67,13 @@ class TestIntegration < Minitest::Test
   def cli_server(argv,  # rubocop:disable Metrics/ParameterLists
       unix: false,      # uses a UNIXSocket for the server listener when true
       config: nil,      # string to use for config file
-      no_bind: nil,     # bind is defined by args passed
+      no_bind: nil,     # bind is defined by args passed or config file
       merge_err: false, # merge STDERR into STDOUT
       log: false,       # output server log to console (for debugging)
       no_wait: false,   # don't wait for server to boot
       puma_debug: nil,  # set env['PUMA_DEBUG'] = 'true'
       env: {})          # pass env setting to Puma process in IO.popen
+
     if config
       config_file = Tempfile.new(%w(config .rb))
       config_file.write config
@@ -93,6 +94,8 @@ class TestIntegration < Minitest::Test
       end
 
     env['PUMA_DEBUG'] = 'true' if puma_debug
+
+    STDOUT.syswrite "\n#{full_name}\n  #{cmd}\n" if log
 
     if merge_err
       @server = IO.popen(env, cmd, :err=>[:child, :out])
@@ -305,7 +308,6 @@ class TestIntegration < Minitest::Test
                [IOError, Errno::ECONNREFUSED, Errno::EPIPE]
     end
   end
-
 
   def set_pumactl_args(unix: false)
     if unix
