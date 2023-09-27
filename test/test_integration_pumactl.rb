@@ -102,9 +102,7 @@ class TestIntegrationPumactl < TestIntegration
 
     start = Time.now
 
-    s = UNIXSocket.new @bind_path
-    @ios_to_close << s
-    s << "GET /sleep1 HTTP/1.0\r\n\r\n"
+    fast_connect("sleep1", unix: true)
 
     # Get the PIDs of the phase 0 workers.
     phase0_worker_pids = get_worker_pids 0, wrkrs
@@ -135,14 +133,11 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_server "-q -C test/config/prune_bundler_with_multiple_workers.rb #{set_pumactl_args unix: true} -S #{@state_path}", unix: true
 
-    s = UNIXSocket.new @bind_path
-    @ios_to_close << s
-    s << "GET / HTTP/1.0\r\n\r\n"
+    socket = fast_connect(unix: true)
+    headers, body = read_response(socket)
 
-    body = s.read
-
-    assert_match "200 OK", body
-    assert_match "embedded app", body
+    assert_includes headers, "200 OK"
+    assert_includes body, "embedded app"
 
     cli_pumactl "stop", unix: true
 
@@ -205,5 +200,42 @@ class TestIntegrationPumactl < TestIntegration
 
     out = cli_pumactl_spawn "-S #{@state_path} status", no_bind: true
     assert_includes out.read, "Puma is started"
+  end
+
+  def control_gc_stats(unix: false)
+    cli_server "-t1:1 -q test/rackup/hello.ru #{set_pumactl_args unix: unix} -S #{@state_path}"
+
+    key = Puma::IS_MRI || TRUFFLE_HEAD ? "count" : "used"
+
+    resp_io = cli_pumactl "gc-stats", unix: unix
+    before = JSON.parse resp_io.read.split("\n", 2).last
+    gc_before = before[key].to_i
+
+    2.times { fast_connect }
+
+    resp_io = cli_pumactl "gc", unix: unix
+    # below shows gc was called (200 reply)
+    assert_equal "Command gc sent success", resp_io.read.rstrip
+
+    resp_io = cli_pumactl "gc-stats", unix: unix
+    after = JSON.parse resp_io.read.split("\n", 2).last
+    gc_after = after[key].to_i
+
+    # Hitting the /gc route should increment the count by 1
+    if key == "count"
+      assert_operator gc_before, :<, gc_after, "make sure a gc has happened"
+    elsif !(Puma::IS_OSX && Puma::IS_JRUBY)
+      refute_equal gc_before, gc_after, "make sure a gc has happened"
+    end
+  end
+
+  def test_control_gc_stats_tcp
+    @control_tcp_port = UniquePort.call
+    control_gc_stats
+  end
+
+  def test_control_gc_stats_unix
+    skip_unless :unix
+    control_gc_stats unix: true
   end
 end
