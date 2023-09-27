@@ -37,6 +37,7 @@ module Puma
     attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
+    attr_reader :idle_timeout_reached
 
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
@@ -117,6 +118,8 @@ module Puma
       @precheck_closing = true
 
       @requests_count = 0
+
+      @idle_timeout_reached = false
     end
 
     def inherit_binder(bind)
@@ -328,7 +331,11 @@ module Puma
           begin
             ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : @idle_timeout)
             unless ios
-              @status = :stop unless shutting_down?
+              unless shutting_down?
+                @idle_timeout_reached = true
+                @status = :stop
+              end
+
               break
             end
 
@@ -367,6 +374,7 @@ module Puma
           @queue_requests = false
           @reactor.shutdown
         end
+
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
         @log_writer.unknown_error e, nil, "Exception handling servers"

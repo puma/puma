@@ -221,6 +221,20 @@ class TestIntegrationCluster < TestIntegration
     RUBY
   end
 
+  def test_idle_timeout
+    cli_server "-w #{workers} test/rackup/hello.ru", config: "idle_timeout 1"
+
+    get_worker_pids # wait for workers to boot
+
+    connect
+
+    sleep 1.15
+
+    assert_raises Errno::ECONNREFUSED, "Connection refused" do
+      connect
+    end
+  end
+
   def test_worker_index_is_with_in_options_limit
     skip_unless_signal_exist? :TERM
 
