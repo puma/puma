@@ -323,7 +323,7 @@ class TestCLI < Minitest::Test
     gc_count_after = gc_stats["count"].to_i
 
     # Hitting the /gc route should increment the count by 1
-    assert(gc_count_before < gc_count_after, "make sure a gc has happened")
+    assert_operator gc_count_before, :<, gc_count_after, "make sure a gc has happened"
 
   ensure
     cli.launcher.stop if cli
@@ -371,9 +371,7 @@ class TestCLI < Minitest::Test
 
     url = data["control_url"]
 
-    m = %r!unix://(.*)!.match(url)
-
-    assert m, "'#{url}' is not a URL"
+    assert_operator url, :start_with?, "unix://", "'#{url}' is not a URL"
   end
 
   def test_state_file_callback_filtering
