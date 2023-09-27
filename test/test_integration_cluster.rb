@@ -204,13 +204,13 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_boot_timeout
     timeout = 1
-    worker_timeout(timeout, 2, "worker failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
+    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
   end
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
-    worker_timeout(timeout, 1, "worker failed to check in within \\\d+ seconds", <<~RUBY)
+    worker_timeout(timeout, 1, "failed to check in within \\\d+ seconds", <<~RUBY)
       worker_timeout #{timeout}
       on_worker_boot do
         Thread.new do
@@ -285,6 +285,30 @@ class TestIntegrationCluster < TestIntegration
       end
     RUBY
     assert_equal '0', read_body(connect)
+  end
+
+  def test_fork_worker_phased_restart_with_high_worker_count
+    worker_count = 10
+
+    cli_server "test/rackup/hello.ru", config: <<~RUBY
+      fork_worker 0
+      worker_check_interval 1
+      # lower worker timeout from default (60) to avoid test timeout
+      worker_timeout 2
+      # to simulate worker 0 timeout, total boot time for all workers
+      # needs to exceed single worker timeout
+      workers #{worker_count}
+    RUBY
+
+    # workers is the default
+    get_worker_pids 0, worker_count
+
+    Process.kill :USR1, @pid
+
+    get_worker_pids 1, worker_count
+
+    # below is so all of @server_log isn't output for failure
+    refute @server_log[/.*Terminating timed out worker.*/]
   end
 
   def test_prune_bundler_with_multiple_workers
@@ -482,9 +506,14 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: config
 
     pids = []
+    re = /Terminating timed out worker \(Worker \d+ #{details}\): (\d+)/
+
+    # below is messy code, for debugging
     Timeout.timeout(iterations * timeout + 1) do
-      (pids << @server.gets[/Terminating timed out worker \(#{details}\): (\d+)/, 1]).compact! while pids.size < workers * iterations
-      pids.map!(&:to_i)
+      while (pids.size < workers * iterations)
+        t = @server.gets
+        (idx = t[re, 1]&.to_i) and pids << idx
+      end
     end
 
     assert_equal pids, pids.uniq
