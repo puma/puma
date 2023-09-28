@@ -334,9 +334,9 @@ class TestIntegration < Minitest::Test
       end
 
     r, w = IO.pipe
-    Thread.new { Puma::ControlCLI.new(arg, w, w).run }.join
-    w.close
     @ios_to_close << r
+    Puma::ControlCLI.new(arg, w, w).run
+    w.close
     r
   end
 
