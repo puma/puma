@@ -9,7 +9,6 @@ require_relative 'tmp_path'
 # have their own files, use those instead
 class TestIntegration < Minitest::Test
   include TmpPath
-  DARWIN = RUBY_PLATFORM.include? 'darwin'
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
   RESP_READ_LEN = 65_536
