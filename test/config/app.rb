@@ -1,4 +1,4 @@
-port ENV['PORT'] if ENV['PORT']
+port ENV.fetch('PORT', 0)
 
 app do |env|
   [200, {}, ["embedded app"]]
