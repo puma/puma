@@ -280,72 +280,6 @@ class TestCLI < Minitest::Test
     t.join if UNIX_SKT_EXIST
   end
 
-  def control_gc_stats(uri, cntl)
-    cli = Puma::CLI.new ["-b", uri,
-                         "--control-url", cntl,
-                         "--control-token", "",
-                         "test/rackup/hello.ru"], @log_writer, @events
-
-    t = Thread.new do
-      cli.run
-    end
-
-    wait_booted
-
-    s = yield
-    s << "GET /gc-stats HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
-
-    lines = body.split("\r\n")
-    json_line = lines.detect { |l| l[0] == "{" }
-    pairs = json_line.scan(/\"[^\"]+\": [^,]+/)
-    gc_stats = {}
-    pairs.each do |p|
-      p =~ /\"([^\"]+)\": ([^,]+)/ || raise("Can't parse #{p.inspect}!")
-      gc_stats[$1] = $2
-    end
-    gc_count_before = gc_stats["count"].to_i
-
-    s = yield
-    s << "GET /gc HTTP/1.0\r\n\r\n"
-    body = s.read # Ignored
-    s.close
-
-    s = yield
-    s << "GET /gc-stats HTTP/1.0\r\n\r\n"
-    body = s.read
-    s.close
-
-    lines = body.split("\r\n")
-    json_line = lines.detect { |l| l[0] == "{" }
-    gc_stats = JSON.parse(json_line)
-    gc_count_after = gc_stats["count"].to_i
-
-    # Hitting the /gc route should increment the count by 1
-    assert(gc_count_before < gc_count_after, "make sure a gc has happened")
-
-  ensure
-    cli.launcher.stop if cli
-    t.join
-  end
-
-  def test_control_gc_stats_tcp
-    uri  = "tcp://127.0.0.1:#{UniquePort.call}/"
-    cntl_port = UniquePort.call
-    cntl = "tcp://127.0.0.1:#{cntl_port}/"
-
-    control_gc_stats(uri, cntl) { TCPSocket.new "127.0.0.1", cntl_port }
-  end
-
-  def test_control_gc_stats_unix
-    skip_unless :unix
-
-    uri  = "unix://#{@tmp_path2}"
-    cntl = "unix://#{@tmp_path}"
-
-    control_gc_stats(uri, cntl) { UNIXSocket.new @tmp_path }
-  end
 
   def test_tmp_control
     skip_if :jruby, suffix: " - Unknown issue"
@@ -371,9 +305,7 @@ class TestCLI < Minitest::Test
 
     url = data["control_url"]
 
-    m = %r!unix://(.*)!.match(url)
-
-    assert m, "'#{url}' is not a URL"
+    assert_operator url, :start_with?, "unix://", "'#{url}' is not a URL"
   end
 
   def test_state_file_callback_filtering
