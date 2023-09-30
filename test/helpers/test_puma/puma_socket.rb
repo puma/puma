@@ -78,6 +78,8 @@ module TestPuma
       @ios_to_close ||= []
       @bind_port = nil
       @bind_path = nil
+      @control_port = nil
+      @control_path = nil
     end
 
     # Closes all io's in `@ios_to_close`, also deletes them if they are files
