@@ -1,7 +1,8 @@
 require_relative "helper"
+require_relative "helpers/test_puma/puma_socket"
+
 require "puma/events"
 require "puma/server"
-require "net/http"
 require "nio"
 require "ipaddr"
 
@@ -12,6 +13,8 @@ end
 
 class TestPumaServer < Minitest::Test
   parallelize_me!
+
+  include TestPuma::PumaSocket
 
   STATUS_CODES = ::Puma::HTTP_STATUS_CODES
 
@@ -45,55 +48,22 @@ class TestPumaServer < Minitest::Test
     options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
     @server = Puma::Server.new block || @app, @events, options
-    @port = (@server.add_tcp_listener @host, 0).addr[1]
+    @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
-  end
-
-  def header(socket)
-    header = []
-    while true
-      socket.wait_readable 5
-      line = socket.gets
-      break if line == "\r\n"
-      header << line.strip
-    end
-
-    header
-  end
-
-  # only for shorter bodies!
-  def send_http_and_sysread(req)
-    socket = send_http(req)
-    socket.wait_readable 5
-    socket.sysread 2_048
-  end
-
-  def send_http_and_read(req)
-    socket = send_http req
-    socket.wait_readable 5
-    socket.read
-  end
-
-  def send_http(req)
-    new_connection << req
   end
 
   def send_proxy_v1_http(req, remote_ip, multisend = false)
     addr = IPAddr.new(remote_ip)
     family = addr.ipv4? ? "TCP4" : "TCP6"
     target = addr.ipv4? ? "127.0.0.1" : "::1"
-    conn = new_connection
+    socket = new_socket
     if multisend
-      conn << "PROXY #{family} #{remote_ip} #{target} 10000 80\r\n"
+      socket << "PROXY #{family} #{remote_ip} #{target} 10000 80\r\n"
       sleep 0.15
-      conn << req
+      socket << req
     else
-      conn << ("PROXY #{family} #{remote_ip} #{target} 10000 80\r\n" + req)
+      socket << ("PROXY #{family} #{remote_ip} #{target} 10000 80\r\n" + req)
     end
-  end
-
-  def new_connection
-    TCPSocket.new(@host, @port).tap {|socket| @ios << socket}
   end
 
   def test_normalize_host_header_missing
@@ -101,8 +71,8 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-    assert_equal "localhost\n80", data.split("\r\n").last
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\n\r\n"
+    assert_equal "localhost\n80", body
   end
 
   def test_normalize_host_header_hostname
@@ -110,11 +80,11 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: example.com:456\r\n\r\n"
-    assert_equal "example.com\n456", data.split("\r\n").last
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: example.com:456\r\n\r\n"
+    assert_equal "example.com\n456", body
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n"
-    assert_equal "example.com\n80", data.split("\r\n").last
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n"
+    assert_equal "example.com\n80", body
   end
 
   def test_normalize_host_header_ipv4
@@ -122,11 +92,11 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
-    assert_equal "123.123.123.123\n456", data.split("\r\n").last
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
+    assert_equal "123.123.123.123\n456", body
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: 123.123.123.123\r\n\r\n"
-    assert_equal "123.123.123.123\n80", data.split("\r\n").last
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: 123.123.123.123\r\n\r\n"
+    assert_equal "123.123.123.123\n80", body
   end
 
   def test_normalize_host_header_ipv6
@@ -134,14 +104,14 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
-    assert_equal "[::ffff:127.0.0.1]\n9292", data.split("\r\n").last
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
+    assert_equal "[::ffff:127.0.0.1]\n9292", body
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::1]:9292\r\n\r\n"
-    assert_equal "[::1]\n9292", data.split("\r\n").last
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: [::1]:9292\r\n\r\n"
+    assert_equal "[::1]\n9292", body
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nHost: [::1]\r\n\r\n"
-    assert_equal "[::1]\n80", data.split("\r\n").last
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: [::1]\r\n\r\n"
+    assert_equal "[::1]\n80", body
   end
 
   def test_streaming_body
@@ -154,9 +124,9 @@ class TestPumaServer < Minitest::Test
       [200, {}, body]
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "Hello World", data.split("\r\n\r\n", 2).last
+    assert_equal "Hello World", body
   end
 
   def test_file_body
@@ -166,14 +136,11 @@ class TestPumaServer < Minitest::Test
 
     server_run { |env| [200, {}, tf] }
 
-    data = +''
-    socket = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
-    data << socket.sysread(65_536) while socket.wait_readable(0.1)
+    req = "GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@bind_port}\r\n\r\n"
+    body = send_http_read_resp_body req
 
-    ary = data.split("\r\n\r\n", 2)
-
-    assert_equal random_bytes.bytesize, ary.last.bytesize
-    assert_equal random_bytes, ary.last
+    assert_equal random_bytes.bytesize, body.bytesize
+    assert_equal random_bytes, body
   ensure
     tf.close
   end
@@ -190,13 +157,12 @@ class TestPumaServer < Minitest::Test
 
     server_run { |env| [200, {}, obj] }
 
-    data = +''
-    socket = send_http("GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@port}\r\n\r\n")
-    data << socket.sysread(65_536) while socket.wait_readable(0.1)
-    ary = data.split("\r\n\r\n", 2)
+    req = "GET / HTTP/1.1\r\nHost: [::ffff:127.0.0.1]:#{@bind_port}\r\n\r\n"
 
-    assert_equal random_bytes.bytesize, ary.last.bytesize
-    assert_equal random_bytes, ary.last
+    body = send_http_read_resp_body req
+
+    assert_equal random_bytes.bytesize, body.bytesize
+    assert_equal random_bytes, body
   ensure
     tf.close
   end
@@ -230,7 +196,7 @@ class TestPumaServer < Minitest::Test
       [-1, {}, []]
     end
 
-    data = send_http_and_read "PUT / HTTP/1.0\r\n\r\nHello"
+    data = send_http_read_response "PUT / HTTP/1.0\r\n\r\nHello"
 
     assert_equal body, data
   end
@@ -283,14 +249,11 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env['SERVER_PORT']]]
     end
 
-    req = Net::HTTP::Get.new '/'
-    req['HOST'] = 'example.com'
+    req = "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n"
 
-    res = Net::HTTP.start @host, @port do |http|
-      http.request(req)
-    end
+    body = send_http_read_resp_body req
 
-    assert_equal "80", res.body
+    assert_equal "80", body
   end
 
   def test_default_server_port_respects_x_forwarded_proto
@@ -298,21 +261,17 @@ class TestPumaServer < Minitest::Test
       [200, {}, [env['SERVER_PORT']]]
     end
 
-    req = Net::HTTP::Get.new("/")
-    req['HOST'] = "example.com"
-    req['X-FORWARDED-PROTO'] = "https,http"
+    req = "GET / HTTP/1.0\r\nHost: example.com\r\nx-forwarded-proto: https,http\r\n\r\n"
 
-    res = Net::HTTP.start @host, @port do |http|
-      http.request(req)
-    end
+    body = send_http_read_resp_body req
 
-    assert_equal "443", res.body
+    assert_equal "443", body
   end
 
   def test_HEAD_has_no_body
     server_run { [200, {"Foo" => "Bar"}, ["hello"]] }
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nFoo: Bar\r\nContent-Length: 5\r\n\r\n", data
   end
@@ -320,7 +279,7 @@ class TestPumaServer < Minitest::Test
   def test_GET_with_empty_body_has_sane_chunking
     server_run { [200, {}, [""]] }
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
@@ -331,7 +290,7 @@ class TestPumaServer < Minitest::Test
      [200, { "X-Hello" => "World" }, ["Hello world!"]]
     end
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     expected_data = <<~EOF.gsub("\n", "\r\n") + "\r\n"
       HTTP/1.1 103 Early Hints
@@ -374,7 +333,7 @@ class TestPumaServer < Minitest::Test
      [200, { "X-Hello" => "World" }, ["Hello world!"]]
     end
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     expected_data = <<~EOF.gsub("\n", "\r\n") + "\r\n"
       HTTP/1.0 200 OK
@@ -403,17 +362,17 @@ class TestPumaServer < Minitest::Test
 
     socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 17\r\n\r\n"
     socket << "hello world foo bar"
-    h = header socket
+    response = socket.read_response
 
     # Content Too Large
-    assert_equal ["HTTP/1.1 413 #{STATUS_CODES[413]}", "Content-Length: 17"], h
-
+    assert_equal "HTTP/1.1 413 #{STATUS_CODES[413]}", response.status
+    assert_equal ["Content-Length: 17"], response.headers
   end
 
   def test_GET_with_no_body_has_sane_chunking
     server_run { [200, {}, []] }
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
@@ -421,7 +380,7 @@ class TestPumaServer < Minitest::Test
   def test_doesnt_print_backtrace_in_production
     server_run(environment: :production) { raise "don't leak me bro" }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     refute_match(/don't leak me bro/, data)
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
@@ -430,7 +389,7 @@ class TestPumaServer < Minitest::Test
   def test_eof_on_connection_close_is_not_logged_as_an_error
     server_run
 
-    new_connection.close # Make a connection and close without writing
+    new_socket.close # Make a connection and close without writing
 
     @server.stop(true)
     stderr = @log_writer.stderr.string
@@ -444,7 +403,7 @@ class TestPumaServer < Minitest::Test
       sleep 5
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
     assert_match(/Content-Type: application\/json/, data)
@@ -470,7 +429,7 @@ class TestPumaServer < Minitest::Test
       [[0,1], {}, app_body]
     end
 
-    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     assert_includes data, 'HTTP/1.0 500 Internal Server Error'
     assert_includes data, "Puma caught this error: undefined method `to_i' for"
@@ -485,7 +444,7 @@ class TestPumaServer < Minitest::Test
       raise NoMethodError, "Oh no an error"
     end
 
-    data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     # Internal Server Error
     assert_includes data, "HTTP/1.0 500 #{STATUS_CODES[500]}"
@@ -497,7 +456,7 @@ class TestPumaServer < Minitest::Test
       raise WithoutBacktraceError.new
     end
 
-    data = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
     # Internal Server Error
     assert_includes data, "HTTP/1.1 500 #{STATUS_CODES[500]}"
     assert_includes data, 'Puma caught this error: no backtrace error (WithoutBacktraceError)'
@@ -510,7 +469,7 @@ class TestPumaServer < Minitest::Test
       sleep 5
     end
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 503 Service Unavailable/, data)
     assert_match(/Puma caught this error.+Puma::ThreadPool::ForceShutdown/, data)
@@ -520,7 +479,7 @@ class TestPumaServer < Minitest::Test
     re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
     server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 302 Found/, data)
   end
@@ -533,7 +492,7 @@ class TestPumaServer < Minitest::Test
 
     server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 302 Found/, data)
   end
@@ -546,7 +505,7 @@ class TestPumaServer < Minitest::Test
 
     server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 302 Found/, data)
   end
@@ -554,7 +513,7 @@ class TestPumaServer < Minitest::Test
   def test_custom_http_codes_10
     server_run { [449, {}, [""]] }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
 
     assert_equal "HTTP/1.0 449 CUSTOM\r\nContent-Length: 0\r\n\r\n", data
   end
@@ -562,7 +521,7 @@ class TestPumaServer < Minitest::Test
   def test_custom_http_codes_11
     server_run { [449, {}, [""]] }
 
-    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
     assert_equal "HTTP/1.1 449 CUSTOM\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
   end
@@ -571,7 +530,7 @@ class TestPumaServer < Minitest::Test
     server_run { [200, {"Content-Type" => "application/pdf",
                                      "Content-Length" => "4242"}, []] }
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Type: application/pdf\r\nContent-Length: 4242\r\n\r\n", data
   end
@@ -584,7 +543,7 @@ class TestPumaServer < Minitest::Test
 
     server_run { [200, {}, [""]] }
 
-    _ = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    _ = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_equal [:booting, :running], states
 
@@ -766,22 +725,17 @@ class TestPumaServer < Minitest::Test
   def test_http_11_keep_alive_with_body
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
-    socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
+    req  = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
+    response = send_http_read_response req
 
-    h = header socket
-
-    body = socket.gets
-
-    assert_equal ["HTTP/1.1 200 OK", "Content-Type: plain/text", "Content-Length: 6"], h
-    assert_equal "hello\n", body
-
-    socket.close
+    assert_equal ["Content-Type: plain/text", "Content-Length: 6"], response.headers
+    assert_equal "hello\n", response.body
   end
 
   def test_http_11_close_with_body
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 
-    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
     assert_equal "HTTP/1.1 200 OK\r\nContent-Type: plain/text\r\nConnection: close\r\nContent-Length: 5\r\n\r\nhello", data
   end
@@ -789,68 +743,69 @@ class TestPumaServer < Minitest::Test
   def test_http_11_keep_alive_without_body
     server_run { [204, {}, []] }
 
-    socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
+    req = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
-    h = header socket
+    status = send_http_read_response(req).status
 
     # No Content
-    assert_equal ["HTTP/1.1 204 #{STATUS_CODES[204]}"], h
+    assert_equal "HTTP/1.1 204 #{STATUS_CODES[204]}", status
   end
 
   def test_http_11_close_without_body
     server_run { [204, {}, []] }
 
-    socket = send_http "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    req = "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
-    h = header socket
+    response = send_http_read_response(req)
 
     # No Content
-    assert_equal ["HTTP/1.1 204 #{STATUS_CODES[204]}", "Connection: close"], h
+    assert_equal "HTTP/1.1 204 #{STATUS_CODES[204]}", response.status
+    assert_equal ["Connection: close"], response.headers
   end
 
   def test_http_10_keep_alive_with_body
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
-    socket = send_http "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
+    req = "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
-    h = header socket
+    response = send_http_read_response(req)
 
-    body = socket.gets
-
-    assert_equal ["HTTP/1.0 200 OK", "Content-Type: plain/text", "Connection: Keep-Alive", "Content-Length: 6"], h
-    assert_equal "hello\n", body
+    assert_equal ["Content-Type: plain/text", "Connection: Keep-Alive", "Content-Length: 6"], response.headers
+    assert_equal "hello\n", response.body
   end
 
   def test_http_10_close_with_body
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+    response = send_http_read_response "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Type: plain/text\r\nContent-Length: 5\r\n\r\nhello", data
+    assert_equal ["Content-Type: plain/text", "Content-Length: 5"], response.headers
+    assert_equal "hello", response.body
   end
 
   def test_http_10_keep_alive_without_body
     server_run { [204, {}, []] }
 
-    socket = send_http "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
+    req = "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
-    h = header socket
+    response = send_http_read_response(req)
 
-    assert_equal ["HTTP/1.0 204 No Content", "Connection: Keep-Alive"], h
+    assert_equal "HTTP/1.0 204 No Content", response.status
+    assert_equal ["Connection: Keep-Alive"], response.headers
   end
 
   def test_http_10_close_without_body
     server_run { [204, {}, []] }
 
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+    status = send_http_read_response("GET / HTTP/1.0\r\nConnection: close\r\n\r\n").status
 
-    assert_equal "HTTP/1.0 204 No Content\r\n\r\n", data
+    assert_equal "HTTP/1.0 204 No Content", status
   end
 
   def test_Expect_100
     server_run { [200, {}, [""]] }
 
-    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
 
     assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
   end
@@ -866,9 +821,9 @@ class TestPumaServer < Minitest::Test
       [200, {}, [""]]
     }
 
-    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    response = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
     assert_nil transfer_encoding
@@ -896,7 +851,7 @@ class TestPumaServer < Minitest::Test
       request_body = '.' * size
       request = "#{header}#{size.to_s(16)}\r\n#{request_body}\r\n0\r\n\r\n"
 
-      data = send_http_and_read request
+      data = send_http_read_response request
 
       assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
       assert_equal size, Integer(content_length)
@@ -1092,7 +1047,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, [""]]
     }
 
-    data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: Chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: Chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal "hello", body
@@ -1108,15 +1063,13 @@ class TestPumaServer < Minitest::Test
       [200, {}, [""]]
     }
 
-    socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    req = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    h = header socket
+    response = send_http_read_response(req)
 
-    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal ["Content-Length: 0"], response.headers
     assert_equal "hello", body
     assert_equal "5", content_length
-
-    socket.close
   end
 
   def test_chunked_keep_alive_two_back_to_back
@@ -1139,8 +1092,9 @@ class TestPumaServer < Minitest::Test
       last_crlf_written = true
     end
 
-    h = header(socket)
-    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    response = socket.read_response
+
+    assert_equal ["Content-Length: 0"], response.headers
     assert_equal "hello", body
     assert_equal "5", content_length
     sleep 0.05 if TRUFFLE
@@ -1151,13 +1105,11 @@ class TestPumaServer < Minitest::Test
     socket << "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
     sleep 0.1
 
-    h = header(socket)
+    response = socket.read_response
 
-    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    assert_equal ["Content-Length: 0"], response.headers
     assert_equal "goodbye", body
     assert_equal "7", content_length
-
-    socket.close
   end
 
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
@@ -1171,10 +1123,13 @@ class TestPumaServer < Minitest::Test
       [200, {}, [""]]
     }
 
-    socket = send_http "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    req = "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    h = header socket
-    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    socket = send_http req
+
+    response = socket.read_response
+
+    assert_equal ["Content-Length: 0"], response.headers
     assert_equal "hello", body
     assert_equal "5", content_length
     assert_equal "127.0.0.1", remote_addr
@@ -1182,19 +1137,18 @@ class TestPumaServer < Minitest::Test
     socket << "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.2\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
     sleep 0.1
 
-    h = header(socket)
-
-    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], h
+    response = socket.read_response
+    assert_equal ["Content-Length: 0"], response.headers
     assert_equal "goodbye", body
     assert_equal "7", content_length
     assert_equal "127.0.0.2", remote_addr
-
-    socket.close
   end
 
   def test_chunked_encoding
     enc = Encoding::UTF_16LE
-    str = "──иї_テスト──\n".encode enc
+    str = "──иї_テスト──\n".encode(enc, Encoding::UTF_8)
+
+    suffix = "\nHello World\n".encode(enc, Encoding::UTF_8)
 
     server_run {
       hdrs = {}
@@ -1204,23 +1158,25 @@ class TestPumaServer < Minitest::Test
         100.times do |entry|
           yielder << str
         end
-        yielder << "\nHello World\n".encode(enc)
+        yielder << suffix
       end
 
       [200, hdrs, body]
     }
 
-    body = Net::HTTP.start @host, @port do |http|
-      http.request(Net::HTTP::Get.new '/').body.force_encoding(enc)
-    end
-    assert_includes body, str
+    # PumaSocket doesn't process Content-Type charset
+    body = send_http_read_response.decode_body
+    body = body.force_encoding enc
+
+    assert_operator body, :start_with?, str
+    assert_operator body, :end_with?  , suffix
     assert_equal enc, body.encoding
   end
 
   def test_empty_header_values
     server_run { [200, {"X-Empty-Header" => ""}, []] }
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\nContent-Length: 0\r\n\r\n", data
   end
@@ -1278,7 +1234,7 @@ class TestPumaServer < Minitest::Test
   def test_newline_splits
     server_run { [200, {'X-header' => "first line\nsecond line"}, ["Hello"]] }
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_match "X-header: first line\r\nX-header: second line\r\n", data
   end
@@ -1289,7 +1245,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, ["Hello world!"]]
     end
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_match "X-header: first line\r\nX-header: second line\r\n", data
   end
@@ -1314,7 +1270,7 @@ class TestPumaServer < Minitest::Test
   def assert_does_not_allow_http_injection(app, opts = {})
     server_run(early_hints: opts[:early_hints], &app)
 
-    data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
+    data = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
     refute_match(/[\r\n]Cookie: hack[\r\n]/, data)
   end
@@ -1433,42 +1389,47 @@ class TestPumaServer < Minitest::Test
   def test_http11_connection_header_queue
     server_run { [200, {}, [""]] }
 
-    socket = send_http "GET / HTTP/1.1\r\n\r\n"
-    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 0"], header(socket)
+    socket = send_http GET_11
+
+    response = socket.read_response
+
+    assert_equal ["Content-Length: 0"], response.headers
 
     socket << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
-    assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(socket)
+    response = socket.read_response
 
-    socket.close
+    assert_equal ["Connection: close", "Content-Length: 0"], response.headers
   end
 
   def test_http10_connection_header_queue
     server_run { [200, {}, [""]] }
 
     socket = send_http "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n"
-    assert_equal ["HTTP/1.0 200 OK", "Connection: Keep-Alive", "Content-Length: 0"], header(socket)
+    response = socket.read_response
 
-    socket << "GET / HTTP/1.0\r\n\r\n"
-    assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(socket)
-    socket.close
+    assert_equal ["Connection: Keep-Alive", "Content-Length: 0"], response.headers
+
+    socket << GET_10
+    response = socket.read_response
+
+    assert_equal ["Content-Length: 0"], response.headers
   end
 
   def test_http11_connection_header_no_queue
     server_run(queue_requests: false) { [200, {}, [""]] }
-    socket = send_http "GET / HTTP/1.1\r\n\r\n"
-    assert_equal ["HTTP/1.1 200 OK", "Connection: close", "Content-Length: 0"], header(socket)
-    socket.close
+    response = send_http_read_response GET_11
+    assert_equal ["Connection: close", "Content-Length: 0"], response.headers
   end
 
   def test_http10_connection_header_no_queue
     server_run(queue_requests: false) { [200, {}, [""]] }
-    socket = send_http "GET / HTTP/1.0\r\n\r\n"
-    assert_equal ["HTTP/1.0 200 OK", "Content-Length: 0"], header(socket)
-    socket.close
+    response = send_http_read_response GET_10
+    assert_equal ["Content-Length: 0"], response.headers
+
   end
 
   def stub_accept_nonblock(error)
-    @port = (@server.add_tcp_listener @host, 0).addr[1]
+    @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     io = @server.binder.ios.last
 
     accept_old = io.method(:accept_nonblock)
@@ -1478,7 +1439,7 @@ class TestPumaServer < Minitest::Test
     end
 
     @server.run
-    new_connection
+    new_socket
     sleep 0.01
   end
 
@@ -1508,33 +1469,26 @@ class TestPumaServer < Minitest::Test
     server_run(lowlevel_error_handler: handler) { [200, {}, ['Hello World']] }
 
     # valid req & read, close
-    socket = TCPSocket.new @host, @port
-    socket.syswrite "GET / HTTP/1.0\r\n\r\n"
+    socket = send_http GET_10
     sleep 0.05  # macOS TruffleRuby may not get the body without
-    resp = socket.sysread 256
-    socket.close
-    assert_match 'Hello World', resp
-    sleep 0.5
+    assert_match 'Hello World', socket.read_body
+#    sleep 0.5
     assert_empty @log_writer.stdout.string
 
     # valid req, close
-    socket = TCPSocket.new @host, @port
-    socket.syswrite "GET / HTTP/1.0\r\n\r\n"
-    socket.close
-    sleep 0.5
+    send_http(GET_10).close
+#    sleep 0.5
     assert_empty @log_writer.stdout.string
 
     # invalid req, close
-    socket = TCPSocket.new @host, @port
-    socket.syswrite "GET / HTTP"
-    socket.close
-    sleep 0.5
+    send_http("GET / HTTP").close
+#    sleep 0.5
     assert_empty @log_writer.stdout.string
   end
 
   def test_idle_connections_closed_immediately_on_shutdown
     server_run
-    socket = new_connection
+    socket = new_socket
     sleep 0.5 # give enough time for new connection to enter reactor
     @server.stop false
 
@@ -1574,7 +1528,7 @@ class TestPumaServer < Minitest::Test
     assert_equal selector.backend, backend
   end
 
-  def test_drain_on_shutdown(drain=true)
+  def test_drain_on_shutdown(drain = true)
     num_connections = 10
 
     wait = Queue.new
@@ -1582,14 +1536,14 @@ class TestPumaServer < Minitest::Test
       wait.pop
       [200, {}, ["DONE"]]
     end
-    connections = Array.new(num_connections) {send_http "GET / HTTP/1.0\r\n\r\n"}
+    connections = Array.new(num_connections) { send_http GET_10 }
     @server.stop
     wait.close
     bad = 0
     connections.each do |s|
       begin
         if s.wait_readable(1) and drain # JRuby may hang on read with drain is false
-          assert_match 'DONE', s.read
+          assert_operator s.read, :end_with?, "DONE"
         else
           bad += 1
         end
@@ -1612,19 +1566,19 @@ class TestPumaServer < Minitest::Test
     server_run(remote_address: :header, remote_address_header: 'HTTP_X_REMOTE_IP') do |env|
       [200, {}, [env['REMOTE_ADDR']]]
     end
-    remote_addr = send_http_and_read("GET / HTTP/1.1\r\nX-Remote-IP: 1.2.3.4\r\n\r\n").split("\r\n").last
+    remote_addr = send_http_read_response("GET / HTTP/1.1\r\nX-Remote-IP: 1.2.3.4\r\n\r\n").split("\r\n").last
     assert_equal '1.2.3.4', remote_addr
 
     # TODO: it would be great to test a connection from a non-localhost IP, but we can't really do that. For
     # now, at least test that it doesn't return garbage.
-    remote_addr = send_http_and_sysread("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
+    remote_addr = send_http_read_response("GET / HTTP/1.1\r\n\r\n").split("\r\n").last
     assert_equal @host, remote_addr
   end
 
   def get_chunk_times
     body = +''
     times = []
-    Net::HTTP.start @host, @port do |http|
+    Net::HTTP.start @host, @bind_port do |http|
       req = Net::HTTP::Get.new '/'
       http.request req do |resp|
         resp.read_body do |chunk|
@@ -1693,7 +1647,7 @@ class TestPumaServer < Minitest::Test
   def test_empty_body_array_content_length_0
     server_run { |env| [404, {'Content-Length' => '0'}, []] }
 
-    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    resp = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
     # Not Found
     assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nContent-Length: 0\r\n\r\n", resp
   end
@@ -1701,7 +1655,7 @@ class TestPumaServer < Minitest::Test
   def test_empty_body_array_no_content_length
     server_run { |env| [404, {}, []] }
 
-    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    resp = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
     # Not Found
     assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nContent-Length: 0\r\n\r\n", resp
   end
@@ -1709,7 +1663,7 @@ class TestPumaServer < Minitest::Test
   def test_empty_body_enum
     server_run { |env| [404, {}, [].to_enum] }
 
-    resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
+    resp = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
     # Not Found
     assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", resp
   end
@@ -1737,7 +1691,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, [req_body]]
     end
 
-    cmd = "curl -H 'transfer-encoding: chunked' --form data=@#{temp_file_path} http://127.0.0.1:#{@port}/"
+    cmd = "curl -H 'transfer-encoding: chunked' --form data=@#{temp_file_path} http://127.0.0.1:#{@bind_port}/"
 
     out_r, _, _ = spawn_cmd cmd
 
@@ -1768,7 +1722,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, [req_body]]
     end
 
-    cmd = "curl -H 'transfer-encoding: chunked' --form data=@#{temp_file_path} http://127.0.0.1:#{@port}/"
+    cmd = "curl -H 'transfer-encoding: chunked' --form data=@#{temp_file_path} http://127.0.0.1:#{@bind_port}/"
 
     out_r, _, _ = spawn_cmd cmd
 
@@ -1785,7 +1739,7 @@ class TestPumaServer < Minitest::Test
       body = [env['REQUEST_METHOD']]
       [200, {}, body]
     end
-    resp = send_http_and_read "PROPFIND / HTTP/1.0\r\n\r\n"
+    resp = send_http_read_response "PROPFIND / HTTP/1.0\r\n\r\n"
     assert_match 'PROPFIND', resp
   end
 
@@ -1794,7 +1748,7 @@ class TestPumaServer < Minitest::Test
       body = [env['REQUEST_METHOD']]
       [200, {}, body]
     end
-    resp = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    resp = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
     assert_match 'Not Implemented', resp
   end
 
@@ -1803,7 +1757,7 @@ class TestPumaServer < Minitest::Test
       body = [env['REQUEST_METHOD']]
       [200, {}, body]
     end
-    resp = send_http_and_read "YOUR_SPECIAL_METHOD / HTTP/1.0\r\n\r\n"
+    resp = send_http_read_response "YOUR_SPECIAL_METHOD / HTTP/1.0\r\n\r\n"
     assert_match 'YOUR_SPECIAL_METHOD', resp
   end
 
@@ -1812,7 +1766,7 @@ class TestPumaServer < Minitest::Test
       body = [env['REQUEST_METHOD']]
       [200, {}, body]
     end
-    resp = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    resp = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
     assert_match(/\AHTTP\/1\.0 501 Not Implemented/, resp)
   end
 
@@ -1844,7 +1798,7 @@ class TestPumaServer < Minitest::Test
 
     server_run(**options, &broken_app)
 
-    data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
+    data = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
 
     assert_match(/something wrong happened/, data)
   end
@@ -1864,7 +1818,7 @@ class TestPumaServer < Minitest::Test
 
     REQ
 
-    data = send_http_and_read empty_cl_request
+    data = send_http_read_response empty_cl_request
     assert_operator data, :start_with?, 'HTTP/1.1 400 Bad Request'
   end
 
@@ -1887,7 +1841,8 @@ class TestPumaServer < Minitest::Test
 
     REQ
 
-    data = send_http_and_read smuggled_payload
+    data = send_http_read_all smuggled_payload
+
     assert_equal 2, data.scan("HTTP/1.1 200 OK").size
   end
 
@@ -1918,7 +1873,7 @@ class TestPumaServer < Minitest::Test
 
     REQ
 
-    data = send_http_and_read req
+    data = send_http_read_response req
 
     assert_includes body, "GET /404 HTTP/1.1\r\n"
     assert_includes body, "Content-Length: 144\r\n"
