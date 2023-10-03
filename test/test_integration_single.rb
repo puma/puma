@@ -254,6 +254,18 @@ class TestIntegrationSingle < TestIntegration
     cli_pumactl 'stop'
   end
 
+  def test_idle_timeout
+    cli_server "test/rackup/hello.ru", config: "idle_timeout 1"
+
+    connect
+
+    sleep 1.15
+
+    assert_raises Errno::ECONNREFUSED, "Connection refused" do
+      connect
+    end
+  end
+
   def test_pre_existing_unix_after_idle_timeout
     skip_unless :unix
 
