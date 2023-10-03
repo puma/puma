@@ -54,6 +54,24 @@ class TestPumaServer < Minitest::Test
     end
   end
 
+  def test_http10_req_to_http10_resp
+    server_run do |env|
+      [200, {}, [env["SERVER_PROTOCOL"]]]
+    end
+    response = send_http_read_response GET_10
+    assert_equal "HTTP/1.0 200 OK", response.status
+    assert_equal "HTTP/1.0"       , response.body
+  end
+
+  def test_http11_req_to_http11_resp
+    server_run do |env|
+      [200, {}, [env["SERVER_PROTOCOL"]]]
+    end
+    response = send_http_read_response GET_11
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal "HTTP/1.1"       , response.body
+  end
+
   def test_normalize_host_header_missing
     server_run do |env|
       [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
