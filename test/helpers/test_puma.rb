@@ -4,6 +4,9 @@ require 'socket'
 
 module TestPuma
 
+  RESP_SPLIT = "\r\n\r\n"
+  LINE_SPLIT = "\r\n"
+
   RE_HOST_TO_IP = /\A\[|\]\z/o
 
   HOST4 = begin
@@ -38,4 +41,25 @@ module TestPuma
   DARWIN = RUBY_PLATFORM.include? 'darwin'
 
   TOKEN = "xxyyzz"
+
+  # Returns an available port by using `TCPServer.open(host, 0)`
+  def new_port(host = HOST)
+    TCPServer.open(host, 0) { |server| server.connect_address.ip_port }
+  end
+
+  def bind_uri_str
+    if @bind_port
+      "tcp://#{HOST}:#{@bind_port}"
+    elsif @bind_path
+      "unix://#{HOST}:#{@bind_path}"
+    end
+  end
+
+  def control_uri_str
+    if @control_port
+      "tcp://#{HOST}:#{@control_port}"
+    elsif @control_path
+      "unix://#{HOST}:#{@control_path}"
+    end
+  end
 end
