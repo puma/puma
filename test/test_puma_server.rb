@@ -1581,23 +1581,6 @@ class TestPumaServer < Minitest::Test
     assert_equal @host, remote_addr
   end
 
-  def get_chunk_times
-    body = +''
-    times = []
-    Net::HTTP.start @host, @bind_port do |http|
-      req = Net::HTTP::Get.new '/'
-      http.request req do |resp|
-        resp.read_body do |chunk|
-          next if chunk.empty?
-          body << chunk
-          times << Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        end
-
-      end
-    end
-    [body, times]
-  end
-
   # see https://github.com/sinatra/sinatra/blob/master/examples/stream.ru
   def test_streaming_enum_body_1
     str = "Hello Puma World"
@@ -1617,7 +1600,10 @@ class TestPumaServer < Minitest::Test
       [200, hdrs, body]
     end
 
-    resp_body, times = get_chunk_times
+    response = send_http_read_response
+    resp_body = response.decode_body
+    times = response.times
+
     assert_equal body_len, resp_body.bytesize
     assert_equal str * 3, resp_body
     assert times[1] - times[0] > 0.4
@@ -1644,7 +1630,11 @@ class TestPumaServer < Minitest::Test
       end
       [200, hdrs, body]
     end
-    resp_body, times = get_chunk_times
+
+    response = send_http_read_response
+    resp_body = response.decode_body
+    times = response.times
+
     assert_equal body_len, resp_body.bytesize
     assert_equal str * loops, resp_body
     assert_operator times.last - times.first, :>, 1.0
