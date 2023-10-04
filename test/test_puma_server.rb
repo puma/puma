@@ -38,6 +38,7 @@ class TestPumaServer < Minitest::Test
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
+    Thread.pass until @server.running >= options[:min_threads]
   end
 
   def send_proxy_v1_http(req, remote_ip, multisend = false)
@@ -47,7 +48,6 @@ class TestPumaServer < Minitest::Test
     socket = new_socket
     if multisend
       socket << "PROXY #{family} #{remote_ip} #{target} 10000 80\r\n"
-      sleep 0.15
       socket << req
     else
       socket << ("PROXY #{family} #{remote_ip} #{target} 10000 80\r\n" + req)
