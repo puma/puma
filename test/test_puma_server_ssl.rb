@@ -288,11 +288,18 @@ class TestPumaServerSSLClient < Minitest::Test
     ctx = OpenSSL::SSL::SSLContext.new
     yield ctx
 
+    expected_errors = [
+      EOFError,
+      IOError,
+      OpenSSL::SSL::SSLError,
+      Errno::ECONNABORTED,
+      Errno::ECONNRESET
+    ]
+
     client_error = false
     begin
       send_http_read_resp_body host: LOCALHOST, ctx: ctx
-    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET, IOError => e
-      # Errno::ECONNRESET TruffleRuby, IOError macOS JRuby
+    rescue *expected_errors => e
       client_error = e
     end
 
