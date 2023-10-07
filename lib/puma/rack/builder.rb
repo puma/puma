@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-module Puma
-end
-
 module Puma::Rack
   class Options
     def parse!(args)
