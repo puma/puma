@@ -522,10 +522,28 @@ module Puma
     # loops thru @workers, removing workers that exited, and calling
     # `#term` if needed
     def wait_workers
+      # Reap all children, known workers or otherwise.
+      # If puma has PID 1, as it's common in containerized environments,
+      # then it's responsible for reaping orphaned processes, so we must reap
+      # all our dead children, regardless of whether they are workers we spawned
+      # or some reattached processes.
+      reaped_children = {}
+      loop do
+        begin
+          pid, status = Process.wait2(-1, Process::WNOHANG)
+          break unless pid
+          reaped_children[pid] = status
+        rescue Errno::ECHILD
+          break
+        end
+      end
+
       @workers.reject! do |w|
         next false if w.pid.nil?
         begin
-          if Process.wait(w.pid, Process::WNOHANG)
+          # When `fork_worker` is enabled, some worker may not be direct children, but grand children.
+          # Because of this they won't be reaped by `Process.wait2(-1)`, so we need to check them individually)
+          if reaped_children.delete(w.pid) || (@options[:fork_worker] && Process.wait(w.pid, Process::WNOHANG))
             true
           else
             w.term if w.term?
@@ -541,6 +559,11 @@ module Puma
             true # child is already terminated
           end
         end
+      end
+
+      # Log unknown children
+      reaped_children.each do |pid, status|
+        log "! reaped unknown child process pid=#{pid} status=#{status}"
       end
     end
 
