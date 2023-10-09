@@ -1,22 +1,18 @@
 # frozen_string_literal: true
 
 require_relative "helper"
-require_relative "helpers/integration"
+require_relative "helpers/test_puma/server_spawn"
 
-class TestRedirectIO < TestIntegration
+class TestRedirectIO < TestPuma::ServerSpawn
   parallelize_me!
 
   FILE_STR = 'puma startup'
 
   def setup
     skip_unless_signal_exist? :HUP
-    super
 
-    # Keep the Tempfile instances alive to avoid being GC'd
-    @out_file = Tempfile.new('puma-out')
-    @err_file = Tempfile.new('puma-err')
-    @out_file_path = @out_file.path
-    @err_file_path = @err_file.path
+    @out_file_path = unique_path ['puma_out_', ''], contents: ''
+    @err_file_path = unique_path ['puma_err_', ''], contents: ''
 
     @cli_args = ['--redirect-stdout', @out_file_path,
       '--redirect-stderr', @err_file_path,
@@ -25,22 +21,10 @@ class TestRedirectIO < TestIntegration
 
   end
 
-  def teardown
-    return if skipped?
-    super
-
-    paths = (skipped? ? [@out_file_path, @err_file_path] :
-      [@out_file_path, @err_file_path, @old_out_file_path, @old_err_file_path]).compact
-
-    File.unlink(*paths)
-    @out_file = nil
-    @err_file = nil
-  end
-
   def test_sighup_redirects_io_single
     skip_if :jruby # Server isn't coming up in CI, TODO Fix
 
-    cli_server @cli_args.join ' '
+    server_spawn @cli_args.join ' '
 
     rotate_check_logs
   end
@@ -48,7 +32,7 @@ class TestRedirectIO < TestIntegration
   def test_sighup_redirects_io_cluster
     skip_unless :fork
 
-    cli_server (['-w', '1'] + @cli_args).join ' '
+    server_spawn (['-w', '1'] + @cli_args).join ' '
 
     rotate_check_logs
   end
@@ -57,11 +41,11 @@ class TestRedirectIO < TestIntegration
 
   def log_rotate_output_files
     # rename both files to .old
-    @old_out_file_path = "#{@out_file_path}.old"
-    @old_err_file_path = "#{@err_file_path}.old"
+    old_out_file_path = "#{@out_file_path}.old"
+    old_err_file_path = "#{@err_file_path}.old"
 
-    File.rename @out_file_path, @old_out_file_path
-    File.rename @err_file_path, @old_err_file_path
+    File.rename @out_file_path, old_out_file_path
+    File.rename @err_file_path, old_err_file_path
 
     File.new(@out_file_path, File::CREAT).close
     File.new(@err_file_path, File::CREAT).close
