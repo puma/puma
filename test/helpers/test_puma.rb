@@ -11,7 +11,7 @@ module TestPuma
 
   HOST4 = begin
     t = Socket.ip_address_list.select(&:ipv4_loopback?).map(&:ip_address)
-      .uniq.sort(&:length)
+      .uniq.sort_by(&:length)
     # puts "IPv4 Loopback #{t}"
     str = t.include?('127.0.0.1') ? +'127.0.0.1' : +"#{t.first}"
     str.define_singleton_method(:ip) { self }
@@ -20,9 +20,8 @@ module TestPuma
 
   HOST6 = begin
     t = Socket.ip_address_list.select(&:ipv6_loopback?).map(&:ip_address)
-      .uniq.sort(&:length)
+      .uniq.sort_by(&:length)
     # puts "IPv6 Loopback #{t}"
-    t.include?('::1') ? +'[::1]' : "[#{t.first}]"
     str = t.include?('::1') ? +'[::1]' : +"[#{t.first}]"
     str.define_singleton_method(:ip) { self.gsub RE_HOST_TO_IP, '' }
     str.freeze
