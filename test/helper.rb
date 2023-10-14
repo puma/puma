@@ -21,14 +21,11 @@ require "minitest/stub_const"
 require "net/http"
 require_relative "helpers/apps"
 require_relative "helpers/tmp_path"
+require_relative "helpers/test_puma"
 
 Thread.abort_on_exception = true
 
-$debugging_info = []
 $debugging_hold = false   # needed for TestCLI#test_control_clustered
-$test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
-  RUBY_ENGINE == "ruby" ? 45 : 60
-end.to_i
 
 require "puma"
 require "puma/detect"
@@ -83,18 +80,22 @@ module TimeoutEveryTestCase
   class TestTookTooLong < Timeout::Error
   end
 
+  TEST_CASE_TIMEOUT = ENV.fetch("TEST_CASE_TIMEOUT") do
+    RUBY_ENGINE == "ruby" ? 45 : 60
+  end.to_i
+
   def run
     with_info_handler do
       time_it do
         capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+          ::Timeout.timeout(TEST_CASE_TIMEOUT, TestTookTooLong) do
             before_setup; setup; after_setup
             self.send self.name
           end
         end
 
         capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+          ::Timeout.timeout(TEST_CASE_TIMEOUT, TestTookTooLong) do
             Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
           end
         end
@@ -212,25 +213,29 @@ end
 
 Minitest::Test.include TestSkips
 
-class Minitest::Test
-  include ::TmpPath
-  PROJECT_ROOT = File.dirname(__dir__)
+module Minitest
+  class Test
+    include ::TmpPath
+    PROJECT_ROOT = File.dirname(__dir__)
 
-  def self.run(reporter, options = {}) # :nodoc:
-    prove_it!
-    super
-  end
+    def self.run(reporter, options = {}) # :nodoc:
+      prove_it!
+      super
+    end
 
-  def full_name
-    "#{self.class.name}##{name}"
+    def full_name
+      "#{self.class.name}##{name}"
+    end
   end
 end
 
+# shows debugging info after summary line
 Minitest.after_run do
   # needed for TestCLI#test_control_clustered
-  if !$debugging_hold && ENV['PUMA_TEST_DEBUG']
-    $debugging_info.sort!
-    out = $debugging_info.join.strip
+  if TestPuma::AFTER_RUN_OK[0] && ENV['PUMA_TEST_DEBUG'] && !TestPuma::DEBUGGING_INFO.empty?
+    ary = Array.new(TestPuma::DEBUGGING_INFO.size) { TestPuma::DEBUGGING_INFO.pop }
+    ary.sort!
+    out = ary.join.strip
     unless out.empty?
       dash = "\u2500"
       wid = ENV['GITHUB_ACTIONS'] ? 88 : 90
@@ -244,17 +249,18 @@ Minitest.after_run do
   end
 end
 
+# shows skips summary instead of raw list
 module AggregatedResults
   def aggregated_results(io)
     is_github_actions = ENV['GITHUB_ACTIONS'] == 'true'
     filtered_results = results.dup
+    dash = "\u2500"
 
     if options[:verbose]
       skips = filtered_results.select(&:skipped?)
       unless skips.empty?
-        dash = "\u2500"
         if is_github_actions
-          puts "", "##[group]Skips:"
+          io.puts "", "##[group]Skips:"
         else
           io.puts '', 'Skips:'
         end
@@ -276,10 +282,10 @@ module AggregatedResults
               num += 1
               io.puts format("    %3s %-5s #{item[1]} #{item[2]}", "#{num})", ":#{item[0][1]}")
             }
-            puts ''
+            io.puts ''
           }
         }
-        puts '::[endgroup]' if is_github_actions
+        io.puts '::[endgroup]' if is_github_actions
       end
     end
 
@@ -291,6 +297,61 @@ module AggregatedResults
       io.puts "\n%3d) %s" % [i+1, result]
     }
     io.puts
+
+    defunct = {}
+    loop do
+      begin
+        pid, status = Process.wait2(-1, Process::WNOHANG)
+        break unless pid
+        defunct[pid] = status
+      rescue Errno::ECHILD
+        break
+      end
+    end
+
+    unless defunct.empty?
+      io.puts(is_github_actions ? "##[group]Child Processes:" :
+        "#{dash * 40} Child Processes:")
+
+      io.puts "#{Process.pid}      Test Process"
+
+      sig = Puma::IS_WINDOWS ? :KILL : :TERM
+
+      # list all children, kill test processes
+      defunct.each do |k, v|
+        if (test_name = TestPuma::DEBUGGING_PIDS[k])
+          io.puts "#{k} #{v&.exitstatus.to_s.rjust 3}  #{test_name}"
+          begin
+            Process.kill sig, k
+          rescue Errno::ESRCH
+          end
+          begin
+            Process.wait2 k, Process::WNOHANG
+          rescue Errno::ECHILD
+          end
+        else
+          io.puts "#{k} #{v&.exitstatus.to_s.rjust 3}  Unknown"
+        end
+      end
+      # kill unknown processes
+      defunct.each do |k, _|
+        unless TestPuma::DEBUGGING_PIDS.key? k
+          begin
+            Process.kill sig, k
+          rescue Errno::ESRCH
+          end
+          begin
+            Process.wait2 k, Process::WNOHANG
+          rescue Errno::ECHILD
+          end
+        end
+      end
+
+      io.puts(is_github_actions ? '::[endgroup]' : "#{dash * 57}")
+      io.puts
+    end
+
+    TestPuma::AFTER_RUN_OK[0] = true
     io
   end
 end
