@@ -20,6 +20,7 @@ require "minitest/proveit"
 require "minitest/stub_const"
 require "net/http"
 require_relative "helpers/apps"
+require_relative "helpers/tmp_path"
 
 Thread.abort_on_exception = true
 
@@ -211,7 +212,7 @@ end
 Minitest::Test.include TestSkips
 
 class Minitest::Test
-
+  include ::TmpPath
   PROJECT_ROOT = File.dirname(__dir__)
 
   def self.run(reporter, options = {}) # :nodoc:

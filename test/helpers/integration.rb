@@ -3,12 +3,10 @@
 require "puma/control_cli"
 require "json"
 require "open3"
-require_relative 'tmp_path'
 
 # Only single mode tests go here. Cluster and pumactl tests
 # have their own files, use those instead
 class TestIntegration < Minitest::Test
-  include TmpPath
   HOST  = "127.0.0.1"
   TOKEN = "xxyyzz"
   RESP_READ_LEN = 65_536
