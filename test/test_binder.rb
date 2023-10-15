@@ -1,16 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "helper"
-require_relative "helpers/ssl" if ::Puma::HAS_SSL
-require_relative "helpers/tmp_path"
+require_relative "helpers/test_puma/server_base"
 
 require "puma/binder"
 require "puma/events"
 require "puma/configuration"
 
-class TestBinderBase < Minitest::Test
-  include SSLHelper if ::Puma::HAS_SSL
-  include TmpPath
+class TestBinderBase < TestPuma::ServerBase
 
   def setup
     @log_writer = Puma::LogWriter.strings
@@ -86,15 +83,15 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_home_alters_listeners_for_tcp_addresses
-    port = UniquePort.call
-    @binder.parse ["tcp://127.0.0.1:#{port}"], @log_writer
+    port = unique_port
+    @binder.parse ["tcp://#{HOST}:#{port}"], @log_writer
 
-    assert_equal "tcp://127.0.0.1:#{port}", @binder.listeners[0][0]
+    assert_equal "tcp://#{HOST}:#{port}", @binder.listeners[0][0]
     assert_kind_of TCPServer, @binder.listeners[0][1]
   end
 
   def test_connected_ports
-    ports = (1..3).map { |_| UniquePort.call }
+    ports = (1..3).map { |_| unique_port }
 
     @binder.parse(ports.map { |p| "tcp://localhost:#{p}" }, @log_writer)
 
@@ -102,18 +99,20 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_localhost_addresses_dont_alter_listeners_for_ssl_addresses
-    skip_unless :ssl
-    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl host: LOCALHOST, port: 0
+
+    @binder.parse [bind_ssl], @log_writer
 
     assert_empty @binder.listeners
   end
 
   def test_home_alters_listeners_for_ssl_addresses
-    skip_unless :ssl
-    port = UniquePort.call
-    @binder.parse ["ssl://127.0.0.1:#{port}?#{ssl_query}"], @log_writer
+    set_bind_type :ssl
+    @binder.parse [bind_ssl], @log_writer
 
-    assert_equal "ssl://127.0.0.1:#{port}?#{ssl_query}", @binder.listeners[0][0]
+    assert_equal bind_ssl, @binder.listeners[0][0]
     assert_kind_of TCPServer, @binder.listeners[0][1]
   end
 
@@ -127,13 +126,15 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_correct_zero_port_ssl
-    skip_unless :ssl
+    set_bind_type :ssl
+
+    bind_ssl host: LOCALHOST, port: 0
 
     ssl_regex = %r!ssl://127.0.0.1:(\d+)!
 
-    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @log_writer
+    @binder.parse [bind_ssl], @log_writer
 
-    port = ssl_regex.match(@log_writer.stdout.string)[1].to_i
+    port = @log_writer.stdout.string[ssl_regex, 1].to_i
 
     refute_equal 0, port
   end
@@ -148,11 +149,14 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_logs_all_localhost_bindings_ssl
-    skip_unless :ssl
+    set_bind_type :ssl
 
-    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @log_writer
+    bind_ssl host: LOCALHOST, port: 0
+
+    @binder.parse [bind_ssl], @log_writer
 
     assert_match %r!ssl://127.0.0.1:(\d+)!, @log_writer.stdout.string
+
     if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
       assert_match %r!ssl://\[::1\]:(\d+)!, @log_writer.stdout.string
     end
@@ -163,7 +167,6 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_allows_both_unix_and_tcp
-    skip_if :jruby # Undiagnosed thread race. TODO fix
     assert_parsing_logs_uri [:unix, :tcp]
   end
 
@@ -172,23 +175,22 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_pre_existing_unix
-    skip_unless :unix
+    set_bind_type :unix
 
-    unix_path = tmp_path('.sock')
-    File.open(unix_path, mode: 'wb') { |f| f.puts 'pre existing' }
-    @binder.parse ["unix://#{unix_path}"], @log_writer
+    File.open(bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    @binder.parse [bind_uri_str], @log_writer
 
-    assert_match %r!unix://#{unix_path}!, @log_writer.stdout.string
+    assert_includes @log_writer.stdout.string, bind_uri_str
 
-    refute_includes @binder.unix_paths, unix_path
+    refute_includes @binder.unix_paths, bind_path
 
     @binder.close_listeners
 
-    assert File.exist?(unix_path)
+    assert File.exist?(bind_path)
 
   ensure
     if UNIX_SKT_EXIST
-      File.unlink unix_path if File.exist? unix_path
+      File.unlink bind_path if File.exist? bind_path
     end
   end
 
@@ -229,9 +231,12 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_binder_ssl_defaults_to_true_low_latency
-    skip_unless :ssl
     skip_if :jruby
-    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl host: '0.0.0.0', port: 0
+
+    @binder.parse [bind_ssl], @log_writer
 
     socket = @binder.listeners.first.last
 
@@ -239,9 +244,12 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_binder_ssl_parses_false_low_latency
-    skip_unless :ssl
     skip_if :jruby
-    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&low_latency=false"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl low_latency: false
+
+    @binder.parse [bind_ssl], @log_writer
 
     socket = @binder.listeners.first.last
 
@@ -249,44 +257,60 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_binder_parses_tlsv1_disabled
-    skip_unless :ssl
-    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1=true"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl no_tlsv1: true
+
+    @binder.parse [bind_ssl], @log_writer
 
     assert ssl_context_for_binder.no_tlsv1
   end
 
   def test_binder_parses_tlsv1_enabled
-    skip_unless :ssl
-    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1=false"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl no_tlsv1: false
+
+    @binder.parse [bind_ssl], @log_writer
 
     refute ssl_context_for_binder.no_tlsv1
   end
 
   def test_binder_parses_tlsv1_tlsv1_1_unspecified_defaults_to_enabled
-    skip_unless :ssl
-    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}"], @log_writer
+    set_bind_type :ssl
+
+    @binder.parse [bind_ssl], @log_writer
 
     refute ssl_context_for_binder.no_tlsv1
     refute ssl_context_for_binder.no_tlsv1_1
   end
 
   def test_binder_parses_tlsv1_1_disabled
-    skip_unless :ssl
-    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1_1=true"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl no_tlsv1_1: true
+
+    @binder.parse [bind_ssl], @log_writer
 
     assert ssl_context_for_binder.no_tlsv1_1
   end
 
   def test_binder_parses_tlsv1_1_enabled
-    skip_unless :ssl
-    @binder.parse ["ssl://0.0.0.0:0?#{ssl_query}&no_tlsv1_1=false"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl no_tlsv1_1: false
+
+    @binder.parse [bind_ssl], @log_writer
 
     refute ssl_context_for_binder.no_tlsv1_1
   end
 
   def test_env_contains_protoenv
-    skip_unless :ssl
-    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl host: LOCALHOST
+
+    @binder.parse [bind_ssl], @log_writer
 
     env_hash = @binder.envs[@binder.ios.first]
 
@@ -296,8 +320,11 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_env_contains_stderr
-    skip_unless :ssl
-    @binder.parse ["ssl://localhost:0?#{ssl_query}"], @log_writer
+    set_bind_type :ssl
+
+    bind_ssl host: LOCALHOST
+
+    @binder.parse [bind_ssl], @log_writer
 
     env_hash = @binder.envs[@binder.ios.first]
 
@@ -315,7 +342,7 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_redirects_for_restart_creates_a_hash
-    @binder.parse ["tcp://127.0.0.1:0"], @log_writer
+    @binder.parse ["tcp://#{HOST}:0"], @log_writer
 
     result = @binder.redirects_for_restart
     ios = @binder.listeners.map { |_l, io| io.to_i }
@@ -325,7 +352,7 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_redirects_for_restart_env
-    @binder.parse ["tcp://127.0.0.1:0"], @log_writer
+    @binder.parse ["tcp://#{HOST}:0"], @log_writer
 
     result = @binder.redirects_for_restart_env
 
@@ -335,7 +362,7 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_close_listeners_closes_ios
-    @binder.parse ["tcp://127.0.0.1:#{UniquePort.call}"], @log_writer
+    @binder.parse ["tcp://#{HOST}:#{unique_port}"], @log_writer
 
     refute @binder.listeners.any? { |_l, io| io.closed? }
 
@@ -345,7 +372,7 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_close_listeners_closes_ios_unless_closed?
-    @binder.parse ["tcp://127.0.0.1:0"], @log_writer
+    @binder.parse ["tcp://#{HOST}:0"], @log_writer
 
     bomb = @binder.listeners.first[1]
     bomb.close
@@ -359,18 +386,17 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_listeners_file_unlink_if_unix_listener
-    skip_unless :unix
+    set_bind_type :unix
 
-    unix_path = tmp_path('.sock')
-    @binder.parse ["unix://#{unix_path}"], @log_writer
-    assert File.socket?(unix_path)
+    @binder.parse [bind_uri_str], @log_writer
+    assert File.socket?(bind_path)
 
     @binder.close_listeners
-    refute File.socket?(unix_path)
+    refute File.socket?(bind_path)
   end
 
   def test_import_from_env_listen_inherit
-    @binder.parse ["tcp://127.0.0.1:0"], @log_writer
+    @binder.parse ["tcp://#{HOST}:0"], @log_writer
     removals = @binder.create_inherited_fds(@binder.redirects_for_restart_env)
 
     @binder.listeners.each do |l, io|
@@ -384,8 +410,8 @@ class TestBinderParallel < TestBinderBase
   # This is OK, because systemd obviously only works on Linux.
   def test_socket_activation_tcp
     skip_unless :unix
-    url = "127.0.0.1"
-    port = UniquePort.call
+    url = HOST
+    port = unique_port
     sock = Addrinfo.tcp(url, port).listen
     assert_activates_sockets(url: url, port: port, sock: sock)
   end
@@ -393,20 +419,19 @@ class TestBinderParallel < TestBinderBase
   def test_socket_activation_tcp_ipv6
     skip_unless :unix
     url = "::"
-    port = UniquePort.call
+    port = unique_port
     sock = Addrinfo.tcp(url, port).listen
     assert_activates_sockets(url: url, port: port, sock: sock)
   end
 
   def test_socket_activation_unix
     skip_if :jruby # Failing with what I think is a JRuby bug
-    skip_unless :unix
+    set_bind_type :unix
 
-    state_path = tmp_path('.state')
-    sock = Addrinfo.unix(state_path).listen
-    assert_activates_sockets(path: state_path, sock: sock)
+    sock = Addrinfo.unix(bind_path).listen
+    assert_activates_sockets(path: bind_path, sock: sock)
   ensure
-    File.unlink(state_path) rescue nil # JRuby race?
+    File.unlink(bind_path) rescue nil # JRuby race?
   end
 
   def test_rack_multithread_default_configuration
@@ -457,13 +482,12 @@ class TestBinderParallel < TestBinderBase
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
     skip MSG_UNIX if order.include?(:unix) && !UNIX_SKT_EXIST
-    skip_unless :ssl
+    set_bind_type :ssl
 
-    unix_path = tmp_path('.sock')
     prepared_paths = {
-        ssl: "ssl://127.0.0.1:#{UniquePort.call}?#{ssl_query}",
-        tcp: "tcp://127.0.0.1:#{UniquePort.call}",
-        unix: "unix://#{unix_path}"
+        ssl: bind_ssl,
+        tcp: "tcp://#{HOST}:#{unique_port}",
+        unix: "unix://#{bind_path}"
       }
 
     expected_logs = prepared_paths.dup.tap do |logs|
@@ -476,7 +500,7 @@ class TestBinderParallel < TestBinderBase
     stdout = @log_writer.stdout.string
 
     order.each do |prot|
-      assert_match expected_logs[prot], stdout
+      assert_includes stdout, expected_logs[prot]
     end
   ensure
     @binder.close_listeners if order.include?(:unix) && UNIX_SKT_EXIST
@@ -485,10 +509,12 @@ end
 
 class TestBinderSingle < TestBinderBase
   def test_ssl_binder_sets_backlog
-    skip_unless :ssl
+    set_bind_type :ssl
 
-    host = '127.0.0.1'
-    port = UniquePort.call
+    bind_ssl backlog: 2048
+
+    host = HOST
+    port = bind_port
     tcp_server = TCPServer.new(host, port)
     tcp_server.define_singleton_method(:listen) do |backlog|
       Thread.current[:backlog] = backlog
@@ -496,7 +522,7 @@ class TestBinderSingle < TestBinderBase
     end
 
     TCPServer.stub(:new, tcp_server) do
-      @binder.parse ["ssl://#{host}:#{port}?#{ssl_query}&backlog=2048"], @log_writer
+      @binder.parse [bind_ssl], @log_writer
     end
 
     assert_equal 2048, Thread.current[:backlog]
@@ -505,25 +531,27 @@ end
 
 class TestBinderJRuby < TestBinderBase
   def test_binder_parses_jruby_ssl_options
-    skip_unless :ssl
+    set_bind_type :ssl
 
     cipher_suites = ['TLS_DHE_RSA_WITH_AES_128_CBC_SHA', 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256']
 
-    @binder.parse ["ssl://0.0.0.0:8080?#{ssl_query}"], @log_writer
+    bind_ssl cipher_suites: cipher_suites.join(', ')
 
-    assert_equal @keystore, ssl_context_for_binder.keystore
+    @binder.parse [bind_ssl], @log_writer
+
+    assert_equal DFLT_SSL_QUERY[:keystore], ssl_context_for_binder.keystore
     assert_equal cipher_suites, ssl_context_for_binder.cipher_suites
     assert_equal cipher_suites, ssl_context_for_binder.ssl_cipher_list
   end
 
   def test_binder_parses_jruby_ssl_protocols_and_cipher_suites_options
-    skip_unless :ssl
+    set_bind_type :ssl
 
-    keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
     cipher = "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
-    ssl_query = "keystore=#{keystore}&keystore-pass=jruby_puma&cipher_suites=#{cipher}&protocols=TLSv1.3,TLSv1.2"
 
-    @binder.parse ["ssl://0.0.0.0:8080?#{ssl_query}"], @log_writer
+    bind_ssl cipher_suites: cipher, protocols: 'TLSv1.3,TLSv1.2'
+
+    @binder.parse [bind_ssl], @log_writer
 
     assert_equal [ 'TLSv1.3', 'TLSv1.2' ], ssl_context_for_binder.protocols
     assert_equal [ cipher ], ssl_context_for_binder.cipher_suites
@@ -532,31 +560,33 @@ end if ::Puma::IS_JRUBY
 
 class TestBinderMRI < TestBinderBase
   def test_binder_parses_ssl_cipher_filter
-    skip_unless :ssl
+    set_bind_type :ssl
 
     ssl_cipher_filter = "AES@STRENGTH"
 
-    @binder.parse ["ssl://0.0.0.0?#{ssl_query}&ssl_cipher_filter=#{ssl_cipher_filter}"], @log_writer
+    bind_ssl ssl_cipher_filter: ssl_cipher_filter
+
+    @binder.parse [bind_ssl], @log_writer
 
     assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
   end
 
   def test_binder_parses_ssl_verification_flags_one
-    skip_unless :ssl
+    set_bind_type :ssl
 
-    input = "&verification_flags=TRUSTED_FIRST"
+    bind_ssl verification_flags: 'TRUSTED_FIRST'
 
-    @binder.parse ["ssl://0.0.0.0?#{ssl_query}#{input}"], @log_writer
+    @binder.parse [bind_ssl], @log_writer
 
     assert_equal 0x8000, ssl_context_for_binder.verification_flags
   end
 
   def test_binder_parses_ssl_verification_flags_multiple
-    skip_unless :ssl
+    set_bind_type :ssl
 
-    input = "&verification_flags=TRUSTED_FIRST,NO_CHECK_TIME"
+    bind_ssl verification_flags: 'TRUSTED_FIRST,NO_CHECK_TIME'
 
-    @binder.parse ["ssl://0.0.0.0?#{ssl_query}#{input}"], @log_writer
+    @binder.parse [bind_ssl], @log_writer
 
     assert_equal 0x8000 | 0x200000, ssl_context_for_binder.verification_flags
   end
