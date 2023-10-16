@@ -506,6 +506,18 @@ class TestIntegrationCluster < TestIntegration
     File.unlink file1 if File.file? file1
   end
 
+  def test_worker_hook_warning_cli
+    cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
+      on_worker_boot(:test) do |index, data|
+        data[:test] = index
+      end
+    CONFIG
+
+    get_worker_pids
+    line = @server_log[/.+on_worker_boot.+/]
+    refute line, "Warning below should not be shown!\n#{line}"
+  end
+
   def test_puma_debug_loaded_exts
     cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true
 
