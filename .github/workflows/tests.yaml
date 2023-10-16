@@ -140,6 +140,7 @@ jobs:
     needs: [rubocop, skip_duplicate_runs]
     env:
       CI: true
+      PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
 
