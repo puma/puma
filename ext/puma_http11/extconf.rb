@@ -11,7 +11,10 @@ end
 unless ENV["PUMA_DISABLE_SSL"]
   # don't use pkg_config('openssl') if '--with-openssl-dir' is used
   has_openssl_dir = dir_config('openssl').any?
-  found_pkg_config = !has_openssl_dir && pkg_config('openssl')
+  # macOS TruffleRuby problem
+  found_pkg_config = RUBY_ENGINE == 'truffleruby' &&
+      RUBY_PLATFORM.include?('darwin') && ENV['GITHUB_ACTIONS'] == 'true' ?
+    false : !has_openssl_dir && pkg_config('openssl')
 
   found_ssl = if !$mingw && found_pkg_config
     puts 'using OpenSSL pkgconfig (openssl.pc)'
