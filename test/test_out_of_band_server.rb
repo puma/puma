@@ -1,11 +1,12 @@
-require_relative "helper"
+# frozen_string_literal: true
 
-class TestOutOfBandServer < Minitest::Test
-  parallelize_me!
+require_relative "helper"
+require_relative "helpers/test_puma/server_in_process"
+
+class TestOutOfBandServer < TestPuma::ServerInProcess
+  parallelize_me! if ::Puma::IS_MRI
 
   def setup
-    @ios = []
-    @server = nil
     @oob_finished = ConditionVariable.new
     @app_finished = ConditionVariable.new
   end
@@ -13,31 +14,6 @@ class TestOutOfBandServer < Minitest::Test
   def teardown
     @oob_finished.broadcast
     @app_finished.broadcast
-    @server&.stop true
-
-    @ios.each do |io|
-      begin
-        io.close if io.is_a?(IO) && !io.closed?
-      rescue
-      ensure
-        io = nil
-      end
-    end
-  end
-
-  def new_connection
-    TCPSocket.new('127.0.0.1', @port).tap {|s| @ios << s}
-  rescue IOError
-    Puma::Util.purge_interrupt_queue
-    retry
-  end
-
-  def send_http(req)
-    new_connection << req
-  end
-
-  def send_http_and_read(req)
-    send_http(req).read
   end
 
   def oob_server(**options)
@@ -66,14 +42,10 @@ class TestOutOfBandServer < Minitest::Test
       [200, {}, [""]]
     end
 
-    options[:min_threads] ||= 1
     options[:max_threads] ||= 1
-    options[:log_writer]  ||= Puma::LogWriter.strings
+    options[:out_of_band] = [oob]
 
-    @server = Puma::Server.new app, nil, out_of_band: [oob], **options
-    @port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]
-    @server.run
-    sleep 0.15 if Puma.jruby?
+    server_run app: app, **options
   end
 
   # Sequential requests should trigger out_of_band after every request.
@@ -82,7 +54,7 @@ class TestOutOfBandServer < Minitest::Test
     oob_server
     n.times do
       @mutex.synchronize do
-        send_http "GET / HTTP/1.0\r\n\r\n"
+        send_http GET_10
         @oob_finished.wait(@mutex, 1)
       end
     end
@@ -95,7 +67,7 @@ class TestOutOfBandServer < Minitest::Test
   def test_stream
     oob_server app_wait: true, max_threads: 2
     n = 100
-    Array.new(n) {send_http("GET / HTTP/1.0\r\n\r\n")}
+    Array.new(n) { send_http GET_10 }
     Thread.pass until @request_count == n
     @mutex.synchronize do
       @app_finished.signal
@@ -110,15 +82,15 @@ class TestOutOfBandServer < Minitest::Test
     oob_server oob_wait: true, max_threads: 2
 
     # Establish connection for Req2 before OOB
-    req2 = new_connection
+    req2 = new_socket
     sleep 0.01
 
     @mutex.synchronize do
-      send_http "GET / HTTP/1.0\r\n\r\n"
+      send_http GET_10
       @oob_finished.wait(@mutex) # enter OOB
 
       # Send Req2
-      req2 << "GET / HTTP/1.0\r\n\r\n"
+      req2 << GET_10
       # If Req2 is processed now it raises 'OOB Conflict' in the response.
       sleep 0.01
 
@@ -134,7 +106,7 @@ class TestOutOfBandServer < Minitest::Test
   # Partial requests should not trigger OOB.
   def test_partial_request
     oob_server
-    new_connection.close
+    new_socket.close
     sleep 0.01
     assert_equal 0, @oob_count
   end
@@ -144,8 +116,8 @@ class TestOutOfBandServer < Minitest::Test
   def test_partial_concurrent
     oob_server max_threads: 2
     @mutex.synchronize do
-      send_http("GET / HTTP/1.0\r\n\r\n")
-      100.times {new_connection.close}
+      send_http GET_10
+      100.times { new_socket.close }
       @oob_finished.wait(@mutex, 1)
     end
     assert_equal 1, @oob_count
@@ -155,13 +127,13 @@ class TestOutOfBandServer < Minitest::Test
   def test_blocks_new_connection
     oob_server oob_wait: true, max_threads: 2
     @mutex.synchronize do
-      send_http("GET / HTTP/1.0\r\n\r\n")
+      send_http GET_10
       @oob_finished.wait(@mutex)
     end
     accepted = false
     io = @server.binder.ios.last
-    io.stub(:accept_nonblock, -> {accepted = true; new_connection}) do
-      new_connection.close
+    io.stub(:accept_nonblock, -> {accepted = true; new_socket}) do
+      new_socket.close
       sleep 0.01
     end
     refute accepted, 'New connection accepted during out of band'
