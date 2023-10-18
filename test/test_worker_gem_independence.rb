@@ -1,10 +1,17 @@
-require_relative "helper"
-require_relative "helpers/integration"
+# frozen_string_literal: true
 
-class TestWorkerGemIndependence < TestIntegration
+require_relative "helper"
+require_relative "helpers/test_puma/server_spawn"
+
+# we set Bundler.bundle_path to the same path as the same path as the main path
+# we don't need (or want) to test whether Bundler installs the correct gems,
+# we want to test whether it activates the correct ones
+
+class TestWorkerGemIndependence < TestPuma::ServerSpawn
   def setup
     skip_unless :fork
-    super
+    skip_if :yjit # fix, probably needs timeout added for boot?
+    set_control_type :tcp
   end
 
   def teardown
@@ -28,8 +35,7 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_stats_from_status_server
-    @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = set_pumactl_args
     before_restart = ->() do
       cli_pumactl "stats"
     end
@@ -43,8 +49,7 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_gc_stats_from_status_server
-    @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = set_pumactl_args
     before_restart = ->() do
       cli_pumactl "gc-stats"
     end
@@ -58,8 +63,7 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_thread_backtraces_from_status_server
-    @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = set_pumactl_args
     before_restart = ->() do
       cli_pumactl "thread-backtraces"
     end
@@ -89,18 +93,21 @@ class TestWorkerGemIndependence < TestIntegration
                                                before_restart: nil)
     skip_unless_signal_exist? :USR1
 
+    configured_bundle_path = "#{Bundler.configured_bundle_path.explicit_path}"
+    bundle_config  = "bundle config --local path #{configured_bundle_path}"
+    bundle_install = "bundle install"
+
     set_release_symlink File.expand_path(old_app_dir, __dir__)
 
     Dir.chdir(current_release_symlink) do
       with_unbundled_env do
-        silent_and_checked_system_command("bundle config --local path vendor/bundle")
-        silent_and_checked_system_command("bundle install")
-        cli_server "--prune-bundler -w 1 #{server_opts}"
+        silent_and_checked_system_command bundle_config
+        silent_and_checked_system_command bundle_install
+        server_spawn "--prune-bundler -w1 -t1:5 #{server_opts}"
       end
     end
 
-    connection = connect
-    initial_reply = read_body(connection)
+    initial_reply = send_http_read_resp_body
     assert_equal old_version, initial_reply
 
     before_restart&.call
@@ -108,14 +115,13 @@ class TestWorkerGemIndependence < TestIntegration
     set_release_symlink File.expand_path(new_app_dir, __dir__)
     Dir.chdir(current_release_symlink) do
       with_unbundled_env do
-        silent_and_checked_system_command("bundle config --local path vendor/bundle")
-        silent_and_checked_system_command("bundle install")
+        silent_and_checked_system_command bundle_config
+        silent_and_checked_system_command bundle_install
       end
     end
     start_phased_restart
 
-    connection = connect
-    new_reply = read_body(connection)
+    new_reply =  send_http_read_resp_body
     assert_equal new_version, new_reply
   end
 
