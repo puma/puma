@@ -569,7 +569,7 @@ class TestPumaServer < TestPuma::ServerInProcess
   def test_idle_timeout_before_first_request
     server_run idle_timeout: 1
 
-    sleep 1.15
+    sleep 1.5
 
     assert @server.shutting_down?
 
@@ -585,7 +585,7 @@ class TestPumaServer < TestPuma::ServerInProcess
     socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\n" \
       "Content-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
 
-    sleep 1.15
+    sleep 1.5
 
     socket << "hello world!"
 
