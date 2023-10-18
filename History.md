@@ -1,3 +1,15 @@
+## 6.4.1 / 2023-10-18
+
+* Bugfixes
+  * DSL#warn_if_in_single_mode - fixup when workers set via CLI ([#3256])
+  * Fix `idle-timeout` not working in cluster mode ([#3235], [#3228])
+  * Fix worker 0 timing out during phased restart ([#3225], [#2786])
+  * context_builder.rb - require openssl if verify_mode != 'none' ([#3179])
+  * Fix bug in tests re: TestPuma::HOST4 ([#3254])
+
+* Maintenance
+  * LOTS of test refactoring to make tests more stable and easier to write - thanks to @MSP-Greg!
+
 ## 6.4.0 / 2023-09-21
 
 * Features
@@ -2029,6 +2041,13 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3256]:https://github.com/puma/puma/pull/3256     "PR by @MSP-Greg, merged 2023-10-16"
+[#3235]:https://github.com/puma/puma/pull/3235     "PR by @joshuay03, merged 2023-10-03"
+[#3228]:https://github.com/puma/puma/issues/3228   "Issue by @davidalejandroaguilar, closed 2023-10-03"
+[#3225]:https://github.com/puma/puma/pull/3225     "PR by @joshuay03, merged 2023-09-27"
+[#2786]:https://github.com/puma/puma/issues/2786   "Issue by @vitiokss, closed 2023-09-27"
+[#3179]:https://github.com/puma/puma/pull/3179     "PR by @MSP-Greg, merged 2023-09-26"
+[#3254]:https://github.com/puma/puma/pull/3254     "PR by @casperisfine, merged 2023-10-11"
 [#2920]:https://github.com/puma/puma/pull/2920     "PR by @biinari, merged 2023-07-11"
 [#3195]:https://github.com/puma/puma/pull/3195     "PR by @binarygit, merged 2023-08-15"
 [#3209]:https://github.com/puma/puma/pull/3209     "PR by @joshuay03, merged 2023-09-04"
