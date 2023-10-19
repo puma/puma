@@ -157,6 +157,10 @@ module Puma
             user_config.pidfile arg
           end
 
+          o.on "--plugin PLUGIN", "Load the given PLUGIN. Can be used multiple times to load multiple plugins." do |arg|
+            user_config.plugin arg
+          end
+
           o.on "--preload", "Preload the app. Cluster mode only" do
             user_config.preload_app!
           end
