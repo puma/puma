@@ -1,8 +1,9 @@
-require 'puma/detect'
-require 'puma/log_writer'
-require_relative "helper"
+# frozen_string_literal: true
 
-class TestLogWriter < Minitest::Test
+require_relative 'helper'
+require_relative 'helpers/test_puma/server_in_process'
+
+class TestLogWriter < TestPuma::ServerInProcess
   def test_null
     log_writer = Puma::LogWriter.null
 
@@ -91,7 +92,7 @@ class TestLogWriter < Minitest::Test
       end
     end
 
-    assert_match %r!ERROR: interrupted!, err
+    assert_includes err, "ERROR: interrupted"
   end
 
   def test_pid_formatter
@@ -123,40 +124,34 @@ class TestLogWriter < Minitest::Test
   end
 
   def test_parse_error
-    app = proc { |_env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
-    log_writer = Puma::LogWriter.strings
-    server = Puma::Server.new app, nil, {log_writer: log_writer}
+    server_run app: ->(_) { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
-    host = '127.0.0.1'
-    port = (server.add_tcp_listener host, 0).addr[1]
-    server.run
-
-    sock = TCPSocket.new host, port
     path = "/"
     params = "a"*1024*10
 
-    sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
-    sock.read
-    sleep 0.1 # important so that the previous data is sent as a packet
-    assert_match %r!HTTP parse error, malformed request!, log_writer.stderr.string
-    assert_match %r!\("GET #{path}" - \(-\)\)!, log_writer.stderr.string
-  ensure
-    sock.close if sock && !sock.closed?
-    server.stop true
+    req = "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
+
+    send_http_read_response req
+    sleep 0.01 # intermittent non MRI errors with empty stderr
+    err_log = @log_writer.stderr.string
+
+    assert_includes err_log, "HTTP parse error, malformed request"
+    assert_includes err_log, "(\"GET #{path}\" - (-))"
   end
 
   # test_puma_server_ssl.rb checks that ssl errors are raised correctly,
-  # but it mocks the actual error code.  This test the code, but it will
+  # but it mocks the actual error code.  This tests the code, but it will
   # break if the logged message changes
-  def test_ssl_error
+  def ssl_error(addr, subj)
     log_writer = Puma::LogWriter.strings
 
-    ssl_mock = -> (addr, subj) {
+    # variable shadowed error on older Rubies
+    ssl_mock = -> (addr1, subj1) {
       obj = Object.new
-      obj.define_singleton_method(:peeraddr) { addr }
+      obj.define_singleton_method(:peeraddr) { addr1 }
       if subj
         cert = Object.new
-        cert.define_singleton_method(:subject) { subj }
+        cert.define_singleton_method(:subject) { subj1 }
         obj.define_singleton_method(:peercert) { cert }
       else
         obj.define_singleton_method(:peercert) { nil }
@@ -164,19 +159,21 @@ class TestLogWriter < Minitest::Test
       obj
     }
 
-    log_writer.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(['127.0.0.1'], 'test_cert')
-    error = log_writer.stderr.string
+    log_writer.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(addr, subj)
+    log_writer.stderr.string
+  end
+
+  def test_ssl_error_addr_subj
+    error = ssl_error ['127.0.0.1'], 'test_cert'
     assert_includes error, "SSL error"
     assert_includes error, "peer: 127.0.0.1"
     assert_includes error, "cert: test_cert"
+  end if ::Puma::HAS_SSL
 
-    log_writer.stderr.string = ''
-
-    log_writer.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(nil, nil)
-    error = log_writer.stderr.string
+  def test_ssl_error_no_addr_no_subj
+    error = ssl_error nil, nil
     assert_includes error, "SSL error"
     assert_includes error, "peer: <unknown>"
     assert_includes error, "cert: :"
-
   end if ::Puma::HAS_SSL
 end
