@@ -3,6 +3,7 @@
 # Copyright (c) 2005 Zed A. Shaw
 
 require_relative "helper"
+require_relative "helpers/test_puma/server_in_process"
 
 require "puma/server"
 
@@ -11,38 +12,28 @@ class TestHandler
 
   def call(env)
     @ran_test = true
-
     [200, {"Content-Type" => "text/plain"}, ["hello!"]]
   end
 end
 
-class WebServerTest < Minitest::Test
+class WebServerTest < TestPuma::ServerInProcess
   parallelize_me!
 
   VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
 
   def setup
     @tester = TestHandler.new
-    @server = Puma::Server.new @tester, nil, {log_writer: Puma::LogWriter.strings}
-    @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
-    @tcp = "http://127.0.0.1:#{@port}"
-    @server.run
-  end
-
-  def teardown
-    @server.stop(true)
+    server_run app: @tester
   end
 
   def test_simple_server
-    hit(["#{@tcp}/test"])
+    send_http_read_response
     assert @tester.ran_test, "Handler didn't really run"
   end
 
   def test_requests_count
     assert_equal @server.requests_count, 0
-    3.times do
-      hit(["#{@tcp}/test"])
-    end
+    3.times { send_http_read_response }
     assert_equal @server.requests_count, 3
   end
 
@@ -103,12 +94,12 @@ class WebServerTest < Minitest::Test
 
   def do_test(string, chunk)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @port);
+    socket = new_socket
     request = StringIO.new(string)
     chunks_out = 0
 
     while data = request.read(chunk)
-      chunks_out += socket.write(data)
+      chunks_out += socket.syswrite(data)
       socket.flush
     end
     socket
@@ -116,12 +107,12 @@ class WebServerTest < Minitest::Test
 
   def do_test_raise(string, chunk, close_after = nil)
     # Do not use instance variables here, because it needs to be thread safe
-    socket = TCPSocket.new("127.0.0.1", @port);
+    socket = new_socket
     request = StringIO.new(string)
     chunks_out = 0
 
     while data = request.read(chunk)
-      chunks_out += socket.write(data)
+      chunks_out += socket.syswrite(data)
       socket.flush
       socket.close if close_after && chunks_out > close_after
     end
@@ -132,4 +123,5 @@ class WebServerTest < Minitest::Test
   ensure
     socket.close unless socket.closed?
   end
+
 end
