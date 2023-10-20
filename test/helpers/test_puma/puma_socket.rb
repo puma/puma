@@ -83,6 +83,7 @@ module TestPuma
     end
 
     def before_setup
+      super
       @ios_to_close ||= []
 
       @bind_host = nil
@@ -98,6 +99,7 @@ module TestPuma
       @control_type = nil
 
       @ci_log = +''
+      @ssl_socket_contexts = Queue.new
     end
 
     # Closes all io's in `@ios_to_close`, also deletes them if they are files
@@ -122,6 +124,14 @@ module TestPuma
       # not sure about below, may help with gc...
       @ios_to_close.clear
       @ios_to_close = nil
+
+      until @ssl_socket_contexts.empty?
+        ctx = @ssl_socket_contexts.pop
+        ctx = nil if ctx
+      end
+      @ssl_socket_contexts.close
+      @ssl_socket_contexts = nil
+      super
     end
 
     # rubocop: disable Metrics/ParameterLists
@@ -351,6 +361,7 @@ module TestPuma
           tcp.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1) if SET_TCP_NODELAY
           if ctx || bind_type == :ssl
             ctx ||= new_ctx
+            @ssl_socket_contexts << ctx
             ::OpenSSL::SSL::SSLSocket.new tcp, ctx
           else
             tcp
