@@ -1,4 +1,7 @@
+# frozen_string_literal: true
+
 require_relative "helper"
+require_relative "helpers/test_puma/server_base.rb"
 
 # Most tests check that ::Rack::Handler::Puma works by itself
 # RackUp#test_bin runs Puma using the rackup bin file
@@ -8,12 +11,13 @@ module TestRackUp
 
   class TestOnBootedHandler < Minitest::Test
     def app
-      Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
+      ->(env) { @input = env; [200, {}, ["hello world"]]}
     end
 
     # `Verbose: true` is included for `NameError`,
     # see https://github.com/puma/puma/pull/3118
     def test_on_booted
+      ios = nil
       on_booted = false
       events = Puma::Events.new
       events.on_booted do
@@ -24,6 +28,7 @@ module TestRackUp
       thread = Thread.new do
         Rack::Handler::Puma.run(app, events: events, Verbose: true, Silent: true) do |l|
           launcher = l
+          ios = l.binder.ios
         end
       end
 
@@ -34,15 +39,20 @@ module TestRackUp
       sleep 1.5 unless Puma::IS_MRI
 
       launcher.stop
-      thread.join
+      thread.join 10
 
       assert_equal on_booted, true
+    ensure
+      # just in case
+      ios&.each do |io|
+        io.close if io.is_a?(IO) && io.respond_to?(:close) && !io.closed?
+      end
     end
   end
 
-  class TestPathHandler < Minitest::Test
+  class TestPathHandler < TestPuma::ServerBase
     def app
-      Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
+      ->(env) { @input = env; [200, {}, ["hello world"]]}
     end
 
     def setup
@@ -73,11 +83,9 @@ module TestRackUp
     end
 
     def test_handler_boots
-      host = '127.0.0.1'
-      port = UniquePort.call
-      opts = { Host: host, Port: port }
-      in_handler(app, opts) do |launcher|
-        hit(["http://#{host}:#{port}/test"])
+      opts = { Host: bind_host, Port: bind_port }
+      in_handler(app, opts) do |_|
+        send_http_read_response "GET /test HTTP/1.0\r\n\r\n"
         assert_equal("/test", @input["PATH_INFO"])
       end
     end
@@ -298,8 +306,8 @@ module TestRackUp
     end
   end
 
-  # Run using IO.popen so we don't load Rack and/or Rackup in the main process
-  class RackUp < Minitest::Test
+  # Run using spawn_ext_cmd so we don't load Rack and/or Rackup in the main process
+  class RackUp < TestPuma::ServerBase
     def setup
       FileUtils.copy_file 'test/rackup/hello.ru', 'config.ru'
     end
@@ -310,22 +318,25 @@ module TestRackUp
 
     def test_bin
       pid = nil
-      # JRuby & TruffleRuby take a long time using IO.popen
-      skip_unless :mri
-      io = IO.popen "rackup -p 0"
-      io.wait_readable 2
-      sleep 0.7
-      log = io.sysread 2_048
-      pid = log[/PID: (\d+)/, 1] || io.pid
+
+      out, _, spawn_pid = spawn_ext_cmd "rackup -p 0"
+
+      out.wait_readable 2
+      log = out.sysread(2_048)
+      until log.include? 'Use Ctrl-C to stop'
+        out.wait_readable 2
+        log << out.sysread(2_048)
+      end
+
+      if (pid = log[/PID: (\d+)/, 1].to_i)
+        TestPuma::DEBUGGING_PIDS[pid] = full_name
+      end
+
       assert_includes log, 'Puma version'
-      assert_includes log, 'Use Ctrl-C to stop'
     ensure
-      if pid
-        if Puma::IS_WINDOWS
-          `taskkill /F /PID #{pid}`
-        else
-          `kill -s KILL #{pid}`
-        end
+      # spawn_pid is killed in after_teardown
+      unless (pid == spawn_pid)
+        kill_and_wait pid
       end
     end
   end
