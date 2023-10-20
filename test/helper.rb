@@ -229,26 +229,6 @@ module Minitest
   end
 end
 
-# shows debugging info after summary line
-Minitest.after_run do
-  # needed for TestCLI#test_control_clustered
-  if TestPuma::AFTER_RUN_OK[0] && ENV['PUMA_TEST_DEBUG'] && !TestPuma::DEBUGGING_INFO.empty?
-    ary = Array.new(TestPuma::DEBUGGING_INFO.size) { TestPuma::DEBUGGING_INFO.pop }
-    ary.sort!
-    out = ary.join.strip
-    unless out.empty?
-      dash = "\u2500"
-      wid = ENV['GITHUB_ACTIONS'] ? 88 : 90
-      txt = " Debugging Info #{dash * 2}".rjust wid, dash
-      if ENV['GITHUB_ACTIONS']
-        puts "", "##[group]#{txt}", out, dash * wid, '', '::[endgroup]'
-      else
-        puts "", txt, out, dash * wid, ''
-      end
-    end
-  end
-end
-
 # shows skips summary instead of raw list
 module AggregatedResults
   def aggregated_results(io)
@@ -297,62 +277,20 @@ module AggregatedResults
       io.puts "\n%3d) %s" % [i+1, result]
     }
     io.puts
-
-    defunct = {}
-    loop do
-      begin
-        pid, status = Process.wait2(-1, Process::WNOHANG)
-        break unless pid
-        defunct[pid] = status
-      rescue Errno::ECHILD
-        break
-      end
-    end
-
-    unless defunct.empty?
-      io.puts(is_github_actions ? "##[group]Child Processes:" :
-        "#{dash * 40} Child Processes:")
-
-      io.puts "#{Process.pid}      Test Process"
-
-      sig = Puma::IS_WINDOWS ? :KILL : :TERM
-
-      # list all children, kill test processes
-      defunct.each do |k, v|
-        if (test_name = TestPuma::DEBUGGING_PIDS[k])
-          io.puts "#{k} #{v&.exitstatus.to_s.rjust 3}  #{test_name}"
-          begin
-            Process.kill sig, k
-          rescue Errno::ESRCH
-          end
-          begin
-            Process.wait2 k, Process::WNOHANG
-          rescue Errno::ECHILD
-          end
-        else
-          io.puts "#{k} #{v&.exitstatus.to_s.rjust 3}  Unknown"
-        end
-      end
-      # kill unknown processes
-      defunct.each do |k, _|
-        unless TestPuma::DEBUGGING_PIDS.key? k
-          begin
-            Process.kill sig, k
-          rescue Errno::ESRCH
-          end
-          begin
-            Process.wait2 k, Process::WNOHANG
-          rescue Errno::ECHILD
-          end
-        end
-      end
-
-      io.puts(is_github_actions ? '::[endgroup]' : "#{dash * 57}")
-      io.puts
-    end
-
-    TestPuma::AFTER_RUN_OK[0] = true
     io
+  end
+
+  def summary
+    # get the final summary
+    txt = super
+
+    defunct = TestPuma.handle_defunct
+    txt += defunct unless defunct.empty?
+
+    debug_info = TestPuma.debugging_info
+    txt += debug_info unless debug_info.empty?
+
+    txt
   end
 end
 Minitest::SummaryReporter.prepend AggregatedResults
