@@ -1,46 +1,25 @@
 # frozen_string_literal: true
 
 require_relative "helper"
-require_relative "helpers/tmp_path"
+require_relative "helpers/test_puma/server_in_process"
 
-class TestPumaUnixSocket < Minitest::Test
-  include TmpPath
+class TestPumaUnixSocket < TestPuma::ServerInProcess
 
-  App = lambda { |env| [200, {}, ["Works"]] }
-
-  def teardown
-    return if skipped?
-    @server.stop(true)
-  end
-
-  def server_unix(type)
-    @tmp_socket_path = type == :unix ? tmp_path('.sock') : "@TestPumaUnixSocket"
-    @server = Puma::Server.new App
-    @server.add_unix_listener @tmp_socket_path
-    @server.run
+  def server_unix
+    server_run app: ->(_) { [200, {}, ["Works"]] }
+    @req = "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
+    @expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
   end
 
   def test_server_unix
-    skip_unless :unix
-    server_unix :unix
-    sock = UNIXSocket.new @tmp_socket_path
-
-    sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
-
-    expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
-
-    assert_equal expected, sock.read(expected.size)
+    set_bind_type :unix
+    server_unix
+    assert_equal @expected, send_http_read_response(@req)
   end
 
   def test_server_aunix
-    skip_unless :aunix
-    server_unix :aunix
-    sock = UNIXSocket.new @tmp_socket_path.sub(/\A@/, "\0")
-
-    sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
-
-    expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
-
-    assert_equal expected, sock.read(expected.size)
+    set_bind_type :aunix
+    server_unix
+    assert_equal @expected, send_http_read_response(@req)
   end
 end
