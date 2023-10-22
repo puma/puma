@@ -11,6 +11,8 @@ if RUBY_VERSION == '2.4.1'
   end
 end
 
+STDOUT.syswrite "\n#{Process.pid}      Test Process\n"
+
 require "securerandom"
 
 require_relative "minitest/verbose"
