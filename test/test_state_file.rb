@@ -1,19 +1,20 @@
-require_relative "helper"
-require_relative "helpers/tmp_path"
+# frozen_string_literal: true
 
-require 'puma/state_file'
+require_relative "helper"
+require_relative "helpers/test_puma"
+
+require "puma/state_file"
 
 class TestStateFile < Minitest::Test
-  include TmpPath
+  include TestPuma
 
   def test_load_empty_value_as_nil
-    state_path = tmp_path('.state')
-    File.write state_path, <<-STATE
----
-pid: 123456
-control_url:
-control_auth_token:
-running_from: "/path/to/app"
+    state_path = unique_path '.state', contents: <<~STATE
+      ---
+      pid: 123456
+      control_url:
+      control_auth_token:
+      running_from: "/path/to/app"
     STATE
 
     sf = Puma::StateFile.new
@@ -22,6 +23,5 @@ running_from: "/path/to/app"
     assert_equal '/path/to/app', sf.running_from
     assert_nil sf.control_url
     assert_nil sf.control_auth_token
-
   end
 end
