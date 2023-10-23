@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
