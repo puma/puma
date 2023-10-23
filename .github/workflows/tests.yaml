@@ -211,4 +211,4 @@ jobs:
       - name: >-
           Test outcome: ${{ steps.test.outcome }}
         # every step must define a `uses` or `run` key
-        run: echo NOOP
+        run: ps -eo pid,time,command | grep java | grep -v grep || true
