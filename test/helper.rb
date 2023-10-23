@@ -11,9 +11,12 @@ if RUBY_VERSION == '2.4.1'
   end
 end
 
-STDOUT.syswrite "\n#{Process.pid}      Test Process\n"
+require "puma"
+require "puma/detect"
 
-require "securerandom"
+unless ::Puma::HAS_NATIVE_IO_WAIT
+  require "io/wait"
+end
 
 require_relative "minitest/verbose"
 require "minitest/autorun"
@@ -25,16 +28,13 @@ require_relative "helpers/apps"
 require_relative "helpers/tmp_path"
 require_relative "helpers/test_puma"
 
+require "securerandom"
+
 Thread.abort_on_exception = true
 
 $debugging_hold = false   # needed for TestCLI#test_control_clustered
 
-require "puma"
-require "puma/detect"
-
-unless ::Puma::HAS_NATIVE_IO_WAIT
-  require "io/wait"
-end
+STDOUT.syswrite "\n#{Process.pid}      Test Process\n"
 
 # used in various ssl test files, see test_puma_server_ssl.rb and
 # test_puma_localhost_authority.rb
