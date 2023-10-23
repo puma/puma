@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 require "puma/puma_http11"
