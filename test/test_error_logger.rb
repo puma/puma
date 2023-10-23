@@ -1,5 +1,8 @@
-require 'puma/error_logger'
+# frozen_string_literal: true
+
 require_relative "helper"
+
+require "puma/error_logger"
 
 class TestErrorLogger < Minitest::Test
   Req = Struct.new(:env, :body)
