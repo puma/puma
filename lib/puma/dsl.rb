@@ -1191,7 +1191,9 @@ module Puma
     def warn_if_in_single_mode(hook_name)
       return if @options[:silence_fork_callback_warning]
       # user_options (CLI) have precedence over config file
-      if (@config.options.user_options[:workers] || @options[:workers] || 0) == 0
+      workers_val = @config.options.user_options[:workers] || @options[:workers] ||
+        @config.puma_default_options[:workers] || 0
+      if workers_val == 0
         log_string =
           "Warning: You specified code to run in a `#{hook_name}` block, " \
           "but Puma is not configured to run in cluster mode (worker count > 0 ), " \
