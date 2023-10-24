@@ -184,6 +184,7 @@ module TestSkips
         when :unix        then "Skipped if UNIXSocket exists"    if Puma::HAS_UNIX_SOCKET
         when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
         when :rack3       then "Skipped if Rack 3.x"             if Rack.release >= '3'
+        when :yjit        then "Skipped if using yjit"           if ENV['RUBYOPT']&.include?('--yjit')
         else false
       end
       skip skip_msg, bt if skip_msg
