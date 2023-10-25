@@ -7,7 +7,7 @@ require_relative 'response'
 module TestPuma
 
   # @!macro [new] req
-  #   @param req [String, GET_11] request path
+  #   @param req [String] request path
 
   # @!macro [new] skt
   #   @param host: [String] tcp/ssl host
@@ -138,9 +138,9 @@ module TestPuma
 
     # Sends a request and returns the response header lines as an array of strings.
     # Includes the status line.
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
+    # @macro req
+    # @macro skt
+    # @macro resp
     # @return [Array<String>] array of header lines in the response
     def send_http_read_resp_headers(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
@@ -150,9 +150,9 @@ module TestPuma
     end
 
     # Sends a request and returns the HTTP response body.
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
+    # @macro req
+    # @macro skt
+    # @macro resp
     # @return [Response] the body portion of the HTTP response
     def send_http_read_resp_body(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
@@ -162,8 +162,8 @@ module TestPuma
 
     # Sends a request and returns whatever can be read.  Use when multiple
     # responses are sent by the server
-    # @!macro req
-    # @!macro skt
+    # @macro req
+    # @macro skt
     # @return [String] socket read string
     def send_http_read_all(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
@@ -194,9 +194,9 @@ module TestPuma
     end
 
     # Sends a request and returns the HTTP response.  Assumes one response is sent
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
+    # @macro req
+    # @macro skt
+    # @macro resp
     # @return [Response] the HTTP response
     def send_http_read_response(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
@@ -206,8 +206,8 @@ module TestPuma
 
     # Sends a request and returns the socket
     # @param req [String, nil] The request stirng.
-    # @!macro req
-    # @!macro skt
+    # @macro req
+    # @macro skt
     # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
     def send_http(req = GET_11, host: nil, port: nil, path: nil, ctx: nil, session: nil)
       skt = new_socket host: host, port: port, path: path, ctx: ctx, session: session
@@ -225,21 +225,21 @@ module TestPuma
     # Determines whether the socket has been closed by the server.  Only works when
     # `Socket::TCP_INFO is defined`, linux/Ubuntu
     # @param socket [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket]
-    # @return [Boolean] true if closed by server, false is indeterminate, as
-    #   it may not be writable
+    # @return [Boolean,nil] true if closed by server, false is indeterminate, nil
+    #   if the socket can't be queried.
     #
     def skt_closed_by_server(socket)
       skt = socket.to_io
-      return false unless skt.kind_of?(TCPSocket)
+      return nil unless skt.kind_of?(TCPSocket)
 
       begin
         tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
       rescue IOError, SystemCallError
-        false
+        nil
       else
         state = tcp_info.unpack('C')[0]
         # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
-        (state >= 6 && state <= 9) || state == 11
+        state.between?(6, 9) || state == 11
       end
     end
 
@@ -342,7 +342,7 @@ module TestPuma
     end
 
     # Creates a new client socket.  TCP, SSL, and UNIX are supported
-    # @!macro req
+    # @macro skt
     # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
     #
     def new_socket(host: nil, port: nil, path: nil, ctx: nil, session: nil, bind_type: @bind_type)
