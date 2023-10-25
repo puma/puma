@@ -518,6 +518,20 @@ class TestIntegrationCluster < TestIntegration
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
+  def test_worker_hook_warning_web_concurrency
+    cli_server "test/rackup/hello.ru",
+      env: { 'WEB_CONCURRENCY' => '2'},
+      config: <<~CONFIG
+      on_worker_boot(:test) do |index, data|
+        data[:test] = index
+      end
+    CONFIG
+
+    get_worker_pids
+    line = @server_log[/.+on_worker_boot.+/]
+    refute line, "Warning below should not be shown!\n#{line}"
+  end
+
   def test_puma_debug_loaded_exts
     cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true
 
