@@ -132,7 +132,7 @@ jobs:
       - name: test
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         timeout-minutes: 6
-        run: bundle exec rake test:all
+        run: ./test_runner  --verbose
 
   test_non_mri:
     name: >-
@@ -206,7 +206,7 @@ jobs:
         if: | # only run if previous steps have succeeded
           success() &&
           (needs.skip_duplicate_runs.outputs.should_skip != 'true')
-        run: bundle exec rake test:all
+        run: ./test_runner  --verbose
 
       - name: >-
           Test outcome: ${{ steps.test.outcome }}
