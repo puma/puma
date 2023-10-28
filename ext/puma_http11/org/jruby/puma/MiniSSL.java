@@ -47,6 +47,7 @@ import static javax.net.ssl.SSLEngineResult.Status;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 public class MiniSSL extends RubyObject { // MiniSSL::Engine
+  private static final long serialVersionUID = -6903439483039141234L;
   private static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
     public IRubyObject allocate(Ruby runtime, RubyClass klass) {
       return new MiniSSL(runtime, klass);
