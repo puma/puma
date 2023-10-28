@@ -1,11 +1,17 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 require "puma/thread_pool"
 
 class TestThreadPool < Minitest::Test
 
+  def setup
+    @pool = nil
+  end
+
   def teardown
-    @pool.shutdown(1) if defined?(@pool)
+    @pool&.shutdown 1
   end
 
   def new_pool(min, max, &block)
@@ -192,11 +198,7 @@ class TestThreadPool < Minitest::Test
     options = {
       min_threads: 0,
       max_threads: 1,
-      before_thread_exit: [
-        proc do
-          exited << 1
-        end
-      ]
+      before_thread_exit: [ -> { exited << 1 } ]
     }
     block = proc { }
     pool = MutexPool.new('tst', options, &block)
@@ -205,8 +207,12 @@ class TestThreadPool < Minitest::Test
 
     assert_equal 1, pool.spawned
 
+    # Thread.pass helps with intermittent tests, JRuby
     pool.trim
+    Thread.pass
     assert_equal 0, pool.spawned
+    Thread.pass
+    sleep 0.1 if Puma::IS_JRUBY # intermittent without
     assert_equal 1, exited.length
   end
 

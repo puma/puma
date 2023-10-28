@@ -1,6 +1,7 @@
 # frozen_string_literal: true
+
 require_relative "helper"
-require "net/http"
+require_relative "helpers/test_puma/server_in_process"
 
 # don't load Rack, as it autoloads everything
 begin
@@ -18,12 +19,12 @@ require "rack/chunked" if Rack.release.start_with? '3.0'
 
 require "nio"
 
-class TestRackServer < Minitest::Test
+class TestRackServer < TestPuma::ServerInProcess
   parallelize_me!
 
-  HOST = '127.0.0.1'
-
   STR_1KB = "──#{SecureRandom.hex 507}─\n".freeze
+
+  GET_TEST_KA = "GET /test HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
   class ErrorChecker
     def initialize(app)
@@ -56,105 +57,76 @@ class TestRackServer < Minitest::Test
   end
 
   def setup
-    @simple = lambda { |env| [200, { "x-header" => "Works" }, ["Hello"]] }
-    @server = Puma::Server.new @simple
-    @port = (@server.add_tcp_listener HOST, 0).addr[1]
-    @tcp = "http://#{HOST}:#{@port}"
-    @stopped = false
-  end
-
-  def stop
-    @server.stop(true)
-    @stopped = true
-  end
-
-  def teardown
-    @server.stop(true) unless @stopped
-  end
-
-  def header_hash(socket)
-    t = socket.readline("\r\n\r\n").split("\r\n")
-    t.shift; t.map! { |line| line.split(/:\s?/) }
-    t.to_h
+    @simple = ->(env) { [200, { "x-header" => "Works" }, ["Hello"]] }
   end
 
   def test_lint
-    @checker = ErrorChecker.new ServerLint.new(@simple)
-    @server.app = @checker
+    checker = ErrorChecker.new ServerLint.new(@simple)
 
-    @server.run
+    server_run app: checker
 
-    hit(["#{@tcp}/test"])
+    send_http GET_TEST_KA
 
-    stop
-
-    refute @checker.exception, "Checker raised exception"
+    refute checker.exception, "Checker raised exception"
   end
 
   def test_large_post_body
-    @checker = ErrorChecker.new ServerLint.new(@simple)
-    @server.app = @checker
+    checker = ErrorChecker.new ServerLint.new(@simple)
 
-    @server.run
+    server_run app: checker
 
     big = "x" * (1024 * 16)
 
-    Net::HTTP.post_form URI.parse("#{@tcp}/test"),
-                 { "big" => big }
+    form_body = "big=#{big}"
 
-    stop
+    req = <<~REQ.gsub("\n", "\r\n").strip
+      POST /search HTTP/1.1
+      Content-Type: application/x-www-form-urlencoded
+      Content-Length: #{form_body.bytesize}
 
-    refute @checker.exception, "Checker raised exception"
+      #{form_body}
+    REQ
+
+    body = send_http_read_resp_body req
+
+    refute checker.exception, "Checker raised exception"
+    assert_equal 'Hello', body
   end
 
   def test_path_info
-    input = nil
-    @server.app = lambda { |env| input = env; @simple.call(env) }
-    @server.run
+    server_run app: ->(env) { [200, {}, [env['PATH_INFO']]] }
 
-    hit(["#{@tcp}/test/a/b/c"])
+    body = send_http_read_resp_body "GET /test/a/b/c HTTP/1.0\r\n\r\n"
 
-    stop
-
-    assert_equal "/test/a/b/c", input['PATH_INFO']
+    assert_equal '/test/a/b/c', body
   end
 
   def test_after_reply
-    closed = false
+    after_reply_called = false
 
-    @server.app = lambda do |env|
-      env['rack.after_reply'] << lambda { closed = true }
+    server_run app: ->(env) do
+      env['rack.after_reply'] << -> { after_reply_called = true }
       @simple.call(env)
     end
 
-    @server.run
+    body = send_http_read_resp_body "GET /test HTTP/1.0\r\n\r\n"
 
-    hit(["#{@tcp}/test"])
-
-    stop
-
-    assert_equal true, closed
+    assert_equal 'Hello', body
+    sleep 0.05 # intermittent failures without
+    assert_equal true, after_reply_called
   end
 
   def test_after_reply_exception
-    @server.app = lambda do |env|
+    server_run app: ->(env) do
       env['rack.after_reply'] << lambda { raise ArgumentError, "oops" }
       @simple.call(env)
     end
 
-    @server.run
+    socket = send_http GET_TEST_KA
 
-    socket = TCPSocket.open HOST, @port
-    socket.puts "GET /test HTTP/1.1\r\n"
-    socket.puts "Connection: Keep-Alive\r\n"
-    socket.puts "\r\n"
+    body = socket.read_body
 
-    headers = header_hash socket
-
-    content_length = headers["Content-Length"].to_i
-    real_response_body = socket.read(content_length)
-
-    assert_equal "Hello", real_response_body
+    assert_equal "Hello", body
 
     # When after_reply breaks the connection it will write the expected HTTP
     # response followed by a second HTTP response: HTTP/1.1 500
@@ -172,52 +144,34 @@ class TestRackServer < Minitest::Test
       content = socket.read_nonblock(12)
       refute_includes content, "500"
     end
-
-    socket.close
-
-    stop
   end
 
   def test_rack_body_proxy
     closed = false
     body = Rack::BodyProxy.new(["Hello"]) { closed = true }
 
-    @server.app = lambda { |env| [200, { "X-Header" => "Works" }, body] }
+    server_run app: ->(env) { [200, { "X-Header" => "Works" }, body] }
 
-    @server.run
+    body = send_http_read_resp_body "GET /test HTTP/1.0\r\n\r\n"
 
-    hit(["#{@tcp}/test"])
-
-    stop
-
+    assert_equal "Hello", body
     assert_equal true, closed
   end
 
   def test_rack_body_proxy_content_length
     str_ary = %w[0123456789 0123456789 0123456789 0123456789]
-    str_ary_bytes = str_ary.to_ary.inject(0) { |sum, el| sum + el.bytesize }
+    str_ary_bytes = str_ary.sum(&:bytesize)
 
     body = Rack::BodyProxy.new(str_ary) { }
 
-    @server.app = lambda { |env| [200, { "X-Header" => "Works" }, body] }
+    server_run app: ->(env) { [200, { "X-Header" => "Works" }, body] }
 
-    @server.run
-
-    socket = TCPSocket.open HOST, @port
-    socket.puts "GET /test HTTP/1.1\r\n"
-    socket.puts "Connection: Keep-Alive\r\n"
-    socket.puts "\r\n"
-
-    headers = header_hash socket
-
-    socket.close
-
-    stop
+    headers = send_http_read_response(GET_TEST_KA).headers_hash
 
     if Rack.release.start_with? '1.'
-      assert_equal "chunked", headers["Transfer-Encoding"]
+      assert_equal "chunked", headers["transfer-encoding"]
     else
-      assert_equal str_ary_bytes, headers["Content-Length"].to_i
+      assert_equal str_ary_bytes, headers["content-length"].to_i
     end
   end
 
@@ -226,48 +180,50 @@ class TestRackServer < Minitest::Test
 
     logger = Rack::CommonLogger.new(@simple, log)
 
-    @server.app = logger
+    server_run app: logger
 
-    @server.run
+    response = send_http_read_response GET_TEST_KA
 
-    hit(["#{@tcp}/test"])
-
-    stop
-
-    assert_match %r!GET /test HTTP/1\.1!, log.string
+    if Rack.release < '2.0'
+      assert_equal 'Hello', response.decode_body
+    else
+      assert_equal 'Hello', response.body
+    end
+    sleep 0.05 # may see empty string otherwise...
+    assert_includes log.string, 'GET /test HTTP/1.1'
   end
 
   def test_rack_chunked_array1
     body = [STR_1KB]
     app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
     rack_app = Rack::Chunked.new app
-    @server.app = rack_app
-    @server.run
+    server_run app: rack_app
 
-    resp = Net::HTTP.get_response URI(@tcp)
-    assert_equal 'chunked', resp['transfer-encoding']
-    assert_equal STR_1KB, resp.body.force_encoding(Encoding::UTF_8)
+    resp = send_http_read_response
+
+    assert_equal 'chunked', resp.headers_hash['transfer-encoding']
+    assert_equal STR_1KB, resp.decode_body.force_encoding(Encoding::UTF_8)
   end if Rack.release < '3.1'
 
   def test_rack_chunked_array10
     body = Array.new 10, STR_1KB
     app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
     rack_app = Rack::Chunked.new app
-    @server.app = rack_app
-    @server.run
+    server_run app: rack_app
 
-    resp = Net::HTTP.get_response URI(@tcp)
-    assert_equal 'chunked', resp['transfer-encoding']
-    assert_equal STR_1KB * 10, resp.body.force_encoding(Encoding::UTF_8)
+    resp = send_http_read_response
+
+    assert_equal 'chunked', resp.headers_hash['transfer-encoding']
+    assert_equal STR_1KB * 10, resp.decode_body.force_encoding(Encoding::UTF_8)
   end if Rack.release < '3.1'
 
   def test_puma_enum
     body = Array.new(10, STR_1KB).to_enum
-    @server.app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
-    @server.run
+    server_run app:  lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
 
-    resp = Net::HTTP.get_response URI(@tcp)
-    assert_equal 'chunked', resp['transfer-encoding']
-    assert_equal STR_1KB * 10, resp.body.force_encoding(Encoding::UTF_8)
+    resp = send_http_read_response
+
+    assert_equal 'chunked', resp.headers_hash['transfer-encoding']
+    assert_equal STR_1KB * 10, resp.decode_body.force_encoding(Encoding::UTF_8)
   end
 end

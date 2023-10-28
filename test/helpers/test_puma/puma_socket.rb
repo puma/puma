@@ -7,7 +7,7 @@ require_relative 'response'
 module TestPuma
 
   # @!macro [new] req
-  #   @param req [String, GET_11] request path
+  #   @param req [String] request path
 
   # @!macro [new] skt
   #   @param host: [String] tcp/ssl host
@@ -59,6 +59,7 @@ module TestPuma
   module PumaSocket
     GET_10 = "GET / HTTP/1.0\r\n\r\n"
     GET_11 = "GET / HTTP/1.1\r\n\r\n"
+    GET_11_CLOSE = "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
     HELLO_11 = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\n" \
       "Content-Length: 11\r\n\r\nHello World"
@@ -72,23 +73,41 @@ module TestPuma
 
     SET_TCP_NODELAY = Socket.const_defined?(:IPPROTO_TCP) && ::Socket.const_defined?(:TCP_NODELAY)
 
+    if ::Puma::HAS_SSL
+      require "openssl" unless Object.const_defined? :OpenSSL
+
+      PROTOCOL_USE_MIN_MAX =
+        OpenSSL::SSL::SSLContext.private_instance_methods(false).include?(:set_minmax_proto_version)
+
+      OPENSSL_3 = OpenSSL::OPENSSL_LIBRARY_VERSION.match?(/OpenSSL 3\.\d\.\d/)
+    end
+
     def before_setup
-      @ios_to_close ||= []
-      @bind_port = nil
-      @bind_path = nil
-      @control_port = nil
-      @control_path = nil
       super
+      @ios_to_close ||= []
+
+      @bind_host = nil
+      @bind_path = nil
+      @bind_port = nil
+      @bind_ssl  = nil
+      @bind_type = :tcp
+
+      @control_host = nil
+      @control_path = nil
+      @control_port = nil
+      @control_ssl  = nil
+      @control_type = nil
+
+      @ci_log = +''
+      @ssl_socket_contexts = Queue.new
     end
 
     # Closes all io's in `@ios_to_close`, also deletes them if they are files
     def after_teardown
-      return if skipped?
-      super
       # Errno::EBADF raised on macOS
       @ios_to_close.each do |io|
         begin
-          if io.respond_to? :sysclose
+          if io.respond_to? :sysclose # ssl connection
             io.sync_close = true
             io.sysclose unless io.closed?
           else
@@ -105,15 +124,23 @@ module TestPuma
       # not sure about below, may help with gc...
       @ios_to_close.clear
       @ios_to_close = nil
+
+      until @ssl_socket_contexts.empty?
+        ctx = @ssl_socket_contexts.pop
+        ctx = nil if ctx
+      end
+      @ssl_socket_contexts.close
+      @ssl_socket_contexts = nil
+      super
     end
 
     # rubocop: disable Metrics/ParameterLists
 
     # Sends a request and returns the response header lines as an array of strings.
     # Includes the status line.
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
+    # @macro req
+    # @macro skt
+    # @macro resp
     # @return [Array<String>] array of header lines in the response
     def send_http_read_resp_headers(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
@@ -123,9 +150,9 @@ module TestPuma
     end
 
     # Sends a request and returns the HTTP response body.
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
+    # @macro req
+    # @macro skt
+    # @macro resp
     # @return [Response] the body portion of the HTTP response
     def send_http_read_resp_body(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
@@ -135,8 +162,8 @@ module TestPuma
 
     # Sends a request and returns whatever can be read.  Use when multiple
     # responses are sent by the server
-    # @!macro req
-    # @!macro skt
+    # @macro req
+    # @macro skt
     # @return [String] socket read string
     def send_http_read_all(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
@@ -160,10 +187,16 @@ module TestPuma
       raise e
     end
 
+    # Sends a request to the Puma control server
+    def send_http_control_read_resp_body(path)
+      socket = send_http_control(path)
+      socket.read_body
+    end
+
     # Sends a request and returns the HTTP response.  Assumes one response is sent
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
+    # @macro req
+    # @macro skt
+    # @macro resp
     # @return [Response] the HTTP response
     def send_http_read_response(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
@@ -173,8 +206,8 @@ module TestPuma
 
     # Sends a request and returns the socket
     # @param req [String, nil] The request stirng.
-    # @!macro req
-    # @!macro skt
+    # @macro req
+    # @macro skt
     # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
     def send_http(req = GET_11, host: nil, port: nil, path: nil, ctx: nil, session: nil)
       skt = new_socket host: host, port: port, path: path, ctx: ctx, session: session
@@ -182,26 +215,38 @@ module TestPuma
       skt
     end
 
+    # Sends a request to the Puma control server
+    def send_http_control(path)
+      socket = new_socket host: control_host, port: control_port, path: control_path, bind_type: @control_type
+      req = "GET /#{path}?token=#{TOKEN} HTTP/1.0\r\n\r\n"
+      socket << req
+    end
+
     # Determines whether the socket has been closed by the server.  Only works when
     # `Socket::TCP_INFO is defined`, linux/Ubuntu
     # @param socket [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket]
-    # @return [Boolean] true if closed by server, false is indeterminate, as
-    #   it may not be writable
+    # @return [Boolean,nil] true if closed by server, false is indeterminate, nil
+    #   if the socket can't be queried.
     #
     def skt_closed_by_server(socket)
       skt = socket.to_io
-      return false unless skt.kind_of?(TCPSocket)
+      return nil unless skt.kind_of?(TCPSocket)
 
       begin
         tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
       rescue IOError, SystemCallError
-        false
+        nil
       else
         state = tcp_info.unpack('C')[0]
         # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
-        (state >= 6 && state <= 9) || state == 11
+        state.between?(6, 9) || state == 11
       end
     end
+
+    SEND_REQUEST = -> (req) {
+      self.syswrite req
+      self
+    }
 
     READ_BODY = -> (timeout: nil, len: nil) {
       self.read_response(timeout: nil, len: nil)
@@ -291,30 +336,32 @@ module TestPuma
     # @return [OpenSSL::SSL::SSLContext] The new socket
     def new_ctx(&blk)
       ctx = OpenSSL::SSL::SSLContext.new
-      if blk
-        yield ctx
-      else
-        ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      end
+      ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      yield ctx if blk
       ctx
     end
 
     # Creates a new client socket.  TCP, SSL, and UNIX are supported
-    # @!macro req
+    # @macro skt
     # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
     #
-    def new_socket(host: nil, port: nil, path: nil, ctx: nil, session: nil)
-      port  ||= @bind_port
-      path  ||= @bind_path
-      ip ||= (host || HOST.ip).gsub RE_HOST_TO_IP, ''  # in case a URI style IPv6 is passed
+    def new_socket(host: nil, port: nil, path: nil, ctx: nil, session: nil, bind_type: @bind_type)
+      port ||= bind_port
+      path ||= bind_path
+      ip   ||= (bind_host).gsub RE_HOST_TO_IP, ''  # in case a URI style IPv6 is passed
 
       skt =
-        if path && !port && !ctx
+        case bind_type
+        when :unix
+          UNIXSocket.new path
+        when :aunix
           UNIXSocket.new path.sub(/\A@/, "\0") # sub is for abstract
-        elsif port # && !path
+        when :ssl, :tcp
           tcp = TCPSocket.new ip, port.to_i
           tcp.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1) if SET_TCP_NODELAY
-          if ctx
+          if ctx || bind_type == :ssl
+            ctx ||= new_ctx
+            @ssl_socket_contexts << ctx
             ::OpenSSL::SSL::SSLSocket.new tcp, ctx
           else
             tcp
@@ -323,9 +370,11 @@ module TestPuma
           raise 'port or path must be set!'
         end
 
+      skt.define_singleton_method :send_request, SEND_REQUEST
       skt.define_singleton_method :read_response, READ_RESPONSE
       skt.define_singleton_method :read_body, READ_BODY
       skt.define_singleton_method :<<, REQ_WRITE
+
       @ios_to_close << skt
       if ctx
         @ios_to_close << tcp

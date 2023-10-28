@@ -1,5 +1,8 @@
-require 'puma/events'
+# frozen_string_literal: true
+
 require_relative "helper"
+
+require "puma/events"
 
 class TestEvents < Minitest::Test
   def test_register_callback_with_block

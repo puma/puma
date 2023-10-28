@@ -1,10 +1,10 @@
+# frozen_string_literal: true
+
 require_relative "helper"
-require_relative "helpers/integration"
+require_relative "helpers/test_puma/server_spawn"
 
-class TestIntegrationSingle < TestIntegration
-  parallelize_me! if ::Puma.mri?
-
-  def workers ; 0 ; end
+class TestIntegrationSingle < TestPuma::ServerSpawn
+  parallelize_me! if ::Puma::IS_MRI
 
   def test_hot_restart_does_not_drop_connections_threads
     ttl_reqs = Puma.windows? ? 500 : 1_000
@@ -21,7 +21,7 @@ class TestIntegrationSingle < TestIntegration
 
   def test_usr2_restart
     skip_unless_signal_exist? :USR2
-    _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
+    _, new_reply = restart_server_and_listen "-q test/rackup/hello.ru"
     assert_equal "Hello World", new_reply
   end
 
@@ -32,7 +32,7 @@ class TestIntegrationSingle < TestIntegration
     skip_if :jruby
     skip_unless_signal_exist? :USR2
 
-    initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
+    initial_reply, new_reply = restart_server_and_listen "-q test/rackup/hello-env.ru"
 
     assert_includes initial_reply, "Hello RAND"
     assert_includes new_reply, "Hello RAND"
@@ -41,204 +41,207 @@ class TestIntegrationSingle < TestIntegration
 
   def test_term_exit_code
     skip_unless_signal_exist? :TERM
-    skip_if :jruby # JVM does not return correct exit code for TERM
+    skip_if :jruby # some installs work, some don't ???
 
-    cli_server "test/rackup/hello.ru"
+    server_spawn "test/rackup/hello.ru"
+
     _, status = stop_server
 
-    assert_equal 15, status
+    exit_code = ::Puma::IS_OSX ? status.to_i : status.exitstatus
+
+    assert_equal 15, exit_code % 128
   end
 
   def test_on_booted
-    skip_unless_signal_exist? :TERM
+    server_spawn "test/rackup/hello.ru", config: <<~CONFIG
+      on_booted do
+        puts "on_booted called one"
+      end
 
-    cli_server "-C test/config/event_on_booted.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru",
-      no_wait: true
+      on_booted do
+        puts "on_booted called two"
+      end
+    CONFIG
 
-    assert wait_for_server_to_include('on_booted called')
+    assert wait_for_server_to_include('on_booted called one')
+    assert wait_for_server_to_include('on_booted called two')
   end
 
   def test_term_suppress
     skip_unless_signal_exist? :TERM
 
-    cli_server "-C test/config/suppress_exception.rb test/rackup/hello.ru"
+    server_spawn "test/rackup/hello.ru",
+      config: "\nraise_exception_on_sigterm false\n"
+
     _, status = stop_server
 
-    assert_equal 0, status
+    exit_code = ::Puma::IS_OSX ? status&.to_i : status&.exitstatus
+
+    assert_equal 0, exit_code
   end
 
   def test_rack_url_scheme_default
     skip_unless_signal_exist? :TERM
 
-    cli_server("test/rackup/url_scheme.ru")
+    server_spawn("test/rackup/url_scheme.ru")
 
-    reply = read_body(connect)
+    body = send_http_read_resp_body
     stop_server
 
-    assert_match("http", reply)
+    assert_includes body, "http"
   end
 
   def test_conf_is_loaded_before_passing_it_to_binder
     skip_unless_signal_exist? :TERM
 
-    cli_server("-C test/config/rack_url_scheme.rb test/rackup/url_scheme.ru")
+    server_spawn "test/rackup/url_scheme.ru", config: "rack_url_scheme 'https'"
 
-    reply = read_body(connect)
+    body = send_http_read_resp_body
     stop_server
 
-    assert_match("https", reply)
+    assert_includes body, "https"
   end
 
   def test_prefer_rackup_file_specified_by_cli
     skip_unless_signal_exist? :TERM
 
-    cli_server "-C test/config/with_rackup_from_dsl.rb test/rackup/hello.ru"
-    reply = read_body(connect)
+    server_spawn "test/rackup/hello.ru", config: "rack_url_scheme 'https'"
+    body = send_http_read_resp_body
     stop_server
 
-    assert_match("Hello World", reply)
+    assert_includes body, "Hello World"
   end
 
   def test_term_not_accepts_new_connections
     skip_unless_signal_exist? :TERM
-    skip_if :jruby
 
-    cli_server 'test/rackup/sleep.ru'
+    resp_sleep = 8
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3({ 'LC_ALL' => 'C' }, "curl http://#{HOST}:#{@tcp_port}/sleep10")
-    sleep 1 # ensure curl send a request
+    server_spawn 'test/rackup/sleep.ru'
 
+    accepted_socket = send_http "GET /sleep#{resp_sleep} HTTP/1.1\r\n\r\n"
+    sleep 0.1 # Ruby 2.7 ?
     Process.kill :TERM, @pid
     assert wait_for_server_to_include('Gracefully stopping') # wait for server to begin graceful shutdown
 
-    # Invoke a request which must be rejected
-    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
+    # listeners are closed after 'Gracefully stopping' is logged
+    sleep 0.5
 
-    assert nil != Process.getpgid(@server.pid) # ensure server is still running
-    assert nil != Process.getpgid(curl_wait_thread[:pid]) # ensure first curl invocation still in progress
+    # Invoke a request which must be rejected, need some time after shutdown
+    assert_raises(Errno::ECONNREFUSED) { send_http_read_resp_body }
 
-    curl_wait_thread.join
-    rejected_curl_wait_thread.join
-
-    assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|Couldn't connect to server/, rejected_curl_stderr.read)
-
-    Process.wait(@server.pid)
-    @server.close unless @server.closed?
-    @server = nil # prevent `#teardown` from killing already killed server
+    assert_includes accepted_socket.read_body, "Slept #{resp_sleep}"
   end
 
   def test_int_refuse
     skip_unless_signal_exist? :INT
     skip_if :jruby  # seems to intermittently lockup JRuby CI
 
-    cli_server 'test/rackup/hello.ru'
+    server_spawn 'test/rackup/hello.ru'
     begin
-      sock = TCPSocket.new(HOST, @tcp_port)
-      sock.close
+      send_http.close
     rescue => ex
       fail("Port didn't open properly: #{ex.message}")
     end
 
     Process.kill :INT, @pid
-    Process.wait @pid
+    Process.wait @spawn_pid
 
-    assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
+    assert_raises(Errno::ECONNREFUSED) { new_socket }
   end
 
   def test_siginfo_thread_print
     skip_unless_signal_exist? :INFO
 
-    cli_server 'test/rackup/hello.ru'
-    output = []
-    t = Thread.new { output << @server.readlines }
-    Process.kill :INFO, @pid
-    Process.kill :INT , @pid
-    t.join
+    server_spawn 'test/rackup/hello.ru'
 
-    assert_match "Thread: TID", output.join
+    Process.kill :INFO, @pid
+
+    assert wait_for_server_to_include('Thread: TID')
   end
 
   def test_write_to_log
     skip_unless_signal_exist? :TERM
 
-    suppress_output = '> /dev/null 2>&1'
+    stdout   = unique_path '.stdout'
+    pid_file = unique_path '.pid'
 
-    cli_server '-C test/config/t1_conf.rb test/rackup/hello.ru'
+    server_spawn 'test/rackup/hello.ru', config: <<~CONFIG
+      log_requests
+      stdout_redirect "#{stdout}"
+      pidfile "#{pid_file}"
+    CONFIG
 
-    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+    2.times { send_http_read_response }
 
+    out = cli_pumactl "-P #{pid_file} status", no_bind: true
+
+    sleep 1.5
     stop_server
 
-    log = File.read('t1-stdout')
-
-    assert_match(%r!GET / HTTP/1\.1!, log)
-  ensure
-    File.unlink 't1-stdout' if File.file? 't1-stdout'
-    File.unlink 't1-pid'    if File.file? 't1-pid'
+    assert File.file?(stdout), "File '#{stdout}' does not exist"
+    log = File.read stdout
+    assert_includes(log, "GET / HTTP/1.1")
+    assert_equal("Puma is started\n", out.read)
+    sleep 0.5
+    refute File.file?(pid_file)
   end
 
   def test_puma_started_log_writing
     skip_unless_signal_exist? :TERM
 
-    cli_server '-C test/config/t2_conf.rb test/rackup/hello.ru'
+    stdout   = unique_path '.stdout'
+    pid_file = unique_path '.pid'
 
-    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
+    server_spawn 'test/rackup/hello.ru', config: <<~CONFIG
+      log_requests
+      stdout_redirect "#{stdout}"
+      pidfile "#{pid_file}"
+    CONFIG
 
-    out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
+    2.times { send_http_read_resp_body }
 
+    out = cli_pumactl "-P #{pid_file} status", no_bind: true
+
+    sleep 1.5
     stop_server
+    assert File.file?(stdout), "File '#{stdout}' does not exist"
+    log = File.read(stdout)
 
-    log = File.read('t2-stdout')
-
-    assert_match(%r!GET / HTTP/1\.1!, log)
-    assert(!File.file?("t2-pid"))
-    assert_equal("Puma is started\n", out)
-  ensure
-    File.unlink 't2-stdout' if File.file? 't2-stdout'
+    assert_includes(log, "GET / HTTP/1.1")
+    assert_equal("Puma is started\n", out.read)
+    sleep 0.5
+    refute File.file?(pid_file)
   end
 
   def test_application_logs_are_flushed_on_write
-    cli_server "#{set_pumactl_args} test/rackup/write_to_stdout.ru"
+    set_control_type :tcp
+    server_spawn "test/rackup/write_to_stdout.ru"
 
-    read_body connect
+    send_http_read_resp_body
 
     cli_pumactl 'stop'
 
     assert wait_for_server_to_include("hello\n")
-    assert_includes @server.read, 'Goodbye!'
+    assert wait_for_server_to_include('Goodbye')
 
-    @server.close unless @server.closed?
-    @server = nil
+  ensure
+    @server = nil if ::Puma::IS_WINDOWS # see ServerSpawn#after_teardown
   end
 
   # listener is closed 'externally' while Puma is in the IO.select statement
   def test_closed_listener
     skip_unless_signal_exist? :TERM
 
-    cli_server "test/rackup/close_listeners.ru", merge_err: true
-    connection = fast_connect
-
-    if DARWIN && RUBY_VERSION < '2.5'
-      begin
-        read_body connection
-      rescue EOFError
-      end
+    server_spawn "test/rackup/close_listeners.ru"
+    if Puma::IS_JRUBY
+      assert_includes send_http_read_response, "HTTP/1.1 500 Internal Server"
     else
-      read_body connection
+      assert_includes send_http_read_response, "#<TCPServer:(closed)>"
     end
 
     begin
-      Timeout.timeout(5) do
-        begin
-          Process.kill :SIGTERM, @pid
-        rescue Errno::ESRCH
-        end
-        begin
-          Process.wait2 @pid
-        rescue Errno::ECHILD
-        end
-      end
+      Timeout.timeout(5) { kill_and_wait @pid }
     rescue Timeout::Error
       Process.kill :SIGKILL, @pid
       assert false, "Process froze"
@@ -247,46 +250,50 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_puma_debug_loaded_exts
-    cli_server "#{set_pumactl_args} test/rackup/hello.ru", puma_debug: true
+    set_control_type :tcp
+    server_spawn "test/rackup/hello.ru", puma_debug: true
 
     assert wait_for_server_to_include('Loaded Extensions:')
 
     cli_pumactl 'stop'
+    assert wait_for_server_to_include('Goodbye')
+
+  ensure
+    @server = nil if ::Puma::IS_WINDOWS # see ServerSpawn#after_teardown
   end
 
   def test_idle_timeout
-    cli_server "test/rackup/hello.ru", config: "idle_timeout 1"
+    server_spawn "test/rackup/hello.ru", config: "idle_timeout 1"
 
-    connect
+    send_http
 
     sleep 1.15
 
     assert_raises Errno::ECONNREFUSED, "Connection refused" do
-      connect
+      send_http
     end
   end
 
   def test_pre_existing_unix_after_idle_timeout
-    skip_unless :unix
+    set_bind_type :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.write bind_path, 'pre existing', mode: 'wb'
 
-    cli_server "-q test/rackup/hello.ru", unix: :unix, config: "idle_timeout 1"
+    server_spawn "-q test/rackup/hello.ru", config: "idle_timeout 1"
 
-    sock = connection = connect(nil, unix: true)
-    read_body(connection)
+    socket = send_http
 
     sleep 1.15
 
-    assert sock.wait_readable(1), 'Unexpected timeout'
+    assert socket.wait_readable(1), 'Unexpected timeout'
     assert_raises Puma.jruby? ? IOError : Errno::ECONNREFUSED, "Connection refused" do
-      connection = connect(nil, unix: true)
+      send_http
     end
 
-    assert File.exist?(@bind_path)
+    assert File.exist?(bind_path)
   ensure
     if UNIX_SKT_EXIST
-      File.unlink @bind_path if File.exist? @bind_path
+      File.unlink bind_path if File.exist? bind_path
     end
   end
 end

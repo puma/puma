@@ -11,7 +11,12 @@ if RUBY_VERSION == '2.4.1'
   end
 end
 
-require "securerandom"
+require "puma"
+require "puma/detect"
+
+unless ::Puma::HAS_NATIVE_IO_WAIT
+  require "io/wait"
+end
 
 require_relative "minitest/verbose"
 require "minitest/autorun"
@@ -20,21 +25,16 @@ require "minitest/proveit"
 require "minitest/stub_const"
 require "net/http"
 require_relative "helpers/apps"
+require_relative "helpers/tmp_path"
+require_relative "helpers/test_puma"
+
+require "securerandom"
 
 Thread.abort_on_exception = true
 
-$debugging_info = []
 $debugging_hold = false   # needed for TestCLI#test_control_clustered
-$test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
-  RUBY_ENGINE == "ruby" ? 45 : 60
-end.to_i
 
-require "puma"
-require "puma/detect"
-
-unless ::Puma::HAS_NATIVE_IO_WAIT
-  require "io/wait"
-end
+STDOUT.syswrite "\n#{Process.pid}      Test Process\n"
 
 # used in various ssl test files, see test_puma_server_ssl.rb and
 # test_puma_localhost_authority.rb
@@ -82,18 +82,22 @@ module TimeoutEveryTestCase
   class TestTookTooLong < Timeout::Error
   end
 
+  TEST_CASE_TIMEOUT = ENV.fetch("TEST_CASE_TIMEOUT") do
+    RUBY_ENGINE == "ruby" ? 45 : 60
+  end.to_i
+
   def run
     with_info_handler do
       time_it do
         capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+          ::Timeout.timeout(TEST_CASE_TIMEOUT, TestTookTooLong) do
             before_setup; setup; after_setup
             self.send self.name
           end
         end
 
         capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+          ::Timeout.timeout(TEST_CASE_TIMEOUT, TestTookTooLong) do
             Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
           end
         end
@@ -183,6 +187,7 @@ module TestSkips
         when :unix        then "Skipped if UNIXSocket exists"    if Puma::HAS_UNIX_SOCKET
         when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
         when :rack3       then "Skipped if Rack 3.x"             if Rack.release >= '3'
+        when :yjit        then "Skipped if using yjit"           if ENV['RUBYOPT']&.include?('--yjit')
         else false
       end
       skip skip_msg, bt if skip_msg
@@ -210,49 +215,34 @@ end
 
 Minitest::Test.include TestSkips
 
-class Minitest::Test
+module Minitest
+  class Test
+    include ::TmpPath
+    PROJECT_ROOT = File.dirname(__dir__)
 
-  PROJECT_ROOT = File.dirname(__dir__)
+    def self.run(reporter, options = {}) # :nodoc:
+      prove_it!
+      super
+    end
 
-  def self.run(reporter, options = {}) # :nodoc:
-    prove_it!
-    super
-  end
-
-  def full_name
-    "#{self.class.name}##{name}"
-  end
-end
-
-Minitest.after_run do
-  # needed for TestCLI#test_control_clustered
-  if !$debugging_hold && ENV['PUMA_TEST_DEBUG']
-    $debugging_info.sort!
-    out = $debugging_info.join.strip
-    unless out.empty?
-      dash = "\u2500"
-      wid = ENV['GITHUB_ACTIONS'] ? 88 : 90
-      txt = " Debugging Info #{dash * 2}".rjust wid, dash
-      if ENV['GITHUB_ACTIONS']
-        puts "", "##[group]#{txt}", out, dash * wid, '', '::[endgroup]'
-      else
-        puts "", txt, out, dash * wid, ''
-      end
+    def full_name
+      "#{self.class.name}##{name}"
     end
   end
 end
 
+# shows skips summary instead of raw list
 module AggregatedResults
   def aggregated_results(io)
     is_github_actions = ENV['GITHUB_ACTIONS'] == 'true'
     filtered_results = results.dup
+    dash = "\u2500"
 
     if options[:verbose]
       skips = filtered_results.select(&:skipped?)
       unless skips.empty?
-        dash = "\u2500"
         if is_github_actions
-          puts "", "##[group]Skips:"
+          io.puts "", "##[group]Skips:"
         else
           io.puts '', 'Skips:'
         end
@@ -274,10 +264,10 @@ module AggregatedResults
               num += 1
               io.puts format("    %3s %-5s #{item[1]} #{item[2]}", "#{num})", ":#{item[0][1]}")
             }
-            puts ''
+            io.puts ''
           }
         }
-        puts '::[endgroup]' if is_github_actions
+        io.puts '::[endgroup]' if is_github_actions
       end
     end
 
@@ -290,6 +280,19 @@ module AggregatedResults
     }
     io.puts
     io
+  end
+
+  def summary
+    # get the final summary
+    txt = super
+
+    defunct = TestPuma.handle_defunct
+    txt += defunct unless defunct.empty?
+
+    debug_info = TestPuma.debugging_info
+    txt += debug_info unless debug_info.empty?
+
+    txt
   end
 end
 Minitest::SummaryReporter.prepend AggregatedResults

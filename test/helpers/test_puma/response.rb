@@ -20,9 +20,13 @@ module TestPuma
     end
 
     # Returns response headers as a hash. All keys and values are strings.
+    # @note Keys are converted to lower case, similar to net/http.
     # @return [Hash]
     def headers_hash
-      @headers_hash ||= headers.map { |hdr| hdr.split ': ', 2 }.to_h
+      @headers_hash ||= headers.map { |hdr|
+        k,v = hdr.split ': ', 2
+        [k.downcase, v]
+      }.to_h
     end
 
     def status

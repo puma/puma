@@ -1,76 +1,54 @@
+# frozen_string_literal: true
+
+require_relative "helper"
+require_relative "helpers/test_puma/server_in_process"
+
 # Nothing in this file runs if Puma isn't compiled with ssl support
 #
 # helper is required first since it loads Puma, which needs to be
 # loaded so HAS_SSL is defined
-require_relative "helper"
-require "localhost/authority"
 
 if ::Puma::HAS_SSL && !Puma::IS_JRUBY
+  require "localhost/authority"
   require "puma/minissl"
-  require_relative "helpers/test_puma/puma_socket"
   require "openssl" unless Object.const_defined? :OpenSSL
 end
 
-class TestPumaLocalhostAuthority < Minitest::Test
-  include TestPuma
-  include TestPuma::PumaSocket
+class TestPumaLocalhostAuthority < TestPuma::ServerInProcess
 
   def setup
-    @server = nil
+    @lha_path = Localhost::Authority.path
+    @lha_cert_file = File.join @lha_path,"localhost.crt"
   end
 
-  def teardown
-    @server&.stop true
-  end
-
-  # yields ctx to block, use for ctx setup & configuration
   def start_server
+    set_bind_type :ssl, host: LOCALHOST
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
-
-    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
-    @server.add_ssl_listener LOCALHOST, 0, nil
-    @bind_port = @server.connected_ports[0]
-    @server.run
+    server_run app: app, ctx: false
   end
 
   def test_localhost_authority_file_generated
     # Initiate server to create localhost authority
-    unless File.exist?(File.join(Localhost::Authority.path,"localhost.key"))
+    lha_key_file = File.join @lha_path, "localhost.key"
+    unless File.exist? lha_key_file
       start_server
     end
-    assert_equal(File.exist?(File.join(Localhost::Authority.path,"localhost.key")), true)
-    assert_equal(File.exist?(File.join(Localhost::Authority.path,"localhost.crt")), true)
+    assert_operator File, :exist?, lha_key_file
+    assert_operator File, :exist?, @lha_cert_file
   end
 
-end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
-
-class TestPumaSSLLocalhostAuthority < Minitest::Test
-  include TestPuma
-  include TestPuma::PumaSocket
-
   def test_self_signed_by_localhost_authority
-    app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
+    start_server
+    local_authority_crt = OpenSSL::X509::Certificate.new File.read @lha_cert_file
 
-    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
-    @server.app = app
-
-    @server.add_ssl_listener LOCALHOST, 0, nil
-    @bind_port = @server.connected_ports[0]
-
-    local_authority_crt = OpenSSL::X509::Certificate.new File.read(File.join(Localhost::Authority.path,"localhost.crt"))
-
-    @server.run
     cert = nil
     begin
-      cert = send_http(host: LOCALHOST, ctx: new_ctx).peer_cert
+      cert = send_http(ctx: new_ctx).peer_cert
     rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET
       # Errno::ECONNRESET TruffleRuby
     end
     sleep 0.1
 
-    assert_equal(cert.to_pem, local_authority_crt.to_pem)
+    assert_equal cert.to_pem, local_authority_crt.to_pem
   end
 end if ::Puma::HAS_SSL && !Puma::IS_JRUBY

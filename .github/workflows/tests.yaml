@@ -132,7 +132,7 @@ jobs:
       - name: test
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         timeout-minutes: 6
-        run: bundle exec rake test:all
+        run: ./test_runner  --verbose
 
   test_non_mri:
     name: >-
@@ -153,15 +153,15 @@ jobs:
       matrix:
         include:
           # tto - test timeout
-          - { tto: 8 , os: ubuntu-22.04 , ruby: jruby }
-          - { tto: 8 , os: ubuntu-22.04 , ruby: jruby, no-ssl: ' no SSL' }
-          - { tto: 8 , os: ubuntu-22.04 , ruby: jruby-head, allow-failure: true }
-          - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
-          - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
-          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
-          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby-head, allow-failure: true }
-          - { tto: 8 , os: macos-12     , ruby: jruby }
-          - { tto: 8 , os: macos-12     , ruby: truffleruby, allow-failure: true }
+          - { tto: 9 , os: ubuntu-22.04 , ruby: jruby }
+          - { tto: 9 , os: ubuntu-22.04 , ruby: jruby, no-ssl: ' no SSL' }
+          - { tto: 9 , os: ubuntu-22.04 , ruby: jruby-head      , allow-failure: true }
+          - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby      }
+          - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby-head }
+          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby      }
+          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby-head }
+          - { tto: 9 , os: macos-12     , ruby: jruby           , allow-failure: true }
+          - { tto: 8 , os: macos-12     , ruby: truffleruby     , allow-failure: true }
 
     steps:
       - name: repo checkout
@@ -206,9 +206,9 @@ jobs:
         if: | # only run if previous steps have succeeded
           success() &&
           (needs.skip_duplicate_runs.outputs.should_skip != 'true')
-        run: bundle exec rake test:all
+        run: ./test_runner  --verbose
 
       - name: >-
           Test outcome: ${{ steps.test.outcome }}
         # every step must define a `uses` or `run` key
-        run: echo NOOP
+        run: ps -eo pid,time,command | grep java | grep -v grep || true

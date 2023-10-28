@@ -1,12 +1,12 @@
+# frozen_string_literal: true
+
 require_relative "helper"
-require_relative "helpers/config_file"
-require_relative "helpers/ssl"
+require_relative "helpers/test_puma/server_base"
 
 require 'pathname'
 require 'puma/control_cli'
 
-class TestPumaControlCli < TestConfigFileBase
-  include SSLHelper
+class TestPumaControlCli < TestPuma::ServerBase
 
   def setup
     # use a pipe to get info across thread boundary
@@ -117,7 +117,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_environment_specific_config_file_exist
-    port = UniquePort.call
+    port = unique_port
     puma_config_file = "config/puma.rb"
     production_config_file = "config/puma/production.rb"
 
@@ -135,7 +135,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_default_config_file_exist
-    port = UniquePort.call
+    port = unique_port
     puma_config_file = "config/puma.rb"
     development_config_file = "config/puma/development.rb"
 
@@ -164,7 +164,7 @@ class TestPumaControlCli < TestConfigFileBase
 
   def test_control_url_and_status
     host = "127.0.0.1"
-    port = UniquePort.call
+    port = unique_port
     url = "tcp://#{host}:#{port}/"
 
     opts = [
@@ -200,7 +200,7 @@ class TestPumaControlCli < TestConfigFileBase
     skip_if :windows
     skip unless defined? Puma::ControlCLI::NO_REQ_COMMANDS
     host = "127.0.0.1"
-    port = UniquePort.call
+    port = unique_port
     url = "tcp://#{host}:#{port}/"
 
     opts = [
@@ -229,22 +229,14 @@ class TestPumaControlCli < TestConfigFileBase
     refute_includes log, 'send_request'
   end
 
-  def control_ssl(host)
-    skip_unless :ssl
-    ip = host&.start_with?('[') ? host[1..-2] : host
-    port = UniquePort.call(ip)
-    url = "ssl://#{host}:#{port}?#{ssl_query}"
+  def control_ssl_run(host)
+    set_control_type :ssl, host: host
 
-    opts = [
-      "--control-url", url,
-      "--control-token", "ctrl",
-      "--config-file", "test/config/app.rb"
-    ]
+    opts = %W[-C #{control_uri_str} -T #{TOKEN} --config-file test/config/app.rb]
 
-    control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
-    t = Thread.new do
-      control_cli.run
-    end
+    control_cli = Puma::ControlCLI.new opts + ["start"], @ready, @ready
+
+    t = Thread.new { control_cli.run }
 
     wait_booted
 
@@ -257,12 +249,12 @@ class TestPumaControlCli < TestConfigFileBase
 
   def test_control_ssl_ipv4
     skip_unless :ssl
-    control_ssl '127.0.0.1'
+    control_ssl_run HOST
   end
 
   def test_control_ssl_ipv6
     skip_unless :ssl
-    control_ssl '[::1]'
+    control_ssl_run '[::1]'
   end
 
   def test_control_aunix
@@ -290,7 +282,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_control_ipv6
-    port = UniquePort.call '::1'
+    port = unique_port '::1'
     url = "tcp://[::1]:#{port}"
 
     opts = [

@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+# simplified test runner, runs all tests, todo: add more options
+
+require 'bundler/setup'
+
+if RUBY_VERSION >= '2.5'
+  Dir['test/test_*.rb', base: __dir__].each { |tf| require_relative tf }
+else
+  Dir["#{__dir__}/test/test_*.rb"].each { |tf| require tf }
+end
+
+require 'minitest'
