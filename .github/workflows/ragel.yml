@@ -62,7 +62,7 @@ jobs:
           ragel --version
           Remove-Item -Path ext/puma_http11/http11_parser.c
           Remove-Item -Path ext/puma_http11/org/jruby/puma/Http11Parser.java
-          rake ragel
+          bundle exec rake ragel
           if ($IsWindows) {
             dos2unix ext/puma_http11/http11_parser.c
             dos2unix ext/puma_http11/org/jruby/puma/Http11Parser.java
