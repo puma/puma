@@ -501,7 +501,7 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
   }
 
   private static RaiseException newError(Ruby runtime, RubyClass errorClass, String message, Throwable cause) {
-    RaiseException ex = new RaiseException(runtime, errorClass, message, true);
+    RaiseException ex = RaiseException.from(runtime, errorClass, message);
     ex.initCause(cause);
     return ex;
   }
