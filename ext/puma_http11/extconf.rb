@@ -10,11 +10,12 @@ end
 
 unless ENV["PUMA_DISABLE_SSL"]
   # don't use pkg_config('openssl') if '--with-openssl-dir' is used
-  has_openssl_dir = dir_config('openssl').any?
-  # macOS TruffleRuby problem
-  found_pkg_config = RUBY_ENGINE == 'truffleruby' &&
-      RUBY_PLATFORM.include?('darwin') && ENV['GITHUB_ACTIONS'] == 'true' ?
-    false : !has_openssl_dir && pkg_config('openssl')
+  # also looks within the Ruby build for directory info
+  has_openssl_dir = dir_config('openssl').any? ||
+    RbConfig::CONFIG['configure_args']&.include?('openssl') ||
+    Dir.exist?("#{RbConfig::TOPDIR}/src/main/c/openssl") # TruffleRuby
+
+  found_pkg_config = !has_openssl_dir && pkg_config('openssl')
 
   found_ssl = if !$mingw && found_pkg_config
     puts 'using OpenSSL pkgconfig (openssl.pc)'
