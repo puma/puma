@@ -51,7 +51,8 @@ class TestNullIO < Minitest::Test
     error = assert_raises ArgumentError do
       nio.read(-42)
     end
-    assert_includes error.message, "negative length -42 given"
+    # 2nd match is TruffleRuby
+    assert_match(/negative length -42 given|length must not be negative/, error.message)
   end
 
   def test_read_with_nil_buffer
@@ -87,15 +88,18 @@ class TestNullIO < Minitest::Test
   end
 
   def test_read_with_frozen_buffer
-    assert_raises FrozenError do
+    # Remove when Ruby 2.4 is no longer supported
+    err = defined? ::FrozenError ? ::FrozenError : ::RuntimeError
+
+    assert_raises err do
       nio.read(nil, "".freeze)
     end
 
-    assert_raises FrozenError do
+    assert_raises err do
       nio.read(0, "".freeze)
     end
 
-    assert_raises FrozenError do
+    assert_raises err do
       nio.read(20, "".freeze)
     end
   end
