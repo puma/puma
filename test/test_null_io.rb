@@ -47,9 +47,68 @@ class TestNullIO < Minitest::Test
     assert_nil nio.read(1)
   end
 
+  def test_read_with_negative_length
+    error = assert_raises ArgumentError do
+      nio.read(-42)
+    end
+    assert_includes error.message, "negative length -42 given"
+  end
+
+  def test_read_with_nil_buffer
+    assert_equal "", nio.read(nil, nil)
+    assert_equal "", nio.read(0, nil)
+    assert_nil nio.read(1, nil)
+  end
+
+  class ImplicitString
+    def to_str
+      "ImplicitString".b
+    end
+  end
+
+  def test_read_with_implicit_string_like_buffer
+    assert_equal "", nio.read(nil, ImplicitString.new)
+  end
+
+  def test_read_with_invalid_buffer
+    error = assert_raises TypeError do
+      nio.read(nil, Object.new)
+    end
+    assert_includes error.message, "no implicit conversion of Object into String"
+
+    error = assert_raises TypeError do
+      nio.read(0, Object.new)
+    end
+
+    error = assert_raises TypeError do
+      nio.read(1, Object.new)
+    end
+    assert_includes error.message, "no implicit conversion of Object into String"
+  end
+
+  def test_read_with_frozen_buffer
+    assert_raises FrozenError do
+      nio.read(nil, "".freeze)
+    end
+
+    assert_raises FrozenError do
+      nio.read(0, "".freeze)
+    end
+
+    assert_raises FrozenError do
+      nio.read(20, "".freeze)
+    end
+  end
+
   def test_read_with_length_and_buffer
-    buf = ""
+    buf = "random_data".b
     assert_nil nio.read(1, buf)
+    assert_equal "".b, buf
+  end
+
+  def test_read_with_buffer
+    buf = "random_data".b
+    assert_same buf, nio.read(nil, buf)
     assert_equal "", buf
   end
 
@@ -67,5 +126,25 @@ class TestNullIO < Minitest::Test
 
   def test_closed_returns_false
     assert_equal false, nio.closed?
+  end
+end
+
+# Run the same tests but against an empty file to
+# ensure all the test behavior is accurate
+class TestNullIOConformance < TestNullIO
+  def setup
+    self.nio = ::Tempfile.create
+    nio.sync = true
+  end
+
+  def teardown
+    return unless nio.is_a? ::File
+    nio.close
+    File.unlink nio.path
+  end
+
+  def test_string_returns_empty_string
+    self.nio = StringIO.new
+    super
   end
 end
