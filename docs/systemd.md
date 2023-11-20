@@ -99,9 +99,10 @@ ListenStream=0.0.0.0:9293
 # ListenStream=/run/puma.sock
 
 # Socket options matching Puma defaults
-NoDelay=true
 ReusePort=true
 Backlog=1024
+# Socket option NoDelay will set TCP_NODELAY if puma is run with parameter low_latency. This is off by default.
+# NoDelay=true
 
 [Install]
 WantedBy=sockets.target
