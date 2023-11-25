@@ -546,7 +546,7 @@ NORETURN(void raise_error(SSL* ssl, int result));
 
 void raise_error(SSL* ssl, int result) {
   char buf[512];
-  char msg[512];
+  char msg[768];
   const char* err_str;
   int err = errno;
   int mask = 4095;
