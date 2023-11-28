@@ -146,8 +146,6 @@ module Puma
         # Invoke any worker shutdown hooks so they can prevent the worker
         # exiting until any background operations are completed
         @config.run_hooks(:before_worker_shutdown, index, @log_writer, @hook_data)
-
-        Process.kill "SIGTERM", master if server.idle_timeout_reached
       ensure
         @worker_write << "t#{Process.pid}\n" rescue nil
         @worker_write.close
