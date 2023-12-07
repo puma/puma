@@ -95,7 +95,7 @@ class WebServerTest < Minitest::Test
   def test_nonexistent_http_method
     socket = do_test("FOOBARBAZ www.zedshaw.com:443 HTTP/1.1\r\nConnection: close\r\n\r\n", 100)
     response = socket.read
-    assert_match "Not Implemented", response
+    assert_match "Method Not Allowed", response
     socket.close
   end
 

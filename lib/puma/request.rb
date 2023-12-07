@@ -101,7 +101,11 @@ module Puma
           end
         else
           @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
-          status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
+          status, headers, app_body = [
+            405,
+            {"Allow" => @supported_http_methods.keys.join(", ")},
+            ["#{env[REQUEST_METHOD]} method is not supported"]
+          ]
         end
 
         # app_body needs to always be closed, hold value in case lowlevel_error

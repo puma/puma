@@ -1795,7 +1795,8 @@ class TestPumaServer < Minitest::Test
       [200, {}, body]
     end
     resp = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-    assert_match 'Not Implemented', resp
+    assert_match 'Allow: PROPFIND, PROPPATCH', resp
+    assert_match '405 Method Not Allowed', resp
   end
 
   def test_supported_http_methods_accept_all
@@ -1813,7 +1814,7 @@ class TestPumaServer < Minitest::Test
       [200, {}, body]
     end
     resp = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
-    assert_match(/\AHTTP\/1\.0 501 Not Implemented/, resp)
+    assert_match(/\AHTTP\/1\.0 405 Method Not Allowed/, resp)
   end
 
 
