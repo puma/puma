@@ -3,7 +3,7 @@
 require_relative 'rack/builder'
 require_relative 'plugin'
 require_relative 'const'
-# note that dsl is loaded at end of file, requires ConfigDefault constants
+require_relative 'dsl'
 
 module Puma
   # A class used for storing "leveled" configuration options.
@@ -387,5 +387,3 @@ module Puma
     end
   end
 end
-
-require_relative 'dsl'
