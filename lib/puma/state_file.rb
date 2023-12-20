@@ -56,11 +56,11 @@ module Puma
     end
 
     ALLOWED_FIELDS.each do |f|
-      define_method f do
+      define_method f.to_sym do
         @options[f]
       end
 
-      define_method "#{f}=" do |v|
+      define_method :"#{f}=" do |v|
         @options[f] = v
       end
     end
