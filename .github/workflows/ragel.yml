@@ -29,7 +29,9 @@ jobs:
         include:
           - { os: ubuntu-20.04 , ruby: head }
           - { os: macos-11     , ruby: head }
-          - { os: windows-2022 , ruby: ucrt }
+          # Dec-2023 - incorrect line directives with Windows
+          # occurs with both MSYS2 and MSFT/vpkg versions of ragel
+          # - { os: windows-2022 , ruby: ucrt } 
 
     steps:
       # windows git will convert \n to \r\n
