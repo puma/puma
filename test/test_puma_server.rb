@@ -1334,12 +1334,12 @@ class TestPumaServer < Minitest::Test
   # overriding content-length.
   {"cr" => "\r", "lf" => "\n", "crlf" => "\r\n"}.each do |suffix, line_ending|
     # The cr-only case for the following test was CVE-2020-5247
-    define_method("test_prevent_response_splitting_headers_#{suffix}") do
+    define_method(:"test_prevent_response_splitting_headers_#{suffix}") do
       app = ->(_) { [200, {'X-header' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
 
-    define_method("test_prevent_response_splitting_headers_early_hint_#{suffix}") do
+    define_method(:"test_prevent_response_splitting_headers_early_hint_#{suffix}") do
       app = ->(env) do
         env['rack.early_hints'].call("X-header" => "untrusted input#{line_ending}Cookie: hack")
         [200, {}, ["Hello"]]
@@ -1347,7 +1347,7 @@ class TestPumaServer < Minitest::Test
       assert_does_not_allow_http_injection(app, early_hints: true)
     end
 
-    define_method("test_prevent_content_length_injection_#{suffix}") do
+    define_method(:"test_prevent_content_length_injection_#{suffix}") do
       app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
