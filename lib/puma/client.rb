@@ -152,8 +152,6 @@ module Puma
       @read_header = true
       @read_proxy = !!@expect_proxy_proto
       @env = @proto_env.dup
-      @body = nil
-      @tempfile = nil
       @parsed_bytes = 0
       @ready = false
       @body_remain = 0
@@ -182,16 +180,25 @@ module Puma
         rescue IOError
           # swallow it
         end
-
       end
     end
 
     def close
+      tempfile_close
       begin
         @io.close
       rescue IOError, Errno::EBADF
         Puma::Util.purge_interrupt_queue
       end
+    end
+
+    def tempfile_close
+      tf_path = @tempfile&.path
+      @tempfile&.close
+      File.unlink(tf_path) if tf_path
+      @tempfile = nil
+      @body = nil
+    rescue Errno::ENOENT, IOError
     end
 
     # If necessary, read the PROXY protocol from the buffer. Returns
@@ -232,6 +239,7 @@ module Puma
 
       return read_body if in_data_phase
 
+      data = nil
       begin
         data = @io.read_nonblock(CHUNK_SIZE)
       rescue IO::WaitReadable
@@ -405,8 +413,8 @@ module Puma
       end
 
       if remain > MAX_BODY
-        @body = Tempfile.new(Const::PUMA_TMP_BASE)
-        @body.unlink
+        @body = Tempfile.create(Const::PUMA_TMP_BASE)
+        File.unlink @body.path unless IS_WINDOWS
         @body.binmode
         @tempfile = @body
       else
@@ -497,8 +505,8 @@ module Puma
       @partial_part_left = 0
       @prev_chunk = ""
 
-      @body = Tempfile.new(Const::PUMA_TMP_BASE)
-      @body.unlink
+      @body = Tempfile.create(Const::PUMA_TMP_BASE)
+      File.unlink @body.path unless IS_WINDOWS
       @body.binmode
       @tempfile = @body
       @chunked_content_length = 0
