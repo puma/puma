@@ -117,10 +117,13 @@ class TestWorkerGemIndependence < TestIntegration
         silent_and_checked_system_command("bundle install")
       end
     end
+
+    verify_process_tag(@server.pid, File.basename(old_app_dir))
     start_phased_restart
 
     connection = connect
     new_reply = read_body(connection)
+    verify_process_tag(@server.pid, File.basename(new_app_dir))
     assert_equal new_version, new_reply
   end
 
@@ -137,5 +140,20 @@ class TestWorkerGemIndependence < TestIntegration
     Process.kill :USR1, @pid
 
     true while @server.gets !~ /booted in [.0-9]+s, phase: 1/
+  end
+
+  def with_unbundled_env
+    bundler_ver = Gem::Version.new(Bundler::VERSION)
+    if bundler_ver < Gem::Version.new('2.1.0')
+      Bundler.with_clean_env { yield }
+    else
+      Bundler.with_unbundled_env { yield }
+    end
+  end
+
+  def verify_process_tag(pid, tag)
+    cmd = "ps aux | grep #{pid}"
+    io = IO.popen cmd, 'r'
+    assert io.read.include? tag
   end
 end
