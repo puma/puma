@@ -182,13 +182,11 @@ module Puma
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
 
-      if !@options[:prune_bundler]
-        default_options[:preload_app] = (@options[:workers] > 1) && Puma.forkable?
-      end
-
       if block
         configure(&block)
       end
+
+      set_conditional_default_options
     end
 
     attr_reader :options, :plugins
@@ -237,6 +235,8 @@ module Puma
 
     def load
       config_files.each { |config_file| @file_dsl._load_from(config_file) }
+
+      set_conditional_default_options
 
       @options
     end
@@ -378,6 +378,12 @@ module Puma
       @options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
+    end
+
+    def set_conditional_default_options
+      @options.default_options[:preload_app] = !@options[:prune_bundler] &&
+        (@options[:workers] > 1) &&
+        Puma.forkable?
     end
 
     def self.random_token
