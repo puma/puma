@@ -39,10 +39,8 @@ module Puma
       @control_url = nil
       @control_options = {}
 
-      setup_options env
-
       begin
-        @parser.parse! @argv
+        setup_options env
 
         if file = @argv.shift
           @conf.configure do |user_config, file_config|
@@ -240,7 +238,7 @@ module Puma
             $stdout.puts o
             exit 0
           end
-        end
+        end.parse! @argv
       end
     end
   end
