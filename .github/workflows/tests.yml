@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
 
   rubocop:
     name: RuboCop linting
