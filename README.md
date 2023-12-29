@@ -410,6 +410,7 @@ Community guides:
 * [puma-plugin-statsd](https://github.com/yob/puma-plugin-statsd) — send Puma metrics to statsd
 * [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog. Puma 5.1.0 integrated notify and watchdog, which probably conflicts with this plugin. Puma 6.1.0 added status support which obsoletes the plugin entirely.
 * [puma-plugin-telemetry](https://github.com/babbel/puma-plugin-telemetry) - telemetry plugin for Puma offering various targets to publish
+* [puma-acme](https://github.com/anchordotdev/puma-acme) - automatic SSL/HTTPS certificate provisioning and setup
 
 ### Monitoring
 
