@@ -11,6 +11,8 @@ if RUBY_VERSION == '2.4.1'
   end
 end
 
+ENV['PUMA_FIBER_PER_REQUEST'] ||= '1'
+
 require "securerandom"
 
 require_relative "minitest/verbose"

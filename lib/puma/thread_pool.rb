@@ -50,7 +50,6 @@ module Puma
       @shutdown_grace_time = Float(options[:pool_shutdown_grace_time] || SHUTDOWN_GRACE_TIME)
       @block = block
       @out_of_band = options[:out_of_band]
-      @clean_thread_locals = options[:clean_thread_locals]
       @before_thread_start = options[:before_thread_start]
       @before_thread_exit = options[:before_thread_exit]
       @reaping_time = options[:reaping_time]
@@ -78,12 +77,6 @@ module Puma
     end
 
     attr_reader :spawned, :trim_requested, :waiting
-
-    def self.clean_thread_locals
-      Thread.current.keys.each do |key| # rubocop: disable Style/HashEachMethods
-        Thread.current[key] = nil unless key == :__recursive_key__
-      end
-    end
 
     # How many objects have yet to be processed by the pool?
     #
@@ -145,10 +138,6 @@ module Puma
             end
 
             work = todo.shift
-          end
-
-          if @clean_thread_locals
-            ThreadPool.clean_thread_locals
           end
 
           begin

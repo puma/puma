@@ -29,6 +29,14 @@ module Puma
   #
   # Each `Puma::Server` will have one reactor and one thread pool.
   class Server
+    module FiberPerRequest
+      def handle_request(client, requests)
+        Fiber.new do
+          super
+        end.resume
+      end
+    end
+
     include Puma::Const
     include Request
 
@@ -93,6 +101,10 @@ module Puma
       @max_fast_inline           = @options[:max_fast_inline]
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
+
+      if @options[:fiber_per_request]
+        singleton_class.prepend(FiberPerRequest)
+      end
 
       # make this a hash, since we prefer `key?` over `include?`
       @supported_http_methods =
@@ -426,7 +438,6 @@ module Puma
       # Advertise this server into the thread
       Thread.current[THREAD_LOCAL_KEY] = self
 
-      clean_thread_locals = @options[:clean_thread_locals]
       close_socket = true
 
       requests = 0
@@ -455,8 +466,6 @@ module Puma
             close_socket = false
             break
           when true
-            ThreadPool.clean_thread_locals if clean_thread_locals
-
             requests += 1
 
             # As an optimization, try to read the next request from the
