@@ -226,7 +226,10 @@ class TestIntegrationCluster < TestIntegration
 
     get_worker_pids # wait for workers to boot
 
-    connect
+    10.times {
+      fast_connect
+      sleep 0.5
+    }
 
     sleep 1.15
 
