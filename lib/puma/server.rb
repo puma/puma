@@ -38,7 +38,6 @@ module Puma
     attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
-    attr_reader :idle_timeout_reached
 
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
@@ -83,6 +82,8 @@ module Puma
         UserFileDefaultOptions.new(options, Configuration::DEFAULTS)
       end
 
+      @clustered                 = (@options.fetch :workers, 0) > 0
+      @worker_write              = @options[:worker_write]
       @log_writer                = @options.fetch :log_writer, LogWriter.stdio
       @early_hints               = @options[:early_hints]
       @first_data_timeout        = @options[:first_data_timeout]
@@ -334,10 +335,22 @@ module Puma
             unless ios
               unless shutting_down?
                 @idle_timeout_reached = true
-                @status = :stop
+
+                if @clustered
+                  @worker_write << "i#{Process.pid}\n" rescue nil
+                  next
+                else
+                  @log_writer.log "- Idle timeout reached"
+                  @status = :stop
+                end
               end
 
               break
+            end
+
+            if @idle_timeout_reached && @clustered
+              @idle_timeout_reached = false
+              @worker_write << "i#{Process.pid}\n" rescue nil
             end
 
             ios.first.each do |sock|

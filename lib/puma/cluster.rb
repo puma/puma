@@ -158,6 +158,10 @@ module Puma
       @workers.all? { |w| w.phase == @phase }
     end
 
+    def all_workers_idle_timed_out?
+      (@workers.map(&:pid) - idle_timed_out_worker_pids).empty?
+    end
+
     def check_workers
       return if @next_check >= Time.now
 
@@ -344,6 +348,8 @@ module Puma
     def run
       @status = :run
 
+      @idle_workers = {}
+
       output_header "cluster"
 
       # This is aligned with the output from Runner, see Runner#output_header
@@ -417,6 +423,8 @@ module Puma
 
       @master_read, @worker_write = read, @wakeup
 
+      @options[:worker_write] = @worker_write
+
       @config.run_hooks(:before_fork, nil, @log_writer)
 
       spawn_workers
@@ -432,6 +440,11 @@ module Puma
 
         while @status == :run
           begin
+            if all_workers_idle_timed_out?
+              log "- All workers reached idle timeout"
+              break
+            end
+
             if @phased_restart
               start_phased_restart
               @phased_restart = false
@@ -483,17 +496,23 @@ module Puma
                     debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
                     booted = true
                   end
+                when "i"
+                  if @idle_workers[pid]
+                    @idle_workers.delete pid
+                  else
+                    @idle_workers[pid] = true
+                  end
                 end
               else
                 log "! Out-of-sync worker list, no #{pid} worker"
               end
             end
+
             if in_phased_restart && workers_not_booted.zero?
               @events.fire_on_booted!
               debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
               in_phased_restart = false
             end
-
           rescue Interrupt
             @status = :stop
           end
@@ -580,6 +599,10 @@ module Puma
           w.kill
         end
       end
+    end
+
+    def idle_timed_out_worker_pids
+      @idle_workers.keys
     end
   end
 end
