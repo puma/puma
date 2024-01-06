@@ -122,7 +122,7 @@ class TestPumaServerHijack < Minitest::Test
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
 
-    assert_includes resp, 'Connection: Upgrade'
+    assert_includes resp, 'connection: Upgrade'
     assert_equal echo_msg, sock.sysread(256)
   end
 
@@ -150,7 +150,7 @@ class TestPumaServerHijack < Minitest::Test
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
 
-    assert_includes resp, 'Connection: Upgrade'
+    assert_includes resp, 'connection: Upgrade'
     assert_equal echo_msg, sock.sysread(256)
   end
 
@@ -169,7 +169,7 @@ class TestPumaServerHijack < Minitest::Test
     # using sysread may only receive part of the response
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
+    assert_equal "HTTP/1.0 200 OK\r\ncontent-length: 5\r\n\r\nabcde", data
   end
 
   def test_partial_hijack_body_closes_body

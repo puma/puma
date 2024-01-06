@@ -252,14 +252,14 @@ module Puma
     KEEP_ALIVE = "keep-alive"
 
     CONTENT_LENGTH2 = "content-length"
-    CONTENT_LENGTH_S = "Content-Length: "
+    CONTENT_LENGTH_S = "content-length: "
     TRANSFER_ENCODING = "transfer-encoding"
     TRANSFER_ENCODING2 = "HTTP_TRANSFER_ENCODING"
 
-    CONNECTION_CLOSE = "Connection: close\r\n"
-    CONNECTION_KEEP_ALIVE = "Connection: Keep-Alive\r\n"
+    CONNECTION_CLOSE = "connection: close\r\n"
+    CONNECTION_KEEP_ALIVE = "connection: Keep-Alive\r\n"
 
-    TRANSFER_ENCODING_CHUNKED = "Transfer-Encoding: chunked\r\n"
+    TRANSFER_ENCODING_CHUNKED = "transfer-encoding: chunked\r\n"
     CLOSE_CHUNKED = "0\r\n\r\n"
 
     CHUNKED = "chunked"
