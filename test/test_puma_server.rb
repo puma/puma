@@ -648,6 +648,20 @@ EOF
     end
   end
 
+  def test_large_chunked_request_header
+    server_run(environment: :production) { |env|
+      [200, {}, [""]]
+    }
+
+    max_chunk_header_size = Puma::Client::MAX_CHUNK_HEADER_SIZE
+    header = "GET / HTTP/1.1\r\nConnection: close\r\nContent-Length: 200\r\nTransfer-Encoding: chunked\r\n\r\n"
+    socket = send_http "#{header}1;t#{'x' * (max_chunk_header_size + 2)}"
+
+    data = socket.read
+
+    assert_match "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+  end
+
   def test_chunked_request_pause_before_value
     body = nil
     content_length = nil
