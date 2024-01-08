@@ -66,7 +66,10 @@ class WebServerTest < Minitest::Test
 
   def test_bad_path
     socket = do_test("GET : HTTP/1.1\r\n\r\n", 3)
-    assert_match "HTTP/1.1 400 Bad Request\r\n\r\n", socket.read
+    data = socket.read
+    assert_start_with data, "HTTP/1.1 400 Bad Request\r\nContent-Length: "
+    # match is for last backtrace line, may be brittle
+    assert_match(/\.rb:\d+:in `[^']+'\z/, data)
     socket.close
   end
 

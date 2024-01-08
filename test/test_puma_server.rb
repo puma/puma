@@ -915,7 +915,7 @@ class TestPumaServer < Minitest::Test
 
     data = socket.read
 
-    assert_match "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+    assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
   end
 
   def test_chunked_request_pause_before_value
