@@ -424,7 +424,7 @@ class TestPumaServer < Minitest::Test
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     refute_match(/don't leak me bro/, data)
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_start_with data, 'HTTP/1.0 500 Internal Server Error'
   end
 
   def test_eof_on_connection_close_is_not_logged_as_an_error
@@ -446,7 +446,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_start_with(data, 'HTTP/1.0 500 Internal Server Error')
     assert_match(/Content-Type: application\/json/, data)
     assert_match(/{}\n$/, data)
   end
@@ -472,7 +472,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
 
-    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
+    assert_start_with data, 'HTTP/1.0 500 Internal Server Error'
     assert_includes data, "Puma caught this error: undefined method `to_i' for"
     assert_includes data, "Array"
     refute_includes data, 'lowlevel_error'
@@ -512,7 +512,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 503 Service Unavailable/, data)
+    assert_start_with(data, 'HTTP/1.0 503 Service Unavailable')
     assert_match(/Puma caught this error.+Puma::ThreadPool::ForceShutdown/, data)
   end
 
@@ -522,7 +522,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 302 Found/, data)
+    assert_start_with(data, 'HTTP/1.0 302 Found')
   end
 
   def test_leh_gets_env_as_well
@@ -535,7 +535,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 302 Found/, data)
+    assert_start_with(data, 'HTTP/1.0 302 Found')
   end
 
   def test_leh_has_status
@@ -548,7 +548,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 302 Found/, data)
+    assert_start_with(data, 'HTTP/1.0 302 Found')
   end
 
   def test_custom_http_codes_10
