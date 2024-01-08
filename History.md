@@ -1,3 +1,8 @@
+## 6.4.2 / 2024-01-08
+
+* Security
+  * Limit the size of chunk extensions. Without this limit, an attacker could cause unbounded resource (CPU, network bandwidth) consumption. ([GHSA-c2f4-cvqm-65w2](https://github.com/puma/puma/security/advisories/GHSA-c2f4-cvqm-65w2))
+
 ## 6.4.1 / 2024-01-03
 
 * Bugfixes
@@ -167,6 +172,11 @@
   * Refactor Launcher#run to increase readability (no logic change) ([#2795])
   * Ruby 3.2 will have native IO#wait_* methods, don't require io/wait ([#2903])
   * Various internal API refactorings ([#2942], [#2921], [#2922], [#2955])
+
+## 5.6.8 / 2024-01-08
+
+* Security
+  * Limit the size of chunk extensions. Without this limit, an attacker could cause unbounded resource (CPU, network bandwidth) consumption. ([GHSA-c2f4-cvqm-65w2](https://github.com/puma/puma/security/advisories/GHSA-c2f4-cvqm-65w2))
 
 ## 5.6.7 / 2023-08-18
 
