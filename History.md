@@ -1,6 +1,11 @@
+## 5.6.8 / 2023-01-08
+
+* Security
+  * Limit the size of chunk extensions. Without this limit, an attacker could cause unbounded resource (CPU, network bandwidth) consumption. ([GHSA-c2f4-cvqm-65w2](https://github.com/puma/puma/security/advisories/GHSA-c2f4-cvqm-65w2))
+
 ## 5.6.7 / 2023-08-18
 
-* Security 
+* Security
   * Address HTTP request smuggling vulnerabilities with zero-length Content Length header and trailer fields ([GHSA-68xg-gqqm-vgj8](https://github.com/puma/puma/security/advisories/GHSA-68xg-gqqm-vgj8))
 
 ## 5.6.6 / 2023-06-21
