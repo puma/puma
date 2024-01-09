@@ -477,7 +477,7 @@ module Puma
 
     # Configure the number of threads to use to answer requests.
     #
-    # It can be a single fixed number, or a +min+ and a +max+
+    # It can be a single fixed number, or a +min+ and a +max+.
     #
     # The default is the environment variables +PUMA_MIN_THREADS+ / +PUMA_MAX_THREADS+
     # (or +MIN_THREADS+ / +MAX_THREADS+ if the +PUMA_+ variables aren't set).
