@@ -475,8 +475,9 @@ module Puma
       @options[:log_formatter] = block
     end
 
-    # Configure +min+ to be the minimum number of threads to use to answer
-    # requests and +max+ the maximum.
+    # Configure the number of threads to use to answer requests.
+    #
+    # It can be a single fixed number, or a +min+ and a +max+
     #
     # The default is the environment variables +PUMA_MIN_THREADS+ / +PUMA_MAX_THREADS+
     # (or +MIN_THREADS+ / +MAX_THREADS+ if the +PUMA_+ variables aren't set).
@@ -484,10 +485,12 @@ module Puma
     # If these environment variables aren't set, the default is "0, 5" in MRI or "0, 16" for other interpreters.
     #
     # @example
+    #   threads 5
+    # @example
     #   threads 0, 16
     # @example
     #   threads 5, 5
-    def threads(min, max)
+    def threads(min, max = min)
       min = Integer(min)
       max = Integer(max)
       if min > max
