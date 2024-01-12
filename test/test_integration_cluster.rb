@@ -175,6 +175,34 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
+  # From Ruby 2.6 to 3.2, `Process.detach` can delay or prevent
+  # `Process.wait2(-1)` from detecting a terminated child:
+  # https://bugs.ruby-lang.org/issues/19837. However,
+  # `Process.wait2(<child pid>)` still works properly. This bug has
+  # been fixed in Ruby 3.3.
+  def test_workers_respawn_with_process_detach
+    skip_unless_signal_exist? :KILL
+
+    config = 'test/config/process_detach_before_fork.rb'
+
+    worker_respawn(0, workers, config) do |phase0_worker_pids|
+      phase0_worker_pids.each do |pid|
+        Process.kill :KILL, pid
+      end
+    end
+
+    # `test/config/process_detach_before_fork.rb` forks and detaches a
+    # process.  Since MiniTest attempts to join all threads before
+    # finishing, terminate the process so that the test can end quickly
+    # if it passes.
+    pid_filename = File.join(Dir.tmpdir, 'process_detach_test.pid')
+    if File.exist?(pid_filename)
+      pid = File.read(pid_filename).chomp.to_i
+      File.unlink(pid_filename)
+      Process.kill :TERM, pid if pid > 0
+    end
+  end
+
   # mimicking stuck workers, test restart
   def test_stuck_phased_restart
     skip_unless_signal_exist? :USR1
@@ -681,10 +709,10 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def worker_respawn(phase = 1, size = workers)
+  def worker_respawn(phase = 1, size = workers, config = 'test/config/worker_shutdown_timeout_2.rb')
     threads = []
 
-    cli_server "-w #{workers} -t 1:1 -C test/config/worker_shutdown_timeout_2.rb test/rackup/sleep_pid.ru"
+    cli_server "-w #{workers} -t 1:1 -C #{config} test/rackup/sleep_pid.ru"
 
     # make sure two workers have booted
     phase0_worker_pids = get_worker_pids
