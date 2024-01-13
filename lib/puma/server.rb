@@ -337,7 +337,7 @@ module Puma
                 @idle_timeout_reached = true
 
                 if @clustered
-                  @worker_write << "i#{Process.pid}\n" rescue nil
+                  @worker_write << "#{PipeRequest::IDLE}#{Process.pid}\n" rescue nil
                   next
                 else
                   @log_writer.log "- Idle timeout reached"
@@ -350,7 +350,7 @@ module Puma
 
             if @idle_timeout_reached && @clustered
               @idle_timeout_reached = false
-              @worker_write << "i#{Process.pid}\n" rescue nil
+              @worker_write << "#{PipeRequest::IDLE}#{Process.pid}\n" rescue nil
             end
 
             ios.first.each do |sock|

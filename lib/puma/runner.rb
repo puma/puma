@@ -27,7 +27,7 @@ module Puma
     def wakeup!
       return unless @wakeup
 
-      @wakeup.write "!" unless @wakeup.closed?
+      @wakeup.write Puma::Const::PipeRequest::WAKEUP unless @wakeup.closed?
 
     rescue SystemCallError, IOError
       Puma::Util.purge_interrupt_queue
