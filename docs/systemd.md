@@ -101,7 +101,8 @@ ListenStream=0.0.0.0:9293
 # Socket options matching Puma defaults
 ReusePort=true
 Backlog=1024
-# Socket option NoDelay will set TCP_NODELAY if puma is run with parameter low_latency. This is off by default.
+# Enable this if you're using Puma with the "low_latency" option, read more in Puma DSL docs and systemd docs:
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#NoDelay=
 # NoDelay=true
 
 [Install]
