@@ -285,5 +285,15 @@ module Puma
     BANNED_HEADER_KEY = /\A(rack\.|status\z)/.freeze
 
     PROXY_PROTOCOL_V1_REGEX = /^PROXY (?:TCP4|TCP6|UNKNOWN) ([^\r]+)\r\n/.freeze
+
+    module PipeRequest
+      WAKEUP = "!"
+      BOOT = "b"
+      FORK = "f"
+      EXTERNAL_TERM = "e"
+      TERM = "t"
+      PING = "p"
+      IDLE = "i"
+    end
   end
 end
