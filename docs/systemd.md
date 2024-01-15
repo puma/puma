@@ -99,9 +99,11 @@ ListenStream=0.0.0.0:9293
 # ListenStream=/run/puma.sock
 
 # Socket options matching Puma defaults
-NoDelay=true
 ReusePort=true
 Backlog=1024
+# Enable this if you're using Puma with the "low_latency" option, read more in Puma DSL docs and systemd docs:
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.socket.html#NoDelay=
+# NoDelay=true
 
 [Install]
 WantedBy=sockets.target
