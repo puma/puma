@@ -104,17 +104,17 @@ class TestIntegrationCluster < TestIntegration
 
   def test_usr1_all_respond_tcp
     skip_unless_signal_exist? :USR1
-    usr1_all_respond unix: false
+    usr1_all_respond unix: false, config: 'preload_app! false'
   end
 
   def test_usr1_fork_worker
     skip_unless_signal_exist? :USR1
-    usr1_all_respond config: '--fork-worker'
+    usr1_all_respond config: 'fork_worker'
   end
 
   def test_usr1_all_respond_unix
     skip_unless_signal_exist? :USR1
-    usr1_all_respond unix: true
+    usr1_all_respond unix: true, config: 'preload_app! false'
   end
 
   def test_term_exit_code
@@ -315,6 +315,7 @@ class TestIntegrationCluster < TestIntegration
       # to simulate worker 0 timeout, total boot time for all workers
       # needs to exceed single worker timeout
       workers #{worker_count}
+      preload_app! false
     RUBY
 
     # workers is the default
@@ -633,7 +634,7 @@ class TestIntegrationCluster < TestIntegration
   # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
   # All should be responded to, and at least three workers should be used
   def usr1_all_respond(unix: false, config: '')
-    cli_server "-w #{workers} -t 0:5 -q test/rackup/sleep_pid.ru #{config}", unix: unix
+    cli_server "-w #{workers} -t 0:5 -q test/rackup/sleep_pid.ru", unix: unix, config: config
     threads = []
     replies = []
     mutex = Mutex.new
@@ -684,7 +685,7 @@ class TestIntegrationCluster < TestIntegration
   def worker_respawn(phase = 1, size = workers)
     threads = []
 
-    cli_server "-w #{workers} -t 1:1 -C test/config/worker_shutdown_timeout_2.rb test/rackup/sleep_pid.ru"
+    cli_server "-w #{workers} -t 1:1 -C test/config/worker_respawn.rb test/rackup/sleep_pid.ru"
 
     # make sure two workers have booted
     phase0_worker_pids = get_worker_pids

@@ -12,7 +12,7 @@ Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server fo
 
 ## Built For Speed &amp; Parallelism
 
-Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is: 
+Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is:
 * **Multi-threaded**. Each request is served in a separate thread. This helps you serve more requests per second with less memory use.
 * **Multi-process**. "Pre-forks" in cluster mode, using less memory per-process thanks to copy-on-write memory.
 * **Standalone**. With SSL support, zero-downtime rolling restarts and a built-in request bufferer, you can deploy Puma without any reverse proxy.
@@ -122,7 +122,7 @@ For an in-depth discussion of the tradeoffs of thread and process count settings
 
 In clustered mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
 
-If the `WEB_CONCURRENCY` environment variable is set to a value > 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
+If the number of workers is greater than 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
 
 ```
 $ puma -w 3 --preload
