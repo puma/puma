@@ -563,9 +563,12 @@ module Puma
       @workers.reject! do |w|
         next false if w.pid.nil?
         begin
-          # When `fork_worker` is enabled, some worker may not be direct children, but grand children.
-          # Because of this they won't be reaped by `Process.wait2(-1)`, so we need to check them individually)
-          if reaped_children.delete(w.pid) || (@options[:fork_worker] && Process.wait(w.pid, Process::WNOHANG))
+          # We may need to check the PID individually because:
+          # 1. From Ruby versions 2.6 to 3.2, `Process.detach` can prevent or delay
+          #    `Process.wait2(-1)` from detecting a terminated process: https://bugs.ruby-lang.org/issues/19837.
+          # 2. When `fork_worker` is enabled, some worker may not be direct children,
+          #    but grand children.  Because of this they won't be reaped by `Process.wait2(-1)`.
+          if reaped_children.delete(w.pid) || Process.wait(w.pid, Process::WNOHANG)
             true
           else
             w.term if w.term?
