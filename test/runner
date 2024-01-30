@@ -27,9 +27,9 @@ require 'bundler/setup'
 
 if ARGV.empty? || ARGV.last.start_with?('-')
   if RUBY_VERSION >= '2.5'
-    Dir['test_*.rb', base: __dir__].each { |tf| require_relative tf }
+    Dir['test_*.rb', base: __dir__].sort.each { |tf| require_relative tf }
   else
-    Dir["#{__dir__}/test_*.rb"].each { |tf| require tf }
+    Dir["#{__dir__}/test_*.rb"].sort.each { |tf| require tf }
   end
 else
   file_arg = ARGV.pop.sub(/\.rb\z/, '')
@@ -38,9 +38,9 @@ else
     file_args.each { |tf| require_relative "#{tf}.rb" }
   elsif file_arg.include? '*'
     if RUBY_VERSION >= '2.5'
-      Dir["#{file_arg}.rb", base: __dir__].each { |tf| require_relative tf }
+      Dir["#{file_arg}.rb", base: __dir__].sort.each { |tf| require_relative tf }
     else
-      Dir["#{__dir__}/#{file_arg}.rb"].each { |tf| require tf }
+      Dir["#{__dir__}/#{file_arg}.rb"].sort.each { |tf| require tf }
     end
   else
     require_relative "#{file_arg}.rb"
