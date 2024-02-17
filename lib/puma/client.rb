@@ -403,11 +403,26 @@ module Puma
         return true
       end
 
-      remain = cl.to_i - body.bytesize
+      content_length = cl.to_i
+
+      remain = content_length - body.bytesize
 
       if remain <= 0
-        @body = StringIO.new(body)
-        @buffer = nil
+        # Part of the body is a pipelined request OR garbage. We'll deal with that later.
+        if content_length == 0
+          @body = EmptyBody
+          if body.empty?
+            @buffer = nil
+          else
+            @buffer = body
+          end
+        elsif remain == 0
+          @body = StringIO.new body
+          @buffer = nil
+        else
+          @body = StringIO.new(body[0,content_length])
+          @buffer = body[content_length..-1]
+        end
         set_ready
         return true
       end
