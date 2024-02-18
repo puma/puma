@@ -26,9 +26,14 @@ class TestPluginSystemdJruby < TestIntegration
   end
 
   def test_systemd_plugin_not_loaded
-    cli_server "test/rackup/hello.ru"
+    cli_server "test/rackup/hello.ru",
+      env: {'NOTIFY_SOCKET' => '/tmp/doesntmatter' }, config: <<~CONFIG
+      app do |_|
+        [200, {}, [Puma::Plugins.instance_variable_get(:@plugins)['systemd'].to_s]]
+      end
+    CONFIG
 
-    assert_nil Puma::Plugins.instance_variable_get(:@plugins)["systemd"]
+    assert_empty read_body(connect)
 
     stop_server
   end
