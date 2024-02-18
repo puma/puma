@@ -74,6 +74,18 @@ class TestPumaServer < Minitest::Test
     socket.read
   end
 
+  def send_http_and_read_1s(req)
+    socket = send_http req
+    socket.wait_readable 5
+
+    data = socket.sysread 1024
+    if IO.select [socket], nil, nil, 1
+      data + socket.sysread(1024)
+    else
+      data
+    end
+  end
+
   def send_http(req)
     new_connection << req
   end
@@ -323,6 +335,32 @@ class TestPumaServer < Minitest::Test
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
+  end
+
+  def test_immediate_pipeline_not_confused_for_body
+    bodies = []
+    server_run { |e|
+      bodies << e['rack.input'].read
+      [200, {}, ["ok #{bodies.size}"]]
+    }
+
+    data = send_http_and_read "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\nGET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", data
+    assert_equal ["", ""], bodies
+  end
+
+  def test_immediate_pipeline_terminates_last_request
+    bodies = []
+    server_run { |e|
+      bodies << e['rack.input'].read
+      [200, {}, ["ok #{bodies.size}"]]
+    }
+
+    data = send_http_and_read_1s "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\naGET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", data
+    assert_equal ["a", ""], bodies
   end
 
   def test_early_hints_works
