@@ -473,7 +473,7 @@ class TestPumaServer < Minitest::Test
     data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
 
     assert_start_with data, 'HTTP/1.0 500 Internal Server Error'
-    assert_includes data, "Puma caught this error: undefined method `to_i' for"
+    assert_match(/Puma caught this error: undefined method [`']to_i' for/, data)
     assert_includes data, "Array"
     refute_includes data, 'lowlevel_error'
     sleep 0.1 unless ::Puma::IS_MRI

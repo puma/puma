@@ -69,7 +69,7 @@ class WebServerTest < Minitest::Test
     data = socket.read
     assert_start_with data, "HTTP/1.1 400 Bad Request\r\nContent-Length: "
     # match is for last backtrace line, may be brittle
-    assert_match(/\.rb:\d+:in `[^']+'\z/, data)
+    assert_match(/\.rb:\d+:in [`'][^']+'\z/, data)
     socket.close
   end
 
