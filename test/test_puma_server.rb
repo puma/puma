@@ -1135,6 +1135,8 @@ class TestPumaServer < Minitest::Test
     assert_equal "5", content_length
   end
 
+  # See https://github.com/puma/puma/issues/3337 & https://github.com/puma/puma/pull/3338
+  #
   def test_chunked_body_pause_within_chunk_size_hex
     body = nil
     content_length = nil
