@@ -1135,6 +1135,42 @@ class TestPumaServer < Minitest::Test
     assert_equal "5", content_length
   end
 
+  def test_chunked_body_pause_within_chunk_size_hex
+    body = nil
+    content_length = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [""]]
+    }
+
+    req_body = +''
+    9.times do |i|
+      req_body << "400\r\n"
+      req_body << "#{i}#{'x' * 1_023}"
+      req_body << "\r\n"
+    end
+    req_body << "0\r\n\r\n"
+
+    header = "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+    data1 = req_body[0..7218]  # Number here is arbitrary, so that the first chunk of data ends with `40`
+    data2 = req_body[7219..-1] # remaining data
+
+    socket = new_connection
+
+    socket.syswrite "#{header}#{data1}"
+    sleep 0.1 # This makes it easier to reproduce the issue, might need to be adjusted
+    socket.syswrite data2
+
+    socket.wait_readable 5
+    resp = socket.sysread 2_048
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", resp
+    assert_equal 9*1_024, body.bytesize
+    assert_equal 9*1_024, content_length.to_i
+    assert_equal '012345678', body.delete('x')
+  end
+
   def test_chunked_request_header_case
     body = nil
     content_length = nil
