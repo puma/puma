@@ -642,7 +642,7 @@ module Puma
             @partial_part_left = len - part.size
           end
         else
-          if @prev_chunk.size + chunk.size >= MAX_CHUNK_HEADER_SIZE
+          if @prev_chunk.size + line.size >= MAX_CHUNK_HEADER_SIZE
             raise HttpParserError, "maximum size of chunk header exceeded"
           end
 
