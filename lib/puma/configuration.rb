@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'rack/builder'
 require_relative 'plugin'
 require_relative 'const'
 require_relative 'dsl'
@@ -354,11 +353,10 @@ module Puma
       begin
         require 'rack'
         require 'rack/builder'
+        ::Rack::Builder
       rescue LoadError
-        # ok, use builtin version
-        return Puma::Rack::Builder
-      else
-        return ::Rack::Builder
+        require_relative 'rack/builder'
+        Puma::Rack::Builder
       end
     end
 
