@@ -348,8 +348,6 @@ module Puma
     def run
       @status = :run
 
-      @idle_workers = {}
-
       output_header "cluster"
 
       # This is aligned with the output from Runner, see Runner#output_header
@@ -440,7 +438,7 @@ module Puma
 
         while @status == :run
           begin
-            if all_workers_idle_timed_out?
+            if @options[:idle_timeout] && all_workers_idle_timed_out?
               log "- All workers reached idle timeout"
               break
             end
@@ -500,10 +498,10 @@ module Puma
                     booted = true
                   end
                 when Puma::Const::PipeRequest::IDLE
-                  if @idle_workers[pid]
-                    @idle_workers.delete pid
+                  if idle_workers[pid]
+                    idle_workers.delete pid
                   else
-                    @idle_workers[pid] = true
+                    idle_workers[pid] = true
                   end
                 end
               else
@@ -608,7 +606,11 @@ module Puma
     end
 
     def idle_timed_out_worker_pids
-      @idle_workers.keys
+      idle_workers.keys
+    end
+
+    def idle_workers
+      @idle_workers ||= {}
     end
   end
 end
