@@ -6,7 +6,7 @@ module TestApps
   SLEEP = -> (env) do
     dly = (env['REQUEST_PATH'][/\/sleep(\d+)/,1] || '0').to_i
     sleep dly
-    [200, {"Content-Type" => "text/plain"}, ["Slept #{dly}"]]
+    [200, {"content-type" => "text/plain"}, ["Slept #{dly}"]]
   end
 
 end

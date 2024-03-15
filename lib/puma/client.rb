@@ -394,7 +394,7 @@ module Puma
       if cl
         # cannot contain characters that are not \d, or be empty
         if CONTENT_LENGTH_VALUE_INVALID.match?(cl) || cl.empty?
-          raise HttpParserError, "Invalid Content-Length: #{cl.inspect}"
+          raise HttpParserError, "Invalid content-length: #{cl.inspect}"
         end
       else
         @buffer = body.empty? ? nil : body

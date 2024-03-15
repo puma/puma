@@ -143,7 +143,7 @@ module Puma::Rack
   #
   #  app = Rack::Builder.app do
   #    use Rack::CommonLogger
-  #    run lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
+  #    run lambda { |env| [200, {'content-type' => 'text/plain'}, ['OK']] }
   #  end
   #
   #  run app
@@ -204,7 +204,7 @@ module Puma::Rack
     #   end
     #
     #   use Middleware
-    #   run lambda { |env| [200, { "Content-Type" => "text/plain" }, ["OK"]] }
+    #   run lambda { |env| [200, { "content-type" => "text/plain" }, ["OK"]] }
     #
     # All requests through to this application will first be processed by the middleware class.
     # The +call+ method in this example sets an additional environment key which then can be
@@ -220,13 +220,13 @@ module Puma::Rack
     # Takes an argument that is an object that responds to #call and returns a Rack response.
     # The simplest form of this is a lambda object:
     #
-    #   run lambda { |env| [200, { "Content-Type" => "text/plain" }, ["OK"]] }
+    #   run lambda { |env| [200, { "content-type" => "text/plain" }, ["OK"]] }
     #
     # However this could also be a class:
     #
     #   class Heartbeat
     #     def self.call(env)
-    #      [200, { "Content-Type" => "text/plain" }, ["OK"]]
+    #      [200, { "content-type" => "text/plain" }, ["OK"]]
     #    end
     #   end
     #

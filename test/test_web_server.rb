@@ -12,14 +12,14 @@ class TestHandler
   def call(env)
     @ran_test = true
 
-    [200, {"Content-Type" => "text/plain"}, ["hello!"]]
+    [200, {"content-type" => "text/plain"}, ["hello!"]]
   end
 end
 
 class WebServerTest < Minitest::Test
   parallelize_me!
 
-  VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
+  VALID_REQUEST = "GET / HTTP/1.1\r\nhost: www.zedshaw.com\r\ncontent-type: text/plain\r\nconnection: close\r\n\r\n"
 
   def setup
     @tester = TestHandler.new
@@ -67,7 +67,7 @@ class WebServerTest < Minitest::Test
   def test_bad_path
     socket = do_test("GET : HTTP/1.1\r\n\r\n", 3)
     data = socket.read
-    assert_start_with data, "HTTP/1.1 400 Bad Request\r\nContent-Length: "
+    assert_start_with data, "HTTP/1.1 400 Bad Request\r\ncontent-length: "
     # match is for last backtrace line, may be brittle
     assert_match(/\.rb:\d+:in [`'][^']+'\z/, data)
     socket.close
@@ -82,21 +82,21 @@ class WebServerTest < Minitest::Test
 
   def test_file_streamed_request
     body = "a" * (Puma::Const::MAX_BODY * 2)
-    long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\nConnection: close\r\n\r\n" + body
+    long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\nconnection: close\r\n\r\n" + body
     socket = do_test(long, (Puma::Const::CHUNK_SIZE * 2) - 400)
     assert_match "hello", socket.read
     socket.close
   end
 
   def test_supported_http_method
-    socket = do_test("PATCH www.zedshaw.com:443 HTTP/1.1\r\nConnection: close\r\n\r\n", 100)
+    socket = do_test("PATCH www.zedshaw.com:443 HTTP/1.1\r\nconnection: close\r\n\r\n", 100)
     response = socket.read
     assert_match "hello", response
     socket.close
   end
 
   def test_nonexistent_http_method
-    socket = do_test("FOOBARBAZ www.zedshaw.com:443 HTTP/1.1\r\nConnection: close\r\n\r\n", 100)
+    socket = do_test("FOOBARBAZ www.zedshaw.com:443 HTTP/1.1\r\nconnection: close\r\n\r\n", 100)
     response = socket.read
     assert_match "Not Implemented", response
     socket.close

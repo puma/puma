@@ -62,10 +62,10 @@ class TestResponseHeader < Minitest::Test
 
   # The values of the header must be Strings
   def test_integer_value
-    server_run app: ->(env) { [200, {'Content-Length' => 500}, []] }
+    server_run app: ->(env) { [200, {'content-length' => 500}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nContent-Length: 500\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\ncontent-length: 500\r\n\r\n/, data)
   end
 
   def assert_ignore_header(name, value, opts={})
@@ -100,7 +100,7 @@ class TestResponseHeader < Minitest::Test
     server_run app: ->(env) { [200, {'Teapot-Status' => 'Boiling'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nTeapot-Status: Boiling\r\nContent-Length: 0\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\nTeapot-Status: Boiling\r\ncontent-length: 0\r\n\r\n/, data)
   end
 
   # Special headers starting “rack.” are for communicating with the server, and must not be sent back to the client.
@@ -113,7 +113,7 @@ class TestResponseHeader < Minitest::Test
     server_run app: ->(env) { [200, {'Racket' => 'Bouncy'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nRacket: Bouncy\r\nContent-Length: 0\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\nRacket: Bouncy\r\ncontent-length: 0\r\n\r\n/, data)
   end
 
   # testing header key must conform rfc token specification
@@ -140,7 +140,7 @@ class TestResponseHeader < Minitest::Test
   end
 
   def test_illegal_character_in_value_when_override_content_length
-    assert_ignore_header("Content-Length", "\037")
+    assert_ignore_header("content-length", "\037")
   end
 
   def test_illegal_character_in_value_when_newline
@@ -154,7 +154,7 @@ class TestResponseHeader < Minitest::Test
     server_run app: ->(env) { [200, {'set-cookie' => ['z=1', 'a=2']}, ['Hello']] }
     data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
 
-    resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\nContent-Length: 5\r\n\r\n"
+    resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\ncontent-length: 5\r\n\r\n"
     assert_includes data, resp
   end
 end

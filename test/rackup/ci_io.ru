@@ -8,12 +8,12 @@ require 'securerandom'
 require 'tmpdir'
 
 headers = {}
-headers['Content-Type'] = 'text/plain; charset=utf-8'
+headers['content-type'] = 'text/plain; charset=utf-8'
 25.times { |i| headers["X-My-Header-#{i}"] = SecureRandom.hex(25) }
 
 hdr_dly = 'HTTP_DLY'
 hdr_body_conf = 'HTTP_BODY_CONF'
-hdr_content_length = 'Content-Length'
+hdr_content_length = 'content-length'
 
 env_len = (t = ENV['CI_BODY_CONF']) ? t[/\d+\z/].to_i : 10
 

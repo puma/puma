@@ -27,7 +27,7 @@ module Puma
 
     LOG_TIME_FORMAT = '%d/%b/%Y:%H:%M:%S %z'
 
-    CONTENT_LENGTH       = 'Content-Length' # should be lower case from app,
+    CONTENT_LENGTH       = 'content-length' # should be lower case from app,
                                             # Util::HeaderHash allows mixed
     HTTP_VERSION         = Const::HTTP_VERSION
     HTTP_X_FORWARDED_FOR = Const::HTTP_X_FORWARDED_FOR

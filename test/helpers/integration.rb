@@ -251,7 +251,7 @@ class TestIntegration < Minitest::Test
           when String
             unless content_length || chunked
               chunked ||= part.include? "\r\nTransfer-Encoding: chunked\r\n"
-              content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
+              content_length = (t = part[/^content-length: (\d+)/i , 1]) ? t.to_i : nil
             end
 
             response << part
@@ -395,7 +395,7 @@ class TestIntegration < Minitest::Test
           begin
             begin
               socket = TCPSocket.new HOST, @tcp_port
-              fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+              fast_write socket, "POST / HTTP/1.1\r\ncontent-length: #{message.bytesize}\r\n\r\n#{message}"
             rescue => e
               replies[:write_error] += 1
               raise e

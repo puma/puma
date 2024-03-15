@@ -26,7 +26,7 @@ def do_test(st, chunk)
 end
 
 content = "-" * (1024 * 240)
-st = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\nContent-Length: #{content.length}\r\n\r\n#{content}"
+st = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\ncontent-type: text/plain\r\ncontent-length: #{content.length}\r\n\r\n#{content}"
 
 puts "length: #{content.length}"
 

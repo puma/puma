@@ -123,7 +123,7 @@ class TestLogWriter < Minitest::Test
   end
 
   def test_parse_error
-    app = proc { |_env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    app = proc { |_env| [200, {"content-type" => "plain/text"}, ["hello\n"]] }
     log_writer = Puma::LogWriter.strings
     server = Puma::Server.new app, nil, {log_writer: log_writer}
 
@@ -135,7 +135,7 @@ class TestLogWriter < Minitest::Test
     path = "/"
     params = "a"*1024*10
 
-    sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
+    sock << "GET #{path}?a=#{params} HTTP/1.1\r\nconnection: close\r\n\r\n"
     sock.read
     sleep 0.1 # important so that the previous data is sent as a packet
     assert_match %r!HTTP parse error, malformed request!, log_writer.stderr.string

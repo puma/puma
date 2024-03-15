@@ -20,7 +20,7 @@ Please add reproduction steps here.
 Your issue will be solved very quickly if you can reproduce it with a "hello world" rack application. To do this, copy this into a file called `hello.ru`:
 
 ```
-run lambda { |env| [200, {"Content-Type" => "text/plain"}, ["Hello World"]] }
+run lambda { |env| [200, {"content-type" => "text/plain"}, ["Hello World"]] }
 ```
 
 Run it with:

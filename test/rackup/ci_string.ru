@@ -9,12 +9,12 @@ require 'securerandom'
 env_len = (t = ENV['CI_BODY_CONF']) ? t[/\d+\z/].to_i : 10
 
 headers = {}
-headers['Content-Type'] = 'text/plain; charset=utf-8'.freeze
-25.times { |i| headers["X-My-Header-#{i}"] = SecureRandom.hex(25) }
+headers['content-type'] = 'text/plain; charset=utf-8'.freeze
+25.times { |i| headers["x-my-header-#{i}"] = SecureRandom.hex(25) }
 
 hdr_dly = 'HTTP_DLY'
 hdr_body_conf = 'HTTP_BODY_CONF'
-hdr_content_length = 'Content-Length'
+hdr_content_length = 'content-length'
 
 # length = 1018  bytesize = 1024
 str_1kb = "──#{SecureRandom.hex 507}─\n".freeze

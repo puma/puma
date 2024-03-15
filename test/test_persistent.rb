@@ -5,15 +5,15 @@ class TestPersistent < Minitest::Test
   HOST = "127.0.0.1"
 
   def setup
-    @valid_request  = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
-    @close_request  = "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
-    @http10_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
-    @keep_request   = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\n\r\n"
+    @valid_request  = "GET / HTTP/1.1\r\nhost: test.com\r\ncontent-type: text/plain\r\n\r\n"
+    @close_request  = "GET / HTTP/1.1\r\nhost: test.com\r\ncontent-type: text/plain\r\nconnection: close\r\n\r\n"
+    @http10_request = "GET / HTTP/1.0\r\nhost: test.com\r\ncontent-type: text/plain\r\n\r\n"
+    @keep_request   = "GET / HTTP/1.0\r\nhost: test.com\r\ncontent-type: text/plain\r\nconnection: keep-alive\r\n\r\n"
 
-    @valid_post    = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello"
-    @valid_no_body  = "GET / HTTP/1.1\r\nHost: test.com\r\nX-Status: 204\r\nContent-Type: text/plain\r\n\r\n"
+    @valid_post    = "POST / HTTP/1.1\r\nhost: test.com\r\ncontent-type: text/plain\r\ncontent-Length: 5\r\n\r\nhello"
+    @valid_no_body  = "GET / HTTP/1.1\r\nhost: test.com\r\nx-status: 204\r\ncontent-type: text/plain\r\n\r\n"
 
-    @headers = { "X-Header" => "Works" }
+    @headers = { "x-header" => "Works" }
     @body = ["Hello"]
     @inputs = []
 
@@ -48,7 +48,7 @@ class TestPersistent < Minitest::Test
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -56,13 +56,13 @@ class TestPersistent < Minitest::Test
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -70,24 +70,24 @@ class TestPersistent < Minitest::Test
     @client << @valid_post
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
   def test_no_body_then_get
     @client << @valid_no_body
-    assert_equal "HTTP/1.1 204 No Content\r\nX-Header: Works\r\n\r\n", lines(3)
+    assert_equal "HTTP/1.1 204 No Content\r\nx-header: Works\r\n\r\n", lines(3)
 
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -97,7 +97,7 @@ class TestPersistent < Minitest::Test
 
     @client << @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n", lines(10)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ntransfer-encoding: chunked\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n", lines(10)
   end
 
   def test_chunked_with_empty_part
@@ -107,7 +107,7 @@ class TestPersistent < Minitest::Test
 
     @client << @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n", lines(10)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ntransfer-encoding: chunked\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n", lines(10)
   end
 
   def test_no_chunked_in_http10
@@ -116,7 +116,7 @@ class TestPersistent < Minitest::Test
 
     @client << @http10_request
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\n\r\n", lines(3)
+    assert_equal "HTTP/1.0 200 OK\r\nx-header: works\r\n\r\n", lines(3)
     assert_equal "HelloChunked", @client.read
   end
 
@@ -127,7 +127,7 @@ class TestPersistent < Minitest::Test
 
     @client << @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n\r\n", lines(10)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ntransfer-encoding: chunked\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n\r\n", lines(10)
 
   end
 
@@ -135,7 +135,7 @@ class TestPersistent < Minitest::Test
     @client << @close_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nConnection: close\r\nContent-Length: #{sz}\r\n\r\n", lines(5)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\nconnection: close\r\ncontent-length: #{sz}\r\n\r\n", lines(5)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -143,7 +143,7 @@ class TestPersistent < Minitest::Test
     @client << @http10_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.0 200 OK\r\nx-header: works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -151,7 +151,7 @@ class TestPersistent < Minitest::Test
     @client << @keep_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nConnection: Keep-Alive\r\nContent-Length: #{sz}\r\n\r\n", lines(5)
+    assert_equal "HTTP/1.0 200 OK\r\nx-header: works\r\nconnection: keep-alive\r\ncontent-length: #{sz}\r\n\r\n", lines(5)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -160,7 +160,7 @@ class TestPersistent < Minitest::Test
     @client << @valid_request
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
     sleep 2
@@ -172,11 +172,11 @@ class TestPersistent < Minitest::Test
 
   def test_app_sets_content_length
     @body = ["hello", " world"]
-    @headers['Content-Length'] = "11"
+    @headers['content-length'] = "11"
 
     @client << @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: 11\r\n\r\n",
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ncontent-length: 11\r\n\r\n",
                  lines(4)
     assert_equal "hello world", @client.read(11)
   end
@@ -196,16 +196,16 @@ class TestPersistent < Minitest::Test
     @server.instance_variable_set(:@persistent_timeout, 3)
 
     req = @valid_request.to_s
-    req += "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+    req += "GET /second HTTP/1.1\r\nHost: test.com\r\ncontent-type: text/plain\r\n\r\n"
 
     @client << req
 
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
   end
 
@@ -213,16 +213,16 @@ class TestPersistent < Minitest::Test
     @server.instance_variable_set(:@persistent_timeout, 3)
 
     req = @valid_request.to_s
-    req += "GET /second HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
+    req += "GET /second HTTP/1.1\r\nhost: test.com\r\ncontent-type: text/plain\r\n\r\n"
 
     @client << req
 
     sz = @body[0].size.to_s
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: #{sz}\r\n\r\n", lines(4)
     assert_equal "Hello", @client.read(5)
 
     assert_kind_of Puma::NullIO, @inputs[0]
@@ -239,7 +239,7 @@ class TestPersistent < Minitest::Test
 
     assert c2.wait_readable(1), "2nd request starved"
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: #{sz}\r\n\r\n", lines(4, c2)
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: #{sz}\r\n\r\n", lines(4, c2)
     assert_equal "Hello", c2.read(5)
   ensure
     c2.close

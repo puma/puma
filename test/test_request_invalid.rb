@@ -14,7 +14,7 @@ class TestRequestInvalid < Minitest::Test
   # running parallel seems to take longer...
   # parallelize_me! unless JRUBY_HEAD
 
-  GET_PREFIX = "GET / HTTP/1.1\r\nConnection: close\r\n"
+  GET_PREFIX = "GET / HTTP/1.1\r\nconnection: close\r\n"
   CHUNKED = "1\r\nH\r\n4\r\nello\r\n5\r\nWorld\r\n0\r\n\r\n"
 
   def setup
@@ -66,8 +66,8 @@ class TestRequestInvalid < Minitest::Test
 
   def test_content_length_multiple
     te = [
-      'Content-Length: 5',
-      'Content-Length: 5'
+      'content-length: 5',
+      'content-length: 5'
     ].join "\r\n"
 
     data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
@@ -76,7 +76,7 @@ class TestRequestInvalid < Minitest::Test
   end
 
   def test_content_length_bad_characters_1
-    te = 'Content-Length: 5.01'
+    te = 'content-length: 5.01'
 
     data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
 
@@ -84,7 +84,7 @@ class TestRequestInvalid < Minitest::Test
   end
 
   def test_content_length_bad_characters_2
-    te = 'Content-Length: +5'
+    te = 'content-length: +5'
 
     data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
 
@@ -92,7 +92,7 @@ class TestRequestInvalid < Minitest::Test
   end
 
   def test_content_length_bad_characters_3
-    te = 'Content-Length: 5 test'
+    te = 'content-length: 5 test'
 
     data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
 

@@ -163,19 +163,19 @@ class TestPumaServerHijack < Minitest::Test
         io.write(body_parts[1])
         io.close
       end
-      [200, {"Content-Length" => "5", 'rack.hijack' => hijack_lambda}, nil]
+      [200, {"content-length" => "5", 'rack.hijack' => hijack_lambda}, nil]
     end
 
     # using sysread may only receive part of the response
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+    data = send_http_and_read "GET / HTTP/1.0\r\nconnection: close\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
+    assert_equal "HTTP/1.0 200 OK\r\ncontent-length: 5\r\n\r\nabcde", data
   end
 
   def test_partial_hijack_body_closes_body
     skip 'Not supported with Rack 1.x' if Rack.release.start_with? '1.'
     @available = true
-    hdrs = { 'Content-Type' => 'text/plain' }
+    hdrs = { 'content-type' => 'text/plain' }
     body = ::Rack::BodyProxy.new(HIJACK_LAMBDA) { @available = true }
     partial_hijack_closes_body(hdrs, body)
   end
@@ -187,7 +187,7 @@ class TestPumaServerHijack < Minitest::Test
       io.syswrite 'incorrect body.call'
       io.close
     }
-    hdrs = { 'Content-Type' => 'text/plain', 'rack.hijack' => HIJACK_LAMBDA}
+    hdrs = { 'content-type' => 'text/plain', 'rack.hijack' => HIJACK_LAMBDA}
     body = ::Rack::BodyProxy.new(incorrect_lambda) { @available = true }
     partial_hijack_closes_body(hdrs, body)
   end
@@ -203,7 +203,7 @@ class TestPumaServerHijack < Minitest::Test
         @available = false
         [200, hdrs, body]
       else
-        [500, { 'Content-Type' => 'text/plain' }, ['incorrect']]
+        [500, { 'content-type' => 'text/plain' }, ['incorrect']]
       end
     end
 

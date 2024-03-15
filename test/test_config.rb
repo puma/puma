@@ -36,7 +36,7 @@ class TestConfigFile < TestConfigFileBase
       conf.app
     end
 
-    assert_equal [200, {"Content-Type"=>"text/plain"}, ["Hello World"]], conf.app.call({})
+    assert_equal [200, {"content-type"=>"text/plain"}, ["Hello World"]], conf.app.call({})
 
     assert_equal [bind], conf.options[:binds]
   end

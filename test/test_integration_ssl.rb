@@ -160,7 +160,7 @@ class TestIntegrationSSL < TestIntegration
   def test_ssl_run_with_curl_client
     skip_if :windows; require 'stringio'
 
-    app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
+    app = lambda { |_| [200, { 'content-type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
     opts = {max_threads: 1}
     server = Puma::Server.new app, nil, opts
     if Puma.jruby?

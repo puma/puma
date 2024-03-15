@@ -27,7 +27,7 @@ class TestPumaUnixSocket < Minitest::Test
 
     sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
 
-    expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
+    expected = "HTTP/1.0 200 OK\r\ncontent-length: 5\r\n\r\nWorks"
 
     assert_equal expected, sock.read(expected.size)
   end
@@ -39,7 +39,7 @@ class TestPumaUnixSocket < Minitest::Test
 
     sock << "GET / HTTP/1.0\r\nHost: blah.com\r\n\r\n"
 
-    expected = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nWorks"
+    expected = "HTTP/1.0 200 OK\r\ncontent-length: 5\r\n\r\nWorks"
 
     assert_equal expected, sock.read(expected.size)
   end

@@ -61,7 +61,7 @@ module TestPuma
     GET_11 = "GET / HTTP/1.1\r\n\r\n"
 
     HELLO_11 = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\n" \
-      "Content-Length: 11\r\n\r\nHello World"
+      "content-length: 11\r\n\r\nHello World"
 
     RESP_READ_LEN = 65_536
     RESP_READ_TIMEOUT = 10
@@ -241,7 +241,7 @@ module TestPuma
 
             unless content_length || chunked
               chunked ||= part.downcase.include? "\r\ntransfer-encoding: chunked\r\n"
-              content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
+              content_length = (t = part[/^content-length: (\d+)/i , 1]) ? t.to_i : nil
             end
             response << part
             hdrs, body = response.split RESP_SPLIT, 2
