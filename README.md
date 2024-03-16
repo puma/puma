@@ -12,7 +12,7 @@ Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server fo
 
 ## Built For Speed &amp; Parallelism
 
-Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is: 
+Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is:
 * **Multi-threaded**. Each request is served in a separate thread. This helps you serve more requests per second with less memory use.
 * **Multi-process**. "Pre-forks" in cluster mode, using less memory per-process thanks to copy-on-write memory.
 * **Standalone**. With SSL support, zero-downtime rolling restarts and a built-in request bufferer, you can deploy Puma without any reverse proxy.
@@ -174,15 +174,21 @@ end
 
 ### Error handling
 
-If puma encounters an error outside of the context of your application, it will respond with a 500 and a simple
+If Puma encounters an error outside of the context of your application, it will respond with a 400/500 and a simple
 textual error message (see `Puma::Server#lowlevel_error` or [server.rb](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
 You can specify custom behavior for this scenario. For example, you can report the error to your third-party
 error-tracking service (in this example, [rollbar](https://rollbar.com)):
 
 ```ruby
-lowlevel_error_handler do |e|
-  Rollbar.critical(e)
-  [500, {}, ["An error has occurred, and engineers have been informed. Please reload the page. If you continue to have problems, contact support@example.com\n"]]
+lowlevel_error_handler do |e, env, status|
+  if status == 400
+    message = "The server could not process the request due to an error, such as an incorrectly typed URL, malformed syntax, or a URL that contains illegal characters.\n"
+  else
+    message = "An error has occurred, and engineers have been informed. Please reload the page. If you continue to have problems, contact support@example.com\n"
+    Rollbar.critical(e)
+  end
+
+  [status, {}, [message]]
 end
 ```
 
