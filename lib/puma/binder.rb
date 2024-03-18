@@ -141,7 +141,14 @@ module Puma
       end
     end
 
+    def before_parse(&block)
+      @before_parse ||= []
+      @before_parse << block if block
+      @before_parse
+    end
+
     def parse(binds, log_writer = nil, log_msg = 'Listening')
+      before_parse.each(&:call)
       log_writer ||= @log_writer
       binds.each do |str|
         uri = URI.parse str
