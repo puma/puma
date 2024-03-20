@@ -10,10 +10,8 @@ end
 
 unless ENV["PUMA_DISABLE_SSL"]
   # don't use pkg_config('openssl') if '--with-openssl-dir' is used
-  # also looks within the Ruby build for directory info
   has_openssl_dir = dir_config('openssl').any? ||
-    RbConfig::CONFIG['configure_args']&.include?('openssl') ||
-    Dir.exist?("#{RbConfig::TOPDIR}/src/main/c/openssl") # TruffleRuby
+    RbConfig::CONFIG['configure_args']&.include?('openssl')
 
   found_pkg_config = !has_openssl_dir && pkg_config('openssl')
 
