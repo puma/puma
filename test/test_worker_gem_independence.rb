@@ -15,9 +15,9 @@ class TestWorkerGemIndependence < TestIntegration
 
   def test_changing_nio4r_version_during_phased_restart
     change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_nio4r',
-                                             old_version: '2.3.0',
+                                             old_version: '2.6.0',
                                              new_app_dir: 'worker_gem_independence_test/new_nio4r',
-                                             new_version: '2.3.1'
+                                             new_version: '2.6.1'
   end
 
   def test_changing_json_version_during_phased_restart

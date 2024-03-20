@@ -1,4 +1,4 @@
 source "https://rubygems.org"
 
 gem 'puma', path: '../../..'
-gem 'nio4r', '= 2.3.0'
+gem 'nio4r', '= 2.6.0'
