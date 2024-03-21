@@ -96,6 +96,8 @@ module Puma
       @http_content_length_limit = nil
       @http_content_length_limit_exceeded = false
 
+      @http_expect_100_continue_header_present = false
+
       @peerip = nil
       @peer_family = nil
       @listener = nil
@@ -111,7 +113,8 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer, :http_content_length_limit_exceeded
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded,
+                :http_expect_100_continue_header_present
 
     attr_writer :peerip, :http_content_length_limit
 
@@ -168,6 +171,7 @@ module Puma
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
       @http_content_length_limit_exceeded = false
+      @http_expect_100_continue_header_present = false
 
       if @buffer
         return false unless try_to_parse_proxy_protocol
@@ -352,10 +356,7 @@ module Puma
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
       if @env[HTTP_EXPECT] == CONTINUE
-        # TODO allow a hook here to check the headers before
-        # going forward
-        @io << HTTP_11_100
-        @io.flush
+        @http_expect_100_continue_header_present = true
       end
 
       @read_header = false
