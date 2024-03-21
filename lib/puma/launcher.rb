@@ -165,6 +165,13 @@ module Puma
         log "* phased-restart called but not available, restarting normally."
         return restart
       end
+
+      if @options.file_options[:tag].nil?
+        dir = File.realdirpath(@restart_dir)
+        @options[:tag] = File.basename(dir)
+        set_process_title
+      end
+
       true
     end
 
