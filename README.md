@@ -12,7 +12,7 @@ Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server fo
 
 ## Built For Speed &amp; Parallelism
 
-Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is: 
+Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is:
 * **Multi-threaded**. Each request is served in a separate thread. This helps you serve more requests per second with less memory use.
 * **Multi-process**. "Pre-forks" in cluster mode, using less memory per-process thanks to copy-on-write memory.
 * **Standalone**. With SSL support, zero-downtime rolling restarts and a built-in request bufferer, you can deploy Puma without any reverse proxy.
@@ -249,7 +249,7 @@ $ puma -b ssl://localhost:9292 -b tcp://localhost:9393 -C config/use_local_host.
 
 #### Controlling SSL Cipher Suites
 
-To use or avoid specific SSL cipher suites, use `ssl_cipher_filter` or `ssl_cipher_list` options.
+To use or avoid specific SSL ciphers for TLSv1.2 and below, use `ssl_cipher_filter` or `ssl_cipher_list` options.
 
 ##### Ruby:
 
@@ -261,6 +261,14 @@ $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_cipher_fil
 
 ```
 $ puma -b 'ssl://127.0.0.1:9292?keystore=path_to_keystore&keystore-pass=keystore_password&ssl_cipher_list=TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA'
+```
+
+To configure the available TLSv1.3 ciphersuites, use `ssl_ciphersuites` option (not available for JRuby).
+
+##### Ruby:
+
+```
+$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_ciphersuites=TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256'
 ```
 
 See https://www.openssl.org/docs/man1.1.1/man1/ciphers.html for cipher filter format and full list of cipher suites.

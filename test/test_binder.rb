@@ -541,6 +541,16 @@ class TestBinderMRI < TestBinderBase
     assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
   end
 
+  def test_binder_parses_ssl_ciphersuites
+    skip_unless :ssl
+
+    ssl_ciphersuites = "TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256"
+
+    @binder.parse ["ssl://0.0.0.0?#{ssl_query}&ssl_ciphersuites=#{ssl_ciphersuites}"], @log_writer
+
+    assert_equal ssl_ciphersuites, ssl_context_for_binder.ssl_ciphersuites
+  end
+
   def test_binder_parses_ssl_verification_flags_one
     skip_unless :ssl
 
