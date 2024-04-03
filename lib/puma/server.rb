@@ -18,6 +18,9 @@ require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 
 module Puma
 
+  # This method was private on Ruby 2.4 but became public on Ruby 2.5+:
+  Thread.send(:attr_accessor, :puma_server)
+
   # The HTTP Server itself. Serves out a single Rack app.
   #
   # This class is used by the `Puma::Single` and `Puma::Cluster` classes
@@ -47,7 +50,6 @@ module Puma
     attr_accessor :app
     attr_accessor :binder
 
-    THREAD_LOCAL_KEY = :puma_server
 
     # Create a server for the rack app +app+.
     #
@@ -131,7 +133,7 @@ module Puma
     class << self
       # @!attribute [r] current
       def current
-        Thread.current[THREAD_LOCAL_KEY]
+        Thread.current.puma_server
       end
 
       # :nodoc:
@@ -438,7 +440,7 @@ module Puma
     # Return true if one or more requests were processed.
     def process_client(client)
       # Advertise this server into the thread
-      Thread.current[THREAD_LOCAL_KEY] = self
+      Thread.current.puma_server = self
 
       clean_thread_locals = options[:clean_thread_locals]
       close_socket = true
