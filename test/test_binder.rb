@@ -543,6 +543,7 @@ class TestBinderMRI < TestBinderBase
 
   def test_binder_parses_ssl_ciphersuites
     skip_unless :ssl
+    skip('Requires TLSv1.3') unless Puma::MiniSSL::HAS_TLS1_3
 
     ssl_ciphersuites = "TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256"
 

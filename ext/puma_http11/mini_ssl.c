@@ -446,11 +446,13 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL@STRENGTH");
   }
 
+#if HAVE_SSL_CTX_SET_CIPHERSUITES
   // Only override OpenSSL default ciphersuites if config option is supplied.
   if (!NIL_P(ssl_ciphersuites)) {
     StringValue(ssl_ciphersuites);
     SSL_CTX_set_ciphersuites(ctx, RSTRING_PTR(ssl_ciphersuites));
   }
+#endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
   // Remove this case if OpenSSL 1.0.1 (now EOL) support is no longer needed.

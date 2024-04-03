@@ -300,6 +300,7 @@ class TestConfigFile < TestConfigFileBase
   def test_ssl_bind_with_ciphersuites
     skip_if :jruby
     skip_unless :ssl
+    skip('Requires TLSv1.3') unless Puma::MiniSSL::HAS_TLS1_3
 
     ciphersuites = "TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256"
     conf = Puma::Configuration.new do |c|
