@@ -33,6 +33,8 @@ class FiberStorageApplicationTest < Minitest::Test
   end
 
   def test_empty_storage
+    skip_if :oldwindows
+
     response = hit(["#{@tcp}/test"] * 3)
     assert_equal ["0", "0", "0"], response
   end
