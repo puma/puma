@@ -102,30 +102,6 @@ Puma will automatically scale the number of threads, from the minimum until it c
 
 Be aware that additionally Puma creates threads on its own for internal purposes (e.g. handling slow clients). So, even if you specify -t 1:1, expect around 7 threads created in your application.
 
-### Lifecycle hooks
-
-Puma's configuration DSL provides master process lifecycle hooks
-`on_booted`, `on_restart`, and `on_stopped` which may be used to
-specify code blocks to run on each event:
-
-```ruby
-# config/puma.rb
-on_booted do
-  # Add code to run in the Puma master process after it boots.
-  # This will also fire after a phased restart completes.
-end
-
-on_restart do
-  # Add code to run in the Puma master process when it receives
-  # a restart command but before it restarts.
-end
-
-on_stopped do
-  # Add code to run in the Puma master process when it receives
-  # a stop command but before it shuts down.
-end
-```
-
 ### Clustered mode
 
 Puma also offers "clustered mode". Clustered mode `fork`s workers from a master process. Each child process still has its own thread pool. You can tune the number of workers with the `-w` (or `--workers`) flag:
@@ -164,10 +140,8 @@ Preloading can’t be used with phased restart, since phased restart kills and r
 
 #### Clustered mode hooks
 
-When using clustered mode, Puma's configuration file provides the `before_fork` and `on_worker_boot`
+When using clustered mode, Puma's configuration DSL provides `before_fork` and `on_worker_boot`
 hooks to run code when the master process forks and child workers are booted respectively.
-In addition, there is an `on_refork` hook which is used only in [fork_worker mode](docs/fork_worker.md),
-when the worker 0 child process forks a grandchild worker.
 
 It is recommended to use these hooks with `preload_app!`, otherwise constants loaded by your
 application (such as `Rails`) will not be available inside the hooks.
@@ -178,32 +152,61 @@ before_fork do
   # Add code to run inside the Puma master process before it forks a worker child.
 end
 
-on_refork do
-  # Used only when fork_worker mode is enabled. Add code to run inside the Puma worker 0
-  # child process before it forks a grandchild worker.
-end
-
 on_worker_boot do
   # Add code to run inside the Puma worker process after forking.
 end
 ```
 
+In addition, there is an `on_refork` hook which is used only in [fork_worker mode](docs/fork_worker.md),
+when the worker 0 child process forks a grandchild worker:
+
+```ruby
+on_refork do
+  # Used only when fork_worker mode is enabled. Add code to run inside the Puma worker 0
+  # child process before it forks a grandchild worker.
+end
+```
+
 Importantly, note the following considerations when Ruby forks a child process: 
 
-1. File descriptors such as network sockets **are** copied from the parent
-   to the forked child process. Dual-use of the same sockets by parent and child
-   will result in I/O conflicts such as `SocketError`, `Errno::EPIPE`, and `EOFError`.
-2. Background Ruby threads, including threads used by various third-party gems
-   for connection monitoring, etc., are **not** copied to the child process.
-   Often this does not cause immediate problems until a third-party connection
-   goes down, at which point there will be no supervisor to reconnect it.
+1. File descriptors such as network sockets **are** copied from the parent to the forked
+   child process. Dual-use of the same sockets by parent and child will result in I/O conflicts
+   such as `SocketError`, `Errno::EPIPE`, and `EOFError`.
+2. Background Ruby threads, including threads used by various third-party gems for connection
+   monitoring, etc., are **not** copied to the child process. Often this does not cause
+   immediate problems until a third-party connection goes down, at which point there will
+   be no supervisor to reconnect it.
 
-Therefore:
+Therefore, we recommend the following:
 
-1. `before_fork` and `on_refork` should be used to reset the parent's socket
-   connections, so that they are not transferred to the child.
-2. `on_worker_boot` should be used to restart any background threads
-   on the forked child.
+1. If possible, do not establish any socket connections (HTTP, database connections, etc.)
+   inside Puma's master process when booting.
+2. If (1) is not possible, use `before_fork` and `on_refork`  to reset the parent's socket
+   connections when forking, so that they are not transferred to any child processes.
+3. Use `on_worker_boot` to restart any background threads on the forked child.
+
+#### Master process lifecycle hooks
+
+Puma's configuration DSL provides master process lifecycle hooks `on_booted`, `on_restart`, and `on_stopped`
+which may be used to specify code blocks to run on each event:
+
+```ruby
+# config/puma.rb
+on_booted do
+  # Add code to run in the Puma master process after it boots.
+  # This will also fire after a phased restart completes.
+end
+
+on_restart do
+  # Add code to run in the Puma master process when it receives
+  # a restart command but before it restarts.
+end
+
+on_stopped do
+  # Add code to run in the Puma master process when it receives
+  # a stop command but before it shuts down.
+end
+```
 
 ### Error handling
 
