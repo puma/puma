@@ -102,6 +102,30 @@ Puma will automatically scale the number of threads, from the minimum until it c
 
 Be aware that additionally Puma creates threads on its own for internal purposes (e.g. handling slow clients). So, even if you specify -t 1:1, expect around 7 threads created in your application.
 
+### Lifecycle hooks
+
+Puma's configuration DSL provides master process lifecycle hooks
+`on_booted`, `on_restart`, and `on_stopped` which may be used to
+specify code blocks to run on each event:
+
+```ruby
+# config/puma.rb
+on_booted do
+  # Add code to run in the Puma master process after it boots.
+  # This will also fire after a phased restart completes.
+end
+
+on_restart do
+  # Add code to run in the Puma master process when it receives
+  # a restart command but before it restarts.
+end
+
+on_stopped do
+  # Add code to run in the Puma master process when it receives
+  # a stop command but before it shuts down.
+end
+```
+
 ### Clustered mode
 
 Puma also offers "clustered mode". Clustered mode `fork`s workers from a master process. Each child process still has its own thread pool. You can tune the number of workers with the `-w` (or `--workers`) flag:
@@ -138,39 +162,48 @@ preload_app!
 
 Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preloading copies the code of master into the workers.
 
-When using clustered mode, you can specify a block in your configuration file that will be run on boot of each worker:
+#### Clustered mode hooks
 
-```ruby
-# config/puma.rb
-on_worker_boot do
-  # configuration here
-end
-```
+When using clustered mode, Puma's configuration file provides the `before_fork` and `on_worker_boot`
+hooks to run code when the master process forks and child workers are booted respectively.
+In addition, there is an `on_refork` hook which is used only in [fork_worker mode](docs/fork_worker.md),
+when the worker 0 child process forks a grandchild worker.
 
-This code can be used to setup the process before booting the application, allowing
-you to do some Puma-specific things that you don't want to embed in your application.
-For instance, you could fire a log notification that a worker booted or send something to statsd. This can be called multiple times.
-
-Constants loaded by your application (such as `Rails`) will not be available in `on_worker_boot`
-unless preloading is enabled.
-
-You can also specify a block to be run before workers are forked, using `before_fork`:
+It is recommended to use these hooks with `preload_app!`, otherwise constants loaded by your
+application (such as `Rails`) will not be available inside the hooks.
 
 ```ruby
 # config/puma.rb
 before_fork do
-  # configuration here
+  # Add code to run inside the Puma master process before it forks a worker child.
+end
+
+on_refork do
+  # Used only when fork_worker mode is enabled. Add code to run inside the Puma worker 0
+  # child process before it forks a grandchild worker.
+end
+
+on_worker_boot do
+  # Add code to run inside the Puma worker process after forking.
 end
 ```
 
-You can also specify a block to be run after puma is booted using `on_booted`:
+Importantly, note the following considerations when Ruby forks a child process: 
 
-```ruby
-# config/puma.rb
-on_booted do
-  # configuration here
-end
-```
+1. File descriptors such as network sockets **are** copied from the parent
+   to the forked child process. Dual-use of the same sockets by parent and child
+   will result in I/O conflicts such as `SocketError`, `Errno::EPIPE`, and `EOFError`.
+2. Background Ruby threads, including threads used by various third-party gems
+   for connection monitoring, etc., are **not** copied to the child process.
+   Often this does not cause immediate problems until a third-party connection
+   goes down, at which point there will be no supervisor to reconnect it.
+
+Therefore:
+
+1. `before_fork` and `on_refork` should be used to reset the parent's socket
+   connections, so that they are not transferred to the child.
+2. `on_worker_boot` should be used to restart any background threads
+   on the forked child.
 
 ### Error handling
 
