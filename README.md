@@ -181,8 +181,8 @@ Therefore, we recommend the following:
 
 1. If possible, do not establish any socket connections (HTTP, database connections, etc.)
    inside Puma's master process when booting.
-2. If (1) is not possible, use `before_fork` and `on_refork`  to reset the parent's socket
-   connections when forking, so that they are not transferred to any child processes.
+2. If (1) is not possible, use `before_fork` and `on_refork` to disconnect the parent's socket
+   connections when forking, so that they are not accidentally copied to the child process.
 3. Use `on_worker_boot` to restart any background threads on the forked child.
 
 #### Master process lifecycle hooks
@@ -193,8 +193,8 @@ which may be used to specify code blocks to run on each event:
 ```ruby
 # config/puma.rb
 on_booted do
-  # Add code to run in the Puma master process after it boots.
-  # This will also fire after a phased restart completes.
+  # Add code to run in the Puma master process after it boots,
+  # and also after a phased restart completes.
 end
 
 on_restart do
