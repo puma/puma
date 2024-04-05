@@ -157,7 +157,7 @@ on_worker_boot do
 end
 ```
 
-In addition, there is an `on_refork` hook which is used only in [fork_worker mode](docs/fork_worker.md),
+In addition, there is an `on_refork` hook which is used only in [`fork_worker` mode](docs/fork_worker.md),
 when the worker 0 child process forks a grandchild worker:
 
 ```ruby
