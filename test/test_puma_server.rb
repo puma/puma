@@ -942,18 +942,60 @@ class TestPumaServer < Minitest::Test
     end
   end
 
-  def test_large_chunked_request_header
+  def test_chunked_request_invalid_extension_header_length
+    body = nil
+    content_length = nil
     server_run(environment: :production) { |env|
-      [200, {}, [""]]
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [body]]
     }
 
     max_chunk_header_size = Puma::Client::MAX_CHUNK_HEADER_SIZE
+
+    # send valid request except for extension_header larger than limit
     header = "GET / HTTP/1.1\r\nConnection: close\r\nContent-Length: 200\r\nTransfer-Encoding: chunked\r\n\r\n"
-    socket = send_http "#{header}1;t#{'x' * (max_chunk_header_size + 2)}"
+    socket = send_http "#{header}1;t=#{'x' * (max_chunk_header_size + 2)}\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     data = socket.read
 
     assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+  end
+
+  def test_chunked_request_invalid_extension_header_length_split
+    body = nil
+    completed_loops = 0
+    content_length = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [""]]
+    }
+
+    # includes 1st chunk length
+    socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1;"
+
+    junk = "*" * 1_024
+
+    # Ubuntu allows us to close the client socket after an error write, and still
+    # read with the client.  macOS and Windows won't allow a read.
+
+    begin
+      10.times do |i|
+        socket << junk
+        completed_loops = i
+        sleep 0.1
+      end
+      socket << "\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+      data = socket.read
+      refute_equal 'hello', body
+       assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+
+    # errors raised vary by OS
+    rescue Errno::EPIPE, Errno::ECONNABORTED, Errno::ECONNRESET
+    end
+    assert_equal 4, completed_loops
   end
 
   def test_chunked_request_pause_before_value
