@@ -942,18 +942,60 @@ class TestPumaServer < Minitest::Test
     end
   end
 
-  def test_large_chunked_request_header
+  def test_chunked_request_invalid_extension_header_length
+    body = nil
+    content_length = nil
     server_run(environment: :production) { |env|
-      [200, {}, [""]]
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [body]]
     }
 
     max_chunk_header_size = Puma::Client::MAX_CHUNK_HEADER_SIZE
+
+    # send valid request except for extension_header larger than limit
     header = "GET / HTTP/1.1\r\nConnection: close\r\nContent-Length: 200\r\nTransfer-Encoding: chunked\r\n\r\n"
-    socket = send_http "#{header}1;t#{'x' * (max_chunk_header_size + 2)}"
+    socket = send_http "#{header}1;t=#{'x' * (max_chunk_header_size + 2)}\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
     data = socket.read
 
     assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+  end
+
+  def test_chunked_request_invalid_extension_header_length_split
+    body = nil
+    completed_loops = 0
+    content_length = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [""]]
+    }
+
+    # includes 1st chunk length
+    socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1;"
+
+    junk = "*" * 1_024
+
+    # Ubuntu allows us to close the client socket after an error write, and still
+    # read with the client.  macOS and Windows won't allow a read.
+
+    begin
+      10.times do |i|
+        socket << junk
+        completed_loops = i
+        sleep 0.1
+      end
+      socket << "\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+      data = socket.read
+      refute_equal 'hello', body
+       assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+
+    # errors raised vary by OS
+    rescue Errno::EPIPE, Errno::ECONNABORTED, Errno::ECONNRESET
+    end
+    assert_equal 4, completed_loops
   end
 
   def test_chunked_request_pause_before_value
@@ -1133,6 +1175,44 @@ class TestPumaServer < Minitest::Test
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal 'hello', body
     assert_equal "5", content_length
+  end
+
+  # See https://github.com/puma/puma/issues/3337 & https://github.com/puma/puma/pull/3338
+  #
+  def test_chunked_body_pause_within_chunk_size_hex
+    body = nil
+    content_length = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [""]]
+    }
+
+    req_body = +''
+    9.times do |i|
+      req_body << "400\r\n"
+      req_body << "#{i}#{'x' * 1_023}"
+      req_body << "\r\n"
+    end
+    req_body << "0\r\n\r\n"
+
+    header = "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+    data1 = req_body[0..7218]  # Number here is arbitrary, so that the first chunk of data ends with `40`
+    data2 = req_body[7219..-1] # remaining data
+
+    socket = new_connection
+
+    socket.syswrite "#{header}#{data1}"
+    sleep 0.1 # This makes it easier to reproduce the issue, might need to be adjusted
+    socket.syswrite data2
+
+    socket.wait_readable 5
+    resp = socket.sysread 2_048
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", resp
+    assert_equal 9*1_024, body.bytesize
+    assert_equal 9*1_024, content_length.to_i
+    assert_equal '012345678', body.delete('x')
   end
 
   def test_chunked_request_header_case
