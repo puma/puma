@@ -85,6 +85,7 @@ module Puma
           "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{backlog_str}"
       else
         ssl_cipher_filter = opts[:ssl_cipher_filter] ? "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
+        ssl_ciphersuites = opts[:ssl_ciphersuites] ? "&ssl_ciphersuites=#{opts[:ssl_ciphersuites]}" : nil
         v_flags = (ary = opts[:verification_flags]) ? "&verification_flags=#{Array(ary).join ','}" : nil
 
         cert_flags = (cert = opts[:cert]) ? "cert=#{Puma::Util.escape(cert)}" : nil
@@ -115,7 +116,7 @@ module Puma
             nil
           end
 
-        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{password_flags}#{ssl_cipher_filter}" \
+        "ssl://#{host}:#{port}?#{cert_flags}#{key_flags}#{password_flags}#{ssl_cipher_filter}#{ssl_ciphersuites}" \
           "#{reuse_flag}&verify_mode=#{verify}#{tls_str}#{ca_additions}#{v_flags}#{backlog_str}#{low_latency_str}"
       end
     end
@@ -530,6 +531,7 @@ module Puma
     #     cert: path_to_cert,
     #     key: path_to_key,
     #     ssl_cipher_filter: cipher_filter, # optional
+    #     ssl_ciphersuites: ciphersuites,   # optional
     #     verify_mode: verify_mode,         # default 'none'
     #     verification_flags: flags,        # optional, not supported by JRuby
     #     reuse: true                       # optional
