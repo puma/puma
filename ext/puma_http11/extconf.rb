@@ -36,15 +36,10 @@ unless ENV["PUMA_DISABLE_SSL"]
     puts "\n──── Below are yes for 1.0.2 & later ────"
     have_func "DTLS_method"                            , ssl_h
     have_func "SSL_CTX_set_session_cache_mode(NULL, 0)", ssl_h
-    have_func "SSL_CTX_set_ecdh_auto(NULL, 0)"         , ssl_h
 
     puts "\n──── Below are yes for 1.1.0 & later ────"
     have_func "TLS_server_method"                      , ssl_h
     have_func "SSL_CTX_set_min_proto_version(NULL, 0)" , ssl_h
-
-    puts "\n──── Below is yes for 1.1.0 and later, but isn't documented until 1.1.1 ────"
-    # https://github.com/openssl/openssl/blob/OpenSSL_1_1_0/crypto/x509/x509_lu.c#L220
-    have_func "X509_STORE_up_ref"
 
     puts "\n──── Below is yes for 1.1.0 and later, but isn't documented until 3.0.0 ────"
     # https://github.com/openssl/openssl/blob/OpenSSL_1_1_0/include/openssl/ssl.h#L1159
