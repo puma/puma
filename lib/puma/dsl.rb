@@ -1005,6 +1005,8 @@ module Puma
     # listening on the socket, allowing workers which are not processing any
     # requests to pick up new requests first.
     #
+    # The default is 0.005 seconds.
+    #
     # Only works on MRI. For all other interpreters, this setting does nothing.
     # @see Puma::Server#handle_servers
     # @see Puma::ThreadPool#wait_for_less_busy_worker
