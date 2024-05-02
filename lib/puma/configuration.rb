@@ -313,6 +313,8 @@ module Puma
     # @param arg [Launcher, Int] `:on_restart` passes Launcher
     #
     def run_hooks(key, arg, log_writer, hook_data = nil)
+      log_writer.debug "Running #{key} hooks"
+
       @options.all_of(key).each do |b|
         begin
           if Array === b
