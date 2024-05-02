@@ -1183,6 +1183,8 @@ module Puma
     end
 
     def process_hook(options_key, key, block, meth)
+      raise ArgumentError, "expected #{meth} to be given a block" if block.nil?
+
       @options[options_key] ||= []
       if ON_WORKER_KEY.include? key.class
         @options[options_key] << [block, key.to_sym]
