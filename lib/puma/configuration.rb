@@ -152,7 +152,7 @@ module Puma
       mutate_stdout_and_stderr_to_sync_on_write: true,
       out_of_band: [],
       # Number of seconds for another request within a persistent session.
-      persistent_timeout: 20,
+      persistent_timeout: 65,
       queue_requests: true,
       rackup: 'config.ru'.freeze,
       raise_exception_on_sigterm: true,
