@@ -473,6 +473,10 @@ class TestConfigFile < TestConfigFileBase
     assert_run_hooks :on_restart
   end
 
+  def test_run_hooks_on_stopped_hook
+    assert_run_hooks :on_stopped
+  end
+
   def test_run_hooks_before_worker_fork
     assert_run_hooks :before_worker_fork, configured_with: :on_worker_fork
 

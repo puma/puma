@@ -712,6 +712,17 @@ module Puma
       @config.options[:events].on_booted(&block)
     end
 
+    # Code to run when Puma is stopped (works for both: single and clustered)
+    #
+    # @example
+    #   on_stopped do
+    #     puts 'Shutting down...'
+    #   end
+    def on_stopped(&block)
+      @options[:on_stopped] ||= []
+      @options[:on_stopped] << block
+    end
+
     # When `fork_worker` is enabled, code to run in Worker 0
     # before all other workers are re-forked from this process,
     # after the server has temporarily stopped serving requests
