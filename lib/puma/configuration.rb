@@ -3,6 +3,7 @@
 require_relative 'plugin'
 require_relative 'const'
 require_relative 'dsl'
+require_relative 'events'
 
 module Puma
   # A class used for storing "leveled" configuration options.
@@ -173,7 +174,7 @@ module Puma
     }
 
     def initialize(user_options={}, default_options = {}, &block)
-      default_options = self.puma_default_options.merge(default_options, events: Events.new)
+      default_options = self.puma_default_options.merge(events: Events.new).merge(default_options)
 
       @options     = UserFileDefaultOptions.new(user_options, default_options)
       @plugins     = PluginLoader.new
