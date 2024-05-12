@@ -177,7 +177,7 @@ module Puma
     }
 
     def initialize(user_options={}, default_options = {}, env = ENV, &block)
-      default_options = self.puma_default_options(env).merge(default_options)
+      default_options = self.puma_default_options(env).merge(events: Events.new).merge(default_options)
 
       @_options    = UserFileDefaultOptions.new(user_options, default_options)
       @plugins     = PluginLoader.new
