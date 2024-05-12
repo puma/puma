@@ -25,9 +25,6 @@ class TestCLI < Minitest::Test
 
     @log_writer = Puma::LogWriter.strings
 
-    @events = Puma::Events.new
-    @events.on_booted { @ready << "!" }
-
     @puma_version_pattern = "\\d+.\\d+.\\d+(\\.[a-z\\d]+)?"
   end
 
@@ -53,7 +50,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:0",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/hello.ru"], @log_writer, @events
+                         "test/rackup/hello.ru"], @log_writer
 
     t = Thread.new { cli.run }
 
@@ -83,7 +80,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:0",
                          "--control-url", control_url,
                          "--control-token", token,
-                         "test/rackup/hello.ru"], @log_writer, @events
+                         "test/rackup/hello.ru"], @log_writer
 
     t = Thread.new { cli.run }
 
@@ -111,7 +108,7 @@ class TestCLI < Minitest::Test
                          "-w", "2",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/hello.ru"], @log_writer, @events
+                         "test/rackup/hello.ru"], @log_writer
 
     # without this, Minitest.after_run will trigger on this test ?
     $debugging_hold = true
@@ -153,7 +150,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/hello.ru"], @log_writer, @events
+                         "test/rackup/hello.ru"], @log_writer
 
     t = Thread.new { cli.run }
 
@@ -178,7 +175,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/hello.ru"], @log_writer, @events
+                         "test/rackup/hello.ru"], @log_writer
 
     t = Thread.new { cli.run }
 
@@ -199,7 +196,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "tcp://127.0.0.1:#{@bind_port}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/hello.ru"], @log_writer, @events
+                         "test/rackup/hello.ru"], @log_writer
 
     t = Thread.new { cli.run }
 
@@ -227,7 +224,7 @@ class TestCLI < Minitest::Test
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
                          "--control-url", url,
                          "--control-token", "",
-                         "test/rackup/hello.ru"], @log_writer, @events
+                         "test/rackup/hello.ru"], @log_writer
 
     t = Thread.new { cli.run }
 
