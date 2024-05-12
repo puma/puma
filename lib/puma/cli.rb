@@ -24,11 +24,10 @@ module Puma
     # Create a new CLI object using +argv+ as the command line
     # arguments.
     #
-    def initialize(argv, log_writer = LogWriter.stdio, events = Events.new)
+    def initialize(argv, log_writer = LogWriter.stdio)
       @debug = false
       @argv = argv.dup
       @log_writer = log_writer
-      @events = events
 
       @conf = nil
 
@@ -63,7 +62,7 @@ module Puma
         end
       end
 
-      @launcher = Puma::Launcher.new(@conf, :log_writer => @log_writer, :events => @events, :argv => argv)
+      @launcher = Puma::Launcher.new(@conf, :log_writer => @log_writer, :events => @conf.options[:events], :argv => argv)
     end
 
     attr_reader :launcher
@@ -93,7 +92,7 @@ module Puma
     #
 
     def setup_options
-      @conf = Configuration.new({}, {events: @events}) do |user_config, file_config|
+      @conf = Configuration.new({}, {}) do |user_config, file_config|
         @parser = OptionParser.new do |o|
           o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
             user_config.bind arg
