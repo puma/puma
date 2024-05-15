@@ -26,6 +26,9 @@ class TestCLI < PumaTest
     @wait, @ready = IO.pipe
 
     @log_writer = Puma::LogWriter.strings
+ 
+    @events = Puma::Events.new
+    @events.on_booted { @ready << "!" }
 
     @events = Puma::Events.new
     @events.after_booted { @ready << "!" }
