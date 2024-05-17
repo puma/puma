@@ -89,7 +89,7 @@ class TestBinderParallel < TestBinderBase
 
     @binder.parse ["tcp://localhost:0"]
 
-    mock.verify
+    assert_mock mock
     assert_equal @binder.instance_variable_get(:@before_parse), [proc]
   end
 
