@@ -88,6 +88,8 @@ module Puma
                   server.begin_restart(true)
                   @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
                 end
+              elsif idx == -2 # refork cycle is done
+                @config.run_hooks(:after_refork, nil, @log_writer, @hook_data)
               elsif idx == 0 # restart server
                 restart_server << true << false
               else # fork worker

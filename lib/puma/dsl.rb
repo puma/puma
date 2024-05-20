@@ -47,6 +47,7 @@ module Puma
   #     | on_worker_boot     | :before_worker_boot     | inside, before      |
   #     | on_worker_shutdown | :before_worker_shutdown | inside, after       |
   #     | on_refork          | :before_refork          | inside              |
+  #     | after_refork       | :after_refork           | inside              |
   #
   class DSL
     ON_WORKER_KEY = [String, Symbol].freeze
@@ -844,6 +845,27 @@ module Puma
     #
     def on_refork(key = nil, &block)
       process_hook :before_refork, key, block, 'on_refork'
+    end
+
+    # When `fork_worker` is enabled, code to run in Worker 0
+    # after all other workers are re-forked from this process,
+    # after the server has temporarily stopped serving requests
+    # (once per complete refork cycle).
+    #
+    # This can be used to re-open any connections to remote servers
+    # (database, Redis, ...) that were closed via on_refork.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @note Cluster mode with `fork_worker` enabled only.
+    #
+    # @example
+    #   after_refork do
+    #     puts 'After refork...'
+    #   end
+    #
+    def after_refork(key = nil, &block)
+      process_hook :after_refork, key, block, 'after_refork'
     end
 
     # Provide a block to be executed just before a thread is added to the thread
