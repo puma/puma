@@ -161,7 +161,7 @@ module Puma
       instance_eval(&blk)
     end
 
-    def get(key,default=nil)
+    def get(key,default = nil)
       @options[key.to_sym] || default
     end
 
@@ -193,7 +193,7 @@ module Puma
     #
     # @see Puma::Configuration#app
     #
-    def app(obj=nil, &block)
+    def app(obj = nil, &block)
       obj ||= block
 
       raise "Provide either a #call'able or a block" unless obj
@@ -216,7 +216,7 @@ module Puma
     # @example
     #   activate_control_app 'unix:///var/run/pumactl.sock', { no_token: true }
     #
-    def activate_control_app(url="auto", opts={})
+    def activate_control_app(url = "auto", opts = {})
       if url == "auto"
         path = Configuration.temp_path
         @options[:control_url] = "unix://#{path}"
@@ -314,7 +314,7 @@ module Puma
     # @example Only bind to systemd activated sockets, ignoring other binds
     #   bind_to_activated_sockets 'only'
     #
-    def bind_to_activated_sockets(bind=true)
+    def bind_to_activated_sockets(bind = true)
       @options[:bind_to_activated_sockets] = bind
     end
 
@@ -325,7 +325,7 @@ module Puma
     # @example
     #   port 3000
     #
-    def port(port, host=nil)
+    def port(port, host = nil)
       host ||= default_host
       bind URI::Generic.build(scheme: 'tcp', host: host, port: Integer(port)).to_s
     end
@@ -377,7 +377,7 @@ module Puma
     # @example
     #   clean_thread_locals
     #
-    def clean_thread_locals(which=true)
+    def clean_thread_locals(which = true)
       @options[:clean_thread_locals] = which
     end
 
@@ -387,7 +387,7 @@ module Puma
     #
     # @see Puma::Server#graceful_shutdown
     #
-    def drain_on_shutdown(which=true)
+    def drain_on_shutdown(which = true)
       @options[:drain_on_shutdown] = which
     end
 
@@ -414,7 +414,7 @@ module Puma
     #
     # @see Puma::Server#graceful_shutdown
     #
-    def force_shutdown_after(val=:forever)
+    def force_shutdown_after(val = :forever)
       i = case val
           when :forever
             -1
@@ -469,7 +469,7 @@ module Puma
     # @example
     #   quiet
     #
-    def quiet(which=true)
+    def quiet(which = true)
       @options[:log_requests] = !which
     end
 
@@ -480,7 +480,7 @@ module Puma
     # @example
     #   log_requests
     #
-    def log_requests(which=true)
+    def log_requests(which = true)
       @options[:log_requests] = which
     end
 
@@ -519,7 +519,7 @@ module Puma
     # Only necessary if X-Forwarded-Proto is not being set by your proxy
     # Normal values are 'http' or 'https'.
     #
-    def rack_url_scheme(scheme=nil)
+    def rack_url_scheme(scheme = nil)
       @options[:rack_url_scheme] = scheme
     end
 
@@ -530,7 +530,7 @@ module Puma
     # @example
     #   early_hints
     #
-    def early_hints(answer=true)
+    def early_hints(answer = true)
       @options[:early_hints] = answer
     end
 
@@ -544,7 +544,7 @@ module Puma
     # @example
     #   stdout_redirect '/app/lolcat/log/stdout', '/app/lolcat/log/stderr', true
     #
-    def stdout_redirect(stdout=nil, stderr=nil, append=false)
+    def stdout_redirect(stdout = nil, stderr = nil, append = false)
       @options[:redirect_stdout] = stdout
       @options[:redirect_stderr] = stderr
       @options[:redirect_append] = append
@@ -928,7 +928,7 @@ module Puma
     # @example
     #   preload_app!
     #
-    def preload_app!(answer=true)
+    def preload_app!(answer = true)
       @options[:preload_app] = answer
     end
 
@@ -940,7 +940,7 @@ module Puma
     #     [200, {}, ["error page"]]
     #   end
     #
-    def lowlevel_error_handler(obj=nil, &block)
+    def lowlevel_error_handler(obj = nil, &block)
       obj ||= block
       raise "Provide either a #call'able or a block" unless obj
       @options[:lowlevel_error_handler] = obj
@@ -964,7 +964,7 @@ module Puma
     #
     # @see extra_runtime_dependencies
     #
-    def prune_bundler(answer=true)
+    def prune_bundler(answer = true)
       @options[:prune_bundler] = answer
     end
 
@@ -982,7 +982,7 @@ module Puma
     # @see Puma::Launcher#setup_signals
     # @see Puma::Cluster#setup_signals
     #
-    def raise_exception_on_sigterm(answer=true)
+    def raise_exception_on_sigterm(answer = true)
       @options[:raise_exception_on_sigterm] = answer
     end
 
@@ -1138,7 +1138,7 @@ module Puma
     #
     # @see Puma::Server
     #
-    def queue_requests(answer=true)
+    def queue_requests(answer = true)
       @options[:queue_requests] = answer
     end
 
@@ -1146,10 +1146,9 @@ module Puma
     # threads will be written to $stdout. This can help figure
     # out why shutdown is hanging.
     #
-    def shutdown_debug(val=true)
+    def shutdown_debug(val = true)
       @options[:shutdown_debug] = val
     end
-
 
     # Attempts to route traffic to less-busy workers by causing them to delay
     # listening on the socket, allowing workers which are not processing any
@@ -1164,7 +1163,7 @@ module Puma
     #
     # @version 5.0.0
     #
-    def wait_for_less_busy_worker(val=0.005)
+    def wait_for_less_busy_worker(val = 0.005)
       @options[:wait_for_less_busy_worker] = val.to_f
     end
 
@@ -1198,7 +1197,7 @@ module Puma
     # @example
     #   set_remote_address :localhost
     #
-    def set_remote_address(val=:socket)
+    def set_remote_address(val = :socket)
       case val
       when :socket
         @options[:remote_address] = val
@@ -1241,7 +1240,7 @@ module Puma
     #
     # @version 5.0.0
     #
-    def fork_worker(after_requests=1000)
+    def fork_worker(after_requests = 1000)
       @options[:fork_worker] = Integer(after_requests)
     end
 
@@ -1284,7 +1283,7 @@ module Puma
     # @example
     #   mutate_stdout_and_stderr_to_sync_on_write false
     #
-    def mutate_stdout_and_stderr_to_sync_on_write(enabled=true)
+    def mutate_stdout_and_stderr_to_sync_on_write(enabled = true)
       @options[:mutate_stdout_and_stderr_to_sync_on_write] = enabled
     end
 

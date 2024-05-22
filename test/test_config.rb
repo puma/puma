@@ -36,7 +36,7 @@ class TestConfigFile < TestConfigFileBase
       conf.app
     end
 
-    assert_equal [200, {"Content-Type"=>"text/plain"}, ["Hello World"]], conf.app.call({})
+    assert_equal [200, { "Content-Type" => "text/plain" }, ["Hello World"]], conf.app.call({})
 
     assert_equal [bind], conf.options[:binds]
   end
@@ -571,7 +571,7 @@ class TestConfigFile < TestConfigFileBase
   def test_http_content_length_limit
     assert_nil Puma::Configuration.new.options.default_options[:http_content_length_limit]
 
-    conf = Puma::Configuration.new({ http_content_length_limit: 10000})
+    conf = Puma::Configuration.new({ http_content_length_limit: 10000 })
 
     assert_equal 10000, conf.final_options[:http_content_length_limit]
   end

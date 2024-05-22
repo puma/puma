@@ -1,5 +1,4 @@
 module TestPuma
-
   # A subclass of String, allows processing the response returned by
   # `PumaSocket#send_http_read_response` and the `read_response` method added
   # to native socket instances (created with `PumaSocket#new_socket` and
@@ -47,7 +46,7 @@ module TestPuma
         size = size.to_i 16
 
         decoded << body.byteslice(0, size)
-        body = body.byteslice (size+2)..-1       # remove segment ending "\r\n"
+        body = body.byteslice (size + 2)..-1       # remove segment ending "\r\n"
         break if body.empty? || body.nil?
       end
       decoded

@@ -1,48 +1,6 @@
 inherit_from: "./.rubocop.yml"
 
-# 29 offenses
-Layout/SpaceAroundOperators:
-  Enabled: true
-
-# 21 offenses
-Layout/SpaceInsideBlockBraces:
-  Enabled: true
-
-# 16 offenses
-Layout/SpaceAroundEqualsInParameterDefault:
-  Enabled: true
-  EnforcedStyle: no_space
-
-# 15 offenses
-Layout/SpaceInsideHashLiteralBraces:
-  Enabled: true
-  EnforcedStyle: no_space
-
-# 8 offenses
-Layout/EmptyLines:
-  Enabled: true
-
-# 4 offenses
-Layout/EmptyLinesAroundClassBody:
-  Enabled: true
-  Exclude:
-    - 'test/**/*'
-
-# 6 offenses
-Layout/EmptyLinesAroundMethodBody:
-  Enabled: true
-
-# 5 offenses
-Layout/EmptyLinesAroundModuleBody:
-  Enabled: true
-
-# 5 offenses
-Layout/IndentationWidth:
-  Enabled: true
-  
-# >200 offenses for 80
-# 58 offenses for 100
-# 18 offenses for 120
+# 49 offenses
 Metrics/LineLength:
   Max: 120
   AllowHeredoc: true

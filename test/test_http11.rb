@@ -71,7 +71,6 @@ class Http11ParserTest < Minitest::Test
 
     parser.reset
     assert parser.nread == 0, "Number read after reset should be 0"
-
   end
 
   def test_parse_dumbfuck_headers
@@ -126,8 +125,8 @@ class Http11ParserTest < Minitest::Test
   end
 
   # lame random garbage maker
-  def rand_data(min, max, readable=true)
-    count = min + ((rand(max)+1) *10).to_i
+  def rand_data(min, max, readable = true)
+    count = min + ((rand(max) + 1) * 10).to_i
     res = count.to_s + "/"
 
     if readable
@@ -164,7 +163,7 @@ class Http11ParserTest < Minitest::Test
 
     # then that large header names are caught
     10.times do |c|
-      get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-#{rand_data(1024, 1024+(c*1024))}: Test\r\n\r\n"
+      get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-#{rand_data(1024, 1024 + (c * 1024))}: Test\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
         parser.reset
@@ -173,7 +172,7 @@ class Http11ParserTest < Minitest::Test
 
     # then that large mangled field values are caught
     10.times do |c|
-      get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-Test: #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
+      get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-Test: #{rand_data(1024, 1024 + (c * 1024), false)}\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
         parser.reset
@@ -190,7 +189,7 @@ class Http11ParserTest < Minitest::Test
 
     # finally just that random garbage gets blocked all the time
     10.times do |c|
-      get = "GET #{rand_data(1024, 1024+(c*1024), false)} #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
+      get = "GET #{rand_data(1024, 1024 + (c * 1024), false)} #{rand_data(1024, 1024 + (c * 1024), false)}\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
         parser.reset

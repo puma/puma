@@ -2,7 +2,6 @@
 require 'stringio'
 
 module Puma
-
   # Puma deliberately avoids the use of the json gem and instead performs JSON
   # serialization without any external dependencies. In a puma cluster, loading
   # any gem into the puma master process means that operators cannot use a

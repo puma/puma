@@ -8,6 +8,7 @@ AllCops:
   StyleGuideCopsOnly: false
   Exclude:
     - 'tmp/**/*'
+    - '.bundle/**/*'
     - '**/vendor/bundle/**/*'
     - 'examples/**/*'
     - 'pkg/**/*'
@@ -22,8 +23,11 @@ Performance:
 # ————————————————————————————————————————— disabled cops
 
 # ————————————————————————————————————————— enabled cops
+
+# Layout
+
 Layout/AccessModifierIndentation:
-  EnforcedStyle: indent
+  Enabled: true
 
 Layout/IndentationStyle:
   Enabled: true
@@ -35,7 +39,6 @@ Layout/SpaceAroundKeyword:
   Enabled: true
 
 Layout/SpaceBeforeBlockBraces:
-  EnforcedStyleForEmptyBraces: no_space
   Enabled: true
 
 Layout/SpaceBeforeFirstArg:
@@ -50,23 +53,56 @@ Layout/TrailingEmptyLines:
 Layout/TrailingWhitespace:
   Enabled: true
 
+Layout/SpaceAroundOperators:
+  Enabled: true
+
+Layout/SpaceInsideBlockBraces:
+  Enabled: true
+
+Layout/SpaceAroundEqualsInParameterDefault:
+  Enabled: true
+
+Layout/SpaceInsideHashLiteralBraces:
+  Enabled: true
+
+Layout/EmptyLines:
+  Enabled: true
+
+Layout/EmptyLinesAroundClassBody:
+  Enabled: true
+  Exclude:
+    - 'test/**/*'
+
+Layout/EmptyLinesAroundMethodBody:
+  Enabled: true
+
+Layout/EmptyLinesAroundModuleBody:
+  Enabled: true
+
+# Lint
+
 Lint/Debugger:
   Enabled: true
 
+# Metrics
+
 Metrics/ParameterLists:
   Max: 7
+
+# Naming
 
 Naming/ConstantName:
   Enabled: true
 
 Naming/MethodName:
   Enabled: true
-  EnforcedStyle: snake_case
   Exclude:
     - 'test/**/**'
 
 Naming/VariableName:
   Enabled: true
+
+# Style
 
 Style/MethodDefParentheses:
   Enabled: true

@@ -74,7 +74,7 @@ run lambda { |env|
   when :s      # body is a single string in an array
     headers[hdr_content_length] = (1_024 * len).to_s
     body = cache_string[hash_key] ||= begin
-      info << str_1kb.byteslice(0, info_len_adj) << "\n" << (str_1kb * (len-1))
+      info << str_1kb.byteslice(0, info_len_adj) << "\n" << (str_1kb * (len - 1))
       [info]
     end
   end

@@ -20,8 +20,8 @@ unless ENV["PUMA_DISABLE_SSL"]
     true
   elsif have_library('libcrypto', 'BIO_read') && have_library('libssl', 'SSL_CTX_new')
     true
-  elsif %w'crypto libeay32'.find {|crypto| have_library(crypto, 'BIO_read')} &&
-      %w'ssl ssleay32'.find {|ssl| have_library(ssl, 'SSL_CTX_new')}
+  elsif %w'crypto libeay32'.find { |crypto| have_library(crypto, 'BIO_read') } &&
+      %w'ssl ssleay32'.find { |ssl| have_library(ssl, 'SSL_CTX_new') }
     true
   else
     puts '** Puma will be compiled without SSL support'

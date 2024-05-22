@@ -9,7 +9,7 @@ require "puma/server"
 
 class PumaServerCurrentApplication
   def call(env)
-    [200, {"Content-Type" => "text/plain"}, [Puma::Server.current.to_s]]
+    [200, { "Content-Type" => "text/plain" }, [Puma::Server.current.to_s]]
   end
 end
 
@@ -18,7 +18,7 @@ class PumaServerCurrentTest < Minitest::Test
 
   def setup
     @tester = PumaServerCurrentApplication.new
-    @server = Puma::Server.new @tester, nil, {log_writer: Puma::LogWriter.strings, clean_thread_locals: true}
+    @server = Puma::Server.new @tester, nil, { log_writer: Puma::LogWriter.strings, clean_thread_locals: true }
     @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
     @tcp = "http://127.0.0.1:#{@port}"
     @url = URI.parse(@tcp)
@@ -40,6 +40,6 @@ class PumaServerCurrentTest < Minitest::Test
       end
     end
 
-    assert_equal [server_string]*3, responses
+    assert_equal [server_string] * 3, responses
   end
 end

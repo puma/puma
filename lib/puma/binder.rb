@@ -8,7 +8,6 @@ require_relative 'util'
 require_relative 'configuration'
 
 module Puma
-
   if HAS_SSL
     require_relative 'minissl'
     require_relative 'minissl/context_builder'
@@ -74,7 +73,7 @@ module Puma
 
     # @version 5.0.0
     def create_inherited_fds(env_hash)
-      env_hash.select {|k,v| k =~ /PUMA_INHERIT_\d+/}.each do |_k, v|
+      env_hash.select { |k,v| k =~ /PUMA_INHERIT_\d+/ }.each do |_k, v|
         fd, url = v.split(":", 2)
         @inherited_fds[url] = fd.to_i
       end.keys # pass keys back for removal
@@ -200,7 +199,7 @@ module Puma
               end
 
               if u = params['mode']
-                mode = Integer('0'+u)
+                mode = Integer('0' + u)
               end
 
               if u = params['backlog']
@@ -322,7 +321,7 @@ module Puma
     # +backlog+ indicates how many unaccepted connections the kernel should
     # allow to accumulate before returning connection refused.
     #
-    def add_tcp_listener(host, port, optimize_for_latency=true, backlog=1024)
+    def add_tcp_listener(host, port, optimize_for_latency = true, backlog = 1024)
       if host == "localhost"
         loopback_addresses.each do |addr|
           add_tcp_listener addr, port, optimize_for_latency, backlog
@@ -351,7 +350,7 @@ module Puma
     end
 
     def add_ssl_listener(host, port, ctx,
-                         optimize_for_latency=true, backlog=1024)
+                         optimize_for_latency = true, backlog = 1024)
 
       raise "Puma compiled without SSL support" unless HAS_SSL
       # Puma will try to use local authority context if context is supplied nil
@@ -401,7 +400,7 @@ module Puma
 
     # Tell the server to listen on +path+ as a UNIX domain socket.
     #
-    def add_unix_listener(path, umask=nil, mode=nil, backlog=1024)
+    def add_unix_listener(path, umask = nil, mode = nil, backlog = 1024)
       # Let anyone connect by default
       umask ||= 0
 

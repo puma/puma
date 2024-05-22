@@ -9,7 +9,7 @@ class TestThreadPool < Minitest::Test
   end
 
   def new_pool(min, max, &block)
-    block = proc { } unless block
+    block = proc {} unless block
     options = {
       min_threads: min,
       max_threads: max
@@ -18,7 +18,7 @@ class TestThreadPool < Minitest::Test
   end
 
   def mutex_pool(min, max, &block)
-    block = proc { } unless block
+    block = proc {} unless block
     options = {
       min_threads: min,
       max_threads: max
@@ -34,7 +34,7 @@ class TestThreadPool < Minitest::Test
     def <<(work, &block)
       work = [work] unless work.is_a?(Array)
       with_mutex do
-        work.each {|arg| super arg}
+        work.each { |arg| super arg }
         yield if block
         @not_full.wait(@mutex)
       end
@@ -45,7 +45,7 @@ class TestThreadPool < Minitest::Test
     end
 
     # If +wait+ is true, wait until the trim request is completed before returning.
-    def trim(force=false, wait: true)
+    def trim(force = false, wait: true)
       super(force)
       Thread.pass until @trim_requested == 0 if wait
     end
@@ -65,7 +65,7 @@ class TestThreadPool < Minitest::Test
   def test_thread_name
     skip 'Thread.name not supported' unless Thread.current.respond_to?(:name)
     thread_name = nil
-    pool = mutex_pool(0, 1) {thread_name = Thread.current.name}
+    pool = mutex_pool(0, 1) { thread_name = Thread.current.name }
     pool << 1
     assert_equal('puma tst tp 001', thread_name)
   end
@@ -80,7 +80,7 @@ class TestThreadPool < Minitest::Test
     found_thread = false
     pool = mutex_pool(0, 1) do
       # Read every /proc/<pid>/task/<tid>/comm file to find the thread name
-      Dir.entries(task_dir).select {|tid| File.directory?(File.join(task_dir, tid))}.each do |tid|
+      Dir.entries(task_dir).select { |tid| File.directory?(File.join(task_dir, tid)) }.each do |tid|
         comm_file = File.join(task_dir, tid, 'comm')
         next unless File.file?(comm_file) && File.readable?(comm_file)
 
@@ -128,7 +128,7 @@ class TestThreadPool < Minitest::Test
         end
       ]
     }
-    block = proc { }
+    block = proc {}
     pool = MutexPool.new('tst', options, &block)
 
     pool << 1
@@ -194,7 +194,7 @@ class TestThreadPool < Minitest::Test
       max_threads: 1,
       before_thread_exit: [ -> { exited << 1 } ]
     }
-    block = proc { }
+    block = proc {}
     pool = MutexPool.new('tst', options, &block)
 
     pool << 1
@@ -248,7 +248,7 @@ class TestThreadPool < Minitest::Test
   def test_reap_only_dead_threads
     pool = mutex_pool(2,2) do
       th = Thread.current
-      Thread.new {th.join; pool.signal}
+      Thread.new { th.join; pool.signal }
       th.kill
     end
 
@@ -274,7 +274,7 @@ class TestThreadPool < Minitest::Test
   def test_auto_reap_dead_threads
     pool = mutex_pool(2,2) do
       th = Thread.current
-      Thread.new {th.join; pool.signal}
+      Thread.new { th.join; pool.signal }
       th.kill
     end
 

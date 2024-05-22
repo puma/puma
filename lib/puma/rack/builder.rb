@@ -168,7 +168,7 @@ module Puma::Rack
       [app, options]
     end
 
-    def self.new_from_string(builder_script, file="(rackup)")
+    def self.new_from_string(builder_script, file = "(rackup)")
       eval "Puma::Rack::Builder.new {\n" + builder_script + "\n}.to_app",
         TOPLEVEL_BINDING, file, 0
     end
@@ -244,7 +244,7 @@ module Puma::Rack
     #
     #   use SomeMiddleware
     #   run MyApp
-    def warmup(prc=nil, &block)
+    def warmup(prc = nil, &block)
       @warmup = prc || block
     end
 
@@ -289,7 +289,7 @@ module Puma::Rack
     def generate_map(default_app, mapping)
       require_relative 'urlmap'
 
-      mapped = default_app ? {'/' => default_app} : {}
+      mapped = default_app ? { '/' => default_app } : {}
       mapping.each { |r,b| mapped[r] = self.class.new(default_app, &b).to_app }
       URLMap.new(mapped)
     end

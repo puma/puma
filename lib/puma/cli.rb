@@ -93,7 +93,7 @@ module Puma
     #
 
     def setup_options
-      @conf = Configuration.new({}, {events: @events}) do |user_config, file_config|
+      @conf = Configuration.new({}, { events: @events }) do |user_config, file_config|
         @parser = OptionParser.new do |o|
           o.on "-b", "--bind URI", "URI to bind to (tcp://, unix://, ssl://)" do |arg|
             user_config.bind arg

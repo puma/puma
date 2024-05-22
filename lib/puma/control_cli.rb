@@ -8,7 +8,6 @@ require 'socket'
 
 module Puma
   class ControlCLI
-
     # values must be string or nil
     # value of `nil` means command cannot be processed via signal
     # @version 5.0.3
@@ -37,7 +36,7 @@ module Puma
     # @version 5.0.0
     PRINTABLE_COMMANDS = %w[gc-stats stats thread-backtraces].freeze
 
-    def initialize(argv, stdout=STDOUT, stderr=STDERR)
+    def initialize(argv, stdout = STDOUT, stderr = STDERR)
       @state = nil
       @quiet = false
       @pidfile = nil

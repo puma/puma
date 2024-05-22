@@ -4,7 +4,6 @@ module Puma
   class Cluster < Puma::Runner
     #—————————————————————— DO NOT USE — this class is for internal use only ———
 
-
     # This class is instantiated by the `Puma::Cluster` and represents a single
     # worker process.
     #

@@ -3,7 +3,6 @@
 module Puma
   #———————————————————————— DO NOT USE — this class is for internal use only ———
 
-
   # The methods here are included in Server, but are separated into this file.
   # All the methods here pertain to passing the request to the app, then
   # writing the response back to the client.
@@ -13,7 +12,6 @@ module Puma
   # @version 5.0.3
   #
   module Request # :nodoc:
-
     # Single element array body: smaller bodies are written to io_buffer first,
     # then a single write from io_buffer. Larger sizes are written separately.
     # Also fixes max size of chunked file body read.
@@ -50,9 +48,8 @@ module Puma
     def handle_request(client, requests)
       env = client.env
       io_buffer = client.io_buffer
-      socket  = client.io   # io may be a MiniSSL::Socket
+      socket = client.io   # io may be a MiniSSL::Socket
       app_body = nil
-
 
       return false if closed_socket?(socket)
 
@@ -404,11 +401,11 @@ module Puma
       if host = env[HTTP_HOST]
         # host can be a hostname, ipv4 or bracketed ipv6. Followed by an optional port.
         if colon = host.rindex("]:") # IPV6 with port
-          env[SERVER_NAME] = host[0, colon+1]
-          env[SERVER_PORT] = host[colon+2, host.bytesize]
+          env[SERVER_NAME] = host[0, colon + 1]
+          env[SERVER_PORT] = host[colon + 2, host.bytesize]
         elsif !host.start_with?("[") && colon = host.index(":") # not hostname or IPV4 with port
           env[SERVER_NAME] = host[0, colon]
-          env[SERVER_PORT] = host[colon+1, host.bytesize]
+          env[SERVER_PORT] = host[colon + 1, host.bytesize]
         else
           env[SERVER_NAME] = host
           env[SERVER_PORT] = default_server_port(env)
@@ -569,7 +566,6 @@ module Puma
     # @version 5.0.3
     #
     def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
-
       line_ending = LINE_END
       colon = COLON
 

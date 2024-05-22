@@ -29,7 +29,7 @@ module Puma
 
       @events = options[:events] || ::Puma::Events.new
 
-      conf = ::Puma::Configuration.new(options, default_options.merge({events: @events})) do |user_config, file_config, default_config|
+      conf = ::Puma::Configuration.new(options, default_options.merge({ events: @events })) do |user_config, file_config, default_config|
         if options.delete(:Verbose)
           begin
             require 'rack/commonlogger'  # Rack 1.x

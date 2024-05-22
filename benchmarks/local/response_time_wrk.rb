@@ -4,7 +4,6 @@ require_relative 'bench_base'
 require_relative 'puma_info'
 
 module TestPuma
-
   # This file is called from `response_time_wrk.sh`.  It requires `wrk`.
   # We suggest using https://github.com/ioquatix/wrk
   #
@@ -32,7 +31,6 @@ module TestPuma
   #   [array, chunk] * [10kb, 50kb, 100kb]
   #
   class ResponseTimeWrk < ResponseTimeBase
-
     WRK = ENV.fetch('WRK', 'wrk')
 
     def run
@@ -100,7 +98,7 @@ module TestPuma
       @puma_info.run 'stop'
       sleep 2
       running_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - time_start
-      puts format("\n%2d:%d Total Time", (running_time/60).to_i, running_time % 60)
+      puts format("\n%2d:%d Total Time", (running_time / 60).to_i, running_time % 60)
     end
 
     # Prints parsed data of each wrk run. Similar to:
@@ -116,7 +114,7 @@ module TestPuma
       digits = [4 - Math.log10(@max_100_time).to_i, 3].min
 
       fmt_vals = +'%-6s %6d'
-      fmt_vals << (digits < 0 ? "  %6d" : "  %6.#{digits}f")*5
+      fmt_vals << (digits < 0 ? "  %6d" : "  %6.#{digits}f") * 5
       fmt_vals << '  %8d'
 
       label = @single_type ? 'Size' : 'Type'
@@ -141,7 +139,6 @@ module TestPuma
           puts format(fmt_vals, desc, hsh[:rps], *times, hsh[:resp_size])
         end
       end
-
     end
 
     # Checks if any body files need to be created, reads all the body files,
@@ -212,7 +209,7 @@ module TestPuma
       end
 
       threads.each(&:join)
-      loops_time = (1_000*(Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st)).to_i
+      loops_time = (1_000 * (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st)).to_i
 
       threads.clear
       threads = nil

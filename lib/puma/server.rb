@@ -17,7 +17,6 @@ require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 
 module Puma
-
   # This method was private on Ruby 2.4 but became public on Ruby 2.5+:
   Thread.send(:attr_accessor, :puma_server)
 
@@ -49,7 +48,6 @@ module Puma
 
     attr_accessor :app
     attr_accessor :binder
-
 
     # Create a server for the rack app +app+.
     #
@@ -219,7 +217,6 @@ module Puma
       @thread_pool&.spawned
     end
 
-
     # This number represents the number of requests that
     # the server is capable of taking right now.
     #
@@ -238,7 +235,7 @@ module Puma
     # up in the background to handle requests. Otherwise requests
     # are handled synchronously.
     #
-    def run(background=true, thread_name: 'srv')
+    def run(background = true, thread_name: 'srv')
       BasicSocket.do_not_reverse_lookup = true
 
       @events.fire :state, :booting
@@ -251,7 +248,6 @@ module Puma
         @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
         @reactor.run
       end
-
 
       @thread_pool.auto_reap! if options[:reaping_time]
       @thread_pool.auto_trim! if options[:auto_trim_time]
@@ -550,7 +546,7 @@ module Puma
 
     # A fallback rack response if +@app+ raises as exception.
     #
-    def lowlevel_error(e, env, status=500)
+    def lowlevel_error(e, env, status = 500)
       if handler = options[:lowlevel_error_handler]
         if handler.arity == 1
           return handler.call(e)
@@ -587,7 +583,7 @@ module Puma
         $stdout.syswrite "#{pid}: === Begin thread backtrace dump ===\n"
 
         threads.each_with_index do |t,i|
-          $stdout.syswrite "#{pid}: Thread #{i+1}/#{total}: #{t.inspect}\n"
+          $stdout.syswrite "#{pid}: Thread #{i + 1}/#{total}: #{t.inspect}\n"
           $stdout.syswrite "#{pid}: #{t.backtrace.join("\n#{pid}: ")}\n\n"
         end
         $stdout.syswrite "#{pid}: === End thread backtrace dump ===\n"
@@ -624,17 +620,17 @@ module Puma
     # Stops the acceptor thread and then causes the worker threads to finish
     # off the request queue before finally exiting.
 
-    def stop(sync=false)
+    def stop(sync = false)
       notify_safely(STOP_COMMAND)
       @thread.join if @thread && sync
     end
 
-    def halt(sync=false)
+    def halt(sync = false)
       notify_safely(HALT_COMMAND)
       @thread.join if @thread && sync
     end
 
-    def begin_restart(sync=false)
+    def begin_restart(sync = false)
       notify_safely(RESTART_COMMAND)
       @thread.join if @thread && sync
     end
@@ -651,12 +647,11 @@ module Puma
     # @version 5.0.0
     # @!attribute [r] stats
     def stats
-      STAT_METHODS.map {|name| [name, send(name) || 0]}.to_h
+      STAT_METHODS.map { |name| [name, send(name) || 0] }.to_h
     end
 
     # below are 'delegations' to binder
     # remove in Puma 7?
-
 
     def add_tcp_listener(host, port, optimize_for_latency = true, backlog = 1024)
       @binder.add_tcp_listener host, port, optimize_for_latency, backlog

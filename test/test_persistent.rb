@@ -10,7 +10,7 @@ class TestPersistent < Minitest::Test
     @http10_request = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\n\r\n"
     @keep_request   = "GET / HTTP/1.0\r\nHost: test.com\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\n\r\n"
 
-    @valid_post    = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello"
+    @valid_post = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello"
     @valid_no_body  = "GET / HTTP/1.1\r\nHost: test.com\r\nX-Status: 204\r\nContent-Type: text/plain\r\n\r\n"
 
     @headers = { "X-Header" => "Works" }
@@ -23,7 +23,7 @@ class TestPersistent < Minitest::Test
       [status, @headers, @body]
     end
 
-    opts = {max_threads: 1}
+    opts = { max_threads: 1 }
     @server = Puma::Server.new @simple, nil, opts
     @port = (@server.add_tcp_listener HOST, 0).addr[1]
     @server.run
@@ -36,7 +36,7 @@ class TestPersistent < Minitest::Test
     @server.stop(true)
   end
 
-  def lines(count, s=@client)
+  def lines(count, s = @client)
     str = +''
     Timeout.timeout(5) do
       count.times { str << (s.gets || "") }
@@ -128,7 +128,6 @@ class TestPersistent < Minitest::Test
     @client << @valid_request
 
     assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n\r\n", lines(10)
-
   end
 
   def test_client11_close
@@ -182,7 +181,7 @@ class TestPersistent < Minitest::Test
   end
 
   def test_allow_app_to_chunk_itself
-    @headers = {'Transfer-Encoding' => "chunked" }
+    @headers = { 'Transfer-Encoding' => "chunked" }
 
     @body = ["5\r\nhello\r\n0\r\n\r\n"]
 
@@ -190,7 +189,6 @@ class TestPersistent < Minitest::Test
 
     assert_equal "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n", lines(7)
   end
-
 
   def test_two_requests_in_one_chunk
     @server.instance_variable_set(:@persistent_timeout, 3)

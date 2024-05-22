@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
 module Puma
-
   # This is an event sink used by `Puma::Server` to handle
   # lifecycle events such as :on_booted, :on_restart, and :on_stopped.
   # Using `Puma::DSL` it is possible to register callback hooks
   # for each event type.
   class Events
-
     def initialize
       @hooks = Hash.new { |h,k| h[k] = [] }
     end
@@ -18,7 +16,7 @@ module Puma
     end
 
     # Register a callback for a given hook
-    def register(hook, obj=nil, &blk)
+    def register(hook, obj = nil, &blk)
       if obj and blk
         raise "Specify either an object or a block, not both"
       end

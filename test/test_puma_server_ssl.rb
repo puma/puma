@@ -50,10 +50,10 @@ class TestPumaServerSSL < Minitest::Test
     ctx = Puma::MiniSSL::Context.new
 
     if Puma.jruby?
-      ctx.keystore =  File.expand_path "../examples/puma/keystore.jks", __dir__
+      ctx.keystore = File.expand_path "../examples/puma/keystore.jks", __dir__
       ctx.keystore_pass = 'jruby_puma'
     else
-      ctx.key  =  File.expand_path "../examples/puma/puma_keypair.pem", __dir__
+      ctx.key = File.expand_path "../examples/puma/puma_keypair.pem", __dir__
       ctx.cert = File.expand_path "../examples/puma/cert_puma.pem", __dir__
     end
 
@@ -62,7 +62,7 @@ class TestPumaServerSSL < Minitest::Test
     yield ctx if block_given?
 
     @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
+    @server = Puma::Server.new app, nil, { log_writer: @log_writer }
     @port = (@server.add_ssl_listener HOST, 0, ctx).addr[1]
     @bind_port = @port
     @server.run
@@ -258,7 +258,7 @@ class TestPumaServerSSL < Minitest::Test
       @server&.stop true
 
       cipher_suite = 'TLS_CHACHA20_POLY1305_SHA256'
-      start_server { |ctx| ctx.ssl_ciphersuites = cipher_suite}
+      start_server { |ctx| ctx.ssl_ciphersuites = cipher_suite }
 
       cipher = send_http(ctx: new_ctx).cipher
 
@@ -281,7 +281,7 @@ class TestPumaServerSSLClient < Minitest::Test
   # Context can be shared, may help with JRuby
   CTX = Puma::MiniSSL::Context.new.tap { |ctx|
     if Puma.jruby?
-      ctx.keystore =  "#{CERT_PATH}/keystore.jks"
+      ctx.keystore = "#{CERT_PATH}/keystore.jks"
       ctx.keystore_pass = 'jruby_puma'
     else
       ctx.key  = "#{CERT_PATH}/server.key"
@@ -297,7 +297,7 @@ class TestPumaServerSSLClient < Minitest::Test
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    server = Puma::Server.new app, nil, {log_writer: log_writer}
+    server = Puma::Server.new app, nil, { log_writer: log_writer }
     server.add_ssl_listener LOCALHOST, port, context
     host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
     @bind_port = server.connected_ports[0]
@@ -502,7 +502,7 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
 
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
     log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    server = Puma::Server.new app, nil, {log_writer: log_writer}
+    server = Puma::Server.new app, nil, { log_writer: log_writer }
     server.add_ssl_listener LOCALHOST, 0, ctx
     @bind_port = server.connected_ports[0]
     server.run
@@ -544,10 +544,10 @@ class TestPumaSSLCertChain < Minitest::Test
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
+    @server = Puma::Server.new app, nil, { log_writer: @log_writer }
 
     mini_ctx = Puma::MiniSSL::Context.new
-    mini_ctx.key  = "#{CHAIN_DIR}/cert.key"
+    mini_ctx.key = "#{CHAIN_DIR}/cert.key"
     yield mini_ctx
 
     @bind_port = (@server.add_ssl_listener HOST, 0, mini_ctx).addr[1]
@@ -579,7 +579,7 @@ class TestPumaSSLCertChain < Minitest::Test
   def test_single_cert_string_with_ca
     cert_chain { |mini_ctx|
       mini_ctx.cert_pem = File.read "#{CHAIN_DIR}/cert.crt"
-      mini_ctx.ca   = "#{CHAIN_DIR}/ca_chain.pem"
+      mini_ctx.ca = "#{CHAIN_DIR}/ca_chain.pem"
     }
   end
 

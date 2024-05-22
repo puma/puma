@@ -17,7 +17,7 @@ module Puma
     # @version 5.0.0
     HAS_TLS1_3 = IS_JRUBY ||
         ((OPENSSL_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) != -1 &&
-         (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) !=-1)
+         (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) != -1)
 
     class Socket
       def initialize(socket, engine)
@@ -382,7 +382,6 @@ module Puma
         raise ArgumentError, "Invalid value of no_tlsv1_1=" unless ['true', 'false', true, false].include?(tlsv1_1)
         @no_tlsv1_1 = tlsv1_1
       end
-
     end
 
     VERIFY_NONE = 0

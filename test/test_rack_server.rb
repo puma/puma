@@ -197,7 +197,7 @@ class TestRackServer < Minitest::Test
     str_ary = %w[0123456789 0123456789 0123456789 0123456789]
     str_ary_bytes = str_ary.to_ary.inject(0) { |sum, el| sum + el.bytesize }
 
-    body = Rack::BodyProxy.new(str_ary) { }
+    body = Rack::BodyProxy.new(str_ary) {}
 
     @server.app = lambda { |env| [200, { "X-Header" => "Works" }, body] }
 

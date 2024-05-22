@@ -28,7 +28,7 @@ class TestPumaLocalhostAuthority < Minitest::Test
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
+    @server = Puma::Server.new app, nil, { log_writer: @log_writer }
     @server.add_ssl_listener LOCALHOST, 0, nil
     @bind_port = @server.connected_ports[0]
     @server.run
@@ -54,7 +54,7 @@ class TestPumaSSLLocalhostAuthority < Minitest::Test
 
     @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
 
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
+    @server = Puma::Server.new app, nil, { log_writer: @log_writer }
     @server.app = app
 
     @server.add_ssl_listener LOCALHOST, 0, nil

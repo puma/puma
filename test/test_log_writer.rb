@@ -123,9 +123,9 @@ class TestLogWriter < Minitest::Test
   end
 
   def test_parse_error
-    app = proc { |_env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    app = proc { |_env| [200, { "Content-Type" => "plain/text" }, ["hello\n"]] }
     log_writer = Puma::LogWriter.strings
-    server = Puma::Server.new app, nil, {log_writer: log_writer}
+    server = Puma::Server.new app, nil, { log_writer: log_writer }
 
     host = '127.0.0.1'
     port = (server.add_tcp_listener host, 0).addr[1]
@@ -133,7 +133,7 @@ class TestLogWriter < Minitest::Test
 
     sock = TCPSocket.new host, port
     path = "/"
-    params = "a"*1024*10
+    params = "a" * 1024 * 10
 
     sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
     sock.read
@@ -175,6 +175,5 @@ class TestLogWriter < Minitest::Test
     assert_includes error, "SSL error"
     assert_includes error, "peer: <unknown>"
     assert_includes error, "cert: :"
-
   end if ::Puma::HAS_SSL
 end

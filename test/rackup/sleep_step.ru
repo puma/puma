@@ -6,5 +6,5 @@ run lambda { |env|
   dly = (p[/\/sleep(\d+)/,1] || '0').to_i
   step = p[/(\d+)\z/,1].to_i
   sleep dly
-  [200, {"Content-Type" => "text/plain"}, ["Slept #{dly} #{step}"]]
+  [200, { "Content-Type" => "text/plain" }, ["Slept #{dly} #{step}"]]
 }

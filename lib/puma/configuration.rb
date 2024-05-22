@@ -172,7 +172,7 @@ module Puma
       http_content_length_limit: nil
     }
 
-    def initialize(user_options={}, default_options = {}, &block)
+    def initialize(user_options = {}, default_options = {}, &block)
       default_options = self.puma_default_options.merge(default_options)
 
       @options     = UserFileDefaultOptions.new(user_options, default_options)

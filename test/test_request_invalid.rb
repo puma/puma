@@ -35,7 +35,7 @@ class TestRequestInvalid < Minitest::Test
     }
 
     @log_writer = Puma::LogWriter.strings
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
+    @server = Puma::Server.new app, nil, { log_writer: @log_writer }
     @port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma.jruby?
@@ -55,7 +55,7 @@ class TestRequestInvalid < Minitest::Test
   end
 
   def new_connection
-    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
+    TCPSocket.new(@host, @port).tap { |sock| @ios << sock }
   end
 
   def assert_status(str, status = 400)
@@ -156,7 +156,7 @@ class TestRequestInvalid < Minitest::Test
 
   def test_chunked_size_bad_characters_1
     te = 'Transfer-Encoding: chunked'
-    chunked ='5.01'
+    chunked = '5.01'
 
     data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
 
@@ -165,7 +165,7 @@ class TestRequestInvalid < Minitest::Test
 
   def test_chunked_size_bad_characters_2
     te = 'Transfer-Encoding: chunked'
-    chunked ='+5'
+    chunked = '+5'
 
     data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
 
@@ -174,7 +174,7 @@ class TestRequestInvalid < Minitest::Test
 
   def test_chunked_size_bad_characters_3
     te = 'Transfer-Encoding: chunked'
-    chunked ='5 bad'
+    chunked = '5 bad'
 
     data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n"
 
@@ -183,7 +183,7 @@ class TestRequestInvalid < Minitest::Test
 
   def test_chunked_size_bad_characters_4
     te = 'Transfer-Encoding: chunked'
-    chunked ='0xA'
+    chunked = '0xA'
 
     data = send_http_and_read "#{GET_PREFIX}#{te}\r\n\r\n1\r\nh\r\n#{chunked}\r\nHelloHello\r\n0\r\n\r\n"
 

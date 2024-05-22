@@ -24,7 +24,7 @@ class TestPumaServer < Minitest::Test
 
     @log_writer = Puma::LogWriter.strings
     @events = Puma::Events.new
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer}
+    @server = Puma::Server.new @app, @events, { log_writer: @log_writer }
   end
 
   def teardown
@@ -105,7 +105,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def new_connection
-    TCPSocket.new(@host, @port).tap {|socket| @ios << socket}
+    TCPSocket.new(@host, @port).tap { |socket| @ios << socket }
   end
 
   def test_normalize_host_header_missing
@@ -322,7 +322,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_HEAD_has_no_body
-    server_run { [200, {"Foo" => "Bar"}, ["hello"]] }
+    server_run { [200, { "Foo" => "Bar" }, ["hello"]] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -386,7 +386,6 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_early_hints_are_ignored_if_connection_lost
-
     server_run(early_hints: true) do |env|
       env['rack.early_hints'].call("Link" => "</script.js>; rel=preload")
       [200, { "X-Hello" => "World" }, ["Hello world!"]]
@@ -445,7 +444,6 @@ class TestPumaServer < Minitest::Test
 
     # Content Too Large
     assert_equal ["HTTP/1.1 413 #{STATUS_CODES[413]}", "Content-Length: 17"], h
-
   end
 
   def test_GET_with_no_body_has_sane_chunking
@@ -476,7 +474,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_force_shutdown_custom_error_message
-    handler = lambda {|err, env, status| [500, {"Content-Type" => "application/json"}, ["{}\n"]]}
+    handler = lambda { |err, env, status| [500, { "Content-Type" => "application/json" }, ["{}\n"]] }
     server_run(lowlevel_error_handler: handler, force_shutdown_after: 2) do
       @server.stop
       sleep 5
@@ -555,7 +553,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_prints_custom_error
-    re = lambda { |err| [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']] }
+    re = lambda { |err| [302, { 'Content-Type' => 'text', 'Location' => 'foo.html' }, ['302 found']] }
     server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
@@ -566,7 +564,7 @@ class TestPumaServer < Minitest::Test
   def test_leh_gets_env_as_well
     re = lambda { |err,env|
       env['REQUEST_PATH'] || raise('where is env?')
-      [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
+      [302, { 'Content-Type' => 'text', 'Location' => 'foo.html' }, ['302 found']]
     }
 
     server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
@@ -579,7 +577,7 @@ class TestPumaServer < Minitest::Test
   def test_leh_has_status
     re = lambda { |err, env, status|
       raise "Cannot find status" unless status
-      [302, {'Content-Type' => 'text', 'Location' => 'foo.html'}, ['302 found']]
+      [302, { 'Content-Type' => 'text', 'Location' => 'foo.html' }, ['302 found']]
     }
 
     server_run(lowlevel_error_handler: re) { raise "don't leak me bro" }
@@ -606,8 +604,8 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_HEAD_returns_content_headers
-    server_run { [200, {"Content-Type" => "application/pdf",
-                                     "Content-Length" => "4242"}, []] }
+    server_run { [200, { "Content-Type" => "application/pdf",
+                                     "Content-Length" => "4242" }, []] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -615,7 +613,6 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_status_hook_fires_when_server_changes_states
-
     states = []
 
     @events.register(:state) { |s| states << s }
@@ -668,7 +665,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_no_timeout_after_data_received_no_queue
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, queue_requests: false}
+    @server = Puma::Server.new @app, @events, { log_writer: @log_writer, queue_requests: false }
     test_no_timeout_after_data_received
   end
 
@@ -802,7 +799,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_http_11_keep_alive_with_body
-    server_run { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    server_run { [200, { "Content-Type" => "plain/text" }, ["hello\n"]] }
 
     socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
@@ -817,7 +814,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_http_11_close_with_body
-    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+    server_run { [200, { "Content-Type" => "plain/text" }, ["hello"]] }
 
     data = send_http_and_read "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
@@ -847,7 +844,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_http_10_keep_alive_with_body
-    server_run { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    server_run { [200, { "Content-Type" => "plain/text" }, ["hello\n"]] }
 
     socket = send_http "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
@@ -860,7 +857,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_http_10_close_with_body
-    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+    server_run { [200, { "Content-Type" => "plain/text" }, ["hello"]] }
 
     data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
@@ -1210,8 +1207,8 @@ class TestPumaServer < Minitest::Test
     socket.wait_readable 5
     resp = socket.sysread 2_048
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", resp
-    assert_equal 9*1_024, body.bytesize
-    assert_equal 9*1_024, content_length.to_i
+    assert_equal 9 * 1_024, body.bytesize
+    assert_equal 9 * 1_024, content_length.to_i
     assert_equal '012345678', body.delete('x')
   end
 
@@ -1295,7 +1292,7 @@ class TestPumaServer < Minitest::Test
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
     body = nil
     content_length = nil
-    remote_addr =nil
+    remote_addr = nil
     server_run(remote_address: :header, remote_address_header: 'HTTP_X_FORWARDED_FOR') { |env|
       body = env['rack.input'].read
       content_length = env['CONTENT_LENGTH']
@@ -1350,7 +1347,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_empty_header_values
-    server_run { [200, {"X-Empty-Header" => ""}, []] }
+    server_run { [200, { "X-Empty-Header" => "" }, []] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -1408,7 +1405,7 @@ class TestPumaServer < Minitest::Test
 
   # Rack may pass a newline in a header expecting us to split it.
   def test_newline_splits
-    server_run { [200, {'X-header' => "first line\nsecond line"}, ["Hello"]] }
+    server_run { [200, { 'X-header' => "first line\nsecond line" }, ["Hello"]] }
 
     data = send_http_and_read "HEAD / HTTP/1.0\r\n\r\n"
 
@@ -1417,7 +1414,7 @@ class TestPumaServer < Minitest::Test
 
   def test_newline_splits_in_early_hint
     server_run(early_hints: true) do |env|
-      env['rack.early_hints'].call({'X-header' => "first line\nsecond line"})
+      env['rack.early_hints'].call({ 'X-header' => "first line\nsecond line" })
       [200, {}, ["Hello world!"]]
     end
 
@@ -1464,10 +1461,10 @@ class TestPumaServer < Minitest::Test
   # There are three different tests because there are three ways to set header
   # content in Puma. Regular (rack env), early hints, and a special case for
   # overriding content-length.
-  {"cr" => "\r", "lf" => "\n", "crlf" => "\r\n"}.each do |suffix, line_ending|
+  { "cr" => "\r", "lf" => "\n", "crlf" => "\r\n" }.each do |suffix, line_ending|
     # The cr-only case for the following test was CVE-2020-5247
     define_method(:"test_prevent_response_splitting_headers_#{suffix}") do
-      app = ->(_) { [200, {'X-header' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
+      app = ->(_) { [200, { 'X-header' => "untrusted input#{line_ending}Cookie: hack" }, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
 
@@ -1480,7 +1477,7 @@ class TestPumaServer < Minitest::Test
     end
 
     define_method(:"test_prevent_content_length_injection_#{suffix}") do
-      app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
+      app = ->(_) { [200, { 'content-length' => "untrusted input#{line_ending}Cookie: hack" }, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
   end
@@ -1548,7 +1545,7 @@ class TestPumaServer < Minitest::Test
 
   # Shutdown should allow pending requests and app-responses to complete.
   def test_shutdown_requests
-    opts = {s1_response: /204/, s2_response: /204/}
+    opts = { s1_response: /204/, s2_response: /204/ }
     shutdown_requests(**opts)
     shutdown_requests(**opts, queue_requests: false)
   end
@@ -1556,7 +1553,7 @@ class TestPumaServer < Minitest::Test
   # Requests still pending after `force_shutdown_after` should have connection closed (408 w/pending POST body).
   # App-responses still pending should return 503 (uncaught Puma::ThreadPool::ForceShutdown exception).
   def test_force_shutdown
-    opts = {s1_complete: false, s1_response: /503/, s2_response: nil, force_shutdown_after: 0}
+    opts = { s1_complete: false, s1_response: /503/, s2_response: nil, force_shutdown_after: 0 }
     shutdown_requests(**opts)
     shutdown_requests(**opts, queue_requests: false)
     shutdown_requests(**opts, post: true, s2_response: /408/)
@@ -1623,7 +1620,7 @@ class TestPumaServer < Minitest::Test
   # Retryable errors such as ECONNABORTED should be silently swallowed by accept loop.
   def test_accept_econnaborted
     # Match Ruby #accept_nonblock implementation, ECONNABORTED error is extended by IO::WaitReadable.
-    error = Errno::ECONNABORTED.new('accept(2) would block').tap {|e| e.extend IO::WaitReadable}
+    error = Errno::ECONNABORTED.new('accept(2) would block').tap { |e| e.extend IO::WaitReadable }
     stub_accept_nonblock(error)
     assert_empty @log_writer.stderr.string
   end
@@ -1634,7 +1631,7 @@ class TestPumaServer < Minitest::Test
   def test_client_quick_close_no_lowlevel_error_handler_call
     handler = ->(err, env, status) {
       @log_writer.stdout.write "LLEH #{err.message}"
-      [500, {"Content-Type" => "application/json"}, ["{}\n"]]
+      [500, { "Content-Type" => "application/json" }, ["{}\n"]]
     }
 
     server_run(lowlevel_error_handler: handler) { [200, {}, ['Hello World']] }
@@ -1698,7 +1695,7 @@ class TestPumaServer < Minitest::Test
   def test_custom_io_selector
     backend = NIO::Selector.backends.first
 
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :io_selector_backend => backend}
+    @server = Puma::Server.new @app, @events, { log_writer: @log_writer, :io_selector_backend => backend }
     @server.run
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)
@@ -1706,7 +1703,7 @@ class TestPumaServer < Minitest::Test
     assert_equal selector.backend, backend
   end
 
-  def test_drain_on_shutdown(drain=true)
+  def test_drain_on_shutdown(drain = true)
     num_connections = 10
 
     wait = Queue.new
@@ -1714,7 +1711,7 @@ class TestPumaServer < Minitest::Test
       wait.pop
       [200, {}, ["DONE"]]
     end
-    connections = Array.new(num_connections) {send_http "GET / HTTP/1.0\r\n\r\n"}
+    connections = Array.new(num_connections) { send_http "GET / HTTP/1.0\r\n\r\n" }
     @server.stop
     wait.close
     bad = 0
@@ -1823,7 +1820,7 @@ class TestPumaServer < Minitest::Test
   end
 
   def test_empty_body_array_content_length_0
-    server_run { |env| [404, {'Content-Length' => '0'}, []] }
+    server_run { |env| [404, { 'Content-Length' => '0' }, []] }
 
     resp = send_http_and_sysread "GET / HTTP/1.1\r\n\r\n"
     # Not Found
@@ -1947,7 +1944,6 @@ class TestPumaServer < Minitest::Test
     resp = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
     assert_match(/\AHTTP\/1\.0 501 Not Implemented/, resp)
   end
-
 
   def spawn_cmd(env = {}, cmd)
     opts = {}

@@ -20,13 +20,11 @@ if Puma::IS_JRUBY
 end
 
 module Puma
-
   class ConnectionError < RuntimeError; end
 
   class HttpParserError501 < IOError; end
 
   #———————————————————————— DO NOT USE — this class is for internal use only ———
-
 
   # An instance of this class represents a unique request from a client.
   # For example, this could be a web request from a browser or from CURL.
@@ -42,7 +40,6 @@ module Puma
   # They can be used to "time out" a response via the `timeout_at` reader.
   #
   class Client # :nodoc:
-
     # this tests all values but the last, which must be chunked
     ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze
 
@@ -70,7 +67,7 @@ module Puma
 
     include Puma::Const
 
-    def initialize(io, env=nil)
+    def initialize(io, env = nil)
       @io = io
       @to_io = io.to_io
       @io_buffer = IOBuffer.new
@@ -154,7 +151,7 @@ module Puma
       [@timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
     end
 
-    def reset(fast_check=true)
+    def reset(fast_check = true)
       @parser.reset
       @io_buffer.reset
       @read_header = true
@@ -542,7 +539,7 @@ module Puma
       if @partial_part_left > 0
         if @partial_part_left <= chunk.size
           if @partial_part_left > 2
-            write_chunk(chunk[0..(@partial_part_left-3)]) # skip the \r\n
+            write_chunk(chunk[0..(@partial_part_left - 3)]) # skip the \r\n
           end
           chunk = chunk[@partial_part_left..-1]
           @partial_part_left = 0
@@ -550,7 +547,7 @@ module Puma
           if @partial_part_left > 2
             if @partial_part_left == chunk.size + 1
               # Don't include the last \r
-              write_chunk(chunk[0..(@partial_part_left-3)])
+              write_chunk(chunk[0..(@partial_part_left - 3)])
             else
               # don't include the last \r\n
               write_chunk(chunk)
@@ -564,7 +561,7 @@ module Puma
       if @prev_chunk.empty?
         io = StringIO.new(chunk)
       else
-        io = StringIO.new(@prev_chunk+chunk)
+        io = StringIO.new(@prev_chunk + chunk)
         @prev_chunk = ""
       end
 
@@ -591,7 +588,7 @@ module Puma
               start_of_rest = if rest.start_with?(CHUNK_VALID_ENDING)
                 CHUNK_VALID_ENDING_SIZE
               else # we have started a trailer section, which we do not support. skip it!
-                rest.index(CHUNK_VALID_ENDING*2) + CHUNK_VALID_ENDING_SIZE*2
+                rest.index(CHUNK_VALID_ENDING * 2) + CHUNK_VALID_ENDING_SIZE * 2
               end
 
               @buffer = rest[start_of_rest..-1]

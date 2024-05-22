@@ -13,5 +13,5 @@ app do |env|
     iterations.times { rand }
   end
 
-  [200, {"Content-Type" => "text/plain"}, ["Run for #{duration.total} #{Process.pid}"]]
+  [200, { "Content-Type" => "text/plain" }, ["Run for #{duration.total} #{Process.pid}"]]
 end

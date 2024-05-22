@@ -32,7 +32,7 @@ module Puma
     # - +text+ (default nil) custom string to print in title
     #   and before all remaining info.
     #
-    def info(options={})
+    def info(options = {})
       internal_write title(options)
     end
 
@@ -44,7 +44,7 @@ module Puma
     # - +text+ (default nil) custom string to print in title
     #   and before all remaining info.
     #
-    def debug(options={})
+    def debug(options = {})
       return unless @debug
 
       error = options[:error]
@@ -58,7 +58,7 @@ module Puma
       internal_write string_block.join("\n")
     end
 
-    def title(options={})
+    def title(options = {})
       text = options[:text]
       req = options[:req]
       error = options[:error]

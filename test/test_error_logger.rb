@@ -10,7 +10,6 @@ class TestErrorLogger < Minitest::Test
     assert_equal STDERR, error_logger.ioerr
   end
 
-
   def test_stdio_respects_sync
     error_logger = Puma::ErrorLogger.stdio
 

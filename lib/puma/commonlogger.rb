@@ -37,7 +37,7 @@ module Puma
     REMOTE_USER          = 'REMOTE_USER'
     REQUEST_METHOD       = Const::REQUEST_METHOD
 
-    def initialize(app, logger=nil)
+    def initialize(app, logger = nil)
       @app = app
       @logger = logger
     end

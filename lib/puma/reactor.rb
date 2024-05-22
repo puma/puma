@@ -32,7 +32,7 @@ module Puma
     end
 
     # Run the internal select loop, using a background thread by default.
-    def run(background=true)
+    def run(background = true)
       if background
         @thread = Thread.new do
           Puma.set_thread_name "reactor"
@@ -73,10 +73,10 @@ module Puma
           # Wakeup any registered object that receives incoming data.
           # Block until the earliest timeout or Selector#wakeup is called.
           timeout = (earliest = @timeouts.first) && earliest.timeout
-          @selector.select(timeout) {|mon| wakeup!(mon.value)}
+          @selector.select(timeout) { |mon| wakeup!(mon.value) }
 
           # Wakeup all objects that timed out.
-          timed_out = @timeouts.take_while {|t| t.timeout == 0}
+          timed_out = @timeouts.take_while { |t| t.timeout == 0 }
           timed_out.each { |c| wakeup! c }
 
           unless @input.empty?

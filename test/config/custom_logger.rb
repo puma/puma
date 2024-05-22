@@ -1,5 +1,5 @@
 class CustomLogger
-  def initialize(output=STDOUT)
+  def initialize(output = STDOUT)
     @output = output
   end
 

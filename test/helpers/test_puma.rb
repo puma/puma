@@ -3,7 +3,6 @@
 require 'socket'
 
 module TestPuma
-
   RESP_SPLIT = "\r\n\r\n"
   LINE_SPLIT = "\r\n"
 
@@ -29,7 +28,7 @@ module TestPuma
 
   LOCALHOST = ENV.fetch 'PUMA_CI_DFLT_HOST', 'localhost'
 
-  if ENV['PUMA_CI_DFLT_IP'] =='IPv6'
+  if ENV['PUMA_CI_DFLT_IP'] == 'IPv6'
     HOST     = HOST6
     ALT_HOST = HOST4
   else

@@ -22,6 +22,5 @@ running_from: "/path/to/app"
     assert_equal '/path/to/app', sf.running_from
     assert_nil sf.control_url
     assert_nil sf.control_auth_token
-
   end
 end

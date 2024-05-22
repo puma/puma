@@ -551,7 +551,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_hook_warning_web_concurrency
     cli_server "test/rackup/hello.ru",
-      env: { 'WEB_CONCURRENCY' => '2'},
+      env: { 'WEB_CONCURRENCY' => '2' },
       config: <<~CONFIG
       on_worker_boot(:test) do |index, data|
         data[:test] = index
@@ -606,13 +606,13 @@ class TestIntegrationCluster < TestIntegration
     41.times.each do |i|
       if i == 10
         threads << Thread.new do
-          sleep i.to_f/div
+          sleep i.to_f / div
           Process.kill :TERM, @pid
           mutex.synchronize { replies[i] = :term_sent }
         end
       else
         threads << Thread.new do
-          thread_run_step replies, i.to_f/div, 1, i, mutex, refused, unix: unix
+          thread_run_step replies, i.to_f / div, 1, i, mutex, refused, unix: unix
         end
       end
     end

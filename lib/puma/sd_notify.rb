@@ -49,39 +49,39 @@ module Puma
     WATCHDOG  = "WATCHDOG=1"
     FDSTORE   = "FDSTORE=1"
 
-    def self.ready(unset_env=false)
+    def self.ready(unset_env = false)
       notify(READY, unset_env)
     end
 
-    def self.reloading(unset_env=false)
+    def self.reloading(unset_env = false)
       notify(RELOADING, unset_env)
     end
 
-    def self.stopping(unset_env=false)
+    def self.stopping(unset_env = false)
       notify(STOPPING, unset_env)
     end
 
     # @param status [String] a custom status string that describes the current
     #   state of the service
-    def self.status(status, unset_env=false)
+    def self.status(status, unset_env = false)
       notify("#{STATUS}#{status}", unset_env)
     end
 
     # @param errno [Integer]
-    def self.errno(errno, unset_env=false)
+    def self.errno(errno, unset_env = false)
       notify("#{ERRNO}#{errno}", unset_env)
     end
 
     # @param pid [Integer]
-    def self.mainpid(pid, unset_env=false)
+    def self.mainpid(pid, unset_env = false)
       notify("#{MAINPID}#{pid}", unset_env)
     end
 
-    def self.watchdog(unset_env=false)
+    def self.watchdog(unset_env = false)
       notify(WATCHDOG, unset_env)
     end
 
-    def self.fdstore(unset_env=false)
+    def self.fdstore(unset_env = false)
       notify(FDSTORE, unset_env)
     end
 
@@ -129,7 +129,7 @@ module Puma
     #   socket
     #
     # @see https://www.freedesktop.org/software/systemd/man/sd_notify.html
-    def self.notify(state, unset_env=false)
+    def self.notify(state, unset_env = false)
       sock = ENV["NOTIFY_SOCKET"]
 
       return nil if !sock

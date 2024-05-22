@@ -1,1 +1,1 @@
-run lambda { |env| [200, {'Content-Type'=>'text/plain'}, [NIO::VERSION]] }
+run lambda { |env| [200, { 'Content-Type' => 'text/plain' }, [NIO::VERSION]] }

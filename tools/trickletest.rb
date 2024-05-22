@@ -41,4 +41,4 @@ ARGV[1].to_i.times do
   threads << t
 end
 
-threads.each {|t|  t.join}
+threads.each { |t|  t.join }

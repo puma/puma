@@ -43,7 +43,7 @@ class TestBinderParallel < TestBinderBase
 
   def test_synthesize_binds_from_activated_fds_non_matching_together
     binds = ['tcp://0.0.0.0:3000']
-    sockets = {['tcp', '0.0.0.0', '5000'] => nil}
+    sockets = { ['tcp', '0.0.0.0', '5000'] => nil }
     @binder.instance_variable_set(:@activated_sockets, sockets)
     result = @binder.synthesize_binds_from_activated_fs(binds, false)
 
@@ -52,7 +52,7 @@ class TestBinderParallel < TestBinderBase
 
   def test_synthesize_binds_from_activated_fds_non_matching_only
     binds = ['tcp://0.0.0.0:3000']
-    sockets = {['tcp', '0.0.0.0', '5000'] => nil}
+    sockets = { ['tcp', '0.0.0.0', '5000'] => nil }
     @binder.instance_variable_set(:@activated_sockets, sockets)
     result = @binder.synthesize_binds_from_activated_fs(binds, true)
 
@@ -142,7 +142,7 @@ class TestBinderParallel < TestBinderBase
     @binder.parse ["tcp://localhost:0"], @log_writer
 
     assert_match %r!http://127.0.0.1:(\d+)!, @log_writer.stdout.string
-    if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
+    if Socket.ip_address_list.any? { |i| i.ipv6_loopback? }
       assert_match %r!http://\[::1\]:(\d+)!, @log_writer.stdout.string
     end
   end
@@ -153,7 +153,7 @@ class TestBinderParallel < TestBinderBase
     @binder.parse ["ssl://localhost:0?#{ssl_query}"], @log_writer
 
     assert_match %r!ssl://127.0.0.1:(\d+)!, @log_writer.stdout.string
-    if Socket.ip_address_list.any? {|i| i.ipv6_loopback? }
+    if Socket.ip_address_list.any? { |i| i.ipv6_loopback? }
       assert_match %r!ssl://\[::1\]:(\d+)!, @log_writer.stdout.string
     end
   end
