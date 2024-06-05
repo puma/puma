@@ -50,6 +50,9 @@ jobs:
           SRC="gem ['\"]puma['\"].*"
           DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
           sed -i "s#$SRC#$DST#" Gemfile
+          SRC="gem ['\"]sqlite3['\"].*"
+          DST="gem 'sqlite3', '~> 1.4'"
+          sed -i "s#$SRC#$DST#" Gemfile
           #
           # allow using capybara from the repo, either a branch or a commit
           # comment out if CI works with current release
@@ -61,6 +64,7 @@ jobs:
           SRC="Silent: true"
           DST="Silent: false, Threads: '1:4'"
           sed -i "s/$SRC/$DST/" test/application_system_test_case.rb
+          cat Gemfile
 
       - name: load ruby
         uses: ruby/setup-ruby@v1
