@@ -230,6 +230,10 @@ module Puma
     RACK_INPUT = "rack.input"
     RACK_URL_SCHEME = "rack.url_scheme"
     RACK_AFTER_REPLY = "rack.after_reply"
+
+    RACK_PROTOCOL = "rack.protocol"
+    HTTP_UPGRADE = "HTTP_UPGRADE"
+
     PUMA_SOCKET = "puma.socket"
     PUMA_CONFIG = "puma.config"
     PUMA_PEERCERT = "puma.peercert"

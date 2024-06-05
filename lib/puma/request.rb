@@ -93,6 +93,10 @@ module Puma
       #
       env[RACK_AFTER_REPLY] ||= []
 
+      if upgrade = env[HTTP_UPGRADE]
+        env[RACK_PROTOCOL] = upgrade.split(/\s*,\s*/)
+      end
+
       begin
         if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
           status, headers, app_body = @thread_pool.with_force_shutdown do
@@ -101,6 +105,12 @@ module Puma
         else
           @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
           status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
+        end
+
+        if protocol = headers.delete(RACK_PROTOCOL)
+          status = 101
+          headers['upgrade'] = protocol
+          headers['connection'] = 'upgrade'
         end
 
         # app_body needs to always be closed, hold value in case lowlevel_error

@@ -1,3 +1,7 @@
+## Unreleased
+
+* Support for Rack 3 `rack.protocol` ([#3399])
+
 ## 6.4.2 / 2024-01-08
 
 * Security
@@ -2063,6 +2067,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3399]:https://github.com/puma/puma/pull/3399     "PR by @ioquatix"
 [#3256]:https://github.com/puma/puma/pull/3256     "PR by @MSP-Greg, merged 2023-10-16"
 [#3235]:https://github.com/puma/puma/pull/3235     "PR by @joshuay03, merged 2023-10-03"
 [#3228]:https://github.com/puma/puma/issues/3228   "Issue by @davidalejandroaguilar, closed 2023-10-03"
