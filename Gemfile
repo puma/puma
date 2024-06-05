@@ -28,6 +28,8 @@ gem "rackup" if use_rackup
 
 gem "jruby-openssl", :platform => "jruby"
 
+gem "sqlite3", "~> 1.4"
+
 unless ENV['PUMA_NO_RUBOCOP'] || RUBY_PLATFORM.include?('mswin')
   gem "rubocop"
   gem 'rubocop-performance', require: false
