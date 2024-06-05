@@ -129,7 +129,6 @@ class TestIntegration < Minitest::Test
 
   def restart_server_and_listen(argv, log: false)
     cli_server argv
-    sleep 1
     connection = connect
     sleep 1
     initial_reply = read_body(connection)
