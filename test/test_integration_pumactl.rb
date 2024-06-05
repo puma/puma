@@ -224,7 +224,7 @@ class TestIntegrationPumactl < TestIntegration
     # Hitting the /gc route should increment the count by 1
     if key == "count"
       assert_operator gc_before, :<, gc_after, "make sure a gc has happened"
-    elsif !(Puma::IS_OSX && Puma::IS_JRUBY)
+    elsif !Puma::IS_JRUBY
       refute_equal gc_before, gc_after, "make sure a gc has happened"
     end
   end
