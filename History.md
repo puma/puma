@@ -1,3 +1,24 @@
+## 6.5.0 / 2024-06-10
+
+* Features
+  * Add `ssl_ciphersuites` option for TLSv1.3 ciphers ([#3359], [#3343])
+  * Allow to configure both min and max threads as a single number ([#3309])
+
+* Bugfixes
+  * Use actual thread local for `Puma::Server.current`. ([#3360])
+  * client.rb - fix request chunked body handling ([#3338], [#3337])
+  * Properly handle two requests seen in the initial buffer ([#3332])
+  * Fix response repeated status line when request is invalid or errors are raised ([#3308], [#3307])
+  * Fix child processes not being reaped when `Process.detach` used ([#3314], [#3313])
+
+* Performance
+  * Avoid checking if all workers reached timeout unless idle timeout is configured ([#3341])
+
+* Refactor
+  * extconf.rb - add logging for OpenSSL versions ([#3370])
+  * Lazily require `Puma::Rack::Builder` ([#3340])
+  * Refactor: Constantize worker pipe request types ([#3318])
+
 ## 6.4.2 / 2024-01-08
 
 * Security
@@ -2063,6 +2084,21 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3359]:https://github.com/puma/puma/pull/3359     "PR by @willayton, merged 2024-04-11"
+[#3343]:https://github.com/puma/puma/issues/3343   "Issue by @willayton, closed 2024-04-11"
+[#3309]:https://github.com/puma/puma/pull/3309     "PR by @byroot, merged 2024-01-09"
+[#3360]:https://github.com/puma/puma/pull/3360     "PR by @ioquatix, merged 2024-04-24"
+[#3338]:https://github.com/puma/puma/pull/3338     "PR by @MSP-Greg, merged 2024-04-11"
+[#3337]:https://github.com/puma/puma/issues/3337   "Issue by @skliew, closed 2024-04-11"
+[#3332]:https://github.com/puma/puma/pull/3332     "PR by @evanphx, merged 2024-02-18"
+[#3308]:https://github.com/puma/puma/pull/3308     "PR by @MSP-Greg, merged 2024-01-31"
+[#3307]:https://github.com/puma/puma/issues/3307   "Issue by @nateberkopec, closed 2024-01-31"
+[#3314]:https://github.com/puma/puma/pull/3314     "PR by @stanhu, merged 2024-01-26"
+[#3313]:https://github.com/puma/puma/issues/3313   "Issue by @stanhu, closed 2024-01-26"
+[#3341]:https://github.com/puma/puma/pull/3341     "PR by @joshuay03, merged 2024-03-11"
+[#3370]:https://github.com/puma/puma/pull/3370     "PR by @MSP-Greg, merged 2024-04-15"
+[#3340]:https://github.com/puma/puma/pull/3340     "PR by @joshuay03, merged 2024-03-10"
+[#3318]:https://github.com/puma/puma/pull/3318     "PR by @joshuay03, merged 2024-01-15"
 [#3256]:https://github.com/puma/puma/pull/3256     "PR by @MSP-Greg, merged 2023-10-16"
 [#3235]:https://github.com/puma/puma/pull/3235     "PR by @joshuay03, merged 2023-10-03"
 [#3228]:https://github.com/puma/puma/issues/3228   "Issue by @davidalejandroaguilar, closed 2023-10-03"
@@ -2672,7 +2708,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#845]:https://github.com/puma/puma/pull/845       "PR by @deepj, merged 2016-01-28"
 [#846]:https://github.com/puma/puma/pull/846       "PR by @sriedel, merged 2016-01-15"
 [#850]:https://github.com/puma/puma/pull/850       "PR by @deepj, merged 2016-01-15"
-[#853]:https://github.com/puma/puma/pull/853       "PR by @Jeffrey6052, merged 2016-01-28"
+[#853]:https://github.com/puma/puma/pull/853       "PR by @xuqiyong666, merged 2016-01-28"
 [#857]:https://github.com/puma/puma/pull/857       "PR by @osheroff, merged 2016-01-15"
 [#858]:https://github.com/puma/puma/pull/858       "PR by @mlarraz, merged 2016-01-28"
 [#860]:https://github.com/puma/puma/pull/860       "PR by @osheroff, merged 2016-01-15"
