@@ -63,7 +63,7 @@ class TestIntegration < Minitest::Test
         @server = nil
 
         if @config_file
-          @config_file.unlink
+          File.unlink(@config_file.path) rescue nil
           @config_file = nil
         end
       end
@@ -87,8 +87,7 @@ class TestIntegration < Minitest::Test
       env: {})          # pass env setting to Puma process in IO.popen
 
     if config
-      # Don't let the config file be GC'd until the server is stopped:
-      @config_file = Tempfile.new(%w(config .rb))
+      @config_file = Tempfile.create(%w(config .rb))
       @config_file.write config
       @config_file.close
       config = "-C #{@config_file.path}"
