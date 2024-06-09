@@ -53,7 +53,6 @@ module Puma
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
 
-
       return false if closed_socket?(socket)
 
       if client.http_content_length_limit_exceeded
@@ -135,7 +134,7 @@ module Puma
       io_buffer.reset
       uncork_socket client.io
       app_body.close if app_body.respond_to? :close
-      client.tempfile&.unlink
+      client&.tempfile_close
       after_reply = env[RACK_AFTER_REPLY] || []
       begin
         after_reply.each { |o| o.call }
