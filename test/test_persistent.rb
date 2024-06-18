@@ -159,7 +159,7 @@ class TestPersistent < Minitest::Test
   def test_one_with_keep_alive_header
     response = send_http_read_response @keep_request
 
-    assert_equal "HTTP/1.0 200 OK\r\nx-header: Works\r\nconnection: Keep-Alive\r\ncontent-length: 5\r\n\r\n" \
+    assert_equal "HTTP/1.0 200 OK\r\nx-header: Works\r\nconnection: keep-alive\r\ncontent-length: 5\r\n\r\n" \
       "Hello", response
   end
 

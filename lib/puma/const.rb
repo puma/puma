@@ -257,7 +257,7 @@ module Puma
     TRANSFER_ENCODING2 = "HTTP_TRANSFER_ENCODING"
 
     CONNECTION_CLOSE = "connection: close\r\n"
-    CONNECTION_KEEP_ALIVE = "connection: Keep-Alive\r\n"
+    CONNECTION_KEEP_ALIVE = "connection: keep-alive\r\n"
 
     TRANSFER_ENCODING_CHUNKED = "transfer-encoding: chunked\r\n"
     CLOSE_CHUNKED = "0\r\n\r\n"
