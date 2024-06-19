@@ -18,6 +18,12 @@ Puma::Plugin.create do
     launcher.events.on_stopped { Puma::SdNotify.stopping }
     launcher.events.on_restart { Puma::SdNotify.reloading }
 
+    # set extended timeout
+    if Puma::SdNotify.extend_timeout?
+      launcher.log_writer.log "Extending the startup by #{extend_timeout_time}"
+      Puma::SdNotify.extend_timeout(extend_timeout_time)
+    end
+
     # start watchdog
     if Puma::SdNotify.watchdog?
       ping_f = watchdog_sleep_time
@@ -58,6 +64,10 @@ Puma::Plugin.create do
   end
 
   private
+
+  def extend_timeout_time
+    Integer(ENV["EXTEND_TIMEOUT_USEC"])
+  end
 
   def watchdog_sleep_time
     usec = Integer(ENV["WATCHDOG_USEC"])
