@@ -48,6 +48,7 @@ module Puma
     MAINPID   = "MAINPID="
     WATCHDOG  = "WATCHDOG=1"
     FDSTORE   = "FDSTORE=1"
+    EXTEND_TIMEOUT_USEC = "EXTEND_TIMEOUT_USEC="
 
     def self.ready(unset_env=false)
       notify(READY, unset_env)
@@ -83,6 +84,31 @@ module Puma
 
     def self.fdstore(unset_env=false)
       notify(FDSTORE, unset_env)
+    end
+
+    # @param usec [Integer]
+    def self.extend_timeout(usec, unset_env=false)
+      notify("#{EXTEND_TIMEOUT_USEC}#{usec}", unset_env)
+    end
+
+    # Notify systemd about extended timeout, via the notification socket, if applicable.
+    # $EXTEND_TIMEOUT_USEC [Integer] The value specified represents the time in microseconds
+    #   for extending the timeout, during which the service must send a new message.
+    #
+    # @return [Boolean] true if $EXTEND_TIMEOUT_USEC is a valid positive integer, otherwise false
+    #
+    # @note A service timeout occurs only if the service runtime exceeds the original maximum times specified
+    #   by TimeoutStartSec=, RuntimeMaxSec=, and TimeoutStopSec=.
+    def self.extend_timeout?
+      extend_timeout_usec = ENV["EXTEND_TIMEOUT_USEC"]
+
+      begin
+        extend_timeout_usec = Integer(extend_timeout_usec)
+      rescue
+        return false
+      end
+
+      extend_timeout_usec.positive?
     end
 
     # @param [Boolean] true if the service manager expects watchdog keep-alive
