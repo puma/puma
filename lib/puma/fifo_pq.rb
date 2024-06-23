@@ -11,6 +11,7 @@ module Puma
     def queue(element, priority)
       get_queue(priority) << element
     end
+
     alias_method :push, :queue
 
     def unqueue
@@ -26,20 +27,21 @@ module Puma
 
       nil
     end
+
     alias_method :shift, :unqueue
 
     def size
-      @queues.map(&:size).sum
+      @queues.sum(&:size)
     end
 
     def empty?
       size == 0
     end
-    
+
     private
 
     PrioritisedQueue = Struct.new(:prio, :queue)
-    
+
     # Gets or creates a queue array
     # @param [Integer] priority
     # @return [Array]
