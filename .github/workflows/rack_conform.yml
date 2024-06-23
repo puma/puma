@@ -49,6 +49,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+          rubygems: latest
           bundler-cache: true
         timeout-minutes: 10
 
