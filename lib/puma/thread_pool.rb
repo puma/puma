@@ -36,8 +36,6 @@ module Puma
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
 
-      @todo = []
-
       @spawned = 0
       @waiting = 0
 
@@ -55,6 +53,13 @@ module Puma
       @before_thread_exit = options[:before_thread_exit]
       @reaping_time = options[:reaping_time]
       @auto_trim_time = options[:auto_trim_time]
+      @prioritize_request_block = options[:prioritize_request_block]
+
+      @todo = if @prioritize_request_block.nil?
+                []
+              else
+                FIFOPriorityQueue.new
+              end
 
       @shutdown = false
 
@@ -226,7 +231,11 @@ module Puma
           raise "Unable to add work while shutting down"
         end
 
-        @todo << work
+        if @prioritize_request_block.nil?
+          @todo << work
+        else
+          @todo.push(work, @prioritize_request_block.call(work))
+        end
 
         if @waiting < @todo.size and @spawned < @max
           spawn_thread
