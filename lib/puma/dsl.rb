@@ -932,6 +932,8 @@ module Puma
       @options[:prioritize_requests_by] = block
     end
 
+    alias_method :prioritise_requests_by, :prioritize_requests_by
+
     # The directory to operate out of.
     #
     # The default is the current directory.
