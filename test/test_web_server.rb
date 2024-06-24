@@ -102,6 +102,14 @@ class WebServerTest < Minitest::Test
     socket.close
   end
 
+  def test_expect_100_header
+    request = "POST /test HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\nExpect: 100-continue\r\nContent-Length: 5\r\n\r\nHello"
+    socket = do_test(request, request.length)
+    response = socket.read
+    assert_match "HTTP/1.1 100 Continue", response
+    socket.close
+  end
+
   private
 
   def do_test(string, chunk)
