@@ -17,13 +17,13 @@ $ ps aux | grep tail
 schneems        87152   0.0  0.0  2432772    492 s032  S+   12:46PM   0:00.00 tail -f my.log
 ```
 
-You can send a signal in Ruby using the [Process module](https://www.ruby-doc.org/core-2.1.1/Process.html#kill-method):
+You can send a signal in Ruby using the [Process module](https://ruby-doc.org/3.2.2/Process.html#method-c-kill):
 
 ```
 $ irb
 > puts pid
 => 87152
-Process.detach(pid) # https://ruby-doc.org/core-2.1.1/Process.html#method-c-detach
+Process.detach(pid) # https://ruby-doc.org/3.2.2/Process.html#method-c-detach
 Process.kill("TERM", pid)
 ```
 
