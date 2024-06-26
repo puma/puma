@@ -26,6 +26,7 @@ class TestIntegration < Minitest::Test
 
   def setup
     @server = nil
+    @config_file = nil
     @server_log = +''
     @pid = nil
     @ios_to_close = []
@@ -60,6 +61,11 @@ class TestIntegration < Minitest::Test
       rescue
       ensure
         @server = nil
+
+        if @config_file
+          File.unlink(@config_file.path) rescue nil
+          @config_file = nil
+        end
       end
     end
   end
@@ -81,10 +87,10 @@ class TestIntegration < Minitest::Test
       env: {})          # pass env setting to Puma process in IO.popen
 
     if config
-      config_file = Tempfile.new(%w(config .rb))
-      config_file.write config
-      config_file.close
-      config = "-C #{config_file.path}"
+      @config_file = Tempfile.create(%w(config .rb))
+      @config_file.write config
+      @config_file.close
+      config = "-C #{@config_file.path}"
     end
 
     puma_path = File.expand_path '../../../bin/puma', __FILE__
