@@ -912,6 +912,48 @@ class TestPumaServer < Minitest::Test
     assert_nil transfer_encoding
   end
 
+  # See also test_chunked_keep_alive_two_back_to_back
+  def test_two_back_to_back_chunked_have_different_tempfile
+    body = nil
+    content_length = nil
+    transfer_encoding = nil
+    req_body_path = nil
+    server_run { |env|
+      io = env['rack.input']
+      req_body_path = io.path
+      body = io.read
+      content_length = env['CONTENT_LENGTH']
+      transfer_encoding = env['HTTP_TRANSFER_ENCODING']
+      [200, {}, [""]]
+    }
+
+    chunked_req = "GET / HTTP/1.1\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    skt = new_connection
+
+    skt.syswrite chunked_req
+
+    response = skt.sysread 1_024
+    path1 = req_body_path
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "hello", body
+    assert_equal "5", content_length
+    assert_nil transfer_encoding
+
+    skt.syswrite chunked_req
+    response = skt.sysread 1_024
+    path2 = req_body_path
+
+    # same as above
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "hello", body
+    assert_equal "5", content_length
+    assert_nil transfer_encoding
+
+    refute_equal path1, path2
+  end
+
   def test_large_chunked_request
     body = nil
     content_length = nil
@@ -1879,6 +1921,8 @@ class TestPumaServer < Minitest::Test
 
     assert_equal file_bytesize, form_file_data.bytesize
     assert_equal out_r.read.bytesize, req_body.bytesize
+  ensure
+    File.unlink(temp_file_path) if File.exist? temp_file_path
   end
 
   def test_form_data_encoding_windows
