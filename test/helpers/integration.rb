@@ -110,7 +110,7 @@ class TestIntegration < Minitest::Test
     STDOUT.syswrite "\n#{full_name}\n  #{cmd}\n" if log
 
     if merge_err
-      @server = IO.popen(env, cmd, :err=>[:child, :out])
+      @server = IO.popen(env, cmd, :err => [:child, :out])
     else
       @server = IO.popen(env, cmd)
     end
@@ -359,7 +359,7 @@ class TestIntegration < Minitest::Test
 
     cmd = "#{BASE} #{pumactl_path} #{arg}"
 
-    io = IO.popen(cmd, :err=>[:child, :out])
+    io = IO.popen(cmd, :err => [:child, :out])
     @ios_to_close << io
     io
   end
@@ -393,7 +393,7 @@ class TestIntegration < Minitest::Test
     restart_count = 0
     client_threads = []
 
-    num_requests = (total_requests/num_threads).to_i
+    num_requests = (total_requests / num_threads).to_i
 
     num_threads.times do |thread|
       client_threads << Thread.new do

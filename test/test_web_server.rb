@@ -12,7 +12,7 @@ class TestHandler
   def call(env)
     @ran_test = true
 
-    [200, {"Content-Type" => "text/plain"}, ["hello!"]]
+    [200, { "Content-Type" => "text/plain" }, ["hello!"]]
   end
 end
 
@@ -23,7 +23,7 @@ class WebServerTest < Minitest::Test
 
   def setup
     @tester = TestHandler.new
-    @server = Puma::Server.new @tester, nil, {log_writer: Puma::LogWriter.strings}
+    @server = Puma::Server.new @tester, nil, { log_writer: Puma::LogWriter.strings }
     @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
     @tcp = "http://127.0.0.1:#{@port}"
     @server.run
@@ -76,7 +76,7 @@ class WebServerTest < Minitest::Test
   def test_header_is_too_long
     long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
     assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
-      do_test_raise(long, long.length/2, 10)
+      do_test_raise(long, long.length / 2, 10)
     end
   end
 

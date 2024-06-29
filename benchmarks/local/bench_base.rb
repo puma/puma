@@ -3,7 +3,6 @@
 require 'optparse'
 
 module TestPuma
-
   HOST4 = ENV.fetch('PUMA_TEST_HOST4', '127.0.0.1')
   HOST6 = ENV.fetch('PUMA_TEST_HOST6', '::1')
   PORT  = ENV.fetch('PUMA_TEST_PORT', 40001).to_i
@@ -33,7 +32,7 @@ module TestPuma
       suf = format "%04d", len
       fn = format fn_format, len
       unless File.exist? fn
-        body = "Hello World\n#{str}".byteslice(0,1023) + "\n" + (str * (len-1))
+        body = "Hello World\n#{str}".byteslice(0,1023) + "\n" + (str * (len - 1))
         File.write fn, body
       end
     end
@@ -216,12 +215,12 @@ module TestPuma
       read_unit = wrk_data[/ +[\d.]+(GB|KB|MB) +read$/, 1]
       read_mult = mult_for_unit read_unit
 
-      resp_transfer = (transfer * transfer_mult)/rps
-      resp_read = (read * read_mult)/requests.to_f
+      resp_transfer = (transfer * transfer_mult) / rps
+      resp_read = (read * read_mult) / requests.to_f
 
-      mult = transfer/read
+      mult = transfer / read
 
-      hsh[:resp_size] = ((resp_transfer * mult + resp_read)/(mult + 1)).round
+      hsh[:resp_size] = ((resp_transfer * mult + resp_read) / (mult + 1)).round
 
       hsh[:resp_size] = hsh[:resp_size] - 1770 - hsh[:resp_size].to_s.length
 
@@ -256,7 +255,7 @@ module TestPuma
         if t.end_with?('ms')
           t.to_f
         elsif t.end_with?('us')
-          t.to_f/1000
+          t.to_f / 1000
         elsif t.end_with?('s')
           t.to_f * 1000
         else
@@ -390,5 +389,4 @@ module TestPuma
       puts '─' * 69
     end
   end
-
 end

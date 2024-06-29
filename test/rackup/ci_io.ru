@@ -32,7 +32,7 @@ run lambda { |env|
     sleep dly.to_f
   end
   len = (t = env[hdr_body_conf]) ? t[/\d+\z/].to_i : env_len
-  headers[hdr_content_length] = (1024*len).to_s
+  headers[hdr_content_length] = (1024 * len).to_s
   fn = format fn_format, len
   body = File.open fn
   [200, headers, body]

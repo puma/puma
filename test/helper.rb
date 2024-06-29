@@ -63,7 +63,7 @@ def hit(uris)
         Net::HTTP.get(URI.parse(u))
       else
         url = URI.parse(u[0])
-        Net::HTTP.new(url.host, url.port).start {|h| h.request(u[1]) }
+        Net::HTTP.new(url.host, url.port).start { |h| h.request(u[1]) }
       end
 
     assert response, "Didn't get a response: #{u}"
@@ -143,7 +143,6 @@ if ENV['CI']
 end
 
 module TestSkips
-
   HAS_FORK = ::Process.respond_to? :fork
   UNIX_SKT_EXIST = Object.const_defined?(:UNIXSocket) && !Puma::IS_WINDOWS
 
@@ -289,7 +288,7 @@ module AggregatedResults
     io.puts "Errors & Failures:" unless filtered_results.empty?
 
     filtered_results.each_with_index { |result, i|
-      io.puts "\n%3d) %s" % [i+1, result]
+      io.puts "\n%3d) %s" % [i + 1, result]
     }
     io.puts
     io

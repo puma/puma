@@ -22,7 +22,6 @@ class TestRedirectIO < TestIntegration
       '--redirect-stderr', @err_file_path,
       'test/rackup/hello.ru'
     ]
-
   end
 
   def teardown

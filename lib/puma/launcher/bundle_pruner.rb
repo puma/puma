@@ -2,11 +2,9 @@
 
 module Puma
   class Launcher
-
     # This class is used to pickup Gemfile changes during
     # application restarts.
     class BundlePruner
-
       def initialize(original_argv, extra_runtime_dependencies, log_writer)
         @original_argv = Array(original_argv)
         @extra_runtime_dependencies = Array(extra_runtime_dependencies)
@@ -38,7 +36,7 @@ module Puma
           ENV["BUNDLE_APP_CONFIG"] = bundle_app_config
           args = [Gem.ruby, puma_wild_path, '-I', dirs.join(':')] + @original_argv
           # Ruby 2.0+ defaults to true which breaks socket activation
-          args += [{:close_others => false}]
+          args += [{ :close_others => false }]
           Kernel.exec(*args)
         end
       end

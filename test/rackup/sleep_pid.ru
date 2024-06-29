@@ -4,5 +4,5 @@
 run lambda { |env|
   dly = (env['REQUEST_PATH'][/\/sleep(\d+)/,1] || '0').to_i
   sleep dly
-  [200, {"Content-Type" => "text/plain"}, ["Slept #{dly} #{Process.pid}"]]
+  [200, { "Content-Type" => "text/plain" }, ["Slept #{dly} #{Process.pid}"]]
 }

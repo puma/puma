@@ -161,7 +161,7 @@ class TestIntegrationSSL < TestIntegration
     skip_if :windows; require 'stringio'
 
     app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
-    opts = {max_threads: 1}
+    opts = { max_threads: 1 }
     server = Puma::Server.new app, nil, opts
     if Puma.jruby?
       ssl_params = {

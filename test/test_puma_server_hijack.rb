@@ -70,7 +70,7 @@ class TestPumaServerHijack < Minitest::Test
   end
 
   def new_connection
-    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
+    TCPSocket.new(@host, @port).tap { |sock| @ios << sock }
   end
 
   # Full hijack does not return headers
@@ -163,7 +163,7 @@ class TestPumaServerHijack < Minitest::Test
         io.write(body_parts[1])
         io.close
       end
-      [200, {"Content-Length" => "5", 'rack.hijack' => hijack_lambda}, nil]
+      [200, { "Content-Length" => "5", 'rack.hijack' => hijack_lambda }, nil]
     end
 
     # using sysread may only receive part of the response
@@ -187,7 +187,7 @@ class TestPumaServerHijack < Minitest::Test
       io.syswrite 'incorrect body.call'
       io.close
     }
-    hdrs = { 'Content-Type' => 'text/plain', 'rack.hijack' => HIJACK_LAMBDA}
+    hdrs = { 'Content-Type' => 'text/plain', 'rack.hijack' => HIJACK_LAMBDA }
     body = ::Rack::BodyProxy.new(incorrect_lambda) { @available = true }
     partial_hijack_closes_body(hdrs, body)
   end

@@ -99,7 +99,6 @@ module Puma
   # REMOTE_USER, or REMOTE_HOST parameters since those are either a security problem or
   # too taxing on performance.
   module Const
-
     PUMA_VERSION = VERSION = "6.4.2"
     CODE_NAME = "The Eagle of Durango"
 
@@ -112,7 +111,7 @@ module Puma
     WRITE_TIMEOUT = 10
 
     # The original URI requested by the client.
-    REQUEST_URI= "REQUEST_URI"
+    REQUEST_URI = "REQUEST_URI"
     REQUEST_PATH = "REQUEST_PATH"
     QUERY_STRING = "QUERY_STRING"
     CONTENT_LENGTH = "CONTENT_LENGTH"

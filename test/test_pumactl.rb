@@ -254,7 +254,6 @@ class TestPumaControlCli < TestConfigFileBase
     assert_kind_of Thread, t.join, "server didn't stop"
   end
 
-
   def test_control_ssl_ipv4
     skip_unless :ssl
     control_ssl '127.0.0.1'

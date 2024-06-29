@@ -26,7 +26,7 @@ class TestOutOfBandServer < Minitest::Test
   end
 
   def new_connection
-    TCPSocket.new('127.0.0.1', @port).tap {|s| @ios << s}
+    TCPSocket.new('127.0.0.1', @port).tap { |s| @ios << s }
   rescue IOError
     Puma::Util.purge_interrupt_queue
     retry
@@ -95,7 +95,7 @@ class TestOutOfBandServer < Minitest::Test
   def test_stream
     oob_server app_wait: true, max_threads: 2
     n = 100
-    Array.new(n) {send_http("GET / HTTP/1.0\r\n\r\n")}
+    Array.new(n) { send_http("GET / HTTP/1.0\r\n\r\n") }
     Thread.pass until @request_count == n
     @mutex.synchronize do
       @app_finished.signal
@@ -145,7 +145,7 @@ class TestOutOfBandServer < Minitest::Test
     oob_server max_threads: 2
     @mutex.synchronize do
       send_http("GET / HTTP/1.0\r\n\r\n")
-      100.times {new_connection.close}
+      100.times { new_connection.close }
       @oob_finished.wait(@mutex, 1)
     end
     assert_equal 1, @oob_count
@@ -160,7 +160,7 @@ class TestOutOfBandServer < Minitest::Test
     end
     accepted = false
     io = @server.binder.ios.last
-    io.stub(:accept_nonblock, -> {accepted = true; new_connection}) do
+    io.stub(:accept_nonblock, -> { accepted = true; new_connection }) do
       new_connection.close
       sleep 0.01
     end
