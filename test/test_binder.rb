@@ -79,6 +79,20 @@ class TestBinderParallel < TestBinderBase
     assert_equal expected, result
   end
 
+  def test_runs_before_parse_hooks
+    mock = Minitest::Mock.new
+    proc = -> { mock.call }
+
+    @binder.before_parse &proc
+
+    mock.expect(:call, nil)
+
+    @binder.parse ["tcp://localhost:0"]
+
+    assert_mock mock
+    assert_equal @binder.instance_variable_get(:@before_parse), [proc]
+  end
+
   def test_localhost_addresses_dont_alter_listeners_for_tcp_addresses
     @binder.parse ["tcp://localhost:0"], @log_writer
 
