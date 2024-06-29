@@ -36,8 +36,6 @@ module Puma
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
 
-      @todo = []
-
       @spawned = 0
       @waiting = 0
 
@@ -55,6 +53,13 @@ module Puma
       @before_thread_exit = options[:before_thread_exit]
       @reaping_time = options[:reaping_time]
       @auto_trim_time = options[:auto_trim_time]
+      @prioritize_requests_by = options[:prioritize_requests_by]
+
+      @todo = if @prioritize_requests_by.nil?
+                []
+              else
+                FIFOPriorityQueue.new
+              end
 
       @shutdown = false
 
@@ -112,7 +117,7 @@ module Puma
       trigger_before_thread_start_hooks
       th = Thread.new(@spawned) do |spawned|
         Puma.set_thread_name '%s tp %03i' % [@name, spawned]
-        todo  = @todo
+        todo = @todo
         block = @block
         mutex = @mutex
         not_empty = @not_empty
@@ -226,7 +231,16 @@ module Puma
           raise "Unable to add work while shutting down"
         end
 
-        @todo << work
+        if @prioritize_requests_by.nil?
+          @todo << work
+        else
+          # Inverse the integer priority, so higher numbers equal to higher priority.
+          @todo.push(work, -@prioritize_requests_by.call(
+            work.req_method,
+            work.req_uri,
+            work.req_headers
+          ))
+        end
 
         if @waiting < @todo.size and @spawned < @max
           spawn_thread
