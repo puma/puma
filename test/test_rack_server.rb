@@ -151,7 +151,7 @@ class TestRackServer < Minitest::Test
 
     headers = header_hash socket
 
-    content_length = headers["Content-Length"].to_i
+    content_length = headers["content-length"].to_i
     real_response_body = socket.read(content_length)
 
     assert_equal "Hello", real_response_body
@@ -215,9 +215,9 @@ class TestRackServer < Minitest::Test
     stop
 
     if Rack.release.start_with? '1.'
-      assert_equal "chunked", headers["Transfer-Encoding"]
+      assert_equal "chunked", headers["transfer-encoding"]
     else
-      assert_equal str_ary_bytes, headers["Content-Length"].to_i
+      assert_equal str_ary_bytes, headers["content-length"].to_i
     end
   end
 
