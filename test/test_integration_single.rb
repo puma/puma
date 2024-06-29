@@ -20,9 +20,11 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_usr2_restart
-    skip_unless_signal_exist? :USR2
-    _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
-    assert_equal "Hello World", new_reply
+    # skip_unless_signal_exist? :USR2
+    100.times do
+      _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
+      assert_equal "Hello World", new_reply
+    end
   end
 
   # It does not share environments between multiple generations, which would break Dotenv
