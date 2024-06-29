@@ -67,6 +67,19 @@ class TestPluginSystemd < TestIntegration
     assert_message "STOPPING=1"
   end
 
+  def test_systemd_extend_timeout_notify
+    notify_env = @env.merge({"EXTEND_TIMEOUT_USEC" => "1_000_001"})
+    cli_server "test/rackup/hello.ru", env: notify_env
+    assert_message "EXTEND_TIMEOUT_USEC=1000001"
+
+    assert_message "READY=1"
+
+    assert_message "STATUS=Puma #{Puma::Const::VERSION}: worker: #{THREAD_LOG}"
+
+    stop_server
+    assert_message "STOPPING=1"
+  end
+
   def test_systemd_cluster_notify
     skip_unless :fork
     cli_server "-w2 test/rackup/hello.ru", env: @env
