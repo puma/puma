@@ -503,12 +503,22 @@ class TestConfigFile < TestConfigFileBase
     assert_warning_for_hooks_defined_in_single_mode :before_fork
   end
 
+  def test_run_hooks_before_refork
+    assert_run_hooks :before_refork, configured_with: :on_refork
+
+    assert_warning_for_hooks_defined_in_single_mode :on_refork
+  end
+
   def test_run_hooks_before_thread_start
     assert_run_hooks :before_thread_start, configured_with: :on_thread_start
   end
 
   def test_run_hooks_before_thread_exit
     assert_run_hooks :before_thread_exit, configured_with: :on_thread_exit
+  end
+
+  def test_run_hooks_out_of_band
+    assert_run_hooks :out_of_band
   end
 
   def test_run_hooks_and_exception
@@ -619,7 +629,7 @@ class TestConfigFile < TestConfigFileBase
       end
     end
 
-    assert_match "your `#{hook_name}` block did not run\n", out
+    assert_match "your `#{hook_name}` block will not run.\n", out
   end
 end
 
