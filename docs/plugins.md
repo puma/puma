@@ -64,7 +64,7 @@ definition must be provided during activation:
 
 ```ruby
 # In Puma configuration file
-plugin "name", "<gem_root>/lib/integrations/puma/plugin"
+plugin "custom_plugin", "<gem_root>/lib/integrations/puma/plugin"
 ```
 
 ### API
