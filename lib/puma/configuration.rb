@@ -302,8 +302,8 @@ module Puma
       @options[:environment]
     end
 
-    def load_plugin(name)
-      @plugins.create name
+    def load_plugin(name, path = nil)
+      @plugins.create name, path
     end
 
     # @param key [:Symbol] hook to run

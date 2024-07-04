@@ -167,11 +167,14 @@ module Puma
 
     # Load the named plugin for use by this configuration.
     #
+    # Accepts an optional `path_override` argument, which will be used to
+    # load the plugin in case it was not already registered.
+    #
     # @example
     #   plugin :tmp_restart
     #
-    def plugin(name)
-      @plugins << @config.load_plugin(name)
+    def plugin(name, path_override = nil)
+      @plugins << @config.load_plugin(name, path_override)
     end
 
     # Use an object or block as the rack application. This allows the

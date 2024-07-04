@@ -8,8 +8,8 @@ module Puma
       @instances = []
     end
 
-    def create(name)
-      if cls = Plugins.find(name)
+    def create(name, path_override = nil)
+      if cls = Plugins.find(name, path_override)
         plugin = cls.new
         @instances << plugin
         return plugin
@@ -37,7 +37,7 @@ module Puma
       @plugins[name] = cls
     end
 
-    def find(name)
+    def find(name, path_override = nil)
       name = name.to_s
 
       if cls = @plugins[name]
@@ -45,7 +45,7 @@ module Puma
       end
 
       begin
-        require "puma/plugin/#{name}"
+        require (path_override || "puma/plugin/#{name}")
       rescue LoadError
         raise UnknownPlugin, "Unable to find plugin: #{name}"
       end
@@ -94,8 +94,12 @@ module Puma
       m[1]
     end
 
-    def self.create(&blk)
-      name = extract_name(caller)
+    # An optional `name_override` argument can be provided
+    # to specify a custom name for the plugin, instead of
+    # letting Puma automatically generate it based on the path.
+    #
+    def self.create(name_override = nil, &blk)
+      name = name_override&.to_s || extract_name(caller)
 
       cls = Class.new(self)
 
