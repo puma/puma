@@ -928,6 +928,7 @@ module Puma
     # Each priority level will have its own queue that is internally FIFO.
     # Higher priority queues are emptied first before lower priority queues.
     #
+    # Relies on queue_requests being set to true.
     def prioritize_requests_by(&block)
       @options[:prioritize_requests_by] = block
     end

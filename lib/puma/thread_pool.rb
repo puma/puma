@@ -235,12 +235,36 @@ module Puma
         if @prioritize_requests_by.nil?
           @todo << work
         else
-          # Inverse the integer priority, so higher numbers equal to higher priority.
-          @todo.push(work, -@prioritize_requests_by.call(
-            work.req_method,
-            work.req_uri,
-            work.req_headers
-          ))
+          # Here, we receive the `work` (Puma::Client) in two states; ready, or not ready.
+          #
+          # Initially, a client is being sent to the thread pool in Server#handle_servers,
+          # where the Client object is also constructed.
+          #
+          # It arrives here in a non-ready state, the intention is for it to be put in the queue,
+          # to then eventually be passed to @block, which will send it to Server#process_clients,
+          # which will put it into the reactor, if @queue_requests is enabled.
+          #
+          # After the reactor has "woken up" the object, it comes around to this function again,
+          # in either a buffered (ready) or timed out (non-ready) state.
+          #
+          # We can only prioritise ready clients, and so we put all non-ready clients to a
+          # pseudo-queue in FIFOPriorityQueue called :front, which will have it push to a queue that will always be
+          # dequeued from first, regardless of which priority queues already exist.
+          #
+          # With this, we make sure that the non-buffered clients get processed first,
+          # and effectively disables prioritisation if queue_requests == true.
+
+          if work.eagerly_finish
+            # the client is ready, we can prioritise it
+            # (Inverse the integer priority, so higher numbers equal to higher priority)
+            @todo.push(work, -@prioritize_requests_by.call(
+              work.req_method,
+              work.req_uri,
+              work.req_headers
+            ))
+          else
+            @todo.push(work, :front)
+          end
         end
 
         if @waiting < @todo.size and @spawned < @max
