@@ -47,7 +47,7 @@ module Puma
     alias_method :shift, :unqueue
 
     def size
-      @queues.sum(&:size) + @front.size
+      @queues.sum {|p| p.queue.size} + @front.size
     end
 
     def empty?
