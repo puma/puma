@@ -59,7 +59,7 @@ module Puma
       @todo = if @prioritize_requests_by.nil?
                 []
               else
-                Puma::FIFOPriorityQueue.new
+                Puma::FIFOPriorityQueue.new {|c| prioritize_ready_client(c) if c.eagerly_finish}
               end
 
       @shutdown = false
@@ -256,12 +256,7 @@ module Puma
 
           if work.eagerly_finish
             # the client is ready, we can prioritise it
-            # (Inverse the integer priority, so higher numbers equal to higher priority)
-            @todo.push(work, -@prioritize_requests_by.call(
-              work.req_method,
-              work.req_uri,
-              work.req_headers
-            ))
+            @todo.push(work, prioritize_ready_client(work))
           else
             @todo.push(work, :front)
           end
@@ -273,6 +268,17 @@ module Puma
 
         @not_empty.signal
       end
+    end
+
+    # Prioritize a ready Puma::Client
+    def prioritize_ready_client(client)
+
+      # (Inverse the integer priority, so higher numbers equal to higher priority)
+      -@prioritize_requests_by.call(
+        client.req_method,
+        client.req_uri,
+        client.req_headers
+      )
     end
 
     # This method is used by `Puma::Server` to let the server know when

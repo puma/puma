@@ -2,9 +2,10 @@
 
 module Puma
   class FIFOPriorityQueue
-    def initialize
+    def initialize(&block)
       @queues = []
       @front = []
+      @front_prioritize = block
     end
 
     # @param [Object] element
@@ -16,8 +17,18 @@ module Puma
     alias_method :push, :queue
 
     def unqueue
-      unless @front.empty?
-        return @front.shift
+      until @front.empty?
+        front_obj = @front.shift
+
+        # The object may be ready, we will re-prioritize it if is
+
+        new_prio = @front_prioritize.call(front_obj)
+
+        if new_prio.nil?
+          return front_obj
+        else
+          queue(front_obj, new_prio)
+        end
       end
 
       until @queues.empty?
