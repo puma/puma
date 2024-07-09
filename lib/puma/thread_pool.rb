@@ -3,6 +3,7 @@
 require 'thread'
 
 require_relative 'io_buffer'
+require_relative 'fifo_pq'
 
 module Puma
   # Internal Docs for A simple thread pool management object.

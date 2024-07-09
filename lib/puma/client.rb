@@ -354,6 +354,19 @@ module Puma
       @expect_proxy_proto = val
     end
 
+    def req_method
+      env[REQUEST_METHOD]
+    end
+
+    def req_uri
+      env[REQUEST_URI]
+    end
+
+    def req_headers
+      headers = env.select { |key, _| key.start_with?('HTTP_') }
+      headers.map { |key, value| [key[5..-1], value] }.to_h
+    end
+
     private
 
     def setup_body
@@ -677,19 +690,6 @@ module Puma
 
     def above_http_content_limit(value)
       @http_content_length_limit&.< value
-    end
-
-    def req_method
-      env[REQUEST_METHOD]
-    end
-
-    def req_uri
-      env[REQUEST_URI]
-    end
-
-    def req_headers
-      headers = env.select { |key, _| key.start_with?('HTTP_') }
-      headers.map { |key, value| [key[5..-1], value] }.to_h
     end
   end
 end
