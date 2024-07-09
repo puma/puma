@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
     with:
       paths: '["ext/**", ".github/workflows/ragel.yml"]'
 
@@ -28,8 +28,10 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-20.04 , ruby: head }
-          - { os: macos-11     , ruby: head }
-          - { os: windows-2022 , ruby: ucrt }
+          - { os: macos-12     , ruby: head }
+          # Dec-2023 - incorrect line directives with Windows
+          # occurs with both MSYS2 and MSFT/vpkg versions of ragel
+          # - { os: windows-2022 , ruby: ucrt } 
 
     steps:
       # windows git will convert \n to \r\n
@@ -62,7 +64,7 @@ jobs:
           ragel --version
           Remove-Item -Path ext/puma_http11/http11_parser.c
           Remove-Item -Path ext/puma_http11/org/jruby/puma/Http11Parser.java
-          rake ragel
+          bundle exec rake ragel
           if ($IsWindows) {
             dos2unix ext/puma_http11/http11_parser.c
             dos2unix ext/puma_http11/org/jruby/puma/Http11Parser.java
@@ -76,7 +78,7 @@ jobs:
           }
 
       - name: save ragel generated files on fail
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
           name: ${{ matrix.os }}-ragel-generated-files

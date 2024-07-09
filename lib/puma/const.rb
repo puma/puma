@@ -100,7 +100,7 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "6.4.0"
+    PUMA_VERSION = VERSION = "6.4.2"
     CODE_NAME = "The Eagle of Durango"
 
     PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
@@ -285,5 +285,15 @@ module Puma
     BANNED_HEADER_KEY = /\A(rack\.|status\z)/.freeze
 
     PROXY_PROTOCOL_V1_REGEX = /^PROXY (?:TCP4|TCP6|UNKNOWN) ([^\r]+)\r\n/.freeze
+
+    module PipeRequest
+      WAKEUP = "!"
+      BOOT = "b"
+      FORK = "f"
+      EXTERNAL_TERM = "e"
+      TERM = "t"
+      PING = "p"
+      IDLE = "i"
+    end
   end
 end

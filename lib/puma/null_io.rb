@@ -18,8 +18,22 @@ module Puma
 
     # Mimics IO#read with no data.
     #
-    def read(count = nil, _buffer = nil)
-      count && count > 0 ? nil : ""
+    def read(length = nil, buffer = nil)
+      if length.to_i < 0
+        raise ArgumentError, "(negative length #{length} given)"
+      end
+
+      buffer = if buffer.nil?
+        "".b
+      else
+        String.try_convert(buffer) or raise TypeError, "no implicit conversion of #{buffer.class} into String"
+      end
+      buffer.clear
+      if length.to_i > 0
+        nil
+      else
+        buffer
+      end
     end
 
     def rewind

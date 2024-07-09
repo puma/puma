@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
 
   rack-conform:
     name: >-
@@ -22,8 +22,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: '2.7' }
-          - { os: ubuntu-22.04 , ruby: '3.2' }
+          - { os: ubuntu-20.04 , ruby: '3.1' }
+          - { os: ubuntu-20.04 , ruby: '3.2' }
+          - { os: ubuntu-22.04 , ruby: '3.3' }
           - { os: ubuntu-22.04 , ruby: head  }
 
     env:
@@ -48,6 +49,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+          rubygems: latest
           bundler-cache: true
         timeout-minutes: 10
 

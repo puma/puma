@@ -12,7 +12,7 @@ Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server fo
 
 ## Built For Speed &amp; Parallelism
 
-Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is: 
+Puma is a server for [Rack](https://github.com/rack/rack)-powered HTTP applications written in Ruby.  It is:
 * **Multi-threaded**. Each request is served in a separate thread. This helps you serve more requests per second with less memory use.
 * **Multi-process**. "Pre-forks" in cluster mode, using less memory per-process thanks to copy-on-write memory.
 * **Standalone**. With SSL support, zero-downtime rolling restarts and a built-in request bufferer, you can deploy Puma without any reverse proxy.
@@ -138,51 +138,93 @@ preload_app!
 
 Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preloading copies the code of master into the workers.
 
-When using clustered mode, you can specify a block in your configuration file that will be run on boot of each worker:
+#### Clustered mode hooks
 
-```ruby
-# config/puma.rb
-on_worker_boot do
-  # configuration here
-end
-```
+When using clustered mode, Puma's configuration DSL provides `before_fork` and `on_worker_boot`
+hooks to run code when the master process forks and child workers are booted respectively.
 
-This code can be used to setup the process before booting the application, allowing
-you to do some Puma-specific things that you don't want to embed in your application.
-For instance, you could fire a log notification that a worker booted or send something to statsd. This can be called multiple times.
-
-Constants loaded by your application (such as `Rails`) will not be available in `on_worker_boot`
-unless preloading is enabled.
-
-You can also specify a block to be run before workers are forked, using `before_fork`:
+It is recommended to use these hooks with `preload_app!`, otherwise constants loaded by your
+application (such as `Rails`) will not be available inside the hooks.
 
 ```ruby
 # config/puma.rb
 before_fork do
-  # configuration here
+  # Add code to run inside the Puma master process before it forks a worker child.
+end
+
+on_worker_boot do
+  # Add code to run inside the Puma worker process after forking.
 end
 ```
 
-You can also specify a block to be run after puma is booted using `on_booted`:
+In addition, there is an `on_refork` hook which is used only in [`fork_worker` mode](docs/fork_worker.md),
+when the worker 0 child process forks a grandchild worker:
+
+```ruby
+on_refork do
+  # Used only when fork_worker mode is enabled. Add code to run inside the Puma worker 0
+  # child process before it forks a grandchild worker.
+end
+```
+
+Importantly, note the following considerations when Ruby forks a child process: 
+
+1. File descriptors such as network sockets **are** copied from the parent to the forked
+   child process. Dual-use of the same sockets by parent and child will result in I/O conflicts
+   such as `SocketError`, `Errno::EPIPE`, and `EOFError`.
+2. Background Ruby threads, including threads used by various third-party gems for connection
+   monitoring, etc., are **not** copied to the child process. Often this does not cause
+   immediate problems until a third-party connection goes down, at which point there will
+   be no supervisor to reconnect it.
+
+Therefore, we recommend the following:
+
+1. If possible, do not establish any socket connections (HTTP, database connections, etc.)
+   inside Puma's master process when booting.
+2. If (1) is not possible, use `before_fork` and `on_refork` to disconnect the parent's socket
+   connections when forking, so that they are not accidentally copied to the child process.
+3. Use `on_worker_boot` to restart any background threads on the forked child.
+
+#### Master process lifecycle hooks
+
+Puma's configuration DSL provides master process lifecycle hooks `on_booted`, `on_restart`, and `on_stopped`
+which may be used to specify code blocks to run on each event:
 
 ```ruby
 # config/puma.rb
 on_booted do
-  # configuration here
+  # Add code to run in the Puma master process after it boots,
+  # and also after a phased restart completes.
+end
+
+on_restart do
+  # Add code to run in the Puma master process when it receives
+  # a restart command but before it restarts.
+end
+
+on_stopped do
+  # Add code to run in the Puma master process when it receives
+  # a stop command but before it shuts down.
 end
 ```
 
 ### Error handling
 
-If puma encounters an error outside of the context of your application, it will respond with a 500 and a simple
+If Puma encounters an error outside of the context of your application, it will respond with a 400/500 and a simple
 textual error message (see `Puma::Server#lowlevel_error` or [server.rb](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
 You can specify custom behavior for this scenario. For example, you can report the error to your third-party
 error-tracking service (in this example, [rollbar](https://rollbar.com)):
 
 ```ruby
-lowlevel_error_handler do |e|
-  Rollbar.critical(e)
-  [500, {}, ["An error has occurred, and engineers have been informed. Please reload the page. If you continue to have problems, contact support@example.com\n"]]
+lowlevel_error_handler do |e, env, status|
+  if status == 400
+    message = "The server could not process the request due to an error, such as an incorrectly typed URL, malformed syntax, or a URL that contains illegal characters.\n"
+  else
+    message = "An error has occurred, and engineers have been informed. Please reload the page. If you continue to have problems, contact support@example.com\n"
+    Rollbar.critical(e)
+  end
+
+  [status, {}, [message]]
 end
 ```
 
@@ -249,7 +291,7 @@ $ puma -b ssl://localhost:9292 -b tcp://localhost:9393 -C config/use_local_host.
 
 #### Controlling SSL Cipher Suites
 
-To use or avoid specific SSL cipher suites, use `ssl_cipher_filter` or `ssl_cipher_list` options.
+To use or avoid specific SSL ciphers for TLSv1.2 and below, use `ssl_cipher_filter` or `ssl_cipher_list` options.
 
 ##### Ruby:
 
@@ -261,6 +303,14 @@ $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_cipher_fil
 
 ```
 $ puma -b 'ssl://127.0.0.1:9292?keystore=path_to_keystore&keystore-pass=keystore_password&ssl_cipher_list=TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA'
+```
+
+To configure the available TLSv1.3 ciphersuites, use `ssl_ciphersuites` option (not available for JRuby).
+
+##### Ruby:
+
+```
+$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_ciphersuites=TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256'
 ```
 
 See https://www.openssl.org/docs/man1.1.1/man1/ciphers.html for cipher filter format and full list of cipher suites.
@@ -410,6 +460,7 @@ Community guides:
 * [puma-plugin-statsd](https://github.com/yob/puma-plugin-statsd) — send Puma metrics to statsd
 * [puma-plugin-systemd](https://github.com/sj26/puma-plugin-systemd) — deeper integration with systemd for notify, status and watchdog. Puma 5.1.0 integrated notify and watchdog, which probably conflicts with this plugin. Puma 6.1.0 added status support which obsoletes the plugin entirely.
 * [puma-plugin-telemetry](https://github.com/babbel/puma-plugin-telemetry) - telemetry plugin for Puma offering various targets to publish
+* [puma-acme](https://github.com/anchordotdev/puma-acme) - automatic SSL/HTTPS certificate provisioning and setup
 
 ### Monitoring
 

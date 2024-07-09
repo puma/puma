@@ -74,6 +74,18 @@ class TestPumaServer < Minitest::Test
     socket.read
   end
 
+  def send_http_and_read_1s(req)
+    socket = send_http req
+    socket.wait_readable 5
+
+    data = socket.sysread 1024
+    if IO.select [socket], nil, nil, 1
+      data + socket.sysread(1024)
+    else
+      data
+    end
+  end
+
   def send_http(req)
     new_connection << req
   end
@@ -325,6 +337,32 @@ class TestPumaServer < Minitest::Test
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
 
+  def test_immediate_pipeline_not_confused_for_body
+    bodies = []
+    server_run { |e|
+      bodies << e['rack.input'].read
+      [200, {}, ["ok #{bodies.size}"]]
+    }
+
+    data = send_http_and_read "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\nGET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", data
+    assert_equal ["", ""], bodies
+  end
+
+  def test_immediate_pipeline_terminates_last_request
+    bodies = []
+    server_run { |e|
+      bodies << e['rack.input'].read
+      [200, {}, ["ok #{bodies.size}"]]
+    }
+
+    data = send_http_and_read_1s "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\naGET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", data
+    assert_equal ["a", ""], bodies
+  end
+
   def test_early_hints_works
     server_run(early_hints: true) do |env|
      env['rack.early_hints'].call("Link" => "</style.css>; rel=preload; as=style\n</script.js>; rel=preload")
@@ -424,7 +462,7 @@ class TestPumaServer < Minitest::Test
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     refute_match(/don't leak me bro/, data)
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_start_with data, 'HTTP/1.0 500 Internal Server Error'
   end
 
   def test_eof_on_connection_close_is_not_logged_as_an_error
@@ -446,7 +484,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 500 Internal Server Error/, data)
+    assert_start_with(data, 'HTTP/1.0 500 Internal Server Error')
     assert_match(/Content-Type: application\/json/, data)
     assert_match(/{}\n$/, data)
   end
@@ -472,8 +510,8 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_sysread "GET / HTTP/1.0\r\n\r\n"
 
-    assert_includes data, 'HTTP/1.0 500 Internal Server Error'
-    assert_includes data, "Puma caught this error: undefined method `to_i' for"
+    assert_start_with data, 'HTTP/1.0 500 Internal Server Error'
+    assert_match(/Puma caught this error: undefined method [`']to_i' for/, data)
     assert_includes data, "Array"
     refute_includes data, 'lowlevel_error'
     sleep 0.1 unless ::Puma::IS_MRI
@@ -512,7 +550,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 503 Service Unavailable/, data)
+    assert_start_with(data, 'HTTP/1.0 503 Service Unavailable')
     assert_match(/Puma caught this error.+Puma::ThreadPool::ForceShutdown/, data)
   end
 
@@ -522,7 +560,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 302 Found/, data)
+    assert_start_with(data, 'HTTP/1.0 302 Found')
   end
 
   def test_leh_gets_env_as_well
@@ -535,7 +573,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 302 Found/, data)
+    assert_start_with(data, 'HTTP/1.0 302 Found')
   end
 
   def test_leh_has_status
@@ -548,7 +586,7 @@ class TestPumaServer < Minitest::Test
 
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 302 Found/, data)
+    assert_start_with(data, 'HTTP/1.0 302 Found')
   end
 
   def test_custom_http_codes_10
@@ -874,6 +912,48 @@ class TestPumaServer < Minitest::Test
     assert_nil transfer_encoding
   end
 
+  # See also test_chunked_keep_alive_two_back_to_back
+  def test_two_back_to_back_chunked_have_different_tempfile
+    body = nil
+    content_length = nil
+    transfer_encoding = nil
+    req_body_path = nil
+    server_run { |env|
+      io = env['rack.input']
+      req_body_path = io.path
+      body = io.read
+      content_length = env['CONTENT_LENGTH']
+      transfer_encoding = env['HTTP_TRANSFER_ENCODING']
+      [200, {}, [""]]
+    }
+
+    chunked_req = "GET / HTTP/1.1\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    skt = new_connection
+
+    skt.syswrite chunked_req
+
+    response = skt.sysread 1_024
+    path1 = req_body_path
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "hello", body
+    assert_equal "5", content_length
+    assert_nil transfer_encoding
+
+    skt.syswrite chunked_req
+    response = skt.sysread 1_024
+    path2 = req_body_path
+
+    # same as above
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "hello", body
+    assert_equal "5", content_length
+    assert_nil transfer_encoding
+
+    refute_equal path1, path2
+  end
+
   def test_large_chunked_request
     body = nil
     content_length = nil
@@ -902,6 +982,62 @@ class TestPumaServer < Minitest::Test
       assert_equal size, Integer(content_length)
       assert_equal request_body, body
     end
+  end
+
+  def test_chunked_request_invalid_extension_header_length
+    body = nil
+    content_length = nil
+    server_run(environment: :production) { |env|
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [body]]
+    }
+
+    max_chunk_header_size = Puma::Client::MAX_CHUNK_HEADER_SIZE
+
+    # send valid request except for extension_header larger than limit
+    header = "GET / HTTP/1.1\r\nConnection: close\r\nContent-Length: 200\r\nTransfer-Encoding: chunked\r\n\r\n"
+    socket = send_http "#{header}1;t=#{'x' * (max_chunk_header_size + 2)}\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    data = socket.read
+
+    assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+  end
+
+  def test_chunked_request_invalid_extension_header_length_split
+    body = nil
+    completed_loops = 0
+    content_length = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [""]]
+    }
+
+    # includes 1st chunk length
+    socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1;"
+
+    junk = "*" * 1_024
+
+    # Ubuntu allows us to close the client socket after an error write, and still
+    # read with the client.  macOS and Windows won't allow a read.
+
+    begin
+      10.times do |i|
+        socket << junk
+        completed_loops = i
+        sleep 0.1
+      end
+      socket << "\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+      data = socket.read
+      refute_equal 'hello', body
+       assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
+
+    # errors raised vary by OS
+    rescue Errno::EPIPE, Errno::ECONNABORTED, Errno::ECONNRESET
+    end
+    assert_equal 4, completed_loops
   end
 
   def test_chunked_request_pause_before_value
@@ -1081,6 +1217,44 @@ class TestPumaServer < Minitest::Test
     assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", data
     assert_equal 'hello', body
     assert_equal "5", content_length
+  end
+
+  # See https://github.com/puma/puma/issues/3337 & https://github.com/puma/puma/pull/3338
+  #
+  def test_chunked_body_pause_within_chunk_size_hex
+    body = nil
+    content_length = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [""]]
+    }
+
+    req_body = +''
+    9.times do |i|
+      req_body << "400\r\n"
+      req_body << "#{i}#{'x' * 1_023}"
+      req_body << "\r\n"
+    end
+    req_body << "0\r\n\r\n"
+
+    header = "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+    data1 = req_body[0..7218]  # Number here is arbitrary, so that the first chunk of data ends with `40`
+    data2 = req_body[7219..-1] # remaining data
+
+    socket = new_connection
+
+    socket.syswrite "#{header}#{data1}"
+    sleep 0.1 # This makes it easier to reproduce the issue, might need to be adjusted
+    socket.syswrite data2
+
+    socket.wait_readable 5
+    resp = socket.sysread 2_048
+    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", resp
+    assert_equal 9*1_024, body.bytesize
+    assert_equal 9*1_024, content_length.to_i
+    assert_equal '012345678', body.delete('x')
   end
 
   def test_chunked_request_header_case
@@ -1334,12 +1508,12 @@ class TestPumaServer < Minitest::Test
   # overriding content-length.
   {"cr" => "\r", "lf" => "\n", "crlf" => "\r\n"}.each do |suffix, line_ending|
     # The cr-only case for the following test was CVE-2020-5247
-    define_method("test_prevent_response_splitting_headers_#{suffix}") do
+    define_method(:"test_prevent_response_splitting_headers_#{suffix}") do
       app = ->(_) { [200, {'X-header' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
 
-    define_method("test_prevent_response_splitting_headers_early_hint_#{suffix}") do
+    define_method(:"test_prevent_response_splitting_headers_early_hint_#{suffix}") do
       app = ->(env) do
         env['rack.early_hints'].call("X-header" => "untrusted input#{line_ending}Cookie: hack")
         [200, {}, ["Hello"]]
@@ -1347,7 +1521,7 @@ class TestPumaServer < Minitest::Test
       assert_does_not_allow_http_injection(app, early_hints: true)
     end
 
-    define_method("test_prevent_content_length_injection_#{suffix}") do
+    define_method(:"test_prevent_content_length_injection_#{suffix}") do
       app = ->(_) { [200, {'content-length' => "untrusted input#{line_ending}Cookie: hack"}, ["Hello"]] }
       assert_does_not_allow_http_injection(app)
     end
@@ -1747,6 +1921,8 @@ class TestPumaServer < Minitest::Test
 
     assert_equal file_bytesize, form_file_data.bytesize
     assert_equal out_r.read.bytesize, req_body.bytesize
+  ensure
+    File.unlink(temp_file_path) if File.exist? temp_file_path
   end
 
   def test_form_data_encoding_windows

@@ -51,6 +51,14 @@ module Puma
     CHUNK_VALID_ENDING = Const::LINE_END
     CHUNK_VALID_ENDING_SIZE = CHUNK_VALID_ENDING.bytesize
 
+    # The maximum number of bytes we'll buffer looking for a valid
+    # chunk header.
+    MAX_CHUNK_HEADER_SIZE = 4096
+
+    # The maximum amount of excess data the client sends
+    # using chunk size extensions before we abort the connection.
+    MAX_CHUNK_EXCESS = 16 * 1024
+
     # Content-Length header value validation
     CONTENT_LENGTH_VALUE_INVALID = /[^\d]/.freeze
 
@@ -152,8 +160,6 @@ module Puma
       @read_header = true
       @read_proxy = !!@expect_proxy_proto
       @env = @proto_env.dup
-      @body = nil
-      @tempfile = nil
       @parsed_bytes = 0
       @ready = false
       @body_remain = 0
@@ -182,16 +188,25 @@ module Puma
         rescue IOError
           # swallow it
         end
-
       end
     end
 
     def close
+      tempfile_close
       begin
         @io.close
       rescue IOError, Errno::EBADF
         Puma::Util.purge_interrupt_queue
       end
+    end
+
+    def tempfile_close
+      tf_path = @tempfile&.path
+      @tempfile&.close
+      File.unlink(tf_path) if tf_path
+      @tempfile = nil
+      @body = nil
+    rescue Errno::ENOENT, IOError
     end
 
     # If necessary, read the PROXY protocol from the buffer. Returns
@@ -232,6 +247,7 @@ module Puma
 
       return read_body if in_data_phase
 
+      data = nil
       begin
         data = @io.read_nonblock(CHUNK_SIZE)
       rescue IO::WaitReadable
@@ -395,18 +411,33 @@ module Puma
         return true
       end
 
-      remain = cl.to_i - body.bytesize
+      content_length = cl.to_i
+
+      remain = content_length - body.bytesize
 
       if remain <= 0
-        @body = StringIO.new(body)
-        @buffer = nil
+        # Part of the body is a pipelined request OR garbage. We'll deal with that later.
+        if content_length == 0
+          @body = EmptyBody
+          if body.empty?
+            @buffer = nil
+          else
+            @buffer = body
+          end
+        elsif remain == 0
+          @body = StringIO.new body
+          @buffer = nil
+        else
+          @body = StringIO.new(body[0,content_length])
+          @buffer = body[content_length..-1]
+        end
         set_ready
         return true
       end
 
       if remain > MAX_BODY
-        @body = Tempfile.new(Const::PUMA_TMP_BASE)
-        @body.unlink
+        @body = Tempfile.create(Const::PUMA_TMP_BASE)
+        File.unlink @body.path unless IS_WINDOWS
         @body.binmode
         @tempfile = @body
       else
@@ -496,9 +527,10 @@ module Puma
       @chunked_body = true
       @partial_part_left = 0
       @prev_chunk = ""
+      @excess_cr = 0
 
-      @body = Tempfile.new(Const::PUMA_TMP_BASE)
-      @body.unlink
+      @body = Tempfile.create(Const::PUMA_TMP_BASE)
+      File.unlink @body.path unless IS_WINDOWS
       @body.binmode
       @tempfile = @body
       @chunked_content_length = 0
@@ -577,6 +609,20 @@ module Puma
             end
           end
 
+          # Track the excess as a function of the size of the
+          # header vs the size of the actual data. Excess can
+          # go negative (and is expected to) when the body is
+          # significant.
+          # The additional of chunk_hex.size and 2 compensates
+          # for a client sending 1 byte in a chunked body over
+          # a long period of time, making sure that that client
+          # isn't accidentally eventually punished.
+          @excess_cr += (line.size - len - chunk_hex.size - 2)
+
+          if @excess_cr >= MAX_CHUNK_EXCESS
+            raise HttpParserError, "Maximum chunk excess detected"
+          end
+
           len += 2
 
           part = io.read(len)
@@ -604,6 +650,10 @@ module Puma
             @partial_part_left = len - part.size
           end
         else
+          if @prev_chunk.size + line.size >= MAX_CHUNK_HEADER_SIZE
+            raise HttpParserError, "maximum size of chunk header exceeded"
+          end
+
           @prev_chunk = line
           return false
         end

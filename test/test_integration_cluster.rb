@@ -136,12 +136,13 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
-  def test_on_booted
+  def test_on_booted_and_on_stopped
     skip_unless_signal_exist? :TERM
-    cli_server "-w #{workers} -C test/config/event_on_booted.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru",
+    cli_server "-w #{workers} -C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru",
       no_wait: true
 
     assert wait_for_server_to_include('on_booted called')
+    assert wait_for_server_to_include('on_stopped called')
   end
 
   def test_term_worker_clean_exit
@@ -172,6 +173,34 @@ class TestIntegrationCluster < TestIntegration
         Process.kill :TERM, pid
         sleep 4 unless pid == last
       end
+    end
+  end
+
+  # From Ruby 2.6 to 3.2, `Process.detach` can delay or prevent
+  # `Process.wait2(-1)` from detecting a terminated child:
+  # https://bugs.ruby-lang.org/issues/19837. However,
+  # `Process.wait2(<child pid>)` still works properly. This bug has
+  # been fixed in Ruby 3.3.
+  def test_workers_respawn_with_process_detach
+    skip_unless_signal_exist? :KILL
+
+    config = 'test/config/process_detach_before_fork.rb'
+
+    worker_respawn(0, workers, config) do |phase0_worker_pids|
+      phase0_worker_pids.each do |pid|
+        Process.kill :KILL, pid
+      end
+    end
+
+    # `test/config/process_detach_before_fork.rb` forks and detaches a
+    # process.  Since MiniTest attempts to join all threads before
+    # finishing, terminate the process so that the test can end quickly
+    # if it passes.
+    pid_filename = File.join(Dir.tmpdir, 'process_detach_test.pid')
+    if File.exist?(pid_filename)
+      pid = File.read(pid_filename).chomp.to_i
+      File.unlink(pid_filename)
+      Process.kill :TERM, pid if pid > 0
     end
   end
 
@@ -226,7 +255,10 @@ class TestIntegrationCluster < TestIntegration
 
     get_worker_pids # wait for workers to boot
 
-    connect
+    10.times {
+      fast_connect
+      sleep 0.5
+    }
 
     sleep 1.15
 
@@ -506,6 +538,32 @@ class TestIntegrationCluster < TestIntegration
     File.unlink file1 if File.file? file1
   end
 
+  def test_worker_hook_warning_cli
+    cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
+      on_worker_boot(:test) do |index, data|
+        data[:test] = index
+      end
+    CONFIG
+
+    get_worker_pids
+    line = @server_log[/.+on_worker_boot.+/]
+    refute line, "Warning below should not be shown!\n#{line}"
+  end
+
+  def test_worker_hook_warning_web_concurrency
+    cli_server "test/rackup/hello.ru",
+      env: { 'WEB_CONCURRENCY' => '2'},
+      config: <<~CONFIG
+      on_worker_boot(:test) do |index, data|
+        data[:test] = index
+      end
+    CONFIG
+
+    get_worker_pids
+    line = @server_log[/.+on_worker_boot.+/]
+    refute line, "Warning below should not be shown!\n#{line}"
+  end
+
   def test_puma_debug_loaded_exts
     cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true
 
@@ -652,10 +710,10 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def worker_respawn(phase = 1, size = workers)
+  def worker_respawn(phase = 1, size = workers, config = 'test/config/worker_shutdown_timeout_2.rb')
     threads = []
 
-    cli_server "-w #{workers} -t 1:1 -C test/config/worker_shutdown_timeout_2.rb test/rackup/sleep_pid.ru"
+    cli_server "-w #{workers} -t 1:1 -C #{config} test/rackup/sleep_pid.ru"
 
     # make sure two workers have booted
     phase0_worker_pids = get_worker_pids

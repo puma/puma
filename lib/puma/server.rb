@@ -18,6 +18,9 @@ require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 
 module Puma
 
+  # This method was private on Ruby 2.4 but became public on Ruby 2.5+:
+  Thread.send(:attr_accessor, :puma_server)
+
   # The HTTP Server itself. Serves out a single Rack app.
   #
   # This class is used by the `Puma::Single` and `Puma::Cluster` classes
@@ -32,12 +35,12 @@ module Puma
     include Puma::Const
     include Request
 
+    attr_reader :options
     attr_reader :thread
     attr_reader :log_writer
     attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
-    attr_reader :idle_timeout_reached
 
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
@@ -47,7 +50,6 @@ module Puma
     attr_accessor :app
     attr_accessor :binder
 
-    THREAD_LOCAL_KEY = :puma_server
 
     # Create a server for the rack app +app+.
     #
@@ -82,6 +84,8 @@ module Puma
         UserFileDefaultOptions.new(options, Configuration::DEFAULTS)
       end
 
+      @clustered                 = (@options.fetch :workers, 0) > 0
+      @worker_write              = @options[:worker_write]
       @log_writer                = @options.fetch :log_writer, LogWriter.stdio
       @early_hints               = @options[:early_hints]
       @first_data_timeout        = @options[:first_data_timeout]
@@ -129,7 +133,7 @@ module Puma
     class << self
       # @!attribute [r] current
       def current
-        Thread.current[THREAD_LOCAL_KEY]
+        Thread.current.puma_server
       end
 
       # :nodoc:
@@ -241,7 +245,7 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(thread_name, @options) { |client| process_client client }
+      @thread_pool = ThreadPool.new(thread_name, options) { |client| process_client client }
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
@@ -249,8 +253,8 @@ module Puma
       end
 
 
-      @thread_pool.auto_reap! if @options[:reaping_time]
-      @thread_pool.auto_trim! if @options[:auto_trim_time]
+      @thread_pool.auto_reap! if options[:reaping_time]
+      @thread_pool.auto_trim! if options[:auto_trim_time]
 
       @check, @notify = Puma::Util.pipe unless @notify
 
@@ -314,15 +318,15 @@ module Puma
         sockets = [check] + @binder.ios
         pool = @thread_pool
         queue_requests = @queue_requests
-        drain = @options[:drain_on_shutdown] ? 0 : nil
+        drain = options[:drain_on_shutdown] ? 0 : nil
 
-        addr_send_name, addr_value = case @options[:remote_address]
+        addr_send_name, addr_value = case options[:remote_address]
         when :value
-          [:peerip=, @options[:remote_address_value]]
+          [:peerip=, options[:remote_address_value]]
         when :header
-          [:remote_addr_header=, @options[:remote_address_header]]
+          [:remote_addr_header=, options[:remote_address_header]]
         when :proxy_protocol
-          [:expect_proxy_proto=, @options[:remote_address_proxy_protocol]]
+          [:expect_proxy_proto=, options[:remote_address_proxy_protocol]]
         else
           [nil, nil]
         end
@@ -333,10 +337,22 @@ module Puma
             unless ios
               unless shutting_down?
                 @idle_timeout_reached = true
-                @status = :stop
+
+                if @clustered
+                  @worker_write << "#{PipeRequest::IDLE}#{Process.pid}\n" rescue nil
+                  next
+                else
+                  @log_writer.log "- Idle timeout reached"
+                  @status = :stop
+                end
               end
 
               break
+            end
+
+            if @idle_timeout_reached && @clustered
+              @idle_timeout_reached = false
+              @worker_write << "#{PipeRequest::IDLE}#{Process.pid}\n" rescue nil
             end
 
             ios.first.each do |sock|
@@ -344,7 +360,7 @@ module Puma
                 break if handle_check
               else
                 pool.wait_until_not_full
-                pool.wait_for_less_busy_worker(@options[:wait_for_less_busy_worker])
+                pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker])
 
                 io = begin
                   sock.accept_nonblock
@@ -424,9 +440,9 @@ module Puma
     # Return true if one or more requests were processed.
     def process_client(client)
       # Advertise this server into the thread
-      Thread.current[THREAD_LOCAL_KEY] = self
+      Thread.current.puma_server = self
 
-      clean_thread_locals = @options[:clean_thread_locals]
+      clean_thread_locals = options[:clean_thread_locals]
       close_socket = true
 
       requests = 0
@@ -535,7 +551,7 @@ module Puma
     # A fallback rack response if +@app+ raises as exception.
     #
     def lowlevel_error(e, env, status=500)
-      if handler = @options[:lowlevel_error_handler]
+      if handler = options[:lowlevel_error_handler]
         if handler.arity == 1
           return handler.call(e)
         elsif handler.arity == 2
@@ -556,14 +572,13 @@ module Puma
     def response_to_error(client, requests, err, status_code)
       status, headers, res_body = lowlevel_error(err, client.env, status_code)
       prepare_response(status, headers, res_body, requests, client)
-      client.write_error(status_code)
     end
     private :response_to_error
 
     # Wait for all outstanding requests to finish.
     #
     def graceful_shutdown
-      if @options[:shutdown_debug]
+      if options[:shutdown_debug]
         threads = Thread.list
         total = threads.size
 
@@ -583,7 +598,7 @@ module Puma
       end
 
       if @thread_pool
-        if timeout = @options[:force_shutdown_after]
+        if timeout = options[:force_shutdown_after]
           @thread_pool.shutdown timeout.to_f
         else
           @thread_pool.shutdown

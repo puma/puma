@@ -391,4 +391,14 @@ class TestCLI < Minitest::Test
     assert_equal log_writer.stdout.class, Puma::NullIO
     assert_equal log_writer.stderr, $stderr
   end
+
+  def test_plugins
+    assert_empty Puma::Plugins.instance_variable_get(:@plugins)
+
+    cli = Puma::CLI.new ['--plugin', 'tmp_restart', '--plugin', 'systemd']
+    cli.send(:setup_options)
+
+    assert Puma::Plugins.find("tmp_restart")
+    assert Puma::Plugins.find("systemd")
+  end
 end
