@@ -60,7 +60,7 @@ module Puma
       end
 
       if found.nil? || found.prio != priority
-        found = PrioritisedQueue.new(name: priority, queue: [])
+        found = PrioritisedQueue.new(prio: priority, queue: [])
         @queues << found
         sort_queues
       end
