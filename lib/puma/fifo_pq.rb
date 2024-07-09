@@ -16,17 +16,17 @@ module Puma
     alias_method :push, :queue
 
     def unqueue
-      until @queues.empty? && @front.empty?
-        if !@front.empty?
-          return @front.shift
-        else
-          first_queue = @queues[0].queue
+      unless @front.empty?
+        return @front.shift
+      end
 
-          if first_queue.empty?
-            @queues.shift
-          else
-            return first_queue.shift
-          end
+      until @queues.empty?
+        first_queue = @queues[0].queue
+
+        if first_queue.empty?
+          @queues.shift
+        else
+          return first_queue.shift
         end
       end
 
