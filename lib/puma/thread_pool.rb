@@ -58,7 +58,7 @@ module Puma
       @todo = if @prioritize_requests_by.nil?
                 []
               else
-                FIFOPriorityQueue.new
+                Puma::FIFOPriorityQueue.new
               end
 
       @shutdown = false
