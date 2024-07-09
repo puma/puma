@@ -20,7 +20,7 @@ module Puma
         if !@front.empty?
           return @front.shift
         else
-          first_queue = @queues[0]
+          first_queue = @queues[0].queue
 
           if first_queue.empty?
             @queues.shift
