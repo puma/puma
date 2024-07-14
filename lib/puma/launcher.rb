@@ -62,7 +62,7 @@ module Puma
       # Load the systemd integration if we detect systemd's NOTIFY_SOCKET.
       # Skip this on JRuby though, because it is incompatible with the systemd
       # integration due to https://github.com/jruby/jruby/issues/6504
-      if ENV["NOTIFY_SOCKET"] && !Puma.jruby?
+      if ENV["NOTIFY_SOCKET"] && !Puma.jruby? && !ENV["PUMA_SKIP_SYSTEMD"]
         @config.plugins.create('systemd')
       end
 

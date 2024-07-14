@@ -248,6 +248,24 @@ class TestPumaServerSSL < Minitest::Test
         }
       end
     end
+
+    # this may require updates if TLSv1.3 default ciphers change
+    def test_ssl_ciphersuites
+      skip('Requires TLSv1.3') unless Puma::MiniSSL::HAS_TLS1_3
+
+      start_server
+      default_cipher = send_http(ctx: new_ctx).cipher[0]
+      @server&.stop true
+
+      cipher_suite = 'TLS_CHACHA20_POLY1305_SHA256'
+      start_server { |ctx| ctx.ssl_ciphersuites = cipher_suite}
+
+      cipher = send_http(ctx: new_ctx).cipher
+
+      refute_equal default_cipher, cipher[0]
+      assert_equal cipher_suite  , cipher[0]
+      assert_equal cipher[1], 'TLSv1.3'
+    end
   end
 end if ::Puma::HAS_SSL
 

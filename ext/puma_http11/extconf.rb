@@ -16,7 +16,7 @@ unless ENV["PUMA_DISABLE_SSL"]
   found_pkg_config = !has_openssl_dir && pkg_config('openssl')
 
   found_ssl = if !$mingw && found_pkg_config
-    puts 'using OpenSSL pkgconfig (openssl.pc)'
+    puts '──── Using OpenSSL pkgconfig (openssl.pc) ────'
     true
   elsif have_library('libcrypto', 'BIO_read') && have_library('libssl', 'SSL_CTX_new')
     true
@@ -31,22 +31,27 @@ unless ENV["PUMA_DISABLE_SSL"]
   if found_ssl
     have_header "openssl/bio.h"
 
-    # below is  yes for 1.0.2 & later
-    have_func "DTLS_method"                            , "openssl/ssl.h"
-    have_func "SSL_CTX_set_session_cache_mode(NULL, 0)", "openssl/ssl.h"
+    ssl_h = "openssl/ssl.h".freeze
 
-    # below are yes for 1.1.0 & later
-    have_func "TLS_server_method"                      , "openssl/ssl.h"
-    have_func "SSL_CTX_set_min_proto_version(NULL, 0)" , "openssl/ssl.h"
+    puts "\n──── Below are yes for 1.0.2 & later ────"
+    have_func "DTLS_method"                            , ssl_h
+    have_func "SSL_CTX_set_session_cache_mode(NULL, 0)", ssl_h
 
-    have_func "X509_STORE_up_ref"
-    have_func "SSL_CTX_set_ecdh_auto(NULL, 0)"         , "openssl/ssl.h"
+    puts "\n──── Below are yes for 1.1.0 & later ────"
+    have_func "TLS_server_method"                      , ssl_h
+    have_func "SSL_CTX_set_min_proto_version(NULL, 0)" , ssl_h
 
-    # below exists in 1.1.0 and later, but isn't documented until 3.0.0
-    have_func "SSL_CTX_set_dh_auto(NULL, 0)"           , "openssl/ssl.h"
+    puts "\n──── Below is yes for 1.1.0 and later, but isn't documented until 3.0.0 ────"
+    # https://github.com/openssl/openssl/blob/OpenSSL_1_1_0/include/openssl/ssl.h#L1159
+    have_func "SSL_CTX_set_dh_auto(NULL, 0)"           , ssl_h
 
-    # below is yes for 3.0.0 & later
-    have_func "SSL_get1_peer_certificate"              , "openssl/ssl.h"
+    puts "\n──── Below is yes for 1.1.1 & later ────"
+    have_func "SSL_CTX_set_ciphersuites(NULL, \"\")"   , ssl_h
+
+    puts "\n──── Below is yes for 3.0.0 & later ────"
+    have_func "SSL_get1_peer_certificate"              , ssl_h
+
+    puts ''
 
     # Random.bytes available in Ruby 2.5 and later, Random::DEFAULT deprecated in 3.0
     if Random.respond_to?(:bytes)

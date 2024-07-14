@@ -5,13 +5,13 @@ require_relative "helpers/integration"
 
 require "puma/plugin"
 
-class TestPluginSystemdJruby < TestIntegration
+class TestSkipSystemd < TestIntegration
 
   def setup
     skip_unless :linux
     skip_unless :unix
     skip_unless_signal_exist? :TERM
-    skip_unless :jruby
+    skip_if :jruby
 
     super
   end
@@ -22,7 +22,7 @@ class TestPluginSystemdJruby < TestIntegration
 
   def test_systemd_plugin_not_loaded
     cli_server "test/rackup/hello.ru",
-      env: {'NOTIFY_SOCKET' => '/tmp/doesntmatter' }, config: <<~CONFIG
+               env: { 'PUMA_SKIP_SYSTEMD' => 'true', 'NOTIFY_SOCKET' => '/tmp/doesntmatter' }, config: <<~CONFIG
       app do |_|
         [200, {}, [Puma::Plugins.instance_variable_get(:@plugins)['systemd'].to_s]]
       end
