@@ -244,7 +244,7 @@ cap $stage puma:stop  --dry-run
 ### Disabling Puma Systemd Integration
 
 If you would like to disable Puma's systemd integration, for example if you handle it elsewhere
-in your code yourself, simply set the the environment variable `PUMA_SKIP_SYSTEMD` to any value
+in your code yourself, simply set the the environment variable `PUMA_SKIP_SYSTEMD` to any value.
 
 
 
