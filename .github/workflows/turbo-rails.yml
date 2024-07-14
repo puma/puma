@@ -35,6 +35,8 @@ jobs:
           - { os: ubuntu-22.04 , ruby: head , rails: '7.1' }
     env:
       CI: true
+      FERRUM_PROCESS_TIMEOUT: 25
+      FERRUM_DEFAULT_TIMEOUT: 15
       RAILS_VERSION: "${{ matrix.rails }}"
 
     steps:
