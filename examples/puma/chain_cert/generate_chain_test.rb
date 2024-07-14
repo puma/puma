@@ -14,10 +14,7 @@ expires in 4 years
 =end
 
 require 'bundler/inline'
-
-
-require 'certificate_authority'
-gemfile do
+gemfile(true) do
   source 'https://rubygems.org'
   gem 'certificate_authority'
 end
