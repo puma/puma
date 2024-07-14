@@ -14,8 +14,6 @@ class TestPluginSystemdJruby < TestIntegration
     skip_unless :jruby
 
     super
-
-    ENV["NOTIFY_SOCKET"] = "/tmp/doesntmatter"
   end
 
   def teardown

@@ -14,9 +14,6 @@ class TestSkipSystemd < TestIntegration
     skip_if :jruby
 
     super
-
-    ENV["PUMA_SKIP_SYSTEMD"] = "true"
-    ENV["NOTIFY_SOCKET"] = "/tmp/doesntmatter"
   end
 
   def teardown
@@ -25,7 +22,7 @@ class TestSkipSystemd < TestIntegration
 
   def test_systemd_plugin_not_loaded
     cli_server "test/rackup/hello.ru",
-               env: {'NOTIFY_SOCKET' => '/tmp/doesntmatter' }, config: <<~CONFIG
+               env: { 'PUMA_SKIP_SYSTEMD' => 'true', 'NOTIFY_SOCKET' => '/tmp/doesntmatter' }, config: <<~CONFIG
       app do |_|
         [200, {}, [Puma::Plugins.instance_variable_get(:@plugins)['systemd'].to_s]]
       end
