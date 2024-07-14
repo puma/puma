@@ -7,9 +7,6 @@ require "puma/plugin"
 
 class TestSkipSystemd < TestIntegration
 
-  THREAD_LOG = TRUFFLE ? "{ 0/16 threads, 16 available, 0 backlog }" :
-                 "{ 0/5 threads, 5 available, 0 backlog }"
-
   def setup
     skip_unless :linux
     skip_unless :unix
