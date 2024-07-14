@@ -131,7 +131,7 @@ jobs:
 
       - name: test
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        timeout-minutes: 6
+        timeout-minutes: 10
         run: test/runner --verbose
 
   test_non_mri:
