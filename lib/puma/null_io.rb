@@ -71,5 +71,9 @@ module Puma
     def closed?
       false
     end
+
+    def set_encoding(enc)
+      self
+    end
   end
 end
