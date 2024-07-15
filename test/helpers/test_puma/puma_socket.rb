@@ -5,7 +5,6 @@ require_relative '../test_puma'
 require_relative 'response'
 
 module TestPuma
-
   # @!macro [new] req
   #   @param req [String, GET_11] request path
 

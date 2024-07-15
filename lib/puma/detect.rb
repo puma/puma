@@ -3,7 +3,6 @@
 # This file can be loaded independently of puma.rb, so it cannot have any code
 # that assumes puma.rb is loaded.
 
-
 module Puma
   # @version 5.2.1
   HAS_FORK = ::Process.respond_to? :fork

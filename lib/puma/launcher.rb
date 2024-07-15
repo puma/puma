@@ -38,7 +38,7 @@ module Puma
     #     end
     #   end
     #   Puma::Launcher.new(conf, log_writer: Puma::LogWriter.stdio).run
-    def initialize(conf, launcher_args={})
+    def initialize(conf, launcher_args = {})
       @runner        = nil
       @log_writer    = launcher_args[:log_writer] || LogWriter::DEFAULT
       @events        = launcher_args[:events] || Events.new

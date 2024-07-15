@@ -10,11 +10,11 @@ class TestBusyWorker < Minitest::Test
   def teardown
     return if skipped?
     @server&.stop true
-    @ios.each {|i| i.close unless i.closed?}
+    @ios.each { |i| i.close unless i.closed? }
   end
 
   def new_connection
-    TCPSocket.new('127.0.0.1', @port).tap {|s| @ios << s}
+    TCPSocket.new('127.0.0.1', @port).tap { |s| @ios << s }
   rescue IOError
     Puma::Util.purge_interrupt_queue
     retry

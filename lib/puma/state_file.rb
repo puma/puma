@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Puma
-
   # Puma::Launcher uses StateFile to write a yaml file for use with Puma::ControlCLI.
   #
   # In previous versions of Puma, YAML was used to read/write the state file.
@@ -12,7 +11,6 @@ module Puma
   # yaml file, and the CI tests parse it with Psych.
   #
   class StateFile
-
     ALLOWED_FIELDS = %w!control_url control_auth_token pid running_from!
 
     def initialize

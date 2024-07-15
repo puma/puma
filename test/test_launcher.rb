@@ -74,7 +74,7 @@ class TestLauncher < Minitest::Test
 
   def test_puma_stats
     conf = Puma::Configuration.new do |c|
-      c.app -> {[200, {}, ['']]}
+      c.app -> { [200, {}, ['']] }
       c.clear_binds!
     end
     launcher = launcher(conf)
@@ -93,7 +93,7 @@ class TestLauncher < Minitest::Test
     skip_unless :fork
 
     conf = Puma::Configuration.new do |c|
-      c.app -> {[200, {}, ['']]}
+      c.app -> { [200, {}, ['']] }
       c.workers 1
       c.clear_binds!
     end
@@ -127,7 +127,7 @@ class TestLauncher < Minitest::Test
 
   def test_fire_on_stopped
     conf = Puma::Configuration.new do |c|
-      c.app -> {[200, {}, ['']]}
+      c.app -> { [200, {}, ['']] }
       c.port UniquePort.call
     end
 
