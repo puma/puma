@@ -918,6 +918,23 @@ module Puma
       process_hook :out_of_band, nil, block, 'out_of_band'
     end
 
+    # Code to determine the request priority in the backlog.
+    #
+    # Expects a block that will accept three parameters
+    # (HTTP method String, full URI String, headers Hash)
+    # and return an Integer.
+    #
+    # Higher numbers equal higher priority.
+    # Each priority level will have its own queue that is internally FIFO.
+    # Higher priority queues are emptied first before lower priority queues.
+    #
+    # Relies on queue_requests being set to true.
+    def prioritize_requests_by(&block)
+      @options[:prioritize_requests_by] = block
+    end
+
+    alias_method :prioritise_requests_by, :prioritize_requests_by
+
     # The directory to operate out of.
     #
     # The default is the current directory.
