@@ -36,3 +36,7 @@ object that is useful for additional configuration.
 
 Public methods in [`Puma::Plugin`](../lib/puma/plugin.rb) are treated as a
 public API for plugins.
+
+## Binder hooks
+
+There's `Puma::Binder#before_parse` method that allows to add proc to run before the body of `Puma::Binder#parse`. Example of usage can be found in [that repository](https://github.com/anchordotdev/puma-acme/blob/v0.1.3/lib/puma/acme/plugin.rb#L97-L118) (`before_parse_hook` could be renamed `before_parse`, making monkey patching of [binder.rb](https://github.com/anchordotdev/puma-acme/blob/v0.1.3/lib/puma/acme/binder.rb) is unnecessary).
