@@ -329,7 +329,7 @@ To enable verification flags offered by OpenSSL, use `verification_flags` (not a
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&verification_flags=PARTIAL_CHAIN'
 ```
 
-You can also set multiple verification flags (by separating them with coma):
+You can also set multiple verification flags (by separating them with comma):
 
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&verification_flags=PARTIAL_CHAIN,CRL_CHECK'
