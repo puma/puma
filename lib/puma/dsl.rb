@@ -754,7 +754,8 @@ module Puma
     end
 
     # Code to run immediately before a worker shuts
-    # down (after it has finished processing HTTP requests). These hooks
+    # down (after it has finished processing HTTP requests). The worker's
+    # index is passed as an argument. These hooks
     # can block if necessary to wait for background operations unknown
     # to Puma to finish before the process terminates.
     #
