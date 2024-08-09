@@ -1,6 +1,6 @@
 workers 2
 
-on_worker_boot(:test) do |index, data|
+before_worker_boot(:test) do |index, data|
   data[:test] = index
 end
 
