@@ -5,7 +5,7 @@ before_worker_boot do |index|
 end
 
 before_fork { 1 }
-on_worker_shutdown { 1 }
+before_worker_shutdown { 1 }
 before_worker_boot { 1 }
 on_worker_fork { 1 }
 on_restart { 1 }

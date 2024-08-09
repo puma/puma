@@ -505,10 +505,11 @@ class TestConfigFile < PumaTest
   end
 
   def test_run_hooks_before_worker_shutdown
+    assert_run_hooks :before_worker_shutdown
     assert_run_hooks :before_worker_shutdown, configured_with: :on_worker_shutdown
 
-    assert_raise_on_hooks_without_block :on_worker_shutdown
-    assert_warning_for_hooks_defined_in_single_mode :on_worker_shutdown
+    assert_raise_on_hooks_without_block :before_worker_shutdown
+    assert_warning_for_hooks_defined_in_single_mode :before_worker_shutdown
   end
 
   def test_run_hooks_before_fork
