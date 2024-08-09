@@ -227,7 +227,12 @@ module Puma
     def puma_options_from_env(env = ENV)
       min = env['PUMA_MIN_THREADS'] || env['MIN_THREADS']
       max = env['PUMA_MAX_THREADS'] || env['MAX_THREADS']
-      workers = env['WEB_CONCURRENCY']
+      workers = if env['WEB_CONCURRENCY'] == 'auto'
+        require_processor_counter
+        ::Concurrent.available_processor_count
+      else
+        env['WEB_CONCURRENCY']
+      end
 
       {
         min_threads: min && Integer(min),
@@ -340,6 +345,16 @@ module Puma
     end
 
     private
+
+    def require_processor_counter
+      require 'concurrent/utility/processor_counter'
+    rescue LoadError
+      warn <<~MESSAGE
+        WEB_CONCURRENCY=auto requires the "concurrent-ruby" gem to be installed.
+        Please add "concurrent-ruby" to your Gemfile.
+      MESSAGE
+      raise
+    end
 
     # Load and use the normal Rack builder if we can, otherwise
     # fallback to our minimal version.
