@@ -744,11 +744,17 @@ module Puma
     #     puts 'Before worker boot...'
     #   end
     #
-    def on_worker_boot(key = nil, &block)
-      warn_if_in_single_mode('on_worker_boot')
+    def before_worker_boot(key = nil, &block)
+      if __callee__ == :on_worker_boot
+        warn "on_worker_boot is deprecated, use before_worker_boot instead"
+      end
 
-      process_hook :before_worker_boot, key, block, 'on_worker_boot'
+      warn_if_in_single_mode('before_worker_boot')
+
+      process_hook :before_worker_boot, key, block, 'before_worker_boot'
     end
+
+    alias_method :on_worker_boot, :before_worker_boot
 
     # Code to run immediately before a worker shuts
     # down (after it has finished processing HTTP requests). The worker's

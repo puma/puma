@@ -264,7 +264,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_boot_timeout
     timeout = 1
-    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
+    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; before_worker_boot { sleep #{timeout + 1} }")
   end
 
   def test_worker_timeout
@@ -272,7 +272,7 @@ class TestIntegrationCluster < TestIntegration
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     config = <<~CONFIG
       worker_timeout #{timeout}
-      on_worker_boot do
+      before_worker_boot do
         Thread.new do
           sleep 1
           Thread.list.find {|t| t.name == 'puma stat pld'}.kill
@@ -582,13 +582,13 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_hook_warning_cli
     cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
-      on_worker_boot(:test) do |index, data|
+      before_worker_boot(:test) do |index, data|
         data[:test] = index
       end
     CONFIG
 
     get_worker_pids
-    line = @server_log[/^Warning.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+before_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
@@ -596,13 +596,13 @@ class TestIntegrationCluster < TestIntegration
     cli_server "test/rackup/hello.ru",
       env: { 'WEB_CONCURRENCY' => '2'},
       config: <<~CONFIG
-        on_worker_boot(:test) do |index, data|
+        before_worker_boot(:test) do |index, data|
           data[:test] = index
         end
       CONFIG
 
     get_worker_pids
-    line = @server_log[/^Warning.+.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+.+before_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
