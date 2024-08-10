@@ -122,7 +122,7 @@ class TestIntegrationSingle < TestIntegration
     rejected_curl_wait_thread.join
 
     assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|Couldn't connect to server/, rejected_curl_stderr.read)
+    assert_match(/Connection refused|(Couldn't|Could not) connect to server/, rejected_curl_stderr.read)
 
     Process.wait(@server.pid)
     @server.close unless @server.closed?
