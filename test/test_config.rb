@@ -123,7 +123,7 @@ class TestConfigFile < TestConfigFileBase
     skip_if :jruby
     skip_unless :ssl
 
-    cert_path = File.expand_path "../examples/puma/client-certs", __dir__
+    cert_path = File.expand_path "../examples/puma/client_certs", __dir__
     cert_pem = File.read("#{cert_path}/server.crt")
     key_pem = File.read("#{cert_path}/server.key")
 
