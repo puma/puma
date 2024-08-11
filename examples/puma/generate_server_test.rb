@@ -3,17 +3,11 @@
 =begin
 regenerates cert_puma.pem and puma_keypair.pem
 dates, key length & sign_algorithm are changed
-
-JRuby:
-after running this file, delete server.p12 and keystore.jks, then (I think)
-cd examples/puma
-openssl pkcs12 -export -password pass:jruby_puma -inkey puma_keypair.pem -in cert_puma.pem -name puma -out server.p12
-keytool -importkeystore -srckeystore server.p12 -srcstoretype pkcs12 -srcstorepass jruby_puma -destkeystore keystore.jks -deststoretype JKS -storepass jruby_puma
 =end
 
 require 'openssl'
 
-module Generate
+module GenerateServerCerts
 
   KEY_LEN = 2048
   SIGN_ALGORITHM = OpenSSL::Digest::SHA256
@@ -53,4 +47,4 @@ module Generate
   end
 end
 
-Generate.run
+GenerateServerCerts.run
