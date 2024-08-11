@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# exit on error
+set -e
+
+Dash="\n\e[38;2;223;223;16m────────────────────────────────────────────────────"
+Reset="\e[0m"
+
+# change to script folder
+SCRIPT=$(realpath -s "$0")
+CERT_HOME=$(dirname "$SCRIPT")
+
+#——————————————————————————————— process ssl files in examples/puma
+echo -e "$Dash process ssl files in examples/puma$Reset"
+cd $CERT_HOME
+ruby generate_server_test.rb
+
+rm -f server.p12
+openssl pkcs12 -export -password pass:jruby_puma -inkey puma_keypair.pem -in cert_puma.pem -name puma -out server.p12
+printf "Done with server.p12\n\n"
+
+rm -f keystore.jks
+keytool -importkeystore -srckeystore server.p12 -srcstoretype pkcs12 -srcstorepass jruby_puma -destkeystore keystore.jks -deststoretype JKS -storepass jruby_puma
+printf "Done with keystore.jks\n\n"
+
+rm -f encrypted_puma_keypair.pem
+openssl rsa -aes256 -in puma_keypair.pem -out encrypted_puma_keypair.pem --passout pass:'hello world'
+printf "Done with encrypted_puma_keypair.pem\n\n"
+
+#——————————————————————————————— process ssl files in examples/puma/chain_cert
+echo -e "$Dash process ssl files in examples/puma/chain_cert$Reset"
+cd $CERT_HOME/chain_cert
+ruby generate_chain_test.rb
+
+
+#——————————————————————————————— process ssl files in examples/puma/client_certs
+echo -e "$Dash process ssl files in examples/puma/client_certs$Reset"
+cd $CERT_HOME/client_certs
+ruby generate_client_test.rb
+
+rm -f server.p12
+openssl pkcs12 -chain -CAfile ./ca.crt -export -password pass:jruby_puma -inkey server.key -in server.crt -name server -out server.p12
+printf "Done with server.p12\n\n"
+
+rm -f keystore.jks
+keytool -importkeystore -srckeystore server.p12 -srcstoretype pkcs12 -srcstorepass jruby_puma -destkeystore keystore.jks -deststoretype pkcs12 -storepass jruby_puma
+keytool -importcert -alias ca -noprompt -trustcacerts -file ca.crt -keystore keystore.jks -storepass jruby_puma
+printf "Done with keystore.jks\n\n"
+
+rm -f ca_store.p12
+openssl pkcs12 -export -password pass:jruby_puma -inkey ca.key -in ca.crt -name ca -out ca_store.p12
+printf "Done with ca_store.p12\n\n"
+
+rm -f ca_store.jks
+keytool -importcert -alias mykey -noprompt -trustcacerts -file ca.crt -keystore ca_store.jks -deststoretype jks -keypass jruby_puma -storepass jruby_puma
+printf "Done with ca_store.jks\n\n"
+
+rm -f unknown_ca_store.p12
+openssl pkcs12 -export -password pass:jruby_puma -inkey unknown_ca.key -in unknown_ca.crt -name server -out unknown_ca_store.p12
+printf "Done with unknown_ca_store.p12\n\n"
+
+echo -e "$Dash Done$Reset"

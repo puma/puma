@@ -4,19 +4,11 @@
 run code to generate all certs
 certs before date will be the first of the current month
 expire in four years
-
-JRuby:
-see https://github.com/puma/puma/commit/4ae0de4f4cc
-after running this Ruby code, delete keystore.jks and server.p12, then
-cd examples/puma/client-certs
-openssl pkcs12 -chain -CAfile ./ca.crt -export -password pass:jruby_puma -inkey server.key -in server.crt -name server -out server.p12
-keytool -importkeystore -srckeystore server.p12 -srcstoretype pkcs12 -srcstorepass jruby_puma -destkeystore keystore.jks -deststoretype JKS -storepass jruby_puma
-keytool -importcert -alias ca -noprompt -trustcacerts -file ca.crt -keystore keystore.jks -storepass jruby_puma
 =end
 
 require "openssl"
 
-module Generate
+module GenerateClientCerts
 
   KEY_LEN = 2048
   SIGN_ALGORITHM = OpenSSL::Digest::SHA256
@@ -130,4 +122,4 @@ module Generate
   end
 end
 
-Generate.run
+GenerateClientCerts.run

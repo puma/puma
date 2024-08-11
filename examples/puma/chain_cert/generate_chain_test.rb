@@ -19,7 +19,7 @@ gemfile(true) do
   gem 'certificate_authority'
 end
 
-module Generate
+module GenerateChainCerts
 
   CA               = "ca.crt"
   CA_KEY           = "ca.key"
@@ -123,4 +123,4 @@ module Generate
   end
 end
 
-Generate.run
+GenerateChainCerts.run
