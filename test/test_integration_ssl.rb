@@ -103,7 +103,7 @@ class TestIntegrationSSL < TestIntegration
 
   # should use TLSv1.3 with OpenSSL 1.1 or later
   def test_verify_client_cert_roundtrip(tls1_2 = nil)
-    cert_path = File.expand_path '../examples/puma/client-certs', __dir__
+    cert_path = File.expand_path '../examples/puma/client_certs', __dir__
     bind_port
 
     config = <<~CONFIG
@@ -165,14 +165,14 @@ class TestIntegrationSSL < TestIntegration
     server = Puma::Server.new app, nil, opts
     if Puma.jruby?
       ssl_params = {
-          'keystore'      => File.expand_path('../examples/puma/client-certs/keystore.jks', __dir__),
+          'keystore'      => File.expand_path('../examples/puma/client_certs/keystore.jks', __dir__),
           'keystore-pass' => 'jruby_puma', # keystore includes server.p12 as well as ca.crt
       }
     else
       ssl_params = {
-          'cert' => File.expand_path('../examples/puma/client-certs/server.crt', __dir__),
-          'key'  => File.expand_path('../examples/puma/client-certs/server.key', __dir__),
-          'ca'   => File.expand_path('../examples/puma/client-certs/ca.crt', __dir__),
+          'cert' => File.expand_path('../examples/puma/client_certs/server.crt', __dir__),
+          'key'  => File.expand_path('../examples/puma/client_certs/server.key', __dir__),
+          'ca'   => File.expand_path('../examples/puma/client_certs/ca.crt', __dir__),
       }
     end
     ssl_params['verify_mode'] = 'force_peer' # 'peer'
@@ -182,9 +182,9 @@ class TestIntegrationSSL < TestIntegration
 
     server.run(true)
     begin
-      ca = File.expand_path('../examples/puma/client-certs/ca.crt', __dir__)
-      cert = File.expand_path('../examples/puma/client-certs/client.crt', __dir__)
-      key = File.expand_path('../examples/puma/client-certs/client.key', __dir__)
+      ca = File.expand_path('../examples/puma/client_certs/ca.crt', __dir__)
+      cert = File.expand_path('../examples/puma/client_certs/client.crt', __dir__)
+      key = File.expand_path('../examples/puma/client_certs/client.key', __dir__)
       # NOTE: JRuby used to end up in a hang with TLS peer verification enabled
       # it's easier to reproduce using an external client such as CURL (using net/http client the bug isn't triggered)
       # also the "hang", being buffering related, seems to showcase better with TLS 1.2 than 1.3

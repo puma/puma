@@ -276,7 +276,7 @@ class TestPumaServerSSLClient < Minitest::Test
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
+  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 
   # Context can be shared, may help with JRuby
   CTX = Puma::MiniSSL::Context.new.tap { |ctx|
@@ -493,7 +493,7 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
+  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 
   def test_server_ssl_with_cert_pem_and_key_pem
     ctx = Puma::MiniSSL::Context.new

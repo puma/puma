@@ -14,11 +14,11 @@ class TestExampleCertExpiration < Minitest::Test
   # Explicitly list the files to test
   TEST_FILES = %w[
     puma/cert_puma.pem
-    puma/client-certs/client.crt
-    puma/client-certs/ca.crt
-    puma/client-certs/client_unknown.crt
-    puma/client-certs/server.crt
-    puma/client-certs/unknown_ca.crt
+    puma/client_certs/client.crt
+    puma/client_certs/ca.crt
+    puma/client_certs/client_unknown.crt
+    puma/client_certs/server.crt
+    puma/client_certs/unknown_ca.crt
     puma/chain_cert/ca.crt
     puma/chain_cert/cert.crt
     puma/chain_cert/intermediate.crt

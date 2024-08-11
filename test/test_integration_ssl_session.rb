@@ -24,7 +24,7 @@ class TestIntegrationSSLSession < TestIntegration
 
   RESP = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 5\r\n\r\nhttps"
 
-  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
+  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 
   def teardown
     return if skipped?
@@ -50,9 +50,9 @@ class TestIntegrationSSLSession < TestIntegration
 
   def set_reuse(reuse)
     <<~RUBY
-      key  = '#{File.expand_path '../examples/puma/client-certs/server.key', __dir__}'
-      cert = '#{File.expand_path '../examples/puma/client-certs/server.crt', __dir__}'
-      ca   = '#{File.expand_path '../examples/puma/client-certs/ca.crt', __dir__}'
+      key  = '#{File.expand_path '../examples/puma/client_certs/server.key', __dir__}'
+      cert = '#{File.expand_path '../examples/puma/client_certs/server.crt', __dir__}'
+      ca   = '#{File.expand_path '../examples/puma/client_certs/ca.crt', __dir__}'
 
       ssl_bind '#{HOST}', '#{bind_port}', {
         cert: cert,
