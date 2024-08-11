@@ -3,7 +3,6 @@
 =begin
 run code to generate all certs
 certs before date will be the first of the current month
-expire in four years
 =end
 
 require "openssl"
@@ -28,6 +27,9 @@ module GenerateClientCerts
       output_info
       setup_issue
       write_files
+    rescue => e
+      puts "error: #{e.message}"
+      exit 1
     end
 
     private
@@ -69,7 +71,7 @@ module GenerateClientCerts
       ef = OpenSSL::X509::ExtensionFactory.new
       ef.subject_certificate = cert
       ef.issuer_certificate = issuer
-      extensions.each {|oid, value, critical|
+      extensions.each { |oid, value, critical|
         cert.add_extension(ef.create_extension(oid, value, critical))
       }
       cert.sign(issuer_key, digest)
@@ -77,7 +79,9 @@ module GenerateClientCerts
     end
 
     def write_files
-      Dir.chdir __dir__ do
+      path = "#{__dir__}/puma/client_certs"
+
+      Dir.chdir path do
         File.write "ca.crt"    , @ca_cert.to_pem , mode: 'wb'
         File.write "ca.key"    , @ca_key.to_pem  , mode: 'wb'
         File.write "server.crt", @svr_cert.to_pem, mode: 'wb'
@@ -110,14 +114,14 @@ module GenerateClientCerts
     end
 
     def output_info
-      puts ""
-      puts "    Key length: #{KEY_LEN}"
-      puts     "sign_algorithm: #{SIGN_ALGORITHM}"
-      puts ""
-      puts "Normal cert dates:  #{@before} to #{@after}"
-      puts ""
-      puts "Expired cert dates: #{@b_exp} to #{@a_exp}"
-      puts ""
+      puts <<~INFO
+            Key length: #{KEY_LEN}
+        sign_algorithm: #{SIGN_ALGORITHM}
+
+        Normal cert dates:  #{@before} to #{@after}
+
+        Expired cert dates: #{@b_exp} to #{@a_exp}
+      INFO
     end
   end
 end
