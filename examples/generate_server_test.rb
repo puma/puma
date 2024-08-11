@@ -18,10 +18,11 @@ module GenerateServerCerts
   class << self
 
     def run
+      path = "#{__dir__}/puma"
       ca_key = OpenSSL::PKey::RSA.new KEY_LEN
       key    = OpenSSL::PKey::RSA.new KEY_LEN
 
-      raw = File.read File.join(__dir__, FNC), mode: 'rb'
+      raw = File.read File.join(path, FNC), mode: 'rb'
 
       cert = OpenSSL::X509::Certificate.new raw
       puts "\nOld:", cert.to_text, ""
@@ -37,12 +38,13 @@ module GenerateServerCerts
       cert.sign ca_key, SIGN_ALGORITHM.new
       puts "New:", cert.to_text, ""
 
-      Dir.chdir __dir__ do
+      Dir.chdir path do
         File.write FNC, cert.to_pem, mode: 'wb'
         File.write FNK, key.to_pem , mode: 'wb'
       end
     rescue => e
-        puts "error: #{e.message}"
+      puts "error: #{e.message}"
+      exit 1
     end
   end
 end
