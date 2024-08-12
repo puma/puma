@@ -3,15 +3,20 @@
 # exit on error
 set -e
 
-Dash="\n\e[38;2;223;223;16m────────────────────────────────────────────────────"
-Reset="\e[0m"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  Dash="\n\e[93m────────────────────────────────────────────────────"
+else
+  Dash="\n\e[38;2;223;223;16m────────────────────────────────────────────────────"
+fi
+
+Reset="\e[0m\n"
 
 # change to script folder
-SCRIPT=$(realpath -s "$0")
+SCRIPT=$(realpath "$0")
 CERT_HOME=$(dirname "$SCRIPT")
 
 #——————————————————————————————— process ssl files in examples/puma
-echo -e "$Dash process ssl files in examples/puma$Reset"
+printf "$Dash process ssl files in examples/puma$Reset"
 cd $CERT_HOME/puma
 ruby ../generate_server_test.rb
 printf "Done with ../generate_server_test.rb\n\n"
@@ -29,13 +34,13 @@ openssl rsa -aes256 -in puma_keypair.pem -out encrypted_puma_keypair.pem --passo
 printf "Done with encrypted_puma_keypair.pem\n\n"
 
 #——————————————————————————————— process ssl files in examples/puma/chain_cert
-echo -e "$Dash process ssl files in examples/puma/chain_cert$Reset"
+printf "$Dash process ssl files in examples/puma/chain_cert$Reset"
 cd $CERT_HOME/puma/chain_cert
 ruby ../../generate_chain_test.rb
 printf "Done with ../../generate_chain_test.rb\n\n"
 
 #——————————————————————————————— process ssl files in examples/puma/client_certs
-echo -e "$Dash process ssl files in examples/puma/client_certs$Reset"
+printf "$Dash process ssl files in examples/puma/client_certs$Reset"
 cd $CERT_HOME/puma/client_certs
 ruby ../../generate_client_test.rb
 printf "Done with ../../generate_client_test.rb\n\n"
@@ -61,4 +66,4 @@ rm -f unknown_ca_store.p12
 openssl pkcs12 -export -password pass:jruby_puma -inkey unknown_ca.key -in unknown_ca.crt -name server -out unknown_ca_store.p12
 printf "Done with unknown_ca_store.p12\n\n"
 
-echo -e "$Dash Done$Reset"
+printf "$Dash Done$Reset"
