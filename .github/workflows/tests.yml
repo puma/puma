@@ -168,10 +168,6 @@ jobs:
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: actions/checkout@v4
 
-      - name: set JAVA_HOME to JDK 17
-        if: (needs.skip_duplicate_runs.outputs.should_skip != 'true')
-        run: echo JAVA_HOME=$JAVA_HOME_17_X64 >> $GITHUB_ENV
-
       - name: load ruby, ragel
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: ruby/setup-ruby-pkgs@v1
