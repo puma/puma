@@ -81,67 +81,22 @@ end
 
 require "timeout"
 
-if Minitest::VERSION < '5.25'
-  module TimeoutEveryTestCase
-    # our own subclass so we never confuse different timeouts
-    class TestTookTooLong < Timeout::Error
-    end
+class TimeoutTestCase < Minitest::Test
+  # our own subclass so we never confuse different timeouts
+  class TestTookTooLong < Timeout::Error
+  end
 
-    def run
-      with_info_handler do
-        time_it do
-          capture_exceptions do
-            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-              before_setup; setup; after_setup
-              self.send self.name
-            end
-          end
-
-          capture_exceptions do
-            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-              Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
-            end
-          end
-          if respond_to? :clean_tmp_paths
-            clean_tmp_paths
-          end
-        end
-      end
-
-      Minitest::Result.from self # per contract
+  def self.run_one_method(klass, method_name, reporter)
+    ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+      super
     end
   end
-else
-  module TimeoutEveryTestCase
-    # our own subclass so we never confuse different timeouts
-    class TestTookTooLong < Timeout::Error
-    end
 
-    def run
-      time_it do
-        capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-            Minitest::Test::SETUP_METHODS.each { |hook| self.send hook }
-            self.send self.name
-          end
-        end
-
-        capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-            Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
-          end
-        end
-        if respond_to? :clean_tmp_paths
-          clean_tmp_paths
-        end
-      end
-
-      Minitest::Result.from self # per contract
-    end
+  def teardown
+    super
+    clean_tmp_paths if respond_to? :clean_tmp_paths
   end
 end
-
-Minitest::Test.prepend TimeoutEveryTestCase
 
 if ENV['CI']
   require 'minitest/retry'

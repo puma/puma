@@ -30,7 +30,6 @@ jobs:
       PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
-      TERM: BugMinitest
 
     runs-on: ${{ matrix.os }}
     if: |
@@ -144,7 +143,6 @@ jobs:
       PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
-      TERM: BugMinitest
 
     runs-on: ${{ matrix.os }}
     if: |

@@ -2,7 +2,7 @@ require_relative "helper"
 
 require "puma/thread_pool"
 
-class TestThreadPool < Minitest::Test
+class TestThreadPool < TimeoutTestCase
 
   def teardown
     @pool.shutdown(1) if defined?(@pool)

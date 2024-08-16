@@ -18,7 +18,7 @@ require "rack/chunked" if Rack.release.start_with? '3.0'
 
 require "nio"
 
-class TestRackServer < Minitest::Test
+class TestRackServer < TimeoutTestCase
   parallelize_me!
 
   HOST = '127.0.0.1'

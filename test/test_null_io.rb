@@ -4,7 +4,7 @@ require_relative "helper"
 
 require "puma/null_io"
 
-class TestNullIO < Minitest::Test
+class TestNullIO < TimeoutTestCase
   parallelize_me!
 
   attr_accessor :nio

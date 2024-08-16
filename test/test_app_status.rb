@@ -5,7 +5,7 @@ require_relative "helper"
 require "puma/app/status"
 require "rack"
 
-class TestAppStatus < Minitest::Test
+class TestAppStatus < TimeoutTestCase
   parallelize_me!
 
   class FakeServer
