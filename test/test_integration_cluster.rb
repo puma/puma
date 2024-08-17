@@ -138,10 +138,12 @@ class TestIntegrationCluster < TestIntegration
 
   def test_on_booted_and_on_stopped
     skip_unless_signal_exist? :TERM
-    cli_server "-w #{workers} -C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru",
-      no_wait: true
+    cli_server "-w #{workers} -C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru"
 
+    # above checks 'Ctrl-C', below is logged after workers boot
     assert wait_for_server_to_include('on_booted called')
+    assert wait_for_server_to_include('Goodbye!')
+    # below logged after workers are stopped
     assert wait_for_server_to_include('on_stopped called')
   end
 
@@ -154,7 +156,7 @@ class TestIntegrationCluster < TestIntegration
 
     # Signal the workers to terminate, and wait for them to die.
     Process.kill :TERM, @pid
-    Process.wait @pid
+    wait_server 15
 
     zombies = bad_exit_pids worker_pids
 
@@ -221,14 +223,13 @@ class TestIntegrationCluster < TestIntegration
     sleep worker_check_interval + 1
     checkin_1 = get_stats["worker_status"].first["last_checkin"]
     assert_match re_8601, checkin_1
-    last_checkin_1 = Time.parse checkin_1
 
     sleep worker_check_interval + 1
     checkin_2 = get_stats["worker_status"].first["last_checkin"]
     assert_match re_8601, checkin_2
-    last_checkin_2 = Time.parse checkin_2
 
-    assert(last_checkin_2 > last_checkin_1)
+    # iso8601 sorts as a string
+    assert_operator(checkin_2, :>, checkin_1)
   end
 
   def test_worker_boot_timeout
@@ -581,7 +582,7 @@ class TestIntegrationCluster < TestIntegration
     re = /Terminating timed out worker \(Worker \d+ #{details}\): (\d+)/
 
     # below is messy code, for debugging
-    Timeout.timeout(iterations * timeout + 1) do
+    Timeout.timeout(iterations * (timeout + 1)) do
       while (pids.size < workers * iterations)
         t = @server.gets
         (idx = t[re, 1]&.to_i) and pids << idx

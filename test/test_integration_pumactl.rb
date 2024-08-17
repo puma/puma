@@ -28,10 +28,7 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop"
 
-    _, status = Process.wait2(@pid)
-    assert_equal 0, status
-
-    @server = nil
+    wait_server
   end
 
   def test_stop_unix
@@ -52,10 +49,9 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl signal, unix: true
 
-    _, status = Process.wait2(@pid)
-    assert_equal 0, status
+    wait_server
+
     refute_match 'error', File.read(stderr.path)
-    @server = nil
   end
 
   def test_phased_restart_cluster
@@ -87,10 +83,8 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop", unix: true
 
-    _, status = Process.wait2(@pid)
-    assert_equal 0, status
+    wait_server
     assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, :<, (DARWIN ? 8 : 7)
-    @server = nil
   end
 
   def test_refork_cluster
@@ -122,10 +116,8 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop", unix: true
 
-    _, status = Process.wait2(@pid)
-    assert_equal 0, status
+    wait_server
     assert_operator Time.now - start, :<, 60
-    @server = nil
   end
 
   def test_prune_bundler_with_multiple_workers
@@ -141,8 +133,7 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop", unix: true
 
-    _, _ = Process.wait2(@pid)
-    @server = nil
+    wait_server
   end
 
   def test_kill_unknown

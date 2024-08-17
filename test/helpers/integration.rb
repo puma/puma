@@ -133,6 +133,18 @@ class TestIntegration < Minitest::Test
     end
   end
 
+  # Most integration tests do not stop/shutdown the server, which is handled by
+  # `teardown` in this file.
+  # For tests that do stop/shutdown the server, use this method to check with `wait2`,
+  # and also clear variables so `teardown` will not run its code.
+  def wait_server(exit_code = 0, pid: @pid)
+    return unless pid
+    _, status = Process.wait2 pid
+    assert_equal exit_code, status
+    @server.close unless @server.closed?
+    @server = nil
+  end
+
   def restart_server_and_listen(argv, log: false)
     cli_server argv
     connection = connect
