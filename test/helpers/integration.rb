@@ -21,8 +21,8 @@ class TestIntegration < Minitest::Test
   LOG_ERROR_SLEEP = 0.2
   LOG_ERROR_QTY   = 5
 
-  BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
-    "#{Gem.ruby} -Ilib"
+  # rubyopt requires bundler/setup, so we don't need it here
+  BASE = "#{Gem.ruby} -Ilib"
 
   def setup
     @server = nil
@@ -114,8 +114,8 @@ class TestIntegration < Minitest::Test
     else
       @server = IO.popen(env, cmd)
     end
-    wait_for_server_to_boot(log: log) unless no_wait
     @pid = @server.pid
+    wait_for_server_to_boot(log: log) unless no_wait
     @server
   end
 
@@ -163,6 +163,8 @@ class TestIntegration < Minitest::Test
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(timeout: LOG_TIMEOUT, log: false)
+    @puma_pid = wait_for_server_to_match(/(?:Master|      ) PID: (\d+)$/, 1, timeout: timeout, log: log)&.to_i
+    @pid = @puma_pid if @pid != @puma_pid
     wait_for_server_to_include 'Ctrl-C', timeout: timeout, log: log
   end
 
