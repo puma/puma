@@ -15,16 +15,16 @@ class TestWorkerGemIndependence < TestIntegration
 
   def test_changing_nio4r_version_during_phased_restart
     change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_nio4r',
-                                             old_version: '2.6.0',
+                                             old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_nio4r',
-                                             new_version: '2.6.1'
+                                             new_version: '2.7.2'
   end
 
   def test_changing_json_version_during_phased_restart
     change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_json',
-                                             old_version: '2.3.1',
+                                             old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_json',
-                                             new_version: '2.3.0'
+                                             new_version: '2.7.0'
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_stats_from_status_server
@@ -37,9 +37,9 @@ class TestWorkerGemIndependence < TestIntegration
     change_gem_version_during_phased_restart server_opts: server_opts,
                                              before_restart: before_restart,
                                              old_app_dir: 'worker_gem_independence_test/old_json',
-                                             old_version: '2.3.1',
+                                             old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_json',
-                                             new_version: '2.3.0'
+                                             new_version: '2.7.0'
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_gc_stats_from_status_server
@@ -52,9 +52,9 @@ class TestWorkerGemIndependence < TestIntegration
     change_gem_version_during_phased_restart server_opts: server_opts,
                                              before_restart: before_restart,
                                              old_app_dir: 'worker_gem_independence_test/old_json',
-                                             old_version: '2.3.1',
+                                             old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_json',
-                                             new_version: '2.3.0'
+                                             new_version: '2.7.0'
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_thread_backtraces_from_status_server
@@ -67,16 +67,16 @@ class TestWorkerGemIndependence < TestIntegration
     change_gem_version_during_phased_restart server_opts: server_opts,
                                              before_restart: before_restart,
                                              old_app_dir: 'worker_gem_independence_test/old_json',
-                                             old_version: '2.3.1',
+                                             old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_json',
-                                             new_version: '2.3.0'
+                                             new_version: '2.7.0'
   end
 
   def test_changing_json_version_during_phased_restart_after_accessing_puma_stats_directly
     change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_json_with_puma_stats_after_fork',
-                                             old_version: '2.3.1',
+                                             old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_json_with_puma_stats_after_fork',
-                                             new_version: '2.3.0'
+                                             new_version: '2.7.0'
   end
 
   private
