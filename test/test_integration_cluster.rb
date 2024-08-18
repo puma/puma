@@ -239,7 +239,7 @@ class TestIntegrationCluster < TestIntegration
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
-    worker_timeout(timeout, 1, "failed to check in within \\\d+ seconds", <<~RUBY)
+    config = <<~CONFIG
       worker_timeout #{timeout}
       on_worker_boot do
         Thread.new do
@@ -247,7 +247,9 @@ class TestIntegrationCluster < TestIntegration
           Thread.list.find {|t| t.name == 'puma stat pld'}.kill
         end
       end
-    RUBY
+    CONFIG
+
+    worker_timeout(timeout, 1, "failed to check in within \\\d+ seconds", config)
   end
 
   def test_idle_timeout
@@ -296,10 +298,10 @@ class TestIntegrationCluster < TestIntegration
   def test_fork_worker_on_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
-    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~RUBY
+    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~CONFIG
       fork_worker 20
       on_refork { File.write '#{refork.path}', 'Reforked' }
-    RUBY
+    CONFIG
 
     pids = get_worker_pids 0, wrkrs
 
@@ -320,7 +322,7 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_fork_worker_spawn
-    cli_server '', config: <<~RUBY
+    cli_server '', config: <<~CONFIG
       workers 1
       fork_worker 0
       app do |_|
@@ -329,14 +331,14 @@ class TestIntegrationCluster < TestIntegration
         exitstatus = Process.detach(pid).value.exitstatus
         [200, {}, [exitstatus.to_s]]
       end
-    RUBY
+    CONFIG
     assert_equal '0', read_body(connect)
   end
 
   def test_fork_worker_phased_restart_with_high_worker_count
     worker_count = 10
 
-    cli_server "test/rackup/hello.ru", config: <<~RUBY
+    cli_server "test/rackup/hello.ru", config: <<~CONFIG
       fork_worker 0
       worker_check_interval 1
       # lower worker timeout from default (60) to avoid test timeout
@@ -344,7 +346,7 @@ class TestIntegrationCluster < TestIntegration
       # to simulate worker 0 timeout, total boot time for all workers
       # needs to exceed single worker timeout
       workers #{worker_count}
-    RUBY
+    CONFIG
 
     # workers is the default
     get_worker_pids 0, worker_count
@@ -499,10 +501,10 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_culling_strategy_oldest_fork_worker
-    cli_server "-w 2 test/rackup/hello.ru", config: <<~RUBY
+    cli_server "-w 2 test/rackup/hello.ru", config: <<~CONFIG
       worker_culling_strategy :oldest
       fork_worker
-    RUBY
+    CONFIG
 
     get_worker_pids # to consume server logs
 
@@ -554,10 +556,10 @@ class TestIntegrationCluster < TestIntegration
     cli_server "test/rackup/hello.ru",
       env: { 'WEB_CONCURRENCY' => '2'},
       config: <<~CONFIG
-      on_worker_boot(:test) do |index, data|
-        data[:test] = index
-      end
-    CONFIG
+        on_worker_boot(:test) do |index, data|
+          data[:test] = index
+        end
+      CONFIG
 
     get_worker_pids
     line = @server_log[/.+on_worker_boot.+/]
@@ -574,16 +576,17 @@ class TestIntegrationCluster < TestIntegration
 
   private
 
-  def worker_timeout(timeout, iterations, details, config)
+  def worker_timeout(timeout, iterations, details, config, log: nil)
     cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: config
 
     pids = []
     re = /Terminating timed out worker \(Worker \d+ #{details}\): (\d+)/
 
     # below is messy code, for debugging
-    Timeout.timeout(iterations * timeout + 1) do
+    Timeout.timeout(iterations * (timeout + 1)) do
       while (pids.size < workers * iterations)
         t = @server.gets
+        puts t if log
         (idx = t[re, 1]&.to_i) and pids << idx
       end
     end
