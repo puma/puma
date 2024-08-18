@@ -138,10 +138,10 @@ class TestIntegrationCluster < TestIntegration
 
   def test_on_booted_and_on_stopped
     skip_unless_signal_exist? :TERM
-    cli_server "-w #{workers} -C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru",
-      no_wait: true
+    cli_server "-w #{workers} -C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru"
 
     assert wait_for_server_to_include('on_booted called')
+    assert wait_for_server_to_include('Goodbye!')
     assert wait_for_server_to_include('on_stopped called')
   end
 
