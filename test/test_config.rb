@@ -486,15 +486,17 @@ class TestConfigFile < TestConfigFileBase
   end
 
   def test_run_hooks_before_worker_boot
+    assert_run_hooks :before_worker_boot
     assert_run_hooks :before_worker_boot, configured_with: :on_worker_boot
 
-    assert_warning_for_hooks_defined_in_single_mode :on_worker_boot
+    assert_warning_for_hooks_defined_in_single_mode :before_worker_boot
   end
 
   def test_run_hooks_before_worker_shutdown
+    assert_run_hooks :before_worker_shutdown
     assert_run_hooks :before_worker_shutdown, configured_with: :on_worker_shutdown
 
-    assert_warning_for_hooks_defined_in_single_mode :on_worker_shutdown
+    assert_warning_for_hooks_defined_in_single_mode :before_worker_shutdown
   end
 
   def test_run_hooks_before_fork

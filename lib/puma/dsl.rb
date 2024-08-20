@@ -747,11 +747,17 @@ module Puma
     #     puts 'Before worker boot...'
     #   end
     #
-    def on_worker_boot(key = nil, &block)
-      warn_if_in_single_mode('on_worker_boot')
+    def before_worker_boot(key = nil, &block)
+      if __callee__ == :on_worker_boot
+        warn "on_worker_boot is deprecated, use before_worker_boot instead"
+      end
 
-      process_hook :before_worker_boot, key, block, 'on_worker_boot'
+      warn_if_in_single_mode('before_worker_boot')
+
+      process_hook :before_worker_boot, key, block, 'before_worker_boot'
     end
+
+    alias_method :on_worker_boot, :before_worker_boot
 
     # Code to run immediately before a worker shuts
     # down (after it has finished processing HTTP requests). These hooks
@@ -767,11 +773,17 @@ module Puma
     #     puts 'On worker shutdown...'
     #   end
     #
-    def on_worker_shutdown(key = nil, &block)
-      warn_if_in_single_mode('on_worker_shutdown')
+    def before_worker_shutdown(key = nil, &block)
+      if __callee__ == :on_worker_shutdown
+        warn "on_worker_shutdown is deprecated, use before_worker_shutdown instead"
+      end
 
-      process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown'
+      warn_if_in_single_mode('before_worker_shutdown')
+
+      process_hook :before_worker_shutdown, key, block, 'before_worker_shutdown'
     end
+
+    alias_method :on_worker_shutdown, :before_worker_shutdown
 
     # Code to run in the master right before a worker is started. The worker's
     # index is passed as an argument.
