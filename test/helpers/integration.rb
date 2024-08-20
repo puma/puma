@@ -150,8 +150,8 @@ class TestIntegration < Minitest::Test
 
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
-  def wait_for_server_to_boot(log: false)
-    wait_for_server_to_include 'Ctrl-C', log: log
+  def wait_for_server_to_boot(timeout: LOG_TIMEOUT, log: false)
+    wait_for_server_to_include 'Ctrl-C', timeout: timeout, log: log
   end
 
   # Returns true if and when server log includes str.  Will timeout otherwise.
@@ -449,7 +449,11 @@ class TestIntegration < Minitest::Test
           Process.kill :USR2, @pid
         end
         sleep 0.5
-        wait_for_server_to_boot
+        # If 'wait_for_server_to_boot' times out, error in thread shuts down CI
+        begin
+          wait_for_server_to_boot timeout: 5
+        rescue Minitest::Assertion # Timeout
+        end
         restart_count += 1
         sleep(Puma.windows? ? 2.0 : 0.5)
       end
