@@ -453,6 +453,7 @@ class TestIntegration < Minitest::Test
         begin
           wait_for_server_to_boot timeout: 5
         rescue Minitest::Assertion # Timeout
+          run = false
         end
         restart_count += 1
         sleep(Puma.windows? ? 2.0 : 0.5)
@@ -464,7 +465,7 @@ class TestIntegration < Minitest::Test
     restart_thread.join
     if Puma.windows?
       cli_pumactl 'stop'
-      Process.wait @server.pid
+      Process.wait @pid
     else
       stop_server
     end
