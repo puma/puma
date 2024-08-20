@@ -24,7 +24,7 @@ if ::Puma::HAS_SSL
   end
 end
 
-class TestPumaServerSSL < Minitest::Test
+class TestPumaServerSSL < TimeoutTestCase
   parallelize_me!
 
   include TestPuma
@@ -270,7 +270,7 @@ class TestPumaServerSSL < Minitest::Test
 end if ::Puma::HAS_SSL
 
 # client-side TLS authentication tests
-class TestPumaServerSSLClient < Minitest::Test
+class TestPumaServerSSLClient < TimeoutTestCase
   parallelize_me! unless ::Puma.jruby?
 
   include TestPuma
@@ -489,7 +489,7 @@ class TestPumaServerSSLClient < Minitest::Test
 
 end if ::Puma::HAS_SSL
 
-class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
+class TestPumaServerSSLWithCertPemAndKeyPem < TimeoutTestCase
   include TestPuma
   include TestPuma::PumaSocket
 
@@ -531,7 +531,7 @@ end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
 #
 #   bundle exec ruby ../examples/puma/chain_cert/generate_chain_test.rb
 #
-class TestPumaSSLCertChain < Minitest::Test
+class TestPumaSSLCertChain < TimeoutTestCase
   include TestPuma
   include TestPuma::PumaSocket
 

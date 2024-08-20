@@ -10,7 +10,7 @@ require_relative "helper"
 # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1 Transfer-Encoding
 # https://datatracker.ietf.org/doc/html/rfc7230#section-4.1   chunked body size
 #
-class TestRequestInvalid < Minitest::Test
+class TestRequestInvalid < TimeoutTestCase
   # running parallel seems to take longer...
   # parallelize_me! unless JRUBY_HEAD
 

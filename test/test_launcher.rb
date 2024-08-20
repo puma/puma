@@ -4,7 +4,7 @@ require_relative "helpers/tmp_path"
 require "puma/configuration"
 require 'puma/log_writer'
 
-class TestLauncher < Minitest::Test
+class TestLauncher < TimeoutTestCase
   include TmpPath
 
   def test_prints_thread_traces

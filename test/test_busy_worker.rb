@@ -1,6 +1,6 @@
 require_relative "helper"
 
-class TestBusyWorker < Minitest::Test
+class TestBusyWorker < TimeoutTestCase
   def setup
     skip_unless :mri # This feature only makes sense on MRI
     @ios = []

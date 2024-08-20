@@ -1,4 +1,4 @@
-class TestConfigFileBase < Minitest::Test
+class TestConfigFileBase < TimeoutTestCase
   private
 
   def with_env(env = {})

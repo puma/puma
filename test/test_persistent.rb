@@ -1,6 +1,6 @@
 require_relative "helper"
 
-class TestPersistent < Minitest::Test
+class TestPersistent < TimeoutTestCase
 
   HOST = "127.0.0.1"
 
