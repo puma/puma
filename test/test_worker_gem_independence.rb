@@ -2,6 +2,11 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestWorkerGemIndependence < TestIntegration
+
+  ENV_RUBYOPT = {
+    'RUBYOPT' => ENV['RUBYOPT']
+  }
+
   def setup
     skip_unless :fork
     super
@@ -95,7 +100,7 @@ class TestWorkerGemIndependence < TestIntegration
       with_unbundled_env do
         silent_and_checked_system_command("bundle config --local path vendor/bundle")
         silent_and_checked_system_command("bundle install")
-        cli_server "--prune-bundler -w 1 #{server_opts}"
+        cli_server "--prune-bundler -w 1 #{server_opts}", env: ENV_RUBYOPT
       end
     end
 
