@@ -4,11 +4,13 @@ require_relative "helpers/tmp_path"
 require "puma/configuration"
 require 'puma/log_writer'
 
+# Can't run parallel due to `Puma` class methods used
+
 class TestLauncher < Minitest::Test
   include TmpPath
 
   def test_prints_thread_traces
-    launcher.thread_status do |name, _backtrace|
+    create_launcher.thread_status do |name, _backtrace|
       assert_match "Thread: TID", name
     end
   end
@@ -20,7 +22,7 @@ class TestLauncher < Minitest::Test
       c.pidfile pid_path
     end
 
-    launcher(conf).write_state
+    create_launcher(conf).write_state
 
     assert_equal File.read(pid_path).strip.to_i, Process.pid
   ensure
@@ -36,7 +38,7 @@ class TestLauncher < Minitest::Test
       c.state_permission state_permission
     end
 
-    launcher(conf).write_state
+    create_launcher(conf).write_state
 
     assert File.stat(state_path).mode.to_s(8)[-4..-1], state_permission
   ensure
@@ -51,7 +53,7 @@ class TestLauncher < Minitest::Test
       c.state_permission nil
     end
 
-    launcher(conf).write_state
+    create_launcher(conf).write_state
 
     assert File.exist?(state_path)
   ensure
@@ -65,7 +67,7 @@ class TestLauncher < Minitest::Test
       c.state_path state_path
     end
 
-    launcher(conf).write_state
+    create_launcher(conf).write_state
 
     assert File.exist?(state_path)
   ensure
@@ -77,7 +79,7 @@ class TestLauncher < Minitest::Test
       c.app -> {[200, {}, ['']]}
       c.clear_binds!
     end
-    launcher = launcher(conf)
+    launcher = create_launcher(conf)
     launcher.events.on_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
@@ -97,32 +99,42 @@ class TestLauncher < Minitest::Test
       c.workers 1
       c.clear_binds!
     end
-    launcher = launcher(conf)
-    Thread.new do
+    launcher = create_launcher(conf)
+
+    status = nil
+
+    th_stats = Thread.new do
       sleep Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
-      status = Puma.stats_hash[:worker_status].first[:last_status]
-      Puma::Server::STAT_METHODS.each do |stat|
-        assert_includes status, stat
-      end
+      status = Puma.stats_hash[:worker_status]&.first[:last_status]
       launcher.stop
     end
+
     launcher.run
+    th_stats.join
+
+    refute_nil status
+
+    Puma::Server::STAT_METHODS.each do |stat|
+      assert_includes status, stat
+    end
   end
 
   def test_log_config_enabled
     ENV['PUMA_LOG_CONFIG'] = "1"
+
+    launcher = create_launcher
 
     assert_match(/Configuration:/, launcher.log_writer.stdout.string)
 
     launcher.config.final_options.each do |config_key, _value|
       assert_match(/#{config_key}/, launcher.log_writer.stdout.string)
     end
-
+  ensure
     ENV.delete('PUMA_LOG_CONFIG')
   end
 
   def test_log_config_disabled
-    refute_match(/Configuration:/, launcher.log_writer.stdout.string)
+    refute_match(/Configuration:/, create_launcher.log_writer.stdout.string)
   end
 
   def test_fire_on_stopped
@@ -131,27 +143,23 @@ class TestLauncher < Minitest::Test
       c.port UniquePort.call
     end
 
-    launcher = launcher(conf)
+    is_stopped = nil
+
+    launcher = create_launcher(conf)
     launcher.events.on_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
-    launcher.events.on_stopped { puts 'on_stopped called' }
+    launcher.events.on_stopped { is_stopped = true }
 
-    out, = capture_io do
-      launcher.run
-    end
+    launcher.run
     sleep 0.2 unless Puma.mri?
-    assert_equal 'on_stopped called', out.strip
+    assert is_stopped, "on_stopped not called"
   end
 
   private
 
-  def log_writer
-    @log_writer ||= Puma::LogWriter.strings
-  end
-
-  def launcher(config = Puma::Configuration.new, lw = log_writer)
-    @launcher ||= Puma::Launcher.new(config, log_writer: lw)
+  def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings)
+    Puma::Launcher.new(config, log_writer: lw)
   end
 end
