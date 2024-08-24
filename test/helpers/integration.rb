@@ -139,8 +139,12 @@ class TestIntegration < Minitest::Test
   # and also clear variables so `teardown` will not run its code.
   def wait_server(exit_code = 0, pid: @pid)
     return unless pid
-    _, status = Process.wait2 pid
-    assert_equal exit_code, status
+    begin
+      _, status = Process.wait2 pid
+      assert_equal exit_code, status
+    rescue Errno::ECHILD # raised on Windows ?
+    end
+  ensure
     @server.close unless @server.closed?
     @server = nil
   end
@@ -479,7 +483,7 @@ class TestIntegration < Minitest::Test
     restart_thread.join
     if Puma.windows?
       cli_pumactl 'stop'
-      Process.wait @pid
+      wait_server
     else
       stop_server
     end
