@@ -50,12 +50,13 @@ class TestPumaServer < Minitest::Test
   end
 
   def header(socket)
+    sep = "\r\n"
     header = []
     while true
       socket.wait_readable 5
-      line = socket.gets
-      break if line == "\r\n"
-      header << line.strip
+      line = socket.gets(sep)&.strip
+      break if line&.empty?
+      header << line
     end
 
     header
@@ -68,22 +69,25 @@ class TestPumaServer < Minitest::Test
     socket.sysread 2_048
   end
 
+  def send_http_and_sysread_1s(req)
+    socket = send_http req
+    socket.wait_readable 5
+    data = socket.sysread 1024
+    if socket.wait_readable 1
+      begin
+        data + socket.sysread(1024)
+      rescue EOFError
+        data
+      end
+    else
+      data
+    end
+  end
+
   def send_http_and_read(req)
     socket = send_http req
     socket.wait_readable 5
     socket.read
-  end
-
-  def send_http_and_read_1s(req)
-    socket = send_http req
-    socket.wait_readable 5
-
-    data = socket.sysread 1024
-    if IO.select [socket], nil, nil, 1
-      data + socket.sysread(1024)
-    else
-      data
-    end
   end
 
   def send_http(req)
@@ -337,30 +341,71 @@ class TestPumaServer < Minitest::Test
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", data
   end
 
-  def test_immediate_pipeline_not_confused_for_body
+  def test_immediate_pipeline_no_content
     bodies = []
     server_run { |e|
       bodies << e['rack.input'].read
       [200, {}, ["ok #{bodies.size}"]]
     }
 
-    data = send_http_and_read "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\nGET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    data = send_http_and_sysread_1s(
+      "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\n" \
+      "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    )
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", data
+    assert_equal(
+      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
+      "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", data
+    )
     assert_equal ["", ""], bodies
   end
 
-  def test_immediate_pipeline_terminates_last_request
+  def test_immediate_pipeline_content
     bodies = []
     server_run { |e|
       bodies << e['rack.input'].read
       [200, {}, ["ok #{bodies.size}"]]
     }
 
-    data = send_http_and_read_1s "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\naGET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+    data = send_http_and_sysread_1s(
+      "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\na" \
+      "GET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+    )
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", data
+    assert_equal(
+      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
+      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", data
+    )
     assert_equal ["a", ""], bodies
+  end
+
+  def test_immediate_pipeline_chunked
+    server_run { |env|
+      [200, {'Content-Length' => env['CONTENT_LENGTH']}, [env['rack.input'].read]]
+    }
+
+    socket = send_http(
+      "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n" \
+      "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    )
+
+    # we need to use `header` so we don't read past the response body, or, it
+    # allows us to read the multiple reponses separately
+    h = header(socket)
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 5"], h
+    assert_equal "hello", socket.read(5)
+    sleep 0.05 if TRUFFLE
+
+    h = header(socket)
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 7"], h
+    assert_equal "goodbye", socket.read(7)
+
+    socket << "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nH\r\n4\r\nello\r\n0\r\n\r\n"
+
+    h = header(socket)
+    assert_equal ["HTTP/1.1 200 OK", "Content-Length: 5"], h
+    assert_equal "Hello", socket.read(5)
+    socket.close
   end
 
   def test_early_hints_works
