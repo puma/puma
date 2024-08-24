@@ -524,7 +524,7 @@ class TestIntegrationCluster < TestIntegration
     get_worker_pids 0, 2 # make sure workers are booted
     stop_server
 
-    ary = Array.new(2) do |_|
+    ary = Array.new(2) do |_index|
       wait_for_server_to_match(/(index \d data \d)/, 1)
     end.sort
 
