@@ -83,7 +83,7 @@ module Puma
         env['QUERY_STRING'].to_s.split('&;').include? "token=#{@auth_token}"
       end
 
-      def rack_response(status, body, content_type='application/json')
+      def rack_response(status, body, content_type = 'application/json')
         headers = {
           'content-type' => content_type,
           'content-length' => body.bytesize.to_s

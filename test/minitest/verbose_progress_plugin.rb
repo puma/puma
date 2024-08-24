@@ -3,7 +3,7 @@ module Minitest
   def self.plugin_verbose_progress_init(options)
     if options[:verbose]
       self.reporter.reporters.
-        delete_if {|r| r.is_a?(ProgressReporter)}.
+        delete_if { |r| r.is_a?(ProgressReporter) }.
         push(VerboseProgressReporter.new(options[:io], options))
     end
   end

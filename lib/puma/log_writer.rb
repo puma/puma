@@ -6,11 +6,9 @@ require 'stringio'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 
 module Puma
-
   # Handles logging concerns for both standard messages
   # (+stdout+) and errors (+stderr+).
   class LogWriter
-
     class DefaultFormatter
       def call(str)
         str
@@ -108,7 +106,7 @@ module Puma
     # +error+ a connection exception, +req+ the request,
     # and +text+ additional info
     # @version 5.0.0
-    def connection_error(error, req, text="HTTP connection error")
+    def connection_error(error, req, text = "HTTP connection error")
       @error_logger.info(error: error, req: req, text: text)
     end
 
@@ -132,7 +130,7 @@ module Puma
     # An unknown error has occurred.
     # +error+ an exception object, +req+ the request,
     # and +text+ additional info
-    def unknown_error(error, req=nil, text="Unknown error")
+    def unknown_error(error, req = nil, text = "Unknown error")
       @error_logger.info(error: error, req: req, text: text)
     end
 
@@ -140,7 +138,7 @@ module Puma
     # +error+ an exception object, +req+ the request,
     # and +text+ additional info
     # @version 5.0.0
-    def debug_error(error, req=nil, text="")
+    def debug_error(error, req = nil, text = "")
       @error_logger.debug(error: error, req: req, text: text)
     end
   end

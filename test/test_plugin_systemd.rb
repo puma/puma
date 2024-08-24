@@ -20,7 +20,7 @@ class TestPluginSystemd < TestIntegration
       @socket = Socket.new(:UNIX, :DGRAM, 0)
       socket_ai = Addrinfo.unix(sockaddr)
       @socket.bind(socket_ai)
-      @env = {"NOTIFY_SOCKET" => sockaddr }
+      @env = { "NOTIFY_SOCKET" => sockaddr }
     end
   end
 
@@ -47,7 +47,7 @@ class TestPluginSystemd < TestIntegration
   end
 
   def test_systemd_watchdog
-    wd_env = @env.merge({"WATCHDOG_USEC" => "1_000_000"})
+    wd_env = @env.merge({ "WATCHDOG_USEC" => "1_000_000" })
     cli_server "test/rackup/hello.ru", env: wd_env
     assert_message "READY=1"
 

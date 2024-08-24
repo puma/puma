@@ -10,7 +10,6 @@ require 'socket'
 require 'json'
 
 module TestPuma
-
   # Similar to puma_ctl.rb, but returns objects.  Command list is minimal.
   #
   class PumaInfo
@@ -21,7 +20,7 @@ module TestPuma
 
     attr_reader :master_pid
 
-    def initialize(argv, stdout=STDOUT, stderr=STDERR)
+    def initialize(argv, stdout = STDOUT, stderr = STDERR)
       @state = nil
       @quiet = false
       @pidfile = nil
@@ -177,7 +176,7 @@ module TestPuma
         raise "Bad response from server: #{@code}"
       end
       return unless PRINTABLE_COMMANDS.include? @command
-      JSON.parse response.last, {symbolize_names: true}
+      JSON.parse response.last, { symbolize_names: true }
     ensure
       if server
         if uri.scheme == 'ssl'

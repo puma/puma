@@ -248,7 +248,6 @@ class TestCLI < Minitest::Test
     t.join if UNIX_SKT_EXIST
   end
 
-
   def test_tmp_control
     skip_if :jruby, suffix: " - Unknown issue"
 

@@ -303,7 +303,7 @@ module Puma
     # and exit. If +force+ is true, then a trim request is requested
     # even if all threads are being utilized.
     #
-    def trim(force=false)
+    def trim(force = false)
       with_mutex do
         free = @waiting - @todo.size
         if (force or free > 0) and @spawned - @trim_requested > @min
@@ -357,12 +357,12 @@ module Puma
       end
     end
 
-    def auto_trim!(timeout=@auto_trim_time)
+    def auto_trim!(timeout = @auto_trim_time)
       @auto_trim = Automaton.new(self, timeout, "#{@name} threadpool trimmer", :trim)
       @auto_trim.start!
     end
 
-    def auto_reap!(timeout=@reaping_time)
+    def auto_reap!(timeout = @reaping_time)
       @reaper = Automaton.new(self, timeout, "#{@name} threadpool reaper", :reap)
       @reaper.start!
     end
@@ -385,7 +385,7 @@ module Puma
     # Next, wait an extra +@shutdown_grace_time+ seconds then force-kill remaining
     # threads. Finally, wait 1 second for remaining threads to exit.
     #
-    def shutdown(timeout=-1)
+    def shutdown(timeout = -1)
       threads = with_mutex do
         @shutdown = true
         @trim_requested = @spawned

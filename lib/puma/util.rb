@@ -72,11 +72,11 @@ module Puma
     # A case-insensitive Hash that preserves the original case of a
     # header when set.
     class HeaderHash < Hash
-      def self.new(hash={})
+      def self.new(hash = {})
         HeaderHash === hash ? hash : super(hash)
       end
 
-      def initialize(hash={})
+      def initialize(hash = {})
         super()
         @names = {}
         hash.each { |k, v| self[k] = v }

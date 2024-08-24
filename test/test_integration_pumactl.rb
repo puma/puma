@@ -39,7 +39,7 @@ class TestIntegrationPumactl < TestIntegration
     ctl_unix 'halt'
   end
 
-  def ctl_unix(signal='stop')
+  def ctl_unix(signal = 'stop')
     skip_unless :unix
     stderr = Tempfile.new(%w(stderr .log))
 

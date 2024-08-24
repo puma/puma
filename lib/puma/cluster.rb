@@ -36,7 +36,7 @@ module Puma
       begin
         loop do
           wait_workers
-          break if @workers.reject {|w| w.pid.nil?}.empty?
+          break if @workers.reject { |w| w.pid.nil? }.empty?
           sleep 0.2
         end
       rescue Interrupt
@@ -373,12 +373,12 @@ module Puma
         if after.size > before.size
           threads = (after - before)
           if threads.first.respond_to? :backtrace
-            log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot:"
+            log "! WARNING: Detected #{after.size - before.size} Thread(s) started in app boot:"
             threads.each do |t|
               log "! #{t.inspect} - #{t.backtrace ? t.backtrace.first : ''}"
             end
           else
-            log "! WARNING: Detected #{after.size-before.size} Thread(s) started in app boot"
+            log "! WARNING: Detected #{after.size - before.size} Thread(s) started in app boot"
           end
         end
       else
@@ -492,7 +492,7 @@ module Puma
                     @events.fire(:ping!, w0)
                   end
 
-                  if !booted && @workers.none? {|worker| worker.last_status.empty?}
+                  if !booted && @workers.none? { |worker| worker.last_status.empty? }
                     @events.fire_on_booted!
                     debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
                     booted = true

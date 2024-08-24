@@ -17,7 +17,7 @@ class TestResponseHeader < Minitest::Test
     @app = ->(env) { [200, {}, [env['rack.url_scheme']]] }
 
     @log_writer = Puma::LogWriter.strings
-    @server = Puma::Server.new @app, ::Puma::Events.new, {log_writer: @log_writer, min_threads: 1}
+    @server = Puma::Server.new @app, ::Puma::Events.new, { log_writer: @log_writer, min_threads: 1 }
   end
 
   def teardown
@@ -41,12 +41,12 @@ class TestResponseHeader < Minitest::Test
   end
 
   def new_connection
-    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
+    TCPSocket.new(@host, @port).tap { |sock| @ios << sock }
   end
 
   # The header keys must be Strings
   def test_integer_key
-    server_run app: ->(env) { [200, { 1 => 'Boo'}, []] }
+    server_run app: ->(env) { [200, { 1 => 'Boo' }, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/Puma caught this error/, data)
@@ -62,13 +62,13 @@ class TestResponseHeader < Minitest::Test
 
   # The values of the header must be Strings
   def test_integer_value
-    server_run app: ->(env) { [200, {'Content-Length' => 500}, []] }
+    server_run app: ->(env) { [200, { 'Content-Length' => 500 }, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 200 OK\r\nContent-Length: 500\r\n\r\n/, data)
   end
 
-  def assert_ignore_header(name, value, opts={})
+  def assert_ignore_header(name, value, opts = {})
     header = { name => value }
 
     if opts[:early_hints]
@@ -77,7 +77,7 @@ class TestResponseHeader < Minitest::Test
         [200, {}, ['Hello']]
       end
     else
-      app = -> (env) { [200, header, ['hello']]}
+      app = -> (env) { [200, header, ['hello']] }
     end
 
     server_run(app: app, early_hints: opts[:early_hints])
@@ -97,7 +97,7 @@ class TestResponseHeader < Minitest::Test
 
   # The header key can contain the word status.
   def test_key_containing_status
-    server_run app: ->(env) { [200, {'Teapot-Status' => 'Boiling'}, []] }
+    server_run app: ->(env) { [200, { 'Teapot-Status' => 'Boiling' }, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 200 OK\r\nTeapot-Status: Boiling\r\nContent-Length: 0\r\n\r\n/, data)
@@ -110,7 +110,7 @@ class TestResponseHeader < Minitest::Test
 
   # The header key can still start with the word rack
   def test_racket_key
-    server_run app: ->(env) { [200, {'Racket' => 'Bouncy'}, []] }
+    server_run app: ->(env) { [200, { 'Racket' => 'Bouncy' }, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     assert_match(/HTTP\/1.0 200 OK\r\nRacket: Bouncy\r\nContent-Length: 0\r\n\r\n/, data)
@@ -144,14 +144,14 @@ class TestResponseHeader < Minitest::Test
   end
 
   def test_illegal_character_in_value_when_newline
-    server_run app: ->(env) { [200, {'X-header' => "First\000 line\nSecond Lin\037e"}, ["Hello"]] }
+    server_run app: ->(env) { [200, { 'X-header' => "First\000 line\nSecond Lin\037e" }, ["Hello"]] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
     refute_match("X-header: First\000 line\r\nX-header: Second Lin\037e\r\n", data)
   end
 
   def test_header_value_array
-    server_run app: ->(env) { [200, {'set-cookie' => ['z=1', 'a=2']}, ['Hello']] }
+    server_run app: ->(env) { [200, { 'set-cookie' => ['z=1', 'a=2'] }, ['Hello']] }
     data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
 
     resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\nContent-Length: 5\r\n\r\n"
