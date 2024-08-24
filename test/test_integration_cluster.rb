@@ -521,22 +521,16 @@ class TestIntegrationCluster < TestIntegration
   def test_hook_data
     skip_unless_signal_exist? :TERM
 
-    file0 = 'hook_data-0.txt'
-    file1 = 'hook_data-1.txt'
-
     cli_server "-C test/config/hook_data.rb test/rackup/hello.ru"
-    get_worker_pids 0, 2
+    get_worker_pids 0, 2 # make sure workers are booted
     stop_server
 
-    # helpful for non MRI Rubies
-    assert wait_for_server_to_include('puma shutdown')
+    ary = Array.new(2) do |_index|
+      wait_for_server_to_match(/(index \d data \d)/, 1)
+    end.sort
 
-    assert_equal 'index 0 data 0', File.read(file0, mode: 'rb:UTF-8')
-    assert_equal 'index 1 data 1', File.read(file1, mode: 'rb:UTF-8')
-
-  ensure
-    File.unlink file0 if File.file? file0
-    File.unlink file1 if File.file? file1
+    assert 'index 0 data 0', ary[0]
+    assert 'index 1 data 1', ary[1]
   end
 
   def test_worker_hook_warning_cli
