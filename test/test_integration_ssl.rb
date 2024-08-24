@@ -151,6 +151,7 @@ class TestIntegrationSSL < TestIntegration
     assert_equal client_cert, body
   ensure
     cli_pumactl 'stop'
+    wait_server
   end
 
   def test_verify_client_cert_roundtrip_tls1_2
