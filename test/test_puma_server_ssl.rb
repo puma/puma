@@ -61,7 +61,9 @@ class TestPumaServerSSL < Minitest::Test
 
     yield ctx if server_ctx
 
-    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    @log_stdout = StringIO.new
+    @log_stderr = StringIO.new
+    @log_writer = SSLLogWriterHelper.new @log_stdout, @log_stderr
     @server = Puma::Server.new app, nil, {log_writer: @log_writer}
     @port = (@server.add_ssl_listener HOST, 0, ctx).addr[1]
     @bind_port = @port
@@ -541,7 +543,9 @@ class TestPumaSSLCertChain < Minitest::Test
   def cert_chain(&blk)
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    @log_stdout = StringIO.new
+    @log_stderr = StringIO.new
+    @log_writer = SSLLogWriterHelper.new @log_stdout, @log_stderr
     @server = Puma::Server.new app, nil, {log_writer: @log_writer}
 
     mini_ctx = Puma::MiniSSL::Context.new
