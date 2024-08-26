@@ -3,6 +3,10 @@
 require_relative 'helper'
 require_relative 'helpers/integration'
 
+if ::Puma::HAS_SSL # don't load any files if no ssl support
+  require "openssl" unless defined?(::OpenSSL::SSL)
+end
+
 # These tests are used to verify that Puma works with SSL sockets.  Only
 # integration tests isolate the server from the test environment, so there
 # should be a few SSL tests.
@@ -14,8 +18,6 @@ require_relative 'helpers/integration'
 class TestIntegrationSSLSession < TestIntegration
   parallelize_me! if Puma::IS_MRI
 
-  require "openssl" unless defined?(::OpenSSL::SSL)
-
   OSSL = ::OpenSSL::SSL
 
   CLIENT_HAS_TLS1_3 = OSSL.const_defined? :TLS1_3_VERSION
@@ -26,33 +28,15 @@ class TestIntegrationSSLSession < TestIntegration
 
   CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 
-  def teardown
-    return if skipped?
-    # stop server
-    sock = TCPSocket.new HOST, control_port
-    @ios_to_close << sock
-    sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
-    sock.read
-    assert_match 'Goodbye!', @server.read
-
-    @server.close unless @server&.closed?
-    @server = nil
-    super
-  end
-
   def bind_port
     @bind_port ||= UniquePort.call
   end
 
-  def control_port
-    @control_port ||= UniquePort.call
-  end
-
   def set_reuse(reuse)
     <<~RUBY
-      key  = '#{File.expand_path '../examples/puma/client_certs/server.key', __dir__}'
-      cert = '#{File.expand_path '../examples/puma/client_certs/server.crt', __dir__}'
-      ca   = '#{File.expand_path '../examples/puma/client_certs/ca.crt', __dir__}'
+      key  = "#{CERT_PATH}/server.key"
+      cert = "#{CERT_PATH}/server.crt"
+      ca   = "#{CERT_PATH}/client_certs/ca.crt"
 
       ssl_bind '#{HOST}', '#{bind_port}', {
         cert: cert,
@@ -62,7 +46,7 @@ class TestIntegrationSSLSession < TestIntegration
         reuse: #{reuse}
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -70,25 +54,10 @@ class TestIntegrationSSLSession < TestIntegration
     RUBY
   end
 
-  def with_server(config)
-    config_file = Tempfile.new %w(config .rb)
-    config_file.write config
-    config_file.close
-    config_file.path
-
-    # start server
-    cmd = "#{BASE} bin/puma -C #{config_file.path}"
-    @server = IO.popen cmd, 'r'
-    wait_for_server_to_boot log: false
-    @pid = @server.pid
-
-    yield
-  end
-
   def run_session(reuse, tls = nil)
     config = set_reuse reuse
-
-    with_server(config) { ssl_client tls_vers: tls }
+    cli_server "-t1:1", config: config, no_bind: true
+    ssl_client tls_vers: tls
   end
 
   def test_dflt
@@ -137,7 +106,7 @@ class TestIntegrationSSLSession < TestIntegration
     assert reused, 'TLSv1.3 session was not reused'
   end
 
-  def client_skt(tls_vers = nil, session_pems = [], queue = nil)
+  def client_skt(tls_vers = nil, session_pems = [], queue = nil, session: nil)
     ctx = OSSL::SSLContext.new
     ctx.verify_mode = OSSL::VERIFY_NONE
     ctx.session_cache_mode = OSSL::SSLContext::SESSION_CACHE_CLIENT
@@ -153,36 +122,25 @@ class TestIntegrationSSLSession < TestIntegration
       queue << true if queue
       session_pems << ary.last.to_pem
     }
-
-    skt = OSSL::SSLSocket.new TCPSocket.new(HOST, bind_port), ctx
-    skt.sync_close = true
-    skt
+    new_socket ctx: ctx, session: session
   end
 
   def ssl_client(tls_vers: nil)
     queue = Thread::Queue.new
     session_pems = []
     skt = client_skt tls_vers, session_pems, queue
-    skt.connect
 
     skt.syswrite GET
-    skt.to_io.wait_readable 2
-    assert_equal RESP, skt.sysread(1_024)
+    assert_equal RESP, skt.read_response
     skt.sysclose
     queue.pop # wait for cb session to be added to first client
 
-    skt = client_skt tls_vers, session_pems
-    skt.session = OSSL::Session.new(session_pems[0])
-    skt.connect
-
+    skt = client_skt tls_vers, session_pems, session: OSSL::Session.new(session_pems[0])
     skt.syswrite GET
-    skt.to_io.wait_readable 2
-    assert_equal RESP, skt.sysread(1_024)
+    assert_equal RESP, skt.read_response
     queue.close
     queue = nil
 
     skt.session_reused?
-  ensure
-    skt&.sysclose unless skt&.closed?
   end
 end if Puma::HAS_SSL && Puma::IS_MRI
