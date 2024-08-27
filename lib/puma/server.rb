@@ -199,6 +199,12 @@ module Puma
           false
         else
           state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
+          # conditional is for JRuby on linux aarch64/ARM64
+          # https://github.com/puma/puma/issues/3465
+          unless state
+            @precheck_closing = false
+            return false
+          end
           # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
           (state >= 6 && state <= 9) || state == 11
         end
