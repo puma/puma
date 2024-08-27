@@ -287,7 +287,9 @@ module Puma
         close_binder_listeners
 
         require_relative 'jruby_restart'
-        JRubyRestart.chdir_exec(@restart_dir, restart_args)
+        argv = restart_args
+        JRubyRestart.chdir(@restart_dir)
+        Kernel.exec(*argv)
       elsif Puma.windows?
         close_binder_listeners
 
