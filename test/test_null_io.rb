@@ -120,6 +120,23 @@ class TestNullIO < Minitest::Test
     assert_equal 0, nio.size
   end
 
+  def test_pos
+    assert_equal 0, nio.pos
+  end
+
+  def test_seek_returns_0
+    assert_equal 0, nio.seek(0)
+    assert_equal 0, nio.seek(100)
+  end
+
+  def test_seek_negative_raises
+    error = assert_raises ArgumentError do
+      nio.read(-1)
+    end
+
+    assert_match(/negative length -1 given/, error.message)
+  end
+
   def test_sync_returns_true
     assert_equal true, nio.sync
   end

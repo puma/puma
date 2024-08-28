@@ -16,6 +16,10 @@ module Puma
     def each
     end
 
+    def pos
+      0
+    end
+
     # Mimics IO#read with no data.
     #
     def read(length = nil, buffer = nil)
@@ -37,6 +41,11 @@ module Puma
     end
 
     def rewind
+    end
+
+    def seek(pos, whence = 0)
+      raise ArgumentError, "negative length #{pos} given" if pos.negative?
+      0
     end
 
     def close
