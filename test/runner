@@ -21,6 +21,9 @@ test/runner -v test_puma_server
 test/runner --verbose test_puma_server*
 test/runner --verbose test_integration_cluster:test_integration_single
 test/runner --verbose test*ssl*
+
+Note that on macOS, globs (using '*') need to be quoted, as in:
+test/runner -v `test_integration_*.rb'
 =end
 
 require 'bundler/setup'
