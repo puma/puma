@@ -3,13 +3,16 @@
 require "puma/control_cli"
 require "json"
 require "open3"
-require_relative 'tmp_path'
+require_relative "tmp_path"
+require_relative "test_puma/puma_socket"
 
 # Only single mode tests go here. Cluster and pumactl tests
 # have their own files, use those instead
 class TestIntegration < Minitest::Test
   include TmpPath
-  HOST  = "127.0.0.1"
+  include TestPuma
+  include TestPuma::PumaSocket
+
   TOKEN = "xxyyzz"
   RESP_READ_LEN = 65_536
   RESP_READ_TIMEOUT = 10
@@ -152,23 +155,22 @@ class TestIntegration < Minitest::Test
     rescue Errno::ECHILD # raised on Windows ?
     end
   ensure
-    @server.close unless @server.closed?
+    @server&.close unless @server&.closed?
     @server = nil
   end
 
   def restart_server_and_listen(argv, env: {}, log: false)
     cli_server argv, env: env, log: log
-    connection = connect
-    initial_reply = read_body(connection)
-    restart_server connection, log: log
-    [initial_reply, read_body(connect)]
+    socket = send_http
+    initial_reply = socket.read_body
+    restart_server socket, log: log
+    [initial_reply, send_http_read_resp_body]
   end
 
   # reuses an existing connection to make sure that works
-  def restart_server(connection, log: false)
+  def restart_server(socket, log: false)
     Process.kill :USR2, @pid
     wait_for_server_to_include 'Restarting', log: log
-    connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot log: log
   end
 
@@ -426,14 +428,12 @@ class TestIntegration < Minitest::Test
         num_requests.times do |req_num|
           begin
             begin
-              socket = TCPSocket.new HOST, @tcp_port
-              fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+              socket = send_http "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
             rescue => e
               replies[:write_error] += 1
               raise e
             end
-            body = read_body(socket, 10)
-            if body == "Hello World"
+            if "Hello World" == socket.read_body
               mutex.synchronize {
                 replies[:success] += 1
                 replies[:restart] += 1 if restart_count > 0
