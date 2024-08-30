@@ -1,31 +1,18 @@
 require_relative "helper"
+require_relative "helpers/test_puma/puma_socket"
 
 class TestBusyWorker < Minitest::Test
+
+  include ::TestPuma::PumaSocket
+
   def setup
     skip_unless :mri # This feature only makes sense on MRI
-    @ios = []
     @server = nil
   end
 
   def teardown
     return if skipped?
     @server&.stop true
-    @ios.each {|i| i.close unless i.closed?}
-  end
-
-  def new_connection
-    TCPSocket.new('127.0.0.1', @port).tap {|s| @ios << s}
-  rescue IOError
-    Puma::Util.purge_interrupt_queue
-    retry
-  end
-
-  def send_http(req)
-    new_connection << req
-  end
-
-  def send_http_and_read(req)
-    send_http(req).read
   end
 
   def with_server(**options, &app)
@@ -52,12 +39,12 @@ class TestBusyWorker < Minitest::Test
       end
     end
 
-    options[:min_threads] ||= 0
+    options[:min_threads] ||= 1
     options[:max_threads] ||= 10
     options[:log_writer]  ||= Puma::LogWriter.strings
 
     @server = Puma::Server.new request_handler, nil, **options
-    @port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]
+    @bind_port = (@server.add_tcp_listener '127.0.0.1', 0).addr[1]
     @server.run
   end
 
@@ -72,9 +59,9 @@ class TestBusyWorker < Minitest::Test
 
     n = 2
 
-    Array.new(n) do
-      Thread.new { send_http_and_read "GET / HTTP/1.0\r\n\r\n" }
-    end.each(&:join)
+    sockets = send_http_array GET_10, n
+
+    responses = read_response_array(sockets)
 
     assert_equal n, @requests_count, "number of requests needs to match"
     assert_equal 0, @requests_running, "none of requests needs to be running"
@@ -92,9 +79,9 @@ class TestBusyWorker < Minitest::Test
 
     n = 4
 
-    Array.new(n) do
-      Thread.new { send_http_and_read "GET / HTTP/1.0\r\n\r\n" }
-    end.each(&:join)
+    sockets = send_http_array GET_10, n
+
+    responses = read_response_array(sockets)
 
     assert_equal n, @requests_count, "number of requests needs to match"
     assert_equal 0, @requests_running, "none of requests needs to be running"
