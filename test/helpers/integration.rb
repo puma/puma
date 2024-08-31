@@ -26,6 +26,7 @@ class TestIntegration < Minitest::Test
 
   def setup
     @server = nil
+    @server_running = nil # set to true in cli_server, set to false in `stop_server`
     @config_file = nil
     @server_log = +''
     @pid = nil
@@ -34,10 +35,12 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    if @server && defined?(@control_port) && Puma.windows?
-      cli_pumactl 'stop'
-    elsif @server && @pid && !Puma.windows?
-      stop_server @pid, signal: :INT
+    if @server_running
+      if @server && defined?(@control_port) && Puma.windows?
+        cli_pumactl 'stop'
+      elsif @server && @pid && !Puma.windows?
+        stop_server @pid, signal: :INT
+      end
     end
 
     @ios_to_close&.each do |io|
@@ -102,6 +105,7 @@ class TestIntegration < Minitest::Test
         "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
       else
         @tcp_port = UniquePort.call
+        @bind_port = @tcp_port
         "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
       end
 
@@ -114,6 +118,7 @@ class TestIntegration < Minitest::Test
     else
       @server = IO.popen(env, cmd)
     end
+    @server_running = !!@server
     @pid = @server.pid
     wait_for_server_to_boot(log: log) unless no_wait
     @server
@@ -125,11 +130,13 @@ class TestIntegration < Minitest::Test
   def stop_server(pid = @pid, signal: :TERM)
     begin
       Process.kill signal, pid
+      @server_running = nil
     rescue Errno::ESRCH
     end
     begin
       Process.wait2 pid
     rescue Errno::ECHILD
+      [nil, nil]
     end
   end
 
