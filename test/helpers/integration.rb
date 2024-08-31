@@ -368,7 +368,7 @@ class TestIntegration < Minitest::Test
     arg =
       if no_bind
         argv
-      elsif unix
+      elsif unix || @control_path
         %Q[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
       else
         %Q[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
