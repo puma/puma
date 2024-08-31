@@ -215,10 +215,10 @@ class TestIntegrationCluster < TestIntegration
   def test_worker_check_interval
     # iso8601 2022-12-14T00:05:49Z
     re_8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/
-    @control_tcp_port = UniquePort.call
+    @control_port = UniquePort.call
     worker_check_interval = 1
 
-    cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
+    cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
 
     sleep worker_check_interval + 1
     checkin_1 = get_stats["worker_status"].first["last_checkin"]
@@ -396,8 +396,8 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_nio4r_gem_not_required_in_master_process_when_using_control_server
-    @control_tcp_port = UniquePort.call
-    control_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    @control_port = UniquePort.call
+    control_opts = "--control-url tcp://#{HOST}:#{@control_port} --control-token #{TOKEN}"
     cli_server "-w #{workers} #{control_opts} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
 
     assert wait_for_server_to_include('Starting control server')

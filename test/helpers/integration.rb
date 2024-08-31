@@ -34,7 +34,7 @@ class TestIntegration < Minitest::Test
   end
 
   def teardown
-    if @server && defined?(@control_tcp_port) && Puma.windows?
+    if @server && defined?(@control_port) && Puma.windows?
       cli_pumactl 'stop'
     elsif @server && @pid && !Puma.windows?
       stop_server @pid, signal: :INT
@@ -342,8 +342,8 @@ class TestIntegration < Minitest::Test
       @control_path = tmp_path('.cntl_sock')
       "--control-url unix://#{@control_path} --control-token #{TOKEN}"
     else
-      @control_tcp_port = UniquePort.call
-      "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+      @control_port = UniquePort.call
+      "--control-url tcp://#{HOST}:#{@control_port} --control-token #{TOKEN}"
     end
   end
 
@@ -351,10 +351,10 @@ class TestIntegration < Minitest::Test
     arg =
       if no_bind
         argv.split(/ +/)
-      elsif unix
+      elsif unix || @control_path
         %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
       else
-        %W[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+        %W[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
       end
 
     r, w = IO.pipe
@@ -371,7 +371,7 @@ class TestIntegration < Minitest::Test
       elsif unix
         %Q[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
       else
-        %Q[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+        %Q[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
       end
 
     pumactl_path = File.expand_path '../../../bin/pumactl', __FILE__
@@ -397,8 +397,8 @@ class TestIntegration < Minitest::Test
 
     args = "-w #{workers} -t 5:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?
-      @control_tcp_port = UniquePort.call
-      cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} #{args}"
+      @control_port = UniquePort.call
+      cli_server "--control-url tcp://#{HOST}:#{@control_port} --control-token #{TOKEN} #{args}"
     else
       cli_server args
     end

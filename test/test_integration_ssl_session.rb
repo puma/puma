@@ -29,7 +29,7 @@ class TestIntegrationSSLSession < TestIntegration
   def teardown
     return if skipped?
     # stop server
-    sock = TCPSocket.new HOST, control_tcp_port
+    sock = TCPSocket.new HOST, control_port
     @ios_to_close << sock
     sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
     sock.read
@@ -44,8 +44,8 @@ class TestIntegrationSSLSession < TestIntegration
     @bind_port ||= UniquePort.call
   end
 
-  def control_tcp_port
-    @control_tcp_port ||= UniquePort.call
+  def control_port
+    @control_port ||= UniquePort.call
   end
 
   def set_reuse(reuse)
@@ -62,7 +62,7 @@ class TestIntegrationSSLSession < TestIntegration
         reuse: #{reuse}
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]

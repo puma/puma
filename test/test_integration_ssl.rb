@@ -27,8 +27,8 @@ class TestIntegrationSSL < TestIntegration
     @tcp_port = @bind_port
   end
 
-  def control_tcp_port
-    @control_tcp_port ||= UniquePort.call
+  def control_port
+    @control_port ||= UniquePort.call
   end
 
   def with_server(config)
@@ -65,7 +65,7 @@ class TestIntegrationSSL < TestIntegration
         }
       end
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -187,7 +187,7 @@ class TestIntegrationSSL < TestIntegration
         verify_mode: 'none'
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -211,7 +211,7 @@ class TestIntegrationSSL < TestIntegration
       require 'localhost'
       ssl_bind '#{HOST}', '#{bind_port}'
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -246,7 +246,7 @@ class TestIntegrationSSL < TestIntegration
         key_password_command: key_command
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -281,7 +281,7 @@ class TestIntegrationSSL < TestIntegration
         key_password_command: key_command
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
