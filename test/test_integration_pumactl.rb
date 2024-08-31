@@ -211,6 +211,8 @@ class TestIntegrationPumactl < TestIntegration
 
     resp_io = cli_pumactl "stats"
 
+    resp_io.wait_readable 2
+
     status = JSON.parse resp_io.read.split("\n", 2).last
 
     assert_equal 2, status["workers"]
@@ -218,6 +220,8 @@ class TestIntegrationPumactl < TestIntegration
     sleep 0.5 # needed for GHA ?
 
     resp_io = cli_pumactl "stats"
+
+    resp_io.wait_readable 2
 
     body = resp_io.read.split("\n", 2).last
 
@@ -232,6 +236,9 @@ class TestIntegrationPumactl < TestIntegration
     key = Puma::IS_MRI || TRUFFLE_HEAD ? "count" : "used"
 
     resp_io = cli_pumactl "gc-stats"
+
+    resp_io.wait_readable 2
+
     before = JSON.parse resp_io.read.split("\n", 2).last
     gc_before = before[key].to_i
 
@@ -242,6 +249,9 @@ class TestIntegrationPumactl < TestIntegration
     assert_equal "Command gc sent success", resp_io.read.rstrip
 
     resp_io = cli_pumactl "gc-stats"
+
+    resp_io.wait_readable 2
+
     after = JSON.parse resp_io.read.split("\n", 2).last
     gc_after = after[key].to_i
 
