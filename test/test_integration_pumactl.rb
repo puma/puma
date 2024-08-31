@@ -1,15 +1,17 @@
 require_relative "helper"
 require_relative "helpers/integration"
+require_relative "helpers/test_puma/puma_socket"
 
 class TestIntegrationPumactl < TestIntegration
-  include TmpPath
   parallelize_me! if ::Puma.mri?
+
+  include TmpPath
+  include TestPuma::PumaSocket
 
   def workers ; 2 ; end
 
   def setup
     super
-    @control_path = nil
     @state_path = tmp_path('.state')
   end
 
@@ -23,7 +25,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_stop_tcp
     skip_if :jruby, :truffleruby # Undiagnose thread race. TODO fix
-    @control_tcp_port = UniquePort.call
+
     cli_server "-q test/rackup/sleep.ru #{set_pumactl_args} -S #{@state_path}"
 
     cli_pumactl "stop"
@@ -47,7 +49,7 @@ class TestIntegrationPumactl < TestIntegration
       config: "stdout_redirect nil, '#{stderr.path}'",
       unix: true
 
-    cli_pumactl signal, unix: true
+    cli_pumactl signal
 
     wait_server
 
@@ -60,16 +62,17 @@ class TestIntegrationPumactl < TestIntegration
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-    s = UNIXSocket.new @bind_path
-    @ios_to_close << s
-    s << "GET /sleep1 HTTP/1.0\r\n\r\n"
-
     # Get the PIDs of the phase 0 workers.
     phase0_worker_pids = get_worker_pids 0
     assert File.exist? @bind_path
 
+    response = send_http_read_response "GET /sleep1 HTTP/1.0\r\n\r\n"
+
+    assert_equal "HTTP/1.0 200 OK", response.status
+    assert_equal "Slept 1.0", response.body
+
     # Phased restart
-    cli_pumactl "phased-restart", unix: true
+    cli_pumactl "phased-restart"
 
     # Get the PIDs of the phase 1 workers.
     phase1_worker_pids = get_worker_pids 1
@@ -81,7 +84,7 @@ class TestIntegrationPumactl < TestIntegration
     assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
     assert File.exist?(@bind_path), "Bind path must exist after phased restart"
 
-    cli_pumactl "stop", unix: true
+    cli_pumactl "stop"
 
     wait_server
     assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, :<, (DARWIN ? 8 : 7)
@@ -96,13 +99,16 @@ class TestIntegrationPumactl < TestIntegration
 
     start = Time.now
 
-    fast_connect("sleep1", unix: true)
+    response = send_http_read_response "GET /sleep1 HTTP/1.0\r\n\r\n"
+
+    assert_equal "HTTP/1.0 200 OK", response.status
+    assert_equal "Slept 1.0", response.body
 
     # Get the PIDs of the phase 0 workers.
     phase0_worker_pids = get_worker_pids 0, wrkrs
     assert File.exist? @bind_path
 
-    cli_pumactl "refork", unix: true
+    cli_pumactl "refork"
 
     # Get the PIDs of the phase 1 workers.
     phase1_worker_pids = get_worker_pids 1, wrkrs - 1
@@ -114,7 +120,7 @@ class TestIntegrationPumactl < TestIntegration
     assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
     assert File.exist?(@bind_path), "Bind path must exist after phased refork"
 
-    cli_pumactl "stop", unix: true
+    cli_pumactl "stop"
 
     wait_server
     assert_operator Time.now - start, :<, 60
@@ -125,11 +131,10 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_server "-q -C test/config/prune_bundler_with_multiple_workers.rb #{set_pumactl_args unix: true} -S #{@state_path}", unix: true
 
-    socket = fast_connect(unix: true)
-    headers, body = read_response(socket)
+    response = send_http_read_response "GET /sleep1 HTTP/1.0\r\n\r\n"
 
-    assert_includes headers, "200 OK"
-    assert_includes body, "embedded app"
+    assert_equal "HTTP/1.0 200 OK", response.status
+    assert_equal "embedded app", response.body
 
     cli_pumactl "stop", unix: true
 
@@ -161,19 +166,19 @@ class TestIntegrationPumactl < TestIntegration
   def test_require_dependencies
     skip_if :jruby
     conf_path = tmp_path '.config.rb'
-    @tcp_port = UniquePort.call
-    @control_tcp_port = UniquePort.call
+    @bind_port = UniquePort.call
+    @control_port = UniquePort.call
 
     File.write conf_path , <<~CONF
       state_path "#{@state_path}"
-      bind "tcp://127.0.0.1:#{@tcp_port}"
+      bind "tcp://127.0.0.1:#{@bind_port}"
 
       workers 0
 
       before_fork do
       end
 
-      activate_control_app "tcp://127.0.0.1:#{@control_tcp_port}", auth_token: "#{TOKEN}"
+      activate_control_app "tcp://127.0.0.1:#{@control_port}", auth_token: "#{TOKEN}"
 
       app do |env|
         [200, {}, ["Hello World"]]
@@ -186,8 +191,9 @@ class TestIntegrationPumactl < TestIntegration
 
     assert_includes out.read, "Command restart sent success"
 
-    sleep 0.5 # give some time to restart
-    read_response connect
+    wait_for_server_to_boot if Puma::IS_WINDOWS # slow CI may fail request without this
+
+    assert_equal "Hello World", send_http_read_resp_body
 
     out = cli_pumactl_spawn "-S #{@state_path} status", no_bind: true
     assert_includes out.read, "Puma is started"
@@ -203,7 +209,7 @@ class TestIntegrationPumactl < TestIntegration
 
     get_worker_pids # waits for workers to boot
 
-    resp_io = cli_pumactl "stats", unix: true
+    resp_io = cli_pumactl "stats"
 
     status = JSON.parse resp_io.read.split("\n", 2).last
 
@@ -211,7 +217,7 @@ class TestIntegrationPumactl < TestIntegration
 
     sleep 0.5 # needed for GHA ?
 
-    resp_io = cli_pumactl "stats", unix: true
+    resp_io = cli_pumactl "stats"
 
     body = resp_io.read.split("\n", 2).last
 
@@ -225,17 +231,17 @@ class TestIntegrationPumactl < TestIntegration
 
     key = Puma::IS_MRI || TRUFFLE_HEAD ? "count" : "used"
 
-    resp_io = cli_pumactl "gc-stats", unix: unix
+    resp_io = cli_pumactl "gc-stats"
     before = JSON.parse resp_io.read.split("\n", 2).last
     gc_before = before[key].to_i
 
-    2.times { fast_connect }
+    2.times { send_http }
 
-    resp_io = cli_pumactl "gc", unix: unix
+    resp_io = cli_pumactl "gc"
     # below shows gc was called (200 reply)
     assert_equal "Command gc sent success", resp_io.read.rstrip
 
-    resp_io = cli_pumactl "gc-stats", unix: unix
+    resp_io = cli_pumactl "gc-stats"
     after = JSON.parse resp_io.read.split("\n", 2).last
     gc_after = after[key].to_i
 
@@ -248,7 +254,7 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_control_gc_stats_tcp
-    @control_tcp_port = UniquePort.call
+    @control_port = UniquePort.call
     control_gc_stats
   end
 
