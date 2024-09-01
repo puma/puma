@@ -392,12 +392,12 @@ module TestPuma
                 results[idx] = body_only ? skt.read_body : skt.read_response
               end
             rescue StandardError => e
-              results[idx] = e.class.to_s
+              results[idx] = e.class
             end
             begin
               skt.close unless skt.closed? # skt.close may return Errno::EBADF
             rescue StandardError => e
-              results[idx] ||= e.class.to_s
+              results[idx] ||= e.class
             end
             skts[idx] = nil
           end
