@@ -211,7 +211,8 @@ class TestIntegration < Minitest::Test
 
     raise Minitest::Assertion,  "@server is not an IO" unless @server.is_a?(IO)
     if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
-      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}"
+      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}",
+        caller(2, 2)
     end
 
     begin
@@ -221,12 +222,13 @@ class TestIntegration < Minitest::Test
       end
     rescue StandardError => e
       error_retries += 1
-      raise(e, "Waiting for server to log #{match_obj.inspect}") if error_retries == LOG_ERROR_QTY
+      raise(e, "Waiting for server to log #{match_obj.inspect}", caller(2, 2)) if error_retries == LOG_ERROR_QTY
       sleep LOG_ERROR_SLEEP
       retry
     end
     if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
-      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}"
+      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}",
+        caller(2, 2)
     end
     line
   end
