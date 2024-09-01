@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/test_puma/puma_socket"
 require "puma/events"
@@ -1676,25 +1678,25 @@ class TestPumaServer < Minitest::Test
       wait.pop
       [200, {}, ["DONE"]]
     end
-    connections = Array.new(num_connections) { send_http GET_10 }
+    sockets = send_http_array GET_10, num_connections, dly: nil
+
     @server.stop
+    Thread.pass # may help intermittent failures/retries in CI
     wait.close
     bad = 0
-    connections.each do |s|
-      begin
-        if s.wait_readable(1) and drain # JRuby may hang on read with drain is false
-          assert_match 'DONE', s.read_body
-        else
-          bad += 1
-        end
-      rescue Errno::ECONNRESET
-        bad += 1
-      end
-    end
+
+    responses = read_response_array(sockets, body_only: true)
+
+    bodies = responses.select { |e| e.is_a? String }
+
+    bad = responses.length - bodies.length
+
+    assert_equal(['DONE'], bodies.uniq) unless bodies.length.zero?
+
     if drain
-      assert_equal 0, bad
+      assert_equal 0, bad, "#{bad} requests were cancelled"
     else
-      refute_equal 0, bad
+      refute_equal 0, bad, "Expected some cancelled requests"
     end
   end
 
