@@ -50,13 +50,17 @@ module Puma
       @ios = []
     end
 
-    attr_reader :ios
+    attr_reader :ios, :listening
 
     # @version 5.0.0
     attr_reader :activated_sockets, :envs, :inherited_fds, :listeners, :proto_env, :unix_paths
 
     # @version 5.0.0
     attr_writer :ios, :listeners
+
+    def listening?
+      @listening
+    end
 
     def env(sock)
       @envs.fetch(sock, @proto_env)
@@ -264,6 +268,7 @@ module Puma
           log_writer.error "Invalid URI: #{str}"
         end
       end
+      @listening = true
 
       # If we inherited fds but didn't use them (because of a
       # configuration change), then be sure to close them.
@@ -459,6 +464,7 @@ module Puma
         rescue Errno::EBADF
         end
       end
+      @listening = false
     end
 
     def redirects_for_restart

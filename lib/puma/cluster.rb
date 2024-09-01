@@ -23,6 +23,7 @@ module Puma
       @next_check = Time.now
 
       @phased_restart = false
+      @refork = false
     end
 
     # Returns the list of cluster worker handles.
@@ -49,11 +50,28 @@ module Puma
       @phase += 1
       log "- Starting phased worker restart, phase: #{@phase}"
 
+      pre_dir_change_paths = bundler_require_paths if defined?(Bundler)
+
       # Be sure to change the directory again before loading
       # the app. This way we can pick up new code.
       dir = @launcher.restart_dir
       log "+ Changing to #{dir}"
       Dir.chdir dir
+
+      if preload? && !@refork
+        if defined?(Bundler) && File.exist?("Gemfile")
+          ENV['BUNDLE_GEMFILE'] = File.expand_path("Gemfile")
+
+          Bundler.reset!
+          Bundler.definition.resolve_remotely!
+
+          $LOAD_PATH.reject! { |path| pre_dir_change_paths.include?(path) }
+          $LOAD_PATH.concat(bundler_require_paths - $LOAD_PATH)
+        end
+
+        log "* Preloading application"
+        load_and_bind
+      end
     end
 
     def redirect_io
@@ -222,9 +240,8 @@ module Puma
     end
 
     def phased_restart(refork = false)
-      return false if @options[:preload_app] && !refork
-
       @phased_restart = true
+      @refork = refork
       wakeup!
 
       true
@@ -446,6 +463,7 @@ module Puma
             if @phased_restart
               start_phased_restart
               @phased_restart = false
+              @refork = false
               in_phased_restart = true
               workers_not_booted = @options[:workers]
             end
@@ -611,6 +629,12 @@ module Puma
 
     def idle_workers
       @idle_workers ||= {}
+    end
+
+    def bundler_require_paths
+      Bundler.definition.specs
+        .reject { |spec| spec.name == 'puma' }
+        .flat_map { |spec| spec.require_paths.map { |path| File.join(spec.full_gem_path, path) } }
     end
   end
 end

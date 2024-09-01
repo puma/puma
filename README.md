@@ -136,8 +136,6 @@ workers 3
 preload_app!
 ```
 
-Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preloading copies the code of master into the workers.
-
 #### Clustered mode hooks
 
 When using clustered mode, Puma's configuration DSL provides `before_fork` and `on_worker_boot`
@@ -167,7 +165,7 @@ on_refork do
 end
 ```
 
-Importantly, note the following considerations when Ruby forks a child process: 
+Importantly, note the following considerations when Ruby forks a child process:
 
 1. File descriptors such as network sockets **are** copied from the parent to the forked
    child process. Dual-use of the same sockets by parent and child will result in I/O conflicts

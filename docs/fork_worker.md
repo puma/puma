@@ -12,7 +12,7 @@ Puma 5 introduces an experimental new cluster-mode configuration option, `fork_w
 
 The `fork_worker` option allows your application to be initialized only once for copy-on-write memory savings, and it has two additional advantages:
 
-1. **Compatible with phased restart.** Because the master process itself doesn't preload the application, this mode works with phased restart (`SIGUSR1` or `pumactl phased-restart`). When worker 0 reloads as part of a phased restart, it initializes a new copy of your application first, then the other workers reload by forking from this new worker already containing the new preloaded application.
+1. **Compatible with phased restart.** This mode works with phased restart (`SIGUSR1` or `pumactl phased-restart`). When worker 0 reloads as part of a phased restart, it initializes a new copy of your application unless the master process has done so already (`preload_app!` is enabled), then the other workers reload by forking from this new worker already containing the new preloaded application.
 
    This allows a phased restart to complete as quickly as a hot restart (`SIGUSR2` or `pumactl restart`), while still minimizing downtime by staggering the restart across cluster workers.
 

@@ -8,7 +8,7 @@ If the new process is unable to load, it will simply exit. You should therefore 
 
 ### How-to
 
-Any of the following will cause a Puma server to perform a hot restart: 
+Any of the following will cause a Puma server to perform a hot restart:
 
 * Send the `puma` process the `SIGUSR2` signal
 * Issue a `GET` request to the Puma status/control server with the path `/restart`
@@ -37,7 +37,7 @@ Phased restarts replace all running workers in a Puma cluster. This is a useful 
 
 ### How-to
 
-Any of the following will cause a Puma server to perform a phased restart: 
+Any of the following will cause a Puma server to perform a phased restart:
 
 * Send the `puma` process the `SIGUSR1` signal
 * Issue a `GET` request to the Puma status/control server with the path `/phased-restart`
@@ -46,7 +46,7 @@ Any of the following will cause a Puma server to perform a phased restart:
 ### Supported configurations
 
 * Works in cluster mode only
-* To support upgrading the application that Puma is serving, ensure `prune_bundler` is enabled and that `preload_app!` is disabled
+* To support upgrading the application that Puma is serving, ensure that either `prune_bundler` or `preload_app!` is enabled
 * Supported on all platforms where cluster mode is supported
 
 ### Client experience

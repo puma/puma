@@ -165,7 +165,7 @@ module Puma
         raise e
       end
 
-      @launcher.binder.parse @options[:binds]
+      @launcher.binder.parse @options[:binds] unless @launcher.binder.listening?
     end
 
     # @!attribute [r] app

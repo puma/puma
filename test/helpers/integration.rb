@@ -83,6 +83,7 @@ class TestIntegration < Minitest::Test
       merge_err: false, # merge STDERR into STDOUT
       log: false,       # output server log to console (for debugging)
       no_wait: false,   # don't wait for server to boot
+      includes: [],     # wait for these strings to appear in the server log during boot
       puma_debug: nil,  # set env['PUMA_DEBUG'] = 'true'
       env: {})          # pass env setting to Puma process in IO.popen
 
@@ -115,7 +116,7 @@ class TestIntegration < Minitest::Test
       @server = IO.popen(env, cmd)
     end
     @pid = @server.pid
-    wait_for_server_to_boot(log: log) unless no_wait
+    wait_for_server_to_boot(includes: includes, log: log) unless no_wait
     @server
   end
 
@@ -166,10 +167,12 @@ class TestIntegration < Minitest::Test
 
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
-  def wait_for_server_to_boot(timeout: LOG_TIMEOUT, log: false)
+  def wait_for_server_to_boot(includes: [], timeout: LOG_TIMEOUT, log: false)
     @puma_pid = wait_for_server_to_match(/(?:Master|      ) PID: (\d+)$/, 1, timeout: timeout, log: log)&.to_i
     @pid = @puma_pid if @pid != @puma_pid
-    wait_for_server_to_include 'Ctrl-C', timeout: timeout, log: log
+    (includes + ['Ctrl-C']).each do |str|
+      wait_for_server_to_include str, timeout: timeout, log: log
+    end
   end
 
   # Returns true if and when server log includes str.  Will timeout otherwise.

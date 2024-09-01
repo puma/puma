@@ -19,14 +19,32 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_nio4r_version_during_phased_restart
-    change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_nio4r',
+    change_gem_version_during_phased_restart server_opts: "--prune-bundler",
+                                             old_app_dir: 'worker_gem_independence_test/old_nio4r',
+                                             old_version: '2.7.1',
+                                             new_app_dir: 'worker_gem_independence_test/new_nio4r',
+                                             new_version: '2.7.2'
+  end
+
+  def test_changing_nio4r_version_during_phased_restart_with_preload_app
+    change_gem_version_during_phased_restart server_opts: "--preload",
+                                             old_app_dir: 'worker_gem_independence_test/old_nio4r',
+                                             old_version: '2.7.1',
+                                             new_app_dir: 'worker_gem_independence_test/new_nio4r',
+                                             new_version: '2.7.2'
+  end
+
+  def test_changing_nio4r_version_during_phased_restart_with_prune_bundler_and_preload_app
+    change_gem_version_during_phased_restart server_opts: "--prune-bundler --preload",
+                                             old_app_dir: 'worker_gem_independence_test/old_nio4r',
                                              old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_nio4r',
                                              new_version: '2.7.2'
   end
 
   def test_changing_json_version_during_phased_restart
-    change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_json',
+    change_gem_version_during_phased_restart server_opts: "--prune-bundler",
+                                             old_app_dir: 'worker_gem_independence_test/old_json',
                                              old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_json',
                                              new_version: '2.7.0'
@@ -34,7 +52,7 @@ class TestWorkerGemIndependence < TestIntegration
 
   def test_changing_json_version_during_phased_restart_after_querying_stats_from_status_server
     @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} --prune-bundler"
     before_restart = ->() do
       cli_pumactl "stats"
     end
@@ -49,7 +67,7 @@ class TestWorkerGemIndependence < TestIntegration
 
   def test_changing_json_version_during_phased_restart_after_querying_gc_stats_from_status_server
     @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} --prune-bundler"
     before_restart = ->() do
       cli_pumactl "gc-stats"
     end
@@ -64,7 +82,7 @@ class TestWorkerGemIndependence < TestIntegration
 
   def test_changing_json_version_during_phased_restart_after_querying_thread_backtraces_from_status_server
     @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} --prune-bundler"
     before_restart = ->() do
       cli_pumactl "thread-backtraces"
     end
@@ -78,7 +96,8 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_json_version_during_phased_restart_after_accessing_puma_stats_directly
-    change_gem_version_during_phased_restart old_app_dir: 'worker_gem_independence_test/old_json_with_puma_stats_after_fork',
+    change_gem_version_during_phased_restart server_opts: "--prune-bundler",
+                                             old_app_dir: 'worker_gem_independence_test/old_json_with_puma_stats_after_fork',
                                              old_version: '2.7.1',
                                              new_app_dir: 'worker_gem_independence_test/new_json_with_puma_stats_after_fork',
                                              new_version: '2.7.0'
@@ -100,7 +119,7 @@ class TestWorkerGemIndependence < TestIntegration
       with_unbundled_env do
         silent_and_checked_system_command("bundle config --local path vendor/bundle")
         silent_and_checked_system_command("bundle install")
-        cli_server "--prune-bundler -w 1 #{server_opts}", env: ENV_RUBYOPT
+        cli_server "-w 1 #{server_opts}", env: ENV_RUBYOPT
       end
     end
 

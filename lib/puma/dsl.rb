@@ -660,7 +660,7 @@ module Puma
       @options[:state_permission] = permission
     end
 
-    # How many worker processes to run.  Typically this is set to
+    # How many worker processes to run. Typically this is set to
     # the number of available cores.
     #
     # The default is the value of the environment variable +WEB_CONCURRENCY+ if
@@ -970,8 +970,8 @@ module Puma
     # new Bundler context and thus can float around as the release
     # dictates.
     #
-    # @note This is incompatible with +preload_app!+.
-    # @note This is only supported for RubyGems 2.2+
+    # @note Cluster mode only.
+    # @note This is only supported for RubyGems 2.2+.
     #
     # @see extra_runtime_dependencies
     #
@@ -1239,8 +1239,7 @@ module Puma
     end
 
     # When enabled, workers will be forked from worker 0 instead of from the master process.
-    # This option is similar to `preload_app` because the app is preloaded before forking,
-    # but it is compatible with phased restart.
+    # This option is similar to `preload_app` because the app is preloaded before forking.
     #
     # This option also enables the `refork` command (SIGURG), which optimizes copy-on-write performance
     # in a running app.
