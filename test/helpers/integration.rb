@@ -427,15 +427,18 @@ class TestIntegration < Minitest::Test
 
     num_threads.times do |thread|
       client_threads << Thread.new do
+        request_str = "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+        body_str = "Hello World"
+
         num_requests.times do |req_num|
           begin
             begin
-              socket = send_http "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+              socket = send_http request_str
             rescue => e
               replies[:write_error] += 1
               raise e
             end
-            if "Hello World" == socket.read_body
+            if body_str == socket.read_body
               mutex.synchronize {
                 replies[:success] += 1
                 replies[:restart] += 1 if restart_count > 0
