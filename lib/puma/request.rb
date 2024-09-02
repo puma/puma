@@ -242,6 +242,9 @@ module Puma
         elsif !response_hijack && resp_info[:allow_chunked]
           io_buffer << TRANSFER_ENCODING_CHUNKED
           chunked = true
+        elsif env[SERVER_PROTOCOL] == HTTP_10
+          io_buffer << CONNECTION_CLOSE
+          keep_alive = false
         end
       end
 
