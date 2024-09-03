@@ -33,6 +33,8 @@ module TestPuma
   #
   class ResponseTimeWrk < ResponseTimeBase
 
+    WRK = ENV.fetch('WRK', 'wrk')
+
     def run
       time_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       super
@@ -60,11 +62,11 @@ module TestPuma
 
           # warmup?
           if pre == :i
-            wrk_cmd = %Q[wrk -t#{@stream_threads} -c#{connections} -d1s --latency #{header} #{@wrk_bind_str}]
+            wrk_cmd = %Q[#{WRK} -t#{@stream_threads} -c#{connections} -d1s --latency #{header} #{@wrk_bind_str}]
             %x[#{wrk_cmd}]
           end
 
-          wrk_cmd = %Q[wrk -t#{@stream_threads} -c#{connections} -d#{@duration}s --latency #{header} #{@wrk_bind_str}]
+          wrk_cmd = %Q[#{WRK} -t#{@stream_threads} -c#{connections} -d#{@duration}s --latency #{header} #{@wrk_bind_str}]
           hsh = run_wrk_parse wrk_cmd
 
           @errors ||= hsh.key? :errors
@@ -165,7 +167,7 @@ module TestPuma
 
       @body_types.each do |pre, _|
         header = "-H '#{HDR_BODY_CONF}#{pre}#{size}'".ljust(21)
-        warm_up_cmd = %Q[wrk -t2 -c4 -d1s --latency #{header} #{@wrk_bind_str}]
+        warm_up_cmd = %Q[#{WRK} -t2 -c4 -d1s --latency #{header} #{@wrk_bind_str}]
         run_wrk_parse warm_up_cmd
       end
       puts ''

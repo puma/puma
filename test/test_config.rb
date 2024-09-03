@@ -123,7 +123,7 @@ class TestConfigFile < TestConfigFileBase
     skip_if :jruby
     skip_unless :ssl
 
-    cert_path = File.expand_path "../examples/puma/client-certs", __dir__
+    cert_path = File.expand_path "../examples/puma/client_certs", __dir__
     cert_pem = File.read("#{cert_path}/server.crt")
     key_pem = File.read("#{cert_path}/server.key")
 
@@ -295,6 +295,26 @@ class TestConfigFile < TestConfigFileBase
 
     ssl_binding = conf.options[:binds].first
     assert ssl_binding.include?("&ssl_cipher_filter=#{cipher_filter}")
+  end
+
+  def test_ssl_bind_with_ciphersuites
+    skip_if :jruby
+    skip_unless :ssl
+    skip('Requires TLSv1.3') unless Puma::MiniSSL::HAS_TLS1_3
+
+    ciphersuites = "TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256"
+    conf = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "9292", {
+        cert: "cert",
+        key: "key",
+        ssl_ciphersuites: ciphersuites,
+      }
+    end
+
+    conf.load
+
+    ssl_binding = conf.options[:binds].first
+    assert ssl_binding.include?("&ssl_ciphersuites=#{ciphersuites}")
   end
 
   def test_ssl_bind_with_verification_flags

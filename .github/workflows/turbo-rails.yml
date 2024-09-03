@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yaml
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
 
   turbo-rails:
     name: >-
@@ -28,14 +28,20 @@ jobs:
           - { os: ubuntu-20.04 , ruby: '2.7', rails: '6.1' }
           - { os: ubuntu-20.04 , ruby: '3.1', rails: '7.0' }
           - { os: ubuntu-20.04 , ruby: '3.2', rails: '7.0' }
-          - { os: ubuntu-22.04 , ruby: head , rails: '7.0' }
+          - { os: ubuntu-22.04 , ruby: '3.3', rails: '7.0' }
+          - { os: ubuntu-20.04 , ruby: '3.1', rails: '7.1' }
+          - { os: ubuntu-20.04 , ruby: '3.2', rails: '7.1' }
+          - { os: ubuntu-22.04 , ruby: '3.3', rails: '7.1' }
+          - { os: ubuntu-22.04 , ruby: head , rails: '7.1' }
     env:
       CI: true
+      FERRUM_PROCESS_TIMEOUT: 25
+      FERRUM_DEFAULT_TIMEOUT: 15
       RAILS_VERSION: "${{ matrix.rails }}"
 
     steps:
       - name: checkout hotwired/turbo-rails
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: hotwired/turbo-rails
           ref: main
@@ -45,6 +51,9 @@ jobs:
           # use repo & commit being tested, $GITHUB_REPOSITORY allows forks to work
           SRC="gem ['\"]puma['\"].*"
           DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
+          sed -i "s#$SRC#$DST#" Gemfile
+          SRC="gem ['\"]sqlite3['\"].*"
+          DST="gem 'sqlite3', '~> 1.4'"
           sed -i "s#$SRC#$DST#" Gemfile
           #
           # allow using capybara from the repo, either a branch or a commit
@@ -57,12 +66,13 @@ jobs:
           SRC="Silent: true"
           DST="Silent: false, Threads: '1:4'"
           sed -i "s/$SRC/$DST/" test/application_system_test_case.rb
+          cat Gemfile
 
       - name: load ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler: latest
+          rubygems: latest
           bundler-cache: true
         timeout-minutes: 10
 

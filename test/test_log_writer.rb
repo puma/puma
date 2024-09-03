@@ -170,10 +170,8 @@ class TestLogWriter < Minitest::Test
     assert_includes error, "peer: 127.0.0.1"
     assert_includes error, "cert: test_cert"
 
-    log_writer.stderr.string = ''
-
     log_writer.ssl_error OpenSSL::SSL::SSLError, ssl_mock.call(nil, nil)
-    error = log_writer.stderr.string
+    error = log_writer.stderr.string.lines[1]
     assert_includes error, "SSL error"
     assert_includes error, "peer: <unknown>"
     assert_includes error, "cert: :"

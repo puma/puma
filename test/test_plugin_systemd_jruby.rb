@@ -3,10 +3,9 @@
 require_relative "helper"
 require_relative "helpers/integration"
 
-class TestPluginSystemdJruby < TestIntegration
+require "puma/plugin"
 
-  THREAD_LOG = TRUFFLE ? "{ 0/16 threads, 16 available, 0 backlog }" :
-    "{ 0/5 threads, 5 available, 0 backlog }"
+class TestPluginSystemdJruby < TestIntegration
 
   def setup
     skip_unless :linux
@@ -15,8 +14,6 @@ class TestPluginSystemdJruby < TestIntegration
     skip_unless :jruby
 
     super
-
-    ENV["NOTIFY_SOCKET"] = "/tmp/doesntmatter"
   end
 
   def teardown
@@ -24,9 +21,14 @@ class TestPluginSystemdJruby < TestIntegration
   end
 
   def test_systemd_plugin_not_loaded
-    cli_server "test/rackup/hello.ru"
+    cli_server "test/rackup/hello.ru",
+      env: {'NOTIFY_SOCKET' => '/tmp/doesntmatter' }, config: <<~CONFIG
+      app do |_|
+        [200, {}, [Puma::Plugins.instance_variable_get(:@plugins)['systemd'].to_s]]
+      end
+    CONFIG
 
-    assert_nil Puma::Plugins.instance_variable_get(:@plugins)["systemd"]
+    assert_empty read_body(connect)
 
     stop_server
   end

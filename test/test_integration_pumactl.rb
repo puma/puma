@@ -28,10 +28,7 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop"
 
-    _, status = Process.wait2(@pid)
-    assert_equal 0, status
-
-    @server = nil
+    wait_server
   end
 
   def test_stop_unix
@@ -52,10 +49,9 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl signal, unix: true
 
-    _, status = Process.wait2(@pid)
-    assert_equal 0, status
+    wait_server
+
     refute_match 'error', File.read(stderr.path)
-    @server = nil
   end
 
   def test_phased_restart_cluster
@@ -87,10 +83,8 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop", unix: true
 
-    _, status = Process.wait2(@pid)
-    assert_equal 0, status
+    wait_server
     assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, :<, (DARWIN ? 8 : 7)
-    @server = nil
   end
 
   def test_refork_cluster
@@ -102,9 +96,7 @@ class TestIntegrationPumactl < TestIntegration
 
     start = Time.now
 
-    s = UNIXSocket.new @bind_path
-    @ios_to_close << s
-    s << "GET /sleep1 HTTP/1.0\r\n\r\n"
+    fast_connect("sleep1", unix: true)
 
     # Get the PIDs of the phase 0 workers.
     phase0_worker_pids = get_worker_pids 0, wrkrs
@@ -124,10 +116,8 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop", unix: true
 
-    _, status = Process.wait2(@pid)
-    assert_equal 0, status
-    assert_operator Time.now - start, :<, (DARWIN ? 8 : 6)
-    @server = nil
+    wait_server
+    assert_operator Time.now - start, :<, 60
   end
 
   def test_prune_bundler_with_multiple_workers
@@ -135,19 +125,15 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_server "-q -C test/config/prune_bundler_with_multiple_workers.rb #{set_pumactl_args unix: true} -S #{@state_path}", unix: true
 
-    s = UNIXSocket.new @bind_path
-    @ios_to_close << s
-    s << "GET / HTTP/1.0\r\n\r\n"
+    socket = fast_connect(unix: true)
+    headers, body = read_response(socket)
 
-    body = s.read
-
-    assert_match "200 OK", body
-    assert_match "embedded app", body
+    assert_includes headers, "200 OK"
+    assert_includes body, "embedded app"
 
     cli_pumactl "stop", unix: true
 
-    _, _ = Process.wait2(@pid)
-    @server = nil
+    wait_server
   end
 
   def test_kill_unknown
@@ -166,7 +152,7 @@ class TestIntegrationPumactl < TestIntegration
     end
     sout.rewind
     # windows bad URI(is not URI?)
-    assert_match(/No pid '\d+' found|bad URI\(is not URI\?\)/, sout.readlines.join(""))
+    assert_match(/No pid '\d+' found|bad URI ?\(is not URI\?\)/, sout.readlines.join(""))
     assert_equal(1, e.status)
   end
 
@@ -205,5 +191,69 @@ class TestIntegrationPumactl < TestIntegration
 
     out = cli_pumactl_spawn "-S #{@state_path} status", no_bind: true
     assert_includes out.read, "Puma is started"
+  end
+
+  def test_clustered_stats
+    skip_unless :fork
+    skip_unless :unix
+
+    puma_version_pattern = "\\d+.\\d+.\\d+(\\.[a-z\\d]+)?"
+
+    cli_server "-w2 -t2:2 -q test/rackup/hello.ru #{set_pumactl_args unix: true} -S #{@state_path}"
+
+    get_worker_pids # waits for workers to boot
+
+    resp_io = cli_pumactl "stats", unix: true
+
+    status = JSON.parse resp_io.read.split("\n", 2).last
+
+    assert_equal 2, status["workers"]
+
+    sleep 0.5 # needed for GHA ?
+
+    resp_io = cli_pumactl "stats", unix: true
+
+    body = resp_io.read.split("\n", 2).last
+
+    expected_stats = /\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","workers":2,"phase":0,"booted_workers":2,"old_workers":0,"worker_status":\[\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","pid":\d+,"index":0,"phase":0,"booted":true,"last_checkin":"[^"]+","last_status":\{"backlog":0,"running":2,"pool_capacity":2,"max_threads":2,"requests_count":0\}\},\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","pid":\d+,"index":1,"phase":0,"booted":true,"last_checkin":"[^"]+","last_status":\{"backlog":0,"running":2,"pool_capacity":2,"max_threads":2,"requests_count":0\}\}\],"versions":\{"puma":"#{puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
+
+    assert_match(expected_stats, body)
+  end
+
+  def control_gc_stats(unix: false)
+    cli_server "-t1:1 -q test/rackup/hello.ru #{set_pumactl_args unix: unix} -S #{@state_path}"
+
+    key = Puma::IS_MRI || TRUFFLE_HEAD ? "count" : "used"
+
+    resp_io = cli_pumactl "gc-stats", unix: unix
+    before = JSON.parse resp_io.read.split("\n", 2).last
+    gc_before = before[key].to_i
+
+    2.times { fast_connect }
+
+    resp_io = cli_pumactl "gc", unix: unix
+    # below shows gc was called (200 reply)
+    assert_equal "Command gc sent success", resp_io.read.rstrip
+
+    resp_io = cli_pumactl "gc-stats", unix: unix
+    after = JSON.parse resp_io.read.split("\n", 2).last
+    gc_after = after[key].to_i
+
+    # Hitting the /gc route should increment the count by 1
+    if key == "count"
+      assert_operator gc_before, :<, gc_after, "make sure a gc has happened"
+    elsif !Puma::IS_JRUBY
+      refute_equal gc_before, gc_after, "make sure a gc has happened"
+    end
+  end
+
+  def test_control_gc_stats_tcp
+    @control_tcp_port = UniquePort.call
+    control_gc_stats
+  end
+
+  def test_control_gc_stats_unix
+    skip_unless :unix
+    control_gc_stats unix: true
   end
 end

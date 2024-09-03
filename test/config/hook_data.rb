@@ -5,5 +5,5 @@ on_worker_boot(:test) do |index, data|
 end
 
 on_worker_shutdown(:test) do |index, data|
-  File.write "hook_data-#{index}.txt", "index #{index} data #{data[:test]}", mode: 'wb:UTF-8'
+  STDOUT.syswrite "\nindex #{index} data #{data[:test]}"
 end

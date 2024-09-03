@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-require_relative 'rack/builder'
 require_relative 'plugin'
 require_relative 'const'
-# note that dsl is loaded at end of file, requires ConfigDefault constants
+require_relative 'dsl'
 
 module Puma
   # A class used for storing "leveled" configuration options.
@@ -133,8 +132,10 @@ module Puma
       debug: false,
       early_hints: nil,
       environment: 'development'.freeze,
-      # Number of seconds to wait until we get the first data for the request
+      # Number of seconds to wait until we get the first data for the request.
       first_data_timeout: 30,
+      # Number of seconds to wait until the next request before shutting down.
+      idle_timeout: nil,
       io_selector_backend: :auto,
       log_requests: false,
       logger: STDOUT,
@@ -352,11 +353,10 @@ module Puma
       begin
         require 'rack'
         require 'rack/builder'
+        ::Rack::Builder
       rescue LoadError
-        # ok, use builtin version
-        return Puma::Rack::Builder
-      else
-        return ::Rack::Builder
+        require_relative 'rack/builder'
+        Puma::Rack::Builder
       end
     end
 
@@ -385,5 +385,3 @@ module Puma
     end
   end
 end
-
-require_relative 'dsl'

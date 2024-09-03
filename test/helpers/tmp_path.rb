@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module TmpPath
   def clean_tmp_paths
     while path = tmp_paths.pop
@@ -14,7 +16,8 @@ module TmpPath
   #
   PUMA_TMPDIR =
     begin
-      if RUBY_PLATFORM.include? 'darwin'
+      if RUBY_DESCRIPTION.include? 'darwin'
+        # adds subdirectory 'tmp' in repository folder
         dir_temp = File.absolute_path("#{__dir__}/../../tmp")
         Dir.mkdir dir_temp unless Dir.exist? dir_temp
         './tmp'

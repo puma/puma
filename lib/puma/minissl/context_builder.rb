@@ -51,10 +51,13 @@ module Puma
             unless params['ca']
               log_writer.error "Please specify the SSL ca via 'ca='"
             end
+            # needed for Puma::MiniSSL::Socket#peercert, env['puma.peercert']
+            require 'openssl'
           end
 
           ctx.ca = params['ca'] if params['ca']
           ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
+          ctx.ssl_ciphersuites = params['ssl_ciphersuites'] if params['ssl_ciphersuites'] && HAS_TLS1_3
 
           ctx.reuse = params['reuse'] if params['reuse']
         end

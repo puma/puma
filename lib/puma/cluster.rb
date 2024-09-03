@@ -85,9 +85,7 @@ module Puma
         @workers << WorkerHandle.new(idx, pid, @phase, @options)
       end
 
-      if @options[:fork_worker] &&
-        @workers.all? {|x| x.phase == @phase}
-
+      if @options[:fork_worker] && all_workers_in_phase?
         @fork_writer << "0\n"
       end
     end
@@ -148,8 +146,20 @@ module Puma
       idx
     end
 
+    def worker_at(idx)
+      @workers.find { |w| w.index == idx }
+    end
+
     def all_workers_booted?
       @workers.count { |w| !w.booted? } == 0
+    end
+
+    def all_workers_in_phase?
+      @workers.all? { |w| w.phase == @phase }
+    end
+
+    def all_workers_idle_timed_out?
+      (@workers.map(&:pid) - idle_timed_out_worker_pids).empty?
     end
 
     def check_workers
@@ -276,7 +286,7 @@ module Puma
 
     # @version 5.0.0
     def fork_worker!
-      if (worker = @workers.find { |w| w.index == 0 })
+      if (worker = worker_at 0)
         worker.phase += 1
       end
       phased_restart(true)
@@ -411,6 +421,8 @@ module Puma
 
       @master_read, @worker_write = read, @wakeup
 
+      @options[:worker_write] = @worker_write
+
       @config.run_hooks(:before_fork, nil, @log_writer)
 
       spawn_workers
@@ -426,6 +438,11 @@ module Puma
 
         while @status == :run
           begin
+            if @options[:idle_timeout] && all_workers_idle_timed_out?
+              log "- All workers reached idle timeout"
+              break
+            end
+
             if @phased_restart
               start_phased_restart
               @phased_restart = false
@@ -437,50 +454,66 @@ module Puma
 
             if read.wait_readable([0, @next_check - Time.now].max)
               req = read.read_nonblock(1)
+              next unless req
 
-              @next_check = Time.now if req == "!"
-              next if !req || req == "!"
+              if req == Puma::Const::PipeRequest::WAKEUP
+                @next_check = Time.now
+                next
+              end
 
               result = read.gets
               pid = result.to_i
 
-              if req == "b" || req == "f"
+              if req == Puma::Const::PipeRequest::BOOT || req == Puma::Const::PipeRequest::FORK
                 pid, idx = result.split(':').map(&:to_i)
-                w = @workers.find {|x| x.index == idx}
+                w = worker_at idx
                 w.pid = pid if w.pid.nil?
               end
 
               if w = @workers.find { |x| x.pid == pid }
                 case req
-                when "b"
+                when Puma::Const::PipeRequest::BOOT
                   w.boot!
                   log "- Worker #{w.index} (PID: #{pid}) booted in #{w.uptime.round(2)}s, phase: #{w.phase}"
                   @next_check = Time.now
                   workers_not_booted -= 1
-                when "e"
+                when Puma::Const::PipeRequest::EXTERNAL_TERM
                   # external term, see worker method, Signal.trap "SIGTERM"
                   w.term!
-                when "t"
+                when Puma::Const::PipeRequest::TERM
                   w.term unless w.term?
-                when "p"
-                  w.ping!(result.sub(/^\d+/,'').chomp)
+                when Puma::Const::PipeRequest::PING
+                  status = result.sub(/^\d+/,'').chomp
+                  w.ping!(status)
                   @events.fire(:ping!, w)
+
+                  if in_phased_restart && workers_not_booted.positive? && w0 = worker_at(0)
+                    w0.ping!(status)
+                    @events.fire(:ping!, w0)
+                  end
+
                   if !booted && @workers.none? {|worker| worker.last_status.empty?}
                     @events.fire_on_booted!
                     debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
                     booted = true
+                  end
+                when Puma::Const::PipeRequest::IDLE
+                  if idle_workers[pid]
+                    idle_workers.delete pid
+                  else
+                    idle_workers[pid] = true
                   end
                 end
               else
                 log "! Out-of-sync worker list, no #{pid} worker"
               end
             end
+
             if in_phased_restart && workers_not_booted.zero?
               @events.fire_on_booted!
               debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
               in_phased_restart = false
             end
-
           rescue Interrupt
             @status = :stop
           end
@@ -509,10 +542,31 @@ module Puma
     # loops thru @workers, removing workers that exited, and calling
     # `#term` if needed
     def wait_workers
+      # Reap all children, known workers or otherwise.
+      # If puma has PID 1, as it's common in containerized environments,
+      # then it's responsible for reaping orphaned processes, so we must reap
+      # all our dead children, regardless of whether they are workers we spawned
+      # or some reattached processes.
+      reaped_children = {}
+      loop do
+        begin
+          pid, status = Process.wait2(-1, Process::WNOHANG)
+          break unless pid
+          reaped_children[pid] = status
+        rescue Errno::ECHILD
+          break
+        end
+      end
+
       @workers.reject! do |w|
         next false if w.pid.nil?
         begin
-          if Process.wait(w.pid, Process::WNOHANG)
+          # We may need to check the PID individually because:
+          # 1. From Ruby versions 2.6 to 3.2, `Process.detach` can prevent or delay
+          #    `Process.wait2(-1)` from detecting a terminated process: https://bugs.ruby-lang.org/issues/19837.
+          # 2. When `fork_worker` is enabled, some worker may not be direct children,
+          #    but grand children.  Because of this they won't be reaped by `Process.wait2(-1)`.
+          if reaped_children.delete(w.pid) || Process.wait(w.pid, Process::WNOHANG)
             true
           else
             w.term if w.term?
@@ -529,6 +583,11 @@ module Puma
           end
         end
       end
+
+      # Log unknown children
+      reaped_children.each do |pid, status|
+        log "! reaped unknown child process pid=#{pid} status=#{status}"
+      end
     end
 
     # @version 5.0.0
@@ -536,14 +595,22 @@ module Puma
       @workers.each do |w|
         if !w.term? && w.ping_timeout <= Time.now
           details = if w.booted?
-                      "(worker failed to check in within #{@options[:worker_timeout]} seconds)"
+                      "(Worker #{w.index} failed to check in within #{@options[:worker_timeout]} seconds)"
                     else
-                      "(worker failed to boot within #{@options[:worker_boot_timeout]} seconds)"
+                      "(Worker #{w.index} failed to boot within #{@options[:worker_boot_timeout]} seconds)"
                     end
           log "! Terminating timed out worker #{details}: #{w.pid}"
           w.kill
         end
       end
+    end
+
+    def idle_timed_out_worker_pids
+      idle_workers.keys
+    end
+
+    def idle_workers
+      @idle_workers ||= {}
     end
   end
 end

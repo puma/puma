@@ -1,0 +1,32 @@
+name: Skip Duplicate Workflow Runs
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: 'A JSON-array with path patterns'
+        default: '[]'
+        required: false
+        type: string
+    outputs:
+      should_skip:
+        description: "The output from the skip_duplicate_runs job"
+        value: ${{ jobs.skip_duplicate_runs.outputs.should_skip }}
+
+permissions:
+  contents: read
+
+jobs:
+  skip_duplicate_runs:
+    name: 'Skip Duplicate Runs'
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5.3.1
+        with:
+          paths_ignore: '["**.md"]'
+          paths: ${{ inputs.paths }}
+          concurrent_skipping: 'never' # this feature has bugs
+          skip_after_successful_duplicate: 'true'

@@ -184,6 +184,11 @@ module Puma
         @socket.peeraddr
       end
 
+      # OpenSSL is loaded in `MiniSSL::ContextBuilder` when
+      # `MiniSSL::Context#verify_mode` is not `VERIFY_NONE`.
+      # When `VERIFY_NONE`, `MiniSSL::Engine#peercert` is nil, regardless of
+      # whether the client sends a cert.
+      # @return [OpenSSL::X509::Certificate, nil]
       # @!attribute [r] peercert
       def peercert
         return @peercert if @peercert
@@ -284,6 +289,7 @@ module Puma
         attr_reader :cert_pem
         attr_reader :key_pem
         attr_accessor :ssl_cipher_filter
+        attr_accessor :ssl_ciphersuites
         attr_accessor :verification_flags
 
         attr_reader :reuse, :reuse_cache_size, :reuse_timeout

@@ -12,15 +12,14 @@ module Puma
 
   IS_JRUBY = Object.const_defined? :JRUBY_VERSION
 
-  IS_OSX = RUBY_PLATFORM.include? 'darwin'
+  IS_OSX = RUBY_DESCRIPTION.include? 'darwin'
 
-  IS_WINDOWS = !!(RUBY_PLATFORM =~ /mswin|ming|cygwin/) ||
-    IS_JRUBY && RUBY_DESCRIPTION.include?('mswin')
+  IS_WINDOWS = RUBY_DESCRIPTION.match?(/mswin|ming|cygwin/)
 
   IS_LINUX = !(IS_OSX || IS_WINDOWS)
 
   # @version 5.2.0
-  IS_MRI = (RUBY_ENGINE == 'ruby' || RUBY_ENGINE.nil?)
+  IS_MRI = RUBY_ENGINE == 'ruby'
 
   def self.jruby?
     IS_JRUBY

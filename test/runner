@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+
+=begin
+A simplified test runner; it runs all tests by default.
+It assumes that "bundle exec rake compile" has been run.
+
+It can also be passed a glob or test file names.  If multiple test file names
+are used, separate them by the File::PATH_SEPARATOR character with no spaces.
+The file extension is optional.
+
+If arguments are used that take values (eg seed), use the 'no space' version,
+like -s33388 or --seed=33388
+
+Finally, to keep the code simple, if you pass an invalid argument for file
+filtering it will either error or run minitest with no tests loaded
+
+Examples, run from the top Puma repo folder:
+test/runner
+test/runner -v
+test/runner -v test_puma_server
+test/runner --verbose test_puma_server*
+test/runner --verbose test_integration_cluster:test_integration_single
+test/runner --verbose test*ssl*
+
+Note that on macOS, globs (using '*') need to be quoted, as in:
+test/runner -v 'test_integration_*.rb'
+=end
+
+require 'bundler/setup'
+
+if ARGV.empty? || ARGV.last.start_with?('-')
+  if RUBY_VERSION >= '2.5'
+    Dir['test_*.rb', base: __dir__].sort.each { |tf| require_relative tf }
+  else
+    Dir["#{__dir__}/test_*.rb"].sort.each { |tf| require tf }
+  end
+else
+  file_arg = ARGV.pop.sub(/\.rb\z/, '')
+  if file_arg.include? File::PATH_SEPARATOR
+    file_args = file_arg.split(File::PATH_SEPARATOR).map { |fn| fn.sub(/\.rb\z/, '') }
+    file_args.each { |tf| require_relative "#{tf}.rb" }
+  elsif file_arg.include? '*'
+    if RUBY_VERSION >= '2.5'
+      Dir["#{file_arg}.rb", base: __dir__].sort.each { |tf| require_relative tf }
+    else
+      Dir["#{__dir__}/#{file_arg}.rb"].sort.each { |tf| require tf }
+    end
+  else
+    require_relative "#{file_arg}.rb"
+  end
+end
+
+require 'minitest'

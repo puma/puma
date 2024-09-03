@@ -14,7 +14,11 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def wait_booted
-    line = @wait.gets until line&.include?('Use Ctrl-C to stop')
+    @server_log = +''
+    begin
+      line = @wait.gets
+      @server_log << line
+    end until line&.include?('Use Ctrl-C to stop')
   end
 
   def teardown
@@ -113,7 +117,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_environment_specific_config_file_exist
-    port = 6002
+    port = UniquePort.call
     puma_config_file = "config/puma.rb"
     production_config_file = "config/puma/production.rb"
 
@@ -131,7 +135,7 @@ class TestPumaControlCli < TestConfigFileBase
   end
 
   def test_default_config_file_exist
-    port = 6001
+    port = UniquePort.call
     puma_config_file = "config/puma.rb"
     development_config_file = "config/puma/development.rb"
 
@@ -166,7 +170,7 @@ class TestPumaControlCli < TestConfigFileBase
     opts = [
       "--control-url", url,
       "--control-token", "ctrl",
-      "--config-file", "test/config/app.rb",
+      "--config-file", "test/config/app.rb"
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
@@ -174,13 +178,14 @@ class TestPumaControlCli < TestConfigFileBase
       control_cli.run
     end
 
-    wait_booted
+    wait_booted # read server log
 
-    s = TCPSocket.new host, 9292
+    bind_port = @server_log[/Listening on http:.+:(\d+)$/, 1].to_i
+    s = TCPSocket.new host, bind_port
     s << "GET / HTTP/1.0\r\n\r\n"
     body = s.read
-    assert_match "200 OK", body
-    assert_match "embedded app", body
+    assert_includes body, "200 OK"
+    assert_includes body, "embedded app"
 
     assert_command_cli_output opts + ["status"], "Puma is started"
     assert_command_cli_output opts + ["stop"], "Command stop sent success"
@@ -233,7 +238,7 @@ class TestPumaControlCli < TestConfigFileBase
     opts = [
       "--control-url", url,
       "--control-token", "ctrl",
-      "--config-file", "test/config/app.rb",
+      "--config-file", "test/config/app.rb"
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
@@ -268,7 +273,7 @@ class TestPumaControlCli < TestConfigFileBase
     opts = [
       "--control-url", url,
       "--control-token", "ctrl",
-      "--config-file", "test/config/app.rb",
+      "--config-file", "test/config/app.rb"
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
@@ -291,7 +296,7 @@ class TestPumaControlCli < TestConfigFileBase
     opts = [
       "--control-url", url,
       "--control-token", "ctrl",
-      "--config-file", "test/config/app.rb",
+      "--config-file", "test/config/app.rb"
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
@@ -310,25 +315,37 @@ class TestPumaControlCli < TestConfigFileBase
   private
 
   def assert_command_cli_output(options, expected_out)
-    cmd = Puma::ControlCLI.new(options)
-    out, _ = capture_subprocess_io do
-      begin
-        cmd.run
-      rescue SystemExit
-      end
+    @rd, @wr = IO.pipe
+    cmd = Puma::ControlCLI.new(options, @wr, @wr)
+    begin
+      cmd.run
+    rescue SystemExit
     end
-    assert_match expected_out, out
+    @wr.close
+    if String === expected_out
+      assert_includes @rd.read, expected_out
+    else
+      assert_match expected_out, @rd.read
+    end
+  ensure
+    @rd.close
   end
 
   def assert_system_exit_with_cli_output(options, expected_out)
-    out, _ = capture_subprocess_io do
-      response = assert_raises(SystemExit) do
-        Puma::ControlCLI.new(options).run
-      end
+    @rd, @wr = IO.pipe
 
-      assert_equal(response.status, 1)
+    response = assert_raises(SystemExit) do
+      Puma::ControlCLI.new(options, @wr, @wr).run
     end
+    @wr.close
 
-    assert_match expected_out, out
+    assert_equal(response.status, 1)
+    if String === expected_out
+      assert_includes @rd.read, expected_out
+    else
+      assert_match expected_out, @rd.read
+    end
+  ensure
+    @rd.close
   end
 end

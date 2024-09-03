@@ -80,7 +80,7 @@ class TestErrorLogger < Minitest::Test
       end
 
       assert_match %r!non-blank!, err
-      assert_match %r!:in `dummy_error'!, err
+      assert_match %r!:in [`'](TestErrorLogger#)?dummy_error'!, err
     end
   end
 

@@ -27,7 +27,7 @@ Newbies welcome! We would be happy to help you make your first contribution to a
 
 Any questions about contributing may be asked in our [Discussions](https://github.com/puma/puma/discussions).
 
-**If you're nervous, get stuck, need help, or want to know where to start and where you can help**, please don't hesitate to [book 30 minutes with maintainer @nateberkopec here](https://fantastical.app/nateberkopec/weekdays). He is happy to help!
+**If you're nervous, get stuck, need help, or want to know where to start and where you can help**, please don't hesitate to [book 30 minutes with maintainer @nateberkopec here](https://calendly.com/nateberkopec/30min). He is happy to help!
 
 Nate also [gave a 40 minute conference talk in 2022](https://www.youtube.com/watch?v=w4X_oBuPmTM) detailing how Puma works, a brief overview of its internals, and a quick guide on how to contribute.
 
@@ -136,6 +136,11 @@ If you would like more information about extension building, SSL versions, your 
 
 ```sh
 PUMA_TEST_DEBUG=1 bundle exec rake test
+```
+
+Puma also has a helper file for running tests, see the comments at the top of the `test/runner` file.  Example:
+```
+test/runner -v test_puma_server.rb
 ```
 
 #### File limits
