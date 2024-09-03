@@ -149,8 +149,8 @@ class TestIntegration < Minitest::Test
     @server = nil
   end
 
-  def restart_server_and_listen(argv, log: false)
-    cli_server argv
+  def restart_server_and_listen(argv, env: {}, log: false)
+    cli_server argv, env: env, log: log
     connection = connect
     initial_reply = read_body(connection)
     restart_server connection, log: log
@@ -160,6 +160,7 @@ class TestIntegration < Minitest::Test
   # reuses an existing connection to make sure that works
   def restart_server(connection, log: false)
     Process.kill :USR2, @pid
+    wait_for_server_to_include 'Restarting', log: log
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot log: log
   end
