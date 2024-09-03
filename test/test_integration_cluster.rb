@@ -368,44 +368,31 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_load_path_includes_extra_deps
-    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru",
-      no_wait: true
+    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru"
 
-    load_path = []
-    load_path << wait_for_server_to_match(/\ALOAD_PATH: (.+)/, 1)
-    while (line = @server.gets).start_with? 'LOAD_PATH: '
-      load_path << line.sub(/\ALOAD_PATH: /, '')
-    end
-    assert_match(%r{gems/minitest-[\d.]+/lib$}, load_path.last)
+    assert wait_for_server_to_match(/^LOAD_PATH: .+?\/gems\/minitest-[\d.]+\/lib$/)
   end
 
   def test_load_path_does_not_include_nio4r
-    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru",
-      no_wait: true
+    cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru"
 
-    load_path = []
-    load_path << wait_for_server_to_match(/\ALOAD_PATH: (.+)/, 1)
-    while (line = @server.gets).start_with? 'LOAD_PATH: '
-      load_path << line.sub(/\ALOAD_PATH: /, '')
-    end
+    get_worker_pids # reads thru 'LOAD_PATH:' data
 
-    load_path.each do |path|
-      refute_match(%r{gems/nio4r-[\d.]+/lib}, path)
-    end
+    # make sure we're seeing LOAD_PATH: logging
+    assert_match(/^LOAD_PATH: .+\/gems\/minitest-[\d.]+\/lib$/, @server_log)
+    refute_match(%r{gems/nio4r-[\d.]+/lib$}, @server_log)
   end
 
   def test_json_gem_not_required_in_master_process
     cli_server "-w #{workers} -C test/config/prune_bundler_print_json_defined.rb test/rackup/hello.ru"
 
-    line = @server.gets
-    assert_match(/defined\?\(::JSON\): nil/, line)
+    assert wait_for_server_to_include('defined?(::JSON): nil')
   end
 
   def test_nio4r_gem_not_required_in_master_process
     cli_server "-w #{workers} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
 
-    line = @server.gets
-    assert_match(/defined\?\(::NIO\): nil/, line)
+    assert wait_for_server_to_include('defined?(::NIO): nil')
   end
 
   def test_nio4r_gem_not_required_in_master_process_when_using_control_server
@@ -413,42 +400,31 @@ class TestIntegrationCluster < TestIntegration
     control_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
     cli_server "-w #{workers} #{control_opts} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
 
-    line = @server.gets
-    assert_match(/Starting control server/, line)
+    assert wait_for_server_to_include('Starting control server')
 
-    line = @server.gets
-    assert_match(/defined\?\(::NIO\): nil/, line)
+    assert wait_for_server_to_include('defined?(::NIO): nil')
   end
 
   def test_application_is_loaded_exactly_once_if_using_preload_app
     cli_server "-w #{workers} --preload test/rackup/write_to_stdout_on_boot.ru"
 
-    worker_load_count = 0
-    worker_load_count += 1 while @server.gets =~ /^Loading app/
-
-    assert_equal 0, worker_load_count
+    get_worker_pids
+    loading_app_count = @server_log.scan('Loading app').length
+    assert_equal 1, loading_app_count
   end
 
   def test_warning_message_outputted_when_single_worker
     cli_server "-w 1 test/rackup/hello.ru"
 
-    output = []
-    while (line = @server.gets) && line !~ /Worker \d \(PID/
-      output << line
-    end
-
-    assert_match(/WARNING: Detected running cluster mode with 1 worker/, output.join)
+    assert wait_for_server_to_include('Worker 0 (PID')
+    assert_match(/WARNING: Detected running cluster mode with 1 worker/, @server_log)
   end
 
   def test_warning_message_not_outputted_when_single_worker_silenced
     cli_server "-w 1 test/rackup/hello.ru", config: "silence_single_worker_warning"
 
-    output = []
-    while (line = @server.gets) && line !~ /Worker \d \(PID/
-      output << line
-    end
-
-    refute_match(/WARNING: Detected running cluster mode with 1 worker/, output.join)
+    assert wait_for_server_to_include('Worker 0 (PID')
+    refute_match(/WARNING: Detected running cluster mode with 1 worker/, @server_log)
   end
 
   def test_signal_ttin
@@ -457,8 +433,7 @@ class TestIntegrationCluster < TestIntegration
 
     Process.kill :TTIN, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) booted in/)
   end
 
   def test_signal_ttou
@@ -467,8 +442,7 @@ class TestIntegrationCluster < TestIntegration
 
     Process.kill :TTOU, @pid
 
-    line = @server.gets
-    assert_match(/Worker 1 \(PID: \d+\) terminating/, line)
+    assert wait_for_server_to_match(/Worker 1 \(PID: \d+\) terminating/)
   end
 
   def test_culling_strategy_youngest
@@ -477,13 +451,11 @@ class TestIntegrationCluster < TestIntegration
 
     Process.kill :TTIN, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) booted in/)
 
     Process.kill :TTOU, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) terminating/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) terminating/)
   end
 
   def test_culling_strategy_oldest
@@ -492,13 +464,11 @@ class TestIntegrationCluster < TestIntegration
 
     Process.kill :TTIN, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) booted in/)
 
     Process.kill :TTOU, @pid
 
-    line = @server.gets
-    assert_match(/Worker 0 \(PID: \d+\) terminating/, line)
+    assert wait_for_server_to_match(/Worker 0 \(PID: \d+\) terminating/)
   end
 
   def test_culling_strategy_oldest_fork_worker
@@ -511,13 +481,11 @@ class TestIntegrationCluster < TestIntegration
 
     Process.kill :TTIN, @pid
 
-    line = @server.gets
-    assert_match(/Worker 2 \(PID: \d+\) booted in/, line)
+    assert wait_for_server_to_match(/Worker 2 \(PID: \d+\) booted in/)
 
     Process.kill :TTOU, @pid
 
-    line = @server.gets
-    assert_match(/Worker 1 \(PID: \d+\) terminating/, line)
+    assert wait_for_server_to_match(/Worker 1 \(PID: \d+\) terminating/)
   end
 
   def test_hook_data
@@ -577,12 +545,10 @@ class TestIntegrationCluster < TestIntegration
     pids = []
     re = /Terminating timed out worker \(Worker \d+ #{details}\): (\d+)/
 
-    # below is messy code, for debugging
     Timeout.timeout(iterations * (timeout + 1)) do
       while (pids.size < workers * iterations)
-        t = @server.gets
-        puts t if log
-        (idx = t[re, 1]&.to_i) and pids << idx
+        idx = wait_for_server_to_match(re, 1).to_i
+        pids << idx
       end
     end
 
