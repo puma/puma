@@ -248,7 +248,7 @@ class TestIntegration < Minitest::Test
   # used to define correct 'refused' errors
   def thread_run_refused(unix: false)
     if unix
-      DARWIN ? [IOError, Errno::ENOENT, Errno::EPIPE] :
+      DARWIN ? [IOError, Errno::ENOENT, Errno::EPIPE, Errno::EBADF] :
                [IOError, Errno::ENOENT]
     else
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
