@@ -22,14 +22,9 @@ class TestIntegrationSSL < TestIntegration
 
   include TestPuma::PumaSocket
 
-  def teardown
-    @server.close if @server && !@server.closed?
-    @server = nil
-    super
-  end
-
   def bind_port
     @bind_port ||= UniquePort.call
+    @tcp_port = @bind_port
   end
 
   def control_tcp_port
@@ -37,35 +32,21 @@ class TestIntegrationSSL < TestIntegration
   end
 
   def with_server(config)
-    config_file = Tempfile.new %w(config .rb)
-    config_file.write config
-    config_file.close
-    config_file.path
-
-    # start server
-    cmd = "#{BASE} bin/puma -C #{config_file.path}"
-    @server = IO.popen cmd, 'r'
-    wait_for_server_to_boot
-    @pid = @server.pid
+    cli_server "-t1:1", config: config, no_bind: true
 
     http = Net::HTTP.new HOST, bind_port
     http.use_ssl = true
     http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
     yield http
-
-    # stop server
-    sock = TCPSocket.new HOST, control_tcp_port
-    @ios_to_close << sock
-    sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
-    sock.read
-    assert_match 'Goodbye!', @server.read
   end
 
   def test_ssl_run
-    config = <<~RUBY
+    cert_path = File.expand_path '../examples/puma', __dir__
+
+    config = <<~CONFIG
       if ::Puma.jruby?
-        keystore =  '#{File.expand_path '../examples/puma/keystore.jks', __dir__}'
+        keystore =  '#{cert_path}/keystore.jks'
         keystore_pass = 'jruby_puma'
 
         ssl_bind '#{HOST}', '#{bind_port}', {
@@ -74,8 +55,8 @@ class TestIntegrationSSL < TestIntegration
           verify_mode: 'none'
         }
       else
-        key  = '#{File.expand_path '../examples/puma/puma_keypair.pem', __dir__}'
-        cert = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
+        key  = '#{cert_path}/puma_keypair.pem'
+        cert = '#{cert_path}/cert_puma.pem'
 
         ssl_bind '#{HOST}', '#{bind_port}', {
           cert: cert,
@@ -89,7 +70,7 @@ class TestIntegrationSSL < TestIntegration
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
-    RUBY
+    CONFIG
 
     with_server(config) do |http|
       body = nil
@@ -106,7 +87,7 @@ class TestIntegrationSSL < TestIntegration
     cert_path = File.expand_path '../examples/puma/client_certs', __dir__
     bind_port
 
-    config = <<~CONFIG
+    cli_server "-t1:5 #{set_pumactl_args}", no_bind: true, config: <<~CONFIG
       if ::Puma::IS_JRUBY
         ssl_bind '#{LOCALHOST}', '#{@bind_port}', {
           keystore: '#{cert_path}/keystore.jks',
@@ -128,8 +109,6 @@ class TestIntegrationSSL < TestIntegration
       end
     CONFIG
 
-    cli_server "-t1:5 #{set_pumactl_args}", config: config, no_bind: true
-
     client_cert = File.read "#{cert_path}/client.crt"
 
     body = send_http_read_resp_body host: LOCALHOST, port: @bind_port, ctx: new_ctx { |c|
@@ -149,9 +128,6 @@ class TestIntegrationSSL < TestIntegration
       }
 
     assert_equal client_cert, body
-  ensure
-    cli_pumactl 'stop'
-    wait_server
   end
 
   def test_verify_client_cert_roundtrip_tls1_2
@@ -159,51 +135,49 @@ class TestIntegrationSSL < TestIntegration
   end
 
   def test_ssl_run_with_curl_client
-    skip_if :windows; require 'stringio'
+    skip_if :windows
 
-    app = lambda { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
-    opts = {max_threads: 1}
-    server = Puma::Server.new app, nil, opts
-    if Puma.jruby?
-      ssl_params = {
-          'keystore'      => File.expand_path('../examples/puma/client_certs/keystore.jks', __dir__),
-          'keystore-pass' => 'jruby_puma', # keystore includes server.p12 as well as ca.crt
-      }
-    else
-      ssl_params = {
-          'cert' => File.expand_path('../examples/puma/client_certs/server.crt', __dir__),
-          'key'  => File.expand_path('../examples/puma/client_certs/server.key', __dir__),
-          'ca'   => File.expand_path('../examples/puma/client_certs/ca.crt', __dir__),
-      }
-    end
-    ssl_params['verify_mode'] = 'force_peer' # 'peer'
-    out_err = StringIO.new
-    ssl_context = Puma::MiniSSL::ContextBuilder.new(ssl_params, Puma::LogWriter.new(out_err, out_err)).context
-    server.add_ssl_listener(LOCALHOST, bind_port, ssl_context)
+    require 'stringio'
 
-    server.run(true)
-    begin
-      ca = File.expand_path('../examples/puma/client_certs/ca.crt', __dir__)
-      cert = File.expand_path('../examples/puma/client_certs/client.crt', __dir__)
-      key = File.expand_path('../examples/puma/client_certs/client.key', __dir__)
-      # NOTE: JRuby used to end up in a hang with TLS peer verification enabled
-      # it's easier to reproduce using an external client such as CURL (using net/http client the bug isn't triggered)
-      # also the "hang", being buffering related, seems to showcase better with TLS 1.2 than 1.3
-      body = curl_and_get_response "https://#{LOCALHOST}:#{bind_port}",
-                                   args: "--cacert #{ca} --cert #{cert} --key #{key} --tlsv1.2 --tls-max 1.2"
+    cert_path = File.expand_path '../examples/puma/client_certs', __dir__
+    bind_port
 
-      warn out_err.string unless out_err.string.empty?
-      assert_equal 'HELLO THERE', body
-    ensure
-      server.stop(true)
-    end
-    assert_equal '', out_err.string
+    cli_server "-t1:1", no_bind: true, config: <<~CONFIG
+      if ::Puma::IS_JRUBY
+        ssl_bind '#{LOCALHOST}', '#{@bind_port}', {
+          keystore: '#{cert_path}/keystore.jks',
+          keystore_pass: 'jruby_puma',
+          verify_mode: 'force_peer'
+        }
+      else
+        ssl_bind '#{LOCALHOST}', '#{@bind_port}', {
+          cert: '#{cert_path}/server.crt',
+          key:  '#{cert_path}/server.key',
+          ca:   '#{cert_path}/ca.crt',
+          verify_mode: 'force_peer'
+        }
+      end
+
+      app { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
+    CONFIG
+
+
+    ca   = "#{cert_path}/ca.crt"
+    cert = "#{cert_path}/client.crt"
+    key  = "#{cert_path}/client.key"
+    # NOTE: JRuby used to end up in a hang with TLS peer verification enabled
+    # it's easier to reproduce using an external client such as CURL (using net/http client the bug isn't triggered)
+    # also the "hang", being buffering related, seems to showcase better with TLS 1.2 than 1.3
+    body = curl_and_get_response "https://#{LOCALHOST}:#{@bind_port}",
+                                 args: "--cacert #{ca} --cert #{cert} --key #{key} --tlsv1.2 --tls-max 1.2"
+
+    assert_equal 'HELLO THERE', body
   end
 
   def test_ssl_run_with_pem
     skip_if :jruby
 
-    config = <<~RUBY
+    config = <<~CONFIG
       key_path  = '#{File.expand_path '../examples/puma/puma_keypair.pem', __dir__}'
       cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
 
@@ -218,7 +192,7 @@ class TestIntegrationSSL < TestIntegration
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
-    RUBY
+    CONFIG
 
     with_server(config) do |http|
       body = nil
@@ -233,7 +207,7 @@ class TestIntegrationSSL < TestIntegration
   def test_ssl_run_with_localhost_authority
     skip_if :jruby
 
-    config = <<~RUBY
+    config = <<~CONFIG
       require 'localhost'
       ssl_bind '#{HOST}', '#{bind_port}'
 
@@ -242,7 +216,7 @@ class TestIntegrationSSL < TestIntegration
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
-    RUBY
+    CONFIG
 
     with_server(config) do |http|
       body = nil
@@ -257,11 +231,13 @@ class TestIntegrationSSL < TestIntegration
   def test_ssl_run_with_encrypted_key
     skip_if :jruby
 
-    config = <<~RUBY
-      key_path  = '#{File.expand_path '../examples/puma/encrypted_puma_keypair.pem', __dir__}'
-      cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
+    cert_path = File.expand_path '../examples/puma', __dir__
+
+    config = <<~CONFIG
+      key_path  = '#{cert_path}/encrypted_puma_keypair.pem'
+      cert_path = '#{cert_path}/cert_puma.pem'
       key_command = ::Puma::IS_WINDOWS ? 'echo hello world' :
-        '#{File.expand_path '../examples/puma/key_password_command.sh', __dir__}'
+        '#{cert_path}/key_password_command.sh'
 
       ssl_bind '#{HOST}', '#{bind_port}', {
         cert: cert_path,
@@ -275,7 +251,7 @@ class TestIntegrationSSL < TestIntegration
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
-    RUBY
+    CONFIG
 
     with_server(config) do |http|
       body = nil
@@ -290,11 +266,13 @@ class TestIntegrationSSL < TestIntegration
   def test_ssl_run_with_encrypted_pem
     skip_if :jruby
 
-    config = <<~RUBY
-      key_path  = '#{File.expand_path '../examples/puma/encrypted_puma_keypair.pem', __dir__}'
-      cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
+    cert_path = File.expand_path '../examples/puma', __dir__
+
+    config = <<~CONFIG
+      key_path  = '#{cert_path}/encrypted_puma_keypair.pem'
+      cert_path = '#{cert_path}/cert_puma.pem'
       key_command = ::Puma::IS_WINDOWS ? 'echo hello world' :
-        '#{File.expand_path '../examples/puma/key_password_command.sh', __dir__}'
+        '#{cert_path}/key_password_command.sh'
 
       ssl_bind '#{HOST}', '#{bind_port}', {
         cert_pem: File.read(cert_path),
@@ -308,7 +286,7 @@ class TestIntegrationSSL < TestIntegration
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
-    RUBY
+    CONFIG
 
     with_server(config) do |http|
       body = nil
