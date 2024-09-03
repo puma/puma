@@ -28,7 +28,7 @@ class TestPluginSystemdJruby < TestIntegration
       end
     CONFIG
 
-    assert_empty read_body(connect)
+    assert_empty send_http_read_resp_body
 
     stop_server
   end
