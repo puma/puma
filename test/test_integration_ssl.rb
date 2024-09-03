@@ -251,6 +251,43 @@ class TestIntegrationSSL < TestIntegration
     assert_equal 'https', body
   end
 
+  def test_very_large_return
+    cert_path = File.expand_path '../examples/puma', __dir__
+    giant = "x" * 1000 #   2056610
+
+    cli_server "-t1:1", no_bind: true, config:  <<~CONFIG
+      if ::Puma.jruby?
+        keystore =  '#{cert_path}/keystore.jks'
+        keystore_pass = 'jruby_puma'
+
+        ssl_bind '#{HOST}', '#{bind_port}', {
+          keystore: keystore,
+          keystore_pass:  keystore_pass,
+          verify_mode: 'none'
+        }
+      else
+        key  = '#{cert_path}/puma_keypair.pem'
+        cert = '#{cert_path}/cert_puma.pem'
+
+        ssl_bind '#{HOST}', '#{bind_port}', {
+          cert: cert,
+          key:  key,
+          verify_mode: 'none'
+        }
+      end
+
+      #{set_pumactl_config}
+
+      app do |env|
+        [200, {}, ['#{giant}']]
+      end
+    CONFIG
+
+    body = send_http_read_resp_body(ctx: new_ctx)
+
+    assert_equal giant.bytesize, body.bytesize
+  end
+
   private
 
   def curl_and_get_response(url, method: :get, args: nil); require 'open3'

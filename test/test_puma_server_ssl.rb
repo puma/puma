@@ -96,17 +96,6 @@ class TestPumaServerSSL < Minitest::Test
     assert busy_threads.zero?, "Our connection is monopolizing a thread"
   end
 
-  def test_very_large_return
-    start_server
-    giant = "x" * 2056610
-
-    @server.app = proc { [200, {}, [giant]] }
-
-    body = send_http_read_resp_body(ctx: new_ctx)
-
-    assert_equal giant.bytesize, body.bytesize
-  end
-
   def test_form_submit
     start_server
     @server.app = proc { |env| [200, {}, [env['rack.url_scheme'], "\n", env['rack.input'].read]] }
