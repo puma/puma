@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
@@ -54,7 +56,7 @@ class TestPluginSystemd < TestIntegration
     assert_message "WATCHDOG=1"
 
     stop_server
-    assert_includes @socket.recvfrom(15)[0], "STOPPING=1"
+    assert_message "STOPPING=1"
   end
 
   def test_systemd_notify
@@ -84,15 +86,18 @@ class TestPluginSystemd < TestIntegration
   def assert_restarts_with_systemd(signal, workers: 2)
     skip_unless(:fork) unless workers.zero?
     cli_server "-w#{workers} test/rackup/hello.ru", env: @env
+    get_worker_pids(0, workers) if workers == 2
     assert_message 'READY=1'
 
+    phase_ary = signal == :USR1 ? [1,2] : [0,0]
+
     Process.kill signal, @pid
-    connect.write "GET / HTTP/1.1\r\n\r\n"
+    get_worker_pids(phase_ary[0], workers) if workers == 2
     assert_message 'RELOADING=1'
     assert_message 'READY=1'
 
     Process.kill signal, @pid
-    connect.write "GET / HTTP/1.1\r\n\r\n"
+    get_worker_pids(phase_ary[1], workers) if workers == 2
     assert_message 'RELOADING=1'
     assert_message 'READY=1'
 
@@ -102,6 +107,14 @@ class TestPluginSystemd < TestIntegration
 
   def assert_message(msg)
     @socket.wait_readable 1
-    assert_equal msg, @socket.recvfrom(msg.bytesize)[0]
+    read = @socket.sysread(msg.bytesize)
+    # below is kind of hacky, but seems to work correctly when slow CI systems
+    # write partial status messages
+    if read.start_with?('STATUS=') && !msg.start_with?('STATUS=')
+      read << @socket.sysread(512) while @socket.wait_readable(1) && !read.end_with?(msg)
+      assert_end_with read, msg
+    else
+      assert_equal msg, read
+    end
   end
 end
