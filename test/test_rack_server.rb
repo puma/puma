@@ -1,6 +1,7 @@
 # frozen_string_literal: true
+
 require_relative "helper"
-require "net/http"
+require_relative "helpers/test_puma/puma_socket"
 
 # don't load Rack, as it autoloads everything
 begin
@@ -21,9 +22,15 @@ require "nio"
 class TestRackServer < Minitest::Test
   parallelize_me!
 
-  HOST = '127.0.0.1'
+  include TestPuma
+  include TestPuma::PumaSocket
 
   STR_1KB = "──#{SecureRandom.hex 507}─\n".freeze
+
+  GET_TEST = "GET /test HTTP/1.1\r\n\r\n"
+
+  TEST_TRANSFER_ENCODING = 'Transfer-Encoding'
+  TEST_CONTENT_LENGTH = 'Content-Length'
 
   class ErrorChecker
     def initialize(app)
@@ -58,7 +65,8 @@ class TestRackServer < Minitest::Test
   def setup
     @simple = lambda { |env| [200, { "x-header" => "Works" }, ["Hello"]] }
     @server = Puma::Server.new @simple
-    @port = (@server.add_tcp_listener HOST, 0).addr[1]
+    @bind_port = (@server.add_tcp_listener HOST, 0).addr[1]
+    @port = @bind_port
     @tcp = "http://#{HOST}:#{@port}"
     @stopped = false
   end
@@ -84,7 +92,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["#{@tcp}/test"])
+    send_http_read_response GET_TEST
 
     stop
 
@@ -99,8 +107,12 @@ class TestRackServer < Minitest::Test
 
     big = "x" * (1024 * 16)
 
-    Net::HTTP.post_form URI.parse("#{@tcp}/test"),
-                 { "big" => big }
+    req_body = "big=#{big}"
+
+    req = "POST / HTTP/1.1\r\nContent-Type: text/plain\r\n" \
+      "Content-Length: #{req_body.bytesize}\r\n\r\n#{req_body}"
+
+    send_http_read_response req
 
     stop
 
@@ -112,7 +124,7 @@ class TestRackServer < Minitest::Test
     @server.app = lambda { |env| input = env; @simple.call(env) }
     @server.run
 
-    hit(["#{@tcp}/test/a/b/c"])
+    send_http_read_response "GET /test/a/b/c HTTP/1.0\r\n\r\n"
 
     stop
 
@@ -129,7 +141,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["#{@tcp}/test"])
+    send_http_read_response GET_TEST
 
     stop
 
@@ -144,17 +156,14 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    socket = TCPSocket.open HOST, @port
-    socket.puts "GET /test HTTP/1.1\r\n"
-    socket.puts "Connection: Keep-Alive\r\n"
-    socket.puts "\r\n"
+    socket = send_http "GET /test HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
+    response = socket.read_response
 
-    headers = header_hash socket
+    content_length = response.headers_hash[TEST_CONTENT_LENGTH].to_i
 
-    content_length = headers["Content-Length"].to_i
-    real_response_body = socket.read(content_length)
 
-    assert_equal "Hello", real_response_body
+    assert_equal 5, content_length
+    assert_equal "Hello", response.body
 
     # When after_reply breaks the connection it will write the expected HTTP
     # response followed by a second HTTP response: HTTP/1.1 500
@@ -173,8 +182,6 @@ class TestRackServer < Minitest::Test
       refute_includes content, "500"
     end
 
-    socket.close
-
     stop
   end
 
@@ -186,7 +193,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["#{@tcp}/test"])
+    send_http_read_response GET_TEST
 
     stop
 
@@ -203,21 +210,18 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    socket = TCPSocket.open HOST, @port
-    socket.puts "GET /test HTTP/1.1\r\n"
-    socket.puts "Connection: Keep-Alive\r\n"
-    socket.puts "\r\n"
+    socket = send_http "GET /test HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
 
-    headers = header_hash socket
+    headers = socket.read_response.headers_hash
 
     socket.close
 
     stop
 
     if Rack.release.start_with? '1.'
-      assert_equal "chunked", headers["Transfer-Encoding"]
+      assert_equal "chunked", headers[TEST_TRANSFER_ENCODING]
     else
-      assert_equal str_ary_bytes, headers["Content-Length"].to_i
+      assert_equal str_ary_bytes, headers[TEST_CONTENT_LENGTH].to_i
     end
   end
 
@@ -230,7 +234,7 @@ class TestRackServer < Minitest::Test
 
     @server.run
 
-    hit(["#{@tcp}/test"])
+    send_http_read_response GET_TEST
 
     stop
 
@@ -244,9 +248,10 @@ class TestRackServer < Minitest::Test
     @server.app = rack_app
     @server.run
 
-    resp = Net::HTTP.get_response URI(@tcp)
-    assert_equal 'chunked', resp['transfer-encoding']
-    assert_equal STR_1KB, resp.body.force_encoding(Encoding::UTF_8)
+    response = send_http_read_response
+
+    assert_equal 'chunked', response.headers_hash[TEST_TRANSFER_ENCODING]
+    assert_equal STR_1KB, response.decode_body
   end if Rack.release < '3.1'
 
   def test_rack_chunked_array10
@@ -256,9 +261,10 @@ class TestRackServer < Minitest::Test
     @server.app = rack_app
     @server.run
 
-    resp = Net::HTTP.get_response URI(@tcp)
-    assert_equal 'chunked', resp['transfer-encoding']
-    assert_equal STR_1KB * 10, resp.body.force_encoding(Encoding::UTF_8)
+    response = send_http_read_response
+
+    assert_equal 'chunked', response.headers_hash[TEST_TRANSFER_ENCODING]
+    assert_equal STR_1KB * 10, response.decode_body
   end if Rack.release < '3.1'
 
   def test_puma_enum
@@ -266,8 +272,9 @@ class TestRackServer < Minitest::Test
     @server.app = lambda { |env| [200, { 'content-type' => 'text/plain; charset=utf-8' }, body] }
     @server.run
 
-    resp = Net::HTTP.get_response URI(@tcp)
-    assert_equal 'chunked', resp['transfer-encoding']
-    assert_equal STR_1KB * 10, resp.body.force_encoding(Encoding::UTF_8)
+    response = send_http_read_response
+
+    assert_equal 'chunked', response.headers_hash[TEST_TRANSFER_ENCODING]
+    assert_equal STR_1KB * 10, response.decode_body
   end
 end
