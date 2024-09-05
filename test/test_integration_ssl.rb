@@ -10,9 +10,9 @@ end
 # integration tests isolate the server from the test environment, so there
 # should be a few SSL tests.
 #
-# For instance, since other tests make use of 'client' SSLSockets created by
-# net/http, OpenSSL is loaded in the CI process.  By shelling out with IO.popen,
-# the server process isn't affected by whatever is loaded in the CI process.
+# For instance, since other tests make use of client SSL requests, OpenSSL
+# is loaded in the CI process.  By shelling out with IO.popen, the server
+# process isn't affected by whatever is loaded in the CI process.
 
 class TestIntegrationSSL < TestIntegration
   parallelize_me! if ::Puma.mri?
