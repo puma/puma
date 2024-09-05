@@ -174,16 +174,16 @@ class TestPumaControlCli < TestConfigFileBase
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
-    t = Thread.new do
-      control_cli.run
-    end
+
+    t = Thread.new { control_cli.run }
 
     wait_booted # read server log
 
     bind_port = @server_log[/Listening on http:.+:(\d+)$/, 1].to_i
     s = TCPSocket.new host, bind_port
-    s << "GET / HTTP/1.0\r\n\r\n"
-    body = s.read
+    s.syswrite "GET / HTTP/1.0\r\n\r\n"
+    s.wait_readable 2
+    body = s.sysread 256
     assert_includes body, "200 OK"
     assert_includes body, "embedded app"
 
@@ -191,6 +191,8 @@ class TestPumaControlCli < TestConfigFileBase
     assert_command_cli_output opts + ["stop"], "Command stop sent success"
 
     assert_kind_of Thread, t.join, "server didn't stop"
+  ensure
+    s.close if s && !s.closed?
   end
 
   # This checks that a 'signal only' command is sent
@@ -242,9 +244,8 @@ class TestPumaControlCli < TestConfigFileBase
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
-    t = Thread.new do
-      control_cli.run
-    end
+
+    t = Thread.new { control_cli.run }
 
     wait_booted
 
@@ -277,9 +278,8 @@ class TestPumaControlCli < TestConfigFileBase
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
-    t = Thread.new do
-      control_cli.run
-    end
+
+    t = Thread.new { control_cli.run }
 
     wait_booted
 
@@ -300,9 +300,8 @@ class TestPumaControlCli < TestConfigFileBase
     ]
 
     control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
-    t = Thread.new do
-      control_cli.run
-    end
+
+    t = Thread.new { control_cli.run }
 
     wait_booted
 
