@@ -285,6 +285,14 @@ module TestPuma
     # @todo verify whole string is written
     REQ_WRITE = -> (str) { self.syswrite str; self }
 
+
+    REQ_WAIT_READ = -> (len, timeout: 5) do
+      Thread.pass
+      self.wait_readable timeout
+      Thread.pass
+      self.sysread len
+    end
+
     # Helper for creating an `OpenSSL::SSL::SSLContext`.
     # @param &blk [Block] Passed the SSLContext.
     # @yield [OpenSSL::SSL::SSLContext]
@@ -327,6 +335,7 @@ module TestPuma
       skt.define_singleton_method :read_body, READ_BODY
       skt.define_singleton_method :<<, REQ_WRITE
       skt.define_singleton_method :req_write, REQ_WRITE # used for chaining
+      skt.define_singleton_method :wait_read, REQ_WAIT_READ
       @ios_to_close << skt
       if ctx
         @ios_to_close << tcp
