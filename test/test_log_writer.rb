@@ -135,8 +135,9 @@ class TestLogWriter < Minitest::Test
     path = "/"
     params = "a"*1024*10
 
-    sock << "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
-    sock.read
+    sock.syswrite "GET #{path}?a=#{params} HTTP/1.1\r\nConnection: close\r\n\r\n"
+    sock.wait_readable 2
+    sock.sysread(1_204 * 11)
     sleep 0.1 # important so that the previous data is sent as a packet
     assert_match %r!HTTP parse error, malformed request!, log_writer.stderr.string
     assert_match %r!\("GET #{path}" - \(-\)\)!, log_writer.stderr.string
