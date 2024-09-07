@@ -2,6 +2,8 @@
 
 require 'socket'
 
+# The main namespace module for the CI test framework.
+
 module TestPuma
 
   RESP_SPLIT = "\r\n\r\n"
