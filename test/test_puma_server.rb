@@ -41,7 +41,15 @@ class TestPumaServer < Minitest::Test
     options[:min_threads] ||= 1
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
-    @server.run
+    th = @server.run
+
+    min_threads = options[:min_threads]
+    until @server.running >= min_threads
+      Thread.pass
+      sleep 0.005
+    end
+
+    th
   end
 
   def test_normalize_host_header_missing
@@ -259,9 +267,15 @@ class TestPumaServer < Minitest::Test
       [200, {}, ["ok #{bodies.size}"]]
     }
 
-    all = send_http_read_all "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\nGET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    all = send_http_read_all(
+      "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\n" \
+      "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    )
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", all
+    expected = "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
+               "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2"
+
+    assert_equal expected, all
     assert_equal ["", ""], bodies
   end
 
@@ -272,10 +286,39 @@ class TestPumaServer < Minitest::Test
       [200, {}, ["ok #{bodies.size}"]]
     }
 
-    all = send_http_read_all "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\naGET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+    all = send_http_read_all(
+      "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\na" \
+      "GET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+    )
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", all
+    expected = "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
+               "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2"
+
+    assert_equal expected, all
     assert_equal ["a", ""], bodies
+  end
+
+  def test_immediate_pipeline_chunked
+    server_run { |env|
+      [200, {'Content-Length' => env['CONTENT_LENGTH']}, [env['rack.input'].read]]
+    }
+
+    socket = send_http(
+      "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" \
+        "1\r\nh\r\n4\r\nello\r\n0\r\n\r\n" \
+      "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" \
+        "4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    )
+
+    expected = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello" \
+               "HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\ngoodbye"
+
+    assert_equal expected, socket.read_all
+
+    socket << "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" \
+      "1\r\nH\r\n4\r\nello\r\n0\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHello", socket.read_response
   end
 
   def test_early_hints_works
@@ -1685,6 +1728,7 @@ class TestPumaServer < Minitest::Test
       wait.pop
       [200, {}, ["DONE"]]
     end
+
     sockets = send_http_array GET_10, num_connections, dly: nil
 
     @server.stop
@@ -1918,7 +1962,6 @@ class TestPumaServer < Minitest::Test
     response = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
     assert_match(/\AHTTP\/1\.0 501 Not Implemented/, response)
   end
-
 
   def spawn_cmd(env = {}, cmd)
     opts = {}
