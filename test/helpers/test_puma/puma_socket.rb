@@ -208,21 +208,31 @@ module TestPuma
     SET_TCP_NODELAY = Socket.const_defined?(:IPPROTO_TCP) && ::Socket.const_defined?(:TCP_NODELAY)
 
     def before_setup
-      @ios_to_close ||= []
       @bind_port = nil
       @bind_path = nil
       @control_port = nil
       @control_path = nil
       @ssl_socket_contexts = Queue.new
-      super
+      @ios_to_close ||= Queue.new
     end
 
     # Closes all io's in `@ios_to_close`, also deletes them if they are files
     def after_teardown
       return if skipped?
-      super
-      # Errno::EBADF raised on macOS
-      @ios_to_close.each do |io|
+
+      close_ios
+
+      until @ssl_socket_contexts.empty?
+        ctx = @ssl_socket_contexts.pop
+        ctx = nil
+      end
+      @ssl_socket_contexts.close
+      @ssl_socket_contexts = nil
+    end
+
+    def close_ios
+      until @ios_to_close.empty?
+        io = @ios_to_close.pop
         begin
           if io.respond_to? :sysclose
             io.sync_close = true
@@ -238,16 +248,6 @@ module TestPuma
           io = nil
         end
       end
-      # not sure about below, may help with gc...
-      @ios_to_close.clear
-      @ios_to_close = nil
-
-      until @ssl_socket_contexts.empty?
-        ctx = @ssl_socket_contexts.pop
-        ctx = nil
-      end
-      @ssl_socket_contexts.close
-      @ssl_socket_contexts = nil
     end
 
     # rubocop: disable Metrics/ParameterLists
@@ -372,7 +372,6 @@ module TestPuma
       @ios_to_close << skt
 
       if ctx
-        @ios_to_close << tcp
         skt.session = session if session
         skt.sync_close = true
         skt.connect
