@@ -1,32 +1,23 @@
 require_relative "helper"
 require_relative "helpers/integration"
-require_relative "helpers/test_puma/puma_socket"
 
 class TestIntegrationPumactl < TestIntegration
   parallelize_me! if ::Puma.mri?
 
-  include TmpPath
-  include TestPuma::PumaSocket
-
   def workers ; 2 ; end
 
   def setup
-    super
     @state_path = tmp_path('.state')
   end
 
   def teardown
-    super
-
-    refute @control_path && File.exist?(@control_path), "Control path must be removed after stop"
-  ensure
-    [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
+    File.unlink(@state_path) rescue nil
   end
 
   def test_stop_tcp
     skip_if :jruby, :truffleruby # Undiagnose thread race. TODO fix
 
-    cli_server "-q test/rackup/sleep.ru #{set_pumactl_args} -S #{@state_path}"
+    cli_server "-q test/rackup/sleep.ru #{set_pumactl_args}"
 
     cli_pumactl "stop"
 
@@ -45,7 +36,7 @@ class TestIntegrationPumactl < TestIntegration
     skip_unless :unix
     stderr = Tempfile.new(%w(stderr .log))
 
-    cli_server "-q test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}",
+    cli_server "-q test/rackup/sleep.ru #{set_pumactl_args unix: true}",
       config: "stdout_redirect nil, '#{stderr.path}'",
       unix: true
 
@@ -54,11 +45,12 @@ class TestIntegrationPumactl < TestIntegration
     wait_server
 
     refute_match 'error', File.read(stderr.path)
+    refute @control_path && File.exist?(@control_path), "Control path must be removed after stop"
   end
 
   def test_phased_restart_cluster
     skip_unless :fork
-    cli_server "-q -w #{workers} test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}", unix: true
+    cli_server "-q -w #{workers} test/rackup/sleep.ru #{set_pumactl_args unix: true}", unix: true
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
@@ -93,7 +85,7 @@ class TestIntegrationPumactl < TestIntegration
   def test_refork_cluster
     skip_unless :fork
     wrkrs = 3
-    cli_server "-q -w #{wrkrs} test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}",
+    cli_server "-q -w #{wrkrs} test/rackup/sleep.ru #{set_pumactl_args unix: true}",
       config: 'fork_worker 50',
       unix: true
 
@@ -129,7 +121,7 @@ class TestIntegrationPumactl < TestIntegration
   def test_prune_bundler_with_multiple_workers
     skip_unless :fork
 
-    cli_server "-q -C test/config/prune_bundler_with_multiple_workers.rb #{set_pumactl_args unix: true} -S #{@state_path}", unix: true
+    cli_server "-q -C test/config/prune_bundler_with_multiple_workers.rb #{set_pumactl_args unix: true}", unix: true
 
     response = send_http_read_response "GET /sleep1 HTTP/1.0\r\n\r\n"
 
@@ -205,7 +197,7 @@ class TestIntegrationPumactl < TestIntegration
 
     puma_version_pattern = "\\d+.\\d+.\\d+(\\.[a-z\\d]+)?"
 
-    cli_server "-w2 -t2:2 -q test/rackup/hello.ru #{set_pumactl_args unix: true} -S #{@state_path}"
+    cli_server "-w2 -t2:2 -q test/rackup/hello.ru #{set_pumactl_args unix: true}"
 
     get_worker_pids # waits for workers to boot
 
@@ -231,7 +223,7 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def control_gc_stats(unix: false)
-    cli_server "-t1:1 -q test/rackup/hello.ru #{set_pumactl_args unix: unix} -S #{@state_path}"
+    cli_server "-t1:1 -q test/rackup/hello.ru #{set_pumactl_args unix: unix}"
 
     key = Puma::IS_MRI || TRUFFLE_HEAD ? "count" : "used"
 
@@ -264,7 +256,6 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_control_gc_stats_tcp
-    @control_port = UniquePort.call
     control_gc_stats
   end
 
