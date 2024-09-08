@@ -225,6 +225,7 @@ module TestPuma
           tcp = PumaTCPSocket.new ip, port.to_i
           tcp.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1) if SET_TCP_NODELAY
           if ctx
+            @ssl_socket_contexts << ctx
             PumaSSLSocket.new tcp, ctx
           else
             tcp
