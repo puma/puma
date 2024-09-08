@@ -6,8 +6,6 @@ require "open3"
 require_relative "tmp_path"
 require_relative "test_puma/puma_socket"
 
-# Only single mode tests go here. Cluster and pumactl tests
-# have their own files, use those instead
 class TestIntegration < Minitest::Test
   include TmpPath
   include TestPuma
@@ -27,17 +25,20 @@ class TestIntegration < Minitest::Test
   # rubyopt requires bundler/setup, so we don't need it here
   BASE = "#{Gem.ruby} -Ilib"
 
-  def setup
+  def before_setup
+    @ios_to_close ||= Queue.new
+    super # call PumaSocket
     @server = nil
     @server_running = nil # set to true in cli_server, set to false in `stop_server`
     @config_file = nil
     @server_log = +''
     @pid = nil
-    @ios_to_close = []
-    @bind_path    = tmp_path('.sock')
+    @bind_path = tmp_path('.sock')
   end
 
-  def teardown
+  def after_teardown
+    super # call PumaSocket
+
     if @server_running
       if @server && defined?(@control_port) && Puma.windows?
         cli_pumactl 'stop'
@@ -46,14 +47,7 @@ class TestIntegration < Minitest::Test
       end
     end
 
-    @ios_to_close&.each do |io|
-      begin
-        io.close if io.respond_to?(:close) && !io.closed?
-      rescue
-      ensure
-        io = nil
-      end
-    end
+    close_ios
 
     if @bind_path
       refute File.exist?(@bind_path), "Bind path must be removed after stop"
