@@ -2,150 +2,13 @@
 
 require 'socket'
 require_relative '../test_puma'
+require_relative 'puma_socket_include'
 require_relative 'response'
 
 module TestPuma
 
-  module PumaSocketInclude
-    RESP_READ_LEN = 65_536
-    RESP_READ_TIMEOUT = 10
-
-    NO_ENTITY_BODY = Puma::STATUS_WITH_NO_ENTITY_BODY
-
-    def read_body(timeout: nil, len: nil)
-      self.read_response(timeout: nil, len: nil)
-        .split(RESP_SPLIT, 2).last
-    end
-
-    # @todo verify whole string is written
-    def req_write(str)
-      syswrite str
-      self
-    end
-    alias_method :<<, :req_write
-
-    def read_response(timeout: nil, len: nil)
-      content_length = nil
-      chunked = nil
-      status = nil
-      no_body = nil
-      response = Response.new
-      read_len = len || RESP_READ_LEN
-
-      timeout  ||= RESP_READ_TIMEOUT
-      time_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      time_end   = time_start + timeout
-      times = []
-      time_read = nil
-
-      loop do
-        begin
-          self.to_io.wait_readable timeout
-          time_read ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          part = self.read_nonblock(read_len, exception: false)
-          case part
-          when String
-            times << (Process.clock_gettime(Process::CLOCK_MONOTONIC) - time_read).round(4)
-            status ||= part[/\AHTTP\/1\.[01] (\d{3})/, 1]
-            if status
-              no_body ||= NO_ENTITY_BODY.key? status.to_i || status.to_i < 200
-            end
-            if no_body && part.end_with?(RESP_SPLIT)
-              response.times = times
-              return response << part
-            end
-
-            unless content_length || chunked
-              chunked ||= part.downcase.include? "\r\ntransfer-encoding: chunked\r\n"
-              content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
-            end
-            response << part
-            hdrs, body = response.split RESP_SPLIT, 2
-            unless body.nil?
-              # below could be simplified, but allows for debugging...
-              finished =
-                if content_length
-                  body.bytesize == content_length
-                elsif chunked
-                  body.end_with? "0\r\n\r\n"
-                elsif !hdrs.empty? && !body.empty?
-                  true
-                else
-                  false
-                end
-              response.times = times
-              return response if finished
-            end
-            sleep 0.000_1
-          when :wait_readable
-            # continue loop
-          when :wait_writable # :wait_writable for ssl
-            to = time_end - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            self.to_io.wait_writable to
-          when nil
-            if response.empty?
-              raise EOFError
-            else
-              response.times = times
-              return response
-            end
-          end
-          timeout = time_end - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          if timeout <= 0
-            raise Timeout::Error, 'Client Read Timeout'
-          end
-        end
-      end
-    end
-
-    def read_all
-      read = String.new # rubocop: disable Performance/UnfreezeString
-      counter = 0
-      prev_size = 0
-      begin
-        loop do
-          raise(Timeout::Error, 'Client Read Timeout') if counter > 5
-          if self.wait_readable 1
-            read << self.sysread(RESP_READ_LEN)
-          end
-          ttl_read = read.bytesize
-          return read if prev_size == ttl_read && !ttl_read.zero?
-          prev_size = ttl_read
-          counter += 1
-        end
-      rescue EOFError
-        return read
-      rescue => e
-        raise e
-      end
-    end
-
-    def wait_read(len, timeout: 5)
-      Thread.pass
-      self.wait_readable timeout
-      Thread.pass
-      self.sysread len
-    end
-  end
-
-  class PumaTCPSocket < ::TCPSocket
-    include PumaSocketInclude
-  end
-
-  if Object.const_defined?(:UNIXSocket)
-    class PumaUNIXSocket < ::UNIXSocket
-      include PumaSocketInclude
-    end
-  end
-
-  if ::Puma::HAS_SSL
-    class PumaSSLSocket < ::OpenSSL::SSL::SSLSocket
-      include PumaSocketInclude
-    end
-  end
-
   # @!macro [new] req
-  #   @param req [String, GET_11] request path
+  #   @param req [String] request path
 
   # @!macro [new] skt
   #   @param host: [String] tcp/ssl host
@@ -208,21 +71,31 @@ module TestPuma
     SET_TCP_NODELAY = Socket.const_defined?(:IPPROTO_TCP) && ::Socket.const_defined?(:TCP_NODELAY)
 
     def before_setup
-      @ios_to_close ||= []
       @bind_port = nil
       @bind_path = nil
       @control_port = nil
       @control_path = nil
       @ssl_socket_contexts = Queue.new
-      super
+      @ios_to_close ||= Queue.new
     end
 
     # Closes all io's in `@ios_to_close`, also deletes them if they are files
     def after_teardown
       return if skipped?
-      super
-      # Errno::EBADF raised on macOS
-      @ios_to_close.each do |io|
+
+      close_ios
+
+      until @ssl_socket_contexts.empty?
+        ctx = @ssl_socket_contexts.pop
+        ctx = nil
+      end
+      @ssl_socket_contexts.close
+      @ssl_socket_contexts = nil
+    end
+
+    def close_ios
+      until @ios_to_close.empty?
+        io = @ios_to_close.pop
         begin
           if io.respond_to? :sysclose
             io.sync_close = true
@@ -238,16 +111,6 @@ module TestPuma
           io = nil
         end
       end
-      # not sure about below, may help with gc...
-      @ios_to_close.clear
-      @ios_to_close = nil
-
-      until @ssl_socket_contexts.empty?
-        ctx = @ssl_socket_contexts.pop
-        ctx = nil
-      end
-      @ssl_socket_contexts.close
-      @ssl_socket_contexts = nil
     end
 
     # rubocop: disable Metrics/ParameterLists
@@ -299,7 +162,6 @@ module TestPuma
     end
 
     # Sends a request and returns the socket
-    # @param req [String, nil] The request stirng.
     # @!macro req
     # @!macro skt
     # @return [PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket] the created socket
@@ -311,7 +173,7 @@ module TestPuma
 
     # Determines whether the socket has been closed by the server.  Only works when
     # `Socket::TCP_INFO is defined`, linux/Ubuntu
-    # @param socket [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket]
+    # @param socket [PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket]
     # @return [Boolean] true if closed by server, false is indeterminate, as
     #   it may not be writable
     #
@@ -346,7 +208,7 @@ module TestPuma
 
     # Creates a new client socket.  TCP, SSL, and UNIX are supported
     # @!macro req
-    # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
+    # @return [PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket] the created socket
     #
     def new_socket(host: nil, port: nil, path: nil, ctx: nil, session: nil)
       port  ||= @bind_port
@@ -372,7 +234,6 @@ module TestPuma
       @ios_to_close << skt
 
       if ctx
-        @ios_to_close << tcp
         skt.session = session if session
         skt.sync_close = true
         skt.connect
@@ -383,7 +244,7 @@ module TestPuma
     # Creates an array of sockets, sending a request on each
     # @param req [String] the request
     # @param len [Integer] the number of requests to send
-    # @return [Array<OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket>]
+    # @return [Array<PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket>]
     #
     def send_http_array(req = GET_11, len, dly: 0.000_1, max_retries: 5)
       Array.new(len) {
