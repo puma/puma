@@ -213,6 +213,7 @@ module TestPuma
       @bind_path = nil
       @control_port = nil
       @control_path = nil
+      @ssl_socket_contexts = Queue.new
       super
     end
 
@@ -240,6 +241,13 @@ module TestPuma
       # not sure about below, may help with gc...
       @ios_to_close.clear
       @ios_to_close = nil
+
+      until @ssl_socket_contexts.empty?
+        ctx = @ssl_socket_contexts.pop
+        ctx = nil
+      end
+      @ssl_socket_contexts.close
+      @ssl_socket_contexts = nil
     end
 
     # rubocop: disable Metrics/ParameterLists
@@ -352,6 +360,7 @@ module TestPuma
           tcp = PumaTCPSocket.new ip, port.to_i
           tcp.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1) if SET_TCP_NODELAY
           if ctx
+            @ssl_socket_contexts << ctx
             PumaSSLSocket.new tcp, ctx
           else
             tcp
