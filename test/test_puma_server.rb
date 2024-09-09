@@ -1672,18 +1672,31 @@ class TestPumaServer < Minitest::Test
 
   def test_drain_on_shutdown(drain=true)
     num_connections = 10
-
+    min_threads = 1
+    max_threads = min_threads
+    accepted = 0
     wait = Queue.new
-    server_run(drain_on_shutdown: drain, max_threads: 1) do
+
+    server_run(
+      drain_on_shutdown: drain,
+      min_threads: min_threads,
+      max_threads: max_threads) do
+      accepted += 1
       wait.pop
       [200, {}, ["DONE"]]
     end
     sockets = send_http_array GET_10, num_connections, dly: nil
 
     @server.stop
+    # save current value so all all asserts are after wait.close
+    post_stop_accepted = accepted
+
     Thread.pass # may help intermittent failures/retries in CI
+
     wait.close
-    bad = 0
+
+    assert_operator max_threads , :>=, post_stop_accepted,
+      "max_threads should be equal to or grater than accepted requests"
 
     responses = read_response_array(sockets, body_only: true)
 
@@ -1694,6 +1707,7 @@ class TestPumaServer < Minitest::Test
     assert_equal(['DONE'], bodies.uniq) unless bodies.length.zero?
 
     if drain
+      assert_equal num_connections, accepted, "some connections were not drained"
       assert_equal 0, bad, "#{bad} requests were cancelled"
     else
       refute_equal 0, bad, "Expected some cancelled requests"
