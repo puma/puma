@@ -46,6 +46,8 @@ module Puma
       @original_argv = @argv.dup
       @config        = conf
 
+      env = launcher_args.delete(:env) || ENV
+
       @config.options[:log_writer] = @log_writer
 
       # Advertise the Configuration
@@ -105,7 +107,7 @@ module Puma
 
       @status = :run
 
-      log_config if ENV['PUMA_LOG_CONFIG']
+      log_config if env['PUMA_LOG_CONFIG']
     end
 
     attr_reader :binder, :log_writer, :events, :config, :options, :restart_dir
