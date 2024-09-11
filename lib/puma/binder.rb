@@ -102,7 +102,7 @@ module Puma
         @activated_sockets[key] = sock
         @log_writer.debug "Registered #{key.join ':'} for activation from LISTEN_FDS"
       end
-      ["LISTEN_FDS", "LISTEN_PID"] # Signal to remove these keys from ENV
+      ["LISTEN_FDS", "LISTEN_PID"] # Signal to remove these keys from env
     end
 
     # Synthesize binds from systemd socket activation
