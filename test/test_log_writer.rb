@@ -59,15 +59,11 @@ class TestLogWriter < Minitest::Test
   end
 
   def test_debug_writes_to_stdout_if_env_is_present
-    original_debug, ENV["PUMA_DEBUG"] = ENV["PUMA_DEBUG"], "1"
-
     out, _ = capture_io do
-      Puma::LogWriter.stdio.debug("ready")
+      Puma::LogWriter.stdio(env: {"PUMA_DEBUG" => "1"}).debug("ready")
     end
 
     assert_equal "% ready\n", out
-  ensure
-    ENV["PUMA_DEBUG"] = original_debug
   end
 
   def test_debug_not_write_to_stdout_if_env_is_not_present
