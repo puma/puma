@@ -461,6 +461,9 @@ void Init_mini_ssl(VALUE mod);
 
 void Init_puma_http11(void)
 {
+#ifdef HAVE_RB_EXT_RACTOR_SAFE
+  rb_ext_ractor_safe(true);
+#endif
 
   VALUE mPuma = rb_define_module("Puma");
   VALUE cHttpParser = rb_define_class_under(mPuma, "HttpParser", rb_cObject);
