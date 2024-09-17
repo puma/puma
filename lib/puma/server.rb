@@ -479,10 +479,12 @@ module Puma
             # socket for a short time before returning to the reactor.
             fast_check = @status == :run
 
-            # Always pass the client back to the reactor after a reasonable
-            # number of inline requests if there are other requests pending.
-            fast_check = false if requests >= @max_fast_inline &&
-              @thread_pool.backlog > 0
+            # If we've already attempt our max number of fast inline requests
+            # OR there is a client waiting, we skip doing a fast check of the
+            # client and return it to the reactor.
+            if requests >= @max_fast_inline || @thread_pool.backlog > 0
+              fast_check = false
+            end
 
             next_request_ready = with_force_shutdown(client) do
               client.reset(fast_check)
