@@ -54,6 +54,14 @@ class TestAppStatus < Minitest::Test
     assert_equal 404, status
   end
 
+  def test_multiple_params
+    @app.instance_variable_set(:@auth_token, "abcdef")
+
+    status, _, _ = lint('/whatever?foo=bar&token=abcdef')
+
+    assert_equal 404, status
+  end
+
   def test_unsupported
     status, _, _ = lint('/not-real')
 
