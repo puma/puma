@@ -25,7 +25,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: '2.7', rails: '6.1' }
           - { os: ubuntu-20.04 , ruby: '3.1', rails: '7.0' }
           - { os: ubuntu-20.04 , ruby: '3.2', rails: '7.0' }
           - { os: ubuntu-22.04 , ruby: '3.3', rails: '7.0' }
