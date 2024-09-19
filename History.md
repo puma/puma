@@ -178,6 +178,11 @@
   * Ruby 3.2 will have native IO#wait_* methods, don't require io/wait ([#2903])
   * Various internal API refactorings ([#2942], [#2921], [#2922], [#2955])
 
+## 5.6.9 / 2024-09-19
+
+* Security
+  * Discards any headers using underscores if the non-underscore version also exists. Without this, an attacker could overwrite values set by intermediate proxies (e.g. X-Forwarded-For). ([CVE-2024-45614](https://github.com/puma/puma/security/advisories/GHSA-9hf4-67fc-4vf4)/GHSA-9hf4-67fc-4vf4)
+
 ## 5.6.8 / 2024-01-08
 
 * Security
