@@ -281,6 +281,14 @@ module Puma
     # header values can contain HTAB?
     ILLEGAL_HEADER_VALUE_REGEX = /[\x00-\x08\x0A-\x1F]/.freeze
 
+    # The keys of headers that should not be convert to underscore
+    # normalized versions. These headers are ignored at the request reading layer,
+    # but if we normalize them after reading, it's just confusing for the application.
+    UNMASKABLE_HEADERS = {
+      "HTTP_TRANSFER,ENCODING" => true,
+      "HTTP_CONTENT,LENGTH" => true,
+    }
+
     # Banned keys of response header
     BANNED_HEADER_KEY = /\A(rack\.|status\z)/.freeze
 
