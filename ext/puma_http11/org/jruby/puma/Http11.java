@@ -99,6 +99,8 @@ public class Http11 extends RubyObject {
             int bite = b.get(i) & 0xFF;
             if(bite == '-') {
                 b.set(i, (byte)'_');
+            } else if(bite == '_') {
+                b.set(i, (byte)',');
             } else {
                 b.set(i, (byte)Character.toUpperCase(bite));
             }
