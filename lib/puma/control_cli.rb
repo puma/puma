@@ -60,7 +60,7 @@ module Puma
           @state = arg
         end
 
-        o.on "-Q", "--quiet", "Not display messages" do |arg|
+        o.on "-Q", "--quiet", "Do not display messages" do |arg|
           @quiet = true
         end
 
