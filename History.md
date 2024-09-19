@@ -1,3 +1,8 @@
+## 6.4.3 / 2024-09-19
+
+* Security
+  * Discards any headers using underscores if the non-underscore version also exists. Without this, an attacker could overwrite values set by intermediate proxies (e.g. X-Forwarded-For). ([CVE-2024-45614](https://github.com/puma/puma/security/advisories/GHSA-9hf4-67fc-4vf4)/GHSA-9hf4-67fc-4vf4)
+
 ## 6.4.2 / 2024-01-08
 
 * Security
