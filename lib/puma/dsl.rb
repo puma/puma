@@ -1281,7 +1281,7 @@ module Puma
     #   disable_keep_alives true
     #   
     def disable_keep_alives(enabled=false)
-      @options[:max_fast_inline] = enabled
+      @options[:disable_keep_alives] = enabled
     end
 
     # Specify the backend for the IO selector.
