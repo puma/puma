@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
-# This module is used as an 'include' file in code at bottom of file
 module Puma
+
+  # This module is used as an 'include' file in code at bottom of file. It loads
+  # into either `Rackup::Handler::Puma` or `Rack::Handler::Puma`.
+
   module RackHandler
     DEFAULT_OPTIONS = {
       :Verbose => false,
