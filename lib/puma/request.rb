@@ -168,6 +168,9 @@ module Puma
         @thread_pool.busy_threads < @max_threads ||
         !client.listener.to_io.wait_readable(0)
 
+      # Always set force_keep_alive to false if the server has keep-alives disabled.
+      force_keep_alive &&= !@disable_keep_alives
+
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
       close_body = false
