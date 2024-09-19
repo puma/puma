@@ -889,10 +889,8 @@ class TestPumaServer < Minitest::Test
 
   def test_chunked_request_invalid_extension_header_length
     body = nil
-    content_length = nil
     server_run(environment: :production) { |env|
       body = env['rack.input'].read
-      content_length = env['CONTENT_LENGTH']
       [200, {}, [body]]
     }
 
@@ -908,10 +906,8 @@ class TestPumaServer < Minitest::Test
   def test_chunked_request_invalid_extension_header_length_split
     body = nil
     completed_loops = 0
-    content_length = nil
     server_run { |env|
       body = env['rack.input'].read
-      content_length = env['CONTENT_LENGTH']
       [200, {}, [""]]
     }
 
