@@ -1268,6 +1268,21 @@ module Puma
     def max_fast_inline(num_of_requests)
       @options[:max_fast_inline] = Float(num_of_requests)
     end
+    
+    # When enabled, disables keep-alives on in-bound connections.
+    # This option is the best way to ensure requests are handled by the server
+    # in the order in which they are received. Disabling keep-alives means Puma
+    # will close the connection after each request made, requiring that a new
+    # connection be opened. There is a TCP operations cost for both the client and server
+    # each time a new connection is opened/closed. This option will ensure fairness at the cost
+    # of potentially more time spent in TCP operations.
+    #
+    # @example
+    #   disable_keep_alives true
+    #   
+    def disable_keep_alives(enabled=false)
+      @options[:max_fast_inline] = enabled
+    end
 
     # Specify the backend for the IO selector.
     #
