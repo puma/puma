@@ -5,7 +5,6 @@
 regex_delay = /\A\/sleep(\d+(?:\.\d+)?)/
 run lambda { |env|
   delay = (env['REQUEST_PATH'][regex_delay,1] || '0').to_f
-STDOUT.syswrite "\n#{delay}"
   sleep delay
   [200, {"Content-Type" => "text/plain"}, ["Slept #{delay}"]]
 }
