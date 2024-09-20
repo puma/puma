@@ -763,6 +763,16 @@ class TestPumaServer < Minitest::Test
     assert_equal "hello\n", response.body
   end
 
+  def test_http_11_disable_keep_alives_false
+    server_run(disable_keep_alives: false) { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+
+    req  = "GET / HTTP/1.1\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal ["Content-Type: plain/text", "Content-Length: 6"], response.headers
+    assert_equal "hello\n", response.body
+  end
+
   def test_http_10_keep_alive_with_body
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
