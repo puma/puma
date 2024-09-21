@@ -31,31 +31,31 @@ module Puma
     attr_accessor :formatter, :custom_logger
 
     # Create a LogWriter that prints to +stdout+ and +stderr+.
-    def initialize(stdout, stderr)
+    def initialize(stdout, stderr, env: ENV)
       @formatter = DefaultFormatter.new
       @custom_logger = nil
       @stdout = stdout
       @stderr = stderr
 
-      @debug = ENV.key?('PUMA_DEBUG')
-      @error_logger = ErrorLogger.new(@stderr)
+      @debug = env.key?('PUMA_DEBUG')
+      @error_logger = ErrorLogger.new(@stderr, env: env)
     end
 
     DEFAULT = new(STDOUT, STDERR)
 
     # Returns an LogWriter object which writes its status to
     # two StringIO objects.
-    def self.strings
-      LogWriter.new(StringIO.new, StringIO.new)
+    def self.strings(env: ENV)
+      LogWriter.new(StringIO.new, StringIO.new, env: env)
     end
 
-    def self.stdio
-      LogWriter.new($stdout, $stderr)
+    def self.stdio(env: ENV)
+      LogWriter.new($stdout, $stderr, env: env)
     end
 
-    def self.null
+    def self.null(env: ENV)
       n = NullIO.new
-      LogWriter.new(n, n)
+      LogWriter.new(n, n, env: env)
     end
 
     # Write +str+ to +@stdout+
