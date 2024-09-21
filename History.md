@@ -182,6 +182,9 @@
 
 * Security
   * Discards any headers using underscores if the non-underscore version also exists. Without this, an attacker could overwrite values set by intermediate proxies (e.g. X-Forwarded-For). ([CVE-2024-45614](https://github.com/puma/puma/security/advisories/GHSA-9hf4-67fc-4vf4)/GHSA-9hf4-67fc-4vf4)
+* JRuby
+  * Must use at least Java >= 9 to compile. You can no longer build from source on Java 8.
+
 
 ## 5.6.8 / 2024-01-08
 
