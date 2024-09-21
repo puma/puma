@@ -326,6 +326,7 @@ module TestPuma
       skt.define_singleton_method :read_response, READ_RESPONSE
       skt.define_singleton_method :read_body, READ_BODY
       skt.define_singleton_method :<<, REQ_WRITE
+      skt.define_singleton_method :req_write, REQ_WRITE # used for chaining
       @ios_to_close << skt
       if ctx
         @ios_to_close << tcp
