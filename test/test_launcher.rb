@@ -77,7 +77,6 @@ class TestLauncher < Minitest::Test
   def test_puma_stats
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
-      c.clear_binds!
     end
     launcher = create_launcher(conf)
     launcher.events.on_booted {
@@ -94,23 +93,29 @@ class TestLauncher < Minitest::Test
   def test_puma_stats_clustered
     skip_unless :fork
 
+    queue_stop = Queue.new
+
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
       c.workers 1
-      c.clear_binds!
     end
     launcher = create_launcher(conf)
+    launcher.events.on_booted {
+      queue_stop.pop
+      launcher.stop
+    }
 
     status = nil
 
     th_stats = Thread.new do
       sleep Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
       status = Puma.stats_hash[:worker_status]&.first[:last_status]
-      launcher.stop
+      queue_stop << true
     end
 
     launcher.run
-    th_stats.join
+    assert th_stats.join(10)
+    launcher.stop
 
     refute_nil status
 
@@ -140,7 +145,6 @@ class TestLauncher < Minitest::Test
   def test_fire_on_stopped
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
-      c.port UniquePort.call
     end
 
     is_stopped = nil
@@ -160,6 +164,7 @@ class TestLauncher < Minitest::Test
   private
 
   def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings)
+    config.options[:binds] = ["tcp://127.0.0.1:#{UniquePort.call}"]
     Puma::Launcher.new(config, log_writer: lw)
   end
 end
