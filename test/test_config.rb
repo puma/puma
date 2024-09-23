@@ -745,6 +745,24 @@ class TestConfigFileWithFakeEnv < TestConfigFileBase
     assert_equal ['config/puma/fake-env.rb'], conf.config_files
   end
 
+  def test_disable_keep_alives_true
+    conf = Puma::Configuration.new do |c|
+      c.disable_keep_alives true
+    end
+    conf.load
+
+    assert_equal conf.options[:disable_keep_alives], true
+  end
+
+  def test_disable_keep_alives_false
+    conf = Puma::Configuration.new do |c|
+      c.disable_keep_alives false
+    end
+    conf.load
+
+    assert_equal conf.options[:disable_keep_alives], false
+  end
+
   def teardown
     FileUtils.rm_r("config/puma")
   end
