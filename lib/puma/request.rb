@@ -164,12 +164,14 @@ module Puma
       # if the server is at capacity and the listener has a new connection ready.
       # This allows Puma to service connections fairly when the number
       # of concurrent connections exceeds the size of the threadpool.
-      force_keep_alive = requests < @max_fast_inline ||
+      force_keep_alive = if @enable_keep_alives
+        requests < @max_fast_inline ||
         @thread_pool.busy_threads < @max_threads ||
         !client.listener.to_io.wait_readable(0)
-
-      # Always set force_keep_alive to false if the server has keep-alives disabled.
-      force_keep_alive &&= !@disable_keep_alives
+      else
+        # Always set force_keep_alive to false if the server has keep-alives not enabled.
+        false
+      end
 
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
