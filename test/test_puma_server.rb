@@ -763,8 +763,6 @@ class TestPumaServer < Minitest::Test
     assert_equal ["Content-Type: plain/text", "Content-Length: 6"], response.headers
     assert_equal "hello\n", response.body
   end
-
-
   def test_http_11_enable_keep_alives_true
     server_run(enable_keep_alives: true) { [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
 
@@ -782,7 +780,7 @@ class TestPumaServer < Minitest::Test
     req  = "GET / HTTP/1.1\r\n\r\n"
     response = send_http_read_response req
 
-    # No "Connection: close" header.
+    # Assert the "Connection: close" header is present with keep-alives disabled.
     assert_equal ["Content-Type: plain/text", "Connection: close", "Content-Length: 6"], response.headers
     assert_equal "hello\n", response.body
   end

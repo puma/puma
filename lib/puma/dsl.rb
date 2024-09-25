@@ -1269,14 +1269,25 @@ module Puma
       @options[:max_fast_inline] = Float(num_of_requests)
     end
 
-    # When true, keep-alives are maintained on in-bound connections. This is the default.
-    # When false, the connection is closed by Puma after each request, requiring that
-    # the client open a new request.
-    # Setting to false is the best way to ensure requests are handled by the server
-    # in the order in which they are received. There is a TCP operations cost for both
-    # the client and server each time a new connection is opened/closed.
-    # This option will ensure fairness at the cost of potentially more time spent in TCP operations.
+    # When `true`, keep-alive connections are maintained on inbound requests. 
+    # Enabling this setting reduces the number of TCP operations, reducing response 
+    # times for connections that can send multiple requests in a single connection.
     #
+    # When Puma receives more incoming connections than available Puma threads, 
+    # enabling the keep-alive behavior may result in processing requests out-of-order, 
+    # increasing overall response time variance. Increased response time variance 
+    # means that the overall average of response times might not change, but more 
+    # outliers will exist. Those long-tail outliers may significantly affect response 
+    # times for some processed requests.
+    # 
+    # When `false`, Puma closes the connection after each request, requiring the 
+    # client to open a new request. Disabling this setting guarantees that requests 
+    # will be processed in the order they are fully received, decreasing response 
+    # variance and eliminating long-tail outliers caused by keep-alive behavior. 
+    # The trade-off is that the number of TCP operations required will increase.
+    #
+    # The default is +true+.
+    # 
     # @example
     #   enable_keep_alives false
     #
