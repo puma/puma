@@ -1279,7 +1279,7 @@ module Puma
     # means that the overall average of response times might not change, but more
     # outliers will exist. Those long-tail outliers may significantly affect response
     # times for some processed requests.
-    # 
+    #
     # When `false`, Puma closes the connection after each request, requiring the
     # client to open a new request. Disabling this setting guarantees that requests
     # will be processed in the order they are fully received, decreasing response
@@ -1287,7 +1287,7 @@ module Puma
     # The trade-off is that the number of TCP operations required will increase.
     #
     # The default is +true+.
-    # 
+    #
     # @example
     #   enable_keep_alives false
     #
