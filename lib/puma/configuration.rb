@@ -130,6 +130,7 @@ module Puma
       binds: ['tcp://0.0.0.0:9292'.freeze],
       clean_thread_locals: false,
       debug: false,
+      enable_keep_alives: true,
       early_hints: nil,
       environment: 'development'.freeze,
       # Number of seconds to wait until we get the first data for the request.
