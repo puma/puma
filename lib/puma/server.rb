@@ -323,6 +323,7 @@ module Puma
         pool = @thread_pool
         queue_requests = @queue_requests
         drain = options[:drain_on_shutdown] ? 0 : nil
+        max_flt = @max_threads.to_f
 
         addr_send_name, addr_value = case options[:remote_address]
         when :value
@@ -363,8 +364,16 @@ module Puma
               if sock == check
                 break if handle_check
               else
-                pool.wait_until_not_full
-                pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker]) if @clustered
+                # only use delay when clustered and busy
+                if pool.busy_threads >= @max_threads
+                  if @clustered
+                    delay = 0.0001 * ((@reactor&.reactor_size || 0) + pool.busy_threads * 1.5)/max_flt
+                    sleep delay
+                  else
+                    # use small sleep for busy single worker
+                    sleep 0.0001
+                  end
+                end
 
                 io = begin
                   sock.accept_nonblock
@@ -452,8 +461,7 @@ module Puma
       requests = 0
 
       begin
-        if @queue_requests &&
-          !client.eagerly_finish
+        if @queue_requests && !client.eagerly_finish
 
           client.set_timeout(@first_data_timeout)
           if @reactor.add client
@@ -479,19 +487,19 @@ module Puma
 
             requests += 1
 
-            # As an optimization, try to read the next request from the
-            # socket for a short time before returning to the reactor.
-            fast_check = @status == :run
+            Thread.pass
 
-            # Always pass the client back to the reactor after a reasonable
-            # number of inline requests if there are other requests pending.
-            fast_check = false if requests >= @max_fast_inline &&
-              @thread_pool.backlog > 0
+            client.reset
 
-            next_request_ready = with_force_shutdown(client) do
-              client.reset(fast_check)
+            # This indicates that the socket has pipelined (multiple)
+            # requests on it, so process them
+            next_request_ready = if client.has_buffer
+              with_force_shutdown(client) { client.fast_try_to_finish }
+            else
+              nil
             end
 
+            # Send keep-alive connections back to the reactor
             unless next_request_ready
               break unless @queue_requests
               client.set_timeout @persistent_timeout
