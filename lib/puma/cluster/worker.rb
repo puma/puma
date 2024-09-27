@@ -56,7 +56,7 @@ module Puma
         # things in shape before booting the app.
         @config.run_hooks(:before_worker_boot, index, @log_writer, @hook_data)
 
-        puts "@server.nil?: #{@server.nil?}\n"
+        log "@server.nil?: #{@server.nil?}\n"
         begin
           server = @server ||= start_server
         rescue Exception => e
@@ -87,18 +87,18 @@ module Puma
             while (idx = @fork_pipe.gets)
               idx = idx.to_i
               if idx == -1 # stop server
-                puts "wrkr-fork stop server\n"
+                log "wrkr-fork stop server\n"
                 if restart_server.length > 0
-                  puts "stopping server: #{idx}\n"
+                  log "stopping server: #{idx}\n"
                   restart_server.clear
                   server.begin_restart(true)
                   @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
                 end
               elsif idx == 0 # restart server
-                puts "wrkr-fork restart server\n"
+                log "wrkr-fork restart server\n"
                 restart_server << true << false
               else # fork worker
-                puts "wrkr-fork fork-worker idx:#{idx}\n"
+                log "wrkr-fork fork-worker idx:#{idx}\n"
                 new_workers << idx
               end
             end
@@ -106,7 +106,7 @@ module Puma
         end
 
         Signal.trap "SIGTERM" do
-          puts "SIGTERM idx:#{index}-pid:#{Process.pid}\n"
+          log "SIGTERM idx:#{index}-pid:#{Process.pid}\n"
           @worker_write << "#{Puma::Const::PipeRequest::EXTERNAL_TERM}#{Process.pid}\n" rescue nil
           restart_server.clear
           server.stop
@@ -122,17 +122,17 @@ module Puma
         end
 
         while restart_server.pop
-          puts "restart_server idx:#{index}-pid:#{Process.pid}\n"
+          log "restart_server idx:#{index}-pid:#{Process.pid}\n"
 
           if fork_worker
             new_worker_pids = spawn_workers(new_workers)
-            puts "new_worker_pids: #{new_worker_pids}\n"
+            log "new_worker_pids: #{new_worker_pids}\n"
             worker_pids.concat(new_worker_pids) unless new_worker_pids.nil?
-            puts "worker_pids: #{worker_pids}\n"
+            log "worker_pids: #{worker_pids}\n"
           end
 
           server_thread = server.run
-          puts "server.run idx:#{index}-pid:#{Process.pid}\n"
+          log "server.run idx:#{index}-pid:#{Process.pid}\n"
 
           if @log_writer.debug? && index == 0
             debug_loaded_extensions "Loaded Extensions - worker 0:"
@@ -175,13 +175,13 @@ module Puma
         worker_pids = []
         begin
           while (widx = new_workers.pop(non_block=true))
-            puts "spawn_sub_workers #{widx}\n"
+            log "spawn_sub_workers #{widx}\n"
             worker_pids << pid = spawn_worker(widx)
-            puts "f#{pid}:#{widx}\n"
+            log "f#{pid}:#{widx}\n"
             @worker_write << "#{Puma::Const::PipeRequest::FORK}#{pid}:#{idx}\n" rescue nil
           end
         rescue ThreadError
-          puts "queue is empty"
+          log "queue is empty"
         end
 
         worker_pids
