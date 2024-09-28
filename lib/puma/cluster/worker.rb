@@ -177,8 +177,10 @@ module Puma
           while (widx = new_workers.pop(non_block=true))
             log "spawn_sub_workers #{widx}\n"
             worker_pids << pid = spawn_worker(widx)
-            log "f#{pid}:#{widx}\n"
-            @worker_write << "#{Puma::Const::PipeRequest::FORK}#{pid}:#{idx}\n" rescue nil
+            # log "f#{pid}:#{widx}\n"
+            msg = "#{Puma::Const::PipeRequest::FORK}#{pid}:#{widx}\n"
+            log msg
+            @worker_write << msg rescue nil
           end
         rescue ThreadError
           log "queue is empty"
@@ -189,6 +191,7 @@ module Puma
 
 
       def spawn_worker(idx)
+        log "spawning new worker from worker-0: #{idx}"
         @config.run_hooks(:before_worker_fork, idx, @log_writer, @hook_data)
 
         pid = fork do
@@ -200,6 +203,8 @@ module Puma
                                   server: @server
           new_worker.run
         end
+        log "new worker spawned from worker-0: with pid #{pid}"
+
 
         if !pid
           log "! Complete inability to spawn new workers detected"
