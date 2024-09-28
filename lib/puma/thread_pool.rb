@@ -25,6 +25,8 @@ module Puma
     # up its work before leaving the thread to die on the vine.
     SHUTDOWN_GRACE_TIME = 5 # seconds
 
+    attr_reader :out_of_band_running
+
     # Maintain a minimum of +min+ and maximum of +max+ threads
     # in the pool.
     #
@@ -50,6 +52,7 @@ module Puma
       @shutdown_grace_time = Float(options[:pool_shutdown_grace_time] || SHUTDOWN_GRACE_TIME)
       @block = block
       @out_of_band = options[:out_of_band]
+      @out_of_band_running = false
       @clean_thread_locals = options[:clean_thread_locals]
       @before_thread_start = options[:before_thread_start]
       @before_thread_exit = options[:before_thread_exit]
@@ -202,12 +205,14 @@ module Puma
 
       # we execute on idle hook when all threads are free
       return false unless @spawned == @waiting
-
+      @out_of_band_running = true
       @out_of_band.each(&:call)
       true
     rescue Exception => e
       STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"
       true
+    ensure
+      @out_of_band_running = false
     end
 
     private :trigger_out_of_band_hook
