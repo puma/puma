@@ -1270,16 +1270,23 @@ module Puma
       @options[:fork_worker] = Integer(after_requests)
     end
 
-    # The number of requests to attempt inline before sending a client back to
-    # the reactor to be subject to normal ordering.
-    #
-    # The default is 10.
-    #
-    # @example
-    #   max_fast_inline 20
+    # @deprecated Use {#max_keep_alive} instead.
     #
     def max_fast_inline(num_of_requests)
-      @options[:max_fast_inline] = Float(num_of_requests)
+      @options[:max_keep_alive] ||= Float(num_of_requests) unless num_of_requests.nil?
+    end
+
+    # The number of requests a keep-alive client can submit before being closed.
+    # Note that some applications (server to server) may benefit from a very high
+    # number or Float::INFINITY.
+    #
+    # The default is 25.
+    #
+    # @example
+    #   max_keep_alive 20
+    #
+    def max_keep_alive(num_of_requests)
+      @options[:max_keep_alive] = Float(num_of_requests) unless num_of_requests.nil?
     end
 
     # When `true`, keep-alive connections are maintained on inbound requests.
