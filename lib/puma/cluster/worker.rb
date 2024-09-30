@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module Puma
+
   class Cluster < Puma::Runner
     #—————————————————————— DO NOT USE — this class is for internal use only ———
-
 
     # This class is instantiated by the `Puma::Cluster` and represents a single
     # worker process.
@@ -28,7 +28,7 @@ module Puma
       end
 
       def run
-        title  = "puma: cluster worker #{index}: #{master}"
+        title = "puma: cluster worker #{index}: #{master}"
         title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
         $0 = title
 
@@ -41,6 +41,9 @@ module Puma
           log "! Detected parent died, dying"
           exit! 1
         end
+
+        # for debug purpose only
+        use_same_thread = true
 
         # If we're not running under a Bundler context, then
         # report the info about the context we will be using
@@ -92,14 +95,27 @@ module Puma
                   log "stopping server: #{idx}\n"
                   restart_server.clear
                   server.begin_restart(true)
+
+                  log "hook_data:#{@hook_data}"
                   @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
                 end
               elsif idx == 0 # restart server
                 log "wrkr-fork restart server\n"
                 restart_server << true << false
-              else # fork worker
+              else
+                # fork worker
                 log "wrkr-fork fork-worker idx:#{idx}\n"
-                new_workers << idx
+
+                # new methods, we only queue for later
+                if use_same_thread
+                  new_workers << idx
+                  restart_server << true << false
+                else
+                  # previously, we spawn worker when we recv signals
+                  worker_pids << pid = spawn_worker(idx)
+                  @worker_write << "#{Puma::Const::PipeRequest::FORK}#{pid}:#{idx}\n" rescue nil
+                end
+
               end
             end
           end
@@ -124,15 +140,21 @@ module Puma
         while restart_server.pop
           log "restart_server idx:#{index}-pid:#{Process.pid}\n"
 
-          if fork_worker
+          if fork_worker && use_same_thread
             new_worker_pids = spawn_workers(new_workers)
             log "new_worker_pids: #{new_worker_pids}\n"
             worker_pids.concat(new_worker_pids) unless new_worker_pids.nil?
             log "worker_pids: #{worker_pids}\n"
+            next if new_worker_pids.size != 0
           end
 
-          server_thread = server.run
-          log "server.run idx:#{index}-pid:#{Process.pid}\n"
+          begin
+            log "attempt run server idx:#{index}-pid:#{Process.pid}\n"
+            server_thread = server.run
+            log "server.run idx:#{index}-pid:#{Process.pid}\n"
+          rescue RuntimeError
+            log "hit error"
+          end
 
           if @log_writer.debug? && index == 0
             debug_loaded_extensions "Loaded Extensions - worker 0:"
@@ -174,7 +196,8 @@ module Puma
       def spawn_workers(new_workers)
         worker_pids = []
         begin
-          while (widx = new_workers.pop(non_block=true))
+          log "waiting spawning"
+          while (widx = new_workers.pop(non_block = true))
             log "spawn_sub_workers #{widx}\n"
             worker_pids << pid = spawn_worker(widx)
             # log "f#{pid}:#{widx}\n"
@@ -188,7 +211,6 @@ module Puma
 
         worker_pids
       end
-
 
       def spawn_worker(idx)
         log "spawning new worker from worker-0: #{idx}"
@@ -204,7 +226,6 @@ module Puma
           new_worker.run
         end
         log "new worker spawned from worker-0: with pid #{pid}"
-
 
         if !pid
           log "! Complete inability to spawn new workers detected"
