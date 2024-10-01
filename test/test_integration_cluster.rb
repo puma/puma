@@ -299,19 +299,18 @@ class TestIntegrationCluster < TestIntegration
   def test_fork_worker_on_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
-    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", log: true, puma_debug: true, config: <<~CONFIG
+    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~CONFIG
       fork_worker 20
       on_refork { File.write '#{refork.path}', 'Reforked' }
     CONFIG
 
-    pids = get_worker_pids 0, wrkrs, log: true
+    pids = get_worker_pids 0, wrkrs
 
     socks = []
     until refork.read == 'Reforked'
       socks << fast_connect
       sleep 0.004
     end
-    puts "message reforked!"
 
     100.times {
       socks << fast_connect
@@ -320,7 +319,7 @@ class TestIntegrationCluster < TestIntegration
 
     socks.each { |s| read_body s }
 
-    refute_includes pids, get_worker_pids(1, wrkrs - 1), log: true
+    refute_includes pids, get_worker_pids(1, wrkrs - 1)
   end
 
   def test_fork_worker_spawn
@@ -520,10 +519,10 @@ class TestIntegrationCluster < TestIntegration
     cli_server "test/rackup/hello.ru",
       env: { 'WEB_CONCURRENCY' => '2'},
       config: <<~CONFIG
-                 on_worker_boot(:test) do |index, data|
-                   data[:test] = index
-                 end
-               CONFIG
+        on_worker_boot(:test) do |index, data|
+          data[:test] = index
+        end
+      CONFIG
 
     get_worker_pids
     line = @server_log[/.+on_worker_boot.+/]
