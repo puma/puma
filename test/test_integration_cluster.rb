@@ -560,6 +560,8 @@ class TestIntegrationCluster < TestIntegration
   def term_closes_listeners(unix: false)
     skip_unless_signal_exist? :TERM
 
+    puts "hello world"
+
     cli_server "-w #{workers} -t 0:6 -q test/rackup/sleep_step.ru", unix: unix
     threads = []
     replies = []
