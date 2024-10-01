@@ -239,6 +239,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
+    puts "touch test again"
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     config = <<~CONFIG
       worker_timeout #{timeout}
