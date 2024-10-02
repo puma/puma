@@ -138,7 +138,7 @@ module TestRackUp
       @options[:Host] = "./relative.sock"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
-    
+
       assert_equal ["unix://./relative.sock"], conf.options[:binds]
     end
 
@@ -146,7 +146,7 @@ module TestRackUp
       @options[:Host] = "/absolute.sock"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
-    
+
       assert_equal ["unix:///absolute.sock"], conf.options[:binds]
     end
 
@@ -154,7 +154,7 @@ module TestRackUp
       @options[:Host] = "@abstract.sock"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
-    
+
       assert_equal ["unix://@abstract.sock"], conf.options[:binds]
     end
   end
