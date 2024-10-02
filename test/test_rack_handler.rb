@@ -133,6 +133,30 @@ module TestRackUp
 
       assert_equal ["tcp://[::1]:9292"], conf.options[:binds]
     end
+
+    def test_relative_unix_host
+      @options[:Host] = "./relative.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix://./relative.sock"], conf.options[:binds]
+    end
+
+    def test_absolute_unix_host
+      @options[:Host] = "/absolute.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix:///absolute.sock"], conf.options[:binds]
+    end
+
+    def test_abstract_unix_host
+      @options[:Host] = "@abstract.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix://@abstract.sock"], conf.options[:binds]
+    end
   end
 
   class TestUserSuppliedOptionsIsEmpty < Minitest::Test
