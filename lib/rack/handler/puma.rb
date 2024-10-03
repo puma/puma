@@ -98,7 +98,7 @@ module Puma
 
       if host&.start_with? '.', '/', '@'
         config.bind "unix://#{host}"
-      elsif host && host =~ /^ssl:\/\//
+      elsif host&.start_with? 'ssl://'
         uri = URI.parse(host)
         uri.port ||= port || ::Puma::Configuration::DEFAULTS[:tcp_port]
         config.bind uri.to_s

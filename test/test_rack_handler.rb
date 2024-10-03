@@ -134,6 +134,14 @@ module TestRackUp
       assert_equal ["tcp://[::1]:9292"], conf.options[:binds]
     end
 
+    def test_ssl_host_supplied_port_default
+      @options[:Host] = "ssl://127.0.0.1"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["ssl://127.0.0.1:9292"], conf.options[:binds]
+    end
+
     def test_relative_unix_host
       @options[:Host] = "./relative.sock"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
