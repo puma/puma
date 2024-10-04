@@ -1,0 +1,5 @@
+source "https://rubygems.org"
+
+gem 'puma', path: '../..'
+
+gem 'concurrent-ruby', '~> 1.0'
