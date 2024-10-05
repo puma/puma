@@ -21,7 +21,8 @@ class TestIntegrationSingle < TestIntegration
 
   def test_usr2_restart
     skip_unless_signal_exist? :USR2
-    _, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
+    initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello.ru")
+    assert_equal "Hello World", initial_reply
     assert_equal "Hello World", new_reply
   end
 
@@ -34,8 +35,8 @@ class TestIntegrationSingle < TestIntegration
 
     initial_reply, new_reply = restart_server_and_listen("-q test/rackup/hello-env.ru")
 
-    assert_includes initial_reply, "Hello RAND"
-    assert_includes new_reply, "Hello RAND"
+    assert_start_with initial_reply, "Hello RAND"
+    assert_start_with new_reply    , "Hello RAND"
     refute_equal initial_reply, new_reply
   end
 
@@ -73,10 +74,10 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server("test/rackup/url_scheme.ru")
 
-    reply = read_body(connect)
+    body = send_http_read_resp_body
     stop_server
 
-    assert_match("http", reply)
+    assert_match("http", body)
   end
 
   def test_conf_is_loaded_before_passing_it_to_binder
@@ -84,45 +85,63 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server("-C test/config/rack_url_scheme.rb test/rackup/url_scheme.ru")
 
-    reply = read_body(connect)
+    body = send_http_read_resp_body
     stop_server
 
-    assert_match("https", reply)
+    assert_match("https", body)
   end
 
   def test_prefer_rackup_file_specified_by_cli
     skip_unless_signal_exist? :TERM
 
     cli_server "-C test/config/with_rackup_from_dsl.rb test/rackup/hello.ru"
-    reply = read_body(connect)
+    body = send_http_read_resp_body
     stop_server
 
-    assert_match("Hello World", reply)
+    assert_match("Hello World", body)
   end
 
   def test_term_not_accepts_new_connections
     skip_unless_signal_exist? :TERM
     skip_if :jruby
 
-    cli_server 'test/rackup/sleep.ru'
+    sleep_time = 8.0
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3({ 'LC_ALL' => 'C' }, "curl http://#{HOST}:#{@tcp_port}/sleep10")
-    sleep 1 # ensure curl send a request
+    cli_server '-t1:1 test/rackup/sleep.ru'
+
+    socket = send_http "GET /sleep#{sleep_time} HTTP/1.1\r\n\r\n"
+    body = nil
+    read_error = nil
+
+    th = Thread.new do
+      begin
+        body = socket.read_body timeout: 20
+      rescue => e
+        read_error = e
+      end
+    end
+
+    # Ruby 2.7 consistent failure, both CI & locally
+    sleep 0.05
 
     Process.kill :TERM, @pid
+    Thread.pass
+
     assert wait_for_server_to_include('Gracefully stopping') # wait for server to begin graceful shutdown
 
+    Thread.pass
+    sleep 0.5 # not needed for local testing, but CI runners...
+
     # Invoke a request which must be rejected
-    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
+    assert_raises(Errno::ECONNREFUSED, Errno::ECONNRESET) {
+      send_http
+    }
 
-    assert nil != Process.getpgid(@server.pid) # ensure server is still running
-    assert nil != Process.getpgid(curl_wait_thread[:pid]) # ensure first curl invocation still in progress
+    refute_nil Process.getpgid(@pid) # ensure server is still running
 
-    curl_wait_thread.join
-    rejected_curl_wait_thread.join
-
-    assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|(Couldn't|Could not) connect to server/, rejected_curl_stderr.read)
+    th.join
+    refute read_error
+    assert_equal "Slept #{sleep_time}", body
 
     wait_server 15
   end
@@ -133,45 +152,42 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server 'test/rackup/hello.ru'
     begin
-      sock = TCPSocket.new(HOST, @tcp_port)
-      sock.close
+      new_socket
     rescue => ex
       fail("Port didn't open properly: #{ex.message}")
     end
 
     Process.kill :INT, @pid
+    sleep 0.25
+    assert_raises(Errno::ECONNREFUSED) { new_socket }
     wait_server
-
-    assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
   end
 
   def test_siginfo_thread_print
     skip_unless_signal_exist? :INFO
 
     cli_server 'test/rackup/hello.ru'
-    output = []
-    t = Thread.new { output << @server.readlines }
     Process.kill :INFO, @pid
     Process.kill :INT , @pid
-    t.join
 
-    assert_match "Thread: TID", output.join
+    assert wait_for_server_to_include("Thread: TID")
+
+    wait_server
   end
 
   def test_write_to_log
     skip_unless_signal_exist? :TERM
 
-    suppress_output = '> /dev/null 2>&1'
+    cli_server '-t1:1 -C test/config/t1_conf.rb test/rackup/hello.ru'
 
-    cli_server '-C test/config/t1_conf.rb test/rackup/hello.ru'
-
-    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+    send_http_read_response
+    send_http_read_response # darwin seems to need two requests
 
     stop_server
 
     log = File.read('t1-stdout')
 
-    assert_match(%r!GET / HTTP/1\.1!, log)
+    assert_match('GET / HTTP/1.1', log)
   ensure
     File.unlink 't1-stdout' if File.file? 't1-stdout'
     File.unlink 't1-pid'    if File.file? 't1-pid'
@@ -180,19 +196,21 @@ class TestIntegrationSingle < TestIntegration
   def test_puma_started_log_writing
     skip_unless_signal_exist? :TERM
 
-    cli_server '-C test/config/t2_conf.rb test/rackup/hello.ru'
+    cli_server '-t1:1 -C test/config/t2_conf.rb test/rackup/hello.ru'
 
-    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
+    out = cli_pumactl '-F test/config/t2_conf.rb status', no_bind: true
+    assert_equal("Puma is started\n", out.read)
 
-    out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
+    send_http_read_response
+    send_http_read_response # darwin seems to need two requests
 
     stop_server
 
+    assert File.file?('t2-stdout')
     log = File.read('t2-stdout')
+    assert_match('GET / HTTP/1.1', log)
 
-    assert_match(%r!GET / HTTP/1\.1!, log)
-    assert(!File.file?("t2-pid"))
-    assert_equal("Puma is started\n", out)
+    refute File.file?("t2-pid")
   ensure
     File.unlink 't2-stdout' if File.file? 't2-stdout'
   end
@@ -200,7 +218,7 @@ class TestIntegrationSingle < TestIntegration
   def test_application_logs_are_flushed_on_write
     cli_server "#{set_pumactl_args} test/rackup/write_to_stdout.ru"
 
-    read_body connect
+    send_http_read_response
 
     cli_pumactl 'stop'
 
@@ -215,10 +233,10 @@ class TestIntegrationSingle < TestIntegration
     skip_unless_signal_exist? :TERM
 
     cli_server "test/rackup/close_listeners.ru", merge_err: true
-    connection = fast_connect
+    socket = send_http
 
     begin
-      read_body connection
+      socket.read_body
     rescue EOFError
     end
 
@@ -253,13 +271,15 @@ class TestIntegrationSingle < TestIntegration
   def test_idle_timeout
     cli_server "test/rackup/hello.ru", config: "idle_timeout 1"
 
-    connect
+    sock = send_http
+    assert_equal 'Hello World', sock.read_body
 
-    sleep 1.15
+    sleep 1.25
 
-    assert_raises Errno::ECONNREFUSED, "Connection refused" do
-      connect
-    end
+    assert sock.wait_readable(1), 'Unexpected timeout'
+
+    assert_raises(Errno::ECONNREFUSED, "Connection not refused") { new_socket }
+    wait_server
   end
 
   def test_pre_existing_unix_after_idle_timeout
@@ -267,22 +287,24 @@ class TestIntegrationSingle < TestIntegration
 
     File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
 
-    cli_server "-q test/rackup/hello.ru", unix: :unix, config: "idle_timeout 1"
+    cli_server "-q test/rackup/hello.ru", unix: true, config: "idle_timeout 1"
 
-    sock = connection = connect(nil, unix: true)
-    read_body(connection)
+    sock = send_http
+    assert_equal 'Hello World', sock.read_body
 
     sleep 1.15
 
     assert sock.wait_readable(1), 'Unexpected timeout'
-    assert_raises Puma.jruby? ? IOError : Errno::ECONNREFUSED, "Connection refused" do
-      connection = connect(nil, unix: true)
+
+    assert_raises Puma.jruby? ? IOError : Errno::ECONNREFUSED, "Connection not refused" do
+      new_socket
     end
 
     assert File.exist?(@bind_path)
   ensure
     if UNIX_SKT_EXIST
       File.unlink @bind_path if File.exist? @bind_path
+      wait_server
     end
   end
 end

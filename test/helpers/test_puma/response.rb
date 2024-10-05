@@ -35,8 +35,9 @@ module TestPuma
     end
 
     # Decodes a chunked body
+    # @param encoding [encoding, nil] The body encoding
     # @return [String] the decoded body
-    def decode_body
+    def decode_body(encoding = Encoding::UTF_8)
       decoded = String.new  # rubocop: disable Performance/UnfreezeString
 
       body = self.split(RESP_SPLIT, 2).last
@@ -50,7 +51,7 @@ module TestPuma
         body = body.byteslice (size+2)..-1       # remove segment ending "\r\n"
         break if body.empty? || body.nil?
       end
-      decoded
+      decoded.force_encoding(encoding) if encoding
     end
   end
 end

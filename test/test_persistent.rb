@@ -121,9 +121,9 @@ class TestPersistent < Minitest::Test
     @body << "Chunked"
     @body = @body.to_enum
 
-    response = send_http_read_response GET_10
+    response = send_http_read_all GET_10
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\n\r\n" \
+    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nConnection: close\r\n\r\n" \
       "HelloChunked", response
   end
 

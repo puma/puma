@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/test_puma/puma_socket"
 require "puma/events"
@@ -39,7 +41,15 @@ class TestPumaServer < Minitest::Test
     options[:min_threads] ||= 1
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
-    @server.run
+    th = @server.run
+
+    min_threads = options[:min_threads]
+    until @server.running >= min_threads
+      Thread.pass
+      sleep 0.005
+    end
+
+    th
   end
 
   def test_normalize_host_header_missing
@@ -257,9 +267,15 @@ class TestPumaServer < Minitest::Test
       [200, {}, ["ok #{bodies.size}"]]
     }
 
-    all = send_http_read_all "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\nGET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    all = send_http_read_all(
+      "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\n" \
+      "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    )
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", all
+    expected = "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
+               "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2"
+
+    assert_equal expected, all
     assert_equal ["", ""], bodies
   end
 
@@ -270,10 +286,39 @@ class TestPumaServer < Minitest::Test
       [200, {}, ["ok #{bodies.size}"]]
     }
 
-    all = send_http_read_all "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\naGET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+    all = send_http_read_all(
+      "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\na" \
+      "GET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+    )
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", all
+    expected = "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
+               "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2"
+
+    assert_equal expected, all
     assert_equal ["a", ""], bodies
+  end
+
+  def test_immediate_pipeline_chunked
+    server_run { |env|
+      [200, {'Content-Length' => env['CONTENT_LENGTH']}, [env['rack.input'].read]]
+    }
+
+    socket = send_http(
+      "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" \
+        "1\r\nh\r\n4\r\nello\r\n0\r\n\r\n" \
+      "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" \
+        "4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    )
+
+    expected = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello" \
+               "HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\ngoodbye"
+
+    assert_equal expected, socket.read_all
+
+    socket << "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" \
+      "1\r\nH\r\n4\r\nello\r\n0\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHello", socket.read_response
   end
 
   def test_early_hints_works
@@ -1702,31 +1747,46 @@ class TestPumaServer < Minitest::Test
 
   def test_drain_on_shutdown(drain=true)
     num_connections = 10
-
+    min_threads = 1
+    max_threads = min_threads
+    accepted = 0
     wait = Queue.new
-    server_run(drain_on_shutdown: drain, max_threads: 1) do
+
+    server_run(
+      drain_on_shutdown: drain,
+      min_threads: min_threads,
+      max_threads: max_threads) do
+      accepted += 1
       wait.pop
       [200, {}, ["DONE"]]
     end
-    connections = Array.new(num_connections) { send_http GET_10 }
+
+    sockets = send_http_array GET_10, num_connections, dly: nil
+
     @server.stop
+    # save current value so all all asserts are after wait.close
+    post_stop_accepted = accepted
+
+    Thread.pass # may help intermittent failures/retries in CI
+
     wait.close
-    bad = 0
-    connections.each do |s|
-      begin
-        if s.wait_readable(1) and drain # JRuby may hang on read with drain is false
-          assert_match 'DONE', s.read_body
-        else
-          bad += 1
-        end
-      rescue Errno::ECONNRESET
-        bad += 1
-      end
-    end
+
+    assert_operator max_threads , :>=, post_stop_accepted,
+      "max_threads should be equal to or grater than accepted requests"
+
+    responses = read_response_array(sockets, body_only: true)
+
+    bodies = responses.select { |e| e.is_a? String }
+
+    bad = responses.length - bodies.length
+
+    assert_equal(['DONE'], bodies.uniq) unless bodies.length.zero?
+
     if drain
-      assert_equal 0, bad
+      assert_equal num_connections, accepted, "some connections were not drained"
+      assert_equal 0, bad, "#{bad} requests were cancelled"
     else
-      refute_equal 0, bad
+      refute_equal 0, bad, "Expected some cancelled requests"
     end
   end
 
@@ -1934,7 +1994,6 @@ class TestPumaServer < Minitest::Test
     response = send_http_read_response "GET / HTTP/1.0\r\n\r\n"
     assert_match(/\AHTTP\/1\.0 501 Not Implemented/, response)
   end
-
 
   def spawn_cmd(env = {}, cmd)
     opts = {}

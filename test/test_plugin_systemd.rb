@@ -17,21 +17,13 @@ class TestPluginSystemd < TestIntegration
 
     super
 
-    ::Dir::Tmpname.create("puma_socket") do |sockaddr|
-      @sockaddr = sockaddr
-      @socket = Socket.new(:UNIX, :DGRAM, 0)
-      socket_ai = Addrinfo.unix(sockaddr)
-      @socket.bind(socket_ai)
-      @env = {"NOTIFY_SOCKET" => sockaddr }
-    end
-  end
+    @sockaddr = tmp_path ".puma_systemd"
 
-  def teardown
-    return if skipped?
-    @socket&.close
-    File.unlink(@sockaddr) if @sockaddr
-    @socket = nil
-    @sockaddr = nil
+    @socket = Socket.new(:UNIX, :DGRAM, 0)
+    socket_ai = Addrinfo.unix(@sockaddr)
+    @socket.bind(socket_ai)
+    @ios_to_close << @socket
+    @env = {"NOTIFY_SOCKET" => @sockaddr }
   end
 
   def test_systemd_notify_usr1_phased_restart_cluster
@@ -83,21 +75,24 @@ class TestPluginSystemd < TestIntegration
 
   private
 
-  def assert_restarts_with_systemd(signal, workers: 2)
+  def assert_restarts_with_systemd(signal, workers: 2, log: false)
     skip_unless(:fork) unless workers.zero?
-    cli_server "-w#{workers} test/rackup/hello.ru", env: @env
-    get_worker_pids(0, workers) if workers == 2
+    cli_server "-w#{workers} -t1:1 test/rackup/hello.ru", env: @env
+    send_http_read_response
+    get_worker_pids(0, workers, log: log) if workers == 2
     assert_message 'READY=1'
 
     phase_ary = signal == :USR1 ? [1,2] : [0,0]
 
     Process.kill signal, @pid
-    get_worker_pids(phase_ary[0], workers) if workers == 2
+    send_http_read_response
+    get_worker_pids(phase_ary[0], workers, log: log) if workers == 2
     assert_message 'RELOADING=1'
     assert_message 'READY=1'
 
     Process.kill signal, @pid
-    get_worker_pids(phase_ary[1], workers) if workers == 2
+    send_http_read_response
+    get_worker_pids(phase_ary[1], workers, log: log) if workers == 2
     assert_message 'RELOADING=1'
     assert_message 'READY=1'
 

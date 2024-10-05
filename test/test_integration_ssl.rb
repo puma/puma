@@ -2,7 +2,6 @@ require_relative 'helper'
 require_relative "helpers/integration"
 
 if ::Puma::HAS_SSL # don't load any files if no ssl support
-  require "net/http"
   require "openssl"
   require_relative "helpers/test_puma/puma_socket"
 end
@@ -11,9 +10,9 @@ end
 # integration tests isolate the server from the test environment, so there
 # should be a few SSL tests.
 #
-# For instance, since other tests make use of 'client' SSLSockets created by
-# net/http, OpenSSL is loaded in the CI process.  By shelling out with IO.popen,
-# the server process isn't affected by whatever is loaded in the CI process.
+# For instance, since other tests make use of client SSL requests, OpenSSL
+# is loaded in the CI process.  By shelling out with IO.popen, the server
+# process isn't affected by whatever is loaded in the CI process.
 
 class TestIntegrationSSL < TestIntegration
   parallelize_me! if ::Puma.mri?
@@ -24,27 +23,12 @@ class TestIntegrationSSL < TestIntegration
 
   def bind_port
     @bind_port ||= UniquePort.call
-    @tcp_port = @bind_port
-  end
-
-  def control_tcp_port
-    @control_tcp_port ||= UniquePort.call
-  end
-
-  def with_server(config)
-    cli_server "-t1:1", config: config, no_bind: true
-
-    http = Net::HTTP.new HOST, bind_port
-    http.use_ssl = true
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-
-    yield http
   end
 
   def test_ssl_run
     cert_path = File.expand_path '../examples/puma', __dir__
 
-    config = <<~CONFIG
+    cli_server "-t1:1", no_bind: true, config:  <<~CONFIG
       if ::Puma.jruby?
         keystore =  '#{cert_path}/keystore.jks'
         keystore_pass = 'jruby_puma'
@@ -65,21 +49,15 @@ class TestIntegrationSSL < TestIntegration
         }
       end
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
     CONFIG
 
-    with_server(config) do |http|
-      body = nil
-      http.start do
-        req = Net::HTTP::Get.new '/', {}
-        http.request(req) { |resp| body = resp.body }
-      end
-      assert_equal 'https', body
-    end
+    body = send_http_read_resp_body(ctx: new_ctx)
+    assert_equal 'https', body
   end
 
   # should use TLSv1.3 with OpenSSL 1.1 or later
@@ -112,20 +90,20 @@ class TestIntegrationSSL < TestIntegration
     client_cert = File.read "#{cert_path}/client.crt"
 
     body = send_http_read_resp_body host: LOCALHOST, port: @bind_port, ctx: new_ctx { |c|
-        ca   = "#{cert_path}/ca.crt"
-        key  = "#{cert_path}/client.key"
-        c.ca_file = ca
-        c.cert = ::OpenSSL::X509::Certificate.new client_cert
-        c.key  = ::OpenSSL::PKey::RSA.new File.read(key)
-        c.verify_mode = ::OpenSSL::SSL::VERIFY_PEER
-        if tls1_2
-          if c.respond_to? :max_version=
-            c.max_version = :TLS1_2
-          else
-            c.ssl_version = :TLSv1_2
-          end
+      ca   = "#{cert_path}/ca.crt"
+      key  = "#{cert_path}/client.key"
+      c.ca_file = ca
+      c.cert = ::OpenSSL::X509::Certificate.new client_cert
+      c.key  = ::OpenSSL::PKey::RSA.new File.read(key)
+      c.verify_mode = ::OpenSSL::SSL::VERIFY_PEER
+      if tls1_2
+        if c.respond_to? :max_version=
+          c.max_version = :TLS1_2
+        else
+          c.ssl_version = :TLSv1_2
         end
-      }
+      end
+    }
 
     assert_equal client_cert, body
   end
@@ -161,7 +139,6 @@ class TestIntegrationSSL < TestIntegration
       app { |_| [200, { 'Content-Type' => 'text/plain' }, ["HELLO", ' ', "THERE"]] }
     CONFIG
 
-
     ca   = "#{cert_path}/ca.crt"
     cert = "#{cert_path}/client.crt"
     key  = "#{cert_path}/client.key"
@@ -177,7 +154,7 @@ class TestIntegrationSSL < TestIntegration
   def test_ssl_run_with_pem
     skip_if :jruby
 
-    config = <<~CONFIG
+    cli_server "-t1:1", no_bind: true, config: <<~CONFIG
       key_path  = '#{File.expand_path '../examples/puma/puma_keypair.pem', __dir__}'
       cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
 
@@ -187,45 +164,33 @@ class TestIntegrationSSL < TestIntegration
         verify_mode: 'none'
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
     CONFIG
 
-    with_server(config) do |http|
-      body = nil
-      http.start do
-        req = Net::HTTP::Get.new '/', {}
-        http.request(req) { |resp| body = resp.body }
-      end
-      assert_equal 'https', body
-    end
+    body = send_http_read_resp_body(ctx: new_ctx)
+    assert_equal 'https', body
   end
 
   def test_ssl_run_with_localhost_authority
     skip_if :jruby
 
-    config = <<~CONFIG
+    cli_server "-t1:1", no_bind: true, config: <<~CONFIG
       require 'localhost'
       ssl_bind '#{HOST}', '#{bind_port}'
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
     CONFIG
 
-    with_server(config) do |http|
-      body = nil
-      http.start do
-        req = Net::HTTP::Get.new '/', {}
-        http.request(req) { |resp| body = resp.body }
-      end
-      assert_equal 'https', body
-    end
+    body = send_http_read_resp_body(ctx: new_ctx)
+    assert_equal 'https', body
   end
 
   def test_ssl_run_with_encrypted_key
@@ -233,7 +198,7 @@ class TestIntegrationSSL < TestIntegration
 
     cert_path = File.expand_path '../examples/puma', __dir__
 
-    config = <<~CONFIG
+    cli_server "-t1:1", no_bind: true, config: <<~CONFIG
       key_path  = '#{cert_path}/encrypted_puma_keypair.pem'
       cert_path = '#{cert_path}/cert_puma.pem'
       key_command = ::Puma::IS_WINDOWS ? 'echo hello world' :
@@ -246,21 +211,15 @@ class TestIntegrationSSL < TestIntegration
         key_password_command: key_command
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
     CONFIG
 
-    with_server(config) do |http|
-      body = nil
-      http.start do
-        req = Net::HTTP::Get.new '/', {}
-        http.request(req) { |resp| body = resp.body }
-      end
-      assert_equal 'https', body
-    end
+    body = send_http_read_resp_body(ctx: new_ctx)
+    assert_equal 'https', body
   end
 
   def test_ssl_run_with_encrypted_pem
@@ -268,7 +227,7 @@ class TestIntegrationSSL < TestIntegration
 
     cert_path = File.expand_path '../examples/puma', __dir__
 
-    config = <<~CONFIG
+    cli_server "-t1:1", no_bind: true, config: <<~CONFIG
       key_path  = '#{cert_path}/encrypted_puma_keypair.pem'
       cert_path = '#{cert_path}/cert_puma.pem'
       key_command = ::Puma::IS_WINDOWS ? 'echo hello world' :
@@ -281,21 +240,52 @@ class TestIntegrationSSL < TestIntegration
         key_password_command: key_command
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end
     CONFIG
 
-    with_server(config) do |http|
-      body = nil
-      http.start do
-        req = Net::HTTP::Get.new '/', {}
-        http.request(req) { |resp| body = resp.body }
+    body = send_http_read_resp_body(ctx: new_ctx)
+    assert_equal 'https', body
+  end
+
+  def test_very_large_return
+    cert_path = File.expand_path '../examples/puma', __dir__
+    giant = "x" * 1000 #   2056610
+
+    cli_server "-t1:1", no_bind: true, config:  <<~CONFIG
+      if ::Puma.jruby?
+        keystore =  '#{cert_path}/keystore.jks'
+        keystore_pass = 'jruby_puma'
+
+        ssl_bind '#{HOST}', '#{bind_port}', {
+          keystore: keystore,
+          keystore_pass:  keystore_pass,
+          verify_mode: 'none'
+        }
+      else
+        key  = '#{cert_path}/puma_keypair.pem'
+        cert = '#{cert_path}/cert_puma.pem'
+
+        ssl_bind '#{HOST}', '#{bind_port}', {
+          cert: cert,
+          key:  key,
+          verify_mode: 'none'
+        }
       end
-      assert_equal 'https', body
-    end
+
+      #{set_pumactl_config}
+
+      app do |env|
+        [200, {}, ['#{giant}']]
+      end
+    CONFIG
+
+    body = send_http_read_resp_body(ctx: new_ctx)
+
+    assert_equal giant.bytesize, body.bytesize
   end
 
   private

@@ -49,6 +49,8 @@ class TestPumaServerSSL < Minitest::Test
 
     ctx = Puma::MiniSSL::Context.new
 
+    @ssl_socket_contexts << ctx
+
     if Puma.jruby?
       ctx.keystore =  File.expand_path "../examples/puma/keystore.jks", __dir__
       ctx.keystore_pass = 'jruby_puma'
@@ -78,8 +80,6 @@ class TestPumaServerSSL < Minitest::Test
   def test_request_wont_block_thread
     start_server
     # Open a connection and give enough data to trigger a read, then wait
-    ctx = OpenSSL::SSL::SSLContext.new
-    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
     @bind_port = @server.connected_ports[0]
 
     socket = send_http "HEAD",  ctx: new_ctx
@@ -94,17 +94,6 @@ class TestPumaServerSSL < Minitest::Test
     # The thread pool should be empty since the request would block on read
     # and our request should have been moved to the reactor.
     assert busy_threads.zero?, "Our connection is monopolizing a thread"
-  end
-
-  def test_very_large_return
-    start_server
-    giant = "x" * 2056610
-
-    @server.app = proc { [200, {}, [giant]] }
-
-    body = send_http_read_resp_body(ctx: new_ctx)
-
-    assert_equal giant.bytesize, body.bytesize
   end
 
   def test_form_submit
@@ -304,6 +293,7 @@ class TestPumaServerSSLClient < Minitest::Test
     server.run
 
     ctx = OpenSSL::SSL::SSLContext.new
+    @ssl_socket_contexts << ctx
     yield ctx
 
     expected_errors = [
