@@ -3,6 +3,7 @@
 require 'thread'
 
 require_relative 'io_buffer'
+require_relative 'fifo_pq'
 
 module Puma
   # Internal Docs for A simple thread pool management object.
@@ -36,8 +37,6 @@ module Puma
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
 
-      @todo = []
-
       @spawned = 0
       @waiting = 0
 
@@ -55,6 +54,13 @@ module Puma
       @before_thread_exit = options[:before_thread_exit]
       @reaping_time = options[:reaping_time]
       @auto_trim_time = options[:auto_trim_time]
+      @prioritize_requests_by = options[:prioritize_requests_by]
+
+      @todo = if @prioritize_requests_by.nil?
+                []
+              else
+                Puma::FIFOPriorityQueue.new {|c| prioritize_ready_client(c) if c.eagerly_finish}
+              end
 
       @shutdown = false
 
@@ -112,7 +118,7 @@ module Puma
       trigger_before_thread_start_hooks
       th = Thread.new(@spawned) do |spawned|
         Puma.set_thread_name '%s tp %03i' % [@name, spawned]
-        todo  = @todo
+        todo = @todo
         block = @block
         mutex = @mutex
         not_empty = @not_empty
@@ -226,7 +232,35 @@ module Puma
           raise "Unable to add work while shutting down"
         end
 
-        @todo << work
+        if @prioritize_requests_by.nil?
+          @todo << work
+        else
+          # Here, we receive the `work` (Puma::Client) in two states; ready, or not ready.
+          #
+          # Initially, a client is being sent to the thread pool in Server#handle_servers,
+          # where the Client object is also constructed.
+          #
+          # It arrives here in a non-ready state, the intention is for it to be put in the queue,
+          # to then eventually be passed to @block, which will send it to Server#process_clients,
+          # which will put it into the reactor, if @queue_requests is enabled.
+          #
+          # After the reactor has "woken up" the object, it comes around to this function again,
+          # in either a buffered (ready) or timed out (non-ready) state.
+          #
+          # We can only prioritise ready clients, and so we put all non-ready clients to a
+          # pseudo-queue in FIFOPriorityQueue called :front, which will have it push to a queue that will always be
+          # dequeued from first, regardless of which priority queues already exist.
+          #
+          # With this, we make sure that the non-buffered clients get processed first,
+          # and effectively disables prioritisation if queue_requests == true.
+
+          if work.eagerly_finish
+            # the client is ready, we can prioritise it
+            @todo.push(work, prioritize_ready_client(work))
+          else
+            @todo.push(work, :front)
+          end
+        end
 
         if @waiting < @todo.size and @spawned < @max
           spawn_thread
@@ -234,6 +268,17 @@ module Puma
 
         @not_empty.signal
       end
+    end
+
+    # Prioritize a ready Puma::Client
+    def prioritize_ready_client(client)
+
+      # (Inverse the integer priority, so higher numbers equal to higher priority)
+      -@prioritize_requests_by.call(
+        client.req_method,
+        client.req_uri,
+        client.req_headers
+      )
     end
 
     # This method is used by `Puma::Server` to let the server know when

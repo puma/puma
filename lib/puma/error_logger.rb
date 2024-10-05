@@ -87,8 +87,7 @@ module Puma
     end
 
     def request_headers(req)
-      headers = req.env.select { |key, _| key.start_with?('HTTP_') }
-      headers.map { |key, value| [key[5..-1], value] }.to_h.inspect
+      req.req_headers.inspect
     end
 
     def request_parsed?(req)
