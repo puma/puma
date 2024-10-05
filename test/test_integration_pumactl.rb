@@ -87,6 +87,39 @@ class TestIntegrationPumactl < TestIntegration
     assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, :<, (DARWIN ? 8 : 7)
   end
 
+  def test_phased_restart_cluster_with_preload_app
+    skip_unless :fork
+
+    cli_server "-q -w #{workers} --preload test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}",
+      unix: true,
+      includes: ["Preloading application"]
+
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    s = UNIXSocket.new @bind_path
+    @ios_to_close << s
+    s << "GET /sleep1 HTTP/1.0\r\n\r\n"
+
+    phase_0_worker_pids = get_worker_pids 0
+    assert File.exist? @bind_path
+
+    cli_pumactl "phased-restart", unix: true
+
+    wait_for_server_to_include "Preloading application"
+    phase_1_worker_pids = get_worker_pids 1
+    assert File.exist? @bind_path
+
+    msg = "phase 0 pids #{phase_0_worker_pids.inspect} phase 1 pids #{phase_1_worker_pids.inspect}"
+    assert_equal workers, phase_0_worker_pids.length, msg
+    assert_equal workers, phase_1_worker_pids.length, msg
+    assert_empty phase_0_worker_pids & phase_1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
+
+    cli_pumactl "stop", unix: true
+
+    wait_server
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, :<, (DARWIN ? 8 : 7)
+  end
+
   def test_refork_cluster
     skip_unless :fork
     wrkrs = 3

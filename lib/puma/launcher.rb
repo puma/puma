@@ -358,7 +358,7 @@ module Puma
     end
 
     def prune_bundler?
-      @options[:prune_bundler] && clustered? && !@options[:preload_app]
+      @options[:prune_bundler] && clustered?
     end
 
     def prune_bundler!
