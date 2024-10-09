@@ -72,6 +72,8 @@ module Puma
       @app = app
       @events = events || Events.new
 
+      @clustered = (options[:workers] || 0) > 1
+
       @check, @notify = nil
       @status = :stop
 
@@ -360,7 +362,10 @@ module Puma
               if sock == check
                 break if handle_check
               else
-                pool.wait_until_not_full
+                # uncommenting this may cause 'long tail' response times when all
+                # workers are busy
+                # pool.wait_until_not_full if @clustered
+                sleep 0.001 while pool.out_of_band_running
                 pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker])
 
                 io = begin
@@ -449,8 +454,7 @@ module Puma
       requests = 0
 
       begin
-        if @queue_requests &&
-          !client.eagerly_finish
+        if @queue_requests && !client.eagerly_finish
 
           client.set_timeout(@first_data_timeout)
           if @reactor.add client
@@ -476,19 +480,19 @@ module Puma
 
             requests += 1
 
-            # As an optimization, try to read the next request from the
-            # socket for a short time before returning to the reactor.
-            fast_check = @status == :run
+            Thread.pass
 
-            # Always pass the client back to the reactor after a reasonable
-            # number of inline requests if there are other requests pending.
-            fast_check = false if requests >= @max_fast_inline &&
-              @thread_pool.backlog > 0
+            client.reset
 
-            next_request_ready = with_force_shutdown(client) do
-              client.reset(fast_check)
+            # This indicates that the socket has pipelined (multiple)
+            # requests on it, so process them
+            next_request_ready = if client.has_buffer
+              with_force_shutdown(client) { client.fast_try_to_finish }
+            else
+              nil
             end
 
+            # Send keep-alive connections back to the reactor
             unless next_request_ready
               break unless @queue_requests
               client.set_timeout @persistent_timeout

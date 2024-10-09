@@ -1257,8 +1257,7 @@ module Puma
       @options[:fork_worker] = Integer(after_requests)
     end
 
-    # The number of requests to attempt inline before sending a client back to
-    # the reactor to be subject to normal ordering.
+    # The number of requests a keep-alive client can submit before being closed.
     #
     # The default is 10.
     #
