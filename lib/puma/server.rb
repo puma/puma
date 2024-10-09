@@ -478,39 +478,33 @@ module Puma
           client.finish(@first_data_timeout)
         end
 
-        while true
-          @requests_count += 1
-          case handle_request(client, requests + 1)
-          when false
-            break
-          when :async
+        @requests_count += 1
+        case handle_request(client, requests + 1)
+        when false
+        when :async
+          close_socket = false
+        when true
+          ThreadPool.clean_thread_locals if clean_thread_locals
+
+          requests += 1
+
+          client.reset
+
+          # This indicates that the socket has pipelined (multiple)
+          # requests on it, so process them
+          next_request_ready = if client.has_buffer
+            with_force_shutdown(client) { client.fast_try_to_finish }
+          else
+            nil
+          end
+
+          if next_request_ready
+            @thread_pool << client
             close_socket = false
-            break
-          when true
-            ThreadPool.clean_thread_locals if clean_thread_locals
-
-            requests += 1
-
-            Thread.pass
-
-            client.reset
-
-            # This indicates that the socket has pipelined (multiple)
-            # requests on it, so process them
-            next_request_ready = if client.has_buffer
-              with_force_shutdown(client) { client.fast_try_to_finish }
-            else
-              nil
-            end
-
-            # Send keep-alive connections back to the reactor
-            unless next_request_ready
-              break unless @queue_requests
-              client.set_timeout @persistent_timeout
-              if @reactor.add client
-                close_socket = false
-                break
-              end
+          elsif @queue_requests
+            client.set_timeout @persistent_timeout
+            if @reactor.add client
+              close_socket = false
             end
           end
         end
