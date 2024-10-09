@@ -96,6 +96,7 @@ module Puma
       @queue_requests            = @options[:queue_requests]
       @max_fast_inline           = @options[:max_fast_inline]
       @enable_keep_alives        = @options[:enable_keep_alives]
+      @enable_keep_alives      &&= @queue_requests
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
 
