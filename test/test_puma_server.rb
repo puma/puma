@@ -1361,6 +1361,33 @@ class TestPumaServer < PumaTest
     assert_equal "7", content_length
   end
 
+  def test_chunked_keep_alive_twenty_back_to_back
+    req_count = 20
+    requests = 0
+    body = nil
+    content_length = nil
+
+    server_run(max_fast_inline: 21) { |env|
+      requests += 1
+      body = env['rack.input'].read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, ["Request_#{requests}"]]
+    }
+
+    req = "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    expected = String.new # rubocop: disable Performance/UnfreezeString
+    req_count.times do |i|
+      expected << "HTTP/1.1 200 OK\r\nContent-Length: #{(i+1).to_s.length + 8}\r\n\r\nRequest_#{i+1}"
+    end
+
+    responses = send_http_read_all(req * req_count)
+
+    assert_equal req_count, responses.scan('Request_').length
+
+    assert_equal expected, responses
+  end
+
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
     body = nil
     content_length = nil
