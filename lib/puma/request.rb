@@ -157,6 +157,7 @@ module Puma
       env = client.env
       socket = client.io
       io_buffer = client.io_buffer
+      expect_100_continue = client.http_expect_100_continue_header_present
 
       return false if closed_socket?(socket)
 
@@ -173,7 +174,7 @@ module Puma
         false
       end
 
-      resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
+      resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive, expect_100_continue)
 
       close_body = false
       response_hijack = nil
@@ -585,8 +586,7 @@ module Puma
     # @return [Hash] resp_info
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
-
+    def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive, expect_100_continue)
       line_ending = LINE_END
       colon = COLON
 
@@ -598,6 +598,9 @@ module Puma
         resp_info[:allow_chunked] = true
         resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
 
+        if expect_100_continue
+          io_buffer << HTTP_11_100
+        end
         # An optimization. The most common response is 200, so we can
         # reply with the proper 200 status without having to compute
         # the response header.
@@ -609,6 +612,7 @@ module Puma
 
           resp_info[:no_body] ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
         end
+
       else
         resp_info[:allow_chunked] = false
         resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase == KEEP_ALIVE
