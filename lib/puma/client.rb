@@ -170,8 +170,8 @@ module Puma
       @http_content_length_limit_exceeded = false
     end
 
-    # only used with pipelined (back-to-back) requests
-    def fast_try_to_finish
+    # only used with back-to-back requests contained in the buffer
+    def process_back_to_back_requests
       if @buffer
         return false unless try_to_parse_proxy_protocol
 
@@ -186,7 +186,9 @@ module Puma
       end
     end
 
-    def has_buffer
+    # if a client sends back-to-back requests, the buffer may contain one or more
+    # of them.
+    def has_back_to_back_requests?
       !(@buffer.nil? || @buffer.empty?)
     end
 
