@@ -126,12 +126,8 @@ module Puma
 
             while true
               begin
-                b = server.backlog || 0
-                r = server.running || 0
-                t = server.pool_capacity || 0
-                m = server.max_threads || 0
-                rc = server.requests_count || 0
-                payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc} }\n!
+                stat_string = Puma::Server::STAT_METHODS.map { |s| "\"#{s}\":#{server.public_send(s) || 0}" }.join(', ')
+                payload = %Q!#{base_payload}{ #{stat_string} }\n!
                 io << payload
               rescue IOError
                 Puma::Util.purge_interrupt_queue

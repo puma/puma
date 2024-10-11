@@ -51,7 +51,9 @@ module Puma
         @term
       end
 
-      STATUS_PATTERN = /{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads":(?<max_threads>\d*), "requests_count":(?<requests_count>\d*) }/
+      regex_string = Puma::Server::STAT_METHODS.map { |s| "\"#{s}\":(?<#{s}>\\d*)"  }.join(', ')
+      STATUS_PATTERN = /{ #{regex_string} }/
+
       private_constant :STATUS_PATTERN
 
       def ping!(status)
