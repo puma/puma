@@ -154,7 +154,7 @@ module Puma
       [@timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
     end
 
-    def reset(fast_check=true)
+    def reset
       @parser.reset
       @io_buffer.reset
       @read_header = true
@@ -178,17 +178,9 @@ module Puma
           raise HttpParserError,
             "HEADER is longer than allowed, aborting client early."
         end
-
-        return false
-      else
-        begin
-          if fast_check && @to_io.wait_readable(FAST_TRACK_KA_TIMEOUT)
-            return try_to_finish
-          end
-        rescue IOError
-          # swallow it
-        end
       end
+
+      return false
     end
 
     def close

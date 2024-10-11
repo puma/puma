@@ -463,39 +463,28 @@ module Puma
           client.finish(@first_data_timeout)
         end
 
-        while true
-          @requests_count += 1
-          case handle_request(client, requests + 1)
-          when false
-            break
-          when :async
+        @requests_count += 1
+        case handle_request(client, requests + 1)
+        when false
+          # ok, we're done
+        when :async
+          close_socket = false
+        when true
+          ThreadPool.clean_thread_locals if clean_thread_locals
+
+          requests += 1
+
+          next_request_ready = with_force_shutdown(client) do
+            client.reset
+          end
+
+          if next_request_ready
+            @thread_pool << client
             close_socket = false
-            break
-          when true
-            ThreadPool.clean_thread_locals if clean_thread_locals
-
-            requests += 1
-
-            # As an optimization, try to read the next request from the
-            # socket for a short time before returning to the reactor.
-            fast_check = @status == :run
-
-            # Always pass the client back to the reactor after a reasonable
-            # number of inline requests if there are other requests pending.
-            fast_check = false if requests >= @max_fast_inline &&
-              @thread_pool.backlog > 0
-
-            next_request_ready = with_force_shutdown(client) do
-              client.reset(fast_check)
-            end
-
-            unless next_request_ready
-              break unless @queue_requests
-              client.set_timeout @persistent_timeout
-              if @reactor.add client
-                close_socket = false
-                break
-              end
+          elsif @queue_requests
+            client.set_timeout @persistent_timeout
+            if @reactor.add client
+              close_socket = false
             end
           end
         end
