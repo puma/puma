@@ -233,6 +233,11 @@ module Puma
       @thread_pool&.pool_capacity
     end
 
+    # @!attribute [r] busy_threads
+    def busy_threads
+      @thread_pool&.busy_threads
+    end
+
     # Runs the server.
     #
     # If +background+ is true (the default) then a thread is spun
@@ -646,7 +651,7 @@ module Puma
 
     # List of methods invoked by #stats.
     # @version 5.0.0
-    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count].freeze
+    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count, :busy_threads].freeze
 
     # Returns a hash of stats about the running server for reporting purposes.
     # @version 5.0.0
