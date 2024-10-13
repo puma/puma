@@ -134,7 +134,8 @@ class TestNullIO < Minitest::Test
       nio.read(-1)
     end
 
-    assert_match(/negative length -1 given/, error.message)
+    # TruffleRuby - length must not be negative
+    assert_match(/negative length -1 given|length must not be negative/, error.message)
   end
 
   def test_sync_returns_true
