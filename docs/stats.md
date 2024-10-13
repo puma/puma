@@ -59,8 +59,8 @@ When Puma runs in single mode, these stats are available at the top level. When 
 * running: how many threads are spawned. A spawned thread may be busy processing a request or waiting for a new request. If `min_threads` and `max_threads` are set to the same number,
   this will be a never-changing number (other than rare cases when a thread dies, etc).
 * busy_threads: `running` - `how many threads are waiting to receive work` + `how many requests are waiting for a thread to pick them up`.
-  this is a "wholistic" stat reflecting the overall current stat of work to be done and the capacity to do it.
-* pool_capacity: `how many threads are waiting to receive work` + `max_threads` - `running`. In a typical configuration where min_threads
+  this is a "wholistic" stat reflecting the overall current state of work to be done and the capacity to do it.
+* pool_capacity: `how many threads are waiting to receive work` + `max_threads` - `running`. In a typical configuration where `min_threads`
   and `max_threads` are configured to the same number, this is simply `how many threads are waiting to receive work`. This number exists only as a stat
   and is not used for any internal decisions, unlike `busy_theads`, which is usually a more useful stat.
 * max_threads: the maximum number of threads Puma is configured to spool per worker
