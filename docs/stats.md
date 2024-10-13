@@ -55,10 +55,14 @@ end
 
 When Puma runs in single mode, these stats are available at the top level. When Puma runs in cluster mode, these stats are available within the `worker_status` array in a hash labeled `last_status`, in an array of hashes where one hash represents each worker.
 
-* backlog: requests that are waiting for an available thread to be available. if this is above 0, you need more capacity [always true?]
+* backlog: requests that are waiting for an available thread to be available. if this is frequently above 0, you need more capacity.
 * running: how many threads are spawned. A spawned thread may be busy processing a request or waiting for a new request. If `min_threads` and `max_threads` are set to the same number,
   this will be a never-changing number (other than rare cases when a thread dies, etc).
-* pool_capacity: the number of requests that the server is capable of taking right now. For example, if the number is 5, then it means there are 5 threads sitting idle ready to take a request. If one request comes in, then the value would be 4 until it finishes processing. If the minimum threads allowed is zero, this number will still have a maximum value of the maximum threads allowed.
+* busy_threads: `running` - `how many threads are waiting to receive work` + `how many requests are waiting for a thread to pick them up`.
+  this is a "wholistic" stat reflecting the overall current stat of work to be done and the capacity to do it.
+* pool_capacity: `how many threads are waiting to receive work` + `max_threads` - `running`. In a typical configuration where min_threads
+  and `max_threads` are configured to the same number, this is simply `how many threads are waiting to receive work`. This number exists only as a stat
+  and is not used for any internal decisions, unlike `busy_theads`, which is usually a more useful stat.
 * max_threads: the maximum number of threads Puma is configured to spool per worker
 * requests_count: the number of requests this worker has served since starting
 
