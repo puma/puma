@@ -22,7 +22,7 @@ module TestRackUp
 
       launcher = nil
       thread = Thread.new do
-        Rack::Handler::Puma.run(app, events: events, Verbose: true, Silent: true) do |l|
+        Rack::Handler::Puma.run(app, events: events, Verbose: true, Silent: true, Port: 0) do |l|
           launcher = l
         end
       end
