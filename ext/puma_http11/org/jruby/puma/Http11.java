@@ -53,12 +53,16 @@ public class Http11 extends RubyObject {
         return (envValue != null) ? envValue : System.getProperty(name);
     }
 
-    public static int getConstLength(String name, Integer defaultValue) throws NumberFormatException {
+    public static int getConstLength(String name, Integer defaultValue) {
         String stringValue = getEnvOrProperty(name);
         if (stringValue == null || stringValue.isEmpty()) return defaultValue;
 
         try {
-            return Integer.parseInt(stringValue);
+            int value = Integer.parseUnsignedInt(stringValue);
+            if (value <= 0) {
+                throw new NumberFormatException("The number is not positive.");
+            }
+            return value;
         } catch (NumberFormatException e) {
             System.err.println(String.format("The value %s for %s is invalid. Using default value %d instead.", stringValue, name, defaultValue));
             return defaultValue;
