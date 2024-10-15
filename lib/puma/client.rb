@@ -111,7 +111,8 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer, :http_content_length_limit_exceeded
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded,
+                :requests_served
 
     attr_writer :peerip, :http_content_length_limit
 
@@ -150,6 +151,7 @@ module Puma
     end
 
     # Number of seconds until the timeout elapses.
+    # @!attribute [r] timeout
     def timeout
       [@timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
     end
@@ -166,7 +168,10 @@ module Puma
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
       @http_content_length_limit_exceeded = false
+    end
 
+    # only used with pipelined (back-to-back) requests
+    def fast_try_to_finish
       if @buffer
         return false unless try_to_parse_proxy_protocol
 
@@ -178,17 +183,11 @@ module Puma
           raise HttpParserError,
             "HEADER is longer than allowed, aborting client early."
         end
-
-        return false
-      else
-        begin
-          if fast_check && @to_io.wait_readable(FAST_TRACK_KA_TIMEOUT)
-            return try_to_finish
-          end
-        rescue IOError
-          # swallow it
-        end
       end
+    end
+
+    def has_buffer
+      !(@buffer.nil? || @buffer.empty?)
     end
 
     def close

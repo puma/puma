@@ -29,6 +29,9 @@ module Puma
       @input = Queue.new
       @timeouts = []
       @block = block
+
+      @selector_items = 0
+      @selector_items_max = 0
     end
 
     # Run the internal select loop, using a background thread by default.
@@ -108,6 +111,11 @@ module Puma
     # Start monitoring the object.
     def register(client)
       @selector.register(client.to_io, :r).value = client
+      @selector_items += 1
+      if @selector_items > @selector_items_max
+        @selector_items_max = @selector_items
+        # STDOUT.syswrite "\n#{Process.pid}  @selector_items_max #{@selector_items_max}\n"
+      end
       @timeouts << client
     rescue ArgumentError
       # unreadable clients raise error when processed by NIO
@@ -118,6 +126,7 @@ module Puma
     def wakeup!(client)
       if @block.call client
         @selector.deregister client.to_io
+        @selector_items -= 1
         @timeouts.delete client
       end
     end
