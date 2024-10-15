@@ -1,9 +1,10 @@
 module TestPuma
 
   # A subclass of String, allows processing the response returned by
-  # `PumaSocket#send_http_read_response` and the `read_response` method added
-  # to native socket instances (created with `PumaSocket#new_socket` and
-  # `PumaSocket#send_http`.
+  # `PumaSocket#send_http_read_response` and the `PumaSocketInclude#read_response`
+  # method included in the socket classes (created with `PumaSocket#new_socket`,
+  # `PumaSocket#send_http`, and `PumaSocket#send_http_array`).
+  # The methods are specific to processing HTTP response strings.
   #
   class Response < String
 
