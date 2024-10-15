@@ -581,6 +581,11 @@ module Puma
         raise "The maximum number of threads (#{max}) must be greater than 0"
       end
 
+      if max == 1
+        warn "[WARNING] Puma config `threads #{min}, #{max}` has a max thread count of 1. If the application makes"
+        warn "          blocking HTTP calls to itself, it may deadlock. Consider increasing the max thread count."
+      end
+
       @options[:min_threads] = min
       @options[:max_threads] = max
     end
@@ -1132,25 +1137,47 @@ module Puma
       @options[:worker_culling_strategy] = strategy
     end
 
-    # When set to true, workers accept all requests
-    # and queue them before passing them to the handlers.
-    # When set to false, each worker process accepts exactly as
-    # many requests as it is configured to simultaneously handle.
+    # Activates or deactivates the reactor
     #
-    # Queueing requests generally improves performance. In some
-    # cases, such as a single threaded application, it may be
-    # better to ensure requests get balanced across workers.
+    # The Puma reactor accepts incoming connections and buffers requests until the full request
+    # body is available. Then it passes the connection to the thread pool to continue serving the
+    # request.
     #
-    # Note that setting this to false disables HTTP keepalive and
+    # When set to `true`, the reactor is enabled. This will protect the application from slow-client
+    # attacks and allow the application to handle keepalive requests.
+    #
+    # When set to `false` the reactor is deactivated. Requests are passed directly to the thread pool
+    # where their bodies will be buffered until they can be processed. This effectively monopolizes
+    # a thread until the request body is received in full. This behavior makes applications vulnerable
+    # to slow-client attacks.
+    #
+    # Note: Setting this to false disables the ability to handle HTTP keepalive and
     # slow clients will occupy a handler thread while the request
-    # is being sent. A reverse proxy, such as nginx, can handle
-    # slow clients and queue requests before they reach Puma.
+    # is being sent. A reverse proxy, such as nginx, is required to handle
+    # slow clients and queue requests before they reach Puma when using this setting.
+    #
+    # ## Deprecated
+    #
+    # This setting is deprecated in Puma 6.x and will be removed in 7.x. The only known reason to
+    # run a Puma server without the reactor is to bypass the reactor when running the server behind
+    # a reverse proxy that buffers requests. The reactor is very robust and adds minimial overhead
+    # to the request processing pipeline. Allowing end-users to disable the reactor results in additional
+    # complexity for maintainers and contributors and provides minimal benefit.
+    #
+    # Often times, deactivating the reactor via `queue_requests false` had unintendended side-effects.
+    # Some applications may desire those side effects, but do not require the ability to turn off the
+    # reactor. If your application relies on this setting please open an issue on the Puma GitHub repository
+    # to discuss your use case. Please include details about your application and the behavior you are
+    # trying to achieve. If you're able, provide a minimal reproduction case.
     #
     # The default is +true+.
     #
     # @see Puma::Server
     #
     def queue_requests(answer=true)
+      warn "[DEPRECATION] Puma config `queue_requests` is deprecated and will be removed in Puma 7.0.0."
+      warn "              In Puma 7.0+ the reactor cannot be deactivated."
+
       @options[:queue_requests] = answer
     end
 
@@ -1161,7 +1188,6 @@ module Puma
     def shutdown_debug(val=true)
       @options[:shutdown_debug] = val
     end
-
 
     # Attempts to route traffic to less-busy workers by causing them to delay
     # listening on the socket, allowing workers which are not processing any
