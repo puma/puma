@@ -6,209 +6,25 @@ require_relative 'response'
 
 module TestPuma
 
-  # @!macro [new] req
-  #   @param req [String, GET_11] request path
-
-  # @!macro [new] skt
-  #   @param host: [String] tcp/ssl host
-  #   @param port: [Integer/String] tcp/ssl port
-  #   @param path: [String] unix socket, full path
-  #   @param ctx: [OpenSSL::SSL::SSLContext] ssl context
-  #   @param session: [OpenSSL::SSL::Session] ssl session
-
-  # @!macro [new] resp
-  #   @param timeout: [Float, nil] total socket read timeout, defaults to `RESP_READ_TIMEOUT`
-  #   @param len: [ Integer, nil] the `read_nonblock` maxlen, defaults to `RESP_READ_LEN`
-
-  # This module is included in CI test files, and provides methods to create
-  # client sockets.  Normally, the socket parameters are defined by the code
-  # creating the Puma server (in-process or spawned), so they do not need to be
-  # specified.  Regardless, many of the less frequently used parameters still
-  # have keyword arguments and they can be set to whatever is required.
-  #
-  # This module closes all sockets and performs all reads non-blocking and all
-  # writes using syswrite.  These are helpful for reliable tests.  Please do not
-  # use native Ruby sockets except if absolutely necessary.
-  #
-  # #### Methods that return a socket or sockets:
-  # * `new_socket` - Opens a socket
-  # * `send_http` - Opens a socket and sends a request, which defaults to `GET_11`
-  # * `send_http_array` - Creates an array of sockets. It opens each and sends a request on each
-  #
-  # All methods that create a socket have the following optional keyword parameters:
-  # * `host:` - tcp/ssl host (`String`)
-  # * `port:` - tcp/ssl port (`Integer`, `String`)
-  # * `path:` -  unix socket, full path (`String`)
-  # * `ctx:` - ssl context (`OpenSSL::SSL::SSLContext`)
-  # * `session:` - ssl session (`OpenSSL::SSL::Session`)
-  #
-  # #### Methods that process the response:
-  # * `send_http_read_response` - sends a request and returns the whole response
-  # * `send_http_read_resp_body` - sends a request and returns the response body
-  # * `send_http_read_resp_headers` - sends a request and returns the response with the body removed as an array of lines
-  #
-  # All methods that process the response have the following optional keyword parameters:
-  # * `timeout:` - total socket read timeout, defaults to `RESP_READ_TIMEOUT` (`Float`)
-  # * `len:` - the `read_nonblock` maxlen, defaults to `RESP_READ_LEN` (`Integer`)
-  #
-  # #### Methods added to socket instances:
-  # * `read_response` - reads the response and returns it, uses `READ_RESPONSE`
-  # * `read_body` - reads the response and returns the body, uses `READ_BODY`
-  # * `<<` - overrides the standard method, writes to the socket with `syswrite`, returns the socket
-  #
-  module PumaSocket
-    GET_10 = "GET / HTTP/1.0\r\n\r\n"
-    GET_11 = "GET / HTTP/1.1\r\n\r\n"
-
-    HELLO_11 = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\n" \
-      "Content-Length: 11\r\n\r\nHello World"
-
+  module PumaSocketInclude
     RESP_READ_LEN = 65_536
     RESP_READ_TIMEOUT = 10
+
     NO_ENTITY_BODY = Puma::STATUS_WITH_NO_ENTITY_BODY
-    EMPTY_200 = [200, {}, ['']]
 
-    UTF8 = ::Encoding::UTF_8
-
-    SET_TCP_NODELAY = Socket.const_defined?(:IPPROTO_TCP) && ::Socket.const_defined?(:TCP_NODELAY)
-
-    def before_setup
-      @ios_to_close ||= []
-      @bind_port = nil
-      @bind_path = nil
-      @control_port = nil
-      @control_path = nil
-      super
-    end
-
-    # Closes all io's in `@ios_to_close`, also deletes them if they are files
-    def after_teardown
-      return if skipped?
-      super
-      # Errno::EBADF raised on macOS
-      @ios_to_close.each do |io|
-        begin
-          if io.respond_to? :sysclose
-            io.sync_close = true
-            io.sysclose unless io.closed?
-          else
-            io.close if io.respond_to?(:close) && !io.closed?
-            if io.is_a?(File) && (path = io&.path) && File.exist?(path)
-              File.unlink path
-            end
-          end
-        rescue Errno::EBADF, Errno::ENOENT, IOError
-        ensure
-          io = nil
-        end
-      end
-      # not sure about below, may help with gc...
-      @ios_to_close.clear
-      @ios_to_close = nil
-    end
-
-    # rubocop: disable Metrics/ParameterLists
-
-    # Sends a request and returns the response header lines as an array of strings.
-    # Includes the status line.
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
-    # @return [Array<String>] array of header lines in the response
-    def send_http_read_resp_headers(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
-        session: nil, len: nil, timeout: nil)
-      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
-      resp = skt.read_response timeout: timeout, len: len
-      resp.split(RESP_SPLIT, 2).first.split "\r\n"
-    end
-
-    # Sends a request and returns the HTTP response body.
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
-    # @return [Response] the body portion of the HTTP response
-    def send_http_read_resp_body(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
-        session: nil, len: nil, timeout: nil)
-      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
-      skt.read_body timeout: timeout, len: len
-    end
-
-    # Sends a request and returns whatever can be read.  Use when multiple
-    # responses are sent by the server
-    # @!macro req
-    # @!macro skt
-    # @return [String] socket read string
-    def send_http_read_all(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
-        session: nil, len: nil, timeout: nil)
-      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
-      read = String.new # rubocop: disable Performance/UnfreezeString
-      counter = 0
-      prev_size = 0
-      loop do
-        raise(Timeout::Error, 'Client Read Timeout') if counter > 5
-        if skt.wait_readable 1
-          read << skt.sysread(RESP_READ_LEN)
-        end
-        ttl_read = read.bytesize
-        return read if prev_size == ttl_read && !ttl_read.zero?
-        prev_size = ttl_read
-        counter += 1
-      end
-    rescue EOFError
-      return read
-    rescue => e
-      raise e
-    end
-
-    # Sends a request and returns the HTTP response.  Assumes one response is sent
-    # @!macro req
-    # @!macro skt
-    # @!macro resp
-    # @return [Response] the HTTP response
-    def send_http_read_response(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
-        session: nil, len: nil, timeout: nil)
-      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
-      skt.read_response timeout: timeout, len: len
-    end
-
-    # Sends a request and returns the socket
-    # @param req [String, nil] The request stirng.
-    # @!macro req
-    # @!macro skt
-    # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
-    def send_http(req = GET_11, host: nil, port: nil, path: nil, ctx: nil, session: nil)
-      skt = new_socket host: host, port: port, path: path, ctx: ctx, session: session
-      skt.syswrite req
-      skt
-    end
-
-    # Determines whether the socket has been closed by the server.  Only works when
-    # `Socket::TCP_INFO is defined`, linux/Ubuntu
-    # @param socket [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket]
-    # @return [Boolean] true if closed by server, false is indeterminate, as
-    #   it may not be writable
-    #
-    def skt_closed_by_server(socket)
-      skt = socket.to_io
-      return false unless skt.kind_of?(TCPSocket)
-
-      begin
-        tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
-      rescue IOError, SystemCallError
-        false
-      else
-        state = tcp_info.unpack('C')[0]
-        # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
-        (state >= 6 && state <= 9) || state == 11
-      end
-    end
-
-    READ_BODY = -> (timeout: nil, len: nil) {
+    def read_body(timeout: nil, len: nil)
       self.read_response(timeout: nil, len: nil)
         .split(RESP_SPLIT, 2).last
-    }
+    end
 
-    READ_RESPONSE = -> (timeout: nil, len: nil) do
+    # @todo verify whole string is written
+    def req_write(str)
+      syswrite str
+      self
+    end
+    alias_method :<<, :req_write
+
+    def read_response(timeout: nil, len: nil)
       content_length = nil
       chunked = nil
       status = nil
@@ -282,8 +98,237 @@ module TestPuma
       end
     end
 
-    # @todo verify whole string is written
-    REQ_WRITE = -> (str) { self.syswrite str; self }
+    def read_all
+      read = String.new # rubocop: disable Performance/UnfreezeString
+      counter = 0
+      prev_size = 0
+      begin
+        loop do
+          raise(Timeout::Error, 'Client Read Timeout') if counter > 5
+          if self.wait_readable 1
+            read << self.sysread(RESP_READ_LEN)
+          end
+          ttl_read = read.bytesize
+          return read if prev_size == ttl_read && !ttl_read.zero?
+          prev_size = ttl_read
+          counter += 1
+        end
+      rescue EOFError
+        return read
+      rescue => e
+        raise e
+      end
+    end
+
+    def wait_read(len, timeout: 5)
+      Thread.pass
+      self.wait_readable timeout
+      Thread.pass
+      self.sysread len
+    end
+  end
+
+  class PumaTCPSocket < ::TCPSocket
+    include PumaSocketInclude
+  end
+
+  if Object.const_defined?(:UNIXSocket)
+    class PumaUNIXSocket < ::UNIXSocket
+      include PumaSocketInclude
+    end
+  end
+
+  if ::Puma::HAS_SSL
+    class PumaSSLSocket < ::OpenSSL::SSL::SSLSocket
+      include PumaSocketInclude
+    end
+  end
+
+  # @!macro [new] req
+  #   @param req [String, GET_11] request path
+
+  # @!macro [new] skt
+  #   @param host: [String] tcp/ssl host
+  #   @param port: [Integer/String] tcp/ssl port
+  #   @param path: [String] unix socket, full path
+  #   @param ctx: [OpenSSL::SSL::SSLContext] ssl context
+  #   @param session: [OpenSSL::SSL::Session] ssl session
+
+  # @!macro [new] resp
+  #   @param timeout: [Float, nil] total socket read timeout, defaults to `RESP_READ_TIMEOUT`
+  #   @param len: [ Integer, nil] the `read_nonblock` maxlen, defaults to `RESP_READ_LEN`
+
+  # This module is included in CI test files, and provides methods to create
+  # client sockets.  Normally, the socket parameters are defined by the code
+  # creating the Puma server (in-process or spawned), so they do not need to be
+  # specified.  Regardless, many of the less frequently used parameters still
+  # have keyword arguments and they can be set to whatever is required.
+  #
+  # This module closes all sockets and performs all reads non-blocking and all
+  # writes using syswrite.  These are helpful for reliable tests.  Please do not
+  # use native Ruby sockets except if absolutely necessary.
+  #
+  # #### Methods that return a socket or sockets:
+  # * `new_socket` - Opens a socket
+  # * `send_http` - Opens a socket and sends a request, which defaults to `GET_11`
+  # * `send_http_array` - Creates an array of sockets. It opens each and sends a request on each
+  #
+  # All methods that create a socket have the following optional keyword parameters:
+  # * `host:` - tcp/ssl host (`String`)
+  # * `port:` - tcp/ssl port (`Integer`, `String`)
+  # * `path:` -  unix socket, full path (`String`)
+  # * `ctx:` - ssl context (`OpenSSL::SSL::SSLContext`)
+  # * `session:` - ssl session (`OpenSSL::SSL::Session`)
+  #
+  # #### Methods that process the response:
+  # * `send_http_read_response` - sends a request and returns the whole response
+  # * `send_http_read_resp_body` - sends a request and returns the response body
+  # * `send_http_read_resp_headers` - sends a request and returns the response with the body removed as an array of lines
+  #
+  # All methods that process the response have the following optional keyword parameters:
+  # * `timeout:` - total socket read timeout, defaults to `RESP_READ_TIMEOUT` (`Float`)
+  # * `len:` - the `read_nonblock` maxlen, defaults to `RESP_READ_LEN` (`Integer`)
+  #
+  # #### Methods added to socket instances:
+  # * `read_response` - reads the response and returns it, uses `READ_RESPONSE`
+  # * `read_body` - reads the response and returns the body, uses `READ_BODY`
+  # * `<<` - overrides the standard method, writes to the socket with `syswrite`, returns the socket
+  #
+  module PumaSocket
+    GET_10 = "GET / HTTP/1.0\r\n\r\n"
+    GET_11 = "GET / HTTP/1.1\r\n\r\n"
+
+    HELLO_11 = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\n" \
+      "Content-Length: 11\r\n\r\nHello World"
+
+    EMPTY_200 = [200, {}, ['']]
+
+    UTF8 = ::Encoding::UTF_8
+
+    SET_TCP_NODELAY = Socket.const_defined?(:IPPROTO_TCP) && ::Socket.const_defined?(:TCP_NODELAY)
+
+    def before_setup
+      @bind_port = nil
+      @bind_path = nil
+      @control_port = nil
+      @control_path = nil
+      @ssl_socket_contexts = Queue.new
+      @ios_to_close ||= Queue.new
+    end
+
+    # Closes all io's in `@ios_to_close`, also deletes them if they are files
+    def after_teardown
+      return if skipped?
+
+      close_ios
+
+      until @ssl_socket_contexts.empty?
+        ctx = @ssl_socket_contexts.pop
+        ctx = nil
+      end
+      @ssl_socket_contexts.close
+      @ssl_socket_contexts = nil
+    end
+
+    def close_ios
+      until @ios_to_close.empty?
+        io = @ios_to_close.pop
+        begin
+          if io.respond_to? :sysclose
+            io.sync_close = true
+            io.sysclose unless io.closed?
+          else
+            io.close if io.respond_to?(:close) && !io.closed?
+            if io.is_a?(File) && (path = io&.path) && File.exist?(path)
+              File.unlink path
+            end
+          end
+        rescue Errno::EBADF, Errno::ENOENT, IOError
+        ensure
+          io = nil
+        end
+      end
+    end
+
+    # rubocop: disable Metrics/ParameterLists
+
+    # Sends a request and returns the response header lines as an array of strings.
+    # Includes the status line.
+    # @!macro req
+    # @!macro skt
+    # @!macro resp
+    # @return [Array<String>] array of header lines in the response
+    def send_http_read_resp_headers(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
+        session: nil, len: nil, timeout: nil)
+      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
+      resp = skt.read_response timeout: timeout, len: len
+      resp.split(RESP_SPLIT, 2).first.split "\r\n"
+    end
+
+    # Sends a request and returns the HTTP response body.
+    # @!macro req
+    # @!macro skt
+    # @!macro resp
+    # @return [Response] the body portion of the HTTP response
+    def send_http_read_resp_body(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
+        session: nil, len: nil, timeout: nil)
+      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
+      skt.read_body timeout: timeout, len: len
+    end
+
+    # Sends a request and returns whatever can be read.  Use when multiple
+    # responses are sent by the server
+    # @!macro req
+    # @!macro skt
+    # @return [String] socket read string
+    def send_http_read_all(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
+        session: nil, len: nil, timeout: nil)
+      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
+      skt.read_all
+    end
+
+    # Sends a request and returns the HTTP response.  Assumes one response is sent
+    # @!macro req
+    # @!macro skt
+    # @!macro resp
+    # @return [Response] the HTTP response
+    def send_http_read_response(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
+        session: nil, len: nil, timeout: nil)
+      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
+      skt.read_response timeout: timeout, len: len
+    end
+
+    # Sends a request and returns the socket
+    # @param req [String, nil] The request stirng.
+    # @!macro req
+    # @!macro skt
+    # @return [PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket] the created socket
+    def send_http(req = GET_11, host: nil, port: nil, path: nil, ctx: nil, session: nil)
+      skt = new_socket host: host, port: port, path: path, ctx: ctx, session: session
+      skt.syswrite req
+      skt
+    end
+
+    # Determines whether the socket has been closed by the server.  Only works when
+    # `Socket::TCP_INFO is defined`, linux/Ubuntu
+    # @param socket [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket]
+    # @return [Boolean] true if closed by server, false is indeterminate, as
+    #   it may not be writable
+    #
+    def skt_closed_by_server(socket)
+      skt = socket.to_io
+      return false unless skt.kind_of?(TCPSocket)
+
+      begin
+        tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
+      rescue IOError, SystemCallError
+        false
+      else
+        state = tcp_info.unpack('C')[0]
+        # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
+        (state >= 6 && state <= 9) || state == 11
+      end
+    end
 
     # Helper for creating an `OpenSSL::SSL::SSLContext`.
     # @param &blk [Block] Passed the SSLContext.
@@ -310,12 +355,13 @@ module TestPuma
 
       skt =
         if path && !port && !ctx
-          UNIXSocket.new path.sub(/\A@/, "\0") # sub is for abstract
+          PumaUNIXSocket.new path.sub(/\A@/, "\0") # sub is for abstract
         elsif port # && !path
-          tcp = TCPSocket.new ip, port.to_i
+          tcp = PumaTCPSocket.new ip, port.to_i
           tcp.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1) if SET_TCP_NODELAY
           if ctx
-            ::OpenSSL::SSL::SSLSocket.new tcp, ctx
+            @ssl_socket_contexts << ctx
+            PumaSSLSocket.new tcp, ctx
           else
             tcp
           end
@@ -323,13 +369,9 @@ module TestPuma
           raise 'port or path must be set!'
         end
 
-      skt.define_singleton_method :read_response, READ_RESPONSE
-      skt.define_singleton_method :read_body, READ_BODY
-      skt.define_singleton_method :<<, REQ_WRITE
-      skt.define_singleton_method :req_write, REQ_WRITE # used for chaining
       @ios_to_close << skt
+
       if ctx
-        @ios_to_close << tcp
         skt.session = session if session
         skt.sync_close = true
         skt.connect
@@ -347,7 +389,7 @@ module TestPuma
         retries = 0
         begin
           skt = send_http req
-          sleep dly
+          sleep dly if dly
           skt
         rescue Errno::ECONNREFUSED
           retries += 1

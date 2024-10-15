@@ -11,6 +11,11 @@ The file extension is optional.
 If arguments are used that take values (eg seed), use the 'no space' version,
 like -s33388 or --seed=33388
 
+An additional argument ('--ruby-warnings') is available, it sets
+`$VERBOSE = true`, so one can see if the test files have any warnings.
+It will do so for any files loaded, which may show warnings for gems files
+that are loaded.
+
 Finally, to keep the code simple, if you pass an invalid argument for file
 filtering it will either error or run minitest with no tests loaded
 
@@ -27,6 +32,10 @@ test/runner -v 'test_integration_*.rb'
 =end
 
 require 'bundler/setup'
+
+if ARGV.delete('--ruby-warnings')
+  $VERBOSE = true
+end
 
 if ARGV.empty? || ARGV.last.start_with?('-')
   if RUBY_VERSION >= '2.5'

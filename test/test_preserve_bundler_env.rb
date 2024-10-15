@@ -52,8 +52,8 @@ class TestPreserveBundlerEnv < TestIntegration
       cli_server cmd, env: env
     end
 
-    reply = read_body(connect)
-    assert_equal("Hello World", reply)
+    body = send_http_read_resp_body
+    assert_equal "Hello World", body
   end
 
   def test_phased_restart_preserves_unspecified_bundle_gemfile
@@ -69,18 +69,16 @@ class TestPreserveBundlerEnv < TestIntegration
     Dir.chdir(current_release_symlink) do
       cli_server cmd, env: env
     end
-    connection = connect
 
     # Bundler itself sets ENV['BUNDLE_GEMFILE'] to the Gemfile it finds if ENV['BUNDLE_GEMFILE'] was unspecified
-    initial_reply = read_body(connection)
+    initial_reply = send_http_read_resp_body
     expected_gemfile = File.expand_path("bundle_preservation_test/version1/Gemfile", __dir__).inspect
     assert_equal(expected_gemfile, initial_reply)
 
     set_release_symlink File.expand_path("bundle_preservation_test/version2", __dir__)
     start_phased_restart
 
-    connection = connect
-    new_reply = read_body(connection)
+    new_reply = send_http_read_resp_body
     expected_gemfile = File.expand_path("bundle_preservation_test/version2/Gemfile", __dir__).inspect
     assert_equal(expected_gemfile, new_reply)
   end
