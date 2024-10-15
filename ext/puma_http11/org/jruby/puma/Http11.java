@@ -26,14 +26,14 @@ public class Http11 extends RubyObject {
     public final static String MAX_FIELD_NAME_LENGTH_ERR = "HTTP element FIELD_NAME is longer than the 256 allowed length.";
     public final static int MAX_FIELD_VALUE_LENGTH = 80 * 1024;
     public final static String MAX_FIELD_VALUE_LENGTH_ERR = "HTTP element FIELD_VALUE is longer than the 81920 allowed length.";
-    public final static int MAX_REQUEST_URI_LENGTH = 1024 * 12;
-    public final static String MAX_REQUEST_URI_LENGTH_ERR = "HTTP element REQUEST_URI is longer than the 12288 allowed length.";
+    public final static int MAX_REQUEST_URI_LENGTH = getConstLength("PUMA_REQUEST_URI_MAX_LENGTH", 1024 * 12);
+    public final static String MAX_REQUEST_URI_LENGTH_ERR = "HTTP element REQUEST_URI is longer than the " + MAX_REQUEST_URI_LENGTH + " allowed length.";
     public final static int MAX_FRAGMENT_LENGTH = 1024;
     public final static String MAX_FRAGMENT_LENGTH_ERR = "HTTP element REQUEST_PATH is longer than the 1024 allowed length.";
-    public final static int MAX_REQUEST_PATH_LENGTH = 8192;
-    public final static String MAX_REQUEST_PATH_LENGTH_ERR = "HTTP element REQUEST_PATH is longer than the 8192 allowed length.";
-    public final static int MAX_QUERY_STRING_LENGTH = 1024 * 10;
-    public final static String MAX_QUERY_STRING_LENGTH_ERR = "HTTP element QUERY_STRING is longer than the 10240 allowed length.";
+    public final static int MAX_REQUEST_PATH_LENGTH = getConstLength("PUMA_REQUEST_PATH_MAX_LENGTH", 8192);
+    public final static String MAX_REQUEST_PATH_LENGTH_ERR = "HTTP element REQUEST_PATH is longer than the " + MAX_REQUEST_PATH_LENGTH + " allowed length.";
+    public final static int MAX_QUERY_STRING_LENGTH = getConstLength("PUMA_QUERY_STRING_MAX_LENGTH", 10 * 1024);
+    public final static String MAX_QUERY_STRING_LENGTH_ERR = "HTTP element QUERY_STRING is longer than the " + MAX_QUERY_STRING_LENGTH +" allowed length.";
     public final static int MAX_HEADER_LENGTH = 1024 * (80 + 32);
     public final static String MAX_HEADER_LENGTH_ERR = "HTTP element HEADER is longer than the 114688 allowed length.";
 
@@ -47,6 +47,27 @@ public class Http11 extends RubyObject {
     public static final ByteList REQUEST_PATH_BYTELIST = new ByteList(ByteList.plain("REQUEST_PATH"));
     public static final ByteList QUERY_STRING_BYTELIST = new ByteList(ByteList.plain("QUERY_STRING"));
     public static final ByteList SERVER_PROTOCOL_BYTELIST = new ByteList(ByteList.plain("SERVER_PROTOCOL"));
+
+    public static String getEnvOrProperty(String name) {
+        String envValue = System.getenv(name);
+        return (envValue != null) ? envValue : System.getProperty(name);
+    }
+
+    public static int getConstLength(String name, Integer defaultValue) {
+        String stringValue = getEnvOrProperty(name);
+        if (stringValue == null || stringValue.isEmpty()) return defaultValue;
+
+        try {
+            int value = Integer.parseUnsignedInt(stringValue);
+            if (value <= 0) {
+                throw new NumberFormatException("The number is not positive.");
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            System.err.println(String.format("The value %s for %s is invalid. Using default value %d instead.", stringValue, name, defaultValue));
+            return defaultValue;
+        }
+    }
 
     private static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
