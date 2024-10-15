@@ -255,7 +255,7 @@ module Puma
 
 
       @thread_pool.auto_reap! if options[:reaping_time]
-      @thread_pool.auto_trim! if options[:auto_trim_time]
+      @thread_pool.auto_trim! if options[:auto_trim_time] && @max_threads != @min_threads
 
       @check, @notify = Puma::Util.pipe unless @notify
 
