@@ -80,5 +80,22 @@ module Puma
     def closed?
       false
     end
+
+    def set_encoding(enc)
+      self
+    end
+
+    # per rack spec
+    def external_encoding
+      Encoding::ASCII_8BIT
+    end
+
+    def binmode
+      self
+    end
+
+    def binmode?
+      true
+    end
   end
 end

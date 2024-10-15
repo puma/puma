@@ -149,13 +149,30 @@ class TestNullIO < Minitest::Test
   def test_closed_returns_false
     assert_equal false, nio.closed?
   end
+
+  def test_set_encoding
+    assert_equal nio, nio.set_encoding(Encoding::BINARY)
+  end
+
+  def test_external_encoding
+    assert_equal Encoding::ASCII_8BIT, nio.external_encoding
+  end
+
+  def test_binmode
+    assert_equal nio, nio.binmode
+  end
+
+  def test_binmode?
+    assert nio.binmode?
+  end
 end
 
 # Run the same tests but against an empty file to
 # ensure all the test behavior is accurate
 class TestNullIOConformance < TestNullIO
   def setup
-    self.nio = ::Tempfile.create
+    # client.rb sets 'binmode` on all Tempfiles
+    self.nio = ::Tempfile.create.binmode
     nio.sync = true
   end
 
