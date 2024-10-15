@@ -369,17 +369,20 @@ module Puma
       @options[:idle_timeout] = Integer(seconds)
     end
 
-    # Work around leaky apps that leave garbage in Thread locals
-    # across requests.
+    # Use a clean fiber per request which ensures a clean slate for fiber
+    # locals and fiber storage. Also provides a cleaner backtrace with less
+    # Puma internal stack frames.
     #
     # The default is +false+.
     #
     # @example
-    #   clean_thread_locals
+    #   fiber_per_request
     #
-    def clean_thread_locals(which=true)
-      @options[:clean_thread_locals] = which
+    def fiber_per_request(which=true)
+      @options[:fiber_per_request] = which
     end
+
+    alias clean_thread_locals fiber_per_request
 
     # When shutting down, drain the accept socket of pending connections and
     # process them. This loops over the accept socket until there are no more

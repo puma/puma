@@ -227,24 +227,6 @@ class TestThreadPool < Minitest::Test
     assert_equal 1, pool.spawned
   end
 
-  def test_cleanliness
-    values = []
-    n = 100
-
-    pool = mutex_pool(1,1) {
-      values.push Thread.current[:foo]
-      Thread.current[:foo] = :hai
-    }
-
-    pool.instance_variable_set :@clean_thread_locals, true
-
-    pool << [1] * n
-
-    assert_equal n,  values.length
-
-    assert_equal [], values.compact
-  end
-
   def test_reap_only_dead_threads
     pool = mutex_pool(2,2) do
       th = Thread.current
