@@ -157,6 +157,14 @@ class TestNullIO < Minitest::Test
   def test_external_encoding
     assert_equal Encoding::ASCII_8BIT, nio.external_encoding
   end
+
+  def test_binmode
+    assert_equal nio, nio.binmode
+  end
+
+  def test_binmode?
+    assert nio.binmode?
+  end
 end
 
 # Run the same tests but against an empty file to

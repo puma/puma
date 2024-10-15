@@ -89,5 +89,13 @@ module Puma
     def external_encoding
       Encoding::ASCII_8BIT
     end
+
+    def binmode
+      self
+    end
+
+    def binmode?
+      true
+    end
   end
 end
