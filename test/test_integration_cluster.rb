@@ -511,7 +511,7 @@ class TestIntegrationCluster < TestIntegration
     CONFIG
 
     get_worker_pids
-    line = @server_log[/.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+on_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
@@ -525,8 +525,14 @@ class TestIntegrationCluster < TestIntegration
       CONFIG
 
     get_worker_pids
-    line = @server_log[/.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+.+on_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
+  end
+
+  def test_puma_debug_worker_hook
+    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true, config: "on_worker_boot {}"
+
+    assert wait_for_server_to_include("Running before_worker_boot hooks")
   end
 
   def test_puma_debug_loaded_exts
