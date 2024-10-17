@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module Puma
+
   class Cluster < Puma::Runner
     #—————————————————————— DO NOT USE — this class is for internal use only ———
-
 
     # This class is instantiated by the `Puma::Cluster` and represents a single
     # worker process.
@@ -28,7 +28,7 @@ module Puma
       end
 
       def run
-        title  = "puma: cluster worker #{index}: #{master}"
+        title = "puma: cluster worker #{index}: #{master}"
         title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
         $0 = title
 
@@ -57,7 +57,7 @@ module Puma
         @config.run_hooks(:before_worker_boot, index, @log_writer, @hook_data)
 
         begin
-        server = @server ||= start_server
+          server = @server ||= start_server
         rescue Exception => e
           log "! Unable to start worker"
           log e
@@ -65,13 +65,15 @@ module Puma
           exit 1
         end
 
-        restart_server = Queue.new << true << false
+        restart_server = Queue.new << Puma::Const::WorkerCmd::RESTART << Puma::Const::WorkerCmd::STOPPED
 
         fork_worker = @options[:fork_worker] && index == 0
 
+        # worker ids for validte hang process
+        worker_pids = []
+
         if fork_worker
           restart_server.clear
-          worker_pids = []
           Signal.trap "SIGCHLD" do
             wakeup! if worker_pids.reject! do |p|
               Process.wait(p, Process::WNOHANG) rescue true
@@ -89,10 +91,10 @@ module Puma
                   @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
                 end
               elsif idx == 0 # restart server
-                restart_server << true << false
-              else # fork worker
-                worker_pids << pid = spawn_worker(idx)
-                @worker_write << "#{Puma::Const::PipeRequest::FORK}#{pid}:#{idx}\n" rescue nil
+                restart_server << Puma::Const::WorkerCmd::RESTART << Puma::Const::WorkerCmd::STOPPED
+              else
+                # spawn new worker
+                restart_server << "#{Puma::Const::WorkerCmd::SPAWN}#{idx}"
               end
             end
           end
@@ -102,7 +104,7 @@ module Puma
           @worker_write << "#{Puma::Const::PipeRequest::EXTERNAL_TERM}#{Process.pid}\n" rescue nil
           restart_server.clear
           server.stop
-          restart_server << false
+          restart_server << Puma::Const::WorkerCmd::STOPPED
         end
 
         begin
@@ -113,7 +115,16 @@ module Puma
           return
         end
 
-        while restart_server.pop
+        while (cmd = restart_server.pop) != Puma::Const::WorkerCmd::STOPPED
+
+          if fork_worker && cmd.start_with?(Puma::Const::WorkerCmd::SPAWN)
+            idx = cmd.split(Puma::Const::WorkerCmd::SPAWN).last.to_i
+            child_pid = spawn_worker(idx)
+            worker_pids << child_pid unless child_pid.nil?
+
+            next
+          end
+
           server_thread = server.run
 
           if @log_writer.debug? && index == 0
@@ -140,6 +151,8 @@ module Puma
               sleep @options[:worker_check_interval]
             end
           end
+
+          log "Server started - worker #{index}" if @log_writer.debug?
           server_thread.join
         end
 

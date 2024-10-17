@@ -81,7 +81,7 @@ module Puma
           pid = spawn_worker(idx, master)
         end
 
-        debug "Spawned worker: #{pid}"
+        log "Spawned worker: #{pid}, phase: #{@phase}"
         @workers << WorkerHandle.new(idx, pid, @phase, @options)
       end
 
