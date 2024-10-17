@@ -303,5 +303,11 @@ module Puma
       PING = "p"
       IDLE = "i"
     end
+
+    module WorkerCmd
+      RESTART = "restart"
+      STOPPED = "stopped"
+      SPAWN = "spawn"
+    end
   end
 end
