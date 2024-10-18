@@ -72,6 +72,7 @@ module Puma
         # worker ids for validte hang process
         worker_pids = []
 
+        # create a mutex to synchronize the server thread
         mutex = Mutex.new
 
         if fork_worker
@@ -164,7 +165,7 @@ module Puma
           end
 
           log "Server started - worker #{index}" if @log_writer.debug?
-          server_thread.join unless server_thread.nil?
+          server_thread&.join
         end
 
         # Invoke any worker shutdown hooks so they can prevent the worker
