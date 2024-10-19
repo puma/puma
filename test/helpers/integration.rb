@@ -31,10 +31,12 @@ class TestIntegration < Minitest::Test
     @pid = nil
     @ios_to_close = []
     @bind_path    = tmp_path('.sock')
+    @control_path     = nil
+    @control_tcp_port = nil
   end
 
   def teardown
-    if @server && defined?(@control_tcp_port) && Puma.windows?
+    if @server && @control_tcp_port && Puma.windows?
       cli_pumactl 'stop'
     elsif @server && @pid && !Puma.windows?
       stop_server @pid, signal: :INT
@@ -364,9 +366,9 @@ class TestIntegration < Minitest::Test
     arg =
       if no_bind
         argv.split(/ +/)
-      elsif unix
+      elsif @control_path && !@control_tcp_port
         %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      else
+      elsif @control_tcp_port && !@control_path
         %W[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
       end
 
@@ -381,9 +383,9 @@ class TestIntegration < Minitest::Test
     arg =
       if no_bind
         argv
-      elsif unix
+      elsif @control_path && !@control_tcp_port
         %Q[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      else
+      elsif @control_tcp_port && !@control_path
         %Q[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
       end
 
@@ -398,7 +400,8 @@ class TestIntegration < Minitest::Test
 
   def get_stats
     read_pipe = cli_pumactl "stats"
-    JSON.parse(read_pipe.readlines.last)
+    read_pipe.wait_readable 2
+    JSON.parse read_pipe.read.split("\n", 2).last
   end
 
   def hot_restart_does_not_drop_connections(num_threads: 1, total_requests: 500)
