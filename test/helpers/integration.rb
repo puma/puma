@@ -332,8 +332,9 @@ class TestIntegration < Minitest::Test
                [IOError, Errno::ENOENT]
     else
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
+      # Errno::ECONNABORTED is thrown by Windows on read or write
       DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
-               [IOError, Errno::ECONNREFUSED, Errno::EPIPE]
+               [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::ECONNABORTED]
     end
   end
 
