@@ -47,7 +47,7 @@ class TestCLI < Minitest::Test
   end
 
   def check_single_stats(body, check_puma_stats = true)
-    http_hash = JSON.parse body.split("\n", 2).last
+    http_hash = JSON.parse body
 
     dmt = Puma::Configuration::DEFAULTS[:max_threads]
 

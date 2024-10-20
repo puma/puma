@@ -401,6 +401,7 @@ class TestIntegration < Minitest::Test
   def get_stats
     read_pipe = cli_pumactl "stats"
     read_pipe.wait_readable 2
+    # `split("\n", 2).last` removes "Command stats sent success" line
     JSON.parse read_pipe.read.split("\n", 2).last
   end
 
