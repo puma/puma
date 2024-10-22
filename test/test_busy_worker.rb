@@ -51,7 +51,7 @@ class TestBusyWorker < Minitest::Test
   # Multiple concurrent requests are not processed
   # sequentially as a small delay is introduced
   def test_multiple_requests_waiting_on_less_busy_worker
-    with_server(wait_for_less_busy_worker: 1.0) do |_|
+    with_server(wait_for_less_busy_worker: 1.0, workers: 2) do |_|
       sleep(0.1)
 
       [200, {}, [""]]
@@ -71,7 +71,7 @@ class TestBusyWorker < Minitest::Test
   # Multiple concurrent requests are processed
   # in parallel as a delay is disabled
   def test_multiple_requests_processing_in_parallel
-    with_server(wait_for_less_busy_worker: 0.0) do |_|
+    with_server(wait_for_less_busy_worker: 0.0, workers: 2) do |_|
       sleep(0.1)
 
       [200, {}, [""]]
@@ -86,5 +86,25 @@ class TestBusyWorker < Minitest::Test
     assert_equal n, @requests_count, "number of requests needs to match"
     assert_equal 0, @requests_running, "none of requests needs to be running"
     assert_equal n, @requests_max_running, "maximum number of concurrent requests needs to match"
+  end
+
+  def test_not_wait_for_less_busy_worker
+    with_server do
+      [200, {}, [""]]
+    end
+
+    assert_not_called_on_instance_of(Puma::ThreadPool, :wait_for_less_busy_worker) do
+      send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    end
+  end
+
+  def test_wait_for_less_busy_worker
+    with_server(workers: 2) do
+      [200, {}, [""]]
+    end
+
+    assert_called_on_instance_of(Puma::ThreadPool, :wait_for_less_busy_worker) do
+      send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+    end
   end
 end
