@@ -94,7 +94,7 @@ class TestBusyWorker < Minitest::Test
     end
 
     assert_not_called_on_instance_of(Puma::ThreadPool, :wait_for_less_busy_worker) do
-      send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+      send_http_read_response "GET / HTTP/1.0\r\n\r\n"
     end
   end
 
@@ -104,7 +104,7 @@ class TestBusyWorker < Minitest::Test
     end
 
     assert_called_on_instance_of(Puma::ThreadPool, :wait_for_less_busy_worker) do
-      send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+      send_http_read_response "GET / HTTP/1.0\r\n\r\n"
     end
   end
 end
