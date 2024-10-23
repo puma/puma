@@ -72,6 +72,9 @@ module Puma
         # worker ids for validte hang process
         worker_pids = []
 
+        # create a mutex to synchronize the server thread
+        mutex = Mutex.new
+
         if fork_worker
           restart_server.clear
           Signal.trap "SIGCHLD" do
@@ -86,9 +89,12 @@ module Puma
               idx = idx.to_i
               if idx == -1 # stop server
                 if restart_server.length > 0
-                  restart_server.clear
-                  server.begin_restart(true)
-                  @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
+                  # acquire a mutex to ensure the server is started before stopping
+                  mutex.synchronize do
+                    restart_server.clear
+                    server.begin_restart(true)
+                    @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
+                  end
                 end
               elsif idx == 0 # restart server
                 restart_server << Puma::Const::WorkerCmd::RESTART << Puma::Const::WorkerCmd::STOPPED
@@ -116,44 +122,50 @@ module Puma
         end
 
         while (cmd = restart_server.pop) != Puma::Const::WorkerCmd::STOPPED
+          server_thread = nil
 
-          if fork_worker && cmd.start_with?(Puma::Const::WorkerCmd::SPAWN)
-            idx = cmd.split(Puma::Const::WorkerCmd::SPAWN).last.to_i
-            child_pid = spawn_worker(idx)
-            worker_pids << child_pid unless child_pid.nil?
+          # acquire a mutex to synchronize the server thread
+          mutex.synchronize do
 
-            next
-          end
+            # check if worker-0 has any request to spawn new workers
+            if fork_worker && cmd.start_with?(Puma::Const::WorkerCmd::SPAWN)
+              idx = cmd.split(Puma::Const::WorkerCmd::SPAWN).last.to_i
+              child_pid = spawn_worker(idx)
+              worker_pids << child_pid unless child_pid.nil?
+              next
+            end
 
-          server_thread = server.run
+            # run server
+            server_thread = server.run
 
-          if @log_writer.debug? && index == 0
-            debug_loaded_extensions "Loaded Extensions - worker 0:"
-          end
+            if @log_writer.debug? && index == 0
+              debug_loaded_extensions "Loaded Extensions - worker 0:"
+            end
 
-          stat_thread ||= Thread.new(@worker_write) do |io|
-            Puma.set_thread_name "stat pld"
-            base_payload = "p#{Process.pid}"
+            stat_thread ||= Thread.new(@worker_write) do |io|
+              Puma.set_thread_name "stat pld"
+              base_payload = "p#{Process.pid}"
 
-            while true
-              begin
-                b = server.backlog || 0
-                r = server.running || 0
-                t = server.pool_capacity || 0
-                m = server.max_threads || 0
-                rc = server.requests_count || 0
-                payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m}, "requests_count": #{rc} }\n!
-                io << payload
-              rescue IOError
-                Puma::Util.purge_interrupt_queue
-                break
+              while true
+                begin
+                  b = server.backlog || 0
+                  r = server.running || 0
+                  t = server.pool_capacity || 0
+                  m = server.max_threads || 0
+                  rc = server.requests_count || 0
+                  payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m}, "requests_count": #{rc} }\n!
+                  io << payload
+                rescue IOError
+                  Puma::Util.purge_interrupt_queue
+                  break
+                end
+                sleep @options[:worker_check_interval]
               end
-              sleep @options[:worker_check_interval]
             end
           end
 
           log "Server started - worker #{index}" if @log_writer.debug?
-          server_thread.join
+          server_thread&.join
         end
 
         # Invoke any worker shutdown hooks so they can prevent the worker
