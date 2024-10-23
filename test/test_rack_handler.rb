@@ -22,7 +22,7 @@ module TestRackUp
 
       launcher = nil
       thread = Thread.new do
-        Rack::Handler::Puma.run(app, events: events, Verbose: true, Silent: true) do |l|
+        Rack::Handler::Puma.run(app, events: events, Verbose: true, Silent: true, Port: 0) do |l|
           launcher = l
         end
       end
@@ -132,6 +132,38 @@ module TestRackUp
       conf.load
 
       assert_equal ["tcp://[::1]:9292"], conf.options[:binds]
+    end
+
+    def test_ssl_host_supplied_port_default
+      @options[:Host] = "ssl://127.0.0.1"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["ssl://127.0.0.1:9292"], conf.options[:binds]
+    end
+
+    def test_relative_unix_host
+      @options[:Host] = "./relative.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix://./relative.sock"], conf.options[:binds]
+    end
+
+    def test_absolute_unix_host
+      @options[:Host] = "/absolute.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix:///absolute.sock"], conf.options[:binds]
+    end
+
+    def test_abstract_unix_host
+      @options[:Host] = "@abstract.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix://@abstract.sock"], conf.options[:binds]
     end
   end
 

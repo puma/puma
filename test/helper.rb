@@ -341,3 +341,34 @@ module TestTempFile
   end
 end
 Minitest::Test.include TestTempFile
+
+# This module is modified based on https://github.com/rails/rails/blob/7-1-stable/activesupport/lib/active_support/testing/method_call_assertions.rb
+module MethodCallAssertions
+  def assert_called_on_instance_of(klass, method_name, message = nil, times: 1, returns: nil)
+    times_called = 0
+    klass.send(:define_method, :"stubbed_#{method_name}") do |*|
+      times_called += 1
+
+      returns
+    end
+
+    klass.send(:alias_method, :"original_#{method_name}", method_name)
+    klass.send(:alias_method, method_name, :"stubbed_#{method_name}")
+
+    yield
+
+    error = "Expected #{method_name} to be called #{times} times, but was called #{times_called} times"
+    error = "#{message}.\n#{error}" if message
+
+    assert_equal times, times_called, error
+  ensure
+    klass.send(:alias_method, method_name, :"original_#{method_name}")
+    klass.send(:undef_method, :"original_#{method_name}")
+    klass.send(:undef_method, :"stubbed_#{method_name}")
+  end
+
+  def assert_not_called_on_instance_of(klass, method_name, message = nil, &block)
+    assert_called_on_instance_of(klass, method_name, message, times: 0, &block)
+  end
+end
+Minitest::Test.include MethodCallAssertions

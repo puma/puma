@@ -153,7 +153,7 @@ module Puma
                   t = server.pool_capacity || 0
                   m = server.max_threads || 0
                   rc = server.requests_count || 0
-                  payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads": #{m}, "requests_count": #{rc} }\n!
+                  payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc} }\n!
                   io << payload
                 rescue IOError
                   Puma::Util.purge_interrupt_queue

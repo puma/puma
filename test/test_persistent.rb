@@ -121,7 +121,11 @@ class TestPersistent < Minitest::Test
     @body << "Chunked"
     @body = @body.to_enum
 
-    response = send_http_read_response GET_10
+    socket = send_http GET_10
+
+    sleep 0.01 if ::Puma::IS_JRUBY
+
+    response = socket.read_response
 
     assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\n\r\n" \
       "HelloChunked", response

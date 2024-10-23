@@ -184,7 +184,7 @@ module Puma
             io = inherit_unix_listener path, fd
             log_writer.log "* Inherited #{str}"
           elsif sock = @activated_sockets.delete([ :unix, path ]) ||
-              @activated_sockets.delete([ :unix, File.realdirpath(path) ])
+              !abstract && @activated_sockets.delete([ :unix, File.realdirpath(path) ])
             @unix_paths << path unless abstract || File.exist?(path)
             io = inherit_unix_listener path, sock
             log_writer.log "* Activated #{str}"
