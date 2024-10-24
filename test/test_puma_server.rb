@@ -40,6 +40,8 @@ class TestPumaServer < Minitest::Test
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
+  ensure
+    @pool = @server.instance_variable_get(:@thread_pool)
   end
 
   def test_normalize_host_header_missing
@@ -2042,5 +2044,38 @@ class TestPumaServer < Minitest::Test
     assert_includes body, "GET /404 HTTP/1.1\r\n"
     assert_includes body, "Content-Length: 144\r\n"
     assert_equal 1, response.scan("HTTP/1.1 200 OK").size
+  end
+
+  def test_auto_trim_with_variable_pool_size
+    auto_trim_time = 3
+    server_run(min_threads: 1, max_threads: 2, auto_trim_time: auto_trim_time)
+    sleep 1 # wait for possible initial trim on run
+    thread_pool_expect true, :trim, nil, after: auto_trim_time
+  end
+
+  def test_auto_trim_with_fixed_pool_size
+    auto_trim_time = 3
+    server_run(min_threads: 2, max_threads: 2, auto_trim_time: auto_trim_time)
+    sleep 1 # wait for possible initial trim on run
+    thread_pool_expect false, :trim, nil, after: auto_trim_time
+  end
+
+  private
+
+  def thread_pool_expect(should_expect, expect_method, *expect_args, after: nil)
+    mock_pool = Minitest::Mock.new
+    mock_pool.expect(expect_method, *expect_args) if should_expect
+
+    @pool.singleton_class.class_eval do
+      define_method(expect_method) do |*args, **kwargs|
+        raise "unexpected #{expect_method} called on Puma::Threadpool" unless should_expect
+
+        mock_pool.public_send(expect_method, *args, **kwargs)
+      end
+    end
+
+    sleep after if after
+
+    assert mock_pool.verify # assert to satisfy proveit
   end
 end

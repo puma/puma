@@ -253,9 +253,8 @@ module Puma
         @reactor.run
       end
 
-
       @thread_pool.auto_reap! if options[:reaping_time]
-      @thread_pool.auto_trim! if options[:auto_trim_time]
+      @thread_pool.auto_trim! if @min_threads != @max_threads && options[:auto_trim_time]
 
       @check, @notify = Puma::Util.pipe unless @notify
 
