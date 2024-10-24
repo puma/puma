@@ -6,6 +6,11 @@ module TestRackUp
   require "rack/handler/puma"
   require "puma/events"
 
+  begin
+    require 'rackup/version'
+  rescue LoadError
+  end
+
   class TestOnBootedHandler < Minitest::Test
     def app
       Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
@@ -360,5 +365,25 @@ module TestRackUp
         end
       end
     end
+
+    def test_rackup1
+      pid = nil
+      # JRuby & TruffleRuby take a long time using IO.popen
+      skip_unless :mri
+      env = {'RUBYOPT' => '-rbundler/setup -rrack/version -rrack/handler -rrackup -rrack/handler/puma'}
+      io = IO.popen env, "ruby -e 'puts Rackup::VERSION'"
+      io.wait_readable 2
+      pid = io.pid
+      log = io.sysread 2_048
+      assert_start_with log, '1.0'
+    ensure
+      if pid
+        if Puma::IS_WINDOWS
+          `taskkill /F /PID #{pid}`
+        else
+          `kill -s KILL #{pid}`
+        end
+      end
+    end if Object.const_defined?(:Rackup) && ::Rackup::VERSION.start_with?('1.')
   end
 end
