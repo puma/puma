@@ -87,6 +87,10 @@ module Puma
 
       if @options[:fork_worker] && all_workers_in_phase?
         @fork_writer << "0\n"
+
+        if worker_at(0).phase > 0
+          @fork_writer << "-2\n"
+        end
       end
     end
 
