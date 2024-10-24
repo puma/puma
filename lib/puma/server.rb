@@ -651,8 +651,12 @@ module Puma
     # Returns a hash of stats about the running server for reporting purposes.
     # @version 5.0.0
     # @!attribute [r] stats
+    # @return [Hash] hash containing stat info from `Server` and `ThreadPool`
     def stats
-      STAT_METHODS.map {|name| [name, send(name) || 0]}.to_h
+      stats = @thread_pool&.stats || {}
+      stats[:max_threads]    = @max_threads
+      stats[:requests_count] = @requests_count
+      stats
     end
 
     # below are 'delegations' to binder
