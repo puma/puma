@@ -472,6 +472,8 @@ class TestIntegration < Minitest::Test
 
     run = true
 
+    thread_error = nil
+
     restart_thread = Thread.new do
       sleep 0.2  # let some connections in before 1st restart
       while run
@@ -486,11 +488,16 @@ class TestIntegration < Minitest::Test
           wait_for_server_to_boot timeout: 5
         rescue Minitest::Assertion # Timeout
           run = false
+        rescue StandardError => e
+          run = false
+          thread_error = e
         end
         restart_count += 1
         sleep(Puma.windows? ? 2.0 : 0.5)
       end
     end
+
+    flunk "Error in restart_thread\n#{thread_error.inspect}" if thread_error
 
     client_threads.each(&:join)
     run = false
