@@ -753,6 +753,8 @@ module Puma
       process_hook :before_worker_boot, key, block, 'on_worker_boot'
     end
 
+    alias_method :before_worker_boot, :on_worker_boot
+
     # Code to run immediately before a worker shuts
     # down (after it has finished processing HTTP requests). The worker's
     # index is passed as an argument. These hooks
@@ -774,6 +776,8 @@ module Puma
       process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown'
     end
 
+    alias_method :before_worker_shutdown, :on_worker_shutdown
+
     # Code to run in the master right before a worker is started. The worker's
     # index is passed as an argument.
     #
@@ -791,6 +795,8 @@ module Puma
 
       process_hook :before_worker_fork, nil, block, 'on_worker_fork'
     end
+
+    alias_method :before_worker_fork, :on_worker_fork
 
     # Code to run in the master after a worker has been started. The worker's
     # index is passed as an argument.
