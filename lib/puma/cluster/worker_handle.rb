@@ -51,7 +51,7 @@ module Puma
         @term
       end
 
-      STATUS_PATTERN = /{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads":(?<max_threads>\d*), "requests_count":(?<requests_count>\d*) }/
+      STATUS_PATTERN = /{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads":(?<max_threads>\d*), "requests_count":(?<requests_count>\d*), "busy_threads":(?<busy_threads>\d*) }/
       private_constant :STATUS_PATTERN
 
       def ping!(status)
