@@ -2,6 +2,10 @@
 
 module TestPuma
   module Assertions
+
+    # iso8601 2022-12-14T00:05:49Z
+    RE_8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/
+
     def assert_start_with(obj, str, msg = nil)
       msg = message(msg) {
         "Expected\n#{obj}\nto start with #{str}"
@@ -28,6 +32,20 @@ module TestPuma
       assert_respond_to matcher, :"=~"
       matcher = Regexp.new Regexp.escape matcher if String === matcher
       assert matcher =~ obj, msg
+    end
+
+    def assert_hash(exp, act)
+      exp.each do |exp_k, exp_v|
+        if exp_v.is_a? Class
+          assert_instance_of exp_v, act[exp_k], "Key #{exp_k} has invalid class"
+        elsif exp_v.is_a? ::Regexp
+          assert_match exp_v, act[exp_k], "Key #{exp_k} has invalid match"
+        elsif exp_v.is_a?(Array) || exp_v.is_a?(Range)
+          assert_includes exp_v, act[exp_k], "Key #{exp_k} isn't included"
+        else
+          assert_equal exp_v, act[exp_k], "Key #{exp_k} bad value"
+        end
+      end
     end
   end
 end
