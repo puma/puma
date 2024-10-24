@@ -250,30 +250,68 @@ class TestPumaServer < Minitest::Test
     assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", response
   end
 
-  def test_immediate_pipeline_not_confused_for_body
+  def test_back_to_back_no_content
     bodies = []
     server_run { |e|
       bodies << e['rack.input'].read
       [200, {}, ["ok #{bodies.size}"]]
     }
 
-    all = send_http_read_all "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\nGET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    data = send_http_read_all(
+      "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\n" \
+      "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+    )
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", all
+    assert_equal(
+      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
+      "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", data
+    )
     assert_equal ["", ""], bodies
   end
 
-  def test_immediate_pipeline_terminates_last_request
+  def test_back_to_back_content
     bodies = []
     server_run { |e|
       bodies << e['rack.input'].read
       [200, {}, ["ok #{bodies.size}"]]
     }
 
-    all = send_http_read_all "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\naGET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+    data = send_http_read_all(
+      "GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 1\r\n\r\na" \
+      "GET / HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+    )
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", all
+    assert_equal(
+      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
+      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", data
+    )
     assert_equal ["a", ""], bodies
+  end
+
+  def test_back_to_back_chunked
+    server_run { |env|
+      [200, {'Content-Length' => env['CONTENT_LENGTH']}, [env['rack.input'].read]]
+    }
+
+    socket = send_http(
+      "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n" \
+      "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ngood\r\n3\r\nbye\r\n0\r\n\r\n"
+    )
+
+    sleep 0.05 # let both requests be processed?
+
+    data = socket.sysread 1_024
+
+    assert_equal(
+      "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello" \
+      "HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\ngoodbye", data
+    )
+
+    socket << "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nH\r\n4\r\nello\r\n0\r\n\r\n"
+
+    response = socket.read_response
+
+    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHello", response
   end
 
   def test_early_hints_works
