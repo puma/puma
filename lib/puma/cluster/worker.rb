@@ -108,9 +108,15 @@ module Puma
 
         Signal.trap "SIGTERM" do
           @worker_write << "#{Puma::Const::PipeRequest::EXTERNAL_TERM}#{Process.pid}\n" rescue nil
-          restart_server.clear
-          server.stop
-          restart_server << Puma::Const::WorkerCmd::STOPPED
+          Thread.new do
+            # create a new thread to avoid deadlock.
+            # acquire a mutex to ensure the server finished restarting before shutting down
+            mutex.synchronize do
+              restart_server.clear
+              server.stop
+              restart_server << Puma::Const::WorkerCmd::STOPPED
+            end
+          end
         end
 
         begin
@@ -126,46 +132,45 @@ module Puma
 
           # acquire a mutex to synchronize the server thread
           mutex.synchronize do
-
-            # check if worker-0 has any request to spawn new workers
-            if fork_worker && cmd.start_with?(Puma::Const::WorkerCmd::SPAWN)
+            if cmd.start_with?(Puma::Const::WorkerCmd::SPAWN) && fork_worker
+              # receive the spawn command to fork worker if current worker is worker-0
               idx = cmd.split(Puma::Const::WorkerCmd::SPAWN).last.to_i
               child_pid = spawn_worker(idx)
               worker_pids << child_pid unless child_pid.nil?
-              next
-            end
 
-            # run server
-            server_thread = server.run
+            elsif cmd == Puma::Const::WorkerCmd::RESTART
+              # receive the restart command to restart the server
+              server_thread = server.run
 
-            if @log_writer.debug? && index == 0
-              debug_loaded_extensions "Loaded Extensions - worker 0:"
-            end
-
-            stat_thread ||= Thread.new(@worker_write) do |io|
-              Puma.set_thread_name "stat pld"
-              base_payload = "p#{Process.pid}"
-
-              while true
-                begin
-                  b = server.backlog || 0
-                  r = server.running || 0
-                  t = server.pool_capacity || 0
-                  m = server.max_threads || 0
-                  rc = server.requests_count || 0
-                  payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc} }\n!
-                  io << payload
-                rescue IOError
-                  Puma::Util.purge_interrupt_queue
-                  break
-                end
-                sleep @options[:worker_check_interval]
+              if @log_writer.debug? && index == 0
+                debug_loaded_extensions "Loaded Extensions - worker 0:"
               end
+
+              stat_thread ||= Thread.new(@worker_write) do |io|
+                Puma.set_thread_name "stat pld"
+                base_payload = "p#{Process.pid}"
+
+                while true
+                  begin
+                    b = server.backlog || 0
+                    r = server.running || 0
+                    t = server.pool_capacity || 0
+                    m = server.max_threads || 0
+                    rc = server.requests_count || 0
+                    payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc} }\n!
+                    io << payload
+                  rescue IOError
+                    Puma::Util.purge_interrupt_queue
+                    break
+                  end
+                  sleep @options[:worker_check_interval]
+                end
+              end
+              log "Server started - worker #{index}" if @log_writer.debug?
             end
           end
 
-          log "Server started - worker #{index}" if @log_writer.debug?
-          server_thread&.join
+          server_thread&.join if cmd == Puma::Const::WorkerCmd::RESTART
         end
 
         # Invoke any worker shutdown hooks so they can prevent the worker
