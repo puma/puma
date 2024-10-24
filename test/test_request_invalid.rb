@@ -215,4 +215,32 @@ class TestRequestInvalid < Minitest::Test
 
     assert_status data
   end
+
+  def test_underscore_header_1
+    hdrs = [
+      "X-FORWARDED-FOR: 1.1.1.1",  # proper
+      "X-FORWARDED-FOR: 2.2.2.2",  # proper
+      "X_FORWARDED-FOR: 3.3.3.3",  # invalid, contains underscore
+      "Content-Length: 5",
+    ].join "\r\n"
+
+    response = send_http_and_read "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
+
+    assert_includes response, "HTTP_X_FORWARDED_FOR = 1.1.1.1, 2.2.2.2"
+    refute_includes response, "3.3.3.3"
+  end
+
+  def test_underscore_header_2
+    hdrs = [
+      "X_FORWARDED-FOR: 3.3.3.3",  # invalid, contains underscore
+      "X-FORWARDED-FOR: 2.2.2.2",  # proper
+      "X-FORWARDED-FOR: 1.1.1.1",  # proper
+      "Content-Length: 5",
+    ].join "\r\n"
+
+    response = send_http_and_read "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
+
+    assert_includes response, "HTTP_X_FORWARDED_FOR = 2.2.2.2, 1.1.1.1"
+    refute_includes response, "3.3.3.3"
+  end
 end

@@ -101,51 +101,6 @@ class TestCLI < Minitest::Test
     t&.join
   end
 
-  def test_control_clustered
-    skip_unless :fork
-    skip_unless :unix
-    url = "unix://#{@tmp_path}"
-
-    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
-                         "-t", "2:2",
-                         "-w", "2",
-                         "--control-url", url,
-                         "--control-token", "",
-                         "test/rackup/hello.ru"], @log_writer, @events
-
-    # without this, Minitest.after_run will trigger on this test ?
-    $debugging_hold = true
-
-    t = Thread.new { cli.run }
-
-    wait_booted
-
-    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
-
-    status = JSON.parse(body)
-
-    assert_equal 2, status["workers"]
-
-    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
-
-    expected_stats = /\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","workers":2,"phase":0,"booted_workers":2,"old_workers":0,"worker_status":\[\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","pid":\d+,"index":0,"phase":0,"booted":true,"last_checkin":"[^"]+","last_status":\{"backlog":0,"running":2,"pool_capacity":2,"max_threads":2,"requests_count":0\}\},\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","pid":\d+,"index":1,"phase":0,"booted":true,"last_checkin":"[^"]+","last_status":\{"backlog":0,"running":2,"pool_capacity":2,"max_threads":2,"requests_count":0\}\}\],"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
-    assert_match(expected_stats, body)
-  ensure
-    if UNIX_SKT_EXIST && HAS_FORK
-      cli.launcher.stop
-      t.join
-
-      done = nil
-      until done
-        @log_writer.stdout.rewind
-        log = @log_writer.stdout.readlines.join ''
-        done = log[/ - Goodbye!/]
-      end
-
-      $debugging_hold = false
-    end
-  end
-
   def test_control
     skip_unless :unix
     url = "unix://#{@tmp_path}"

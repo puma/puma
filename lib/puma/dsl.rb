@@ -754,7 +754,8 @@ module Puma
     end
 
     # Code to run immediately before a worker shuts
-    # down (after it has finished processing HTTP requests). These hooks
+    # down (after it has finished processing HTTP requests). The worker's
+    # index is passed as an argument. These hooks
     # can block if necessary to wait for background operations unknown
     # to Puma to finish before the process terminates.
     #
@@ -1266,6 +1267,32 @@ module Puma
     #
     def max_fast_inline(num_of_requests)
       @options[:max_fast_inline] = Float(num_of_requests)
+    end
+
+    # When `true`, keep-alive connections are maintained on inbound requests.
+    # Enabling this setting reduces the number of TCP operations, reducing response
+    # times for connections that can send multiple requests in a single connection.
+    #
+    # When Puma receives more incoming connections than available Puma threads,
+    # enabling the keep-alive behavior may result in processing requests out-of-order,
+    # increasing overall response time variance. Increased response time variance
+    # means that the overall average of response times might not change, but more
+    # outliers will exist. Those long-tail outliers may significantly affect response
+    # times for some processed requests.
+    #
+    # When `false`, Puma closes the connection after each request, requiring the
+    # client to open a new request. Disabling this setting guarantees that requests
+    # will be processed in the order they are fully received, decreasing response
+    # variance and eliminating long-tail outliers caused by keep-alive behavior.
+    # The trade-off is that the number of TCP operations required will increase.
+    #
+    # The default is +true+.
+    #
+    # @example
+    #   enable_keep_alives false
+    #
+    def enable_keep_alives(enabled=true)
+      @options[:enable_keep_alives] = enabled
     end
 
     # Specify the backend for the IO selector.

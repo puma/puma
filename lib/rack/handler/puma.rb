@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
-# This module is used as an 'include' file in code at bottom of file
 module Puma
+
+  # This module is used as an 'include' file in code at bottom of file. It loads
+  # into either `Rackup::Handler::Puma` or `Rack::Handler::Puma`.
+
   module RackHandler
     DEFAULT_OPTIONS = {
       :Verbose => false,
@@ -93,9 +96,9 @@ module Puma
     def set_host_port_to_config(host, port, config)
       config.clear_binds! if host || port
 
-      if host && (host[0,1] == '.' || host[0,1] == '/')
+      if host&.start_with? '.', '/', '@'
         config.bind "unix://#{host}"
-      elsif host && host =~ /^ssl:\/\//
+      elsif host&.start_with? 'ssl://'
         uri = URI.parse(host)
         uri.port ||= port || ::Puma::Configuration::DEFAULTS[:tcp_port]
         config.bind uri.to_s

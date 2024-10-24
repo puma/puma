@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "rake-compiler", "~> 1.1.9"
+gem "rake-compiler"
 
 gem "json", "~> 2.3"
 gem "nio4r", "~> 2.0"

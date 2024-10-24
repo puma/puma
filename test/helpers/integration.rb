@@ -21,8 +21,8 @@ class TestIntegration < Minitest::Test
   LOG_ERROR_SLEEP = 0.2
   LOG_ERROR_QTY   = 5
 
-  BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
-    "#{Gem.ruby} -Ilib"
+  # rubyopt requires bundler/setup, so we don't need it here
+  BASE = "#{Gem.ruby} -Ilib"
 
   def setup
     @server = nil
@@ -114,8 +114,8 @@ class TestIntegration < Minitest::Test
     else
       @server = IO.popen(env, cmd)
     end
-    wait_for_server_to_boot(log: log) unless no_wait
     @pid = @server.pid
+    wait_for_server_to_boot(log: log) unless no_wait
     @server
   end
 
@@ -133,8 +133,24 @@ class TestIntegration < Minitest::Test
     end
   end
 
-  def restart_server_and_listen(argv, log: false)
-    cli_server argv
+  # Most integration tests do not stop/shutdown the server, which is handled by
+  # `teardown` in this file.
+  # For tests that do stop/shutdown the server, use this method to check with `wait2`,
+  # and also clear variables so `teardown` will not run its code.
+  def wait_server(exit_code = 0, pid: @pid)
+    return unless pid
+    begin
+      _, status = Process.wait2 pid
+      assert_equal exit_code, status
+    rescue Errno::ECHILD # raised on Windows ?
+    end
+  ensure
+    @server.close unless @server.closed?
+    @server = nil
+  end
+
+  def restart_server_and_listen(argv, env: {}, log: false)
+    cli_server argv, env: env, log: log
     connection = connect
     initial_reply = read_body(connection)
     restart_server connection, log: log
@@ -144,14 +160,17 @@ class TestIntegration < Minitest::Test
   # reuses an existing connection to make sure that works
   def restart_server(connection, log: false)
     Process.kill :USR2, @pid
+    wait_for_server_to_include 'Restarting', log: log
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot log: log
   end
 
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
-  def wait_for_server_to_boot(log: false)
-    wait_for_server_to_include 'Ctrl-C', log: log
+  def wait_for_server_to_boot(timeout: LOG_TIMEOUT, log: false)
+    @puma_pid = wait_for_server_to_match(/(?:Master|      ) PID: (\d+)$/, 1, timeout: timeout, log: log)&.to_i
+    @pid = @puma_pid if @pid != @puma_pid
+    wait_for_server_to_include 'Ctrl-C', timeout: timeout, log: log
   end
 
   # Returns true if and when server log includes str.  Will timeout otherwise.
@@ -309,12 +328,13 @@ class TestIntegration < Minitest::Test
   # used to define correct 'refused' errors
   def thread_run_refused(unix: false)
     if unix
-      DARWIN ? [IOError, Errno::ENOENT, Errno::EPIPE] :
+      DARWIN ? [IOError, Errno::ENOENT, Errno::EPIPE, Errno::EBADF] :
                [IOError, Errno::ENOENT]
     else
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
+      # Errno::ECONNABORTED is thrown by Windows on read or write
       DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
-               [IOError, Errno::ECONNREFUSED, Errno::EPIPE]
+               [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::ECONNABORTED]
     end
   end
 
@@ -449,7 +469,12 @@ class TestIntegration < Minitest::Test
           Process.kill :USR2, @pid
         end
         sleep 0.5
-        wait_for_server_to_boot
+        # If 'wait_for_server_to_boot' times out, error in thread shuts down CI
+        begin
+          wait_for_server_to_boot timeout: 5
+        rescue Minitest::Assertion # Timeout
+          run = false
+        end
         restart_count += 1
         sleep(Puma.windows? ? 2.0 : 0.5)
       end
@@ -460,7 +485,7 @@ class TestIntegration < Minitest::Test
     restart_thread.join
     if Puma.windows?
       cli_pumactl 'stop'
-      Process.wait @server.pid
+      wait_server
     else
       stop_server
     end

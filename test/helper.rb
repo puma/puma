@@ -80,17 +80,48 @@ module UniquePort
 end
 
 require "timeout"
-module TimeoutEveryTestCase
-  # our own subclass so we never confuse different timeouts
-  class TestTookTooLong < Timeout::Error
-  end
 
-  def run
-    with_info_handler do
+if Minitest::VERSION < '5.25'
+  module TimeoutEveryTestCase
+    # our own subclass so we never confuse different timeouts
+    class TestTookTooLong < Timeout::Error
+    end
+
+    def run
+      with_info_handler do
+        time_it do
+          capture_exceptions do
+            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+              before_setup; setup; after_setup
+              self.send self.name
+            end
+          end
+
+          capture_exceptions do
+            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
+              Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
+            end
+          end
+          if respond_to? :clean_tmp_paths
+            clean_tmp_paths
+          end
+        end
+      end
+
+      Minitest::Result.from self # per contract
+    end
+  end
+else
+  module TimeoutEveryTestCase
+    # our own subclass so we never confuse different timeouts
+    class TestTookTooLong < Timeout::Error
+    end
+
+    def run
       time_it do
         capture_exceptions do
           ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-            before_setup; setup; after_setup
+            Minitest::Test::SETUP_METHODS.each { |hook| self.send hook }
             self.send self.name
           end
         end
@@ -104,9 +135,9 @@ module TimeoutEveryTestCase
           clean_tmp_paths
         end
       end
-    end
 
-    Minitest::Result.from self # per contract
+      Minitest::Result.from self # per contract
+    end
   end
 end
 
@@ -304,8 +335,40 @@ module TestTempFile
     fio.write data
     fio.flush
     fio.rewind
-    @ios << fio
+    @ios << fio if defined?(@ios)
+    @ios_to_close << fio if defined?(@ios_to_close)
     fio
   end
 end
 Minitest::Test.include TestTempFile
+
+# This module is modified based on https://github.com/rails/rails/blob/7-1-stable/activesupport/lib/active_support/testing/method_call_assertions.rb
+module MethodCallAssertions
+  def assert_called_on_instance_of(klass, method_name, message = nil, times: 1, returns: nil)
+    times_called = 0
+    klass.send(:define_method, :"stubbed_#{method_name}") do |*|
+      times_called += 1
+
+      returns
+    end
+
+    klass.send(:alias_method, :"original_#{method_name}", method_name)
+    klass.send(:alias_method, method_name, :"stubbed_#{method_name}")
+
+    yield
+
+    error = "Expected #{method_name} to be called #{times} times, but was called #{times_called} times"
+    error = "#{message}.\n#{error}" if message
+
+    assert_equal times, times_called, error
+  ensure
+    klass.send(:alias_method, method_name, :"original_#{method_name}")
+    klass.send(:undef_method, :"original_#{method_name}")
+    klass.send(:undef_method, :"stubbed_#{method_name}")
+  end
+
+  def assert_not_called_on_instance_of(klass, method_name, message = nil, &block)
+    assert_called_on_instance_of(klass, method_name, message, times: 0, &block)
+  end
+end
+Minitest::Test.include MethodCallAssertions

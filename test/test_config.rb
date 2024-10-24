@@ -123,7 +123,7 @@ class TestConfigFile < TestConfigFileBase
     skip_if :jruby
     skip_unless :ssl
 
-    cert_path = File.expand_path "../examples/puma/client-certs", __dir__
+    cert_path = File.expand_path "../examples/puma/client_certs", __dir__
     cert_pem = File.read("#{cert_path}/server.crt")
     key_pem = File.read("#{cert_path}/server.key")
 
@@ -743,6 +743,31 @@ class TestConfigFileWithFakeEnv < TestConfigFileBase
     conf.options[:environment] = 'fake-env'
 
     assert_equal ['config/puma/fake-env.rb'], conf.config_files
+  end
+
+  def test_enable_keep_alives_by_default
+    conf = Puma::Configuration.new
+    conf.load
+
+    assert_equal conf.options[:enable_keep_alives], true
+  end
+
+  def test_enable_keep_alives_true
+    conf = Puma::Configuration.new do |c|
+      c.enable_keep_alives true
+    end
+    conf.load
+
+    assert_equal conf.options[:enable_keep_alives], true
+  end
+
+  def test_enable_keep_alives_false
+    conf = Puma::Configuration.new do |c|
+      c.enable_keep_alives false
+    end
+    conf.load
+
+    assert_equal conf.options[:enable_keep_alives], false
   end
 
   def teardown

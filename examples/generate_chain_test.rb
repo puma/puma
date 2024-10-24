@@ -8,21 +8,15 @@ regenerates ca.pem, ca_keypair.pem,
             cert_chain.pem
 
 certs before date will be the first of the current month
-
-expires in 4 years
-
 =end
 
 require 'bundler/inline'
-
-
-require 'certificate_authority'
-gemfile do
+gemfile(true) do
   source 'https://rubygems.org'
   gem 'certificate_authority'
 end
 
-module Generate
+module GenerateChainCerts
 
   CA               = "ca.crt"
   CA_KEY           = "ca.key"
@@ -35,10 +29,6 @@ module Generate
   CERT_CHAIN       = "cert_chain.pem"
 
   class << self
-
-    def path
-      File.expand_path(__dir__)
-    end
 
      def before_after
       @before_after ||= (
@@ -103,6 +93,8 @@ module Generate
     def run
       cert = generate_cert
 
+      path = "#{__dir__}/puma/chain_cert"
+
       Dir.chdir path do
         File.write CA, root_ca.to_pem, mode: 'wb'
         File.write CA_KEY, root_ca.key_material.private_key.to_pem, mode: 'wb'
@@ -119,11 +111,11 @@ module Generate
         cert_chain = cert.to_pem + ca_chain
         File.write CERT_CHAIN, cert_chain, mode: 'wb'
       end
-
     rescue => e
-        puts "error: #{e.message}"
+      puts "error: #{e.message}"
+      exit 1
     end
   end
 end
 
-Generate.run
+GenerateChainCerts.run

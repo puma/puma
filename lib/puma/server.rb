@@ -95,6 +95,7 @@ module Puma
       @max_threads               = @options[:max_threads]
       @queue_requests            = @options[:queue_requests]
       @max_fast_inline           = @options[:max_fast_inline]
+      @enable_keep_alives        = @options[:enable_keep_alives]
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
 
@@ -360,7 +361,7 @@ module Puma
                 break if handle_check
               else
                 pool.wait_until_not_full
-                pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker])
+                pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker]) if @clustered
 
                 io = begin
                   sock.accept_nonblock

@@ -3,20 +3,11 @@
 =begin
 run code to generate all certs
 certs before date will be the first of the current month
-expire in four years
-
-JRuby:
-see https://github.com/puma/puma/commit/4ae0de4f4cc
-after running this Ruby code, delete keystore.jks and server.p12, then
-cd examples/puma/client-certs
-openssl pkcs12 -chain -CAfile ./ca.crt -export -password pass:jruby_puma -inkey server.key -in server.crt -name server -out server.p12
-keytool -importkeystore -srckeystore server.p12 -srcstoretype pkcs12 -srcstorepass jruby_puma -destkeystore keystore.jks -deststoretype JKS -storepass jruby_puma
-keytool -importcert -alias ca -noprompt -trustcacerts -file ca.crt -keystore keystore.jks -storepass jruby_puma
 =end
 
 require "openssl"
 
-module Generate
+module GenerateClientCerts
 
   KEY_LEN = 2048
   SIGN_ALGORITHM = OpenSSL::Digest::SHA256
@@ -36,6 +27,9 @@ module Generate
       output_info
       setup_issue
       write_files
+    rescue => e
+      puts "error: #{e.message}"
+      exit 1
     end
 
     private
@@ -77,7 +71,7 @@ module Generate
       ef = OpenSSL::X509::ExtensionFactory.new
       ef.subject_certificate = cert
       ef.issuer_certificate = issuer
-      extensions.each {|oid, value, critical|
+      extensions.each { |oid, value, critical|
         cert.add_extension(ef.create_extension(oid, value, critical))
       }
       cert.sign(issuer_key, digest)
@@ -85,7 +79,9 @@ module Generate
     end
 
     def write_files
-      Dir.chdir __dir__ do
+      path = "#{__dir__}/puma/client_certs"
+
+      Dir.chdir path do
         File.write "ca.crt"    , @ca_cert.to_pem , mode: 'wb'
         File.write "ca.key"    , @ca_key.to_pem  , mode: 'wb'
         File.write "server.crt", @svr_cert.to_pem, mode: 'wb'
@@ -118,16 +114,16 @@ module Generate
     end
 
     def output_info
-      puts ""
-      puts "    Key length: #{KEY_LEN}"
-      puts     "sign_algorithm: #{SIGN_ALGORITHM}"
-      puts ""
-      puts "Normal cert dates:  #{@before} to #{@after}"
-      puts ""
-      puts "Expired cert dates: #{@b_exp} to #{@a_exp}"
-      puts ""
+      puts <<~INFO
+            Key length: #{KEY_LEN}
+        sign_algorithm: #{SIGN_ALGORITHM}
+
+        Normal cert dates:  #{@before} to #{@after}
+
+        Expired cert dates: #{@b_exp} to #{@a_exp}
+      INFO
     end
   end
 end
 
-Generate.run
+GenerateClientCerts.run

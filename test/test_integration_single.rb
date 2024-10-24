@@ -122,11 +122,9 @@ class TestIntegrationSingle < TestIntegration
     rejected_curl_wait_thread.join
 
     assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|Couldn't connect to server/, rejected_curl_stderr.read)
+    assert_match(/Connection refused|(Couldn't|Could not) connect to server/, rejected_curl_stderr.read)
 
-    Process.wait(@server.pid)
-    @server.close unless @server.closed?
-    @server = nil # prevent `#teardown` from killing already killed server
+    wait_server 15
   end
 
   def test_int_refuse
@@ -142,7 +140,7 @@ class TestIntegrationSingle < TestIntegration
     end
 
     Process.kill :INT, @pid
-    Process.wait @pid
+    wait_server
 
     assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
   end
@@ -207,10 +205,9 @@ class TestIntegrationSingle < TestIntegration
     cli_pumactl 'stop'
 
     assert wait_for_server_to_include("hello\n")
-    assert_includes @server.read, 'Goodbye!'
+    assert wait_for_server_to_include("Goodbye!")
 
-    @server.close unless @server.closed?
-    @server = nil
+    wait_server
   end
 
   # listener is closed 'externally' while Puma is in the IO.select statement
@@ -220,13 +217,9 @@ class TestIntegrationSingle < TestIntegration
     cli_server "test/rackup/close_listeners.ru", merge_err: true
     connection = fast_connect
 
-    if DARWIN && RUBY_VERSION < '2.5'
-      begin
-        read_body connection
-      rescue EOFError
-      end
-    else
+    begin
       read_body connection
+    rescue EOFError
     end
 
     begin
@@ -253,6 +246,8 @@ class TestIntegrationSingle < TestIntegration
     assert wait_for_server_to_include('Loaded Extensions:')
 
     cli_pumactl 'stop'
+    assert wait_for_server_to_include('Goodbye!')
+    wait_server
   end
 
   def test_idle_timeout

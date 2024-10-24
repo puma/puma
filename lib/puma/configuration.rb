@@ -130,6 +130,7 @@ module Puma
       binds: ['tcp://0.0.0.0:9292'.freeze],
       clean_thread_locals: false,
       debug: false,
+      enable_keep_alives: true,
       early_hints: nil,
       environment: 'development'.freeze,
       # Number of seconds to wait until we get the first data for the request.
@@ -172,8 +173,8 @@ module Puma
       http_content_length_limit: nil
     }
 
-    def initialize(user_options={}, default_options = {}, &block)
-      default_options = self.puma_default_options.merge(default_options)
+    def initialize(user_options={}, default_options = {}, env = ENV, &block)
+      default_options = self.puma_default_options(env).merge(default_options)
 
       @options     = UserFileDefaultOptions.new(user_options, default_options)
       @plugins     = PluginLoader.new
@@ -184,6 +185,8 @@ module Puma
       if !@options[:prune_bundler]
         default_options[:preload_app] = (@options[:workers] > 1) && Puma.forkable?
       end
+
+      @puma_bundler_pruned = env.key? 'PUMA_BUNDLER_PRUNED'
 
       if block
         configure(&block)
@@ -215,22 +218,22 @@ module Puma
       self
     end
 
-    def puma_default_options
+    def puma_default_options(env = ENV)
       defaults = DEFAULTS.dup
-      puma_options_from_env.each { |k,v| defaults[k] = v if v }
+      puma_options_from_env(env).each { |k,v| defaults[k] = v if v }
       defaults
     end
 
-    def puma_options_from_env
-      min = ENV['PUMA_MIN_THREADS'] || ENV['MIN_THREADS']
-      max = ENV['PUMA_MAX_THREADS'] || ENV['MAX_THREADS']
-      workers = ENV['WEB_CONCURRENCY']
+    def puma_options_from_env(env = ENV)
+      min = env['PUMA_MIN_THREADS'] || env['MIN_THREADS']
+      max = env['PUMA_MAX_THREADS'] || env['MAX_THREADS']
+      workers = env['WEB_CONCURRENCY']
 
       {
         min_threads: min && Integer(min),
         max_threads: max && Integer(max),
         workers: workers && Integer(workers),
-        environment: ENV['APP_ENV'] || ENV['RACK_ENV'] || ENV['RAILS_ENV'],
+        environment: env['APP_ENV'] || env['RACK_ENV'] || env['RAILS_ENV'],
       }
     end
 
@@ -343,7 +346,7 @@ module Puma
     def rack_builder
       # Load bundler now if we can so that we can pickup rack from
       # a Gemfile
-      if ENV.key? 'PUMA_BUNDLER_PRUNED'
+      if @puma_bundler_pruned
         begin
           require 'bundler/setup'
         rescue LoadError
