@@ -438,8 +438,7 @@ module Puma
     #   end
     #
     def on_restart(&block)
-      @options[:on_restart] ||= []
-      @options[:on_restart] << block
+      process_hook :on_restart, nil, block, 'on_restart'
     end
 
     # Command to use to restart Puma. This should be just how to
@@ -731,8 +730,7 @@ module Puma
     def before_fork(&block)
       warn_if_in_single_mode('before_fork')
 
-      @options[:before_fork] ||= []
-      @options[:before_fork] << block
+      process_hook :before_fork, nil, block, 'before_fork'
     end
 
     # Code to run in a worker when it boots to setup
@@ -855,6 +853,8 @@ module Puma
     # @version 5.0.0
     #
     def on_refork(key = nil, &block)
+      warn_if_in_single_mode('on_refork')
+
       process_hook :before_refork, key, block, 'on_refork'
     end
 
@@ -876,8 +876,7 @@ module Puma
     #   end
     #
     def on_thread_start(&block)
-      @options[:before_thread_start] ||= []
-      @options[:before_thread_start] << block
+      process_hook :before_thread_start, nil, block, 'on_thread_start'
     end
 
     # Provide a block to be executed after a thread is trimmed from the thread
@@ -901,8 +900,7 @@ module Puma
     #   end
     #
     def on_thread_exit(&block)
-      @options[:before_thread_exit] ||= []
-      @options[:before_thread_exit] << block
+      process_hook :before_thread_exit, nil, block, 'on_thread_exit'
     end
 
     # Code to run out-of-band when the worker is idle.
@@ -1416,7 +1414,7 @@ module Puma
         log_string =
           "Warning: You specified code to run in a `#{hook_name}` block, " \
           "but Puma is not configured to run in cluster mode (worker count > 0 ), " \
-          "so your `#{hook_name}` block did not run"
+          "so your `#{hook_name}` block will not run."
 
         LogWriter.stdio.log(log_string)
       end
