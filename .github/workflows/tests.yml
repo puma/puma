@@ -23,7 +23,7 @@ jobs:
 
   test_mri:
     name: >-
-      MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}${{ matrix.rack-v }}
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}${{ matrix.rack-v }}
     needs: [rubocop, skip_duplicate_runs]
     env:
       CI: true
@@ -133,7 +133,7 @@ jobs:
 
   test_non_mri:
     name: >-
-      NON-MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
     needs: [rubocop, skip_duplicate_runs]
     env:
       CI: true
