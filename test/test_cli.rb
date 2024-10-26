@@ -64,7 +64,7 @@ class TestCLI < Minitest::Test
     assert_equal Puma.stats_hash, JSON.parse(Puma.stats, symbolize_names: true)
 
     dmt = Puma::Configuration::DEFAULTS[:max_threads]
-    expected_stats = /\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt},"requests_count":0,"busy_threads":0,"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
+    expected_stats = /\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"busy_threads":0,"max_threads":#{dmt},"requests_count":0,"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
     assert_match(expected_stats, body)
   ensure
     cli.launcher.stop
@@ -93,7 +93,7 @@ class TestCLI < Minitest::Test
       port: control_port, ctx: new_ctx
 
     dmt = Puma::Configuration::DEFAULTS[:max_threads]
-    expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt}/
+    expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"busy_threads":0,"max_threads":#{dmt}/
     assert_match(expected_stats, body)
   ensure
     # always called, even if skipped
@@ -117,7 +117,7 @@ class TestCLI < Minitest::Test
     body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
 
     dmt = Puma::Configuration::DEFAULTS[:max_threads]
-    expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"max_threads":#{dmt},"requests_count":0,"busy_threads":0,"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
+    expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"busy_threads":0,"max_threads":#{dmt},"requests_count":0,"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
     assert_match(expected_stats, body)
   ensure
     if UNIX_SKT_EXIST
