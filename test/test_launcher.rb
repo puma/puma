@@ -4,6 +4,9 @@ require_relative "helpers/tmp_path"
 require "puma/configuration"
 require 'puma/log_writer'
 
+# Intermittent failures & errors when run parallel in GHA, local use may run fine.
+
+
 class TestLauncher < Minitest::Test
   include TmpPath
 
@@ -127,11 +130,15 @@ class TestLauncher < Minitest::Test
 
     launcher = create_launcher env: env
 
-    assert_match(/Configuration:/, launcher.log_writer.stdout.string)
+    log = launcher.log_writer.stdout.string
 
-    launcher.config.final_options.each do |config_key, _value|
-      assert_match(/#{config_key}/, launcher.log_writer.stdout.string)
+    # the below confirms an exact match, allowing for line order differences
+    launcher.config.final_options.each do |config_key, value|
+      line = "- #{config_key}: #{value}\n"
+      assert_includes log, line
+      log.sub! line, ''
     end
+    assert_equal 'Configuration:', log.strip
   end
 
   def test_log_config_disabled
