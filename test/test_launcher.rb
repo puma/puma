@@ -4,7 +4,7 @@ require_relative "helpers/tmp_path"
 require "puma/configuration"
 require 'puma/log_writer'
 
-# Can't run parallel due to `Puma` class methods used
+# Can't run parallel due to `ENV` use
 
 class TestLauncher < Minitest::Test
   include TmpPath
@@ -86,42 +86,42 @@ class TestLauncher < Minitest::Test
     launcher.run
     sleep 1 unless Puma.mri?
     Puma::Server::STAT_METHODS.each do |stat|
-      assert_includes Puma.stats_hash, stat
+      assert_includes launcher.stats, stat
     end
   end
 
   def test_puma_stats_clustered
     skip_unless :fork
 
-    queue_stop = Queue.new
+    queue_booted = Queue.new
+    stopped = nil
+    status  = nil
 
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
       c.workers 1
     end
     launcher = create_launcher(conf)
-    launcher.events.on_booted {
-      queue_stop.pop
-      launcher.stop
-    }
-
-    status = nil
+    launcher.events.on_booted { queue_booted << nil }
 
     th_stats = Thread.new do
+      queue_booted.pop
       sleep Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
-      status = Puma.stats_hash[:worker_status]&.first[:last_status]
-      queue_stop << true
+      status = launcher.stats[:worker_status]&.first[:last_status]
+      launcher.stop
+      stopped = true
     end
 
     launcher.run
     assert th_stats.join(10)
-    launcher.stop
 
     refute_nil status
 
     Puma::Server::STAT_METHODS.each do |stat|
       assert_includes status, stat
     end
+  ensure
+    launcher&.stop unless stopped
   end
 
   def test_log_config_enabled
