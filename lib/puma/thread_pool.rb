@@ -91,7 +91,8 @@ module Puma
       with_mutex do
         { backlog: @todo.size,
           running: @spawned,
-          pool_capacity: @waiting + (@max - @spawned)
+          pool_capacity: @waiting + (@max - @spawned),
+          busy_threads: @spawned - @waiting + @todo.size
         }
       end
     end
