@@ -4,8 +4,6 @@ require_relative "helpers/tmp_path"
 require "puma/configuration"
 require 'puma/log_writer'
 
-# Can't run parallel due to `ENV` use
-
 class TestLauncher < Minitest::Test
   include TmpPath
 
@@ -125,17 +123,15 @@ class TestLauncher < Minitest::Test
   end
 
   def test_log_config_enabled
-    ENV['PUMA_LOG_CONFIG'] = "1"
+    env = {'PUMA_LOG_CONFIG' => '1'}
 
-    launcher = create_launcher
+    launcher = create_launcher env: env
 
     assert_match(/Configuration:/, launcher.log_writer.stdout.string)
 
     launcher.config.final_options.each do |config_key, _value|
       assert_match(/#{config_key}/, launcher.log_writer.stdout.string)
     end
-  ensure
-    ENV.delete('PUMA_LOG_CONFIG')
   end
 
   def test_log_config_disabled
@@ -163,8 +159,8 @@ class TestLauncher < Minitest::Test
 
   private
 
-  def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings)
+  def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings, **kw)
     config.options[:binds] = ["tcp://127.0.0.1:#{UniquePort.call}"]
-    Puma::Launcher.new(config, log_writer: lw)
+    Puma::Launcher.new(config, log_writer: lw, **kw)
   end
 end
