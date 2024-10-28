@@ -338,6 +338,9 @@ module Puma
         tcp_server.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
       tcp_server.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
+      if Socket.const_defined? :SO_REUSEPORT
+        tcp_server.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEPORT, true)
+      end
       tcp_server.listen backlog
 
       @ios << tcp_server
@@ -371,6 +374,9 @@ module Puma
         s.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
       end
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
+      if Socket.const_defined? :SO_REUSEPORT
+        s.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEPORT, true)
+      end
       s.listen backlog
 
       ssl = MiniSSL::Server.new s, ctx
