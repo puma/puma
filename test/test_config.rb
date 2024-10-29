@@ -663,7 +663,8 @@ class TestConfigEnvVariables < Minitest::Test
   end
 
   def test_config_loads_correct_max_threads
-    conf = Puma::Configuration.new
+    default_max_threads = Puma.mri? ? 5 : 16
+    assert_equal default_max_threads, Puma::Configuration.new.options.default_options[:max_threads]
 
     env = { "MAX_THREADS" => "7" }
     conf = Puma::Configuration.new({}, {}, env)
