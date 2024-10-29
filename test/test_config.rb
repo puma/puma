@@ -660,6 +660,10 @@ class TestConfigEnvVariables < Minitest::Test
     env = { "PUMA_MIN_THREADS" => "8" }
     conf = Puma::Configuration.new({}, {}, env)
     assert_equal 8, conf.options.default_options[:min_threads]
+
+    env = { "PUMA_MIN_THREADS" => "" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 0, conf.options.default_options[:min_threads]
   end
 
   def test_config_loads_correct_max_threads
@@ -673,12 +677,22 @@ class TestConfigEnvVariables < Minitest::Test
     env = { "PUMA_MAX_THREADS" => "8" }
     conf = Puma::Configuration.new({}, {}, env)
     assert_equal 8, conf.options.default_options[:max_threads]
+
+    env = { "PUMA_MAX_THREADS" => "" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal default_max_threads, conf.options.default_options[:max_threads]
   end
 
   def test_config_loads_workers_from_env
     env = { "WEB_CONCURRENCY" => "9" }
     conf = Puma::Configuration.new({}, {}, env)
     assert_equal 9, conf.options.default_options[:workers]
+  end
+
+  def test_config_ignores_blank_workers_from_env
+    env = { "WEB_CONCURRENCY" => "" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 0, conf.options.default_options[:workers]
   end
 
   def test_config_does_not_preload_app_if_not_using_workers
