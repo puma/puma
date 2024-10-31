@@ -28,7 +28,6 @@ class TestExampleCertExpiration < Minitest::Test
     expiration_data = TEST_FILES.map do |path|
       full_path  = File.join(EXAMPLES_DIR, path)
       not_after  = OpenSSL::X509::Certificate.new(File.read(full_path)).not_after
-      parent_dir = File.dirname(path)
       [not_after, path]
     end
 
