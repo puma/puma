@@ -2,9 +2,9 @@ require "bundler/setup"
 require "rake/testtask"
 require "rake/extensiontask"
 require "rake/javaextensiontask"
-require_relative 'lib/puma/detect'
-require 'rubygems/package_task'
-require 'bundler/gem_tasks'
+require_relative "lib/puma/detect"
+require "rubygems/package_task"
+require "bundler/gem_tasks"
 
 begin
   # Add rubocop task
@@ -16,28 +16,28 @@ end
 gemspec = Gem::Specification.load("puma.gemspec")
 Gem::PackageTask.new(gemspec).define
 
-Rake::FileUtilsExt.verbose_flag = !!ENV['PUMA_TEST_DEBUG']
+Rake::FileUtilsExt.verbose_flag = !!ENV["PUMA_TEST_DEBUG"]
 # generate extension code using Ragel (C and Java)
 desc "Generate extension code (C and Java) using Ragel"
 task :ragel
 
-file 'ext/puma_http11/http11_parser.c' => ['ext/puma_http11/http11_parser.rl'] do |t|
+file "ext/puma_http11/http11_parser.c" => ["ext/puma_http11/http11_parser.rl"] do |t|
   begin
     sh "ragel #{t.prerequisites.last} -C -G2 -I ext/puma_http11 -o #{t.name}"
   rescue
     fail "Could not build wrapper using Ragel (it failed or not installed?)"
   end
 end
-task :ragel => ['ext/puma_http11/http11_parser.c']
+task :ragel => ["ext/puma_http11/http11_parser.c"]
 
-file 'ext/puma_http11/org/jruby/puma/Http11Parser.java' => ['ext/puma_http11/http11_parser.java.rl'] do |t|
+file "ext/puma_http11/org/jruby/puma/Http11Parser.java" => ["ext/puma_http11/http11_parser.java.rl"] do |t|
   begin
     sh "ragel #{t.prerequisites.last} -J -G2 -I ext/puma_http11 -o #{t.name}"
   rescue
     fail "Could not build wrapper using Ragel (it failed or not installed?)"
   end
 end
-task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
+task :ragel => ["ext/puma_http11/org/jruby/puma/Http11Parser.java"]
 
 if !Puma.jruby?
   # compile extensions using rake-compiler
@@ -76,7 +76,7 @@ else
 
   Rake::JavaExtensionTask.new("puma_http11", gemspec) do |ext|
     ext.lib_dir = "lib/puma"
-    ext.release = '8'
+    ext.release = "8"
   end
 end
 
