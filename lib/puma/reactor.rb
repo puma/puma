@@ -24,8 +24,12 @@ module Puma
       unless valid_backends.include?(backend)
         raise ArgumentError.new("unsupported IO selector backend: #{backend} (available backends: #{valid_backends.join(', ')})")
       end
-
-      @selector = ::NIO::Selector.new(NIO::Selector.backends.delete(backend))
+      delete_output = NIO::Selector.backends.delete(backend)
+      if delete_output.nil?
+        @selector = ::NIO::Selector.new
+      else
+        @selector = ::NIO::Selector.new(delete_output)
+      end
       @input = Queue.new
       @timeouts = []
       @block = block
