@@ -27,8 +27,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: head }
-          - { os: macos-12     , ruby: head }
+          - { os: ubuntu-22.04 , ruby: head }
+          - { os: macos-13     , ruby: head }
           # Dec-2023 - incorrect line directives with Windows
           # occurs with both MSYS2 and MSFT/vpkg versions of ragel
           # - { os: windows-2022 , ruby: ucrt } 
