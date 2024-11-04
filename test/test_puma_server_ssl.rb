@@ -120,7 +120,7 @@ class TestPumaServerSSL < Minitest::Test
 
   def rejection(server_ctx, min_max, ssl_version)
     if server_ctx
-      start_server &server_ctx
+      start_server(&server_ctx)
     else
       start_server
     end

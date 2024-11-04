@@ -61,7 +61,7 @@ class TestBusyWorker < Minitest::Test
 
     sockets = send_http_array GET_10, n
 
-    responses = read_response_array(sockets)
+    read_response_array(sockets)
 
     assert_equal n, @requests_count, "number of requests needs to match"
     assert_equal 0, @requests_running, "none of requests needs to be running"
@@ -81,7 +81,7 @@ class TestBusyWorker < Minitest::Test
 
     sockets = send_http_array GET_10, n
 
-    responses = read_response_array(sockets)
+    read_response_array(sockets)
 
     assert_equal n, @requests_count, "number of requests needs to match"
     assert_equal 0, @requests_running, "none of requests needs to be running"

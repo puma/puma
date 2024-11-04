@@ -226,8 +226,6 @@ class TestPersistent < Minitest::Test
   end
 
   def test_keepalive_doesnt_starve_clients
-    sz = @body[0].size.to_s
-
     send_http @valid_request
 
     c2 = send_http @valid_request
