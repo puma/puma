@@ -4,7 +4,8 @@ require_relative "helpers/tmp_path"
 require "puma/configuration"
 require 'puma/log_writer'
 
-# Can't run parallel due to `Puma` class methods used
+# Intermittent failures & errors when run parallel in GHA, local use may run fine.
+
 
 class TestLauncher < Minitest::Test
   include TmpPath
@@ -86,56 +87,58 @@ class TestLauncher < Minitest::Test
     launcher.run
     sleep 1 unless Puma.mri?
     Puma::Server::STAT_METHODS.each do |stat|
-      assert_includes Puma.stats_hash, stat
+      assert_includes launcher.stats, stat
     end
   end
 
   def test_puma_stats_clustered
     skip_unless :fork
 
-    queue_stop = Queue.new
+    queue_booted = Queue.new
+    stopped = nil
+    status  = nil
 
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
       c.workers 1
     end
     launcher = create_launcher(conf)
-    launcher.events.on_booted {
-      queue_stop.pop
-      launcher.stop
-    }
-
-    status = nil
+    launcher.events.on_booted { queue_booted << nil }
 
     th_stats = Thread.new do
+      queue_booted.pop
       sleep Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
-      status = Puma.stats_hash[:worker_status]&.first[:last_status]
-      queue_stop << true
+      status = launcher.stats[:worker_status]&.first[:last_status]
+      launcher.stop
+      stopped = true
     end
 
     launcher.run
     assert th_stats.join(10)
-    launcher.stop
 
     refute_nil status
 
     Puma::Server::STAT_METHODS.each do |stat|
       assert_includes status, stat
     end
+  ensure
+    launcher&.stop unless stopped
   end
 
   def test_log_config_enabled
-    ENV['PUMA_LOG_CONFIG'] = "1"
+    env = {'PUMA_LOG_CONFIG' => '1'}
 
-    launcher = create_launcher
+    launcher = create_launcher env: env
 
-    assert_match(/Configuration:/, launcher.log_writer.stdout.string)
+    log = launcher.log_writer.stdout.string
 
-    launcher.config.final_options.each do |config_key, _value|
-      assert_match(/#{config_key}/, launcher.log_writer.stdout.string)
+    # the below confirms an exact match, allowing for line order differences
+    launcher.config.final_options.each do |config_key, value|
+      line = "- #{config_key}: #{value}\n"
+      assert_includes log, line
+      log.sub! line, ''
     end
-  ensure
-    ENV.delete('PUMA_LOG_CONFIG')
+    assert_equal 'Configuration:', log.strip
   end
 
   def test_log_config_disabled
@@ -163,8 +166,8 @@ class TestLauncher < Minitest::Test
 
   private
 
-  def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings)
+  def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings, **kw)
     config.options[:binds] = ["tcp://127.0.0.1:#{UniquePort.call}"]
-    Puma::Launcher.new(config, log_writer: lw)
+    Puma::Launcher.new(config, log_writer: lw, **kw)
   end
 end
