@@ -2043,4 +2043,14 @@ class TestPumaServer < Minitest::Test
     assert_includes body, "Content-Length: 144\r\n"
     assert_equal 1, response.scan("HTTP/1.1 200 OK").size
   end
+
+  def test_auto_trim_free_thread
+    assert_not_called_on_instance_of(Puma::ThreadPool, :auto_trim!) do # max_threads == min_threads
+      server_run(max_threads: 1, min_threads: 1)
+    end
+
+    assert_called_on_instance_of(Puma::ThreadPool, :auto_trim!) do # max_threads != min_threads
+      server_run(max_threads: 2, min_threads: 1)
+    end
+  end
 end
