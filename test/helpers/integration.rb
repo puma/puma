@@ -111,6 +111,7 @@ class TestIntegration < Minitest::Test
         "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
       else
         @tcp_port = UniquePort.call
+        @bind_port = @tcp_port
         "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
       end
 
