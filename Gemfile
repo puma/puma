@@ -10,6 +10,7 @@ gem "minitest", "~> 5.11"
 gem "minitest-retry"
 gem "minitest-proveit"
 gem "minitest-stub-const"
+gem "concurrent-ruby", "~> 1.3"
 
 case ENV['PUMA_CI_RACK']&.strip
 when 'rack2'
