@@ -137,7 +137,7 @@ module Puma
     }.freeze
 
     # The basic max request size we'll try to read.
-    CHUNK_SIZE = 16 * 1024
+    CHUNK_SIZE = 64 * 1024
 
     # This is the maximum header that is allowed before a client is booted.  The parser detects
     # this, but we'd also like to do this as well.
