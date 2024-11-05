@@ -91,7 +91,10 @@ module Puma
     end
 
     # @!attribute [r] ruby_engine
+    # @deprecated Use `RUBY_DESCRIPTION` instead
     def ruby_engine
+      warn "Puma::Runner#ruby_engine is deprecated; use RUBY_DESCRIPTION instead. It will be removed in puma v7."
+
       if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
         "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
       else
@@ -109,7 +112,8 @@ module Puma
       environment = @options[:environment]
 
       log "Puma starting in #{mode} mode..."
-      log "* Puma version: #{Puma::Const::PUMA_VERSION} (#{ruby_engine}) (\"#{Puma::Const::CODE_NAME}\")"
+      log "* Puma version: #{Puma::Const::PUMA_VERSION} (\"#{Puma::Const::CODE_NAME}\")"
+      log "* Ruby version: #{RUBY_DESCRIPTION}"
       log "*  Min threads: #{min_t}"
       log "*  Max threads: #{max_t}"
       log "*  Environment: #{environment}"
