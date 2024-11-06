@@ -97,7 +97,9 @@ class TestIntegration < Minitest::Test
 
     if config
       @config_file = Tempfile.create(%w(config .rb))
-      @config_file.write config
+      @config_file.syswrite config
+      # not supported on some OS's, all GitHub Actions OS's support it
+      @config_file.fsync rescue nil
       @config_file.close
       config = "-C #{@config_file.path}"
     end
