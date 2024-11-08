@@ -33,7 +33,7 @@ class TestWebConcurrencyAuto < TestIntegration
 
     get_worker_pids 0, 2 # make sure some workers have booted
 
-    expected = send_http_read_resp_body GET_11
+    expected = send_http_read_body GET_11
 
     assert_equal expected, actual
   end
