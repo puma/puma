@@ -21,61 +21,40 @@ module TestPuma
 
     NO_ENTITY_BODY = Puma::STATUS_WITH_NO_ENTITY_BODY
 
-    # Reads the HTTP body on the socket.  Assumes one response, use `read_all`
-    # to read multiple responses.
+    # Reads all that is available on the socket.  Used for reading sockets that
+    # contain multiple responses.
+    # @return [String]
+    #
+    def read_all
+      read = String.new # rubocop: disable Performance/UnfreezeString
+      counter = 0
+      prev_size = 0
+      begin
+        loop do
+          raise(Timeout::Error, 'Client Read Timeout') if counter > 5
+          if self.wait_readable 1
+            read << self.sysread(RESP_READ_LEN)
+          end
+          ttl_read = read.bytesize
+          return read if prev_size == ttl_read && !ttl_read.zero?
+          prev_size = ttl_read
+          counter += 1
+        end
+      rescue EOFError
+        return read
+      rescue => e
+        raise e
+      end
+    end
+
+    # Reads the response body on the socket.  Assumes one response, use
+    # `read_all` to read multiple responses.
     # @!macro resp
     # @return [String] the HTTP body
     #
     def read_body(timeout: nil, len: nil)
       self.read_response(timeout: nil, len: nil).split(RESP_SPLIT, 2).last
     end
-
-    # Writes the request/data to the socket.  Returns self
-    # @param req [String] the request or data to write
-    # @return [self] the socket
-    #
-    def send_http(req = GET_11)
-      if String === req
-        req_size = req.bytesize
-        req_sent = 0
-        req_sent += syswrite req while req_sent < req_size
-      end
-      self
-    end
-    alias_method :<<, :send_http
-
-    # Writes the request/data to the socket and returns the response.
-    # @param req [String] the request or data to write
-    # @!macro resp
-    # @return [Response] the HTTP response
-    #
-    def send_http_read_response(req = GET_11, timeout: nil, len: nil)
-      self.send_http(req).read_response(timeout: nil, len: nil)
-    end
-
-    # Writes the request/data to the socket and returns the response body.
-    # @param req [String] the request or data to write
-    # @!macro resp
-    # @return [String] The HTTP body.  Chunked bodies are not decoded.
-    #
-    def send_http_read_body(req = GET_11, timeout: nil, len: nil)
-      self.send_http(req).read_response(timeout: nil, len: nil)
-        .split(RESP_SPLIT, 2).last
-    end
-
-    # Writes data to the socket using `syswrite`.  Returns self
-    # @param str [String] the data to write
-    # @return [self] the socket
-    #
-    def send_http(req = GET_11)
-      if String === req
-        req_size = req.bytesize
-        req_sent = 0
-        req_sent += syswrite(req) while req_sent < req_size
-      end
-      self
-    end
-    alias_method :<<, :send_http
 
     # Reads the HTTP response on the socket.  Assumes one response, use `read_all`
     # to read multiple responses.
@@ -156,30 +135,39 @@ module TestPuma
       end
     end
 
-    # Reads all that is available on the socket.  Used for reading sockets that
-    # contain multiple responses.
-    # @return [String]
+    # Writes the request/data to the socket.  Returns self
+    # @param req [String] the request or data to write
+    # @return [self] the socket
     #
-    def read_all
-      read = String.new # rubocop: disable Performance/UnfreezeString
-      counter = 0
-      prev_size = 0
-      begin
-        loop do
-          raise(Timeout::Error, 'Client Read Timeout') if counter > 5
-          if self.wait_readable 1
-            read << self.sysread(RESP_READ_LEN)
-          end
-          ttl_read = read.bytesize
-          return read if prev_size == ttl_read && !ttl_read.zero?
-          prev_size = ttl_read
-          counter += 1
-        end
-      rescue EOFError
-        return read
-      rescue => e
-        raise e
+    def send_http(req = GET_11)
+      if String === req
+        req_size = req.bytesize
+        req_sent = 0
+        req_sent += syswrite req while req_sent < req_size
       end
+      self
+    end
+    alias_method :<<, :send_http
+
+    # Writes the request/data to the socket and returns the response body.
+    # Assumes one response, use `read_all` to read multiple responses.
+    # @param req [String] the request or data to write
+    # @!macro resp
+    # @return [String] The response body.  Chunked bodies are not decoded.
+    #
+    def send_http_read_body(req = GET_11, timeout: nil, len: nil)
+      send_http_read_response(req, timeout: timeout, len: len)
+        .split(RESP_SPLIT, 2).last
+    end
+
+    # Writes the request/data to the socket and returns the response.  Assumes
+    # one response, use `read_all` to read multiple responses.
+    # @param req [String] the request or data to write
+    # @!macro resp
+    # @return [Response] the HTTP response
+    #
+    def send_http_read_response(req = GET_11, timeout: nil, len: nil)
+      send_http(req).read_response(timeout: timeout, len: len)
     end
 
     # Uses a single `sysread` statement to read the socket.  Reads `len` bytes
@@ -192,7 +180,7 @@ module TestPuma
       Thread.pass
       self.wait_readable timeout
       Thread.pass
-      self.sysread len
+      sysread len
     end
   end
 
