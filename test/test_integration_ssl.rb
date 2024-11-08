@@ -111,7 +111,7 @@ class TestIntegrationSSL < TestIntegration
 
     client_cert = File.read "#{cert_path}/client.crt"
 
-    body = send_http_read_resp_body host: LOCALHOST, port: @bind_port, ctx: new_ctx { |c|
+    body = send_http_read_body host: LOCALHOST, port: @bind_port, ctx: new_ctx { |c|
         ca   = "#{cert_path}/ca.crt"
         key  = "#{cert_path}/client.key"
         c.ca_file = ca
