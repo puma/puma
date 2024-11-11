@@ -210,7 +210,7 @@ class TestIntegration < Minitest::Test
     error_retries = 0
     line = ''
 
-    sleep 0.05 unless @server.is_a?(IO) or Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
+    sleep 0.05 until @server.is_a?(IO) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
 
     raise Minitest::Assertion,  "@server is not an IO" unless @server.is_a?(IO)
     if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
