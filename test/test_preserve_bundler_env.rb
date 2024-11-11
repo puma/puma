@@ -4,13 +4,11 @@ require_relative "helpers/integration"
 class TestPreserveBundlerEnv < TestIntegration
   def setup
     skip_unless :fork
-    super
   end
 
   def teardown
     return if skipped?
     FileUtils.rm current_release_symlink, force: true
-    super
   end
 
   # It does not wipe out BUNDLE_GEMFILE et al
@@ -98,7 +96,6 @@ class TestPreserveBundlerEnv < TestIntegration
 
   def start_phased_restart
     Process.kill :USR1, @pid
-
-    true while @server.gets !~ /booted in [.0-9]+s, phase: 1/
+    wait_for_server_to_match(/booted in [.0-9]+s, phase: 1/)
   end
 end

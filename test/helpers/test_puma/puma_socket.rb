@@ -77,11 +77,14 @@ module TestPuma
       @control_path = nil
       @ssl_socket_contexts = Queue.new
       @ios_to_close ||= Queue.new
+      super
     end
 
     # Closes all io's in `@ios_to_close`, also deletes them if they are files
     def after_teardown
       return if skipped?
+
+      super
 
       close_ios if @ios_to_close
 

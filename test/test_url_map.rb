@@ -3,11 +3,6 @@ require_relative "helpers/integration"
 
 class TestURLMap < TestIntegration
 
-  def teardown
-    return if skipped?
-    super
-  end
-
   # make sure the mapping defined in url_map_test/config.ru works
   def test_basic_url_mapping
     skip_if :jruby
