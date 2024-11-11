@@ -24,7 +24,7 @@ class TestIntegration < Minitest::Test
   # rubyopt requires bundler/setup, so we don't need it here
   BASE = "#{Gem.ruby} -Ilib"
 
-  def setup
+  def before_setup
     @server = nil
     @config_file = nil
     @server_log = +''
@@ -33,7 +33,8 @@ class TestIntegration < Minitest::Test
     @bind_path = tmp_path('.sock')
   end
 
-  def teardown
+  def after_teardown
+
     if @server && defined?(@control_port) && Puma.windows?
       cli_pumactl 'halt'
     elsif @server && @pid && !Puma.windows?
@@ -61,6 +62,8 @@ class TestIntegration < Minitest::Test
         end
       end
     end
+
+    [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
   end
 
   private
@@ -84,8 +87,6 @@ class TestIntegration < Minitest::Test
         io = nil
       end
     end
-    # not sure about below, may help with gc...
-    @ios_to_close.clear
     @ios_to_close = nil
   end
 
