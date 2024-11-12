@@ -29,10 +29,8 @@ class TestIntegration < Minitest::Test
     @config_file = nil
     @server_log = +''
     @pid = nil
-    @ios_to_close = []
-    @bind_path    = tmp_path('.sock')
-    @control_path     = nil
-    @control_tcp_port = nil
+    @ios_to_close ||= Queue.new
+    @bind_path = tmp_path('.sock')
   end
 
   def teardown
@@ -42,14 +40,7 @@ class TestIntegration < Minitest::Test
       stop_server @pid, signal: :INT
     end
 
-    @ios_to_close&.each do |io|
-      begin
-        io.close if io.respond_to?(:close) && !io.closed?
-      rescue
-      ensure
-        io = nil
-      end
-    end
+    close_ios if @ios_to_close
 
     if @bind_path
       refute File.exist?(@bind_path), "Bind path must be removed after stop"
@@ -73,6 +64,30 @@ class TestIntegration < Minitest::Test
   end
 
   private
+
+  # for now, duplicated in puma_socket.rb
+  def close_ios
+    until @ios_to_close.empty?
+      io = @ios_to_close.pop
+      begin
+        if io.respond_to? :sysclose
+          io.sync_close = true
+          io.sysclose unless io.closed?
+        else
+          io.close if io.respond_to?(:close) && !io.closed?
+          if io.is_a?(File) && (path = io&.path) && File.exist?(path)
+            File.unlink path
+          end
+        end
+      rescue Errno::EBADF, Errno::ENOENT, IOError
+      ensure
+        io = nil
+      end
+    end
+    # not sure about below, may help with gc...
+    @ios_to_close.clear
+    @ios_to_close = nil
+  end
 
   def silent_and_checked_system_command(*args)
     assert(system(*args, out: File::NULL, err: File::NULL))
