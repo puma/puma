@@ -401,19 +401,27 @@ class TestIntegration < Minitest::Test
     JSON.parse(read_pipe.readlines.last)
   end
 
-  def hot_restart_does_not_drop_connections(num_threads: 1, total_requests: 500)
+  def restart_does_not_drop_connections(
+      num_threads: 1,
+      total_requests: 500,
+      config: nil,
+      unix: nil,
+      signal: nil,
+      log: nil
+    )
     skipped = true
     skip_if :jruby, suffix: <<-MSG
  - file descriptors are not preserved on exec on JRuby; connection reset errors are expected during restarts
     MSG
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
 
+    clustered = (workers || 0) >= 2
+
     args = "-w #{workers} -t 5:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?
-      @control_tcp_port = UniquePort.call
-      cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} #{args}"
+      cli_server "#{set_pumactl_args} #{args}", unix: unix, config: config, log: log
     else
-      cli_server args
+      cli_server args, unix: unix, config: config, log: log
     end
 
     skipped = false
@@ -432,7 +440,7 @@ class TestIntegration < Minitest::Test
         num_requests.times do |req_num|
           begin
             begin
-              socket = TCPSocket.new HOST, @tcp_port
+              socket = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
               fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
             rescue => e
               replies[:write_error] += 1
@@ -478,21 +486,44 @@ class TestIntegration < Minitest::Test
         if Puma.windows?
           cli_pumactl 'restart'
         else
-          Process.kill :USR2, @pid
+          Process.kill signal, @pid
         end
-        sleep 0.5
-        # If 'wait_for_server_to_boot' times out, error in thread shuts down CI
-        begin
-          wait_for_server_to_boot timeout: 5
-        rescue Minitest::Assertion # Timeout
-          run = false
+        if signal == :USR2
+          # If 'wait_for_server_to_boot' times out, error in thread shuts down CI
+          begin
+            wait_for_server_to_boot timeout: 5
+          rescue Minitest::Assertion # Timeout
+            run = false
+          end
         end
         restart_count += 1
-        sleep(Puma.windows? ? 2.0 : 0.5)
+
+        if Puma.windows?
+          sleep 2.0
+        elsif clustered
+          phase = signal == :USR2 ? 0 : restart_count
+          # If 'get_worker_pids phase' times out, error in thread shuts down CI
+          begin
+            get_worker_pids phase, log: log
+            # added sleep as locally 165 restarts in 7 seconds
+            sleep 0.2
+          rescue Minitest::Assertion # Timeout
+            run = false
+          end
+        else
+          sleep 0.25
+        end
       end
     end
 
-    client_threads.each(&:join)
+    # cycle thru threads rather than one at a time
+    until client_threads.empty?
+      client_threads.each_with_index do |t, i|
+        client_threads[i] = nil if t.join(2)
+      end
+      client_threads.compact!
+    end
+
     run = false
     restart_thread.join
     if Puma.windows?
