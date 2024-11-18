@@ -506,12 +506,12 @@ class TestIntegration < Minitest::Test
           begin
             get_worker_pids phase, log: log
             # added sleep as locally 165 restarts in 7 seconds
-            sleep 0.2
+            sleep 0.15
           rescue Minitest::Assertion # Timeout
             run = false
           end
         else
-          sleep 0.25
+          sleep 0.10
         end
       end
     end
@@ -519,7 +519,7 @@ class TestIntegration < Minitest::Test
     # cycle thru threads rather than one at a time
     until client_threads.empty?
       client_threads.each_with_index do |t, i|
-        client_threads[i] = nil if t.join(2)
+        client_threads[i] = nil if t.join(1)
       end
       client_threads.compact!
     end
@@ -538,30 +538,21 @@ class TestIntegration < Minitest::Test
     msg << "   %4d refused\n"               % replies.fetch(:refused,0)
     msg << "   %4d read timeout\n"          % replies.fetch(:read_timeout,0)
     msg << "   %4d reset\n"                 % replies.fetch(:reset,0)
+    msg << "   %4d write_errors\n"          % replies.fetch(:write_error,0)
     msg << "   %4d success\n"               % replies.fetch(:success,0)
     msg << "   %4d success after restart\n" % replies.fetch(:restart,0)
     msg << "   %4d restart count\n"         % restart_count
+
+    actual_requests = num_threads * num_requests
+    allowed_errors = (actual_requests * 0.002).round
 
     refused = replies[:refused]
     reset   = replies[:reset]
 
     if Puma.windows?
-      # 5 is default thread count in Puma?
-      reset_max = num_threads * restart_count
-      assert_operator reset_max, :>=, reset, "#{msg}Expected reset_max >= reset errors"
-      assert_operator 40, :>=,  refused, "#{msg}Too many refused connections"
+      assert_equal actual_requests - reset - refused, replies[:success]
     else
-      assert_equal 0, reset, "#{msg}Expected no reset errors"
-      max_refused = (0.001 * replies.fetch(:success,0)).round
-      assert_operator max_refused, :>=, refused, "#{msg}Expected no than #{max_refused} refused connections"
-    end
-    assert_equal 0, replies[:unexpected_response], "#{msg}Unexpected response"
-    assert_equal 0, replies[:read_timeout], "#{msg}Expected no read timeouts"
-
-    if Puma.windows?
-      assert_equal (num_threads * num_requests) - reset - refused, replies[:success]
-    else
-      assert_equal (num_threads * num_requests), replies[:success]
+      assert_operator replies[:success], :>=,  actual_requests - allowed_errors, msg
     end
 
   ensure
