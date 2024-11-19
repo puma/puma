@@ -149,6 +149,10 @@ module Puma
       @timeout_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + val
     end
 
+    def set_accept_time(accept_time)
+      @accept_time = accept_time
+    end
+
     # Number of seconds until the timeout elapses.
     def timeout
       [@timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
