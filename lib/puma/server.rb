@@ -41,7 +41,7 @@ module Puma
     attr_reader :events
     attr_reader :min_threads, :max_threads  # for #stats
     attr_reader :requests_count             # @version 5.0.0
-    attr_reader :preprocess_time
+    attr_reader :requests_wait_time
 
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
@@ -124,7 +124,7 @@ module Puma
       @precheck_closing = true
 
       @requests_count = 0
-      @preprocess_time = 0
+      @requests_wait_time = 0
 
       @idle_timeout_reached = false
     end
@@ -359,7 +359,7 @@ module Puma
             end
 
             ios.first.each do |sock|
-              accept_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+              wait_time_starts_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
               if sock == check
                 break if handle_check
@@ -377,7 +377,7 @@ module Puma
                   c.listener = sock
                   c.http_content_length_limit = @http_content_length_limit
                   c.send(addr_send_name, addr_value) if addr_value
-                  c.set_accept_time(accept_time)
+                  c.set_wait_time_starts_at(wait_time_starts_at)
                 }
               end
             end
@@ -470,8 +470,7 @@ module Puma
 
         while true
           @requests_count += 1
-          @preprocess_time += ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - client.accept_time) * 1000).round if client.accept_time != nil
-          client.time_since_created_at
+          @requests_wait_time += ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - client.wait_time_starts_at) * 1000).round
           case handle_request(client, requests + 1)
           when false
             break
@@ -653,7 +652,7 @@ module Puma
 
     # List of methods invoked by #stats.
     # @version 5.0.0
-    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count, :preprocess_time].freeze
+    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count, :requests_wait_time].freeze
 
     # Returns a hash of stats about the running server for reporting purposes.
     # @version 5.0.0
@@ -663,7 +662,7 @@ module Puma
       stats = @thread_pool&.stats || {}
       stats[:max_threads]    = @max_threads
       stats[:requests_count] = @requests_count
-      stats[:preprocess_time] = @preprocess_time
+      stats[:requests_wait_time] = @requests_wait_time
       stats
     end
 

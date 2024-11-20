@@ -111,7 +111,8 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer, :http_content_length_limit_exceeded
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded,
+                :wait_time_starts_at
 
     attr_writer :peerip, :http_content_length_limit
 
@@ -149,8 +150,8 @@ module Puma
       @timeout_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + val
     end
 
-    def set_accept_time(accept_time)
-      @accept_time = accept_time
+    def set_wait_time_starts_at(wait_time_starts_at)
+      @wait_time_starts_at = wait_time_starts_at
     end
 
     # Number of seconds until the timeout elapses.

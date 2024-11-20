@@ -61,6 +61,7 @@ When Puma runs in single mode, these stats are available at the top level. When 
 * pool_capacity: the number of requests that the server is capable of taking right now. For example, if the number is 5, then it means there are 5 threads sitting idle ready to take a request. If one request comes in, then the value would be 4 until it finishes processing. If the minimum threads allowed is zero, this number will still have a maximum value of the maximum threads allowed.
 * max_threads: the maximum number of threads Puma is configured to spool per worker
 * requests_count: the number of requests this worker has served since starting
+* requests_wait_time: the total time of all requests are waiting to be processed (milliseconds)
 
 
 ### cluster mode
@@ -94,7 +95,8 @@ Here are two example stats hashes produced by `Puma.stats`:
   "running": 5,
   "pool_capacity": 5,
   "max_threads": 5,
-  "requests_count": 3
+  "requests_count": 3,
+  "requests_wait_time": 2340
 }
 ```
 
@@ -120,7 +122,8 @@ Here are two example stats hashes produced by `Puma.stats`:
         "running": 5,
         "pool_capacity": 5,
         "max_threads": 5,
-        "requests_count": 2
+        "requests_count": 2,
+        "requests_wait_time": 2340
       }
     },
     {
@@ -135,7 +138,8 @@ Here are two example stats hashes produced by `Puma.stats`:
         "running": 5,
         "pool_capacity": 5,
         "max_threads": 5,
-        "requests_count": 1
+        "requests_count": 1,
+        "requests_wait_time": 2340
       }
     }
   ]
