@@ -235,9 +235,9 @@ module Puma
       end
 
       {
-        min_threads: min && Integer(min),
-        max_threads: max && Integer(max),
-        workers: workers && Integer(workers),
+        min_threads: min && min != "" && Integer(min),
+        max_threads: max && max != "" && Integer(max),
+        workers: workers && workers != "" && Integer(workers),
         environment: env['APP_ENV'] || env['RACK_ENV'] || env['RAILS_ENV'],
       }
     end
