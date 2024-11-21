@@ -501,7 +501,7 @@ module Puma
     def read_chunked_body
       while true
         begin
-          chunk = @io.read_nonblock(4096, @read_buffer)
+          chunk = @io.read_nonblock(CHUNK_SIZE, @read_buffer)
         rescue IO::WaitReadable
           return false
         rescue SystemCallError, IOError
