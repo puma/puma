@@ -1,9 +1,11 @@
 name: PR Label Manager
 on:
   workflow_dispatch:      # Allow manual trigger
-  pull_request_review:    # Run when reviews are submitted
-  pull_request:          # Run when PRs are opened/updated
-    types: [opened, reopened, ready_for_review]
+  schedule:
+    - cron: '0 * * * *'  # Run every hou
+  # pull_request_review:    # Run when reviews are submitted
+  # pull_request:          # Run when PRs are opened/updated
+  #   types: [opened, reopened, ready_for_review]
 
 permissions:
   contents: read
