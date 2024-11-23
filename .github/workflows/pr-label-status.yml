@@ -1,0 +1,98 @@
+name: PR Label Manager
+on:
+  workflow_dispatch:      # Allow manual trigger
+  pull_request_review:    # Run when reviews are submitted
+  pull_request:          # Run when PRs are opened/updated
+    types: [opened, reopened, ready_for_review]
+
+jobs:
+  manage-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update PR Labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Configuration
+            const MAINTAINERS_LIST = [
+              'evanphx',
+              'MSP-Greg',
+              'dentarg',
+              'schneems',
+              'nateberkopec',
+            ];
+
+            const LABELS = {
+              CHANGES: 'waiting-for-changes',
+              REVIEW: 'waiting-for-review',
+              MERGE: 'waiting-for-merge'
+            };
+
+            // Get all open PRs
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open'
+            });
+
+            for (const pr of prs.data) {
+              // Skip draft PRs and WIP PRs
+              if (pr.draft || pr.title.toLowerCase().includes('wip')) {
+                continue;
+              }
+
+              // Get reviews for this PR
+              const reviews = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number
+              });
+
+              // Get latest review from each reviewer
+              const latestReviews = new Map();
+              for (const review of reviews.data) {
+                latestReviews.set(review.user.login, review);
+              }
+
+              // Determine appropriate label
+              let newLabel = LABELS.REVIEW;  // default
+
+              for (const [reviewer, review] of latestReviews) {
+                if (MAINTAINERS_LIST.includes(reviewer)) {
+                  if (review.state === 'CHANGES_REQUESTED') {
+                    newLabel = LABELS.CHANGES;
+                    break;
+                  } else if (review.state === 'APPROVED') {
+                    newLabel = LABELS.MERGE;
+                    // Don't break here - keep checking in case there's a newer "changes requested"
+                  }
+                }
+              }
+
+              // Remove all managed labels except the new one
+              const allLabels = Object.values(LABELS);
+              for (const label of pr.labels) {
+                if (allLabels.includes(label.name) && label.name !== newLabel) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    name: label.name
+                  });
+                }
+              }
+
+              // Add new label if not present
+              if (!pr.labels.some(label => label.name === newLabel)) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  labels: [newLabel]
+                });
+              }
+
+              console.log(`PR #${pr.number}: Applied label ${newLabel}`);
+            }
