@@ -269,7 +269,6 @@ class TestRequestInvalid < Minitest::Test
   # 200 kB body with Content-Length set to the same.
   # Verifies that the connection is closed properly.
   def __test_http_11_req_oversize_content_length
-    lleh_called = false
     lleh_err = nil
 
     lleh = -> (err) {
@@ -298,9 +297,7 @@ class TestRequestInvalid < Minitest::Test
   def __test_http_11_req_oversize_chunked
     chunk_length = 20_000
     chunk_part_qty = 10
-    req_body_length = chunk_length * chunk_part_qty
 
-    lleh_called = false
     lleh_err = nil
 
     lleh = -> (err) {
@@ -335,7 +332,6 @@ class TestRequestInvalid < Minitest::Test
   # 200 kB body with Content-Length set to the same.
   # Verifies that the connection is closed properly.
   def __test_http_11_req_oversize_no_content_length
-    lleh_called = false
     lleh_err = nil
 
     lleh = -> (err) {

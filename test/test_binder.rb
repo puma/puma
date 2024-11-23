@@ -83,7 +83,7 @@ class TestBinderParallel < TestBinderBase
     mock = Minitest::Mock.new
     proc = -> { mock.call }
 
-    @binder.before_parse &proc
+    @binder.before_parse(&proc)
 
     mock.expect(:call, nil)
 
