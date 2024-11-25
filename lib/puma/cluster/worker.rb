@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module Puma
+
   class Cluster < Puma::Runner
     #—————————————————————— DO NOT USE — this class is for internal use only ———
-
 
     # This class is instantiated by the `Puma::Cluster` and represents a single
     # worker process.
@@ -28,7 +28,7 @@ module Puma
       end
 
       def run
-        title  = "puma: cluster worker #{index}: #{master}"
+        title = "puma: cluster worker #{index}: #{master}"
         title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
         $0 = title
 
@@ -57,7 +57,7 @@ module Puma
         @config.run_hooks(:before_worker_boot, index, @log_writer, @hook_data)
 
         begin
-        server = @server ||= start_server
+          server = @server ||= start_server
         rescue Exception => e
           log "! Unable to start worker"
           log e
@@ -65,13 +65,18 @@ module Puma
           exit 1
         end
 
-        restart_server = Queue.new << true << false
+        restart_server = Queue.new << Puma::Const::WorkerCmd::RESTART << Puma::Const::WorkerCmd::STOPPED
 
         fork_worker = @options[:fork_worker] && index == 0
 
+        # worker ids for validte hang process
+        worker_pids = []
+
+        # create a mutex to synchronize the server thread
+        mutex = Mutex.new
+
         if fork_worker
           restart_server.clear
-          worker_pids = []
           Signal.trap "SIGCHLD" do
             wakeup! if worker_pids.reject! do |p|
               Process.wait(p, Process::WNOHANG) rescue true
@@ -84,15 +89,18 @@ module Puma
               idx = idx.to_i
               if idx == -1 # stop server
                 if restart_server.length > 0
-                  restart_server.clear
-                  server.begin_restart(true)
-                  @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
+                  # acquire a mutex to ensure the server is started before stopping
+                  mutex.synchronize do
+                    restart_server.clear
+                    server.begin_restart(true)
+                    @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
+                  end
                 end
               elsif idx == 0 # restart server
-                restart_server << true << false
-              else # fork worker
-                worker_pids << pid = spawn_worker(idx)
-                @worker_write << "#{Puma::Const::PipeRequest::FORK}#{pid}:#{idx}\n" rescue nil
+                restart_server << Puma::Const::WorkerCmd::RESTART << Puma::Const::WorkerCmd::STOPPED
+              else
+                # spawn new worker
+                restart_server << "#{Puma::Const::WorkerCmd::SPAWN}#{idx}"
               end
             end
           end
@@ -100,9 +108,15 @@ module Puma
 
         Signal.trap "SIGTERM" do
           @worker_write << "#{Puma::Const::PipeRequest::EXTERNAL_TERM}#{Process.pid}\n" rescue nil
-          restart_server.clear
-          server.stop
-          restart_server << false
+          Thread.new do
+            # create a new thread to avoid deadlock.
+            # acquire a mutex to ensure the server finished restarting before shutting down
+            mutex.synchronize do
+              restart_server.clear
+              server.stop
+              restart_server << Puma::Const::WorkerCmd::STOPPED
+            end
+          end
         end
 
         begin
@@ -113,34 +127,50 @@ module Puma
           return
         end
 
-        while restart_server.pop
-          server_thread = server.run
+        while (cmd = restart_server.pop) != Puma::Const::WorkerCmd::STOPPED
+          server_thread = nil
 
-          if @log_writer.debug? && index == 0
-            debug_loaded_extensions "Loaded Extensions - worker 0:"
-          end
+          # acquire a mutex to synchronize the server thread
+          mutex.synchronize do
+            if cmd.start_with?(Puma::Const::WorkerCmd::SPAWN) && fork_worker
+              # receive the spawn command to fork worker if current worker is worker-0
+              idx = cmd.split(Puma::Const::WorkerCmd::SPAWN).last.to_i
+              child_pid = spawn_worker(idx)
+              worker_pids << child_pid unless child_pid.nil?
 
-          stat_thread ||= Thread.new(@worker_write) do |io|
-            Puma.set_thread_name "stat pld"
-            base_payload = "p#{Process.pid}"
+            elsif cmd == Puma::Const::WorkerCmd::RESTART
+              # receive the restart command to restart the server
+              server_thread = server.run
 
-            while true
-              begin
-                b = server.backlog || 0
-                r = server.running || 0
-                t = server.pool_capacity || 0
-                m = server.max_threads || 0
-                rc = server.requests_count || 0
-                payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc} }\n!
-                io << payload
-              rescue IOError
-                Puma::Util.purge_interrupt_queue
-                break
+              if @log_writer.debug? && index == 0
+                debug_loaded_extensions "Loaded Extensions - worker 0:"
               end
-              sleep @options[:worker_check_interval]
+
+              stat_thread ||= Thread.new(@worker_write) do |io|
+                Puma.set_thread_name "stat pld"
+                base_payload = "p#{Process.pid}"
+
+                while true
+                  begin
+                    b = server.backlog || 0
+                    r = server.running || 0
+                    t = server.pool_capacity || 0
+                    m = server.max_threads || 0
+                    rc = server.requests_count || 0
+                    payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc} }\n!
+                    io << payload
+                  rescue IOError
+                    Puma::Util.purge_interrupt_queue
+                    break
+                  end
+                  sleep @options[:worker_check_interval]
+                end
+              end
+              log "Server started - worker #{index}" if @log_writer.debug?
             end
           end
-          server_thread.join
+
+          server_thread&.join if cmd == Puma::Const::WorkerCmd::RESTART
         end
 
         # Invoke any worker shutdown hooks so they can prevent the worker
