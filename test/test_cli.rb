@@ -46,6 +46,50 @@ class TestCLI < Minitest::Test
     @ready.close
   end
 
+  def check_single_stats(body, check_puma_stats = true)
+    http_hash = JSON.parse body
+
+    dmt = Puma::Configuration::DEFAULTS[:max_threads]
+
+    expected_single_root_keys = {
+      'started_at' => RE_8601,
+      'backlog'    => 0,
+      'running'    => 0,
+      'pool_capacity'  => dmt,
+      'busy_threads'   => 0,
+      'max_threads'    => dmt,
+      'requests_count' => 0,
+      'versions'       => Hash,
+    }
+
+    assert_hash expected_single_root_keys, http_hash
+
+    #version keys
+    expected_version_hash = {
+      'puma' => Puma::Const::VERSION,
+      'ruby' => Hash,
+    }
+    assert_hash expected_version_hash, http_hash['versions']
+
+    #version ruby keys
+    expected_version_ruby_hash = {
+      'engine'     => RUBY_ENGINE,
+      'version'    => RUBY_VERSION,
+      'patchlevel' => RUBY_PATCHLEVEL,
+    }
+
+    assert_hash expected_version_ruby_hash, http_hash['versions']['ruby']
+
+    if check_puma_stats
+      puma_stats_hash = JSON.parse(Puma.stats)
+      assert_hash expected_single_root_keys, puma_stats_hash
+      assert_hash expected_version_hash, puma_stats_hash['versions']
+      assert_hash expected_version_ruby_hash, puma_stats_hash['versions']['ruby']
+
+      assert_equal Puma.stats_hash, JSON.parse(Puma.stats, symbolize_names: true)
+    end
+  end
+
   def test_control_for_tcp
     control_port = UniquePort.call
     url = "tcp://127.0.0.1:#{control_port}/"
@@ -61,11 +105,8 @@ class TestCLI < Minitest::Test
 
     body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", port: control_port
 
-    assert_equal Puma.stats_hash, JSON.parse(Puma.stats, symbolize_names: true)
+    check_single_stats body
 
-    dmt = Puma::Configuration::DEFAULTS[:max_threads]
-    expected_stats = /\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"busy_threads":0,"max_threads":#{dmt},"requests_count":0,"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
-    assert_match(expected_stats, body)
   ensure
     cli.launcher.stop
     t.join
@@ -92,16 +133,14 @@ class TestCLI < Minitest::Test
     body = send_http_read_resp_body "GET /stats?token=#{token} HTTP/1.0\r\n\r\n",
       port: control_port, ctx: new_ctx
 
-    dmt = Puma::Configuration::DEFAULTS[:max_threads]
-    expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"busy_threads":0,"max_threads":#{dmt}/
-    assert_match(expected_stats, body)
+    check_single_stats body
   ensure
     # always called, even if skipped
     cli&.launcher&.stop
     t&.join
   end
 
-  def test_control
+  def test_control_for_unix
     skip_unless :unix
     url = "unix://#{@tmp_path}"
 
@@ -116,9 +155,7 @@ class TestCLI < Minitest::Test
 
     body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
 
-    dmt = Puma::Configuration::DEFAULTS[:max_threads]
-    expected_stats = /{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","backlog":0,"running":0,"pool_capacity":#{dmt},"busy_threads":0,"max_threads":#{dmt},"requests_count":0,"versions":\{"puma":"#{@puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
-    assert_match(expected_stats, body)
+    check_single_stats body
   ensure
     if UNIX_SKT_EXIST
       cli.launcher.stop
