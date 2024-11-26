@@ -37,8 +37,7 @@ module Puma
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
-
-      @todo = []
+      @todo = Queue.new
 
       @backlog_max = 0
       @spawned = 0
@@ -266,69 +265,6 @@ module Puma
         end
 
         @not_empty.signal
-      end
-    end
-
-    # This method is used by `Puma::Server` to let the server know when
-    # the thread pool can pull more requests from the socket and
-    # pass to the reactor.
-    #
-    # The general idea is that the thread pool can only work on a fixed
-    # number of requests at the same time. If it is already processing that
-    # number of requests then it is at capacity. If another Puma process has
-    # spare capacity, then the request can be left on the socket so the other
-    # worker can pick it up and process it.
-    #
-    # For example: if there are 5 threads, but only 4 working on
-    # requests, this method will not wait and the `Puma::Server`
-    # can pull a request right away.
-    #
-    # If there are 5 threads and all 5 of them are busy, then it will
-    # pause here, and wait until the `not_full` condition variable is
-    # signaled, usually this indicates that a request has been processed.
-    #
-    # It's important to note that even though the server might accept another
-    # request, it might not be added to the `@todo` array right away.
-    # For example if a slow client has only sent a header, but not a body
-    # then the `@todo` array would stay the same size as the reactor works
-    # to try to buffer the request. In that scenario the next call to this
-    # method would not block and another request would be added into the reactor
-    # by the server. This would continue until a fully buffered request
-    # makes it through the reactor and can then be processed by the thread pool.
-    def wait_until_not_full
-      with_mutex do
-        while true
-          return if @shutdown
-
-          # If we can still spin up new threads and there
-          # is work queued that cannot be handled by waiting
-          # threads, then accept more work until we would
-          # spin up the max number of threads.
-          return if busy_threads < @max
-
-          @not_full.wait @mutex
-        end
-      end
-    end
-
-    # @version 5.0.0
-    def wait_for_less_busy_worker(delay_s)
-      return unless delay_s && delay_s > 0
-
-      # Ruby MRI does GVL, this can result
-      # in processing contention when multiple threads
-      # (requests) are running concurrently
-      return unless Puma.mri?
-
-      with_mutex do
-        return if @shutdown
-
-        # do not delay, if we are not busy
-        return unless busy_threads > 0
-
-        # this will be signaled once a request finishes,
-        # which can happen earlier than delay
-        @not_full.wait @mutex, delay_s
       end
     end
 
