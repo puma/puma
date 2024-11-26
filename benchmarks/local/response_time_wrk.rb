@@ -42,7 +42,7 @@ module TestPuma
       @duration ||= 10
       max_threads = (@threads[/\d+\z/] || 5).to_i
       @stream_threads ||= (0.8 * (@workers || 1) * max_threads).to_i
-      connections = @stream_threads * (@wrk_connections || 2)
+      connections = @stream_threads * (@connections || 2)
 
       warm_up
 

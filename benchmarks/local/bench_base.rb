@@ -56,7 +56,7 @@ module TestPuma
     SIZES_RE = /\d[\d,]*\z/.freeze
 
     def initialize
-      sleep 5 # wait for server to boot
+      sleep 0.2     # wait for server to boot
 
       @thread_loops       = nil
       @clients_per_thread = nil
@@ -65,6 +65,9 @@ module TestPuma
       @body_types         = TYPES
       @dly_app            = nil
       @bind_type          = :tcp
+
+      @worker_req_ttl = {}
+      @pids = {}
 
       @ios_to_close = []
 
@@ -101,33 +104,23 @@ module TestPuma
     end
 
     def setup_options
+      # STDOUT.syswrite "\n\n#{ARGV}\n"
+
       OptionParser.new do |o|
         o.on "-T", "--stream-threads THREADS", OptionParser::DecimalInteger, "request_stream: loops/threads" do |arg|
           @stream_threads = arg.to_i
         end
 
         o.on "-c", "--wrk-connections CONNECTIONS", OptionParser::DecimalInteger, "request_stream: clients_per_thread" do |arg|
-          @wrk_connections = arg.to_i
+          @connections = arg.to_i
         end
 
         o.on "-R", "--requests REQUESTS", OptionParser::DecimalInteger, "request_stream: requests per socket" do |arg|
-          @req_per_socket = arg.to_i
+          @req_per_connection = arg.to_i
         end
 
         o.on "-D", "--duration DURATION", OptionParser::DecimalInteger, "wrk/stream: duration" do |arg|
           @duration = arg.to_i
-        end
-
-        o.on "-b", "--body_conf BODY_CONF", String, "CI RackUp: type and size of response body in kB" do |arg|
-          if (types = arg[TYPES_RE])
-            @body_types = TYPES.select { |a| types.include? a[0].to_s }
-          end
-
-          if (sizes = arg[SIZES_RE])
-            @body_sizes = sizes.split(',')
-            @body_sizes.map!(&:to_i)
-            @body_sizes.sort!
-          end
         end
 
         o.on "-d", "--dly_app DELAYAPP", Float, "CI RackUp: app response delay" do |arg|
@@ -143,7 +136,7 @@ module TestPuma
         end
 
         o.on "-t", "--threads PUMA_THREADS", String, "Puma Server: threads" do |arg|
-          @threads = arg
+          @threads =  arg.match?(/\d+:\d+/) ? arg[/\d+\z/].to_i : arg.to_i
         end
 
         o.on "-w", "--workers PUMA_WORKERS", OptionParser::DecimalInteger, "Puma Server: workers" do |arg|
@@ -152,6 +145,10 @@ module TestPuma
 
         o.on "-W", "--wrk_bind WRK_STR", String, "wrk: bind string" do |arg|
           @wrk_bind_str = arg
+        end
+
+        o.on "-k", "--disable-keepalive", "hey no keep alive" do
+          @no_keep_alive = true
         end
 
         o.on("-h", "--help", "Prints this help") do
@@ -177,6 +174,44 @@ module TestPuma
         end
       end
       puts "Closed #{closed} sockets" unless closed.zero?
+    end
+
+    # Runs hey and returns data from its output.
+    # @param cmd [String] The hey command string, with arguments
+    # @return [Hash] The hey data
+    #
+    def run_hey_parse(cmd, mult, log: false)
+      STDOUT.syswrite "#{cmd}\n"
+
+      hey_output = %x[#{cmd}].strip.gsub(' secs', '')
+
+      if log
+        puts '', hey_output, ''
+      end
+
+      job = {}
+
+      status_code_dist = hey_output[/^Status code distribution:\s+(.+?)\z/m, 1].strip.gsub(/^\s+\[/, '[')
+
+      if status_code_dist.include? "\n"
+        job[:error] = status_code_dist
+        STDOUT.syswrite "\nERRORS:\n#{status_code_dist}\n"
+      end
+
+      job[:mult] = format '%1.2f', mult
+
+      job[:rps] = hey_output[/^\s+Requests\/sec\:\s+([\d.]+)/, 1]
+
+      latency = hey_output[/^Latency distribution:\n(.+?)\n\n/m, 1].gsub(/^ +/, '').gsub('in ', '').gsub(' secs', '')
+      if latency
+        temp = job[:latency] = {}
+        latency.lines.each do |l|
+          per_cent = l[/\A\d+/].to_i
+          temp[per_cent] = per_cent.zero? ? '  na' : l.rstrip[/[\d.]+\z/]
+        end
+        temp[100] = hey_output[/^\s+Slowest\:\s+([\d.]+)/, 1]
+      end
+      job
     end
 
     # Runs wrk and returns data from its output.
@@ -297,18 +332,17 @@ module TestPuma
       end
     end
 
-    # Parses data returned by `PumaInfo.run stats`
+    # Parses data returned by `PumaInfo.run 'stats'`
     # @return [Hash] The data from Puma stats
     #
     def parse_stats
-      stats = {}
-
+      sleep 5.0
       obj = @puma_info.run 'stats'
-
-      worker_status = obj[:worker_status]
-
+      return nil unless worker_status = obj[:worker_status]
+      stats = {}
       worker_status.each do |w|
         pid = w[:pid]
+        @worker_req_ttl[pid] ||= 0
         req_cnt = w[:last_status][:requests_count]
         id = format 'worker-%01d-%02d', w[:phase], w[:index]
         hsh = {
