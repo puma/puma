@@ -23,13 +23,14 @@ jobs:
 
   test_mri:
     name: >-
-      MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}${{ matrix.rack-v }}
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}${{ matrix.rack-v }}
     needs: [rubocop, skip_duplicate_runs]
     env:
       CI: true
       PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
+      TERM: BugMinitest
 
     runs-on: ${{ matrix.os }}
     if: |
@@ -38,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04, macos-12, macos-13, macos-14, windows-2022 ]
+        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, macos-13, macos-14, macos-15, windows-2022 ]
         ruby: [ 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, 3.2, 3.3, head ]
         no-ssl: ['']
         rack-v: ['']
@@ -58,21 +59,22 @@ jobs:
           - { os: ubuntu-22.04 , ruby:  2.5  }
           - { os: ubuntu-22.04 , ruby:  2.6  }
           - { os: ubuntu-22.04 , ruby:  2.7  }
-          - { os: ubuntu-22.04 , ruby:  3.0  }
-          - { os: macos-12     , ruby:  2.7  }
-          - { os: macos-12     , ruby: '3.0' }
-          - { os: macos-12     , ruby:  3.1  }
-          - { os: macos-12     , ruby:  3.3  }
-          - { os: macos-12     , ruby:  head }
-          - { os: macos-13     , ruby:  2.4  }
-          - { os: macos-13     , ruby:  2.5  }
-          - { os: macos-13     , ruby:  2.6  }
-          - { os: macos-13     , ruby:  2.7  }
-          - { os: macos-13     , ruby:  3.0  }
+          - { os: ubuntu-22.04 , ruby: '3.0' }
+          - { os: ubuntu-24.04 , ruby:  2.4  }
+          - { os: ubuntu-24.04 , ruby:  2.5  }
+          - { os: ubuntu-24.04 , ruby:  2.6  }
+          - { os: ubuntu-24.04 , ruby:  2.7  }
+          - { os: ubuntu-24.04 , ruby: '3.0' }
           - { os: macos-14     , ruby:  2.4  }
           - { os: macos-14     , ruby:  2.5  }
           - { os: macos-14     , ruby:  2.6  }
           - { os: macos-14     , ruby:  2.7  }
+          - { os: macos-15     , ruby:  2.4  }
+          - { os: macos-15     , ruby:  2.5  }
+          - { os: macos-15     , ruby:  2.6  }
+          - { os: macos-15     , ruby:  2.7  }
+          - { os: macos-15     , ruby: '3.0' }
+          - { os: macos-15     , ruby:  3.2  }
           - { os: windows-2022 , ruby: head  }
 
     steps:
@@ -126,18 +128,19 @@ jobs:
 
       - name: test
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        timeout-minutes: 6
+        timeout-minutes: 10
         run: test/runner --verbose
 
   test_non_mri:
     name: >-
-      NON-MRI: ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
     needs: [rubocop, skip_duplicate_runs]
     env:
       CI: true
       PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
+      TERM: BugMinitest
 
     runs-on: ${{ matrix.os }}
     if: |
@@ -156,16 +159,13 @@ jobs:
           - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
           - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby-head, allow-failure: true }
           - { tto: 8 , os: macos-13     , ruby: jruby }
+          - { tto: 8 , os: macos-14     , ruby: jruby }
           - { tto: 8 , os: macos-13     , ruby: truffleruby, allow-failure: true }
 
     steps:
       - name: repo checkout
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: actions/checkout@v4
-
-      - name: set JAVA_HOME to JDK 17
-        if: (needs.skip_duplicate_runs.outputs.should_skip != 'true')
-        run: echo JAVA_HOME=$JAVA_HOME_17_X64 >> $GITHUB_ENV
 
       - name: load ruby, ragel
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}

@@ -44,7 +44,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   # yields ctx to block, use for ctx setup & configuration
-  def start_server
+  def start_server(&server_ctx)
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     ctx = Puma::MiniSSL::Context.new
@@ -59,9 +59,11 @@ class TestPumaServerSSL < Minitest::Test
 
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
-    yield ctx if block_given?
+    yield ctx if server_ctx
 
-    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    @log_stdout = StringIO.new
+    @log_stderr = StringIO.new
+    @log_writer = SSLLogWriterHelper.new @log_stdout, @log_stderr
     @server = Puma::Server.new app, nil, {log_writer: @log_writer}
     @port = (@server.add_ssl_listener HOST, 0, ctx).addr[1]
     @bind_port = @port
@@ -116,53 +118,51 @@ class TestPumaServerSSL < Minitest::Test
     assert_equal "https\na=1&b=2", body
   end
 
-  def test_ssl_v3_rejection
-    skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
-    start_server
+  def rejection(server_ctx, min_max, ssl_version)
+    if server_ctx
+      start_server(&server_ctx)
+    else
+      start_server
+    end
+
+    msg = nil
 
     assert_raises(OpenSSL::SSL::SSLError) do
-      send_http_read_resp_body ctx: new_ctx { |c| c.ssl_version = :SSLv3 }
+      begin
+        send_http_read_response ctx: new_ctx { |ctx|
+          if PROTOCOL_USE_MIN_MAX && min_max
+            ctx.max_version = min_max
+          else
+            ctx.ssl_version = ssl_version
+          end
+        }
+      rescue => e
+        msg = e.message
+        raise e
+      end
     end
-    unless Puma.jruby?
-      msg = /wrong version number|no protocols available|version too low|unknown SSL method/
-      assert_match(msg, @log_writer.error.message) if @log_writer.error
-    end
+
+    expected = Puma::IS_JRUBY ?
+      /No appropriate protocol \(protocol is disabled or cipher suites are inappropriate\)/ :
+      /SSL_connect SYSCALL returned=5|wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
+    assert_match expected, msg
+
+    # make sure a good request succeeds
+    assert_equal "https", send_http_read_resp_body(ctx: new_ctx)
+  end
+
+  def test_ssl_v3_rejection
+    skip-("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
+
+    rejection nil, nil, :SSLv3
   end
 
   def test_tls_v1_rejection
-    start_server { |ctx| ctx.no_tlsv1 = true }
-
-    assert_raises(OpenSSL::SSL::SSLError) do
-      send_http_read_resp_body ctx: new_ctx { |c|
-        if PROTOCOL_USE_MIN_MAX
-          c.max_version = :TLS1
-        else
-          c.ssl_version = :TLSv1
-        end
-      }
-    end
-    unless Puma.jruby?
-      msg = /wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
-      assert_match(msg, @log_writer.error.message) if @log_writer.error
-    end
+    rejection ->(ctx) { ctx.no_tlsv1 = true }, :TLS1, :TLSv1
   end
 
   def test_tls_v1_1_rejection
-    start_server { |ctx| ctx.no_tlsv1_1 = true }
-
-    assert_raises(OpenSSL::SSL::SSLError) do
-      send_http_read_response ctx: new_ctx { |c|
-        if PROTOCOL_USE_MIN_MAX
-          c.max_version = :TLS1_1
-        else
-          c.ssl_version = :TLSv1_1
-        end
-      }
-    end
-    unless Puma.jruby?
-      msg = /wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
-      assert_match(msg, @log_writer.error.message) if @log_writer.error
-    end
+    rejection ->(ctx) { ctx.no_tlsv1_1 = true }, :TLS1_1, :TLSv1_1
   end
 
   def test_tls_v1_3
@@ -188,7 +188,7 @@ class TestPumaServerSSL < Minitest::Test
     start_server
 
     tcp = Thread.new do
-      assert_raises(Errno::ECONNREFUSED, EOFError, Timeout::Error) do
+      assert_raises(Errno::ECONNREFUSED, EOFError, IOError, Timeout::Error) do
         body_http = send_http_read_resp_body timeout: 4
       end
     end
@@ -276,7 +276,7 @@ class TestPumaServerSSLClient < Minitest::Test
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
+  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 
   # Context can be shared, may help with JRuby
   CTX = Puma::MiniSSL::Context.new.tap { |ctx|
@@ -493,7 +493,7 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
+  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 
   def test_server_ssl_with_cert_pem_and_key_pem
     ctx = Puma::MiniSSL::Context.new
@@ -543,7 +543,9 @@ class TestPumaSSLCertChain < Minitest::Test
   def cert_chain(&blk)
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
-    @log_writer = SSLLogWriterHelper.new STDOUT, STDERR
+    @log_stdout = StringIO.new
+    @log_stderr = StringIO.new
+    @log_writer = SSLLogWriterHelper.new @log_stdout, @log_stderr
     @server = Puma::Server.new app, nil, {log_writer: @log_writer}
 
     mini_ctx = Puma::MiniSSL::Context.new

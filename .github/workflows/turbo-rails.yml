@@ -25,7 +25,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: '2.7', rails: '6.1' }
           - { os: ubuntu-20.04 , ruby: '3.1', rails: '7.0' }
           - { os: ubuntu-20.04 , ruby: '3.2', rails: '7.0' }
           - { os: ubuntu-22.04 , ruby: '3.3', rails: '7.0' }
@@ -35,6 +34,8 @@ jobs:
           - { os: ubuntu-22.04 , ruby: head , rails: '7.1' }
     env:
       CI: true
+      FERRUM_PROCESS_TIMEOUT: 60
+      FERRUM_DEFAULT_TIMEOUT: 60
       RAILS_VERSION: "${{ matrix.rails }}"
 
     steps:
@@ -50,6 +51,9 @@ jobs:
           SRC="gem ['\"]puma['\"].*"
           DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
           sed -i "s#$SRC#$DST#" Gemfile
+          SRC="gem ['\"]sqlite3['\"].*"
+          DST="gem 'sqlite3', '~> 1.4'"
+          sed -i "s#$SRC#$DST#" Gemfile
           #
           # allow using capybara from the repo, either a branch or a commit
           # comment out if CI works with current release
@@ -61,6 +65,7 @@ jobs:
           SRC="Silent: true"
           DST="Silent: false, Threads: '1:4'"
           sed -i "s/$SRC/$DST/" test/application_system_test_case.rb
+          cat Gemfile
 
       - name: load ruby
         uses: ruby/setup-ruby@v1

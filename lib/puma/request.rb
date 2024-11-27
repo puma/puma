@@ -53,7 +53,6 @@ module Puma
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
 
-
       return false if closed_socket?(socket)
 
       if client.http_content_length_limit_exceeded
@@ -135,7 +134,7 @@ module Puma
       io_buffer.reset
       uncork_socket client.io
       app_body.close if app_body.respond_to? :close
-      client.tempfile&.unlink
+      client&.tempfile_close
       after_reply = env[RACK_AFTER_REPLY] || []
       begin
         after_reply.each { |o| o.call }
@@ -165,9 +164,14 @@ module Puma
       # if the server is at capacity and the listener has a new connection ready.
       # This allows Puma to service connections fairly when the number
       # of concurrent connections exceeds the size of the threadpool.
-      force_keep_alive = requests < @max_fast_inline ||
+      force_keep_alive = if @enable_keep_alives
+        requests < @max_fast_inline ||
         @thread_pool.busy_threads < @max_threads ||
         !client.listener.to_io.wait_readable(0)
+      else
+        # Always set force_keep_alive to false if the server has keep-alives not enabled.
+        false
+      end
 
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
@@ -495,6 +499,11 @@ module Puma
     # compatibility, we'll convert them back. This code is written to
     # avoid allocation in the common case (ie there are no headers
     # with `,` in their names), that's why it has the extra conditionals.
+    #
+    # @note If a normalized version of a `,` header already exists, we ignore
+    #       the `,` version. This prevents clobbering headers managed by proxies
+    #       but not by clients (Like X-Forwarded-For).
+    #
     # @param env [Hash] see Puma::Client#env, from request, modifies in place
     # @version 5.0.3
     #
@@ -503,23 +512,31 @@ module Puma
       to_add = nil
 
       env.each do |k,v|
-        if k.start_with?("HTTP_") && k.include?(",") && k != "HTTP_TRANSFER,ENCODING"
+        if k.start_with?("HTTP_") && k.include?(",") && !UNMASKABLE_HEADERS.key?(k)
           if to_delete
             to_delete << k
           else
             to_delete = [k]
           end
 
+          new_k = k.tr(",", "_")
+          if env.key?(new_k)
+            next
+          end
+
           unless to_add
             to_add = {}
           end
 
-          to_add[k.tr(",", "_")] = v
+          to_add[new_k] = v
         end
       end
 
-      if to_delete
+      if to_delete # rubocop:disable Style/SafeNavigation
         to_delete.each { |k| env.delete(k) }
+      end
+
+      if to_add
         env.merge! to_add
       end
     end

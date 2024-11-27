@@ -95,6 +95,7 @@ module Puma
       @max_threads               = @options[:max_threads]
       @queue_requests            = @options[:queue_requests]
       @max_fast_inline           = @options[:max_fast_inline]
+      @enable_keep_alives        = @options[:enable_keep_alives]
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
 
@@ -232,6 +233,11 @@ module Puma
       @thread_pool&.pool_capacity
     end
 
+    # @!attribute [r] busy_threads
+    def busy_threads
+      @thread_pool&.busy_threads
+    end
+
     # Runs the server.
     #
     # If +background+ is true (the default) then a thread is spun
@@ -252,9 +258,8 @@ module Puma
         @reactor.run
       end
 
-
       @thread_pool.auto_reap! if options[:reaping_time]
-      @thread_pool.auto_trim! if options[:auto_trim_time]
+      @thread_pool.auto_trim! if @min_threads != @max_threads && options[:auto_trim_time]
 
       @check, @notify = Puma::Util.pipe unless @notify
 
@@ -360,7 +365,7 @@ module Puma
                 break if handle_check
               else
                 pool.wait_until_not_full
-                pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker])
+                pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker]) if @clustered
 
                 io = begin
                   sock.accept_nonblock
@@ -645,13 +650,17 @@ module Puma
 
     # List of methods invoked by #stats.
     # @version 5.0.0
-    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count].freeze
+    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count, :busy_threads].freeze
 
     # Returns a hash of stats about the running server for reporting purposes.
     # @version 5.0.0
     # @!attribute [r] stats
+    # @return [Hash] hash containing stat info from `Server` and `ThreadPool`
     def stats
-      STAT_METHODS.map {|name| [name, send(name) || 0]}.to_h
+      stats = @thread_pool&.stats || {}
+      stats[:max_threads]    = @max_threads
+      stats[:requests_count] = @requests_count
+      stats
     end
 
     # below are 'delegations' to binder

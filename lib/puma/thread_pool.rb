@@ -85,6 +85,18 @@ module Puma
       end
     end
 
+    # generate stats hash so as not to perform multiple locks
+    # @return [Hash] hash containing stat info from ThreadPool
+    def stats
+      with_mutex do
+        { backlog: @todo.size,
+          running: @spawned,
+          pool_capacity: @waiting + (@max - @spawned),
+          busy_threads: @spawned - @waiting + @todo.size
+        }
+      end
+    end
+
     # How many objects have yet to be processed by the pool?
     #
     def backlog

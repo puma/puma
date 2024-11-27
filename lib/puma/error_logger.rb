@@ -15,14 +15,14 @@ module Puma
 
     LOG_QUEUE = Queue.new
 
-    def initialize(ioerr)
+    def initialize(ioerr, env: ENV)
       @ioerr = ioerr
 
-      @debug = ENV.key? 'PUMA_DEBUG'
+      @debug = env.key?('PUMA_DEBUG')
     end
 
-    def self.stdio
-      new $stderr
+    def self.stdio(env: ENV)
+      new($stderr, env: env)
     end
 
     # Print occurred error details.

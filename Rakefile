@@ -99,10 +99,4 @@ else
   task :test => [:compile]
 end
 
-namespace :test do
-  desc "Run all tests"
-
-  task :all => :test
-end
-
-task :default => [:rubocop, "test:all"]
+task :default => [:rubocop, :test]

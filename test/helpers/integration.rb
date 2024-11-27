@@ -21,19 +21,22 @@ class TestIntegration < Minitest::Test
   LOG_ERROR_SLEEP = 0.2
   LOG_ERROR_QTY   = 5
 
-  BASE = defined?(Bundler) ? "bundle exec #{Gem.ruby} -Ilib" :
-    "#{Gem.ruby} -Ilib"
+  # rubyopt requires bundler/setup, so we don't need it here
+  BASE = "#{Gem.ruby} -Ilib"
 
   def setup
     @server = nil
+    @config_file = nil
     @server_log = +''
     @pid = nil
     @ios_to_close = []
     @bind_path    = tmp_path('.sock')
+    @control_path     = nil
+    @control_tcp_port = nil
   end
 
   def teardown
-    if @server && defined?(@control_tcp_port) && Puma.windows?
+    if @server && @control_tcp_port && Puma.windows?
       cli_pumactl 'stop'
     elsif @server && @pid && !Puma.windows?
       stop_server @pid, signal: :INT
@@ -60,6 +63,11 @@ class TestIntegration < Minitest::Test
       rescue
       ensure
         @server = nil
+
+        if @config_file
+          File.unlink(@config_file.path) rescue nil
+          @config_file = nil
+        end
       end
     end
   end
@@ -68,6 +76,15 @@ class TestIntegration < Minitest::Test
 
   def silent_and_checked_system_command(*args)
     assert(system(*args, out: File::NULL, err: File::NULL))
+  end
+
+  def with_unbundled_env
+    bundler_ver = Gem::Version.new(Bundler::VERSION)
+    if bundler_ver < Gem::Version.new('2.1.0')
+      Bundler.with_clean_env { yield }
+    else
+      Bundler.with_unbundled_env { yield }
+    end
   end
 
   def cli_server(argv,  # rubocop:disable Metrics/ParameterLists
@@ -81,10 +98,12 @@ class TestIntegration < Minitest::Test
       env: {})          # pass env setting to Puma process in IO.popen
 
     if config
-      config_file = Tempfile.new(%w(config .rb))
-      config_file.write config
-      config_file.close
-      config = "-C #{config_file.path}"
+      @config_file = Tempfile.create(%w(config .rb))
+      @config_file.syswrite config
+      # not supported on some OS's, all GitHub Actions OS's support it
+      @config_file.fsync rescue nil
+      @config_file.close
+      config = "-C #{@config_file.path}"
     end
 
     puma_path = File.expand_path '../../../bin/puma', __FILE__
@@ -96,6 +115,7 @@ class TestIntegration < Minitest::Test
         "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
       else
         @tcp_port = UniquePort.call
+        @bind_port = @tcp_port
         "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
       end
 
@@ -108,8 +128,8 @@ class TestIntegration < Minitest::Test
     else
       @server = IO.popen(env, cmd)
     end
-    wait_for_server_to_boot(log: log) unless no_wait
     @pid = @server.pid
+    wait_for_server_to_boot(log: log) unless no_wait
     @server
   end
 
@@ -127,8 +147,24 @@ class TestIntegration < Minitest::Test
     end
   end
 
-  def restart_server_and_listen(argv, log: false)
-    cli_server argv
+  # Most integration tests do not stop/shutdown the server, which is handled by
+  # `teardown` in this file.
+  # For tests that do stop/shutdown the server, use this method to check with `wait2`,
+  # and also clear variables so `teardown` will not run its code.
+  def wait_server(exit_code = 0, pid: @pid)
+    return unless pid
+    begin
+      _, status = Process.wait2 pid
+      assert_equal exit_code, status
+    rescue Errno::ECHILD # raised on Windows ?
+    end
+  ensure
+    @server.close unless @server.closed?
+    @server = nil
+  end
+
+  def restart_server_and_listen(argv, env: {}, log: false)
+    cli_server argv, env: env, log: log
     connection = connect
     initial_reply = read_body(connection)
     restart_server connection, log: log
@@ -138,14 +174,17 @@ class TestIntegration < Minitest::Test
   # reuses an existing connection to make sure that works
   def restart_server(connection, log: false)
     Process.kill :USR2, @pid
+    wait_for_server_to_include 'Restarting', log: log
     connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot log: log
   end
 
   # wait for server to say it booted
   # @server and/or @server.gets may be nil on slow CI systems
-  def wait_for_server_to_boot(log: false)
-    wait_for_server_to_include 'Ctrl-C', log: log
+  def wait_for_server_to_boot(timeout: LOG_TIMEOUT, log: false)
+    @puma_pid = wait_for_server_to_match(/(?:Master|      ) PID: (\d+)$/, 1, timeout: timeout, log: log)&.to_i
+    @pid = @puma_pid if @pid != @puma_pid
+    wait_for_server_to_include 'Ctrl-C', timeout: timeout, log: log
   end
 
   # Returns true if and when server log includes str.  Will timeout otherwise.
@@ -173,7 +212,7 @@ class TestIntegration < Minitest::Test
     error_retries = 0
     line = ''
 
-    sleep 0.05 unless @server.is_a?(IO) or Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
+    sleep 0.05 until @server.is_a?(IO) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
 
     raise Minitest::Assertion,  "@server is not an IO" unless @server.is_a?(IO)
     if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
@@ -303,12 +342,13 @@ class TestIntegration < Minitest::Test
   # used to define correct 'refused' errors
   def thread_run_refused(unix: false)
     if unix
-      DARWIN ? [IOError, Errno::ENOENT, Errno::EPIPE] :
+      DARWIN ? [IOError, Errno::ENOENT, Errno::EPIPE, Errno::EBADF] :
                [IOError, Errno::ENOENT]
     else
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
+      # Errno::ECONNABORTED is thrown by Windows on read or write
       DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
-               [IOError, Errno::ECONNREFUSED, Errno::EPIPE]
+               [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::ECONNABORTED]
     end
   end
 
@@ -326,9 +366,9 @@ class TestIntegration < Minitest::Test
     arg =
       if no_bind
         argv.split(/ +/)
-      elsif unix
+      elsif @control_path && !@control_tcp_port
         %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      else
+      elsif @control_tcp_port && !@control_path
         %W[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
       end
 
@@ -343,9 +383,9 @@ class TestIntegration < Minitest::Test
     arg =
       if no_bind
         argv
-      elsif unix
+      elsif @control_path && !@control_tcp_port
         %Q[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      else
+      elsif @control_tcp_port && !@control_path
         %Q[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
       end
 
@@ -360,7 +400,9 @@ class TestIntegration < Minitest::Test
 
   def get_stats
     read_pipe = cli_pumactl "stats"
-    JSON.parse(read_pipe.readlines.last)
+    read_pipe.wait_readable 2
+    # `split("\n", 2).last` removes "Command stats sent success" line
+    JSON.parse read_pipe.read.split("\n", 2).last
   end
 
   def hot_restart_does_not_drop_connections(num_threads: 1, total_requests: 500)
@@ -443,7 +485,12 @@ class TestIntegration < Minitest::Test
           Process.kill :USR2, @pid
         end
         sleep 0.5
-        wait_for_server_to_boot
+        # If 'wait_for_server_to_boot' times out, error in thread shuts down CI
+        begin
+          wait_for_server_to_boot timeout: 5
+        rescue Minitest::Assertion # Timeout
+          run = false
+        end
         restart_count += 1
         sleep(Puma.windows? ? 2.0 : 0.5)
       end
@@ -454,7 +501,7 @@ class TestIntegration < Minitest::Test
     restart_thread.join
     if Puma.windows?
       cli_pumactl 'stop'
-      Process.wait @server.pid
+      wait_server
     else
       stop_server
     end

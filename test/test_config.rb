@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
 require_relative "helper"
-require_relative "helpers/config_file"
 
 require "puma/configuration"
 require 'puma/log_writer'
 require 'rack'
 
-class TestConfigFile < TestConfigFileBase
+class TestConfigFile < Minitest::Test
   parallelize_me!
 
   def test_default_max_threads
@@ -123,7 +122,7 @@ class TestConfigFile < TestConfigFileBase
     skip_if :jruby
     skip_unless :ssl
 
-    cert_path = File.expand_path "../examples/puma/client-certs", __dir__
+    cert_path = File.expand_path "../examples/puma/client_certs", __dir__
     cert_pem = File.read("#{cert_path}/server.crt")
     key_pem = File.read("#{cert_path}/server.key")
 
@@ -503,12 +502,22 @@ class TestConfigFile < TestConfigFileBase
     assert_warning_for_hooks_defined_in_single_mode :before_fork
   end
 
+  def test_run_hooks_before_refork
+    assert_run_hooks :before_refork, configured_with: :on_refork
+
+    assert_warning_for_hooks_defined_in_single_mode :on_refork
+  end
+
   def test_run_hooks_before_thread_start
     assert_run_hooks :before_thread_start, configured_with: :on_thread_start
   end
 
   def test_run_hooks_before_thread_exit
     assert_run_hooks :before_thread_exit, configured_with: :on_thread_exit
+  end
+
+  def test_run_hooks_out_of_band
+    assert_run_hooks :out_of_band
   end
 
   def test_run_hooks_and_exception
@@ -619,12 +628,12 @@ class TestConfigFile < TestConfigFileBase
       end
     end
 
-    assert_match "your `#{hook_name}` block did not run\n", out
+    assert_match "your `#{hook_name}` block will not run.\n", out
   end
 end
 
 # contains tests that cannot run parallel
-class TestConfigFileSingle < TestConfigFileBase
+class TestConfigFileSingle < Minitest::Test
   def test_custom_logger_from_DSL
     conf = Puma::Configuration.new { |c| c.load 'test/config/custom_logger.rb' }
 
@@ -636,116 +645,144 @@ class TestConfigFileSingle < TestConfigFileBase
 end
 
 # Thread unsafe modification of ENV
-class TestEnvModifificationConfig < TestConfigFileBase
+class TestEnvModifificationConfig < Minitest::Test
   def test_double_bind_port
     port = (rand(10_000) + 30_000).to_s
-    with_env("PORT" => port) do
-      conf = Puma::Configuration.new do |user_config, file_config, default_config|
-        user_config.bind "tcp://#{Puma::Configuration::DEFAULTS[:tcp_host]}:#{port}"
-        file_config.load "test/config/app.rb"
-      end
-
-      conf.load
-      assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
+    env = { "PORT" => port }
+    conf = Puma::Configuration.new({}, {}, env)  do |user_config, file_config, default_config|
+      user_config.bind "tcp://#{Puma::Configuration::DEFAULTS[:tcp_host]}:#{port}"
+      file_config.load "test/config/app.rb"
     end
+
+    conf.load
+    assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
   end
 end
 
-class TestConfigEnvVariables < TestConfigFileBase
+class TestConfigEnvVariables < Minitest::Test
   def test_config_loads_correct_min_threads
     assert_equal 0, Puma::Configuration.new.options.default_options[:min_threads]
 
-    with_env("MIN_THREADS" => "7") do
-      conf = Puma::Configuration.new
-      assert_equal 7, conf.options.default_options[:min_threads]
-    end
+    env = { "MIN_THREADS" => "7" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 7, conf.options.default_options[:min_threads]
 
-    with_env("PUMA_MIN_THREADS" => "8") do
-      conf = Puma::Configuration.new
-      assert_equal 8, conf.options.default_options[:min_threads]
-    end
+    env = { "PUMA_MIN_THREADS" => "8" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 8, conf.options.default_options[:min_threads]
+
+    env = { "PUMA_MIN_THREADS" => "" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 0, conf.options.default_options[:min_threads]
   end
 
   def test_config_loads_correct_max_threads
-    conf = Puma::Configuration.new
+    default_max_threads = Puma.mri? ? 5 : 16
+    assert_equal default_max_threads, Puma::Configuration.new.options.default_options[:max_threads]
 
-    with_env("MAX_THREADS" => "7") do
-      conf = Puma::Configuration.new
-      assert_equal 7, conf.options.default_options[:max_threads]
-    end
+    env = { "MAX_THREADS" => "7" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 7, conf.options.default_options[:max_threads]
 
-    with_env("PUMA_MAX_THREADS" => "8") do
-      conf = Puma::Configuration.new
-      assert_equal 8, conf.options.default_options[:max_threads]
-    end
+    env = { "PUMA_MAX_THREADS" => "8" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 8, conf.options.default_options[:max_threads]
+
+    env = { "PUMA_MAX_THREADS" => "" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal default_max_threads, conf.options.default_options[:max_threads]
   end
 
   def test_config_loads_workers_from_env
-    with_env("WEB_CONCURRENCY" => "9") do
-      conf = Puma::Configuration.new
-      assert_equal 9, conf.options.default_options[:workers]
-    end
+    env = { "WEB_CONCURRENCY" => "9" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 9, conf.options.default_options[:workers]
+  end
+
+  def test_config_ignores_blank_workers_from_env
+    env = { "WEB_CONCURRENCY" => "" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal 0, conf.options.default_options[:workers]
   end
 
   def test_config_does_not_preload_app_if_not_using_workers
-    with_env("WEB_CONCURRENCY" => "0") do
-      conf = Puma::Configuration.new
-      assert_equal false, conf.options.default_options[:preload_app]
-    end
+    env = { "WEB_CONCURRENCY" => "0" }
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal false, conf.options.default_options[:preload_app]
   end
 
   def test_config_preloads_app_if_using_workers
-    with_env("WEB_CONCURRENCY" => "2") do
-      preload = Puma.forkable?
-      conf = Puma::Configuration.new
-      assert_equal preload, conf.options.default_options[:preload_app]
-    end
+    env = { "WEB_CONCURRENCY" => "2" }
+    preload = Puma.forkable?
+    conf = Puma::Configuration.new({}, {}, env)
+    assert_equal preload, conf.options.default_options[:preload_app]
   end
 end
 
-class TestConfigFileWithFakeEnv < TestConfigFileBase
+class TestConfigFileWithFakeEnv < Minitest::Test
   def setup
     FileUtils.mkpath("config/puma")
     File.write("config/puma/fake-env.rb", "")
   end
 
-  def test_config_files_with_app_env
-    with_env('APP_ENV' => 'fake-env') do
-      conf = Puma::Configuration.new do
-      end
+  def teardown
+    FileUtils.rm_r("config/puma")
+  end
 
-      assert_equal ['config/puma/fake-env.rb'], conf.config_files
-    end
+  def test_config_files_with_app_env
+    env = { 'APP_ENV' => 'fake-env' }
+
+    conf = Puma::Configuration.new({}, {}, env)
+
+    assert_equal ['config/puma/fake-env.rb'], conf.config_files
   end
 
   def test_config_files_with_rack_env
-    with_env('RACK_ENV' => 'fake-env') do
-      conf = Puma::Configuration.new do
-      end
+    env = { 'RACK_ENV' => 'fake-env' }
 
-      assert_equal ['config/puma/fake-env.rb'], conf.config_files
-    end
+    conf = Puma::Configuration.new({}, {}, env)
+
+    assert_equal ['config/puma/fake-env.rb'], conf.config_files
   end
 
   def test_config_files_with_rails_env
-    with_env('RAILS_ENV' => 'fake-env', 'RACK_ENV' => nil) do
-      conf = Puma::Configuration.new do
-      end
+    env = { 'RAILS_ENV' => 'fake-env', 'RACK_ENV' => nil }
 
-      assert_equal ['config/puma/fake-env.rb'], conf.config_files
-    end
+    conf = Puma::Configuration.new({}, {}, env)
+
+    assert_equal ['config/puma/fake-env.rb'], conf.config_files
   end
 
   def test_config_files_with_specified_environment
-    conf = Puma::Configuration.new do
-    end
+    conf = Puma::Configuration.new
 
     conf.options[:environment] = 'fake-env'
 
     assert_equal ['config/puma/fake-env.rb'], conf.config_files
   end
 
-  def teardown
-    FileUtils.rm_r("config/puma")
+  def test_enable_keep_alives_by_default
+    conf = Puma::Configuration.new
+    conf.load
+
+    assert_equal conf.options[:enable_keep_alives], true
+  end
+
+  def test_enable_keep_alives_true
+    conf = Puma::Configuration.new do |c|
+      c.enable_keep_alives true
+    end
+    conf.load
+
+    assert_equal conf.options[:enable_keep_alives], true
+  end
+
+  def test_enable_keep_alives_false
+    conf = Puma::Configuration.new do |c|
+      c.enable_keep_alives false
+    end
+    conf.load
+
+    assert_equal conf.options[:enable_keep_alives], false
   end
 end

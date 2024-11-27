@@ -37,7 +37,7 @@ module Puma
     # @version 5.0.0
     PRINTABLE_COMMANDS = %w[gc-stats stats thread-backtraces].freeze
 
-    def initialize(argv, stdout=STDOUT, stderr=STDERR)
+    def initialize(argv, stdout=STDOUT, stderr=STDERR, env: ENV)
       @state = nil
       @quiet = false
       @pidfile = nil
@@ -46,7 +46,7 @@ module Puma
       @control_auth_token = nil
       @config_file = nil
       @command = nil
-      @environment = ENV['APP_ENV'] || ENV['RACK_ENV'] || ENV['RAILS_ENV']
+      @environment = env['APP_ENV'] || env['RACK_ENV'] || env['RAILS_ENV']
 
       @argv = argv.dup
       @stdout = stdout
@@ -60,7 +60,7 @@ module Puma
           @state = arg
         end
 
-        o.on "-Q", "--quiet", "Not display messages" do |arg|
+        o.on "-Q", "--quiet", "Do not display messages" do |arg|
           @quiet = true
         end
 
@@ -127,7 +127,7 @@ module Puma
           require_relative 'configuration'
           require_relative 'log_writer'
 
-          config = Puma::Configuration.new({ config_files: [@config_file] }, {})
+          config = Puma::Configuration.new({ config_files: [@config_file] }, {} , env)
           config.load
           @state              ||= config.options[:state]
           @control_url        ||= config.options[:control_url]

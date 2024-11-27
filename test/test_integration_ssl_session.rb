@@ -24,7 +24,7 @@ class TestIntegrationSSLSession < TestIntegration
 
   RESP = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 5\r\n\r\nhttps"
 
-  CERT_PATH = File.expand_path "../examples/puma/client-certs", __dir__
+  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 
   def teardown
     return if skipped?
@@ -50,9 +50,9 @@ class TestIntegrationSSLSession < TestIntegration
 
   def set_reuse(reuse)
     <<~RUBY
-      key  = '#{File.expand_path '../examples/puma/client-certs/server.key', __dir__}'
-      cert = '#{File.expand_path '../examples/puma/client-certs/server.crt', __dir__}'
-      ca   = '#{File.expand_path '../examples/puma/client-certs/ca.crt', __dir__}'
+      key  = '#{File.expand_path '../examples/puma/client_certs/server.key', __dir__}'
+      cert = '#{File.expand_path '../examples/puma/client_certs/server.crt', __dir__}'
+      ca   = '#{File.expand_path '../examples/puma/client_certs/ca.crt', __dir__}'
 
       ssl_bind '#{HOST}', '#{bind_port}', {
         cert: cert,
@@ -137,7 +137,7 @@ class TestIntegrationSSLSession < TestIntegration
     assert reused, 'TLSv1.3 session was not reused'
   end
 
-  def client_skt(tls_vers = nil, session_pems = [])
+  def client_skt(tls_vers = nil, session_pems = [], queue = nil)
     ctx = OSSL::SSLContext.new
     ctx.verify_mode = OSSL::VERIFY_NONE
     ctx.session_cache_mode = OSSL::SSLContext::SESSION_CACHE_CLIENT
@@ -149,7 +149,10 @@ class TestIntegrationSSLSession < TestIntegration
         ctx.ssl_version = tls_vers.to_s.sub('TLS', 'TLSv').to_sym
       end
     end
-    ctx.session_new_cb = ->(ary) { session_pems << ary.last.to_pem }
+    ctx.session_new_cb = ->(ary) {
+      queue << true if queue
+      session_pems << ary.last.to_pem
+    }
 
     skt = OSSL::SSLSocket.new TCPSocket.new(HOST, bind_port), ctx
     skt.sync_close = true
@@ -157,14 +160,16 @@ class TestIntegrationSSLSession < TestIntegration
   end
 
   def ssl_client(tls_vers: nil)
+    queue = Thread::Queue.new
     session_pems = []
-    skt = client_skt tls_vers, session_pems
+    skt = client_skt tls_vers, session_pems, queue
     skt.connect
 
     skt.syswrite GET
     skt.to_io.wait_readable 2
     assert_equal RESP, skt.sysread(1_024)
     skt.sysclose
+    queue.pop # wait for cb session to be added to first client
 
     skt = client_skt tls_vers, session_pems
     skt.session = OSSL::Session.new(session_pems[0])
@@ -173,6 +178,8 @@ class TestIntegrationSSLSession < TestIntegration
     skt.syswrite GET
     skt.to_io.wait_readable 2
     assert_equal RESP, skt.sysread(1_024)
+    queue.close
+    queue = nil
 
     skt.session_reused?
   ensure

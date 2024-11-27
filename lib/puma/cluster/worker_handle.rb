@@ -51,13 +51,12 @@ module Puma
         @term
       end
 
+      STATUS_PATTERN = /{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads":(?<max_threads>\d*), "requests_count":(?<requests_count>\d*), "busy_threads":(?<busy_threads>\d*) }/
+      private_constant :STATUS_PATTERN
+
       def ping!(status)
         @last_checkin = Time.now
-        captures = status.match(/{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads": (?<max_threads>\d*), "requests_count": (?<requests_count>\d*) }/)
-        @last_status = captures.names.inject({}) do |hash, key|
-          hash[key.to_sym] = captures[key].to_i
-          hash
-        end
+        @last_status = status.match(STATUS_PATTERN).named_captures.map { |c_name, c| [c_name.to_sym, c.to_i] }.to_h
       end
 
       # @see Puma::Cluster#check_workers

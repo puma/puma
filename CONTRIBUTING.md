@@ -138,6 +138,11 @@ If you would like more information about extension building, SSL versions, your 
 PUMA_TEST_DEBUG=1 bundle exec rake test
 ```
 
+Puma also has a helper file for running tests, see the comments at the top of the `test/runner` file.  Example:
+```
+test/runner -v test_puma_server.rb
+```
+
 #### File limits
 
 Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open file" errors when running the Puma test suite.

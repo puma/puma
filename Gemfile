@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "rake-compiler", "~> 1.1.9"
+gem "rake-compiler"
 
 gem "json", "~> 2.3"
 gem "nio4r", "~> 2.0"
@@ -10,21 +10,18 @@ gem "minitest", "~> 5.11"
 gem "minitest-retry"
 gem "minitest-proveit"
 gem "minitest-stub-const"
+gem "concurrent-ruby", "~> 1.3"
 
-use_rackup = false
-rack_vers =
-  case ENV['PUMA_CI_RACK']&.strip
-  when 'rack2'
-    '~> 2.2'
-  when 'rack1'
-    '~> 1.6'
-  else
-    use_rackup = true
-    '>= 2.2'
-  end
-
-gem "rack", rack_vers
-gem "rackup" if use_rackup
+case ENV['PUMA_CI_RACK']&.strip
+when 'rack2'
+  gem "rackup", '~> 1.0'
+  gem "rack"  , '~> 2.2'
+when 'rack1'
+  gem "rack"  , '~> 1.6'
+else
+  gem "rackup", '>= 2.0'
+  gem "rack"  , '>= 2.2'
+end
 
 gem "jruby-openssl", :platform => "jruby"
 

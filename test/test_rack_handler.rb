@@ -6,6 +6,11 @@ module TestRackUp
   require "rack/handler/puma"
   require "puma/events"
 
+  begin
+    require 'rackup/version'
+  rescue LoadError
+  end
+
   class TestOnBootedHandler < Minitest::Test
     def app
       Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
@@ -22,7 +27,7 @@ module TestRackUp
 
       launcher = nil
       thread = Thread.new do
-        Rack::Handler::Puma.run(app, events: events, Verbose: true, Silent: true) do |l|
+        Rack::Handler::Puma.run(app, events: events, Verbose: true, Silent: true, Port: 0) do |l|
           launcher = l
         end
       end
@@ -132,6 +137,38 @@ module TestRackUp
       conf.load
 
       assert_equal ["tcp://[::1]:9292"], conf.options[:binds]
+    end
+
+    def test_ssl_host_supplied_port_default
+      @options[:Host] = "ssl://127.0.0.1"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["ssl://127.0.0.1:9292"], conf.options[:binds]
+    end
+
+    def test_relative_unix_host
+      @options[:Host] = "./relative.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix://./relative.sock"], conf.options[:binds]
+    end
+
+    def test_absolute_unix_host
+      @options[:Host] = "/absolute.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix:///absolute.sock"], conf.options[:binds]
+    end
+
+    def test_abstract_unix_host
+      @options[:Host] = "@abstract.sock"
+      conf = ::Rack::Handler::Puma.config(->{}, @options)
+      conf.load
+
+      assert_equal ["unix://@abstract.sock"], conf.options[:binds]
     end
   end
 
@@ -328,5 +365,25 @@ module TestRackUp
         end
       end
     end
+
+    def test_rackup1
+      pid = nil
+      # JRuby & TruffleRuby take a long time using IO.popen
+      skip_unless :mri
+      env = {'RUBYOPT' => '-rbundler/setup -rrack/version -rrack/handler -rrackup -rrack/handler/puma'}
+      io = IO.popen env, "ruby -e 'puts Rackup::VERSION'"
+      io.wait_readable 2
+      pid = io.pid
+      log = io.sysread 2_048
+      assert_start_with log, '1.0'
+    ensure
+      if pid
+        if Puma::IS_WINDOWS
+          `taskkill /F /PID #{pid}`
+        else
+          `kill -s KILL #{pid}`
+        end
+      end
+    end if Object.const_defined?(:Rackup) && ::Rackup::VERSION.start_with?('1.')
   end
 end

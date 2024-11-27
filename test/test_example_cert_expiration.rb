@@ -5,39 +5,43 @@ require 'openssl'
 # Thes are tests to ensure that the checked in certs in the ./examples/
 # directory are valid and work as expected.
 #
-# These tets will start to fail 1 month before the certs expire
+# These tests will start to fail 1 month before the certs expire
 #
 class TestExampleCertExpiration < Minitest::Test
-  EXAMPLES_DIR = File.expand_path '../examples', __dir__
+  EXAMPLES_DIR = File.expand_path '../examples/puma', __dir__
   EXPIRE_THRESHOLD = Time.now.utc - (60 * 60 * 24 * 30) # 30 days
 
   # Explicitly list the files to test
   TEST_FILES = %w[
-    puma/cert_puma.pem
-    puma/client-certs/client.crt
-    puma/client-certs/ca.crt
-    puma/client-certs/client_unknown.crt
-    puma/client-certs/server.crt
-    puma/client-certs/unknown_ca.crt
-    puma/chain_cert/ca.crt
-    puma/chain_cert/cert.crt
-    puma/chain_cert/intermediate.crt
+    cert_puma.pem
+    client_certs/ca.crt
+    client_certs/client.crt
+    client_certs/client_unknown.crt
+    client_certs/server.crt
+    client_certs/unknown_ca.crt
+    chain_cert/ca.crt
+    chain_cert/cert.crt
+    chain_cert/intermediate.crt
   ]
 
-  # TODO: Add these files to the list above if they are not supposed to be expired
-  # CA/newcerts/cert_1.pem
-  # CA/newcerts/cert_2.pem
-  # CA/cacert.pem
-
   def test_certs_not_expired
-    TEST_FILES.each do |path|
+    expiration_data = TEST_FILES.map do |path|
       full_path  = File.join(EXAMPLES_DIR, path)
-      cert       = OpenSSL::X509::Certificate.new File.read(full_path)
-      parent_dir = File.dirname(path)
+      not_after  = OpenSSL::X509::Certificate.new(File.read(full_path)).not_after
+      [not_after, path]
+    end
 
-      msg = "Cert #{path} has expired. Check the #{parent_dir} for a `.rb` with instructions on how to regenerate."
+    failed = expiration_data.select { |ary| ary[0] <= EXPIRE_THRESHOLD }
 
-      assert(cert.not_after > EXPIRE_THRESHOLD, msg)
+    if failed.empty?
+      assert true
+    else
+      msg = +"\n** The below certs in the 'examples/puma' folder are expiring soon.\n" \
+        "   See 'examples/generate_all_certs.md' for instructions on how to regenerate.\n\n"
+      failed.each do |ary|
+        msg << "     #{ary[1]}\n"
+      end
+      assert false, msg
     end
   end
 end

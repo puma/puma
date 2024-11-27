@@ -100,8 +100,8 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "6.4.2"
-    CODE_NAME = "The Eagle of Durango"
+    PUMA_VERSION = VERSION = "6.5.0"
+    CODE_NAME = "Sky's Version"
 
     PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
 
@@ -137,7 +137,7 @@ module Puma
     }.freeze
 
     # The basic max request size we'll try to read.
-    CHUNK_SIZE = 16 * 1024
+    CHUNK_SIZE = 64 * 1024
 
     # This is the maximum header that is allowed before a client is booted.  The parser detects
     # this, but we'd also like to do this as well.
@@ -280,6 +280,14 @@ module Puma
     ILLEGAL_HEADER_KEY_REGEX = /[\x00-\x20#{DQUOTE}#{HTTP_HEADER_DELIMITER}]/.freeze
     # header values can contain HTAB?
     ILLEGAL_HEADER_VALUE_REGEX = /[\x00-\x08\x0A-\x1F]/.freeze
+
+    # The keys of headers that should not be convert to underscore
+    # normalized versions. These headers are ignored at the request reading layer,
+    # but if we normalize them after reading, it's just confusing for the application.
+    UNMASKABLE_HEADERS = {
+      "HTTP_TRANSFER,ENCODING" => true,
+      "HTTP_CONTENT,LENGTH" => true,
+    }
 
     # Banned keys of response header
     BANNED_HEADER_KEY = /\A(rack\.|status\z)/.freeze
