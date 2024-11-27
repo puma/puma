@@ -22,19 +22,25 @@ benchmarks/local/long_tail_hey.sh -w4 -t5:5 -R100 -d0.2
 ### Puma
 
 | Arg | Description | Example |
-| --  | ----------- | ------- |
-| -t  | Threads     |  5:5    |
-| -w  | Workers     |   2     |
+| :-: | ----------- | ------- |
+| -t  | Threads     | 5:5     |
+| -w  | Workers     | 2       |
 | -r  | rackup file | \<path\>|
 | -C  | config file | \<path\>|
 
 ### Hey
 
 | Arg | Description        | Example |
-| --  | ------------------ | ------- |
-| -R  | req per conn       |  100    |
+| :-: | ------------------ | ------- |
+| -R  | req per conn       | 100     |
 | -k  | disable Keep-Alive | na      |
 | -d  | req delay          | float   |
+
+### Ruby
+
+| Arg | Description  |
+| :-: | ------------ |
+| -Y  | enable YJIT  |
 
 ## ENV Settings
 
