@@ -92,21 +92,21 @@ module Puma
                 restart_server << true << false
               else # fork worker
                 worker_pids << pid = spawn_worker(idx)
-                @worker_write << "#{Puma::Const::PipeRequest::FORK}#{pid}:#{idx}\n" rescue nil
+                @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n" rescue nil
               end
             end
           end
         end
 
         Signal.trap "SIGTERM" do
-          @worker_write << "#{Puma::Const::PipeRequest::EXTERNAL_TERM}#{Process.pid}\n" rescue nil
+          @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
           restart_server.clear
           server.stop
           restart_server << false
         end
 
         begin
-          @worker_write << "#{Puma::Const::PipeRequest::BOOT}#{Process.pid}:#{index}\n"
+          @worker_write << "#{PIPE_BOOT}#{Process.pid}:#{index}\n"
         rescue SystemCallError, IOError
           Puma::Util.purge_interrupt_queue
           STDERR.puts "Master seems to have exited, exiting."
@@ -148,7 +148,7 @@ module Puma
         # exiting until any background operations are completed
         @config.run_hooks(:before_worker_shutdown, index, @log_writer, @hook_data)
       ensure
-        @worker_write << "#{Puma::Const::PipeRequest::TERM}#{Process.pid}\n" rescue nil
+        @worker_write << "#{PIPE_TERM}#{Process.pid}\n" rescue nil
         @worker_write.close
       end
 

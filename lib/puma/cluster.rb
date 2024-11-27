@@ -456,7 +456,7 @@ module Puma
               req = read.read_nonblock(1)
               next unless req
 
-              if req == Puma::Const::PipeRequest::WAKEUP
+              if req == PIPE_WAKEUP
                 @next_check = Time.now
                 next
               end
@@ -464,7 +464,7 @@ module Puma
               result = read.gets
               pid = result.to_i
 
-              if req == Puma::Const::PipeRequest::BOOT || req == Puma::Const::PipeRequest::FORK
+              if req == PIPE_BOOT || req == PIPE_FORK
                 pid, idx = result.split(':').map(&:to_i)
                 w = worker_at idx
                 w.pid = pid if w.pid.nil?
@@ -472,17 +472,17 @@ module Puma
 
               if w = @workers.find { |x| x.pid == pid }
                 case req
-                when Puma::Const::PipeRequest::BOOT
+                when PIPE_BOOT
                   w.boot!
                   log "- Worker #{w.index} (PID: #{pid}) booted in #{w.uptime.round(2)}s, phase: #{w.phase}"
                   @next_check = Time.now
                   workers_not_booted -= 1
-                when Puma::Const::PipeRequest::EXTERNAL_TERM
+                when PIPE_EXTERNAL_TERM
                   # external term, see worker method, Signal.trap "SIGTERM"
                   w.term!
-                when Puma::Const::PipeRequest::TERM
+                when PIPE_TERM
                   w.term unless w.term?
-                when Puma::Const::PipeRequest::PING
+                when PIPE_PING
                   status = result.sub(/^\d+/,'').chomp
                   w.ping!(status)
                   @events.fire(:ping!, w)
@@ -497,7 +497,7 @@ module Puma
                     debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
                     booted = true
                   end
-                when Puma::Const::PipeRequest::IDLE
+                when PIPE_IDLE
                   if idle_workers[pid]
                     idle_workers.delete pid
                   else

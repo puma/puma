@@ -294,14 +294,15 @@ module Puma
 
     PROXY_PROTOCOL_V1_REGEX = /^PROXY (?:TCP4|TCP6|UNKNOWN) ([^\r]+)\r\n/.freeze
 
+    # All constants are prefixed with `PIPE_` to avoid name collisions.
     module PipeRequest
-      WAKEUP = "!"
-      BOOT = "b"
-      FORK = "f"
-      EXTERNAL_TERM = "e"
-      TERM = "t"
-      PING = "p"
-      IDLE = "i"
+      PIPE_WAKEUP = "!"
+      PIPE_BOOT = "b"
+      PIPE_FORK = "f"
+      PIPE_EXTERNAL_TERM = "e"
+      PIPE_TERM = "t"
+      PIPE_PING = "p"
+      PIPE_IDLE = "i"
     end
   end
 end
