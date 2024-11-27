@@ -8,7 +8,7 @@ The number of 'processing threads' is `<number of workers> * <max threads>`.
 
 Current code is set to run several `hey` commands, each increasing the number of connections.
 The configuration for each set is done in the `CONNECTION_MULT` array in `benchmarks/local/long_tail_hey.rb`.
-Change this array to suite your needes.
+Change this array to suite your needs.
 
 A few examples:
 ```text
@@ -30,7 +30,7 @@ benchmarks/local/long_tail_hey.sh -w4 -t5:5 -R100 -d0.2
 
 ### Hey
 
-| Arg | Description -------| Example |
+| Arg | Description        | Example |
 | --  | ------------------ | ------- |
 | -R  | req per conn       |  100    |
 | -k  | disable Keep-Alive | na      |
