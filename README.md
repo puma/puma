@@ -159,13 +159,20 @@ on_worker_boot do
 end
 ```
 
-In addition, there is an `on_refork` hook which is used only in [`fork_worker` mode](docs/fork_worker.md),
+In addition, there is an `on_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
 when the worker 0 child process forks a grandchild worker:
 
 ```ruby
 on_refork do
   # Used only when fork_worker mode is enabled. Add code to run inside the Puma worker 0
   # child process before it forks a grandchild worker.
+end
+```
+
+```ruby
+after_refork do
+  # Used only when fork_worker mode is enabled. Add code to run inside the Puma worker 0
+  # child process after it forks a grandchild worker.
 end
 ```
 
@@ -186,6 +193,7 @@ Therefore, we recommend the following:
 2. If (1) is not possible, use `before_fork` and `on_refork` to disconnect the parent's socket
    connections when forking, so that they are not accidentally copied to the child process.
 3. Use `on_worker_boot` to restart any background threads on the forked child.
+4. Use `after_refork` to restart any background threads on the parent.
 
 #### Master process lifecycle hooks
 
