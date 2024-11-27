@@ -23,28 +23,26 @@ module TestPuma
 
     # Reads all that is available on the socket.  Used for reading sockets that
     # contain multiple responses.
+    # @param timeout: [Float, nil] total socket read timeout, defaults to `RESP_READ_TIMEOUT`
     # @return [String]
     #
-    def read_all
+    def read_all(timeout: RESP_READ_TIMEOUT)
+      end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) + (timeout || RESP_READ_TIMEOUT)
       read = String.new # rubocop: disable Performance/UnfreezeString
-      counter = 0
       prev_size = 0
-      begin
-        loop do
-          raise(Timeout::Error, 'Client Read Timeout') if counter > 5
-          if self.wait_readable 1
-            read << self.sysread(RESP_READ_LEN)
-          end
-          ttl_read = read.bytesize
-          return read if prev_size == ttl_read && !ttl_read.zero?
-          prev_size = ttl_read
-          counter += 1
+      loop do
+        raise(Timeout::Error, 'Client Read Timeout') if Process.clock_gettime(Process::CLOCK_MONOTONIC) > end_time
+        if wait_readable 1
+          read << sysread(RESP_READ_LEN)
         end
-      rescue EOFError
-        return read
-      rescue => e
-        raise e
+        ttl_read = read.bytesize
+        return read if prev_size == ttl_read && !ttl_read.zero?
+        prev_size = ttl_read
       end
+    rescue EOFError
+      return read
+    rescue => e
+      raise e
     end
 
     # Reads the response body on the socket.  Assumes one response, use

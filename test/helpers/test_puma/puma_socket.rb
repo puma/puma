@@ -138,7 +138,7 @@ module TestPuma
     def send_http_read_all(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
       send_http(req, host: host, port: port, path: path, ctx: ctx, session: session)
-        .read_all
+        .read_all(timeout: timeout)
     end
 
     # Sends a request and returns the HTTP response body.
