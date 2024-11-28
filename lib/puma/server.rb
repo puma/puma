@@ -220,7 +220,6 @@ module Puma
       @thread_pool&.spawned
     end
 
-
     # This number represents the number of requests that
     # the server is capable of taking right now.
     #
@@ -650,7 +649,16 @@ module Puma
 
     # List of methods invoked by #stats.
     # @version 5.0.0
-    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count, :busy_threads].freeze
+    STAT_METHODS = [
+      :backlog,
+      :running,
+      :pool_capacity,
+      :busy_threads,
+      :backlog_max,
+      :max_threads,
+      :requests_count,
+      :reactor_max,
+    ].freeze
 
     # Returns a hash of stats about the running server for reporting purposes.
     # @version 5.0.0
@@ -660,7 +668,14 @@ module Puma
       stats = @thread_pool&.stats || {}
       stats[:max_threads]    = @max_threads
       stats[:requests_count] = @requests_count
+      stats[:reactor_max] = @reactor.reactor_max
+      reset_max
       stats
+    end
+
+    def reset_max
+      @reactor.reactor_max = 0
+      @thread_pool.reset_max
     end
 
     # below are 'delegations' to binder
