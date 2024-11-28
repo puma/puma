@@ -8,6 +8,9 @@ module Puma
   # serve requests. This class spawns a new instance of `Puma::Server` via
   # a call to `start_server`.
   class Runner
+
+    include ::Puma::Const::PipeRequest
+
     def initialize(launcher)
       @launcher = launcher
       @log_writer = launcher.log_writer
@@ -27,7 +30,7 @@ module Puma
     def wakeup!
       return unless @wakeup
 
-      @wakeup.write Puma::Const::PipeRequest::WAKEUP unless @wakeup.closed?
+      @wakeup.write PIPE_WAKEUP unless @wakeup.closed?
 
     rescue SystemCallError, IOError
       Puma::Util.purge_interrupt_queue
