@@ -11,6 +11,12 @@ if RUBY_VERSION == '2.4.1'
   end
 end
 
+# WIth GitHub Actions, OS's `/tmp` folder may be on a HDD, while
+# ENV['RUNNER_TEMP'] is an SSD.  Faster.
+if ENV['GITHUB_ACTIONS'] == 'true'
+  ENV['TMPDIR'] = ENV['RUNNER_TEMP']
+end
+
 require "securerandom"
 
 # needs to be loaded before minitest for Ruby 2.7 and earlier
