@@ -370,12 +370,12 @@ module Puma
     end
 
     def auto_trim!(timeout=@auto_trim_time)
-      @auto_trim = Automaton.new(self, timeout, "#{@name} threadpool trimmer", :trim)
+      @auto_trim = Automaton.new(self, timeout, "#{@name} tp trim", :trim)
       @auto_trim.start!
     end
 
     def auto_reap!(timeout=@reaping_time)
-      @reaper = Automaton.new(self, timeout, "#{@name} threadpool reaper", :reap)
+      @reaper = Automaton.new(self, timeout, "#{@name} tp reap", :reap)
       @reaper.start!
     end
 
