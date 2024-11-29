@@ -102,7 +102,7 @@ class TestIntegration < Minitest::Test
       @config_file.syswrite config
       # not supported on some OS's, all GitHub Actions OS's support it
       @config_file.fsync rescue nil
-      @config_file.close
+      @ios_to_close << @config_file
       config = "-C #{@config_file.path}"
     end
 
