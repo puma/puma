@@ -33,7 +33,7 @@ if [ -z "$PUMA_TEST_STATE" ]; then export PUMA_TEST_STATE=tmp/bench_test_puma.st
 
 export PUMA_CTRL=$PUMA_TEST_HOST4:$PUMA_TEST_CTRL
 
-while getopts :b:C:c:D:d:R:r:s:T:t:w:Y option
+while getopts :b:C:c:D:d:kR:r:s:T:t:w:Y option
 do
 case "${option}" in
 #———————————————————— RUBY options
@@ -55,6 +55,8 @@ R) req_per_socket=${OPTARG};;
 c) connections=${OPTARG};;
 # T) stream_threads=${OPTARG};;
 # D) duration=${OPTARG};;
+#———————————————————— hey options
+k) disable_keepalive=true;;
 ?) echo "Error: Invalid option was specified -$OPTARG"; exit;;
 esac
 done
@@ -101,6 +103,11 @@ if [ -n "$workers" ]; then
   ruby_args="$ruby_args -w$workers"
 fi
 
+
+if [ -n "$disable_keepalive" ]; then
+  ruby_args="$ruby_args -k"
+fi
+
 if [ -z "$threads" ]; then
   threads=0:5
 fi
@@ -113,7 +120,7 @@ if [ -n "$conf" ]; then
 fi
 
 if [ -z "$rackup_file" ]; then
-  rackup_file="test/rackup/ci_select.ru"
+  rackup_file="test/rackup/sleep.ru"
 fi
 
 ip4=$PUMA_TEST_HOST4:$PUMA_TEST_PORT
@@ -171,5 +178,5 @@ StartPuma()
   fi
   printf "\nbundle exec bin/puma -q -b $bind $puma_args --control-url=tcp://$PUMA_CTRL --control-token=test $rackup_file\n\n"
   bundle exec bin/puma -q -b $bind $puma_args --control-url=tcp://$PUMA_CTRL --control-token=test $rackup_file &
-  sleep 6s
+  sleep 1s
 }
