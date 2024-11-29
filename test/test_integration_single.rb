@@ -8,14 +8,16 @@ class TestIntegrationSingle < TestIntegration
 
   def test_hot_restart_does_not_drop_connections_threads
     ttl_reqs = Puma.windows? ? 500 : 1_000
-    hot_restart_does_not_drop_connections num_threads: 5, total_requests: ttl_reqs
+    restart_does_not_drop_connections num_threads: 5, total_requests: ttl_reqs,
+      signal: :USR2
   end
 
   def test_hot_restart_does_not_drop_connections
     if Puma.windows?
-      hot_restart_does_not_drop_connections total_requests: 300
+      restart_does_not_drop_connections total_requests: 300,
+        signal: :USR2
     else
-      hot_restart_does_not_drop_connections
+      restart_does_not_drop_connections signal: :USR2
     end
   end
 

@@ -21,11 +21,33 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_hot_restart_does_not_drop_connections_threads
-    hot_restart_does_not_drop_connections num_threads: 10, total_requests: 3_000
+    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
+      signal: :USR2
   end
 
   def test_hot_restart_does_not_drop_connections
-    hot_restart_does_not_drop_connections num_threads: 1, total_requests: 1_000
+    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
+      signal: :USR2
+  end
+
+  def test_phased_restart_does_not_drop_connections_threads
+    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
+      signal: :USR1
+  end
+
+  def test_phased_restart_does_not_drop_connections
+    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
+      signal: :USR1
+  end
+
+  def test_phased_restart_does_not_drop_connections_threads_fork_worker
+    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
+      signal: :USR1 #, config: 'fork_worker', log: true
+  end
+
+  def test_phased_restart_does_not_drop_connections_unix
+    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
+      signal: :USR1, unix: true
   end
 
   def test_pre_existing_unix
@@ -96,25 +118,6 @@ class TestIntegrationCluster < TestIntegration
   def test_term_closes_listeners_unix
     skip_unless_signal_exist? :TERM
     term_closes_listeners unix: true
-  end
-
-  # Next two tests, one tcp, one unix
-  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
-  # All should be responded to, and at least three workers should be used
-
-  def test_usr1_all_respond_tcp
-    skip_unless_signal_exist? :USR1
-    usr1_all_respond unix: false
-  end
-
-  def test_usr1_fork_worker
-    skip_unless_signal_exist? :USR1
-    usr1_all_respond config: '--fork-worker'
-  end
-
-  def test_usr1_all_respond_unix
-    skip_unless_signal_exist? :USR1
-    usr1_all_respond unix: true
   end
 
   def test_term_exit_code
@@ -658,57 +661,6 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
-  # All should be responded to, and at least three workers should be used
-  def usr1_all_respond(unix: false, config: '')
-    cli_server "-w #{workers} -t 0:5 -q test/rackup/sleep_pid.ru #{config}", unix: unix
-    threads = []
-    replies = []
-    mutex = Mutex.new
-
-    s = connect "sleep1", unix: unix
-    replies << read_body(s)
-
-    Process.kill :USR1, @pid
-
-    refused = thread_run_refused unix: unix
-
-    24.times do |delay|
-      threads << Thread.new do
-        thread_run_pid replies, delay, 1, mutex, refused, unix: unix
-      end
-    end
-
-    threads.each(&:join)
-
-    responses     = replies.count { |r| r[/\ASlept 1/] }
-    resets        = replies.count { |r| r == :reset    }
-    refused       = replies.count { |r| r == :refused  }
-    read_timeouts = replies.count { |r| r == :read_timeout }
-
-    # get pids from replies, generate uniq array
-    t = replies.map { |body| body[/\d+\z/] }
-    t.uniq!; t.compact!
-    qty_pids = t.length
-
-    msg = "#{responses} responses, #{qty_pids} uniq pids"
-
-    assert_equal 25, responses, msg
-    assert_operator qty_pids, :>, 2, msg
-
-    msg = "#{responses} responses, #{resets} resets, #{refused} refused, #{read_timeouts} read timeouts"
-
-    assert_equal 0, refused, msg
-
-    assert_equal 0, resets, msg
-
-    assert_equal 0, read_timeouts, msg
-  ensure
-    unless passed?
-      $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
-    end
-  end
-
   def worker_respawn(phase = 1, size = workers, config = 'test/config/worker_shutdown_timeout_2.rb')
     threads = []
 
@@ -809,4 +761,5 @@ class TestIntegrationCluster < TestIntegration
       mutex.synchronize { replies[step] = :read_timeout }
     end
   end
+
 end if ::Process.respond_to?(:fork)
