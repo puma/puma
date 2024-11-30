@@ -15,8 +15,6 @@ class TestPluginSystemd < TestIntegration
     skip_unless_signal_exist? :TERM
     skip_if :jruby
 
-    super
-
     ::Dir::Tmpname.create("puma_socket") do |sockaddr|
       @sockaddr = sockaddr
       @socket = Socket.new(:UNIX, :DGRAM, 0)
