@@ -101,6 +101,10 @@ module Puma
       end
     end
 
+    def reset_max
+      with_mutex { @backlog_max = 0 }
+    end
+
     # How many objects have yet to be processed by the pool?
     #
     def backlog
