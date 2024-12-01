@@ -178,5 +178,6 @@ StartPuma()
   fi
   printf "\nbundle exec bin/puma -q -b $bind $puma_args --control-url=tcp://$PUMA_CTRL --control-token=test $rackup_file\n\n"
   bundle exec bin/puma -q -b $bind $puma_args --control-url=tcp://$PUMA_CTRL --control-token=test $rackup_file &
+  # may need to be increased for non MRI Rubies
   sleep 1s
 }

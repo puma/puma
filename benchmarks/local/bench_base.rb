@@ -147,7 +147,7 @@ module TestPuma
           @wrk_bind_str = arg
         end
 
-        o.on "-k", "--disable-keepalive", "hey no keep alive" do
+        o.on "-k", "--disable-keepalive", "hey no keep alive" do
           @no_keep_alive = true
         end
 
@@ -181,24 +181,24 @@ module TestPuma
     # @return [Hash] The hey data
     #
     def run_hey_parse(cmd, mult, log: false)
-      STDOUT.syswrite "#{cmd}\n"
+      STDOUT.syswrite cmd
 
       hey_output = %x[#{cmd}].strip.gsub(' secs', '')
 
-      if log
-        puts '', hey_output, ''
-      end
+      STDOUT.syswrite "\n\n#{hey_output}\n\n" if log
 
       job = {}
 
       status_code_dist = hey_output[/^Status code distribution:\s+(.+?)\z/m, 1].strip.gsub(/^\s+\[/, '[')
+
+      job[:requests] = status_code_dist[/\[2\d\d\][\t ]+(\d+)[\t ]+responses/, 1].to_i
 
       if status_code_dist.include? "\n"
         job[:error] = status_code_dist
         STDOUT.syswrite "\nERRORS:\n#{status_code_dist}\n"
       end
 
-      job[:mult] = format '%1.2f', mult
+      job[:mult] = format '%4.2f', mult
 
       job[:rps] = hey_output[/^\s+Requests\/sec\:\s+([\d.]+)/, 1]
 
@@ -207,15 +207,16 @@ module TestPuma
         temp = job[:latency] = {}
         latency.lines.each do |l|
           per_cent = l[/\A\d+/].to_i
-          temp[per_cent] = per_cent.zero? ? '  na' : l.rstrip[/[\d.]+\z/]
+          temp[per_cent] = per_cent.zero? ? 0.0 : l.rstrip[/[\d.]+\z/].to_f
         end
-        temp[100] = hey_output[/^\s+Slowest\:\s+([\d.]+)/, 1]
+        temp[100] = hey_output[/^\s+Slowest\:\s+([\d.]+)/, 1].to_f
       end
+      STDOUT.syswrite format("   RPS %6d   50%% %7.3f   99%% %7.3f\n", job[:rps].to_i, job[:latency][50].round(3), job[:latency][99].round(3)) unless log
       job
     end
 
     # Runs wrk and returns data from its output.
-    # @param cmd [String] The wrk command string, with arguments
+    # @param cmd [String] The wrk command string, with arguments
     # @return [Hash] The wrk data
     #
     def run_wrk_parse(cmd, log: false)
@@ -336,25 +337,40 @@ module TestPuma
     # @return [Hash] The data from Puma stats
     #
     def parse_stats
-      sleep 5.0
+      sleep 5.5
       obj = @puma_info.run 'stats'
-      return nil unless worker_status = obj[:worker_status]
-      stats = {}
-      worker_status.each do |w|
-        pid = w[:pid]
-        @worker_req_ttl[pid] ||= 0
-        req_cnt = w[:last_status][:requests_count]
-        id = format 'worker-%01d-%02d', w[:phase], w[:index]
-        hsh = {
-          pid: pid,
-          requests: req_cnt - @worker_req_ttl[pid],
-          backlog: w[:last_status][:backlog]
-        }
-        @pids[pid] = id
-        @worker_req_ttl[pid] = req_cnt
-        stats[id] = hsh
-      end
 
+      stats = {}
+      if (worker_status = obj[:worker_status])
+        worker_status.each do |w|
+          pid = w[:pid]
+          @worker_req_ttl[pid] ||= 0
+          req_cnt = w[:last_status][:requests_count]
+          id = format 'worker-%01d-%02d', w[:phase], w[:index]
+          hsh = {
+            pid: pid,
+            requests: req_cnt - @worker_req_ttl[pid],
+            backlog: w[:last_status][:backlog],
+            backlog_max: w[:last_status][:backlog_max],
+            reactor_max: w[:last_status][:reactor_max]
+          }
+          @pids[pid] = id
+          @worker_req_ttl[pid] = req_cnt
+          stats[id] = hsh
+        end
+      else
+        @req_ttl ||= 0
+        req_cnt = obj[:requests_count]
+        hsh = {
+          pid: 0,
+          requests: req_cnt - @req_ttl,
+          backlog: obj[:backlog],
+          backlog_max: obj[:backlog_max],
+          reactor_max: obj[:reactor_max]
+        }
+        @req_ttl = req_cnt
+        stats = hsh
+      end
       stats
     end
 
