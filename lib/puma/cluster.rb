@@ -491,7 +491,7 @@ module Puma
                   w.ping!(status)
                   @events.fire(:ping!, w)
 
-                  if in_phased_restart && workers_not_booted.positive? && w0 = worker_at(0)
+                  if in_phased_restart && @options[:fork_worker] && workers_not_booted.positive? && w0 = worker_at(0)
                     w0.ping!(status)
                     @events.fire(:ping!, w0)
                   end
