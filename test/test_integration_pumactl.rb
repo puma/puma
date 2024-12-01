@@ -56,7 +56,12 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_phased_restart_cluster
     skip_unless :fork
-    cli_server "-q -w #{workers} test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}", unix: true
+    cli_server "test/rackup/sleep.ru #{set_pumactl_args unix: true}", unix: true, config: <<~RUBY
+      quiet
+      workers #{workers}
+      preload_app! false
+      state_path "#{@state_path}"
+    RUBY
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
