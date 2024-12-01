@@ -128,14 +128,15 @@ module Puma
 
             while true
               begin
-                b = server.backlog || 0
-                r = server.running || 0
-                t = server.pool_capacity || 0
-                m = server.max_threads || 0
-                rc = server.requests_count || 0
-                bt = server.busy_threads || 0
-                payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc}, "busy_threads":#{bt} }\n!
-                io << payload
+                payload = base_payload.dup
+
+                hsh = server.stats
+                hsh.each do |k, v|
+                  payload << %Q! "#{k}":#{v || 0},!
+                end
+                # sub call properly adds 'closing' string
+                io << payload.sub(/,\z/, " }\n")
+                server.reset_max
               rescue IOError
                 Puma::Util.purge_interrupt_queue
                 break
