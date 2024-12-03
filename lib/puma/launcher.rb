@@ -419,12 +419,14 @@ module Puma
     end
 
     def setup_signals
-      begin
-        Signal.trap "SIGUSR2" do
-          restart
+      unless ENV["PUMA_SKIP_SIGUSR2"]
+        begin
+          Signal.trap "SIGUSR2" do
+            restart
+          end
+        rescue Exception
+          log "*** SIGUSR2 not implemented, signal based restart unavailable!"
         end
-      rescue Exception
-        log "*** SIGUSR2 not implemented, signal based restart unavailable!"
       end
 
       unless Puma.jruby?
