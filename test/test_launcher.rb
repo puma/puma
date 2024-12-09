@@ -84,6 +84,7 @@ class TestLauncher < Minitest::Test
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
+    launcher.stats # Ensure `stats` method return without errors before run
     launcher.run
     sleep 1 unless Puma.mri?
     Puma::Server::STAT_METHODS.each do |stat|
