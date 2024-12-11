@@ -1435,7 +1435,7 @@ module Puma
       if workers_val == 0
         log_string =
           "Warning: You specified code to run in a `#{hook_name}` block, " \
-          "but Puma is not configured to run in cluster mode (worker count > 0 ), " \
+          "but Puma is not configured to run in cluster mode (worker count > 0), " \
           "so your `#{hook_name}` block will not run."
 
         LogWriter.stdio.log(log_string)
