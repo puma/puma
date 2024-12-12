@@ -54,10 +54,15 @@ class TestIntegrationSingle < TestIntegration
   def test_on_booted_and_on_stopped
     skip_unless_signal_exist? :TERM
 
-    cli_server "-C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru",
-      no_wait: true
+    cli_server "test/rackup/hello.ru", no_wait: true, config: <<~CONFIG
+      on_booted  { STDOUT.syswrite "on_booted called\n"  }
+      on_stopped { STDOUT.syswrite "on_stopped called\n" }
+    CONFIG
 
     assert wait_for_server_to_include('on_booted called')
+
+    Process.kill :TERM, @pid
+
     assert wait_for_server_to_include('on_stopped called')
 
     wait_server 15
