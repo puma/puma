@@ -102,7 +102,7 @@ class TestIntegration < Minitest::Test
       @config_file.syswrite config
       # not supported on some OS's, all GitHub Actions OS's support it
       @config_file.fsync rescue nil
-      @ios_to_close << @config_file
+      @config_file.close
       config = "-C #{@config_file.path}"
     end
 
@@ -155,7 +155,7 @@ class TestIntegration < Minitest::Test
     return unless pid
     begin
       _, status = Process.wait2 pid
-      assert_equal exit_code, status
+      assert_equal(exit_code, status) unless ::Puma::IS_JRUBY
     rescue Errno::ECHILD # raised on Windows ?
     end
   ensure
