@@ -374,11 +374,11 @@ class TestIntegrationCluster < TestIntegration
     assert_equal '0', read_body(connect)
   end
 
-  def test_fork_worker_phased_restart_with_high_worker_count
+  def test_phased_restart_with_fork_worker_and_high_worker_count
     worker_count = 10
 
     cli_server "test/rackup/hello.ru", config: <<~CONFIG
-      fork_worker 0
+      fork_worker
       worker_check_interval 1
       # lower worker timeout from default (60) to avoid test timeout
       worker_timeout 2
@@ -387,14 +387,36 @@ class TestIntegrationCluster < TestIntegration
       workers #{worker_count}
     CONFIG
 
-    # workers is the default
     get_worker_pids 0, worker_count
 
     Process.kill :USR1, @pid
 
     get_worker_pids 1, worker_count
 
-    # below is so all of @server_log isn't output for failure
+    # below is so all of @server_log isn't simply output on failure
+    refute @server_log[/.*Terminating timed out worker.*/]
+  end
+
+  def test_refork_phased_restart_with_fork_worker_and_high_worker_count
+    worker_count = 10
+
+    cli_server "test/rackup/hello.ru", config: <<~CONFIG
+      fork_worker
+      worker_check_interval 1
+      # lower worker timeout from default (60) to avoid test timeout
+      worker_timeout 2
+      # to simulate worker 0 timeout, total boot time for all workers
+      # needs to exceed single worker timeout
+      workers #{worker_count}
+    CONFIG
+
+    get_worker_pids 0, worker_count
+
+    Process.kill :SIGURG, @pid
+
+    get_worker_pids 1, worker_count - 1
+
+    # below is so all of @server_log isn't simply output on failure
     refute @server_log[/.*Terminating timed out worker.*/]
   end
 
