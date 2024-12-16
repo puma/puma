@@ -12,6 +12,7 @@ Moreover, default values may be used in case of invalid inputs.
 | PUMA_QUERY_STRING_MAX_LENGTH |   1024 * 10   | Positive natural number  |
 | PUMA_REQUEST_PATH_MAX_LENGTH |     8192      | Positive natural number  |
 | PUMA_REQUEST_URI_MAX_LENGTH  |   1024 * 12   | Positive natural number  |
+| PUMA_SKIP_SIGUSR2            |   nil         | n/a                      |
 
 ## Examples
 
@@ -46,3 +47,8 @@ foo@bar:~ curl "http://localhost:9292${path}"
 Hello World
 ```
 
+### Java Flight Recorder Compatibility
+
+Unfortunately Java Flight Recorder uses `SIGUSR2` internally. If you wish to 
+use JFR, turn off Puma's trapping of `SIGUSR2` by setting the environment variable
+`PUMA_SKIP_SIGUSR2` to any value.
