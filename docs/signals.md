@@ -67,7 +67,7 @@ Code of the app is loaded and running
 ### Send USR2
 
 ```
-on_worker_shutdown
+before_worker_shutdown
 on_restart
 
 puma configuration file reloaded, if there is one
@@ -86,7 +86,7 @@ Code of the app is loaded and running
 ### Send USR1
 
 ```
-on_worker_shutdown
+before_worker_shutdown
 on_worker_fork
 after_worker_fork
 
