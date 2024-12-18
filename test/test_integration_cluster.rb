@@ -607,7 +607,7 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_puma_debug_worker_hook
-    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true, config: "on_worker_boot {}"
+    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true, config: "before_worker_boot {}"
 
     assert wait_for_server_to_include("Running before_worker_boot hooks")
   end

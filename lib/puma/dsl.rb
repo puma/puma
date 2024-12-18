@@ -44,7 +44,7 @@ module Puma
   # The following hooks have been updated:
   #
   #     | DSL Method         |  Options Key            | Fork Block Location |
-  #     | on_worker_boot     | :before_worker_boot     | inside, before      |
+  #     | before_worker_boot | :before_worker_boot     | inside, before      |
   #     | on_worker_shutdown | :before_worker_shutdown | inside, after       |
   #     | on_refork          | :before_refork          | inside              |
   #     | after_refork       | :after_refork           | inside              |
@@ -740,7 +740,7 @@ module Puma
     # @note Cluster mode only.
     #
     # @example
-    #   on_worker_boot do
+    #   before_worker_boot do
     #     puts 'Before worker boot...'
     #   end
     #

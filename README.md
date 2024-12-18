@@ -142,7 +142,7 @@ Preloading can’t be used with phased restart, since phased restart kills and r
 
 #### Cluster mode hooks
 
-When using cluster mode, Puma's configuration DSL provides `before_fork` and `on_worker_boot`
+When using clustered mode, Puma's configuration DSL provides `before_fork` and `before_worker_boot`
 hooks to run code when the master process forks and child workers are booted respectively.
 
 It is recommended to use these hooks with `preload_app!`, otherwise constants loaded by your
@@ -154,7 +154,7 @@ before_fork do
   # Add code to run inside the Puma master process before it forks a worker child.
 end
 
-on_worker_boot do
+before_worker_boot do
   # Add code to run inside the Puma worker process after forking.
 end
 ```
@@ -192,7 +192,7 @@ Therefore, we recommend the following:
    inside Puma's master process when booting.
 2. If (1) is not possible, use `before_fork` and `on_refork` to disconnect the parent's socket
    connections when forking, so that they are not accidentally copied to the child process.
-3. Use `on_worker_boot` to restart any background threads on the forked child.
+3. Use `before_worker_boot` to restart any background threads on the forked child.
 4. Use `after_refork` to restart any background threads on the parent.
 
 #### Master process lifecycle hooks

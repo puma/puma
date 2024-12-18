@@ -59,7 +59,7 @@ after_worker_fork
 
 Gemfile in context
 
-on_worker_boot
+before_worker_boot
 
 Code of the app is loaded and running
 ```
@@ -78,7 +78,7 @@ after_worker_fork
 
 Gemfile in context
 
-on_worker_boot
+before_worker_boot
 
 Code of the app is loaded and running
 ```
@@ -92,7 +92,7 @@ after_worker_fork
 
 Gemfile in context
 
-on_worker_boot
+before_worker_boot
 
 Code of the app is loaded and running
 ```
