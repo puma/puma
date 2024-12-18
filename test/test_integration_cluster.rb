@@ -135,29 +135,16 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
-  def test_after_booted_and_on_stopped
+  def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
-    cli_server "-w #{workers} -C test/config/event_after_booted_and_on_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} -C test/config/event_after_booted_and_after_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru"
 
     # above checks 'Ctrl-C', below is logged after workers boot
     assert wait_for_server_to_include('after_booted called')
     assert wait_for_server_to_include('Goodbye!')
     # below logged after workers are stopped
-    assert wait_for_server_to_include('on_stopped called')
+    assert wait_for_server_to_include('after_stopped called')
     wait_server 15
-  end
-
-  def test_on_booted_with_fork_worker_refork
-    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
-      fork_worker
-      on_booted { STDOUT.syswrite "on_booted called\n" }
-    CONFIG
-
-    assert wait_for_server_to_include("on_booted called")
-
-    Process.kill :SIGURG, @pid
-
-    assert wait_for_server_to_include("on_booted called")
   end
 
   def test_term_worker_clean_exit

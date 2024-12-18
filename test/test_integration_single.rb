@@ -53,14 +53,14 @@ class TestIntegrationSingle < TestIntegration
     assert_equal 15, status
   end
 
-  def test_after_booted_and_on_stopped
+  def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
 
-    cli_server "-C test/config/event_after_booted_and_on_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru",
+    cli_server "-C test/config/event_after_booted_and_after_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru",
       no_wait: true
 
     assert wait_for_server_to_include('after_booted called')
-    assert wait_for_server_to_include('on_stopped called')
+    assert wait_for_server_to_include('after_stopped called')
 
     wait_server 15
   end

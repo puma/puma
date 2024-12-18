@@ -150,7 +150,7 @@ class TestLauncher < PumaTest
     refute_match(/Configuration:/, create_launcher.log_writer.stdout.string)
   end
 
-  def test_fire_on_stopped
+  def test_fire_after_stopped
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
     end
@@ -162,11 +162,11 @@ class TestLauncher < PumaTest
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
-    launcher.events.on_stopped { is_stopped = true }
+    launcher.events.after_stopped { is_stopped = true }
 
     launcher.run
     sleep 0.2 unless Puma.mri?
-    assert is_stopped, "on_stopped not called"
+    assert is_stopped, "after_stopped not called"
   end
 
   private

@@ -277,7 +277,7 @@ module Puma
     end
 
     def do_graceful_stop
-      @events.fire_on_stopped!
+      @events.fire_after_stopped!
       @runner.stop_blocked
     end
 

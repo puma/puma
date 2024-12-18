@@ -847,13 +847,18 @@ module Puma
     # Code to run after puma is stopped (works for both: single and clustered)
     #
     # @example
-    #   on_stopped do
+    #   after_stopped do
     #     puts 'After stopping...'
     #   end
     #
-    def on_stopped(&block)
-      @config.options[:events].on_stopped(&block)
+    def after_stopped(&block)
+      if __callee__ == :on_stopped
+        warn "on_stopped is deprecated, use after_stopped instead"
+      end
+
+      @config.options[:events].after_stopped(&block)
     end
+    alias_method :on_stopped, :after_stopped
 
     # When `fork_worker` is enabled, code to run in Worker 0
     # before all other workers are re-forked from this process,

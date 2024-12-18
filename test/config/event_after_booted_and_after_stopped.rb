@@ -2,6 +2,6 @@ after_booted do
   puts "after_booted called"
 end
 
-on_stopped do
-  puts "on_stopped called"
+after_stopped do
+  puts "after_stopped called"
 end

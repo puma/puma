@@ -354,7 +354,7 @@ module Puma
 
           stop_workers
           stop
-          @events.fire_on_stopped!
+          @events.fire_after_stopped!
           raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
           exit 0 # Clean exit, workers were stopped
         end
