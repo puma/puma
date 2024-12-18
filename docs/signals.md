@@ -68,7 +68,7 @@ Code of the app is loaded and running
 
 ```
 before_worker_shutdown
-on_restart
+before_restart
 
 puma configuration file reloaded, if there is one
 

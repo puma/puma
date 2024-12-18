@@ -434,13 +434,19 @@ module Puma
     # This can be called multiple times to add code each time.
     #
     # @example
-    #   on_restart do
+    #   before_restart do
     #     puts 'On restart...'
     #   end
     #
-    def on_restart(&block)
-      process_hook :on_restart, nil, block, 'on_restart'
+    def before_restart(&block)
+      if __callee__ == :on_restart
+        warn "on_restart is deprecated, use before_restart instead"
+      end
+
+      process_hook :before_restart, nil, block, 'before_restart'
     end
+
+    alias_method :on_restart, :before_restart
 
     # Command to use to restart Puma. This should be just how to
     # load Puma itself (ie. 'ruby -Ilib bin/puma'), not the arguments

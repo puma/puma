@@ -16,7 +16,7 @@ Puma::Plugin.create do
     # hook_events
     launcher.events.on_booted { Puma::SdNotify.ready }
     launcher.events.on_stopped { Puma::SdNotify.stopping }
-    launcher.events.on_restart { Puma::SdNotify.reloading }
+    launcher.events.before_restart { Puma::SdNotify.reloading }
 
     # start watchdog
     if Puma::SdNotify.watchdog?

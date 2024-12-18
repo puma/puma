@@ -197,7 +197,7 @@ Therefore, we recommend the following:
 
 #### Master process lifecycle hooks
 
-Puma's configuration DSL provides master process lifecycle hooks `on_booted`, `on_restart`, and `on_stopped`
+Puma's configuration DSL provides master process lifecycle hooks `on_booted`, `before_restart`, and `on_stopped`
 which may be used to specify code blocks to run on each event:
 
 ```ruby
@@ -207,7 +207,7 @@ on_booted do
   # and also after a phased restart completes.
 end
 
-on_restart do
+before_restart do
   # Add code to run in the Puma master process when it receives
   # a restart command but before it restarts.
 end
