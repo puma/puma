@@ -14,7 +14,7 @@ Puma::Plugin.create do
     launcher.log_writer.log "* Enabling systemd notification integration"
 
     # hook_events
-    launcher.events.on_booted { Puma::SdNotify.ready }
+    launcher.events.after_booted { Puma::SdNotify.ready }
     launcher.events.on_stopped { Puma::SdNotify.stopping }
     launcher.events.before_restart { Puma::SdNotify.reloading }
 

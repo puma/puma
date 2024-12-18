@@ -830,15 +830,21 @@ module Puma
     # Code to run after puma is booted (works for both single and cluster modes).
     #
     # @example
-    #   on_booted do
+    #   after_booted do
     #     puts 'After booting...'
     #   end
     #
-    def on_booted(&block)
-      @config.options[:events].on_booted(&block)
+    def after_booted(&block)
+      if __callee__ == :on_booted
+        warn "on_booted is deprecated, use after_booted instead"
+      end
+
+      @config.options[:events].after_booted(&block)
     end
 
-    # Code to run after puma is stopped (works for both single and cluster modes).
+    alias_method :on_booted, :after_booted
+
+    # Code to run after puma is stopped (works for both: single and clustered)
     #
     # @example
     #   on_stopped do

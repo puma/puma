@@ -83,7 +83,7 @@ class TestLauncher < PumaTest
       c.app -> {[200, {}, ['']]}
     end
     launcher = create_launcher(conf)
-    launcher.events.on_booted {
+    launcher.events.after_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
@@ -95,6 +95,41 @@ class TestLauncher < PumaTest
     end
   end
 
+  def test_puma_stats_clustered
+    skip_unless :fork
+
+    queue_booted = Queue.new
+    stopped = nil
+    status  = nil
+
+    conf = Puma::Configuration.new do |c|
+      c.app -> {[200, {}, ['']]}
+      c.workers 1
+    end
+    launcher = create_launcher(conf)
+    launcher.events.after_booted { queue_booted << nil }
+
+    th_stats = Thread.new do
+      queue_booted.pop
+      sleep Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
+      status = launcher.stats[:worker_status]&.first[:last_status]
+      launcher.stop
+      stopped = true
+    end
+
+    launcher.run
+    assert th_stats.join(10)
+
+    refute_nil status
+
+    Puma::Server::STAT_METHODS.each do |stat|
+      assert_includes status, stat
+    end
+  ensure
+    launcher&.stop unless stopped
+  end
+
+>>>>>>> 86b84f53 (Renamed on_booted to after_booted)
   def test_log_config_enabled
     env = {'PUMA_LOG_CONFIG' => '1'}
 
@@ -123,7 +158,7 @@ class TestLauncher < PumaTest
     is_stopped = nil
 
     launcher = create_launcher(conf)
-    launcher.events.on_booted {
+    launcher.events.after_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
