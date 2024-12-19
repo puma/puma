@@ -18,11 +18,11 @@ module TestRackUp
 
     # `Verbose: true` is included for `NameError`,
     # see https://github.com/puma/puma/pull/3118
-    def test_on_booted
-      on_booted = false
+    def test_after_booted
+      after_booted = false
       events = Puma::Events.new
-      events.on_booted do
-        on_booted = true
+      events.after_booted do
+        after_booted = true
       end
 
       launcher = nil
@@ -41,7 +41,7 @@ module TestRackUp
       launcher.stop
       thread.join
 
-      assert_equal on_booted, true
+      assert_equal after_booted, true
     end
   end
 

@@ -315,7 +315,7 @@ module Puma
     end
 
     # @param key [:Symbol] hook to run
-    # @param arg [Launcher, Int] `:on_restart` passes Launcher
+    # @param arg [Launcher, Int] `:before_restart` passes Launcher
     #
     def run_hooks(key, arg, log_writer, hook_data = nil)
       log_writer.debug "Running #{key} hooks"
