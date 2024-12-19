@@ -797,15 +797,21 @@ module Puma
     # @note Cluster mode only.
     #
     # @example
-    #   on_worker_fork do
+    #   before_worker_fork do
     #     puts 'Before worker fork...'
     #   end
     #
-    def on_worker_fork(&block)
-      warn_if_in_single_mode('on_worker_fork')
+    def before_worker_fork(&block)
+      if __callee__ == :on_worker_fork
+        warn "on_worker_fork is deprecated, use before_worker_fork instead"
+      end
 
-      process_hook :before_worker_fork, nil, block, 'on_worker_fork'
+      warn_if_in_single_mode('before_worker_fork')
+
+      process_hook :before_worker_fork, nil, block, 'before_worker_fork'
     end
+
+    alias_method :on_worker_fork, :before_worker_fork
 
     # Code to run in the master after a worker has been started. The worker's
     # index is passed as an argument.
