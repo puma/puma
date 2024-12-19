@@ -895,6 +895,7 @@ module Puma
 
       process_hook :before_refork, key, block, 'before_refork'
     end
+
     alias_method :on_refork, :before_refork
 
     # When `fork_worker` is enabled, code to run in Worker 0
@@ -942,6 +943,7 @@ module Puma
 
       process_hook :before_thread_start, nil, block, 'before_thread_start'
     end
+
     alias_method :on_thread_start, :before_thread_start
 
     # Provide a block to be executed after a thread is trimmed from the thread
@@ -971,6 +973,7 @@ module Puma
 
       process_hook :before_thread_exit, nil, block, 'before_thread_exit'
     end
+
     alias_method :on_thread_exit, :before_thread_exit
 
     # Code to run out-of-band when the worker is idle.
