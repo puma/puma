@@ -24,12 +24,12 @@ The `fork_worker` option allows your application to be initialized only once for
 
 ### Usage Considerations
 
-- `fork_worker` introduces new `on_refork` and `after_refork` configuration hooks. Note the following:
+- `fork_worker` introduces new `before_refork` and `after_refork` configuration hooks. Note the following:
     - When initially forking the parent process to the worker 0 child, `before_fork` will trigger on the parent process and `before_worker_boot` will trigger on the worker 0 child as normal.
-    - When forking the worker 0 child to grandchild workers, `on_refork` and `after_refork` will trigger on the worker 0 child, and `before_worker_boot` will trigger on each grandchild worker.
+    - When forking the worker 0 child to grandchild workers, `before_refork` and `after_refork` will trigger on the worker 0 child, and `before_worker_boot` will trigger on each grandchild worker.
     - For clarity, `before_fork` does not trigger on worker 0, and `after_refork` does not trigger on the grandchild.
 - As a general migration guide:
-    - Copy any logic within your existing `before_fork` hook to the `on_refork` hook.
+    - Copy any logic within your existing `before_fork` hook to the `before_refork` hook.
     - Consider to copy logic from your `before_worker_boot` hook to the `after_refork` hook, if it is needed to reset the state of worker 0 after it forks.
 
 ### Limitations

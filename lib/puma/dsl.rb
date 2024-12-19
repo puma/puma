@@ -46,7 +46,7 @@ module Puma
   #     | DSL Method             |  Options Key            | Fork Block Location |
   #     | before_worker_boot     | :before_worker_boot     | inside, before      |
   #     | before_worker_shutdown | :before_worker_shutdown | inside, after       |
-  #     | on_refork              | :before_refork          | inside              |
+  #     | before_refork          | :before_refork          | inside              |
   #     | after_refork           | :after_refork           | inside              |
   #
   class DSL
@@ -874,15 +874,22 @@ module Puma
     # @note Cluster mode with `fork_worker` enabled only.
     #
     # @example
-    #   on_refork do
+    #   before_refork do
     #     3.times {GC.start}
     #   end
     #
-    def on_refork(key = nil, &block)
-      warn_if_in_single_mode('on_refork')
+    # @version 5.0.0
+    #
+    def before_refork(key = nil, &block)
+      if __callee__ == :on_refork
+        warn "on_refork is deprecated, use before_refork instead"
+      end
 
-      process_hook :before_refork, key, block, 'on_refork'
+      warn_if_in_single_mode('before_refork')
+
+      process_hook :before_refork, key, block, 'before_refork'
     end
+    alias_method :on_refork, :before_refork
 
     # When `fork_worker` is enabled, code to run in Worker 0
     # after all other workers are re-forked from this process,
@@ -890,7 +897,7 @@ module Puma
     # (once per complete refork cycle).
     #
     # This can be used to re-open any connections to remote servers
-    # (database, Redis, ...) that were closed via on_refork.
+    # (database, Redis, ...) that were closed via before_refork.
     #
     # This can be called multiple times to add several hooks.
     #

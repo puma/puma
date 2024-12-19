@@ -307,12 +307,12 @@ class TestIntegrationCluster < TestIntegration
   end
 
   # use three workers to keep accepting clients
-  def test_fork_worker_on_refork
+  def test_fork_worker_before_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~CONFIG
       fork_worker 20
-      on_refork { File.write '#{refork.path}', 'Reforked' }
+      before_refork { File.write '#{refork.path}', 'Reforked' }
     CONFIG
 
     pids = get_worker_pids 0, wrkrs
@@ -339,7 +339,7 @@ class TestIntegrationCluster < TestIntegration
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~RUBY
       fork_worker 20
-      on_refork { File.write '#{refork.path}', 'Before refork', mode: 'a+' }
+      before_refork { File.write '#{refork.path}', 'Before refork', mode: 'a+' }
       after_refork { File.write '#{refork.path}', '-After refork', mode: 'a+' }
     RUBY
 
