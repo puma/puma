@@ -925,13 +925,18 @@ module Puma
     # This can be called multiple times to add several hooks.
     #
     # @example
-    #   on_thread_start do
+    #   before_thread_start do
     #     puts 'On thread start...'
     #   end
     #
-    def on_thread_start(&block)
-      process_hook :before_thread_start, nil, block, 'on_thread_start'
+    def before_thread_start(&block)
+      if __callee__ == :on_thread_start
+        warn "on_thread_start is deprecated, use before_thread_start instead"
+      end
+
+      process_hook :before_thread_start, nil, block, 'before_thread_start'
     end
+    alias_method :on_thread_start, :before_thread_start
 
     # Provide a block to be executed after a thread is trimmed from the thread
     # pool. Be careful: while this block executes, Puma's main loop is
