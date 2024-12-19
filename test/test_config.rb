@@ -535,6 +535,7 @@ class TestConfigFile < PumaTest
   end
 
   def test_run_hooks_before_thread_exit
+    assert_run_hooks :before_thread_exit
     assert_run_hooks :before_thread_exit, configured_with: :on_thread_exit
 
     assert_raise_on_hooks_without_block :on_thread_exit

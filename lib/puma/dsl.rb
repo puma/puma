@@ -954,13 +954,18 @@ module Puma
     # This can be called multiple times to add several hooks.
     #
     # @example
-    #   on_thread_exit do
+    #   before_thread_exit do
     #     puts 'On thread exit...'
     #   end
     #
-    def on_thread_exit(&block)
-      process_hook :before_thread_exit, nil, block, 'on_thread_exit'
+    def before_thread_exit(&block)
+      if __callee__ == :on_thread_exit
+        warn "on_thread_exit is deprecated, use before_thread_exit instead"
+      end
+
+      process_hook :before_thread_exit, nil, block, 'before_thread_exit'
     end
+    alias_method :on_thread_exit, :before_thread_exit
 
     # Code to run out-of-band when the worker is idle.
     # These hooks run immediately after a request has finished
