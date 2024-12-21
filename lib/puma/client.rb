@@ -2,6 +2,7 @@
 
 require_relative 'detect'
 require_relative 'io_buffer'
+require_relative 'client_env'
 require 'tempfile'
 
 if Puma::IS_JRUBY
@@ -35,6 +36,8 @@ module Puma
   #
   class Client # :nodoc:
 
+    include ClientEnv
+
     # this tests all values but the last, which must be chunked
     ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze
 
@@ -64,8 +67,6 @@ module Puma
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new
-
-    include Puma::Const
 
     def initialize(io, env=nil)
       @io = io
@@ -175,7 +176,7 @@ module Puma
         @parsed_bytes = parser_execute
 
         if @parser.finished?
-          return setup_body
+          return process_env_body
         elsif @parsed_bytes >= MAX_HEADER
           raise HttpParserError,
             "HEADER is longer than allowed, aborting client early."
@@ -272,12 +273,8 @@ module Puma
 
       @parsed_bytes = parser_execute
 
-      if @parser.finished? && above_http_content_limit(@parser.body.bytesize)
-        @http_content_length_limit_exceeded = true
-      end
-
       if @parser.finished?
-        setup_body
+        process_env_body
       elsif @parsed_bytes >= MAX_HEADER
         raise HttpParserError,
           "HEADER is longer than allowed, aborting client early."
@@ -335,6 +332,16 @@ module Puma
         hdrs = headers.split("\r\n").map { |h| h.gsub "\n", '\n'}.join "\n"
         raise HttpParserError, "Invalid HTTP format, parsing fails. Bad headers\n#{hdrs}"
       end
+
+    # processes the `env` and the request body
+    def process_env_body
+      if above_http_content_limit(@parser.body.bytesize)
+        @http_content_length_limit_exceeded = true
+      end
+      temp = setup_body
+      normalize_env
+      req_env_post_parse
+      temp
     end
 
     def timeout!
@@ -393,6 +400,10 @@ module Puma
 
     private
 
+    # Checks the request `Transfer-Encoding` and/or `Content-Length` to see if
+    # they are valid.  Raises errors if not, otherwise reads the body.
+    # @return [Boolean] true if the body can be completely read, false otherwise
+    #
     def setup_body
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
