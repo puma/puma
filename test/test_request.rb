@@ -3,10 +3,8 @@ require_relative "helper"
 require 'puma/client'
 require 'puma/const'
 require 'puma/puma_http11'
-require 'stringio'
-require 'socket'
 
-class TestClientBase < Minitest::Test
+class TestRequestBase < Minitest::Test
   include Puma::Const
 
   PEER_ADDR = -> () { ["AF_INET", 80, "127.0.0.1", "127.0.0.1"] }
@@ -30,7 +28,7 @@ end
 # Tests `Client`'s handling of valid requests by passing it an IO with the
 # request string, then checking `env` for keys and/or values
 #
-class TestClientValid < TestClientBase
+class TestRequestValid < TestRequestBase
   def test_no_content
     request = "GET / HTTP/1.1\r\n\r\n"
     create_client request
@@ -68,12 +66,38 @@ class TestClientValid < TestClientBase
       fail
     end
   end
+
+  def test_underscore_and_dash
+    request = "GET / HTTP/1.1\r\n" \
+      "x-forwarded-for: 1.1.1.1\r\n" \
+      "x-forwarded_for: 2.2.2.2\r\n" \
+      "Content-Length: 11\r\n\r\nHello World"
+    create_client request
+    if @parser.finished?
+      assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+    else
+      fail
+    end
+  end
+
+  def test_unmaskable_headers
+    request = "GET / HTTP/1.1\r\n" \
+      "Transfer_Encoding: chunked\r\n" \
+      "Content_Length: 11\r\n\r\nHello World"
+    create_client request
+    if @parser.finished?
+      assert_equal '11', @client.env['HTTP_CONTENT,LENGTH']
+      assert_equal 'chunked', @client.env['HTTP_TRANSFER,ENCODING']
+    else
+      fail
+    end
+  end
 end
 
 # Tests `Client`'s handling of invalid requests by passing it an IO with the
 # request string, then checking `env` for keys and/or values
 #
-class TestClientInvalid < TestClientBase
+class TestRequestInvalid < TestRequestBase
   def test_content_length_oversize
     request = "GET / HTTP/1.1\r\nContent-Length: 11\r\n\r\nHello World"
     assert_raises(Puma::HttpParserError) do
