@@ -45,7 +45,7 @@ module Puma
     end
 
     def start_phased_restart
-      @events.fire_on_restart!
+      @events.fire_before_restart!
       @phase += 1
       log "- Starting phased worker restart, phase: #{@phase}"
 
@@ -342,7 +342,7 @@ module Puma
 
           stop_workers
           stop
-          @events.fire_on_stopped!
+          @events.fire_after_stopped!
           raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
           exit 0 # Clean exit, workers were stopped
         end
@@ -497,7 +497,7 @@ module Puma
                   end
 
                   if !booted && @workers.none? {|worker| worker.last_status.empty?}
-                    @events.fire_on_booted!
+                    @events.fire_after_booted!
                     debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
                     booted = true
                   end
@@ -514,7 +514,7 @@ module Puma
             end
 
             if in_phased_restart && workers_not_booted.zero?
-              @events.fire_on_booted!
+              @events.fire_after_booted!
               debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
               in_phased_restart = false
             end
