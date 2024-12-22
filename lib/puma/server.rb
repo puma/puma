@@ -577,7 +577,7 @@ module Puma
         lowlevel_error(e, client.env)
         @log_writer.ssl_error e, client.io
       when HttpParserError
-        response_to_error(client, requests, e, 400)
+        response_to_error(client, requests, e, client.error_status_code || 400)
         @log_writer.parse_error e, client
       when HttpParserError501
         response_to_error(client, requests, e, 501)
@@ -611,6 +611,7 @@ module Puma
 
     def response_to_error(client, requests, err, status_code)
       status, headers, res_body = lowlevel_error(err, client.env, status_code)
+      res_body = ["Payload Too Large"] if status == 413
       prepare_response(status, headers, res_body, requests, client)
     end
     private :response_to_error
