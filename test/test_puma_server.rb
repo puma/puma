@@ -501,7 +501,7 @@ class TestPumaServer < PumaTest
   end
 
   def test_http_11_keep_alive_with_large_payload
-    server_run(http_content_length_limit: 10) { [204, {}, []] }
+    server_run(http_content_length_limit: 10, environment: :production) { [204, {}, []] }
 
     socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 17\r\n\r\n"
     socket << "hello world foo bar"
@@ -510,7 +510,7 @@ class TestPumaServer < PumaTest
 
     # Content Too Large
     assert_equal "HTTP/1.1 413 #{STATUS_CODES[413]}", response.status
-    assert_equal ["content-length: 17"], response.headers
+    assert_equal ["connection: close", "content-length: 17"], response.headers
   end
 
   def test_GET_with_no_body_has_sane_chunking
