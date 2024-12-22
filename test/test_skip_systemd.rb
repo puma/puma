@@ -12,12 +12,6 @@ class TestSkipSystemd < TestIntegration
     skip_unless :unix
     skip_unless_signal_exist? :TERM
     skip_if :jruby
-
-    super
-  end
-
-  def teardown
-    super unless skipped?
   end
 
   def test_systemd_plugin_not_loaded

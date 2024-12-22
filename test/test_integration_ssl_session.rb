@@ -37,7 +37,6 @@ class TestIntegrationSSLSession < TestIntegration
 
     @server.close unless @server&.closed?
     @server = nil
-    super
   end
 
   def bind_port

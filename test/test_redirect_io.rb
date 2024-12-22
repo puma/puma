@@ -10,7 +10,6 @@ class TestRedirectIO < TestIntegration
 
   def setup
     skip_unless_signal_exist? :HUP
-    super
 
     # Keep the Tempfile instances alive to avoid being GC'd
     @out_file = Tempfile.new('puma-out')
@@ -27,7 +26,6 @@ class TestRedirectIO < TestIntegration
 
   def teardown
     return if skipped?
-    super
 
     paths = (skipped? ? [@out_file_path, @err_file_path] :
       [@out_file_path, @err_file_path, @old_out_file_path, @old_err_file_path]).compact
