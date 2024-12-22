@@ -58,10 +58,6 @@ module Puma
 
       return :close if closed_socket?(socket)
 
-      if client.http_content_length_limit_exceeded
-        return prepare_response(413, {}, ["Payload Too Large"], requests, client)
-      end
-
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
           begin
