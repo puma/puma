@@ -112,7 +112,8 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer, :http_content_length_limit_exceeded
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded,
+                :error_status_code
 
     attr_writer :peerip, :http_content_length_limit
 
@@ -235,17 +236,6 @@ module Puma
     end
 
     def try_to_finish
-      if env[CONTENT_LENGTH] && above_http_content_limit(env[CONTENT_LENGTH].to_i)
-        @http_content_length_limit_exceeded = true
-      end
-
-      if @http_content_length_limit_exceeded
-        @buffer = nil
-        @body = EmptyBody
-        set_ready
-        return true
-      end
-
       return read_body if in_data_phase
 
       data = nil
@@ -301,10 +291,15 @@ module Puma
     def process_env_body
       if above_http_content_limit(@parser.body.bytesize)
         @http_content_length_limit_exceeded = true
+        @error_status_code = 413
       end
       temp = setup_body
       normalize_env
       req_env_post_parse
+      if @error_status_code
+        # @env[HTTP_CONNECTION] = 'close'
+        raise HttpParserError
+      end
       temp
     end
 
@@ -414,6 +409,8 @@ module Puma
       if cl
         # cannot contain characters that are not \d, or be empty
         if CONTENT_LENGTH_VALUE_INVALID.match?(cl) || cl.empty?
+          @error_status_code = 400
+          @env[HTTP_CONNECTION] = 'close'
           raise HttpParserError, "Invalid Content-Length: #{cl.inspect}"
         end
       else
@@ -424,6 +421,14 @@ module Puma
       end
 
       content_length = cl.to_i
+
+      if above_http_content_limit(content_length)
+        @buffer = nil
+        @body = EmptyBody
+        @error_status_code = 413
+        @env[HTTP_CONNECTION] = 'close'
+        raise HttpParserError, "Payload Too Large"
+      end
 
       remain = content_length - body.bytesize
 
@@ -555,6 +560,13 @@ module Puma
 
     # @version 5.0.0
     def write_chunk(str)
+      if above_http_content_limit(@chunked_content_length + str.bytesize)
+        @buffer = nil
+        @body = EmptyBody
+        @error_status_code = 413
+        @env[HTTP_CONNECTION] = 'close'
+        raise HttpParserError, "Payload Too Large"
+      end
       @chunked_content_length += @body.write(str)
     end
 
