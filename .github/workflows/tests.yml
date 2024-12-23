@@ -104,7 +104,6 @@ jobs:
           mingw: openssl
           rubygems: latest
           bundler-cache: true
-          setup-ruby-ref: ruby/setup-ruby/b23e21184cec
         timeout-minutes: 10
 
       - name: Repo & Commit Info
