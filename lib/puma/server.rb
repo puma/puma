@@ -610,8 +610,15 @@ module Puma
     end
 
     def response_to_error(client, requests, err, status_code)
-      status, headers, res_body = lowlevel_error(err, client.env, status_code)
-      res_body = ["Payload Too Large"] if status == 413
+      # @todo remove sometime later
+      if status_code == 413
+        status = 413
+        res_body = ["Payload Too Large"]
+        headers = {}
+        headers[CONTENT_LENGTH2] = 17
+      else
+        status, headers, res_body = lowlevel_error(err, client.env, status_code)
+      end
       prepare_response(status, headers, res_body, requests, client)
     end
     private :response_to_error
