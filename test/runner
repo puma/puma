@@ -51,8 +51,6 @@ if show_warnings
   $VERBOSE = true
 end
 
-STDOUT.syswrite "\n#{ARGV.join "\n"}\n\n"
-
 if ARGV.empty? || ARGV.last.start_with?('-')
   if RUBY_VERSION >= '2.5'
     Dir['test_*.rb', base: __dir__].sort.each { |tf| require_relative tf }
@@ -83,10 +81,10 @@ if show_warnings
       .split("\n")
       .sort
       .join("\n")
-    STDERR.syswrite "#{warnings}\n\n"
+    STDERR.write "#{warnings}\n\n"
   end
 end
 exit 1 if no_tests
 
 require 'minitest'
-STDOUT.syswrite "Minitest version: #{Minitest::VERSION}\n\n"
+STDOUT.write "Minitest version: #{Minitest::VERSION}\n\n"
