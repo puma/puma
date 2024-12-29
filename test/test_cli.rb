@@ -26,7 +26,7 @@ class TestCLI < Minitest::Test
     @log_writer = Puma::LogWriter.strings
 
     @events = Puma::Events.new
-    @events.on_booted { @ready << "!" }
+    @events.after_booted { @ready << "!" }
 
     @puma_version_pattern = "\\d+.\\d+.\\d+(\\.[a-z\\d]+)?"
   end

@@ -54,12 +54,12 @@ puma configuration file reloaded, if there is one
 puma configuration file reloaded, if there is one
 
 before_fork
-on_worker_fork
+before_worker_fork
 after_worker_fork
 
 Gemfile in context
 
-on_worker_boot
+before_worker_boot
 
 Code of the app is loaded and running
 ```
@@ -67,18 +67,18 @@ Code of the app is loaded and running
 ### Send USR2
 
 ```
-on_worker_shutdown
-on_restart
+before_worker_shutdown
+before_restart
 
 puma configuration file reloaded, if there is one
 
 before_fork
-on_worker_fork
+before_worker_fork
 after_worker_fork
 
 Gemfile in context
 
-on_worker_boot
+before_worker_boot
 
 Code of the app is loaded and running
 ```
@@ -86,13 +86,13 @@ Code of the app is loaded and running
 ### Send USR1
 
 ```
-on_worker_shutdown
-on_worker_fork
+before_worker_shutdown
+before_worker_fork
 after_worker_fork
 
 Gemfile in context
 
-on_worker_boot
+before_worker_boot
 
 Code of the app is loaded and running
 ```
