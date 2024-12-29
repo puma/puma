@@ -258,7 +258,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nFoo: Bar\r\nContent-Length: 5\r\n\r\n", response
+    assert_equal "HTTP/1.0 200 OK\r\nfoo: Bar\r\ncontent-length: 5\r\n\r\n", response
   end
 
   def test_GET_with_empty_body_has_sane_chunking
@@ -266,7 +266,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.0 200 OK\r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_back_to_back_no_content
@@ -282,8 +282,8 @@ class TestPumaServer < Minitest::Test
     )
 
     assert_equal(
-      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
-      "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nok 2", data
+      "HTTP/1.1 200 OK\r\ncontent-length: 4\r\n\r\nok 1" \
+      "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 4\r\n\r\nok 2", data
     )
     assert_equal ["", ""], bodies
   end
@@ -301,8 +301,8 @@ class TestPumaServer < Minitest::Test
     )
 
     assert_equal(
-      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 1" \
-      "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nok 2", data
+      "HTTP/1.1 200 OK\r\ncontent-length: 4\r\n\r\nok 1" \
+      "HTTP/1.1 200 OK\r\ncontent-length: 4\r\n\r\nok 2", data
     )
     assert_equal ["a", ""], bodies
   end
@@ -322,15 +322,15 @@ class TestPumaServer < Minitest::Test
     data = socket.sysread 1_024
 
     assert_equal(
-      "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello" \
-      "HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\ngoodbye", data
+      "HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\nhello" \
+      "HTTP/1.1 200 OK\r\ncontent-length: 7\r\n\r\ngoodbye", data
     )
 
     socket << "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nH\r\n4\r\nello\r\n0\r\n\r\n"
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHello", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\nHello", response
   end
 
   def test_early_hints_works
@@ -347,8 +347,8 @@ class TestPumaServer < Minitest::Test
       Link: </script.js>; rel=preload
 
       HTTP/1.0 200 OK
-      X-Hello: World
-      Content-Length: 12
+      x-hello: World
+      content-length: 12
     EOF
 
     assert_equal true, @server.early_hints
@@ -386,8 +386,8 @@ class TestPumaServer < Minitest::Test
 
     expected_resp = <<~EOF.gsub("\n", "\r\n") + "\r\n"
       HTTP/1.0 200 OK
-      X-Hello: World
-      Content-Length: 12
+      x-hello: World
+      content-length: 12
     EOF
 
     assert_nil @server.early_hints
@@ -416,7 +416,7 @@ class TestPumaServer < Minitest::Test
 
     # Content Too Large
     assert_equal "HTTP/1.1 413 #{STATUS_CODES[413]}", response.status
-    assert_equal ["Content-Length: 17"], response.headers
+    assert_equal ["content-length: 17"], response.headers
   end
 
   def test_GET_with_no_body_has_sane_chunking
@@ -424,7 +424,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.0 200 OK\r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_doesnt_print_backtrace_in_production
@@ -456,7 +456,7 @@ class TestPumaServer < Minitest::Test
     response = send_http_read_response GET_10
 
     assert_equal 'HTTP/1.0 500 Internal Server Error', response.status
-    assert_match(/Content-Type: application\/json/, response)
+    assert_match(/content-type: application\/json/, response)
     assert_match(/{}\n$/, response)
   end
 
@@ -565,7 +565,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response GET_10
 
-    assert_equal "HTTP/1.0 449 CUSTOM\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.0 449 CUSTOM\r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_custom_http_codes_11
@@ -573,7 +573,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
-    assert_equal "HTTP/1.1 449 CUSTOM\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 449 CUSTOM\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_HEAD_returns_content_headers
@@ -582,7 +582,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Type: application/pdf\r\nContent-Length: 4242\r\n\r\n", response
+    assert_equal "HTTP/1.0 200 OK\r\ncontent-type: application/pdf\r\ncontent-length: 4242\r\n\r\n", response
   end
 
   def test_status_hook_fires_when_server_changes_states
@@ -778,7 +778,7 @@ class TestPumaServer < Minitest::Test
     req  = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
     response = send_http_read_response req
 
-    assert_equal ["Content-Type: plain/text", "Content-Length: 6"], response.headers
+    assert_equal ["content-type: plain/text", "content-length: 6"], response.headers
     assert_equal "hello\n", response.body
   end
 
@@ -787,7 +787,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Type: plain/text\r\nConnection: close\r\nContent-Length: 5\r\n\r\nhello", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
   end
 
   def test_http_11_keep_alive_without_body
@@ -807,7 +807,7 @@ class TestPumaServer < Minitest::Test
 
     # No Content
     assert_equal "HTTP/1.1 204 #{STATUS_CODES[204]}", response.status
-    assert_equal ["Connection: close"], response.headers
+    assert_equal ["connection: close"], response.headers
   end
 
   def test_http_11_enable_keep_alives_by_default
@@ -816,8 +816,8 @@ class TestPumaServer < Minitest::Test
     req  = "GET / HTTP/1.1\r\n\r\n"
     response = send_http_read_response req
 
-    # No "Connection: close" header.
-    assert_equal ["Content-Type: plain/text", "Content-Length: 6"], response.headers
+    # No "connection: close" header.
+    assert_equal ["content-type: plain/text", "content-length: 6"], response.headers
     assert_equal "hello\n", response.body
   end
   def test_http_11_enable_keep_alives_true
@@ -826,8 +826,8 @@ class TestPumaServer < Minitest::Test
     req  = "GET / HTTP/1.1\r\n\r\n"
     response = send_http_read_response req
 
-    # No "Connection: close" header.
-    assert_equal ["Content-Type: plain/text", "Content-Length: 6"], response.headers
+    # No "connection: close" header.
+    assert_equal ["content-type: plain/text", "content-length: 6"], response.headers
     assert_equal "hello\n", response.body
   end
 
@@ -837,8 +837,8 @@ class TestPumaServer < Minitest::Test
     req  = "GET / HTTP/1.1\r\n\r\n"
     response = send_http_read_response req
 
-    # Assert the "Connection: close" header is present with keep-alives disabled.
-    assert_equal ["Content-Type: plain/text", "Connection: close", "Content-Length: 6"], response.headers
+    # Assert the "connection: close" header is present with keep-alives disabled.
+    assert_equal ["content-type: plain/text", "connection: close", "content-length: 6"], response.headers
     assert_equal "hello\n", response.body
   end
 
@@ -850,7 +850,7 @@ class TestPumaServer < Minitest::Test
     response = send_http_read_response req
 
     assert_equal "HTTP/1.0 200 OK", response.status
-    assert_equal ["Content-Type: plain/text", "Connection: Keep-Alive", "Content-Length: 6"],
+    assert_equal ["content-type: plain/text", "connection: keep-alive", "content-length: 6"],
       response.headers
     assert_equal "hello\n", response.body
   end
@@ -860,7 +860,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Type: plain/text\r\nContent-Length: 5\r\n\r\nhello", response
+    assert_equal "HTTP/1.0 200 OK\r\ncontent-type: plain/text\r\ncontent-length: 5\r\n\r\nhello", response
   end
 
   def test_http_10_keep_alive_without_body
@@ -868,7 +868,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
 
-    assert_equal "HTTP/1.0 204 No Content\r\nConnection: Keep-Alive\r\n\r\n", response
+    assert_equal "HTTP/1.0 204 No Content\r\nconnection: keep-alive\r\n\r\n", response
   end
 
   def test_http_10_close_without_body
@@ -884,7 +884,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
 
-    assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_chunked_request
@@ -900,7 +900,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
     assert_nil transfer_encoding
@@ -928,7 +928,7 @@ class TestPumaServer < Minitest::Test
     response = skt.read_response
     path1 = req_body_path
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
     assert_nil transfer_encoding
@@ -938,7 +938,7 @@ class TestPumaServer < Minitest::Test
     path2 = req_body_path
 
     # same as above
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
     assert_nil transfer_encoding
@@ -970,7 +970,7 @@ class TestPumaServer < Minitest::Test
 
       response = send_http_read_response request
 
-      assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+      assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
       assert_equal size, Integer(content_length)
       assert_equal request_body, body
     end
@@ -989,7 +989,7 @@ class TestPumaServer < Minitest::Test
     header = "GET / HTTP/1.1\r\nConnection: close\r\nContent-Length: 200\r\nTransfer-Encoding: chunked\r\n\r\n"
     response = send_http_read_response "#{header}1;t=#{'x' * (max_chunk_header_size + 2)}\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 400 Bad Request\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_chunked_request_invalid_extension_header_length_split
@@ -1018,7 +1018,7 @@ class TestPumaServer < Minitest::Test
 
       response = socket.read_response
       refute_equal 'hello', body
-      assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+      assert_equal "HTTP/1.1 400 Bad Request\r\nConnection: close\r\ncontent-length: 0\r\n\r\n", response
 
     # errors raised vary by OS
     rescue Errno::EPIPE, Errno::ECONNABORTED, Errno::ECONNRESET
@@ -1042,7 +1042,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
   end
@@ -1063,7 +1063,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
   end
@@ -1084,7 +1084,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
   end
@@ -1105,7 +1105,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
   end
@@ -1126,7 +1126,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
   end
@@ -1156,7 +1156,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal (part1 + 'b'), body
     assert_equal "4201", content_length
   end
@@ -1178,7 +1178,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal 'hello', body
     assert_equal "5", content_length
   end
@@ -1200,7 +1200,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal 'hello', body
     assert_equal "5", content_length
   end
@@ -1235,7 +1235,7 @@ class TestPumaServer < Minitest::Test
     socket << data2
 
     response = socket.read_response
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal 9*1_024, body.bytesize
     assert_equal 9*1_024, content_length.to_i
     assert_equal '012345678', body.delete('x')
@@ -1252,7 +1252,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: Chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    assert_equal "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
   end
@@ -1268,7 +1268,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
   end
@@ -1295,7 +1295,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
     sleep 0.05 if TRUFFLE
@@ -1308,7 +1308,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "goodbye", body
     assert_equal "7", content_length
   end
@@ -1328,7 +1328,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "hello", body
     assert_equal "5", content_length
     assert_equal "127.0.0.1", remote_addr
@@ -1338,7 +1338,7 @@ class TestPumaServer < Minitest::Test
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
     assert_equal "goodbye", body
     assert_equal "7", content_length
     assert_equal "127.0.0.2", remote_addr
@@ -1377,7 +1377,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Empty-Header: \r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.0 200 OK\r\nx-empty-header: \r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_request_body_wait
@@ -1435,7 +1435,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
-    assert_match "X-header: first line\r\nX-header: second line\r\n", response
+    assert_match "x-header: first line\r\nx-header: second line\r\n", response
   end
 
   def test_newline_splits_in_early_hint
@@ -1606,23 +1606,23 @@ class TestPumaServer < Minitest::Test
     response = socket.read_response
 
     assert_equal "HTTP/1.1 200 OK", response.status
-    assert_equal ["Content-Length: 0"], response.headers
+    assert_equal ["content-length: 0"], response.headers
 
     socket << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
     response = socket.read_response
 
     assert_equal "HTTP/1.1 200 OK", response.status
-    assert_equal ["Connection: close", "Content-Length: 0"], response.headers
+    assert_equal ["connection: close", "content-length: 0"], response.headers
 
     socket = send_http "GET / HTTP/1.1\r\n\r\n"
     response = socket.read_response
     assert_equal "HTTP/1.1 200 OK", response.status
-    assert_equal ["Content-Length: 0"], response.headers
+    assert_equal ["content-length: 0"], response.headers
 
     socket << "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
     response = socket.read_response
     assert_equal "HTTP/1.1 200 OK", response.status
-    assert_equal ["Connection: close", "Content-Length: 0"], response.headers
+    assert_equal ["connection: close", "content-length: 0"], response.headers
   end
 
   def test_http10_connection_header_queue
@@ -1632,26 +1632,26 @@ class TestPumaServer < Minitest::Test
     response = socket.read_response
 
     assert_equal "HTTP/1.0 200 OK", response.status
-    assert_equal ["Connection: Keep-Alive", "Content-Length: 0"], response.headers
+    assert_equal ["connection: keep-alive", "content-length: 0"], response.headers
 
     socket << "GET / HTTP/1.0\r\n\r\n"
     response = socket.read_response
     assert_equal "HTTP/1.0 200 OK", response.status
-    assert_equal ["Content-Length: 0"], response.headers
+    assert_equal ["content-length: 0"], response.headers
   end
 
   def test_http11_connection_header_no_queue
     server_run(queue_requests: false) { [200, {}, [""]] }
     response = send_http_read_response GET_11
     assert_equal "HTTP/1.1 200 OK", response.status
-    assert_equal ["Connection: close", "Content-Length: 0"], response.headers
+    assert_equal ["connection: close", "content-length: 0"], response.headers
   end
 
   def test_http10_connection_header_no_queue
     server_run(queue_requests: false) { [200, {}, [""]] }
     response = send_http_read_response GET_10
     assert_equal "HTTP/1.0 200 OK", response.status
-    assert_equal ["Content-Length: 0"], response.headers
+    assert_equal ["content-length: 0"], response.headers
   end
 
   def stub_accept_nonblock(error)
@@ -1869,7 +1869,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response GET_11
     # Not Found
-    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_empty_body_array_no_content_length
@@ -1877,7 +1877,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response GET_11
     # Not Found
-    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nContent-Length: 0\r\n\r\n", response
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\ncontent-length: 0\r\n\r\n", response
   end
 
   def test_empty_body_enum
@@ -1885,7 +1885,7 @@ class TestPumaServer < Minitest::Test
 
     response = send_http_read_response GET_11
     # Not Found
-    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", response
+    assert_equal "HTTP/1.1 404 #{STATUS_CODES[404]}\r\ntransfer-encoding: chunked\r\n\r\n0\r\n\r\n", response
   end
 
   def test_form_data_encoding_windows_bom
