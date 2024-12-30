@@ -75,7 +75,6 @@ jobs:
           - { os: macos-15     , ruby:  2.7  }
           - { os: macos-15     , ruby: '3.0' }
           - { os: macos-15     , ruby:  3.2  }
-          - { os: windows-2022 , ruby: '3.4' }
           - { os: windows-2022 , ruby: head  }
 
     steps:
