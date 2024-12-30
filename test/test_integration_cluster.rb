@@ -42,7 +42,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_phased_restart_does_not_drop_connections_threads_fork_worker
     restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1 #, config: 'fork_worker', log: true
+      signal: :USR1, config: 'fork_worker'
   end
 
   def test_phased_restart_does_not_drop_connections_unix
