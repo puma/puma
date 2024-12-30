@@ -51,7 +51,19 @@ class TestRequestInvalid < Minitest::Test
     @server = Puma::Server.new app, nil, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
-    sleep 0.15 if Puma.jruby?
+    sleep 0.15 if Puma::IS_JRUBY
+
+    @error_on_closed = if Puma::IS_MRI
+      if Puma::IS_OSX
+        [Errno::ECONNRESET, EOFError]
+      elsif Puma::IS_WINDOWS
+        [Errno::ECONNABORTED]
+      else
+        [EOFError]
+      end
+    else
+      [EOFError]
+    end
   end
 
   def teardown
@@ -70,12 +82,22 @@ class TestRequestInvalid < Minitest::Test
     response = if socket
       socket.req_write(request).read_response
     else
-      send_http_read_response request
+      socket = new_socket
+      socket.req_write(request).read_response
     end
 
     re = /\AHTTP\/1\.[01] #{status}/
 
     assert_match re, response, "'#{response[/[^\r]+/]}' should be #{status}"
+
+    if status >= 400
+      if @server.leak_stack_on_error
+        cl = response.headers_hash['Content-Length'].to_i
+        refute_equal 0, cl
+      end
+      socket.req_write GET_11
+      assert_raises(*@error_on_closed) { socket.read_response }
+    end
   end
 
   # ──────────────────────────────────── below are oversize path length
@@ -86,7 +108,7 @@ class TestRequestInvalid < Minitest::Test
     assert_status  "GET #{path} HTTP/1.1\r\n\r\n"
   end
 
-  def __test_oversize_path_keep_alive
+  def test_oversize_path_keep_alive
     path = "/#{'a' * 8_500}"
 
     socket = new_socket
@@ -125,7 +147,7 @@ class TestRequestInvalid < Minitest::Test
     assert_status "#{GET_PREFIX}#{te}\r\n\r\nHello\r\n\r\n"
   end
 
-  def __test_content_length_bad_characters_1_keep_alive
+  def test_content_length_bad_characters_1_keep_alive
     socket = new_socket
 
     assert_status "GET / HTTP/1.1\r\n\r\n", 200, socket: socket
