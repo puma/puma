@@ -77,7 +77,7 @@ public class Http11 extends RubyObject {
 
     public static void createHttp11(Ruby runtime) {
         RubyModule mPuma = runtime.defineModule("Puma");
-        mPuma.defineClassUnder("HttpParserError",runtime.getClass("IOError"),runtime.getClass("IOError").getAllocator());
+        mPuma.defineClassUnder("HttpParserError",runtime.getClass("StandardError"),runtime.getClass("StandardError").getAllocator());
 
         RubyClass cHttpParser = mPuma.defineClassUnder("HttpParser",runtime.getObject(),ALLOCATOR);
         cHttpParser.defineAnnotatedMethods(Http11.class);

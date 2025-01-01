@@ -475,7 +475,7 @@ void Init_puma_http11(void)
   DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
   DEF_GLOBAL(request_path, "REQUEST_PATH");
 
-  eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eIOError);
+  eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eStandardError);
   rb_global_variable(&eHttpParserError);
 
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
