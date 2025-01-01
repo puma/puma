@@ -14,6 +14,9 @@ class TestRequestBase < PumaTest
 
   PEER_ADDR = -> () { ["AF_INET", 80, "127.0.0.1", "127.0.0.1"] }
 
+  GET_PREFIX = "GET / HTTP/1.1\r\nConnection: close\r\n"
+  CHUNKED = "1\r\nH\r\n4\r\nello\r\n5\r\nWorld\r\n0\r\n\r\n"
+
   def create_client(request, &blk)
     env = {}
     @rd, @wr = IO.pipe
@@ -34,8 +37,8 @@ class TestRequestBase < PumaTest
     end
   end
 
-  def assert_invalid(req, msg)
-    error = assert_raises(Puma::HttpParserError) { create_client req }
+  def assert_invalid(req, msg, err = Puma::HttpParserError)
+    error = assert_raises(err) { create_client req }
     assert_equal msg, error.message
     assert_equal 'close', @client.env[HTTP_CONNECTION],
       "env['HTTP_CONNECTION'] should be set to 'close'"
@@ -51,7 +54,8 @@ end
 
 # Tests requests that require special handling of headers
 class TestRequestValid < TestRequestBase
-  def test_underscore_and_dash
+
+  def test_underscore_header_1
     request = <<~REQ.gsub("\n", "\r\n").rstrip
       GET / HTTP/1.1
       x-forwarded_for: 2.2.2.2
@@ -66,6 +70,42 @@ class TestRequestValid < TestRequestBase
     if @parser.finished?
       assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
       assert_equal "Hello World", @client.body.string
+    else
+      fail
+    end
+  end
+
+  def test_underscore_header_2
+    hdrs = [
+      "X-FORWARDED-FOR: 1.1.1.1",  # proper
+      "X-FORWARDED-FOR: 2.2.2.2",  # proper
+      "X_FORWARDED-FOR: 3.3.3.3",  # invalid, contains underscore
+      "Content-Length: 5",
+    ].join "\r\n"
+
+    create_client "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
+
+    if @parser.finished?
+      assert_equal "1.1.1.1, 2.2.2.2", @client.env['HTTP_X_FORWARDED_FOR']
+      assert_equal "Hello", @client.body.string
+    else
+      fail
+    end
+  end
+
+  def test_underscore_header_3
+    hdrs = [
+      "X_FORWARDED-FOR: 3.3.3.3",  # invalid, contains underscore
+      "X-FORWARDED-FOR: 2.2.2.2",  # proper
+      "X-FORWARDED-FOR: 1.1.1.1",  # proper
+      "Content-Length: 5",
+    ].join "\r\n"
+
+    create_client "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
+
+    if @parser.finished?
+      assert_equal "2.2.2.2, 1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+      assert_equal "Hello", @client.body.string
     else
       fail
     end
@@ -89,66 +129,6 @@ class TestRequestValid < TestRequestBase
     else
       fail
     end
-  end
-end
-
-# Tests the headers section of the request
-class TestRequestHeadersInvalid < TestRequestBase
-  def test_malformed_headers_no_return
-    request = "GET / HTTP/1.1\r\nno-return: 10\nContent-Length: 11\r\n\r\nHello World"
-
-    msg = Puma::IS_JRUBY ?
-      "Invalid HTTP format, parsing fails. Bad headers\nno-return: 10\\nContent-Length: 11" :
-      "Invalid HTTP format, parsing fails. Bad headers\nNO_RETURN: 10\\nContent-Length: 11"
-
-    assert_invalid request, msg
-  end
-
-  def test_malformed_headers_no_newline
-    request = "GET / HTTP/1.1\r\nno-newline: 10\rContent-Length: 11\r\n\r\nHello World"
-
-    msg = Puma::IS_JRUBY ?
-      "Invalid HTTP format, parsing fails. Bad headers\nno-newline: 10\rContent-Length: 11" :
-      "Invalid HTTP format, parsing fails. Bad headers\nNO_NEWLINE: 10\rContent-Length: 11"
-
-    assert_invalid request, msg
-  end
-end
-
-# Tests requests with invalid Content-Length header
-class TestContentLengthInvalid < TestRequestBase
-
-  GET_PREFIX = "GET / HTTP/1.1\r\nConnection: close\r\n"
-
-  def test_multiple
-    cl = [
-      'Content-Length: 5',
-      'Content-Length: 5'
-    ].join "\r\n"
-
-    assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-      'Invalid Content-Length: "5, 5"'
-  end
-
-  def test_bad_characters_1
-    cl = 'Content-Length: 5.01'
-
-    assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-     'Invalid Content-Length: "5.01"'
-  end
-
-  def test_bad_characters_2
-    cl = 'Content-Length: +5'
-
-    assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-      'Invalid Content-Length: "+5"'
-  end
-
-  def test_bad_characters_3
-    cl = 'Content-Length: 5 test'
-
-    assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-    'Invalid Content-Length: "5 test"'
   end
 end
 
@@ -268,5 +248,179 @@ class TestRequestOversizeItem < TestRequestBase
       "HTTP element REQUEST_URI is longer than the (1024 * 12) allowed length (was 12291)"
 
     assert_invalid request, msg
+  end
+end
+
+# Tests the headers section of the request
+class TestRequestHeadersInvalid < TestRequestBase
+  def test_malformed_headers_no_return
+    request = "GET / HTTP/1.1\r\nno-return: 10\nContent-Length: 11\r\n\r\nHello World"
+
+    msg = Puma::IS_JRUBY ?
+      "Invalid HTTP format, parsing fails. Bad headers\nno-return: 10\\nContent-Length: 11" :
+      "Invalid HTTP format, parsing fails. Bad headers\nNO_RETURN: 10\\nContent-Length: 11"
+
+    assert_invalid request, msg
+  end
+
+  def test_malformed_headers_no_newline
+    request = "GET / HTTP/1.1\r\nno-newline: 10\rContent-Length: 11\r\n\r\nHello World"
+
+    msg = Puma::IS_JRUBY ?
+      "Invalid HTTP format, parsing fails. Bad headers\nno-newline: 10\rContent-Length: 11" :
+      "Invalid HTTP format, parsing fails. Bad headers\nNO_NEWLINE: 10\rContent-Length: 11"
+
+    assert_invalid request, msg
+  end
+end
+
+# Tests requests with invalid Content-Length header
+class TestRequestContentLengthInvalid < TestRequestBase
+
+  def test_multiple
+    cl = [
+      'Content-Length: 5',
+      'Content-Length: 5'
+    ].join "\r\n"
+
+    assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
+      'Invalid Content-Length: "5, 5"'
+  end
+
+  def test_bad_characters_1
+    cl = 'Content-Length: 5.01'
+
+    assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
+     'Invalid Content-Length: "5.01"'
+  end
+
+  def test_bad_characters_2
+    cl = 'Content-Length: +5'
+
+    assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
+      'Invalid Content-Length: "+5"'
+  end
+
+  def test_bad_characters_3
+    cl = 'Content-Length: 5 test'
+
+    assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
+    'Invalid Content-Length: "5 test"'
+  end
+end
+
+# Tests invalid chunked requests
+class TestRequestChunkedInvalid < TestRequestBase
+
+  def test_chunked_size_bad_characters_1
+    te = 'Transfer-Encoding: chunked'
+    chunked ='5.01'
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n" \
+      "1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n",
+      "Invalid chunk size: '5.01'"
+  end
+
+  def test_chunked_size_bad_characters_2
+    te = 'Transfer-Encoding: chunked'
+    chunked ='+5'
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n" \
+      "1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n",
+      "Invalid chunk size: '+5'"
+  end
+
+  def test_chunked_size_bad_characters_3
+    te = 'Transfer-Encoding: chunked'
+    chunked ='5 bad'
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n" \
+      "1\r\nh\r\n#{chunked}\r\nHello\r\n0\r\n\r\n",
+      "Invalid chunk size: '5 bad'"
+  end
+
+  def test_chunked_size_bad_characters_4
+    te = 'Transfer-Encoding: chunked'
+    chunked ='0xA'
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n" \
+      "1\r\nh\r\n#{chunked}\r\nHelloHello\r\n0\r\n\r\n",
+      "Invalid chunk size: '0xA'"
+  end
+
+  # size is less than bytesize, 4 < 'world'.bytesize
+  def test_chunked_size_mismatch_1
+    te = 'Transfer-Encoding: chunked'
+    chunked =
+      "5\r\nHello\r\n" \
+      "4\r\nWorld\r\n" \
+      "0\r\n\r\n"
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}",
+      "Chunk size mismatch"
+  end
+
+  # size is greater than bytesize, 6 > 'world'.bytesize
+  def test_chunked_size_mismatch_2
+    te = 'Transfer-Encoding: chunked'
+    chunked =
+      "5\r\nHello\r\n" \
+      "6\r\nWorld\r\n" \
+      "0\r\n\r\n"
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}",
+      "Chunk size mismatch"
+  end
+end
+
+# Tests invalid Transfer-Ecoding headers
+class TestTransferEncodingInvalid < TestRequestBase
+
+  def test_chunked_not_last
+    te = [
+      'Transfer-Encoding: chunked',
+      'Transfer-Encoding: gzip'
+    ].join "\r\n"
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
+      "Invalid Transfer-Encoding, multiple chunked: 'chunked, gzip'"
+  end
+
+  def test_chunked_multiple
+    te = [
+      'Transfer-Encoding: chunked',
+      'Transfer-Encoding: gzip',
+      'Transfer-Encoding: chunked'
+    ].join "\r\n"
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
+      "Invalid Transfer-Encoding, multiple chunked: 'chunked, gzip, chunked'"
+  end
+
+  def test_invalid_single
+    te = 'Transfer-Encoding: xchunked'
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
+      "Invalid Transfer-Encoding, unknown value: 'xchunked'",
+      Puma::HttpParserError501
+  end
+
+  def test_invalid_multiple
+    te = [
+      'Transfer-Encoding: x_gzip',
+      'Transfer-Encoding: gzip',
+      'Transfer-Encoding: chunked'
+    ].join "\r\n"
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
+      "Invalid Transfer-Encoding, unknown value: 'x_gzip, gzip, chunked'",
+      Puma::HttpParserError501
+  end
+
+  def test_single_not_chunked
+    te = 'Transfer-Encoding: gzip'
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
+      "Invalid Transfer-Encoding, single value must be chunked: 'gzip'"
   end
 end
