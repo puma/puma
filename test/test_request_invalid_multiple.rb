@@ -121,7 +121,7 @@ class TestRequestInvalidMultiple < Minitest::Test
 
     cl = 'Content-Length: 5.01'
 
-    assert_status "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n", socket: socket
+    assert_status "#{GET_PREFIX}#{cl}\r\n\r\nHello", socket: socket
   end
 
   # ──────────────────────────────────── below have http_content_length_limit set
