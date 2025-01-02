@@ -17,13 +17,12 @@ class TestPluginSystemd < TestIntegration
 
     super
 
-    ::Dir::Tmpname.create("puma_socket") do |sockaddr|
-      @sockaddr = sockaddr
-      @socket = Socket.new(:UNIX, :DGRAM, 0)
-      socket_ai = Addrinfo.unix(sockaddr)
-      @socket.bind(socket_ai)
-      @env = {"NOTIFY_SOCKET" => sockaddr }
-    end
+    @sockaddr = tmp_path 'systemd'
+    @socket = Socket.new(:UNIX, :DGRAM, 0)
+    socket_ai = Addrinfo.unix(@sockaddr)
+    @socket.bind Addrinfo.unix(@sockaddr)
+    @env = { "NOTIFY_SOCKET" => @sockaddr }
+    @message = +''
   end
 
   def teardown
