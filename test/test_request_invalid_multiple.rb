@@ -30,6 +30,15 @@ class TestRequestInvalidMultiple < Minitest::Test
     "Content-Length: #{STATUS_CODES[413].bytesize}"
   ]
 
+  ERROR_ON_CLOSED =
+    if Puma::IS_OSX
+      [EOFError, Errno::ECONNRESET]
+    elsif Puma::IS_WINDOWS
+      [Errno::ECONNABORTED]
+    else
+      [EOFError]
+    end
+
   def setup
     @host = HOST
     # this app should never be called, used for debugging
@@ -52,18 +61,6 @@ class TestRequestInvalidMultiple < Minitest::Test
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
     sleep 0.15 if Puma::IS_JRUBY
-
-    @error_on_closed = if Puma::IS_MRI
-      if Puma::IS_OSX
-        [Errno::ECONNRESET, EOFError]
-      elsif Puma::IS_WINDOWS
-        [Errno::ECONNABORTED]
-      else
-        [EOFError]
-      end
-    else
-      [EOFError]
-    end
   end
 
   def teardown
@@ -96,7 +93,7 @@ class TestRequestInvalidMultiple < Minitest::Test
         refute_equal 0, cl
       end
       socket.req_write GET_11
-      assert_raises(*@error_on_closed) { socket.read_response }
+      assert_raises(*ERROR_ON_CLOSED) { socket.read_response }
     end
   end
 
