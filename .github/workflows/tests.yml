@@ -130,6 +130,8 @@ jobs:
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         timeout-minutes: 10
         run: test/runner --verbose
+        env:
+          MT_CPU: 2
 
   test_non_mri:
     name: >-
@@ -202,6 +204,8 @@ jobs:
           success() &&
           (needs.skip_duplicate_runs.outputs.should_skip != 'true')
         run: test/runner --verbose
+        env:
+          MT_CPU: 2
 
       - name: >-
           Test outcome: ${{ steps.test.outcome }}
