@@ -155,6 +155,7 @@ class TestIntegration < Minitest::Test
     return unless pid
     begin
       _, status = Process.wait2 pid
+      status = status.exitstatus % 128 if ::Puma::IS_JRUBY
       assert_equal exit_code, status
     rescue Errno::ECHILD # raised on Windows ?
     end

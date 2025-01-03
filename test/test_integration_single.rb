@@ -2,7 +2,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationSingle < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me! if ::Puma::IS_MRI
 
   def workers ; 0 ; end
 
@@ -43,11 +43,11 @@ class TestIntegrationSingle < TestIntegration
 
   def test_term_exit_code
     skip_unless_signal_exist? :TERM
-    skip_if :jruby # JVM does not return correct exit code for TERM
 
     cli_server "test/rackup/hello.ru"
     _, status = stop_server
 
+    status = status.exitstatus % 128 if ::Puma::IS_JRUBY
     assert_equal 15, status
   end
 
@@ -59,6 +59,8 @@ class TestIntegrationSingle < TestIntegration
 
     assert wait_for_server_to_include('on_booted called')
     assert wait_for_server_to_include('on_stopped called')
+
+    wait_server 15
   end
 
   def test_term_suppress
@@ -104,7 +106,6 @@ class TestIntegrationSingle < TestIntegration
 
   def test_term_not_accepts_new_connections
     skip_unless_signal_exist? :TERM
-    skip_if :jruby
 
     cli_server 'test/rackup/sleep.ru'
 
@@ -131,7 +132,6 @@ class TestIntegrationSingle < TestIntegration
 
   def test_int_refuse
     skip_unless_signal_exist? :INT
-    skip_if :jruby  # seems to intermittently lockup JRuby CI
 
     cli_server 'test/rackup/hello.ru'
     begin
