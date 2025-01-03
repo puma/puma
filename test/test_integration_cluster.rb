@@ -12,12 +12,6 @@ class TestIntegrationCluster < TestIntegration
 
   def setup
     skip_unless :fork
-    super
-  end
-
-  def teardown
-    return if skipped?
-    super
   end
 
   def test_hot_restart_does_not_drop_connections_threads

@@ -15,11 +15,6 @@ class TestWebConcurrencyAuto < TestIntegration
     "WEB_CONCURRENCY" => "auto"
   }
 
-  def teardown
-    return if skipped?
-    super
-  end
-
   # we use `cli_server` so no concurrent_ruby files are loaded in the test process
   def test_web_concurrency_with_concurrent_ruby_available
     skip_unless :fork
@@ -33,7 +28,7 @@ class TestWebConcurrencyAuto < TestIntegration
 
     get_worker_pids 0, 2 # make sure some workers have booted
 
-    expected = send_http_read_resp_body GET_11
+    expected = send_http_read_body GET_11
 
     assert_equal expected, actual
   end
