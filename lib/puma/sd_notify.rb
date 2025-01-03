@@ -137,10 +137,7 @@ module Puma
       ENV.delete("NOTIFY_SOCKET") if unset_env
 
       begin
-        Addrinfo.unix(sock, :DGRAM).connect do |s|
-          s.close_on_exec = true
-          s.write(state)
-        end
+        Addrinfo.unix(sock, :DGRAM).connect { |s| s.write state }
       rescue StandardError => e
         raise NotifyError, "#{e.class}: #{e.message}", e.backtrace
       end
