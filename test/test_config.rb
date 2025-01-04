@@ -470,54 +470,68 @@ class TestConfigFile < Minitest::Test
 
   def test_run_hooks_on_restart_hook
     assert_run_hooks :on_restart
+
+    assert_raise_on_hooks_without_block :on_restart
   end
 
   def test_run_hooks_before_worker_fork
     assert_run_hooks :before_worker_fork, configured_with: :on_worker_fork
 
+    assert_raise_on_hooks_without_block :on_worker_fork
     assert_warning_for_hooks_defined_in_single_mode :on_worker_fork
   end
 
   def test_run_hooks_after_worker_fork
     assert_run_hooks :after_worker_fork
 
+    assert_raise_on_hooks_without_block :after_worker_fork
     assert_warning_for_hooks_defined_in_single_mode :after_worker_fork
   end
 
   def test_run_hooks_before_worker_boot
     assert_run_hooks :before_worker_boot, configured_with: :on_worker_boot
 
+    assert_raise_on_hooks_without_block :on_worker_boot
     assert_warning_for_hooks_defined_in_single_mode :on_worker_boot
   end
 
   def test_run_hooks_before_worker_shutdown
     assert_run_hooks :before_worker_shutdown, configured_with: :on_worker_shutdown
 
+    assert_raise_on_hooks_without_block :on_worker_shutdown
     assert_warning_for_hooks_defined_in_single_mode :on_worker_shutdown
   end
 
   def test_run_hooks_before_fork
     assert_run_hooks :before_fork
 
+    assert_raise_on_hooks_without_block :before_fork
     assert_warning_for_hooks_defined_in_single_mode :before_fork
   end
 
   def test_run_hooks_before_refork
     assert_run_hooks :before_refork, configured_with: :on_refork
 
+    assert_raise_on_hooks_without_block :on_refork
     assert_warning_for_hooks_defined_in_single_mode :on_refork
   end
 
   def test_run_hooks_before_thread_start
     assert_run_hooks :before_thread_start, configured_with: :on_thread_start
+
+    assert_raise_on_hooks_without_block :on_thread_start
   end
 
   def test_run_hooks_before_thread_exit
     assert_run_hooks :before_thread_exit, configured_with: :on_thread_exit
+
+    assert_raise_on_hooks_without_block :on_thread_exit
   end
 
   def test_run_hooks_out_of_band
     assert_run_hooks :out_of_band
+
+    assert_raise_on_hooks_without_block :out_of_band
   end
 
   def test_run_hooks_and_exception
@@ -621,10 +635,19 @@ class TestConfigFile < Minitest::Test
     assert_equal messages, ["#{hook_name} is called with ARG one time", "#{hook_name} is called with ARG a second time"]
   end
 
+  def assert_raise_on_hooks_without_block(hook_name)
+    error = assert_raises ArgumentError do
+      Puma::Configuration.new { |c| c.send(hook_name) }.load
+    end
+    assert_equal "expected #{hook_name} to be given a block", error.message
+  end
+
   def assert_warning_for_hooks_defined_in_single_mode(hook_name)
     out, _ = capture_io do
       Puma::Configuration.new do |c|
-        c.send(hook_name)
+        c.send(hook_name) do
+          # noop
+        end
       end
     end
 
