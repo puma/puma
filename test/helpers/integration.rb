@@ -63,12 +63,12 @@ class TestIntegration < Minitest::Test
       rescue
       ensure
         @server = nil
-
-        if @config_file
-          File.unlink(@config_file.path) rescue nil
-          @config_file = nil
-        end
       end
+    end
+
+    if @config_file
+      File.unlink(@config_file.path) rescue nil
+      @config_file = nil
     end
   end
 
@@ -102,7 +102,7 @@ class TestIntegration < Minitest::Test
       @config_file.syswrite config
       # not supported on some OS's, all GitHub Actions OS's support it
       @config_file.fsync rescue nil
-      @ios_to_close << @config_file
+      @config_file.close
       config = "-C #{@config_file.path}"
     end
 

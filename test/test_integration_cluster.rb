@@ -141,13 +141,19 @@ class TestIntegrationCluster < TestIntegration
 
   def test_on_booted_and_on_stopped
     skip_unless_signal_exist? :TERM
-    cli_server "-w #{workers} -C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      on_booted  { STDOUT.syswrite "on_booted called\n"  }
+      on_stopped { STDOUT.syswrite "on_stopped called\n" }
+    CONFIG
 
-    # above checks 'Ctrl-C', below is logged after workers boot
     assert wait_for_server_to_include('on_booted called')
+
+    Process.kill :TERM, @pid
+
     assert wait_for_server_to_include('Goodbye!')
     # below logged after workers are stopped
     assert wait_for_server_to_include('on_stopped called')
+    wait_server 15
   end
 
   def test_term_worker_clean_exit
