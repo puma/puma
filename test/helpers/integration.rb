@@ -63,12 +63,12 @@ class TestIntegration < Minitest::Test
       rescue
       ensure
         @server = nil
-
-        if @config_file
-          File.unlink(@config_file.path) rescue nil
-          @config_file = nil
-        end
       end
+    end
+
+    if @config_file
+      File.unlink(@config_file.path) rescue nil
+      @config_file = nil
     end
   end
 
