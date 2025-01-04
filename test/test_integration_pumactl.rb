@@ -8,17 +8,11 @@ class TestIntegrationPumactl < TestIntegration
   def workers ; 2 ; end
 
   def setup
-    super
-    @control_path = nil
     @state_path = tmp_path('.state')
   end
 
   def teardown
-    super
-
     refute @control_path && File.exist?(@control_path), "Control path must be removed after stop"
-  ensure
-    [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
   end
 
   def test_stop_tcp
@@ -272,6 +266,11 @@ class TestIntegrationPumactl < TestIntegration
       'patchlevel' => RUBY_PATCHLEVEL,
     }
     assert_hash expected_version_ruby_hash, stats_hash['versions']['ruby']
+
+  ensure
+    return unless @server
+    cli_pumactl "stop", unix: true
+    wait_server
   end
 
   def control_gc_stats(unix: false)
@@ -309,5 +308,7 @@ class TestIntegrationPumactl < TestIntegration
   def test_control_gc_stats_unix
     skip_unless :unix
     control_gc_stats unix: true
+    cli_pumactl "stop", unix: true
+    wait_server
   end
 end

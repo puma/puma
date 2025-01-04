@@ -72,7 +72,7 @@ class TestPumaServerSSL < Minitest::Test
 
   def test_url_scheme_for_https
     start_server
-    assert_equal "https", send_http_read_resp_body(ctx: new_ctx)
+    assert_equal "https", send_http_read_body(ctx: new_ctx)
   end
 
   def test_request_wont_block_thread
@@ -102,7 +102,7 @@ class TestPumaServerSSL < Minitest::Test
 
     @server.app = proc { [200, {}, [giant]] }
 
-    body = send_http_read_resp_body(ctx: new_ctx)
+    body = send_http_read_body(ctx: new_ctx)
 
     assert_equal giant.bytesize, body.bytesize
   end
@@ -113,7 +113,7 @@ class TestPumaServerSSL < Minitest::Test
 
     req = "POST / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 7\r\n\r\na=1&b=2"
 
-    body = send_http_read_resp_body req, ctx: new_ctx
+    body = send_http_read_body req, ctx: new_ctx
 
     assert_equal "https\na=1&b=2", body
   end
@@ -148,7 +148,7 @@ class TestPumaServerSSL < Minitest::Test
     assert_match expected, msg
 
     # make sure a good request succeeds
-    assert_equal "https", send_http_read_resp_body(ctx: new_ctx)
+    assert_equal "https", send_http_read_body(ctx: new_ctx)
   end
 
   def test_ssl_v3_rejection
@@ -170,7 +170,7 @@ class TestPumaServerSSL < Minitest::Test
 
     start_server
 
-    body = send_http_read_resp_body ctx: new_ctx { |c|
+    body = send_http_read_body ctx: new_ctx { |c|
       if PROTOCOL_USE_MIN_MAX
         c.min_version = :TLS1_3
       else
@@ -189,12 +189,12 @@ class TestPumaServerSSL < Minitest::Test
 
     tcp = Thread.new do
       assert_raises(Errno::ECONNREFUSED, EOFError, IOError, Timeout::Error) do
-        body_http = send_http_read_resp_body timeout: 4
+        body_http = send_http_read_body timeout: 4
       end
     end
 
     ssl = Thread.new do
-      body_https = send_http_read_resp_body ctx: new_ctx
+      body_https = send_http_read_body ctx: new_ctx
     end
 
     tcp.join
@@ -316,7 +316,7 @@ class TestPumaServerSSLClient < Minitest::Test
 
     client_error = false
     begin
-      send_http_read_resp_body host: LOCALHOST, ctx: ctx
+      send_http_read_body host: LOCALHOST, ctx: ctx
     rescue *expected_errors => e
       client_error = e
     end
@@ -509,7 +509,7 @@ class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
 
     client_error = nil
     begin
-      send_http_read_resp_body host: LOCALHOST, ctx: new_ctx { |c|
+      send_http_read_body host: LOCALHOST, ctx: new_ctx { |c|
         c.ca_file = "#{CERT_PATH}/ca.crt"
         c.verify_mode = OpenSSL::SSL::VERIFY_PEER
       }

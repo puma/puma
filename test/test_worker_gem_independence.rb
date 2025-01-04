@@ -9,13 +9,11 @@ class TestWorkerGemIndependence < TestIntegration
 
   def setup
     skip_unless :fork
-    super
   end
 
   def teardown
     return if skipped?
     FileUtils.rm current_release_symlink, force: true
-    super
   end
 
   def test_changing_nio4r_version_during_phased_restart
@@ -138,8 +136,7 @@ class TestWorkerGemIndependence < TestIntegration
 
   def start_phased_restart
     Process.kill :USR1, @pid
-
-    true while @server.gets !~ /booted in [.0-9]+s, phase: 1/
+    wait_for_server_to_match(/booted in [.0-9]+s, phase: 1/)
   end
 
   def with_unbundled_env

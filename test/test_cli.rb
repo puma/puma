@@ -103,7 +103,7 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", port: control_port
+    body = send_http_read_body "GET /stats HTTP/1.0\r\n\r\n", port: control_port
 
     check_single_stats body
 
@@ -130,7 +130,7 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    body = send_http_read_resp_body "GET /stats?token=#{token} HTTP/1.0\r\n\r\n",
+    body = send_http_read_body "GET /stats?token=#{token} HTTP/1.0\r\n\r\n",
       port: control_port, ctx: new_ctx
 
     check_single_stats body
@@ -153,7 +153,7 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
+    body = send_http_read_body "GET /stats HTTP/1.0\r\n\r\n", path: @tmp_path
 
     check_single_stats body
   ensure
@@ -176,7 +176,7 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    body = send_http_read_resp_body "GET /stop HTTP/1.0\r\n\r\n", path: @tmp_path
+    body = send_http_read_body "GET /stop HTTP/1.0\r\n\r\n", path: @tmp_path
 
     assert_equal '{ "status": "ok" }', body
   ensure
@@ -197,14 +197,14 @@ class TestCLI < Minitest::Test
 
     wait_booted
 
-    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", port: control_port
+    body = send_http_read_body "GET /stats HTTP/1.0\r\n\r\n", port: control_port
 
     assert_equal 0, JSON.parse(body)['requests_count']
 
     # send real requests to server
-    3.times { send_http_read_resp_body GET_10 }
+    3.times { send_http_read_body GET_10 }
 
-    body = send_http_read_resp_body "GET /stats HTTP/1.0\r\n\r\n", port: control_port
+    body = send_http_read_body "GET /stats HTTP/1.0\r\n\r\n", port: control_port
 
     assert_equal 3, JSON.parse(body)['requests_count']
   ensure
