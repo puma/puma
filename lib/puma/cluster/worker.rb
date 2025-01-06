@@ -124,7 +124,7 @@ module Puma
 
           stat_thread ||= Thread.new(@worker_write) do |io|
             Puma.set_thread_name "stat pld"
-            base_payload = "p#{Process.pid}"
+            base_payload = "#{Puma::Const::PipeRequest::PIPE_PING}#{Process.pid}"
 
             while true
               begin
