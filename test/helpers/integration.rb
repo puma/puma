@@ -486,7 +486,8 @@ class TestIntegration < Minitest::Test
     run = true
 
     restart_thread = Thread.new do
-      sleep 0.2  # let some connections in before 1st restart
+      # Wait for some connections before first restart
+      sleep 0.2
       while run
         if Puma.windows?
           cli_pumactl 'restart'
@@ -510,13 +511,13 @@ class TestIntegration < Minitest::Test
           # If 'get_worker_pids phase' times out, error in thread shuts down CI
           begin
             get_worker_pids phase, log: log
-            # added sleep as locally 165 restarts in 7 seconds
-            sleep 0.15
+            # Wait with an exponential backoff before signaling next restart
+            sleep 0.15 * (2 ** restart_count)
           rescue Minitest::Assertion # Timeout
             run = false
           end
         else
-          sleep 0.10
+          sleep 0.1
         end
       end
     end
@@ -553,6 +554,8 @@ class TestIntegration < Minitest::Test
 
     refused = replies[:refused]
     reset   = replies[:reset]
+
+    assert_operator restart_count, :>=, 2, msg
 
     if Puma.windows?
       assert_equal actual_requests - reset - refused, replies[:success]
