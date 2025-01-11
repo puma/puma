@@ -12,7 +12,7 @@ module TestPuma
   # It starts a `Puma` server, then collects data from one or more runs of hey.
   # It logs the hey data as each hey run is done, then summarizes the data.
   #
-  # benchmarks/local/long_tail_hey.sh -t5:5 -R20 -d0.2
+  # benchmarks/local/long_tail_hey.sh -t5:5 -R20 -d0.2  -C ./test/config/fork_worker.rb
   #
   # benchmarks/local/long_tail_hey.sh -w4 -t5:5 -R100 -d0.2
   #
