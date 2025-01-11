@@ -4,7 +4,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestPluginSystemd < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me! if ::Puma::IS_MRI
 
   THREAD_LOG = TRUFFLE ? "{ 0/16 threads, 16 available, 0 backlog }" :
     "{ 0/5 threads, 5 available, 0 backlog }"
@@ -17,21 +17,19 @@ class TestPluginSystemd < TestIntegration
 
     super
 
-    ::Dir::Tmpname.create("puma_socket") do |sockaddr|
-      @sockaddr = sockaddr
-      @socket = Socket.new(:UNIX, :DGRAM, 0)
-      socket_ai = Addrinfo.unix(sockaddr)
-      @socket.bind(socket_ai)
-      @env = {"NOTIFY_SOCKET" => sockaddr }
-    end
+    @sockaddr = tmp_path '.systemd'
+    @socket = Socket.new(:UNIX, :DGRAM, 0)
+    socket_ai = Addrinfo.unix(@sockaddr)
+    @socket.bind Addrinfo.unix(@sockaddr)
+    @env = { "NOTIFY_SOCKET" => @sockaddr }
+    @message = +''
   end
 
   def teardown
     return if skipped?
     @socket&.close
-    File.unlink(@sockaddr) if @sockaddr
     @socket = nil
-    @sockaddr = nil
+    super
   end
 
   def test_systemd_notify_usr1_phased_restart_cluster
@@ -107,14 +105,16 @@ class TestPluginSystemd < TestIntegration
 
   def assert_message(msg)
     @socket.wait_readable 1
-    read = @socket.sysread(msg.bytesize)
+    @message << @socket.sysread(msg.bytesize)
     # below is kind of hacky, but seems to work correctly when slow CI systems
     # write partial status messages
-    if read.start_with?('STATUS=') && !msg.start_with?('STATUS=')
-      read << @socket.sysread(512) while @socket.wait_readable(1) && !read.end_with?(msg)
-      assert_end_with read, msg
+    if @message.start_with?('STATUS=') && !msg.start_with?('STATUS=')
+      @message << @socket.sysread(512) while @socket.wait_readable(1) && !@message.include?(msg)
+      assert_includes @message, msg
+      @message = @message.split(msg, 2).last
     else
-      assert_equal msg, read
+      assert_equal msg, @message
+      @message = +''
     end
   end
 end
