@@ -1,8 +1,7 @@
 require_relative "helper"
 require_relative "helpers/test_puma/puma_socket"
 
-class TestBusyWorker < Minitest::Test
-
+class TestBusyWorker < TimeoutTestCase
   include ::TestPuma::PumaSocket
 
   def setup

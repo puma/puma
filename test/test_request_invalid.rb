@@ -11,7 +11,7 @@ require_relative "helpers/test_puma/puma_socket"
 # https://httpwg.org/specs/rfc9112.html#field.transfer-encoding Transfer-Encoding
 # https://httpwg.org/specs/rfc9112.html#chunked.encoding        Chunked Transfer Coding
 #
-class TestRequestInvalid < Minitest::Test
+class TestRequestInvalid < TimeoutTestCase
   # running parallel seems to take longer...
   # parallelize_me! unless JRUBY_HEAD
 

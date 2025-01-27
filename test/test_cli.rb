@@ -7,7 +7,7 @@ require "puma/cli"
 require "json"
 require "psych"
 
-class TestCLI < Minitest::Test
+class TestCLI < TimeoutTestCase
   include SSLHelper if ::Puma::HAS_SSL
   include TmpPath
   include TestPuma::PumaSocket

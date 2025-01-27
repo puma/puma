@@ -11,7 +11,7 @@ module TestRackUp
   rescue LoadError
   end
 
-  class TestOnBootedHandler < Minitest::Test
+  class TestOnBootedHandler < TimeoutTestCase
     def app
       Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
     end
@@ -45,7 +45,7 @@ module TestRackUp
     end
   end
 
-  class TestPathHandler < Minitest::Test
+  class TestPathHandler < TimeoutTestCase
     def app
       Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
     end
@@ -88,7 +88,7 @@ module TestRackUp
     end
   end
 
-  class TestUserSuppliedOptionsPortIsSet < Minitest::Test
+  class TestUserSuppliedOptionsPortIsSet < TimeoutTestCase
     def setup
       @options = {}
       @options[:user_supplied_options] = [:Port]
@@ -113,7 +113,7 @@ module TestRackUp
     end
   end
 
-  class TestUserSuppliedOptionsHostIsSet < Minitest::Test
+  class TestUserSuppliedOptionsHostIsSet < TimeoutTestCase
     def setup
       @options = {}
       @options[:user_supplied_options] = [:Host]
@@ -172,7 +172,7 @@ module TestRackUp
     end
   end
 
-  class TestUserSuppliedOptionsIsEmpty < Minitest::Test
+  class TestUserSuppliedOptionsIsEmpty < TimeoutTestCase
     def setup
       @options = {}
       @options[:user_supplied_options] = []
@@ -235,7 +235,7 @@ module TestRackUp
     end
   end
 
-  class TestUserSuppliedOptionsIsNotPresent < Minitest::Test
+  class TestUserSuppliedOptionsIsNotPresent < TimeoutTestCase
     def setup
       @options = {}
     end
@@ -336,7 +336,7 @@ module TestRackUp
   end
 
   # Run using IO.popen so we don't load Rack and/or Rackup in the main process
-  class RackUp < Minitest::Test
+  class RackUp < TimeoutTestCase
     def setup
       FileUtils.copy_file 'test/rackup/hello.ru', 'config.ru'
     end
