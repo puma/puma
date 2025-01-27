@@ -19,7 +19,6 @@ class TestPluginSystemd < TestIntegration
 
     @sockaddr = tmp_path '.systemd'
     @socket = Socket.new(:UNIX, :DGRAM, 0)
-    socket_ai = Addrinfo.unix(@sockaddr)
     @socket.bind Addrinfo.unix(@sockaddr)
     @env = { "NOTIFY_SOCKET" => @sockaddr }
     @message = +''

@@ -200,8 +200,6 @@ class TestIntegrationPumactl < TestIntegration
     min_threads = 1
     max_threads = 2
 
-    puma_version_pattern = "\\d+.\\d+.\\d+(\\.[a-z\\d]+)?"
-
     cli_server "-w#{workers} -t#{min_threads}:#{max_threads} -q test/rackup/hello.ru #{set_pumactl_args unix: true} -S #{@state_path}"
 
     worker_pids = get_worker_pids # waits for workers to boot
