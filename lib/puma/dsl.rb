@@ -956,6 +956,7 @@ module Puma
     # The default is +true+ if your app uses more than 1 worker.
     #
     # @note Cluster mode only.
+    # @note When using `fork_worker`, this only applies to worker 0.
     #
     # @example
     #   preload_app!

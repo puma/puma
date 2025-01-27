@@ -14,7 +14,7 @@ module Puma
     class Worker < Puma::Runner # :nodoc:
       attr_reader :index, :master
 
-      def initialize(index:, master:, launcher:, pipes:, server: nil)
+      def initialize(index:, master:, launcher:, pipes:, app: nil)
         super(launcher)
 
         @index = index
@@ -23,7 +23,8 @@ module Puma
         @worker_write = pipes[:worker_write]
         @fork_pipe = pipes[:fork_pipe]
         @wakeup = pipes[:wakeup]
-        @server = server
+        @app = app
+        @server = nil
         @hook_data = {}
       end
 
@@ -57,7 +58,7 @@ module Puma
         @config.run_hooks(:before_worker_boot, index, @log_writer, @hook_data)
 
         begin
-        server = @server ||= start_server
+          @server = start_server
         rescue Exception => e
           log "! Unable to start worker"
           log e
@@ -85,7 +86,7 @@ module Puma
               if idx == -1 # stop server
                 if restart_server.length > 0
                   restart_server.clear
-                  server.begin_restart(true)
+                  @server.begin_restart(true)
                   @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
                 end
               elsif idx == -2 # refork cycle is done
@@ -103,7 +104,7 @@ module Puma
         Signal.trap "SIGTERM" do
           @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
           restart_server.clear
-          server.stop
+          @server.stop
           restart_server << false
         end
 
@@ -116,7 +117,7 @@ module Puma
         end
 
         while restart_server.pop
-          server_thread = server.run
+          server_thread = @server.run
 
           if @log_writer.debug? && index == 0
             debug_loaded_extensions "Loaded Extensions - worker 0:"
@@ -128,12 +129,12 @@ module Puma
 
             while true
               begin
-                b = server.backlog || 0
-                r = server.running || 0
-                t = server.pool_capacity || 0
-                m = server.max_threads || 0
-                rc = server.requests_count || 0
-                bt = server.busy_threads || 0
+                b = @server.backlog || 0
+                r = @server.running || 0
+                t = @server.pool_capacity || 0
+                m = @server.max_threads || 0
+                rc = @server.requests_count || 0
+                bt = @server.busy_threads || 0
                 payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc}, "busy_threads":#{bt} }\n!
                 io << payload
               rescue IOError
@@ -165,7 +166,7 @@ module Puma
                                   launcher: @launcher,
                                   pipes: { check_pipe: @check_pipe,
                                            worker_write: @worker_write },
-                                  server: @server
+                                  app: @app
           new_worker.run
         end
 
