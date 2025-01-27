@@ -87,7 +87,7 @@ end
 
 require "timeout"
 
-class TimeoutTestCase < Minitest::Test
+class TimeoutTestCase < Minitest::Test # rubocop:disable Puma/TestsMustTimeout
   # our own subclass so we never confuse different timeouts
   class TestTookTooLong < Timeout::Error
   end
