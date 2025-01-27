@@ -5,9 +5,7 @@ require "puma/configuration"
 require 'puma/log_writer'
 
 # Intermittent failures & errors when run parallel in GHA, local use may run fine.
-
-
-class TestLauncher < Minitest::Test
+class TestLauncher < TimeoutTestCase
   include TmpPath
 
   def test_prints_thread_traces

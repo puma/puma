@@ -14,7 +14,7 @@ require "rack/body_proxy"
 # The sleep statements may not be needed for local CI, but are needed
 # for use with GitHub Actions...
 
-class TestPumaServerHijack < Minitest::Test
+class TestPumaServerHijack < TimeoutTestCase
   parallelize_me!
 
   def setup
