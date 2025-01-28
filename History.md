@@ -1,4 +1,4 @@
-## 6.6.0 / 2025-01-???
+## 6.6.0 / 2025-01-29
 
 * Features
   * Option to turn off SIGUSR2 trapping ([#3570], [#3567])
