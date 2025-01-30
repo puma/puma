@@ -1,6 +1,6 @@
 require:
   - rubocop-performance
-  - ./cops/tests_must_timeout.rb
+  - ./cops/tests_puma.rb
 
 AllCops:
   DisabledByDefault: true
@@ -84,5 +84,5 @@ Style/TrailingCommaInArguments:
 Style/WhileUntilModifier:
   Enabled: true
 
-Puma/TestsMustTimeout:
+TestsMustUsePumaTest:
   Enabled: true
