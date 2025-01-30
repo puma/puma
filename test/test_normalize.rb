@@ -4,7 +4,7 @@ require_relative "helper"
 
 require "puma/request"
 
-class TestNormalize < TimeoutTestCase
+class TestNormalize < PumaTest
   parallelize_me!
 
   include Puma::Request

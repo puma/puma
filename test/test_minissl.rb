@@ -2,7 +2,7 @@ require_relative "helper"
 
 require "puma/minissl" if ::Puma::HAS_SSL
 
-class TestMiniSSL < TimeoutTestCase
+class TestMiniSSL < PumaTest
 
   if Puma.jruby?
     def test_raises_with_invalid_keystore_file

@@ -10,7 +10,7 @@ class WithoutBacktraceError < StandardError
   def message; "no backtrace error"; end
 end
 
-class TestPumaServer < TimeoutTestCase
+class TestPumaServer < PumaTest
   parallelize_me!
 
   include TestPuma

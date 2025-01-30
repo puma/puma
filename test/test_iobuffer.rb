@@ -2,7 +2,7 @@ require_relative "helper"
 
 require "puma/io_buffer"
 
-class TestIOBuffer < TimeoutTestCase
+class TestIOBuffer < PumaTest
   attr_accessor :iobuf
   def setup
     self.iobuf = Puma::IOBuffer.new

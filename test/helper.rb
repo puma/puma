@@ -34,9 +34,6 @@ Thread.abort_on_exception = true
 
 $debugging_info = []
 $debugging_hold = false   # needed for TestCLI#test_control_clustered
-$test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
-  RUBY_ENGINE == "ruby" ? 45 : 60
-end.to_i
 
 require "puma"
 require "puma/detect"
@@ -87,19 +84,26 @@ end
 
 require "timeout"
 
-class TimeoutTestCase < Minitest::Test # rubocop:disable Puma/TestsMustTimeout
+module TimeoutPrepend
+  TEST_CASE_TIMEOUT = ENV.fetch("TEST_CASE_TIMEOUT") do
+    RUBY_ENGINE == "ruby" ? 45 : 60
+  end.to_i
+
   # our own subclass so we never confuse different timeouts
   class TestTookTooLong < Timeout::Error
   end
 
-  def self.run_one_method(klass, method_name, reporter)
-    ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-      super
+  def capture_exceptions
+    super do
+      ::Timeout.timeout(TEST_CASE_TIMEOUT, TestTookTooLong) { yield }
     end
   end
+end
 
+Minitest::Test.prepend TimeoutPrepend
+
+class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
   def teardown
-    super
     clean_tmp_paths if respond_to? :clean_tmp_paths
   end
 end

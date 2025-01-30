@@ -3,7 +3,7 @@
 require_relative "helper"
 require_relative "helpers/tmp_path"
 
-class TestPumaUnixSocket < TimeoutTestCase
+class TestPumaUnixSocket < PumaTest
   include TmpPath
 
   App = lambda { |env| [200, {}, ["Works"]] }
