@@ -7,7 +7,7 @@ require 'openssl'
 #
 # These tests will start to fail 1 month before the certs expire
 #
-class TestExampleCertExpiration < TimeoutTestCase
+class TestExampleCertExpiration < PumaTest
   EXAMPLES_DIR = File.expand_path '../examples/puma', __dir__
   EXPIRE_THRESHOLD = Time.now.utc - (60 * 60 * 24 * 30) # 30 days
 

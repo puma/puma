@@ -3,7 +3,7 @@ require_relative "helpers/tmp_path"
 
 require 'puma/state_file'
 
-class TestStateFile < TimeoutTestCase
+class TestStateFile < PumaTest
   include TmpPath
 
   def test_load_empty_value_as_nil

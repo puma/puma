@@ -4,7 +4,7 @@ require_relative "helpers/ssl"
 require 'pathname'
 require 'puma/control_cli'
 
-class TestPumaControlCli < TimeoutTestCase
+class TestPumaControlCli < PumaTest
   include SSLHelper
 
   def setup

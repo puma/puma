@@ -11,7 +11,7 @@ module TestRackUp
   rescue LoadError
   end
 
-  class TestOnBootedHandler < TimeoutTestCase
+  class TestOnBootedHandler < PumaTest
     def app
       Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
     end
@@ -45,7 +45,7 @@ module TestRackUp
     end
   end
 
-  class TestPathHandler < TimeoutTestCase
+  class TestPathHandler < PumaTest
     def app
       Proc.new {|env| @input = env; [200, {}, ["hello world"]]}
     end
@@ -88,7 +88,7 @@ module TestRackUp
     end
   end
 
-  class TestUserSuppliedOptionsPortIsSet < TimeoutTestCase
+  class TestUserSuppliedOptionsPortIsSet < PumaTest
     def setup
       @options = {}
       @options[:user_supplied_options] = [:Port]
@@ -113,7 +113,7 @@ module TestRackUp
     end
   end
 
-  class TestUserSuppliedOptionsHostIsSet < TimeoutTestCase
+  class TestUserSuppliedOptionsHostIsSet < PumaTest
     def setup
       @options = {}
       @options[:user_supplied_options] = [:Host]
@@ -172,7 +172,7 @@ module TestRackUp
     end
   end
 
-  class TestUserSuppliedOptionsIsEmpty < TimeoutTestCase
+  class TestUserSuppliedOptionsIsEmpty < PumaTest
     def setup
       @options = {}
       @options[:user_supplied_options] = []
@@ -235,7 +235,7 @@ module TestRackUp
     end
   end
 
-  class TestUserSuppliedOptionsIsNotPresent < TimeoutTestCase
+  class TestUserSuppliedOptionsIsNotPresent < PumaTest
     def setup
       @options = {}
     end
@@ -336,7 +336,7 @@ module TestRackUp
   end
 
   # Run using IO.popen so we don't load Rack and/or Rackup in the main process
-  class RackUp < TimeoutTestCase
+  class RackUp < PumaTest
     def setup
       FileUtils.copy_file 'test/rackup/hello.ru', 'config.ru'
     end

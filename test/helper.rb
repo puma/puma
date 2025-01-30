@@ -102,7 +102,7 @@ end
 
 Minitest::Test.prepend TimeoutPrepend
 
-class TimeoutTestCase < Minitest::Test # rubocop:disable Puma/TestsMustTimeout
+class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustTimeout
   def teardown
     clean_tmp_paths if respond_to? :clean_tmp_paths
   end

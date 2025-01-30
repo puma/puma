@@ -13,7 +13,7 @@ class PumaServerCurrentApplication
   end
 end
 
-class PumaServerCurrentTest < TimeoutTestCase
+class PumaServerCurrentTest < PumaTest
   parallelize_me!
 
   def setup

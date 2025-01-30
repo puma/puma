@@ -8,7 +8,7 @@ require "puma/binder"
 require "puma/events"
 require "puma/configuration"
 
-class TestBinderBase < TimeoutTestCase
+class TestBinderBase < PumaTest
   include SSLHelper if ::Puma::HAS_SSL
   include TmpPath
 

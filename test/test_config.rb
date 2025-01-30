@@ -6,7 +6,7 @@ require "puma/configuration"
 require 'puma/log_writer'
 require 'rack'
 
-class TestConfigFile < TimeoutTestCase
+class TestConfigFile < PumaTest
   parallelize_me!
 
   def test_default_max_threads
@@ -633,7 +633,7 @@ class TestConfigFile < TimeoutTestCase
 end
 
 # contains tests that cannot run parallel
-class TestConfigFileSingle < TimeoutTestCase
+class TestConfigFileSingle < PumaTest
   def test_custom_logger_from_DSL
     conf = Puma::Configuration.new { |c| c.load 'test/config/custom_logger.rb' }
 
@@ -645,7 +645,7 @@ class TestConfigFileSingle < TimeoutTestCase
 end
 
 # Thread unsafe modification of ENV
-class TestEnvModifificationConfig < TimeoutTestCase
+class TestEnvModifificationConfig < PumaTest
   def test_double_bind_port
     port = (rand(10_000) + 30_000).to_s
     env = { "PORT" => port }
@@ -659,7 +659,7 @@ class TestEnvModifificationConfig < TimeoutTestCase
   end
 end
 
-class TestConfigEnvVariables < TimeoutTestCase
+class TestConfigEnvVariables < PumaTest
   def test_config_loads_correct_min_threads
     assert_equal 0, Puma::Configuration.new.options.default_options[:min_threads]
 
@@ -719,7 +719,7 @@ class TestConfigEnvVariables < TimeoutTestCase
   end
 end
 
-class TestConfigFileWithFakeEnv < TimeoutTestCase
+class TestConfigFileWithFakeEnv < PumaTest
   def setup
     FileUtils.mkpath("config/puma")
     File.write("config/puma/fake-env.rb", "")

@@ -1,7 +1,7 @@
 require 'puma/error_logger'
 require_relative "helper"
 
-class TestErrorLogger < TimeoutTestCase
+class TestErrorLogger < PumaTest
   Req = Struct.new(:env, :body)
 
   def test_stdio

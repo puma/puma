@@ -5,7 +5,7 @@ require_relative "helper"
 require "puma/app/status"
 require "rack"
 
-class TestAppStatus < TimeoutTestCase
+class TestAppStatus < PumaTest
   class FakeServer
     def initialize
       @status = :running

@@ -1,7 +1,7 @@
 require 'puma/events'
 require_relative "helper"
 
-class TestEvents < TimeoutTestCase
+class TestEvents < PumaTest
   def test_register_callback_with_block
     res = false
 

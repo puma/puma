@@ -2,7 +2,7 @@ require_relative 'helper'
 
 require 'puma/events'
 
-class TestBundlePruner < TimeoutTestCase
+class TestBundlePruner < PumaTest
 
   PUMA_VERS = "puma-#{Puma::Const::PUMA_VERSION}"
 
