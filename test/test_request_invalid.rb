@@ -61,6 +61,8 @@ class TestRequestInvalid < PumaTest
       else
         [EOFError]
       end
+    elsif Puma::IS_OSX && !Puma::IS_JRUBY # TruffleRuby
+      [Errno::ECONNRESET, EOFError]
     else
       [EOFError]
     end
