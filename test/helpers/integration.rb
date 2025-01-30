@@ -515,6 +515,8 @@ class TestIntegration < PumaTest
             sleep 0.15 * (2 ** restart_count)
           rescue Minitest::Assertion # Timeout
             run = false
+          rescue Errno::EBADF # bad restart?
+            run = false
           end
         else
           sleep 0.1
