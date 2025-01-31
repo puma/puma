@@ -228,7 +228,7 @@ module Puma
     def phased_restart(refork = false)
       return false if @options[:preload_app] && !refork
 
-      @phased_restart = true
+      @phased_restart = refork ? :refork : true
       wakeup!
 
       true
@@ -449,9 +449,13 @@ module Puma
 
             if @phased_restart
               start_phased_restart
+
+              in_phased_restart = @phased_restart
               @phased_restart = false
-              in_phased_restart = true
+
               workers_not_booted = @options[:workers]
+              # worker 0 is not restarted on refork
+              workers_not_booted -= 1 if in_phased_restart == :refork
             end
 
             check_workers
