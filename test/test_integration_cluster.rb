@@ -111,18 +111,14 @@ class TestIntegrationCluster < TestIntegration
   # No more than 10 should throw Errno::ECONNRESET.
 
   def test_term_closes_listeners_tcp
-    skip_unless_signal_exist? :TERM
     term_closes_listeners unix: false
   end
 
   def test_term_closes_listeners_unix
-    skip_unless_signal_exist? :TERM
     term_closes_listeners unix: true
   end
 
   def test_term_exit_code
-    skip_unless_signal_exist? :TERM
-
     cli_server "-w #{workers} test/rackup/hello.ru"
     _, status = stop_server
 
@@ -130,8 +126,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_term_suppress
-    skip_unless_signal_exist? :TERM
-
     cli_server "-w #{workers} -C test/config/suppress_exception.rb test/rackup/hello.ru"
 
     _, status = stop_server
@@ -140,7 +134,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_on_booted_and_on_stopped
-    skip_unless_signal_exist? :TERM
     cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
       on_booted  { STDOUT.syswrite "on_booted called\n"  }
       on_stopped { STDOUT.syswrite "on_stopped called\n" }
@@ -157,11 +150,9 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_on_booted_with_fork_worker_refork
-    skip_unless_signal_exist? :TERM
-
     cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
       fork_worker
-      on_booted  { STDOUT.syswrite "on_booted called\n"  }
+      on_booted { STDOUT.syswrite "on_booted called\n" }
     CONFIG
 
     assert wait_for_server_to_include("on_booted called")
@@ -172,7 +163,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_term_worker_clean_exit
-    skip_unless_signal_exist? :TERM
     cli_server "-w #{workers} test/rackup/hello.ru"
 
     # Get the PIDs of the child workers.
@@ -189,8 +179,6 @@ class TestIntegrationCluster < TestIntegration
 
   # mimicking stuck workers, test respawn with external TERM
   def test_stuck_external_term_spawn
-    skip_unless_signal_exist? :TERM
-
     worker_respawn(0) do |phase0_worker_pids|
       last = phase0_worker_pids.last
       # test is tricky if only one worker is TERM'd, so kill all but
@@ -208,8 +196,6 @@ class TestIntegrationCluster < TestIntegration
   # `Process.wait2(<child pid>)` still works properly. This bug has
   # been fixed in Ruby 3.3.
   def test_workers_respawn_with_process_detach
-    skip_unless_signal_exist? :KILL
-
     config = 'test/config/process_detach_before_fork.rb'
 
     worker_respawn(0, workers, config) do |phase0_worker_pids|
@@ -232,7 +218,6 @@ class TestIntegrationCluster < TestIntegration
 
   # mimicking stuck workers, test restart
   def test_stuck_phased_restart
-    skip_unless_signal_exist? :USR1
     worker_respawn { |phase0_worker_pids| Process.kill :USR1, @pid }
   end
 
@@ -295,8 +280,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_worker_index_is_with_in_options_limit
-    skip_unless_signal_exist? :TERM
-
     cli_server "-C test/config/t3_conf.rb test/rackup/hello.ru"
 
     get_worker_pids(0, 3) # this will wait till all the processes are up
@@ -564,8 +547,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_hook_data
-    skip_unless_signal_exist? :TERM
-
     cli_server "-C test/config/hook_data.rb test/rackup/hello.ru"
     get_worker_pids 0, 2 # make sure workers are booted
     stop_server
@@ -639,8 +620,6 @@ class TestIntegrationCluster < TestIntegration
   # Send requests 10 per second.  Send 10, then :TERM server, then send another 30.
   # No more than 10 should throw Errno::ECONNRESET.
   def term_closes_listeners(unix: false)
-    skip_unless_signal_exist? :TERM
-
     cli_server "-w #{workers} -t 0:6 -q test/rackup/sleep_step.ru", unix: unix
     threads = []
     replies = []

@@ -15,8 +15,6 @@ class TestPreserveBundlerEnv < TestIntegration
 
   # It does not wipe out BUNDLE_GEMFILE et al
   def test_usr2_restart_preserves_bundler_environment
-    skip_unless_signal_exist? :USR2
-
     env = {
       # Intentionally set this to something we wish to keep intact on restarts
       "BUNDLE_GEMFILE" => "Gemfile.bundle_env_preservation_test",
@@ -37,8 +35,6 @@ class TestPreserveBundlerEnv < TestIntegration
   end
 
   def test_worker_forking_preserves_bundler_config_path
-    skip_unless_signal_exist? :TERM
-
     @tcp_port = UniquePort.call
     env = {
       # Disable the .bundle/config file in the bundle_app_config_test directory
@@ -57,8 +53,6 @@ class TestPreserveBundlerEnv < TestIntegration
   end
 
   def test_phased_restart_preserves_unspecified_bundle_gemfile
-    skip_unless_signal_exist? :USR1
-
     @tcp_port = UniquePort.call
     env = {
       "BUNDLE_GEMFILE" => nil,
