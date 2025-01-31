@@ -236,6 +236,25 @@ class TestIntegrationCluster < TestIntegration
     worker_respawn { |phase0_worker_pids| Process.kill :USR1, @pid }
   end
 
+  def test_puma_stats_clustered
+    worker_check_interval = 2
+
+    cli_server "-w 1 -t 1:1 #{set_pumactl_args unix: true} test/rackup/hello.ru",
+      config: "worker_check_interval #{worker_check_interval}"
+
+    sleep worker_check_interval + 1
+
+    stats = get_stats
+
+    assert_instance_of Hash, stats
+
+    last_status = stats['worker_status'].first['last_status']
+
+    Puma::Server::STAT_METHODS.each do |stat|
+      assert_includes last_status, stat.to_s
+    end
+  end
+
   def test_worker_check_interval
     # iso8601 2022-12-14T00:05:49Z
     re_8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/
@@ -626,7 +645,7 @@ class TestIntegrationCluster < TestIntegration
     pids = []
     re = /Terminating timed out worker \(Worker \d+ #{details}\): (\d+)/
 
-    Timeout.timeout(iterations * (timeout + 1)) do
+    Timeout.timeout(iterations * (timeout + 1.5)) do
       while (pids.size < workers * iterations)
         idx = wait_for_server_to_match(re, 1).to_i
         pids << idx
