@@ -4,7 +4,7 @@
 
 # Puma: A Ruby Web Server Built For Parallelism
 
-[![Actions](https://github.com/puma/puma/workflows/Tests/badge.svg?branch=master)](https://github.com/puma/puma/actions?query=workflow%3ATests)
+[![Actions](https://github.com/puma/puma/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/puma/puma/actions/workflows/tests.yml?query=branch%3Amaster)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![StackOverflow](https://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( https://stackoverflow.com/questions/tagged/puma )
 
