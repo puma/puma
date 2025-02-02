@@ -654,8 +654,6 @@ module Puma
     # @example
     #   state_permission 0600
     #
-    # @version 5.0.0
-    #
     def state_permission(permission)
       @options[:state_permission] = permission
     end
@@ -850,8 +848,6 @@ module Puma
     #   on_refork do
     #     3.times {GC.start}
     #   end
-    #
-    # @version 5.0.0
     #
     def on_refork(key = nil, &block)
       warn_if_in_single_mode('on_refork')
@@ -1194,8 +1190,6 @@ module Puma
     # @see Puma::Server#handle_servers
     # @see Puma::ThreadPool#wait_for_less_busy_worker
     #
-    # @version 5.0.0
-    #
     def wait_for_less_busy_worker(val=0.005)
       @options[:wait_for_less_busy_worker] = val.to_f
     end
@@ -1269,9 +1263,8 @@ module Puma
     # A refork will automatically trigger once after the specified number of requests
     # (default 1000), or pass 0 to disable auto refork.
     #
+    # @note This is experimental.
     # @note Cluster mode only.
-    #
-    # @version 5.0.0
     #
     def fork_worker(after_requests=1000)
       @options[:fork_worker] = Integer(after_requests)
