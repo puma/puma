@@ -307,38 +307,34 @@ module Puma
       @parser.execute(@env, @buffer, @parsed_bytes)
     rescue => e
       @env[HTTP_CONNECTION] = 'close'
+      raise e unless HttpParserError === e && e.message.include?('non-SSL')
+
       req, _ = @buffer.split "\r\n\r\n"
       request_line, headers = req.split "\r\n", 2
-      if HttpParserError === e
-        if e.message.include?('non-SSL')
-          if !@env.key? REQUEST_METHOD
-            if request_line.count(' ') != 2
-              # maybe this is an SSL connection ?
-              raise e
-            else
-              method = request_line[/\A[^ ]+/]
-              raise e, "Invalid HTTP format, parsing fails. Bad method #{method}"
-            end
-          elsif !@env.key? REQUEST_PATH
-            path = request_line[/\A[^ ]+ +([^ ?\r\n]+)/, 1]
-            raise e, "Invalid HTTP format, parsing fails. Bad path #{path}"
-          elsif request_line.match?(/\A[^ ]+ +[^ ?\r\n]+\?/) && !@env.key?(QUERY_STRING)
-            query = request_line[/\A[^ ]+ +[^? ]+\?([^ ]+)/, 1]
-            raise e, "Invalid HTTP format, parsing fails. Bad query #{query}"
-          elsif !@env.key? SERVER_PROTOCOL
-            # protocol is bad
-            text = request_line[/[^ ]*\z/]
-            raise HttpParserError, "Invalid HTTP format, parsing fails. Bad protocol #{text}"
-          elsif !headers.empty?
-            # headers are bad
-            hdrs = headers.split("\r\n").map { |h| h.gsub "\n", '\n'}.join "\n"
-            raise HttpParserError, "Invalid HTTP format, parsing fails. Bad headers\n#{hdrs}"
-          end
-        else
+
+      # below checks for request issues and changes error message accordingly
+      if !@env.key? REQUEST_METHOD
+        if request_line.count(' ') != 2
+           # maybe this is an SSL connection ?
           raise e
+        else
+          method = request_line[/\A[^ ]+/]
+          raise e, "Invalid HTTP format, parsing fails. Bad method #{method}"
         end
-      else
-        raise e
+      elsif !@env.key? REQUEST_PATH
+        path = request_line[/\A[^ ]+ +([^ ?\r\n]+)/, 1]
+        raise e, "Invalid HTTP format, parsing fails. Bad path #{path}"
+      elsif request_line.match?(/\A[^ ]+ +[^ ?\r\n]+\?/) && !@env.key?(QUERY_STRING)
+        query = request_line[/\A[^ ]+ +[^? ]+\?([^ ]+)/, 1]
+        raise e, "Invalid HTTP format, parsing fails. Bad query #{query}"
+      elsif !@env.key? SERVER_PROTOCOL
+        # protocol is bad
+        text = request_line[/[^ ]*\z/]
+        raise HttpParserError, "Invalid HTTP format, parsing fails. Bad protocol #{text}"
+      elsif !headers.empty?
+        # headers are bad
+        hdrs = headers.split("\r\n").map { |h| h.gsub "\n", '\n'}.join "\n"
+        raise HttpParserError, "Invalid HTTP format, parsing fails. Bad headers\n#{hdrs}"
       end
     end
 
