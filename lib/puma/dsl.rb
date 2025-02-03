@@ -809,7 +809,7 @@ module Puma
 
     alias_method :after_worker_boot, :after_worker_fork
 
-    # Code to run after puma is booted (works for both: single and clustered)
+    # Code to run after puma is booted (works for both single and cluster modes).
     #
     # @example
     #   on_booted do
@@ -820,7 +820,7 @@ module Puma
       @config.options[:events].on_booted(&block)
     end
 
-    # Code to run after puma is stopped (works for both: single and clustered)
+    # Code to run after puma is stopped (works for both single and cluster modes).
     #
     # @example
     #   on_stopped do

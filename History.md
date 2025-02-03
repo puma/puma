@@ -163,7 +163,7 @@
 
 * Features
   * Ability to supply a custom logger ([#2770], [#2511])
-  * Warn when clustered-only hooks are defined in single mode ([#3089])
+  * Warn when cluster mode-only hooks are defined in single mode ([#3089])
   * Adds the on_booted event ([#2709])
 
 * Bugfixes
@@ -758,7 +758,7 @@ Each patchlevel release contains a separate security fix. We recommend simply up
   * Fix Java 8 support ([#1773])
   * Fix error `uninitialized constant Puma::Cluster` ([#1731])
   * Fix `not_token` being able to be set to true ([#1803])
-  * Fix "Hang on SIGTERM with ruby 2.6 in clustered mode" (PR [#1741], [#1674], [#1720], [#1730], [#1755])
+  * Fix "Hang on SIGTERM with ruby 2.6 in cluster mode" (PR [#1741], [#1674], [#1720], [#1730], [#1755])
 
 ## 3.12.1 / 2019-03-19
 
@@ -1169,7 +1169,7 @@ Each patchlevel release contains a separate security fix. We recommend simply up
 * 4 minor features:
 
   * Listen to unix socket with provided backlog if any
-  * Improves the clustered stats to report worker stats
+  * Improves the cluster mode stats to report worker stats
   * Pass the env to the lowlevel_error handler. Fixes [#854]
   * Treat path-like hosts as unix sockets. Fixes [#824]
 
@@ -1896,7 +1896,7 @@ The "clearly I don't have enough tests for the config" release.
 
 * 3 doc changes:
   * Add note about on_worker_boot hook
-  * Add some documentation for Clustered mode
+  * Add some documentation for Cluster mode
   * Added quotes to /etc/puma.conf
 
 ## 2.0.1 / 2013-04-30

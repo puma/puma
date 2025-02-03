@@ -102,9 +102,9 @@ Puma will automatically scale the number of threads, from the minimum until it c
 
 Be aware that additionally Puma creates threads on its own for internal purposes (e.g. handling slow clients). So, even if you specify -t 1:1, expect around 7 threads created in your application.
 
-### Clustered mode
+### Cluster mode
 
-Puma also offers "clustered mode". Clustered mode `fork`s workers from a master process. Each child process still has its own thread pool. You can tune the number of workers with the `-w` (or `--workers`) flag:
+Puma also offers "cluster mode". Cluster mode `fork`s workers from a master process. Each child process still has its own thread pool. You can tune the number of workers with the `-w` (or `--workers`) flag:
 
 ```
 $ puma -t 8:32 -w 3
@@ -116,13 +116,13 @@ Or with the `WEB_CONCURRENCY` environment variable:
 $ WEB_CONCURRENCY=3 puma -t 8:32
 ```
 
-Note that threads are still used in clustered mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will spawn 32 threads in total, with 16 in each worker process.
+Note that threads are still used in cluster mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will spawn 32 threads in total, with 16 in each worker process.
 
 If the `WEB_CONCURRENCY` environment variable is set to `"auto"` and the `concurrent-ruby` gem is available in your application, Puma will set the worker process count to the result of [available processors](https://ruby-concurrency.github.io/concurrent-ruby/master/Concurrent.html#available_processor_count-class_method).
 
 For an in-depth discussion of the tradeoffs of thread and process count settings, [see our docs](https://github.com/puma/puma/blob/9282a8efa5a0c48e39c60d22ca70051a25df9f55/docs/kubernetes.md#workers-per-pod-and-other-config-issues).
 
-In clustered mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
+In cluster mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
 
 If the `WEB_CONCURRENCY` environment variable is set to a value > 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
 
@@ -140,9 +140,9 @@ preload_app!
 
 Preloading can’t be used with phased restart, since phased restart kills and restarts workers one-by-one, and preloading copies the code of master into the workers.
 
-#### Clustered mode hooks
+#### Cluster mode hooks
 
-When using clustered mode, Puma's configuration DSL provides `before_fork` and `on_worker_boot`
+When using cluster mode, Puma's configuration DSL provides `before_fork` and `on_worker_boot`
 hooks to run code when the master process forks and child workers are booted respectively.
 
 It is recommended to use these hooks with `preload_app!`, otherwise constants loaded by your
@@ -176,7 +176,7 @@ after_refork do
 end
 ```
 
-Importantly, note the following considerations when Ruby forks a child process: 
+Importantly, note the following considerations when Ruby forks a child process:
 
 1. File descriptors such as network sockets **are** copied from the parent to the forked
    child process. Dual-use of the same sockets by parent and child will result in I/O conflicts
