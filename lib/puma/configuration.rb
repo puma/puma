@@ -277,6 +277,7 @@ module Puma
     # This also calls load if it hasn't been called yet.
     def clamp
       load unless @loaded
+      run_mode_hooks
       set_conditional_default_options
       @_options.finalize_values
       @clamped = true
@@ -431,6 +432,17 @@ module Puma
       options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
+    end
+
+    def run_mode_hooks
+      workers_before = @_options[:workers]
+      key = workers_before > 0 ? :cluster : :single
+
+      @_options.all_of(key).each(&:call)
+
+      unless @_options[:workers] == workers_before
+        raise "cannot change the number of workers inside a #{key} configuration hook"
+      end
     end
 
     def set_conditional_default_options

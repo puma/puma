@@ -727,6 +727,44 @@ module Puma
       @options[:silence_fork_callback_warning] = true
     end
 
+    # Code to run only in single mode.
+    # Runs after all config files are loaded.
+    #
+    # This can be called multiple times.
+    #
+    # @note Single mode only.
+    #
+    # @example
+    #   single do
+    #     silence_fork_callback_warning
+    #   end
+    #
+    def single(&block)
+      raise ArgumentError, "A block must be provided to `single`" unless block
+
+      @options[:single] ||= []
+      @options[:single] << block
+    end
+
+    # Code to run only in cluster mode.
+    # Runs after all config files are loaded.
+    #
+    # This can be called multiple times.
+    #
+    # @note Cluster mode only.
+    #
+    # @example
+    #   cluster do
+    #     prune_bundler
+    #   end
+    #
+    def cluster(&block)
+      raise ArgumentError, "A block must be provided to `cluster`" unless block
+
+      @options[:cluster] ||= []
+      @options[:cluster] << block
+    end
+
     # Code to run immediately before master process
     # forks workers (once on boot). These hooks can block if necessary
     # to wait for background operations unknown to Puma to finish before
@@ -1040,6 +1078,7 @@ module Puma
     # new Bundler context and thus can float around as the release
     # dictates.
     #
+    # @note Cluster mode only.
     # @note This is incompatible with +preload_app!+.
     # @note This is only supported for RubyGems 2.2+
     #
