@@ -710,6 +710,24 @@ module Puma
       @options[:silence_fork_callback_warning] = true
     end
 
+    # Code to run after the global configuration has been loaded.
+    #
+    # @note Single mode only.
+    #
+    def single(&block)
+      @options[:single] ||= []
+      @options[:single] << block
+    end
+
+    # Code to run after the global configuration has been loaded.
+    #
+    # @note Cluster mode only.
+    #
+    def cluster(&block)
+      @options[:cluster] ||= []
+      @options[:cluster] << block
+    end
+
     # Code to run immediately before master process
     # forks workers (once on boot). These hooks can block if necessary
     # to wait for background operations unknown to Puma to finish before
@@ -987,6 +1005,7 @@ module Puma
     # new Bundler context and thus can float around as the release
     # dictates.
     #
+    # @note Cluster mode only.
     # @note This is incompatible with +preload_app!+.
     # @note This is only supported for RubyGems 2.2+
     #
