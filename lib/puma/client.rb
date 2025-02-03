@@ -170,7 +170,7 @@ module Puma
       if @buffer
         return false unless try_to_parse_proxy_protocol
 
-        @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
+        @parsed_bytes = parser_execute
 
         if @parser.finished?
           return setup_body
@@ -273,20 +273,20 @@ module Puma
 
       return false unless try_to_parse_proxy_protocol
 
-      @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
+      @parsed_bytes = parser_execute
 
       if @parser.finished? && above_http_content_limit(@parser.body.bytesize)
         @http_content_length_limit_exceeded = true
       end
 
       if @parser.finished?
-        return setup_body
+        setup_body
       elsif @parsed_bytes >= MAX_HEADER
         raise HttpParserError,
           "HEADER is longer than allowed, aborting client early."
+      else
+        false
       end
-
-      false
     end
 
     def eagerly_finish
@@ -298,6 +298,44 @@ module Puma
     def finish(timeout)
       return if @ready
       @to_io.wait_readable(timeout) || timeout! until try_to_finish
+    end
+
+    # Wraps `@parser.execute` and adds meaningful error messages
+    # @return [Integer] bytes of buffer read by parser
+    #
+    def parser_execute
+      @parser.execute(@env, @buffer, @parsed_bytes)
+    rescue => e
+      @env[HTTP_CONNECTION] = 'close'
+      raise e unless HttpParserError === e && e.message.include?('non-SSL')
+
+      req, _ = @buffer.split "\r\n\r\n"
+      request_line, headers = req.split "\r\n", 2
+
+      # below checks for request issues and changes error message accordingly
+      if !@env.key? REQUEST_METHOD
+        if request_line.count(' ') != 2
+           # maybe this is an SSL connection ?
+          raise e
+        else
+          method = request_line[/\A[^ ]+/]
+          raise e, "Invalid HTTP format, parsing fails. Bad method #{method}"
+        end
+      elsif !@env.key? REQUEST_PATH
+        path = request_line[/\A[^ ]+ +([^ ?\r\n]+)/, 1]
+        raise e, "Invalid HTTP format, parsing fails. Bad path #{path}"
+      elsif request_line.match?(/\A[^ ]+ +[^ ?\r\n]+\?/) && !@env.key?(QUERY_STRING)
+        query = request_line[/\A[^ ]+ +[^? ]+\?([^ ]+)/, 1]
+        raise e, "Invalid HTTP format, parsing fails. Bad query #{query}"
+      elsif !@env.key? SERVER_PROTOCOL
+        # protocol is bad
+        text = request_line[/[^ ]*\z/]
+        raise HttpParserError, "Invalid HTTP format, parsing fails. Bad protocol #{text}"
+      elsif !headers.empty?
+        # headers are bad
+        hdrs = headers.split("\r\n").map { |h| h.gsub "\n", '\n'}.join "\n"
+        raise HttpParserError, "Invalid HTTP format, parsing fails. Bad headers\n#{hdrs}"
+      end
     end
 
     def timeout!

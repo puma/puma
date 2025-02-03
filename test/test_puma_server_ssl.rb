@@ -152,7 +152,7 @@ class TestPumaServerSSL < PumaTest
   end
 
   def test_ssl_v3_rejection
-    skip-("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
+    skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
 
     rejection nil, nil, :SSLv3
   end
