@@ -31,7 +31,7 @@ class TestPumaServerSSL < PumaTest
   include TestPuma::PumaSocket
 
   PROTOCOL_USE_MIN_MAX =
-    OpenSSL::SSL::SSLContext.private_instance_methods(false).include?(:set_minmax_proto_version)
+    OpenSSL::SSL::SSLContext.public_instance_methods(false).include?(:min_version=)
 
   OPENSSL_3 = OpenSSL::OPENSSL_LIBRARY_VERSION.match?(/OpenSSL 3\.\d\.\d/)
 
