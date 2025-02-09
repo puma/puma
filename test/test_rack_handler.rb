@@ -108,6 +108,7 @@ module TestRackUp
           @options[:Port] = user_port
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
+          conf.clamp
 
           assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
         end
@@ -129,6 +130,7 @@ module TestRackUp
       @options[:Port] = user_port
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["tcp://#{user_host}:#{user_port}"], conf.options[:binds]
     end
@@ -137,6 +139,7 @@ module TestRackUp
       @options[:Host] = "::1"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["tcp://[::1]:9292"], conf.options[:binds]
     end
@@ -145,6 +148,7 @@ module TestRackUp
       @options[:Host] = "ssl://127.0.0.1"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["ssl://127.0.0.1:9292"], conf.options[:binds]
     end
@@ -153,6 +157,7 @@ module TestRackUp
       @options[:Host] = "./relative.sock"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["unix://./relative.sock"], conf.options[:binds]
     end
@@ -161,6 +166,7 @@ module TestRackUp
       @options[:Host] = "/absolute.sock"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["unix:///absolute.sock"], conf.options[:binds]
     end
@@ -169,6 +175,7 @@ module TestRackUp
       @options[:Host] = "@abstract.sock"
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["unix://@abstract.sock"], conf.options[:binds]
     end
@@ -192,6 +199,7 @@ module TestRackUp
           @options[:Port] = user_port
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
+          conf.clamp
 
           assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
         end
@@ -211,6 +219,7 @@ module TestRackUp
           @options[:Port] = user_port
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
+          conf.clamp
 
           assert_equal ["tcp://localhost:#{file_port}"], conf.options[:binds]
         end
@@ -230,6 +239,7 @@ module TestRackUp
           @options[:Port] = user_port
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
+          conf.clamp
 
           assert_equal ["tcp://1.2.3.4:#{file_port}"], conf.options[:binds]
         end
@@ -245,6 +255,7 @@ module TestRackUp
     def test_default_port_when_no_config_file
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["tcp://0.0.0.0:9292"], conf.options[:binds]
     end
@@ -259,6 +270,7 @@ module TestRackUp
 
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
+          conf.clamp
 
           assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
         end
@@ -271,6 +283,7 @@ module TestRackUp
       @options[:Port] = user_port
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
     end
@@ -280,6 +293,7 @@ module TestRackUp
       @options[:Port] = user_port
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
     end
@@ -296,6 +310,7 @@ module TestRackUp
           @options[:Port] = user_port
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.load
+          conf.clamp
 
           assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
         end
@@ -305,6 +320,7 @@ module TestRackUp
     def test_default_log_request_when_no_config_file
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal false, conf.options[:log_requests]
     end
@@ -318,6 +334,7 @@ module TestRackUp
 
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal file_log_requests_config, conf.options[:log_requests]
     end
@@ -332,6 +349,7 @@ module TestRackUp
 
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.load
+      conf.clamp
 
       assert_equal user_log_requests_config, conf.options[:log_requests]
     end
