@@ -14,7 +14,10 @@ class TestBinderBase < PumaTest
 
   def setup
     @log_writer = Puma::LogWriter.strings
-    @binder = Puma::Binder.new(@log_writer)
+    @config = Puma::Configuration.new
+    @config.load
+    @config.clamp
+    @binder = Puma::Binder.new(@log_writer, @config.options)
   end
 
   def teardown
@@ -424,29 +427,29 @@ class TestBinderParallel < TestBinderBase
   end
 
   def test_rack_multithread_default_configuration
-    binder = Puma::Binder.new(@log_writer)
-
-    assert binder.proto_env["rack.multithread"]
+    assert @binder.proto_env["rack.multithread"]
   end
 
   def test_rack_multithread_custom_configuration
     conf = Puma::Configuration.new(max_threads: 1)
+    conf.load
+    conf.clamp
 
-    binder = Puma::Binder.new(@log_writer, conf)
+    binder = Puma::Binder.new(@log_writer, conf.options)
 
     refute binder.proto_env["rack.multithread"]
   end
 
   def test_rack_multiprocess_default_configuration
-    binder = Puma::Binder.new(@log_writer)
-
-    refute binder.proto_env["rack.multiprocess"]
+    refute @binder.proto_env["rack.multiprocess"]
   end
 
   def test_rack_multiprocess_custom_configuration
     conf = Puma::Configuration.new(workers: 1)
+    conf.load
+    conf.clamp
 
-    binder = Puma::Binder.new(@log_writer, conf)
+    binder = Puma::Binder.new(@log_writer, conf.options)
 
     assert binder.proto_env["rack.multiprocess"]
   end
