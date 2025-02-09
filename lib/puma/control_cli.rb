@@ -128,7 +128,8 @@ module Puma
           require_relative 'log_writer'
 
           config = Puma::Configuration.new({ config_files: [@config_file] }, {} , env)
-          config.load
+          config.clamp
+
           @state              ||= config.options[:state]
           @control_url        ||= config.options[:control_url]
           @control_auth_token ||= config.options[:control_auth_token]

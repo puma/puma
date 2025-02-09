@@ -334,8 +334,11 @@ class TestCLI < PumaTest
 
   def test_extra_runtime_dependencies
     cli = Puma::CLI.new ['--extra-runtime-dependencies', 'a,b']
-    extra_dependencies = cli.instance_variable_get(:@conf)
-                            .instance_variable_get(:@options)[:extra_runtime_dependencies]
+
+    conf = cli.instance_variable_get(:@conf)
+    conf.clamp
+
+    extra_dependencies = conf.options[:extra_runtime_dependencies]
 
     assert_equal %w[a b], extra_dependencies
   end
@@ -348,7 +351,10 @@ class TestCLI < PumaTest
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal 'test', cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.clamp
+
+    assert_equal 'test', conf.environment
   ensure
     ENV.delete 'APP_ENV'
     ENV.delete 'RAILS_ENV'
@@ -360,7 +366,10 @@ class TestCLI < PumaTest
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal @environment, cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.clamp
+
+    assert_equal @environment, conf.environment
   end
 
   def test_environment_rails_env
@@ -370,7 +379,10 @@ class TestCLI < PumaTest
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal @environment, cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.clamp
+
+    assert_equal @environment, conf.environment
   ensure
     ENV.delete 'RAILS_ENV'
   end
