@@ -48,18 +48,28 @@ module Puma
 
       env = launcher_args.delete(:env) || ENV
 
-      @config.options[:log_writer] = @log_writer
+      @config.load
+      @config.clamp
+      @options = @config.options
+
+      @options[:log_writer] = @log_writer
+      @options[:logger] = @log_writer if clustered?
+      if @options[:bind_to_activated_sockets]
+        @options[:binds] = @binder.synthesize_binds_from_activated_fs(
+          @options[:binds],
+          @options[:bind_to_activated_sockets] == 'only'
+        )
+      end
 
       # Advertise the Configuration
       Puma.cli_config = @config if defined?(Puma.cli_config)
+      log_config if env['PUMA_LOG_CONFIG']
 
-      @config.load
+      @binder        = Binder.new(@log_writer, @options)
+      @binder.create_inherited_fds(env).each { |k| env.delete k }
+      @binder.create_activated_fds(env).each { |k| env.delete k }
 
-      @binder        = Binder.new(@log_writer, conf)
-      @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
-      @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
-
-      @environment = conf.environment
+      @environment = @config.environment
 
       # Load the systemd integration if we detect systemd's NOTIFY_SOCKET.
       # Skip this on JRuby though, because it is incompatible with the systemd
@@ -68,20 +78,10 @@ module Puma
         @config.plugins.create('systemd')
       end
 
-      if @config.options[:bind_to_activated_sockets]
-        @config.options[:binds] = @binder.synthesize_binds_from_activated_fs(
-          @config.options[:binds],
-          @config.options[:bind_to_activated_sockets] == 'only'
-        )
-      end
-
-      @options = @config.options
-      @config.clamp
-
       @log_writer.formatter = LogWriter::PidFormatter.new if clustered?
-      @log_writer.formatter = options[:log_formatter] if @options[:log_formatter]
+      @log_writer.formatter = @options[:log_formatter] if @options[:log_formatter]
 
-      @log_writer.custom_logger = options[:custom_logger] if @options[:custom_logger]
+      @log_writer.custom_logger = @options[:custom_logger] if @options[:custom_logger]
 
       generate_restart_data
 
@@ -97,8 +97,6 @@ module Puma
       set_rack_environment
 
       if clustered?
-        @options[:logger] = @log_writer
-
         @runner = Cluster.new(self)
       else
         @runner = Single.new(self)
@@ -106,8 +104,6 @@ module Puma
       Puma.stats_object = @runner
 
       @status = :run
-
-      log_config if env['PUMA_LOG_CONFIG']
     end
 
     attr_reader :binder, :log_writer, :events, :config, :options, :restart_dir
