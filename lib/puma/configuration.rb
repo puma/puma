@@ -186,10 +186,6 @@ module Puma
       @file_dsl    = DSL.new(@_options.file_options, self)
       @default_dsl = DSL.new(@_options.default_options, self)
 
-      if !@_options[:prune_bundler]
-        default_options[:preload_app] = (@_options[:workers] > 1) && Puma.forkable?
-      end
-
       @puma_bundler_pruned = env.key? 'PUMA_BUNDLER_PRUNED'
 
       if block
@@ -282,8 +278,9 @@ module Puma
     # This also calls load if it hasn't been called yet.
     def clamp
       load unless @loaded
+      set_conditional_default_options
+      @_options.finalize_values
       @clamped = true
-      options.finalize_values
       warn_hooks
       options
     end
@@ -424,6 +421,11 @@ module Puma
       options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
+    end
+
+    def set_conditional_default_options
+      @_options.default_options[:preload_app] = !@_options[:prune_bundler] &&
+        (@_options[:workers] > 1) && Puma.forkable?
     end
 
     def warn_hooks
