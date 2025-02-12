@@ -4,6 +4,7 @@ require_relative 'runner'
 require_relative 'util'
 require_relative 'plugin'
 require_relative 'cluster/worker_handle'
+require_relative 'cluster/fork_pipe'
 require_relative 'cluster/worker'
 
 module Puma
@@ -73,14 +74,14 @@ module Puma
 
       master = Process.pid
       if @options[:fork_worker]
-        @fork_writer << "-1\n"
+        @fork_writer.start_refork
       end
 
       diff.times do
         idx = next_worker_index
 
         if @options[:fork_worker] && idx != 0
-          @fork_writer << "#{idx}\n"
+          @fork_writer.refork_workers idx
           pid = nil
         else
           pid = spawn_worker(idx, master)
@@ -91,10 +92,10 @@ module Puma
       end
 
       if @options[:fork_worker] && all_workers_in_phase?
-        @fork_writer << "0\n"
+        @fork_writer.restart_server
 
         if worker_at(0).phase > 0
-          @fork_writer << "-2\n"
+          @fork_writer.after_refork
         end
       end
     end
@@ -419,7 +420,8 @@ module Puma
 
       # Separate pipe used by worker 0 to receive commands to
       # fork new worker processes.
-      @fork_pipe, @fork_writer = Puma::Util.pipe
+      @fork_pipe, fork_writer = Puma::Util.pipe
+      @fork_writer = ForkPipeWriter.new(fork_writer)
 
       log "Use Ctrl-C to stop"
 
