@@ -3,7 +3,7 @@ name: turbo-rails
 # Note: turbo-rails often returns an ActionDispatch::Response::RackBody for the
 # body. Also, Rack::BodyProxy or Sprockets::Asset.
 
-on: [push, pull_request, workflow_dispatch]
+on: [push, review_requested, ready_for_review, workflow_dispatch]
 
 permissions:
   contents: read # to fetch code (actions/checkout)

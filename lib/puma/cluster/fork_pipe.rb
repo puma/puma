@@ -6,7 +6,7 @@ module Puma
   class Cluster
     class ForkPipeReader
       PAYLOAD_STRING = "q" # going with bigint out of learned fear of overflow
-      PAYLOAD_SIZE = 4 # # of bytes in a q payload
+      PAYLOAD_SIZE = 8 # # of bytes in a q payload
 
       RESTART_SERVER = 0
       START_REFORK = -1
