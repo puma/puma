@@ -78,24 +78,30 @@ module Puma
             end
           end
 
-          Thread.new do
-            Puma.set_thread_name "wrkr fork"
-            while (idx = @fork_pipe.read)
-              if idx == ForkPipeReader::START_REFORK # stop server
-                if restart_server.length > 0
-                  restart_server.clear
-                  server.begin_restart(true)
-                  @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
-                end
-              elsif idx == ForkPipeReader::AFTER_REFORK # refork cycle is done
-                @config.run_hooks(:after_refork, nil, @log_writer, @hook_data)
-              elsif idx == ForkPipeReader::RESTART_SERVER # restart server
-                restart_server << true << false
-              else # fork worker
-                worker_pids << pid = spawn_worker(idx)
-                @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n" rescue nil
-              end
+          # do the initial forking of workers sync, no point making this harder than it has to be
+          loop do
+            case (idx = @fork_pipe.read)
+            when ForkPipeReader::START_REFORK
+              @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
+            when ForkPipeReader::AFTER_REFORK
+              @config.run_hooks(:after_refork, nil, @log_writer, @hook_data)
+            when ForkPipeReader::RESTART_SERVER
+              restart_server << true << false
+              break
+            else
+              worker_pids << pid = spawn_worker(idx)
+              @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n" rescue nil
             end
+          end
+
+          Thread.new do
+            # just waiting for a new signal to come in at which point we stop serving
+            # and move to the mold phase
+            Puma.set_thread_name "wrkr fork"
+            @fork_pipe.wait_readable
+            restart_server.clear
+            restart_server << false
+            server.begin_restart(true)
           end
         end
 
@@ -145,6 +151,21 @@ module Puma
           server_thread.join
         end
 
+        if fork_worker && @index.zero? # time for mold phase
+          loop do
+            case (idx = @fork_pipe.read)
+            when ForkPipeReader::START_REFORK
+              @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
+            when ForkPipeReader::AFTER_REFORK
+              @config.run_hooks(:after_refork, nil, @log_writer, @hook_data)
+            when ForkPipeReader::RESTART_SERVER
+              # we are now a mold, we don't restart the server anymore
+            else
+              worker_pids << pid = spawn_worker(idx)
+              @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n" rescue nil
+            end
+          end
+        end
         # Invoke any worker shutdown hooks so they can prevent the worker
         # exiting until any background operations are completed
         @config.run_hooks(:before_worker_shutdown, index, @log_writer, @hook_data)

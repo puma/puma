@@ -92,12 +92,28 @@ module Puma
       end
 
       if @options[:fork_worker] && all_workers_in_phase?
-        @fork_writer.restart_server
-
         if worker_at(0).phase > 0
           @fork_writer.after_refork
         end
+
+        @fork_writer.restart_server
       end
+    end
+
+    def promote_molds(refork = false)
+      return unless @options[:fork_worker]
+      # this will need re-working when we want to support generational molds
+      return unless mold_candidate = @workers.detect { |w| w.index == 0 } # we need a worker zero to promote
+      return if mold_candidate.mold? # worker zero is already a mold
+
+      diff = @options[:workers] - @workers.size
+      return if diff.zero? || !refork # if we are triggering a full refork, workers will get terminated shortly anyway
+
+      # send a signal to worker zero to stop handling traffic
+      @fork_writer.start_refork
+      mold_candidate.mold!
+      # add an extra worker since worker zero will no longer take traffic
+      @options[:workers] += 1
     end
 
     # @version 5.0.0
@@ -180,6 +196,7 @@ module Puma
       timeout_workers
       wait_workers
       cull_workers
+      promote_molds(refork)
       spawn_workers
 
       if all_workers_booted?

@@ -23,6 +23,7 @@ module Puma
         @last_checkin = Time.now
         @last_status = {}
         @term = false
+        @mold = false
       end
 
       attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
@@ -45,6 +46,14 @@ module Puma
 
       def term!
         @term = true
+      end
+
+      def mold?
+        @mold
+      end
+
+      def mold!
+        @mold = true if @index.zero?
       end
 
       def term?

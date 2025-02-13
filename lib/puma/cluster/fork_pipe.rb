@@ -42,9 +42,13 @@ module Puma
       def close
         @pipe.close
       end
+
+      def wait_readable
+        @pipe.wait_readable
+      end
     end
 
-    class ForkPipeWriter < DelegateClass(IO)
+    class ForkPipeWriter
       # not thread safe, no concurrency expected
       # minimize object allocation per loop
       def initialize(pipe)
