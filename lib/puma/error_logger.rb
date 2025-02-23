@@ -81,7 +81,7 @@ module Puma
       REQUEST_FORMAT % [
         env[REQUEST_METHOD],
         env[REQUEST_PATH] || env[PATH_INFO],
-        env[QUERY_STRING] || "",
+        format_query_string(env[QUERY_STRING]),
         env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR] || "-"
       ]
     end
@@ -109,5 +109,10 @@ module Puma
     rescue ThreadError
     end
     private :internal_write
+
+    def format_query_string(query_string)
+        query_string.nil? or query_string.empty?  ? "" : "?#{query_string}"  
+    end
+    private :format_query_string
   end
 end
