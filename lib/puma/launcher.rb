@@ -476,8 +476,9 @@ module Puma
       end
 
       begin
-        unless Puma.jruby? # INFO in use by JVM already
-          Signal.trap "SIGINFO" do
+        # INFO in use by JVM already
+        if !Puma.jruby? && Puma.backtrace_signal
+          Signal.trap Puma.backtrace_signal do
             thread_status do |name, backtrace|
               @log_writer.log(name)
               @log_writer.log(backtrace.map { |bt| "  #{bt}" })
@@ -485,8 +486,7 @@ module Puma
           end
         end
       rescue Exception
-        # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
-        # to see this constantly on Linux.
+        log "*** signal based backtrace unavailable!"
       end
     end
 
