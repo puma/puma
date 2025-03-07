@@ -21,7 +21,7 @@ module Puma
         @master = master
         @check_pipe = pipes[:check_pipe]
         @worker_write = pipes[:worker_write]
-        @fork_pipe = pipes[:fork_pipe]
+        @fork_pipe = ForkPipeReader.new(pipes[:fork_pipe])
         @wakeup = pipes[:wakeup]
         @server = server
         @hook_data = {}
@@ -80,17 +80,17 @@ module Puma
 
           Thread.new do
             Puma.set_thread_name "wrkr fork"
-            while (idx = @fork_pipe.gets)
-              idx = idx.to_i
-              if idx == -1 # stop server
+            while (idx = @fork_pipe.read)
+              case idx
+              when ForkPipeReader::START_REFORK
                 if restart_server.length > 0
                   restart_server.clear
                   server.begin_restart(true)
                   @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
                 end
-              elsif idx == -2 # refork cycle is done
+              when ForkPipeReader::AFTER_REFORK
                 @config.run_hooks(:after_refork, nil, @log_writer, @hook_data)
-              elsif idx == 0 # restart server
+              when ForkPipeReader::RESTART_SERVER
                 restart_server << true << false
               else # fork worker
                 worker_pids << pid = spawn_worker(idx)
