@@ -21,24 +21,6 @@ module Puma
         @payload = +""
       end
 
-      def read_nonblock
-        @buffer.clear
-        @payload.clear
-        remaining = PAYLOAD_SIZE
-        while remaining > 0
-          case @pipe.read_nonblock(remaining, @buffer, exception: false)
-          when :wait_readable
-            @pipe.wait_readable
-          when :wait_writable
-            @pipe.wait_writable
-          else
-            @payload << @buffer
-            remaining -= @buffer.bytesize
-          end
-        end
-        @payload.unpack1(PAYLOAD_STRING)
-      end
-
       def read
         @payload.clear
         @pipe.read(PAYLOAD_SIZE, @payload)
@@ -61,23 +43,6 @@ module Puma
         @pipe = pipe
         @payloads = []
         @buffer = +""
-      end
-
-      def write_nonblock(payload)
-        @buffer.clear
-        @payloads << payload
-        @payloads.pack(ForkPipeReader::PAYLOAD_STRING, buffer: @buffer)
-        @payloads.clear
-        until @buffer.empty?
-          case (written = @pipe.write_nonblock(@buffer, exception: false))
-          when :wait_writable
-            @pipe.wait_writable
-          when :wait_readable
-            @pipe.wait_readable
-          when Integer
-            @buffer = @buffer[written, ForkPipeReader::PAYLOAD_SIZE]
-          end
-        end
       end
 
       def write(payload)
