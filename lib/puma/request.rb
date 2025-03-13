@@ -91,7 +91,7 @@ module Puma
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
       #
-      env[RACK_AFTER_REPLY] ||= []
+      env[RACK_RESPONSE_FINISHED] = env[RACK_AFTER_REPLY] ||= []
 
       begin
         if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
