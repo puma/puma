@@ -404,7 +404,7 @@ module Puma
 
       @read_header = false
 
-      body = @parser.body
+      parser_body = @parser.body
 
       te = @env[TRANSFER_ENCODING2]
       if te
@@ -421,10 +421,10 @@ module Puma
             raise HttpParserError501, "#{TE_ERR_MSG}, unknown value: '#{te}'"
           end
           @env.delete TRANSFER_ENCODING2
-          return setup_chunked_body body
+          return setup_chunked_body parser_body
         elsif te_lwr == CHUNKED
           @env.delete TRANSFER_ENCODING2
-          return setup_chunked_body body
+          return setup_chunked_body parser_body
         elsif ALLOWED_TRANSFER_ENCODING.include? te_lwr
           raise HttpParserError     , "#{TE_ERR_MSG}, single value must be chunked: '#{te}'"
         else
@@ -444,7 +444,7 @@ module Puma
           raise HttpParserError, "Invalid Content-Length: #{cl.inspect}"
         end
       else
-        @buffer = body.empty? ? nil : body
+        @buffer = parser_body.empty? ? nil : parser_body
         @body = EmptyBody
         set_ready
         return true
@@ -460,23 +460,23 @@ module Puma
         raise HttpParserError, "Payload Too Large"
       end
 
-      remain = content_length - body.bytesize
+      remain = content_length - parser_body.bytesize
 
       if remain <= 0
-        # Part of the body is a pipelined request OR garbage. We'll deal with that later.
+        # Part of the parser_body is a pipelined request OR garbage. We'll deal with that later.
         if content_length == 0
           @body = EmptyBody
-          if body.empty?
+          if parser_body.empty?
             @buffer = nil
           else
-            @buffer = body
+            @buffer = parser_body
           end
         elsif remain == 0
-          @body = StringIO.new body
+          @body = StringIO.new parser_body
           @buffer = nil
         else
-          @body = StringIO.new(body[0,content_length])
-          @buffer = body[content_length..-1]
+          @body = StringIO.new(parser_body[0,content_length])
+          @buffer = parser_body[content_length..-1]
         end
         set_ready
         return true
@@ -488,12 +488,12 @@ module Puma
         @body.binmode
         @tempfile = @body
       else
-        # The body[0,0] trick is to get an empty string in the same
-        # encoding as body.
-        @body = StringIO.new body[0,0]
+        # The parser_body[0,0] trick is to get an empty string in the same
+        # encoding as parser_body.
+        @body = StringIO.new parser_body[0,0]
       end
 
-      @body.write body
+      @body.write parser_body
 
       @body_remain = remain
 
