@@ -23,6 +23,7 @@ module Puma
       @next_check = Time.now
 
       @phased_restart = false
+      @mold = nil
     end
 
     # Returns the list of cluster worker handles.
@@ -67,6 +68,10 @@ module Puma
       @workers.each { |x| x.hup }
     end
 
+    def active_mold?
+      @mold && @mold.ping_timeout > Time.now
+    end
+
     def spawn_workers
       diff = @options[:workers] - @workers.size
       return if diff < 1
@@ -82,6 +87,8 @@ module Puma
         if @options[:fork_worker] && idx != 0
           @fork_writer << "#{idx}\n"
           pid = nil
+        elsif @options[:mold_worker] && active_mold?
+          PipeProtocol::Fork.write_to(@fork_writer, value: idx)
         else
           pid = spawn_worker(idx, master)
         end
@@ -179,6 +186,7 @@ module Puma
       timeout_workers
       wait_workers
       cull_workers
+      promote_mold if @options[:mold_worker]
       spawn_workers
 
       if all_workers_booted?
@@ -320,6 +328,19 @@ module Puma
             fork_worker! if w.index == 0 &&
               w.phase == 0 &&
               w.last_status[:requests_count] >= fork_requests
+          end
+        end
+
+        if @options[:mold_worker]
+          current_interval_index = 0
+          @events.register(:ping!) do |w|
+            next_request_interval = @options[:mold_worker][current_interval_index]
+            next unless next_request_interval && w.last_status[:requests_count] >= next_request_interval
+
+            @mold&.term
+            w.phase = @phase + 1 # cluster phase will catch up next loop
+            current_interval_index += 1
+            phased_restart(true)
           end
         end
       end
@@ -488,7 +509,7 @@ module Puma
                 w.pid = pid if w.pid.nil?
               end
 
-              if w = @workers.find { |x| x.pid == pid }
+              if w = @mold&.pid? == pid ? @mold : @workers.find { |x| x.pid == pid }
                 case req
                 when PIPE_BOOT
                   w.boot!
@@ -602,10 +623,61 @@ module Puma
         end
       end
 
+      if reaped_children.delete(@mold&.pid)
+        @mold.term!
+        @mold = nil
+      end
+
       # Log unknown children
       reaped_children.each do |pid, status|
         log "! reaped unknown child process pid=#{pid} status=#{status}"
       end
+    end
+
+    def promote_mold
+      missing_workers = @options[:workers] - @workers.size
+      return if missing_workers <= 0
+
+      # handle cases where existing mold might be broken
+      if @mold
+        # worker has been terminated previously, see if it's finished
+        if @mold.term?
+          begin
+            # if process is dead and a child process, erase the mold
+            @mold = nil if Process.wait(@mold.pid, Process::WNOHANG)
+          rescue Errno::ECHILD
+            begin
+              Process.kill(0, @mold.pid)
+            rescue Errno::ESRCH, Errno::EPERM
+              # Process is dead but is not a child, go ahead and remove the mold
+              @mold = nil
+            end
+          end
+          # if there's still a @mold at this point, progress to KILL
+          @mold&.term
+
+        # if the mold is not pinging, send it a TERM and let it die next iteration
+        elsif @mold.ping_timeout <= Time.now
+          log "- Mold timed out, terminating it"
+          @mold.term unless @mold.term?
+          return
+        else
+          # we have a working mold, we're done
+          return
+        end
+      end
+
+      # if we make it here, we have no mold and need to promote one
+      # pick the worker with the highest request count that is in
+      # the correct phase
+      workers_in_phase = @workers.select { |w| w.phase == @phase }
+      mold_candidate = workers_in_phase.max { |a, b| a.last_status[:requests_count] <=> b.last_status[:requests_count] }
+      return if mold_candidate.nil? || !mold_candidate.booted?
+
+      log "Promoting worker #{worker.index} to mold"
+      mold_candidate.mold!
+      @workers.delete mold_candidate
+      @mold = mold_candidate
     end
 
     # @version 5.0.0

@@ -25,12 +25,11 @@ module Puma
         @wakeup = pipes[:wakeup]
         @server = server
         @hook_data = {}
+        @mold = false
       end
 
       def run
-        title  = "puma: cluster worker #{index}: #{master}"
-        title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
-        $0 = title
+        set_proc_title
 
         Signal.trap "SIGINT", "IGNORE"
         Signal.trap "SIGCHLD", "DEFAULT"
@@ -100,6 +99,14 @@ module Puma
           end
         end
 
+        if @options[:mold_worker]
+          Signal.trap("SIGURG") do
+            @mold = true
+            restart_server.clear
+            restart_server << false
+          end
+        end
+
         Signal.trap "SIGTERM" do
           @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
           restart_server.clear
@@ -149,12 +156,42 @@ module Puma
         # Invoke any worker shutdown hooks so they can prevent the worker
         # exiting until any background operations are completed
         @config.run_hooks(:before_worker_shutdown, index, @log_writer, @hook_data)
+
+        if @mold
+          set_proc_title(role: "mold")
+          Signal.trap("SIGTERM") do
+            @fork_pipe.close rescue nil
+            @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
+          end
+
+          worker_pids = []
+          Signal.trap "SIGCHLD" do
+            wakeup! if worker_pids.reject! do |p|
+              Process.wait(p, Process::WNOHANG) rescue true
+            end
+          end
+
+          @config.run_hooks(:before_molding, index, @log_writer, @hook_data)
+
+          while (index = PipeProtocols::Fork.read_from(@fork_pipe) rescue nil)
+            worker_pids << pid = spawn_worker(index)
+            @worker_write << "#{PIPE_FORK}#{pid}:#{index}\n" rescue nil
+          end
+
+          @config.run_hooks(:after_molding, index, @log_writer, @hook_data)
+        end
       ensure
-        @worker_write << "#{PIPE_TERM}#{Process.pid}\n" rescue nil
+        @worker_write << "#{PIPE_TERM}#{Process.pid}\n" rescue nil unless @mold
         @worker_write.close
       end
 
       private
+
+      def set_proc_title(role: "worker")
+        title  = "puma: #{role} #{index}: #{master}"
+        title += " [#{@options[:tag]}]" if @options[:tag] && !@options[:tag].empty?
+        $0 = title
+      end
 
       def spawn_worker(idx)
         @config.run_hooks(:before_worker_fork, idx, @log_writer, @hook_data)

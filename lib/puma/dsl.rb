@@ -1270,6 +1270,33 @@ module Puma
       @options[:fork_worker] = Integer(after_requests)
     end
 
+    # When enabled, workers will be converted to a "mold" process as needed from which further workers
+    # are forked. This option is similar to fork_worker but the process that does the reforking does
+    # not take any further traffic. This allows the mold process to be optimized for copy-on-write
+    # performance and stability.
+    #
+    # This option also enables the `refork` command (SIGURG), which allows external processes to trigger
+    # promotion and reforking from a new mold process.
+    #
+    # Reforks will trigger automatically as workers hit the specified number of requests (default 1000),
+    # and multiple intervals can be specified (as absolute request count thresholds) to allow for improved
+    # performance over time.
+    def mold_worker(mold_at=1000, *additional_molds)
+      @options[:mold_worker] = [Integer(mold_at)] + additional_molds.map { |m| Integer(m) }
+    end
+
+    def before_molding(key, &block)
+      warn_if_in_single_mode('before_molding')
+
+      process_hook :before_molding, key, block, 'before_molding'
+    end
+
+    def after_molding(key, &block)
+      warn_if_in_single_mode('after_molding')
+
+      process_hook :after_molding, key, block, 'after_molding'
+    end
+
     # The number of requests to attempt inline before sending a client back to
     # the reactor to be subject to normal ordering.
     #
