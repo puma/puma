@@ -5,6 +5,7 @@ require_relative 'util'
 require_relative 'plugin'
 require_relative 'cluster/worker_handle'
 require_relative 'cluster/worker'
+require_relative 'cluster/pipe_protocols'
 
 module Puma
   # This class is instantiated by the `Puma::Launcher` and used
@@ -22,7 +23,7 @@ module Puma
       @workers = []
       @next_check = Time.now
 
-      @phased_restart = false
+      @pending_phased_restart = false
       @mold = nil
     end
 
@@ -88,7 +89,7 @@ module Puma
           @fork_writer << "#{idx}\n"
           pid = nil
         elsif @options[:mold_worker] && active_mold?
-          PipeProtocol::Fork.write_to(@fork_writer, value: idx)
+          PipeProtocols::Fork.write_to(@fork_writer, value: idx)
         else
           pid = spawn_worker(idx, master)
         end
@@ -187,7 +188,7 @@ module Puma
       wait_workers
       cull_workers
       promote_mold if @options[:mold_worker]
-      spawn_workers
+      spawn_workers unless @pending_phased_restart
 
       if all_workers_booted?
         # If we're running at proper capacity, check to see if
@@ -224,7 +225,7 @@ module Puma
       @fork_writer.close
 
       pipes = { check_pipe: @check_pipe, worker_write: @worker_write }
-      if @options[:fork_worker]
+      if @options[:fork_worker] || @options[:mold_worker]
         pipes[:fork_pipe] = @fork_pipe
         pipes[:wakeup] = @wakeup
       end
@@ -246,7 +247,7 @@ module Puma
     def phased_restart(refork = false)
       return false if @options[:preload_app] && !refork
 
-      @phased_restart = refork ? :refork : true
+      @pending_phased_restart = refork ? :refork : true
       wakeup!
 
       true
@@ -331,17 +332,22 @@ module Puma
           end
         end
 
-        if @options[:mold_worker]
-          current_interval_index = 0
-          @events.register(:ping!) do |w|
-            next_request_interval = @options[:mold_worker][current_interval_index]
-            next unless next_request_interval && w.last_status[:requests_count] >= next_request_interval
+      end
+      if @options[:mold_worker]
+        current_interval_index = 0
+        @events.register(:ping!) do |w|
+          # if there's a phased_restart under way don't step on its toes
+          next unless all_workers_in_phase?
 
-            @mold&.term
-            w.phase = @phase + 1 # cluster phase will catch up next loop
-            current_interval_index += 1
-            phased_restart(true)
-          end
+          next_request_interval = @options[:mold_worker][current_interval_index]
+          next unless next_request_interval && w.last_status[:requests_count] >= next_request_interval
+          # if @phase has already been incremented, we're already reforking;
+          # wait before kicking off yet another phased restart
+
+          @mold&.term
+          w.phase = @phase + 1 # cluster phase will catch up next loop; we want this one to be picked as a mold
+          current_interval_index += 1
+          phased_restart(true)
         end
       end
 
@@ -399,7 +405,7 @@ module Puma
 
         before = Thread.list.reject(&fork_safe)
 
-        log "*     Restarts: (\u2714) hot (\u2716) phased (#{@options[:fork_worker] ? "\u2714" : "\u2716"}) refork"
+        log "*     Restarts: (\u2714) hot (\u2716) phased (#{@options[:fork_worker] ? "\u2714" : "\u2716"}) refork (#{@options[:mold_worker] ? "\u2714" : "\u2716"}) mold"
         log "* Preloading application"
         load_and_bind
 
@@ -417,7 +423,7 @@ module Puma
           end
         end
       else
-        log "*     Restarts: (\u2714) hot (\u2714) phased (#{@options[:fork_worker] ? "\u2714" : "\u2716"}) refork"
+        log "*     Restarts: (\u2714) hot (\u2714) phased (#{@options[:fork_worker] ? "\u2714" : "\u2716"}) refork (#{@options[:mold_worker] ? "\u2714" : "\u2716"}) mold"
 
         unless @config.app_configured?
           error "No application configured, nothing to run"
@@ -478,11 +484,14 @@ module Puma
               break
             end
 
-            if @phased_restart
-              start_phased_restart(@phased_restart == :refork)
+            # if running with mold_worker, delay phased restart until a mold is promoted
+            delay_phased_restart = @options[:mold_worker] && !active_mold?
 
-              in_phased_restart = @phased_restart
-              @phased_restart = false
+            if @pending_phased_restart && !delay_phased_restart
+              start_phased_restart(@pending_phased_restart == :refork)
+
+              in_phased_restart = @pending_phased_restart
+              @pending_phased_restart = false
 
               workers_not_booted = @options[:workers]
               # worker 0 is not restarted on refork
@@ -509,7 +518,7 @@ module Puma
                 w.pid = pid if w.pid.nil?
               end
 
-              if w = @mold&.pid? == pid ? @mold : @workers.find { |x| x.pid == pid }
+              if w = @mold&.pid == pid ? @mold : @workers.find { |x| x.pid == pid }
                 case req
                 when PIPE_BOOT
                   w.boot!
@@ -674,7 +683,7 @@ module Puma
       mold_candidate = workers_in_phase.max { |a, b| a.last_status[:requests_count] <=> b.last_status[:requests_count] }
       return if mold_candidate.nil? || !mold_candidate.booted?
 
-      log "Promoting worker #{worker.index} to mold"
+      log "Promoting worker #{mold_candidate.index} to mold"
       mold_candidate.mold!
       @workers.delete mold_candidate
       @mold = mold_candidate

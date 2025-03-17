@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'pipe_protocols'
+
 module Puma
   class Cluster < Puma::Runner
     #—————————————————————— DO NOT USE — this class is for internal use only ———
@@ -104,6 +106,7 @@ module Puma
             @mold = true
             restart_server.clear
             restart_server << false
+            server.begin_restart(true)
           end
         end
 
@@ -129,27 +132,8 @@ module Puma
             debug_loaded_extensions "Loaded Extensions - worker 0:"
           end
 
-          stat_thread ||= Thread.new(@worker_write) do |io|
-            Puma.set_thread_name "stat pld"
-            base_payload = "#{PIPE_PING}#{Process.pid}"
+          make_sure_pinging(server)
 
-            while true
-              begin
-                b = server.backlog || 0
-                r = server.running || 0
-                t = server.pool_capacity || 0
-                m = server.max_threads || 0
-                rc = server.requests_count || 0
-                bt = server.busy_threads || 0
-                payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc}, "busy_threads":#{bt} }\n!
-                io << payload
-              rescue IOError
-                Puma::Util.purge_interrupt_queue
-                break
-              end
-              sleep @options[:worker_check_interval]
-            end
-          end
           server_thread.join
         end
 
@@ -159,9 +143,10 @@ module Puma
 
         if @mold
           set_proc_title(role: "mold")
+
           Signal.trap("SIGTERM") do
-            @fork_pipe.close rescue nil
-            @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
+            PipeProtocols::Fork.write_to(@fork_pipe, value: PipeProtocols::Fork::STOP_READING)
+            @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n"
           end
 
           worker_pids = []
@@ -173,19 +158,59 @@ module Puma
 
           @config.run_hooks(:before_molding, index, @log_writer, @hook_data)
 
-          while (index = PipeProtocols::Fork.read_from(@fork_pipe) rescue nil)
-            worker_pids << pid = spawn_worker(index)
-            @worker_write << "#{PIPE_FORK}#{pid}:#{index}\n" rescue nil
+          make_sure_pinging(server)
+
+          begin
+            while (idx = PipeProtocols::Fork.read_from(@fork_pipe))
+              worker_pids << pid = spawn_worker(idx)
+              @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n"
+            end
+          rescue StandardError => e
+            puts e
           end
 
           @config.run_hooks(:after_molding, index, @log_writer, @hook_data)
         end
       ensure
-        @worker_write << "#{PIPE_TERM}#{Process.pid}\n" rescue nil unless @mold
-        @worker_write.close
+        @worker_write << "#{PIPE_TERM}#{Process.pid}\n"
       end
 
       private
+
+      def make_sure_pinging(server)
+        # if the stat thread died, join and replace it
+        if @thread && !@thread.alive?
+          begin
+            @thread.join rescue nil # just ignore exceptions here
+            @thread = nil
+          rescue => e
+            puts "While joining stat thread rescued #{e.class}: #{e.message}"
+          end
+        end
+
+        @thread ||= Thread.new(@worker_write) do |io|
+          Puma.set_thread_name "stat pld"
+          base_payload = "#{PIPE_PING}#{Process.pid}"
+
+          while true
+            begin
+              b = server.backlog || 0
+              r = server.running || 0
+              t = server.pool_capacity || 0
+              m = server.max_threads || 0
+              rc = server.requests_count || 0
+              bt = server.busy_threads || 0
+              payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc}, "busy_threads":#{bt} }\n!
+              io << payload
+            rescue IOError
+              Puma::Util.purge_interrupt_queue
+              break
+            end
+            sleep @options[:worker_check_interval]
+          end
+        end
+
+      end
 
       def set_proc_title(role: "worker")
         title  = "puma: #{role} #{index}: #{master}"
@@ -196,12 +221,18 @@ module Puma
       def spawn_worker(idx)
         @config.run_hooks(:before_worker_fork, idx, @log_writer, @hook_data)
 
+        pipes = {
+          check_pipe: @check_pipe,
+          worker_write: @worker_write,
+        }
+
+        pipes.merge!({fork_pipe: @fork_pipe, wakeup: @wakeup}) if @options[:mold_worker]
+
         pid = fork do
           new_worker = Worker.new index: idx,
                                   master: master,
                                   launcher: @launcher,
-                                  pipes: { check_pipe: @check_pipe,
-                                           worker_write: @worker_write },
+                                  pipes: pipes,
                                   server: @server
           new_worker.run
         end

@@ -1285,13 +1285,17 @@ module Puma
       @options[:mold_worker] = [Integer(mold_at)] + additional_molds.map { |m| Integer(m) }
     end
 
-    def before_molding(key, &block)
+    # Code to run when a worker is promoted to a mold process before it starts reforking.
+    # This code can do things like making sure large shareable objects have been initialized
+    # or connections are closed.
+    def before_molding(key = nil, &block)
       warn_if_in_single_mode('before_molding')
 
       process_hook :before_molding, key, block, 'before_molding'
     end
 
-    def after_molding(key, &block)
+    # Code to run immediately before a mold process shuts down.
+    def after_molding(key = nil, &block)
       warn_if_in_single_mode('after_molding')
 
       process_hook :after_molding, key, block, 'after_molding'
