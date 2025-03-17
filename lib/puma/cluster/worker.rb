@@ -226,7 +226,10 @@ module Puma
           worker_write: @worker_write,
         }
 
-        pipes.merge!({fork_pipe: @fork_pipe, wakeup: @wakeup}) if @options[:mold_worker]
+        if @options[:mold_worker]
+          pipes[:fork_pipe] = @fork_pipe
+          pipes[:wakeup] = @wakeup
+        end
 
         pid = fork do
           new_worker = Worker.new index: idx,
