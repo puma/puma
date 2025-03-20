@@ -136,6 +136,39 @@ class TestIntegrationPumactl < TestIntegration
     wait_server
   end
 
+  def test_refork_cluster_mold_worker
+    skip_unless :fork
+    wrkrs = 3
+    cli_server "-q -w #{wrkrs} test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}",
+      config: 'mold_worker 50',
+      unix: true
+
+    start = Time.now
+
+    fast_connect("sleep1", unix: true)
+
+    # Get the PIDs of the phase 0 workers.
+    phase0_worker_pids = get_worker_pids 0, wrkrs
+    assert File.exist? @bind_path
+
+    cli_pumactl "refork", unix: true
+
+    # Get the PIDs of the phase 1 workers.
+    phase1_worker_pids = get_worker_pids 1, wrkrs - 1
+
+    msg = "phase 0 pids #{phase0_worker_pids.inspect}  phase 1 pids #{phase1_worker_pids.inspect}"
+
+    assert_equal wrkrs    , phase0_worker_pids.length, msg
+    assert_equal wrkrs - 1, phase1_worker_pids.length, msg
+    assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
+    assert File.exist?(@bind_path), "Bind path must exist after phased refork"
+
+    cli_pumactl "stop", unix: true
+
+    wait_server
+    assert_operator Time.now - start, :<, 60
+  end
+
   def test_kill_unknown
     skip_if :jruby
 
