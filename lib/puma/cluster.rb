@@ -662,8 +662,8 @@ module Puma
               @mold = nil
             end
           end
-          # if there's still a @mold at this point, progress to KILL
-          @mold&.term
+          # if there's still a @mold at this point, progress to KILL without waiting for shutdown timeout
+          @mold&.kill
 
         # if the mold is not pinging, send it a TERM and let it die next iteration
         elsif @mold.ping_timeout <= Time.now
