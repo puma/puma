@@ -191,7 +191,8 @@ module Puma
           elsif res_body.is_a?(File) && res_body.respond_to?(:size)
             body = res_body
             content_length = body.size
-          elsif res_body.respond_to?(:to_path) && File.readable?(fn = res_body.to_path)
+          elsif res_body.respond_to?(:to_path) && (fn = res_body.to_path) &&
+              File.readable?(fn)
             body = File.open fn, 'rb'
             content_length = body.size
             close_body = true
@@ -199,7 +200,7 @@ module Puma
             body = res_body
           end
         elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) &&
-            File.readable?(fn = res_body.to_path)
+            (fn = res_body.to_path) && File.readable?(fn = res_body.to_path)
           body = File.open fn, 'rb'
           content_length = body.size
           close_body = true
