@@ -24,6 +24,7 @@ module Puma
       @next_check = Time.now
 
       @pending_phased_restart = false
+      @tracked_molds = []
       @mold = nil
     end
 
@@ -518,7 +519,7 @@ module Puma
                 w.pid = pid if w.pid.nil?
               end
 
-              if w = @mold&.pid == pid ? @mold : @workers.find { |x| x.pid == pid }
+              if w = @tracked_molds.find { |x| x.pid == pid } || @workers.find { |x| x.pid == pid }
                 case req
                 when PIPE_BOOT
                   w.boot!
@@ -614,27 +615,17 @@ module Puma
           #    `Process.wait2(-1)` from detecting a terminated process: https://bugs.ruby-lang.org/issues/19837.
           # 2. When `fork_worker` is enabled, some worker may not be direct children,
           #    but grand children.  Because of this they won't be reaped by `Process.wait2(-1)`.
-          if reaped_children.delete(w.pid) || Process.wait(w.pid, Process::WNOHANG)
+          if reaped_children.delete(w.pid) || check_process_terminated(w.pid)
             true
           else
             w.term if w.term?
             nil
           end
-        rescue Errno::ECHILD
-          begin
-            Process.kill(0, w.pid)
-            # child still alive but has another parent (e.g., using fork_worker)
-            w.term if w.term?
-            false
-          rescue Errno::ESRCH, Errno::EPERM
-            true # child is already terminated
-          end
         end
       end
 
-      if reaped_children.delete(@mold&.pid)
-        @mold.term!
-        @mold = nil
+      @tracked_molds.reject! do |m|
+        reaped_children.delete!(m.pid)
       end
 
       # Log unknown children
@@ -643,45 +634,47 @@ module Puma
       end
     end
 
+    def check_process_terminated(pid)
+      Process.wait(pid, Process::WNOHANG)
+    rescue Errno::ECHILD
+      begin
+        Process.kill(0, pid)
+      rescue Errno::ESRCH, Errno::EPERM
+        return true
+      end
+    end
+
     def promote_mold
       missing_workers = @options[:workers] - @workers.size
       return if missing_workers <= 0
 
-      # handle cases where existing mold might be broken
-      if @mold
+      # clean up any molds that are being shut down and make sure active mold is healthy
+      @tracked_molds.reject! do |mold|
         # worker has been terminated previously, see if it's finished
-        if @mold.term?
-          begin
-            # if process is dead and a child process, erase the mold
-            @mold = nil if Process.wait(@mold.pid, Process::WNOHANG)
-          rescue Errno::ECHILD
-            begin
-              Process.kill(0, @mold.pid)
-            rescue Errno::ESRCH, Errno::EPERM
-              # Process is dead but is not a child, go ahead and remove the mold
-              @mold = nil
-            end
-          end
-          # if there's still a @mold at this point, try terminating again; eventually after timeout
-          # this will escalate to KILL
-          @mold&.term
-          return
-
-        # if the mold is not pinging, send it a TERM and let it die next iteration
-        elsif @mold.ping_timeout <= Time.now
-          log "- Mold timed out, terminating it"
-          @mold.term unless @mold.term?
-          return
-        else
-          # we have a working mold, we're done
-          return
+        if mold.term?
+          return true if check_process_terminated(mold.pid)
+          mold.term
+          false
         end
+      end
+
+      @mold = nil unless @tracked_molds.include?(@mold)
+
+      # if the mold is not pinging, send it a TERM and let it die next iteration
+      if @mold && @mold.ping_timeout <= Time.now
+        log "- Mold timed out, terminating"
+        @mold.term unless @mold.term?
+        @mold = nil
+      else
+        # we have a working mold, we're done
+        return
       end
 
       # if we make it here, we have no mold and need to promote one
       # pick the worker with the highest request count that is in
       # the correct phase
       workers_in_phase = @workers.select { |w| w.phase == @phase }
+      workers_in_phase = @workers if workers_in_phase.empty?
       mold_candidate = workers_in_phase.max { |a, b| a.last_status[:requests_count] <=> b.last_status[:requests_count] }
       return if mold_candidate.nil? || !mold_candidate.booted?
 
@@ -689,6 +682,7 @@ module Puma
       mold_candidate.mold!
       @workers.delete mold_candidate
       @mold = mold_candidate
+      @tracked_molds << @mold
     end
 
     # @version 5.0.0
