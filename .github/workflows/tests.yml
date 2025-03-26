@@ -191,8 +191,15 @@ jobs:
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
       - name: compile
+        id: compile
+        continue-on-error: ${{ matrix.allow-failure || false }}
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         run:  bundle exec rake compile
+
+      - name: >-
+          Compile outcome: ${{ steps.compile.outcome }}
+        # every step must define a `uses` or `run` key
+        run: echo NOOP
 
       - name: test
         id: test
