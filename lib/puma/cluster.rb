@@ -609,23 +609,26 @@ module Puma
 
       @workers.reject! do |w|
         next false if w.pid.nil?
-        begin
-          # We may need to check the PID individually because:
-          # 1. From Ruby versions 2.6 to 3.2, `Process.detach` can prevent or delay
-          #    `Process.wait2(-1)` from detecting a terminated process: https://bugs.ruby-lang.org/issues/19837.
-          # 2. When `fork_worker` is enabled, some worker may not be direct children,
-          #    but grand children.  Because of this they won't be reaped by `Process.wait2(-1)`.
-          if reaped_children.delete(w.pid) || check_process_terminated(w.pid)
-            true
-          else
-            w.term if w.term?
-            nil
-          end
+        # We may need to check the PID individually because:
+        # 1. From Ruby versions 2.6 to 3.2, `Process.detach` can prevent or delay
+        #    `Process.wait2(-1)` from detecting a terminated process: https://bugs.ruby-lang.org/issues/19837.
+        # 2. When `fork_worker` is enabled, some worker may not be direct children,
+        #    but grand children.  Because of this they won't be reaped by `Process.wait2(-1)`.
+        if reaped_children.delete(w.pid) || check_process_terminated(w.pid)
+          true
+        else
+          w.term if w.term?
+          nil
         end
       end
 
       @tracked_molds.reject! do |m|
-        reaped_children.delete!(m.pid)
+        if reaped_children.delete(m.pid) || check_process_terminated(m.pid)
+          true
+        else
+          m.term if m.term?
+          nil
+        end
       end
 
       # Log unknown children
@@ -641,6 +644,8 @@ module Puma
         Process.kill(0, pid)
       rescue Errno::ESRCH, Errno::EPERM
         return true
+      else
+        false
       end
     end
 
@@ -648,16 +653,7 @@ module Puma
       missing_workers = @options[:workers] - @workers.size
       return if missing_workers <= 0
 
-      # clean up any molds that are being shut down and make sure active mold is healthy
-      @tracked_molds.reject! do |mold|
-        # worker has been terminated previously, see if it's finished
-        if mold.term?
-          return true if check_process_terminated(mold.pid)
-          mold.term
-          false
-        end
-      end
-
+      # if the active mold got reaped, remove it here
       @mold = nil unless @tracked_molds.include?(@mold)
 
       # if the mold is not pinging, send it a TERM and let it die next iteration
@@ -665,10 +661,10 @@ module Puma
         log "- Mold timed out, terminating"
         @mold.term unless @mold.term?
         @mold = nil
-      else
-        # we have a working mold, we're done
-        return
       end
+
+      # if you still have a good mold, return
+      return if @mold
 
       # if we make it here, we have no mold and need to promote one
       # pick the worker with the highest request count that is in
@@ -681,8 +677,8 @@ module Puma
       log "Promoting worker #{mold_candidate.index} to mold"
       mold_candidate.mold!
       @workers.delete mold_candidate
+      @tracked_molds << mold_candidate
       @mold = mold_candidate
-      @tracked_molds << @mold
     end
 
     # @version 5.0.0
