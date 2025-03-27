@@ -159,6 +159,25 @@ class TestPumaServer < PumaTest
     tf&.close
   end
 
+  def test_pipe_body
+    random_bytes = SecureRandom.random_bytes(4096)
+
+    r, w = IO.pipe
+
+    w.write random_bytes
+    w.close
+
+    server_run { |env| [200, {}, r] }
+
+    body = send_http_read_resp_body "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+
+    assert_equal random_bytes.bytesize, body.bytesize
+    assert_equal random_bytes, body
+  ensure
+    w&.close
+    r&.close
+  end
+
   def test_proper_stringio_body
     data = nil
 
