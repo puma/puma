@@ -2,6 +2,8 @@
 
 FROM ruby:3.2
 
+RUN apt-get update && apt-get install -y ragel
+
 # throw errors if Gemfile has been modified since Gemfile.lock
 RUN bundle config --global frozen 1
 
