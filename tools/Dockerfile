@@ -15,4 +15,4 @@ RUN bundle install
 RUN bundle exec rake compile
 
 EXPOSE 9292
-CMD bundle exec bin/puma test/rackup/hello.ru
+CMD ["bundle", "exec", "bin/puma", "test/rackup/hello.ru"]
