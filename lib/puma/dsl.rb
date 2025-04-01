@@ -1288,17 +1288,17 @@ module Puma
     # Code to run when a worker is promoted to a mold process before it starts reforking.
     # This code can do things like making sure large shareable objects have been initialized
     # or connections are closed.
-    def before_molding(key = nil, &block)
-      warn_if_in_single_mode('before_molding')
+    def on_mold_promotion(key = nil, &block)
+      warn_if_in_single_mode('on_mold_promotion')
 
-      process_hook :before_molding, key, block, 'before_molding'
+      process_hook :on_mold_promotion, key, block, 'on_mold_promotion'
     end
 
     # Code to run immediately before a mold process shuts down.
-    def after_molding(key = nil, &block)
-      warn_if_in_single_mode('after_molding')
+    def on_mold_shutdown(key = nil, &block)
+      warn_if_in_single_mode('on_mold_shutdown')
 
-      process_hook :after_molding, key, block, 'after_molding'
+      process_hook :on_mold_shutdown, key, block, 'on_mold_shutdown'
     end
 
     # The number of requests to attempt inline before sending a client back to

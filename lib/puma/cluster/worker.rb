@@ -156,7 +156,7 @@ module Puma
             end
           end
 
-          @config.run_hooks(:before_molding, index, @log_writer, @hook_data)
+          @config.run_hooks(:on_mold_promotion, index, @log_writer, @hook_data)
 
           make_sure_pinging(server)
 
@@ -169,7 +169,7 @@ module Puma
             puts e
           end
 
-          @config.run_hooks(:after_molding, index, @log_writer, @hook_data)
+          @config.run_hooks(:on_mold_shutdown, index, @log_writer, @hook_data)
         end
       ensure
         @worker_write << "#{PIPE_TERM}#{Process.pid}\n"
