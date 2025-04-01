@@ -671,7 +671,7 @@ module Puma
       # the correct phase
       workers_in_phase = @workers.select { |w| w.phase == @phase }
       workers_in_phase = @workers if workers_in_phase.empty?
-      mold_candidate = workers_in_phase.max { |a, b| a.last_status[:requests_count] <=> b.last_status[:requests_count] }
+      mold_candidate = workers_in_phase.max { |a, b| a.last_status[:requests_count].to_i <=> b.last_status[:requests_count].to_i }
       return if mold_candidate.nil? || !mold_candidate.booted?
 
       log "Promoting worker #{mold_candidate.index} to mold"
