@@ -467,6 +467,8 @@ module Puma
 
       @config.run_hooks(:before_fork, nil, @log_writer)
 
+      Puma.enable_child_subreaper if @options[:fork_worker] || @options[:mold_worker]
+
       spawn_workers
 
       Signal.trap "SIGINT" do
