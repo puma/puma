@@ -316,6 +316,16 @@ module Puma
       phased_restart(true)
     end
 
+    def most_experienced_worker(workers = @workers)
+      workers.max { |a, b| a.last_status[:requests_count].to_i <=> b.last_status[:requests_count].to_i }
+    end
+
+    def mold_and_restart!(mold_candidate = most_experienced_worker)
+      @mold&.term
+      mold_candidate.phase = @phase + 1 # cluster phase will catch up next loop; we want this one to be picked as a mold
+      phased_restart(true)
+    end
+
     # We do this in a separate method to keep the lambda scope
     # of the signals handlers as small as possible.
     def setup_signals
@@ -345,10 +355,8 @@ module Puma
           # if @phase has already been incremented, we're already reforking;
           # wait before kicking off yet another phased restart
 
-          @mold&.term
-          w.phase = @phase + 1 # cluster phase will catch up next loop; we want this one to be picked as a mold
           current_interval_index += 1
-          phased_restart(true)
+          mold_and_restart!(w)
         end
       end
 
@@ -673,7 +681,7 @@ module Puma
       # the correct phase
       workers_in_phase = @workers.select { |w| w.phase == @phase }
       workers_in_phase = @workers if workers_in_phase.empty?
-      mold_candidate = workers_in_phase.max { |a, b| a.last_status[:requests_count].to_i <=> b.last_status[:requests_count].to_i }
+      mold_candidate = most_experienced_worker(workers_in_phase)
       return if mold_candidate.nil? || !mold_candidate.booted?
 
       log "Promoting worker #{mold_candidate.index} to mold"

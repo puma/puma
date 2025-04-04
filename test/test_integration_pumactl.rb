@@ -154,12 +154,12 @@ class TestIntegrationPumactl < TestIntegration
     cli_pumactl "refork", unix: true
 
     # Get the PIDs of the phase 1 workers.
-    phase1_worker_pids = get_worker_pids 1, wrkrs - 1
+    phase1_worker_pids = get_worker_pids 1, wrkrs
 
     msg = "phase 0 pids #{phase0_worker_pids.inspect}  phase 1 pids #{phase1_worker_pids.inspect}"
 
-    assert_equal wrkrs    , phase0_worker_pids.length, msg
-    assert_equal wrkrs - 1, phase1_worker_pids.length, msg
+    assert_equal wrkrs, phase0_worker_pids.length, msg
+    assert_equal wrkrs, phase1_worker_pids.length, msg
     assert_empty phase0_worker_pids & phase1_worker_pids, "#{msg}\nBoth workers should be replaced with new"
     assert File.exist?(@bind_path), "Bind path must exist after phased refork"
 
