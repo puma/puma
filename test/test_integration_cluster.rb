@@ -45,6 +45,11 @@ class TestIntegrationCluster < TestIntegration
       signal: :USR1, config: 'fork_worker'
   end
 
+  def test_phased_restart_does_not_drop_connections_threads_mold_worker
+    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
+      signal: :USR1, config: 'mold_worker'
+  end
+
   def test_phased_restart_does_not_drop_connections_unix
     restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
       signal: :USR1, unix: true
@@ -152,6 +157,19 @@ class TestIntegrationCluster < TestIntegration
   def test_on_booted_with_fork_worker_refork
     cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
       fork_worker
+      on_booted { STDOUT.syswrite "on_booted called\n" }
+    CONFIG
+
+    assert wait_for_server_to_include("on_booted called")
+
+    Process.kill :SIGURG, @pid
+
+    assert wait_for_server_to_include("on_booted called")
+  end
+
+  def test_on_booted_with_mold_worker_refork
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      mold_worker
       on_booted { STDOUT.syswrite "on_booted called\n" }
     CONFIG
 
@@ -346,6 +364,32 @@ class TestIntegrationCluster < TestIntegration
     socks.each { |s| read_body s }
 
     refute_includes pids, get_worker_pids(1, wrkrs - 1)
+  end
+
+  def test_mold_worker_on_mold_promotion
+    refork = Tempfile.new 'refork'
+    wrkrs = 3
+    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~CONFIG
+      mold_worker 20
+      on_mold_promotion { File.write '#{refork.path}', 'Mold Promoted' }
+    CONFIG
+
+    pids = get_worker_pids 0, wrkrs
+
+    socks = []
+    until refork.read == 'Mold Promoted'
+      socks << fast_connect
+      sleep 0.004
+    end
+
+    100.times {
+      socks << fast_connect
+      sleep 0.004
+    }
+
+    socks.each { |s| read_body s }
+
+    refute_includes pids, get_worker_pids(1, wrkrs)
   end
 
   # use three workers to keep accepting clients
