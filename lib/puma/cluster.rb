@@ -345,6 +345,9 @@ module Puma
 
       end
       if @options[:mold_worker]
+        Signal.trap "SIGURG" do
+          mold_and_restart!
+        end
         current_interval_index = 0
         @events.register(:ping!) do |w|
           # if there's a phased_restart under way don't step on its toes
@@ -568,7 +571,7 @@ module Puma
               end
             end
 
-            if in_phased_restart && workers_not_booted.zero?
+            if (in_phased_restart) && workers_not_booted.zero?
               @events.fire_on_booted!
               debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
               in_phased_restart = false
