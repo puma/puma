@@ -143,10 +143,11 @@ module Puma
 
         if @mold
           set_proc_title(role: "mold")
+          stopping = false
 
           Signal.trap("SIGTERM") do
-            PipeProtocols::Fork.write_to(@fork_pipe, value: PipeProtocols::Fork::STOP_READING)
             @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n"
+            stopping = true
           end
 
           worker_pids = []
@@ -159,11 +160,16 @@ module Puma
           @config.run_hooks(:on_mold_promotion, index, @log_writer, @hook_data)
 
           make_sure_pinging(server)
+          wakeup!
 
           begin
             while (idx = PipeProtocols::Fork.read_from(@fork_pipe))
+              break if stopping
+              next if idx == PipeProtocols::Fork::WAKEUP
+
               worker_pids << pid = spawn_worker(idx)
               @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n"
+              puts "Forked worker #{idx} with pid #{pid}"
             end
           rescue StandardError => e
             puts e

@@ -71,7 +71,7 @@ module Puma
     end
 
     def active_mold?
-      @mold && @mold.ping_timeout > Time.now
+      @mold && !@mold.term? && @mold.ping_timeout > Time.now
     end
 
     def spawn_workers
@@ -180,7 +180,7 @@ module Puma
       (@workers.map(&:pid) - idle_timed_out_worker_pids).empty?
     end
 
-    def check_workers(refork = false)
+    def check_workers(in_phased_restart)
       return if @next_check >= Time.now
 
       @next_check = Time.now + @options[:worker_check_interval]
@@ -188,8 +188,8 @@ module Puma
       timeout_workers
       wait_workers
       cull_workers
-      promote_mold if @options[:mold_worker]
-      spawn_workers unless @pending_phased_restart
+      promote_mold if @options[:mold_worker] && in_phased_restart != :restart
+      spawn_workers
 
       if all_workers_booted?
         # If we're running at proper capacity, check to see if
@@ -199,7 +199,7 @@ module Puma
         w = @workers.find { |x| x.phase != @phase }
 
         if w
-          if refork
+          if in_phased_restart == :refork
             log "- Stopping #{w.pid} for refork..."
           else
             log "- Stopping #{w.pid} for phased upgrade..."
@@ -248,7 +248,7 @@ module Puma
     def phased_restart(refork = false)
       return false if @options[:preload_app] && !refork
 
-      @pending_phased_restart = refork ? :refork : true
+      @pending_phased_restart = refork ? :refork : :restart
       wakeup!
 
       true
@@ -320,8 +320,9 @@ module Puma
       workers.max { |a, b| a.last_status[:requests_count].to_i <=> b.last_status[:requests_count].to_i }
     end
 
-    def mold_and_restart!(mold_candidate = most_experienced_worker)
+    def mold_and_refork!(mold_candidate = most_experienced_worker)
       @mold&.term
+      PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP)
       mold_candidate.phase = @phase + 1 # cluster phase will catch up next loop; we want this one to be picked as a mold
       phased_restart(true)
     end
@@ -346,9 +347,20 @@ module Puma
       end
       if @options[:mold_worker]
         Signal.trap "SIGURG" do
-          mold_and_restart!
+          mold_and_refork!
         end
         current_interval_index = 0
+        Signal.trap "SIGUSR1" do
+          File.open("foobar", "a+") { |f| f.write "I'm USR1-ing!" }
+          # stop any existing mold
+          @mold&.term
+          PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP)
+          # begin a full restart
+          phased_restart
+          # reset the mold_worker intervals
+          current_interval_index = 0
+          wakeup!
+        end
         @events.register(:ping!) do |w|
           # if there's a phased_restart under way don't step on its toes
           next unless all_workers_in_phase?
@@ -359,7 +371,7 @@ module Puma
           # wait before kicking off yet another phased restart
 
           current_interval_index += 1
-          mold_and_restart!(w)
+          mold_and_refork!(w)
         end
       end
 
@@ -498,8 +510,10 @@ module Puma
               break
             end
 
-            # if running with mold_worker, delay phased restart until a mold is promoted
-            delay_phased_restart = @options[:mold_worker] && !active_mold?
+            # optimization: if running with mold_worker and triggering a phased refork (URG),
+            # if you don't have an active mold, defer until promote_mold runs and a mold has a
+            # chance to start so that you get the newest generation
+            delay_phased_restart = @options[:mold_worker] && !active_mold? && @pending_phased_restart != :restart
 
             if @pending_phased_restart && !delay_phased_restart
               start_phased_restart(@pending_phased_restart == :refork)
@@ -509,10 +523,12 @@ module Puma
 
               workers_not_booted = @options[:workers]
               # worker 0 is not restarted on refork
+              # for mold_worker, whatever worker was promoted to mold has already been replaced
+              # with a new worker in the right phase, so also don't restart that
               workers_not_booted -= 1 if in_phased_restart == :refork
             end
 
-            check_workers(in_phased_restart == :refork)
+            check_workers(in_phased_restart)
 
             if read.wait_readable([0, @next_check - Time.now].max)
               req = read.read_nonblock(1)
@@ -542,6 +558,7 @@ module Puma
                 when PIPE_EXTERNAL_TERM
                   # external term, see worker method, Signal.trap "SIGTERM"
                   w.term!
+                  PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP) if w.mold?
                 when PIPE_TERM
                   w.term unless w.term?
                 when PIPE_PING
@@ -673,6 +690,7 @@ module Puma
       if @mold && @mold.ping_timeout <= Time.now
         log "- Mold timed out, terminating"
         @mold.term unless @mold.term?
+        PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP)
         @mold = nil
       end
 
