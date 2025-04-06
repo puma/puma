@@ -324,7 +324,7 @@ module Puma
       @mold&.term
       PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP)
       mold_candidate.phase = @phase + 1 # cluster phase will catch up next loop; we want this one to be picked as a mold
-      phased_restart(true)
+      phased_restart(:refork)
     end
 
     # We do this in a separate method to keep the lambda scope

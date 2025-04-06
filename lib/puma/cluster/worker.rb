@@ -146,7 +146,7 @@ module Puma
           stopping = false
 
           Signal.trap("SIGTERM") do
-            @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n"
+            @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
             stopping = true
           end
 
