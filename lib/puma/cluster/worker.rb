@@ -145,8 +145,8 @@ module Puma
           set_proc_title(role: "mold")
 
           Signal.trap("SIGTERM") do
-            PipeProtocols::Fork.write_to(@fork_pipe, value: PipeProtocols::Fork::STOP_READING)
-            @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n"
+            @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
+            @fork_pipe.close
           end
 
           worker_pids = []
@@ -159,14 +159,16 @@ module Puma
           @config.run_hooks(:on_mold_promotion, index, @log_writer, @hook_data)
 
           make_sure_pinging(server)
+          wakeup!
 
           begin
             while (idx = PipeProtocols::Fork.read_from(@fork_pipe))
               worker_pids << pid = spawn_worker(idx)
               @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n"
+              log "Forked worker #{idx} with pid #{pid}"
             end
           rescue StandardError => e
-            puts e
+            log "Fork pipe terminated with exception: #{e.inspect}"
           end
 
           @config.run_hooks(:on_mold_shutdown, index, @log_writer, @hook_data)
@@ -184,7 +186,7 @@ module Puma
             @thread.join rescue nil # just ignore exceptions here
             @thread = nil
           rescue => e
-            puts "While joining stat thread rescued #{e.class}: #{e.message}"
+            log "While joining stat thread rescued #{e.class}: #{e.message}"
           end
         end
 

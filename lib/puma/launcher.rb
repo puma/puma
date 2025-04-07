@@ -182,8 +182,8 @@ module Puma
       if clustered? && @runner.respond_to?(:fork_worker!) && @options[:fork_worker]
         @runner.fork_worker!
         true
-      elsif clustered? && @runner.respond_to?(:mold_and_restart!) && @options[:mold_worker]
-        @runner.mold_and_restart!
+      elsif clustered? && @runner.respond_to?(:mold_and_refork!) && @options[:mold_worker]
+        @runner.mold_and_refork!
         true
       else
         log "* refork called but not available."
