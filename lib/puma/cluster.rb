@@ -351,7 +351,6 @@ module Puma
         end
         current_interval_index = 0
         Signal.trap "SIGUSR1" do
-          File.open("foobar", "a+") { |f| f.write "I'm USR1-ing!" }
           # stop any existing mold
           @mold&.term
           # begin a full restart

@@ -137,10 +137,6 @@ module Puma
           server_thread.join
         end
 
-        # Invoke any worker shutdown hooks so they can prevent the worker
-        # exiting until any background operations are completed
-        @config.run_hooks(:before_worker_shutdown, index, @log_writer, @hook_data)
-
         if @mold
           set_proc_title(role: "mold")
 
@@ -173,6 +169,9 @@ module Puma
 
           @config.run_hooks(:on_mold_shutdown, index, @log_writer, @hook_data)
         end
+        # Invoke any worker shutdown hooks so they can prevent the worker
+        # exiting until any background operations are completed
+        @config.run_hooks(:before_worker_shutdown, index, @log_writer, @hook_data) unless @mold
       ensure
         @worker_write << "#{PIPE_TERM}#{Process.pid}\n"
       end
