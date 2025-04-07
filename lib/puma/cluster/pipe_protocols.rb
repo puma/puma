@@ -10,11 +10,8 @@ module Puma
         PAYLOAD_STRING = "l"
         PAYLOAD_SIZE = 4
 
-        # This value is used to signal that the pipe should not be read anymore
-        WAKEUP = -1
-
         def self.read_from(pipe)
-          pipe.read(PAYLOAD_SIZE, @read_buffer).unpack1(PAYLOAD_STRING)
+          pipe.read(PAYLOAD_SIZE, @read_buffer)&.unpack1(PAYLOAD_STRING)
         ensure
           @read_buffer.clear
         end

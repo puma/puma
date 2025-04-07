@@ -35,6 +35,7 @@ module Puma
     def stop_workers
       log "- Gracefully shutting down workers..."
       @workers.each { |x| x.term }
+      @tracked_molds.each { |x| x.term }
 
       begin
         loop do
@@ -322,7 +323,6 @@ module Puma
 
     def mold_and_refork!(mold_candidate = most_experienced_worker)
       @mold&.term
-      PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP)
       mold_candidate.phase = @phase + 1 # cluster phase will catch up next loop; we want this one to be picked as a mold
       phased_restart(:refork)
     end
@@ -354,7 +354,6 @@ module Puma
           File.open("foobar", "a+") { |f| f.write "I'm USR1-ing!" }
           # stop any existing mold
           @mold&.term
-          PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP)
           # begin a full restart
           phased_restart
           # reset the mold_worker intervals
@@ -558,7 +557,6 @@ module Puma
                 when PIPE_EXTERNAL_TERM
                   # external term, see worker method, Signal.trap "SIGTERM"
                   w.term!
-                  PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP) if w.mold?
                 when PIPE_TERM
                   w.term unless w.term?
                 when PIPE_PING
@@ -690,7 +688,6 @@ module Puma
       if @mold && @mold.ping_timeout <= Time.now
         log "- Mold timed out, terminating"
         @mold.term unless @mold.term?
-        PipeProtocols::Fork.write_to(@fork_writer, value: PipeProtocols::Fork::WAKEUP)
         @mold = nil
       end
 
