@@ -167,6 +167,15 @@ jobs:
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: actions/checkout@v4
 
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        if: |
+          (matrix.ruby == 'jruby-head') &&
+          (needs.skip_duplicate_runs.outputs.should_skip != 'true')
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: load ruby, ragel
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: ruby/setup-ruby-pkgs@v1
