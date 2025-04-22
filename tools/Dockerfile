@@ -2,6 +2,8 @@
 
 FROM ruby:3.2
 
+RUN apt-get update && apt-get install -y ragel
+
 # throw errors if Gemfile has been modified since Gemfile.lock
 RUN bundle config --global frozen 1
 
@@ -13,4 +15,4 @@ RUN bundle install
 RUN bundle exec rake compile
 
 EXPOSE 9292
-CMD bundle exec bin/puma test/rackup/hello.ru
+CMD ["bundle", "exec", "bin/puma", "test/rackup/hello.ru"]
