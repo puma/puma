@@ -47,6 +47,8 @@ jobs:
           - { os: windows-2022 , ruby: ucrt }
           - { os: windows-2022 , ruby: mswin }
           - { os: windows-2022 , ruby: 2.7  , no-ssl: ' no SSL' }
+          - { os: windows-11-arm, ruby: 3.4 }
+          - { os: windows-11-arm, ruby: head }
           - { os: ubuntu-22.04 , ruby: head , yjit: ' yjit'     }
           - { os: ubuntu-22.04 , ruby: 2.4  , rack-v: ' rack2'  }
           - { os: ubuntu-22.04 , ruby: 2.7  , no-ssl: ' no SSL' }
