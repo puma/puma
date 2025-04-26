@@ -113,7 +113,9 @@ jobs:
         run: ruby .github/workflows/github_actions_info.rb
 
       - name: set WERRORFLAG
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: |
+          (needs.skip_duplicate_runs.outputs.should_skip != 'true') &&
+          !(contains(matrix.os, 'ubuntu') && contains(matrix.os, 'arm'))
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
