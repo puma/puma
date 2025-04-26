@@ -38,29 +38,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-22.04, ubuntu-24.04, macos-13, macos-14, macos-15, windows-2022 ]
+        os: [ ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm,
+              macos-13, macos-14, macos-15,
+              windows-2022 ]
         ruby: [ 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, 3.2, 3.3, 3.4, head ]
         no-ssl: ['']
         rack-v: ['']
         yjit: ['']
         include:
-          - { os: windows-2022 , ruby: ucrt }
-          - { os: windows-2022 , ruby: mswin }
-          - { os: windows-2022 , ruby: 2.7  , no-ssl: ' no SSL' }
-          - { os: windows-11-arm, ruby: 3.4 }
-          - { os: windows-11-arm, ruby: head }
-          - { os: ubuntu-22.04 , ruby: head , yjit: ' yjit'     }
-          - { os: ubuntu-22.04 , ruby: 2.4  , rack-v: ' rack2'  }
-          - { os: ubuntu-22.04 , ruby: 2.7  , no-ssl: ' no SSL' }
-          - { os: ubuntu-22.04 , ruby: 3.2  , rack-v: ' rack2'  }
-          - { os: ubuntu-22.04 , ruby: 2.4  , rack-v: ' rack1'  }
+          - { os: windows-2022    , ruby:  ucrt }
+          - { os: windows-2022    , ruby:  mswin }
+          - { os: windows-2022    , ruby:  2.7  , no-ssl: ' no SSL' }
+          - { os: windows-11-arm  , ruby:  3.4 }
+          - { os: windows-11-arm  , ruby:  head }
+          - { os: ubuntu-22.04    , ruby:  head , yjit: ' yjit'     }
+          - { os: ubuntu-22.04    , ruby:  2.4  , rack-v: ' rack2'  }
+          - { os: ubuntu-22.04    , ruby:  2.7  , no-ssl: ' no SSL' }
+          - { os: ubuntu-22.04    , ruby:  3.2  , rack-v: ' rack2'  }
+          - { os: ubuntu-22.04    , ruby:  2.4  , rack-v: ' rack1'  }
 
         exclude:
-          - { os: ubuntu-24.04 , ruby:  2.4  }
-          - { os: ubuntu-24.04 , ruby:  2.5  }
-          - { os: ubuntu-24.04 , ruby:  2.6  }
-          - { os: ubuntu-24.04 , ruby:  2.7  }
-          - { os: ubuntu-24.04 , ruby: '3.0' }
+          - { os: ubuntu-24.04    , ruby:  2.4  }
+          - { os: ubuntu-24.04    , ruby:  2.5  }
+          - { os: ubuntu-24.04    , ruby:  2.6  }
+          - { os: ubuntu-24.04    , ruby:  2.7  }
+          - { os: ubuntu-24.04    , ruby: '3.0' }
+          - { os: ubuntu-24.04-arm, ruby:  2.5  }
+          - { os: ubuntu-24.04-arm, ruby:  2.6  }
+          - { os: ubuntu-24.04-arm, ruby:  3.1  }
+          - { os: ubuntu-24.04-arm, ruby:  3.3  }
           - { os: macos-14     , ruby:  2.4  }
           - { os: macos-14     , ruby:  2.5  }
           - { os: macos-14     , ruby:  2.6  }
