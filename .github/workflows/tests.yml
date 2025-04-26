@@ -81,7 +81,7 @@ jobs:
 
     steps:
       - name: repo checkout
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         uses: actions/checkout@v4
 
       - name: Compile Puma without SSL support
@@ -96,7 +96,7 @@ jobs:
         run: echo 'PUMA_CI_RACK=${{ matrix.rack-v }}' >> $GITHUB_ENV
 
       - name: load ruby
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         uses: ruby/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -109,7 +109,7 @@ jobs:
         timeout-minutes: 10
 
       - name: Repo & Commit Info
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         run: ruby .github/workflows/github_actions_info.rb
 
       - name: set WERRORFLAG
@@ -120,7 +120,7 @@ jobs:
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
       - name: compile
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         run:  bundle exec rake compile
 
       - name: Use yjit
@@ -131,7 +131,7 @@ jobs:
         run: echo 'RUBYOPT=--yjit' >> $GITHUB_ENV
 
       - name: test
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         timeout-minutes: 10
         run: test/runner --verbose
         env:
