@@ -124,7 +124,7 @@ For an in-depth discussion of the tradeoffs of thread and process count settings
 
 In cluster mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
 
-If the `WEB_CONCURRENCY` environment variable is set to a value > 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
+If the number of workers is greater than 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
 
 ```
 $ puma -w 3 --preload

@@ -32,22 +32,22 @@ class TestIntegrationCluster < TestIntegration
 
   def test_phased_restart_does_not_drop_connections_threads
     restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1
+      signal: :USR1, config: "preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections
     restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR1
+      signal: :USR1, config: "preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections_threads_fork_worker
     restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1, config: 'fork_worker'
+      signal: :USR1, config: "fork_worker; preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections_unix
     restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR1, unix: true
+      signal: :USR1, unix: true, config: "preload_app! false"
   end
 
   def test_pre_existing_unix
@@ -72,7 +72,7 @@ class TestIntegrationCluster < TestIntegration
 
     File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
 
-    cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix
+    cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix, config: "preload_app! false"
     connection = connect(nil, unix: true)
     restart_server connection
 
@@ -402,6 +402,7 @@ class TestIntegrationCluster < TestIntegration
       # to simulate worker 0 timeout, total boot time for all workers
       # needs to exceed single worker timeout
       workers #{worker_count}
+      preload_app! false
     CONFIG
 
     get_worker_pids 0, worker_count
@@ -702,7 +703,7 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def worker_respawn(phase = 1, size = workers, config = 'test/config/worker_shutdown_timeout_2.rb')
+  def worker_respawn(phase = 1, size = workers, config = 'test/config/worker_respawn.rb')
     threads = []
 
     cli_server "-w #{workers} -t 1:1 -C #{config} test/rackup/sleep_pid.ru"
