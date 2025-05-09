@@ -264,7 +264,10 @@ module Puma
     # Call once all configuration (included from rackup files)
     # is loaded to flesh out any defaults
     def clamp
+      run_mode_hooks
+
       @options.finalize_values
+      @options
     end
 
     # Injects the Configuration object into the env
@@ -396,6 +399,17 @@ module Puma
       @options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
+    end
+
+    def run_mode_hooks
+      workers_before = options[:workers]
+      key = workers_before > 0 ? :cluster : :single
+
+      options.all_of(key).each(&:call)
+
+      unless options[:workers] == workers_before
+        raise ArgumentError, "cannot change the number of workers inside a #{key} configuration hook"
+      end
     end
 
     def self.random_token
