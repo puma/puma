@@ -1107,7 +1107,7 @@ module Puma
 
     # Set the timeout for worker shutdown.
     #
-    # The default is 60 seconds.
+    # The default is 30 seconds.
     #
     # @note Cluster mode only.
     #

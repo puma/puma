@@ -22,11 +22,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: '3.1' }
-          - { os: ubuntu-20.04 , ruby: '3.2' }
+          - { os: ubuntu-22.04 , ruby: '3.1' }
+          - { os: ubuntu-22.04 , ruby: '3.2' }
           - { os: ubuntu-22.04 , ruby: '3.3' }
           - { os: ubuntu-22.04 , ruby: '3.4' }
-          - { os: ubuntu-22.04 , ruby: head  }
+          - { os: ubuntu-24.04 , ruby: head  }
 
     env:
       BUNDLE_GEMFILE: gems/puma-head-rack-v3.rb

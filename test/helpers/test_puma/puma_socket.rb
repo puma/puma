@@ -68,6 +68,8 @@ module TestPuma
     NO_ENTITY_BODY = Puma::STATUS_WITH_NO_ENTITY_BODY
     EMPTY_200 = [200, {}, ['']]
 
+    HAS_APPEND_AS_BYTES = ::String.new.respond_to? :append_as_bytes
+
     UTF8 = ::Encoding::UTF_8
 
     SET_TCP_NODELAY = Socket.const_defined?(:IPPROTO_TCP) && ::Socket.const_defined?(:TCP_NODELAY)
@@ -236,14 +238,22 @@ module TestPuma
             end
             if no_body && part.end_with?(RESP_SPLIT)
               response.times = times
-              return response << part
+              if HAS_APPEND_AS_BYTES
+                return response.append_as_bytes(part)
+              else
+                return response << part.b
+              end
             end
 
             unless content_length || chunked
               chunked ||= part.downcase.include? "\r\ntransfer-encoding: chunked\r\n"
               content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
             end
-            response << part
+            if HAS_APPEND_AS_BYTES
+              response.append_as_bytes part
+            else
+              response << part.b
+            end
             hdrs, body = response.split RESP_SPLIT, 2
             unless body.nil?
               # below could be simplified, but allows for debugging...
