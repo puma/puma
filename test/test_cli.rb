@@ -346,7 +346,11 @@ class TestCLI < PumaTest
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal 'test', cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.load
+    conf.clamp
+
+    assert_equal 'test', conf.environment
   ensure
     ENV.delete 'APP_ENV'
     ENV.delete 'RAILS_ENV'
@@ -358,7 +362,11 @@ class TestCLI < PumaTest
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal @environment, cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.load
+    conf.clamp
+
+    assert_equal @environment, conf.environment
   end
 
   def test_environment_rails_env
@@ -368,7 +376,11 @@ class TestCLI < PumaTest
     cli = Puma::CLI.new []
     cli.send(:setup_options)
 
-    assert_equal @environment, cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.load
+    conf.clamp
+
+    assert_equal @environment, conf.environment
   ensure
     ENV.delete 'RAILS_ENV'
   end
