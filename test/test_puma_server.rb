@@ -2156,4 +2156,58 @@ class TestPumaServer < PumaTest
     server_run(min_threads: 2, max_threads: 2, auto_trim_time: 1)
     refute @pool.instance_variable_get(:@auto_trim)
   end
+
+  def test_reject_when_pool_is_full_pool_full
+    sleep_duration = 0.5
+    server_run(queue_requests: false, reject_when_pool_is_full: true, min_threads: 1, max_threads: 1) do |env|
+      sleep sleep_duration
+      [200, {}, ["Slept for #{sleep_duration}"]]
+    end
+
+    first_request_thread = Thread.new do
+      send_http_read_response GET_11
+    end
+
+    sleep 0.1
+    rejected_response = nil
+    rejected_error = nil
+    begin
+      socket = new_socket
+      socket << GET_11
+      rejected_response = socket.read_response(timeout: 0.5)
+    rescue Errno::ECONNRESET, Errno::EPIPE, EOFError => e
+      rejected_error = e
+    ensure
+      socket&.close unless socket&.closed?
+    end
+
+    first_response = first_request_thread.value
+
+    assert_equal "HTTP/1.1 200 OK", first_response.status, "First request should succeed"
+    assert_equal "Slept for 0.5", first_response.body
+
+    if rejected_response
+      assert_equal "HTTP/1.1 503 Service Unavailable", rejected_response.status, "Second request should be rejected with 503"
+      assert_includes rejected_response.headers, "Connection: close"
+    elsif Puma::IS_WINDOWS
+      assert_kind_of Errno::ECONNRESET, rejected_error, "Expected ECONNRESET on Windows when response is nil"
+    else
+      flunk "Second request was neither rejected with 503 nor failed with an expected error"
+    end
+  end
+
+  def test_reject_when_pool_is_full_pool_not_full
+    server_run(queue_requests: false, reject_when_pool_is_full: true, min_threads: 1, max_threads: 2) do |env|
+      [200, {}, ["Quick response"]]
+    end
+
+    response1 = send_http_read_response GET_11
+    response2 = send_http_read_response GET_11
+
+    assert_equal "HTTP/1.1 200 OK", response1.status, "First request should succeed"
+    assert_equal "Quick response", response1.body
+
+    assert_equal "HTTP/1.1 200 OK", response2.status, "Second request should also succeed as pool was not full"
+    assert_equal "Quick response", response2.body
+  end
 end

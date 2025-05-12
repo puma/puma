@@ -98,6 +98,7 @@ module Puma
       @enable_keep_alives        = @options[:enable_keep_alives]
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
+      @reject_when_pool_is_full  = @options[:reject_when_pool_is_full]
 
       # make this a hash, since we prefer `key?` over `include?`
       @supported_http_methods =
@@ -364,6 +365,11 @@ module Puma
               if sock == check
                 break if handle_check
               else
+                if !@queue_requests && @reject_when_pool_is_full && @thread_pool.busy_threads >= @max_threads
+                  handle_full_capacity_rejection(sock)
+                  next
+                end
+
                 pool.wait_until_not_full
                 pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker]) if @clustered
 
@@ -683,6 +689,44 @@ module Puma
     # @!attribute [r] connected_ports
     def connected_ports
       @binder.connected_ports
+    end
+
+    private
+
+    def handle_full_capacity_rejection(listener_socket)
+      io = nil
+      begin
+        # Accept the connection just to write a 503 and close it.
+        io = listener_socket.accept_nonblock
+        response = "HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
+        begin
+          io.write_nonblock(response)
+        rescue IO::WaitWritable
+          # If the socket isn't immediately writable, we might be in a weird state.
+          # Try to wait a very short period, but prefer closing quickly.
+          # Use a short timeout for select to avoid blocking excessively.
+          if IO.select(nil, [io], nil, 0.05)
+            begin
+              io.write_nonblock(response)
+            rescue SystemCallError, IOError => e
+              # If it still fails, just proceed to close
+              @log_writer.debug "Error writing 503 after wait: #{e.message}" if @log_writer.debug?
+            end
+          end
+        rescue SystemCallError, IOError => e
+          # If write fails (e.g., client already disconnected), just proceed to close
+          @log_writer.debug "Error writing 503: #{e.message}" if @log_writer.debug?
+        end
+      rescue IO::WaitReadable, Errno::ECONNABORTED, Errno::EPROTO => e
+        # These are expected errors if the client disconnects before we handle it, or SSL handshake fails mid-accept.
+        @log_writer.debug "Error accepting connection for rejection: #{e.message}" if @log_writer.debug?
+        return # io will be nil or already problematic
+      rescue SystemCallError, IOError => e
+        @log_writer.debug "Error accepting/closing full capacity connection: #{e.message}" if @log_writer.debug?
+        # Fall through to ensure io.close is attempted if io is assigned.
+      ensure
+        io.close if io && !io.closed?
+      end
     end
   end
 end

@@ -1356,6 +1356,20 @@ module Puma
       @options[:http_content_length_limit] = limit
     end
 
+    # When `true`, and `queue_requests` is `false`, connections accepted when the
+    # thread pool is at maximum capacity will be sent an HTTP 503 response and then
+    # immediately closed. This provides immediate feedback to clients that the server is
+    # saturated, rather than having them wait for a worker thread to become available.
+    #
+    # The default is +false+.
+    #
+    # @example
+    #   reject_when_pool_is_full true
+    #
+    def reject_when_pool_is_full(answer=true)
+      @options[:reject_when_pool_is_full] = answer
+    end
+
     # Supported http methods, which will replace `Puma::Const::SUPPORTED_HTTP_METHODS`.
     # The value of `:any` will allows all methods, otherwise, the value must be
     # an array of strings.  Note that methods are all uppercase.
