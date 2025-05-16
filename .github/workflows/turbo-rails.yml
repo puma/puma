@@ -55,6 +55,11 @@ jobs:
           SRC="gem ['\"]puma['\"].*"
           DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
           sed -i "s#$SRC#$DST#" Gemfile
+          # use rack main with ruby master
+          SRC="gem 'rack'"
+          DST="if RUBY_PATCHLEVEL == -1\n  gem 'rack', git: 'https://github.com/rack/rack', ref: 'main'\nelse\n  gem 'rack'\nend"
+          sed -i "s#$SRC#$DST#" Gemfile
+          #
           SRC="gem ['\"]sqlite3['\"].*"
           DST="gem 'sqlite3', ENV['RAILS_VERSION'] == '8.0' ? '>= 2.1' : '~> 1.4'"
           sed -i "s#$SRC#$DST#" Gemfile
