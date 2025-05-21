@@ -22,7 +22,7 @@ module Puma
       @workers = []
       @next_check = Time.now
 
-      @phased_restart = false
+      @pending_phased_restart = false
     end
 
     # Returns the list of cluster worker handles.
@@ -238,7 +238,7 @@ module Puma
     def phased_restart(refork = false)
       return false if @options[:preload_app] && !refork
 
-      @phased_restart = refork ? :refork : true
+      @pending_phased_restart = refork ? :refork : true
       wakeup!
 
       true
@@ -457,11 +457,11 @@ module Puma
               break
             end
 
-            if @phased_restart
-              start_phased_restart(@phased_restart == :refork)
+            if @pending_phased_restart
+              start_phased_restart(@pending_phased_restart == :refork)
 
-              in_phased_restart = @phased_restart
-              @phased_restart = false
+              in_phased_restart = @pending_phased_restart
+              @pending_phased_restart = false
 
               workers_not_booted = @options[:workers]
               # worker 0 is not restarted on refork
