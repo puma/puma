@@ -140,7 +140,10 @@ module Puma
     # Delete the configured pidfile
     def delete_pidfile
       path = @options[:pidfile]
-      File.unlink(path) if path && File.exist?(path)
+      begin
+        File.unlink(path) if path
+      rescue Errno::ENOENT
+      end
     end
 
     # Begin async shutdown of the server
