@@ -81,6 +81,7 @@ module Puma
     end
 
     attr_reader :spawned, :trim_requested, :waiting
+    attr_accessor :min, :max
 
     # generate stats hash so as not to perform multiple locks
     # @return [Hash] hash containing stat info from ThreadPool
