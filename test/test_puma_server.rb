@@ -2261,4 +2261,21 @@ class TestPumaServer < PumaTest
   def test_stats_ok_before_run
     assert_equal({max_threads: @server.max_threads, requests_count: 0}, @server.stats)
   end
+
+  def test_update_thread_pool_min_max
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    assert_equal 1, @server.stats[:running]
+
+    @server.update_thread_pool_min_max(min: 3, max: 3)
+
+    # By making multiple requests, we can ensure that the pool is filled up to the max.
+    10.times { send_http_read_response(GET_11) }
+
+    assert_equal 3, @pool.max
+    assert_equal 3, @pool.min
+    assert_equal 3, @server.max_threads
+    assert_equal 3, @server.min_threads
+    assert_equal 3, @server.stats[:running]
+  end
 end
