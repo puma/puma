@@ -78,6 +78,7 @@ module Puma
     end
 
     attr_reader :spawned, :trim_requested, :waiting
+    attr_accessor :min, :max
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Style/HashEachMethods
