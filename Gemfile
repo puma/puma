@@ -20,7 +20,11 @@ when 'rack1'
   gem "rack"  , '~> 1.6'
 else
   gem "rackup", '>= 2.0'
-  gem "rack"  , '>= 2.2'
+  if RUBY_PATCHLEVEL == -1
+    gem "rack", git: "https://github.com/rack/rack", ref: "main"
+  else
+    gem "rack"  , '>= 2.2'
+  end
 end
 
 gem "jruby-openssl", :platform => "jruby"
