@@ -33,6 +33,30 @@ class Http11ParserTest < TestIntegration
     assert parser.nread == 0, "Number read after reset should be 0"
   end
 
+  def test_parse_chunked
+    parser = Puma::HttpParser.new
+    req = {}
+    http = "GET /?a=1 "
+    nread = parser.execute(req, http, 0)
+    http << "HTTP/1.1\r\n\r\n"
+    nread = parser.execute(req, http, nread)
+
+    assert nread == http.length, "Failed to parse the full HTTP request"
+    assert parser.finished?, "Parser didn't finish"
+    assert !parser.error?, "Parser had error"
+    assert nread == parser.nread, "Number read returned from execute does not match"
+
+    assert_equal '/', req['REQUEST_PATH']
+    assert_equal 'HTTP/1.1', req['SERVER_PROTOCOL']
+    assert_equal '/?a=1', req['REQUEST_URI']
+    assert_equal 'GET', req['REQUEST_METHOD']
+    assert_nil req['FRAGMENT']
+    assert_equal "a=1", req['QUERY_STRING']
+
+    parser.reset
+    assert parser.nread == 0, "Number read after reset should be 0"
+  end
+
   def test_parse_escaping_in_query
     parser = Puma::HttpParser.new
     req = {}
@@ -88,7 +112,7 @@ class Http11ParserTest < TestIntegration
   def test_parse_error
     parser = Puma::HttpParser.new
     req = {}
-    bad_http = "GET / SsUTF/1.1"
+    bad_http = "GET / SsUTF/1.1\r\n" # Is changing this ok?
 
     error = false
     begin
@@ -212,8 +236,8 @@ class Http11ParserTest < TestIntegration
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-#{rand_data(1024, 1024+(c*1024))}: Test\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
-        parser.reset
       end
+      parser.reset
     end
 
     # then that large mangled field values are caught
@@ -221,25 +245,26 @@ class Http11ParserTest < TestIntegration
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-Test: #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
-        parser.reset
       end
+      parser.reset
     end
 
+    # Not checking if lots of headers cause problems?
     # then large headers are rejected too
     get  = "GET /#{rand_data(10,120)} HTTP/1.1\r\n"
     get += "X-Test: test\r\n" * (80 * 1024)
     assert_raises Puma::HttpParserError do
       parser.execute({}, get, 0)
-      parser.reset
     end
+    parser.reset
 
     # finally just that random garbage gets blocked all the time
     10.times do |c|
       get = "GET #{rand_data(1024, 1024+(c*1024), false)} #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
-        parser.reset
       end
+      parser.reset
     end
   end
 

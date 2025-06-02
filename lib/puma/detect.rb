@@ -42,4 +42,8 @@ module Puma
   def self.forkable?
     HAS_FORK
   end
+
+  def self.ruby_parser?
+    defined?(RUBY_PARSER)
+  end
 end

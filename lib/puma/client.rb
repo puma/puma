@@ -10,6 +10,7 @@ end
 
 require_relative 'detect'
 require_relative 'io_buffer'
+require_relative 'null_io'
 require 'tempfile'
 
 if Puma::IS_JRUBY

@@ -256,7 +256,7 @@ class TestRequestHeadersInvalid < TestRequestBase
   def test_malformed_headers_no_return
     request = "GET / HTTP/1.1\r\nno-return: 10\nContent-Length: 11\r\n\r\nHello World"
 
-    msg = Puma::IS_JRUBY ?
+    msg = Puma::IS_JRUBY || Puma.ruby_parser? ?
       "Invalid HTTP format, parsing fails. Bad headers\nno-return: 10\\nContent-Length: 11" :
       "Invalid HTTP format, parsing fails. Bad headers\nNO_RETURN: 10\\nContent-Length: 11"
 
@@ -266,7 +266,7 @@ class TestRequestHeadersInvalid < TestRequestBase
   def test_malformed_headers_no_newline
     request = "GET / HTTP/1.1\r\nno-newline: 10\rContent-Length: 11\r\n\r\nHello World"
 
-    msg = Puma::IS_JRUBY ?
+    msg = Puma::IS_JRUBY || Puma.ruby_parser? ?
       "Invalid HTTP format, parsing fails. Bad headers\nno-newline: 10\rContent-Length: 11" :
       "Invalid HTTP format, parsing fails. Bad headers\nNO_NEWLINE: 10\rContent-Length: 11"
 
