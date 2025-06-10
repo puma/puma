@@ -135,7 +135,9 @@ class TestLauncher < PumaTest
   private
 
   def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings, **kw)
-    config.options[:binds] = ["tcp://127.0.0.1:#{UniquePort.call}"]
+    config.configure do |c|
+      c.bind "tcp://127.0.0.1:#{UniquePort.call}"
+    end
     Puma::Launcher.new(config, log_writer: lw, **kw)
   end
 end

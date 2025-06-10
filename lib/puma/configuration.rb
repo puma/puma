@@ -3,6 +3,7 @@
 require_relative 'plugin'
 require_relative 'const'
 require_relative 'dsl'
+require_relative 'events'
 
 module Puma
   # A class used for storing "leveled" configuration options.
@@ -125,6 +126,9 @@ module Puma
   # is done because an environment variable may have been modified while loading
   # configuration files.
   class Configuration
+    class NotLoadedError < StandardError; end
+    class NotClampedError < StandardError; end
+
     DEFAULTS = {
       auto_trim_time: 30,
       binds: ['tcp://0.0.0.0:9292'.freeze],
@@ -178,6 +182,8 @@ module Puma
 
       @options     = UserFileDefaultOptions.new(user_options, default_options)
       @plugins     = PluginLoader.new
+      @events      = @options[:events] || Events.new
+      @hooks       = {}
       @user_dsl    = DSL.new(@options.user_options, self)
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
@@ -191,9 +197,19 @@ module Puma
       if block
         configure(&block)
       end
+
+      @loaded = false
+      @clamped = false
     end
 
-    attr_reader :options, :plugins
+    attr_reader :plugins, :events, :hooks
+
+    def options
+      raise NotLoadedError, "ensure load is called before accessing options" unless @loaded
+      raise NotClampedError, "ensure clamp is called before accessing options" unless @clamped
+
+      @options
+    end
 
     def configure
       yield @user_dsl, @file_dsl, @default_dsl
@@ -243,12 +259,16 @@ module Puma
     end
 
     def load
+      @loaded = true
+
       config_files.each { |config_file| @file_dsl._load_from(config_file) }
 
       @options
     end
 
     def config_files
+      raise NotLoadedError, "ensure load is called before accessing config_files" unless @loaded
+
       files = @options.all_of(:config_files)
 
       return [] if files == ['-']
@@ -264,7 +284,15 @@ module Puma
     # Call once all configuration (included from rackup files)
     # is loaded to flesh out any defaults
     def clamp
-      @options.finalize_values
+      raise NotLoadedError, "ensure load is called before clamping the configuration" unless @loaded
+
+      @clamped = true
+
+      options.finalize_values
+
+      warn_hooks
+
+      options
     end
 
     # Injects the Configuration object into the env
@@ -283,11 +311,11 @@ module Puma
     # Indicate if there is a properly configured app
     #
     def app_configured?
-      @options[:app] || File.exist?(rackup)
+      options[:app] || File.exist?(rackup)
     end
 
     def rackup
-      @options[:rackup]
+      options[:rackup]
     end
 
     # Load the specified rackup file, pull options from
@@ -296,9 +324,9 @@ module Puma
     def app
       found = options[:app] || load_rackup
 
-      if @options[:log_requests]
+      if options[:log_requests]
         require_relative 'commonlogger'
-        logger = @options[:logger]
+        logger = options[:logger]
         found = CommonLogger.new(found, logger)
       end
 
@@ -307,7 +335,7 @@ module Puma
 
     # Return which environment we're running in
     def environment
-      @options[:environment]
+      options[:environment]
     end
 
     def load_plugin(name)
@@ -320,13 +348,14 @@ module Puma
     def run_hooks(key, arg, log_writer, hook_data = nil)
       log_writer.debug "Running #{key} hooks"
 
-      @options.all_of(key).each do |b|
+      options.all_of(key).each do |hook_options|
         begin
-          if Array === b
-            hook_data[b[1]] ||= Hash.new
-            b[0].call arg, hook_data[b[1]]
+          block = hook_options[:block]
+          if id = hook_options[:id]
+            hook_data[id] ||= Hash.new
+            block.call arg, hook_data[id]
           else
-            b.call arg
+            block.call arg
           end
         rescue => e
           log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
@@ -336,7 +365,7 @@ module Puma
     end
 
     def final_options
-      @options.final_options
+      options.final_options
     end
 
     def self.temp_path
@@ -344,6 +373,12 @@ module Puma
 
       t = (Time.now.to_f * 1000).to_i
       "#{Dir.tmpdir}/puma-status-#{t}-#{$$}"
+    end
+
+    def self.random_token
+      require 'securerandom' unless defined?(SecureRandom)
+
+      SecureRandom.hex(16)
     end
 
     private
@@ -386,22 +421,33 @@ module Puma
       rack_app, rack_options = rack_builder.parse_file(rackup)
       rack_options = rack_options || {}
 
-      @options.file_options.merge!(rack_options)
+      options.file_options.merge!(rack_options)
 
       config_ru_binds = []
       rack_options.each do |k, v|
         config_ru_binds << v if k.to_s.start_with?("bind")
       end
 
-      @options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
+      options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
     end
 
-    def self.random_token
-      require 'securerandom' unless defined?(SecureRandom)
+    def warn_hooks
+      return if options[:workers] > 0
+      return if options[:silence_fork_callback_warning]
 
-      SecureRandom.hex(16)
+      @hooks.each do |key, method|
+        options.all_of(key).each do |hook_options|
+          next unless hook_options[:cluster_only]
+
+          LogWriter.stdio.log(<<~MSG)
+            Warning: You specified code to run in a `#{method}` block,
+            but Puma is not configured to run in cluster mode (worker count > 0),
+            so your `#{method}` block will not run.
+          MSG
+        end
+      end
     end
   end
 end
