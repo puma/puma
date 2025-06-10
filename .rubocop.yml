@@ -1,5 +1,7 @@
-require:
+plugins:
   - rubocop-performance
+  
+require:
   - ./cops/tests_puma.rb
 
 AllCops:
