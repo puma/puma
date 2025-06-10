@@ -95,7 +95,7 @@ class TestRequestInvalidMultiple < PumaTest
 
     if status >= 400
       if @server.leak_stack_on_error
-        cl = response.headers_hash['Content-Length'].to_i
+        cl = response.headers_hash['content-length'].to_i
         refute_equal 0, cl
       end
       socket.req_write GET_11
