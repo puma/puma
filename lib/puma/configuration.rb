@@ -182,10 +182,6 @@ module Puma
       @file_dsl    = DSL.new(@options.file_options, self)
       @default_dsl = DSL.new(@options.default_options, self)
 
-      if !@options[:prune_bundler]
-        default_options[:preload_app] = (@options[:workers] > 1) && Puma.forkable?
-      end
-
       @puma_bundler_pruned = env.key? 'PUMA_BUNDLER_PRUNED'
 
       if block
@@ -264,7 +260,10 @@ module Puma
     # Call once all configuration (included from rackup files)
     # is loaded to flesh out any defaults
     def clamp
+      set_conditional_default_options
+
       @options.finalize_values
+      @options
     end
 
     # Injects the Configuration object into the env
@@ -396,6 +395,11 @@ module Puma
       @options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
+    end
+
+    def set_conditional_default_options
+      options.default_options[:preload_app] = !options[:prune_bundler] &&
+        (options[:workers] > 1) && Puma.forkable?
     end
 
     def self.random_token
