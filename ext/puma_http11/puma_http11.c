@@ -12,6 +12,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "http11_parser.h"
+#include "child_subreaper.h"
 
 #ifndef MANAGED_STRINGS
 
@@ -477,6 +478,8 @@ void Init_puma_http11(void)
 
   eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eStandardError);
   rb_global_variable(&eHttpParserError);
+
+  rb_define_singleton_method(mPuma, "enable_child_subreaper", child_subreaper_enable, 0);
 
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
   rb_define_method(cHttpParser, "initialize", HttpParser_init, 0);
