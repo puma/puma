@@ -65,7 +65,7 @@ class TestResponseHeader < PumaTest
     server_run app: ->(env) { [200, {'Content-Length' => 500}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nContent-Length: 500\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\ncontent-length: 500\r\n\r\n/, data)
   end
 
   def assert_ignore_header(name, value, opts={})
@@ -87,7 +87,7 @@ class TestResponseHeader < PumaTest
       refute_includes data, "HTTP/1.1 103 Early Hints"
     end
 
-    refute_includes data, "#{name}: #{value}"
+    refute_includes data, "#{name.downcase}: #{value}"
   end
 
   # The header must not contain a Status key.
@@ -100,7 +100,7 @@ class TestResponseHeader < PumaTest
     server_run app: ->(env) { [200, {'Teapot-Status' => 'Boiling'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nTeapot-Status: Boiling\r\nContent-Length: 0\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\nteapot-status: Boiling\r\ncontent-length: 0\r\n\r\n/, data)
   end
 
   # Special headers starting “rack.” are for communicating with the server, and must not be sent back to the client.
@@ -113,7 +113,7 @@ class TestResponseHeader < PumaTest
     server_run app: ->(env) { [200, {'Racket' => 'Bouncy'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nRacket: Bouncy\r\nContent-Length: 0\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\nracket: Bouncy\r\ncontent-length: 0\r\n\r\n/, data)
   end
 
   # testing header key must conform rfc token specification
@@ -154,7 +154,7 @@ class TestResponseHeader < PumaTest
     server_run app: ->(env) { [200, {'set-cookie' => ['z=1', 'a=2']}, ['Hello']] }
     data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
 
-    resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\nContent-Length: 5\r\n\r\n"
+    resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\ncontent-length: 5\r\n\r\n"
     assert_includes data, resp
   end
 end

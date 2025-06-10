@@ -290,8 +290,8 @@ class TestIntegration < PumaTest
           case part
           when String
             unless content_length || chunked
-              chunked ||= part.include? "\r\nTransfer-Encoding: chunked\r\n"
-              content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
+              chunked ||= part.include? "\r\ntransfer-encoding: chunked\r\n"
+              content_length = (t = part[/^content-length: (\d+)/i , 1]) ? t.to_i : nil
             end
 
             response << part
