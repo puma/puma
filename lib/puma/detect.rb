@@ -18,6 +18,8 @@ module Puma
 
   IS_LINUX = !(IS_OSX || IS_WINDOWS)
 
+  IS_ARM = RUBY_PLATFORM.include? 'aarch64'
+
   # @version 5.2.0
   IS_MRI = RUBY_ENGINE == 'ruby'
 
