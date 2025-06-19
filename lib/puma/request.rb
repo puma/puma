@@ -90,7 +90,10 @@ module Puma
 
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
-      #
+      # 
+      # Note: The `RACK_RESPONSE_FINISHED` and `RACK_AFTER_REPLY` keys intentionally
+      # share the same array to avoid duplicating behavior. This ensures that any
+      # callable added to either key will be executed when the request is finished.
       env[RACK_RESPONSE_FINISHED] = env[RACK_AFTER_REPLY] ||= []
 
       begin
