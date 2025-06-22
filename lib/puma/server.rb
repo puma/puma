@@ -611,18 +611,22 @@ module Puma
       end
     end
 
+    # Without a thread, `'IO#write': can't be called from trap context (ThreadError)`
+    # may be raised
+    #
     def notify_safely(message)
-      @notify << message
-    rescue IOError, NoMethodError, Errno::EPIPE, Errno::EBADF
-      # The server, in another thread, is shutting down
-      Puma::Util.purge_interrupt_queue
-    rescue RuntimeError => e
-      # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
-      if e.message.include?('IOError')
-        Puma::Util.purge_interrupt_queue
-      else
-        raise e
-      end
+      exception = nil
+      Thread.new do
+        begin
+          @notify << message
+        rescue IOError, NoMethodError, Errno::EPIPE, Errno::EBADF
+          # The server, in another thread, is shutting down
+          Puma::Util.purge_interrupt_queue
+        rescue RuntimeError => e
+          exception = e
+        end
+      end.join
+      raise exception if exception
     end
     private :notify_safely
 
