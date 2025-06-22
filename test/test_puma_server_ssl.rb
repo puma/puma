@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Nothing in this file runs if Puma isn't compiled with ssl support
 #
 # helper is required first since it loads Puma, which needs to be
@@ -82,7 +84,7 @@ class TestPumaServerSSL < PumaTest
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
     @bind_port = @server.connected_ports[0]
 
-    socket = send_http "HEAD",  ctx: new_ctx
+    socket = send_http "HEAD", ctx: new_ctx
     sleep 0.1
 
     # Capture the amount of threads being used after connecting and being idle
