@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require "puma/events"
 require "puma/server"

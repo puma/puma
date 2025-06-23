@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module TestPuma
 
   # A subclass of String, allows processing the response returned by

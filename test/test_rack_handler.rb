@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 # Most tests check that ::Rack::Handler::Puma works by itself

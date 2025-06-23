@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module TestApps
 
   # call with "GET /sleep<d> HTTP/1.1\r\n\r\n", where is the number of

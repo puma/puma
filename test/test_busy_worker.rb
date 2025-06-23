@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/test_puma/puma_socket"
 

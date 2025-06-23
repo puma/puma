@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/ssl" if ::Puma::HAS_SSL
 require_relative "helpers/tmp_path"
