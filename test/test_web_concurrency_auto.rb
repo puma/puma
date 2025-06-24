@@ -26,14 +26,19 @@ class TestWebConcurrencyAuto < TestIntegration
   def test_web_concurrency_with_concurrent_ruby_available
     skip_unless :fork
 
-    app = "app { |_| [200, {}, [Concurrent.available_processor_count.to_i.to_s]] }\n"
+    app = <<~APP
+      cpus = Concurrent.available_processor_count.to_i
+      silence_single_worker_warning if cpus == 1
+      app { |_| [200, {}, [cpus.to_s]] }
+    APP
 
     cli_server set_pumactl_args, env: ENV_WC_TEST, config: app
 
     # this is the value of `@options[:workers]` in Puma::Cluster
     actual = @server_log[/\* +Workers: +(\d+)$/, 1]
 
-    get_worker_pids 0, 2 # make sure some workers have booted
+    workers = actual.to_i == 1 ? 1 : 2
+    get_worker_pids 0, workers # make sure at least one or more workers booted
 
     expected = send_http_read_resp_body GET_11
 
