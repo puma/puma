@@ -50,6 +50,9 @@ module Puma
       start_control
 
       @server = server = start_server
+
+      Thread.current.puma_server = server
+
       server_thread = server.run
 
       log "Use Ctrl-C to stop"
