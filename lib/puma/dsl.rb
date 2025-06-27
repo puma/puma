@@ -1139,10 +1139,10 @@ module Puma
     # @see Puma::Cluster#cull_workers
     #
     def worker_culling_strategy(strategy)
-      stategy = strategy.to_sym
+      strategy = strategy.to_sym
 
       if ![:youngest, :oldest].include?(strategy)
-        raise "Invalid value for worker_culling_strategy - #{stategy}"
+        raise "Invalid value for worker_culling_strategy - #{strategy}"
       end
 
       @options[:worker_culling_strategy] = strategy
