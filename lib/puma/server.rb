@@ -629,32 +629,11 @@ module Puma
     # Wait for all outstanding requests to finish.
     #
     def graceful_shutdown
-      if options[:shutdown_debug]
-        threads = Thread.list
-        total = threads.size
-
-        pid = Process.pid
-
-        $stdout.syswrite "#{pid}: === Begin thread backtrace dump ===\n"
-
-        threads.each_with_index do |t,i|
-          $stdout.syswrite "#{pid}: Thread #{i+1}/#{total}: #{t.inspect}\n"
-          $stdout.syswrite "#{pid}: #{t.backtrace.join("\n#{pid}: ")}\n\n"
-        end
-        $stdout.syswrite "#{pid}: === End thread backtrace dump ===\n"
-      end
-
       if @status != :restart
         @binder.close
       end
 
-      if @thread_pool
-        if timeout = options[:force_shutdown_after]
-          @thread_pool.shutdown timeout.to_f
-        else
-          @thread_pool.shutdown
-        end
-      end
+      @thread_pool.shutdown(options[:force_shutdown_after])
     end
 
     def notify_safely(message)

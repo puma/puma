@@ -1266,10 +1266,13 @@ module Puma
     # threads will be written to $stdout. This can help figure
     # out why shutdown is hanging.
     #
-    def shutdown_debug(val=true)
-      @options[:shutdown_debug] = val
+    # If `on_force` is true, the backtraces will be written only
+    # when the shutdown is forced i.e. not graceful.
+    #
+    # @see force_shutdown_after
+    def shutdown_debug(val = true, on_force: false)
+      @options[:shutdown_debug] = val && on_force ? :on_force : val
     end
-
 
     # Maximum delay of worker accept loop.
     #
