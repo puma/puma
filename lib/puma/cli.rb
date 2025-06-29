@@ -140,6 +140,12 @@ module Puma
             user_config.fork_worker(*args.compact)
           end
 
+          o.on "-m", "--mold_worker=[REQUESTS]", OptionParser::DecimalInteger,
+            "Mold new workers from existing worker. Cluster mode only",
+            "Auto-mold after REQUESTS (default 1000)" do |*args|
+            user_config.mold_worker(*args.compact)
+          end
+
           o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
             $LOAD_PATH.unshift(*arg.split(':'))
           end
