@@ -139,6 +139,7 @@ module Puma
       fiber_per_request: !!ENV.fetch("PUMA_FIBER_PER_REQUEST", false),
       # Number of seconds to wait until we get the first data for the request.
       first_data_timeout: 30,
+      force_shutdown_after: -1,
       http_content_length_limit: nil,
       # Number of seconds to wait until the next request before shutting down.
       idle_timeout: nil,
