@@ -77,7 +77,7 @@ module Puma
       @shutdown_mutex = Mutex.new
     end
 
-    attr_reader :spawned, :trim_requested, :waiting
+    attr_reader :spawned, :waiting, :trim_requested, :workers
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Style/HashEachMethods
@@ -397,7 +397,7 @@ module Puma
     # Next, wait an extra +@shutdown_grace_time+ seconds then force-kill remaining
     # threads. Finally, wait 1 second for remaining threads to exit.
     #
-    def shutdown(timeout=-1)
+    def shutdown(timeout, shutdown_debugger = nil)
       threads = with_mutex do
         @shutdown = true
         @trim_requested = @spawned
@@ -425,6 +425,8 @@ module Puma
         # Wait +timeout+ seconds for threads to finish.
         join.call(timeout)
 
+        shutdown_debugger&.call(threads, "Shutdown timeout exceeded")
+
         # If threads are still running, raise ForceShutdown and wait to finish.
         @shutdown_mutex.synchronize do
           @force_shutdown = true
@@ -433,6 +435,8 @@ module Puma
           end
         end
         join.call(@shutdown_grace_time)
+
+        shutdown_debugger&.call(threads, "Shutdown grace timeout exceeded")
 
         # If threads are _still_ running, forcefully kill them and wait to finish.
         threads.each(&:kill)
