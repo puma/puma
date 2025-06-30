@@ -35,9 +35,9 @@ changed_files = subprocess.check_output(["git", "diff", "--name-only"]).strip()
          urllib.request.urlopen(tar_url) as in_file:
             f.write(in_file.read())
 
-        print("Unzipping...")
+        ("Unzipping...")
          tarfile.open(tar_file, "r:gz") as tar_ref:
-            def is_within_directory(directory, target):
+             is_within_directory(directory, target):
 
                 abs_directory = os.path.abspath(directory)
                 abs_target = os.path.abspath(target)
