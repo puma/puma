@@ -1,3 +1,5 @@
+gh pr checkout 2311
+
 # frozen_string_literal: true
 
 require 'optparse'
