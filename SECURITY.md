@@ -1,13 +1,2 @@
-# Security Policy
-
-## Supported Versions
-
-| Version       | Supported  |
-| :------------ | :--------: |
-| Latest release in 6.x | ✅ |
-| Latest release in 5.x | ✅ |
-| All other releases    | ❌ |
-
-## Reporting a Vulnerability
-
-Contact [Evan Phoenix.](https://github.com/evanphx)
+If you believe you have found a security issue in the software in this
+repository, please consult https://github.com/nodejs/node/blob/HEAD/SECURITY.md.
