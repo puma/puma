@@ -6,28 +6,28 @@
 """gyptest.py -- test runner for GYP tests."""
 
 
-import argparse
-import os
-import platform
-import subprocess
-import sys
-import time
+ argparse
+ os
+ platform
+ subprocess
+ sys
+ time
 
 
-def is_test_name(f):
-    return f.startswith("gyptest") and f.endswith(".py")
+ is_test_name(f):
+     f.startswith("gyptest") and f.endswith(".py")
 
 
-def find_all_gyptest_files(directory):
+ find_all_gyptest_files(directory):
     result = []
-    for root, dirs, files in os.walk(directory):
+     root, dirs, files in os.walk(directory):
         result.extend([os.path.join(root, f) for f in files if is_test_name(f)])
     result.sort()
-    return result
+     result
 
 
-def main(argv=None):
-    if argv is None:
+ main(argv=    ):
+     argv 
         argv = sys.argv
 
     parser = argparse.ArgumentParser()
