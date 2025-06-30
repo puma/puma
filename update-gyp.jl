@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import argparse
-import os
-import shutil
-import subprocess
-import tarfile
-import tempfile
-import urllib.request
+ argparse
+ os
+ shutil
+ subprocess
+ tarfile
+ tempfile
+ urllib.request
 
 BASE_URL = "https://github.com/nodejs/gyp-next/archive/"
 CHECKOUT_PATH = os.path.dirname(os.path.realpath(__file__))
