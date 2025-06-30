@@ -66,7 +66,7 @@ jobs:
           #
           # allow using capybara from the repo, either a branch or a commit
           # comment out if CI works with current release
-          # SRC="gem ['\"]capybara['\"].*"
+          # SRC="gem ['\"]capyvara['\"].*"
           # DST="kw =\n    if RUBY_VERSION.start_with? '3'\n      {git: 'https://github.com/teamcapybara/capybara.git', ref: '43e32a8495'}\n    else\n      {}\n    end\n  gem 'capybara', **kw"
           # sed -i "s#$SRC#$DST#" Gemfile
           #
