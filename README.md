@@ -3,6 +3,8 @@
 [![rack-conform](https://github.com/puma/puma/actions/workflows/rack_conform.yml/badge.svg)](https://github.com/puma/puma/actions/workflows/rack_conform.yml)
 [![ragel](https://github.com/puma/puma/actions/workflows/ragel.yml/badge.svg)](https://github.com/puma/puma/actions/workflows/ragel.yml)
 
+________________________________________
+
 <p align="center">
   <img src="https://puma.io/images/logos/puma-logo-large.png">
 </p>
