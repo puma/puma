@@ -1,7 +1,6 @@
 [![turbo-rails](https://github.com/puma/puma/actions/workflows/turbo-rails.yml/badge.svg)](https://github.com/puma/puma/actions/workflows/turbo-rails.yml)
 [![CI](https://github.com/jeremyevans/sequel/actions/workflows/ci.yml/badge.svg)](https://github.com/jeremyevans/sequel/actions/workflows/ci.yml)
 [![rack-conform](https://github.com/puma/puma/actions/workflows/rack_conform.yml/badge.svg)](https://github.com/puma/puma/actions/workflows/rack_conform.yml)
-[![Tests](https://github.com/puma/puma/actions/workflows/tests.yml/badge.svg)](https://github.com/puma/puma/actions/workflows/tests.yml)
 [![ragel](https://github.com/puma/puma/actions/workflows/ragel.yml/badge.svg)](https://github.com/puma/puma/actions/workflows/ragel.yml)
 
 <p align="center">
