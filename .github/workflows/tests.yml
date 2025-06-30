@@ -195,7 +195,6 @@ jobs:
           Compile outcome: ${{ steps.compile.outcome }}
         # every step must define a `uses` or `run` key
         run: echo NOOP
-
       - name: test
         id: test
         timeout-minutes: ${{ matrix.tto }}
