@@ -1,0 +1,42 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    outputs:
+      release_created:  ${{ steps.release.outputs.release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GH_USER_TOKEN }}
+          # Standard Conventional Commits: `feat` and `fix`
+          # node-gyp subdirectories: `bin`, `gyp`, `lib`, `src`, `test`
+          # node-gyp subcommands: `build`, `clean`, `configure`, `install`, `list`, `rebuild`, `remove`
+          # Core abstract category: `deps`
+          # Languages/platforms: `python`, `lin`, `linux`, `mac`, `macos`, `win`, `window`, `zos`
+          # Documentation: `doc`, `docs`, `readme`
+          # Standard Conventional Commits: `chore` (under "Miscellaneous")
+          # Miscellaneous abstract categories: `refactor`, `ci`, `meta`
+
+  npm-publish:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # to generate npm provenance statements
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
