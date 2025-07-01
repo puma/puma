@@ -727,9 +727,7 @@ module Puma
     #   end
     #
     def before_fork(&block)
-      warn_if_in_single_mode('before_fork')
-
-      process_hook :before_fork, nil, block, 'before_fork'
+      process_hook :before_fork, nil, block, 'before_fork', cluster_only: true
     end
 
     # Code to run in a worker when it boots to setup
@@ -745,9 +743,7 @@ module Puma
     #   end
     #
     def on_worker_boot(key = nil, &block)
-      warn_if_in_single_mode('on_worker_boot')
-
-      process_hook :before_worker_boot, key, block, 'on_worker_boot'
+      process_hook :before_worker_boot, key, block, 'on_worker_boot', cluster_only: true
     end
 
     # Code to run immediately before a worker shuts
@@ -766,9 +762,7 @@ module Puma
     #   end
     #
     def on_worker_shutdown(key = nil, &block)
-      warn_if_in_single_mode('on_worker_shutdown')
-
-      process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown'
+      process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown', cluster_only: true
     end
 
     # Code to run in the master right before a worker is started. The worker's
@@ -784,9 +778,7 @@ module Puma
     #   end
     #
     def on_worker_fork(&block)
-      warn_if_in_single_mode('on_worker_fork')
-
-      process_hook :before_worker_fork, nil, block, 'on_worker_fork'
+      process_hook :before_worker_fork, nil, block, 'on_worker_fork', cluster_only: true
     end
 
     # Code to run in the master after a worker has been started. The worker's
@@ -802,9 +794,7 @@ module Puma
     #   end
     #
     def after_worker_fork(&block)
-      warn_if_in_single_mode('after_worker_fork')
-
-      process_hook :after_worker_fork, nil, block, 'after_worker_fork'
+      process_hook :after_worker_fork, nil, block, 'after_worker_fork', cluster_only: true
     end
 
     alias_method :after_worker_boot, :after_worker_fork
@@ -817,7 +807,7 @@ module Puma
     #   end
     #
     def on_booted(&block)
-      @config.options[:events].on_booted(&block)
+      @config.events.on_booted(&block)
     end
 
     # Code to run after puma is stopped (works for both single and cluster modes).
@@ -828,7 +818,7 @@ module Puma
     #   end
     #
     def on_stopped(&block)
-      @config.options[:events].on_stopped(&block)
+      @config.events.on_stopped(&block)
     end
 
     # When `fork_worker` is enabled, code to run in Worker 0
@@ -850,9 +840,7 @@ module Puma
     #   end
     #
     def on_refork(key = nil, &block)
-      warn_if_in_single_mode('on_refork')
-
-      process_hook :before_refork, key, block, 'on_refork'
+      process_hook :before_refork, key, block, 'on_refork', cluster_only: true
     end
 
     # When `fork_worker` is enabled, code to run in Worker 0
@@ -1409,30 +1397,19 @@ module Puma
       end
     end
 
-    def process_hook(options_key, key, block, meth)
+    def process_hook(options_key, key, block, method, cluster_only: false)
+      @config.hooks[options_key] = method
+
       @options[options_key] ||= []
-      if ON_WORKER_KEY.include? key.class
-        @options[options_key] << [block, key.to_sym]
+      hook_options = { block: block, cluster_only: cluster_only }
+      hook_options[:id] = if ON_WORKER_KEY.include? key.class
+        key.to_sym
       elsif key.nil?
-        @options[options_key] << block
+        nil
       else
-        raise "'#{meth}' key must be String or Symbol"
+        raise "'#{method}' key must be String or Symbol"
       end
-    end
-
-    def warn_if_in_single_mode(hook_name)
-      return if @options[:silence_fork_callback_warning]
-      # user_options (CLI) have precedence over config file
-      workers_val = @config.options.user_options[:workers] || @options[:workers] ||
-        @config.puma_default_options[:workers] || 0
-      if workers_val == 0
-        log_string =
-          "Warning: You specified code to run in a `#{hook_name}` block, " \
-          "but Puma is not configured to run in cluster mode (worker count > 0), " \
-          "so your `#{hook_name}` block will not run."
-
-        LogWriter.stdio.log(log_string)
-      end
+      @options[options_key] << hook_options
     end
   end
 end
