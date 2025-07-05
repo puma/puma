@@ -441,12 +441,20 @@ class TestConfigFile < PumaTest
     assert_equal 150, conf.options[:worker_shutdown_timeout]
   end
 
-  def test_config_files_with_float_convert
-    conf = Puma::Configuration.new(config_files: ['test/config/with_float_convert.rb']) do
+  def test_config_files_max_fast_inline_infinity
+    conf = Puma::Configuration.new(config_files: ['test/config/max_fast_inline_infinity.rb']) do
     end
     conf.load
 
-    assert_equal Float::INFINITY, conf.options[:max_fast_inline]
+    assert_equal Float::INFINITY, conf.options[:max_keep_alive]
+  end
+
+  def test_config_max_keep_alive_infinity
+    conf = Puma::Configuration.new(config_files: ['test/config/max_keep_alive_infinity.rb']) do
+    end
+    conf.load
+
+    assert_equal Float::INFINITY, conf.options[:max_keep_alive]
   end
 
   def test_config_files_with_symbol_convert
