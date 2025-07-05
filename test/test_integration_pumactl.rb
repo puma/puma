@@ -242,9 +242,11 @@ class TestIntegrationPumactl < TestIntegration
       'backlog' => 0,
       'running' => min_threads,
       'pool_capacity'  => max_threads,
+      'busy_threads'   => 0,
+      'backlog_max' => 0,
       'max_threads'    => max_threads,
       'requests_count' => 0,
-      'busy_threads'   => 0
+      'reactor_max'    => 0,
     }
 
     pids = []
