@@ -48,6 +48,7 @@ module Puma
       # to shorten @shutdown_grace_time from SHUTDOWN_GRACE_TIME. Parallel CI
       # makes stubbing constants difficult.
       @shutdown_grace_time = Float(options[:pool_shutdown_grace_time] || SHUTDOWN_GRACE_TIME)
+      @shutdown_debug = options[:shutdown_debug]
       @block = block
       @out_of_band = options[:out_of_band]
       @clean_thread_locals = options[:clean_thread_locals]
@@ -77,7 +78,7 @@ module Puma
       @shutdown_mutex = Mutex.new
     end
 
-    attr_reader :spawned, :trim_requested, :waiting
+    attr_reader :spawned, :waiting, :trim_requested
 
     def self.clean_thread_locals
       Thread.current.keys.each do |key| # rubocop: disable Style/HashEachMethods
@@ -397,7 +398,7 @@ module Puma
     # Next, wait an extra +@shutdown_grace_time+ seconds then force-kill remaining
     # threads. Finally, wait 1 second for remaining threads to exit.
     #
-    def shutdown(timeout=-1)
+    def shutdown(timeout)
       threads = with_mutex do
         @shutdown = true
         @trim_requested = @spawned
@@ -408,6 +409,10 @@ module Puma
         @reaper&.stop
         # dup workers so that we join them all safely
         @workers.dup
+      end
+
+      if @shutdown_debug == true
+        shutdown_debug("Shutdown initiated")
       end
 
       if timeout == -1
@@ -424,6 +429,9 @@ module Puma
 
         # Wait +timeout+ seconds for threads to finish.
         join.call(timeout)
+        if @shutdown_debug == :on_force && !threads.empty?
+          shutdown_debug("Shutdown timeout exceeded")
+        end
 
         # If threads are still running, raise ForceShutdown and wait to finish.
         @shutdown_mutex.synchronize do
@@ -433,6 +441,9 @@ module Puma
           end
         end
         join.call(@shutdown_grace_time)
+        if @shutdown_debug == :on_force && !threads.empty?
+          shutdown_debug("Shutdown grace timeout exceeded")
+        end
 
         # If threads are _still_ running, forcefully kill them and wait to finish.
         threads.each(&:kill)
@@ -441,6 +452,23 @@ module Puma
 
       @spawned = 0
       @workers = []
+    end
+
+    private
+
+    def shutdown_debug(message)
+      pid = Process.pid
+      threads = Thread.list
+
+      $stdout.syswrite "#{pid}: #{message}\n"
+      $stdout.syswrite "#{pid}: === Begin thread backtrace dump ===\n"
+
+      threads.each_with_index do |thread, index|
+        $stdout.syswrite "#{pid}: Thread #{index + 1}/#{threads.size}: #{thread.inspect}\n"
+        $stdout.syswrite "#{pid}: #{thread.backtrace.join("\n#{pid}: ")}\n\n"
+      end
+
+      $stdout.syswrite "#{pid}: === End thread backtrace dump ===\n"
     end
   end
 end
