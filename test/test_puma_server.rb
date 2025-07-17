@@ -207,12 +207,61 @@ class TestPumaServer < PumaTest
     r&.close
   end
 
+  # Older Rubies may only read 16k, maybe OS dependent
+  def test_request_body_small
+    data = nil
+
+    server_run do |env|
+      data = env['rack.input'].read
+      [200, {}, [env['rack.input'].to_s]]
+    end
+
+    small_body = 'x' * 15 * 1_024
+
+    small_body_bytes = small_body.bytesize
+
+    socket = send_http "PUT / HTTP/1.0\r\n" \
+      "Content-Length: #{small_body_bytes}\r\n\r\n" \
+      "#{small_body}"
+
+    assert_includes socket.read_response, 'StringIO'
+
+    assert_equal small_body_bytes, data.bytesize
+    assert_equal small_body, data
+    # below intermitttently fails on GitHub Actions, may work locally
+    # assert_equal 0, @server.stats[:reactor_max]
+  end
+
+  def test_request_body_large
+    data = nil
+
+    server_run do |env|
+      data = env['rack.input'].read
+      [200, {}, [env['rack.input'].to_s]]
+    end
+
+    large_body = 'x' * 70 * 1_024
+
+    large_body_bytes = large_body.bytesize
+
+    socket = send_http "PUT / HTTP/1.0\r\n" \
+      "Content-Length: #{large_body_bytes}\r\n\r\n" \
+      "#{large_body}"
+
+    assert_includes socket.read_response, 'StringIO'
+
+    assert_equal large_body_bytes, data.bytesize
+    assert_equal large_body, data
+    # below intermitttently fails on GitHub Actions, may work locally
+    # assert_equal 0, @server.stats[:reactor_max]
+  end
+
   def test_proper_stringio_body
     data = nil
 
     server_run do |env|
       data = env['rack.input'].read
-      [200, {}, ["ok"]]
+      [200, {}, [env['rack.input'].to_s]]
     end
 
     fifteen = "1" * 15
@@ -222,7 +271,7 @@ class TestPumaServer < PumaTest
     sleep 0.1 # important so that the previous data is sent as a packet
     socket << fifteen
 
-    socket.read_response
+    assert_includes socket.read_response, 'StringIO'
 
     assert_equal "#{fifteen}#{fifteen}", data
   end
@@ -240,6 +289,9 @@ class TestPumaServer < PumaTest
 
     assert_equal body, data
   end
+
+
+
 
   def test_very_large_return
     giant = "x" * 2056610
@@ -1576,6 +1628,7 @@ class TestPumaServer < PumaTest
   # There are three different tests because there are three ways to set header
   # content in Puma. Regular (rack env), early hints, and a special case for
   # overriding content-length.
+
   {"cr" => "\r", "lf" => "\n", "crlf" => "\r\n"}.each do |suffix, line_ending|
     # The cr-only case for the following test was CVE-2020-5247
     define_method(:"test_prevent_response_splitting_headers_#{suffix}") do
