@@ -292,8 +292,10 @@ module Puma
 
     def eagerly_finish
       return true if @ready
-      return false unless @to_io.wait_readable(0)
-      try_to_finish
+      while @to_io.wait_readable(0) # rubocop: disable Style/WhileUntilModifier
+        return true if try_to_finish
+      end
+      false
     end
 
     def finish(timeout)
