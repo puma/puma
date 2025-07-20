@@ -452,6 +452,13 @@ module Puma
 
       requests = 0
 
+      # Perform the SSL handshake.
+      #
+      # Note: I believe this is a blocking operation. A slow client would block this thread.
+      # However, at this stage it's executing in a client thread so it won't prevent other threads
+      # from handling requests. I don't know if that's acceptable or not for Puma.
+      client.io.accept if HAS_NATIVE_SSL && client.io.instance_of?(OpenSSL::SSL::SSLSocket)
+
       begin
         if @queue_requests &&
           !client.eagerly_finish

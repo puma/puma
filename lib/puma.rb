@@ -24,11 +24,13 @@ module Puma
 
   # at present, MiniSSL::Engine is only defined in extension code (puma_http11),
   # not in minissl.rb
-  HAS_SSL = const_defined?(:MiniSSL, false) && MiniSSL.const_defined?(:Engine, false)
+  HAS_MINI_SSL = const_defined?(:MiniSSL, false) && MiniSSL.const_defined?(:Engine, false)
+  HAS_NATIVE_SSL = ENV["PUMA_NATIVE_SSL"]
+  HAS_SSL = HAS_MINI_SSL || HAS_NATIVE_SSL
 
   HAS_UNIX_SOCKET = Object.const_defined?(:UNIXSocket) && !IS_WINDOWS
 
-  if HAS_SSL
+  if HAS_MINI_SSL
     require_relative 'puma/minissl'
   else
     module MiniSSL

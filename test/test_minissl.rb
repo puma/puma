@@ -1,6 +1,6 @@
 require_relative "helper"
 
-require "puma/minissl" if ::Puma::HAS_SSL
+require "puma/minissl" if ::Puma::HAS_MINI_SSL
 
 class TestMiniSSL < PumaTest
 

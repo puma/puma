@@ -6,10 +6,14 @@ require 'socket'
 require_relative 'const'
 require_relative 'util'
 require_relative 'configuration'
+if Puma::HAS_NATIVE_SSL
+  require_relative 'ssl/context_builder'
+  require_relative 'ssl/server'
+end
 
 module Puma
 
-  if HAS_SSL
+  if HAS_MINI_SSL
     require_relative 'minissl'
     require_relative 'minissl/context_builder'
   end
@@ -246,7 +250,11 @@ module Puma
                   params["#{v}_pem"] = @conf.options[:store][index]
                 end
               end
-              MiniSSL::ContextBuilder.new(params, @log_writer).context
+              if HAS_NATIVE_SSL
+                SSL::ContextBuilder.new(params, @log_writer).context
+              else
+                MiniSSL::ContextBuilder.new(params, @log_writer).context
+              end
             end
 
           if fd = @inherited_fds.delete(str)
@@ -380,7 +388,11 @@ module Puma
       s.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
       s.listen backlog
 
-      ssl = MiniSSL::Server.new s, ctx
+      ssl = if HAS_NATIVE_SSL
+              SSL::Server.new s, ctx
+            else
+              MiniSSL::Server.new s, ctx
+            end
       env = @proto_env.dup
       env[HTTPS_KEY] = HTTPS
       @envs[ssl] = env
