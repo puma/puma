@@ -182,7 +182,9 @@ module TestPuma
     # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
     def send_http(req = GET_11, host: nil, port: nil, path: nil, ctx: nil, session: nil)
       skt = new_socket host: host, port: port, path: path, ctx: ctx, session: session
-      skt.syswrite req
+      sent = 0
+      size = req.bytesize
+      sent += skt.syswrite(req) while sent < size
       skt
     end
 
