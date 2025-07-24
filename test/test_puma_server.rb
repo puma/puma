@@ -1546,7 +1546,7 @@ class TestPumaServer < PumaTest
 
   def test_open_connection_wait(**options)
     server_run(**options) { [200, {}, ["Hello"]] }
-    socket = send_http nil
+    socket = new_socket
     sleep 0.1
     socket << GET_10
     assert_equal 'Hello', socket.read_body
