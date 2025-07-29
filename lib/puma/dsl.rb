@@ -1273,6 +1273,7 @@ module Puma
     # @deprecated Use {#max_keep_alive} instead.
     #
     def max_fast_inline(num_of_requests)
+      warn "[WARNING] `max_fast_inline` is deprecated use `max_keep_alive` instead"
       @options[:max_keep_alive] ||= Float(num_of_requests) unless num_of_requests.nil?
     end
 

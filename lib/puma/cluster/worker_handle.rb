@@ -60,7 +60,7 @@ module Puma
         # @todo remove each once Ruby 2.5 is no longer supported
         status.tr('}{"', '').strip.split(", ").each do |kv|
           cntr = 0
-          ary = kv.split(':').each do |t|
+          kv.split(':').each do |t|
             if cntr == 0
               k = t
               cntr = 1

@@ -290,9 +290,6 @@ class TestPumaServer < PumaTest
     assert_equal body, data
   end
 
-
-
-
   def test_very_large_return
     giant = "x" * 2056610
 
@@ -1416,13 +1413,10 @@ class TestPumaServer < PumaTest
   def test_chunked_keep_alive_twenty_back_to_back
     req_count = 20
     requests = 0
-    body = nil
-    content_length = nil
 
     server_run(max_fast_inline: 21) { |env|
       requests += 1
-      body = env['rack.input'].read
-      content_length = env['CONTENT_LENGTH']
+      env['rack.input'].read
       [200, {}, ["Request_#{requests}"]]
     }
 
