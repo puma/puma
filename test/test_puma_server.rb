@@ -1434,6 +1434,54 @@ class TestPumaServer < PumaTest
     assert_equal expected, responses
   end
 
+  def test_default_max_keep_alive
+    requests = 0
+    response = ''
+
+    server_run { |env|
+      requests += 1
+      [200, {}, ["Request_#{requests}"]]
+    }
+
+    socket = new_socket
+
+    # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      26.times do
+        socket << GET_11
+        response = socket.read_response
+      end
+    end
+    sleep 0.25 # seems to be needed for macOS
+    assert_raises(Errno::EPIPE) { socket << GET_11 }
+    assert_includes response, 'Request_25'
+    assert_includes response, 'Connection: close'
+  end
+
+  def test_set_max_keep_alive
+    requests = 0
+    response = ''
+
+    server_run(max_keep_alive: 20) { |env|
+      requests += 1
+      [200, {}, ["Request_#{requests}"]]
+    }
+
+    socket = new_socket
+
+    # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      21.times do
+        socket << GET_11
+        response = socket.read_response
+      end
+    end
+    sleep 0.25 # seems to be needed for macOS
+    assert_raises(Errno::EPIPE) { socket << GET_11 }
+    assert_includes response, 'Request_20'
+    assert_includes response, 'Connection: close'
+  end
+
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
     body = nil
     content_length = nil
