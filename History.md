@@ -1,3 +1,8 @@
+## 7.0.0.pre1 / 2025-07-31
+
+* Changed
+  * Fix long tail response problem with keepalive connections ([#3678])
+
 ## 6.6.1 / 2025-07-30
 
 * Bugfixes
@@ -2160,6 +2165,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3678]:https://github.com/puma/puma/pull/3678     "PR by @MSP-Greg, merged 2025-07-31"
 [#3680]:https://github.com/puma/puma/pull/3680     "PR by @byroot, merged 2025-07-31"
 [#3572]:https://github.com/puma/puma/pull/3572     "PR by @barthez, merged 2025-02-06"
 [#3586]:https://github.com/puma/puma/pull/3586     "PR by @MSP-Greg, merged 2025-02-03"
