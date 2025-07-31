@@ -44,7 +44,10 @@ module Puma
 
         "QUERY_STRING".freeze => "",
         SERVER_SOFTWARE => PUMA_SERVER_STRING,
-        GATEWAY_INTERFACE => CGI_VER
+        GATEWAY_INTERFACE => CGI_VER,
+
+        RACK_AFTER_REPLY => nil,
+        RACK_RESPONSE_FINISHED => nil,
       }
 
       @envs = {}
