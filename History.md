@@ -1,3 +1,13 @@
+## 6.6.1 / 2025-07-30
+
+* Bugfixes
+  * Accept `to_path` to be `nil` on request bodies ([#3635])
+  * Fix single runner stats before the server start ([#3572])
+  * Fix incomplete worker boot state on refork ([#3601])
+  * Improve HttpParserError messages for better debugging ([#3586])
+  * Fix refork logs to distinguish from phased restarts ([#3598])
+  * Fix `rack.after_reply` so it doesn't interrupt chain on error ([#3680])
+
 ## 6.6.0 / 2025-01-29
 
 * Features
@@ -2150,6 +2160,12 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3680]:https://github.com/puma/puma/pull/3680     "PR by @byroot, merged 2025-07-31"
+[#3572]:https://github.com/puma/puma/pull/3572     "PR by @barthez, merged 2025-02-06"
+[#3586]:https://github.com/puma/puma/pull/3586     "PR by @MSP-Greg, merged 2025-02-03"
+[#3598]:https://github.com/puma/puma/pull/3598     "PR by @joshuay03, merged 2025-01-31"
+[#3601]:https://github.com/puma/puma/pull/3601     "PR by @joshuay03, merged 2025-01-31"
+[#3635]:https://github.com/puma/puma/pull/3635     "PR by @LevitatingBusinessMan, merged 2025-05-08"
 [#3570]:https://github.com/puma/puma/pull/3570     "PR by @mohamedhafez, merged 2024-12-30"
 [#3567]:https://github.com/puma/puma/issues/3567   "Issue by @mohamedhafez, closed 2024-12-30"
 [#3383]:https://github.com/puma/puma/pull/3383     "PR by @joshuay03, merged 2024-11-29"
