@@ -702,6 +702,11 @@ module Puma
       @binder.add_unix_listener path, umask, mode, backlog
     end
 
+    def update_thread_pool_min_max(min: @thread_pool.min, max: @thread_pool.max)
+      @thread_pool.min, @thread_pool.max = min, max
+      @min_threads, @max_threads = min, max
+    end
+
     # @!attribute [r] connected_ports
     def connected_ports
       @binder.connected_ports
