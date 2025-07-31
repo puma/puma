@@ -67,7 +67,7 @@ class WebServerTest < PumaTest
   def test_bad_path
     socket = do_test("GET : HTTP/1.1\r\n\r\n", 3)
     data = socket.read
-    assert_start_with data, "HTTP/1.1 400 Bad Request\r\nContent-Length: "
+    assert_start_with data, "HTTP/1.1 400 Bad Request\r\ncontent-length: "
     # match is for last backtrace line, may be brittle
     assert_match(/\.rb:\d+:in [`'][^']+'\z/, data)
     socket.close
