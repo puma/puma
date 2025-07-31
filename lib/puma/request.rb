@@ -135,12 +135,15 @@ module Puma
       uncork_socket client.io
       app_body.close if app_body.respond_to? :close
       client&.tempfile_close
-      after_reply = env[RACK_AFTER_REPLY] || []
-      begin
-        after_reply.each { |o| o.call }
-      rescue StandardError => e
-        @log_writer.debug_error e
-      end unless after_reply.empty?
+      if after_reply = env[RACK_AFTER_REPLY]
+        after_reply.each do |o|
+          begin
+            o.call
+          rescue StandardError => e
+            @log_writer.debug_error e
+          end
+        end
+      end
     end
 
     # Assembles the headers and prepares the body for actually sending the

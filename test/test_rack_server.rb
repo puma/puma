@@ -136,6 +136,24 @@ class TestRackServer < PumaTest
     assert_equal true, closed
   end
 
+  def test_after_reply_error_handling
+    called = []
+    @server.app = lambda do |env|
+      env['rack.after_reply'] << lambda { called << :before }
+      env['rack.after_reply'] << lambda { raise ArgumentError, "oops" }
+      env['rack.after_reply'] << lambda { called << :after }
+      @simple.call(env)
+    end
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal [:before, :after], called
+  end
+
   def test_after_reply_exception
     @server.app = lambda do |env|
       env['rack.after_reply'] << lambda { raise ArgumentError, "oops" }
