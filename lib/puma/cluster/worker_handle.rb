@@ -4,13 +4,15 @@ module Puma
   class Cluster < Runner
     #—————————————————————— DO NOT USE — this class is for internal use only ———
 
-
     # This class represents a worker process from the perspective of the puma
     # master process. It contains information about the process and its health
     # and it exposes methods to control the process via IPC. It does not
     # include the actual logic executed by the worker process itself. For that,
     # see Puma::Cluster::Worker.
     class WorkerHandle # :nodoc:
+      # array of stat 'max' keys
+      WORKER_MAX_KEYS = [:backlog_max, :reactor_max]
+
       def initialize(idx, pid, phase, options)
         @index = idx
         @pid = pid
@@ -23,6 +25,7 @@ module Puma
         @last_checkin = Time.now
         @last_status = {}
         @term = false
+        @worker_max = Array.new WORKER_MAX_KEYS.length, 0
       end
 
       attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
@@ -51,12 +54,39 @@ module Puma
         @term
       end
 
-      STATUS_PATTERN = /{ "backlog":(?<backlog>\d*), "running":(?<running>\d*), "pool_capacity":(?<pool_capacity>\d*), "max_threads":(?<max_threads>\d*), "requests_count":(?<requests_count>\d*), "busy_threads":(?<busy_threads>\d*) }/
-      private_constant :STATUS_PATTERN
-
       def ping!(status)
+        hsh = {}
+        k, v = nil, nil
+        # @todo remove each once Ruby 2.5 is no longer supported
+        status.tr('}{"', '').strip.split(", ").each do |kv|
+          cntr = 0
+          kv.split(':').each do |t|
+            if cntr == 0
+              k = t
+              cntr = 1
+            else
+              v = t
+            end
+          end
+          hsh[k.to_sym] = v.to_i
+        end
+
+        # check stat max values, we can't signal workers to reset the max values,
+        # so we do so here
+        WORKER_MAX_KEYS.each_with_index do |key, idx|
+          if hsh[key] < @worker_max[idx]
+            hsh[key] = @worker_max[idx]
+          else
+            @worker_max[idx] = hsh[key]
+          end
+        end
         @last_checkin = Time.now
-        @last_status = status.match(STATUS_PATTERN).named_captures.map { |c_name, c| [c_name.to_sym, c.to_i] }.to_h
+        @last_status = hsh
+      end
+
+      # Resets max values to zero.  Called whenever `Cluster#stats` is called
+      def reset_max
+        WORKER_MAX_KEYS.length.times { |idx| @worker_max[idx] = 0 }
       end
 
       # @see Puma::Cluster#check_workers

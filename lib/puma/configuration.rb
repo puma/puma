@@ -140,12 +140,10 @@ module Puma
       io_selector_backend: :auto,
       log_requests: false,
       logger: STDOUT,
-      # How many requests to attempt inline before sending a client back to
-      # the reactor to be subject to normal ordering. The idea here is that
-      # we amortize the cost of going back to the reactor for a well behaved
-      # but very "greedy" client across 10 requests. This prevents a not
-      # well behaved client from monopolizing the thread forever.
-      max_fast_inline: 10,
+      # Limits how many requests a keep alive connection can make.
+      # The connection will be closed after it reaches `max_keep_alive`
+      # requests.
+      max_keep_alive: 25,
       max_threads: Puma.mri? ? 5 : 16,
       min_threads: 0,
       mode: :http,

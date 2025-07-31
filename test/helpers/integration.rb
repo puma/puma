@@ -512,7 +512,7 @@ class TestIntegration < PumaTest
           begin
             get_worker_pids phase, log: log
             # Wait with an exponential backoff before signaling next restart
-            sleep 0.15 * (2 ** restart_count)
+            sleep 0.15 * restart_count
           rescue Minitest::Assertion # Timeout
             run = false
           rescue Errno::EBADF # bad restart?

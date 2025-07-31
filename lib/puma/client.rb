@@ -111,7 +111,8 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer, :http_content_length_limit_exceeded
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded,
+                :requests_served
 
     attr_writer :peerip, :http_content_length_limit
 
@@ -150,11 +151,12 @@ module Puma
     end
 
     # Number of seconds until the timeout elapses.
+    # @!attribute [r] timeout
     def timeout
       [@timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
     end
 
-    def reset(fast_check=true)
+    def reset
       @parser.reset
       @io_buffer.reset
       @read_header = true
@@ -166,7 +168,10 @@ module Puma
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
       @http_content_length_limit_exceeded = false
+    end
 
+    # only used with back-to-back requests contained in the buffer
+    def process_back_to_back_requests
       if @buffer
         return false unless try_to_parse_proxy_protocol
 
@@ -178,17 +183,13 @@ module Puma
           raise HttpParserError,
             "HEADER is longer than allowed, aborting client early."
         end
-
-        return false
-      else
-        begin
-          if fast_check && @to_io.wait_readable(FAST_TRACK_KA_TIMEOUT)
-            return try_to_finish
-          end
-        rescue IOError
-          # swallow it
-        end
       end
+    end
+
+    # if a client sends back-to-back requests, the buffer may contain one or more
+    # of them.
+    def has_back_to_back_requests?
+      !(@buffer.nil? || @buffer.empty?)
     end
 
     def close
@@ -291,8 +292,10 @@ module Puma
 
     def eagerly_finish
       return true if @ready
-      return false unless @to_io.wait_readable(0)
-      try_to_finish
+      while @to_io.wait_readable(0) # rubocop: disable Style/WhileUntilModifier
+        return true if try_to_finish
+      end
+      false
     end
 
     def finish(timeout)

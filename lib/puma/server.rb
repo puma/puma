@@ -94,8 +94,9 @@ module Puma
       @min_threads               = @options[:min_threads]
       @max_threads               = @options[:max_threads]
       @queue_requests            = @options[:queue_requests]
-      @max_fast_inline           = @options[:max_fast_inline]
+      @max_keep_alive            = @options[:max_keep_alive]
       @enable_keep_alives        = @options[:enable_keep_alives]
+      @enable_keep_alives      &&= @queue_requests
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
 
@@ -220,7 +221,6 @@ module Puma
       @thread_pool&.spawned
     end
 
-
     # This number represents the number of requests that
     # the server is capable of taking right now.
     #
@@ -324,6 +324,7 @@ module Puma
         pool = @thread_pool
         queue_requests = @queue_requests
         drain = options[:drain_on_shutdown] ? 0 : nil
+        max_flt = @max_threads.to_f
 
         addr_send_name, addr_value = case options[:remote_address]
         when :value
@@ -364,8 +365,20 @@ module Puma
               if sock == check
                 break if handle_check
               else
-                pool.wait_until_not_full
-                pool.wait_for_less_busy_worker(options[:wait_for_less_busy_worker]) if @clustered
+                # if ThreadPool out_of_band code is running, we don't want to add
+                # clients until the code is finished.
+                sleep 0.001 while pool.out_of_band_running
+
+                # only use delay when clustered and busy
+                if pool.busy_threads >= @max_threads
+                  if @clustered
+                    delay = 0.0001 * ((@reactor&.reactor_size || 0) + pool.busy_threads * 1.5)/max_flt
+                    sleep delay
+                  else
+                    # use small sleep for busy single worker
+                    sleep 0.0001
+                  end
+                end
 
                 io = begin
                   sock.accept_nonblock
@@ -453,8 +466,7 @@ module Puma
       requests = 0
 
       begin
-        if @queue_requests &&
-          !client.eagerly_finish
+        if @queue_requests && !client.eagerly_finish
 
           client.set_timeout(@first_data_timeout)
           if @reactor.add client
@@ -467,39 +479,33 @@ module Puma
           client.finish(@first_data_timeout)
         end
 
-        while true
-          @requests_count += 1
-          case handle_request(client, requests + 1)
-          when false
-            break
-          when :async
+        @requests_count += 1
+        case handle_request(client, requests + 1)
+        when false
+        when :async
+          close_socket = false
+        when true
+          ThreadPool.clean_thread_locals if clean_thread_locals
+
+          requests += 1
+
+          client.reset
+
+          # This indicates data exists in the client read buffer and there may be
+          # additional requests on it, so process them
+          next_request_ready = if client.has_back_to_back_requests?
+            with_force_shutdown(client) { client.process_back_to_back_requests }
+          else
+            nil
+          end
+
+          if next_request_ready
+            @thread_pool << client
             close_socket = false
-            break
-          when true
-            ThreadPool.clean_thread_locals if clean_thread_locals
-
-            requests += 1
-
-            # As an optimization, try to read the next request from the
-            # socket for a short time before returning to the reactor.
-            fast_check = @status == :run
-
-            # Always pass the client back to the reactor after a reasonable
-            # number of inline requests if there are other requests pending.
-            fast_check = false if requests >= @max_fast_inline &&
-              @thread_pool.backlog > 0
-
-            next_request_ready = with_force_shutdown(client) do
-              client.reset(fast_check)
-            end
-
-            unless next_request_ready
-              break unless @queue_requests
-              client.set_timeout @persistent_timeout
-              if @reactor.add client
-                close_socket = false
-                break
-              end
+          elsif @queue_requests
+            client.set_timeout @persistent_timeout
+            if @reactor.add client
+              close_socket = false
             end
           end
         end
@@ -650,7 +656,16 @@ module Puma
 
     # List of methods invoked by #stats.
     # @version 5.0.0
-    STAT_METHODS = [:backlog, :running, :pool_capacity, :max_threads, :requests_count, :busy_threads].freeze
+    STAT_METHODS = [
+      :backlog,
+      :running,
+      :pool_capacity,
+      :busy_threads,
+      :backlog_max,
+      :max_threads,
+      :requests_count,
+      :reactor_max,
+    ].freeze
 
     # Returns a hash of stats about the running server for reporting purposes.
     # @version 5.0.0
@@ -660,7 +675,14 @@ module Puma
       stats = @thread_pool&.stats || {}
       stats[:max_threads]    = @max_threads
       stats[:requests_count] = @requests_count
+      stats[:reactor_max] = @reactor.reactor_max
+      reset_max
       stats
+    end
+
+    def reset_max
+      @reactor.reactor_max = 0
+      @thread_pool.reset_max
     end
 
     # below are 'delegations' to binder

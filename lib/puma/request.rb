@@ -164,17 +164,7 @@ module Puma
       return false if closed_socket?(socket)
 
       # Close the connection after a reasonable number of inline requests
-      # if the server is at capacity and the listener has a new connection ready.
-      # This allows Puma to service connections fairly when the number
-      # of concurrent connections exceeds the size of the threadpool.
-      force_keep_alive = if @enable_keep_alives
-        requests < @max_fast_inline ||
-        @thread_pool.busy_threads < @max_threads ||
-        !client.listener.to_io.wait_readable(0)
-      else
-        # Always set force_keep_alive to false if the server has keep-alives not enabled.
-        false
-      end
+      force_keep_alive = @enable_keep_alives && client.requests_served < @max_keep_alive
 
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
@@ -267,7 +257,8 @@ module Puma
 
       fast_write_response socket, body, io_buffer, chunked, content_length.to_i
       body.close if close_body
-      keep_alive
+      # if we're shutting down, close keep_alive connections
+      !shutting_down? && keep_alive
     end
 
     # @param env [Hash] see Puma::Client#env, from request
@@ -585,7 +576,7 @@ module Puma
     #   response body
     # @param io_buffer [Puma::IOBuffer] modified inn place
     # @param force_keep_alive [Boolean] 'anded' with keep_alive, based on system
-    #   status and `@max_fast_inline`
+    #   status and `@max_keep_alive`
     # @return [Hash] resp_info
     # @version 5.0.3
     #

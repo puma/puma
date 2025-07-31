@@ -25,6 +25,8 @@ module Puma
     # up its work before leaving the thread to die on the vine.
     SHUTDOWN_GRACE_TIME = 5 # seconds
 
+    attr_reader :out_of_band_running
+
     # Maintain a minimum of +min+ and maximum of +max+ threads
     # in the pool.
     #
@@ -35,9 +37,9 @@ module Puma
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
+      @todo = Queue.new
 
-      @todo = []
-
+      @backlog_max = 0
       @spawned = 0
       @waiting = 0
 
@@ -50,6 +52,7 @@ module Puma
       @shutdown_grace_time = Float(options[:pool_shutdown_grace_time] || SHUTDOWN_GRACE_TIME)
       @block = block
       @out_of_band = options[:out_of_band]
+      @out_of_band_running = false
       @clean_thread_locals = options[:clean_thread_locals]
       @before_thread_start = options[:before_thread_start]
       @before_thread_exit = options[:before_thread_exit]
@@ -89,18 +92,31 @@ module Puma
     # @return [Hash] hash containing stat info from ThreadPool
     def stats
       with_mutex do
+        temp = @backlog_max
+        @backlog_max = 0
         { backlog: @todo.size,
           running: @spawned,
           pool_capacity: @waiting + (@max - @spawned),
-          busy_threads: @spawned - @waiting + @todo.size
+          busy_threads: @spawned - @waiting + @todo.size,
+          backlog_max: temp
         }
       end
+    end
+
+    def reset_max
+      with_mutex { @backlog_max = 0 }
     end
 
     # How many objects have yet to be processed by the pool?
     #
     def backlog
       with_mutex { @todo.size }
+    end
+
+    # The maximum size of the backlog
+    #
+    def backlog_max
+      with_mutex { @backlog_max }
     end
 
     # @!attribute [r] pool_capacity
@@ -214,12 +230,14 @@ module Puma
 
       # we execute on idle hook when all threads are free
       return false unless @spawned == @waiting
-
+      @out_of_band_running = true
       @out_of_band.each(&:call)
       true
     rescue Exception => e
       STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"
       true
+    ensure
+      @out_of_band_running = false
     end
 
     private :trigger_out_of_band_hook
@@ -239,75 +257,14 @@ module Puma
         end
 
         @todo << work
+        t = @todo.size
+        @backlog_max = t if t > @backlog_max
 
         if @waiting < @todo.size and @spawned < @max
           spawn_thread
         end
 
         @not_empty.signal
-      end
-    end
-
-    # This method is used by `Puma::Server` to let the server know when
-    # the thread pool can pull more requests from the socket and
-    # pass to the reactor.
-    #
-    # The general idea is that the thread pool can only work on a fixed
-    # number of requests at the same time. If it is already processing that
-    # number of requests then it is at capacity. If another Puma process has
-    # spare capacity, then the request can be left on the socket so the other
-    # worker can pick it up and process it.
-    #
-    # For example: if there are 5 threads, but only 4 working on
-    # requests, this method will not wait and the `Puma::Server`
-    # can pull a request right away.
-    #
-    # If there are 5 threads and all 5 of them are busy, then it will
-    # pause here, and wait until the `not_full` condition variable is
-    # signaled, usually this indicates that a request has been processed.
-    #
-    # It's important to note that even though the server might accept another
-    # request, it might not be added to the `@todo` array right away.
-    # For example if a slow client has only sent a header, but not a body
-    # then the `@todo` array would stay the same size as the reactor works
-    # to try to buffer the request. In that scenario the next call to this
-    # method would not block and another request would be added into the reactor
-    # by the server. This would continue until a fully buffered request
-    # makes it through the reactor and can then be processed by the thread pool.
-    def wait_until_not_full
-      with_mutex do
-        while true
-          return if @shutdown
-
-          # If we can still spin up new threads and there
-          # is work queued that cannot be handled by waiting
-          # threads, then accept more work until we would
-          # spin up the max number of threads.
-          return if busy_threads < @max
-
-          @not_full.wait @mutex
-        end
-      end
-    end
-
-    # @version 5.0.0
-    def wait_for_less_busy_worker(delay_s)
-      return unless delay_s && delay_s > 0
-
-      # Ruby MRI does GVL, this can result
-      # in processing contention when multiple threads
-      # (requests) are running concurrently
-      return unless Puma.mri?
-
-      with_mutex do
-        return if @shutdown
-
-        # do not delay, if we are not busy
-        return unless busy_threads > 0
-
-        # this will be signaled once a request finishes,
-        # which can happen earlier than delay
-        @not_full.wait @mutex, delay_s
       end
     end
 

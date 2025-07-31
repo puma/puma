@@ -65,7 +65,8 @@ When Puma runs in single mode, these stats are available at the top level. When 
   and is not used for any internal decisions, unlike `busy_theads`, which is usually a more useful stat.
 * max_threads: the maximum number of threads Puma is configured to spool per worker
 * requests_count: the number of requests this worker has served since starting
-
+* reactor_max: the maximum observed number of requests held in Puma's "reactor" which is used for asyncronously buffering request bodies. This stat is reset on every call, so it's the maximum value observed since the last stat call.
+* backlog_max: the maximum number of requests that have been fully buffered by the reactor and placed in a ready queue, but have not yet been picked up by a server thread. This stat is reset on every call, so it's the maximum value observed since the last stat call.
 
 ### cluster mode
 

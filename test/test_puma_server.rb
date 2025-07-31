@@ -207,12 +207,61 @@ class TestPumaServer < PumaTest
     r&.close
   end
 
+  # Older Rubies may only read 16k, maybe OS dependent
+  def test_request_body_small
+    data = nil
+
+    server_run do |env|
+      data = env['rack.input'].read
+      [200, {}, [env['rack.input'].to_s]]
+    end
+
+    small_body = 'x' * 15 * 1_024
+
+    small_body_bytes = small_body.bytesize
+
+    socket = send_http "PUT / HTTP/1.0\r\n" \
+      "Content-Length: #{small_body_bytes}\r\n\r\n" \
+      "#{small_body}"
+
+    assert_includes socket.read_response, 'StringIO'
+
+    assert_equal small_body_bytes, data.bytesize
+    assert_equal small_body, data
+    # below intermitttently fails on GitHub Actions, may work locally
+    # assert_equal 0, @server.stats[:reactor_max]
+  end
+
+  def test_request_body_large
+    data = nil
+
+    server_run do |env|
+      data = env['rack.input'].read
+      [200, {}, [env['rack.input'].to_s]]
+    end
+
+    large_body = 'x' * 70 * 1_024
+
+    large_body_bytes = large_body.bytesize
+
+    socket = send_http "PUT / HTTP/1.0\r\n" \
+      "Content-Length: #{large_body_bytes}\r\n\r\n" \
+      "#{large_body}"
+
+    assert_includes socket.read_response, 'StringIO'
+
+    assert_equal large_body_bytes, data.bytesize
+    assert_equal large_body, data
+    # below intermitttently fails on GitHub Actions, may work locally
+    # assert_equal 0, @server.stats[:reactor_max]
+  end
+
   def test_proper_stringio_body
     data = nil
 
     server_run do |env|
       data = env['rack.input'].read
-      [200, {}, ["ok"]]
+      [200, {}, [env['rack.input'].to_s]]
     end
 
     fifteen = "1" * 15
@@ -222,7 +271,7 @@ class TestPumaServer < PumaTest
     sleep 0.1 # important so that the previous data is sent as a packet
     socket << fifteen
 
-    socket.read_response
+    assert_includes socket.read_response, 'StringIO'
 
     assert_equal "#{fifteen}#{fifteen}", data
   end
@@ -1361,6 +1410,78 @@ class TestPumaServer < PumaTest
     assert_equal "7", content_length
   end
 
+  def test_chunked_keep_alive_twenty_back_to_back
+    req_count = 20
+    requests = 0
+
+    server_run(max_fast_inline: 21) { |env|
+      requests += 1
+      env['rack.input'].read
+      [200, {}, ["Request_#{requests}"]]
+    }
+
+    req = "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    expected = String.new # rubocop: disable Performance/UnfreezeString
+    req_count.times do |i|
+      expected << "HTTP/1.1 200 OK\r\nContent-Length: #{(i+1).to_s.length + 8}\r\n\r\nRequest_#{i+1}"
+    end
+
+    responses = send_http_read_all(req * req_count)
+
+    assert_equal req_count, responses.scan('Request_').length
+
+    assert_equal expected, responses
+  end
+
+  def test_default_max_keep_alive
+    requests = 0
+    response = ''
+
+    server_run { |env|
+      requests += 1
+      [200, {}, ["Request_#{requests}"]]
+    }
+
+    socket = new_socket
+
+    # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      26.times do
+        socket << GET_11
+        response = socket.read_response
+      end
+    end
+    sleep 0.25 # seems to be needed for macOS
+    assert_raises(Errno::EPIPE) { socket << GET_11 }
+    assert_includes response, 'Request_25'
+    assert_includes response, 'Connection: close'
+  end
+
+  def test_set_max_keep_alive
+    requests = 0
+    response = ''
+
+    server_run(max_keep_alive: 20) { |env|
+      requests += 1
+      [200, {}, ["Request_#{requests}"]]
+    }
+
+    socket = new_socket
+
+    # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      21.times do
+        socket << GET_11
+        response = socket.read_response
+      end
+    end
+    sleep 0.25 # seems to be needed for macOS
+    assert_raises(Errno::EPIPE) { socket << GET_11 }
+    assert_includes response, 'Request_20'
+    assert_includes response, 'Connection: close'
+  end
+
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
     body = nil
     content_length = nil
@@ -1467,7 +1588,7 @@ class TestPumaServer < PumaTest
 
   def test_open_connection_wait(**options)
     server_run(**options) { [200, {}, ["Hello"]] }
-    socket = send_http nil
+    socket = new_socket
     sleep 0.1
     socket << GET_10
     assert_equal 'Hello', socket.read_body
@@ -1549,6 +1670,7 @@ class TestPumaServer < PumaTest
   # There are three different tests because there are three ways to set header
   # content in Puma. Regular (rack env), early hints, and a special case for
   # overriding content-length.
+
   {"cr" => "\r", "lf" => "\n", "crlf" => "\r\n"}.each do |suffix, line_ending|
     # The cr-only case for the following test was CVE-2020-5247
     define_method(:"test_prevent_response_splitting_headers_#{suffix}") do
