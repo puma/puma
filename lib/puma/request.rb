@@ -92,6 +92,7 @@ module Puma
       # array, we will invoke them when the request is done.
       #
       env[RACK_AFTER_REPLY] ||= []
+      env[RACK_RESPONSE_FINISHED] ||= []
 
       begin
         if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
@@ -137,6 +138,16 @@ module Puma
       client&.tempfile_close
       if after_reply = env[RACK_AFTER_REPLY]
         after_reply.each do |o|
+          begin
+            o.call
+          rescue StandardError => e
+            @log_writer.debug_error e
+          end
+        end
+      end
+
+      if response_finished = env[RACK_RESPONSE_FINISHED]
+        response_finished.reverse_each do |o|
           begin
             o.call
           rescue StandardError => e

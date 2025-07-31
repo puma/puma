@@ -196,6 +196,25 @@ class TestRackServer < PumaTest
     stop
   end
 
+  def test_rack_response_finished
+    calls = []
+
+    @server.app = lambda do |env|
+      env['rack.response_finished'] << lambda { calls << 1 }
+      env['rack.response_finished'] << lambda { calls << 2; raise "Oops" }
+      env['rack.response_finished'] << lambda { calls << 3 }
+      @simple.call(env)
+    end
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal [3, 2, 1], calls
+  end
+
   def test_rack_body_proxy
     closed = false
     body = Rack::BodyProxy.new(["Hello"]) { closed = true }
