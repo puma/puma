@@ -296,7 +296,7 @@ module Puma
 
       if @options[:log_requests]
         require_relative 'commonlogger'
-        logger = @options[:logger]
+        logger = @options[:custom_logger] ? options[:custom_logger] : @options[:logger]
         found = CommonLogger.new(found, logger)
       end
 
