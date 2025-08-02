@@ -49,8 +49,8 @@ module Puma
 
       start_control
 
-      @server = server = start_server
-      server_thread = server.run
+      @server = start_server
+      server_thread = @server.run
 
       log "Use Ctrl-C to stop"
       redirect_io
