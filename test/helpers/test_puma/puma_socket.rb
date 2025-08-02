@@ -10,15 +10,15 @@ module TestPuma
   #   @param req [String, GET_11] request path
 
   # @!macro [new] skt
-  #   @param host: [String] tcp/ssl host
-  #   @param port: [Integer/String] tcp/ssl port
-  #   @param path: [String] unix socket, full path
-  #   @param ctx: [OpenSSL::SSL::SSLContext] ssl context
+  #   @param host [String] tcp/ssl host
+  #   @param port [Integer/String] tcp/ssl port
+  #   @param path [String] unix socket, full path
+  #   @param ctx  [OpenSSL::SSL::SSLContext] ssl context
   #   @param session: [OpenSSL::SSL::Session] ssl session
 
   # @!macro [new] resp
-  #   @param timeout: [Float, nil] total socket read timeout, defaults to `RESP_READ_TIMEOUT`
-  #   @param len: [ Integer, nil] the `read_nonblock` maxlen, defaults to `RESP_READ_LEN`
+  #   @param timeout [Float, nil] total socket read timeout, defaults to `RESP_READ_TIMEOUT`
+  #   @param len [ Integer, nil] the `read_nonblock` maxlen, defaults to `RESP_READ_LEN`
 
   # This module is included in CI test files, and provides methods to create
   # client sockets.  Normally, the socket parameters are defined by the code
@@ -182,10 +182,7 @@ module TestPuma
     # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
     def send_http(req = GET_11, host: nil, port: nil, path: nil, ctx: nil, session: nil)
       skt = new_socket host: host, port: port, path: path, ctx: ctx, session: session
-      sent = 0
-      size = req.bytesize
-      sent += skt.syswrite(req) while sent < size
-      skt
+      skt << req
     end
 
     # Determines whether the socket has been closed by the server.  Only works when
@@ -297,7 +294,12 @@ module TestPuma
     end
 
     # @todo verify whole string is written
-    REQ_WRITE = -> (str) { self.syswrite str; self }
+    REQ_WRITE = -> (str) do
+      sent = 0
+      size = str.bytesize
+      sent += self.syswrite(str.byteslice(sent, size - sent)) while sent < size
+      self
+    end
 
     # Helper for creating an `OpenSSL::SSL::SSLContext`.
     # @param &blk [Block] Passed the SSLContext.
