@@ -5,7 +5,6 @@ require 'socket'
 
 require_relative 'const'
 require_relative 'util'
-require_relative 'configuration'
 
 module Puma
 
@@ -19,9 +18,9 @@ module Puma
 
     RACK_VERSION = [1,6].freeze
 
-    def initialize(log_writer, conf = Configuration.new, env: ENV)
+    def initialize(log_writer, options, env: ENV)
       @log_writer = log_writer
-      @conf = conf
+      @options = options
       @listeners = []
       @inherited_fds = {}
       @activated_sockets = {}
@@ -31,10 +30,10 @@ module Puma
       @proto_env = {
         "rack.version".freeze => RACK_VERSION,
         "rack.errors".freeze => log_writer.stderr,
-        "rack.multithread".freeze => conf.options[:max_threads] > 1,
-        "rack.multiprocess".freeze => conf.options[:workers] >= 1,
+        "rack.multithread".freeze => options[:max_threads] > 1,
+        "rack.multiprocess".freeze => options[:workers] >= 1,
         "rack.run_once".freeze => false,
-        RACK_URL_SCHEME => conf.options[:rack_url_scheme],
+        RACK_URL_SCHEME => options[:rack_url_scheme],
         "SCRIPT_NAME".freeze => env['SCRIPT_NAME'] || "",
 
         # I'd like to set a default CONTENT_TYPE here but some things
@@ -243,7 +242,7 @@ module Puma
               cert_key.each do |v|
                 if params[v]&.start_with?('store:')
                   index = Integer(params.delete(v).split('store:').last)
-                  params["#{v}_pem"] = @conf.options[:store][index]
+                  params["#{v}_pem"] = @options[:store][index]
                 end
               end
               MiniSSL::ContextBuilder.new(params, @log_writer).context
