@@ -3,13 +3,10 @@
 require_relative "helper"
 
 require 'puma/client'
-require 'puma/const'
-require 'puma/puma_http11'
 
 # this file tests both valid and invalid requests using only `Puma::Client'.
 # It cannot test behavior with multiple requests, for that, see
-# `test_request_invalid_mulitple.rb`
-
+# `test_request_invalid_multiple.rb`
 
 class TestRequestBase < PumaTest
   include Puma::Const
@@ -27,23 +24,27 @@ class TestRequestBase < PumaTest
 
     @client = Puma::Client.new @rd, env
     @parser = @client.instance_variable_get :@parser
-    yield if blk
+    yield @client if blk
 
+    # Old Rubies, JRuby, and Windows Ruby all have issues with
+    # writing large strings to pipe IO's.  Hence, the limit.
     written = 0
-    ttl = request.bytesize - 1
-    until written >= ttl
-      # Old Rubies, JRuby, and Windows Ruby all have issues with
-      # writing large strings to pipe IO's.  Hence, the limit.
-      written += @wr.write request[written..(written + 32 * 1024)]
+    i_limit = 32 * 1024
+    size = request.bytesize
+    while written < size
+      written += @wr.syswrite(request.byteslice(written, written + i_limit))
+      @wr&.close if written == size
       break if @client.try_to_finish
     end
   end
 
-  def assert_invalid(req, msg, err = Puma::HttpParserError)
-    error = assert_raises(err) { create_client req }
+  def assert_invalid(req, msg, err: Puma::HttpParserError, status: nil, &blk)
+    error = assert_raises(err) { create_client req, &blk }
+
     assert_equal msg, error.message
     assert_equal 'close', @client.env[HTTP_CONNECTION],
       "env['HTTP_CONNECTION'] should be set to 'close'"
+    assert_equal(status, @client.error_status_code) if status
   end
 
   def teardown
@@ -56,6 +57,47 @@ end
 
 # Tests requests that require special handling of headers
 class TestRequestValid < TestRequestBase
+
+  def test_content
+    request = "GET / HTTP/1.1\r\nContent-Length: 11\r\n\r\nHello World"
+    create_client request
+    if @parser.finished?
+      assert_instance_of Float, @client.env['puma.request_body_wait']
+      assert_equal '11', @client.env[CONTENT_LENGTH]
+      assert_equal 'Hello World', @client.env['rack.input'].read
+    else
+      fail
+    end
+  end
+
+  def test_content_chunked
+    request = "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" \
+      "11\r\nTransfer-Encoding\r\n" \
+      "11\r\nTransfer-Encoding\r\n" \
+      "0\r\n\r\n"
+    create_client request
+    if @parser.finished?
+      assert_instance_of Float, @client.env['puma.request_body_wait']
+      refute_operator @client.env, :key?, TRANSFER_ENCODING2
+      assert_equal '34', @client.env[CONTENT_LENGTH]
+      assert_equal 'Transfer-EncodingTransfer-Encoding', @client.env['rack.input'].read
+    else
+      fail
+    end
+  end
+
+  # if a header with an underscore exists, and is a singular key,  accept it
+  def test_underscore_single
+    request = "GET / HTTP/1.1\r\n" \
+      "x_forwarded_for: 1.1.1.1\r\n" \
+      "Content-Length: 11\r\n\r\nHello World"
+    create_client request
+    if @parser.finished?
+      assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+    else
+      fail
+    end
+  end
 
   def test_underscore_header_1
     request = <<~REQ.gsub("\n", "\r\n").rstrip
@@ -272,6 +314,33 @@ class TestRequestOversizeItem < TestRequestBase
 
     assert_invalid request, msg
   end
+
+  def test_content_length_exceeded
+    long_string = 'a' * 200_000
+
+    request = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 200000\r\n\r\n" \
+      "#{long_string}"
+
+    msg = 'Payload Too Large'
+
+    assert_invalid(request, msg, status: 413) { |client| client.http_content_length_limit = 65 * 1_024 }
+  end
+
+  def test_content_length_exceeded_chunked
+    chunk_length = 20_000
+    chunk_part_qty = 10
+
+    long_string = 'a' * chunk_length
+    long_string_part = "#{long_string.bytesize.to_s 16}\r\n#{long_string}\r\n"
+    long_chunked = "#{long_string_part * chunk_part_qty}0\r\n\r\n"
+
+    request = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n" \
+      "Transfer-Encoding: chunked\r\n\r\n#{long_chunked}"
+
+    msg = 'Payload Too Large'
+
+    assert_invalid(request, msg, status: 413) { |client| client.http_content_length_limit = 65 * 1_024 }
+  end
 end
 
 # Tests the headers section of the request
@@ -307,28 +376,28 @@ class TestRequestContentLengthInvalid < TestRequestBase
     ].join "\r\n"
 
     assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-      'Invalid Content-Length: "5, 5"'
+      'Invalid Content-Length: "5, 5"', status: 400
   end
 
   def test_bad_characters_1
     cl = 'Content-Length: 5.01'
 
     assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-     'Invalid Content-Length: "5.01"'
+     'Invalid Content-Length: "5.01"', status: 400
   end
 
   def test_bad_characters_2
     cl = 'Content-Length: +5'
 
     assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-      'Invalid Content-Length: "+5"'
+      'Invalid Content-Length: "+5"', status: 400
   end
 
   def test_bad_characters_3
     cl = 'Content-Length: 5 test'
 
     assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-    'Invalid Content-Length: "5 test"'
+    'Invalid Content-Length: "5 test"', status: 400
   end
 end
 
@@ -425,7 +494,7 @@ class TestTransferEncodingInvalid < TestRequestBase
 
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
       "Invalid Transfer-Encoding, unknown value: 'xchunked'",
-      Puma::HttpParserError501
+      err: Puma::HttpParserError501
   end
 
   def test_invalid_multiple
@@ -437,7 +506,7 @@ class TestTransferEncodingInvalid < TestRequestBase
 
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
       "Invalid Transfer-Encoding, unknown value: 'x_gzip, gzip, chunked'",
-      Puma::HttpParserError501
+      err: Puma::HttpParserError501
   end
 
   def test_single_not_chunked
