@@ -227,7 +227,7 @@ class TestIntegration < PumaTest
       end
     rescue StandardError => e
       error_retries += 1
-      raise(e, "Waiting for server to log #{match_obj.inspect}") if error_retries == LOG_ERROR_QTY
+      raise(Minitest::Assertion,  "Waiting for server to log #{match_obj.inspect} raised #{e.class}") if error_retries == LOG_ERROR_QTY
       sleep LOG_ERROR_SLEEP
       retry
     end
