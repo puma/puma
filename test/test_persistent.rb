@@ -17,8 +17,8 @@ class TestPersistent < PumaTest
 
     @valid_response = <<~RESP.gsub("\n", "\r\n").rstrip
       HTTP/1.1 200 OK
-      X-Header: Works
-      Content-Length: 5
+      x-header: Works
+      content-length: 5
 
       Hello
     RESP
@@ -73,8 +73,8 @@ class TestPersistent < PumaTest
 
     expected = <<~RESP.gsub("\n", "\r\n").rstrip
       HTTP/1.1 200 OK
-      X-Header: Works
-      Content-Length: 5
+      x-header: Works
+      content-length: 5
 
       Hello
     RESP
@@ -89,7 +89,7 @@ class TestPersistent < PumaTest
   def test_no_body_then_get
     socket = send_http @valid_no_body
     response = socket.read_response
-    assert_equal "HTTP/1.1 204 No Content\r\nX-Header: Works\r\n\r\n", response
+    assert_equal "HTTP/1.1 204 No Content\r\nx-header: Works\r\n\r\n", response
 
     response = socket.req_write(@valid_request).read_response
 
@@ -102,7 +102,7 @@ class TestPersistent < PumaTest
 
     response = send_http_read_response @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n" \
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ntransfer-encoding: chunked\r\n\r\n" \
       "5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n", response
   end
 
@@ -113,7 +113,7 @@ class TestPersistent < PumaTest
 
     response = send_http_read_response @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n" \
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ntransfer-encoding: chunked\r\n\r\n" \
       "5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n", response
   end
 
@@ -127,7 +127,7 @@ class TestPersistent < PumaTest
 
     response = socket.read_response
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\n\r\n" \
+    assert_equal "HTTP/1.0 200 OK\r\nx-header: Works\r\n\r\n" \
       "HelloChunked", response
   end
 
@@ -138,28 +138,28 @@ class TestPersistent < PumaTest
 
     response = send_http_read_response @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nTransfer-Encoding: chunked\r\n\r\n" \
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ntransfer-encoding: chunked\r\n\r\n" \
       "5\r\nHello\r\n#{str.size.to_s(16)}\r\n#{str}\r\n0\r\n\r\n", response
   end
 
   def test_client11_close
     response = send_http_read_response @close_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nConnection: close\r\nContent-Length: 5\r\n\r\n" \
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\nconnection: close\r\ncontent-length: 5\r\n\r\n" \
       "Hello", response
   end
 
   def test_client10_close
     response = send_http_read_response GET_10
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nContent-Length: 5\r\n\r\n" \
+    assert_equal "HTTP/1.0 200 OK\r\nx-header: Works\r\ncontent-length: 5\r\n\r\n" \
       "Hello", response
   end
 
   def test_one_with_keep_alive_header
     response = send_http_read_response @keep_request
 
-    assert_equal "HTTP/1.0 200 OK\r\nX-Header: Works\r\nConnection: Keep-Alive\r\nContent-Length: 5\r\n\r\n" \
+    assert_equal "HTTP/1.0 200 OK\r\nx-header: Works\r\nconnection: keep-alive\r\ncontent-length: 5\r\n\r\n" \
       "Hello", response
   end
 
@@ -169,7 +169,7 @@ class TestPersistent < PumaTest
     socket = send_http @valid_request
     response = socket.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: 5\r\n\r\n" \
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: 5\r\n\r\n" \
       "Hello", response
 
     sleep 2
@@ -185,7 +185,7 @@ class TestPersistent < PumaTest
 
     response = send_http_read_response @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: 11\r\n\r\n" \
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: 11\r\n\r\n" \
       "hello world", response
   end
 
@@ -196,7 +196,7 @@ class TestPersistent < PumaTest
 
     response = send_http_read_response @valid_request
 
-    assert_equal "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n" \
+    assert_equal "HTTP/1.1 200 OK\r\ntransfer-encoding: chunked\r\n\r\n" \
       "5\r\nhello\r\n0\r\n\r\n", response
   end
 
@@ -234,7 +234,7 @@ class TestPersistent < PumaTest
 
     response = c2.read_response
 
-    assert_equal "HTTP/1.1 200 OK\r\nX-Header: Works\r\nContent-Length: 5\r\n\r\n" \
+    assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: 5\r\n\r\n" \
       "Hello", response
   end
 end
