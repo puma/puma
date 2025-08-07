@@ -436,7 +436,8 @@ class TestPumaServer < PumaTest
      [200, { "X-Hello" => "World" }, ["Hello world!"]]
     end
 
-    response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
+    # two requests must be read
+    response = send_http_read_all "HEAD / HTTP/1.0\r\n\r\n"
 
     expected_resp = <<~EOF.gsub("\n", "\r\n") + "\r\n"
       HTTP/1.1 103 Early Hints
@@ -979,7 +980,8 @@ class TestPumaServer < PumaTest
   def test_Expect_100
     server_run { [200, {}, [""]] }
 
-    response = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
+    # two requests must be read
+    response = send_http_read_all "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
 
     assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", response
   end
