@@ -235,7 +235,7 @@ module TestPuma
             times << (Process.clock_gettime(Process::CLOCK_MONOTONIC) - time_read).round(4)
             status ||= part[/\AHTTP\/1\.[01] (\d{3})/, 1]
             if status
-              no_body ||= NO_ENTITY_BODY.key? status.to_i || status.to_i < 200
+              no_body ||= NO_ENTITY_BODY.key?(status.to_i) || status.to_i < 200
             end
             if no_body && part.end_with?(RESP_SPLIT)
               response.times = times
