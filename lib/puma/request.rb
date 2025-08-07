@@ -52,6 +52,7 @@ module Puma
       io_buffer = client.io_buffer
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
+      error = nil
 
       return false if closed_socket?(socket)
 
@@ -124,7 +125,7 @@ module Puma
         @log_writer.unknown_error error, client, "Rack app"
         @log_writer.log "Detected force shutdown of a thread"
 
-        status, headers, res_body = lowlevel_error(e, env, 503)
+        status, headers, res_body = lowlevel_error(error, env, 503)
       rescue Exception => error
         @log_writer.unknown_error error, client, "Rack app"
 
