@@ -460,7 +460,7 @@ class TestIntegration < PumaTest
             else
               mutex.synchronize { replies[:unexpected_response] += 1 }
             end
-          rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN
+          rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN, Errno::ENOTSOCK
             # connection was accepted but then closed
             # client would see an empty response
             # Errno::EBADF Windows may not be able to make a connection
