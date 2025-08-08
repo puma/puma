@@ -57,13 +57,15 @@ module Puma
         @config.run_hooks(:before_worker_boot, index, @log_writer, @hook_data)
 
         begin
-        server = @server ||= start_server
+          server = @server ||= start_server
         rescue Exception => e
           log "! Unable to start worker"
           log e
           log e.backtrace.join("\n    ")
           exit 1
         end
+
+        Thread.current.puma_server = server
 
         restart_server = Queue.new << true << false
 
