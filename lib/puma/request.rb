@@ -52,6 +52,7 @@ module Puma
       io_buffer = client.io_buffer
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
+      error = nil
 
       return false if closed_socket?(socket)
 
@@ -92,6 +93,7 @@ module Puma
       # array, we will invoke them when the request is done.
       #
       env[RACK_AFTER_REPLY] ||= []
+      env[RACK_RESPONSE_FINISHED] ||= []
 
       begin
         if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
@@ -119,15 +121,15 @@ module Puma
 
           return :async
         end
-      rescue ThreadPool::ForceShutdown => e
-        @log_writer.unknown_error e, client, "Rack app"
+      rescue ThreadPool::ForceShutdown => error
+        @log_writer.unknown_error error, client, "Rack app"
         @log_writer.log "Detected force shutdown of a thread"
 
-        status, headers, res_body = lowlevel_error(e, env, 503)
-      rescue Exception => e
-        @log_writer.unknown_error e, client, "Rack app"
+        status, headers, res_body = lowlevel_error(error, env, 503)
+      rescue Exception => error
+        @log_writer.unknown_error error, client, "Rack app"
 
-        status, headers, res_body = lowlevel_error(e, env, 500)
+        status, headers, res_body = lowlevel_error(error, env, 500)
       end
       prepare_response(status, headers, res_body, requests, client)
     ensure
@@ -139,6 +141,16 @@ module Puma
         after_reply.each do |o|
           begin
             o.call
+          rescue StandardError => e
+            @log_writer.debug_error e
+          end
+        end
+      end
+
+      if response_finished = env[RACK_RESPONSE_FINISHED]
+        response_finished.reverse_each do |o|
+          begin
+            o.call(env, status, headers, error)
           rescue StandardError => e
             @log_writer.debug_error e
           end
