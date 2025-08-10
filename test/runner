@@ -51,6 +51,11 @@ if show_warnings
   $VERBOSE = true
 end
 
+if RUBY_ENGINE == 'jruby'
+  t = `ps -eo pid,time,command | grep -i java | grep -v grep`
+  STDOUT.syswrite "\nJava PID #{t.strip[/\A\d+/]}\n\n"
+end
+
 if ARGV.empty? || ARGV.last.start_with?('-')
   if RUBY_VERSION >= '2.5'
     Dir['test_*.rb', base: __dir__].sort.each { |tf| require_relative tf }
