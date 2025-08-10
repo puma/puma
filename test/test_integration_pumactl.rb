@@ -279,7 +279,7 @@ class TestIntegrationPumactl < TestIntegration
   def control_gc_stats(unix: false)
     cli_server "-t1:1 -q test/rackup/hello.ru #{set_pumactl_args unix: unix} -S #{@state_path}"
 
-    key = Puma::IS_MRI || TRUFFLE_HEAD ? "count" : "used"
+    key = Puma::IS_MRI ? "count" : "used"
 
     resp_io = cli_pumactl "gc-stats", unix: unix
     before = JSON.parse resp_io.read.split("\n", 2).last
