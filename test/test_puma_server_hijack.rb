@@ -46,9 +46,15 @@ class TestPumaServerHijack < PumaTest
   def server_run(**options, &block)
     options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
+    options[:max_threads] ||= 1
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
+    min_threads = options[:min_threads]
+    until @server.running >= min_threads
+      Thread.pass
+      sleep 0.01
+    end
   end
 
   # Full hijack does not return headers
