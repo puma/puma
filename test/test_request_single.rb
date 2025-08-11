@@ -16,6 +16,8 @@ class TestRequestBase < PumaTest
   GET_PREFIX = "GET / HTTP/1.1\r\nConnection: close\r\n"
   CHUNKED = "1\r\nH\r\n4\r\nello\r\n5\r\nWorld\r\n0\r\n\r\n"
 
+  HTTP_METHODS = SUPPORTED_HTTP_METHODS.sort.product([nil]).to_h.freeze
+
   def create_client(request, &blk)
     env = {}
     @rd, @wr = IO.pipe
@@ -23,7 +25,9 @@ class TestRequestBase < PumaTest
     @rd.define_singleton_method :peeraddr, PEER_ADDR
 
     @client = Puma::Client.new @rd, env
+    @client.supported_http_methods = HTTP_METHODS
     @parser = @client.instance_variable_get :@parser
+
     yield @client if blk
 
     # Old Rubies, JRuby, and Windows Ruby all have issues with
