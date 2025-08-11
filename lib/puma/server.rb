@@ -389,6 +389,7 @@ module Puma
                 pool << Client.new(io, @binder.env(sock)).tap { |c|
                   c.listener = sock
                   c.http_content_length_limit = @http_content_length_limit
+                  c.supported_http_methods = @supported_http_methods
                   c.send(addr_send_name, addr_value) if addr_value
                 }
               end
