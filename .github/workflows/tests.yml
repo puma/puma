@@ -13,7 +13,7 @@ jobs:
     name: RuboCop linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.1
@@ -82,7 +82,7 @@ jobs:
     steps:
       - name: repo checkout
         if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Compile Puma without SSL support
         if: |
@@ -170,7 +170,7 @@ jobs:
     steps:
       - name: repo checkout
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: load ruby, ragel
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
