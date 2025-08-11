@@ -116,7 +116,7 @@ module Puma
                 :tempfile, :io_buffer, :http_content_length_limit_exceeded,
                 :requests_served, :error_status_code
 
-    attr_writer :peerip, :http_content_length_limit
+    attr_writer :peerip, :http_content_length_limit, :supported_http_methods
 
     attr_accessor :remote_addr_header, :listener
 
@@ -281,7 +281,12 @@ module Puma
     # @return [Integer] bytes of buffer read by parser
     #
     def parser_execute
-      @parser.execute(@env, @buffer, @parsed_bytes)
+      ret = @parser.execute(@env, @buffer, @parsed_bytes)
+
+      if @env[REQUEST_METHOD] && @supported_http_methods != :any && !@supported_http_methods.key?(@env[REQUEST_METHOD])
+        raise HttpParserError501, "#{@env[REQUEST_METHOD]} method is not supported"
+      end
+      ret
     rescue => e
       @env[HTTP_CONNECTION] = 'close'
       raise e unless HttpParserError === e && e.message.include?('non-SSL')
