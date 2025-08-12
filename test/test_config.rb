@@ -607,6 +607,50 @@ class TestConfigFile < PumaTest
     assert_equal 10000, conf.final_options[:http_content_length_limit]
   end
 
+  def test_config_does_not_preload_app_if_not_using_workers
+    conf = Puma::Configuration.new({ workers: 0 })
+    conf.load
+    conf.clamp
+
+    assert_equal false, conf.options.default_options[:preload_app]
+  end
+
+  def test_config_preloads_app_if_using_workers
+    conf = Puma::Configuration.new({ workers: 2 })
+    conf.load
+    conf.clamp
+    preload = Puma.forkable?
+
+    assert_equal preload, conf.options.default_options[:preload_app]
+  end
+
+  def test_config_does_not_preload_app_if_using_workers_and_prune_bundler
+    conf = Puma::Configuration.new({ workers: 2 }) do |c|
+      c.prune_bundler
+    end
+    conf.load
+    conf.clamp
+
+    assert_equal false, conf.options.default_options[:preload_app]
+  end
+
+  def test_config_file_does_not_preload_app_if_not_using_workers
+    conf = Puma::Configuration.new { |c| c.load 'test/config/workers_0.rb' }
+    conf.load
+    conf.clamp
+
+    assert_equal false, conf.options.default_options[:preload_app]
+  end
+
+  def test_config_file_preloads_app_if_using_workers
+    conf = Puma::Configuration.new { |c| c.load 'test/config/workers_2.rb' }
+    conf.load
+    conf.clamp
+    preload = Puma.forkable?
+
+    assert_equal preload, conf.options.default_options[:preload_app]
+  end
+
   private
 
   def assert_run_hooks(hook_name, options = {})
@@ -739,6 +783,8 @@ class TestConfigEnvVariables < PumaTest
   def test_config_does_not_preload_app_if_not_using_workers
     env = { "WEB_CONCURRENCY" => "0" }
     conf = Puma::Configuration.new({}, {}, env)
+    conf.load
+    conf.clamp
     assert_equal false, conf.options.default_options[:preload_app]
   end
 
@@ -746,6 +792,8 @@ class TestConfigEnvVariables < PumaTest
     env = { "WEB_CONCURRENCY" => "2" }
     preload = Puma.forkable?
     conf = Puma::Configuration.new({}, {}, env)
+    conf.load
+    conf.clamp
     assert_equal preload, conf.options.default_options[:preload_app]
   end
 end
