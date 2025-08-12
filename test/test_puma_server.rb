@@ -1771,6 +1771,44 @@ class TestPumaServer < PumaTest
     shutdown_requests(**opts, post: true, s2_response: /408/)
   end
 
+  def test_shutdown_with_shutdown_debug
+    out, _ = capture_io do
+      shutdown_requests(s1_response: /204/, s2_response: /204/, shutdown_debug: true)
+    end
+
+    assert_equal 1, out.scan("Shutdown initiated").length
+    assert_equal 1, out.scan("Begin thread backtrace dump").length
+  end
+
+  def test_force_shutdown_with_shutdown_debug
+    out, _ = capture_io do
+      shutdown_requests(s1_complete: false, s1_response: /503/, shutdown_debug: true, force_shutdown_after: 0)
+    end
+
+    assert_equal 1, out.scan("Shutdown initiated").length
+    assert_equal 1, out.scan("Begin thread backtrace dump").length
+  end
+
+  def test_shutdown_with_shutdown_debug_on_force
+    out, _ = capture_io do
+      shutdown_requests(s1_response: /204/, s2_response: /204/, shutdown_debug: :on_force)
+    end
+
+    assert_equal 0, out.scan("Begin thread backtrace dump").length
+  end
+
+  def test_force_shutdown_with_shutdown_debug_on_force
+    out, _ = Puma::ThreadPool.stub_const(:SHUTDOWN_GRACE_TIME, 0) do
+      capture_io do
+        shutdown_requests(s1_complete: false, s1_response: /503/, shutdown_debug: :on_force, force_shutdown_after: 0)
+      end
+    end
+
+    assert_equal 1, out.scan("Shutdown timeout exceeded").length
+    assert_equal 1, out.scan("Shutdown grace timeout exceeded").length
+    assert_equal 2, out.scan("Begin thread backtrace dump").length
+  end
+
   def test_http11_connection_header_queue
     server_run { [200, {}, [""]] }
 
