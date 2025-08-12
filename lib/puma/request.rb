@@ -68,7 +68,7 @@ module Puma
       end
 
       env[HIJACK_P] = true
-      env[HIJACK] = client
+      env[HIJACK] = client.method :full_hijack
 
       env[RACK_INPUT] = client.body
       env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
