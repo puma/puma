@@ -3,21 +3,21 @@
 require_relative "helper"
 
 require 'puma/client'
-require 'puma/const'
-require 'puma/puma_http11'
 
 # this file tests both valid and invalid requests using only `Puma::Client'.
 # It cannot test behavior with multiple requests, for that, see
-# `test_request_invalid_mulitple.rb`
-
+# `test_request_invalid_multiple.rb`
 
 class TestRequestBase < PumaTest
+
   include Puma::Const
 
   PEER_ADDR = -> () { ["AF_INET", 80, "127.0.0.1", "127.0.0.1"] }
 
   GET_PREFIX = "GET / HTTP/1.1\r\nConnection: close\r\n"
   CHUNKED = "1\r\nH\r\n4\r\nello\r\n5\r\nWorld\r\n0\r\n\r\n"
+
+  HTTP_METHODS = SUPPORTED_HTTP_METHODS.sort.product([nil]).to_h.freeze
 
   def create_client(request, &blk)
     env = {}
@@ -26,24 +26,31 @@ class TestRequestBase < PumaTest
     @rd.define_singleton_method :peeraddr, PEER_ADDR
 
     @client = Puma::Client.new @rd, env
+    @client.supported_http_methods = HTTP_METHODS
     @parser = @client.instance_variable_get :@parser
-    yield if blk
 
+    yield @client if blk
+
+    # Old Rubies, JRuby, and Windows Ruby all have issues with
+    # writing large strings to pipe IO's.  Hence, the limit.
     written = 0
-    ttl = request.bytesize - 1
-    until written >= ttl
-      # Old Rubies, JRuby, and Windows Ruby all have issues with
-      # writing large strings to pipe IO's.  Hence, the limit.
-      written += @wr.write request[written..(written + 32 * 1024)]
+    i_limit = 32 * 1024
+    size = request.bytesize
+    while written < size
+      written += @wr.syswrite(request.byteslice(written, written + i_limit))
+      @wr&.close if written == size
       break if @client.try_to_finish
     end
+    fail unless @parser.finished?
   end
 
-  def assert_invalid(req, msg, err = Puma::HttpParserError)
-    error = assert_raises(err) { create_client req }
+  def assert_invalid(req, msg, err: Puma::HttpParserError, status: nil, &blk)
+    error = assert_raises(err) { create_client req, &blk }
+
     assert_equal msg, error.message
     assert_equal 'close', @client.env[HTTP_CONNECTION],
       "env['HTTP_CONNECTION'] should be set to 'close'"
+    assert_equal(status, @client.error_status_code) if status
   end
 
   def teardown
@@ -54,83 +61,57 @@ class TestRequestBase < PumaTest
   end
 end
 
-# Tests requests that require special handling of headers
-class TestRequestValid < TestRequestBase
+# Tests request start line, which sets `env` values for:
+#
+# * HTTP_CONNECTION
+# * QUERY_STRING
+# * REQUEST_METHOD
+# * REQUEST_PATH
+# * REQUEST_URI
+# * SERVER_PROTOCOL
+#
+class TestRequestLineValid < TestRequestBase
 
-  def test_underscore_header_1
-    request = <<~REQ.gsub("\n", "\r\n").rstrip
-      GET / HTTP/1.1
-      x-forwarded_for: 2.2.2.2
-      x-forwarded-for: 1.1.1.1
-      Content-Length: 11
+  def test_method
+    create_client "GET /?a=1 HTTP/1.1\r\n\r\n"
 
-      Hello World
-    REQ
-
-    create_client request
-
-    if @parser.finished?
-      assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
-      assert_equal "Hello World", @client.body.string
-    else
-      fail
-    end
+    assert_equal 'GET', @client.env[REQUEST_METHOD]
   end
 
-  def test_underscore_header_2
-    hdrs = [
-      "X-FORWARDED-FOR: 1.1.1.1",  # proper
-      "X-FORWARDED-FOR: 2.2.2.2",  # proper
-      "X_FORWARDED-FOR: 3.3.3.3",  # invalid, contains underscore
-      "Content-Length: 5",
-    ].join "\r\n"
+  def test_path_plain
+    create_client "GET /puma/request HTTP/1.1\r\n\r\n"
 
-    create_client "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
-
-    if @parser.finished?
-      assert_equal "1.1.1.1, 2.2.2.2", @client.env['HTTP_X_FORWARDED_FOR']
-      assert_equal "Hello", @client.body.string
-    else
-      fail
-    end
+    assert_equal '/puma/request', @client.env[REQUEST_PATH]
   end
 
-  def test_underscore_header_3
-    hdrs = [
-      "X_FORWARDED-FOR: 3.3.3.3",  # invalid, contains underscore
-      "X-FORWARDED-FOR: 2.2.2.2",  # proper
-      "X-FORWARDED-FOR: 1.1.1.1",  # proper
-      "Content-Length: 5",
-    ].join "\r\n"
+  def test_path_with_query
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\n\r\n"
 
-    create_client "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
-
-    if @parser.finished?
-      assert_equal "2.2.2.2, 1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
-      assert_equal "Hello", @client.body.string
-    else
-      fail
-    end
+    assert_equal '/puma/request', @client.env[REQUEST_PATH]
   end
 
-  def test_unmaskable_headers
-    request = <<~REQ.gsub("\n", "\r\n").rstrip
-      GET / HTTP/1.1
-      Transfer_Encoding: chunked
-      Content_Length: 11
+  def test_query
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\n\r\n"
 
-      Hello World
-    REQ
+    assert_equal 'query=books&sort=price&order=asc', @client.env[QUERY_STRING]
+  end
 
-    create_client request
+  def test_uri
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\n\r\n"
 
-    if @parser.finished?
-      assert_equal '11', @client.env['HTTP_CONTENT,LENGTH']
-      assert_equal 'chunked', @client.env['HTTP_TRANSFER,ENCODING']
-      assert_instance_of Puma::NullIO, @client.body
-    else
-      fail
-    end
+    assert_equal '/puma/request?query=books&sort=price&order=asc', @client.env[REQUEST_URI]
+  end
+
+  def test_PROTOCOL_1_0
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.0\r\n\r\n"
+
+    assert_equal 'HTTP/1.0', @client.env[SERVER_PROTOCOL]
+  end
+
+  def test_PROTOCOL_1_1
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\n\r\n"
+
+    assert_equal 'HTTP/1.1', @client.env[SERVER_PROTOCOL]
   end
 end
 
@@ -138,11 +119,13 @@ end
 #
 # * HTTP_CONNECTION
 # * QUERY_STRING
+# * REQUEST_METHOD
 # * REQUEST_PATH
 # * REQUEST_URI
 # * SERVER_PROTOCOL
 #
 class TestRequestLineInvalid < TestRequestBase
+
   # An ssl request will probably be scrambled
   def test_maybe_ssl
     assert_invalid "a_}{n",
@@ -150,8 +133,22 @@ class TestRequestLineInvalid < TestRequestBase
   end
 
   def test_method_lower_case
-    assert_invalid "get /?a=1 HTTP/1.1\r\n\r\n",
-      "Invalid HTTP format, parsing fails. Bad method get"
+    assert_invalid "GEt /?a=1 HTTP/1.1\r\n\r\n",
+      "Invalid HTTP format, parsing fails. Bad method GEt"
+  end
+
+  def test_method_non_standard
+    assert_invalid "PUMA /?a=1 HTTP/1.1\r\n\r\n",
+      "PUMA method is not supported",
+      err: Puma::HttpParserError501
+  end
+
+  def test_method_user_not_allowed
+    assert_invalid("POST /?a=1 HTTP/1.1\r\n\r\n",
+      "POST method is not supported",
+      err: Puma::HttpParserError501) { |c| c.supported_http_methods =
+        {'HEAD' => nil, 'GET' => nil}
+      }
   end
 
   def test_path_non_printable
@@ -177,6 +174,7 @@ end
 
 # Tests limits set in `ext/puma_http11/puma_http11.c`
 class TestRequestOversizeItem < TestRequestBase
+
   # limit is 256
   def test_header_name
     request = "GET /test1 HTTP/1.1\r\n#{'a' * 257}: val\r\n\r\n"
@@ -251,10 +249,255 @@ class TestRequestOversizeItem < TestRequestBase
 
     assert_invalid request, msg
   end
+
+  def test_content_length_exceeded
+    long_string = 'a' * 200_000
+
+    request = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 200000\r\n\r\n" \
+      "#{long_string}"
+
+    msg = 'Payload Too Large'
+
+    assert_invalid(request, msg, status: 413) { |client| client.http_content_length_limit = 65 * 1_024 }
+  end
+
+  def test_content_length_exceeded_chunked
+    chunk_length = 20_000
+    chunk_part_qty = 10
+
+    long_string = 'a' * chunk_length
+    long_string_part = "#{long_string.bytesize.to_s 16}\r\n#{long_string}\r\n"
+    long_chunked = "#{long_string_part * chunk_part_qty}0\r\n\r\n"
+
+    request = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n" \
+      "Transfer-Encoding: chunked\r\n\r\n#{long_chunked}"
+
+    msg = 'Payload Too Large'
+
+    assert_invalid(request, msg, status: 413) { |client| client.http_content_length_limit = 65 * 1_024 }
+  end
+end
+
+# Tests requests that require special handling of headers
+class TestRequestHeadersValid < TestRequestBase
+
+  def test_content
+    create_client "GET / HTTP/1.1\r\nContent-Length: 11\r\n\r\nHello World"
+
+    assert_instance_of Float, @client.env['puma.request_body_wait']
+    assert_equal '11', @client.env[CONTENT_LENGTH]
+    assert_equal 'Hello World', @client.env['rack.input'].read
+  end
+
+  def test_content_chunked
+    request = request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.1
+      Transfer-Encoding: chunked
+
+      11
+      Transfer-Encoding
+      9
+      Puma Test
+      11
+      Transfer-Encoding
+      0
+
+    REQ
+
+    create_client request
+
+    assert_instance_of Float, @client.env['puma.request_body_wait']
+    refute_operator @client.env, :key?, TRANSFER_ENCODING2
+    assert_equal '43', @client.env[CONTENT_LENGTH]
+    assert_equal 'Transfer-EncodingPuma TestTransfer-Encoding', @client.env['rack.input'].read
+  end
+
+  # if a header with an underscore exists, and is a singular key,  accept it
+  def test_underscore_single
+    request = "GET / HTTP/1.1\r\n" \
+      "x_forwarded_for: 1.1.1.1\r\n" \
+      "Content-Length: 11\r\n\r\nHello World"
+
+    create_client request
+
+    assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+  end
+
+  def test_underscore_header_1
+    request = <<~REQ.gsub("\n", "\r\n").rstrip
+      GET / HTTP/1.1
+      x-forwarded_for: 2.2.2.2
+      x-forwarded-for: 1.1.1.1
+      Content-Length: 11
+
+      Hello World
+    REQ
+
+    create_client request
+
+    assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+    assert_equal "Hello World", @client.body.string
+  end
+
+  def test_underscore_header_2
+    hdrs = [
+      "X-FORWARDED-FOR: 1.1.1.1",  # proper
+      "X-FORWARDED-FOR: 2.2.2.2",  # proper
+      "X_FORWARDED-FOR: 3.3.3.3",  # invalid, contains underscore
+      "Content-Length: 5",
+    ].join "\r\n"
+
+    create_client "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
+
+    assert_equal "1.1.1.1, 2.2.2.2", @client.env['HTTP_X_FORWARDED_FOR']
+    assert_equal "Hello", @client.body.string
+  end
+
+  def test_underscore_header_3
+    hdrs = [
+      "X_FORWARDED-FOR: 3.3.3.3",  # invalid, contains underscore
+      "X-FORWARDED-FOR: 2.2.2.2",  # proper
+      "X-FORWARDED-FOR: 1.1.1.1",  # proper
+      "Content-Length: 5",
+    ].join "\r\n"
+
+    create_client "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
+
+    assert_equal "2.2.2.2, 1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+    assert_equal "Hello", @client.body.string
+  end
+
+  def test_unmaskable_headers
+    request = <<~REQ.gsub("\n", "\r\n").rstrip
+      GET / HTTP/1.1
+      Transfer_Encoding: chunked
+      Content_Length: 11
+
+      Hello World
+    REQ
+
+    create_client request
+
+    assert_equal '11', @client.env['HTTP_CONTENT,LENGTH']
+    assert_equal 'chunked', @client.env['HTTP_TRANSFER,ENCODING']
+    assert_instance_of Puma::NullIO, @client.body
+  end
+
+  def test_default_port
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.0
+      Host: example.com
+
+    REQ
+
+    create_client request
+
+    assert_equal 'example.com', @client.env[SERVER_NAME]
+    assert_equal '80', @client.env[SERVER_PORT]
+    assert_instance_of Puma::NullIO, @client.body
+  end
+
+  def test_hostname_and_port
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.0
+      Host: example.com:456
+
+    REQ
+
+    create_client request
+
+    assert_equal 'example.com', @client.env[SERVER_NAME]
+    assert_equal '456', @client.env[SERVER_PORT]
+    assert_instance_of Puma::NullIO, @client.body
+  end
+
+  def test_host_header_missing
+    create_client "GET / HTTP/1.0\r\n\r\n"
+
+    assert_equal 'localhost', @client.env[SERVER_NAME]
+    assert_equal '80', @client.env[SERVER_PORT]
+  end
+
+  def test_host_ipv4_port
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.0
+      Host: 123.123.123.123:456
+
+    REQ
+
+    create_client request
+
+    assert_equal '123.123.123.123', @client.env[SERVER_NAME]
+    assert_equal '456', @client.env[SERVER_PORT]
+    assert_instance_of Puma::NullIO, @client.body
+  end
+
+  def test_ipv6_port
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.0
+      Host: [::ffff:127.0.0.1]:9292
+
+    REQ
+
+    create_client request
+
+    assert_equal '[::ffff:127.0.0.1]', @client.env[SERVER_NAME]
+    assert_equal '9292', @client.env[SERVER_PORT]
+    assert_instance_of Puma::NullIO, @client.body
+  end
+
+  def test_respect_x_forwarded_proto
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.0
+      host: example.com
+      x-forwarded-proto: https,http
+
+    REQ
+
+    create_client request
+
+    assert_equal '443'   , @client.default_server_port
+    assert_equal '443'   , @client.env[SERVER_PORT]
+    assert_equal 'https' , @client.env[RACK_URL_SCHEME]
+    assert_instance_of Puma::NullIO, @client.body
+  end
+
+  def test_respect_x_forwarded_ssl_on
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.0
+      host: example.com
+      x-forwarded-ssl: on
+
+    REQ
+
+    create_client request
+
+    assert_equal '443'   , @client.default_server_port
+    assert_equal '443'   , @client.env[SERVER_PORT]
+    assert_equal 'https' , @client.env[RACK_URL_SCHEME]
+    assert_instance_of Puma::NullIO, @client.body
+  end
+
+  def test_respect_x_forwarded_scheme
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.0
+      host: example.com
+      x-forwarded-scheme: https
+
+    REQ
+
+    create_client request
+
+    assert_equal '443'   , @client.default_server_port
+    assert_equal '443'   , @client.env[SERVER_PORT]
+    assert_equal 'https' , @client.env[RACK_URL_SCHEME]
+    assert_instance_of Puma::NullIO, @client.body
+  end
 end
 
 # Tests the headers section of the request
 class TestRequestHeadersInvalid < TestRequestBase
+
   def test_malformed_headers_no_return
     request = "GET / HTTP/1.1\r\nno-return: 10\nContent-Length: 11\r\n\r\nHello World"
 
@@ -286,28 +529,28 @@ class TestRequestContentLengthInvalid < TestRequestBase
     ].join "\r\n"
 
     assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-      'Invalid Content-Length: "5, 5"'
+      'Invalid Content-Length: "5, 5"', status: 400
   end
 
   def test_bad_characters_1
     cl = 'Content-Length: 5.01'
 
     assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-     'Invalid Content-Length: "5.01"'
+     'Invalid Content-Length: "5.01"', status: 400
   end
 
   def test_bad_characters_2
     cl = 'Content-Length: +5'
 
     assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-      'Invalid Content-Length: "+5"'
+      'Invalid Content-Length: "+5"', status: 400
   end
 
   def test_bad_characters_3
     cl = 'Content-Length: 5 test'
 
     assert_invalid "#{GET_PREFIX}#{cl}\r\n\r\nHello\r\n\r\n",
-    'Invalid Content-Length: "5 test"'
+    'Invalid Content-Length: "5 test"', status: 400
   end
 end
 
@@ -404,7 +647,7 @@ class TestTransferEncodingInvalid < TestRequestBase
 
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
       "Invalid Transfer-Encoding, unknown value: 'xchunked'",
-      Puma::HttpParserError501
+      err: Puma::HttpParserError501
   end
 
   def test_invalid_multiple
@@ -416,7 +659,7 @@ class TestTransferEncodingInvalid < TestRequestBase
 
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
       "Invalid Transfer-Encoding, unknown value: 'x_gzip, gzip, chunked'",
-      Puma::HttpParserError501
+      err: Puma::HttpParserError501
   end
 
   def test_single_not_chunked
