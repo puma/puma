@@ -21,8 +21,8 @@ module Puma
   #———————————————————————— DO NOT USE — this class is for internal use only ———
 
 
-  # An instance of this class represents a unique request from a client.
-  # For example, this could be a web request from a browser or from CURL.
+  # An instance of this class wraps a connection/socket.
+  # For example, this could be an http request from a browser or from CURL.
   #
   # An instance of `Puma::Client` can be used as if it were an IO object
   # by the reactor. The reactor is expected to call `#to_io`
@@ -30,9 +30,13 @@ module Puma
   # `IO::try_convert` (which may call `#to_io`) when a new socket is
   # registered.
   #
-  # Instances of this class are responsible for knowing if
-  # the header and body are fully buffered via the `try_to_finish` method.
+  # Instances of this class are responsible for knowing if the request line,
+  # headers and body are fully buffered and verified via the `try_to_finish` method.
+  # All verification of each request is done in the `Client` object.
   # They can be used to "time out" a response via the `timeout_at` reader.
+  #
+  # Most of the code for env processing and verification is contained
+  # in `Puma::ClientEnv`, which is included.
   #
   class Client # :nodoc:
 
