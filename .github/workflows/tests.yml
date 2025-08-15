@@ -149,7 +149,7 @@ jobs:
           - { tto: 8 , os: ubuntu-24.04 , ruby: truffleruby-head, allow-failure: false }
           - { tto: 8 , os: macos-13     , ruby: jruby }
           - { tto: 8 , os: macos-14     , ruby: jruby }
-          - { tto: 8 , os: macos-13     , ruby: truffleruby, allow-failure: false }
+          - { tto: 8 , os: macos-15     , ruby: truffleruby, allow-failure: false }
 
     steps:
       - name: repo checkout
