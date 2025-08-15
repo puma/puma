@@ -100,7 +100,7 @@ class TestPumaServerSSL < PumaTest
 
   def test_very_large_return
     start_server
-    giant = "x" * 2056610
+    giant = "x" * 2_056_610
 
     @server.app = proc { [200, {}, [giant]] }
 
