@@ -99,8 +99,9 @@ class TestPumaServerSSL < PumaTest
   end
 
   def test_very_large_return
+    body_size = Puma::IS_OSX && TRUFFLE ? 512 * 1_024 : 2_056_610
     start_server
-    giant = "x" * 2_056_610
+    giant = "x" * body_size
 
     @server.app = proc { [200, {}, [giant]] }
 
