@@ -63,7 +63,7 @@ module TestPuma
     HELLO_11 = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\n" \
       "Content-Length: 11\r\n\r\nHello World"
 
-    RESP_READ_LEN = 65_536
+    RESP_READ_LEN = Puma::IS_OSX && RUBY_ENGINE == 'truffleruby' ? 32_768 : 65_536
     RESP_READ_TIMEOUT = 10
     NO_ENTITY_BODY = Puma::STATUS_WITH_NO_ENTITY_BODY
     EMPTY_200 = [200, {}, ['']]
