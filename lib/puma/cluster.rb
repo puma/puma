@@ -187,7 +187,7 @@ module Puma
         # we need to phase any workers out (which will restart
         # in the right phase).
         #
-        w = @workers.find { |x| x.phase != @phase }
+        w = @workers.find { |x| x.phase < @phase }
 
         if w
           if refork
