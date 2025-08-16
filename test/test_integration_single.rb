@@ -131,8 +131,12 @@ class TestIntegrationSingle < TestIntegration
     curl_wait_thread.join
     rejected_curl_wait_thread.join
 
+    re_curl_error = TRUFFLE ?
+      /Connection (refused|reset by peer)|(Couldn't|Could not) connect to server/ :
+      /Connection refused|(Couldn't|Could not) connect to server/
+
     assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|(Couldn't|Could not) connect to server/, rejected_curl_stderr.read)
+    assert_match(re_curl_error, rejected_curl_stderr.read)
 
     wait_server 15
   end
