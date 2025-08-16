@@ -175,12 +175,7 @@ module Puma
 
         @parsed_bytes = parser_execute
 
-        if @parser.finished?
-          return process_env_body
-        elsif @parsed_bytes >= MAX_HEADER
-          raise HttpParserError,
-            "HEADER is longer than allowed, aborting client early."
-        end
+        @parser.finished? ? process_env_body : false
       end
     end
 
@@ -262,14 +257,7 @@ module Puma
 
       @parsed_bytes = parser_execute
 
-      if @parser.finished?
-        process_env_body
-      elsif @parsed_bytes >= MAX_HEADER
-        raise HttpParserError,
-          "HEADER is longer than allowed, aborting client early."
-      else
-        false
-      end
+      @parser.finished? ? process_env_body : false
     end
 
     def eagerly_finish
