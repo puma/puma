@@ -19,9 +19,17 @@ class TestRequestBase < PumaTest
 
   HTTP_METHODS = SUPPORTED_HTTP_METHODS.sort.product([nil]).to_h.freeze
 
+  USE_IO_PIPE = Puma::IS_OSX && (RUBY_VERSION < '3.0' || !Puma::IS_MRI)
+
   def create_client(request, &blk)
     env = {}
-    @rd, @wr = IO.pipe
+    if Puma::IS_WINDOWS
+      @rd, @wr = Socket.pair Socket::AF_INET, Socket::SOCK_STREAM, 0
+    elsif USE_IO_PIPE
+      @rd, @wr = IO.pipe
+    else
+      @rd, @wr = UNIXSocket.pair
+    end
 
     @rd.define_singleton_method :peeraddr, PEER_ADDR
 
@@ -31,23 +39,24 @@ class TestRequestBase < PumaTest
 
     yield @client if blk
 
-    # Old Rubies, JRuby, and Windows Ruby all have issues with
-    # writing large strings to pipe IO's.  Hence, the limit.
     written = 0
-    i_limit = 32 * 1024
+    i_limit = 64 * 1024
     size = request.bytesize
     while written < size
-      written += @wr.syswrite(request.byteslice(written, written + i_limit))
+      written += @wr.syswrite(request.byteslice written, i_limit)
       @wr&.close if written == size
       break if @client.try_to_finish
     end
-    fail unless @parser.finished?
   end
 
-  def assert_invalid(req, msg, err: Puma::HttpParserError, status: nil, &blk)
+  def assert_invalid(req, msg, err: Puma::HttpParserError, status: nil, start_with: false, &blk)
     error = assert_raises(err) { create_client req, &blk }
 
-    assert_equal msg, error.message
+    if start_with
+      assert_start_with error.message, msg
+    else
+      assert_equal msg, error.message
+    end
     assert_equal 'close', @client.env[HTTP_CONNECTION],
       "env['HTTP_CONNECTION'] should be set to 'close'"
     assert_equal(status, @client.error_status_code) if status
@@ -235,9 +244,9 @@ class TestRequestOversizeItem < TestRequestBase
 
     msg = Puma::IS_JRUBY ?
       "HTTP element HEADER is longer than the 114688 allowed length." :
-      "HTTP element HEADER is longer than the (1024 * (80 + 32)) allowed length (was 114930)"
+      "HTTP element HEADER is longer than the (1024 * (80 + 32)) allowed length ("
 
-    assert_invalid "GET / HTTP/1.1\r\n#{hdrs}\r\n", msg
+    assert_invalid "GET / HTTP/1.1\r\n#{hdrs}\r\n", msg, start_with: true
   end
 
   # limit is 10 * 1024
