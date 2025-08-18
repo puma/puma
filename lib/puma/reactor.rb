@@ -81,11 +81,15 @@ module Puma
           # Wakeup any registered object that receives incoming data.
           # Block until the earliest timeout or Selector#wakeup is called.
           timeout = (earliest = @timeouts.first) && earliest.timeout
-          @selector.select(timeout) {|mon| wakeup!(mon.value)}
+          monitor_wake_up = false
+          @selector.select(timeout) do |monitor|
+            monitor_wake_up = true
+            wakeup!(monitor.value)
+          end
 
           # Wakeup all objects that timed out.
-          timed_out = @timeouts.take_while {|t| t.timeout == 0}
-          timed_out.each { |c| wakeup! c }
+          timed_out = @timeouts.take_while { |client| client.timeout == 0 }
+          timed_out.each { |client| wakeup!(client) }
 
           unless @input.empty?
             until @input.empty?
@@ -102,7 +106,7 @@ module Puma
         # NoMethodError may be rarely raised when calling @selector.select, which
         # is odd.  Regardless, it may continue for thousands of calls if retried.
         # Also, when it raises, @selector.close also raises an error.
-        if NoMethodError === e
+        if !monitor_wake_up && NoMethodError === e
           close_selector = false
         else
           retry
