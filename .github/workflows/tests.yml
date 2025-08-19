@@ -54,7 +54,6 @@ jobs:
           - { os: ubuntu-22.04    , ruby:  head , yjit: ' yjit'     }
           - { os: ubuntu-22.04    , ruby:  3.2  , no-ssl: ' no SSL' }
           - { os: ubuntu-22.04    , ruby:  3.0  , rack-v: ' rack2'  }
-          - { os: ubuntu-22.04    , ruby:  3.0  , rack-v: ' rack1'  }
 
         exclude:
           - { os: ubuntu-24.04    , ruby: '3.0' }
@@ -84,10 +83,12 @@ jobs:
         if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         uses: ruby/setup-ruby-pkgs@v1
         with:
+          # see https://github.com/ruby/setup-ruby/blob/master/action.yml for info
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
-          rubygems: latest
+          rubygems: default
+          bundler: default
           bundler-cache: true
         timeout-minutes: 10
 
@@ -159,10 +160,12 @@ jobs:
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: ruby/setup-ruby-pkgs@v1
         with:
+          # see https://github.com/ruby/setup-ruby/blob/master/action.yml for info
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
-          bundler: none
+          rubygems: default
+          bundler: default
           bundler-cache: true
         timeout-minutes: 10
 
