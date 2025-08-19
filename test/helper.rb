@@ -148,7 +148,7 @@ module TestSkips
 
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
-    signal = sig.to_s.sub(/\ASIG/, '').to_sym
+    signal = sig.to_s.delete_prefix('SIG').to_sym
     unless SIGNAL_LIST.include? signal
       skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
     end
