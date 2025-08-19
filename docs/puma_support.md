@@ -20,7 +20,7 @@ If a bug report cannot be reproduced with the latest Puma version, it may be clo
 
  "Ruby version" refers to the https://github.com/ruby/ruby implementation. Puma also supports other Ruby implementations (the origin of Puma involves an alternate Ruby implementation, rubinius) see below.
 
-Puma supports "Ruby upstream + 2 versions". Ruby upstream support is documented at this page https://www.ruby-lang.org/en/downloads/branches/. At this time of writing, it is 3 "major" versions, where a major version is X.Y with X.Y.Z being a patch release. If a Ruby version is not EOL, it is supported. Because we support "+ 2 versions", if 3.2 is the last non-EOL version, Puma will support 3.1 and 3.0 as well. The Puma team recommends you always use the latest Ruby release.
+Puma supports "Ruby upstream + 2 versions". Ruby upstream support is documented at this page https://www.ruby-lang.org/en/downloads/branches/. At this time of writing, it is 3 "minor" versions, where a minor version is X.Y with X.Y.Z being a patch release. If a Ruby version is not EOL, it is supported. Because we support "+ 2 versions", if 3.2 is the last non-EOL version, Puma will support 3.1 and 3.0 as well. The Puma team recommends you always use the latest Ruby release.
 
 When Puma supports a Ruby version, it will include that version in the CI matrix. The gemspec specifies the minimum supported Ruby versions. If a bug is reported, the report must be reproducible on a currently supported Ruby version.
 
