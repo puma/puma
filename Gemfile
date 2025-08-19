@@ -38,9 +38,7 @@ if RUBY_VERSION >= '3.5' && ::Bundler::WINDOWS
   gem "fiddle"
 end
 
-if RUBY_VERSION == '2.4.1'
-  gem "stopgap_13632", "~> 1.0", :platforms => ["mri", "mingw", "x64_mingw"]
-elsif Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.5")
+if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.5")
   gem "logger"
 end
 

@@ -2,15 +2,6 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-if RUBY_VERSION == '2.4.1'
-  begin
-    require 'stopgap_13632'
-  rescue LoadError
-    puts "For test stability, you must install the stopgap_13632 gem."
-    exit(1)
-  end
-end
-
 # WIth GitHub Actions, OS's `/tmp` folder may be on a HDD, while
 # ENV['RUNNER_TEMP'] is an SSD.  Faster.
 if ENV['GITHUB_ACTIONS'] == 'true'

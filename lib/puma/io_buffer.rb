@@ -35,7 +35,7 @@ module Puma
     alias_method :clear, :reset
 
     # before Ruby 2.5, `write` would only take one argument
-    if RUBY_VERSION >= '2.5' && RUBY_ENGINE != 'truffleruby'
+    if RUBY_ENGINE != 'truffleruby'
       alias_method :append, :write
     else
       def append(*strs)

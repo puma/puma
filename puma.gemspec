@@ -15,9 +15,7 @@ Gem::Specification.new do |s|
   s.executables = ["puma", "pumactl"]
   s.extensions = ["ext/puma_http11/extconf.rb"]
   s.add_runtime_dependency "nio4r", "~> 2.0"
-  if RbConfig::CONFIG['ruby_version'] >= '2.5'
-    s.metadata["msys2_mingw_dependencies"] = "openssl"
-  end
+  s.metadata["msys2_mingw_dependencies"] = "openssl"
   s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
             %w[History.md LICENSE README.md]
   s.homepage = "https://puma.io"

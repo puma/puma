@@ -5,7 +5,6 @@ require_relative "helpers/integration"
 
 class TestPlugin < TestIntegration
   def test_plugin
-    skip "Skipped on Windows Ruby < 2.5.0, Ruby bug" if windows? && RUBY_VERSION < '2.5.0'
     @control_tcp_port = UniquePort.call
 
     Dir.mkdir("tmp") unless Dir.exist?("tmp")
