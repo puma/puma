@@ -16,8 +16,6 @@ case ENV['PUMA_CI_RACK']&.strip
 when 'rack2'
   gem "rackup", '~> 1.0'
   gem "rack"  , '~> 2.2'
-when 'rack1'
-  gem "rack"  , '~> 1.6'
 else
   gem "rackup", '>= 2.0'
   if RUBY_PATCHLEVEL == -1
