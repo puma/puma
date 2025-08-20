@@ -16,7 +16,7 @@ class FiberLocalApplication
   end
 end
 
-class FiberLocalApplicationTest < Minitest::Test
+class FiberLocalApplicationTest < PumaTest
   parallelize_me!
 
   def setup

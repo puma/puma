@@ -15,7 +15,7 @@ class FiberStorageApplication
   end
 end
 
-class FiberStorageApplicationTest < Minitest::Test
+class FiberStorageApplicationTest < PumaTest
   parallelize_me!
 
   def setup
