@@ -57,10 +57,9 @@ module Puma
       def ping!(status)
         hsh = {}
         k, v = nil, nil
-        # @todo remove each once Ruby 2.5 is no longer supported
-        status.tr('}{"', '').strip.split(", ").each do |kv|
+        status.tr('}{"', '').strip.split(", ") do |kv|
           cntr = 0
-          kv.split(':').each do |t|
+          kv.split(':') do |t|
             if cntr == 0
               k = t
               cntr = 1
