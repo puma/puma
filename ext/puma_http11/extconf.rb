@@ -52,14 +52,6 @@ unless ENV["PUMA_DISABLE_SSL"]
     have_func "SSL_get1_peer_certificate"              , ssl_h
 
     puts ''
-
-    # Random.bytes available in Ruby 2.5 and later, Random::DEFAULT deprecated in 3.0
-    if Random.respond_to?(:bytes)
-      $defs.push "-DHAVE_RANDOM_BYTES"
-      puts "checking for Random.bytes... yes"
-    else
-      puts "checking for Random.bytes... no"
-    end
   end
 end
 
