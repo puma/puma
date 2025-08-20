@@ -372,12 +372,8 @@ module Puma
 
       if preload?
         # Threads explicitly marked as fork safe will be ignored. Used in Rails,
-        # but may be used by anyone. Note that we need to explicit
-        # Process::Waiter check here because there's a bug in Ruby 2.6 and below
-        # where calling thread_variable_get on a Process::Waiter will segfault.
-        # We can drop that clause once those versions of Ruby are no longer
-        # supported.
-        fork_safe = ->(t) { !t.is_a?(Process::Waiter) && t.thread_variable_get(:fork_safe) }
+        # but may be used by anyone.
+        fork_safe = ->(t) { t.thread_variable_get(:fork_safe) }
 
         before = Thread.list.reject(&fork_safe)
 
