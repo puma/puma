@@ -189,7 +189,6 @@ module Puma
       begin
         @io.close
       rescue IOError, Errno::EBADF
-        Puma::Util.purge_interrupt_queue
       end
     end
 

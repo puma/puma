@@ -30,7 +30,6 @@ class TestOutOfBandServer < PumaTest
   def new_connection
     TCPSocket.new('127.0.0.1', @port).tap {|s| @ios << s}
   rescue IOError
-    Puma::Util.purge_interrupt_queue
     retry
   end
 
