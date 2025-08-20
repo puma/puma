@@ -17,9 +17,8 @@ require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 
 module Puma
-
-  # This method was private on Ruby 2.4 but became public on Ruby 2.5+:
-  Thread.send(:attr_accessor, :puma_server)
+  # Add `Thread#puma_server` and `Thread#puma_server=`
+  Thread.attr_accessor(:puma_server)
 
   # The HTTP Server itself. Serves out a single Rack app.
   #
