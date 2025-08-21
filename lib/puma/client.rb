@@ -1,13 +1,5 @@
 # frozen_string_literal: true
 
-class IO
-  # We need to use this for a jruby work around on both 1.8 and 1.9.
-  # So this either creates the constant (on 1.8), or harmlessly
-  # reopens it (on 1.9).
-  module WaitReadable
-  end
-end
-
 require_relative 'detect'
 require_relative 'io_buffer'
 require 'tempfile'
@@ -197,7 +189,6 @@ module Puma
       begin
         @io.close
       rescue IOError, Errno::EBADF
-        Puma::Util.purge_interrupt_queue
       end
     end
 

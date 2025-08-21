@@ -8,10 +8,11 @@ In general running Puma in Kubernetes works as-is, no special configuration is n
 
 Assuming you already have a running cluster and docker image repository, you can run a simple Puma app with the following example Dockerfile and Deployment specification. These are meant as examples only and are deliberately very minimal to the point of skipping many options that are recommended for running in production, like healthchecks and envvar configuration with ConfigMaps. In general you should check the [Kubernetes documentation](https://kubernetes.io/docs/home/) and [Docker documentation](https://docs.docker.com/) for a more comprehensive overview of the available options.
 
-A basic Dockerfile example: 
+A basic Dockerfile example:
+
 ```
-FROM ruby:2.5.1-alpine # can be updated to newer ruby versions
-RUN apk update && apk add build-base # and any other packages you need 
+FROM ruby:3.4.5-alpine # can be updated to newer ruby versions
+RUN apk update && apk add build-base # and any other packages you need
 
 # Only rebuild gem bundle if Gemfile changes
 COPY Gemfile Gemfile.lock ./
@@ -26,6 +27,7 @@ CMD bundle exec rackup -o 0.0.0.0
 ```
 
 A sample `deployment.yaml`:
+
 ```
 ---
 apiVersion: apps/v1
@@ -47,7 +49,7 @@ spec:
         image: <your image here>
         ports:
         - containerPort: 9292
-``` 
+```
 
 ## Graceful shutdown and pod termination
 

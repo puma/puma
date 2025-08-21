@@ -163,8 +163,6 @@ class TestPumaServer < PumaTest
   end
 
   def test_pipe_body_http11
-    skip if ::Puma::IS_WINDOWS && RUBY_VERSION < '2.7' #encoding issue?
-
     random_bytes = SecureRandom.random_bytes(4096)
 
     r, w = IO.pipe(binmode: true)
@@ -185,8 +183,6 @@ class TestPumaServer < PumaTest
   end
 
   def test_pipe_body_http10
-    skip if ::Puma::IS_WINDOWS && RUBY_VERSION < '2.7' #encoding issue?
-
     bytes = 4_096
     random_bytes = SecureRandom.random_bytes(bytes)
 
