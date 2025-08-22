@@ -1433,50 +1433,54 @@ class TestPumaServer < PumaTest
   end
 
   def test_default_max_keep_alive
+    max_keep_alive = Puma::Configuration::DEFAULTS[:max_keep_alive]
     requests = 0
     response = ''
 
     server_run { |env|
       requests += 1
-      [200, {}, ["Request_#{requests}"]]
+      [200, {}, [format('Request_%02d', requests)]]
     }
 
     socket = new_socket
 
     # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
     assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
-      26.times do
+      (max_keep_alive + 1).times do |i|
         socket << GET_11
         response = socket.read_response
+        refute_includes(Puma::Const::CONNECTION_CLOSE, response) if i < max_keep_alive + 1
       end
     end
     sleep 0.25 # seems to be needed for macOS
     assert_raises(Errno::EPIPE) { socket << GET_11 }
-    assert_includes response, 'Request_25'
-    assert_includes response, 'Connection: close'
+    assert_includes response, format('Request_%02d', max_keep_alive)
+    assert_includes response, Puma::Const::CONNECTION_CLOSE
   end
 
   def test_set_max_keep_alive
+    max_keep_alive = 20
     requests = 0
     response = ''
 
-    server_run(max_keep_alive: 20) { |env|
+    server_run(max_keep_alive: max_keep_alive) { |env|
       requests += 1
-      [200, {}, ["Request_#{requests}"]]
+      [200, {}, [format('Request_%02d', requests)]]
     }
 
     socket = new_socket
 
     # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
     assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
-      21.times do
+      (max_keep_alive + 1).times do |i|
         socket << GET_11
         response = socket.read_response
+        refute_includes(Puma::Const::CONNECTION_CLOSE, response) if i < 21
       end
     end
     sleep 0.25 # seems to be needed for macOS
     assert_raises(Errno::EPIPE) { socket << GET_11 }
-    assert_includes response, 'Request_20'
+    assert_includes response, format('Request_%02d', max_keep_alive)
     assert_includes response, 'Connection: close'
   end
 
