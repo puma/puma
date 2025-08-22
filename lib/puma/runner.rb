@@ -92,22 +92,6 @@ module Puma
       @control.binder.close_listeners if @control
     end
 
-    # @!attribute [r] ruby_engine
-    # @deprecated Use `RUBY_DESCRIPTION` instead
-    def ruby_engine
-      warn "Puma::Runner#ruby_engine is deprecated; use RUBY_DESCRIPTION instead. It will be removed in puma v7."
-
-      if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
-        "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
-      else
-        if defined?(RUBY_ENGINE_VERSION)
-          "#{RUBY_ENGINE} #{RUBY_ENGINE_VERSION} - ruby #{RUBY_VERSION}"
-        else
-          "#{RUBY_ENGINE} #{RUBY_VERSION}"
-        end
-      end
-    end
-
     def output_header(mode)
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
