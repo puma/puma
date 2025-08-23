@@ -53,7 +53,6 @@ module Puma
       @block = block
       @out_of_band = options[:out_of_band]
       @out_of_band_running = false
-      @clean_thread_locals = options[:clean_thread_locals]
       @before_thread_start = options[:before_thread_start]
       @before_thread_exit = options[:before_thread_exit]
       @reaping_time = options[:reaping_time]
@@ -81,12 +80,6 @@ module Puma
     end
 
     attr_reader :spawned, :trim_requested, :waiting
-
-    def self.clean_thread_locals
-      Thread.current.keys.each do |key| # rubocop: disable Style/HashEachMethods
-        Thread.current[key] = nil unless key == :__recursive_key__
-      end
-    end
 
     # generate stats hash so as not to perform multiple locks
     # @return [Hash] hash containing stat info from ThreadPool
@@ -173,10 +166,6 @@ module Puma
             end
 
             work = todo.shift
-          end
-
-          if @clean_thread_locals
-            ThreadPool.clean_thread_locals
           end
 
           begin
