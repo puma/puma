@@ -407,12 +407,13 @@ module Puma
         te_lwr = te.downcase
         if te.include? ','
           te_ary = te_lwr.split ','
+          te_ary.each(&:strip!)
           te_count = te_ary.count CHUNKED
           te_valid = te_ary[0..-2].all? { |e| ALLOWED_TRANSFER_ENCODING.include? e }
           if te_ary.last == CHUNKED && te_count == 1 && te_valid
             @env.delete TRANSFER_ENCODING2
             return setup_chunked_body body
-          elsif te_count >= 1
+          elsif te_count > 1
             raise HttpParserError   , "#{TE_ERR_MSG}, multiple chunked: '#{te}'"
           elsif !te_valid
             raise HttpParserError501, "#{TE_ERR_MSG}, unknown value: '#{te}'"
