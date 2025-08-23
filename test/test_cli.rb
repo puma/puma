@@ -346,7 +346,6 @@ class TestCLI < PumaTest
     ENV['APP_ENV'] = 'test'
 
     cli = Puma::CLI.new []
-    cli.send(:setup_options)
 
     assert_equal 'test', cli.instance_variable_get(:@conf).environment
   ensure
@@ -358,7 +357,6 @@ class TestCLI < PumaTest
     ENV['RACK_ENV'] = @environment
 
     cli = Puma::CLI.new []
-    cli.send(:setup_options)
 
     assert_equal @environment, cli.instance_variable_get(:@conf).environment
   end
@@ -368,7 +366,6 @@ class TestCLI < PumaTest
     ENV['RAILS_ENV'] = @environment
 
     cli = Puma::CLI.new []
-    cli.send(:setup_options)
 
     assert_equal @environment, cli.instance_variable_get(:@conf).environment
   ensure
@@ -377,7 +374,6 @@ class TestCLI < PumaTest
 
   def test_silent
     cli = Puma::CLI.new ['--silent']
-    cli.send(:setup_options)
 
     log_writer = cli.instance_variable_get(:@log_writer)
 
@@ -390,9 +386,26 @@ class TestCLI < PumaTest
     assert_empty Puma::Plugins.instance_variable_get(:@plugins)
 
     cli = Puma::CLI.new ['--plugin', 'tmp_restart', '--plugin', 'systemd']
-    cli.send(:setup_options)
 
     assert Puma::Plugins.find("tmp_restart")
     assert Puma::Plugins.find("systemd")
+  end
+
+  def test_config_does_not_preload_app_with_workers
+    skip_unless :fork
+
+    cli = Puma::CLI.new ['-w 0']
+    config = Puma.cli_config
+
+    assert_equal false, config.options[:preload_app]
+  end
+
+  def test_config_preloads_app_with_workers
+    skip_unless :fork
+
+    cli = Puma::CLI.new ['-w 2']
+    config = Puma.cli_config
+
+    assert_equal true, config.options[:preload_app]
   end
 end
