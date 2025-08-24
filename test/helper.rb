@@ -37,10 +37,15 @@ end
 if Puma::HAS_SSL
   require 'puma/log_writer'
   class SSLLogWriterHelper < ::Puma::LogWriter
-    attr_accessor :addr, :cert, :error
+    attr_accessor :addr, :cert
+    attr_reader :errors
+
+    def error
+      @errors&.last
+    end
 
     def ssl_error(error, ssl_socket)
-      self.error = error
+      (@errors ||= []) << error
       self.addr = ssl_socket.peeraddr.last rescue "<unknown>"
       self.cert = ssl_socket.peercert
     end
