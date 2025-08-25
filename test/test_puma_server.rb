@@ -1481,7 +1481,7 @@ class TestPumaServer < PumaTest
     sleep 0.25 # seems to be needed for macOS
     assert_raises(Errno::EPIPE) { socket << GET_11 }
     assert_includes response, format('Request_%02d', max_keep_alive)
-    assert_includes response, 'Connection: close'
+    assert_includes response, 'connection: close'
   end
 
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address

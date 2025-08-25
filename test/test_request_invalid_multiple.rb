@@ -21,7 +21,7 @@ class TestRequestInvalidMultiple < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  GET_PREFIX = "GET / HTTP/1.1\r\nConnection: close\r\n"
+  GET_PREFIX = "GET / HTTP/1.1\r\nconnection: close\r\n"
   CHUNKED = "1\r\nH\r\n4\r\nello\r\n5\r\nWorld\r\n0\r\n\r\n"
 
   HOST = HOST4
@@ -97,8 +97,8 @@ class TestRequestInvalidMultiple < PumaTest
 
     if status >= 400
       if @server.leak_stack_on_error
-        cl = response.headers_hash['Content-Length'].to_i
-        refute_equal 0, cl
+        cl = response.headers_hash['content-length'].to_i
+        refute_equal 0, cl, "Expected `content-length` header to be non-zero but was `#{cl}`. Headers: #{response.headers_hash}"
       end
       socket.req_write GET_11
       assert_raises(*@error_on_closed) { socket.read_response }
