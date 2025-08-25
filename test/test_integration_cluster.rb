@@ -135,33 +135,16 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
-  def test_on_booted_and_on_stopped
-    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
-      on_booted  { STDOUT.syswrite "on_booted called\n"  }
-      on_stopped { STDOUT.syswrite "on_stopped called\n" }
-    CONFIG
+  def test_after_booted_and_after_stopped
+    skip_unless_signal_exist? :TERM
+    cli_server "-w #{workers} -C test/config/event_after_booted_and_after_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru"
 
-    assert wait_for_server_to_include('on_booted called')
-
-    Process.kill :TERM, @pid
-
+    # above checks 'Ctrl-C', below is logged after workers boot
+    assert wait_for_server_to_include('after_booted called')
     assert wait_for_server_to_include('Goodbye!')
     # below logged after workers are stopped
-    assert wait_for_server_to_include('on_stopped called')
+    assert wait_for_server_to_include('after_stopped called')
     wait_server 15
-  end
-
-  def test_on_booted_with_fork_worker_refork
-    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
-      fork_worker
-      on_booted { STDOUT.syswrite "on_booted called\n" }
-    CONFIG
-
-    assert wait_for_server_to_include("on_booted called")
-
-    Process.kill :SIGURG, @pid
-
-    assert wait_for_server_to_include("on_booted called")
   end
 
   def test_term_worker_clean_exit
@@ -264,7 +247,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_boot_timeout
     timeout = 1
-    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
+    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; before_worker_boot { sleep #{timeout + 1} }")
   end
 
   def test_worker_timeout
@@ -272,7 +255,7 @@ class TestIntegrationCluster < TestIntegration
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     config = <<~CONFIG
       worker_timeout #{timeout}
-      on_worker_boot do
+      before_worker_boot do
         Thread.new do
           sleep 1
           Thread.list.find {|t| t.name == 'puma stat pld'}.kill
@@ -324,12 +307,12 @@ class TestIntegrationCluster < TestIntegration
   end
 
   # use three workers to keep accepting clients
-  def test_fork_worker_on_refork
+  def test_fork_worker_before_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~CONFIG
       fork_worker 20
-      on_refork { File.write '#{refork.path}', 'Reforked' }
+      before_refork { File.write '#{refork.path}', 'Reforked' }
     CONFIG
 
     pids = get_worker_pids 0, wrkrs
@@ -356,7 +339,7 @@ class TestIntegrationCluster < TestIntegration
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~RUBY
       fork_worker 20
-      on_refork { File.write '#{refork.path}', 'Before refork', mode: 'a+' }
+      before_refork { File.write '#{refork.path}', 'Before refork', mode: 'a+' }
       after_refork { File.write '#{refork.path}', '-After refork', mode: 'a+' }
     RUBY
 
@@ -582,13 +565,13 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_hook_warning_cli
     cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
-      on_worker_boot(:test) do |index, data|
+      before_worker_boot(:test) do |index, data|
         data[:test] = index
       end
     CONFIG
 
     get_worker_pids
-    line = @server_log[/^Warning.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+before_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
@@ -596,18 +579,18 @@ class TestIntegrationCluster < TestIntegration
     cli_server "test/rackup/hello.ru",
       env: { 'WEB_CONCURRENCY' => '2'},
       config: <<~CONFIG
-        on_worker_boot(:test) do |index, data|
+        before_worker_boot(:test) do |index, data|
           data[:test] = index
         end
       CONFIG
 
     get_worker_pids
-    line = @server_log[/^Warning.+.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+.+before_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
   def test_puma_debug_worker_hook
-    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true, config: "on_worker_boot {}"
+    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true, config: "before_worker_boot {}"
 
     assert wait_for_server_to_include("Running before_worker_boot hooks")
   end

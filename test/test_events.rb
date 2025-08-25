@@ -48,14 +48,14 @@ class TestEvents < PumaTest
     assert_equal [:foo, :bar, :baz], res
   end
 
-  def test_on_booted_callback
+  def test_after_booted_callback
     res = false
 
     events = Puma::Events.new
 
-    events.on_booted { res = true }
+    events.after_booted { res = true }
 
-    events.fire_on_booted!
+    events.fire_after_booted!
 
     assert res
   end
