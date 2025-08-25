@@ -114,7 +114,7 @@ module Puma
       temp = !!(@options[:environment] =~ /\A(development|test)\z/)
       @leak_stack_on_error = @options[:environment] ? temp : true
 
-      @binder = Binder.new(log_writer)
+      @binder = Binder.new(log_writer, @options)
 
       ENV['RACK_ENV'] ||= "development"
 

@@ -61,7 +61,10 @@ class TestWebConcurrencyAuto < TestIntegration
     end
 
     _, err = capture_io do
-      assert_raises(LoadError) { Puma::Configuration.new({}, {}, ENV_WC_TEST) }
+      assert_raises(LoadError) do
+        conf = Puma::Configuration.new({}, {}, ENV_WC_TEST)
+        conf.clamp
+      end
     end
     assert_includes err, 'Please add "concurrent-ruby" to your Gemfile'
 

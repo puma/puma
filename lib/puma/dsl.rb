@@ -13,7 +13,7 @@ module Puma
   #   config = Configuration.new({}) do |user_config|
   #     user_config.port 3001
   #   end
-  #   config.load
+  #   config.clamp
   #
   #   puts config.options[:binds] # => "tcp://127.0.0.1:3001"
   #
@@ -25,7 +25,7 @@ module Puma
   # Resulting configuration:
   #
   #   config = Configuration.new(config_file: "puma_config.rb")
-  #   config.load
+  #   config.clamp
   #
   #   puts config.options[:binds] # => "tcp://127.0.0.1:3002"
   #
@@ -733,9 +733,7 @@ module Puma
     #   end
     #
     def before_fork(&block)
-      warn_if_in_single_mode('before_fork')
-
-      process_hook :before_fork, nil, block, 'before_fork'
+      process_hook :before_fork, nil, block, 'before_fork', cluster_only: true
     end
 
     # Code to run in a worker when it boots to setup
@@ -755,9 +753,7 @@ module Puma
         warn "on_worker_boot is deprecated, use before_worker_boot instead"
       end
 
-      warn_if_in_single_mode('before_worker_boot')
-
-      process_hook :before_worker_boot, key, block, 'before_worker_boot'
+      process_hook :before_worker_boot, key, block, 'before_worker_boot', cluster_only: true
     end
 
     alias_method :on_worker_boot, :before_worker_boot
@@ -782,9 +778,7 @@ module Puma
         warn "on_worker_shutdown is deprecated, use before_worker_shutdown instead"
       end
 
-      warn_if_in_single_mode('before_worker_shutdown')
-
-      process_hook :before_worker_shutdown, key, block, 'before_worker_shutdown'
+      process_hook :before_worker_shutdown, key, block, 'before_worker_shutdown', cluster_only: true
     end
 
     alias_method :on_worker_shutdown, :before_worker_shutdown
@@ -806,9 +800,7 @@ module Puma
         warn "on_worker_fork is deprecated, use before_worker_fork instead"
       end
 
-      warn_if_in_single_mode('before_worker_fork')
-
-      process_hook :before_worker_fork, nil, block, 'before_worker_fork'
+      process_hook :before_worker_fork, nil, block, 'before_worker_fork', cluster_only: true
     end
 
     alias_method :on_worker_fork, :before_worker_fork
@@ -826,9 +818,7 @@ module Puma
     #   end
     #
     def after_worker_fork(&block)
-      warn_if_in_single_mode('after_worker_fork')
-
-      process_hook :after_worker_fork, nil, block, 'after_worker_fork'
+      process_hook :after_worker_fork, nil, block, 'after_worker_fork', cluster_only: true
     end
 
     alias_method :after_worker_boot, :after_worker_fork
@@ -845,7 +835,7 @@ module Puma
         warn "on_booted is deprecated, use after_booted instead"
       end
 
-      @config.options[:events].after_booted(&block)
+      @config.events.after_booted(&block)
     end
 
     alias_method :on_booted, :after_booted
@@ -862,7 +852,7 @@ module Puma
         warn "on_stopped is deprecated, use after_stopped instead"
       end
 
-      @config.options[:events].after_stopped(&block)
+      @config.events.after_stopped(&block)
     end
     alias_method :on_stopped, :after_stopped
 
@@ -891,9 +881,7 @@ module Puma
         warn "on_refork is deprecated, use before_refork instead"
       end
 
-      warn_if_in_single_mode('before_refork')
-
-      process_hook :before_refork, key, block, 'before_refork'
+      process_hook :before_refork, key, block, 'before_refork', cluster_only: true
     end
 
     alias_method :on_refork, :before_refork
@@ -1472,32 +1460,21 @@ module Puma
       end
     end
 
-    def process_hook(options_key, key, block, meth)
-      raise ArgumentError, "expected #{meth} to be given a block" unless block
+    def process_hook(options_key, key, block, method, cluster_only: false)
+      raise ArgumentError, "expected #{method} to be given a block" unless block
+
+      @config.hooks[options_key] = method
 
       @options[options_key] ||= []
-      if ON_WORKER_KEY.include? key.class
-        @options[options_key] << [block, key.to_sym]
+      hook_options = { block: block, cluster_only: cluster_only }
+      hook_options[:id] = if ON_WORKER_KEY.include? key.class
+        key.to_sym
       elsif key.nil?
-        @options[options_key] << block
+        nil
       else
-        raise "'#{meth}' key must be String or Symbol"
+        raise "'#{method}' key must be String or Symbol"
       end
-    end
-
-    def warn_if_in_single_mode(hook_name)
-      return if @options[:silence_fork_callback_warning]
-      # user_options (CLI) have precedence over config file
-      workers_val = @config.options.user_options[:workers] || @options[:workers] ||
-        @config.puma_default_options[:workers] || 0
-      if workers_val == 0
-        log_string =
-          "Warning: You specified code to run in a `#{hook_name}` block, " \
-          "but Puma is not configured to run in cluster mode (worker count > 0), " \
-          "so your `#{hook_name}` block will not run."
-
-        LogWriter.stdio.log(log_string)
-      end
+      @options[options_key] << hook_options
     end
   end
 end
