@@ -187,7 +187,7 @@ module Puma
         # we need to phase any workers out (which will restart
         # in the right phase).
         #
-        w = @workers.find { |x| x.phase != @phase }
+        w = @workers.find { |x| x.phase < @phase }
 
         if w
           if refork
@@ -222,12 +222,11 @@ module Puma
         pipes[:wakeup] = @wakeup
       end
 
-      server = start_server if preload?
       new_worker = Worker.new index: index,
                               master: master,
                               launcher: @launcher,
                               pipes: pipes,
-                              server: server
+                              app: (app if preload?)
       new_worker.run
     end
 
