@@ -132,7 +132,7 @@ module Puma
     DEFAULTS = {
       auto_trim_time: 30,
       binds: ['tcp://0.0.0.0:9292'.freeze],
-      clean_thread_locals: false,
+      fiber_per_request: !!ENV.fetch("PUMA_FIBER_PER_REQUEST", false),
       debug: false,
       enable_keep_alives: true,
       early_hints: nil,
