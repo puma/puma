@@ -476,17 +476,17 @@ class TestConfigFile < PumaTest
     assert_equal conf.options[:raise_exception_on_sigterm], true
   end
 
-  def test_run_hooks_on_restart_hook
-    assert_run_hooks :on_restart
-
-    assert_raise_on_hooks_without_block :on_restart
+  def test_run_hooks_before_restart_hook
+    assert_run_hooks :before_restart
+    assert_run_hooks :before_restart, configured_with: :on_restart
+    assert_raise_on_hooks_without_block :before_restart
   end
 
   def test_run_hooks_before_worker_fork
     assert_run_hooks :before_worker_fork, configured_with: :on_worker_fork
 
-    assert_raise_on_hooks_without_block :on_worker_fork
-    assert_warning_for_hooks_defined_in_single_mode :on_worker_fork
+    assert_raise_on_hooks_without_block :before_worker_fork
+    assert_warning_for_hooks_defined_in_single_mode :before_worker_fork
   end
 
   def test_run_hooks_after_worker_fork
@@ -497,17 +497,19 @@ class TestConfigFile < PumaTest
   end
 
   def test_run_hooks_before_worker_boot
+    assert_run_hooks :before_worker_boot
     assert_run_hooks :before_worker_boot, configured_with: :on_worker_boot
 
-    assert_raise_on_hooks_without_block :on_worker_boot
-    assert_warning_for_hooks_defined_in_single_mode :on_worker_boot
+    assert_raise_on_hooks_without_block :before_worker_boot
+    assert_warning_for_hooks_defined_in_single_mode :before_worker_boot
   end
 
   def test_run_hooks_before_worker_shutdown
+    assert_run_hooks :before_worker_shutdown
     assert_run_hooks :before_worker_shutdown, configured_with: :on_worker_shutdown
 
-    assert_raise_on_hooks_without_block :on_worker_shutdown
-    assert_warning_for_hooks_defined_in_single_mode :on_worker_shutdown
+    assert_raise_on_hooks_without_block :before_worker_shutdown
+    assert_warning_for_hooks_defined_in_single_mode :before_worker_shutdown
   end
 
   def test_run_hooks_before_fork
@@ -518,22 +520,23 @@ class TestConfigFile < PumaTest
   end
 
   def test_run_hooks_before_refork
+    assert_run_hooks :before_refork
     assert_run_hooks :before_refork, configured_with: :on_refork
 
-    assert_raise_on_hooks_without_block :on_refork
-    assert_warning_for_hooks_defined_in_single_mode :on_refork
+    assert_raise_on_hooks_without_block :before_refork
+    assert_warning_for_hooks_defined_in_single_mode :before_refork
   end
 
   def test_run_hooks_before_thread_start
+    assert_run_hooks :before_thread_start
     assert_run_hooks :before_thread_start, configured_with: :on_thread_start
-
-    assert_raise_on_hooks_without_block :on_thread_start
+    assert_raise_on_hooks_without_block :before_thread_start
   end
 
   def test_run_hooks_before_thread_exit
+    assert_run_hooks :before_thread_exit
     assert_run_hooks :before_thread_exit, configured_with: :on_thread_exit
-
-    assert_raise_on_hooks_without_block :on_thread_exit
+    assert_raise_on_hooks_without_block :before_thread_exit
   end
 
   def test_run_hooks_out_of_band
@@ -544,15 +547,15 @@ class TestConfigFile < PumaTest
 
   def test_run_hooks_and_exception
     conf = Puma::Configuration.new do |c|
-      c.on_restart do |a|
+      c.before_restart do |a|
         raise RuntimeError, 'Error from hook'
       end
     end
     conf.load
     log_writer = Puma::LogWriter.strings
 
-    conf.run_hooks(:on_restart, 'ARG', log_writer)
-    expected = /WARNING hook on_restart failed with exception \(RuntimeError\) Error from hook/
+    conf.run_hooks(:before_restart, 'ARG', log_writer)
+    expected = /WARNING hook before_restart failed with exception \(RuntimeError\) Error from hook/
     assert_match expected, log_writer.stdout.string
   end
 
