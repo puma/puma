@@ -56,6 +56,11 @@ module Puma
 
     TE_ERR_MSG = 'Invalid Transfer-Encoding'
 
+    # See:
+    # https://httpwg.org/specs/rfc9110.html#rfc.section.5.6.1.1
+    # https://httpwg.org/specs/rfc9112.html#rfc.section.6.1
+    STRIP_OWS = /\A[ \t]+|[ \t]+\z/
+
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new
@@ -406,17 +411,18 @@ module Puma
       if te
         te_lwr = te.downcase
         if te.include? ','
-          te_ary = te_lwr.split ','
+          te_ary = te_lwr.split(',').each { |te| te.gsub!(STRIP_OWS, "") }
           te_count = te_ary.count CHUNKED
           te_valid = te_ary[0..-2].all? { |e| ALLOWED_TRANSFER_ENCODING.include? e }
-          if te_ary.last == CHUNKED && te_count == 1 && te_valid
-            @env.delete TRANSFER_ENCODING2
-            return setup_chunked_body body
-          elsif te_count >= 1
+          if te_count > 1
             raise HttpParserError   , "#{TE_ERR_MSG}, multiple chunked: '#{te}'"
+          elsif te_ary.last != CHUNKED
+            raise HttpParserError   , "#{TE_ERR_MSG}, last value must be chunked: '#{te}'"
           elsif !te_valid
             raise HttpParserError501, "#{TE_ERR_MSG}, unknown value: '#{te}'"
           end
+          @env.delete TRANSFER_ENCODING2
+          return setup_chunked_body body
         elsif te_lwr == CHUNKED
           @env.delete TRANSFER_ENCODING2
           return setup_chunked_body body

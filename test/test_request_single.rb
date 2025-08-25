@@ -132,6 +132,27 @@ class TestRequestValid < TestRequestBase
       fail
     end
   end
+
+  def test_gzip_chunked
+    te = "gzip \t , \t chunked"
+    request = <<~REQ.gsub("\n", "\r\n").rstrip
+      GET / HTTP/1.1
+      Transfer_Encoding: #{te}
+      Content_Length: 11
+
+      Hello World
+    REQ
+
+    create_client request
+
+    if @parser.finished?
+      assert_equal '11', @client.env['HTTP_CONTENT,LENGTH']
+      assert_equal te, @client.env['HTTP_TRANSFER,ENCODING']
+      assert_instance_of Puma::NullIO, @client.body
+    else
+      fail
+    end
+  end
 end
 
 # Tests request start line, which sets `env` values for:
@@ -385,7 +406,7 @@ class TestTransferEncodingInvalid < TestRequestBase
     ].join "\r\n"
 
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
-      "Invalid Transfer-Encoding, multiple chunked: 'chunked, gzip'"
+      "Invalid Transfer-Encoding, last value must be chunked: 'chunked, gzip'"
   end
 
   def test_chunked_multiple
