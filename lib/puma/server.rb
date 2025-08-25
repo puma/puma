@@ -12,6 +12,7 @@ require_relative 'client'
 require_relative 'binder'
 require_relative 'util'
 require_relative 'request'
+require_relative 'configuration'
 
 require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
