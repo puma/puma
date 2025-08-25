@@ -1422,7 +1422,7 @@ class TestPumaServer < PumaTest
 
     expected = String.new # rubocop: disable Performance/UnfreezeString
     req_count.times do |i|
-      expected << "HTTP/1.1 200 OK\r\nContent-Length: #{(i+1).to_s.length + 8}\r\n\r\nRequest_#{i+1}"
+      expected << "HTTP/1.1 200 OK\r\ncontent-length: #{(i+1).to_s.length + 8}\r\n\r\nRequest_#{i+1}"
     end
 
     responses = send_http_read_all(req * req_count)
