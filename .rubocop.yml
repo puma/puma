@@ -1,12 +1,10 @@
-plugins:
-  - rubocop-performance
-  
 require:
+  - rubocop-performance
   - ./cops/tests_puma.rb
 
 AllCops:
   DisabledByDefault: true
-  TargetRubyVersion: 2.4
+  TargetRubyVersion: 3.0
   DisplayCopNames: true
   StyleGuideCopsOnly: false
   Exclude:

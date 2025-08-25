@@ -33,7 +33,6 @@ module Puma
       @wakeup.write PIPE_WAKEUP unless @wakeup.closed?
 
     rescue SystemCallError, IOError
-      Puma::Util.purge_interrupt_queue
     end
 
     def development?

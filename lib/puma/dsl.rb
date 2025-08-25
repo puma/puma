@@ -43,11 +43,11 @@ module Puma
   #
   # The following hooks have been updated:
   #
-  #     | DSL Method         |  Options Key            | Fork Block Location |
-  #     | on_worker_boot     | :before_worker_boot     | inside, before      |
-  #     | on_worker_shutdown | :before_worker_shutdown | inside, after       |
-  #     | on_refork          | :before_refork          | inside              |
-  #     | after_refork       | :after_refork           | inside              |
+  #     | DSL Method             |  Options Key            | Fork Block Location |
+  #     | before_worker_boot     | :before_worker_boot     | inside, before      |
+  #     | before_worker_shutdown | :before_worker_shutdown | inside, after       |
+  #     | before_refork          | :before_refork          | inside              |
+  #     | after_refork           | :after_refork           | inside              |
   #
   class DSL
     ON_WORKER_KEY = [String, Symbol].freeze
@@ -434,13 +434,19 @@ module Puma
     # This can be called multiple times to add code each time.
     #
     # @example
-    #   on_restart do
+    #   before_restart do
     #     puts 'On restart...'
     #   end
     #
-    def on_restart(&block)
-      process_hook :on_restart, nil, block, 'on_restart'
+    def before_restart(&block)
+      if __callee__ == :on_restart
+        warn "on_restart is deprecated, use before_restart instead"
+      end
+
+      process_hook :before_restart, nil, block, 'before_restart'
     end
+
+    alias_method :on_restart, :before_restart
 
     # Command to use to restart Puma. This should be just how to
     # load Puma itself (ie. 'ruby -Ilib bin/puma'), not the arguments
@@ -738,13 +744,19 @@ module Puma
     # @note Cluster mode only.
     #
     # @example
-    #   on_worker_boot do
+    #   before_worker_boot do
     #     puts 'Before worker boot...'
     #   end
     #
-    def on_worker_boot(key = nil, &block)
-      process_hook :before_worker_boot, key, block, 'on_worker_boot', cluster_only: true
+    def before_worker_boot(key = nil, &block)
+      if __callee__ == :on_worker_boot
+        warn "on_worker_boot is deprecated, use before_worker_boot instead"
+      end
+
+      process_hook :before_worker_boot, key, block, 'before_worker_boot', cluster_only: true
     end
+
+    alias_method :on_worker_boot, :before_worker_boot
 
     # Code to run immediately before a worker shuts
     # down (after it has finished processing HTTP requests). The worker's
@@ -757,13 +769,19 @@ module Puma
     # @note Cluster mode only.
     #
     # @example
-    #   on_worker_shutdown do
+    #   before_worker_shutdown do
     #     puts 'On worker shutdown...'
     #   end
     #
-    def on_worker_shutdown(key = nil, &block)
-      process_hook :before_worker_shutdown, key, block, 'on_worker_shutdown', cluster_only: true
+    def before_worker_shutdown(key = nil, &block)
+      if __callee__ == :on_worker_shutdown
+        warn "on_worker_shutdown is deprecated, use before_worker_shutdown instead"
+      end
+
+      process_hook :before_worker_shutdown, key, block, 'before_worker_shutdown', cluster_only: true
     end
+
+    alias_method :on_worker_shutdown, :before_worker_shutdown
 
     # Code to run in the master right before a worker is started. The worker's
     # index is passed as an argument.
@@ -773,13 +791,19 @@ module Puma
     # @note Cluster mode only.
     #
     # @example
-    #   on_worker_fork do
+    #   before_worker_fork do
     #     puts 'Before worker fork...'
     #   end
     #
-    def on_worker_fork(&block)
-      process_hook :before_worker_fork, nil, block, 'on_worker_fork', cluster_only: true
+    def before_worker_fork(&block)
+      if __callee__ == :on_worker_fork
+        warn "on_worker_fork is deprecated, use before_worker_fork instead"
+      end
+
+      process_hook :before_worker_fork, nil, block, 'before_worker_fork', cluster_only: true
     end
+
+    alias_method :on_worker_fork, :before_worker_fork
 
     # Code to run in the master after a worker has been started. The worker's
     # index is passed as an argument.
@@ -802,24 +826,35 @@ module Puma
     # Code to run after puma is booted (works for both single and cluster modes).
     #
     # @example
-    #   on_booted do
+    #   after_booted do
     #     puts 'After booting...'
     #   end
     #
-    def on_booted(&block)
-      @config.events.on_booted(&block)
+    def after_booted(&block)
+      if __callee__ == :on_booted
+        warn "on_booted is deprecated, use after_booted instead"
+      end
+
+      @config.events.after_booted(&block)
     end
 
-    # Code to run after puma is stopped (works for both single and cluster modes).
+    alias_method :on_booted, :after_booted
+
+    # Code to run after puma is stopped (works for both: single and clustered)
     #
     # @example
-    #   on_stopped do
+    #   after_stopped do
     #     puts 'After stopping...'
     #   end
     #
-    def on_stopped(&block)
-      @config.events.on_stopped(&block)
+    def after_stopped(&block)
+      if __callee__ == :on_stopped
+        warn "on_stopped is deprecated, use after_stopped instead"
+      end
+
+      @config.events.after_stopped(&block)
     end
+    alias_method :on_stopped, :after_stopped
 
     # When `fork_worker` is enabled, code to run in Worker 0
     # before all other workers are re-forked from this process,
@@ -835,13 +870,21 @@ module Puma
     # @note Cluster mode with `fork_worker` enabled only.
     #
     # @example
-    #   on_refork do
+    #   before_refork do
     #     3.times {GC.start}
     #   end
     #
-    def on_refork(key = nil, &block)
-      process_hook :before_refork, key, block, 'on_refork', cluster_only: true
+    # @version 5.0.0
+    #
+    def before_refork(key = nil, &block)
+      if __callee__ == :on_refork
+        warn "on_refork is deprecated, use before_refork instead"
+      end
+
+      process_hook :before_refork, key, block, 'before_refork', cluster_only: true
     end
+
+    alias_method :on_refork, :before_refork
 
     # When `fork_worker` is enabled, code to run in Worker 0
     # after all other workers are re-forked from this process,
@@ -849,7 +892,7 @@ module Puma
     # (once per complete refork cycle).
     #
     # This can be used to re-open any connections to remote servers
-    # (database, Redis, ...) that were closed via on_refork.
+    # (database, Redis, ...) that were closed via before_refork.
     #
     # This can be called multiple times to add several hooks.
     #
@@ -877,13 +920,19 @@ module Puma
     # This can be called multiple times to add several hooks.
     #
     # @example
-    #   on_thread_start do
+    #   before_thread_start do
     #     puts 'On thread start...'
     #   end
     #
-    def on_thread_start(&block)
-      process_hook :before_thread_start, nil, block, 'on_thread_start'
+    def before_thread_start(&block)
+      if __callee__ == :on_thread_start
+        warn "on_thread_start is deprecated, use before_thread_start instead"
+      end
+
+      process_hook :before_thread_start, nil, block, 'before_thread_start'
     end
+
+    alias_method :on_thread_start, :before_thread_start
 
     # Provide a block to be executed after a thread is trimmed from the thread
     # pool. Be careful: while this block executes, Puma's main loop is
@@ -901,13 +950,19 @@ module Puma
     # This can be called multiple times to add several hooks.
     #
     # @example
-    #   on_thread_exit do
+    #   before_thread_exit do
     #     puts 'On thread exit...'
     #   end
     #
-    def on_thread_exit(&block)
-      process_hook :before_thread_exit, nil, block, 'on_thread_exit'
+    def before_thread_exit(&block)
+      if __callee__ == :on_thread_exit
+        warn "on_thread_exit is deprecated, use before_thread_exit instead"
+      end
+
+      process_hook :before_thread_exit, nil, block, 'before_thread_exit'
     end
+
+    alias_method :on_thread_exit, :before_thread_exit
 
     # Code to run out-of-band when the worker is idle.
     # These hooks run immediately after a request has finished

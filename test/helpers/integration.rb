@@ -26,8 +26,10 @@ class TestIntegration < PumaTest
 
   def setup
     @server = nil
-    @config_file = nil
     @server_log = +''
+    @server_stopped = false
+    @config_file = nil
+
     @pid = nil
     @ios_to_close = []
     @bind_path    = tmp_path('.sock')
@@ -38,7 +40,8 @@ class TestIntegration < PumaTest
   def teardown
     if @server && @control_tcp_port && Puma.windows?
       cli_pumactl 'stop'
-    elsif @server && @pid && !Puma.windows?
+    # don't close if we've already done so
+    elsif @server && @pid && !@server_stopped && !Puma.windows?
       stop_server @pid, signal: :INT
     end
 
@@ -137,6 +140,7 @@ class TestIntegration < PumaTest
   # that is already stopped/killed, especially since Process.wait2 is
   # blocking
   def stop_server(pid = @pid, signal: :TERM)
+    @server_stopped = true
     begin
       Process.kill signal, pid
     rescue Errno::ESRCH

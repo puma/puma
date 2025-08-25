@@ -17,9 +17,8 @@ require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 
 module Puma
-
-  # This method was private on Ruby 2.4 but became public on Ruby 2.5+:
-  Thread.send(:attr_accessor, :puma_server)
+  # Add `Thread#puma_server` and `Thread#puma_server=`
+  Thread.attr_accessor(:puma_server)
 
   # The HTTP Server itself. Serves out a single Rack app.
   #
@@ -166,7 +165,6 @@ module Puma
         begin
           skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if skt.kind_of? TCPSocket
         rescue IOError, SystemCallError
-          Puma::Util.purge_interrupt_queue
         end
       end
 
@@ -175,7 +173,6 @@ module Puma
         begin
           skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if skt.kind_of? TCPSocket
         rescue IOError, SystemCallError
-          Puma::Util.purge_interrupt_queue
         end
       end
     else
@@ -196,7 +193,6 @@ module Puma
         begin
           tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
         rescue IOError, SystemCallError
-          Puma::Util.purge_interrupt_queue
           @precheck_closing = false
           false
         else
@@ -520,7 +516,6 @@ module Puma
         begin
           client.close if close_socket
         rescue IOError, SystemCallError
-          Puma::Util.purge_interrupt_queue
           # Already closed
         rescue StandardError => e
           @log_writer.unknown_error e, nil, "Client"
@@ -621,11 +616,10 @@ module Puma
       @notify << message
     rescue IOError, NoMethodError, Errno::EPIPE, Errno::EBADF
       # The server, in another thread, is shutting down
-      Puma::Util.purge_interrupt_queue
     rescue RuntimeError => e
       # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
       if e.message.include?('IOError')
-        Puma::Util.purge_interrupt_queue
+        # ignore
       else
         raise e
       end

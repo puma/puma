@@ -276,7 +276,7 @@ module Puma
     end
 
     def do_graceful_stop
-      @events.fire_on_stopped!
+      @events.fire_after_stopped!
       @runner.stop_blocked
     end
 
@@ -288,8 +288,8 @@ module Puma
     end
 
     def restart!
-      @events.fire_on_restart!
-      @config.run_hooks :on_restart, self, @log_writer
+      @events.fire_before_restart!
+      @config.run_hooks :before_restart, self, @log_writer
 
       if Puma.jruby?
         close_binder_listeners

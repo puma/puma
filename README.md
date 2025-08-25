@@ -142,7 +142,7 @@ Preloading can’t be used with phased restart, since phased restart kills and r
 
 #### Cluster mode hooks
 
-When using cluster mode, Puma's configuration DSL provides `before_fork` and `on_worker_boot`
+When using clustered mode, Puma's configuration DSL provides `before_fork` and `before_worker_boot`
 hooks to run code when the master process forks and child workers are booted respectively.
 
 It is recommended to use these hooks with `preload_app!`, otherwise constants loaded by your
@@ -154,16 +154,16 @@ before_fork do
   # Add code to run inside the Puma master process before it forks a worker child.
 end
 
-on_worker_boot do
+before_worker_boot do
   # Add code to run inside the Puma worker process after forking.
 end
 ```
 
-In addition, there is an `on_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
+In addition, there is an `before_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
 when the worker 0 child process forks a grandchild worker:
 
 ```ruby
-on_refork do
+before_refork do
   # Used only when fork_worker mode is enabled. Add code to run inside the Puma worker 0
   # child process before it forks a grandchild worker.
 end
@@ -190,29 +190,29 @@ Therefore, we recommend the following:
 
 1. If possible, do not establish any socket connections (HTTP, database connections, etc.)
    inside Puma's master process when booting.
-2. If (1) is not possible, use `before_fork` and `on_refork` to disconnect the parent's socket
+2. If (1) is not possible, use `before_fork` and `before_refork` to disconnect the parent's socket
    connections when forking, so that they are not accidentally copied to the child process.
-3. Use `on_worker_boot` to restart any background threads on the forked child.
+3. Use `before_worker_boot` to restart any background threads on the forked child.
 4. Use `after_refork` to restart any background threads on the parent.
 
 #### Master process lifecycle hooks
 
-Puma's configuration DSL provides master process lifecycle hooks `on_booted`, `on_restart`, and `on_stopped`
+Puma's configuration DSL provides master process lifecycle hooks `after_booted`, `before_restart`, and `after_stopped`
 which may be used to specify code blocks to run on each event:
 
 ```ruby
 # config/puma.rb
-on_booted do
+after_booted do
   # Add code to run in the Puma master process after it boots,
   # and also after a phased restart completes.
 end
 
-on_restart do
+before_restart do
   # Add code to run in the Puma master process when it receives
   # a restart command but before it restarts.
 end
 
-on_stopped do
+after_stopped do
   # Add code to run in the Puma master process when it receives
   # a stop command but before it shuts down.
 end
@@ -431,19 +431,6 @@ Some platforms do not support all Puma features.
   * **JRuby**, **Windows**: server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to Ruby. Also, cluster mode is not supported due to a lack of fork(2).
   * **Windows**: Cluster mode is not supported due to a lack of fork(2).
   * **Kubernetes**: The way Kubernetes handles pod shutdowns interacts poorly with server processes implementing graceful shutdown, like Puma. See the [kubernetes section of the documentation](docs/kubernetes.md) for more details.
-
-## Known Bugs
-
-For MRI versions 2.2.7, 2.2.8, 2.2.9, 2.2.10, 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
-
-```ruby
-if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
-  begin
-    require 'stopgap_13632'
-  rescue LoadError
-  end
-end
-```
 
 ## Deployment
 

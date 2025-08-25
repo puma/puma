@@ -46,8 +46,7 @@ module Puma
     end
 
     def start_phased_restart(refork = false)
-      @events.fire_on_restart!
-
+      @events.fire_before_restart!
       @phase += 1
       if refork
         log "- Starting worker refork, phase: #{@phase}"
@@ -355,7 +354,7 @@ module Puma
 
           stop_workers
           stop
-          @events.fire_on_stopped!
+          @events.fire_after_stopped!
           raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
           exit 0 # Clean exit, workers were stopped
         end
@@ -372,12 +371,8 @@ module Puma
 
       if preload?
         # Threads explicitly marked as fork safe will be ignored. Used in Rails,
-        # but may be used by anyone. Note that we need to explicit
-        # Process::Waiter check here because there's a bug in Ruby 2.6 and below
-        # where calling thread_variable_get on a Process::Waiter will segfault.
-        # We can drop that clause once those versions of Ruby are no longer
-        # supported.
-        fork_safe = ->(t) { !t.is_a?(Process::Waiter) && t.thread_variable_get(:fork_safe) }
+        # but may be used by anyone.
+        fork_safe = ->(t) { t.thread_variable_get(:fork_safe) }
 
         before = Thread.list.reject(&fork_safe)
 
@@ -514,7 +509,7 @@ module Puma
                   end
 
                   if !booted && @workers.none? {|worker| worker.last_status.empty?}
-                    @events.fire_on_booted!
+                    @events.fire_after_booted!
                     debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
                     booted = true
                   end
@@ -531,7 +526,7 @@ module Puma
             end
 
             if in_phased_restart && workers_not_booted.zero?
-              @events.fire_on_booted!
+              @events.fire_after_booted!
               debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
               in_phased_restart = false
             end

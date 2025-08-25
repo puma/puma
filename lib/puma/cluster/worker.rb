@@ -110,7 +110,6 @@ module Puma
         begin
           @worker_write << "#{PIPE_BOOT}#{Process.pid}:#{index}\n"
         rescue SystemCallError, IOError
-          Puma::Util.purge_interrupt_queue
           STDERR.puts "Master seems to have exited, exiting."
           return
         end
@@ -138,7 +137,6 @@ module Puma
                 io << payload.sub(/,\z/, " }\n")
                 server.reset_max
               rescue IOError
-                Puma::Util.purge_interrupt_queue
                 break
               end
               sleep @options[:worker_check_interval]

@@ -52,22 +52,14 @@ if show_warnings
 end
 
 if ARGV.empty? || ARGV.last.start_with?('-')
-  if RUBY_VERSION >= '2.5'
-    Dir['test_*.rb', base: __dir__].sort.each { |tf| require_relative tf }
-  else
-    Dir["#{__dir__}/test_*.rb"].sort.each { |tf| require tf }
-  end
+  Dir['test_*.rb', base: __dir__].sort.each { |tf| require_relative tf }
 else
-  file_arg = ARGV.pop.sub(/\.rb\z/, '')
+  file_arg = ARGV.pop.delete_suffix('.rb')
   if file_arg.include? File::PATH_SEPARATOR
-    file_args = file_arg.split(File::PATH_SEPARATOR).map { |fn| fn.sub(/\.rb\z/, '') }
+    file_args = file_arg.split(File::PATH_SEPARATOR).map { |fn| fn.delete_suffix('.rb') }
     file_args.each { |tf| require_relative "#{tf}.rb" }
   elsif file_arg.include? '*'
-    if RUBY_VERSION >= '2.5'
-      Dir["#{file_arg}.rb", base: __dir__].sort.each { |tf| require_relative tf }
-    else
-      Dir["#{__dir__}/#{file_arg}.rb"].sort.each { |tf| require tf }
-    end
+    Dir["#{file_arg}.rb", base: __dir__].sort.each { |tf| require_relative tf }
   else
     require_relative "#{file_arg}.rb"
   end
