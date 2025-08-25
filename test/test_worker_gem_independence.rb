@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
@@ -92,8 +94,6 @@ class TestWorkerGemIndependence < TestIntegration
                                                new_version:,
                                                server_opts: '',
                                                before_restart: nil)
-    skip_unless_signal_exist? :USR1
-
     set_release_symlink File.expand_path(old_app_dir, __dir__)
 
     Dir.chdir(current_release_symlink) do

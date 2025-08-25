@@ -2,13 +2,10 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-if RUBY_VERSION == '2.4.1'
-  begin
-    require 'stopgap_13632'
-  rescue LoadError
-    puts "For test stability, you must install the stopgap_13632 gem."
-    exit(1)
-  end
+# WIth GitHub Actions, OS's `/tmp` folder may be on a HDD, while
+# ENV['RUNNER_TEMP'] is an SSD.  Faster.
+if ENV['GITHUB_ACTIONS'] == 'true'
+  ENV['TMPDIR'] = ENV['RUNNER_TEMP']
 end
 
 require "securerandom"
@@ -27,10 +24,6 @@ require_relative "helpers/apps"
 Thread.abort_on_exception = true
 
 $debugging_info = []
-$debugging_hold = false   # needed for TestCLI#test_control_clustered
-$test_case_timeout = ENV.fetch("TEST_CASE_TIMEOUT") do
-  RUBY_ENGINE == "ruby" ? 45 : 60
-end.to_i
 
 require "puma"
 require "puma/detect"
@@ -81,67 +74,29 @@ end
 
 require "timeout"
 
-if Minitest::VERSION < '5.25'
-  module TimeoutEveryTestCase
-    # our own subclass so we never confuse different timeouts
-    class TestTookTooLong < Timeout::Error
-    end
+module TimeoutPrepend
+  TEST_CASE_TIMEOUT = ENV.fetch("TEST_CASE_TIMEOUT") do
+    RUBY_ENGINE == "ruby" ? 45 : 60
+  end.to_i
 
-    def run
-      with_info_handler do
-        time_it do
-          capture_exceptions do
-            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-              before_setup; setup; after_setup
-              self.send self.name
-            end
-          end
-
-          capture_exceptions do
-            ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-              Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
-            end
-          end
-          if respond_to? :clean_tmp_paths
-            clean_tmp_paths
-          end
-        end
-      end
-
-      Minitest::Result.from self # per contract
-    end
+  # our own subclass so we never confuse different timeouts
+  class TestTookTooLong < Timeout::Error
   end
-else
-  module TimeoutEveryTestCase
-    # our own subclass so we never confuse different timeouts
-    class TestTookTooLong < Timeout::Error
-    end
 
-    def run
-      time_it do
-        capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-            Minitest::Test::SETUP_METHODS.each { |hook| self.send hook }
-            self.send self.name
-          end
-        end
-
-        capture_exceptions do
-          ::Timeout.timeout($test_case_timeout, TestTookTooLong) do
-            Minitest::Test::TEARDOWN_METHODS.each { |hook| self.send hook }
-          end
-        end
-        if respond_to? :clean_tmp_paths
-          clean_tmp_paths
-        end
-      end
-
-      Minitest::Result.from self # per contract
+  def capture_exceptions
+    super do
+      ::Timeout.timeout(TEST_CASE_TIMEOUT, TestTookTooLong) { yield }
     end
   end
 end
 
-Minitest::Test.prepend TimeoutEveryTestCase
+Minitest::Test.prepend TimeoutPrepend
+
+class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
+  def teardown
+    clean_tmp_paths if respond_to? :clean_tmp_paths
+  end
+end
 
 if ENV['CI']
   require 'minitest/retry'
@@ -193,7 +148,7 @@ module TestSkips
 
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
-    signal = sig.to_s.sub(/\ASIG/, '').to_sym
+    signal = sig.to_s.delete_prefix('SIG').to_sym
     unless SIGNAL_LIST.include? signal
       skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
     end
@@ -259,8 +214,7 @@ class Minitest::Test
 end
 
 Minitest.after_run do
-  # needed for TestCLI#test_control_clustered
-  if !$debugging_hold && ENV['PUMA_TEST_DEBUG']
+  if ENV['PUMA_TEST_DEBUG']
     $debugging_info.sort!
     out = $debugging_info.join.strip
     unless out.empty?

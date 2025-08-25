@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/ssl"
 
 require 'pathname'
 require 'puma/control_cli'
 
-class TestPumaControlCli < Minitest::Test
+class TestPumaControlCli < PumaTest
   include SSLHelper
 
   def setup

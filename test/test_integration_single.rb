@@ -1,21 +1,25 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationSingle < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me! if ::Puma::IS_MRI
 
   def workers ; 0 ; end
 
   def test_hot_restart_does_not_drop_connections_threads
     ttl_reqs = Puma.windows? ? 500 : 1_000
-    hot_restart_does_not_drop_connections num_threads: 5, total_requests: ttl_reqs
+    restart_does_not_drop_connections num_threads: 5, total_requests: ttl_reqs,
+      signal: :USR2
   end
 
   def test_hot_restart_does_not_drop_connections
     if Puma.windows?
-      hot_restart_does_not_drop_connections total_requests: 300
+      restart_does_not_drop_connections total_requests: 300,
+        signal: :USR2
     else
-      hot_restart_does_not_drop_connections
+      restart_does_not_drop_connections signal: :USR2
     end
   end
 
@@ -41,22 +45,24 @@ class TestIntegrationSingle < TestIntegration
 
   def test_term_exit_code
     skip_unless_signal_exist? :TERM
-    skip_if :jruby # JVM does not return correct exit code for TERM
 
     cli_server "test/rackup/hello.ru"
     _, status = stop_server
 
+    status = status.exitstatus % 128 if ::Puma::IS_JRUBY
     assert_equal 15, status
   end
 
-  def test_on_booted_and_on_stopped
+  def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
 
-    cli_server "-C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru",
+    cli_server "-C test/config/event_after_booted_and_after_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru",
       no_wait: true
 
-    assert wait_for_server_to_include('on_booted called')
-    assert wait_for_server_to_include('on_stopped called')
+    assert wait_for_server_to_include('after_booted called')
+    assert wait_for_server_to_include('after_stopped called')
+
+    wait_server 15
   end
 
   def test_term_suppress
@@ -102,7 +108,6 @@ class TestIntegrationSingle < TestIntegration
 
   def test_term_not_accepts_new_connections
     skip_unless_signal_exist? :TERM
-    skip_if :jruby
 
     cli_server 'test/rackup/sleep.ru'
 
@@ -121,15 +126,18 @@ class TestIntegrationSingle < TestIntegration
     curl_wait_thread.join
     rejected_curl_wait_thread.join
 
+    re_curl_error = TRUFFLE ?
+      /Connection (refused|reset by peer)|(Couldn't|Could not) connect to server/ :
+      /Connection refused|(Couldn't|Could not) connect to server/
+
     assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|(Couldn't|Could not) connect to server/, rejected_curl_stderr.read)
+    assert_match(re_curl_error, rejected_curl_stderr.read)
 
     wait_server 15
   end
 
   def test_int_refuse
     skip_unless_signal_exist? :INT
-    skip_if :jruby  # seems to intermittently lockup JRuby CI
 
     cli_server 'test/rackup/hello.ru'
     begin
@@ -195,6 +203,26 @@ class TestIntegrationSingle < TestIntegration
     assert_equal("Puma is started\n", out)
   ensure
     File.unlink 't2-stdout' if File.file? 't2-stdout'
+  end
+
+  def test_puma_started_log_writing_with_custom_logging
+    skip_unless_signal_exist? :TERM
+
+    cli_server '-C test/config/t4_conf.rb test/rackup/hello.ru'
+
+    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
+
+    out=`#{BASE} bin/pumactl -F test/config/t4_conf.rb status`
+
+    stop_server
+
+    log = File.read('t4-stdout')
+
+    assert_match(%r!Custom logging: 127\.0\.0\.1.*GET / HTTP/1\.1!, log)
+    assert(!File.file?("t4-pid"))
+    assert_equal("Puma is started\n", out)
+  ensure
+    File.unlink 't4-stdout' if File.file? 't4-stdout'
   end
 
   def test_application_logs_are_flushed_on_write

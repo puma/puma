@@ -9,8 +9,6 @@ class TestSkipSystemd < TestIntegration
 
   def setup
     skip_unless :linux
-    skip_unless :unix
-    skip_unless_signal_exist? :TERM
     skip_if :jruby
 
     super

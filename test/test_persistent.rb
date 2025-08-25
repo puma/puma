@@ -3,7 +3,7 @@
 require_relative "helper"
 require_relative "helpers/test_puma/puma_socket"
 
-class TestPersistent < Minitest::Test
+class TestPersistent < PumaTest
   parallelize_me!
 
   include ::TestPuma::PumaSocket

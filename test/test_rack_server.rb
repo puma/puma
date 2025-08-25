@@ -18,7 +18,7 @@ require "rack/chunked" if Rack.release.start_with? '3.0'
 
 require "nio"
 
-class TestRackServer < Minitest::Test
+class TestRackServer < PumaTest
   parallelize_me!
 
   HOST = '127.0.0.1'
@@ -57,7 +57,7 @@ class TestRackServer < Minitest::Test
 
   def setup
     @simple = lambda { |env| [200, { "x-header" => "Works" }, ["Hello"]] }
-    @server = Puma::Server.new @simple
+    @server = Puma::Server.new @simple, nil, log_writer: Puma::LogWriter.null
     @port = (@server.add_tcp_listener HOST, 0).addr[1]
     @tcp = "http://#{HOST}:#{@port}"
     @stopped = false
@@ -136,6 +136,24 @@ class TestRackServer < Minitest::Test
     assert_equal true, closed
   end
 
+  def test_after_reply_error_handling
+    called = []
+    @server.app = lambda do |env|
+      env['rack.after_reply'] << lambda { called << :before }
+      env['rack.after_reply'] << lambda { raise ArgumentError, "oops" }
+      env['rack.after_reply'] << lambda { called << :after }
+      @simple.call(env)
+    end
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal [:before, :after], called
+  end
+
   def test_after_reply_exception
     @server.app = lambda do |env|
       env['rack.after_reply'] << lambda { raise ArgumentError, "oops" }
@@ -176,6 +194,58 @@ class TestRackServer < Minitest::Test
     socket.close
 
     stop
+  end
+
+  def test_rack_response_finished
+    calls = []
+
+    @server.app = lambda do |env|
+      env['rack.response_finished'] << lambda { |c_env, status, headers, error|
+        calls << 1
+        assert_same env, c_env
+        assert_equal 200, status
+        assert_instance_of Hash, headers
+        assert_nil error
+      }
+      env['rack.response_finished'] << lambda { |env, status, headers, error| calls << 2; raise "Oops" }
+      env['rack.response_finished'] << lambda { |env, status, headers, error| calls << 3 }
+      @simple.call(env)
+    end
+
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal [3, 2, 1], calls
+  end
+
+  def test_rack_response_finished_on_error
+    calls = []
+
+    @server.app = lambda do |env|
+      env['rack.response_finished'] << lambda { |c_env, status, headers, error|
+        begin
+          assert_same env, c_env
+          assert_equal 500, status
+          assert_instance_of Hash, headers
+          assert_instance_of RuntimeError, error
+          assert_equal "test_rack_response_finished_on_error", error.message
+          calls << 1
+        end
+      }
+      raise "test_rack_response_finished_on_error"
+    end
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal [1], calls
   end
 
   def test_rack_body_proxy

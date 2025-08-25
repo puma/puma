@@ -88,27 +88,28 @@ module Puma
                   server.begin_restart(true)
                   @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
                 end
+              elsif idx == -2 # refork cycle is done
+                @config.run_hooks(:after_refork, nil, @log_writer, @hook_data)
               elsif idx == 0 # restart server
                 restart_server << true << false
               else # fork worker
                 worker_pids << pid = spawn_worker(idx)
-                @worker_write << "#{Puma::Const::PipeRequest::FORK}#{pid}:#{idx}\n" rescue nil
+                @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n" rescue nil
               end
             end
           end
         end
 
         Signal.trap "SIGTERM" do
-          @worker_write << "#{Puma::Const::PipeRequest::EXTERNAL_TERM}#{Process.pid}\n" rescue nil
+          @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
           restart_server.clear
           server.stop
           restart_server << false
         end
 
         begin
-          @worker_write << "#{Puma::Const::PipeRequest::BOOT}#{Process.pid}:#{index}\n"
+          @worker_write << "#{PIPE_BOOT}#{Process.pid}:#{index}\n"
         rescue SystemCallError, IOError
-          Puma::Util.purge_interrupt_queue
           STDERR.puts "Master seems to have exited, exiting."
           return
         end
@@ -122,19 +123,20 @@ module Puma
 
           stat_thread ||= Thread.new(@worker_write) do |io|
             Puma.set_thread_name "stat pld"
-            base_payload = "p#{Process.pid}"
+            base_payload = "#{PIPE_PING}#{Process.pid}"
 
             while true
               begin
-                b = server.backlog || 0
-                r = server.running || 0
-                t = server.pool_capacity || 0
-                m = server.max_threads || 0
-                rc = server.requests_count || 0
-                payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc} }\n!
-                io << payload
+                payload = base_payload.dup
+
+                hsh = server.stats
+                hsh.each do |k, v|
+                  payload << %Q! "#{k}":#{v || 0},!
+                end
+                # sub call properly adds 'closing' string
+                io << payload.sub(/,\z/, " }\n")
+                server.reset_max
               rescue IOError
-                Puma::Util.purge_interrupt_queue
                 break
               end
               sleep @options[:worker_check_interval]
@@ -147,7 +149,7 @@ module Puma
         # exiting until any background operations are completed
         @config.run_hooks(:before_worker_shutdown, index, @log_writer, @hook_data)
       ensure
-        @worker_write << "#{Puma::Const::PipeRequest::TERM}#{Process.pid}\n" rescue nil
+        @worker_write << "#{PIPE_TERM}#{Process.pid}\n" rescue nil
         @worker_write.close
       end
 

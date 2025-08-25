@@ -72,7 +72,7 @@ systemd and Puma also support socket activation, where systemd opens the
 listening socket(s) in advance and provides them to the Puma master process on
 startup. Among other advantages, this keeps listening sockets open across puma
 restarts and achieves graceful restarts, including when upgraded Puma, and is
-compatible with both clustered mode and application preload.
+compatible with both cluster mode and application preload.
 
 **Note:** Any wrapper scripts which `exec`, or other indirections in `ExecStart`
 may result in activated socket file descriptors being closed before reaching the

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/test_puma/puma_socket"
 require "puma/events"
@@ -10,7 +12,7 @@ class WithoutBacktraceError < StandardError
   def message; "no backtrace error"; end
 end
 
-class TestPumaServer < Minitest::Test
+class TestPumaServer < PumaTest
   parallelize_me!
 
   include TestPuma
@@ -40,6 +42,8 @@ class TestPumaServer < Minitest::Test
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
+  ensure
+    @pool = @server.instance_variable_get(:@thread_pool)
   end
 
   def test_http10_req_to_http10_resp
@@ -50,6 +54,7 @@ class TestPumaServer < Minitest::Test
     assert_equal "HTTP/1.0 200 OK", response.status
     assert_equal "HTTP/1.0"       , response.body
   end
+
   def test_http11_req_to_http11_resp
     server_run do |env|
       [200, {}, [env["SERVER_PROTOCOL"]]]
@@ -157,12 +162,102 @@ class TestPumaServer < Minitest::Test
     tf&.close
   end
 
+  def test_pipe_body_http11
+    random_bytes = SecureRandom.random_bytes(4096)
+
+    r, w = IO.pipe(binmode: true)
+
+    w.write random_bytes
+    w.close
+
+    server_run { |env| [200, {}, r] }
+
+    response = send_http_read_response
+    body = response.decode_body
+
+    assert_equal random_bytes.bytesize, body.bytesize
+    assert_equal random_bytes, body
+  ensure
+    w&.close
+    r&.close
+  end
+
+  def test_pipe_body_http10
+    bytes = 4_096
+    random_bytes = SecureRandom.random_bytes(bytes)
+
+    r, w = IO.pipe(binmode: true)
+
+    w.write random_bytes
+    w.close
+
+    server_run { |env| [200, {'content-length' => bytes.to_s}, r] }
+
+    response = send_http_read_response GET_10
+    body = response.body
+
+    assert_equal random_bytes.bytesize, body.bytesize
+    assert_equal random_bytes, body
+  ensure
+    w&.close
+    r&.close
+  end
+
+  # Older Rubies may only read 16k, maybe OS dependent
+  def test_request_body_small
+    data = nil
+
+    server_run do |env|
+      data = env['rack.input'].read
+      [200, {}, [env['rack.input'].to_s]]
+    end
+
+    small_body = 'x' * 15 * 1_024
+
+    small_body_bytes = small_body.bytesize
+
+    socket = send_http "PUT / HTTP/1.0\r\n" \
+      "Content-Length: #{small_body_bytes}\r\n\r\n" \
+      "#{small_body}"
+
+    assert_includes socket.read_response, 'StringIO'
+
+    assert_equal small_body_bytes, data.bytesize
+    assert_equal small_body, data
+    # below intermitttently fails on GitHub Actions, may work locally
+    # assert_equal 0, @server.stats[:reactor_max]
+  end
+
+  def test_request_body_large
+    data = nil
+
+    server_run do |env|
+      data = env['rack.input'].read
+      [200, {}, [env['rack.input'].to_s]]
+    end
+
+    large_body = 'x' * 70 * 1_024
+
+    large_body_bytes = large_body.bytesize
+
+    socket = send_http "PUT / HTTP/1.0\r\n" \
+      "Content-Length: #{large_body_bytes}\r\n\r\n" \
+      "#{large_body}"
+
+    assert_includes socket.read_response, 'StringIO'
+
+    assert_equal large_body_bytes, data.bytesize
+    assert_equal large_body, data
+    # below intermitttently fails on GitHub Actions, may work locally
+    # assert_equal 0, @server.stats[:reactor_max]
+  end
+
   def test_proper_stringio_body
     data = nil
 
     server_run do |env|
       data = env['rack.input'].read
-      [200, {}, ["ok"]]
+      [200, {}, [env['rack.input'].to_s]]
     end
 
     fifteen = "1" * 15
@@ -172,7 +267,7 @@ class TestPumaServer < Minitest::Test
     sleep 0.1 # important so that the previous data is sent as a packet
     socket << fifteen
 
-    socket.read_response
+    assert_includes socket.read_response, 'StringIO'
 
     assert_equal "#{fifteen}#{fifteen}", data
   end
@@ -337,7 +432,8 @@ class TestPumaServer < Minitest::Test
      [200, { "X-Hello" => "World" }, ["Hello world!"]]
     end
 
-    response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
+    # two requests must be read
+    response = send_http_read_all "HEAD / HTTP/1.0\r\n\r\n"
 
     expected_resp = <<~EOF.gsub("\n", "\r\n") + "\r\n"
       HTTP/1.1 103 Early Hints
@@ -880,7 +976,8 @@ class TestPumaServer < Minitest::Test
   def test_Expect_100
     server_run { [200, {}, [""]] }
 
-    response = send_http_read_response "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
+    # two requests must be read
+    response = send_http_read_all "GET / HTTP/1.1\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
 
     assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
   end
@@ -1311,6 +1408,82 @@ class TestPumaServer < Minitest::Test
     assert_equal "7", content_length
   end
 
+  def test_chunked_keep_alive_twenty_back_to_back
+    req_count = 20
+    requests = 0
+
+    server_run(max_fast_inline: 21) { |env|
+      requests += 1
+      env['rack.input'].read
+      [200, {}, ["Request_#{requests}"]]
+    }
+
+    req = "GET / HTTP/1.1\r\nX-Forwarded-For: 127.0.0.1\r\nConnection: Keep-Alive\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    expected = String.new # rubocop: disable Performance/UnfreezeString
+    req_count.times do |i|
+      expected << "HTTP/1.1 200 OK\r\nContent-Length: #{(i+1).to_s.length + 8}\r\n\r\nRequest_#{i+1}"
+    end
+
+    responses = send_http_read_all(req * req_count)
+
+    assert_equal req_count, responses.scan('Request_').length
+
+    assert_equal expected, responses
+  end
+
+  def test_default_max_keep_alive
+    max_keep_alive = Puma::Configuration::DEFAULTS[:max_keep_alive]
+    requests = 0
+    response = ''
+
+    server_run { |env|
+      requests += 1
+      [200, {}, [format('Request_%02d', requests)]]
+    }
+
+    socket = new_socket
+
+    # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      (max_keep_alive + 1).times do |i|
+        socket << GET_11
+        response = socket.read_response
+        refute_includes(Puma::Const::CONNECTION_CLOSE, response) if i < max_keep_alive + 1
+      end
+    end
+    sleep 0.25 # seems to be needed for macOS
+    assert_raises(Errno::EPIPE) { socket << GET_11 }
+    assert_includes response, format('Request_%02d', max_keep_alive)
+    assert_includes response, Puma::Const::CONNECTION_CLOSE
+  end
+
+  def test_set_max_keep_alive
+    max_keep_alive = 20
+    requests = 0
+    response = ''
+
+    server_run(max_keep_alive: max_keep_alive) { |env|
+      requests += 1
+      [200, {}, [format('Request_%02d', requests)]]
+    }
+
+    socket = new_socket
+
+    # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      (max_keep_alive + 1).times do |i|
+        socket << GET_11
+        response = socket.read_response
+        refute_includes(Puma::Const::CONNECTION_CLOSE, response) if i < 21
+      end
+    end
+    sleep 0.25 # seems to be needed for macOS
+    assert_raises(Errno::EPIPE) { socket << GET_11 }
+    assert_includes response, format('Request_%02d', max_keep_alive)
+    assert_includes response, 'Connection: close'
+  end
+
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
     body = nil
     content_length = nil
@@ -1417,7 +1590,7 @@ class TestPumaServer < Minitest::Test
 
   def test_open_connection_wait(**options)
     server_run(**options) { [200, {}, ["Hello"]] }
-    socket = send_http nil
+    socket = new_socket
     sleep 0.1
     socket << GET_10
     assert_equal 'Hello', socket.read_body
@@ -1499,6 +1672,7 @@ class TestPumaServer < Minitest::Test
   # There are three different tests because there are three ways to set header
   # content in Puma. Regular (rack env), early hints, and a special case for
   # overriding content-length.
+
   {"cr" => "\r", "lf" => "\n", "crlf" => "\r\n"}.each do |suffix, line_ending|
     # The cr-only case for the following test was CVE-2020-5247
     define_method(:"test_prevent_response_splitting_headers_#{suffix}") do
@@ -1670,6 +1844,7 @@ class TestPumaServer < Minitest::Test
   # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
   def test_accept_emfile
     stub_accept_nonblock Errno::EMFILE.new('accept(2)')
+    sleep 0.1 if Puma::IS_WINDOWS && Puma::IS_ARM
     refute_empty @log_writer.stderr.string, "Expected EMFILE error not logged"
   end
 
@@ -2097,5 +2272,15 @@ class TestPumaServer < Minitest::Test
     assert_includes body, "GET /404 HTTP/1.1\r\n"
     assert_includes body, "Content-Length: 144\r\n"
     assert_equal 1, response.scan("HTTP/1.1 200 OK").size
+  end
+
+  def test_auto_trim_with_variable_pool_size
+    server_run(min_threads: 1, max_threads: 2, auto_trim_time: 1)
+    assert @pool.instance_variable_get(:@auto_trim)
+  end
+
+  def test_auto_trim_with_fixed_pool_size
+    server_run(min_threads: 2, max_threads: 2, auto_trim_time: 1)
+    refute @pool.instance_variable_get(:@auto_trim)
   end
 end

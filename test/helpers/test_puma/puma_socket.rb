@@ -10,15 +10,15 @@ module TestPuma
   #   @param req [String, GET_11] request path
 
   # @!macro [new] skt
-  #   @param host: [String] tcp/ssl host
-  #   @param port: [Integer/String] tcp/ssl port
-  #   @param path: [String] unix socket, full path
-  #   @param ctx: [OpenSSL::SSL::SSLContext] ssl context
+  #   @param host [String] tcp/ssl host
+  #   @param port [Integer/String] tcp/ssl port
+  #   @param path [String] unix socket, full path
+  #   @param ctx  [OpenSSL::SSL::SSLContext] ssl context
   #   @param session: [OpenSSL::SSL::Session] ssl session
 
   # @!macro [new] resp
-  #   @param timeout: [Float, nil] total socket read timeout, defaults to `RESP_READ_TIMEOUT`
-  #   @param len: [ Integer, nil] the `read_nonblock` maxlen, defaults to `RESP_READ_LEN`
+  #   @param timeout [Float, nil] total socket read timeout, defaults to `RESP_READ_TIMEOUT`
+  #   @param len [ Integer, nil] the `read_nonblock` maxlen, defaults to `RESP_READ_LEN`
 
   # This module is included in CI test files, and provides methods to create
   # client sockets.  Normally, the socket parameters are defined by the code
@@ -67,6 +67,8 @@ module TestPuma
     RESP_READ_TIMEOUT = 10
     NO_ENTITY_BODY = Puma::STATUS_WITH_NO_ENTITY_BODY
     EMPTY_200 = [200, {}, ['']]
+
+    HAS_APPEND_AS_BYTES = ::String.new.respond_to? :append_as_bytes
 
     UTF8 = ::Encoding::UTF_8
 
@@ -137,17 +139,19 @@ module TestPuma
     # responses are sent by the server
     # @!macro req
     # @!macro skt
+    # @!macro resp
     # @return [String] socket read string
     def send_http_read_all(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
-        session: nil, len: nil, timeout: nil)
+        session: nil, len: RESP_READ_LEN, timeout: 15)
+      end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
       skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
       read = String.new # rubocop: disable Performance/UnfreezeString
       counter = 0
       prev_size = 0
       loop do
-        raise(Timeout::Error, 'Client Read Timeout') if counter > 5
+        raise(Timeout::Error, 'Client Read Timeout') if Process.clock_gettime(Process::CLOCK_MONOTONIC) > end_time
         if skt.wait_readable 1
-          read << skt.sysread(RESP_READ_LEN)
+          read << skt.sysread(len)
         end
         ttl_read = read.bytesize
         return read if prev_size == ttl_read && !ttl_read.zero?
@@ -178,8 +182,7 @@ module TestPuma
     # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
     def send_http(req = GET_11, host: nil, port: nil, path: nil, ctx: nil, session: nil)
       skt = new_socket host: host, port: port, path: path, ctx: ctx, session: session
-      skt.syswrite req
-      skt
+      skt << req
     end
 
     # Determines whether the socket has been closed by the server.  Only works when
@@ -232,18 +235,26 @@ module TestPuma
             times << (Process.clock_gettime(Process::CLOCK_MONOTONIC) - time_read).round(4)
             status ||= part[/\AHTTP\/1\.[01] (\d{3})/, 1]
             if status
-              no_body ||= NO_ENTITY_BODY.key? status.to_i || status.to_i < 200
+              no_body ||= NO_ENTITY_BODY.key?(status.to_i) || status.to_i < 200
             end
             if no_body && part.end_with?(RESP_SPLIT)
               response.times = times
-              return response << part
+              if HAS_APPEND_AS_BYTES
+                return response.append_as_bytes(part)
+              else
+                return response << part.b
+              end
             end
 
             unless content_length || chunked
               chunked ||= part.downcase.include? "\r\ntransfer-encoding: chunked\r\n"
               content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
             end
-            response << part
+            if HAS_APPEND_AS_BYTES
+              response.append_as_bytes part
+            else
+              response << part.b
+            end
             hdrs, body = response.split RESP_SPLIT, 2
             unless body.nil?
               # below could be simplified, but allows for debugging...
@@ -283,7 +294,12 @@ module TestPuma
     end
 
     # @todo verify whole string is written
-    REQ_WRITE = -> (str) { self.syswrite str; self }
+    REQ_WRITE = -> (str) do
+      sent = 0
+      size = str.bytesize
+      sent += self.syswrite(str.byteslice(sent, size - sent)) while sent < size
+      self
+    end
 
     # Helper for creating an `OpenSSL::SSL::SSLContext`.
     # @param &blk [Block] Passed the SSLContext.

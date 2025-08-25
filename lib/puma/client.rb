@@ -1,13 +1,5 @@
 # frozen_string_literal: true
 
-class IO
-  # We need to use this for a jruby work around on both 1.8 and 1.9.
-  # So this either creates the constant (on 1.8), or harmlessly
-  # reopens it (on 1.9).
-  module WaitReadable
-  end
-end
-
 require_relative 'detect'
 require_relative 'io_buffer'
 require 'tempfile'
@@ -64,6 +56,11 @@ module Puma
 
     TE_ERR_MSG = 'Invalid Transfer-Encoding'
 
+    # See:
+    # https://httpwg.org/specs/rfc9110.html#rfc.section.5.6.1.1
+    # https://httpwg.org/specs/rfc9112.html#rfc.section.6.1
+    STRIP_OWS = /\A[ \t]+|[ \t]+\z/
+
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new
@@ -111,7 +108,8 @@ module Puma
     end
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer, :http_content_length_limit_exceeded
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded,
+                :requests_served
 
     attr_writer :peerip, :http_content_length_limit
 
@@ -133,9 +131,9 @@ module Puma
       "#<Puma::Client:0x#{object_id.to_s(16)} @ready=#{@ready.inspect}>"
     end
 
-    # For the hijack protocol (allows us to just put the Client object
-    # into the env)
-    def call
+    # For the full hijack protocol, `env['rack.hijack']` is set to
+    # `client.method :full_hijack`
+    def full_hijack
       @hijacked = true
       env[HIJACK_IO] ||= @io
     end
@@ -150,11 +148,12 @@ module Puma
     end
 
     # Number of seconds until the timeout elapses.
+    # @!attribute [r] timeout
     def timeout
       [@timeout_at - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
     end
 
-    def reset(fast_check=true)
+    def reset
       @parser.reset
       @io_buffer.reset
       @read_header = true
@@ -166,11 +165,14 @@ module Puma
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
       @http_content_length_limit_exceeded = false
+    end
 
+    # only used with back-to-back requests contained in the buffer
+    def process_back_to_back_requests
       if @buffer
         return false unless try_to_parse_proxy_protocol
 
-        @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
+        @parsed_bytes = parser_execute
 
         if @parser.finished?
           return setup_body
@@ -178,17 +180,13 @@ module Puma
           raise HttpParserError,
             "HEADER is longer than allowed, aborting client early."
         end
-
-        return false
-      else
-        begin
-          if fast_check && @to_io.wait_readable(FAST_TRACK_KA_TIMEOUT)
-            return try_to_finish
-          end
-        rescue IOError
-          # swallow it
-        end
       end
+    end
+
+    # if a client sends back-to-back requests, the buffer may contain one or more
+    # of them.
+    def has_back_to_back_requests?
+      !(@buffer.nil? || @buffer.empty?)
     end
 
     def close
@@ -196,7 +194,6 @@ module Puma
       begin
         @io.close
       rescue IOError, Errno::EBADF
-        Puma::Util.purge_interrupt_queue
       end
     end
 
@@ -273,31 +270,71 @@ module Puma
 
       return false unless try_to_parse_proxy_protocol
 
-      @parsed_bytes = @parser.execute(@env, @buffer, @parsed_bytes)
+      @parsed_bytes = parser_execute
 
       if @parser.finished? && above_http_content_limit(@parser.body.bytesize)
         @http_content_length_limit_exceeded = true
       end
 
       if @parser.finished?
-        return setup_body
+        setup_body
       elsif @parsed_bytes >= MAX_HEADER
         raise HttpParserError,
           "HEADER is longer than allowed, aborting client early."
+      else
+        false
       end
-
-      false
     end
 
     def eagerly_finish
       return true if @ready
-      return false unless @to_io.wait_readable(0)
-      try_to_finish
+      while @to_io.wait_readable(0) # rubocop: disable Style/WhileUntilModifier
+        return true if try_to_finish
+      end
+      false
     end
 
     def finish(timeout)
       return if @ready
       @to_io.wait_readable(timeout) || timeout! until try_to_finish
+    end
+
+    # Wraps `@parser.execute` and adds meaningful error messages
+    # @return [Integer] bytes of buffer read by parser
+    #
+    def parser_execute
+      @parser.execute(@env, @buffer, @parsed_bytes)
+    rescue => e
+      @env[HTTP_CONNECTION] = 'close'
+      raise e unless HttpParserError === e && e.message.include?('non-SSL')
+
+      req, _ = @buffer.split "\r\n\r\n"
+      request_line, headers = req.split "\r\n", 2
+
+      # below checks for request issues and changes error message accordingly
+      if !@env.key? REQUEST_METHOD
+        if request_line.count(' ') != 2
+           # maybe this is an SSL connection ?
+          raise e
+        else
+          method = request_line[/\A[^ ]+/]
+          raise e, "Invalid HTTP format, parsing fails. Bad method #{method}"
+        end
+      elsif !@env.key? REQUEST_PATH
+        path = request_line[/\A[^ ]+ +([^ ?\r\n]+)/, 1]
+        raise e, "Invalid HTTP format, parsing fails. Bad path #{path}"
+      elsif request_line.match?(/\A[^ ]+ +[^ ?\r\n]+\?/) && !@env.key?(QUERY_STRING)
+        query = request_line[/\A[^ ]+ +[^? ]+\?([^ ]+)/, 1]
+        raise e, "Invalid HTTP format, parsing fails. Bad query #{query}"
+      elsif !@env.key? SERVER_PROTOCOL
+        # protocol is bad
+        text = request_line[/[^ ]*\z/]
+        raise HttpParserError, "Invalid HTTP format, parsing fails. Bad protocol #{text}"
+      elsif !headers.empty?
+        # headers are bad
+        hdrs = headers.split("\r\n").map { |h| h.gsub "\n", '\n'}.join "\n"
+        raise HttpParserError, "Invalid HTTP format, parsing fails. Bad headers\n#{hdrs}"
+      end
     end
 
     def timeout!
@@ -374,17 +411,18 @@ module Puma
       if te
         te_lwr = te.downcase
         if te.include? ','
-          te_ary = te_lwr.split ','
+          te_ary = te_lwr.split(',').each { |te| te.gsub!(STRIP_OWS, "") }
           te_count = te_ary.count CHUNKED
           te_valid = te_ary[0..-2].all? { |e| ALLOWED_TRANSFER_ENCODING.include? e }
-          if te_ary.last == CHUNKED && te_count == 1 && te_valid
-            @env.delete TRANSFER_ENCODING2
-            return setup_chunked_body body
-          elsif te_count >= 1
+          if te_count > 1
             raise HttpParserError   , "#{TE_ERR_MSG}, multiple chunked: '#{te}'"
+          elsif te_ary.last != CHUNKED
+            raise HttpParserError   , "#{TE_ERR_MSG}, last value must be chunked: '#{te}'"
           elsif !te_valid
             raise HttpParserError501, "#{TE_ERR_MSG}, unknown value: '#{te}'"
           end
+          @env.delete TRANSFER_ENCODING2
+          return setup_chunked_body body
         elsif te_lwr == CHUNKED
           @env.delete TRANSFER_ENCODING2
           return setup_chunked_body body

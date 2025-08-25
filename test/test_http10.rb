@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 require "puma/puma_http11"
 
-class Http10ParserTest < Minitest::Test
+class Http10ParserTest < PumaTest
   def test_parse_simple
     parser = Puma::HttpParser.new
     req = {}

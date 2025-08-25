@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
@@ -21,11 +23,33 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_hot_restart_does_not_drop_connections_threads
-    hot_restart_does_not_drop_connections num_threads: 10, total_requests: 3_000
+    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
+      signal: :USR2
   end
 
   def test_hot_restart_does_not_drop_connections
-    hot_restart_does_not_drop_connections num_threads: 1, total_requests: 1_000
+    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
+      signal: :USR2
+  end
+
+  def test_phased_restart_does_not_drop_connections_threads
+    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
+      signal: :USR1
+  end
+
+  def test_phased_restart_does_not_drop_connections
+    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
+      signal: :USR1
+  end
+
+  def test_phased_restart_does_not_drop_connections_threads_fork_worker
+    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
+      signal: :USR1, config: 'fork_worker'
+  end
+
+  def test_phased_restart_does_not_drop_connections_unix
+    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
+      signal: :USR1, unix: true
   end
 
   def test_pre_existing_unix
@@ -89,37 +113,14 @@ class TestIntegrationCluster < TestIntegration
   # No more than 10 should throw Errno::ECONNRESET.
 
   def test_term_closes_listeners_tcp
-    skip_unless_signal_exist? :TERM
     term_closes_listeners unix: false
   end
 
   def test_term_closes_listeners_unix
-    skip_unless_signal_exist? :TERM
     term_closes_listeners unix: true
   end
 
-  # Next two tests, one tcp, one unix
-  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
-  # All should be responded to, and at least three workers should be used
-
-  def test_usr1_all_respond_tcp
-    skip_unless_signal_exist? :USR1
-    usr1_all_respond unix: false
-  end
-
-  def test_usr1_fork_worker
-    skip_unless_signal_exist? :USR1
-    usr1_all_respond config: '--fork-worker'
-  end
-
-  def test_usr1_all_respond_unix
-    skip_unless_signal_exist? :USR1
-    usr1_all_respond unix: true
-  end
-
   def test_term_exit_code
-    skip_unless_signal_exist? :TERM
-
     cli_server "-w #{workers} test/rackup/hello.ru"
     _, status = stop_server
 
@@ -127,8 +128,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_term_suppress
-    skip_unless_signal_exist? :TERM
-
     cli_server "-w #{workers} -C test/config/suppress_exception.rb test/rackup/hello.ru"
 
     _, status = stop_server
@@ -136,19 +135,19 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
-  def test_on_booted_and_on_stopped
+  def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
-    cli_server "-w #{workers} -C test/config/event_on_booted_and_on_stopped.rb -C test/config/event_on_booted_exit.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} -C test/config/event_after_booted_and_after_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru"
 
     # above checks 'Ctrl-C', below is logged after workers boot
-    assert wait_for_server_to_include('on_booted called')
+    assert wait_for_server_to_include('after_booted called')
     assert wait_for_server_to_include('Goodbye!')
     # below logged after workers are stopped
-    assert wait_for_server_to_include('on_stopped called')
+    assert wait_for_server_to_include('after_stopped called')
+    wait_server 15
   end
 
   def test_term_worker_clean_exit
-    skip_unless_signal_exist? :TERM
     cli_server "-w #{workers} test/rackup/hello.ru"
 
     # Get the PIDs of the child workers.
@@ -165,8 +164,6 @@ class TestIntegrationCluster < TestIntegration
 
   # mimicking stuck workers, test respawn with external TERM
   def test_stuck_external_term_spawn
-    skip_unless_signal_exist? :TERM
-
     worker_respawn(0) do |phase0_worker_pids|
       last = phase0_worker_pids.last
       # test is tricky if only one worker is TERM'd, so kill all but
@@ -184,8 +181,6 @@ class TestIntegrationCluster < TestIntegration
   # `Process.wait2(<child pid>)` still works properly. This bug has
   # been fixed in Ruby 3.3.
   def test_workers_respawn_with_process_detach
-    skip_unless_signal_exist? :KILL
-
     config = 'test/config/process_detach_before_fork.rb'
 
     worker_respawn(0, workers, config) do |phase0_worker_pids|
@@ -208,8 +203,26 @@ class TestIntegrationCluster < TestIntegration
 
   # mimicking stuck workers, test restart
   def test_stuck_phased_restart
-    skip_unless_signal_exist? :USR1
     worker_respawn { |phase0_worker_pids| Process.kill :USR1, @pid }
+  end
+
+  def test_puma_stats_clustered
+    worker_check_interval = 2
+
+    cli_server "-w 1 -t 1:1 #{set_pumactl_args unix: true} test/rackup/hello.ru",
+      config: "worker_check_interval #{worker_check_interval}"
+
+    sleep worker_check_interval + 1
+
+    stats = get_stats
+
+    assert_instance_of Hash, stats
+
+    last_status = stats['worker_status'].first['last_status']
+
+    Puma::Server::STAT_METHODS.each do |stat|
+      assert_includes last_status, stat.to_s
+    end
   end
 
   def test_worker_check_interval
@@ -234,7 +247,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_boot_timeout
     timeout = 1
-    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
+    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; before_worker_boot { sleep #{timeout + 1} }")
   end
 
   def test_worker_timeout
@@ -242,7 +255,7 @@ class TestIntegrationCluster < TestIntegration
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     config = <<~CONFIG
       worker_timeout #{timeout}
-      on_worker_boot do
+      before_worker_boot do
         Thread.new do
           sleep 1
           Thread.list.find {|t| t.name == 'puma stat pld'}.kill
@@ -271,8 +284,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_worker_index_is_with_in_options_limit
-    skip_unless_signal_exist? :TERM
-
     cli_server "-C test/config/t3_conf.rb test/rackup/hello.ru"
 
     get_worker_pids(0, 3) # this will wait till all the processes are up
@@ -296,18 +307,47 @@ class TestIntegrationCluster < TestIntegration
   end
 
   # use three workers to keep accepting clients
-  def test_fork_worker_on_refork
+  def test_fork_worker_before_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~CONFIG
       fork_worker 20
-      on_refork { File.write '#{refork.path}', 'Reforked' }
+      before_refork { File.write '#{refork.path}', 'Reforked' }
     CONFIG
 
     pids = get_worker_pids 0, wrkrs
 
     socks = []
     until refork.read == 'Reforked'
+      socks << fast_connect
+      sleep 0.004
+    end
+
+    100.times {
+      socks << fast_connect
+      sleep 0.004
+    }
+
+    socks.each { |s| read_body s }
+
+    refute_includes pids, get_worker_pids(1, wrkrs - 1)
+  end
+
+  # use three workers to keep accepting clients
+  def test_fork_worker_after_refork
+    refork = Tempfile.new 'refork2'
+    wrkrs = 3
+    cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~RUBY
+      fork_worker 20
+      before_refork { File.write '#{refork.path}', 'Before refork', mode: 'a+' }
+      after_refork { File.write '#{refork.path}', '-After refork', mode: 'a+' }
+    RUBY
+
+    pids = get_worker_pids 0, wrkrs
+
+    socks = []
+    until refork.read == 'Before refork-After refork'
+      refork.rewind
       socks << fast_connect
       sleep 0.004
     end
@@ -336,11 +376,11 @@ class TestIntegrationCluster < TestIntegration
     assert_equal '0', read_body(connect)
   end
 
-  def test_fork_worker_phased_restart_with_high_worker_count
+  def test_phased_restart_with_fork_worker_and_high_worker_count
     worker_count = 10
 
     cli_server "test/rackup/hello.ru", config: <<~CONFIG
-      fork_worker 0
+      fork_worker
       worker_check_interval 1
       # lower worker timeout from default (60) to avoid test timeout
       worker_timeout 2
@@ -349,14 +389,36 @@ class TestIntegrationCluster < TestIntegration
       workers #{worker_count}
     CONFIG
 
-    # workers is the default
     get_worker_pids 0, worker_count
 
     Process.kill :USR1, @pid
 
     get_worker_pids 1, worker_count
 
-    # below is so all of @server_log isn't output for failure
+    # below is so all of @server_log isn't simply output on failure
+    refute @server_log[/.*Terminating timed out worker.*/]
+  end
+
+  def test_refork_phased_restart_with_fork_worker_and_high_worker_count
+    worker_count = 10
+
+    cli_server "test/rackup/hello.ru", config: <<~CONFIG
+      fork_worker
+      worker_check_interval 1
+      # lower worker timeout from default (60) to avoid test timeout
+      worker_timeout 2
+      # to simulate worker 0 timeout, total boot time for all workers
+      # needs to exceed single worker timeout
+      workers #{worker_count}
+    CONFIG
+
+    get_worker_pids 0, worker_count
+
+    Process.kill :SIGURG, @pid
+
+    get_worker_pids 1, worker_count - 1
+
+    # below is so all of @server_log isn't simply output on failure
     refute @server_log[/.*Terminating timed out worker.*/]
   end
 
@@ -489,8 +551,6 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_hook_data
-    skip_unless_signal_exist? :TERM
-
     cli_server "-C test/config/hook_data.rb test/rackup/hello.ru"
     get_worker_pids 0, 2 # make sure workers are booted
     stop_server
@@ -505,13 +565,13 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_hook_warning_cli
     cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
-      on_worker_boot(:test) do |index, data|
+      before_worker_boot(:test) do |index, data|
         data[:test] = index
       end
     CONFIG
 
     get_worker_pids
-    line = @server_log[/.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+before_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
@@ -519,14 +579,20 @@ class TestIntegrationCluster < TestIntegration
     cli_server "test/rackup/hello.ru",
       env: { 'WEB_CONCURRENCY' => '2'},
       config: <<~CONFIG
-        on_worker_boot(:test) do |index, data|
+        before_worker_boot(:test) do |index, data|
           data[:test] = index
         end
       CONFIG
 
     get_worker_pids
-    line = @server_log[/.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+.+before_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
+  end
+
+  def test_puma_debug_worker_hook
+    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true, config: "before_worker_boot {}"
+
+    assert wait_for_server_to_include("Running before_worker_boot hooks")
   end
 
   def test_puma_debug_loaded_exts
@@ -545,7 +611,7 @@ class TestIntegrationCluster < TestIntegration
     pids = []
     re = /Terminating timed out worker \(Worker \d+ #{details}\): (\d+)/
 
-    Timeout.timeout(iterations * (timeout + 1)) do
+    Timeout.timeout(iterations * (timeout + 1.5)) do
       while (pids.size < workers * iterations)
         idx = wait_for_server_to_match(re, 1).to_i
         pids << idx
@@ -558,8 +624,6 @@ class TestIntegrationCluster < TestIntegration
   # Send requests 10 per second.  Send 10, then :TERM server, then send another 30.
   # No more than 10 should throw Errno::ECONNRESET.
   def term_closes_listeners(unix: false)
-    skip_unless_signal_exist? :TERM
-
     cli_server "-w #{workers} -t 0:6 -q test/rackup/sleep_step.ru", unix: unix
     threads = []
     replies = []
@@ -619,57 +683,6 @@ class TestIntegrationCluster < TestIntegration
     if passed?
       $debugging_info << "#{full_name}\n    #{msg}\n"
     else
-      $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
-    end
-  end
-
-  # Send requests 1 per second.  Send 1, then :USR1 server, then send another 24.
-  # All should be responded to, and at least three workers should be used
-  def usr1_all_respond(unix: false, config: '')
-    cli_server "-w #{workers} -t 0:5 -q test/rackup/sleep_pid.ru #{config}", unix: unix
-    threads = []
-    replies = []
-    mutex = Mutex.new
-
-    s = connect "sleep1", unix: unix
-    replies << read_body(s)
-
-    Process.kill :USR1, @pid
-
-    refused = thread_run_refused unix: unix
-
-    24.times do |delay|
-      threads << Thread.new do
-        thread_run_pid replies, delay, 1, mutex, refused, unix: unix
-      end
-    end
-
-    threads.each(&:join)
-
-    responses     = replies.count { |r| r[/\ASlept 1/] }
-    resets        = replies.count { |r| r == :reset    }
-    refused       = replies.count { |r| r == :refused  }
-    read_timeouts = replies.count { |r| r == :read_timeout }
-
-    # get pids from replies, generate uniq array
-    t = replies.map { |body| body[/\d+\z/] }
-    t.uniq!; t.compact!
-    qty_pids = t.length
-
-    msg = "#{responses} responses, #{qty_pids} uniq pids"
-
-    assert_equal 25, responses, msg
-    assert_operator qty_pids, :>, 2, msg
-
-    msg = "#{responses} responses, #{resets} resets, #{refused} refused, #{read_timeouts} read timeouts"
-
-    assert_equal 0, refused, msg
-
-    assert_equal 0, resets, msg
-
-    assert_equal 0, read_timeouts, msg
-  ensure
-    unless passed?
       $debugging_info << "#{full_name}\n    #{msg}\n#{replies.inspect}\n"
     end
   end
@@ -774,4 +787,5 @@ class TestIntegrationCluster < TestIntegration
       mutex.synchronize { replies[step] = :read_timeout }
     end
   end
+
 end if ::Process.respond_to?(:fork)

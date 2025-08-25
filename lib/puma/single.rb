@@ -17,7 +17,7 @@ module Puma
     def stats
       {
         started_at: utc_iso8601(@started_at)
-      }.merge(@server.stats).merge(super)
+      }.merge(@server&.stats || {}).merge(super)
     end
 
     def restart
@@ -55,7 +55,7 @@ module Puma
       log "Use Ctrl-C to stop"
       redirect_io
 
-      @events.fire_on_booted!
+      @events.fire_after_booted!
 
       debug_loaded_extensions("Loaded Extensions:") if @log_writer.debug?
 

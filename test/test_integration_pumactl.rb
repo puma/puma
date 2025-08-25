@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
@@ -197,33 +199,87 @@ class TestIntegrationPumactl < TestIntegration
     skip_unless :fork
     skip_unless :unix
 
-    puma_version_pattern = "\\d+.\\d+.\\d+(\\.[a-z\\d]+)?"
+    min_threads = 1
+    max_threads = 2
 
-    cli_server "-w2 -t2:2 -q test/rackup/hello.ru #{set_pumactl_args unix: true} -S #{@state_path}"
+    cli_server "-w#{workers} -t#{min_threads}:#{max_threads} -q test/rackup/hello.ru #{set_pumactl_args unix: true} -S #{@state_path}"
 
-    get_worker_pids # waits for workers to boot
+    worker_pids = get_worker_pids # waits for workers to boot
 
-    resp_io = cli_pumactl "stats", unix: true
-
-    status = JSON.parse resp_io.read.split("\n", 2).last
+    status = get_stats
 
     assert_equal 2, status["workers"]
 
     sleep 0.5 # needed for GHA ?
 
-    resp_io = cli_pumactl "stats", unix: true
+    stats_hash = get_stats
 
-    body = resp_io.read.split("\n", 2).last
+    expected_clustered_root_keys = {
+      'started_at' => RE_8601,
+      'workers'    => workers,
+      'phase'      => 0,
+      'booted_workers' => workers,
+      'old_workers'    => 0,
+      'worker_status'  => Array,
+      'versions'       => Hash,
+    }
 
-    expected_stats = /\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","workers":2,"phase":0,"booted_workers":2,"old_workers":0,"worker_status":\[\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","pid":\d+,"index":0,"phase":0,"booted":true,"last_checkin":"[^"]+","last_status":\{"backlog":0,"running":2,"pool_capacity":2,"max_threads":2,"requests_count":0\}\},\{"started_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z","pid":\d+,"index":1,"phase":0,"booted":true,"last_checkin":"[^"]+","last_status":\{"backlog":0,"running":2,"pool_capacity":2,"max_threads":2,"requests_count":0\}\}\],"versions":\{"puma":"#{puma_version_pattern}","ruby":\{"engine":"\w+","version":"\d+.\d+.\d+","patchlevel":-?\d+\}\}\}/
+    assert_hash expected_clustered_root_keys, stats_hash
 
-    assert_match(expected_stats, body)
+    # worker_status hash
+    expected_status_hash = {
+      'started_at' => RE_8601,
+      'pid'        => worker_pids,
+      'index'      => 0...workers,
+      'phase'      => 0,
+      'booted'     => true,
+      'last_checkin' => RE_8601,
+      'last_status'  => Hash,
+    }
+
+    # worker last_status hash
+    expected_last_status_hash = {
+      'backlog' => 0,
+      'running' => min_threads,
+      'pool_capacity'  => max_threads,
+      'busy_threads'   => 0,
+      'backlog_max' => 0,
+      'max_threads'    => max_threads,
+      'requests_count' => 0,
+      'reactor_max'    => 0,
+    }
+
+    pids = []
+
+    workers.times do |idx|
+      worker_hash = stats_hash['worker_status'][idx]
+      assert_hash expected_status_hash, worker_hash
+      assert_equal idx, worker_hash['index']
+      pids << worker_hash['pid']
+      assert_hash expected_last_status_hash, worker_hash['last_status']
+    end
+    assert_equal pids, pids.uniq # no duplicates
+
+    #version keys
+    expected_version_hash = {
+      'puma' => Puma::Const::VERSION,
+      'ruby' => Hash,
+    }
+    assert_hash expected_version_hash, stats_hash['versions']
+
+    #version ruby keys
+    expected_version_ruby_hash = {
+      'engine'     => RUBY_ENGINE,
+      'version'    => RUBY_VERSION,
+      'patchlevel' => RUBY_PATCHLEVEL,
+    }
+    assert_hash expected_version_ruby_hash, stats_hash['versions']['ruby']
   end
 
   def control_gc_stats(unix: false)
     cli_server "-t1:1 -q test/rackup/hello.ru #{set_pumactl_args unix: unix} -S #{@state_path}"
 
-    key = Puma::IS_MRI || TRUFFLE_HEAD ? "count" : "used"
+    key = Puma::IS_MRI ? "count" : "used"
 
     resp_io = cli_pumactl "gc-stats", unix: unix
     before = JSON.parse resp_io.read.split("\n", 2).last

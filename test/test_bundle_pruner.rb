@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require_relative 'helper'
 
 require 'puma/events'
 
-class TestBundlePruner < Minitest::Test
+class TestBundlePruner < PumaTest
 
   PUMA_VERS = "puma-#{Puma::Const::PUMA_VERSION}"
 

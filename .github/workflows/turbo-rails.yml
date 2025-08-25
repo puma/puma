@@ -1,7 +1,7 @@
 name: turbo-rails
 
 # Note: turbo-rails often returns an ActionDispatch::Response::RackBody for the
-# body.  Also, Rack::BodyProxy or Sprockets::Asset
+# body. Also, Rack::BodyProxy or Sprockets::Asset.
 
 on: [push, pull_request, workflow_dispatch]
 
@@ -25,13 +25,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-20.04 , ruby: '3.1', rails: '7.0' }
-          - { os: ubuntu-20.04 , ruby: '3.2', rails: '7.0' }
-          - { os: ubuntu-22.04 , ruby: '3.3', rails: '7.0' }
-          - { os: ubuntu-20.04 , ruby: '3.1', rails: '7.1' }
-          - { os: ubuntu-20.04 , ruby: '3.2', rails: '7.1' }
-          - { os: ubuntu-22.04 , ruby: '3.3', rails: '7.1' }
-          - { os: ubuntu-22.04 , ruby: head , rails: '7.1' }
+          # Run against the supported releases of Rails (https://rubyonrails.org/maintenance)
+          # and the corresponding supported Ruby versions.
+          - { os: ubuntu-22.04 , ruby: '3.1', rails: '7.2' }
+          - { os: ubuntu-22.04 , ruby: '3.2', rails: '7.2' }
+          - { os: ubuntu-22.04 , ruby: '3.3', rails: '7.2' }
+          - { os: ubuntu-22.04 , ruby: '3.4', rails: '7.2' }
+          - { os: ubuntu-22.04 , ruby: '3.2', rails: '8.0' }
+          - { os: ubuntu-22.04 , ruby: '3.3', rails: '8.0' }
+          - { os: ubuntu-22.04 , ruby: '3.4', rails: '8.0' }
+          - { os: ubuntu-22.04 , ruby: head , rails: '8.0' }
+          - { os: ubuntu-24.04 , ruby: head , rails: '8.0' }
     env:
       CI: true
       FERRUM_PROCESS_TIMEOUT: 60
@@ -40,7 +44,7 @@ jobs:
 
     steps:
       - name: checkout hotwired/turbo-rails
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: hotwired/turbo-rails
           ref: main
@@ -51,8 +55,13 @@ jobs:
           SRC="gem ['\"]puma['\"].*"
           DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
           sed -i "s#$SRC#$DST#" Gemfile
+          # use rack main with ruby master
+          SRC="gem 'rack'"
+          DST="if RUBY_PATCHLEVEL == -1\n  gem 'rack', git: 'https://github.com/rack/rack', ref: 'main'\nelse\n  gem 'rack'\nend"
+          sed -i "s#$SRC#$DST#" Gemfile
+          #
           SRC="gem ['\"]sqlite3['\"].*"
-          DST="gem 'sqlite3', '~> 1.4'"
+          DST="gem 'sqlite3', ENV['RAILS_VERSION'] == '8.0' ? '>= 2.1' : '~> 1.4'"
           sed -i "s#$SRC#$DST#" Gemfile
           #
           # allow using capybara from the repo, either a branch or a commit

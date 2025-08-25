@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/tmp_path"
 
 require 'puma/state_file'
 
-class TestStateFile < Minitest::Test
+class TestStateFile < PumaTest
   include TmpPath
 
   def test_load_empty_value_as_nil

@@ -100,12 +100,10 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "6.5.0"
-    CODE_NAME = "Sky's Version"
+    PUMA_VERSION = VERSION = "7.0.0.pre1"
+    CODE_NAME = "Romantic Warrior"
 
     PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
-
-    FAST_TRACK_KA_TIMEOUT = 0.2
 
     # How long to wait when getting some write blocking on the socket when
     # sending data back
@@ -230,6 +228,7 @@ module Puma
     RACK_INPUT = "rack.input"
     RACK_URL_SCHEME = "rack.url_scheme"
     RACK_AFTER_REPLY = "rack.after_reply"
+    RACK_RESPONSE_FINISHED = "rack.response_finished"
     PUMA_SOCKET = "puma.socket"
     PUMA_CONFIG = "puma.config"
     PUMA_PEERCERT = "puma.peercert"
@@ -294,14 +293,15 @@ module Puma
 
     PROXY_PROTOCOL_V1_REGEX = /^PROXY (?:TCP4|TCP6|UNKNOWN) ([^\r]+)\r\n/.freeze
 
+    # All constants are prefixed with `PIPE_` to avoid name collisions.
     module PipeRequest
-      WAKEUP = "!"
-      BOOT = "b"
-      FORK = "f"
-      EXTERNAL_TERM = "e"
-      TERM = "t"
-      PING = "p"
-      IDLE = "i"
+      PIPE_WAKEUP = "!"
+      PIPE_BOOT = "b"
+      PIPE_FORK = "f"
+      PIPE_EXTERNAL_TERM = "e"
+      PIPE_TERM = "t"
+      PIPE_PING = "p"
+      PIPE_IDLE = "i"
     end
   end
 end

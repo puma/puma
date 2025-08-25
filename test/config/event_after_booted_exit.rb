@@ -1,4 +1,4 @@
-on_booted do
+after_booted do
   pid = Process.pid
   begin
     Process.kill :TERM, pid

@@ -1,13 +1,16 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/tmp_path"
 
 require "puma/configuration"
 require 'puma/log_writer'
 
+# Do not add any tests creating workers to this, as Cluster may call `Process.waitall`,
+# which may cause issues in the test process.
+
 # Intermittent failures & errors when run parallel in GHA, local use may run fine.
-
-
-class TestLauncher < Minitest::Test
+class TestLauncher < PumaTest
   include TmpPath
 
   def test_prints_thread_traces
@@ -80,49 +83,16 @@ class TestLauncher < Minitest::Test
       c.app -> {[200, {}, ['']]}
     end
     launcher = create_launcher(conf)
-    launcher.events.on_booted {
+    launcher.events.after_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
+    launcher.stats # Ensure `stats` method return without errors before run
     launcher.run
     sleep 1 unless Puma.mri?
     Puma::Server::STAT_METHODS.each do |stat|
       assert_includes launcher.stats, stat
     end
-  end
-
-  def test_puma_stats_clustered
-    skip_unless :fork
-
-    queue_booted = Queue.new
-    stopped = nil
-    status  = nil
-
-    conf = Puma::Configuration.new do |c|
-      c.app -> {[200, {}, ['']]}
-      c.workers 1
-    end
-    launcher = create_launcher(conf)
-    launcher.events.on_booted { queue_booted << nil }
-
-    th_stats = Thread.new do
-      queue_booted.pop
-      sleep Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
-      status = launcher.stats[:worker_status]&.first[:last_status]
-      launcher.stop
-      stopped = true
-    end
-
-    launcher.run
-    assert th_stats.join(10)
-
-    refute_nil status
-
-    Puma::Server::STAT_METHODS.each do |stat|
-      assert_includes status, stat
-    end
-  ensure
-    launcher&.stop unless stopped
   end
 
   def test_log_config_enabled
@@ -145,7 +115,7 @@ class TestLauncher < Minitest::Test
     refute_match(/Configuration:/, create_launcher.log_writer.stdout.string)
   end
 
-  def test_fire_on_stopped
+  def test_fire_after_stopped
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
     end
@@ -153,21 +123,23 @@ class TestLauncher < Minitest::Test
     is_stopped = nil
 
     launcher = create_launcher(conf)
-    launcher.events.on_booted {
+    launcher.events.after_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
-    launcher.events.on_stopped { is_stopped = true }
+    launcher.events.after_stopped { is_stopped = true }
 
     launcher.run
     sleep 0.2 unless Puma.mri?
-    assert is_stopped, "on_stopped not called"
+    assert is_stopped, "after_stopped not called"
   end
 
   private
 
   def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings, **kw)
-    config.options[:binds] = ["tcp://127.0.0.1:#{UniquePort.call}"]
+    config.configure do |c|
+      c.bind "tcp://127.0.0.1:#{UniquePort.call}"
+    end
     Puma::Launcher.new(config, log_writer: lw, **kw)
   end
 end

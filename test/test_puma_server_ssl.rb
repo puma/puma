@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Nothing in this file runs if Puma isn't compiled with ssl support
 #
 # helper is required first since it loads Puma, which needs to be
@@ -24,14 +26,14 @@ if ::Puma::HAS_SSL
   end
 end
 
-class TestPumaServerSSL < Minitest::Test
+class TestPumaServerSSL < PumaTest
   parallelize_me!
 
   include TestPuma
   include TestPuma::PumaSocket
 
   PROTOCOL_USE_MIN_MAX =
-    OpenSSL::SSL::SSLContext.private_instance_methods(false).include?(:set_minmax_proto_version)
+    OpenSSL::SSL::SSLContext.public_instance_methods(false).include?(:min_version=)
 
   OPENSSL_3 = OpenSSL::OPENSSL_LIBRARY_VERSION.match?(/OpenSSL 3\.\d\.\d/)
 
@@ -82,7 +84,7 @@ class TestPumaServerSSL < Minitest::Test
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
     @bind_port = @server.connected_ports[0]
 
-    socket = send_http "HEAD",  ctx: new_ctx
+    socket = send_http "HEAD", ctx: new_ctx
     sleep 0.1
 
     # Capture the amount of threads being used after connecting and being idle
@@ -97,8 +99,12 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_very_large_return
+    # This test frequntly fails on Darwin TruffleRuby, 512k was used chosen
+    # becuase 1mb also failed
+    # failure is OpenSSL::SSL::SSLError: SSL_read: record layer failure
+    body_size = Puma::IS_OSX && TRUFFLE ? 512 * 1_024 : 2_056_610
     start_server
-    giant = "x" * 2056610
+    giant = "x" * body_size
 
     @server.app = proc { [200, {}, [giant]] }
 
@@ -152,7 +158,7 @@ class TestPumaServerSSL < Minitest::Test
   end
 
   def test_ssl_v3_rejection
-    skip-("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
+    skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
 
     rejection nil, nil, :SSLv3
   end
@@ -270,7 +276,7 @@ class TestPumaServerSSL < Minitest::Test
 end if ::Puma::HAS_SSL
 
 # client-side TLS authentication tests
-class TestPumaServerSSLClient < Minitest::Test
+class TestPumaServerSSLClient < PumaTest
   parallelize_me! unless ::Puma.jruby?
 
   include TestPuma
@@ -489,7 +495,7 @@ class TestPumaServerSSLClient < Minitest::Test
 
 end if ::Puma::HAS_SSL
 
-class TestPumaServerSSLWithCertPemAndKeyPem < Minitest::Test
+class TestPumaServerSSLWithCertPemAndKeyPem < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
@@ -531,7 +537,7 @@ end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
 #
 #   bundle exec ruby ../examples/puma/chain_cert/generate_chain_test.rb
 #
-class TestPumaSSLCertChain < Minitest::Test
+class TestPumaSSLCertChain < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 

@@ -2,7 +2,7 @@ require 'puma/detect'
 require 'puma/log_writer'
 require_relative "helper"
 
-class TestLogWriter < Minitest::Test
+class TestLogWriter < PumaTest
   def test_null
     log_writer = Puma::LogWriter.null
 

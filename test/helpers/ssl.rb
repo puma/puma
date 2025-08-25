@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SSLHelper
   def ssl_query
     @ssl_query ||= if Puma.jruby?

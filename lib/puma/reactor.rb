@@ -15,6 +15,12 @@ module Puma
   #
   # The implementation uses a Queue to synchronize adding new objects from the internal select loop.
   class Reactor
+
+    # @!attribute [rw] reactor_max
+    #   Maximum number of clients in the selector.  Reset with calls to `Server.stats`.
+    attr_accessor :reactor_max
+    attr_reader :reactor_size
+
     # Create a new Reactor to monitor IO objects added by #add.
     # The provided block will be invoked when an IO has data available to read,
     # its timeout elapses, or when the Reactor shuts down.
@@ -29,6 +35,8 @@ module Puma
       @input = Queue.new
       @timeouts = []
       @block = block
+      @reactor_size = 0
+      @reactor_max = 0
     end
 
     # Run the internal select loop, using a background thread by default.
@@ -73,11 +81,15 @@ module Puma
           # Wakeup any registered object that receives incoming data.
           # Block until the earliest timeout or Selector#wakeup is called.
           timeout = (earliest = @timeouts.first) && earliest.timeout
-          @selector.select(timeout) {|mon| wakeup!(mon.value)}
+          monitor_wake_up = false
+          @selector.select(timeout) do |monitor|
+            monitor_wake_up = true
+            wakeup!(monitor.value)
+          end
 
           # Wakeup all objects that timed out.
-          timed_out = @timeouts.take_while {|t| t.timeout == 0}
-          timed_out.each { |c| wakeup! c }
+          timed_out = @timeouts.take_while { |client| client.timeout == 0 }
+          timed_out.each { |client| wakeup!(client) }
 
           unless @input.empty?
             until @input.empty?
@@ -94,7 +106,7 @@ module Puma
         # NoMethodError may be rarely raised when calling @selector.select, which
         # is odd.  Regardless, it may continue for thousands of calls if retried.
         # Also, when it raises, @selector.close also raises an error.
-        if NoMethodError === e
+        if !monitor_wake_up && NoMethodError === e
           close_selector = false
         else
           retry
@@ -108,6 +120,8 @@ module Puma
     # Start monitoring the object.
     def register(client)
       @selector.register(client.to_io, :r).value = client
+      @reactor_size += 1
+      @reactor_max = @reactor_size if @reactor_max < @reactor_size
       @timeouts << client
     rescue ArgumentError
       # unreadable clients raise error when processed by NIO
@@ -118,6 +132,7 @@ module Puma
     def wakeup!(client)
       if @block.call client
         @selector.deregister client.to_io
+        @reactor_size -= 1
         @timeouts.delete client
       end
     end

@@ -52,6 +52,7 @@ module Puma
       io_buffer = client.io_buffer
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
+      error = nil
 
       return false if closed_socket?(socket)
 
@@ -68,7 +69,7 @@ module Puma
       end
 
       env[HIJACK_P] = true
-      env[HIJACK] = client
+      env[HIJACK] = client.method :full_hijack
 
       env[RACK_INPUT] = client.body
       env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
@@ -92,6 +93,7 @@ module Puma
       # array, we will invoke them when the request is done.
       #
       env[RACK_AFTER_REPLY] ||= []
+      env[RACK_RESPONSE_FINISHED] ||= []
 
       begin
         if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
@@ -119,15 +121,15 @@ module Puma
 
           return :async
         end
-      rescue ThreadPool::ForceShutdown => e
-        @log_writer.unknown_error e, client, "Rack app"
+      rescue ThreadPool::ForceShutdown => error
+        @log_writer.unknown_error error, client, "Rack app"
         @log_writer.log "Detected force shutdown of a thread"
 
-        status, headers, res_body = lowlevel_error(e, env, 503)
-      rescue Exception => e
-        @log_writer.unknown_error e, client, "Rack app"
+        status, headers, res_body = lowlevel_error(error, env, 503)
+      rescue Exception => error
+        @log_writer.unknown_error error, client, "Rack app"
 
-        status, headers, res_body = lowlevel_error(e, env, 500)
+        status, headers, res_body = lowlevel_error(error, env, 500)
       end
       prepare_response(status, headers, res_body, requests, client)
     ensure
@@ -135,12 +137,25 @@ module Puma
       uncork_socket client.io
       app_body.close if app_body.respond_to? :close
       client&.tempfile_close
-      after_reply = env[RACK_AFTER_REPLY] || []
-      begin
-        after_reply.each { |o| o.call }
-      rescue StandardError => e
-        @log_writer.debug_error e
-      end unless after_reply.empty?
+      if after_reply = env[RACK_AFTER_REPLY]
+        after_reply.each do |o|
+          begin
+            o.call
+          rescue StandardError => e
+            @log_writer.debug_error e
+          end
+        end
+      end
+
+      if response_finished = env[RACK_RESPONSE_FINISHED]
+        response_finished.reverse_each do |o|
+          begin
+            o.call(env, status, headers, error)
+          rescue StandardError => e
+            @log_writer.debug_error e
+          end
+        end
+      end
     end
 
     # Assembles the headers and prepares the body for actually sending the
@@ -161,17 +176,7 @@ module Puma
       return false if closed_socket?(socket)
 
       # Close the connection after a reasonable number of inline requests
-      # if the server is at capacity and the listener has a new connection ready.
-      # This allows Puma to service connections fairly when the number
-      # of concurrent connections exceeds the size of the threadpool.
-      force_keep_alive = if @enable_keep_alives
-        requests < @max_fast_inline ||
-        @thread_pool.busy_threads < @max_threads ||
-        !client.listener.to_io.wait_readable(0)
-      else
-        # Always set force_keep_alive to false if the server has keep-alives not enabled.
-        false
-      end
+      force_keep_alive = @enable_keep_alives && client.requests_served < @max_keep_alive
 
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
@@ -191,7 +196,8 @@ module Puma
           elsif res_body.is_a?(File) && res_body.respond_to?(:size)
             body = res_body
             content_length = body.size
-          elsif res_body.respond_to?(:to_path) && File.readable?(fn = res_body.to_path)
+          elsif res_body.respond_to?(:to_path) && (fn = res_body.to_path) &&
+              File.readable?(fn)
             body = File.open fn, 'rb'
             content_length = body.size
             close_body = true
@@ -199,7 +205,7 @@ module Puma
             body = res_body
           end
         elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) &&
-            File.readable?(fn = res_body.to_path)
+            (fn = res_body.to_path) && File.readable?(fn = res_body.to_path)
           body = File.open fn, 'rb'
           content_length = body.size
           close_body = true
@@ -263,7 +269,8 @@ module Puma
 
       fast_write_response socket, body, io_buffer, chunked, content_length.to_i
       body.close if close_body
-      keep_alive
+      # if we're shutting down, close keep_alive connections
+      !shutting_down? && keep_alive
     end
 
     # @param env [Hash] see Puma::Client#env, from request
@@ -581,7 +588,7 @@ module Puma
     #   response body
     # @param io_buffer [Puma::IOBuffer] modified inn place
     # @param force_keep_alive [Boolean] 'anded' with keep_alive, based on system
-    #   status and `@max_fast_inline`
+    #   status and `@max_keep_alive`
     # @return [Hash] resp_info
     # @version 5.0.3
     #

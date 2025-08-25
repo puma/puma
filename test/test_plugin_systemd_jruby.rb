@@ -9,8 +9,6 @@ class TestPluginSystemdJruby < TestIntegration
 
   def setup
     skip_unless :linux
-    skip_unless :unix
-    skip_unless_signal_exist? :TERM
     skip_unless :jruby
 
     super

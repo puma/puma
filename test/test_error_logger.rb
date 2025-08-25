@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 require 'puma/error_logger'
 require_relative "helper"
 
-class TestErrorLogger < Minitest::Test
+class TestErrorLogger < PumaTest
   Req = Struct.new(:env, :body)
 
   def test_stdio

@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
-class TestOutOfBandServer < Minitest::Test
+class TestOutOfBandServer < PumaTest
   parallelize_me!
 
   def setup
@@ -28,7 +30,6 @@ class TestOutOfBandServer < Minitest::Test
   def new_connection
     TCPSocket.new('127.0.0.1', @port).tap {|s| @ios << s}
   rescue IOError
-    Puma::Util.purge_interrupt_queue
     retry
   end
 

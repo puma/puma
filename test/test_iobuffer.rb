@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 require "puma/io_buffer"
 
-class TestIOBuffer < Minitest::Test
+class TestIOBuffer < PumaTest
   attr_accessor :iobuf
   def setup
     self.iobuf = Puma::IOBuffer.new

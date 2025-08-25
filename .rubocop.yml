@@ -1,9 +1,10 @@
 require:
   - rubocop-performance
+  - ./cops/tests_puma.rb
 
 AllCops:
   DisabledByDefault: true
-  TargetRubyVersion: 2.4
+  TargetRubyVersion: 3.0
   DisplayCopNames: true
   StyleGuideCopsOnly: false
   Exclude:
@@ -81,4 +82,7 @@ Style/TrailingCommaInArguments:
   Enabled: true
 
 Style/WhileUntilModifier:
+  Enabled: true
+
+TestsMustUsePumaTest:
   Enabled: true

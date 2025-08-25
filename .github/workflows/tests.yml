@@ -13,7 +13,7 @@ jobs:
     name: RuboCop linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.1
@@ -30,7 +30,6 @@ jobs:
       PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
-      TERM: BugMinitest
 
     runs-on: ${{ matrix.os }}
     if: |
@@ -39,48 +38,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, macos-13, macos-14, macos-15, windows-2022 ]
-        ruby: [ 2.4, 2.5, 2.6, 2.7, '3.0', 3.1, 3.2, 3.3, head ]
+        os: [ ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm,
+              macos-13, macos-14, macos-15,
+              windows-2022 ]
+        ruby: [ '3.0', 3.1, 3.2, 3.3, 3.4, head ]
         no-ssl: ['']
         rack-v: ['']
         yjit: ['']
         include:
-          - { os: windows-2022 , ruby: ucrt }
-          - { os: windows-2022 , ruby: mswin }
-          - { os: windows-2022 , ruby: 2.7  , no-ssl: ' no SSL' }
-          - { os: ubuntu-20.04 , ruby: 2.7  , no-ssl: ' no SSL' }
-          - { os: ubuntu-22.04 , ruby: head , yjit: ' yjit' }
-          - { os: ubuntu-22.04 , ruby: 2.4  , rack-v: ' rack2' }
-          - { os: ubuntu-22.04 , ruby: 3.2  , rack-v: ' rack2' }
-          - { os: ubuntu-22.04 , ruby: 2.4  , rack-v: ' rack1' }
+          - { os: windows-2022    , ruby:  ucrt }
+          - { os: windows-2022    , ruby:  mswin }
+          - { os: windows-2022    , ruby:  3.0  , no-ssl: ' no SSL' }
+          - { os: windows-11-arm  , ruby:  3.4 }
+          - { os: windows-11-arm  , ruby:  head }
+          - { os: ubuntu-22.04    , ruby:  head , yjit: ' yjit'     }
+          - { os: ubuntu-22.04    , ruby:  3.2  , no-ssl: ' no SSL' }
+          - { os: ubuntu-22.04    , ruby:  3.0  , rack-v: ' rack2'  }
 
         exclude:
-          - { os: ubuntu-22.04 , ruby:  2.4  }
-          - { os: ubuntu-22.04 , ruby:  2.5  }
-          - { os: ubuntu-22.04 , ruby:  2.6  }
-          - { os: ubuntu-22.04 , ruby:  2.7  }
-          - { os: ubuntu-22.04 , ruby: '3.0' }
-          - { os: ubuntu-24.04 , ruby:  2.4  }
-          - { os: ubuntu-24.04 , ruby:  2.5  }
-          - { os: ubuntu-24.04 , ruby:  2.6  }
-          - { os: ubuntu-24.04 , ruby:  2.7  }
-          - { os: ubuntu-24.04 , ruby: '3.0' }
-          - { os: macos-14     , ruby:  2.4  }
-          - { os: macos-14     , ruby:  2.5  }
-          - { os: macos-14     , ruby:  2.6  }
-          - { os: macos-14     , ruby:  2.7  }
-          - { os: macos-15     , ruby:  2.4  }
-          - { os: macos-15     , ruby:  2.5  }
-          - { os: macos-15     , ruby:  2.6  }
-          - { os: macos-15     , ruby:  2.7  }
+          - { os: ubuntu-24.04    , ruby: '3.0' }
+          - { os: ubuntu-24.04-arm, ruby:  3.1  }
+          - { os: ubuntu-24.04-arm, ruby:  3.3  }
           - { os: macos-15     , ruby: '3.0' }
           - { os: macos-15     , ruby:  3.2  }
           - { os: windows-2022 , ruby: head  }
 
     steps:
       - name: repo checkout
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        uses: actions/checkout@v4
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
+        uses: actions/checkout@v5
 
       - name: Compile Puma without SSL support
         if: |
@@ -94,29 +80,31 @@ jobs:
         run: echo 'PUMA_CI_RACK=${{ matrix.rack-v }}' >> $GITHUB_ENV
 
       - name: load ruby
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         uses: ruby/setup-ruby-pkgs@v1
         with:
+          # see https://github.com/ruby/setup-ruby/blob/master/action.yml for info
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
-          # below is only needed for Ruby 2.4
-          mingw: openssl
-          rubygems: latest
+          rubygems: default
+          bundler: default
           bundler-cache: true
         timeout-minutes: 10
 
       - name: Repo & Commit Info
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         run: ruby .github/workflows/github_actions_info.rb
 
       - name: set WERRORFLAG
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: |
+          (needs.skip_duplicate_runs.outputs.should_skip != 'true') &&
+          !(contains(matrix.os, 'ubuntu') && contains(matrix.os, 'arm'))
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
       - name: compile
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         run:  bundle exec rake compile
 
       - name: Use yjit
@@ -127,9 +115,11 @@ jobs:
         run: echo 'RUBYOPT=--yjit' >> $GITHUB_ENV
 
       - name: test
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
+        if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         timeout-minutes: 10
         run: test/runner --verbose
+        env:
+          MT_CPU: 2
 
   test_non_mri:
     name: >-
@@ -140,7 +130,6 @@ jobs:
       PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
-      TERM: BugMinitest
 
     runs-on: ${{ matrix.os }}
     if: |
@@ -153,28 +142,30 @@ jobs:
           # tto - test timeout
           - { tto: 8 , os: ubuntu-22.04 , ruby: jruby }
           - { tto: 8 , os: ubuntu-22.04 , ruby: jruby, no-ssl: ' no SSL' }
-          - { tto: 8 , os: ubuntu-22.04 , ruby: jruby-head, allow-failure: true }
-          - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
-          - { tto: 8 , os: ubuntu-20.04 , ruby: truffleruby-head, allow-failure: true }
-          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby, allow-failure: true } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
-          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby-head, allow-failure: true }
+          - { tto: 8 , os: ubuntu-22.04 , ruby: jruby-head, allow-failure: false }
+          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby, allow-failure: false } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
+          - { tto: 8 , os: ubuntu-22.04 , ruby: truffleruby-head, allow-failure: false }
+          - { tto: 8 , os: ubuntu-24.04 , ruby: truffleruby, allow-failure: false } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
+          - { tto: 8 , os: ubuntu-24.04 , ruby: truffleruby-head, allow-failure: false }
           - { tto: 8 , os: macos-13     , ruby: jruby }
           - { tto: 8 , os: macos-14     , ruby: jruby }
-          - { tto: 8 , os: macos-13     , ruby: truffleruby, allow-failure: true }
+          - { tto: 8 , os: macos-15     , ruby: truffleruby, allow-failure: false }
 
     steps:
       - name: repo checkout
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: load ruby, ragel
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: ruby/setup-ruby-pkgs@v1
         with:
+          # see https://github.com/ruby/setup-ruby/blob/master/action.yml for info
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
           brew: ragel
-          bundler: none
+          rubygems: default
+          bundler: default
           bundler-cache: true
         timeout-minutes: 10
 
@@ -191,8 +182,15 @@ jobs:
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
       - name: compile
+        id: compile
+        continue-on-error: ${{ matrix.allow-failure || false }}
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         run:  bundle exec rake compile
+
+      - name: >-
+          Compile outcome: ${{ steps.compile.outcome }}
+        # every step must define a `uses` or `run` key
+        run: echo NOOP
 
       - name: test
         id: test
@@ -202,6 +200,8 @@ jobs:
           success() &&
           (needs.skip_duplicate_runs.outputs.should_skip != 'true')
         run: test/runner --verbose
+        env:
+          MT_CPU: 2
 
       - name: >-
           Test outcome: ${{ steps.test.outcome }}

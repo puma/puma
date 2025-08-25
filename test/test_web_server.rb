@@ -16,7 +16,7 @@ class TestHandler
   end
 end
 
-class WebServerTest < Minitest::Test
+class WebServerTest < PumaTest
   parallelize_me!
 
   VALID_REQUEST = "GET / HTTP/1.1\r\nHost: www.zedshaw.com\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"

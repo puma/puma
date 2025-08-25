@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require "json"
 require "puma/json_serialization"
 
-class TestJSONSerialization < Minitest::Test
+class TestJSONSerialization < PumaTest
   parallelize_me! unless JRUBY_HEAD
 
   def test_json_generates_string_for_hash_with_string_keys
