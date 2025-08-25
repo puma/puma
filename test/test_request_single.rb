@@ -406,8 +406,7 @@ class TestTransferEncodingInvalid < TestRequestBase
     ].join "\r\n"
 
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{CHUNKED}",
-      "Invalid Transfer-Encoding, unknown value: 'chunked, gzip'",
-      Puma::HttpParserError501
+      "Invalid Transfer-Encoding, last value must be chunked: 'chunked, gzip'"
   end
 
   def test_chunked_multiple
