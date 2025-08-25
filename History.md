@@ -1,10 +1,3 @@
-## Unreleased
-
-* Features
-  * Add `fiber_per_request` option (aliased as `clean_thread_locals`) to isolate fiber-local state per request using Ruby Fibers. Enable via config or `PUMA_FIBER_PER_REQUEST` env var. ([#3101])
-
-[#3101]: https://github.com/puma/puma/pull/3101
-
 ## 7.0.0.pre1 / 2025-07-31
 
 * Changed
