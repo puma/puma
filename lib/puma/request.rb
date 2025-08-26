@@ -479,9 +479,13 @@ module Puma
         env[REMOTE_ADDR] = addr
       end
 
-      # The legacy HTTP_VERSION header can be sent as a client header.
-      # Rack v4 may remove using HTTP_VERSION.  If so, remove this line.
-      env[HTTP_VERSION] = env[SERVER_PROTOCOL]
+      # This assignment of HTTP_VERSION can be removed once Rack 2 is no longer supported
+      #
+      # - It is used in recently released software (Sinatra 3.2.0)
+      #   https://github.com/sinatra/sinatra/blob/4e8fdb5172a81c1c237388f264e5684a4a15ed4f/lib/sinatra/base.rb#L303-L315
+       if Object.const_defined?(:Rack) && Rack.release < "3.1.0"
+        env[HTTP_VERSION] = env[SERVER_PROTOCOL]
+       end
     end
     private :normalize_env
 
