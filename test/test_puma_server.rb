@@ -2285,6 +2285,12 @@ class TestPumaServer < PumaTest
   end
 
   def test_update_thread_pool_min_max
+    # add a small delay so requests back up
+    @app = ->(env) do
+      sleep 0.001
+      [200, {}, [env['rack.url_scheme']]]
+    end
+
     server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
 
     assert_equal 1, @server.stats[:running]
@@ -2292,12 +2298,13 @@ class TestPumaServer < PumaTest
     @server.update_thread_pool_min_max(min: 3, max: 3)
 
     # By making multiple requests, we can ensure that the pool is filled up to the max.
-    10.times { send_http_read_response(GET_11) }
+    req_ary = send_http_array 5
+    resp_ary = req_ary.map { |req| req.read_response }
 
     assert_equal 3, @pool.max
     assert_equal 3, @pool.min
     assert_equal 3, @server.max_threads
     assert_equal 3, @server.min_threads
-    assert_equal 3, @server.stats[:running]
+    assert_equal 3, @pool&.spawned
   end
 end
