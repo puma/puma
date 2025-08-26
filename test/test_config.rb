@@ -744,7 +744,7 @@ class TestConfigFile < PumaTest
       conf.clamp
     end
 
-    assert_match /Warning: The code in the `#{hook_name}` block will not execute in the current Puma configuration/, out
+    assert_match(/Warning: The code in the `#{hook_name}` block will not execute in the current Puma configuration/, out)
   end
 end
 

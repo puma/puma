@@ -397,7 +397,7 @@ class TestCLI < PumaTest
   def test_plugins
     assert_empty Puma::Plugins.instance_variable_get(:@plugins)
 
-    cli = Puma::CLI.new ['--plugin', 'tmp_restart', '--plugin', 'systemd']
+    Puma::CLI.new ['--plugin', 'tmp_restart', '--plugin', 'systemd']
 
     assert Puma::Plugins.find("tmp_restart")
     assert Puma::Plugins.find("systemd")
@@ -406,7 +406,7 @@ class TestCLI < PumaTest
   def test_config_does_not_preload_app_with_workers
     skip_unless :fork
 
-    cli = Puma::CLI.new ['-w 0']
+    Puma::CLI.new ['-w 0']
     config = Puma.cli_config
 
     assert_equal false, config.options[:preload_app]
@@ -415,7 +415,7 @@ class TestCLI < PumaTest
   def test_config_preloads_app_with_workers
     skip_unless :fork
 
-    cli = Puma::CLI.new ['-w 2']
+    Puma::CLI.new ['-w 2']
     config = Puma.cli_config
 
     assert_equal true, config.options[:preload_app]
