@@ -1412,7 +1412,7 @@ class TestPumaServer < PumaTest
     req_count = 20
     requests = 0
 
-    server_run(max_fast_inline: 21) { |env|
+    server_run(max_keep_alive: 21) { |env|
       requests += 1
       env['rack.input'].read
       [200, {}, ["Request_#{requests}"]]

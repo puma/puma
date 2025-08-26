@@ -1,1 +1,1 @@
-max_fast_inline Float::INFINITY
+max_keep_alive Float::INFINITY
