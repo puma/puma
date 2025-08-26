@@ -216,6 +216,25 @@ class TestPumaServerSSL < PumaTest
     assert busy_threads.zero?, "Our connection wasn't dropped"
   end
 
+  def test_http_10_close_no_errors
+    start_server
+
+    assert_equal 'https', send_http_read_response(GET_10, ctx: new_ctx).body
+
+    assert_empty @log_stderr.string
+  end
+
+  def test_http_11_close_no_errors
+    start_server
+
+    skt = send_http ctx: new_ctx
+
+    assert_equal 'https', skt.read_response.body
+    skt.close
+
+    assert_empty @log_stderr.string
+  end
+
   unless Puma.jruby?
     def test_invalid_cert
       assert_raises(Puma::MiniSSL::SSLError) do
