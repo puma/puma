@@ -1,1 +1,0 @@
-worker_shutdown_timeout 2

@@ -80,7 +80,10 @@ class TestPluginSystemd < TestIntegration
 
   def assert_restarts_with_systemd(signal, workers: 2)
     skip_unless(:fork) unless workers.zero?
-    cli_server "-w#{workers} test/rackup/hello.ru", env: @env
+    cli_server "test/rackup/hello.ru", env: @env, config: <<~CONFIG
+      workers #{workers}
+      #{"preload_app! false" if signal == :USR1}
+    CONFIG
     get_worker_pids(0, workers) if workers == 2
     assert_message 'READY=1'
 
