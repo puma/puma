@@ -2,6 +2,7 @@
 
 require_relative 'detect'
 require_relative 'io_buffer'
+require_relative 'client_env'
 require 'tempfile'
 
 if Puma::IS_JRUBY
@@ -20,8 +21,8 @@ module Puma
   #———————————————————————— DO NOT USE — this class is for internal use only ———
 
 
-  # An instance of this class represents a unique request from a client.
-  # For example, this could be a web request from a browser or from CURL.
+  # An instance of this class wraps a connection/socket.
+  # For example, this could be an http request from a browser or from CURL.
   #
   # An instance of `Puma::Client` can be used as if it were an IO object
   # by the reactor. The reactor is expected to call `#to_io`
@@ -29,11 +30,17 @@ module Puma
   # `IO::try_convert` (which may call `#to_io`) when a new socket is
   # registered.
   #
-  # Instances of this class are responsible for knowing if
-  # the header and body are fully buffered via the `try_to_finish` method.
+  # Instances of this class are responsible for knowing if the request line,
+  # headers and body are fully buffered and verified via the `try_to_finish` method.
+  # All verification of each request is done in the `Client` object.
   # They can be used to "time out" a response via the `timeout_at` reader.
   #
+  # Most of the code for env processing and verification is contained
+  # in `Puma::ClientEnv`, which is included.
+  #
   class Client # :nodoc:
+
+    include ClientEnv
 
     # this tests all values but the last, which must be chunked
     ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze
@@ -64,8 +71,6 @@ module Puma
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new
-
-    include Puma::Const
 
     def initialize(io, env=nil)
       @io = io
@@ -109,9 +114,9 @@ module Puma
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
                 :tempfile, :io_buffer, :http_content_length_limit_exceeded,
-                :requests_served
+                :requests_served, :error_status_code
 
-    attr_writer :peerip, :http_content_length_limit
+    attr_writer :peerip, :http_content_length_limit, :supported_http_methods
 
     attr_accessor :remote_addr_header, :listener
 
@@ -174,12 +179,7 @@ module Puma
 
         @parsed_bytes = parser_execute
 
-        if @parser.finished?
-          return setup_body
-        elsif @parsed_bytes >= MAX_HEADER
-          raise HttpParserError,
-            "HEADER is longer than allowed, aborting client early."
-        end
+        @parser.finished? ? process_env_body : false
       end
     end
 
@@ -231,17 +231,6 @@ module Puma
     end
 
     def try_to_finish
-      if env[CONTENT_LENGTH] && above_http_content_limit(env[CONTENT_LENGTH].to_i)
-        @http_content_length_limit_exceeded = true
-      end
-
-      if @http_content_length_limit_exceeded
-        @buffer = nil
-        @body = EmptyBody
-        set_ready
-        return true
-      end
-
       return read_body if in_data_phase
 
       data = nil
@@ -272,18 +261,7 @@ module Puma
 
       @parsed_bytes = parser_execute
 
-      if @parser.finished? && above_http_content_limit(@parser.body.bytesize)
-        @http_content_length_limit_exceeded = true
-      end
-
-      if @parser.finished?
-        setup_body
-      elsif @parsed_bytes >= MAX_HEADER
-        raise HttpParserError,
-          "HEADER is longer than allowed, aborting client early."
-      else
-        false
-      end
+      @parser.finished? ? process_env_body : false
     end
 
     def eagerly_finish
@@ -303,7 +281,12 @@ module Puma
     # @return [Integer] bytes of buffer read by parser
     #
     def parser_execute
-      @parser.execute(@env, @buffer, @parsed_bytes)
+      ret = @parser.execute(@env, @buffer, @parsed_bytes)
+
+      if @env[REQUEST_METHOD] && @supported_http_methods != :any && !@supported_http_methods.key?(@env[REQUEST_METHOD])
+        raise HttpParserError501, "#{@env[REQUEST_METHOD]} method is not supported"
+      end
+      ret
     rescue => e
       @env[HTTP_CONNECTION] = 'close'
       raise e unless HttpParserError === e && e.message.include?('non-SSL')
@@ -335,6 +318,19 @@ module Puma
         hdrs = headers.split("\r\n").map { |h| h.gsub "\n", '\n'}.join "\n"
         raise HttpParserError, "Invalid HTTP format, parsing fails. Bad headers\n#{hdrs}"
       end
+    end
+
+    # processes the `env` and the request body
+    def process_env_body
+      if above_http_content_limit(@parser.body.bytesize)
+        @http_content_length_limit_exceeded = true
+        @error_status_code = 413
+      end
+      temp = setup_body
+      normalize_env
+      req_env_post_parse
+      raise HttpParserError if @error_status_code
+      temp
     end
 
     def timeout!
@@ -393,19 +389,22 @@ module Puma
 
     private
 
+    # Checks the request `Transfer-Encoding` and/or `Content-Length` to see if
+    # they are valid.  Raises errors if not, otherwise reads the body.
+    # @return [Boolean] true if the body can be completely read, false otherwise
+    #
     def setup_body
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
       if @env[HTTP_EXPECT] == CONTINUE
-        # TODO allow a hook here to check the headers before
-        # going forward
+        # TODO allow a hook here to check the headers before going forward
         @io << HTTP_11_100
         @io.flush
       end
 
       @read_header = false
 
-      body = @parser.body
+      parser_body = @parser.body
 
       te = @env[TRANSFER_ENCODING2]
       if te
@@ -422,10 +421,10 @@ module Puma
             raise HttpParserError501, "#{TE_ERR_MSG}, unknown value: '#{te}'"
           end
           @env.delete TRANSFER_ENCODING2
-          return setup_chunked_body body
+          return setup_chunked_body parser_body
         elsif te_lwr == CHUNKED
           @env.delete TRANSFER_ENCODING2
-          return setup_chunked_body body
+          return setup_chunked_body parser_body
         elsif ALLOWED_TRANSFER_ENCODING.include? te_lwr
           raise HttpParserError     , "#{TE_ERR_MSG}, single value must be chunked: '#{te}'"
         else
@@ -440,10 +439,12 @@ module Puma
       if cl
         # cannot contain characters that are not \d, or be empty
         if CONTENT_LENGTH_VALUE_INVALID.match?(cl) || cl.empty?
+          @error_status_code = 400
+          @env[HTTP_CONNECTION] = 'close'
           raise HttpParserError, "Invalid Content-Length: #{cl.inspect}"
         end
       else
-        @buffer = body.empty? ? nil : body
+        @buffer = parser_body.empty? ? nil : parser_body
         @body = EmptyBody
         set_ready
         return true
@@ -451,23 +452,31 @@ module Puma
 
       content_length = cl.to_i
 
-      remain = content_length - body.bytesize
+      if above_http_content_limit(content_length)
+        @buffer = nil
+        @body = EmptyBody
+        @error_status_code = 413
+        @env[HTTP_CONNECTION] = 'close'
+        raise HttpParserError, "Payload Too Large"
+      end
+
+      remain = content_length - parser_body.bytesize
 
       if remain <= 0
-        # Part of the body is a pipelined request OR garbage. We'll deal with that later.
+        # Part of the parser_body is a pipelined request OR garbage. We'll deal with that later.
         if content_length == 0
           @body = EmptyBody
-          if body.empty?
+          if parser_body.empty?
             @buffer = nil
           else
-            @buffer = body
+            @buffer = parser_body
           end
         elsif remain == 0
-          @body = StringIO.new body
+          @body = StringIO.new parser_body
           @buffer = nil
         else
-          @body = StringIO.new(body[0,content_length])
-          @buffer = body[content_length..-1]
+          @body = StringIO.new(parser_body[0,content_length])
+          @buffer = parser_body[content_length..-1]
         end
         set_ready
         return true
@@ -479,12 +488,12 @@ module Puma
         @body.binmode
         @tempfile = @body
       else
-        # The body[0,0] trick is to get an empty string in the same
-        # encoding as body.
-        @body = StringIO.new body[0,0]
+        # The parser_body[0,0] trick is to get an empty string in the same
+        # encoding as parser_body.
+        @body = StringIO.new parser_body[0,0]
       end
 
-      @body.write body
+      @body.write parser_body
 
       @body_remain = remain
 
@@ -581,6 +590,13 @@ module Puma
 
     # @version 5.0.0
     def write_chunk(str)
+      if above_http_content_limit(@chunked_content_length + str.bytesize)
+        @buffer = nil
+        @body = EmptyBody
+        @error_status_code = 413
+        @env[HTTP_CONNECTION] = 'close'
+        raise HttpParserError, "Payload Too Large"
+      end
       @chunked_content_length += @body.write(str)
     end
 
