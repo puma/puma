@@ -818,6 +818,20 @@ module Puma
 
     alias_method :after_worker_boot, :after_worker_fork
 
+    # Code to run in the master right after a worker has stopped. The worker's
+    # index and Process::Status are passed as arguments.
+    #
+    # @note Cluster mode only.
+    #
+    # @example
+    #   after_worker_shutdown do |worker_handle|
+    #     puts 'Worker crashed' unless worker_handle.process_status.success?
+    #   end
+    #
+    def after_worker_shutdown(&block)
+      process_hook :after_worker_shutdown, nil, block, cluster_only: true
+    end
+
     # Code to run after puma is booted (works for both single and cluster modes).
     #
     # @example

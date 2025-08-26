@@ -583,7 +583,9 @@ module Puma
           #    `Process.wait2(-1)` from detecting a terminated process: https://bugs.ruby-lang.org/issues/19837.
           # 2. When `fork_worker` is enabled, some worker may not be direct children,
           #    but grand children.  Because of this they won't be reaped by `Process.wait2(-1)`.
-          if reaped_children.delete(w.pid) || Process.wait(w.pid, Process::WNOHANG)
+          if (status = reaped_children.delete(w.pid) || Process.wait2(w.pid, Process::WNOHANG)&.last)
+            w.process_status = status
+            @config.run_hooks(:after_worker_shutdown, w, @log_writer)
             true
           else
             w.term if w.term?
