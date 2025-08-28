@@ -442,8 +442,8 @@ class TestConfigFile < PumaTest
     assert_equal 150, conf.options[:worker_shutdown_timeout]
   end
 
-  def test_config_files_max_fast_inline_infinity
-    conf = Puma::Configuration.new(config_files: ['test/config/max_fast_inline_infinity.rb']) do
+  def test_config_files_max_keep_alive_infinity
+    conf = Puma::Configuration.new(config_files: ['test/config/max_keep_alive_infinity.rb']) do
     end
     conf.clamp
 
@@ -478,12 +478,12 @@ class TestConfigFile < PumaTest
 
   def test_run_hooks_before_restart_hook
     assert_run_hooks :before_restart
-    assert_run_hooks :before_restart, configured_with: :on_restart
+    assert_run_hooks :before_restart, configured_with: :before_restart
     assert_raise_on_hooks_without_block :before_restart
   end
 
   def test_run_hooks_before_worker_fork
-    assert_run_hooks :before_worker_fork, configured_with: :on_worker_fork
+    assert_run_hooks :before_worker_fork, configured_with: :before_worker_fork
 
     assert_raise_on_hooks_without_block :before_worker_fork
     assert_warning_for_hooks_defined_in_single_mode :before_worker_fork
@@ -498,7 +498,7 @@ class TestConfigFile < PumaTest
 
   def test_run_hooks_before_worker_boot
     assert_run_hooks :before_worker_boot
-    assert_run_hooks :before_worker_boot, configured_with: :on_worker_boot
+    assert_run_hooks :before_worker_boot, configured_with: :before_worker_boot
 
     assert_raise_on_hooks_without_block :before_worker_boot
     assert_warning_for_hooks_defined_in_single_mode :before_worker_boot
@@ -506,7 +506,7 @@ class TestConfigFile < PumaTest
 
   def test_run_hooks_before_worker_shutdown
     assert_run_hooks :before_worker_shutdown
-    assert_run_hooks :before_worker_shutdown, configured_with: :on_worker_shutdown
+    assert_run_hooks :before_worker_shutdown, configured_with: :before_worker_shutdown
 
     assert_raise_on_hooks_without_block :before_worker_shutdown
     assert_warning_for_hooks_defined_in_single_mode :before_worker_shutdown
@@ -521,7 +521,7 @@ class TestConfigFile < PumaTest
 
   def test_run_hooks_before_refork
     assert_run_hooks :before_refork
-    assert_run_hooks :before_refork, configured_with: :on_refork
+    assert_run_hooks :before_refork, configured_with: :before_refork
 
     assert_raise_on_hooks_without_block :before_refork
     assert_warning_for_hooks_defined_in_single_mode :before_refork
@@ -529,13 +529,13 @@ class TestConfigFile < PumaTest
 
   def test_run_hooks_before_thread_start
     assert_run_hooks :before_thread_start
-    assert_run_hooks :before_thread_start, configured_with: :on_thread_start
+    assert_run_hooks :before_thread_start, configured_with: :before_thread_start
     assert_raise_on_hooks_without_block :before_thread_start
   end
 
   def test_run_hooks_before_thread_exit
     assert_run_hooks :before_thread_exit
-    assert_run_hooks :before_thread_exit, configured_with: :on_thread_exit
+    assert_run_hooks :before_thread_exit, configured_with: :before_thread_exit
     assert_raise_on_hooks_without_block :before_thread_exit
   end
 
@@ -744,7 +744,7 @@ class TestConfigFile < PumaTest
       conf.clamp
     end
 
-    assert_match /Warning: The code in the `#{hook_name}` block will not execute in the current Puma configuration/, out
+    assert_match(/Warning: The code in the `#{hook_name}` block will not execute in the current Puma configuration/, out)
   end
 end
 
