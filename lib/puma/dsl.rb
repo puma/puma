@@ -974,8 +974,8 @@ module Puma
       @options[:directory] = dir.to_s
     end
 
-    # Preload the application before starting the workers; this conflicts with
-    # phased restart feature.
+    # Preload the application before forking the workers; this conflicts with
+    # the phased restart feature.
     #
     # The default is +true+ if your app uses more than 1 worker.
     #
