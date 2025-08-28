@@ -444,7 +444,7 @@ module Puma
     def before_restart(&block)
       Puma.deprecate_method_change :on_restart, __callee__, __method__
 
-      process_hook :before_restart, nil, block, 'before_restart'
+      process_hook :before_restart, nil, block
     end
 
     alias_method :on_restart, :before_restart
@@ -734,7 +734,7 @@ module Puma
     #   end
     #
     def before_fork(&block)
-      process_hook :before_fork, nil, block, 'before_fork', cluster_only: true
+      process_hook :before_fork, nil, block, cluster_only: true
     end
 
     # Code to run in a worker when it boots to setup
@@ -752,7 +752,7 @@ module Puma
     def before_worker_boot(key = nil, &block)
       Puma.deprecate_method_change :on_worker_boot, __callee__, __method__
 
-      process_hook :before_worker_boot, key, block, 'before_worker_boot', cluster_only: true
+      process_hook :before_worker_boot, key, block, cluster_only: true
     end
 
     alias_method :on_worker_boot, :before_worker_boot
@@ -775,7 +775,7 @@ module Puma
     def before_worker_shutdown(key = nil, &block)
       Puma.deprecate_method_change :on_worker_shutdown, __callee__, __method__
 
-      process_hook :before_worker_shutdown, key, block, 'before_worker_shutdown', cluster_only: true
+      process_hook :before_worker_shutdown, key, block, cluster_only: true
     end
 
     alias_method :on_worker_shutdown, :before_worker_shutdown
@@ -795,7 +795,7 @@ module Puma
     def before_worker_fork(&block)
       Puma.deprecate_method_change :on_worker_fork, __callee__, __method__
 
-      process_hook :before_worker_fork, nil, block, 'before_worker_fork', cluster_only: true
+      process_hook :before_worker_fork, nil, block, cluster_only: true
     end
 
     alias_method :on_worker_fork, :before_worker_fork
@@ -813,7 +813,7 @@ module Puma
     #   end
     #
     def after_worker_fork(&block)
-      process_hook :after_worker_fork, nil, block, 'after_worker_fork', cluster_only: true
+      process_hook :after_worker_fork, nil, block, cluster_only: true
     end
 
     alias_method :after_worker_boot, :after_worker_fork
@@ -870,7 +870,7 @@ module Puma
     def before_refork(key = nil, &block)
       Puma.deprecate_method_change :on_refork, __callee__, __method__
 
-      process_hook :before_refork, key, block, 'before_refork', cluster_only: true
+      process_hook :before_refork, key, block, cluster_only: true
     end
 
     alias_method :on_refork, :before_refork
@@ -893,7 +893,7 @@ module Puma
     #   end
     #
     def after_refork(key = nil, &block)
-      process_hook :after_refork, key, block, 'after_refork'
+      process_hook :after_refork, key, block
     end
 
     # Provide a block to be executed just before a thread is added to the thread
@@ -916,7 +916,7 @@ module Puma
     def before_thread_start(&block)
       Puma.deprecate_method_change :on_thread_start, __callee__, __method__
 
-      process_hook :before_thread_start, nil, block, 'before_thread_start'
+      process_hook :before_thread_start, nil, block
     end
 
     alias_method :on_thread_start, :before_thread_start
@@ -944,7 +944,7 @@ module Puma
     def before_thread_exit(&block)
       Puma.deprecate_method_change :on_thread_exit, __callee__, __method__
 
-      process_hook :before_thread_exit, nil, block, 'before_thread_exit'
+      process_hook :before_thread_exit, nil, block
     end
 
     alias_method :on_thread_exit, :before_thread_exit
@@ -960,7 +960,7 @@ module Puma
     # This can be called multiple times to add several hooks.
     #
     def out_of_band(&block)
-      process_hook :out_of_band, nil, block, 'out_of_band'
+      process_hook :out_of_band, nil, block
     end
 
     # The directory to operate out of.
@@ -1445,19 +1445,19 @@ module Puma
       end
     end
 
-    def process_hook(options_key, key, block, method, cluster_only: false)
-      raise ArgumentError, "expected #{method} to be given a block" unless block
+    def process_hook(options_key, key, block, cluster_only: false)
+      raise ArgumentError, "expected #{options_key} to be given a block" unless block
 
-      @config.hooks[options_key] = method
+      @config.hooks[options_key] = true
 
       @options[options_key] ||= []
       hook_options = { block: block, cluster_only: cluster_only }
-      hook_options[:id] = if ON_WORKER_KEY.include? key.class
+      hook_options[:id] = if ON_WORKER_KEY.include?(key.class)
         key.to_sym
       elsif key.nil?
         nil
       else
-        raise "'#{method}' key must be String or Symbol"
+        raise "'#{options_key}' key must be String or Symbol"
       end
       @options[options_key] << hook_options
     end

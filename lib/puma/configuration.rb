@@ -432,15 +432,16 @@ module Puma
       return if options[:workers] > 0
       return if options[:silence_fork_callback_warning]
 
-      @hooks.each do |key, method|
-        options.all_of(key).each do |hook_options|
+      log_writer = LogWriter.stdio
+      @hooks.each_key do |hook|
+        options.all_of(hook).each do |hook_options|
           next unless hook_options[:cluster_only]
 
-          LogWriter.stdio.log(<<~MSG.tr("\n", " "))
-            Warning: The code in the `#{method}` block will not execute
-            in the current Puma configuration. The `#{method}` block only
+          log_writer.log(<<~MSG.tr("\n", " "))
+            Warning: The code in the `#{hook}` block will not execute
+            in the current Puma configuration. The `#{hook}` block only
             executes in Puma's cluster mode. To fix this, either remove the
-            `#{method}` call or increase Puma's worker count above zero.
+            `#{hook}` call or increase Puma's worker count above zero.
           MSG
         end
       end
