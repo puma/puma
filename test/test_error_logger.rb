@@ -25,7 +25,7 @@ class TestErrorLogger < PumaTest
       Puma::ErrorLogger.stdio.info(error: StandardError.new('ready'))
     end
 
-    assert_match %r!#<StandardError: ready>!, err
+    assert_includes err, '#<StandardError: ready>'
   end
 
   def test_info_with_request
@@ -40,15 +40,32 @@ class TestErrorLogger < PumaTest
       Puma::ErrorLogger.stdio.info(error: StandardError.new, req: req)
     end
 
-    assert_match %r!\("GET /debug" - \(8\.8\.8\.8\)\)!, err
+    assert_includes err, '("GET /debug" - (8.8.8.8))'
   end
+
+  def test_info_with_request_with_query_param
+    env = {
+      'REQUEST_METHOD' => 'GET',
+      'PATH_INFO' => '/debug',
+      'HTTP_X_FORWARDED_FOR' => '8.8.8.8',
+      'QUERY_STRING' => 'b=test'
+    }
+    req = Req.new(env, '{"hello":"world"}')
+
+    _, err = capture_io do
+      Puma::ErrorLogger.stdio.info(error: StandardError.new, req: req)
+    end
+
+    assert_includes err,  'GET /debug?b=test" - (8.8.8.8))'
+  end
+
 
   def test_info_with_text
     _, err = capture_io do
       Puma::ErrorLogger.stdio.info(text: 'The client disconnected while we were reading data')
     end
 
-    assert_match %r!The client disconnected while we were reading data!, err
+    assert_includes err, 'The client disconnected while we were reading data'
   end
 
   def test_debug_without_debug_mode
@@ -65,7 +82,7 @@ class TestErrorLogger < PumaTest
         Puma::ErrorLogger.stdio.debug(text: 'non-blank')
       end
 
-      assert_match %r!non-blank!, err
+      assert_includes err, 'non-blank'
     end
   end
 
@@ -81,8 +98,19 @@ class TestErrorLogger < PumaTest
         dummy_error
       end
 
-      assert_match %r!non-blank!, err
-      assert_match %r!:in [`'](TestErrorLogger#)?dummy_error'!, err
+      assert_includes err, "non-blank"
+
+      include_str =
+        case
+        when Puma::IS_MRI && RUBY_VERSION < '3.4' || TRUFFLE
+          ":in `dummy_error'" # beginning backtick
+        when Puma::IS_JRUBY
+          ":in 'dummy_error'" # beginning apostrophe/single quote
+        else
+          ":in 'TestErrorLogger#dummy_error'"
+        end
+
+      assert_includes err, include_str
     end
   end
 
