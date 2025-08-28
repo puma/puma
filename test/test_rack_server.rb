@@ -340,4 +340,26 @@ class TestRackServer < PumaTest
     assert_equal 'chunked', resp['transfer-encoding']
     assert_equal STR_1KB * 10, resp.body.force_encoding(Encoding::UTF_8)
   end
+
+  def test_version_header
+    @server.app = lambda do |env|
+      body = env['HTTP_VERSION']
+      [200, {}, [body]]
+    end
+    @server.run
+
+    socket = TCPSocket.open HOST, @port
+    socket.syswrite "GET / HTTP/1.1\r\nversion: version\r\n\r\n"
+
+    body = socket.sysread(256).split("\r\n\r\n").last
+
+    if Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
+      Gem::Version.new(Rack.release) < Gem::Version.new('3.1.0')
+      assert_equal "HTTP/1.1", body
+    else
+      assert_equal "version", body
+    end
+  ensure
+    socket&.close
+  end
 end

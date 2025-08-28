@@ -327,6 +327,9 @@ module Puma
     end
 
     def handle_servers
+      @env_set_http_version = Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
+        Gem::Version.new(::Rack.release) < Gem::Version.new('3.1.0')
+
       begin
         check = @check
         sockets = [check] + @binder.ios
