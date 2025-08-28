@@ -59,7 +59,6 @@ class TestErrorLogger < PumaTest
     assert_includes err,  'GET /debug?b=test" - (8.8.8.8))'
   end
 
-
   def test_info_with_text
     _, err = capture_io do
       Puma::ErrorLogger.stdio.info(text: 'The client disconnected while we were reading data')
