@@ -481,7 +481,7 @@ module Puma
 
       # The legacy HTTP_VERSION header can be sent as a client header.
       # Rack v4 may remove using HTTP_VERSION.  If so, remove this line.
-      env[HTTP_VERSION] = env[SERVER_PROTOCOL]
+      env[HTTP_VERSION] = env[SERVER_PROTOCOL] if @env_set_http_version
     end
     private :normalize_env
 

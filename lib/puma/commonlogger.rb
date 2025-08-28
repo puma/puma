@@ -29,13 +29,13 @@ module Puma
 
     CONTENT_LENGTH       = 'Content-Length' # should be lower case from app,
                                             # Util::HeaderHash allows mixed
-    HTTP_VERSION         = Const::HTTP_VERSION
     HTTP_X_FORWARDED_FOR = Const::HTTP_X_FORWARDED_FOR
     PATH_INFO            = Const::PATH_INFO
     QUERY_STRING         = Const::QUERY_STRING
     REMOTE_ADDR          = Const::REMOTE_ADDR
     REMOTE_USER          = 'REMOTE_USER'
     REQUEST_METHOD       = Const::REQUEST_METHOD
+    SERVER_PROTOCOL      = Const::SERVER_PROTOCOL
 
     def initialize(app, logger=nil)
       @app = app
@@ -70,7 +70,7 @@ module Puma
         env[REQUEST_METHOD],
         env[PATH_INFO],
         env[QUERY_STRING].empty? ? "" : "?#{env[QUERY_STRING]}",
-        env[HTTP_VERSION],
+        env[SERVER_PROTOCOL],
         now - began_at ]
 
       write(msg)
@@ -87,7 +87,7 @@ module Puma
         env[REQUEST_METHOD],
         env[PATH_INFO],
         env[QUERY_STRING].empty? ? "" : "?#{env[QUERY_STRING]}",
-        env[HTTP_VERSION],
+        env[SERVER_PROTOCOL],
         status.to_s[0..3],
         length,
         now - began_at ]
