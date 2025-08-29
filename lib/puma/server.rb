@@ -85,6 +85,9 @@ module Puma
 
       @thread = nil
       @thread_pool = nil
+      @reactor = nil
+
+      @env_set_http_version = nil
 
       @options = if options.is_a?(UserFileDefaultOptions)
         options
