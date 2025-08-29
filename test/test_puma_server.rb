@@ -2299,12 +2299,38 @@ class TestPumaServer < PumaTest
 
     # By making multiple requests, we can ensure that the pool is filled up to the max.
     req_ary = send_http_array 5
-    resp_ary = req_ary.map { |req| req.read_response }
+    req_ary.map { |req| req.read_response }
 
     assert_equal 3, @pool.max
     assert_equal 3, @pool.min
     assert_equal 3, @server.max_threads
     assert_equal 3, @server.min_threads
     assert_equal 3, @pool&.spawned
+  end
+
+  def test_update_thread_pool_min_max_warns_if_min_greater_than_max
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    @server.update_thread_pool_min_max(min: 5, max: 1)
+
+    assert_equal "`min' value cannot be greater than `max' value.\n", @log_writer.stdout.string
+    assert_equal 1, @pool.max
+    assert_equal 1, @pool.min
+    assert_equal 1, @server.max_threads
+    assert_equal 1, @server.min_threads
+    assert_equal 1, @pool&.spawned
+  end
+
+  def test_update_thread_pool_min_max_warns_if_min_less_than_zero
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    @server.update_thread_pool_min_max(min: -1, max: 5)
+
+    assert_equal "`min' value cannot be less than 0\n", @log_writer.stdout.string
+    assert_equal 1, @pool.max
+    assert_equal 1, @pool.min
+    assert_equal 1, @server.max_threads
+    assert_equal 1, @server.min_threads
+    assert_equal 1, @pool&.spawned
   end
 end
