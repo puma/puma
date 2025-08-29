@@ -713,8 +713,10 @@ module Puma
     end
 
     def update_thread_pool_min_max(min: @thread_pool.min, max: @thread_pool.max)
-      @thread_pool.min, @thread_pool.max = min, max
-      @min_threads, @max_threads = min, max
+      if min <= max and min > 0
+        @thread_pool.min, @thread_pool.max = min, max
+        @min_threads, @max_threads = min, max
+      end
     end
 
     # @!attribute [r] connected_ports
