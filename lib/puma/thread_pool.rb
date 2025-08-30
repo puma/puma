@@ -188,7 +188,7 @@ module Puma
 
       @before_thread_start.each do |b|
         begin
-          b.call
+          b[:block].call
         rescue Exception => e
           STDERR.puts "WARNING before_thread_start hook failed with exception (#{e.class}) #{e.message}"
         end
@@ -203,7 +203,7 @@ module Puma
 
       @before_thread_exit.each do |b|
         begin
-          b.call
+          b[:block].call
         rescue Exception => e
           STDERR.puts "WARNING before_thread_exit hook failed with exception (#{e.class}) #{e.message}"
         end
@@ -220,7 +220,7 @@ module Puma
       # we execute on idle hook when all threads are free
       return false unless @spawned == @waiting
       @out_of_band_running = true
-      @out_of_band.each(&:call)
+      @out_of_band.each { |b| b[:block].call }
       true
     rescue Exception => e
       STDERR.puts "Exception calling out_of_band_hook: #{e.message} (#{e.class})"

@@ -129,9 +129,11 @@ class TestThreadPool < PumaTest
       min_threads: 0,
       max_threads: 1,
       before_thread_start: [
-        proc do
-          started << 1
-        end
+        {
+          id: nil,
+          block: proc { started << 1 },
+          cluster_only: false,
+        }
       ]
     }
     block = proc { }
@@ -141,6 +143,28 @@ class TestThreadPool < PumaTest
 
     assert_equal 1, pool.spawned
     assert_equal 1, started.length
+  end
+
+  def test_out_of_band_hook
+    out_of_band_called = Queue.new
+    options = {
+      min_threads: 0,
+      max_threads: 1,
+      out_of_band: [
+        {
+          id: nil,
+          block: proc { out_of_band_called << 1 },
+          cluster_only: false,
+        }
+      ]
+    }
+    block = proc { true }
+    pool = MutexPool.new('tst', options, &block)
+
+    pool << 1
+
+    assert_equal 1, pool.spawned
+    assert_equal 1, out_of_band_called.length
   end
 
   def test_trim
@@ -198,7 +222,13 @@ class TestThreadPool < PumaTest
     options = {
       min_threads: 0,
       max_threads: 1,
-      before_thread_exit: [ -> { exited << 1 } ]
+      before_thread_exit: [
+        {
+          id: nil,
+          block: proc { exited << 1 },
+          cluster_only: false,
+        }
+      ]
     }
     block = proc { }
     pool = MutexPool.new('tst', options, &block)
