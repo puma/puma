@@ -47,15 +47,17 @@ class TestOutOfBandServer < PumaTest
     in_oob = Mutex.new
     @mutex = Mutex.new
     oob_wait = options.delete(:oob_wait)
-    oob = -> do
-      in_oob.synchronize do
-        @mutex.synchronize do
-          @oob_count += 1
-          @oob_finished.signal
-          @oob_finished.wait(@mutex, 1) if oob_wait
+    oob = {
+      block: -> do
+        in_oob.synchronize do
+          @mutex.synchronize do
+            @oob_count += 1
+            @oob_finished.signal
+            @oob_finished.wait(@mutex, 1) if oob_wait
+          end
         end
       end
-    end
+    }
     app_wait = options.delete(:app_wait)
     app = ->(_) do
       raise 'OOB conflict' if in_oob.locked?
