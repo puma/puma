@@ -6,6 +6,9 @@ require_relative 'plugin'
 require_relative 'cluster/worker_handle'
 require_relative 'cluster/worker'
 
+require 'ruby-prof'
+require 'pathname'
+
 module Puma
   # This class is instantiated by the `Puma::Launcher` and used
   # to boot and serve a Ruby application when puma "workers" are needed
@@ -23,6 +26,17 @@ module Puma
       @next_check = Time.now
 
       @phased_restart = false
+      @profile_dir = begin
+        time = Time.now.strftime("%Y-%m-%d-%H-%M-%s-%N")
+        dir = Pathname(ENV["PUMA_RUBY_PROF_DIR"] || "tmp")
+        dir.join(time).tap { |path|
+          path.mkpath
+          alias_dir = dir.join("last")
+          FileUtils.rm_rf(alias_dir) if alias_dir.exist?
+          FileUtils.ln_sf(time, alias_dir)
+        }
+      end
+      puts "LOOKATME: Puma Profile dir is #{@profile_dir.expand_path}"
     end
 
     # Returns the list of cluster worker handles.
@@ -103,7 +117,21 @@ module Puma
     def spawn_worker(idx, master)
       @config.run_hooks(:before_worker_fork, idx, @log_writer)
 
-      pid = fork { worker(idx, master) }
+      pid = fork {
+        begin
+          profile = RubyProf::Profile.new.tap(&:start)
+          worker(idx, master)
+        ensure
+          result = profile.stop
+          RubyProf::MultiPrinter.new(
+            result,
+            [:flat, :graph, :graph_html, :tree, :call_tree, :stack, :dot]
+          ).print(
+            path: @profile_dir.join("worker_#{idx}").tap(&:mkpath),
+            profile: "profile"
+          )
+        end
+      }
       if !pid
         log "! Complete inability to spawn new workers detected"
         log "! Seppuku is the only choice."

@@ -12,6 +12,8 @@ gem "minitest-proveit"
 gem "minitest-stub-const"
 gem "concurrent-ruby", "~> 1.3"
 
+gem "ruby-prof"
+
 case ENV['PUMA_CI_RACK']&.strip
 when 'rack2'
   gem "rackup", '~> 1.0'
