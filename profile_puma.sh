@@ -27,7 +27,7 @@ cleanup() {
             echo -e "${YELLOW}Killing Puma process (PID: $PID)${NC}"
             kill "$PID"
             # Wait a bit for graceful shutdown
-            sleep 2
+            sleep 10
             # Force kill if still running
             if kill -0 "$PID" 2>/dev/null; then
                 echo -e "${RED}Force killing Puma process${NC}"

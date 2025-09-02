@@ -27,14 +27,18 @@ module Puma
 
       @phased_restart = false
       @profile_dir = begin
+        branch = `git branch --show-current`
+        raise "Branch command failed: #{branch}" unless $?.success?
         time = Time.now.strftime("%Y-%m-%d-%H-%M-%s-%N")
         dir = Pathname(ENV["PUMA_RUBY_PROF_DIR"] || "tmp")
-        dir.join(time).tap { |path|
-          path.mkpath
-          alias_dir = dir.join("last")
-          FileUtils.rm_rf(alias_dir) if alias_dir.exist?
-          FileUtils.ln_sf(time, alias_dir)
-        }
+          .join([branch.gsub("/", "-"), time].join("-"))
+        # puts "BRANCH: #{branch}"
+        # dir.join([branch.gsub("/", "-"), time].join("-")).tap { |path|
+        #   path.mkpath
+        #   alias_dir = dir.join("last")
+        #   FileUtils.rm_rf(alias_dir) if alias_dir.exist?
+        #   FileUtils.ln_sf(time, alias_dir)
+        # }
       end
       puts "LOOKATME: Puma Profile dir is #{@profile_dir.expand_path}"
     end
@@ -113,24 +117,31 @@ module Puma
       end
     end
 
+
+    require "vernier"
+
     # @version 5.0.0
     def spawn_worker(idx, master)
       @config.run_hooks(:before_worker_fork, idx, @log_writer)
 
       pid = fork {
-        begin
-          profile = RubyProf::Profile.new.tap(&:start)
+        path = [@profile_dir.expand_path.to_s, "worker_#{idx}.json.gz"].join("-")
+        Vernier.profile(out: path) do
           worker(idx, master)
-        ensure
-          result = profile.stop
-          RubyProf::MultiPrinter.new(
-            result,
-            [:flat, :graph, :graph_html, :tree, :call_tree, :stack, :dot]
-          ).print(
-            path: @profile_dir.join("worker_#{idx}").tap(&:mkpath),
-            profile: "profile"
-          )
         end
+        # begin
+        #   profile = RubyProf::Profile.new.tap(&:start)
+        #   worker(idx, master)
+        # ensure
+        #   result = profile.stop
+        #   RubyProf::MultiPrinter.new(
+        #     result,
+        #     [:flat, :graph, :graph_html, :tree, :call_tree, :stack, :dot]
+        #   ).print(
+        #     path: @profile_dir.join("worker_#{idx}").tap(&:mkpath),
+        #     profile: "profile"
+        #   )
+        # end
       }
       if !pid
         log "! Complete inability to spawn new workers detected"

@@ -13,6 +13,7 @@ gem "minitest-stub-const"
 gem "concurrent-ruby", "~> 1.3"
 
 gem "ruby-prof"
+gem "vernier"
 
 case ENV['PUMA_CI_RACK']&.strip
 when 'rack2'
