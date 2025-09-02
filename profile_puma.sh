@@ -4,10 +4,13 @@
 set -e
 
 # Configuration
-PUMA_CMD="bundle exec ruby -Ilib bin/puma -w1 -t1 --pidfile tmp/pidfile test/rackup/hello.ru"
-WRK_CMD="wrk -t 6 -c 12 -d 10s http://localhost:9292"
+PUMA_CMD="bundle exec ruby -Ilib bin/puma -w1 -t1 --pidfile tmp/pidfile --preload test/rackup/hello.ru"
 PIDFILE="tmp/pidfile"
 PORT=9292
+
+export RUBY_YJIT_ENABLE=1
+export RUBY_MN_THREADS=1
+export RUBY_THREAD_TIMESLICE=10
 
 # Colors for output
 RED='\033[0;31m'
@@ -64,7 +67,16 @@ done
 
 # Run wrk benchmark
 echo -e "${GREEN}Running wrk benchmark...${NC}"
-echo "Command: $WRK_CMD"
-$WRK_CMD
+
+# Warmup workload
+wrk -H 'Host: tfb-server' -H 'Accept: text/plain,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7' -H 'Connection: keep-alive' --latency -d 15 -c 16 --timeout 8 -t 12 http://localhost:9292
+
+# Pipeline workload
+# wrk -H 'Host: yolo' \
+#   -H 'Accept: text/plain,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7' \
+#   -H 'Connection: keep-alive' \
+#   --latency -d 15 -c 256 --timeout 8 -t 12 \
+#   "http://localhost:9292" -s pipeline.lua -- 1
+
 
 echo -e "${GREEN}Benchmark complete!${NC}"
