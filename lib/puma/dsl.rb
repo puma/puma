@@ -1309,7 +1309,7 @@ module Puma
     # Note that some applications (server to server) may benefit from a very high
     # number or Float::INFINITY.
     #
-    # The default is 25.
+    # The default is 999.
     #
     # @example
     #   max_keep_alive 20

@@ -1432,12 +1432,12 @@ class TestPumaServer < PumaTest
     assert_equal expected, responses
   end
 
-  def test_default_max_keep_alive
-    max_keep_alive = Puma::Configuration::DEFAULTS[:max_keep_alive]
+  def test_close_socket_after_max_keepalive_requests
+    max_keep_alive = 2
     requests = 0
     response = ''
 
-    server_run { |env|
+    server_run(max_keep_alive: max_keep_alive) { |env|
       requests += 1
       [200, {}, [format('Request_%02d', requests)]]
     }
@@ -1456,32 +1456,6 @@ class TestPumaServer < PumaTest
     assert_raises(Errno::EPIPE) { socket << GET_11 }
     assert_includes response, format('Request_%02d', max_keep_alive)
     assert_includes response, Puma::Const::CONNECTION_CLOSE
-  end
-
-  def test_set_max_keep_alive
-    max_keep_alive = 20
-    requests = 0
-    response = ''
-
-    server_run(max_keep_alive: max_keep_alive) { |env|
-      requests += 1
-      [200, {}, [format('Request_%02d', requests)]]
-    }
-
-    socket = new_socket
-
-    # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
-    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
-      (max_keep_alive + 1).times do |i|
-        socket << GET_11
-        response = socket.read_response
-        refute_includes(Puma::Const::CONNECTION_CLOSE, response) if i < 21
-      end
-    end
-    sleep 0.25 # seems to be needed for macOS
-    assert_raises(Errno::EPIPE) { socket << GET_11 }
-    assert_includes response, format('Request_%02d', max_keep_alive)
-    assert_includes response, 'connection: close'
   end
 
   def test_chunked_keep_alive_two_back_to_back_with_set_remote_address
