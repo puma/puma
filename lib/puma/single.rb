@@ -53,6 +53,9 @@ module Puma
       server_thread = server.run
 
       log "Use Ctrl-C to stop"
+
+      warn_ruby_mn_threads
+
       redirect_io
 
       @events.fire_after_booted!

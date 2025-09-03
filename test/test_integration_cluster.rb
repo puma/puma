@@ -483,6 +483,13 @@ class TestIntegrationCluster < TestIntegration
     assert_match(/WARNING: Detected running cluster mode with 1 worker/, @server_log)
   end
 
+  def test_warning_message_outputted_when_ruby_mn_threads_is_set
+    cli_server "-w 1 test/rackup/hello.ru", env: { 'RUBY_MN_THREADS' => '1' }
+
+    assert wait_for_server_to_include('Worker 0 (PID')
+    assert_match(/WARNING: Detected `RUBY_MN_THREADS/, @server_log)
+  end
+
   def test_warning_message_not_outputted_when_single_worker_silenced
     cli_server "-w 1 test/rackup/hello.ru", config: "silence_single_worker_warning"
 

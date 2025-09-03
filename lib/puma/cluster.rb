@@ -421,6 +421,7 @@ module Puma
 
       log "Use Ctrl-C to stop"
 
+      warn_ruby_mn_threads
       single_worker_warning
 
       redirect_io
