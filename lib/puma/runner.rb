@@ -111,6 +111,14 @@ module Puma
       end
     end
 
+    def warn_ruby_mn_threads
+      return if !ENV.key?('RUBY_MN_THREADS')
+
+      log "! WARNING: Detected `RUBY_MN_THREADS=#{ENV['RUBY_MN_THREADS']}`"
+      log "! This setting is known to cause performance regressions with Puma."
+      log "! Consider disabling this environment variable: https://github.com/puma/puma/issues/3720"
+    end
+
     def redirected_io?
       @options[:redirect_stdout] || @options[:redirect_stderr]
     end
