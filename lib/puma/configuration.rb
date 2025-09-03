@@ -147,7 +147,7 @@ module Puma
       # Limits how many requests a keep alive connection can make.
       # The connection will be closed after it reaches `max_keep_alive`
       # requests.
-      max_keep_alive: 25,
+      max_keep_alive: 999,
       max_threads: Puma.mri? ? 5 : 16,
       min_threads: 0,
       mode: :http,
