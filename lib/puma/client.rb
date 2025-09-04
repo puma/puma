@@ -72,6 +72,14 @@ module Puma
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new
 
+    attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
+                :tempfile, :io_buffer, :http_content_length_limit_exceeded,
+                :requests_served, :error_status_code
+
+    attr_writer :peerip, :http_content_length_limit, :supported_http_methods
+
+    attr_accessor :remote_addr_header, :listener, :env_set_http_version
+
     def initialize(io, env=nil)
       @io = io
       @to_io = io.to_io
@@ -111,14 +119,6 @@ module Puma
       # need unfrozen ASCII-8BIT, +'' is UTF-8
       @read_buffer = String.new # rubocop: disable Performance/UnfreezeString
     end
-
-    attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
-                :tempfile, :io_buffer, :http_content_length_limit_exceeded,
-                :requests_served, :error_status_code
-
-    attr_writer :peerip, :http_content_length_limit, :supported_http_methods
-
-    attr_accessor :remote_addr_header, :listener
 
     # Remove in Puma 7?
     def closed?
