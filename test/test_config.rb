@@ -919,4 +919,37 @@ class TestConfigFileWithFakeEnv < PumaTest
 
     assert_equal conf.options[:enable_keep_alives], false
   end
+
+  def test_on_booted_deprecated_alias_works
+    ran = false
+    conf = Puma::Configuration.new do |c|
+      c.on_booted { ran = true }
+    end
+    conf.clamp
+
+    conf.events.fire_after_booted!
+    assert ran, "on_booted callback should have run"
+  end
+
+  def test_on_restart_deprecated_alias_works
+    ran = false
+    conf = Puma::Configuration.new do |c|
+      c.on_restart { ran = true }
+    end
+    conf.clamp
+
+    conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
+    assert ran, "on_restart callback should have run"
+  end
+
+  def test_on_stopped_deprecated_alias_works
+    ran = false
+    conf = Puma::Configuration.new do |c|
+      c.on_stopped { ran = true }
+    end
+    conf.clamp
+
+    conf.events.fire_after_stopped!
+    assert ran, "on_stopped callback should have run"
+  end
 end
