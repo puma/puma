@@ -445,6 +445,7 @@ module Puma
     def new_client(io, sock)
       client = Client.new(io, @binder.env(sock))
       client.listener = sock
+      client.env_set_http_version = @env_set_http_version
       client.http_content_length_limit = @http_content_length_limit
       client.supported_http_methods = @supported_http_methods
       client
