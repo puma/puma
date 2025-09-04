@@ -51,6 +51,7 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           rubygems: latest
           bundler-cache: true
+          cache-version: rack-conform
         timeout-minutes: 10
 
       - name: cat gems/puma-head-rack-v3.rb.lock
