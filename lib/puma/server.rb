@@ -404,6 +404,8 @@ module Puma
                 pool << Client.new(io, @binder.env(sock)).tap { |c|
                   c.listener = sock
                   c.http_content_length_limit = @http_content_length_limit
+                  c.env_set_http_version = @env_set_http_version
+                  c.supported_http_methods = @supported_http_methods
                   c.send(addr_send_name, addr_value) if addr_value
                 }
               end
@@ -559,7 +561,7 @@ module Puma
         lowlevel_error(e, client.env)
         @log_writer.ssl_error e, client.io
       when HttpParserError
-        response_to_error(client, requests, e, 400)
+        response_to_error(client, requests, e, client.error_status_code || 400)
         @log_writer.parse_error e, client
       when HttpParserError501
         response_to_error(client, requests, e, 501)
@@ -592,7 +594,15 @@ module Puma
     end
 
     def response_to_error(client, requests, err, status_code)
-      status, headers, res_body = lowlevel_error(err, client.env, status_code)
+      # @todo remove sometime later
+      if status_code == 413
+        status = 413
+        res_body = ["Payload Too Large"]
+        headers = {}
+        headers[CONTENT_LENGTH2] = 17
+      else
+        status, headers, res_body = lowlevel_error(err, client.env, status_code)
+      end
       prepare_response(status, headers, res_body, requests, client)
     end
     private :response_to_error
