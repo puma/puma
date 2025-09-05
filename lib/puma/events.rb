@@ -42,6 +42,21 @@ module Puma
       register(:after_stopped, &block)
     end
 
+    def on_booted(&block)
+      Puma.deprecate_method_change :on_booted, __callee__, :after_booted
+      after_booted(&block)
+    end
+
+    def on_restart(&block)
+      Puma.deprecate_method_change :on_restart, __callee__, :before_restart
+      before_restart(&block)
+    end
+
+    def on_stopped(&block)
+      Puma.deprecate_method_change :on_stopped, __callee__, :after_stopped
+      after_stopped(&block)
+    end
+
     def fire_after_booted!
       fire(:after_booted)
     end
