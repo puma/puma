@@ -1,4 +1,9 @@
-## 7.0.0
+## 7.0.1 / 2025-09-06
+
+* Bugfixes
+  * Add backward compatibility aliases for Events class methods ([#3725])
+
+## 7.0.0 / 2025-09-03
 
 * Breaking changes
   * Set default `max_keep_alive` to 999 ([#3719])
@@ -2214,6 +2219,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3725]:https://github.com/puma/puma/pull/3725     "PR by @tannakartikey, merged 2025-09-05"
 [#3719]:https://github.com/puma/puma/pull/3719     "PR by @schneems, merged 2025-09-03"
 [#3378]:https://github.com/puma/puma/pull/3378     "PR by @shayonj, merged 2025-08-19"
 [#3377]:https://github.com/puma/puma/pull/3377     "PR by @joshuay03, merged 2025-08-12"
@@ -2228,7 +2234,6 @@ be added back in a future date when a java Puma::MiniSSL is added.
 [#3101]:https://github.com/puma/puma/pull/3101     "PR by @ioquatix, merged 2025-08-25"
 [#3681]:https://github.com/puma/puma/pull/3681     "PR by @byroot, merged 2025-08-15"
 [#3140]:https://github.com/puma/puma/pull/3140     "PR by @phyzical, merged 2025-08-12"
-[#3716]:https://github.com/puma/puma/pull/3716     "PR by @yuki24, merged 2025-08-31"
 [#3713]:https://github.com/puma/puma/pull/3713     "PR by @MSP-Greg, merged 2025-08-29"
 [#3625]:https://github.com/puma/puma/pull/3625     "PR by @bhooshiek-narendiran, closed 2025-08-29"
 [#3702]:https://github.com/puma/puma/pull/3702     "PR by @marshall-lee, merged 2025-08-25"
