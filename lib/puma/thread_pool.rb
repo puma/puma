@@ -53,6 +53,7 @@ module Puma
       @block = block
       @out_of_band = options[:out_of_band]
       @out_of_band_running = false
+      @out_of_band_condvar = ConditionVariable.new
       @before_thread_start = options[:before_thread_start]
       @before_thread_exit = options[:before_thread_exit]
       @reaping_time = options[:reaping_time]
@@ -227,9 +228,18 @@ module Puma
       true
     ensure
       @out_of_band_running = false
+      @out_of_band_condvar.broadcast
     end
 
     private :trigger_out_of_band_hook
+
+    def wait_while_out_of_band_running
+      return unless @out_of_band_running
+
+      with_mutex do
+        @out_of_band_condvar.wait(@mutex) while @out_of_band_running
+      end
+    end
 
     # @version 5.0.0
     def with_mutex(&block)
