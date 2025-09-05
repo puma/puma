@@ -30,7 +30,6 @@
   * Feature/support custom logger with request logs ([#3140])
 
 * Bugfixes
-  * Fixes a bug where triggering hooks in the ThreadPool fails ([#3716])
   * Fix error_logger inproperly logging `env[QUERY_STRING]` ([#3713], [#3625])
   * Fix handling of invalid Transfer-Encoding header errors ([#3702])
   * Fix socket leak on monitor wakeup `NoMethodError` in `Reactor#select_loop` ([#3696], [#3695])
