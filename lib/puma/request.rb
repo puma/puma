@@ -273,11 +273,17 @@ module Puma
       !shutting_down? && keep_alive
     end
 
+    HTTP_ON_VALUES = { "on" => true, HTTPS => true }
+    private_constant :HTTP_ON_VALUES
+
     # @param env [Hash] see Puma::Client#env, from request
     # @return [Puma::Const::PORT_443,Puma::Const::PORT_80]
     #
     def default_server_port(env)
-      if ['on', HTTPS].include?(env[HTTPS_KEY]) || env[HTTP_X_FORWARDED_PROTO].to_s[0...5] == HTTPS || env[HTTP_X_FORWARDED_SCHEME] == HTTPS || env[HTTP_X_FORWARDED_SSL] == "on"
+      if HTTP_ON_VALUES[env[HTTPS_KEY]] ||
+          env[HTTP_X_FORWARDED_PROTO]&.to_s&.[](0...5) == HTTPS ||
+          env[HTTP_X_FORWARDED_SCHEME] == HTTPS ||
+          env[HTTP_X_FORWARDED_SSL] == "on"
         PORT_443
       else
         PORT_80
