@@ -685,13 +685,13 @@ module Puma
       stats = @thread_pool&.stats || {}
       stats[:max_threads]    = @max_threads
       stats[:requests_count] = @requests_count
-      stats[:reactor_max] = @reactor.reactor_max
+      stats[:reactor_max] = @reactor.reactor_max if @reactor
       reset_max
       stats
     end
 
     def reset_max
-      @reactor.reactor_max = 0
+      @reactor.reactor_max = 0 if @reactor
       @thread_pool.reset_max
     end
 

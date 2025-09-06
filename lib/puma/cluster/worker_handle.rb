@@ -73,6 +73,8 @@ module Puma
         # check stat max values, we can't signal workers to reset the max values,
         # so we do so here
         WORKER_MAX_KEYS.each_with_index do |key, idx|
+          next unless hsh[key]
+
           if hsh[key] < @worker_max[idx]
             hsh[key] = @worker_max[idx]
           else

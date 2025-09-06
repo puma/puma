@@ -283,6 +283,14 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
+  def test_queue_results_disabled
+    cli_server "-w #{workers} test/rackup/hello.ru", config: "queue_requests false"
+
+    get_worker_pids # wait for workers to boot
+
+    fast_connect
+  end
+
   def test_worker_index_is_with_in_options_limit
     cli_server "-C test/config/t3_conf.rb test/rackup/hello.ru"
 
