@@ -55,6 +55,7 @@ jobs:
           apt-get: ragel
           brew: ragel
           bundler-cache: true
+          cache-version: ragel
         timeout-minutes: 10
 
       - name: check ragel generation

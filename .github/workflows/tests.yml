@@ -90,6 +90,7 @@ jobs:
           rubygems: default
           bundler: default
           bundler-cache: true
+          cache-version: tests
         timeout-minutes: 10
 
       - name: Repo & Commit Info
