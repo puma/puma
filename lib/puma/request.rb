@@ -281,7 +281,7 @@ module Puma
     #
     def default_server_port(env)
       if HTTP_ON_VALUES[env[HTTPS_KEY]] ||
-          env[HTTP_X_FORWARDED_PROTO]&.to_s&.[](0...5) == HTTPS ||
+          env[HTTP_X_FORWARDED_PROTO]&.start_with?(HTTPS) ||
           env[HTTP_X_FORWARDED_SCHEME] == HTTPS ||
           env[HTTP_X_FORWARDED_SSL] == "on"
         PORT_443
