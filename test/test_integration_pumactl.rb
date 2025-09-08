@@ -163,6 +163,13 @@ class TestIntegrationPumactl < TestIntegration
     assert_equal(1, e.status)
   end
 
+  def test_config_deprecated
+    conf_path = "test/config/config_with_deprecated.rb"
+    out = cli_pumactl_spawn "-F #{conf_path} halt", no_bind: true
+    refute_start_with out.read, 'undefined method'
+  end
+
+
   # calls pumactl with both a config file and a state file,  making sure that
   # puma files are required, see https://github.com/puma/puma/issues/3186
   def test_require_dependencies
