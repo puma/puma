@@ -169,7 +169,6 @@ class TestIntegrationPumactl < TestIntegration
     refute_start_with out.read, 'undefined method'
   end
 
-
   # calls pumactl with both a config file and a state file,  making sure that
   # puma files are required, see https://github.com/puma/puma/issues/3186
   def test_require_dependencies
