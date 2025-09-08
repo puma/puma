@@ -124,6 +124,9 @@ module Puma
         end
 
         if @config_file
+          # needed because neither `Puma::CLI` or `Puma::Server` are loaded
+          require_relative '../puma'
+
           require_relative 'configuration'
           require_relative 'log_writer'
 
