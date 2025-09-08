@@ -382,7 +382,7 @@ module Puma
               else
                 # if ThreadPool out_of_band code is running, we don't want to add
                 # clients until the code is finished.
-                sleep 0.001 while pool.out_of_band_running
+                pool.wait_while_out_of_band_running
 
                 # only use delay when clustered and busy
                 if pool.busy_threads >= @max_threads
