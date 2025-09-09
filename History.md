@@ -1,3 +1,10 @@
+## 7.0.2 / 2025-09-08
+
+* Bugfixes
+  * bug: control_cli.rb - Fixup `pumactl` code to load puma.rb for `deprecate_method_change` ([#3736], [#3734])
+  * Replace sleep spin lock with condition variable ([#3729])
+  * Fix Puma not booting if queue_requests disabled ([#3731])
+
 ## 7.0.1 / 2025-09-06
 
 * Bugfixes
@@ -2219,6 +2226,10 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3736]:https://github.com/puma/puma/pull/3736     "PR by @MSP-Greg, merged 2025-09-08"
+[#3734]:https://github.com/puma/puma/issues/3734   "Issue by @espen, closed 2025-09-08"
+[#3729]:https://github.com/puma/puma/pull/3729     "PR by @bensheldon, merged 2025-09-08"
+[#3731]:https://github.com/puma/puma/pull/3731     "PR by @stanhu, merged 2025-09-06"
 [#3725]:https://github.com/puma/puma/pull/3725     "PR by @tannakartikey, merged 2025-09-05"
 [#3719]:https://github.com/puma/puma/pull/3719     "PR by @schneems, merged 2025-09-03"
 [#3378]:https://github.com/puma/puma/pull/3378     "PR by @shayonj, merged 2025-08-19"
