@@ -2,18 +2,39 @@
 
 # benchmarks/local/long_tail_hey-0-2-4-8.sh
 #
-# takes one argument which is app delay, default to 0.2
+# -d app delay, default 0.010
+# -t Threads, default 3:3
+# -c hey requests per connection, default 100
 #
 # see comments in long_tail_hey.rb
 
-if [[ -n $1 ]]; then
-  DLY=$1
-else
-  DLY=0.2
+while getopts :b:C:c:d:kR:r:s:T:t:w:Y option
+do
+case "${option}" in
+#———————————————————— RUBY options
+Y) export RUBYOPT=--yjit;;
+#———————————————————— Puma options
+C) conf=${OPTARG};;
+t) THREADS=${OPTARG};;
+#———————————————————— app/common options
+d) DLY=${OPTARG};;
+#———————————————————— wrk options
+c) REQS_PER_CONN=${OPTARG};;
+?) echo "Error: Invalid option was specified -$OPTARG"; exit;;
+esac
+done
+
+if [[ -z "$THREADS" ]]; then
+  THREADS=3:3
 fi
 
-THREADS=5:5
-REQS_PER_CONN=100
+if [[ -z "$REQS_PER_CONN" ]]; then
+  REQS_PER_CONN=100
+fi
+
+if [[ -z "$DLY" ]]; then
+  DLY=0.010
+fi
 
 SECONDS=0
 
