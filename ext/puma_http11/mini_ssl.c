@@ -660,14 +660,29 @@ VALUE engine_shutdown(VALUE self) {
 
   TypedData_Get_Struct(self, ms_conn, &engine_data_type, conn);
 
+  if (SSL_in_init(conn->ssl)) {
+    // Avoid "shutdown while in init" error
+    // See https://github.com/openssl/openssl/blob/openssl-3.5.2/ssl/ssl_lib.c#L2827-L2828
+    return Qtrue;
+  }
+
   ERR_clear_error();
 
   ok = SSL_shutdown(conn->ssl);
-  if (ok == 0) {
-    return Qfalse;
+  // See https://github.com/openssl/openssl/blob/openssl-3.5.2/ssl/ssl_lib.c#L2792-L2797
+  // for description of SSL_shutdown return values.
+  switch (ok) {
+    case 0:
+      // "close notify" alert is sent by us.
+      return Qfalse;
+    case 1:
+      // "close notify" alert was received from peer.
+      return Qtrue;
+    default:
+      raise_error(conn->ssl, ok);
   }
 
-  return Qtrue;
+  return Qnil;
 }
 
 VALUE engine_init(VALUE self) {
