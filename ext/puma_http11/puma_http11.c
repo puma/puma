@@ -181,7 +181,11 @@ void http_field(puma_parser* hp, const char *field, size_t flen,
     f = rb_str_new(hp->buf, new_size);
   }
 
-  while (vlen > 0 && isspace(value[vlen - 1])) vlen--;
+  while (vlen > 0 && (value[vlen - 1] == ' ' || value[vlen - 1] == '\t')) vlen--;
+  while (vlen > 0 && (value[0] == ' ' || value[0] == '\t')) {
+      vlen--;
+      value++;
+  }
 
   /* check for duplicate header */
   v = rb_hash_aref(hp->request, f);

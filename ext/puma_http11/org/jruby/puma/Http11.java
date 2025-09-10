@@ -127,7 +127,11 @@ public class Http11 extends RubyObject {
             }
         }
 
-        while (vlen > 0 && Character.isWhitespace(buffer.get(value + vlen - 1))) vlen--;
+        while (vlen > 0 && (buffer.get(value + vlen - 1) == ' ' || buffer.get(value + vlen - 1) == '\t')) vlen--;
+        while (vlen > 0 && (buffer.get(value) == ' ' || buffer.get(value) == '\t')) {
+            vlen--;
+            value++;
+        }
 
         if (b.equals(CONTENT_LENGTH_BYTELIST) || b.equals(CONTENT_TYPE_BYTELIST)) {
           f = RubyString.newString(runtime, b);
