@@ -13,6 +13,7 @@ require_relative 'binder'
 require_relative 'util'
 require_relative 'request'
 require_relative 'configuration'
+require_relative 'cluster_accept_loop_delay'
 
 require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
@@ -110,6 +111,10 @@ module Puma
       @enable_keep_alives      &&= @queue_requests
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
+      @cluster_accept_loop_delay = ClusterAcceptLoopDelay.new(
+        max_threads: @max_threads,
+        max_delay: @options[:cluster_accept_loop_delay_max_delay] || 0 # Real default is in Configuration::DEFAULTS, this is for unit testing
+      )
 
       if @options[:fiber_per_request]
         singleton_class.prepend(FiberPerRequest)
@@ -339,7 +344,6 @@ module Puma
         pool = @thread_pool
         queue_requests = @queue_requests
         drain = options[:drain_on_shutdown] ? 0 : nil
-        max_flt = @max_threads.to_f
 
         addr_send_name, addr_value = case options[:remote_address]
         when :value
@@ -384,15 +388,12 @@ module Puma
                 # clients until the code is finished.
                 pool.wait_while_out_of_band_running
 
-                # only use delay when clustered and busy
-                if pool.busy_threads >= @max_threads
-                  if @clustered
-                    delay = 0.0001 * ((@reactor&.reactor_size || 0) + pool.busy_threads * 1.5)/max_flt
-                    sleep delay
-                  else
-                    # use small sleep for busy single worker
-                    sleep 0.0001
-                  end
+                # A well rested herd (cluster) runs faster
+                if @options[:workers] > 2
+                  delay = @cluster_accept_loop_delay.calculate(
+                    busy_threads: pool.busy_threads
+                  )
+                  sleep(delay) if delay > 0
                 end
 
                 io = begin
