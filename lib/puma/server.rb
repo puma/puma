@@ -508,7 +508,7 @@ module Puma
           next_request_ready = if client.has_back_to_back_requests?
             with_force_shutdown(client) { client.process_back_to_back_requests }
           else
-            nil
+            with_force_shutdown(client) { client.eagerly_finish }
           end
 
           if next_request_ready
