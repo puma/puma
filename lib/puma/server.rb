@@ -59,7 +59,6 @@ module Puma
     attr_accessor :app
     attr_accessor :binder
 
-
     # Create a server for the rack app +app+.
     #
     # +log_writer+ is a Puma::LogWriter object used to log info and error messages.
