@@ -118,10 +118,14 @@ module Puma
       waiting + (@max - spawned)
     end
 
+    # Busy state of the thread pool
+    #
+    # Different from `busy_threads` stat in that it's clamped to `max_threads` already
+    #
     # @!attribute [r] busy_threads
     # @version 5.0.0
     def busy_threads
-      with_mutex { @spawned - @waiting + @todo.size }
+      with_mutex { @spawned - @waiting + @todo.size }.clamp(0, @max)
     end
 
     # :nodoc:
