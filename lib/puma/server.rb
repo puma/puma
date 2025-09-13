@@ -249,11 +249,6 @@ module Puma
       @thread_pool&.pool_capacity
     end
 
-    # @!attribute [r] busy_threads
-    def busy_threads
-      @thread_pool&.busy_threads
-    end
-
     # Runs the server.
     #
     # If +background+ is true (the default) then a thread is spun
