@@ -776,6 +776,17 @@ class TestEnvModifificationConfig < PumaTest
 end
 
 class TestConfigEnvVariables < PumaTest
+  def test_config_loads_correct_persistent_timeout
+    conf = Puma::Configuration.new
+    conf.clamp
+    assert_equal 65, conf.options.default_options[:persistent_timeout]
+
+    env = { "PUMA_PERSISTENT_TIMEOUT" => "95" }
+    conf = Puma::Configuration.new({}, {}, env)
+    conf.clamp
+    assert_equal 95, conf.options.default_options[:persistent_timeout]
+  end
+
   def test_config_loads_correct_min_threads
     conf = Puma::Configuration.new
     conf.clamp
