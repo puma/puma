@@ -63,8 +63,8 @@ module Puma
 
       env[PUMA_SOCKET] = socket
 
-      if env[HTTPS_KEY] && socket.peercert
-        env[PUMA_PEERCERT] = socket.peercert
+      if env[HTTPS_KEY] && socket.peer_cert
+        env[PUMA_PEERCERT] = socket.peer_cert
       end
 
       env[HIJACK_P] = true

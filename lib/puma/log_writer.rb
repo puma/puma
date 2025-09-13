@@ -124,8 +124,8 @@ module Puma
     # @param ssl_socket <Puma::MiniSSL::Socket>
     def ssl_error(error, ssl_socket)
       peeraddr = ssl_socket.peeraddr.last rescue "<unknown>"
-      peercert = ssl_socket.peercert
-      subject = peercert&.subject
+      peer_cert = ssl_socket.peer_cert
+      subject = peer_cert&.subject
       @error_logger.info(error: error, text: "SSL error, peer: #{peeraddr}, peer cert: #{subject}")
     end
 

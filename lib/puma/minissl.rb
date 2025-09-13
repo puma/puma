@@ -23,7 +23,7 @@ module Puma
       def initialize(socket, engine)
         @socket = socket
         @engine = engine
-        @peercert = nil
+        @peer_cert = nil
         @reuse = nil
       end
 
@@ -189,14 +189,14 @@ module Puma
       # When `VERIFY_NONE`, `MiniSSL::Engine#peercert` is nil, regardless of
       # whether the client sends a cert.
       # @return [OpenSSL::X509::Certificate, nil]
-      # @!attribute [r] peercert
-      def peercert
-        return @peercert if @peercert
+      # @!attribute [r] peer_cert
+      def peer_cert
+        return @peer_cert if @peer_cert
 
-        raw = @engine.peercert
+        raw = @engine.peer_cert
         return nil unless raw
 
-        @peercert = OpenSSL::X509::Certificate.new raw
+        @peer_cert = OpenSSL::X509::Certificate.new raw
       end
     end
 

@@ -157,9 +157,9 @@ class TestLogWriter < PumaTest
       if subj
         cert = Object.new
         cert.define_singleton_method(:subject) { subj }
-        obj.define_singleton_method(:peercert) { cert }
+        obj.define_singleton_method(:peer_cert) { cert }
       else
-        obj.define_singleton_method(:peercert) { nil }
+        obj.define_singleton_method(:peer_cert) { nil }
       end
       obj
     }
