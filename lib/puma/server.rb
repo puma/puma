@@ -265,7 +265,11 @@ module Puma
       @thread_pool = ThreadPool.new(thread_name, options) { |client| process_client client }
 
       if @queue_requests
-        @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
+        @reactor = Reactor.new(@io_selector_backend) { |c|
+          # Inversion of control, the reactor is calling a method on the server when it
+          # is done buffering a request or receives a new request from a keepalive connection.
+          self.reactor_wakeup(c)
+        }
         @reactor.run
       end
 
@@ -289,6 +293,9 @@ module Puma
 
     # This method is called from the Reactor thread when a queued Client receives data,
     # times out, or when the Reactor is shutting down.
+    #
+    # While the code lives in the Server, the logic is executed on the reactor thread, independently
+    # from the server.
     #
     # It is responsible for ensuring that a request has been completely received
     # before it starts to be processed by the ThreadPool. This may be known as read buffering.
