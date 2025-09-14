@@ -154,7 +154,7 @@ module Puma
       mutate_stdout_and_stderr_to_sync_on_write: true,
       out_of_band: [],
       # Number of seconds for another request within a persistent session.
-      persistent_timeout: ENV.fetch('PUMA_PERSISTENT_TIMEOUT', 65),
+      persistent_timeout: 65, # PUMA_PERSISTENT_TIMEOUT
       queue_requests: true,
       rackup: 'config.ru'.freeze,
       raise_exception_on_sigterm: true,
@@ -236,6 +236,7 @@ module Puma
     def puma_options_from_env(env = ENV)
       min = env['PUMA_MIN_THREADS'] || env['MIN_THREADS']
       max = env['PUMA_MAX_THREADS'] || env['MAX_THREADS']
+      persistent_timeout = env['PUMA_PERSISTENT_TIMEOUT']
       workers = if env['WEB_CONCURRENCY'] == 'auto'
         require_processor_counter
         ::Concurrent.available_processor_count
@@ -246,6 +247,7 @@ module Puma
       {
         min_threads: min && min != "" && Integer(min),
         max_threads: max && max != "" && Integer(max),
+        persistent_timeout: persistent_timeout && persistent_timeout != "" && Integer(persistent_timeout),
         workers: workers && workers != "" && Integer(workers),
         environment: env['APP_ENV'] || env['RACK_ENV'] || env['RAILS_ENV'],
       }
