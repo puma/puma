@@ -1,3 +1,11 @@
+## 7.0.3 / 2025-09-13
+
+* Performance
+  * server.rb - process_client - add ka to todo if readable & complete ([#3748])
+
+* Bugfixes
+  * Convert PUMA_PERSISTENT_TIMEOUT to an Integer ([#3749])
+
 ## 7.0.2 / 2025-09-08
 
 * Bugfixes
@@ -2226,6 +2234,8 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3748]:https://github.com/puma/puma/pull/3748     "PR by @MSP-Greg, merged 2025-09-14"
+[#3749]:https://github.com/puma/puma/pull/3749     "PR by @schneems, merged 2025-09-14"
 [#3736]:https://github.com/puma/puma/pull/3736     "PR by @MSP-Greg, merged 2025-09-08"
 [#3734]:https://github.com/puma/puma/issues/3734   "Issue by @espen, closed 2025-09-08"
 [#3729]:https://github.com/puma/puma/pull/3729     "PR by @bensheldon, merged 2025-09-08"
