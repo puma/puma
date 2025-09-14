@@ -392,7 +392,7 @@ module Puma
                 # A well rested herd (cluster) runs faster
                 if @options[:workers] > 2
                   delay = @cluster_accept_loop_delay.calculate(
-                    busy_threads: pool.busy_threads
+                    busy_threads_plus_todo: pool.busy_threads
                   )
                   sleep(delay) if delay > 0
                 end

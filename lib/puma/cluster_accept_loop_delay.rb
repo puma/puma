@@ -63,9 +63,11 @@ module Puma
       )
       @max_threads = Integer(max_threads)
       @max_threads_flt = max_threads.to_f
+
       @max_delay = max_delay.to_f
+      @max_threads_with_overload = @max_threads * 25.0
       # Same divisor as percent_busy
-      @min_delay = max_delay / @max_threads
+      @min_delay = max_delay / @max_threads_with_overload
     end
 
     # We want the extreme values of this delay to be known (minimum and maximum) as well as
@@ -73,12 +75,12 @@ module Puma
     #
     # Return value is always numeric. Returns 0 if there should be no delay
     def calculate(
-      # Number of threads working right now
-      busy_threads:
+      # Number of threads working right now, plus number of requests in the todo list
+      busy_threads_plus_todo:
     )
       return 0 if max_delay == 0
 
-      percent_busy = busy_threads / max_threads_flt
+      percent_busy = busy_threads_plus_todo.clamp(0, @max_threads_with_overload) / @max_threads_with_overload
       if percent_busy > 0
         return (max_delay * percent_busy).clamp(min_delay, max_delay)
       else
