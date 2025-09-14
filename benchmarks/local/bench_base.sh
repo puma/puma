@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # -T client threads (wrk -t)
 # -c connections per client thread
