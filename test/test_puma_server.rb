@@ -2172,6 +2172,80 @@ class TestPumaServer < PumaTest
     assert_equal "something wrong happened", body
   end
 
+  def test_lowlevel_error_handler_that_raises_exception
+    handler_calls = 0
+    faulty_handler = ->(_error, _env, _status) do
+      handler_calls += 1
+      # This handler itself raises an exception
+      raise NoMethodError, "undefined method in handler"
+    end
+
+    options = {
+      lowlevel_error_handler: faulty_handler
+    }
+    broken_app = ->(_env) { raise StandardError, "app error" }
+    server_run(**options, &broken_app)
+
+    # Should get default error response, not a server crash
+    response = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
+
+    assert_equal "HTTP/1.1 500 Internal Server Error", response.status
+    assert_includes response.body, "Puma caught this error: app error"
+    assert handler_calls > 0, "Handler should have been called"
+
+    # Server should continue working after handler error
+    response2 = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
+    assert_equal "HTTP/1.1 500 Internal Server Error", response2.status
+  end
+
+  def test_lowlevel_error_handler_returns_invalid_response
+    handler_calls = 0
+    invalid_handler = ->(_error, _env, _status) do
+      handler_calls += 1
+      # Return nil instead of proper Rack response array
+      nil
+    end
+
+    options = {
+      lowlevel_error_handler: invalid_handler
+    }
+    broken_app = ->(_env) { raise StandardError, "app error" }
+    server_run(**options, &broken_app)
+
+    # Should get default error response when handler returns invalid response
+    response = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
+
+    assert_equal "HTTP/1.1 500 Internal Server Error", response.status
+    assert_includes response.body, "Puma caught this error: app error"
+    assert handler_calls > 0, "Handler should have been called"
+
+    # Server should continue working after invalid handler response
+    response2 = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
+    assert_equal "HTTP/1.1 500 Internal Server Error", response2.status
+  end
+
+  def test_lowlevel_error_handler_returns_malformed_array
+    handler_calls = 0
+    malformed_handler = ->(_error, _env, _status) do
+      handler_calls += 1
+      # Return array but not proper 3-element Rack response
+      [500, "not a hash"]
+    end
+
+    options = {
+      lowlevel_error_handler: malformed_handler
+    }
+    broken_app = ->(_env) { raise StandardError, "app error" }
+    server_run(**options, &broken_app)
+
+    # Should get default error response when handler returns malformed response
+    response = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
+
+    assert_equal "HTTP/1.1 500 Internal Server Error", response.status
+    assert_includes response.body, "Puma caught this error: app error"
+    assert handler_calls > 0, "Handler should have been called"
+  end
+
   def test_cl_empty_string
     server_run do |env|
       [200, {}, [""]]

@@ -574,12 +574,24 @@ module Puma
     #
     def lowlevel_error(e, env, status=500)
       if handler = options[:lowlevel_error_handler]
-        if handler.arity == 1
-          return handler.call(e)
-        elsif handler.arity == 2
-          return handler.call(e, env)
-        else
-          return handler.call(e, env, status)
+        begin
+          response = if handler.arity == 1
+                       handler.call(e)
+                     elsif handler.arity == 2
+                       handler.call(e, env)
+                     else
+                       handler.call(e, env, status)
+                     end
+
+          # Validate that the handler returned a proper Rack response
+          if response.is_a?(Array) && response.length == 3
+            return response
+          else
+            @log_writer.unknown_error StandardError.new("lowlevel_error_handler returned invalid response: #{response.inspect}"), nil, "lowlevel_error_handler validation"
+          end
+        rescue StandardError => handler_error
+          @log_writer.unknown_error handler_error, nil, "lowlevel_error_handler"
+          # Fall through to default error response
         end
       end
 
