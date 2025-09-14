@@ -176,8 +176,12 @@ StartPuma()
   if [ -n "$1" ]; then
     rackup_file=$1
   fi
-  printf "\nbundle exec bin/puma -q -b $bind $puma_args --control-url=tcp://$PUMA_CTRL --control-token=test $rackup_file\n\n"
-  bundle exec bin/puma -q -b $bind $puma_args --control-url=tcp://$PUMA_CTRL --control-token=test $rackup_file &
+
+  echo "Branch: $(git branch --show-current)"
+
+  printf "\nbundle exec puma -q -b $bind $puma_args --control-url=tcp://$PUMA_CTRL --control-token=test $rackup_file\n\n"
+  bundle exec puma -q -b $bind $puma_args --control-url=tcp://$PUMA_CTRL --control-token=test $rackup_file &
+
   # may need to be increased for non MRI Rubies
   sleep 1s
 }

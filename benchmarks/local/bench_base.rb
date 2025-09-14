@@ -211,7 +211,7 @@ module TestPuma
         end
         temp[100] = hey_output[/^\s+Slowest\:\s+([\d.]+)/, 1].to_f
       end
-      STDOUT.syswrite format("   RPS %6d   50%% %7.3f   99%% %7.3f\n", job[:rps].to_i, job[:latency][50].round(3), job[:latency][99].round(3)) unless log
+      STDOUT.syswrite format("   RPS %6d   50%% %7.4f   99%% %7.4f\n", job[:rps].to_i, job[:latency][50], job[:latency][99]) unless log
       job
     end
 

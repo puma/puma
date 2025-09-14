@@ -32,7 +32,7 @@ module TestPuma
 
     HEY = ENV.fetch('HEY', 'hey')
 
-    CONNECTION_MULT = [4.0, 3.0, 2.0, 1.5, 1.0, 0.5]
+    CONNECTION_MULT = [6.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.5]
     CONNECTION_REQ = []
 
     def run
@@ -122,7 +122,7 @@ module TestPuma
     end
 
     def summary_puma_stats
-      str = @desc_line.dup
+      str = @desc_line.dup.sub 'Branch: ', ''
       str_len = str.length
       if (@workers || 0) > 1
         # used for 'Worker Request Info' centering
@@ -135,7 +135,8 @@ module TestPuma
         wid_2 = [4, 7, 10, 13, 16, 19, 22]
         ind_2 = wid_2[@workers - 2]
 
-        str << "#{' ' * (57 - str_len)}#{'─' * ind_1} Worker Request Info #{'─' * ind_1}\n"
+        spaces = str_len >= 57 ? ' ' : ' ' * (57 - str_len)
+        str << "#{spaces}#{'─' * ind_1} Worker Request Info #{'─' * ind_1}\n"
 
         str << "#{@ka.ljust 23           }  ── Reactor ──   ── Backlog ──" \
           "    Std #{' ' * ind_2}% deviation\n"
@@ -179,8 +180,10 @@ module TestPuma
       else
         str << "\n#{@ka.ljust 23           }  ── Reactor ──   ── Backlog ──\n"
         str <<   "#{@hey_info_line.ljust 23}     Min/Max         Min/Max\n"
+
+        one_worker = @workers == 1
         CONNECTION_REQ.each do |k|
-          hsh = @stats_data[k]
+          hsh = one_worker ? @stats_data[k].values[0] : @stats_data[k]
           str << format("#{@hey_run_data[k]}   %6d            %3d             %3d\n", hsh[:requests], hsh[:reactor_max], hsh[:backlog_max])
         end
       end
