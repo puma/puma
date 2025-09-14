@@ -27,15 +27,16 @@ class TestClusterAcceptLoopDelay < PumaTest
   end
 
   def test_linear_increase_with_busy_threads_plus_todo
+    max_threads = 10
     cal_delay = Puma::ClusterAcceptLoopDelay.new(
-      max_threads: 1,
+      max_threads: max_threads,
       max_delay: 0.05
     )
 
     assert_in_delta 0, cal_delay.calculate(busy_threads_plus_todo: 0), 0.001
-    assert_in_delta 0.002, cal_delay.calculate(busy_threads_plus_todo: 1), 0.001
-    assert_in_delta 0.05, cal_delay.calculate(busy_threads_plus_todo: 25), 0.001
-    assert_in_delta 0.05, cal_delay.calculate(busy_threads_plus_todo: 26), 0.001
+    assert_in_delta 0.025, cal_delay.calculate(busy_threads_plus_todo: 5), 0.001
+    assert_in_delta 0.05, cal_delay.calculate(busy_threads_plus_todo: max_threads), 0.001
+    assert_in_delta 0.05, cal_delay.calculate(busy_threads_plus_todo: max_threads + 1), 0.001
   end
 
   def test_always_return_float_when_non_zero

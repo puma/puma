@@ -65,7 +65,7 @@ module Puma
       @max_threads_flt = max_threads.to_f
 
       @max_delay = max_delay.to_f
-      @max_threads_with_overload = @max_threads * 25.0
+      @max_threads_with_overload = @max_threads_flt * 1.0 # 1 multiplier turns off overload functionality
       # Same divisor as percent_busy
       @min_delay = max_delay / @max_threads_with_overload
     end
