@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # bundle exec bin/puma -q -b tcp://127.0.0.1:40001 -w4 -t5:5 --pidfile pid test/rackup/sleep.ru
 
