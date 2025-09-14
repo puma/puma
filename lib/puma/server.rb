@@ -112,7 +112,7 @@ module Puma
       @http_content_length_limit = @options[:http_content_length_limit]
       @cluster_accept_loop_delay = ClusterAcceptLoopDelay.new(
         max_threads: @max_threads,
-        max_delay: @options[:cluster_accept_loop_delay_max_delay] || 0 # Real default is in Configuration::DEFAULTS, this is for unit testing
+        max_delay: @options[:wait_for_less_busy_worker] || 0 # Real default is in Configuration::DEFAULTS, this is for unit testing
       )
 
       if @options[:fiber_per_request]
