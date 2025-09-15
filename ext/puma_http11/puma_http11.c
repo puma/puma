@@ -7,6 +7,7 @@
 #define RSTRING_NOT_MODIFIED 1
 
 #include "ruby.h"
+#include "ruby/encoding.h"
 #include "ext_help.h"
 #include <assert.h>
 #include <string.h>
@@ -48,8 +49,11 @@ static VALUE global_request_path;
 #define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, MAX_##N##_LENGTH_ERR, len); }
 
 /** Defines global strings in the init method. */
-#define DEF_GLOBAL(N, val)  rb_global_variable(&global_##N); global_##N = rb_str_new2(val)
-
+static inline void DEF_GLOBAL(VALUE *var, const char *cstr)
+{
+    rb_global_variable(var);
+    *var = rb_enc_interned_str_cstr(cstr, rb_utf8_encoding());
+}
 
 /* Defines the maximum allowed lengths for various input elements.*/
 #ifndef PUMA_REQUEST_URI_MAX_LENGTH
@@ -468,12 +472,12 @@ void Init_puma_http11(void)
   VALUE mPuma = rb_define_module("Puma");
   VALUE cHttpParser = rb_define_class_under(mPuma, "HttpParser", rb_cObject);
 
-  DEF_GLOBAL(request_method, "REQUEST_METHOD");
-  DEF_GLOBAL(request_uri, "REQUEST_URI");
-  DEF_GLOBAL(fragment, "FRAGMENT");
-  DEF_GLOBAL(query_string, "QUERY_STRING");
-  DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
-  DEF_GLOBAL(request_path, "REQUEST_PATH");
+  DEF_GLOBAL(&global_request_method, "REQUEST_METHOD");
+  DEF_GLOBAL(&global_request_uri, "REQUEST_URI");
+  DEF_GLOBAL(&global_fragment, "FRAGMENT");
+  DEF_GLOBAL(&global_query_string, "QUERY_STRING");
+  DEF_GLOBAL(&global_server_protocol, "SERVER_PROTOCOL");
+  DEF_GLOBAL(&global_request_path, "REQUEST_PATH");
 
   rb_global_variable(&eHttpParserError);
   eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eStandardError);
