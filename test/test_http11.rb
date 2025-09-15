@@ -248,7 +248,7 @@ class Http11ParserTest < TestIntegration
   def test_trims_whitespace_from_headers
     parser = Puma::HttpParser.new
     req = {}
-    http = "GET / HTTP/1.1\r\nX-Strip-Me: Strip This       \r\n\r\n"
+    http = "GET / HTTP/1.1\r\nX-Strip-Me: \t Strip This \t      \r\n\r\n"
 
     parser.execute(req, http, 0)
 
