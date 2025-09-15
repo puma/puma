@@ -48,7 +48,7 @@ static VALUE global_request_path;
 #define VALIDATE_MAX_LENGTH(len, N) if(len > MAX_##N##_LENGTH) { rb_raise(eHttpParserError, MAX_##N##_LENGTH_ERR, len); }
 
 /** Defines global strings in the init method. */
-#define DEF_GLOBAL(N, val)   global_##N = rb_str_new2(val); rb_global_variable(&global_##N)
+#define DEF_GLOBAL(N, val)  rb_global_variable(&global_##N); global_##N = rb_str_new2(val)
 
 
 /* Defines the maximum allowed lengths for various input elements.*/
@@ -134,13 +134,13 @@ static void init_common_fields(void)
   memcpy(tmp, HTTP_PREFIX, HTTP_PREFIX_LEN);
 
   for(i = 0; i < ARRAY_SIZE(common_http_fields); cf++, i++) {
+    rb_global_variable(&cf->value);
     if(cf->raw) {
       cf->value = rb_str_new(cf->name, cf->len);
     } else {
       memcpy(tmp + HTTP_PREFIX_LEN, cf->name, cf->len + 1);
       cf->value = rb_str_new(tmp, HTTP_PREFIX_LEN + cf->len);
     }
-    rb_global_variable(&cf->value);
   }
 }
 
@@ -475,8 +475,8 @@ void Init_puma_http11(void)
   DEF_GLOBAL(server_protocol, "SERVER_PROTOCOL");
   DEF_GLOBAL(request_path, "REQUEST_PATH");
 
-  eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eStandardError);
   rb_global_variable(&eHttpParserError);
+  eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eStandardError);
 
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
   rb_define_method(cHttpParser, "initialize", HttpParser_init, 0);
