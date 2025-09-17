@@ -80,8 +80,8 @@ module Puma
     )
       return 0 if max_delay == 0
 
-      percent_busy = busy_threads_plus_todo.clamp(0, @max_threads_with_overload) / @max_threads_with_overload
-      if percent_busy > 0
+      if busy_threads_plus_todo > 0
+        percent_busy = busy_threads_plus_todo.clamp(0, @max_threads_with_overload) / @max_threads_with_overload
         return (max_delay * percent_busy).clamp(min_delay, max_delay)
       else
         return 0
