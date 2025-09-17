@@ -47,7 +47,8 @@ module Puma
   # For now, both goals are framed as "load balancing" across workers (processes) and achieved through
   # the same mechanism of sleeping longer to delay busier workers. Rather than the prior Puma 6.x
   # and earlier behavior of using a binary on/off sleep value, we increase it an amound proportional
-  # to the load the server is under. Capping the maximum delay to the scenario where all threads are busy.
+  # to the load the server is under. Capping the maximum delay to the scenario where all threads are busy
+  # and the todo list has reached a multiplier of the maximum number of threads.
   #
   # Private: API may change unexpectedly
   class ClusterAcceptLoopDelay
