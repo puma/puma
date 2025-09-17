@@ -389,7 +389,7 @@ module Puma
                 pool.wait_while_out_of_band_running
 
                 # A well rested herd (cluster) runs faster
-                if @options[:workers] > 2
+                if @options[:workers] > 2 && @cluster_accept_loop_delay.on?
                   delay = @cluster_accept_loop_delay.calculate(
                     max_threads: @max_threads,
                     busy_threads_plus_todo: pool.busy_threads

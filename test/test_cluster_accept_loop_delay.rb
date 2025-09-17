@@ -10,11 +10,11 @@ class TestClusterAcceptLoopDelay < PumaTest
     cal_delay = Puma::ClusterAcceptLoopDelay.new(
       max_delay: 0
     )
+    assert_equal false, cal_delay.on?
     assert_equal 0, cal_delay.calculate(busy_threads_plus_todo: 0, max_threads: 16)
     assert_equal 0, cal_delay.calculate(busy_threads_plus_todo: 42, max_threads: 16)
     assert_equal 0, cal_delay.calculate(busy_threads_plus_todo: 42 * 42, max_threads: 16)
   end
-
 
   def test_zero_busy_threads_plus_todo_always_returns_zero
     cal_delay = Puma::ClusterAcceptLoopDelay.new(

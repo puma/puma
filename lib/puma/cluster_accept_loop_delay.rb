@@ -58,10 +58,15 @@ module Puma
         # Maximum delay in seconds i.e. 0.005 is 5 microseconds
         max_delay: # In seconds i.e. 0.005 is 5 microseconds
       )
+      @on = max_delay > 0
       @max_delay = max_delay.to_f
 
       # Reach maximum delay when `max_threads * overload_multiplier` is reached in the system
       @overload_multiplier = 25.0
+    end
+
+    def on?
+      @on
     end
 
     # We want the extreme values of this delay to be known (minimum and maximum) as well as
@@ -75,8 +80,6 @@ module Puma
       # if the pool needs to be reaped. The busy thread plus todo count may go over this value by a large amount
       max_threads:
     )
-      return 0 if max_delay == 0
-
       if busy_threads_plus_todo > 0
         max_value = @overload_multiplier * max_threads
         # Approaches max delay when `busy_threads_plus_todo` approaches `max_value`
