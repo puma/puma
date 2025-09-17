@@ -55,16 +55,13 @@ module Puma
 
     # Initialize happens once, `call` happens often. Push global calculations here
     def initialize(
-        # Maximum number of configured threads in the pool. There are situations where the actual number of threads spawned
-        # is greater than this number. Although Puma will eventually "trim" excess threads, you cannot rely on this being a true maximum.
-        max_threads:,
         # Maximum delay in seconds i.e. 0.005 is 5 microseconds
         max_delay: # In seconds i.e. 0.005 is 5 microseconds
       )
-      @max_threads = Integer(max_threads)
-
       @max_delay = max_delay.to_f
-      @max_threads_with_overload = @max_threads * 25.0
+
+      # Reach maximum delay when `max_threads * overload_multiplier` is reached in the system
+      @overload_multiplier = 25.0
     end
 
     # We want the extreme values of this delay to be known (minimum and maximum) as well as
@@ -73,13 +70,17 @@ module Puma
     # Return value is always numeric. Returns 0 if there should be no delay
     def calculate(
       # Number of threads working right now, plus number of requests in the todo list
-      busy_threads_plus_todo:
+      busy_threads_plus_todo:,
+      # Maximum number of threads in the pool, note that the busy threads (alone) may go over this value at times
+      # if the pool needs to be reaped. The busy thread plus todo count may go over this value by a large amount
+      max_threads:
     )
       return 0 if max_delay == 0
 
       if busy_threads_plus_todo > 0
+        max_value = @overload_multiplier * max_threads
         # Approaches max delay when `busy_threads_plus_todo` approaches `max_value`
-        return max_delay * busy_threads_plus_todo.clamp(0, @max_threads_with_overload) / @max_threads_with_overload
+        return max_delay * busy_threads_plus_todo.clamp(0, max_value) / max_value
       else
         return 0
       end
