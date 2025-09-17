@@ -51,7 +51,7 @@ module Puma
   #
   # Private: API may change unexpectedly
   class ClusterAcceptLoopDelay
-    attr_reader :max_threads, :max_threads_flt, :max_delay, :min_delay, :divisor
+    attr_reader :max_threads, :max_delay
 
     # Initialize happens once, `call` happens often. Push global calculations here
     def initialize(
@@ -62,12 +62,9 @@ module Puma
         max_delay: # In seconds i.e. 0.005 is 5 microseconds
       )
       @max_threads = Integer(max_threads)
-      @max_threads_flt = max_threads.to_f
 
       @max_delay = max_delay.to_f
       @max_threads_with_overload = @max_threads * 25.0
-      # Same divisor as percent_busy
-      @min_delay = max_delay / @max_threads_with_overload
     end
 
     # We want the extreme values of this delay to be known (minimum and maximum) as well as
@@ -81,8 +78,8 @@ module Puma
       return 0 if max_delay == 0
 
       if busy_threads_plus_todo > 0
-        percent_busy = busy_threads_plus_todo.clamp(0, @max_threads_with_overload) / @max_threads_with_overload
-        return (max_delay * percent_busy).clamp(min_delay, max_delay)
+        # Approaches max delay when `busy_threads_plus_todo` approaches `max_value`
+        return max_delay * busy_threads_plus_todo.clamp(0, @max_threads_with_overload) / @max_threads_with_overload
       else
         return 0
       end
