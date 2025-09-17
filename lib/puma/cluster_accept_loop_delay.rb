@@ -80,13 +80,9 @@ module Puma
       # if the pool needs to be reaped. The busy thread plus todo count may go over this value by a large amount
       max_threads:
     )
-      if busy_threads_plus_todo > 0
-        max_value = @overload_multiplier * max_threads
-        # Approaches max delay when `busy_threads_plus_todo` approaches `max_value`
-        return max_delay * busy_threads_plus_todo.clamp(0, max_value) / max_value
-      else
-        return 0
-      end
+      max_value = @overload_multiplier * max_threads
+      # Approaches max delay when `busy_threads_plus_todo` approaches `max_value`
+      return max_delay * busy_threads_plus_todo.clamp(0, max_value) / max_value
     end
   end
 end
