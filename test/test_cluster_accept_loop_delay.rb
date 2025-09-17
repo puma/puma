@@ -6,8 +6,23 @@ require "puma/cluster_accept_loop_delay"
 class TestClusterAcceptLoopDelay < PumaTest
   parallelize_me!
 
+  def test_off_when_fewer_than_two_workers
+    cal_delay = Puma::ClusterAcceptLoopDelay.new(
+      workers: 2,
+      max_delay: 1
+    )
+    assert_equal true, cal_delay.on?
+
+    cal_delay = Puma::ClusterAcceptLoopDelay.new(
+      workers: 1,
+      max_delay: 1
+    )
+    assert_equal false, cal_delay.on?
+  end
+
   def test_zero_max_delay_always_returns_zero
     cal_delay = Puma::ClusterAcceptLoopDelay.new(
+      workers: 2,
       max_delay: 0
     )
     assert_equal false, cal_delay.on?
@@ -18,6 +33,7 @@ class TestClusterAcceptLoopDelay < PumaTest
 
   def test_zero_busy_threads_plus_todo_always_returns_zero
     cal_delay = Puma::ClusterAcceptLoopDelay.new(
+      workers: 2,
       max_delay: 0.005
     )
 
@@ -26,6 +42,7 @@ class TestClusterAcceptLoopDelay < PumaTest
 
   def test_linear_increase_with_busy_threads_plus_todo
     cal_delay = Puma::ClusterAcceptLoopDelay.new(
+      workers: 2,
       max_delay: 0.05
     )
 
@@ -38,6 +55,7 @@ class TestClusterAcceptLoopDelay < PumaTest
   def test_always_return_float_when_non_zero
     # Dividing integers accidentally returns 0 so want to make sure we are correctly converting to float before division
     cal_delay = Puma::ClusterAcceptLoopDelay.new(
+      workers: 2,
       max_delay: Integer(5)
     )
 
@@ -48,6 +66,7 @@ class TestClusterAcceptLoopDelay < PumaTest
 
   def test_extreme_busy_values_produce_sensible_delays
     cal_delay = Puma::ClusterAcceptLoopDelay.new(
+      workers: 2,
       max_delay: 0.05
     )
 

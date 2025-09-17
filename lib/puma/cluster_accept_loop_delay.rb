@@ -56,10 +56,13 @@ module Puma
 
     # Initialize happens once, `call` happens often. Push global calculations here
     def initialize(
+        # Number of workers in the cluster
+        workers: ,
         # Maximum delay in seconds i.e. 0.005 is 5 microseconds
         max_delay: # In seconds i.e. 0.005 is 5 microseconds
+
       )
-      @on = max_delay > 0
+      @on = max_delay > 0 && workers >= 2
       @max_delay = max_delay.to_f
 
       # Reach maximum delay when `max_threads * overload_multiplier` is reached in the system

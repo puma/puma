@@ -111,6 +111,7 @@ module Puma
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
       @cluster_accept_loop_delay = ClusterAcceptLoopDelay.new(
+        workers: @options[:workers],
         max_delay: @options[:wait_for_less_busy_worker] || 0 # Real default is in Configuration::DEFAULTS, this is for unit testing
       )
 
@@ -389,7 +390,7 @@ module Puma
                 pool.wait_while_out_of_band_running
 
                 # A well rested herd (cluster) runs faster
-                if @options[:workers] > 2 && @cluster_accept_loop_delay.on?
+                if @cluster_accept_loop_delay.on?
                   delay = @cluster_accept_loop_delay.calculate(
                     max_threads: @max_threads,
                     busy_threads_plus_todo: pool.busy_threads
