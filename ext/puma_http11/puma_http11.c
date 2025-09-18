@@ -159,6 +159,10 @@ static VALUE find_common_field_value(const char *field, size_t flen)
   return Qnil;
 }
 
+static int is_ows(const char c) {
+    return c == ' ' || c == '\t';
+}
+
 void http_field(puma_parser* hp, const char *field, size_t flen,
                                  const char *value, size_t vlen)
 {
@@ -185,7 +189,11 @@ void http_field(puma_parser* hp, const char *field, size_t flen,
     f = rb_str_new(hp->buf, new_size);
   }
 
-  while (vlen > 0 && isspace(value[vlen - 1])) vlen--;
+  while (vlen > 0 && is_ows(value[vlen - 1])) vlen--;
+  while (vlen > 0 && is_ows(value[0])) {
+      vlen--;
+      value++;
+  }
 
   /* check for duplicate header */
   v = rb_hash_aref(hp->request, f);

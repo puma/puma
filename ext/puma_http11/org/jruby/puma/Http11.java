@@ -109,6 +109,10 @@ public class Http11 extends RubyObject {
         return (RubyClass)runtime.getModule("Puma").getConstant("HttpParserError");
     }
 
+    private static boolean is_ows(int c) {
+        return c == ' ' || c == '\t';
+    }
+
     public static void http_field(Ruby runtime, RubyHash req, ByteList buffer, int field, int flen, int value, int vlen) {
         RubyString f;
         IRubyObject v;
@@ -127,7 +131,11 @@ public class Http11 extends RubyObject {
             }
         }
 
-        while (vlen > 0 && Character.isWhitespace(buffer.get(value + vlen - 1))) vlen--;
+        while (vlen > 0 && is_ows(buffer.get(value + vlen - 1))) vlen--;
+        while (vlen > 0 && is_ows(buffer.get(value))) {
+            vlen--;
+            value++;
+        }
 
         if (b.equals(CONTENT_LENGTH_BYTELIST) || b.equals(CONTENT_TYPE_BYTELIST)) {
           f = RubyString.newString(runtime, b);
