@@ -13,6 +13,7 @@ require_relative 'binder'
 require_relative 'util'
 require_relative 'request'
 require_relative 'configuration'
+require_relative 'cluster_accept_loop_delay'
 
 require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
@@ -57,7 +58,6 @@ module Puma
 
     attr_accessor :app
     attr_accessor :binder
-
 
     # Create a server for the rack app +app+.
     #
@@ -110,6 +110,10 @@ module Puma
       @enable_keep_alives      &&= @queue_requests
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
+      @cluster_accept_loop_delay = ClusterAcceptLoopDelay.new(
+        workers: @options[:workers],
+        max_delay: @options[:wait_for_less_busy_worker] || 0 # Real default is in Configuration::DEFAULTS, this is for unit testing
+      )
 
       if @options[:fiber_per_request]
         singleton_class.prepend(FiberPerRequest)
@@ -245,11 +249,6 @@ module Puma
       @thread_pool&.pool_capacity
     end
 
-    # @!attribute [r] busy_threads
-    def busy_threads
-      @thread_pool&.busy_threads
-    end
-
     # Runs the server.
     #
     # If +background+ is true (the default) then a thread is spun
@@ -266,7 +265,11 @@ module Puma
       @thread_pool = ThreadPool.new(thread_name, options) { |client| process_client client }
 
       if @queue_requests
-        @reactor = Reactor.new(@io_selector_backend) { |c| reactor_wakeup c }
+        @reactor = Reactor.new(@io_selector_backend) { |c|
+          # Inversion of control, the reactor is calling a method on the server when it
+          # is done buffering a request or receives a new request from a keepalive connection.
+          self.reactor_wakeup(c)
+        }
         @reactor.run
       end
 
@@ -290,6 +293,9 @@ module Puma
 
     # This method is called from the Reactor thread when a queued Client receives data,
     # times out, or when the Reactor is shutting down.
+    #
+    # While the code lives in the Server, the logic is executed on the reactor thread, independently
+    # from the server.
     #
     # It is responsible for ensuring that a request has been completely received
     # before it starts to be processed by the ThreadPool. This may be known as read buffering.
@@ -339,7 +345,6 @@ module Puma
         pool = @thread_pool
         queue_requests = @queue_requests
         drain = options[:drain_on_shutdown] ? 0 : nil
-        max_flt = @max_threads.to_f
 
         addr_send_name, addr_value = case options[:remote_address]
         when :value
@@ -384,15 +389,13 @@ module Puma
                 # clients until the code is finished.
                 pool.wait_while_out_of_band_running
 
-                # only use delay when clustered and busy
-                if pool.busy_threads >= @max_threads
-                  if @clustered
-                    delay = 0.0001 * ((@reactor&.reactor_size || 0) + pool.busy_threads * 1.5)/max_flt
-                    sleep delay
-                  else
-                    # use small sleep for busy single worker
-                    sleep 0.0001
-                  end
+                # A well rested herd (cluster) runs faster
+                if @cluster_accept_loop_delay.on? && (busy_threads_plus_todo = pool.busy_threads) > 0
+                  delay = @cluster_accept_loop_delay.calculate(
+                    max_threads: @max_threads,
+                    busy_threads_plus_todo: busy_threads_plus_todo
+                  )
+                  sleep(delay)
                 end
 
                 io = begin
