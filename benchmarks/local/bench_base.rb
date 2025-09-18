@@ -181,7 +181,7 @@ module TestPuma
     # @return [Hash] The hey data
     #
     def run_hey_parse(cmd, mult, log: false)
-      STDOUT.syswrite cmd
+      STDOUT.syswrite format('%4.2f %s', mult, cmd)
 
       hey_output = %x[#{cmd}].strip.gsub(' secs', '')
 
@@ -211,12 +211,12 @@ module TestPuma
         end
         temp[100] = hey_output[/^\s+Slowest\:\s+([\d.]+)/, 1].to_f
       end
-      STDOUT.syswrite format("   RPS %6d   50%% %7.4f   99%% %7.4f\n", job[:rps].to_i, job[:latency][50], job[:latency][99]) unless log
+      STDOUT.syswrite format(" %6d  %7.4f  %7.4f\n", job[:rps].to_i, job[:latency][50], job[:latency][99]) unless log
       job
     end
 
     # Runs wrk and returns data from its output.
-    # @param cmd [String] The wrk command string, with arguments
+    # @param cmd [String] The wrk command string, with arguments
     # @return [Hash] The wrk data
     #
     def run_wrk_parse(cmd, log: false)

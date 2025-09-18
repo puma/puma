@@ -22,7 +22,11 @@ module TestPuma
   # Examples:
   #
   # * `benchmarks/local/long_tail_hey.sh -w2 -t5:5 -s tcp6 -Y`<br/>
-  #   2 Puma workers, Puma threads 5:5, IPv6 http
+  #   2 Puma workers, Puma threads 5:5, IPv6 http YJIT
+
+  # * `benchmarks/local/long_tail_hey.sh -w4 -t3:3 -R100 -d0.05 -Y -r test/rackup/sleep_fibonacci.ru -k`
+  #   4 workers, threads 3:3, 100 req per hey connection, app delay 0.05, rackup sleep_fibonacci.ru
+  #   disable keep-alive in hey
   #
   # * `benchmarks/local/response_time_wrk.sh -t6:6 -s tcp -Y -b ac10,50,100`<br/>
   #   Puma single mode (0 workers), Puma threads 6:6, IPv4 http, six wrk runs,
@@ -30,9 +34,12 @@ module TestPuma
   #
   class LongTailHey < ResponseTimeBase
 
+    RACKUP_FILE = ENV.fetch('PUMA_RU_FILE', '')[/[^\/]+\z/]
+
     HEY = ENV.fetch('HEY', 'hey')
 
     CONNECTION_MULT = [6.0, 4.0, 3.0, 2.0, 1.5, 1.0, 0.5]
+    # CONNECTION_MULT = [2.0, 1.5, 1.0, 0.7, 0.5, 0.3]
     CONNECTION_REQ = []
 
     def run
@@ -46,12 +53,21 @@ module TestPuma
       @stats_data = {}
       @hey_data   = {}
 
-      STDOUT.syswrite "\n"
-
       cpu_qty = ENV['HEY_CPUS']
       hey_cpus = cpu_qty ? "-cpus #{cpu_qty} " : ""
 
       @ka = @no_keep_alive ? "-disable-keepalive" : ""
+
+      @worker_str = @workers.nil? ? '   ' : "-w#{@workers}"
+
+      @git_ref = %x[git branch --show-current].strip
+      @git_ref = %x[git log -1 --format=format:%H][0, 12] if @git_ref.empty?
+
+      @branch_line = "Branch: #{@git_ref}"
+      @puma_line   = "  Puma: #{@worker_str.ljust 4} " \
+          "-t#{@threads}:#{@threads}  dly #{@dly_app}  #{RACKUP_FILE}"
+
+      printed_hdr = false
 
       CONNECTION_MULT.each do |mult|
         workers = @workers || 1
@@ -60,6 +76,11 @@ module TestPuma
         CONNECTION_REQ << connections
 
         hey_cmd = %Q[#{HEY} -c #{format '%3d', connections} -n #{format '%5d', connections * @req_per_connection} #{hey_cpus}#{@ka} #{@wrk_bind_str}/sleep#{@dly_app}]
+
+        unless printed_hdr
+          STDOUT.syswrite "\n#{@branch_line}\n#{@puma_line.ljust(hey_cmd.length + 6)}   RPS     50%      99%\n"
+          printed_hdr = true
+        end
 
         @hey_data[connections] = run_hey_parse hey_cmd, mult, log: false
 
@@ -70,9 +91,9 @@ module TestPuma
 
       run_summaries
     rescue => e
-      puts e.class, e.message, e.backtrace
+      STDOUT.syswrite "\n\nError #{e.class}\n#{e.message}\n#{e.backtrace}\n"
     ensure
-      puts ''
+      STDOUT.syswrite "\n"
       @puma_info.run 'stop'
       sleep 1
       running_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - time_start
@@ -80,15 +101,10 @@ module TestPuma
     end
 
     def run_summaries
-      STDOUT.syswrite "\n\n"
-      worker_str = @workers.nil? ? '   ' : "-w#{@workers}"
+      STDOUT.syswrite "\n"
       worker_div = 100/@workers.to_f
 
       # Below are lines used in data logging
-      git_ref = %x[git branch --show-current].strip
-      git_ref = %x[git log -1 --format=format:%H][0, 12] if git_ref.empty?
-      @desc_line = "Branch: #{git_ref.ljust 16} " \
-          "Puma: #{worker_str.ljust 4} -t#{@threads}:#{@threads}  dly #{@dly_app}"
       @hey_info_line = "Mult/Conn  requests"
       @hey_run_data = []
 
@@ -96,13 +112,16 @@ module TestPuma
         @hey_run_data[k] = "#{data[:mult]} #{k.to_s.rjust 3}"
       end
 
-      STDOUT.syswrite summary_hey_latency
-      STDOUT.syswrite summary_puma_stats
+      begin
+        STDOUT.syswrite summary_hey_latency
+        STDOUT.syswrite summary_puma_stats
+      rescue => e
+        STDOUT.syswrite e.inspect
+      end
     end
 
     def summary_hey_latency
-      str = @desc_line.dup
-      str_len = str.length
+      str = +"#{@branch_line}\n#{@puma_line}"
 
       str << "\n#{@ka.ljust 30}  ───────────────────── Hey Latency ───────────────────── Long Tail\n" \
         "#{@hey_info_line}   rps %     10%    25%    50%    75%    90%    95%    99%    100%   100% / 10%\n"
@@ -122,8 +141,8 @@ module TestPuma
     end
 
     def summary_puma_stats
-      str = @desc_line.dup.sub 'Branch: ', ''
-      str_len = str.length
+      str = +"#{@branch_line}\n#{@puma_line}"
+      str_len = @puma_line.length
       if (@workers || 0) > 1
         # used for 'Worker Request Info' centering
         # worker 2  3  4  5   6   7   8
@@ -151,13 +170,18 @@ module TestPuma
           hsh = @stats_data[k]
 
           hsh.each do |k, v|
-            backlog_max << v[:backlog_max]
-            reactor_max << v[:reactor_max]
+            backlog_max << (v[:backlog_max] || -1)
+            reactor_max << (v[:reactor_max] || -1)
             requests << v[:requests]
           end
 
-          str << format("#{@hey_run_data[k]}   %6d       %4d   %5d   %5d   %5d",
-            requests.sum, reactor_max.min, reactor_max.max, backlog_max.min, backlog_max.max)
+          if backlog_max[0] >= 0
+            str << format("#{@hey_run_data[k]}   %6d       %4d   %5d   %5d   %5d",
+              requests.sum, reactor_max.min, reactor_max.max, backlog_max.min, backlog_max.max)
+          else # Puma 6 and earlier
+            str << format("#{@hey_run_data[k]}   %6d       %4s   %5s   %5s   %5s", requests.sum,
+              'na', 'na', 'na', 'na')
+          end
 
           # convert requests array into sorted percent array
           div = k * @req_per_connection/@workers.to_f
@@ -184,15 +208,12 @@ module TestPuma
         one_worker = @workers == 1
         CONNECTION_REQ.each do |k|
           hsh = one_worker ? @stats_data[k].values[0] : @stats_data[k]
-          str << format("#{@hey_run_data[k]}   %6d            %3d             %3d\n", hsh[:requests], hsh[:reactor_max], hsh[:backlog_max])
+          str << format("#{@hey_run_data[k]}   %6d            %3d             %3d\n",
+            hsh[:requests], hsh[:reactor_max] || -1, hsh[:backlog_max] || -1)
         end
       end
-      str << "\n\n"
-    end
-
-    def puts(*ary)
-      ary.each { |s| STDOUT.syswrite "#{s}\n" }
-    end
-  end
-end
+      str
+    end  # summary_puma_stats
+  end    # LongTailHey
+end      # TestPuma
 TestPuma::LongTailHey.new.run
