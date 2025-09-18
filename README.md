@@ -142,8 +142,8 @@ Preloading can’t be used with phased restart, since phased restart kills and r
 
 #### Cluster mode hooks
 
-When using clustered mode, Puma's configuration DSL provides `before_fork` and `before_worker_boot`
-hooks to run code when the master process forks and child workers are booted respectively.
+When using clustered mode, Puma's configuration DSL provides `before_fork`, `before_worker_boot`, and `after_worker_shutdown`
+hooks to run code when the master process forks, the child workers are booted, and after each child worker exits respectively.
 
 It is recommended to use these hooks with `preload_app!`, otherwise constants loaded by your
 application (such as `Rails`) will not be available inside the hooks.
@@ -156,6 +156,11 @@ end
 
 before_worker_boot do
   # Add code to run inside the Puma worker process after forking.
+end
+
+after_worker_shutdown do |worker_handle|
+  # Add code to run inside the Puma master process after a worker exits. `worker.process_status` can be used to get the
+  # `Process::Status` of the exited worker.
 end
 ```
 
