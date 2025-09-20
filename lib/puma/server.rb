@@ -331,7 +331,7 @@ module Puma
       end
     rescue StandardError => e
       client_error(e, client)
-      client.close
+      close_client_safely(client)
       true
     end
 
@@ -404,11 +404,9 @@ module Puma
                   next
                 end
                 drain += 1 if shutting_down?
-                pool << Client.new(io, @binder.env(sock)).tap { |c|
-                  c.listener = sock
-                  c.http_content_length_limit = @http_content_length_limit
-                  c.send(addr_send_name, addr_value) if addr_value
-                }
+                client = new_client(io, sock)
+                client.send(addr_send_name, addr_value) if addr_value
+                pool << client
               end
             end
           rescue IOError, Errno::EBADF
@@ -443,6 +441,14 @@ module Puma
       end
 
       @events.fire :state, :done
+    end
+
+    # :nodoc:
+    def new_client(io, sock)
+      client = Client.new(io, @binder.env(sock))
+      client.listener = sock
+      client.http_content_length_limit = @http_content_length_limit
+      client
     end
 
     # :nodoc:
@@ -532,14 +538,19 @@ module Puma
       ensure
         client.io_buffer.reset
 
-        begin
-          client.close if close_socket
-        rescue IOError, SystemCallError
-          # Already closed
-        rescue StandardError => e
-          @log_writer.unknown_error e, nil, "Client"
-        end
+        close_client_safely(client) if close_socket
       end
+    end
+
+    # :nodoc:
+    def close_client_safely(client)
+      client.close
+    rescue IOError, SystemCallError
+      # Already closed
+    rescue MiniSSL::SSLError => e
+      @log_writer.ssl_error e, client.io
+    rescue StandardError => e
+      @log_writer.unknown_error e, nil, "Client"
     end
 
     # Triggers a client timeout if the thread-pool shuts down
