@@ -200,7 +200,11 @@ class TestPumaServerSSL < PumaTest
     end
 
     ssl = Thread.new do
-      body_https = send_http_read_resp_body ctx: new_ctx
+      begin
+        body_https = send_http_read_resp_body ctx: new_ctx
+      rescue => e
+        body_https = "test_http_rejection error in SSL #{e.class}\n#{e.message}\n"
+      end
     end
 
     tcp.join
