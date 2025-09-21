@@ -12,8 +12,6 @@ module Puma
       def context
         ctx = OpenSSL::SSL::SSLContext.new
 
-        #ctx.key_password_command = params['key_password_command'] if params['key_password_command']
-
         key = if params['key']
                 File.open(params['key'])
               elsif params['key_pem']
@@ -22,9 +20,6 @@ module Puma
                 log_writer.error "Please specify the SSL key via 'key=' or 'key_pem='"
               end
         ctx.key = OpenSSL::PKey.read(key, key_password(params['key_password_command']))
-
-        if params['cert'].nil? && params['cert_pem'].nil?
-        end
 
         cert = if params['cert']
           File.binread(params['cert'])
@@ -35,15 +30,6 @@ module Puma
         end
         ctx.cert = OpenSSL::X509::Certificate.new(cert)
 
-        #if ['peer', 'force_peer'].include?(params['verify_mode'])
-          #unless params['ca']
-            #log_writer.error "Please specify the SSL ca via 'ca='"
-          #end
-          ## needed for Puma::MiniSSL::Socket#peercert, env['puma.peercert']
-          #require 'openssl'
-        #end
-
-        #ctx.ca = params['ca'] if params['ca']
         #ctx.ssl_cipher_filter = params['ssl_cipher_filter'] if params['ssl_cipher_filter']
         #ctx.ssl_ciphersuites = params['ssl_ciphersuites'] if params['ssl_ciphersuites'] && HAS_TLS1_3
 
@@ -52,20 +38,30 @@ module Puma
         #ctx.no_tlsv1   = params['no_tlsv1'] == 'true'
         #ctx.no_tlsv1_1 = params['no_tlsv1_1'] == 'true'
 
-        ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE # TODO I believe this can be removed.
-        #if params['verify_mode']
-          #ctx.verify_mode = case params['verify_mode']
-                            #when "peer"
-                              #MiniSSL::VERIFY_PEER
-                            #when "force_peer"
-                              #MiniSSL::VERIFY_PEER | MiniSSL::VERIFY_FAIL_IF_NO_PEER_CERT
-                            #when "none"
-                              #MiniSSL::VERIFY_NONE
-                            #else
-                              #log_writer.error "Please specify a valid verify_mode="
-                              #MiniSSL::VERIFY_NONE
-                            #end
-        #end
+        # TODO figure out why params['ca'] is an empty string
+        ca = params['ca'] && !params['ca'].empty? ? params['ca'] : nil
+        if ['peer', 'force_peer'].include?(params['verify_mode']) && !ca
+          log_writer.error "Please specify the SSL ca via 'ca='"
+        end
+        if ca
+          cert_store = OpenSSL::X509::Store.new
+          cert_store.add_file ca
+          ctx.cert_store = cert_store
+        end
+
+        if params['verify_mode']
+          ctx.verify_mode = case params['verify_mode']
+                            when "peer"
+                              OpenSSL::SSL::VERIFY_PEER
+                            when "force_peer"
+                              OpenSSL::SSL::VERIFY_PEER | OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT
+                            when "none"
+                              OpenSSL::SSL::VERIFY_NONE
+                            else
+                              log_writer.error "Please specify a valid verify_mode="
+                              OpenSSL::SSL::VERIFY_NONE
+                            end
+        end
 
         #if params['verification_flags']
           #ctx.verification_flags = params['verification_flags'].split(',').
