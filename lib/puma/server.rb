@@ -584,7 +584,9 @@ module Puma
                      end
 
           # Validate that the handler returned a proper Rack response
-          if response.is_a?(Array) && response.length == 3
+          if response.is_a?(Array) && response.length == 3 &&
+            response[0].is_a?(Integer) && response[1].is_a?(Hash) &&
+            (response[2].respond_to?(:each) || response[2].respond_to?(:call))
             return response
           else
             @log_writer.unknown_error StandardError.new("lowlevel_error_handler returned invalid response: #{response.inspect}"), nil, "lowlevel_error_handler validation"

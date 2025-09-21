@@ -2172,6 +2172,21 @@ class TestPumaServer < PumaTest
     assert_equal "something wrong happened", body
   end
 
+  def test_lowlevel_error_handler_response_with_proc
+    options = {
+      lowlevel_error_handler: ->(_error) do
+        [500, {}, ["something wrong happened"]]
+      end
+    }
+    broken_app = ->(_env) { [200, nil, ->(_env) { ["something wrong happened"] }] }
+
+    server_run(**options, &broken_app)
+
+    body = send_http_read_resp_body "GET / HTTP/1.1\r\n\r\n"
+
+    assert_equal "something wrong happened", body
+  end
+
   def test_lowlevel_error_handler_that_raises_exception
     handler_calls = 0
     faulty_handler = ->(_error, _env, _status) do
@@ -2230,6 +2245,72 @@ class TestPumaServer < PumaTest
       handler_calls += 1
       # Return array but not proper 3-element Rack response
       [500, "not a hash"]
+    end
+
+    options = {
+      lowlevel_error_handler: malformed_handler
+    }
+    broken_app = ->(_env) { raise StandardError, "app error" }
+    server_run(**options, &broken_app)
+
+    # Should get default error response when handler returns malformed response
+    response = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
+
+    assert_equal "HTTP/1.1 500 Internal Server Error", response.status
+    assert_includes response.body, "Puma caught this error: app error"
+    assert handler_calls > 0, "Handler should have been called"
+  end
+
+  def test_lowlevel_error_handler_returns_malformed_status_response
+    handler_calls = 0
+    malformed_handler = ->(_error, _env, _status) do
+      handler_calls += 1
+      # Return array but not proper 3-element Rack response
+      ["not_integer", {}, [""]]
+    end
+
+    options = {
+      lowlevel_error_handler: malformed_handler
+    }
+    broken_app = ->(_env) { raise StandardError, "app error" }
+    server_run(**options, &broken_app)
+
+    # Should get default error response when handler returns malformed response
+    response = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
+
+    assert_equal "HTTP/1.1 500 Internal Server Error", response.status
+    assert_includes response.body, "Puma caught this error: app error"
+    assert handler_calls > 0, "Handler should have been called"
+  end
+
+  def test_lowlevel_error_handler_returns_malformed_headers_response
+    handler_calls = 0
+    malformed_handler = ->(_error, _env, _status) do
+      handler_calls += 1
+      # Return array but not proper 3-element Rack response
+      [500, "not_hash_of_headers", [""]]
+    end
+
+    options = {
+      lowlevel_error_handler: malformed_handler
+    }
+    broken_app = ->(_env) { raise StandardError, "app error" }
+    server_run(**options, &broken_app)
+
+    # Should get default error response when handler returns malformed response
+    response = send_http_read_response "GET / HTTP/1.1\r\n\r\n"
+
+    assert_equal "HTTP/1.1 500 Internal Server Error", response.status
+    assert_includes response.body, "Puma caught this error: app error"
+    assert handler_calls > 0, "Handler should have been called"
+  end
+
+  def test_lowlevel_error_handler_returns_malformed_body_response
+    handler_calls = 0
+    malformed_handler = ->(_error, _env, _status) do
+      handler_calls += 1
+      # Return array but not proper 3-element Rack response
+      [500, {}, "not_an_array_or_proc"]
     end
 
     options = {
