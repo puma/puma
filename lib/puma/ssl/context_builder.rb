@@ -1,4 +1,5 @@
 require 'openssl'
+require 'open3'
 
 module Puma
   module SSL
@@ -11,27 +12,28 @@ module Puma
       def context
         ctx = OpenSSL::SSL::SSLContext.new
 
-        if params['key'].nil? && params['key_pem'].nil?
-          log_writer.error "Please specify the SSL key via 'key=' or 'key_pem='"
-        end
-
-        #ctx.key = params['key'] if params['key']
-        #ctx.key_pem = params['key_pem'] if params['key_pem']
         #ctx.key_password_command = params['key_password_command'] if params['key_password_command']
 
-        # TODO also handle params['key_pem']
-        key = OpenSSL::PKey.read(File.open(params['key']))
+        key = if params['key']
+                File.open(params['key'])
+              elsif params['key_pem']
+                params['key_pem']
+              else
+                log_writer.error "Please specify the SSL key via 'key=' or 'key_pem='"
+              end
+        ctx.key = OpenSSL::PKey.read(key, key_password(params['key_password_command']))
 
         if params['cert'].nil? && params['cert_pem'].nil?
-          log_writer.error "Please specify the SSL cert via 'cert=' or 'cert_pem='"
         end
 
-        # TODO handle also params['cert_pem']
-        cert = OpenSSL::X509::Certificate.new(File.binread(params['cert']))
-
-        #ctx.add_certificate(cert, key)
-        ctx.cert = cert
-        ctx.key = key
+        cert = if params['cert']
+          File.binread(params['cert'])
+        elsif params['cert_pem']
+          params['cert_pem']
+        else
+          log_writer.error "Please specify the SSL cert via 'cert=' or 'cert_pem='"
+        end
+        ctx.cert = OpenSSL::X509::Certificate.new(cert)
 
         #if ['peer', 'force_peer'].include?(params['verify_mode'])
           #unless params['ca']
@@ -77,6 +79,16 @@ module Puma
       private
 
       attr_reader :params, :log_writer
+
+      # Executes the command to return the password needed to decrypt the key.
+      def key_password(command)
+        return nil if command.nil?
+
+        stdout_str, stderr_str, status = Open3.capture3(command)
+        return stdout_str.chomp if status.success?
+
+        raise "Key password failed with code #{status.exitstatus}: #{stderr_str}"
+      end
     end
   end
 end
