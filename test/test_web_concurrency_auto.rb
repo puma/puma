@@ -45,32 +45,21 @@ class TestWebConcurrencyAuto < TestIntegration
     assert_equal expected, actual
   end
 
-  # Rename the processor_counter file, then restore
   def test_web_concurrency_with_concurrent_ruby_unavailable
     file_path = nil
     skip_unless :fork
 
-    ccr_gem = 'concurrent-ruby'
-    file_require = 'concurrent/utility/processor_counter'
-    file_path = Dir["#{ENV['GEM_HOME']}/gems/#{ccr_gem}-*/lib/#{ccr_gem}/#{file_require}.rb"].first
-
-    if file_path && File.exist?(file_path)
-      File.rename file_path, "#{file_path}_orig"
-    else
-      # cannot find concurrent-ruby file?
-    end
-
     _, err = capture_io do
       assert_raises(LoadError) do
         conf = Puma::Configuration.new({}, {}, ENV_WC_TEST)
-        conf.clamp
+        # Mock the require to force it to fail
+        def conf.require(*args)
+          raise LoadError.new("Mocking system where concurrent-ruby is not available")
+        end
+
+        conf.puma_default_options(ENV_WC_TEST)
       end
     end
     assert_includes err, 'Please add "concurrent-ruby" to your Gemfile'
-
-  ensure
-    if file_path && File.exist?("#{file_path}_orig")
-      File.rename "#{file_path}_orig", file_path
-    end
   end
 end
