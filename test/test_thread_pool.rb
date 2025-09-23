@@ -6,7 +6,8 @@ require "puma/thread_pool"
 
 class TestThreadPool < PumaTest
 
-  parallelize_me!
+  # intermittent failures on non MRI Rubies
+  parallelize_me! if Puma::IS_MRI
 
   def teardown
     @pool.shutdown(1) if defined?(@pool)
