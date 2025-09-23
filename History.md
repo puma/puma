@@ -1,3 +1,13 @@
+## 7.0.4 / 2025-09-23
+
+* Bugfixes
+  * Fix SSL_shutdown error handling ([#3703])
+  * Strip whitespace from the beginnings of request header values. ([#3742])
+
+* Performance
+  * puma_http11.c: Use interned UTF-8 strings for hash keys ([#3754])
+  * Move sleep cluster logic to its own class ([#3746], [#3740])
+
 ## 7.0.3 / 2025-09-13
 
 * Performance
@@ -2235,6 +2245,11 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3703]:https://github.com/puma/puma/pull/3703     "PR by @marshall-lee, merged 2025-09-20"
+[#3742]:https://github.com/puma/puma/pull/3742     "PR by @kenballus, merged 2025-09-18"
+[#3754]:https://github.com/puma/puma/pull/3754     "PR by @byroot, merged 2025-09-18"
+[#3746]:https://github.com/puma/puma/pull/3746     "PR by @schneems, merged 2025-09-18"
+[#3740]:https://github.com/puma/puma/issues/3740   "Issue by @joshuay03, closed 2025-09-18"
 [#3748]:https://github.com/puma/puma/pull/3748     "PR by @MSP-Greg, merged 2025-09-14"
 [#3749]:https://github.com/puma/puma/pull/3749     "PR by @schneems, merged 2025-09-14"
 [#3736]:https://github.com/puma/puma/pull/3736     "PR by @MSP-Greg, merged 2025-09-08"
