@@ -340,7 +340,8 @@ class TestThreadPool < PumaTest
     timeout = 0.01
     grace = 0.01
 
-    rescued = []
+    # JRuby Array#<< is not thread-safe
+    rescued = Queue.new
     pool = mutex_pool(2, 2, pool_shutdown_grace_time: grace) do
       begin
         pool.with_force_shutdown do
@@ -360,7 +361,10 @@ class TestThreadPool < PumaTest
 
     assert_equal 0, pool.spawned
     assert_equal 2, rescued.length
-    refute rescued.compact.any?(&:alive?)
+    until rescued.empty?
+      thread = rescued.pop
+      refute thread.alive?
+    end
   end
 
   def test_correct_waiting_count_for_killed_threads
