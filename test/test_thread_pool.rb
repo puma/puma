@@ -53,7 +53,17 @@ class TestThreadPool < PumaTest
     # If +wait+ is true, wait until the trim request is completed before returning.
     def trim(force=false, wait: true)
       super(force)
-      Thread.pass until @trim_requested == 0 if wait
+
+      return unless wait
+      loop do
+        # While we wait until @trim_requested is 0, the test might inspect other values
+        # such as @spawned which may be modified after this variable is modified in the loop
+        # Lock for race safety
+        @mutex.synchronize do
+          return if @trim_requested == 0
+          Thread.pass
+        end
+      end
     end
   end
 
@@ -174,7 +184,7 @@ class TestThreadPool < PumaTest
 
     assert_equal 1, pool.spawned
 
-    pool.trim
+    pool.trim(wait: true)
     assert_equal 0, pool.spawned
   end
 
