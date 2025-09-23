@@ -59,7 +59,7 @@ class TestThreadPool < PumaTest
         # While we wait until @trim_requested is 0, the test might inspect other values
         # such as @spawned which may be modified after this variable is modified in the loop
         # Lock for race safety
-        @mutex.synchronize do
+        with_mutex do
           return if @trim_requested == 0
           Thread.pass
         end
