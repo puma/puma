@@ -61,8 +61,8 @@ class TestThreadPool < PumaTest
         # Lock for race safety
         with_mutex do
           return if @trim_requested == 0
-          Thread.pass
         end
+        Thread.pass
       end
     end
   end
