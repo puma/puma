@@ -195,10 +195,10 @@ class TestThreadPool < PumaTest
 
     assert_equal 2, pool.spawned
 
-    pool.trim
+    pool.trim(wait: true)
     assert_equal 1, pool.spawned
 
-    pool.trim
+    pool.trim(wait: true)
     assert_equal 1, pool.spawned
   end
 
