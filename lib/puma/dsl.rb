@@ -1207,13 +1207,18 @@ module Puma
     end
 
 
+    # Maximum delay of worker (process) accept loop (when workers >= 2)
+    #
     # Attempts to route traffic to less-busy workers by causing them to delay
-    # listening on the socket, allowing workers which are not processing any
+    # listening on the socket, allowing workers which are not processing as many
     # requests to pick up new requests first.
     #
     # The default is 0.005 seconds.
     #
-    # Only works on MRI. For all other interpreters, this setting does nothing.
+    # Only takes effect when there are two or more workers. For interpreters that
+    # do not support forking, this setting does nothing.
+    #
+    # To turn off this feature, set the value to 0.
     #
     # @see Puma::Server#handle_servers
     # @see Puma::ThreadPool#wait_for_less_busy_worker
