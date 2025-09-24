@@ -243,6 +243,15 @@ module Puma
       end
     end
 
+    def log_config
+      log "Configuration:"
+
+      @config.final_options
+        .each { |config_key, value| log "- #{config_key}: #{value}" }
+
+      log "\n"
+    end
+
     private
 
     def get_env
@@ -482,15 +491,6 @@ module Puma
         # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
         # to see this constantly on Linux.
       end
-    end
-
-    def log_config
-      log "Configuration:"
-
-      @config.final_options
-        .each { |config_key, value| log "- #{config_key}: #{value}" }
-
-      log "\n"
     end
   end
 end

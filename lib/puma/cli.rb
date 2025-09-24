@@ -29,6 +29,7 @@ module Puma
       @argv = argv.dup
       @log_writer = log_writer
       @events = events
+      @command = "run"
 
       @conf = nil
 
@@ -43,6 +44,10 @@ module Puma
         setup_options env
 
         if file = @argv.shift
+          if file == "config"
+            @command = "config"
+          end
+
           @conf.configure do |user_config, file_config|
             file_config.rackup file
           end
@@ -70,6 +75,10 @@ module Puma
     # for it to finish.
     #
     def run
+      if @command == "config"
+        @launcher.log_config
+        exit 0
+      end
       @launcher.run
     end
 
