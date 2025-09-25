@@ -5,6 +5,10 @@ require 'thread'
 require_relative 'io_buffer'
 
 module Puma
+
+  # Add `Thread#puma_server` and `Thread#puma_server=`
+  Thread.attr_accessor(:puma_server)
+
   # Internal Docs for A simple thread pool management object.
   #
   # Each Puma "worker" has a thread pool to process requests.
@@ -33,7 +37,9 @@ module Puma
     # The block passed is the work that will be performed in each
     # thread.
     #
-    def initialize(name, options = {}, &block)
+    def initialize(name, options = {}, server: nil, &block)
+      @server = server
+
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
@@ -134,6 +140,9 @@ module Puma
       trigger_before_thread_start_hooks
       th = Thread.new(@spawned) do |spawned|
         Puma.set_thread_name '%s tp %03i' % [@name, spawned]
+        # Advertise server into the thread
+        Thread.current.puma_server = @server
+
         todo  = @todo
         block = @block
         mutex = @mutex
