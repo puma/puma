@@ -259,8 +259,7 @@ module Puma
 
       @status = :run
 
-      @options[:puma_server] = self
-      @thread_pool = ThreadPool.new(thread_name, options) { |client| process_client client }
+      @thread_pool = ThreadPool.new(thread_name, options, server: self) { |client| process_client client }
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend) { |c|

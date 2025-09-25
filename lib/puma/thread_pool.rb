@@ -37,11 +37,8 @@ module Puma
     # The block passed is the work that will be performed in each
     # thread.
     #
-    def initialize(name, options = {}, &block)
-      # below is for CI
-      @server = options.respond_to?(:user_options) ?
-        options.user_options.delete(:puma_server) :
-        options.delete(:puma_server)
+    def initialize(name, options = {}, server: nil, &block)
+      @server = server
 
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
