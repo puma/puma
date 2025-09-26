@@ -56,7 +56,8 @@ module TestPuma
     SIZES_RE = /\d[\d,]*\z/.freeze
 
     def initialize
-      sleep 0.2     # wait for server to boot
+      # wait for server to boot
+      sleep (RUBY_ENGINE == 'ruby' ? 2.0 : 8.0)
 
       @thread_loops       = nil
       @clients_per_thread = nil
@@ -181,7 +182,7 @@ module TestPuma
     # @return [Hash] The hey data
     #
     def run_hey_parse(cmd, mult, log: false)
-      STDOUT.syswrite format('%4.2f %s', mult, cmd)
+      STDOUT.syswrite format('%4.2f', mult)
 
       hey_output = %x[#{cmd}].strip.gsub(' secs', '')
 
@@ -211,7 +212,7 @@ module TestPuma
         end
         temp[100] = hey_output[/^\s+Slowest\:\s+([\d.]+)/, 1].to_f
       end
-      STDOUT.syswrite format(" %6d  %7.4f  %7.4f\n", job[:rps].to_i, job[:latency][50], job[:latency][99]) unless log
+      STDOUT.syswrite format(" %6d  %7.4f  %7.4f   %s\n", job[:rps].to_i, job[:latency][50], job[:latency][99], cmd) unless log
       job
     end
 
