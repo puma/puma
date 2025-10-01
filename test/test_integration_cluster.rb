@@ -435,7 +435,7 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-C test/config/prune_bundler_with_multiple_workers.rb"
     reply = read_body(connect)
 
-    assert reply, "embedded app"
+    assert_equal reply, "embedded app"
   end
 
   def test_load_path_includes_extra_deps
@@ -575,8 +575,8 @@ class TestIntegrationCluster < TestIntegration
       wait_for_server_to_match(/(index \d data \d)/, 1)
     end.sort
 
-    assert 'index 0 data 0', ary[0]
-    assert 'index 1 data 1', ary[1]
+    assert_equal 'index 0 data 0', ary[0]
+    assert_equal 'index 1 data 1', ary[1]
   end
 
   def test_after_worker_shutdown_hook
