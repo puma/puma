@@ -15,20 +15,18 @@ Gem::Specification.new do |s|
   s.executables = ["puma", "pumactl"]
   s.extensions = ["ext/puma_http11/extconf.rb"]
   s.add_runtime_dependency "nio4r", "~> 2.0"
-  s.metadata["msys2_mingw_dependencies"] = "openssl"
   s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
             %w[History.md LICENSE README.md]
   s.homepage = "https://puma.io"
 
-  if s.respond_to?(:metadata=)
-    s.metadata = {
-      "bug_tracker_uri" => "https://github.com/puma/puma/issues",
-      "changelog_uri" => "https://github.com/puma/puma/blob/master/History.md",
-      "homepage_uri" => "https://puma.io",
-      "source_code_uri" => "https://github.com/puma/puma",
-      "rubygems_mfa_required" => "true"
-    }
-  end
+  s.metadata = {
+    "bug_tracker_uri" => "https://github.com/puma/puma/issues",
+    "changelog_uri" => "https://github.com/puma/puma/blob/master/History.md",
+    "homepage_uri" => "https://puma.io",
+    "source_code_uri" => "https://github.com/puma/puma",
+    "rubygems_mfa_required" => "true",
+    "msys2_mingw_dependencies" => "openssl"
+  }
 
   s.license = "BSD-3-Clause"
   s.required_ruby_version = Gem::Requirement.new(">= 3.0")
