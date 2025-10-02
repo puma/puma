@@ -4,7 +4,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationSingle < TestIntegration
-  parallelize_me! if ::Puma::IS_MRI
+  parallelize_me!
 
   def workers ; 0 ; end
 
