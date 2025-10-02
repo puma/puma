@@ -579,6 +579,19 @@ class TestIntegrationCluster < TestIntegration
     assert 'index 1 data 1', ary[1]
   end
 
+  def test_after_worker_shutdown_hook
+    cli_server "-C test/config/after_shutdown_hook.rb test/rackup/hello.ru"
+    get_worker_pids 0, 2 # make sure workers are booted
+    stop_server
+
+    ary = Array.new(2) do |_index|
+      wait_for_server_to_match(/(after_worker_shutdown worker=\d status=\d+)/, 1)
+    end.sort
+
+    assert_equal 'after_worker_shutdown worker=0 status=0', ary[0]
+    assert_equal 'after_worker_shutdown worker=1 status=0', ary[1]
+  end
+
   def test_worker_hook_warning_cli
     cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
       before_worker_boot(:test) do |index, data|

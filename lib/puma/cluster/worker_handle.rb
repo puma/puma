@@ -28,10 +28,10 @@ module Puma
         @worker_max = Array.new WORKER_MAX_KEYS.length, 0
       end
 
-      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at
+      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at, :process_status
 
       # @version 5.0.0
-      attr_writer :pid, :phase
+      attr_writer :pid, :phase, :process_status
 
       def booted?
         @stage == :booted
