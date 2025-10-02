@@ -656,7 +656,8 @@ module Puma
       @options[:state] = path.to_s
     end
 
-    # Use +permission+ to restrict permissions for the state file.
+    # Use +permission+ to restrict permissions for the state file.  By convention,
+    # +permission+ is an octal number (e.g. `0640` or `0o640`).
     #
     # @example
     #   state_permission 0600

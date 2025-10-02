@@ -34,6 +34,9 @@ class TestLauncher < PumaTest
   end
 
   def test_state_permission_0640
+    state_path = nil
+    skip_if :windows # only 0644 ?
+
     state_path = tmp_path('.state')
     state_permission = 0640
 
@@ -44,9 +47,9 @@ class TestLauncher < PumaTest
 
     create_launcher(conf).write_state
 
-    assert File.stat(state_path).mode.to_s(8)[-4..-1], state_permission
+    assert_equal state_permission.to_s(8), File.stat(state_path).mode.to_s(8)[-3..-1]
   ensure
-    File.unlink state_path
+    File.unlink(state_path) if state_path
   end
 
   def test_state_permission_nil
