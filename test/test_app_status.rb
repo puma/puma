@@ -94,4 +94,23 @@ class TestAppStatus < PumaTest
     status, _ , _ = lint('__alternatE_location_/stats')
     assert_equal 200, status
   end
+
+  def test_disabled_command
+    @app = Puma::App::Status.new(@server, nil, true)
+
+    status, _ , app = lint('/stats')
+
+    assert_equal 200, status
+    assert_equal ['{}'], app.enum_for.to_a
+
+    status, _ , app = lint('/gc-stats')
+
+    assert_equal 200, status
+
+    status, _ , app = lint('/stop')
+
+    assert_equal :running, @server.status
+    assert_equal 404, status
+    assert_equal ['Command "stop" unavailable'], app.enum_for.to_a
+  end
 end

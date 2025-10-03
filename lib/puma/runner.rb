@@ -70,7 +70,7 @@ module Puma
         token = nil if token.empty? || token == 'none'
       end
 
-      app = Puma::App::Status.new @launcher, token
+      app = Puma::App::Status.new @launcher, token, @options[:control_data_only]
 
       # A Reactor is not created and nio4r is not loaded when 'queue_requests: false'
       # Use `nil` for events, no hooks in control server
