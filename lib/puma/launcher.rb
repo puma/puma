@@ -42,26 +42,39 @@ module Puma
     #   end
     #   Puma::Launcher.new(conf, log_writer: Puma::LogWriter.stdio).run
     def initialize(conf, launcher_args={})
-      @runner        = nil
-      @log_writer    = launcher_args[:log_writer] || LogWriter::DEFAULT
-      @events        = launcher_args[:events] || Events.new
-      @argv          = launcher_args[:argv] || []
-      @original_argv = @argv.dup
-      @config        = conf
+      ## Minimal initialization for a potential early restart (e.g. when pruning bundle)
 
-      env = launcher_args.delete(:env) || ENV
-
+      @config = conf
       @config.clamp
+
       @options = @config.options
 
+      @log_writer = launcher_args[:log_writer] || LogWriter::DEFAULT
+      @log_writer.formatter = LogWriter::PidFormatter.new if clustered?
+      @log_writer.formatter = @options[:log_formatter] if @options[:log_formatter]
+      @log_writer.custom_logger = @options[:custom_logger] if @options[:custom_logger]
       @options[:log_writer] = @log_writer
       @options[:logger] = @log_writer if clustered?
+
+      @events = launcher_args[:events] || Events.new
+
+      @argv = launcher_args[:argv] || []
+      @original_argv = @argv.dup
+
+      ## End minimal initialization
+
+      generate_restart_data
+      Dir.chdir(@restart_dir)
+
+      prune_bundler!
+
+      env = launcher_args.delete(:env) || ENV
 
       # Advertise the Configuration
       Puma.cli_config = @config if defined?(Puma.cli_config)
       log_config if env['PUMA_LOG_CONFIG']
 
-      @binder        = Binder.new(@log_writer, @options)
+      @binder = Binder.new(@log_writer, @options)
       @binder.create_inherited_fds(env).each { |k| env.delete k }
       @binder.create_activated_fds(env).each { |k| env.delete k }
 
@@ -81,20 +94,9 @@ module Puma
         )
       end
 
-      @log_writer.formatter = LogWriter::PidFormatter.new if clustered?
-      @log_writer.formatter = @options[:log_formatter] if @options[:log_formatter]
-
-      @log_writer.custom_logger = @options[:custom_logger] if @options[:custom_logger]
-
-      generate_restart_data
-
       if clustered? && !Puma.forkable?
         unsupported "worker mode not supported on #{RUBY_ENGINE} on this platform"
       end
-
-      Dir.chdir(@restart_dir)
-
-      prune_bundler!
 
       @environment = @options[:environment] if @options[:environment]
       set_rack_environment
@@ -381,9 +383,9 @@ module Puma
         # using it.
         @restart_dir = Dir.pwd
 
-        # Use the same trick as unicorn, namely favor PWD because
-        # it will contain an unresolved symlink, useful for when
-        # the pwd is /data/releases/current.
+      # Use the same trick as unicorn, namely favor PWD because
+      # it will contain an unresolved symlink, useful for when
+      # the pwd is /data/releases/current.
       elsif dir = ENV['PWD']
         s_env = File.stat(dir)
         s_pwd = File.stat(Dir.pwd)
