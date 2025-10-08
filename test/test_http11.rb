@@ -11,7 +11,7 @@ require "puma/puma_http11"
 
 class Http11ParserTest < TestIntegration
 
-  parallelize_me!
+  parallelize_me! unless ::Puma::IS_JRUBY && RUBY_DESCRIPTION.include?('x86_64-darwin')
 
   def test_parse_simple
     parser = Puma::HttpParser.new
@@ -156,7 +156,8 @@ class Http11ParserTest < TestIntegration
              { envs: %w[-4000 0 3000.45], exp: default_exp, error_indexes: [0, 1, 2] }]
     cli_config = <<~CONFIG
         app do |_|
-          [200, {}, [JSONSerialization.generate({ MAX_REQUEST_URI_LENGTH:      org.jruby.puma.Http11::MAX_REQUEST_URI_LENGTH,
+          [200, {}, [JSONSerialization.generate({
+                       MAX_REQUEST_URI_LENGTH:      org.jruby.puma.Http11::MAX_REQUEST_URI_LENGTH,
                        MAX_REQUEST_PATH_LENGTH:     org.jruby.puma.Http11::MAX_REQUEST_PATH_LENGTH,
                        MAX_QUERY_STRING_LENGTH:     org.jruby.puma.Http11::MAX_QUERY_STRING_LENGTH,
                        MAX_REQUEST_URI_LENGTH_ERR:  org.jruby.puma.Http11::MAX_REQUEST_URI_LENGTH_ERR,
@@ -171,6 +172,7 @@ class Http11ParserTest < TestIntegration
         merge_err: true,
         config: cli_config
 
+      sleep 0.25
       result = JSON.parse read_body(connect)
 
       assert_equal conf[:exp][0], result['MAX_REQUEST_URI_LENGTH']
