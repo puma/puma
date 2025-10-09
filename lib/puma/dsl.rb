@@ -216,6 +216,8 @@ module Puma
     #   activate_control_app 'unix:///var/run/pumactl.sock', { auth_token: '12345' }
     # @example
     #   activate_control_app 'unix:///var/run/pumactl.sock', { no_token: true }
+    # @example
+    #   activate_control_app 'unix:///var/run/pumactl.sock', { no_token: true, data_only: true}
     #
     def activate_control_app(url="auto", opts={})
       if url == "auto"
@@ -240,6 +242,7 @@ module Puma
 
       @options[:control_auth_token] = auth_token
       @options[:control_url_umask] = opts[:umask] if opts[:umask]
+      @options[:control_data_only] = opts[:data_only] if opts[:data_only]
     end
 
     # Load additional configuration from a file.
