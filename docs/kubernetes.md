@@ -10,7 +10,7 @@ Assuming you already have a running cluster and docker image repository, you can
 
 A basic Dockerfile example:
 
-```
+```Dockerfile
 FROM ruby:3.4.5-alpine # can be updated to newer ruby versions
 RUN apk update && apk add build-base # and any other packages you need
 
@@ -28,7 +28,7 @@ CMD bundle exec rackup -o 0.0.0.0
 
 A sample `deployment.yaml`:
 
-```
+```yaml
 ---
 apiVersion: apps/v1
 kind: Deployment
