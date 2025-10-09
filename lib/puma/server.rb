@@ -19,9 +19,6 @@ require 'socket'
 require 'io/wait' unless Puma::HAS_NATIVE_IO_WAIT
 
 module Puma
-  # Add `Thread#puma_server` and `Thread#puma_server=`
-  Thread.attr_accessor(:puma_server)
-
   # The HTTP Server itself. Serves out a single Rack app.
   #
   # This class is used by the `Puma::Single` and `Puma::Cluster` classes
@@ -262,7 +259,7 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(thread_name, options) { |client| process_client client }
+      @thread_pool = ThreadPool.new(thread_name, options, server: self) { |client| process_client client }
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend) { |c|
@@ -481,9 +478,6 @@ module Puma
     #
     # Return true if one or more requests were processed.
     def process_client(client)
-      # Advertise this server into the thread
-      Thread.current.puma_server = self
-
       close_socket = true
 
       requests = 0
