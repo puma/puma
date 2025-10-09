@@ -706,7 +706,7 @@ module Puma
 
     def reset_max
       @reactor.reactor_max = 0 if @reactor
-      @thread_pool.reset_max
+      @thread_pool&.reset_max
     end
 
     # below are 'delegations' to binder

@@ -2257,4 +2257,8 @@ class TestPumaServer < PumaTest
     server_run(min_threads: 2, max_threads: 2, auto_trim_time: 1)
     refute @pool.instance_variable_get(:@auto_trim)
   end
+
+  def test_stats_ok_before_run
+    assert_equal({max_threads: @server.max_threads, requests_count: 0}, @server.stats)
+  end
 end
