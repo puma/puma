@@ -81,6 +81,7 @@ module Puma
     end
 
     attr_reader :spawned, :trim_requested, :waiting
+    attr_accessor :min, :max
 
     # generate stats hash so as not to perform multiple locks
     # @return [Hash] hash containing stat info from ThreadPool
@@ -90,7 +91,7 @@ module Puma
         @backlog_max = 0
         { backlog: @todo.size,
           running: @spawned,
-          pool_capacity: @waiting + (@max - @spawned),
+          pool_capacity: pool_capacity,
           busy_threads: @spawned - @waiting + @todo.size,
           backlog_max: temp
         }
@@ -115,7 +116,9 @@ module Puma
 
     # @!attribute [r] pool_capacity
     def pool_capacity
-      waiting + (@max - spawned)
+      capacity = waiting + (@max - spawned)
+
+      capacity < 0 ? 0 : capacity
     end
 
     # @!attribute [r] busy_threads
