@@ -524,8 +524,14 @@ module Puma
             end
 
             if next_request_ready
-              @thread_pool << client
-              close_socket = false
+              # When Puma has spare threads, allow this one to be monopolized
+              # Perf optimization for https://github.com/puma/puma/issues/3788
+              if @thread_pool.waiting > 0
+                can_loop = true
+              else
+                @thread_pool << client
+                close_socket = false
+              end
             elsif @queue_requests
               client.set_timeout @persistent_timeout
               if @reactor.add client
