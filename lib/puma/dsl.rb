@@ -1222,13 +1222,19 @@ module Puma
     end
 
 
-    # Attempts to route traffic to less-busy workers by causing them to delay
-    # listening on the socket, allowing workers which are not processing any
+    # Maximum delay of worker accept loop.
+    #
+    # Attempts to route traffic to less-busy workers by causing a busy worker to delay
+    # listening on the socket, allowing workers which are not processing as many
     # requests to pick up new requests first.
     #
     # The default is 0.005 seconds.
     #
-    # Only works on MRI. For all other interpreters, this setting does nothing.
+    # To turn off this feature, set the value to 0.
+    #
+    # @note Cluster mode with >= 2 workers only.
+    #
+    # @note Interpreters with forking support only.
     #
     # @see Puma::Server#handle_servers
     # @see Puma::ThreadPool#wait_for_less_busy_worker
