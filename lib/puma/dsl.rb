@@ -1207,16 +1207,17 @@ module Puma
     end
 
 
-    # Maximum delay of worker (process) accept loop (when workers >= 2)
+    # Maximum delay of worker accept loop.
     #
-    # Attempts to route traffic to less-busy workers by causing them to delay
+    # Attempts to route traffic to less-busy workers by causing a busy worker to delay
     # listening on the socket, allowing workers which are not processing as many
     # requests to pick up new requests first.
     #
     # The default is 0.005 seconds.
+
+    # @note Cluster mode with >= 2 workers only.
     #
-    # Only takes effect when there are two or more workers. For interpreters that
-    # do not support forking, this setting does nothing.
+    # @note Interpreters with forking support only.
     #
     # To turn off this feature, set the value to 0.
     #
