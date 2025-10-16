@@ -502,31 +502,41 @@ module Puma
           client.finish(@first_data_timeout)
         end
 
-        @requests_count += 1
-        case handle_request(client, requests + 1)
-        when false
-        when :async
-          close_socket = false
-        when true
-          requests += 1
-
-          client.reset
-
-          # This indicates data exists in the client read buffer and there may be
-          # additional requests on it, so process them
-          next_request_ready = if client.has_back_to_back_requests?
-            with_force_shutdown(client) { client.process_back_to_back_requests }
-          else
-            with_force_shutdown(client) { client.eagerly_finish }
-          end
-
-          if next_request_ready
-            @thread_pool << client
+        can_loop = true
+        while can_loop
+          can_loop = false
+          @requests_count += 1
+          case handle_request(client, requests + 1)
+          when false
+          when :async
             close_socket = false
-          elsif @queue_requests
-            client.set_timeout @persistent_timeout
-            if @reactor.add client
-              close_socket = false
+          when true
+            requests += 1
+
+            client.reset
+
+            # This indicates data exists in the client read buffer and there may be
+            # additional requests on it, so process them
+            next_request_ready = if client.has_back_to_back_requests?
+              with_force_shutdown(client) { client.process_back_to_back_requests }
+            else
+              with_force_shutdown(client) { client.eagerly_finish }
+            end
+
+            if next_request_ready
+              # When Puma has spare threads, allow this one to be monopolized
+              # Perf optimization for https://github.com/puma/puma/issues/3788
+              if @thread_pool.waiting > 0
+                can_loop = true
+              else
+                @thread_pool << client
+                close_socket = false
+              end
+            elsif @queue_requests
+              client.set_timeout @persistent_timeout
+              if @reactor.add client
+                close_socket = false
+              end
             end
           end
         end
