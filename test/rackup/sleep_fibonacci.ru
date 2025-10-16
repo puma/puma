@@ -48,6 +48,8 @@ app_lambda = ->(env) {
       mod = 6; 24
     end
 
+  fib_num -= 3 unless RUBY_ENGINE == 'ruby'
+
   cpu_time = 0
   loops = 0
 
