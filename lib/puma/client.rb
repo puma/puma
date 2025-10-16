@@ -500,29 +500,26 @@ module Puma
       # after this
       remain = @body_remain
 
-      if remain > CHUNK_SIZE
-        want = CHUNK_SIZE
-      else
-        want = remain
-      end
+      # don't bother with reading zero bytes
+      unless remain.zero?
+        begin
+          chunk = @io.read_nonblock(remain.clamp(0, CHUNK_SIZE), @read_buffer)
+        rescue IO::WaitReadable
+          return false
+        rescue SystemCallError, IOError
+          raise ConnectionError, "Connection error detected during read"
+        end
 
-      begin
-        chunk = @io.read_nonblock(want, @read_buffer)
-      rescue IO::WaitReadable
-        return false
-      rescue SystemCallError, IOError
-        raise ConnectionError, "Connection error detected during read"
-      end
+        # No chunk means a closed socket
+        unless chunk
+          @body.close
+          @buffer = nil
+          set_ready
+          raise EOFError
+        end
 
-      # No chunk means a closed socket
-      unless chunk
-        @body.close
-        @buffer = nil
-        set_ready
-        raise EOFError
+        remain -= @body.write(chunk)
       end
-
-      remain -= @body.write(chunk)
 
       if remain <= 0
         @body.rewind
