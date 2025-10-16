@@ -155,6 +155,7 @@ module Puma
       out_of_band: [],
       # Number of seconds for another request within a persistent session.
       persistent_timeout: 65, # PUMA_PERSISTENT_TIMEOUT
+      prune_bundler: false,
       queue_requests: true,
       rackup: 'config.ru'.freeze,
       raise_exception_on_sigterm: true,
