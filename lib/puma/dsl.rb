@@ -1214,12 +1214,12 @@ module Puma
     # requests to pick up new requests first.
     #
     # The default is 0.005 seconds.
-
+    #
+    # To turn off this feature, set the value to 0.
+    #
     # @note Cluster mode with >= 2 workers only.
     #
     # @note Interpreters with forking support only.
-    #
-    # To turn off this feature, set the value to 0.
     #
     # @see Puma::Server#handle_servers
     # @see Puma::ThreadPool#wait_for_less_busy_worker
