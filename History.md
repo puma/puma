@@ -1,3 +1,17 @@
+## 7.1.0 / 2025-10-16
+
+* Features
+  * Introduce `after_worker_shutdown` hook ([#3707])
+  * Reintroduce keepalive "fast inline" behavior. Provides faster (8x on JRuby & 1.4x on Ruby) pipeline processing  ([#3794])
+
+* Bugfixes
+  * Skip reading zero bytes when request body is buffered ([#3795])
+  * Fix `PUMA_LOG_CONFIG=1` logging twice with prune_bundler enabled ([#3778])
+  * Fix prune_bundler not showing in `PUMA_LOG_CONFIG=1` output ([#3779])
+  * Guard ThreadPool method call, which may be nil during shutdown ([#3791], [#3790])
+  * Set `Thread.current.puma_server` in Thread init code, not every request ([#3774])
+  * Fix race condition while deleting pidfile ([#3657])
+
 ## 7.0.4 / 2025-09-23
 
 * Bugfixes
@@ -2245,6 +2259,15 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3707]:https://github.com/puma/puma/pull/3707     "PR by @nerdrew, merged 2025-10-02"
+[#3794]:https://github.com/puma/puma/pull/3794     "PR by @schneems, merged 2025-10-16"
+[#3795]:https://github.com/puma/puma/pull/3795     "PR by @MSP-Greg, merged 2025-10-16"
+[#3778]:https://github.com/puma/puma/pull/3778     "PR by @joshuay03, merged 2025-10-16"
+[#3779]:https://github.com/puma/puma/pull/3779     "PR by @joshuay03, merged 2025-10-16"
+[#3791]:https://github.com/puma/puma/pull/3791     "PR by @MSP-Greg, merged 2025-10-09"
+[#3790]:https://github.com/puma/puma/issues/3790   "Issue by @eric-wtfoxtrot, closed 2025-10-09"
+[#3774]:https://github.com/puma/puma/pull/3774     "PR by @MSP-Greg, merged 2025-10-16"
+[#3657]:https://github.com/puma/puma/pull/3657     "PR by @marksmith, merged 2025-10-16"
 [#3703]:https://github.com/puma/puma/pull/3703     "PR by @marshall-lee, merged 2025-09-20"
 [#3742]:https://github.com/puma/puma/pull/3742     "PR by @kenballus, merged 2025-09-18"
 [#3754]:https://github.com/puma/puma/pull/3754     "PR by @byroot, merged 2025-09-18"
