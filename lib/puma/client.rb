@@ -502,11 +502,8 @@ module Puma
 
       # don't bother with reading zero bytes
       unless remain.zero?
-
-        want = remain > CHUNK_SIZE ? CHUNK_SIZE : remain
-
         begin
-          chunk = @io.read_nonblock(want, @read_buffer)
+          chunk = @io.read_nonblock(remain.clamp(0, CHUNK_SIZE), @read_buffer)
         rescue IO::WaitReadable
           return false
         rescue SystemCallError, IOError
