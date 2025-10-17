@@ -96,7 +96,7 @@ class TestAppStatus < PumaTest
   end
 
   def test_disabled_command
-    @app = Puma::App::Status.new(@server, nil, true)
+    @app = Puma::App::Status.new(@server, data_only: true)
 
     status, _ , app = lint('/stats')
 

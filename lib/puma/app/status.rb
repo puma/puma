@@ -13,7 +13,7 @@ module Puma
       # @param token [String, nil] the token used for authentication
       # @param data_only [Boolean] if true, restrict to read-only data commands
       #
-      def initialize(launcher, token = nil, data_only = false)
+      def initialize(launcher, token: nil, data_only: false)
         @launcher = launcher
         @auth_token = token
         @enabled_commands = READ_ONLY_COMMANDS if data_only
