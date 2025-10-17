@@ -525,12 +525,11 @@ module Puma
         @body.rewind
         @buffer = nil
         set_ready
-        return true
+        true
+      else
+        @body_remain = remain
+        false
       end
-
-      @body_remain = remain
-
-      false
     end
 
     def read_chunked_body
