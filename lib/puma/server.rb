@@ -730,6 +730,21 @@ module Puma
       @binder.add_unix_listener path, umask, mode, backlog
     end
 
+    def update_thread_pool_min_max(min: @thread_pool.min, max: @thread_pool.max)
+      if min > max
+        @log_writer.log "`min' value cannot be greater than `max' value."
+        return
+      end
+
+      if min <= 0
+        @log_writer.log "`min' value cannot be less than 0"
+        return
+      end
+
+      @thread_pool.min, @thread_pool.max = min, max
+      @min_threads, @max_threads = min, max
+    end
+
     # @!attribute [r] connected_ports
     def connected_ports
       @binder.connected_ports

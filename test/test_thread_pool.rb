@@ -391,4 +391,25 @@ class TestThreadPool < PumaTest
     sleep 1
     assert_equal 0, pool.backlog
   end
+
+  def test_pool_capacity_never_negative
+    pool = mutex_pool(5,5) do
+      th = Thread.current
+      Thread.new {th.join; pool.signal}
+      th.kill
+    end
+
+    pool << 1
+    pool << 1
+    pool << 1
+    pool << 1
+    pool << 1
+
+    assert_equal 5, pool.spawned
+
+    pool.min = 1
+    pool.max = 1
+
+    assert_equal 0, pool.pool_capacity
+  end
 end
