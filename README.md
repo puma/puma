@@ -4,7 +4,7 @@
 
 # Puma: A Ruby Web Server Built For Parallelism
 
-[![Actions](https://github.com/puma/puma/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/puma/puma/actions/workflows/tests.yml?query=branch%3Amaster)
+[![Actions](https://github.com/puma/puma/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/puma/puma/actions/workflows/tests.yml?query=branch%3Amain)
 [![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
 [![StackOverflow](https://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( https://stackoverflow.com/questions/tagged/puma )
 
@@ -82,10 +82,10 @@ $ bundle exec puma
 
 ## Configuration
 
-Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
+Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/main/lib/puma/dsl.rb).
 
 You can also find several configuration examples as part of the
-[test](https://github.com/puma/puma/tree/master/test/config) suite.
+[test](https://github.com/puma/puma/tree/main/test/config) suite.
 
 For debugging purposes, you can set the environment variable `PUMA_LOG_CONFIG` with a value
 and the loaded configuration will be printed as part of the boot process.
@@ -118,9 +118,9 @@ $ WEB_CONCURRENCY=3 puma -t 8:32
 
 Note that threads are still used in cluster mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will spawn 32 threads in total, with 16 in each worker process.
 
-If the `WEB_CONCURRENCY` environment variable is set to `"auto"` and the `concurrent-ruby` gem is available in your application, Puma will set the worker process count to the result of [available processors](https://ruby-concurrency.github.io/concurrent-ruby/master/Concurrent.html#available_processor_count-class_method).
+If the `WEB_CONCURRENCY` environment variable is set to `"auto"` and the `concurrent-ruby` gem is available in your application, Puma will set the worker process count to the result of [available processors](https://msp-greg.github.io/concurrent-ruby/Concurrent.html#available_processor_count-class_method).
 
-For an in-depth discussion of the tradeoffs of thread and process count settings, [see our docs](https://github.com/puma/puma/blob/9282a8efa5a0c48e39c60d22ca70051a25df9f55/docs/kubernetes.md#workers-per-pod-and-other-config-issues).
+For an in-depth discussion of the tradeoffs of thread and process count settings, [see our docs](docs/kubernetes.md#workers-per-pod-and-other-config-issues).
 
 In cluster mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
 
@@ -226,7 +226,7 @@ end
 ### Error handling
 
 If Puma encounters an error outside of the context of your application, it will respond with a 400/500 and a simple
-textual error message (see `Puma::Server#lowlevel_error` or [server.rb](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
+textual error message (see `Puma::Server#lowlevel_error` or [server.rb](https://github.com/puma/puma/blob/main/lib/puma/server.rb)).
 You can specify custom behavior for this scenario. For example, you can report the error to your third-party
 error-tracking service (in this example, [rollbar](https://rollbar.com)):
 
@@ -385,7 +385,7 @@ Puma has a built-in status and control app that can be used to query and control
 $ puma --control-url tcp://127.0.0.1:9293 --control-token foo
 ```
 
-Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the status app has available.
+Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/main/lib/puma/app/status.rb) to see what the status app has available.
 
 You can also interact with the control server via `pumactl`. This command will restart Puma:
 
@@ -417,7 +417,7 @@ $ puma -C "-"
 
 The other side-effects of setting the environment are whether to show stack traces (in `development` or `test`), and setting RACK_ENV may potentially affect middleware looking for this value to change their behavior. The default puma RACK_ENV value is `development`. You can see all config default values in `Puma::Configuration#puma_default_options` or [configuration.rb](https://github.com/puma/puma/blob/61c6213fbab/lib/puma/configuration.rb#L182-L204).
 
-Check out `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
+Check out `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/main/lib/puma/dsl.rb) to see all available options.
 
 ## Restart
 
