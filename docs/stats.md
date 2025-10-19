@@ -70,7 +70,7 @@ When Puma runs in single mode, these stats are available at the top level. When 
 
 ### cluster mode
 
-* phase: which phase of restart the process is in, during [phased restart](https://github.com/puma/puma/blob/master/docs/restart.md)
+* phase: which phase of restart the process is in, during [phased restart](https://github.com/puma/puma/blob/main/docs/restart.md)
 * workers: ??
 * booted_workers: how many workers currently running?
 * old_workers: ??

@@ -2,7 +2,7 @@
 
 By participating in this project, you agree to follow the [code of conduct].
 
-[code of conduct]: https://github.com/puma/puma/blob/master/CODE_OF_CONDUCT.md
+[code of conduct]: https://github.com/puma/puma/blob/main/CODE_OF_CONDUCT.md
 
 There are lots of ways to contribute to Puma. Some examples include:
 
@@ -17,7 +17,7 @@ There are lots of ways to contribute to Puma. Some examples include:
 [feature request]: https://github.com/puma/puma/issues/new?template=feature_request.md
 [existing bug reports]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Aneeds-repro
 [pull requests]: https://github.com/puma/puma/pulls
-[documentation]: https://github.com/puma/puma/tree/master/docs
+[documentation]: https://github.com/puma/puma/tree/main/docs
 [reproduction steps]: https://github.com/puma/puma/blob/CONTRIBUTING.md#reproduction-steps
 [reproducing bug]: https://github.com/puma/puma/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abug
 
@@ -209,8 +209,8 @@ docker build -f tools/Dockerfile -t puma .
 docker run -p 9292:9292 -it puma
 ```
 
-[rackup]: https://github.com/puma/puma/blob/master/test/rackup/hello.ru
-[config]: https://github.com/puma/puma/blob/master/test/config/settings.rb
+[rackup]: https://github.com/puma/puma/blob/main/test/rackup/hello.ru
+[config]: https://github.com/puma/puma/blob/main/test/config/settings.rb
 
 ## Pull requests
 
@@ -238,8 +238,8 @@ If you're looking to contribute to Puma, please join us in [Discussions](https:/
 
 Puma can be a bit intimidating for your first contribution because there's a lot of concepts here that you've probably never had to think about before - Rack, sockets, forking, threads etc. Here are some helpful links for learning more about things related to Puma:
 
-* [Puma's Architecture docs](https://github.com/puma/puma/blob/master/docs/architecture.md)
-* [The Rack specification](https://github.com/rack/rack/blob/master/SPEC.rdoc)
+* [Puma's Architecture docs](https://github.com/puma/puma/blob/main/docs/architecture.md)
+* [The Rack specification](https://github.com/rack/rack/blob/main/SPEC.rdoc)
 * [Working with...](https://workingwithruby.com/) "Working With" is a excellent (and now free) Ruby book series about working with Threads, TCP and Unix Sockets.
 * The Ruby docs for IO.pipe, TCPServer/Socket.
 * [nio4r documentation](https://github.com/socketry/nio4r/wiki/Getting-Started)
