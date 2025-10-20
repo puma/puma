@@ -62,7 +62,7 @@ module Puma
         return prepare_response(413, {}, ["Payload Too Large"], requests, client)
       end
 
-      normalize_env env, client
+      Request.normalize_env env, client, @env_set_http_version
 
       env[PUMA_SOCKET] = socket
 
@@ -418,7 +418,7 @@ module Puma
     # @param env [Hash] see Puma::Client#env, from request
     # @param client [Puma::Client] only needed for Client#peerip
     #
-    def normalize_env(env, client)
+    def self.normalize_env(env, client, env_set_http_version)
       if host = env[HTTP_HOST]
         # host can be a hostname, ipv4 or bracketed ipv6. Followed by an optional port.
         if colon = host.rindex("]:") # IPV6 with port
@@ -488,9 +488,8 @@ module Puma
 
       # The legacy HTTP_VERSION header can be sent as a client header.
       # Rack v4 may remove using HTTP_VERSION.  If so, remove this line.
-      env[HTTP_VERSION] = env[SERVER_PROTOCOL] if @env_set_http_version
+      env[HTTP_VERSION] = env[SERVER_PROTOCOL] if env_set_http_version
     end
-    private :normalize_env
 
     # @param header_key [#to_s]
     # @return [Boolean]
