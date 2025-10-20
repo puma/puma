@@ -500,6 +500,9 @@ module Puma
     end
 
     class HandleRequest
+      # Used for testing so the app can be changed after initialization
+      attr_writer :app
+
       include Puma::Const
 
       def initialize(prepare_response:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, thread_pool:, app:, closed_socket_proc:, lowlevel_error_proc:)

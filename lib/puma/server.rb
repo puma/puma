@@ -53,8 +53,8 @@ module Puma
       :leak_stack_on_error,
       :persistent_timeout, :reaping_time
 
-    attr_accessor :app
     attr_accessor :binder
+    attr_reader :app
 
     # Create a server for the rack app +app+.
     #
@@ -150,6 +150,13 @@ module Puma
         closed_socket_proc: method(:closed_socket?),
         shutting_down_proc: method(:shutting_down?)
       )
+    end
+
+    # The app can be changed after initialization for testing purposes
+    # When the app is changed, the HandleRequest instance must also be changed
+    def app=(app)
+      @app = app
+      @handle_request&.app = app
     end
 
     def inherit_binder(bind)
