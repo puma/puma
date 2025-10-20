@@ -269,7 +269,7 @@ module Puma
         return :async
       end
 
-      fast_write_response socket, body, io_buffer, chunked, content_length.to_i
+      Request.fast_write_response socket, body, io_buffer, chunked, content_length.to_i
       body.close if close_body
       # if we're shutting down, close keep_alive connections
       !shutting_down? && keep_alive ? :keep_alive : :close
@@ -328,7 +328,7 @@ module Puma
     # @paramn content_length [Integer
     # @raise [ConnectionError]
     #
-    def fast_write_response(socket, body, io_buffer, chunked, content_length)
+    def self.fast_write_response(socket, body, io_buffer, chunked, content_length)
       if body.is_a?(::File) && body.respond_to?(:read)
         if chunked  # would this ever happen?
           while chunk = body.read(BODY_LEN_MAX)
@@ -412,7 +412,6 @@ module Puma
       raise ConnectionError, SOCKET_WRITE_ERR_MSG
     end
 
-    private :fast_write_response
 
     # Given a Hash +env+ for the request read from +client+, add
     # and fixup keys to comply with Rack's env guidelines.
