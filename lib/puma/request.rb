@@ -74,13 +74,13 @@ module Puma
       env[HIJACK] = client.method :full_hijack
 
       env[RACK_INPUT] = client.body
-      env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
+      env[RACK_URL_SCHEME] ||= Request.default_server_port(env) == PORT_443 ? HTTPS : HTTP
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
           begin
             unless (str = str_early_hints headers).empty?
-              fast_write_str socket, "HTTP/1.1 103 Early Hints\r\n#{str}\r\n"
+              Request.fast_write_str socket, "HTTP/1.1 103 Early Hints\r\n#{str}\r\n"
             end
           rescue ConnectionError => e
             @log_writer.debug_error e
@@ -244,7 +244,7 @@ module Puma
           end
 
           io_buffer << LINE_END
-          fast_write_str socket, io_buffer.read_and_reset
+          Request.fast_write_str socket, io_buffer.read_and_reset
           socket.flush
           return keep_alive ? :keep_alive : :close
         end
@@ -263,7 +263,7 @@ module Puma
       # partial hijack, we write headers, then hand the socket to the app via
       # response_hijack.call
       if response_hijack
-        fast_write_str socket, io_buffer.read_and_reset
+        Request.fast_write_str socket, io_buffer.read_and_reset
         uncork_socket socket
         response_hijack.call socket
         return :async
@@ -281,7 +281,7 @@ module Puma
     # @param env [Hash] see Puma::Client#env, from request
     # @return [Puma::Const::PORT_443,Puma::Const::PORT_80]
     #
-    def default_server_port(env)
+    def self.default_server_port(env)
       if HTTP_ON_VALUES[env[HTTPS_KEY]] ||
           env[HTTP_X_FORWARDED_PROTO]&.start_with?(HTTPS) ||
           env[HTTP_X_FORWARDED_SCHEME] == HTTPS ||
@@ -301,7 +301,7 @@ module Puma
     # @param str [String] the string written to the io
     # @raise [ConnectionError]
     #
-    def fast_write_str(socket, str)
+    def self.fast_write_str(socket, str)
       n = 0
       byte_size = str.bytesize
       while n < byte_size
@@ -334,13 +334,13 @@ module Puma
           while chunk = body.read(BODY_LEN_MAX)
             io_buffer.append chunk.bytesize.to_s(16), LINE_END, chunk, LINE_END
           end
-          fast_write_str socket, CLOSE_CHUNKED
+          Request.fast_write_str socket, CLOSE_CHUNKED
         else
           if content_length <= IO_BODY_MAX
             io_buffer.write body.read(content_length)
-            fast_write_str socket, io_buffer.read_and_reset
+            Request.fast_write_str socket, io_buffer.read_and_reset
           else
-            fast_write_str socket, io_buffer.read_and_reset
+            Request.fast_write_str socket, io_buffer.read_and_reset
             IO.copy_stream body, socket
           end
         end
@@ -352,11 +352,11 @@ module Puma
         if body_first.is_a?(::String) && body_first.bytesize < BODY_LEN_MAX
           # smaller body, write to io_buffer first
           io_buffer.write body_first
-          fast_write_str socket, io_buffer.read_and_reset
+          Request.fast_write_str socket, io_buffer.read_and_reset
         else
           # large body, write both header & body to socket
-          fast_write_str socket, io_buffer.read_and_reset
-          fast_write_str socket, body_first
+          Request.fast_write_str socket, io_buffer.read_and_reset
+          Request.fast_write_str socket, body_first
         end
       elsif body.is_a?(::Array)
         # for array bodies, flush io_buffer to socket when size is greater than
@@ -366,7 +366,7 @@ module Puma
             next if (byte_size = part.bytesize).zero?
             io_buffer.append byte_size.to_s(16), LINE_END, part, LINE_END
             if io_buffer.length > IO_BUFFER_LEN_MAX
-              fast_write_str socket, io_buffer.read_and_reset
+              Request.fast_write_str socket, io_buffer.read_and_reset
             end
           end
           io_buffer.write CLOSE_CHUNKED
@@ -375,12 +375,12 @@ module Puma
             next if part.bytesize.zero?
             io_buffer.write part
             if io_buffer.length > IO_BUFFER_LEN_MAX
-              fast_write_str socket, io_buffer.read_and_reset
+              Request.fast_write_str socket, io_buffer.read_and_reset
             end
           end
         end
         # may write last body part for non-chunked, also headers if array is empty
-        fast_write_str(socket, io_buffer.read_and_reset) unless io_buffer.length.zero?
+        Request.fast_write_str(socket, io_buffer.read_and_reset) unless io_buffer.length.zero?
       else
         # for enum bodies
         if chunked
@@ -389,19 +389,19 @@ module Puma
             next if part.nil? || (byte_size = part.bytesize).zero?
             empty_body = false
             io_buffer.append byte_size.to_s(16), LINE_END, part, LINE_END
-            fast_write_str socket, io_buffer.read_and_reset
+            Request.fast_write_str socket, io_buffer.read_and_reset
           end
           if empty_body
             io_buffer << CLOSE_CHUNKED
-            fast_write_str socket, io_buffer.read_and_reset
+            Request.fast_write_str socket, io_buffer.read_and_reset
           else
-            fast_write_str socket, CLOSE_CHUNKED
+            Request.fast_write_str socket, CLOSE_CHUNKED
           end
         else
-          fast_write_str socket, io_buffer.read_and_reset
+          Request.fast_write_str socket, io_buffer.read_and_reset
           body.each do |part|
             next if part.bytesize.zero?
-            fast_write_str socket, part
+            Request.fast_write_str socket, part
           end
         end
       end
@@ -412,7 +412,7 @@ module Puma
       raise ConnectionError, SOCKET_WRITE_ERR_MSG
     end
 
-    private :fast_write_str, :fast_write_response
+    private :fast_write_response
 
     # Given a Hash +env+ for the request read from +client+, add
     # and fixup keys to comply with Rack's env guidelines.
@@ -430,11 +430,11 @@ module Puma
           env[SERVER_PORT] = host[colon+1, host.bytesize]
         else
           env[SERVER_NAME] = host
-          env[SERVER_PORT] = default_server_port(env)
+          env[SERVER_PORT] = Request.default_server_port(env)
         end
       else
         env[SERVER_NAME] = LOCALHOST
-        env[SERVER_PORT] = default_server_port(env)
+        env[SERVER_PORT] = Request.default_server_port(env)
       end
 
       unless env[REQUEST_PATH]
