@@ -142,6 +142,14 @@ module Puma
       @requests_count = 0
 
       @idle_timeout_reached = false
+
+      @prepare_response = Request::PrepareResponse.new(
+        enable_keep_alives: @enable_keep_alives,
+        max_keep_alive: @max_keep_alive,
+        queue_requests: @queue_requests,
+        closed_socket_proc: method(:closed_socket?),
+        shutting_down_proc: method(:shutting_down?)
+      )
     end
 
     def inherit_binder(bind)
@@ -222,6 +230,18 @@ module Puma
       @status = :run
 
       @thread_pool = ThreadPool.new(thread_name, options, server: self) { |client| process_client client }
+
+      @handle_request = Request::HandleRequest.new(
+        prepare_response: @prepare_response,
+        env_set_http_version: @env_set_http_version,
+        early_hints: @early_hints,
+        log_writer: @log_writer,
+        supported_http_methods: @supported_http_methods,
+        thread_pool: @thread_pool,
+        app: @app,
+        closed_socket_proc: method(:closed_socket?),
+        lowlevel_error_proc: method(:lowlevel_error)
+      )
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend) { |c|
@@ -429,6 +449,13 @@ module Puma
       false
     end
 
+    # Handles a single request from the client.
+    # This method delegates to the HandleRequest instance.
+    # Can be overridden by FiberPerRequest module to wrap in a Fiber.
+    def handle_request(client, requests)
+      @handle_request.call(client, requests)
+    end
+
     # Given a connection on +client+, handle the incoming requests,
     # or queue the connection in the Reactor if no request is available.
     #
@@ -573,7 +600,7 @@ module Puma
 
     def response_to_error(client, requests, err, status_code)
       status, headers, res_body = lowlevel_error(err, client.env, status_code)
-      prepare_response(status, headers, res_body, requests, client)
+      @prepare_response.call(status, headers, res_body, requests, client)
     end
     private :response_to_error
 
