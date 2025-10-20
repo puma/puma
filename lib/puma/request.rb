@@ -636,8 +636,11 @@ module Puma
       include Puma::Const
 
       def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, closed_socket_proc:, shutting_down_proc:)
-        @enable_keep_alives = enable_keep_alives
-        @max_keep_alive = max_keep_alive
+        if enable_keep_alives
+          @max_keep_alive = max_keep_alive
+        else
+          @max_keep_alive = 0
+        end
         @queue_requests = queue_requests
         @closed_socket_proc = closed_socket_proc
         @shutting_down_proc = shutting_down_proc
@@ -658,7 +661,7 @@ module Puma
         return :close if @closed_socket_proc.call(socket)
 
         # Close the connection after a reasonable number of inline requests
-        force_keep_alive = @enable_keep_alives && client.requests_served < @max_keep_alive
+        force_keep_alive = client.requests_served < @max_keep_alive
 
         resp_info = Request.str_headers(env, status, headers, res_body, io_buffer, force_keep_alive, @queue_requests)
 
