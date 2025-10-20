@@ -36,8 +36,11 @@ module Puma
     # Takes the request contained in +client+, invokes the Rack application to construct
     # the response and writes it back to +client.io+.
     #
-    # It'll return +false+ when the connection is closed, this doesn't mean
+    # It'll return +:close+ when the connection is closed, this doesn't mean
     # that the response wasn't successful.
+    #
+    # It'll return +:keep_alive+ if the connection is a pipeline or keep-alive connection.
+    # Which may contain additional requests.
     #
     # It'll return +:async+ if the connection remains open but will be handled
     # elsewhere, i.e. the connection has been hijacked by the Rack application.
@@ -45,8 +48,7 @@ module Puma
     # Finally, it'll return +true+ on keep-alive connections.
     # @param client [Puma::Client]
     # @param requests [Integer]
-    # @return [Boolean,:async]
-    #
+    # @return [:close, :keep_alive, :async]
     def handle_request(client, requests)
       env = client.env
       io_buffer = client.io_buffer
@@ -54,7 +56,7 @@ module Puma
       app_body = nil
       error = nil
 
-      return false if closed_socket?(socket)
+      return :close if closed_socket?(socket)
 
       if client.http_content_length_limit_exceeded
         return prepare_response(413, {}, ["Payload Too Large"], requests, client)
@@ -167,13 +169,13 @@ module Puma
     #   a call to `Server#lowlevel_error`
     # @param requests [Integer] number of inline requests handled
     # @param client [Puma::Client]
-    # @return [Boolean,:async] keep-alive status or `:async`
+    # @return [:close, :keep_alive, :async]
     def prepare_response(status, headers, res_body, requests, client)
       env = client.env
       socket = client.io
       io_buffer = client.io_buffer
 
-      return false if closed_socket?(socket)
+      return :close if closed_socket?(socket)
 
       # Close the connection after a reasonable number of inline requests
       force_keep_alive = @enable_keep_alives && client.requests_served < @max_keep_alive
@@ -244,7 +246,7 @@ module Puma
           io_buffer << LINE_END
           fast_write_str socket, io_buffer.read_and_reset
           socket.flush
-          return keep_alive
+          return keep_alive ? :keep_alive : :close
         end
       else
         if content_length
@@ -270,7 +272,7 @@ module Puma
       fast_write_response socket, body, io_buffer, chunked, content_length.to_i
       body.close if close_body
       # if we're shutting down, close keep_alive connections
-      !shutting_down? && keep_alive
+      !shutting_down? && keep_alive ? :keep_alive : :close
     end
 
     HTTP_ON_VALUES = { "on" => true, HTTPS => true }
