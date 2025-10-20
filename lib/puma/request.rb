@@ -89,7 +89,7 @@ module Puma
         }
       end
 
-      req_env_post_parse env
+      Request.req_env_post_parse env
 
       # A rack extension. If the app writes #call'ables to this
       # array, we will invoke them when the request is done.
@@ -521,7 +521,7 @@ module Puma
     # @param env [Hash] see Puma::Client#env, from request, modifies in place
     # @version 5.0.3
     #
-    def req_env_post_parse(env)
+    def self.req_env_post_parse(env)
       to_delete = nil
       to_add = nil
 
@@ -554,7 +554,6 @@ module Puma
         env.merge! to_add
       end
     end
-    private :req_env_post_parse
 
     # Used in the lambda for env[ `Puma::Const::EARLY_HINTS` ]
     # @param headers [Hash] the headers returned by the Rack application
