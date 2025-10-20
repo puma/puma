@@ -79,7 +79,7 @@ module Puma
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
           begin
-            unless (str = str_early_hints headers).empty?
+            unless (str = Request.str_early_hints headers).empty?
               Request.fast_write_str socket, "HTTP/1.1 103 Early Hints\r\n#{str}\r\n"
             end
           rescue ConnectionError => e
@@ -496,17 +496,16 @@ module Puma
     # @param header_key [#to_s]
     # @return [Boolean]
     #
-    def illegal_header_key?(header_key)
+    def self.illegal_header_key?(header_key)
       !!(ILLEGAL_HEADER_KEY_REGEX =~ header_key.to_s)
     end
 
     # @param header_value [#to_s]
     # @return [Boolean]
     #
-    def illegal_header_value?(header_value)
+    def self.illegal_header_value?(header_value)
       !!(ILLEGAL_HEADER_VALUE_REGEX =~ header_value.to_s)
     end
-    private :illegal_header_key?, :illegal_header_value?
 
     # Fixup any headers with `,` in the name to have `_` now. We emit
     # headers with `,` in them during the parse phase to avoid ambiguity
@@ -562,31 +561,29 @@ module Puma
     # @return [String]
     # @version 5.0.3
     #
-    def str_early_hints(headers)
+    def self.str_early_hints(headers)
       eh_str = +""
       headers.each_pair do |k, vs|
-        next if illegal_header_key?(k)
+        next if Request.illegal_header_key?(k)
 
         if vs.respond_to?(:to_s) && !vs.to_s.empty?
           vs.to_s.split(NEWLINE).each do |v|
-            next if illegal_header_value?(v)
+            next if Request.illegal_header_value?(v)
             eh_str << "#{k}: #{v}\r\n"
           end
-        elsif !(vs.to_s.empty? || !illegal_header_value?(vs))
+        elsif !(vs.to_s.empty? || !Request.illegal_header_value?(vs))
           eh_str << "#{k}: #{vs}\r\n"
         end
       end
       eh_str.freeze
     end
-    private :str_early_hints
 
     # @param status [Integer] status from the app
     # @return [String] the text description from Puma::HTTP_STATUS_CODES
     #
-    def fetch_status_code(status)
+    def self.fetch_status_code(status)
       HTTP_STATUS_CODES.fetch(status) { CUSTOM_STAT }
     end
-    private :fetch_status_code
 
     # Processes and write headers to the IOBuffer.
     # @param env [Hash] see Puma::Client#env, from request
@@ -601,7 +598,6 @@ module Puma
     # @version 5.0.3
     #
     def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
-
       line_ending = LINE_END
       colon = COLON
 
@@ -620,7 +616,7 @@ module Puma
         if status == 200
           io_buffer << HTTP_11_200
         else
-          io_buffer.append "#{HTTP_11} #{status} ", fetch_status_code(status), line_ending
+          io_buffer.append "#{HTTP_11} #{status} ", Request.fetch_status_code(status), line_ending
 
           resp_info[:no_body] ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
         end
@@ -634,7 +630,7 @@ module Puma
           io_buffer << HTTP_10_200
         else
           io_buffer.append "HTTP/1.0 #{status} ",
-                       fetch_status_code(status), line_ending
+                       Request.fetch_status_code(status), line_ending
 
           resp_info[:no_body] ||= status < 200 || STATUS_WITH_NO_ENTITY_BODY[status]
         end
@@ -650,11 +646,11 @@ module Puma
       resp_info[:response_hijack] = nil
 
       headers.each do |k, vs|
-        next if illegal_header_key?(k)
+        next if Request.illegal_header_key?(k)
 
         case k.downcase
         when CONTENT_LENGTH2
-          next if illegal_header_value?(vs)
+          next if Request.illegal_header_value?(vs)
           # nil.to_i is 0, nil&.to_i is nil
           resp_info[:content_length] = vs&.to_i
           next
@@ -678,7 +674,7 @@ module Puma
         end
         if ary
           ary.each do |v|
-            next if illegal_header_value?(v)
+            next if Request.illegal_header_value?(v)
             io_buffer.append k.downcase, colon, v, line_ending
           end
         else
