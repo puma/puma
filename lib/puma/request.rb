@@ -180,7 +180,7 @@ module Puma
       # Close the connection after a reasonable number of inline requests
       force_keep_alive = @enable_keep_alives && client.requests_served < @max_keep_alive
 
-      resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
+      resp_info = Request.str_headers(env, status, headers, res_body, io_buffer, force_keep_alive, @queue_requests)
 
       close_body = false
       response_hijack = nil
@@ -596,7 +596,7 @@ module Puma
     # @return [Hash] resp_info
     # @version 5.0.3
     #
-    def str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
+    def self.str_headers(env, status, headers, res_body, io_buffer, force_keep_alive, queue_requests)
       line_ending = LINE_END
       colon = COLON
 
@@ -637,7 +637,7 @@ module Puma
 
       # regardless of what the client wants, we always close the connection
       # if running without request queueing
-      resp_info[:keep_alive] &&= @queue_requests
+      resp_info[:keep_alive] &&= queue_requests
 
       # see prepare_response
       resp_info[:keep_alive] &&= force_keep_alive
@@ -693,6 +693,5 @@ module Puma
       end
       resp_info
     end
-    private :str_headers
   end
 end
