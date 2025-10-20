@@ -136,7 +136,7 @@ module Puma
       prepare_response(status, headers, res_body, requests, client)
     ensure
       io_buffer.reset
-      uncork_socket client.io
+      Request.uncork_socket client.io
       app_body.close if app_body.respond_to? :close
       client&.tempfile_close
       if after_reply = env[RACK_AFTER_REPLY]
@@ -233,7 +233,7 @@ module Puma
 
       line_ending = LINE_END
 
-      cork_socket socket
+      Request.cork_socket socket
 
       if resp_info[:no_body]
         # 101 (Switching Protocols) doesn't return here or have content_length,
@@ -264,7 +264,7 @@ module Puma
       # response_hijack.call
       if response_hijack
         Request.fast_write_str socket, io_buffer.read_and_reset
-        uncork_socket socket
+        Request.uncork_socket socket
         response_hijack.call socket
         return :async
       end
@@ -690,6 +690,42 @@ module Puma
         io_buffer << CONNECTION_KEEP_ALIVE if resp_info[:keep_alive]
       end
       resp_info
+    end
+
+    # Check if TCP_CORK is supported on this platform
+    def self.tcp_cork_supported?
+      Socket.const_defined?(:TCP_CORK) && Socket.const_defined?(:IPPROTO_TCP)
+    end
+
+    # On Linux, use TCP_CORK to better control how the TCP stack
+    # packetizes our stream. This improves both latency and throughput.
+    # socket parameter may be an MiniSSL::Socket, so use to_io
+    #
+    if tcp_cork_supported?
+      # 6 == Socket::IPPROTO_TCP
+      # 3 == TCP_CORK
+      # 1/0 == turn on/off
+      def self.cork_socket(socket)
+        skt = socket.to_io
+        begin
+          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if skt.kind_of? TCPSocket
+        rescue IOError, SystemCallError
+        end
+      end
+
+      def self.uncork_socket(socket)
+        skt = socket.to_io
+        begin
+          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if skt.kind_of? TCPSocket
+        rescue IOError, SystemCallError
+        end
+      end
+    else
+      def self.cork_socket(socket)
+      end
+
+      def self.uncork_socket(socket)
+      end
     end
   end
 end

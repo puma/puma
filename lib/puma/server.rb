@@ -156,48 +156,10 @@ module Puma
 
       # :nodoc:
       # @version 5.0.0
-      def tcp_cork_supported?
-        Socket.const_defined?(:TCP_CORK) && Socket.const_defined?(:IPPROTO_TCP)
-      end
-
-      # :nodoc:
-      # @version 5.0.0
       def closed_socket_supported?
         Socket.const_defined?(:TCP_INFO) && Socket.const_defined?(:IPPROTO_TCP)
       end
-      private :tcp_cork_supported?
       private :closed_socket_supported?
-    end
-
-    # On Linux, use TCP_CORK to better control how the TCP stack
-    # packetizes our stream. This improves both latency and throughput.
-    # socket parameter may be an MiniSSL::Socket, so use to_io
-    #
-    if tcp_cork_supported?
-      # 6 == Socket::IPPROTO_TCP
-      # 3 == TCP_CORK
-      # 1/0 == turn on/off
-      def cork_socket(socket)
-        skt = socket.to_io
-        begin
-          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if skt.kind_of? TCPSocket
-        rescue IOError, SystemCallError
-        end
-      end
-
-      def uncork_socket(socket)
-        skt = socket.to_io
-        begin
-          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if skt.kind_of? TCPSocket
-        rescue IOError, SystemCallError
-        end
-      end
-    else
-      def cork_socket(socket)
-      end
-
-      def uncork_socket(socket)
-      end
     end
 
     if closed_socket_supported?
