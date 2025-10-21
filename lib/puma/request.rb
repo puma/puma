@@ -505,7 +505,7 @@ module Puma
 
       include Puma::Const
 
-      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, with_forced_shutdown_proc:, app:, lowlevel_error_proc:)
+      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, lowlevel_error_proc:)
         if enable_keep_alives
           @max_keep_alive = max_keep_alive
         else
@@ -517,8 +517,6 @@ module Puma
         @early_hints = early_hints
         @log_writer = log_writer
         @supported_http_methods = supported_http_methods
-        @with_forced_shutdown_proc = with_forced_shutdown_proc
-        @app = app
         @lowlevel_error_proc = lowlevel_error_proc
       end
 
@@ -606,9 +604,7 @@ module Puma
 
         begin
           if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
-            status, headers, app_body = @with_forced_shutdown_proc.call do
-              @app.call(env)
-            end
+            status, headers, app_body = yield
           else
             @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
             status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]

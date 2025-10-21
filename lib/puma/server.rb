@@ -53,7 +53,7 @@ module Puma
       :persistent_timeout, :reaping_time
 
     attr_accessor :binder
-    attr_reader :app
+    attr_accessor :app
 
     # Create a server for the rack app +app+.
     #
@@ -141,13 +141,6 @@ module Puma
       @idle_timeout_reached = false
     end
 
-    # The app can be changed after initialization for testing purposes
-    # When the app is changed, the HandleRequest instance must also be changed
-    def app=(app)
-      @app = app
-      @handle_request&.app = app
-    end
-
     def inherit_binder(bind)
       @binder = bind
     end
@@ -204,8 +197,6 @@ module Puma
         early_hints: @early_hints,
         log_writer: @log_writer,
         supported_http_methods: @supported_http_methods,
-        with_forced_shutdown_proc: @thread_pool.method(:with_force_shutdown),
-        app: @app,
         lowlevel_error_proc: method(:lowlevel_error)
       )
 
@@ -419,7 +410,11 @@ module Puma
     # This method delegates to the HandleRequest instance.
     # Can be overridden by FiberPerRequest module to wrap in a Fiber.
     def handle_request(client, requests)
-      response = @handle_request.call(client, requests)
+      response = @handle_request.call(client, requests) do
+        @thread_pool.with_force_shutdown do
+          @app.call(client.env)
+        end
+      end
       if shutting_down? && response == :keep_alive
         :close
       else
