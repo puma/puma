@@ -140,13 +140,6 @@ module Puma
       @requests_count = 0
 
       @idle_timeout_reached = false
-
-      @prepare_response = Request::PrepareResponse.new(
-        enable_keep_alives: @enable_keep_alives,
-        max_keep_alive: @max_keep_alive,
-        queue_requests: @queue_requests,
-        shutting_down_proc: method(:shutting_down?)
-      )
     end
 
     # The app can be changed after initialization for testing purposes
@@ -205,14 +198,16 @@ module Puma
       @thread_pool = ThreadPool.new(thread_name, options, server: self) { |client| process_client client }
 
       @handle_request = Request::HandleRequest.new(
-        prepare_response: @prepare_response,
+        enable_keep_alives: @enable_keep_alives,
+        max_keep_alive: @max_keep_alive,
+        queue_requests: @queue_requests,
+        shutting_down_proc: method(:shutting_down?),
         env_set_http_version: @env_set_http_version,
         early_hints: @early_hints,
         log_writer: @log_writer,
         supported_http_methods: @supported_http_methods,
         with_forced_shutdown_proc: @thread_pool.method(:with_force_shutdown),
         app: @app,
-        closed_socket_proc: @prepare_response.method(:closed_socket?),
         lowlevel_error_proc: method(:lowlevel_error)
       )
 
@@ -573,7 +568,7 @@ module Puma
 
     def response_to_error(client, requests, err, status_code)
       status, headers, res_body = lowlevel_error(err, client.env, status_code)
-      @prepare_response.call(status, headers, res_body, requests, client)
+      @handle_request.prepare_response(status, headers, res_body, requests, client)
     end
     private :response_to_error
 

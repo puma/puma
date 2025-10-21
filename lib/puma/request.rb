@@ -505,16 +505,53 @@ module Puma
 
       include Puma::Const
 
-      def initialize(prepare_response:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, with_forced_shutdown_proc:, app:, closed_socket_proc:, lowlevel_error_proc:)
-        @prepare_response = prepare_response
+      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, shutting_down_proc:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, with_forced_shutdown_proc:, app:, lowlevel_error_proc:)
+        if enable_keep_alives
+          @max_keep_alive = max_keep_alive
+        else
+          @max_keep_alive = 0
+        end
+        @queue_requests = queue_requests
+        @shutting_down_proc = shutting_down_proc
+        @precheck_closing = true
         @env_set_http_version = env_set_http_version
         @early_hints = early_hints
         @log_writer = log_writer
         @supported_http_methods = supported_http_methods
         @with_forced_shutdown_proc = with_forced_shutdown_proc
         @app = app
-        @closed_socket_proc = closed_socket_proc
         @lowlevel_error_proc = lowlevel_error_proc
+      end
+
+      # Check if TCP_INFO is supported on this platform
+      # @version 5.0.0
+      def self.closed_socket_supported?
+        Socket.const_defined?(:TCP_INFO) && Socket.const_defined?(:IPPROTO_TCP)
+      end
+      private_class_method :closed_socket_supported?
+
+      if closed_socket_supported?
+        UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
+
+        def closed_socket?(socket)
+          skt = socket.to_io
+          return false unless skt.kind_of?(TCPSocket) && @precheck_closing
+
+          begin
+            tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
+          rescue IOError, SystemCallError
+            @precheck_closing = false
+            false
+          else
+            state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
+            # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
+            (state >= 6 && state <= 9) || state == 11
+          end
+        end
+      else
+        def closed_socket?(socket)
+          false
+        end
       end
 
       # @param client [Puma::Client]
@@ -527,10 +564,10 @@ module Puma
         app_body = nil
         error = nil
 
-        return :close if @closed_socket_proc.call(socket)
+        return :close if closed_socket?(socket)
 
         if client.http_content_length_limit_exceeded
-          return @prepare_response.call(413, {}, ["Payload Too Large"], requests, client)
+          return prepare_response(413, {}, ["Payload Too Large"], requests, client)
         end
 
         Request.normalize_env env, client, @env_set_http_version
@@ -604,7 +641,7 @@ module Puma
 
           status, headers, res_body = @lowlevel_error_proc.call(error, env, 500)
         end
-        @prepare_response.call(status, headers, res_body, requests, client)
+        prepare_response(status, headers, res_body, requests, client)
       ensure
         io_buffer.reset
         Request.uncork_socket client.io
@@ -630,52 +667,6 @@ module Puma
           end
         end
       end
-    end
-
-    class PrepareResponse
-      include Puma::Const
-
-      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, shutting_down_proc:)
-        if enable_keep_alives
-          @max_keep_alive = max_keep_alive
-        else
-          @max_keep_alive = 0
-        end
-        @queue_requests = queue_requests
-        @shutting_down_proc = shutting_down_proc
-        @precheck_closing = true
-      end
-
-      # Check if TCP_INFO is supported on this platform
-      # @version 5.0.0
-      def self.closed_socket_supported?
-        Socket.const_defined?(:TCP_INFO) && Socket.const_defined?(:IPPROTO_TCP)
-      end
-      private_class_method :closed_socket_supported?
-
-      if closed_socket_supported?
-        UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
-
-        def closed_socket?(socket)
-          skt = socket.to_io
-          return false unless skt.kind_of?(TCPSocket) && @precheck_closing
-
-          begin
-            tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
-          rescue IOError, SystemCallError
-            @precheck_closing = false
-            false
-          else
-            state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
-            # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
-            (state >= 6 && state <= 9) || state == 11
-          end
-        end
-      else
-        def closed_socket?(socket)
-          false
-        end
-      end
 
       # @param status [Integer] HTTP status code
       # @param headers [Hash] response headers
@@ -684,7 +675,7 @@ module Puma
       # @param requests [Integer] number of inline requests handled
       # @param client [Puma::Client]
       # @return [:close, :keep_alive, :async]
-      def call(status, headers, res_body, requests, client)
+      def prepare_response(status, headers, res_body, requests, client)
         env = client.env
         socket = client.io
         io_buffer = client.io_buffer
