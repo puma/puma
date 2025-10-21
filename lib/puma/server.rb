@@ -564,7 +564,7 @@ module Puma
 
     def response_to_error(client, requests, err, status_code)
       status, headers, res_body = lowlevel_error(err, client.env, status_code)
-      @handle_request.prepare_response(status, headers, res_body, requests, client)
+      @handle_request.write_response(status, headers, res_body, requests, client)
     end
     private :response_to_error
 

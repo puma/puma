@@ -400,7 +400,7 @@ module Puma
       # if running without request queueing
       resp_info[:keep_alive] &&= queue_requests
 
-      # see prepare_response
+      # see write_response
       resp_info[:keep_alive] &&= force_keep_alive
 
       resp_info[:response_hijack] = nil
@@ -581,7 +581,7 @@ module Puma
         return :close if closed_socket?(socket)
 
         if client.http_content_length_limit_exceeded
-          return prepare_response(413, {}, ["Payload Too Large"], requests, client)
+          return write_response(413, {}, ["Payload Too Large"], requests, client)
         end
 
         Request.normalize_env env, client, @env_set_http_version
@@ -653,7 +653,7 @@ module Puma
 
           status, headers, res_body = @lowlevel_error_proc.call(error, env, 500)
         end
-        prepare_response(status, headers, res_body, requests, client)
+        write_response(status, headers, res_body, requests, client)
       ensure
         io_buffer.reset
         Request.uncork_socket client.io
@@ -713,7 +713,7 @@ module Puma
       # @return [:close] if the connection should be closed
       # @return [:keep_alive] if the connection should be kept alive for more requests
       # @return [:async] if the connection was hijacked and will be handled elsewhere
-      def prepare_response(status, headers, res_body, requests, client)
+      def write_response(status, headers, res_body, requests, client)
         env = client.env
         socket = client.io
         io_buffer = client.io_buffer
