@@ -137,8 +137,6 @@ module Puma
 
       @mode = :http
 
-      @precheck_closing = true
-
       @requests_count = 0
 
       @idle_timeout_reached = false
@@ -147,7 +145,6 @@ module Puma
         enable_keep_alives: @enable_keep_alives,
         max_keep_alive: @max_keep_alive,
         queue_requests: @queue_requests,
-        closed_socket_proc: method(:closed_socket?),
         shutting_down_proc: method(:shutting_down?)
       )
     end
@@ -167,37 +164,6 @@ module Puma
       # @!attribute [r] current
       def current
         Thread.current.puma_server
-      end
-
-      # :nodoc:
-      # @version 5.0.0
-      def closed_socket_supported?
-        Socket.const_defined?(:TCP_INFO) && Socket.const_defined?(:IPPROTO_TCP)
-      end
-      private :closed_socket_supported?
-    end
-
-    if closed_socket_supported?
-      UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
-
-      def closed_socket?(socket)
-        skt = socket.to_io
-        return false unless skt.kind_of?(TCPSocket) && @precheck_closing
-
-        begin
-          tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
-        rescue IOError, SystemCallError
-          @precheck_closing = false
-          false
-        else
-          state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
-          # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
-          (state >= 6 && state <= 9) || state == 11
-        end
-      end
-    else
-      def closed_socket?(socket)
-        false
       end
     end
 
@@ -246,7 +212,7 @@ module Puma
         supported_http_methods: @supported_http_methods,
         with_forced_shutdown_proc: @thread_pool.method(:with_force_shutdown),
         app: @app,
-        closed_socket_proc: method(:closed_socket?),
+        closed_socket_proc: @prepare_response.method(:closed_socket?),
         lowlevel_error_proc: method(:lowlevel_error)
       )
 

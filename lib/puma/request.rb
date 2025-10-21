@@ -635,15 +635,46 @@ module Puma
     class PrepareResponse
       include Puma::Const
 
-      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, closed_socket_proc:, shutting_down_proc:)
+      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, shutting_down_proc:)
         if enable_keep_alives
           @max_keep_alive = max_keep_alive
         else
           @max_keep_alive = 0
         end
         @queue_requests = queue_requests
-        @closed_socket_proc = closed_socket_proc
         @shutting_down_proc = shutting_down_proc
+        @precheck_closing = true
+      end
+
+      # Check if TCP_INFO is supported on this platform
+      # @version 5.0.0
+      def self.closed_socket_supported?
+        Socket.const_defined?(:TCP_INFO) && Socket.const_defined?(:IPPROTO_TCP)
+      end
+      private_class_method :closed_socket_supported?
+
+      if closed_socket_supported?
+        UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
+
+        def closed_socket?(socket)
+          skt = socket.to_io
+          return false unless skt.kind_of?(TCPSocket) && @precheck_closing
+
+          begin
+            tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
+          rescue IOError, SystemCallError
+            @precheck_closing = false
+            false
+          else
+            state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
+            # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
+            (state >= 6 && state <= 9) || state == 11
+          end
+        end
+      else
+        def closed_socket?(socket)
+          false
+        end
       end
 
       # @param status [Integer] HTTP status code
@@ -658,7 +689,7 @@ module Puma
         socket = client.io
         io_buffer = client.io_buffer
 
-        return :close if @closed_socket_proc.call(socket)
+        return :close if closed_socket?(socket)
 
         # Close the connection after a reasonable number of inline requests
         force_keep_alive = client.requests_served < @max_keep_alive
