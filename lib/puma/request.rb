@@ -505,14 +505,13 @@ module Puma
 
       include Puma::Const
 
-      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, shutting_down_proc:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, with_forced_shutdown_proc:, app:, lowlevel_error_proc:)
+      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, with_forced_shutdown_proc:, app:, lowlevel_error_proc:)
         if enable_keep_alives
           @max_keep_alive = max_keep_alive
         else
           @max_keep_alive = 0
         end
         @queue_requests = queue_requests
-        @shutting_down_proc = shutting_down_proc
         @precheck_closing = true
         @env_set_http_version = env_set_http_version
         @early_hints = early_hints
@@ -776,8 +775,7 @@ module Puma
 
         Request.fast_write_response socket, body, io_buffer, chunked, content_length.to_i
         body.close if close_body
-        # if we're shutting down, close keep_alive connections
-        !@shutting_down_proc.call && keep_alive ? :keep_alive : :close
+        keep_alive ? :keep_alive : :close
       end
     end
   end

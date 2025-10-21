@@ -200,7 +200,6 @@ module Puma
         enable_keep_alives: @enable_keep_alives,
         max_keep_alive: @max_keep_alive,
         queue_requests: @queue_requests,
-        shutting_down_proc: method(:shutting_down?),
         env_set_http_version: @env_set_http_version,
         early_hints: @early_hints,
         log_writer: @log_writer,
@@ -420,7 +419,12 @@ module Puma
     # This method delegates to the HandleRequest instance.
     # Can be overridden by FiberPerRequest module to wrap in a Fiber.
     def handle_request(client, requests)
-      @handle_request.call(client, requests)
+      response = @handle_request.call(client, requests)
+      if shutting_down? && response == :keep_alive
+        :close
+      else
+        response
+      end
     end
 
     # Given a connection on +client+, handle the incoming requests,
