@@ -33,19 +33,6 @@ module Puma
 
     include Puma::Const
 
-    # Takes the request contained in +client+, invokes the Rack application to construct
-    # the response and writes it back to +client.io+.
-    #
-    # It'll return +:close+ when the connection is closed, this doesn't mean
-    # that the response wasn't successful.
-    #
-    # It'll return +:keep_alive+ if the connection is a pipeline or keep-alive connection.
-    # Which may contain additional requests.
-    #
-    # It'll return +:async+ if the connection remains open but will be handled
-    # elsewhere, i.e. the connection has been hijacked by the Rack application.
-    #
-    # Finally, it'll return +true+ on keep-alive connections.
     HTTP_ON_VALUES = { "on" => true, HTTPS => true }
     private_constant :HTTP_ON_VALUES
 
@@ -68,6 +55,7 @@ module Puma
     # Writes a string to a socket (normally `Client#io`) using `write_nonblock`.
     # Large strings may not be written in one pass, especially if `io` is a
     # `MiniSSL::Socket`.
+    #
     # @param socket [#write_nonblock] the request/response socket
     # @param str [String] the string written to the io
     # @raise [ConnectionError]
@@ -90,13 +78,15 @@ module Puma
     end
 
     # Used to write headers and body.
+    #
     # Writes to a socket (normally `Client#io`) using `#fast_write_str`.
     # Accumulates `body` items into `io_buffer`, then writes to socket.
+    #
     # @param socket [#write] the response socket
     # @param body [Enumerable, File] the body object
     # @param io_buffer [Puma::IOBuffer] contains headers
     # @param chunked [Boolean]
-    # @paramn content_length [Integer
+    # @param content_length [Integer]
     # @raise [ConnectionError]
     #
     def self.fast_write_response(socket, body, io_buffer, chunked, content_length)
@@ -183,11 +173,12 @@ module Puma
       raise ConnectionError, SOCKET_WRITE_ERR_MSG
     end
 
-
     # Given a Hash +env+ for the request read from +client+, add
     # and fixup keys to comply with Rack's env guidelines.
+    #
     # @param env [Hash] see Puma::Client#env, from request
     # @param client [Puma::Client] only needed for Client#peerip
+    # @param env_set_http_version [Boolean] whether to set the HTTP_VERSION env key
     #
     def self.normalize_env(env, client, env_set_http_version)
       if host = env[HTTP_HOST]
@@ -231,7 +222,6 @@ module Puma
       # server; that client may be a proxy, gateway, or other
       # intermediary acting on behalf of the actual source client."
       #
-
       unless env.key?(REMOTE_ADDR)
         begin
           addr = client.peerip
@@ -325,6 +315,7 @@ module Puma
     end
 
     # Used in the lambda for env[ `Puma::Const::EARLY_HINTS` ]
+    #
     # @param headers [Hash] the headers returned by the Rack application
     # @return [String]
     # @version 5.0.3
@@ -354,14 +345,15 @@ module Puma
     end
 
     # Processes and write headers to the IOBuffer.
+    #
     # @param env [Hash] see Puma::Client#env, from request
     # @param status [Integer] the status returned by the Rack application
     # @param headers [Hash] the headers returned by the Rack application
-    # @param content_length [Integer,nil] content length if it can be determined from the
-    #   response body
-    # @param io_buffer [Puma::IOBuffer] modified inn place
+    # @param res_body [#each, File] the response body
+    # @param io_buffer [Puma::IOBuffer] modified in place
     # @param force_keep_alive [Boolean] 'anded' with keep_alive, based on system
     #   status and `@max_keep_alive`
+    # @param queue_requests [Boolean] whether request queueing is enabled
     # @return [Hash] resp_info
     # @version 5.0.3
     #
@@ -476,6 +468,7 @@ module Puma
       # 6 == Socket::IPPROTO_TCP
       # 3 == TCP_CORK
       # 1/0 == turn on/off
+      # @param socket [#to_io] the socket to cork
       def self.cork_socket(socket)
         skt = socket.to_io
         begin
@@ -484,6 +477,7 @@ module Puma
         end
       end
 
+      # @param socket [#to_io] the socket to uncork
       def self.uncork_socket(socket)
         skt = socket.to_io
         begin
@@ -492,9 +486,11 @@ module Puma
         end
       end
     else
+      # @param socket [#to_io] the socket to cork (no-op on unsupported platforms)
       def self.cork_socket(socket)
       end
 
+      # @param socket [#to_io] the socket to uncork (no-op on unsupported platforms)
       def self.uncork_socket(socket)
       end
     end
@@ -505,6 +501,14 @@ module Puma
 
       include Puma::Const
 
+      # @param enable_keep_alives [Boolean] whether to allow HTTP keep-alive connections
+      # @param max_keep_alive [Integer] maximum number of requests on a keep-alive connection
+      # @param queue_requests [Boolean] whether request queueing is enabled
+      # @param env_set_http_version [Boolean] whether to set the HTTP_VERSION env key
+      # @param early_hints [Boolean] whether early hints are enabled
+      # @param log_writer [Puma::LogWriter] the log writer
+      # @param supported_http_methods [Symbol, Hash] :any or a hash of supported HTTP methods
+      # @param lowlevel_error_proc [Proc] proc to call for low-level errors
       def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, lowlevel_error_proc:)
         if enable_keep_alives
           @max_keep_alive = max_keep_alive
@@ -530,6 +534,8 @@ module Puma
       if closed_socket_supported?
         UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
 
+        # @param socket [#to_io] the socket to check
+        # @return [Boolean] whether the socket is closed
         def closed_socket?(socket)
           skt = socket.to_io
           return false unless skt.kind_of?(TCPSocket) && @precheck_closing
@@ -546,13 +552,29 @@ module Puma
           end
         end
       else
+        # @param socket [#to_io] the socket to check
+        # @return [Boolean] always returns false on unsupported platforms
         def closed_socket?(socket)
           false
         end
       end
 
+      # Takes the request contained in +client+, invokes the Rack application as a block to construct
+      # the response and writes it back to +client.io+.
+      #
+      # It'll return +:close+ when the connection is closed, this doesn't mean
+      # that the response wasn't successful.
+      #
+      # It'll return +:keep_alive+ if the connection is a pipeline or keep-alive connection.
+      # Which may contain additional requests.
+      #
+      # It'll return +:async+ if the connection remains open but will be handled
+      # elsewhere, i.e. the connection has been hijacked by the Rack application.
+      #
       # @param client [Puma::Client]
-      # @param requests [Integer]
+      # @param requests [Integer] number of requests already served on this connection
+      # @yield Calls the Rack application with the request environment
+      # @yieldreturn [Array<Integer, Hash, #each>] the Rack response tuple [status, headers, body]
       # @return [:close, :keep_alive, :async]
       def call(client, requests)
         env = client.env
