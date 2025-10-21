@@ -495,6 +495,25 @@ module Puma
       end
     end
 
+    # Handles the complete request/response lifecycle for HTTP connections
+    #
+    # This class encapsulates all the logic for processing an HTTP request from a client,
+    # invoking the Rack application, and writing the response back to the socket. It is
+    # instantiated once per +Server+ and reused for all requests, maintaining configuration
+    # but no per-request state.
+    #
+    # ## Example
+    #
+    # The class is instantiated by Server and called via the `#call` method for each request:
+    #
+    #   handler = HandleRequest.new(...)
+    #
+    #   result = handler.call(client, requests_count) do
+    #     app.call(env)  # Invoke the Rack application
+    #   end
+    #
+    # @version 5.0.0
+    #
     class HandleRequest
       # Used for testing so the app can be changed after initialization
       attr_writer :app
