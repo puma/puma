@@ -39,7 +39,6 @@ module Puma
     end
 
     include Puma::Const
-    include Request
 
     attr_reader :options
     attr_reader :thread
