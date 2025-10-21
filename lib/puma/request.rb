@@ -680,13 +680,39 @@ module Puma
         end
       end
 
+      # Prepares and writes the HTTP response to the client socket
+      #
+      # This method transforms the Rack response tuple (status, headers, body) into
+      # HTTP protocol format and writes it to the socket. It handles the complete
+      # response lifecycle including:
+      #
+      # - Writing HTTP status line and headers
+      # - Optimizing body handling based on type (File, Array, Enumerable, Sprockets::Asset)
+      # - Calculating Content-Length when possible (avoids chunked encoding overhead)
+      # - Falling back to chunked Transfer-Encoding when content length is unknown
+      # - Managing connection lifecycle (keep-alive vs close)
+      # - Handling special response types (HEAD requests, 204 No Content, 101 Switching Protocols)
+      # - Supporting Rack hijacking API (partial hijack)
+      #
+      # The method attempts to determine the content length by examining the body type.
+      # If the body is an Array, it computes the sum of bytesizes. If it's a File or
+      # responds to +:to_path+, it uses the file size. For other enumerables where the
+      # length cannot be determined, it falls back to chunked encoding (HTTP/1.1 only).
+      #
+      # Connection keep-alive is determined by the number of requests already served
+      # on this connection versus +@max_keep_alive+, the HTTP version, and the
+      # Connection header from the client.
+      #
       # @param status [Integer] HTTP status code
-      # @param headers [Hash] response headers
-      # @param res_body [Array] the body returned by the Rack application or
-      #   a call to `Server#lowlevel_error`
-      # @param requests [Integer] number of inline requests handled
-      # @param client [Puma::Client]
-      # @return [:close, :keep_alive, :async]
+      # @param headers [Hash] response headers from the Rack application
+      # @param res_body [#each, File, Array] the body returned by the Rack application or
+      #   a call to +lowlevel_error_proc+
+      # @param requests [Integer] number of inline requests handled on this connection
+      # @param client [Puma::Client] the client connection object
+      #
+      # @return [:close] if the connection should be closed
+      # @return [:keep_alive] if the connection should be kept alive for more requests
+      # @return [:async] if the connection was hijacked and will be handled elsewhere
       def prepare_response(status, headers, res_body, requests, client)
         env = client.env
         socket = client.io
