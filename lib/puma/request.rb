@@ -266,14 +266,14 @@ module Puma
     # @return [Boolean]
     #
     def self.illegal_header_key?(header_key)
-      !!(ILLEGAL_HEADER_KEY_REGEX =~ header_key.to_s)
+      ILLEGAL_HEADER_KEY_REGEX.match?(header_key.to_s)
     end
 
     # @param header_value [#to_s]
     # @return [Boolean]
     #
     def self.illegal_header_value?(header_value)
-      !!(ILLEGAL_HEADER_VALUE_REGEX =~ header_value.to_s)
+      ILLEGAL_HEADER_VALUE_REGEX.match?(header_value.to_s)
     end
 
     # Fixup any headers with `,` in the name to have `_` now. We emit
