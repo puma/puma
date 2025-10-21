@@ -190,8 +190,7 @@ module Puma
       @thread_pool = ThreadPool.new(thread_name, options, server: self) { |client| process_client client }
 
       @handle_request = Request::HandleRequest.new(
-        enable_keep_alives: @enable_keep_alives,
-        max_keep_alive: @max_keep_alive,
+        max_keep_alive: @enable_keep_alives ? @max_keep_alive : 0,
         queue_requests: @queue_requests,
         env_set_http_version: @env_set_http_version,
         early_hints: @early_hints,

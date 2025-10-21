@@ -501,7 +501,6 @@ module Puma
 
       include Puma::Const
 
-      # @param enable_keep_alives [Boolean] whether to allow HTTP keep-alive connections
       # @param max_keep_alive [Integer] maximum number of requests on a keep-alive connection
       # @param queue_requests [Boolean] whether request queueing is enabled
       # @param env_set_http_version [Boolean] whether to set the HTTP_VERSION env key
@@ -509,12 +508,8 @@ module Puma
       # @param log_writer [Puma::LogWriter] the log writer
       # @param supported_http_methods [Symbol, Hash] :any or a hash of supported HTTP methods
       # @param lowlevel_error_proc [Proc] proc to call for low-level errors
-      def initialize(enable_keep_alives:, max_keep_alive:, queue_requests:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, lowlevel_error_proc:)
-        if enable_keep_alives
-          @max_keep_alive = max_keep_alive
-        else
-          @max_keep_alive = 0
-        end
+      def initialize(max_keep_alive:, queue_requests:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, lowlevel_error_proc:)
+        @max_keep_alive = max_keep_alive
         @queue_requests = queue_requests
         @precheck_closing = true
         @env_set_http_version = env_set_http_version
