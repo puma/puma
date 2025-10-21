@@ -460,13 +460,12 @@ module Puma
         while can_loop
           can_loop = false
           @requests_count += 1
-          case handle_request(client, requests + 1)
+          requests += 1
+          case handle_request(client, requests)
           when :close
           when :async
             close_socket = false
           when :keep_alive
-            requests += 1
-
             client.reset
 
             # This indicates data exists in the client read buffer and there may be
