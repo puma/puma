@@ -82,9 +82,6 @@ module Puma
       @thread = nil
       @thread_pool = nil
       @reactor = nil
-
-      @env_set_http_version = nil
-
       @options = if options.is_a?(UserFileDefaultOptions)
         options
       else
@@ -187,12 +184,14 @@ module Puma
 
       @status = :run
 
+
       @thread_pool = ThreadPool.new(thread_name, options, server: self) { |client| process_client client }
 
       @handle_request = Request::HandleRequest.new(
         max_keep_alive: @enable_keep_alives ? @max_keep_alive : 0,
         queue_requests: @queue_requests,
-        env_set_http_version: @env_set_http_version,
+        env_set_http_version: Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
+          Gem::Version.new(::Rack.release) < Gem::Version.new('3.1.0'),
         early_hints: @early_hints,
         log_writer: @log_writer,
         supported_http_methods: @supported_http_methods,
@@ -271,9 +270,6 @@ module Puma
     end
 
     def handle_servers
-      @env_set_http_version = Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
-        Gem::Version.new(::Rack.release) < Gem::Version.new('3.1.0')
-
       begin
         check = @check
         sockets = [check] + @binder.ios
