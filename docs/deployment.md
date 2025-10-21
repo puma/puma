@@ -75,7 +75,7 @@ a Puma thread to become available.
     * `env['puma.request_body_wait']` contains the number of milliseconds Puma
       spent waiting for the client to send the request body.
     * haproxy: `%Th` (TLS handshake time) and `%Ti` (idle time before request)
-      can can also be added as headers.
+      can also be added as headers.
 
 ## Should I daemonize?
 

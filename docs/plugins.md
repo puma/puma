@@ -11,7 +11,7 @@ There are two canonical plugins to aid in the development of new plugins:
   Packages up the default configuration used by Puma on Heroku (being sunset
   with the release of Puma 5.0)
 
-Plugins are activated in a Puma configuration file (such as `config/puma.rb'`)
+Plugins are activated in a Puma configuration file (such as `config/puma.rb`)
 by adding `plugin "name"`, such as `plugin "heroku"`.
 
 Plugins are activated based on path requirements so, activating the `heroku`

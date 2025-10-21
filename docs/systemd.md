@@ -119,8 +119,8 @@ or cluster mode.
 ### Sockets and symlinks
 
 When using releases folders, you should set the socket path using the shared
-folder path (ex. `/srv/projet/shared/tmp/puma.sock`), not the release folder
-path (`/srv/projet/releases/1234/tmp/puma.sock`).
+folder path (ex. `/srv/project/shared/tmp/puma.sock`), not the release folder
+path (`/srv/project/releases/1234/tmp/puma.sock`).
 
 Puma will detect the release path socket as different than the one provided by
 systemd and attempt to bind it again, resulting in the exception `There is
@@ -139,7 +139,7 @@ automatically for any activated socket. When systemd socket activation is not
 enabled, this option does nothing.
 
 This also accepts an optional argument `only` (DSL: `'only'`) to discard any
-binds that's not socket activated.
+binds that are not socket activated.
 
 ## Usage
 
