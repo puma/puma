@@ -505,13 +505,13 @@ module Puma
 
       include Puma::Const
 
-      def initialize(prepare_response:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, thread_pool:, app:, closed_socket_proc:, lowlevel_error_proc:)
+      def initialize(prepare_response:, env_set_http_version:, early_hints:, log_writer:, supported_http_methods:, with_forced_shutdown_proc:, app:, closed_socket_proc:, lowlevel_error_proc:)
         @prepare_response = prepare_response
         @env_set_http_version = env_set_http_version
         @early_hints = early_hints
         @log_writer = log_writer
         @supported_http_methods = supported_http_methods
-        @thread_pool = thread_pool
+        @with_forced_shutdown_proc = with_forced_shutdown_proc
         @app = app
         @closed_socket_proc = closed_socket_proc
         @lowlevel_error_proc = lowlevel_error_proc
@@ -570,7 +570,7 @@ module Puma
 
         begin
           if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
-            status, headers, app_body = @thread_pool.with_force_shutdown do
+            status, headers, app_body = @with_forced_shutdown_proc.call do
               @app.call(env)
             end
           else

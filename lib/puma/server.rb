@@ -244,7 +244,7 @@ module Puma
         early_hints: @early_hints,
         log_writer: @log_writer,
         supported_http_methods: @supported_http_methods,
-        thread_pool: @thread_pool,
+        with_forced_shutdown_proc: @thread_pool.method(:with_force_shutdown),
         app: @app,
         closed_socket_proc: method(:closed_socket?),
         lowlevel_error_proc: method(:lowlevel_error)
