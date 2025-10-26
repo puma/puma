@@ -299,7 +299,7 @@ module Puma
     # If read buffering is not done, and no other read buffering is performed (such as by an application server
     # such as nginx) then the application would be subject to a slow client attack.
     #
-    # For a graphical representation of how the request buffer works see [architecture.md](https://github.com/puma/puma/blob/master/docs/architecture.md#connection-pipeline).
+    # For a graphical representation of how the request buffer works see [architecture.md](https://github.com/puma/puma/blob/main/docs/architecture.md).
     #
     # The method checks to see if it has the full header and body with
     # the `Puma::Client#try_to_finish` method. If the full request has been sent,

@@ -1381,7 +1381,7 @@ module Puma
     #
     # The default is +:auto+.
     #
-    # @see https://github.com/socketry/nio4r/blob/master/lib/nio/selector.rb
+    # @see https://github.com/socketry/nio4r/blob/main/lib/nio/selector.rb
     #
     def io_selector_backend(backend)
       @options[:io_selector_backend] = backend.to_sym
