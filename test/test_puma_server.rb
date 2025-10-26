@@ -1952,7 +1952,7 @@ class TestPumaServer < PumaTest
     assert_equal @host, body
   end
 
-  # see https://github.com/sinatra/sinatra/blob/master/examples/stream.ru
+  # see https://github.com/sinatra/sinatra/blob/main/examples/stream.ru
   def test_streaming_enum_body_1
     str = "Hello Puma World"
     body_len = str.bytesize * 3
