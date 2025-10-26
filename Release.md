@@ -1,6 +1,6 @@
 ## Before Release
 
-- Make sure tests pass and your last local commit matches master.
+- Make sure tests pass and your last local commit matches main.
 - Run tests with latest jruby
 - Update the version in `const.rb`.
 - On minor or major version updates i.e. from 3.10.x to 3.11.x update the "codename" in `const.rb`. We usually allow the leader of `git shortlog -s -n --no-merges <LAST_VERSION>..HEAD` name the version.

@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
 
   s.metadata = {
     "bug_tracker_uri" => "https://github.com/puma/puma/issues",
-    "changelog_uri" => "https://github.com/puma/puma/blob/master/History.md",
+    "changelog_uri" => "https://github.com/puma/puma/blob/main/History.md",
     "homepage_uri" => "https://puma.io",
     "source_code_uri" => "https://github.com/puma/puma",
     "rubygems_mfa_required" => "true",
