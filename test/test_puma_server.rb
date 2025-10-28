@@ -303,7 +303,7 @@ class TestPumaServer < PumaTest
     env['HOST'] = "example.com"
     env['HTTP_X_FORWARDED_PROTO'] = "https,http"
 
-    assert_equal "443", @server.default_server_port(env)
+    assert_equal "443", Puma::Request.default_server_port(env)
   end
 
   def test_respect_x_forwarded_ssl_on
@@ -311,7 +311,7 @@ class TestPumaServer < PumaTest
     env['HOST'] = 'example.com'
     env['HTTP_X_FORWARDED_SSL'] = 'on'
 
-    assert_equal "443", @server.default_server_port(env)
+    assert_equal "443", Puma::Request.default_server_port(env)
   end
 
   def test_respect_x_forwarded_scheme
@@ -319,7 +319,7 @@ class TestPumaServer < PumaTest
     env['HOST'] = 'example.com'
     env['HTTP_X_FORWARDED_SCHEME'] = 'https'
 
-    assert_equal '443', @server.default_server_port(env)
+    assert_equal '443', Puma::Request.default_server_port(env)
   end
 
   def test_default_server_port
