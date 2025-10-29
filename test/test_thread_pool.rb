@@ -155,6 +155,29 @@ class TestThreadPool < PumaTest
     assert_equal 1, started.length
   end
 
+  def test_thread_start_hook_with_server
+    dummy_server_obj = Object.new
+    started = Queue.new
+    options = {
+      min_threads: 0,
+      max_threads: 1,
+      before_thread_start: [
+        {
+          id: nil,
+          block: proc {|server| started << server },
+          cluster_only: false,
+        }
+      ]
+    }
+    block = proc { }
+    pool = MutexPool.new('tst', options, server: dummy_server_obj, &block)
+
+    pool << 1
+
+    assert_equal 1, pool.spawned
+    assert_same dummy_server_obj, started.pop
+  end
+
   def test_out_of_band_hook
     out_of_band_called = Queue.new
     options = {

@@ -198,7 +198,7 @@ module Puma
 
       @before_thread_start.each do |b|
         begin
-          b[:block].call
+          b[:block].call(@server)
         rescue Exception => e
           STDERR.puts "WARNING before_thread_start hook failed with exception (#{e.class}) #{e.message}"
         end
