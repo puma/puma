@@ -51,6 +51,7 @@ module Puma
 
     def self.ready(unset_env=false)
       notify(READY, unset_env)
+      watchdog(unset_env) if watchdog?
     end
 
     def self.reloading(unset_env=false)
