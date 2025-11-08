@@ -79,7 +79,7 @@ jobs:
           }
 
       - name: save ragel generated files on fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: ${{ failure() }}
         with:
           name: ${{ matrix.os }}-ragel-generated-files
