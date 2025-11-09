@@ -480,8 +480,38 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-w #{workers} --preload test/rackup/write_to_stdout_on_boot.ru"
 
     get_worker_pids
-    loading_app_count = @server_log.scan('Loading app').length
+    loading_app_count = @server_log.scan("Loading app").length
     assert_equal 1, loading_app_count
+  end
+
+  def test_application_is_loaded_exactly_once_if_using_fork_worker
+    cli_server "-w #{workers} --fork-worker test/rackup/write_to_stdout_on_boot.ru"
+
+    get_worker_pids
+    loading_app_count = @server_log.scan("Loading app").length
+    assert_equal 1, loading_app_count # loaded in worker 0
+
+    @server_log.clear
+    Process.kill :SIGURG, @pid
+
+    get_worker_pids 1, workers - 1
+    loading_app_count = @server_log.scan("Loading app").length
+    assert_equal 0, loading_app_count
+  end
+
+  def test_application_is_loaded_exactly_once_if_using_preload_app_with_fork_worker
+    cli_server "-w #{workers} --preload --fork-worker test/rackup/write_to_stdout_on_boot.ru"
+
+    get_worker_pids
+    loading_app_count = @server_log.scan("Loading app").length
+    assert_equal 1, loading_app_count # loaded in master
+
+    @server_log.clear
+    Process.kill :SIGURG, @pid
+
+    get_worker_pids 1, workers - 1
+    loading_app_count = @server_log.scan("Loading app").length
+    assert_equal 0, loading_app_count
   end
 
   def test_warning_message_outputted_when_single_worker
