@@ -33,16 +33,16 @@ Now you will see via `ps` that there is no more `tail` process. Sometimes when r
 
 Puma cluster responds to these signals:
 
-- `TTIN` increment the worker count by 1
-- `TTOU` decrement the worker count by 1
-- `TERM` send `TERM` to worker. The worker will attempt to finish then exit.
-- `USR2` restart workers. This also reloads the Puma configuration file, if there is one.
-- `USR1` restart workers in phases, a rolling restart. This will not reload the configuration file.
-- `HUP ` reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided, it will behave like `INT`
-- `INT ` equivalent of sending Ctrl-C to cluster. Puma will attempt to finish then exit.
-- `CHLD`
-- `URG ` refork workers in phases from worker 0 if `fork_workers` option is enabled.
-- `INFO` print backtraces of all puma threads
+- `TTIN`: increment the worker count by 1.
+- `TTOU`: decrement the worker count by 1.
+- `TERM`: send `TERM` to worker. The worker will attempt to finish then exit.
+- `USR2`: restart workers. This also reloads the Puma configuration file, if there is one.
+- `USR1`: restart workers in phases, a rolling restart. This will not reload the configuration file.
+- `HUP`:  reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided, it will behave like `INT`.
+- `INT`:  equivalent of sending Ctrl-C to cluster. Puma will attempt to finish then exit.
+- `CHLD`:
+- `URG`:  refork workers in phases from worker 0 if `fork_workers` option is enabled.
+- `INFO`: print backtraces of all puma threads.
 
 ## Callbacks order in case of different signals
 
