@@ -8,24 +8,17 @@
 
 #include "ruby.h"
 #include "ruby/encoding.h"
-#include "ext_help.h"
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
 #include "http11_parser.h"
 
-#ifndef MANAGED_STRINGS
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
-#ifndef RSTRING_PTR
-#define RSTRING_PTR(s) (RSTRING(s)->ptr)
-#endif
-#ifndef RSTRING_LEN
-#define RSTRING_LEN(s) (RSTRING(s)->len)
-#endif
-
-#define rb_extract_chars(e, sz) (*sz = RSTRING_LEN(e), RSTRING_PTR(e))
-#define rb_free_chars(e) /* nothing */
-
+#ifdef DEBUG
+#define TRACE() fprintf(stderr, "> %s:%d:%s\n", __FILE__, __LINE__, __FUNCTION__)
+#else
+#define TRACE()
 #endif
 
 static VALUE eHttpParserError;
@@ -51,8 +44,8 @@ static VALUE global_request_path;
 /** Defines global strings in the init method. */
 static inline void DEF_GLOBAL(VALUE *var, const char *cstr)
 {
-    rb_global_variable(var);
-    *var = rb_enc_interned_str_cstr(cstr, rb_utf8_encoding());
+  rb_global_variable(var);
+  *var = rb_enc_interned_str_cstr(cstr, rb_utf8_encoding());
 }
 
 /* Defines the maximum allowed lengths for various input elements.*/
@@ -77,10 +70,10 @@ DEF_MAX_LENGTH(QUERY_STRING, PUMA_QUERY_STRING_MAX_LENGTH);
 DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
 
 struct common_field {
-	const size_t len;
-	const char *name;
+  const size_t len;
+  const char *name;
   int raw;
-	VALUE value;
+  VALUE value;
 };
 
 /*
@@ -91,42 +84,42 @@ struct common_field {
 static struct common_field common_http_fields[] = {
 # define f(N) { (sizeof(N) - 1), N, 0, Qnil }
 # define fr(N) { (sizeof(N) - 1), N, 1, Qnil }
-	f("ACCEPT"),
-	f("ACCEPT_CHARSET"),
-	f("ACCEPT_ENCODING"),
-	f("ACCEPT_LANGUAGE"),
-	f("ALLOW"),
-	f("AUTHORIZATION"),
-	f("CACHE_CONTROL"),
-	f("CONNECTION"),
-	f("CONTENT_ENCODING"),
-	fr("CONTENT_LENGTH"),
-	fr("CONTENT_TYPE"),
-	f("COOKIE"),
-	f("DATE"),
-	f("EXPECT"),
-	f("FROM"),
-	f("HOST"),
-	f("IF_MATCH"),
-	f("IF_MODIFIED_SINCE"),
-	f("IF_NONE_MATCH"),
-	f("IF_RANGE"),
-	f("IF_UNMODIFIED_SINCE"),
-	f("KEEP_ALIVE"), /* Firefox sends this */
-	f("MAX_FORWARDS"),
-	f("PRAGMA"),
-	f("PROXY_AUTHORIZATION"),
-	f("RANGE"),
-	f("REFERER"),
-	f("TE"),
-	f("TRAILER"),
-	f("TRANSFER_ENCODING"),
-	f("UPGRADE"),
-	f("USER_AGENT"),
-	f("VIA"),
-	f("X_FORWARDED_FOR"), /* common for proxies */
-	f("X_REAL_IP"), /* common for proxies */
-	f("WARNING")
+  f("ACCEPT"),
+  f("ACCEPT_CHARSET"),
+  f("ACCEPT_ENCODING"),
+  f("ACCEPT_LANGUAGE"),
+  f("ALLOW"),
+  f("AUTHORIZATION"),
+  f("CACHE_CONTROL"),
+  f("CONNECTION"),
+  f("CONTENT_ENCODING"),
+  fr("CONTENT_LENGTH"),
+  fr("CONTENT_TYPE"),
+  f("COOKIE"),
+  f("DATE"),
+  f("EXPECT"),
+  f("FROM"),
+  f("HOST"),
+  f("IF_MATCH"),
+  f("IF_MODIFIED_SINCE"),
+  f("IF_NONE_MATCH"),
+  f("IF_RANGE"),
+  f("IF_UNMODIFIED_SINCE"),
+  f("KEEP_ALIVE"), /* Firefox sends this */
+  f("MAX_FORWARDS"),
+  f("PRAGMA"),
+  f("PROXY_AUTHORIZATION"),
+  f("RANGE"),
+  f("REFERER"),
+  f("TE"),
+  f("TRAILER"),
+  f("TRANSFER_ENCODING"),
+  f("UPGRADE"),
+  f("USER_AGENT"),
+  f("VIA"),
+  f("X_FORWARDED_FOR"), /* common for proxies */
+  f("X_REAL_IP"), /* common for proxies */
+  f("WARNING")
 # undef f
 };
 
@@ -163,7 +156,7 @@ static int is_ows(const char c) {
     return c == ' ' || c == '\t';
 }
 
-void http_field(puma_parser* hp, const char *field, size_t flen,
+static void http_field(puma_parser* hp, const char *field, size_t flen,
                                  const char *value, size_t vlen)
 {
   VALUE f = Qnil;
@@ -208,7 +201,7 @@ void http_field(puma_parser* hp, const char *field, size_t flen,
   }
 }
 
-void request_method(puma_parser* hp, const char *at, size_t length)
+static void request_method(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -216,7 +209,7 @@ void request_method(puma_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_request_method, val);
 }
 
-void request_uri(puma_parser* hp, const char *at, size_t length)
+static void request_uri(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -226,7 +219,7 @@ void request_uri(puma_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_request_uri, val);
 }
 
-void fragment(puma_parser* hp, const char *at, size_t length)
+static void fragment(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -236,7 +229,7 @@ void fragment(puma_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_fragment, val);
 }
 
-void request_path(puma_parser* hp, const char *at, size_t length)
+static void request_path(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -246,7 +239,7 @@ void request_path(puma_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_request_path, val);
 }
 
-void query_string(puma_parser* hp, const char *at, size_t length)
+static void query_string(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
@@ -256,7 +249,7 @@ void query_string(puma_parser* hp, const char *at, size_t length)
   rb_hash_aset(hp->request, global_query_string, val);
 }
 
-void server_protocol(puma_parser* hp, const char *at, size_t length)
+static void server_protocol(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = rb_str_new(at, length);
   rb_hash_aset(hp->request, global_server_protocol, val);
@@ -265,13 +258,13 @@ void server_protocol(puma_parser* hp, const char *at, size_t length)
 /** Finalizes the request header to have a bunch of stuff that's
   needed. */
 
-void header_done(puma_parser* hp, const char *at, size_t length)
+static void header_done(puma_parser* hp, const char *at, size_t length)
 {
   hp->body = rb_str_new(at, length);
 }
 
 
-void HttpParser_free(void *data) {
+static void HttpParser_free(void *data) {
   TRACE();
 
   if(data) {
@@ -279,19 +272,19 @@ void HttpParser_free(void *data) {
   }
 }
 
-void HttpParser_mark(void *ptr) {
+static void HttpParser_mark(void *ptr) {
   puma_parser *hp = ptr;
   if(hp->request) rb_gc_mark(hp->request);
   if(hp->body) rb_gc_mark(hp->body);
 }
 
-const rb_data_type_t HttpParser_data_type = {
+static const rb_data_type_t HttpParser_data_type = {
     "HttpParser",
     { HttpParser_mark, HttpParser_free, 0 },
     0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
 };
 
-VALUE HttpParser_alloc(VALUE klass)
+static VALUE HttpParser_alloc(VALUE klass)
 {
   puma_parser *hp = ALLOC_N(puma_parser, 1);
   TRACE();
@@ -310,16 +303,25 @@ VALUE HttpParser_alloc(VALUE klass)
   return TypedData_Wrap_Struct(klass, &HttpParser_data_type, hp);
 }
 
+static inline puma_parser *HttpParser_unwrap(VALUE self)
+{
+  puma_parser *http;
+  TypedData_Get_Struct(self, puma_parser, &HttpParser_data_type, http);
+  if (http == NULL) {
+    rb_raise(rb_eArgError, "%s", "NULL http_parser found");
+  }
+  return http;
+}
+
 /**
  * call-seq:
  *    parser.new -> parser
  *
  * Creates a new parser.
  */
-VALUE HttpParser_init(VALUE self)
+static VALUE HttpParser_init(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
   puma_parser_init(http);
 
   return self;
@@ -333,10 +335,9 @@ VALUE HttpParser_init(VALUE self)
  * Resets the parser to it's initial state so that you can reuse it
  * rather than making new ones.
  */
-VALUE HttpParser_reset(VALUE self)
+static VALUE HttpParser_reset(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
   puma_parser_init(http);
 
   return Qnil;
@@ -350,10 +351,9 @@ VALUE HttpParser_reset(VALUE self)
  * Finishes a parser early which could put in a "good" or bad state.
  * You should call reset after finish it or bad things will happen.
  */
-VALUE HttpParser_finish(VALUE self)
+static VALUE HttpParser_finish(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
   puma_parser_finish(http);
 
   return puma_parser_is_finished(http) ? Qtrue : Qfalse;
@@ -377,26 +377,22 @@ VALUE HttpParser_finish(VALUE self)
  * the parsing from that position.  It needs all of the original data as well
  * so you have to append to the data buffer as you read.
  */
-VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
+static VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
 {
-  puma_parser *http = NULL;
+  puma_parser *http = HttpParser_unwrap(self);
   int from = 0;
   char *dptr = NULL;
   long dlen = 0;
 
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
-
   from = FIX2INT(start);
-  dptr = rb_extract_chars(data, &dlen);
+  RSTRING_GETMEM(data, dptr, dlen);
 
   if(from >= dlen) {
-    rb_free_chars(dptr);
     rb_raise(eHttpParserError, "%s", "Requested start is after data buffer end.");
   } else {
     http->request = req_hash;
     puma_parser_execute(http, dptr, dlen, from);
 
-    rb_free_chars(dptr);
     VALIDATE_MAX_LENGTH(puma_parser_nread(http), HEADER);
 
     if(puma_parser_has_error(http)) {
@@ -415,10 +411,9 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
  *
  * Tells you whether the parser is in an error state.
  */
-VALUE HttpParser_has_error(VALUE self)
+static VALUE HttpParser_has_error(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
 
   return puma_parser_has_error(http) ? Qtrue : Qfalse;
 }
@@ -430,10 +425,9 @@ VALUE HttpParser_has_error(VALUE self)
  *
  * Tells you whether the parser is finished or not and in a good state.
  */
-VALUE HttpParser_is_finished(VALUE self)
+static VALUE HttpParser_is_finished(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
 
   return puma_parser_is_finished(http) ? Qtrue : Qfalse;
 }
@@ -446,10 +440,9 @@ VALUE HttpParser_is_finished(VALUE self)
  * Returns the amount of data processed so far during this processing cycle.  It is
  * set to 0 on initialize or reset calls and is incremented each time execute is called.
  */
-VALUE HttpParser_nread(VALUE self)
+static VALUE HttpParser_nread(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
 
   return INT2FIX(http->nread);
 }
@@ -460,9 +453,8 @@ VALUE HttpParser_nread(VALUE self)
  *
  * If the request included a body, returns it.
  */
-VALUE HttpParser_body(VALUE self) {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+static VALUE HttpParser_body(VALUE self) {
+  puma_parser *http = HttpParser_unwrap(self);
 
   return http->body;
 }
@@ -471,7 +463,7 @@ VALUE HttpParser_body(VALUE self) {
 void Init_mini_ssl(VALUE mod);
 #endif
 
-void Init_puma_http11(void)
+RUBY_FUNC_EXPORTED void Init_puma_http11(void)
 {
 #ifdef HAVE_RB_EXT_RACTOR_SAFE
   rb_ext_ractor_safe(true);

@@ -543,7 +543,7 @@ class TestPumaServerSSLClientCloseError < PumaTest
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
     server = Puma::Server.new app, nil, {log_writer: log_writer}
     server.add_ssl_listener LOCALHOST, 0, CTX
-    host_addrs = server.binder.ios.map { |io| io.to_io.addr[2] }
+
     @bind_port = server.connected_ports[0]
     server.define_singleton_method(:new_client) do |io, sock|
       client = super(io, sock)
