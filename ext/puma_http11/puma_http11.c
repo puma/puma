@@ -14,20 +14,6 @@
 #include <ctype.h>
 #include "http11_parser.h"
 
-#ifndef MANAGED_STRINGS
-
-#ifndef RSTRING_PTR
-#define RSTRING_PTR(s) (RSTRING(s)->ptr)
-#endif
-#ifndef RSTRING_LEN
-#define RSTRING_LEN(s) (RSTRING(s)->len)
-#endif
-
-#define rb_extract_chars(e, sz) (*sz = RSTRING_LEN(e), RSTRING_PTR(e))
-#define rb_free_chars(e) /* nothing */
-
-#endif
-
 static VALUE eHttpParserError;
 
 #define HTTP_PREFIX "HTTP_"
@@ -387,16 +373,14 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
   DATA_GET(self, puma_parser, &HttpParser_data_type, http);
 
   from = FIX2INT(start);
-  dptr = rb_extract_chars(data, &dlen);
+  RSTRING_GETMEM(data, dptr, dlen);
 
   if(from >= dlen) {
-    rb_free_chars(dptr);
     rb_raise(eHttpParserError, "%s", "Requested start is after data buffer end.");
   } else {
     http->request = req_hash;
     puma_parser_execute(http, dptr, dlen, from);
 
-    rb_free_chars(dptr);
     VALIDATE_MAX_LENGTH(puma_parser_nread(http), HEADER);
 
     if(puma_parser_has_error(http)) {
