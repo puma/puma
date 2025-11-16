@@ -37,8 +37,8 @@ static VALUE global_request_path;
 /** Defines global strings in the init method. */
 static inline void DEF_GLOBAL(VALUE *var, const char *cstr)
 {
-    rb_global_variable(var);
-    *var = rb_enc_interned_str_cstr(cstr, rb_utf8_encoding());
+  rb_global_variable(var);
+  *var = rb_enc_interned_str_cstr(cstr, rb_utf8_encoding());
 }
 
 /* Defines the maximum allowed lengths for various input elements.*/
@@ -63,10 +63,10 @@ DEF_MAX_LENGTH(QUERY_STRING, PUMA_QUERY_STRING_MAX_LENGTH);
 DEF_MAX_LENGTH(HEADER, (1024 * (80 + 32)));
 
 struct common_field {
-	const size_t len;
-	const char *name;
+  const size_t len;
+  const char *name;
   int raw;
-	VALUE value;
+  VALUE value;
 };
 
 /*
@@ -77,42 +77,42 @@ struct common_field {
 static struct common_field common_http_fields[] = {
 # define f(N) { (sizeof(N) - 1), N, 0, Qnil }
 # define fr(N) { (sizeof(N) - 1), N, 1, Qnil }
-	f("ACCEPT"),
-	f("ACCEPT_CHARSET"),
-	f("ACCEPT_ENCODING"),
-	f("ACCEPT_LANGUAGE"),
-	f("ALLOW"),
-	f("AUTHORIZATION"),
-	f("CACHE_CONTROL"),
-	f("CONNECTION"),
-	f("CONTENT_ENCODING"),
-	fr("CONTENT_LENGTH"),
-	fr("CONTENT_TYPE"),
-	f("COOKIE"),
-	f("DATE"),
-	f("EXPECT"),
-	f("FROM"),
-	f("HOST"),
-	f("IF_MATCH"),
-	f("IF_MODIFIED_SINCE"),
-	f("IF_NONE_MATCH"),
-	f("IF_RANGE"),
-	f("IF_UNMODIFIED_SINCE"),
-	f("KEEP_ALIVE"), /* Firefox sends this */
-	f("MAX_FORWARDS"),
-	f("PRAGMA"),
-	f("PROXY_AUTHORIZATION"),
-	f("RANGE"),
-	f("REFERER"),
-	f("TE"),
-	f("TRAILER"),
-	f("TRANSFER_ENCODING"),
-	f("UPGRADE"),
-	f("USER_AGENT"),
-	f("VIA"),
-	f("X_FORWARDED_FOR"), /* common for proxies */
-	f("X_REAL_IP"), /* common for proxies */
-	f("WARNING")
+  f("ACCEPT"),
+  f("ACCEPT_CHARSET"),
+  f("ACCEPT_ENCODING"),
+  f("ACCEPT_LANGUAGE"),
+  f("ALLOW"),
+  f("AUTHORIZATION"),
+  f("CACHE_CONTROL"),
+  f("CONNECTION"),
+  f("CONTENT_ENCODING"),
+  fr("CONTENT_LENGTH"),
+  fr("CONTENT_TYPE"),
+  f("COOKIE"),
+  f("DATE"),
+  f("EXPECT"),
+  f("FROM"),
+  f("HOST"),
+  f("IF_MATCH"),
+  f("IF_MODIFIED_SINCE"),
+  f("IF_NONE_MATCH"),
+  f("IF_RANGE"),
+  f("IF_UNMODIFIED_SINCE"),
+  f("KEEP_ALIVE"), /* Firefox sends this */
+  f("MAX_FORWARDS"),
+  f("PRAGMA"),
+  f("PROXY_AUTHORIZATION"),
+  f("RANGE"),
+  f("REFERER"),
+  f("TE"),
+  f("TRAILER"),
+  f("TRANSFER_ENCODING"),
+  f("UPGRADE"),
+  f("USER_AGENT"),
+  f("VIA"),
+  f("X_FORWARDED_FOR"), /* common for proxies */
+  f("X_REAL_IP"), /* common for proxies */
+  f("WARNING")
 # undef f
 };
 
