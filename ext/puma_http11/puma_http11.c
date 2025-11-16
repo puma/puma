@@ -8,11 +8,18 @@
 
 #include "ruby.h"
 #include "ruby/encoding.h"
-#include "ext_help.h"
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
 #include "http11_parser.h"
+
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+
+#ifdef DEBUG
+#define TRACE() fprintf(stderr, "> %s:%d:%s\n", __FILE__, __LINE__, __FUNCTION__)
+#else
+#define TRACE()
+#endif
 
 static VALUE eHttpParserError;
 
