@@ -46,7 +46,6 @@ class TestWebConcurrencyAuto < TestIntegration
   end
 
   def test_web_concurrency_with_concurrent_ruby_unavailable
-    file_path = nil
     skip_unless :fork
 
     _, err = capture_io do
