@@ -296,6 +296,16 @@ VALUE HttpParser_alloc(VALUE klass)
   return TypedData_Wrap_Struct(klass, &HttpParser_data_type, hp);
 }
 
+static inline puma_parser *HttpParser_unwrap(VALUE self)
+{
+  puma_parser *http;
+  TypedData_Get_Struct(self, puma_parser, &HttpParser_data_type, http);
+  if (http == NULL) {
+    rb_raise(rb_eArgError, "%s", "NULL http_parser found");
+  }
+  return http;
+}
+
 /**
  * call-seq:
  *    parser.new -> parser
@@ -304,8 +314,7 @@ VALUE HttpParser_alloc(VALUE klass)
  */
 VALUE HttpParser_init(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
   puma_parser_init(http);
 
   return self;
@@ -321,8 +330,7 @@ VALUE HttpParser_init(VALUE self)
  */
 VALUE HttpParser_reset(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
   puma_parser_init(http);
 
   return Qnil;
@@ -338,8 +346,7 @@ VALUE HttpParser_reset(VALUE self)
  */
 VALUE HttpParser_finish(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
   puma_parser_finish(http);
 
   return puma_parser_is_finished(http) ? Qtrue : Qfalse;
@@ -365,12 +372,10 @@ VALUE HttpParser_finish(VALUE self)
  */
 VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
 {
-  puma_parser *http = NULL;
+  puma_parser *http = HttpParser_unwrap(self);
   int from = 0;
   char *dptr = NULL;
   long dlen = 0;
-
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
 
   from = FIX2INT(start);
   RSTRING_GETMEM(data, dptr, dlen);
@@ -401,8 +406,7 @@ VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE start)
  */
 VALUE HttpParser_has_error(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
 
   return puma_parser_has_error(http) ? Qtrue : Qfalse;
 }
@@ -416,8 +420,7 @@ VALUE HttpParser_has_error(VALUE self)
  */
 VALUE HttpParser_is_finished(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
 
   return puma_parser_is_finished(http) ? Qtrue : Qfalse;
 }
@@ -432,8 +435,7 @@ VALUE HttpParser_is_finished(VALUE self)
  */
 VALUE HttpParser_nread(VALUE self)
 {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
 
   return INT2FIX(http->nread);
 }
@@ -445,8 +447,7 @@ VALUE HttpParser_nread(VALUE self)
  * If the request included a body, returns it.
  */
 VALUE HttpParser_body(VALUE self) {
-  puma_parser *http = NULL;
-  DATA_GET(self, puma_parser, &HttpParser_data_type, http);
+  puma_parser *http = HttpParser_unwrap(self);
 
   return http->body;
 }
