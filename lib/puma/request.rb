@@ -46,10 +46,11 @@ module Puma
     # elsewhere, i.e. the connection has been hijacked by the Rack application.
     #
     # Finally, it'll return +true+ on keep-alive connections.
+    # @param processor [Puma::ThreadPool::ProcessorThread]
     # @param client [Puma::Client]
     # @param requests [Integer]
     # @return [:close, :keep_alive, :async]
-    def handle_request(client, requests)
+    def handle_request(processor, client, requests)
       env = client.env
       io_buffer = client.io_buffer
       socket  = client.io   # io may be a MiniSSL::Socket
@@ -96,6 +97,8 @@ module Puma
       #
       env[RACK_AFTER_REPLY] ||= []
       env[RACK_RESPONSE_FINISHED] ||= []
+
+      env["puma.mark_as_io_bound"] = -> { processor.mark_as_io_thread! }
 
       begin
         if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
