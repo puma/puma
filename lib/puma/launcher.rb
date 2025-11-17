@@ -42,7 +42,7 @@ module Puma
     #   end
     #   Puma::Launcher.new(conf, log_writer: Puma::LogWriter.stdio).run
     def initialize(conf, launcher_args={})
-      ## Minimal initialization for a potential early restart (e.g. when pruning bundle)
+      ## Minimal initialization before potential early restart (e.g. from bundle pruning)
 
       @config = conf
       # Advertise the CLI Configuration before config files are loaded
@@ -72,6 +72,7 @@ module Puma
 
       env = launcher_args.delete(:env) || ENV
 
+      # Log after prune_bundler! to avoid duplicate logging if a restart occurs
       log_config if env['PUMA_LOG_CONFIG']
 
       @binder = Binder.new(@log_writer, @options)
