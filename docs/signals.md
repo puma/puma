@@ -42,7 +42,7 @@ Puma cluster responds to these signals:
 - `INT`:  Equivalent of sending Ctrl-C to cluster. Puma will attempt to finish then exit.
 - `CHLD`: Reap zombie child processes and wake event loop in `fork_worker` mode.
 - `URG`:  Refork workers in phases from worker 0 if `fork_worker` option is enabled.
-- `INFO`: Print backtraces of all puma threads.
+- `INFO`: Print backtraces of all Puma threads.
 
 ## Callbacks order in case of different signals
 
