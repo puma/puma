@@ -44,8 +44,6 @@ jobs:
           SRC="gem ['\"]puma['\"].*"
           DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
           sed -i "s#$SRC#$DST#" gems/puma-head-rack-v3.rb
-          # pin io-event to 1.14.0 to workaround compilation issue in 1.14.1
-          echo "gem 'io-event', '1.14.0'" >> gems/puma-head-rack-v3.rb
 
       - name: load ruby
         uses: ruby/setup-ruby@v1
