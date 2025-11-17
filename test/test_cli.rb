@@ -420,4 +420,12 @@ class TestCLI < PumaTest
 
     assert_equal true, config.options[:preload_app]
   end
+
+  def test_config_is_advertised_to_config_files
+    skip_unless :fork
+
+    Puma::CLI.new ['-w 2', '-C', File.expand_path('config/cli_config.rb', __dir__)]
+
+    assert_equal 4, Puma.cli_config._options[:workers]
+  end
 end

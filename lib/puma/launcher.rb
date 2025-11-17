@@ -45,6 +45,8 @@ module Puma
       ## Minimal initialization for a potential early restart (e.g. when pruning bundle)
 
       @config = conf
+      # Advertise the CLI Configuration before config files are loaded
+      Puma.cli_config = @config if defined?(Puma.cli_config)
       @config.clamp
 
       @options = @config.options
@@ -70,8 +72,6 @@ module Puma
 
       env = launcher_args.delete(:env) || ENV
 
-      # Advertise the Configuration
-      Puma.cli_config = @config if defined?(Puma.cli_config)
       log_config if env['PUMA_LOG_CONFIG']
 
       @binder = Binder.new(@log_writer, @options)
