@@ -40,7 +40,7 @@ Puma cluster responds to these signals:
 - `USR1`: restart workers in phases, a rolling restart. This will not reload the configuration file.
 - `HUP`:  reopen log files defined in stdout_redirect configuration parameter. If there is no stdout_redirect option provided, it will behave like `INT`.
 - `INT`:  equivalent of sending Ctrl-C to cluster. Puma will attempt to finish then exit.
-- `CHLD`:
+- `CHLD`: Reap zombie child processes and wake event loop in `fork_worker` mode.
 - `URG`:  refork workers in phases from worker 0 if `fork_workers` option is enabled.
 - `INFO`: print backtraces of all puma threads.
 
