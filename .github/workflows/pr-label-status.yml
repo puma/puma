@@ -29,7 +29,6 @@ jobs:
               'dentarg',
               'schneems',
               'nateberkopec',
-              'joshuay03'
             ];
 
             const LABELS = {
