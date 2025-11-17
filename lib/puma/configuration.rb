@@ -197,7 +197,7 @@ module Puma
       @clamped = false
     end
 
-    attr_reader :plugins, :events, :hooks
+    attr_reader :plugins, :events, :hooks, :_options
 
     def options
       raise NotClampedError, "ensure clamp is called before accessing options" unless @clamped
