@@ -133,10 +133,10 @@ static void init_common_fields(void)
   for(i = 0; i < ARRAY_SIZE(common_http_fields); cf++, i++) {
     rb_global_variable(&cf->value);
     if(cf->raw) {
-      cf->value = rb_str_new(cf->name, cf->len);
+      cf->value = rb_enc_interned_str(cf->name, cf->len, rb_utf8_encoding());
     } else {
       memcpy(tmp + HTTP_PREFIX_LEN, cf->name, cf->len + 1);
-      cf->value = rb_str_new(tmp, HTTP_PREFIX_LEN + cf->len);
+      cf->value = rb_enc_interned_str(tmp, HTTP_PREFIX_LEN + cf->len, rb_utf8_encoding());
     }
   }
 }
@@ -179,7 +179,7 @@ static void http_field(puma_parser* hp, const char *field, size_t flen,
     memcpy(hp->buf, HTTP_PREFIX, HTTP_PREFIX_LEN);
     memcpy(hp->buf + HTTP_PREFIX_LEN, field, flen);
 
-    f = rb_str_new(hp->buf, new_size);
+    f = rb_enc_interned_str(hp->buf, new_size, rb_utf8_encoding());
   }
 
   while (vlen > 0 && is_ows(value[vlen - 1])) vlen--;
