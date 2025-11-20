@@ -22,7 +22,7 @@ An empty string will be handled as missing, and the default value will be used i
 Puma will print an error message for other invalid values.
 
 ```
-foo@bar:~/puma$ PUMA_QUERY_STRING_MAX_LENGTH=abc PUMA_REQUEST_PATH_MAX_LENGTH='' PUMA_REQUEST_URI_MAX_LENGTH=0 bundle exec bin/puma test/rackup/hello.ru
+foo@bar:~/puma$ PUMA_QUERY_STRING_MAX_LENGTH=abc PUMA_REQUEST_PATH_MAX_LENGTH='' PUMA_REQUEST_URI_MAX_LENGTH=0 bundle exec exe/puma test/rackup/hello.ru
 
 The value 0 for PUMA_REQUEST_URI_MAX_LENGTH is invalid. Using default value 12288 instead.
 The value abc for PUMA_QUERY_STRING_MAX_LENGTH is invalid. Using default value 10240 instead.
@@ -32,7 +32,7 @@ Puma starting in single mode...
 ### Valid inputs
 
 ```
-foo@bar:~/puma$ PUMA_REQUEST_PATH_MAX_LENGTH=9 bundle exec bin/puma test/rackup/hello.ru
+foo@bar:~/puma$ PUMA_REQUEST_PATH_MAX_LENGTH=9 bundle exec exe/puma test/rackup/hello.ru
 
 Puma starting in single mode...
 ```

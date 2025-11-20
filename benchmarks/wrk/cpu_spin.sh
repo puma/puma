@@ -77,7 +77,7 @@ run_concurrency_tests() {
 
 with_puma() {
   # start puma and wait for 10s for it to start
-  bundle exec bin/puma -w "$workers" -t "$threads" -b "tcp://$HOST" -C test/config/cpu_spin.rb &
+  bundle exec exe/puma -w "$workers" -t "$threads" -b "tcp://$HOST" -C test/config/cpu_spin.rb &
   local puma_pid=$!
   trap "kill $puma_pid" EXIT
 

@@ -453,7 +453,7 @@ module Puma
     alias_method :on_restart, :before_restart
 
     # Command to use to restart Puma. This should be just how to
-    # load Puma itself (ie. 'ruby -Ilib bin/puma'), not the arguments
+    # load Puma itself (ie. 'ruby -Ilib exe/puma'), not the arguments
     # to Puma, as those are the same as the original process.
     #
     # @example
