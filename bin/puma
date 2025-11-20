@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+# This file is deprecated and will be removed in Puma 8.0.
+# Please use `puma` command directly from your PATH or exe/puma.
+
+exe = File.expand_path('../exe/puma', __dir__)
+exec exe, *ARGV
