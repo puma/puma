@@ -57,7 +57,7 @@ benchmarks/local/long_tail_hey.sh -w4 -t5:5 -R100 -d0.2
 ```text
 $ benchmarks/local/long_tail_hey.sh -w4 -t5:5 -R100 -d0.2
 
-bundle exec bin/puma -q -b tcp://127.0.0.1:40001 -S tmp/bench_test_puma.state -w4 -t5:5 --control-url=tcp://127.0.0.1:40010 --control-token=test test/rackup/sleep.ru
+bundle exec exe/puma -q -b tcp://127.0.0.1:40001 -S tmp/bench_test_puma.state -w4 -t5:5 --control-url=tcp://127.0.0.1:40010 --control-token=test test/rackup/sleep.ru
 
 [162886] Puma starting in cluster mode...
 [162886] * Puma version: 6.5.0 ("Sky's Version")
