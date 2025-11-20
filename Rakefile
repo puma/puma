@@ -48,6 +48,7 @@ if !Puma.jruby?
 
     CLEAN.include "lib/puma/{1.8,1.9}"
     CLEAN.include "lib/puma/puma_http11.rb"
+    CLEAN.include "tmp"
   end
 else
   # Java (JRuby)
