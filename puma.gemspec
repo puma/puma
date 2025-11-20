@@ -13,9 +13,10 @@ Gem::Specification.new do |s|
   s.summary = "A Ruby/Rack web server built for parallelism."
   s.email = ["evan@phx.io"]
   s.executables = ["puma", "pumactl"]
+  s.bindir = "exe"
   s.extensions = ["ext/puma_http11/extconf.rb"]
   s.add_runtime_dependency "nio4r", "~> 2.0"
-  s.files = `git ls-files -- bin docs ext lib tools`.split("\n") +
+  s.files = `git ls-files -- exe docs ext lib tools`.split("\n") +
             %w[History.md LICENSE README.md]
   s.homepage = "https://puma.io"
 

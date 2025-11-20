@@ -55,8 +55,8 @@ module Puma
       end
 
       def puma_wild_path
-        puma_lib_dir = puma_require_paths.detect { |x| File.exist? File.join(x, '../bin/puma-wild') }
-        File.expand_path(File.join(puma_lib_dir, '../bin/puma-wild'))
+        puma_lib_dir = puma_require_paths.detect { |x| File.exist? File.join(x, '../exe/puma-wild') }
+        File.expand_path(File.join(puma_lib_dir, '../exe/puma-wild'))
       end
 
       def with_unbundled_env

@@ -192,7 +192,7 @@ class TestIntegrationSingle < TestIntegration
 
     system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
 
-    out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
+    out=`#{BASE} exe/pumactl -F test/config/t2_conf.rb status`
 
     stop_server
 
@@ -212,7 +212,7 @@ class TestIntegrationSingle < TestIntegration
 
     system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
 
-    out=`#{BASE} bin/pumactl -F test/config/t4_conf.rb status`
+    out=`#{BASE} exe/pumactl -F test/config/t4_conf.rb status`
 
     stop_server
 

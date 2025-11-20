@@ -109,7 +109,7 @@ class TestIntegration < PumaTest
       config = "-C #{@config_file.path}"
     end
 
-    puma_path = File.expand_path '../../../bin/puma', __FILE__
+    puma_path = File.expand_path '../../../exe/puma', __FILE__
 
     cmd =
       if no_bind
@@ -394,7 +394,7 @@ class TestIntegration < PumaTest
         %Q[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
       end
 
-    pumactl_path = File.expand_path '../../../bin/pumactl', __FILE__
+    pumactl_path = File.expand_path '../../../exe/pumactl', __FILE__
 
     cmd = "#{BASE} #{pumactl_path} #{arg}"
 

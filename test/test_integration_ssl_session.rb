@@ -77,7 +77,7 @@ class TestIntegrationSSLSession < TestIntegration
     config_file.path
 
     # start server
-    cmd = "#{BASE} bin/puma -C #{config_file.path}"
+    cmd = "#{BASE} exe/puma -C #{config_file.path}"
     @server = IO.popen cmd, 'r'
     wait_for_server_to_boot log: false
     @pid = @server.pid
