@@ -238,18 +238,14 @@ module Puma
       min = env['PUMA_MIN_THREADS'] || env['MIN_THREADS']
       max = env['PUMA_MAX_THREADS'] || env['MAX_THREADS']
       persistent_timeout = env['PUMA_PERSISTENT_TIMEOUT']
-      workers = if env['WEB_CONCURRENCY'] == 'auto'
-        require_processor_counter
-        ::Concurrent.available_processor_count
-      else
-        env['WEB_CONCURRENCY']&.strip
-      end
+      workers_env = env['WEB_CONCURRENCY']
+      workers = workers_env && workers_env != "" ? parse_workers(workers_env) : nil
 
       {
         min_threads: min && min != "" && Integer(min),
         max_threads: max && max != "" && Integer(max),
         persistent_timeout: persistent_timeout && persistent_timeout != "" && Integer(persistent_timeout),
-        workers: workers && workers != "" && Integer(workers),
+        workers: workers,
         environment: env['APP_ENV'] || env['RACK_ENV'] || env['RAILS_ENV'],
       }
     end
@@ -380,10 +376,21 @@ module Puma
       require 'concurrent/utility/processor_counter'
     rescue LoadError
       warn <<~MESSAGE
-        WEB_CONCURRENCY=auto requires the "concurrent-ruby" gem to be installed.
+        WEB_CONCURRENCY=auto or workers(:auto) requires the "concurrent-ruby" gem to be installed.
         Please add "concurrent-ruby" to your Gemfile.
       MESSAGE
       raise
+    end
+
+    def parse_workers(value)
+      if value == :auto || value == 'auto'
+        require_processor_counter
+        return Integer(::Concurrent.available_processor_count)
+      end
+
+      Integer(value)
+    rescue ArgumentError, TypeError
+      raise ArgumentError, "workers must be an Integer or :auto"
     end
 
     # Load and use the normal Rack builder if we can, otherwise
