@@ -15,12 +15,6 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
-#ifdef DEBUG
-#define TRACE() fprintf(stderr, "> %s:%d:%s\n", __FILE__, __LINE__, __FUNCTION__)
-#else
-#define TRACE()
-#endif
-
 static VALUE eHttpParserError;
 
 #define HTTP_PREFIX "HTTP_"
@@ -264,30 +258,36 @@ static void header_done(puma_parser* hp, const char *at, size_t length)
 }
 
 
-static void HttpParser_free(void *data) {
-  TRACE();
-
-  if(data) {
-    xfree(data);
-  }
-}
-
 static void HttpParser_mark(void *ptr) {
   puma_parser *hp = ptr;
-  if(hp->request) rb_gc_mark(hp->request);
-  if(hp->body) rb_gc_mark(hp->body);
+  rb_gc_mark_movable(hp->request);
+  rb_gc_mark_movable(hp->body);
+}
+
+static size_t HttpParser_size(const void *ptr) {
+  return sizeof(puma_parser);
+}
+
+static void HttpParser_compact(void *ptr) {
+  puma_parser *hp = ptr;
+  hp->request = rb_gc_location(hp->request);
+  hp->body = rb_gc_location(hp->body);
 }
 
 static const rb_data_type_t HttpParser_data_type = {
-    "HttpParser",
-    { HttpParser_mark, HttpParser_free, 0 },
-    0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
+    .wrap_struct_name = "Puma::HttpParser",
+    .function = {
+      .dmark = HttpParser_mark,
+      .dfree = RUBY_TYPED_DEFAULT_FREE,
+      .dsize = HttpParser_size,
+      .dcompact = HttpParser_compact,
+    },
+    .flags = RUBY_TYPED_FREE_IMMEDIATELY,
 };
 
 static VALUE HttpParser_alloc(VALUE klass)
 {
   puma_parser *hp = ALLOC_N(puma_parser, 1);
-  TRACE();
   hp->http_field = http_field;
   hp->request_method = request_method;
   hp->request_uri = request_uri;
