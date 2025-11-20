@@ -476,8 +476,7 @@ module Puma
       end
 
       begin
-        # INFO in use by JVM already
-        if !Puma.jruby? && Puma.backtrace_signal
+        if Puma.backtrace_signal
           Signal.trap Puma.backtrace_signal do
             thread_status do |name, backtrace|
               @log_writer.log(name)
@@ -486,7 +485,7 @@ module Puma
           end
         end
       rescue Exception
-        log "*** signal based backtrace unavailable!"
+        log "*** SIGINFO/SIGPWR not implemented, signal based backtrace unavailable!"
       end
     end
 

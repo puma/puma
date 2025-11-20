@@ -42,6 +42,13 @@ module Puma
     IS_WINDOWS
   end
 
+  BACKTRACE_SIGNAL =
+    if !jruby? && Signal.list.key?("INFO")
+      "SIGINFO"
+    elsif Signal.list.key?("PWR")
+      "SIGPWR"
+    end
+
   # @version 5.0.0
   def self.mri?
     IS_MRI
