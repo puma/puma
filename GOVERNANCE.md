@@ -12,7 +12,7 @@ We have two levels of access and privileges:
 
 This is kept intentionally small for security reasons. If you can cut a gem release, you can push code to a lot of production systems, so we're intentionally quite narrow here.
 
-**Current members:** Evan Phoenix (@evanphx), Nate Berkopec (@nateberkopec), and Richard Schneeman (@schneems).
+**Current members:** Evan Phoenix ([@evanphx](https://github.com/evanphx)), Nate Berkopec ([@nateberkopec](https://github.com/nateberkopec)), and Richard Schneeman ([@schneems](https://github.com/schneems)).
 
 We cut releases ~whenever we feel like it.
 
