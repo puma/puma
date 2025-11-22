@@ -24,7 +24,7 @@ We give commit bit if you make significant contributions to minor (or major) rel
 
 We review this access periodically, but we're looser with it than gem release access.
 
-If you have commit bit, we trust you enough to push to `main` without necessarily getting review first.
+If you have commit bit, we trust you enough to merge to `main` without necessarily getting review first.
 
 While all [security reports go to Evan directly](./SECURITY.md), maintainers will collaborate together on the fix.
 
