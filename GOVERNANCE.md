@@ -2,7 +2,7 @@
 
 ## The Short Version
 
-Evan Phoenix ([@evanphx](github.com/evanphx)) created Puma and has final say on everything. [Maintainers](./MAINTAINERS) serve at his pleasure.
+Evan Phoenix ([@evanphx](https://github.com/evanphx)) created Puma and has final say on everything. [Maintainers](./MAINTAINERS) serve at his pleasure.
 
 ## Access Levels
 
