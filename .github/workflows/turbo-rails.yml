@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: checkout hotwired/turbo-rails
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: hotwired/turbo-rails
           ref: main

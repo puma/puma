@@ -45,7 +45,7 @@ jobs:
 
       - name: repo checkout
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: load ruby
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
