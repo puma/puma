@@ -16,7 +16,7 @@ jobs:
   manage-labels:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Update PR Labels
         uses: actions/github-script@v8
