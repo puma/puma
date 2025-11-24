@@ -23,4 +23,4 @@ RUN bundle install
 RUN if [ "$(ruby -e 'print RUBY_ENGINE')" = "ruby" ]; then bundle exec rake compile; fi
 
 EXPOSE 9292
-CMD ["bundle", "exec", "exe/puma", "test/rackup/hello.ru"]
+CMD ["bundle", "exec", "bin/puma", "test/rackup/hello.ru"]
