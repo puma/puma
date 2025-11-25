@@ -75,15 +75,12 @@ module Puma
     private
 
     def select_loop
-      close_selector = true
       begin
         until @input.closed? && @input.empty?
           # Wakeup any registered object that receives incoming data.
           # Block until the earliest timeout or Selector#wakeup is called.
           timeout = (earliest = @timeouts.first) && earliest.timeout
-          monitor_wake_up = false
           @selector.select(timeout) do |monitor|
-            monitor_wake_up = true
             wakeup!(monitor.value)
           end
 
@@ -103,18 +100,12 @@ module Puma
         STDERR.puts "Error in reactor loop escaped: #{e.message} (#{e.class})"
         STDERR.puts e.backtrace
 
-        # NoMethodError may be rarely raised when calling @selector.select, which
-        # is odd.  Regardless, it may continue for thousands of calls if retried.
-        # Also, when it raises, @selector.close also raises an error.
-        if !monitor_wake_up && NoMethodError === e
-          close_selector = false
-        else
-          retry
-        end
+        retry
       end
+
       # Wakeup all remaining objects on shutdown.
       @timeouts.each(&@block)
-      @selector.close if close_selector
+      @selector.close
     end
 
     # Start monitoring the object.
