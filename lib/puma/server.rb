@@ -31,7 +31,7 @@ module Puma
   # Each `Puma::Server` will have one reactor and one thread pool.
   class Server
     module FiberPerRequest
-      def handle_request(client, requests)
+      def handle_request(processor, client, requests)
         Fiber.new do
           super
         end.resume
@@ -259,7 +259,9 @@ module Puma
 
       @status = :run
 
-      @thread_pool = ThreadPool.new(thread_name, options, server: self) { |client| process_client client }
+      @thread_pool = ThreadPool.new(thread_name, options, server: self) do |processor, client|
+        process_client(processor, client)
+      end
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend) { |c|
@@ -304,7 +306,7 @@ module Puma
     # The method checks to see if it has the full header and body with
     # the `Puma::Client#try_to_finish` method. If the full request has been sent,
     # then the request is passed to the ThreadPool (`@thread_pool << client`)
-    # so that a "worker thread" can pick up the request and begin to execute application logic.
+    # so that a "processor thread" can pick up the request and begin to execute application logic.
     # The Client is then removed from the reactor (return `true`).
     #
     # If a client object times out, a 408 response is written, its connection is closed,
@@ -470,14 +472,14 @@ module Puma
     # Given a connection on +client+, handle the incoming requests,
     # or queue the connection in the Reactor if no request is available.
     #
-    # This method is called from a ThreadPool worker thread.
+    # This method is called from a ThreadPool processor thread.
     #
     # This method supports HTTP Keep-Alive so it may, depending on if the client
     # indicates that it supports keep alive, wait for another request before
     # returning.
     #
     # Return true if one or more requests were processed.
-    def process_client(client)
+    def process_client(processor, client)
       close_socket = true
 
       requests = 0
@@ -500,7 +502,7 @@ module Puma
         while can_loop
           can_loop = false
           @requests_count += 1
-          case handle_request(client, requests + 1)
+          case handle_request(processor, client, requests + 1)
           when :close
           when :async
             close_socket = false
@@ -660,7 +662,7 @@ module Puma
     end
     private :notify_safely
 
-    # Stops the acceptor thread and then causes the worker threads to finish
+    # Stops the acceptor thread and then causes the processor threads to finish
     # off the request queue before finally exiting.
 
     def stop(sync=false)
