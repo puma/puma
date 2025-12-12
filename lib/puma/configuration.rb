@@ -249,7 +249,7 @@ module Puma
         min_threads: min && min != "" && Integer(min),
         max_threads: max && max != "" && Integer(max),
         persistent_timeout: persistent_timeout && persistent_timeout != "" && Integer(persistent_timeout),
-        workers: workers && workers != "" && Integer(workers),
+        workers: workers && workers.strip != "" && Integer(workers),
         environment: env['APP_ENV'] || env['RACK_ENV'] || env['RAILS_ENV'],
       }
     end
