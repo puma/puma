@@ -6,6 +6,20 @@ import org.jruby.util.ByteList;
 
 public class Http11Parser {
 
+    /*
+     * capitalizes all lower-case ASCII characters,
+     * converts dashes to underscores, and underscores to commas.
+     */
+    static void snake_upcase_char(byte[] c, int off) {
+        byte ch = c[off];
+        if (ch >= 'a' && ch <= 'z')
+          c[off] = (byte) (ch & ~0x20);
+        else if (ch == '_')
+          c[off] = ',';
+        else if (ch == '-')
+          c[off] = '_';
+    }
+
 /** Machine **/
 
 %%{
@@ -15,7 +29,7 @@ public class Http11Parser {
   action mark {parser.mark = fpc; }
 
   action start_field { parser.field_start = fpc; }
-  action snake_upcase_field { /* FIXME stub */ }
+  action snake_upcase_field { snake_upcase_char(parser.buffer, fpc); }
   action write_field { 
     parser.field_len = fpc-parser.field_start;
   }

@@ -120,16 +120,6 @@ public class Http11 extends RubyObject {
         validateMaxLength(runtime, vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
 
         ByteList fbuf = new ByteList(buffer,field,flen);
-        for(int i = 0,j = fbuf.length();i<j;i++) {
-            int bite = fbuf.get(i) & 0xFF;
-            if(bite == '-') {
-                fbuf.set(i, (byte)'_');
-            } else if(bite == '_') {
-                fbuf.set(i, (byte)',');
-            } else {
-                fbuf.set(i, (byte)Character.toUpperCase(bite));
-            }
-        }
 
         while (vlen > 0 && is_ows(buffer[value + vlen - 1])) vlen--;
         while (vlen > 0 && is_ows(buffer[value])) {
