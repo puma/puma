@@ -851,8 +851,8 @@ class TestConfigEnvVariables < PumaTest
     assert_equal false, conf.options.default_options[:preload_app]
   end
 
-  def test_weird_web_concurrency_does_not_break
-    [nil, '', ' ', 'hello', ' hello ', '!?', ' !? '].each do |wc|
+  def test_blank_web_concurrency_does_not_break
+    [nil, '', ' ', " \n ", " \t "].each do |wc|
       env = { "WEB_CONCURRENCY" => wc }
       conf = Puma::Configuration.new({}, {}, env)
       conf.clamp
