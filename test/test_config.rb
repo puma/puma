@@ -851,6 +851,15 @@ class TestConfigEnvVariables < PumaTest
     assert_equal false, conf.options.default_options[:preload_app]
   end
 
+  def test_weird_web_concurrency_does_not_break
+    [nil, '', ' ', 'hello', ' hello ', '!?', ' !? '].each do |wc|
+      env = { "WEB_CONCURRENCY" => wc }
+      conf = Puma::Configuration.new({}, {}, env)
+      conf.clamp
+      assert_equal false, conf.options.default_options[:preload_app]
+    end
+  end
+
   def test_config_preloads_app_if_using_workers
     env = { "WEB_CONCURRENCY" => "2" }
     preload = Puma.forkable?
