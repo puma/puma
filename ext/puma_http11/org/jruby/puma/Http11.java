@@ -113,84 +113,84 @@ public class Http11 extends RubyObject {
         return c == ' ' || c == '\t';
     }
 
-    public static void http_field(Ruby runtime, RubyHash req, ByteList buffer, int field, int flen, int value, int vlen) {
+    public static void http_field(Ruby runtime, RubyHash req, byte[] buffer, int field, int flen, int value, int vlen) {
         RubyString f;
         IRubyObject v;
         validateMaxLength(runtime, flen, MAX_FIELD_NAME_LENGTH, MAX_FIELD_NAME_LENGTH_ERR);
         validateMaxLength(runtime, vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
 
-        ByteList b = new ByteList(buffer,field,flen);
-        for(int i = 0,j = b.length();i<j;i++) {
-            int bite = b.get(i) & 0xFF;
+        ByteList fbuf = new ByteList(buffer,field,flen);
+        for(int i = 0,j = fbuf.length();i<j;i++) {
+            int bite = fbuf.get(i) & 0xFF;
             if(bite == '-') {
-                b.set(i, (byte)'_');
+                fbuf.set(i, (byte)'_');
             } else if(bite == '_') {
-                b.set(i, (byte)',');
+                fbuf.set(i, (byte)',');
             } else {
-                b.set(i, (byte)Character.toUpperCase(bite));
+                fbuf.set(i, (byte)Character.toUpperCase(bite));
             }
         }
 
-        while (vlen > 0 && is_ows(buffer.get(value + vlen - 1))) vlen--;
-        while (vlen > 0 && is_ows(buffer.get(value))) {
+        while (vlen > 0 && is_ows(buffer[value + vlen - 1])) vlen--;
+        while (vlen > 0 && is_ows(buffer[value])) {
             vlen--;
             value++;
         }
 
-        if (b.equals(CONTENT_LENGTH_BYTELIST) || b.equals(CONTENT_TYPE_BYTELIST)) {
-          f = RubyString.newString(runtime, b);
+        if (fbuf.equals(CONTENT_LENGTH_BYTELIST) || fbuf.equals(CONTENT_TYPE_BYTELIST)) {
+          f = RubyString.newString(runtime, fbuf);
         } else {
           f = RubyString.newStringShared(runtime, HTTP_PREFIX_BYTELIST);
-          f.cat(b);
+          f.cat(fbuf);
         }
 
-        b = new ByteList(buffer, value, vlen);
+        ByteList vbuf = new ByteList(buffer, value, vlen);
         v = req.fastARef(f);
         if (v == null || v.isNil()) {
-            req.fastASet(f, RubyString.newString(runtime, b));
+            req.fastASet(f, RubyString.newString(runtime, vbuf));
         } else {
             RubyString vs = v.convertToString();
             vs.cat(COMMA_SPACE_BYTELIST);
-            vs.cat(b);
+            vs.cat(vbuf);
         }
     }
 
-    public static void request_method(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
-        RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
+    public static void request_method(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
+        RubyString val = RubyString.newString(runtime,buffer,at,length);
         req.fastASet(RubyString.newStringShared(runtime, REQUEST_METHOD_BYTELIST),val);
     }
 
-    public static void request_uri(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
+    public static void request_uri(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
         validateMaxLength(runtime, length, MAX_REQUEST_URI_LENGTH, MAX_REQUEST_URI_LENGTH_ERR);
-        RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
+        RubyString val = RubyString.newString(runtime,buffer,at,length);
         req.fastASet(RubyString.newStringShared(runtime, REQUEST_URI_BYTELIST),val);
     }
 
-    public static void fragment(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
+    public static void fragment(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
         validateMaxLength(runtime, length, MAX_FRAGMENT_LENGTH, MAX_FRAGMENT_LENGTH_ERR);
-        RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
+        RubyString val = RubyString.newString(runtime,buffer,at,length);
         req.fastASet(RubyString.newStringShared(runtime, FRAGMENT_BYTELIST),val);
     }
 
-    public static void request_path(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
+    public static void request_path(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
         validateMaxLength(runtime, length, MAX_REQUEST_PATH_LENGTH, MAX_REQUEST_PATH_LENGTH_ERR);
-        RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
+        RubyString val = RubyString.newString(runtime,buffer,at,length);
         req.fastASet(RubyString.newStringShared(runtime, REQUEST_PATH_BYTELIST),val);
     }
 
-    public static void query_string(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
+    public static void query_string(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
         validateMaxLength(runtime, length, MAX_QUERY_STRING_LENGTH, MAX_QUERY_STRING_LENGTH_ERR);
-        RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
+        RubyString val = RubyString.newString(runtime,buffer,at,length);
         req.fastASet(RubyString.newStringShared(runtime, QUERY_STRING_BYTELIST),val);
     }
 
-    public static void server_protocol(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
-        RubyString val = RubyString.newString(runtime,new ByteList(buffer,at,length));
+    public static void server_protocol(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
+        RubyString val = RubyString.newString(runtime,buffer,at,length);
         req.fastASet(RubyString.newStringShared(runtime, SERVER_PROTOCOL_BYTELIST),val);
     }
 
-    public void header_done(Ruby runtime, RubyHash req, ByteList buffer, int at, int length) {
-        body = RubyString.newStringShared(runtime, new ByteList(buffer, at, length));
+    public void header_done(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
+        body = RubyString.newStringShared(runtime, buffer, at, length);
     }
 
     @JRubyMethod

@@ -206,7 +206,7 @@ static final int puma_parser_error = 0;
       int query_start;
 
       RubyHash data;
-      ByteList buffer;
+      byte[] buffer;
 
       public void init() {
           cs = 0;
@@ -234,17 +234,16 @@ static final int puma_parser_error = 0;
      int p, pe;
      int cs = parser.cs;
      int len = buffer.length();
+     int beg = buffer.begin();
      assert off<=len : "offset past end of buffer";
 
-     p = off;
-     pe = len;
-     // get a copy of the bytes, since it may not start at 0
-     // FIXME: figure out how to just use the bytes in-place
-     byte[] data = buffer.bytes();
-     parser.buffer = buffer;
+     p = beg + off;
+     pe = beg + len;
+     byte[] data = buffer.unsafeBytes();
+     parser.buffer = data;
 
      
-// line 248 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 247 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	int _klen;
 	int _trans = 0;
@@ -400,7 +399,7 @@ case 1:
     { p += 1; _goto_targ = 5; if (true)  continue _goto;}
   }
 	break;
-// line 404 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 403 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 			}
 		}
 	}
@@ -420,7 +419,7 @@ case 5:
 	break; }
 	}
 
-// line 114 "ext/puma_http11/http11_parser.java.rl"
+// line 113 "ext/puma_http11/http11_parser.java.rl"
 
      parser.cs = cs;
      parser.nread += (p - off);

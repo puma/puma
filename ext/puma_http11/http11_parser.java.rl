@@ -79,7 +79,7 @@ public class Http11Parser {
       int query_start;
 
       RubyHash data;
-      ByteList buffer;
+      byte[] buffer;
 
       public void init() {
           cs = 0;
@@ -101,14 +101,13 @@ public class Http11Parser {
      int p, pe;
      int cs = parser.cs;
      int len = buffer.length();
+     int beg = buffer.begin();
      assert off<=len : "offset past end of buffer";
 
-     p = off;
-     pe = len;
-     // get a copy of the bytes, since it may not start at 0
-     // FIXME: figure out how to just use the bytes in-place
-     byte[] data = buffer.bytes();
-     parser.buffer = buffer;
+     p = beg + off;
+     pe = beg + len;
+     byte[] data = buffer.unsafeBytes();
+     parser.buffer = data;
 
      %% write exec;
 
