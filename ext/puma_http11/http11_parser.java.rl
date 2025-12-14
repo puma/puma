@@ -2,9 +2,18 @@ package org.jruby.puma;
 
 import org.jruby.Ruby;
 import org.jruby.RubyHash;
+import org.jruby.RubyString;
 import org.jruby.util.ByteList;
 
 public class Http11Parser {
+
+    public final HttpParser parser;
+    private final RubyString[] envStrings;
+
+    public Http11Parser(RubyString[] envStrings) {
+        this.parser = new HttpParser();
+        this.envStrings = envStrings;
+    }
 
     /*
      * capitalizes all lower-case ASCII characters,
@@ -36,7 +45,7 @@ public class Http11Parser {
 
   action start_value { parser.mark = fpc; }
   action write_value {
-    Http11.http_field(runtime, parser.data, parser.buffer, parser.field_start, parser.field_len, parser.mark, fpc-parser.mark);
+    Http11.http_field(runtime, parser.data, envStrings, parser.buffer, parser.field_start, parser.field_len, parser.mark, fpc-parser.mark);
   }
   action request_method {
     Http11.request_method(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
@@ -108,8 +117,6 @@ public class Http11Parser {
           field_start = 0;
       }
    }
-
-   public final HttpParser parser = new HttpParser();
 
    public int execute(Ruby runtime, Http11 http, ByteList buffer, int off) {
      int p, pe;

@@ -10,7 +10,6 @@ import org.jruby.RubyString;
 
 import org.jruby.anno.JRubyMethod;
 
-import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
 
 import org.jruby.exceptions.RaiseException;
@@ -69,28 +68,79 @@ public class Http11 extends RubyObject {
         }
     }
 
-    private static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
-        public IRubyObject allocate(Ruby runtime, RubyClass klass) {
-            return new Http11(runtime, klass);
-        }
-    };
-
     public static void createHttp11(Ruby runtime) {
         RubyModule mPuma = runtime.defineModule("Puma");
         mPuma.defineClassUnder("HttpParserError",runtime.getClass("StandardError"),runtime.getClass("StandardError").getAllocator());
 
-        RubyClass cHttpParser = mPuma.defineClassUnder("HttpParser",runtime.getObject(),ALLOCATOR);
+        RubyString[] envStrings = new RubyString[EnvKey.values().length];
+        for (EnvKey key : EnvKey.values()) {
+            // TODO: replace with RubyString.newFString once 9.4 is EOL (added in 9.4.10.0)
+            if (key.raw) {
+                envStrings[key.ordinal()] = runtime.freezeAndDedupString(RubyString.newString(runtime, key.name()));
+            } else {
+                envStrings[key.ordinal()] = runtime.freezeAndDedupString(RubyString.newString(runtime, "HTTP_" + key.name()));
+            }
+        }
+
+        RubyClass cHttpParser = mPuma.defineClassUnder("HttpParser",runtime.getObject(),(r, c) -> new Http11(r, c, envStrings));
         cHttpParser.defineAnnotatedMethods(Http11.class);
     }
 
-    private Ruby runtime;
-    private Http11Parser hp;
+    private enum EnvKey {
+        ACCEPT,
+        ACCEPT_CHARSET,
+        ACCEPT_ENCODING,
+        ACCEPT_LANGUAGE,
+        ALLOW,
+        AUTHORIZATION,
+        CACHE_CONTROL,
+        CONNECTION,
+        CONTENT_ENCODING,
+        CONTENT_LENGTH(true),
+        CONTENT_TYPE(true),
+        COOKIE,
+        DATE,
+        EXPECT,
+        FROM,
+        HOST,
+        IF_MATCH,
+        IF_MODIFIED_SINCE,
+        IF_NONE_MATCH,
+        IF_RANGE,
+        IF_UNMODIFIED_SINCE,
+        KEEP_ALIVE, /* Firefox sends this */
+        MAX_FORWARDS,
+        PRAGMA,
+        PROXY_AUTHORIZATION,
+        RANGE,
+        REFERER,
+        TE,
+        TRAILER,
+        TRANSFER_ENCODING,
+        UPGRADE,
+        USER_AGENT,
+        VIA,
+        X_FORWARDED_FOR, /* common for proxies */
+        X_REAL_IP, /* common for proxies */
+        WARNING;
+
+        boolean raw;
+
+        EnvKey() {}
+
+        EnvKey(boolean raw) {
+            this.raw = raw;
+        }
+    }
+
+    private final Ruby runtime;
+    private final Http11Parser hp;
     private RubyString body;
 
-    public Http11(Ruby runtime, RubyClass clazz) {
+    public Http11(Ruby runtime, RubyClass clazz, RubyString[] envStrings) {
         super(runtime,clazz);
         this.runtime = runtime;
-        this.hp = new Http11Parser();
+        this.hp = new Http11Parser(envStrings);
         this.hp.parser.init();
     }
 
@@ -109,17 +159,33 @@ public class Http11 extends RubyObject {
         return (RubyClass)runtime.getModule("Puma").getConstant("HttpParserError");
     }
 
+    private static RubyString find_common_field_value(RubyString[] envStrings, byte[] buffer, int field, int flen) {
+        for (int i = 0; i < envStrings.length; i++) {
+            RubyString str = envStrings[i];
+            ByteList cfBytes = str.getByteList();
+            if (cfBytes.length() == flen && ByteList.memcmp(cfBytes.unsafeBytes(), cfBytes.begin(), buffer, field, flen) == 0)
+                return str;
+        }
+        return null;
+    }
+
     private static boolean is_ows(int c) {
         return c == ' ' || c == '\t';
     }
 
-    public static void http_field(Ruby runtime, RubyHash req, byte[] buffer, int field, int flen, int value, int vlen) {
+    public static void http_field(Ruby runtime, RubyHash req, RubyString[] envStrings, byte[] buffer, int field, int flen, int value, int vlen) {
         RubyString f;
         IRubyObject v;
         validateMaxLength(runtime, flen, MAX_FIELD_NAME_LENGTH, MAX_FIELD_NAME_LENGTH_ERR);
         validateMaxLength(runtime, vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
 
-        ByteList fbuf = new ByteList(buffer,field,flen);
+        f = find_common_field_value(envStrings, buffer, field, flen);
+
+        if (f == null) {
+            f = RubyString.newStringLight(runtime, HTTP_PREFIX_BYTELIST.length() + flen);
+            f.cat(HTTP_PREFIX_BYTELIST);
+            f.cat(buffer, field, flen);
+        }
 
         while (vlen > 0 && is_ows(buffer[value + vlen - 1])) vlen--;
         while (vlen > 0 && is_ows(buffer[value])) {
@@ -127,21 +193,13 @@ public class Http11 extends RubyObject {
             value++;
         }
 
-        if (fbuf.equals(CONTENT_LENGTH_BYTELIST) || fbuf.equals(CONTENT_TYPE_BYTELIST)) {
-          f = RubyString.newString(runtime, fbuf);
-        } else {
-          f = RubyString.newStringShared(runtime, HTTP_PREFIX_BYTELIST);
-          f.cat(fbuf);
-        }
-
-        ByteList vbuf = new ByteList(buffer, value, vlen);
         v = req.fastARef(f);
         if (v == null || v.isNil()) {
-            req.fastASet(f, RubyString.newString(runtime, vbuf));
+            req.fastASet(f, RubyString.newString(runtime, buffer, value, vlen));
         } else {
             RubyString vs = v.convertToString();
             vs.cat(COMMA_SPACE_BYTELIST);
-            vs.cat(vbuf);
+            vs.cat(buffer, value, vlen);
         }
     }
 
