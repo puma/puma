@@ -10,6 +10,7 @@ import org.jruby.RubyString;
 
 import org.jruby.anno.JRubyMethod;
 
+import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
 import org.jruby.exceptions.RaiseException;
@@ -250,15 +251,15 @@ public class Http11 extends RubyObject {
     }
 
     @JRubyMethod
-    public IRubyObject reset() {
+    public IRubyObject reset(ThreadContext context) {
         this.hp.init();
-        return runtime.getNil();
+        return context.nil;
     }
 
     @JRubyMethod
-    public IRubyObject finish() {
+    public IRubyObject finish(ThreadContext context) {
         this.hp.finish();
-        return this.hp.is_finished() ? runtime.getTrue() : runtime.getFalse();
+        return this.hp.is_finished() ? context.tru : context.fals;
     }
 
     @JRubyMethod
@@ -285,13 +286,13 @@ public class Http11 extends RubyObject {
     }
 
     @JRubyMethod(name = "error?")
-    public IRubyObject has_error() {
-        return this.hp.has_error() ? runtime.getTrue() : runtime.getFalse();
+    public IRubyObject has_error(ThreadContext context) {
+        return this.hp.has_error() ? context.tru : context.fals;
     }
 
     @JRubyMethod(name = "finished?")
-    public IRubyObject is_finished() {
-        return this.hp.is_finished() ? runtime.getTrue() : runtime.getFalse();
+    public IRubyObject is_finished(ThreadContext context) {
+        return this.hp.is_finished() ? context.tru : context.fals;
     }
 
     @JRubyMethod
