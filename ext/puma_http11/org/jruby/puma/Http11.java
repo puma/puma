@@ -143,7 +143,7 @@ public class Http11 extends RubyObject {
         super(runtime,clazz);
         this.runtime = runtime;
         this.hp = new Http11Parser(envStrings);
-        this.hp.parser.init();
+        this.hp.init();
     }
 
     public static void validateMaxLength(Ruby runtime, int len, int max, String msg) {
@@ -245,13 +245,13 @@ public class Http11 extends RubyObject {
 
     @JRubyMethod
     public IRubyObject initialize() {
-        this.hp.parser.init();
+        this.hp.init();
         return this;
     }
 
     @JRubyMethod
     public IRubyObject reset() {
-        this.hp.parser.init();
+        this.hp.init();
         return runtime.getNil();
     }
 
@@ -269,18 +269,17 @@ public class Http11 extends RubyObject {
             throw newHTTPParserError(runtime, "Requested start is after data buffer end.");
         } else {
             Http11Parser hp = this.hp;
-            Http11Parser.HttpParser parser = hp.parser;
 
-            parser.data = (RubyHash) req_hash;
+            hp.data = (RubyHash) req_hash;
 
             hp.execute(runtime, this, d,from);
 
-            validateMaxLength(runtime, parser.nread,MAX_HEADER_LENGTH, MAX_HEADER_LENGTH_ERR);
+            validateMaxLength(runtime, hp.nread,MAX_HEADER_LENGTH, MAX_HEADER_LENGTH_ERR);
 
             if(hp.has_error()) {
                 throw newHTTPParserError(runtime, "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?");
             } else {
-                return runtime.newFixnum(parser.nread);
+                return runtime.newFixnum(hp.nread);
             }
         }
     }
@@ -297,7 +296,7 @@ public class Http11 extends RubyObject {
 
     @JRubyMethod
     public IRubyObject nread() {
-        return runtime.newFixnum(this.hp.parser.nread);
+        return runtime.newFixnum(this.hp.nread);
     }
 
     @JRubyMethod
