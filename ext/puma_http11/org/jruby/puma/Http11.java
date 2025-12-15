@@ -37,16 +37,8 @@ public class Http11 extends RubyObject {
     public final static int MAX_HEADER_LENGTH = 1024 * (80 + 32);
     public final static String MAX_HEADER_LENGTH_ERR = "HTTP element HEADER is longer than the 114688 allowed length.";
 
-    public static final ByteList CONTENT_TYPE_BYTELIST = new ByteList(ByteList.plain("CONTENT_TYPE"));
-    public static final ByteList CONTENT_LENGTH_BYTELIST = new ByteList(ByteList.plain("CONTENT_LENGTH"));
     public static final ByteList HTTP_PREFIX_BYTELIST = new ByteList(ByteList.plain("HTTP_"));
     public static final ByteList COMMA_SPACE_BYTELIST = new ByteList(ByteList.plain(", "));
-    public static final ByteList REQUEST_METHOD_BYTELIST = new ByteList(ByteList.plain("REQUEST_METHOD"));
-    public static final ByteList REQUEST_URI_BYTELIST = new ByteList(ByteList.plain("REQUEST_URI"));
-    public static final ByteList FRAGMENT_BYTELIST = new ByteList(ByteList.plain("FRAGMENT"));
-    public static final ByteList REQUEST_PATH_BYTELIST = new ByteList(ByteList.plain("REQUEST_PATH"));
-    public static final ByteList QUERY_STRING_BYTELIST = new ByteList(ByteList.plain("QUERY_STRING"));
-    public static final ByteList SERVER_PROTOCOL_BYTELIST = new ByteList(ByteList.plain("SERVER_PROTOCOL"));
 
     public static String getEnvOrProperty(String name) {
         String envValue = System.getenv(name);
@@ -83,7 +75,7 @@ public class Http11 extends RubyObject {
         cHttpParser.defineAnnotatedMethods(Http11.class);
     }
 
-    private enum EnvKey {
+    public enum EnvKey {
         ACCEPT,
         ACCEPT_CHARSET,
         ACCEPT_ENCODING,
@@ -98,6 +90,7 @@ public class Http11 extends RubyObject {
         COOKIE,
         DATE,
         EXPECT,
+        FRAGMENT(true),
         FROM,
         HOST,
         IF_MATCH,
@@ -109,8 +102,13 @@ public class Http11 extends RubyObject {
         MAX_FORWARDS,
         PRAGMA,
         PROXY_AUTHORIZATION,
+        QUERY_STRING(true),
         RANGE,
         REFERER,
+        REQUEST_METHOD(true),
+        REQUEST_PATH(true),
+        REQUEST_URI(true),
+        SERVER_PROTOCOL(true),
         TE,
         TRAILER,
         TRANSFER_ENCODING,
@@ -206,38 +204,32 @@ public class Http11 extends RubyObject {
         }
     }
 
-    public static void request_method(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
-        RubyString val = RubyString.newString(runtime,buffer,at,length);
-        req.fastASet(RubyString.newStringShared(runtime, REQUEST_METHOD_BYTELIST),val);
+    public static void request_method(Ruby runtime, RubyHash req, RubyString requestMethodString, byte[] buffer, int at, int length) {
+        req.fastASet(requestMethodString, RubyString.newString(runtime,buffer,at,length));
     }
 
-    public static void request_uri(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
+    public static void request_uri(Ruby runtime, RubyHash req, RubyString requestUriString, byte[] buffer, int at, int length) {
         validateMaxLength(runtime, length, MAX_REQUEST_URI_LENGTH, MAX_REQUEST_URI_LENGTH_ERR);
-        RubyString val = RubyString.newString(runtime,buffer,at,length);
-        req.fastASet(RubyString.newStringShared(runtime, REQUEST_URI_BYTELIST),val);
+        req.fastASet(requestUriString, RubyString.newString(runtime,buffer,at,length));
     }
 
-    public static void fragment(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
+    public static void fragment(Ruby runtime, RubyHash req, RubyString fragmentString, byte[] buffer, int at, int length) {
         validateMaxLength(runtime, length, MAX_FRAGMENT_LENGTH, MAX_FRAGMENT_LENGTH_ERR);
-        RubyString val = RubyString.newString(runtime,buffer,at,length);
-        req.fastASet(RubyString.newStringShared(runtime, FRAGMENT_BYTELIST),val);
+        req.fastASet(fragmentString, RubyString.newString(runtime,buffer,at,length));
     }
 
-    public static void request_path(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
+    public static void request_path(Ruby runtime, RubyHash req, RubyString requestPathString, byte[] buffer, int at, int length) {
         validateMaxLength(runtime, length, MAX_REQUEST_PATH_LENGTH, MAX_REQUEST_PATH_LENGTH_ERR);
-        RubyString val = RubyString.newString(runtime,buffer,at,length);
-        req.fastASet(RubyString.newStringShared(runtime, REQUEST_PATH_BYTELIST),val);
+        req.fastASet(requestPathString, RubyString.newString(runtime,buffer,at,length));
     }
 
-    public static void query_string(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
+    public static void query_string(Ruby runtime, RubyHash req, RubyString queryStringString, byte[] buffer, int at, int length) {
         validateMaxLength(runtime, length, MAX_QUERY_STRING_LENGTH, MAX_QUERY_STRING_LENGTH_ERR);
-        RubyString val = RubyString.newString(runtime,buffer,at,length);
-        req.fastASet(RubyString.newStringShared(runtime, QUERY_STRING_BYTELIST),val);
+        req.fastASet(queryStringString, RubyString.newString(runtime,buffer,at,length));
     }
 
-    public static void server_protocol(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
-        RubyString val = RubyString.newString(runtime,buffer,at,length);
-        req.fastASet(RubyString.newStringShared(runtime, SERVER_PROTOCOL_BYTELIST),val);
+    public static void server_protocol(Ruby runtime, RubyHash req, RubyString serverProtocolString, byte[] buffer, int at, int length) {
+        req.fastASet(serverProtocolString, RubyString.newString(runtime,buffer,at,length));
     }
 
     public void header_done(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
