@@ -72,14 +72,10 @@ public class Http11 extends RubyObject {
         RubyModule mPuma = runtime.defineModule("Puma");
         mPuma.defineClassUnder("HttpParserError",runtime.getClass("StandardError"),runtime.getClass("StandardError").getAllocator());
 
-        RubyString[] envStrings = new RubyString[EnvKey.values().length];
-        for (EnvKey key : EnvKey.values()) {
-            // TODO: replace with RubyString.newFString once 9.4 is EOL (added in 9.4.10.0)
-            if (key.raw) {
-                envStrings[key.ordinal()] = runtime.freezeAndDedupString(RubyString.newString(runtime, key.name()));
-            } else {
-                envStrings[key.ordinal()] = runtime.freezeAndDedupString(RubyString.newString(runtime, "HTTP_" + key.name()));
-            }
+        EnvKey[] envKeys = EnvKey.values();
+        RubyString[] envStrings = new RubyString[envKeys.length];
+        for (EnvKey key : envKeys) {
+            envStrings[key.ordinal()] = runtime.freezeAndDedupString(RubyString.newString(runtime, key.httpName));
         }
 
         RubyClass cHttpParser = mPuma.defineClassUnder("HttpParser",runtime.getObject(),(r, c) -> new Http11(r, c, envStrings));
@@ -124,12 +120,18 @@ public class Http11 extends RubyObject {
         X_REAL_IP, /* common for proxies */
         WARNING;
 
-        boolean raw;
+        final String httpName;
 
-        EnvKey() {}
+        EnvKey() {
+            this(false);
+        }
 
         EnvKey(boolean raw) {
-            this.raw = raw;
+            if (raw) {
+                this.httpName = name();
+            } else {
+                this.httpName = "HTTP_" + name();
+            }
         }
     }
 
