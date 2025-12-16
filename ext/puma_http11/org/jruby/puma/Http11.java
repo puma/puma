@@ -232,7 +232,7 @@ public class Http11 extends RubyObject {
         req.fastASet(serverProtocolString, RubyString.newString(runtime,buffer,at,length));
     }
 
-    public void header_done(Ruby runtime, RubyHash req, byte[] buffer, int at, int length) {
+    public void header_done(Ruby runtime, byte[] buffer, int at, int length) {
         body = RubyString.newStringShared(runtime, buffer, at, length);
     }
 

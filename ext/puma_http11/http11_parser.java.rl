@@ -77,7 +77,7 @@ public class Http11Parser {
 
   action done { 
     this.body_start = fpc + 1;
-    http.header_done(runtime, this.data, this.buffer, fpc + 1, pe - fpc - 1);
+    http.header_done(runtime, this.buffer, fpc + 1, pe - fpc - 1);
     fbreak;
   }
 
@@ -88,17 +88,8 @@ public class Http11Parser {
 /** Data **/
 %% write data noentry;
 
-   public static interface ElementCB {
-     public void call(Ruby runtime, RubyHash data, ByteList buffer, int at, int length);
-   }
-
-   public static interface FieldCB {
-     public void call(Ruby runtime, RubyHash data, ByteList buffer, int field, int flen, int value, int vlen);
-   }
-
    int cs;
    int body_start;
-   int content_len;
    int nread;
    int mark;
    int field_start;
@@ -109,12 +100,10 @@ public class Http11Parser {
    byte[] buffer;
 
    public void init() {
-       cs = 0;
 
        %% write init;
 
        body_start = 0;
-       content_len = 0;
        mark = 0;
        nread = 0;
        field_len = 0;
