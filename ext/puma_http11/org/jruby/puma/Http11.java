@@ -17,6 +17,8 @@ import org.jruby.exceptions.RaiseException;
 
 import org.jruby.util.ByteList;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * @author <a href="mailto:ola.bini@ki.se">Ola Bini</a>
  * @author <a href="mailto:headius@headius.com">Charles Oliver Nutter</a>
@@ -37,8 +39,8 @@ public class Http11 extends RubyObject {
     public final static int MAX_HEADER_LENGTH = 1024 * (80 + 32);
     public final static String MAX_HEADER_LENGTH_ERR = "HTTP element HEADER is longer than the 114688 allowed length.";
 
-    public static final ByteList HTTP_PREFIX_BYTELIST = new ByteList(ByteList.plain("HTTP_"));
-    public static final ByteList COMMA_SPACE_BYTELIST = new ByteList(ByteList.plain(", "));
+    public static final byte[] HTTP_PREFIX_BYTELIST = ByteList.plain("HTTP_");
+    public static final byte[] COMMA_SPACE_BYTELIST = ByteList.plain(", ");
 
     public static String getEnvOrProperty(String name) {
         String envValue = System.getenv(name);
@@ -68,7 +70,7 @@ public class Http11 extends RubyObject {
         EnvKey[] envKeys = EnvKey.values();
         RubyString[] envStrings = new RubyString[envKeys.length];
         for (EnvKey key : envKeys) {
-            envStrings[key.ordinal()] = runtime.freezeAndDedupString(RubyString.newString(runtime, key.httpName));
+            envStrings[key.ordinal()] = runtime.freezeAndDedupString(RubyString.newStringShared(runtime, key.httpName));
         }
 
         RubyClass cHttpParser = mPuma.defineClassUnder("HttpParser",runtime.getObject(),(r, c) -> new Http11(r, c, envStrings));
@@ -119,18 +121,14 @@ public class Http11 extends RubyObject {
         X_REAL_IP, /* common for proxies */
         WARNING;
 
-        final String httpName;
+        final ByteList httpName;
 
         EnvKey() {
             this(false);
         }
 
         EnvKey(boolean raw) {
-            if (raw) {
-                this.httpName = name();
-            } else {
-                this.httpName = "HTTP_" + name();
-            }
+            this.httpName = new ByteList((raw ? name() : "HTTP_" + name()).getBytes(StandardCharsets.UTF_8), false);
         }
     }
 
@@ -183,7 +181,7 @@ public class Http11 extends RubyObject {
         f = find_common_field_value(envStrings, buffer, field, flen);
 
         if (f == null) {
-            f = RubyString.newStringLight(runtime, HTTP_PREFIX_BYTELIST.length() + flen);
+            f = RubyString.newStringLight(runtime, HTTP_PREFIX_BYTELIST.length + flen);
             f.cat(HTTP_PREFIX_BYTELIST);
             f.cat(buffer, field, flen);
         }
@@ -233,7 +231,7 @@ public class Http11 extends RubyObject {
     }
 
     public void header_done(Ruby runtime, byte[] buffer, int at, int length) {
-        body = RubyString.newStringShared(runtime, buffer, at, length);
+        body = RubyString.newString(runtime, buffer, at, length);
     }
 
     @JRubyMethod
