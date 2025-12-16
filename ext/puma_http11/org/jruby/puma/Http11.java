@@ -191,7 +191,7 @@ public class Http11 extends RubyObject {
         RubyHash req = hp.data;
         v = req.fastARef(f);
         if (v == null || v.isNil()) {
-            req.fastASet(f, RubyString.newString(runtime, buffer, mark, vlen));
+            req.fastASet(f, RubyString.newStringShared(runtime, buffer, mark, vlen));
         } else {
             RubyString vs = v.convertToString();
             vs.cat(COMMA_SPACE_BYTELIST);
@@ -236,7 +236,7 @@ public class Http11 extends RubyObject {
     }
 
     public void header_done(Ruby runtime, Http11Parser hp, int at, int length) {
-        body = RubyString.newString(runtime, hp.buffer, at, length);
+        body = RubyString.newStringShared(runtime, hp.buffer, at, length);
     }
 
     @JRubyMethod
@@ -262,7 +262,9 @@ public class Http11 extends RubyObject {
     public IRubyObject execute(IRubyObject req_hash, IRubyObject data, IRubyObject start) {
         Ruby runtime = this.runtime;
         int from = RubyNumeric.fix2int(start);
-        ByteList d = ((RubyString)data).getByteList();
+        RubyString dataString = (RubyString) data;
+        dataString.setByteListShared();
+        ByteList d = dataString.getByteList();
         if(from >= d.length()) {
             throw newHTTPParserError(runtime, "Requested start is after data buffer end.");
         } else {
@@ -342,11 +344,11 @@ public class Http11 extends RubyObject {
     }
 
     private static RubyString newValueString(Ruby runtime, Http11Parser hp, int length) {
-        return RubyString.newString(runtime, hp.buffer, hp.mark, length);
+        return RubyString.newStringShared(runtime, hp.buffer, hp.mark, length);
     }
 
     private static RubyString newQueryString(Ruby runtime, Http11Parser hp, int length) {
-        return RubyString.newString(runtime, hp.buffer, hp.query_start, length);
+        return RubyString.newStringShared(runtime, hp.buffer, hp.query_start, length);
     }
 
     private static void validateMaxHeaderLength(Ruby runtime, Http11Parser hp) {
