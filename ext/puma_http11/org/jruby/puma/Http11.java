@@ -17,30 +17,18 @@ import org.jruby.exceptions.RaiseException;
 
 import org.jruby.util.ByteList;
 
-import java.nio.charset.StandardCharsets;
+import static org.jruby.puma.Http11.EnvKey.FRAGMENT;
+import static org.jruby.puma.Http11.EnvKey.QUERY_STRING;
+import static org.jruby.puma.Http11.EnvKey.REQUEST_METHOD;
+import static org.jruby.puma.Http11.EnvKey.REQUEST_PATH;
+import static org.jruby.puma.Http11.EnvKey.REQUEST_URI;
+import static org.jruby.puma.Http11.EnvKey.SERVER_PROTOCOL;
 
 /**
  * @author <a href="mailto:ola.bini@ki.se">Ola Bini</a>
  * @author <a href="mailto:headius@headius.com">Charles Oliver Nutter</a>
  */
 public class Http11 extends RubyObject {
-    public final static int MAX_FIELD_NAME_LENGTH = 256;
-    public final static String MAX_FIELD_NAME_LENGTH_ERR = "HTTP element FIELD_NAME is longer than the 256 allowed length.";
-    public final static int MAX_FIELD_VALUE_LENGTH = 80 * 1024;
-    public final static String MAX_FIELD_VALUE_LENGTH_ERR = "HTTP element FIELD_VALUE is longer than the 81920 allowed length.";
-    public final static int MAX_REQUEST_URI_LENGTH = getConstLength("PUMA_REQUEST_URI_MAX_LENGTH", 1024 * 12);
-    public final static String MAX_REQUEST_URI_LENGTH_ERR = "HTTP element REQUEST_URI is longer than the " + MAX_REQUEST_URI_LENGTH + " allowed length.";
-    public final static int MAX_FRAGMENT_LENGTH = 1024;
-    public final static String MAX_FRAGMENT_LENGTH_ERR = "HTTP element FRAGMENT is longer than the 1024 allowed length.";
-    public final static int MAX_REQUEST_PATH_LENGTH = getConstLength("PUMA_REQUEST_PATH_MAX_LENGTH", 8192);
-    public final static String MAX_REQUEST_PATH_LENGTH_ERR = "HTTP element REQUEST_PATH is longer than the " + MAX_REQUEST_PATH_LENGTH + " allowed length.";
-    public final static int MAX_QUERY_STRING_LENGTH = getConstLength("PUMA_QUERY_STRING_MAX_LENGTH", 10 * 1024);
-    public final static String MAX_QUERY_STRING_LENGTH_ERR = "HTTP element QUERY_STRING is longer than the " + MAX_QUERY_STRING_LENGTH +" allowed length.";
-    public final static int MAX_HEADER_LENGTH = 1024 * (80 + 32);
-    public final static String MAX_HEADER_LENGTH_ERR = "HTTP element HEADER is longer than the 114688 allowed length.";
-
-    public static final byte[] HTTP_PREFIX_BYTELIST = ByteList.plain("HTTP_");
-    public static final byte[] COMMA_SPACE_BYTELIST = ByteList.plain(", ");
 
     public static String getEnvOrProperty(String name) {
         String envValue = System.getenv(name);
@@ -128,7 +116,7 @@ public class Http11 extends RubyObject {
         }
 
         EnvKey(boolean raw) {
-            this.httpName = new ByteList((raw ? name() : "HTTP_" + name()).getBytes(StandardCharsets.UTF_8), false);
+            this.httpName = new ByteList((raw ? name() : "HTTP_" + name()).getBytes(), false);
         }
     }
 
@@ -172,66 +160,83 @@ public class Http11 extends RubyObject {
         return c == ' ' || c == '\t';
     }
 
-    public static void http_field(Ruby runtime, RubyHash req, RubyString[] envStrings, byte[] buffer, int field, int flen, int value, int vlen) {
+    public static final byte[] HTTP_PREFIX_BYTELIST = ByteList.plain("HTTP_");
+    public static final byte[] COMMA_SPACE_BYTELIST = ByteList.plain(", ");
+
+    public static void http_field(Ruby runtime, Http11Parser hp, int vlen) {
         RubyString f;
         IRubyObject v;
-        validateMaxLength(runtime, flen, MAX_FIELD_NAME_LENGTH, MAX_FIELD_NAME_LENGTH_ERR);
-        validateMaxLength(runtime, vlen, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
+        int field_len = hp.field_len;
+        validateFieldNameLength(runtime, field_len);
+        validateFieldValueLength(runtime, vlen);
 
-        f = find_common_field_value(envStrings, buffer, field, flen);
+        byte[] buffer = hp.buffer;
+        int field_start = hp.field_start;
+        f = find_common_field_value(hp.envStrings, buffer, field_start, field_len);
 
         if (f == null) {
-            f = RubyString.newStringLight(runtime, HTTP_PREFIX_BYTELIST.length + flen);
-            f.cat(HTTP_PREFIX_BYTELIST);
-            f.cat(buffer, field, flen);
+            f = newHttpHeader(runtime, buffer, field_start, field_len);
         }
 
-        while (vlen > 0 && is_ows(buffer[value + vlen - 1])) vlen--;
-        while (vlen > 0 && is_ows(buffer[value])) {
+        int mark = hp.mark;
+        while (vlen > 0) {
+            if (!is_ows(buffer[mark + vlen - 1])) break;
             vlen--;
-            value++;
+        }
+        while (vlen > 0 && is_ows(buffer[mark])) {
+            vlen--;
+            mark++;
         }
 
+        RubyHash req = hp.data;
         v = req.fastARef(f);
         if (v == null || v.isNil()) {
-            req.fastASet(f, RubyString.newString(runtime, buffer, value, vlen));
+            req.fastASet(f, RubyString.newString(runtime, buffer, mark, vlen));
         } else {
             RubyString vs = v.convertToString();
             vs.cat(COMMA_SPACE_BYTELIST);
-            vs.cat(buffer, value, vlen);
+            vs.cat(buffer, mark, vlen);
         }
     }
 
-    public static void request_method(Ruby runtime, RubyHash req, RubyString requestMethodString, byte[] buffer, int at, int length) {
-        req.fastASet(requestMethodString, RubyString.newString(runtime,buffer,at,length));
+    private static RubyString newHttpHeader(Ruby runtime, byte[] buffer, int field_start, int field_len) {
+        RubyString f;
+        f = RubyString.newStringLight(runtime, HTTP_PREFIX_BYTELIST.length + field_len);
+        f.cat(HTTP_PREFIX_BYTELIST);
+        f.cat(buffer, field_start, field_len);
+        return f;
     }
 
-    public static void request_uri(Ruby runtime, RubyHash req, RubyString requestUriString, byte[] buffer, int at, int length) {
-        validateMaxLength(runtime, length, MAX_REQUEST_URI_LENGTH, MAX_REQUEST_URI_LENGTH_ERR);
-        req.fastASet(requestUriString, RubyString.newString(runtime,buffer,at,length));
+    public static void request_method(Ruby runtime, Http11Parser hp, int length) {
+        hp.data.fastASet(hp.envStringFor(REQUEST_METHOD), newValueString(runtime, hp, length));
     }
 
-    public static void fragment(Ruby runtime, RubyHash req, RubyString fragmentString, byte[] buffer, int at, int length) {
-        validateMaxLength(runtime, length, MAX_FRAGMENT_LENGTH, MAX_FRAGMENT_LENGTH_ERR);
-        req.fastASet(fragmentString, RubyString.newString(runtime,buffer,at,length));
+    public static void request_uri(Ruby runtime, Http11Parser hp, int length) {
+        validateRequestURILength(runtime, length);
+        hp.data.fastASet(hp.envStringFor(REQUEST_URI), newValueString(runtime, hp, length));
     }
 
-    public static void request_path(Ruby runtime, RubyHash req, RubyString requestPathString, byte[] buffer, int at, int length) {
-        validateMaxLength(runtime, length, MAX_REQUEST_PATH_LENGTH, MAX_REQUEST_PATH_LENGTH_ERR);
-        req.fastASet(requestPathString, RubyString.newString(runtime,buffer,at,length));
+    public static void fragment(Ruby runtime, Http11Parser hp, int length) {
+        validateFragmentLength(runtime, length);
+        hp.data.fastASet(hp.envStringFor(FRAGMENT), newValueString(runtime, hp, length));
     }
 
-    public static void query_string(Ruby runtime, RubyHash req, RubyString queryStringString, byte[] buffer, int at, int length) {
-        validateMaxLength(runtime, length, MAX_QUERY_STRING_LENGTH, MAX_QUERY_STRING_LENGTH_ERR);
-        req.fastASet(queryStringString, RubyString.newString(runtime,buffer,at,length));
+    public static void request_path(Ruby runtime, Http11Parser hp, int length) {
+        validateRequestPathLength(runtime, length);
+        hp.data.fastASet(hp.envStringFor(REQUEST_PATH), newValueString(runtime, hp, length));
     }
 
-    public static void server_protocol(Ruby runtime, RubyHash req, RubyString serverProtocolString, byte[] buffer, int at, int length) {
-        req.fastASet(serverProtocolString, RubyString.newString(runtime,buffer,at,length));
+    public static void query_string(Ruby runtime, Http11Parser hp, int length) {
+        validateQueryStringLength(runtime, length);
+        hp.data.fastASet(hp.envStringFor(QUERY_STRING), newQueryString(runtime, hp, length));
     }
 
-    public void header_done(Ruby runtime, byte[] buffer, int at, int length) {
-        body = RubyString.newString(runtime, buffer, at, length);
+    public static void server_protocol(Ruby runtime, Http11Parser hp, int length) {
+        hp.data.fastASet(hp.envStringFor(SERVER_PROTOCOL), newValueString(runtime, hp, length));
+    }
+
+    public void header_done(Ruby runtime, Http11Parser hp, int at, int length) {
+        body = RubyString.newString(runtime, hp.buffer, at, length);
     }
 
     @JRubyMethod
@@ -248,12 +253,14 @@ public class Http11 extends RubyObject {
 
     @JRubyMethod
     public IRubyObject finish(ThreadContext context) {
-        this.hp.finish();
-        return this.hp.is_finished() ? context.tru : context.fals;
+        Http11Parser hp = this.hp;
+        hp.finish();
+        return hp.is_finished() ? context.tru : context.fals;
     }
 
     @JRubyMethod
     public IRubyObject execute(IRubyObject req_hash, IRubyObject data, IRubyObject start) {
+        Ruby runtime = this.runtime;
         int from = RubyNumeric.fix2int(start);
         ByteList d = ((RubyString)data).getByteList();
         if(from >= d.length()) {
@@ -265,7 +272,7 @@ public class Http11 extends RubyObject {
 
             hp.execute(runtime, this, d,from);
 
-            validateMaxLength(runtime, hp.nread,MAX_HEADER_LENGTH, MAX_HEADER_LENGTH_ERR);
+            validateMaxHeaderLength(runtime, hp);
 
             if(hp.has_error()) {
                 throw newHTTPParserError(runtime, "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?");
@@ -293,5 +300,56 @@ public class Http11 extends RubyObject {
     @JRubyMethod
     public IRubyObject body() {
         return body;
+    }
+
+    public final static int MAX_FIELD_NAME_LENGTH = 256;
+    public final static String MAX_FIELD_NAME_LENGTH_ERR = "HTTP element FIELD_NAME is longer than the 256 allowed length.";
+    public final static int MAX_FIELD_VALUE_LENGTH = 80 * 1024;
+    public final static String MAX_FIELD_VALUE_LENGTH_ERR = "HTTP element FIELD_VALUE is longer than the 81920 allowed length.";
+    public final static int MAX_REQUEST_URI_LENGTH = getConstLength("PUMA_REQUEST_URI_MAX_LENGTH", 1024 * 12);
+    public final static String MAX_REQUEST_URI_LENGTH_ERR = "HTTP element REQUEST_URI is longer than the " + MAX_REQUEST_URI_LENGTH + " allowed length.";
+    public final static int MAX_FRAGMENT_LENGTH = 1024;
+    public final static String MAX_FRAGMENT_LENGTH_ERR = "HTTP element FRAGMENT is longer than the 1024 allowed length.";
+    public final static int MAX_REQUEST_PATH_LENGTH = getConstLength("PUMA_REQUEST_PATH_MAX_LENGTH", 8192);
+    public final static String MAX_REQUEST_PATH_LENGTH_ERR = "HTTP element REQUEST_PATH is longer than the " + MAX_REQUEST_PATH_LENGTH + " allowed length.";
+    public final static int MAX_QUERY_STRING_LENGTH = getConstLength("PUMA_QUERY_STRING_MAX_LENGTH", 10 * 1024);
+    public final static String MAX_QUERY_STRING_LENGTH_ERR = "HTTP element QUERY_STRING is longer than the " + MAX_QUERY_STRING_LENGTH +" allowed length.";
+    public final static int MAX_HEADER_LENGTH = 1024 * (80 + 32);
+    public final static String MAX_HEADER_LENGTH_ERR = "HTTP element HEADER is longer than the 114688 allowed length.";
+
+    private static void validateFieldNameLength(Ruby runtime, int field_len) {
+        validateMaxLength(runtime, field_len, MAX_FIELD_NAME_LENGTH, MAX_FIELD_NAME_LENGTH_ERR);
+    }
+
+    private static void validateFieldValueLength(Ruby runtime, int field_len) {
+        validateMaxLength(runtime, field_len, MAX_FIELD_VALUE_LENGTH, MAX_FIELD_VALUE_LENGTH_ERR);
+    }
+
+    private static void validateRequestURILength(Ruby runtime, int length) {
+        validateMaxLength(runtime, length, MAX_REQUEST_URI_LENGTH, MAX_REQUEST_URI_LENGTH_ERR);
+    }
+
+    private static void validateFragmentLength(Ruby runtime, int length) {
+        validateMaxLength(runtime, length, MAX_FRAGMENT_LENGTH, MAX_FRAGMENT_LENGTH_ERR);
+    }
+
+    private static void validateRequestPathLength(Ruby runtime, int length) {
+        validateMaxLength(runtime, length, MAX_REQUEST_PATH_LENGTH, MAX_REQUEST_PATH_LENGTH_ERR);
+    }
+
+    private static void validateQueryStringLength(Ruby runtime, int length) {
+        validateMaxLength(runtime, length, MAX_QUERY_STRING_LENGTH, MAX_QUERY_STRING_LENGTH_ERR);
+    }
+
+    private static RubyString newValueString(Ruby runtime, Http11Parser hp, int length) {
+        return RubyString.newString(runtime, hp.buffer, hp.mark, length);
+    }
+
+    private static RubyString newQueryString(Ruby runtime, Http11Parser hp, int length) {
+        return RubyString.newString(runtime, hp.buffer, hp.query_start, length);
+    }
+
+    private static void validateMaxHeaderLength(Ruby runtime, Http11Parser hp) {
+        validateMaxLength(runtime, hp.nread, MAX_HEADER_LENGTH, MAX_HEADER_LENGTH_ERR);
     }
 }// Http11

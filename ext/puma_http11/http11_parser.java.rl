@@ -5,16 +5,9 @@ import org.jruby.RubyHash;
 import org.jruby.RubyString;
 import org.jruby.util.ByteList;
 
-import static org.jruby.puma.Http11.EnvKey.FRAGMENT;
-import static org.jruby.puma.Http11.EnvKey.QUERY_STRING;
-import static org.jruby.puma.Http11.EnvKey.REQUEST_METHOD;
-import static org.jruby.puma.Http11.EnvKey.REQUEST_PATH;
-import static org.jruby.puma.Http11.EnvKey.REQUEST_URI;
-import static org.jruby.puma.Http11.EnvKey.SERVER_PROTOCOL;
-
 public class Http11Parser {
 
-    private final RubyString[] envStrings;
+    final RubyString[] envStrings;
 
     public Http11Parser(RubyString[] envStrings) {
         this.envStrings = envStrings;
@@ -50,34 +43,34 @@ public class Http11Parser {
 
   action start_value { this.mark = fpc; }
   action write_value {
-    Http11.http_field(runtime, this.data, envStrings, this.buffer, this.field_start, this.field_len, this.mark, fpc-this.mark);
+    Http11.http_field(runtime, this, fpc-this.mark);
   }
   action request_method {
-    Http11.request_method(runtime, this.data, envStrings[REQUEST_METHOD.ordinal()], this.buffer, this.mark, fpc-this.mark);
+    Http11.request_method(runtime, this, fpc-this.mark);
   }
   action request_uri {
-    Http11.request_uri(runtime, this.data, envStrings[REQUEST_URI.ordinal()], this.buffer, this.mark, fpc-this.mark);
+    Http11.request_uri(runtime, this, fpc-this.mark);
   }
   action fragment {
-    Http11.fragment(runtime, this.data, envStrings[FRAGMENT.ordinal()], this.buffer, this.mark, fpc-this.mark);
+    Http11.fragment(runtime, this, fpc-this.mark);
   }
   
   action start_query {this.query_start = fpc; }
   action query_string {
-    Http11.query_string(runtime, this.data, envStrings[QUERY_STRING.ordinal()],this.buffer, this.query_start, fpc-this.query_start);
+    Http11.query_string(runtime, this, fpc-this.query_start);
   }
 
   action server_protocol {
-    Http11.server_protocol(runtime, this.data, envStrings[SERVER_PROTOCOL.ordinal()], this.buffer, this.mark, fpc-this.mark);
+    Http11.server_protocol(runtime, this, fpc-this.mark);
   }
 
   action request_path {
-    Http11.request_path(runtime, this.data, envStrings[REQUEST_PATH.ordinal()], this.buffer, this.mark, fpc-this.mark);
+    Http11.request_path(runtime, this, fpc-this.mark);
   }
 
   action done { 
     this.body_start = fpc + 1;
-    http.header_done(runtime, this.buffer, fpc + 1, pe - fpc - 1);
+    http.header_done(runtime, this, fpc + 1, pe - fpc - 1);
     fbreak;
   }
 
@@ -153,5 +146,9 @@ public class Http11Parser {
 
   public boolean is_finished() {
     return this.cs == puma_parser_first_final;
+  }
+
+  public RubyString envStringFor(Http11.EnvKey key) {
+       return envStrings[key.ordinal()];
   }
 }
