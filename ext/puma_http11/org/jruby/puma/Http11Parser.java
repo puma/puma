@@ -9,35 +9,15 @@ import org.jruby.util.ByteList;
 
 public class Http11Parser {
 
-    final RubyString[] envStrings;
-
-    public Http11Parser(RubyString[] envStrings) {
-        this.envStrings = envStrings;
-    }
-
-    /*
-     * capitalizes all lower-case ASCII characters,
-     * converts dashes to underscores, and underscores to commas.
-     */
-    static void snake_upcase_char(byte[] c, int off) {
-        byte ch = c[off];
-        if (ch >= 'a' && ch <= 'z')
-          c[off] = (byte) (ch & ~0x20);
-        else if (ch == '_')
-          c[off] = ',';
-        else if (ch == '-')
-          c[off] = '_';
-    }
-
 /** Machine **/
 
 
-// line 79 "ext/puma_http11/http11_parser.java.rl"
+// line 59 "ext/puma_http11/http11_parser.java.rl"
 
 
 /** Data **/
 
-// line 41 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 21 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 private static byte[] init__puma_parser_actions_0()
 {
 	return new byte [] {
@@ -206,7 +186,7 @@ static final int puma_parser_first_final = 46;
 static final int puma_parser_error = 0;
 
 
-// line 83 "ext/puma_http11/http11_parser.java.rl"
+// line 63 "ext/puma_http11/http11_parser.java.rl"
 
    int cs;
    int body_start;
@@ -222,12 +202,12 @@ static final int puma_parser_error = 0;
    public void init() {
 
        
-// line 226 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 206 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	cs = puma_parser_start;
 	}
 
-// line 98 "ext/puma_http11/http11_parser.java.rl"
+// line 78 "ext/puma_http11/http11_parser.java.rl"
 
        body_start = 0;
        mark = 0;
@@ -241,6 +221,7 @@ static final int puma_parser_error = 0;
      int cs = this.cs;
      int len = buffer.length();
      int beg = buffer.begin();
+     RubyString[] envStrings = http.envStrings;
      assert off<=len : "offset past end of buffer";
 
      p = beg + off;
@@ -249,7 +230,7 @@ static final int puma_parser_error = 0;
      this.buffer = data;
 
      
-// line 253 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 234 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	int _klen;
 	int _trans = 0;
@@ -330,82 +311,82 @@ case 1:
 			switch ( _puma_parser_actions[_acts++] )
 			{
 	case 0:
-// line 36 "ext/puma_http11/http11_parser.java.rl"
+// line 16 "ext/puma_http11/http11_parser.java.rl"
 	{this.mark = p; }
 	break;
 	case 1:
-// line 38 "ext/puma_http11/http11_parser.java.rl"
+// line 18 "ext/puma_http11/http11_parser.java.rl"
 	{ this.field_start = p; }
 	break;
 	case 2:
-// line 39 "ext/puma_http11/http11_parser.java.rl"
-	{ snake_upcase_char(this.buffer, p); }
+// line 19 "ext/puma_http11/http11_parser.java.rl"
+	{ /* done lazily as needed */ }
 	break;
 	case 3:
-// line 40 "ext/puma_http11/http11_parser.java.rl"
+// line 20 "ext/puma_http11/http11_parser.java.rl"
 	{ 
     this.field_len = p-this.field_start;
   }
 	break;
 	case 4:
-// line 44 "ext/puma_http11/http11_parser.java.rl"
+// line 24 "ext/puma_http11/http11_parser.java.rl"
 	{ this.mark = p; }
 	break;
 	case 5:
-// line 45 "ext/puma_http11/http11_parser.java.rl"
+// line 25 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.http_field(runtime, this, p-this.mark);
+    Http11.http_field(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 6:
-// line 48 "ext/puma_http11/http11_parser.java.rl"
+// line 28 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.request_method(runtime, this, p-this.mark);
+    Http11.request_method(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 7:
-// line 51 "ext/puma_http11/http11_parser.java.rl"
+// line 31 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.request_uri(runtime, this, p-this.mark);
+    Http11.request_uri(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 8:
-// line 54 "ext/puma_http11/http11_parser.java.rl"
+// line 34 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.fragment(runtime, this, p-this.mark);
+    Http11.fragment(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 9:
-// line 58 "ext/puma_http11/http11_parser.java.rl"
+// line 38 "ext/puma_http11/http11_parser.java.rl"
 	{this.query_start = p; }
 	break;
 	case 10:
-// line 59 "ext/puma_http11/http11_parser.java.rl"
+// line 39 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.query_string(runtime, this, p-this.query_start);
+    Http11.query_string(runtime, envStrings, this, p-this.query_start);
   }
 	break;
 	case 11:
-// line 63 "ext/puma_http11/http11_parser.java.rl"
+// line 43 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.server_protocol(runtime, this, p-this.mark);
+    Http11.server_protocol(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 12:
-// line 67 "ext/puma_http11/http11_parser.java.rl"
+// line 47 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.request_path(runtime, this, p-this.mark);
+    Http11.request_path(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 13:
-// line 71 "ext/puma_http11/http11_parser.java.rl"
+// line 51 "ext/puma_http11/http11_parser.java.rl"
 	{ 
     this.body_start = p + 1;
     http.header_done(runtime, this, p + 1, pe - p - 1);
     { p += 1; _goto_targ = 5; if (true)  continue _goto;}
   }
 	break;
-// line 409 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 390 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 			}
 		}
 	}
@@ -425,7 +406,7 @@ case 5:
 	break; }
 	}
 
-// line 119 "ext/puma_http11/http11_parser.java.rl"
+// line 100 "ext/puma_http11/http11_parser.java.rl"
 
      this.cs = cs;
      this.nread += (p - off);
@@ -456,9 +437,5 @@ case 5:
 
   public boolean is_finished() {
     return this.cs == puma_parser_first_final;
-  }
-
-  public RubyString envStringFor(Http11.EnvKey key) {
-       return envStrings[key.ordinal()];
   }
 }

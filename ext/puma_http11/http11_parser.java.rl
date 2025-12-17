@@ -7,26 +7,6 @@ import org.jruby.util.ByteList;
 
 public class Http11Parser {
 
-    final RubyString[] envStrings;
-
-    public Http11Parser(RubyString[] envStrings) {
-        this.envStrings = envStrings;
-    }
-
-    /*
-     * capitalizes all lower-case ASCII characters,
-     * converts dashes to underscores, and underscores to commas.
-     */
-    static void snake_upcase_char(byte[] c, int off) {
-        byte ch = c[off];
-        if (ch >= 'a' && ch <= 'z')
-          c[off] = (byte) (ch & ~0x20);
-        else if (ch == '_')
-          c[off] = ',';
-        else if (ch == '-')
-          c[off] = '_';
-    }
-
 /** Machine **/
 
 %%{
@@ -36,36 +16,36 @@ public class Http11Parser {
   action mark {this.mark = fpc; }
 
   action start_field { this.field_start = fpc; }
-  action snake_upcase_field { snake_upcase_char(this.buffer, fpc); }
+  action snake_upcase_field { /* done lazily as needed */ }
   action write_field { 
     this.field_len = fpc-this.field_start;
   }
 
   action start_value { this.mark = fpc; }
   action write_value {
-    Http11.http_field(runtime, this, fpc-this.mark);
+    Http11.http_field(runtime, envStrings, this, fpc-this.mark);
   }
   action request_method {
-    Http11.request_method(runtime, this, fpc-this.mark);
+    Http11.request_method(runtime, envStrings, this, fpc-this.mark);
   }
   action request_uri {
-    Http11.request_uri(runtime, this, fpc-this.mark);
+    Http11.request_uri(runtime, envStrings, this, fpc-this.mark);
   }
   action fragment {
-    Http11.fragment(runtime, this, fpc-this.mark);
+    Http11.fragment(runtime, envStrings, this, fpc-this.mark);
   }
   
   action start_query {this.query_start = fpc; }
   action query_string {
-    Http11.query_string(runtime, this, fpc-this.query_start);
+    Http11.query_string(runtime, envStrings, this, fpc-this.query_start);
   }
 
   action server_protocol {
-    Http11.server_protocol(runtime, this, fpc-this.mark);
+    Http11.server_protocol(runtime, envStrings, this, fpc-this.mark);
   }
 
   action request_path {
-    Http11.request_path(runtime, this, fpc-this.mark);
+    Http11.request_path(runtime, envStrings, this, fpc-this.mark);
   }
 
   action done { 
@@ -108,6 +88,7 @@ public class Http11Parser {
      int cs = this.cs;
      int len = buffer.length();
      int beg = buffer.begin();
+     RubyString[] envStrings = http.envStrings;
      assert off<=len : "offset past end of buffer";
 
      p = beg + off;
@@ -146,9 +127,5 @@ public class Http11Parser {
 
   public boolean is_finished() {
     return this.cs == puma_parser_first_final;
-  }
-
-  public RubyString envStringFor(Http11.EnvKey key) {
-       return envStrings[key.ordinal()];
   }
 }
