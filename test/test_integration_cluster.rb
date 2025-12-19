@@ -137,9 +137,13 @@ class TestIntegrationCluster < TestIntegration
 
   def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
-    cli_server "-w #{workers} -C test/config/event_after_booted_and_after_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} " \
+      "-C test/config/event_after_booted_and_after_stopped.rb " \
+      "-C test/config/event_after_booted_exit.rb " \
+      "test/rackup/hello.ru",
+      no_wait: true
 
-    # above checks 'Ctrl-C', below is logged after workers boot
+    # below is logged after workers boot
     assert wait_for_server_to_include('after_booted called')
     assert wait_for_server_to_include('Goodbye!')
     # below logged after workers are stopped
