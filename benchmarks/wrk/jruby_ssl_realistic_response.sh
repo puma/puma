@@ -1,4 +1,4 @@
-bundle exec ruby bin/puma \
+bundle exec ruby exe/puma \
                  -t 4 -b "ssl://localhost:9292?keystore=examples/puma/keystore.jks&keystore-pass=blahblah&verify_mode=none" \
                  test/rackup/realistic_response.ru &
 PID1=$!
