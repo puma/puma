@@ -4,6 +4,7 @@ require_relative "helper"
 require_relative "helpers/ssl" if ::Puma::HAS_SSL
 require_relative "helpers/tmp_path"
 
+require "minitest/mock"
 require "puma/binder"
 require "puma/events"
 require "puma/configuration"
