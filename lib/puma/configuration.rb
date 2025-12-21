@@ -242,7 +242,7 @@ module Puma
         require_processor_counter
         ::Concurrent.available_processor_count
       else
-        env['WEB_CONCURRENCY']
+        env['WEB_CONCURRENCY']&.strip
       end
 
       {
