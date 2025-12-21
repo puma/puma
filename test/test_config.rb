@@ -838,10 +838,12 @@ class TestConfigEnvVariables < PumaTest
   end
 
   def test_config_ignores_blank_workers_from_env
-    env = { "WEB_CONCURRENCY" => "" }
-    conf = Puma::Configuration.new({}, {}, env)
-    conf.clamp
-    assert_equal 0, conf.options.default_options[:workers]
+    [nil, '', ' ', " \n ", " \t "].each do |wc|
+      env = { "WEB_CONCURRENCY" => wc }
+      conf = Puma::Configuration.new({}, {}, env)
+      conf.clamp
+      assert_equal 0, conf.options.default_options[:workers]
+    end
   end
 
   def test_config_does_not_preload_app_if_not_using_workers
@@ -849,15 +851,6 @@ class TestConfigEnvVariables < PumaTest
     conf = Puma::Configuration.new({}, {}, env)
     conf.clamp
     assert_equal false, conf.options.default_options[:preload_app]
-  end
-
-  def test_blank_web_concurrency_does_not_break
-    [nil, '', ' ', " \n ", " \t "].each do |wc|
-      env = { "WEB_CONCURRENCY" => wc }
-      conf = Puma::Configuration.new({}, {}, env)
-      conf.clamp
-      assert_equal false, conf.options.default_options[:preload_app]
-    end
   end
 
   def test_config_preloads_app_if_using_workers
