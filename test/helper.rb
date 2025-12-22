@@ -218,7 +218,7 @@ class Minitest::Test
 
   PROJECT_ROOT = File.dirname(__dir__)
 
-  def self.run(args = []) # :nodoc:
+  def self.run(klass, method_name, reporter) # :nodoc:
     prove_it!
     super
   end

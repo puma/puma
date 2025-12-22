@@ -79,4 +79,6 @@ end
 exit 1 if no_tests
 
 require 'minitest'
+require "minitest/mock" unless defined?(::Minitest::Mock)
+
 STDOUT.write "Minitest version: #{Minitest::VERSION}\n\n"
