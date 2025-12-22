@@ -6,7 +6,7 @@ gem "rake-compiler"
 
 gem "json", "~> 2.18"
 gem "nio4r", "~> 2.7"
-gem "minitest", '>= 5.26.1', '< 6.0.0'
+gem "minitest", ">= 5.26"
 gem "minitest-retry"
 gem "minitest-proveit"
 gem "minitest-stub-const"
