@@ -119,7 +119,7 @@ Note that threads are still used in cluster mode, and the `-t` thread flag setti
 
 If the `WEB_CONCURRENCY` environment variable is set to `"auto"` and the `concurrent-ruby` gem is available in your application, Puma will set the worker process count to the result of [available processors](https://msp-greg.github.io/concurrent-ruby/Concurrent.html#available_processor_count-class_method).
 
-For an in-depth discussion of the tradeoffs of thread and process count settings, [see our docs](docs/kubernetes.md#workers-per-pod-and-other-config-issues).
+For an in-depth discussion of the tradeoffs of thread and process count settings, [see our docs](docs/deployment.md).
 
 In cluster mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
 
