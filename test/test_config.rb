@@ -20,7 +20,7 @@ class TestConfigFile < PumaTest
   def test_app_from_rackup
     if Rack.release >= '3'
       fn = "test/rackup/hello-bind_rack3.ru"
-      bind = "tcp://0.0.0.0:9292"
+      bind = "tcp://[::]:9292"
     else
       fn = "test/rackup/hello-bind.ru"
       bind = "tcp://127.0.0.1:9292"
@@ -766,12 +766,12 @@ class TestEnvModifificationConfig < PumaTest
     port = (rand(10_000) + 30_000).to_s
     env = { "PORT" => port }
     conf = Puma::Configuration.new({}, {}, env)  do |user_config, file_config, default_config|
-      user_config.bind "tcp://#{Puma::Configuration::DEFAULTS[:tcp_host]}:#{port}"
+      user_config.bind "tcp://[#{Puma::Configuration::DEFAULTS[:tcp_host]}]:#{port}"
       file_config.load "test/config/app.rb"
     end
     conf.clamp
 
-    assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
+    assert_equal ["tcp://[::]:#{port}"], conf.options[:binds]
   end
 end
 

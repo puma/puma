@@ -260,7 +260,7 @@ module Puma
     # accepted protocols. Multiple urls can be bound to, calling +bind+ does
     # not overwrite previous bindings.
     #
-    # The default is "tcp://0.0.0.0:9292".
+    # The default is "tcp://[::]:9292".
     #
     # You can use query parameters within the url to specify options:
     #
@@ -279,7 +279,7 @@ module Puma
     # @example SSL cert for mutual TLS (mTLS)
     #   bind 'ssl://127.0.0.1:9292?key=key.key&cert=cert.pem&ca=ca.pem&verify_mode=force_peer'
     # @example Disable optimization for low latency
-    #   bind 'tcp://0.0.0.0:9292?low_latency=false'
+    #   bind 'tcp://[::]:9292?low_latency=false'
     # @example Socket permissions
     #   bind 'unix:///var/run/puma.sock?umask=0111'
     #
