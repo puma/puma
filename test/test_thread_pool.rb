@@ -12,11 +12,12 @@ class TestThreadPool < PumaTest
     @pool.shutdown(1) if defined?(@pool)
   end
 
-  def new_pool(min, max, pool_shutdown_grace_time: nil, &block)
+  def new_pool(min, max, pool_shutdown_grace_time: nil, max_io_threads: 0, &block)
     block = proc { } unless block
     options = {
       min_threads: min,
       max_threads: max,
+      max_io_threads: max_io_threads,
       pool_shutdown_grace_time: pool_shutdown_grace_time,
     }
     @pool = Puma::ThreadPool.new('tst', options, &block)
@@ -69,7 +70,7 @@ class TestThreadPool < PumaTest
 
   def test_append_spawns
     saw = []
-    pool = mutex_pool(0, 1) do |work|
+    pool = mutex_pool(0, 1) do |_processor, work|
       saw << work
     end
 
@@ -381,8 +382,8 @@ class TestThreadPool < PumaTest
     pool = new_pool(1, 1) { |_| }
     sleep 1
 
-    # simulate our waiting worker thread getting killed for whatever reason
-    pool.instance_eval { @workers[0].kill }
+    # simulate our waiting processor thread getting killed for whatever reason
+    pool.instance_eval { @processors[0].kill }
     sleep 1
     pool.reap
     sleep 1
@@ -390,5 +391,53 @@ class TestThreadPool < PumaTest
     pool << 0
     sleep 1
     assert_equal 0, pool.backlog
+  end
+
+  def test_io_threads_allowed_over_the_limit
+    mutex = Mutex.new
+    mutex.lock
+    queue = Queue.new
+    concurrent_threads = []
+    pool = new_pool(0, 4, max_io_threads: 4) do |processor, io_bound_thread|
+      if io_bound_thread
+        processor.mark_as_io_thread!
+      end
+      queue << Thread.current
+      mutex.synchronize { }
+    end
+
+    8.times do
+      pool << true
+      concurrent_threads << queue.pop
+    end
+    assert_equal 8, concurrent_threads.size
+    refute_predicate pool, :can_spawn_processor?
+  ensure
+    mutex.unlock
+    pool.shutdown
+  end
+
+  def test_io_threads_over_the_limit_count_as_normal_threads
+    mutex = Mutex.new
+    mutex.lock
+    queue = Queue.new
+    concurrent_threads = []
+    pool = new_pool(0, 2, max_io_threads: 2) do |processor, io_bound_thread|
+      if io_bound_thread
+        processor.mark_as_io_thread!
+      end
+      queue << Thread.current
+      mutex.synchronize { }
+    end
+
+    [true, true, true, false].each do |io_bound_thread|
+      pool << io_bound_thread
+      concurrent_threads << queue.pop
+    end
+    assert_equal 4, concurrent_threads.size
+    refute_predicate pool, :can_spawn_processor?
+  ensure
+    mutex.unlock
+    pool.shutdown
   end
 end
