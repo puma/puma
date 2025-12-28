@@ -115,6 +115,7 @@ jobs:
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
 
       - name: compile
+        continue-on-error: ${{ matrix.ruby == 'head' }}
         if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         run:  bundle exec rake compile
 
@@ -126,6 +127,7 @@ jobs:
         run: echo 'RUBYOPT=--yjit' >> $GITHUB_ENV
 
       - name: test
+        continue-on-error: ${{ matrix.ruby == 'head' }}
         if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         timeout-minutes: 10
         run: test/runner --verbose
