@@ -81,6 +81,10 @@ jobs:
           sed -i "s/$SRC/$DST/" test/application_system_test_case.rb
           cat Gemfile
 
+      - name: Force compile sqlite3 from source for Ruby head
+        if: matrix.ruby == 'head'
+        run: echo 'BUNDLE_FORCE_RUBY_PLATFORM=true' >> $GITHUB_ENV
+
       - name: load ruby
         uses: ruby/setup-ruby@v1
         with:
