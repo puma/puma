@@ -16,7 +16,7 @@ module Puma
       'gc'       => nil,
       'gc-stats' => nil,
       'halt'              => 'SIGQUIT',
-      'info'              => 'SIGINFO',
+      'info'              => Puma.backtrace_signal,
       'phased-restart'    => 'SIGUSR1',
       'refork'            => 'SIGURG',
       'reload-worker-directory' => nil,
