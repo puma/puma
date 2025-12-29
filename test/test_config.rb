@@ -830,6 +830,43 @@ class TestConfigEnvVariables < PumaTest
     assert_equal default_max_threads, conf.options.default_options[:max_threads]
   end
 
+  def test_config_workers_auto_from_dsl_and_env
+    require 'concurrent/utility/processor_counter'
+
+    Concurrent.stub(:available_processor_count, 5) do
+      conf = Puma::Configuration.new
+      conf.configure { |c| c.workers :auto }
+      conf.clamp
+      assert_equal 5, conf.options[:workers]
+    end
+
+    Concurrent.stub(:available_processor_count, 1.7) do
+      conf = Puma::Configuration.new({}, {}, { "WEB_CONCURRENCY" => "auto" })
+      conf.clamp
+      assert_equal 1, conf.options.default_options[:workers]
+    end
+  end
+
+  def test_config_workers_auto_requires_concurrent_ruby
+    conf = Puma::Configuration.new
+
+    def conf.require(path)
+      raise LoadError, "Mocking system where concurrent-ruby is not available" if path == 'concurrent/utility/processor_counter'
+      super(path)
+    end
+
+    _, err = capture_io do
+      assert_raises(LoadError) { conf.configure { |c| c.workers :auto } }
+    end
+    assert_includes err, 'Please add "concurrent-ruby" to your Gemfile'
+  end
+
+  def test_config_workers_rejects_unknown_symbol
+    conf = Puma::Configuration.new
+    error = assert_raises(ArgumentError) { conf.configure { |c| c.workers :boom } }
+    assert_includes error.message, 'Integer or :auto'
+  end
+
   def test_config_loads_workers_from_env
     env = { "WEB_CONCURRENCY" => "9" }
     conf = Puma::Configuration.new({}, {}, env)
