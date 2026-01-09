@@ -84,9 +84,9 @@ bundle exec rake -rdevkit compile
 Now, you should be able to run Puma locally:
 
 ```sh
-bundle exec bin/puma test/rackup/hello.ru
+bundle exec exe/puma test/rackup/hello.ru
 # -or-
-bundle exec ruby -Ilib bin/puma test/rackup/hello.ru
+bundle exec ruby -Ilib exe/puma test/rackup/hello.ru
 ```
 
 Alternatively, you can reference your local copy in a project's `Gemfile`:
