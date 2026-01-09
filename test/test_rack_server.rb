@@ -248,6 +248,26 @@ class TestRackServer < PumaTest
     assert_equal [1], calls
   end
 
+  def test_puma_mark_as_io_bound
+    called = false
+
+    @server.app = lambda do |env|
+      env['puma.mark_as_io_bound'].call
+      called = true
+      [200, { "X-Header" => "Works" }, ["OK"]]
+    rescue => e
+      called = e
+    end
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal true, called
+  end
+
   def test_rack_body_proxy
     closed = false
     body = Rack::BodyProxy.new(["Hello"]) { closed = true }
