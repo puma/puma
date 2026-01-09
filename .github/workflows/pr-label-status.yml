@@ -23,14 +23,13 @@ jobs:
         with:
           script: |
             // Configuration
-            const MAINTAINERS_LIST = [
-              'evanphx',
-              'MSP-Greg',
-              'dentarg',
-              'schneems',
-              'nateberkopec',
-              'joshuay03'
-            ];
+            const fs = require('fs');
+            const path = require('path');
+            const MAINTAINERS_LIST = fs
+              .readFileSync(path.join(process.cwd(), 'MAINTAINERS'), 'utf8')
+              .split('\n')
+              .map((name) => name.trim())
+              .filter(Boolean);
 
             const LABELS = {
               CHANGES: 'waiting-for-changes',
