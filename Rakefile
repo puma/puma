@@ -61,12 +61,14 @@ else
         # uses no_ssl/PumaHttp11Service.java, removes MiniSSL.java
         FileList[
           File.join(@ext_dir, "no_ssl/PumaHttp11Service.java"),
+          File.join(@ext_dir, "org/jruby/puma/EnvKey.java"),
           File.join(@ext_dir, "org/jruby/puma/Http11.java"),
           File.join(@ext_dir, "org/jruby/puma/Http11Parser.java")
         ]
       else
         FileList[
           File.join(@ext_dir, "PumaHttp11Service.java"),
+          File.join(@ext_dir, "org/jruby/puma/EnvKey.java"),
           File.join(@ext_dir, "org/jruby/puma/Http11.java"),
           File.join(@ext_dir, "org/jruby/puma/Http11Parser.java"),
           File.join(@ext_dir, "org/jruby/puma/MiniSSL.java")
