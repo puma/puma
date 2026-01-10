@@ -31,11 +31,17 @@ jobs:
           - { os: ubuntu-22.04 , ruby: '3.2', rails: '7.2' }
           - { os: ubuntu-22.04 , ruby: '3.3', rails: '7.2' }
           - { os: ubuntu-22.04 , ruby: '3.4', rails: '7.2' }
+          - { os: ubuntu-22.04 , ruby: '4.0', rails: '7.2' }
           - { os: ubuntu-22.04 , ruby: '3.2', rails: '8.0' }
           - { os: ubuntu-22.04 , ruby: '3.3', rails: '8.0' }
           - { os: ubuntu-22.04 , ruby: '3.4', rails: '8.0' }
-          - { os: ubuntu-22.04 , ruby: head , rails: '8.0' }
-          - { os: ubuntu-24.04 , ruby: head , rails: '8.0' }
+          - { os: ubuntu-22.04 , ruby: '4.0', rails: '8.0' }
+          - { os: ubuntu-24.04 , ruby: '3.2', rails: '8.1' }
+          - { os: ubuntu-24.04 , ruby: '3.3', rails: '8.1' }
+          - { os: ubuntu-24.04 , ruby: '3.4', rails: '8.1' }
+          - { os: ubuntu-24.04 , ruby: '4.0', rails: '8.1' }
+          - { os: ubuntu-22.04 , ruby: head , rails: '8.1' }
+          - { os: ubuntu-24.04 , ruby: head , rails: '8.1' }
     env:
       CI: true
       FERRUM_PROCESS_TIMEOUT: 60
@@ -60,8 +66,16 @@ jobs:
           DST="if RUBY_PATCHLEVEL == -1\n  gem 'rack', git: 'https://github.com/rack/rack', ref: 'main'\nelse\n  gem 'rack'\nend"
           sed -i "s#$SRC#$DST#" Gemfile
           #
+          case $RAILS_VERSION in
+            8.*)
+              SQLITE_VERSION='>= 2.1'
+              ;;
+            *)
+              SQLITE_VERSION='~> 1.4'
+              ;;
+          esac
           SRC="gem ['\"]sqlite3['\"].*"
-          DST="gem 'sqlite3', ENV['RAILS_VERSION'] == '8.0' ? '>= 2.1' : '~> 1.4'"
+          DST="gem 'sqlite3', '$SQLITE_VERSION'"
           sed -i "s#$SRC#$DST#" Gemfile
           #
           # allow using capybara from the repo, either a branch or a commit
