@@ -446,7 +446,7 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
     SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL@STRENGTH");
   }
 
-#if HAVE_SSL_CTX_SET_CIPHERSUITES
+#ifdef HAVE_SSL_CTX_SET_CIPHERSUITES
   // Only override OpenSSL default ciphersuites if config option is supplied.
   if (!NIL_P(ssl_ciphersuites)) {
     StringValue(ssl_ciphersuites);
