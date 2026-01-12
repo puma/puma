@@ -12,17 +12,16 @@ gem "minitest-proveit"
 gem "minitest-stub-const"
 gem "concurrent-ruby", "~> 1.3"
 
-case ENV['PUMA_CI_RACK']&.strip
-when 'rack2'
-  gem "rackup", '~> 1.0'
-  gem "rack"  , '~> 2.2'
+if ENV['PUMA_CI_RACK']&.strip == 'rack2'
+  gem "rack"  , "~> 2.2"
+  gem "rackup", "~> 1.0"
+## Temporarily disable using rack & rackup main branches
+#elsif RUBY_PATCHLEVEL == -1
+#  gem "rack"  , github: "rack/rack"  , branch: "main"
+#  gem "rackup", github: "rack/rackup", branch: "main"
 else
-  gem "rackup", '>= 2.0'
-  if RUBY_PATCHLEVEL == -1
-    gem "rack", git: "https://github.com/rack/rack", ref: "main"
-  else
-    gem "rack"  , '>= 2.2'
-  end
+  gem "rack"  , "~> 3.2"
+  gem "rackup", "~> 2.3"
 end
 
 gem "jruby-openssl", :platform => "jruby"
@@ -32,7 +31,7 @@ unless ENV['PUMA_NO_RUBOCOP'] || RUBY_PLATFORM.include?('mswin')
   gem 'rubocop-performance', require: false
 end
 
-if RUBY_VERSION >= '3.5' && ::Bundler::WINDOWS
+if RUBY_VERSION >= '3.5' && ::Gem.win_platform?
   gem "fiddle"
 end
 
