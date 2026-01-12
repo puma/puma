@@ -101,7 +101,7 @@ class TestErrorLogger < PumaTest
 
       include_str =
         case
-        when Puma::IS_MRI && RUBY_VERSION < '3.4' || TRUFFLE
+        when (Puma::IS_MRI || TRUFFLE) && RUBY_VERSION < '3.4'
           ":in `dummy_error'" # beginning backtick
         when Puma::IS_JRUBY
           ":in 'dummy_error'" # beginning apostrophe/single quote
