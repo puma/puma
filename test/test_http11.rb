@@ -136,7 +136,10 @@ class Http11ParserTest < TestIntegration
     if readable
       res << Digest(:SHA1).hexdigest(rand(count * 100).to_s) * (count / 40)
     else
-      res << Digest(:SHA1).digest(rand(count * 100).to_s) * (count / 20)
+      data = Digest(:SHA1).digest(rand(count * 100).to_s) * (count / 20)
+      # Guarantee there is an invalid byte at the end of the string
+      data.setbyte(data.bytesize - 1, 0x1)
+      res << data
     end
 
     res
@@ -208,8 +211,8 @@ class Http11ParserTest < TestIntegration
     http = "GET #{path} HTTP/1.1\r\n\r\n"
     assert_raises Puma::HttpParserError do
       parser.execute(req, http, 0)
-      parser.reset
     end
+    parser.reset
   end
 
   def test_horrible_queries
@@ -220,8 +223,8 @@ class Http11ParserTest < TestIntegration
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-#{rand_data(1024, 1024+(c*1024))}: Test\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
-        parser.reset
       end
+      parser.reset
     end
 
     # then that large mangled field values are caught
@@ -229,8 +232,8 @@ class Http11ParserTest < TestIntegration
       get = "GET /#{rand_data(10,120)} HTTP/1.1\r\nX-Test: #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
-        parser.reset
       end
+      parser.reset
     end
 
     # then large headers are rejected too
@@ -238,16 +241,16 @@ class Http11ParserTest < TestIntegration
     get += "X-Test: test\r\n" * (80 * 1024)
     assert_raises Puma::HttpParserError do
       parser.execute({}, get, 0)
-      parser.reset
     end
+    parser.reset
 
     # finally just that random garbage gets blocked all the time
     10.times do |c|
       get = "GET #{rand_data(1024, 1024+(c*1024), false)} #{rand_data(1024, 1024+(c*1024), false)}\r\n\r\n"
       assert_raises Puma::HttpParserError do
         parser.execute({}, get, 0)
-        parser.reset
       end
+      parser.reset
     end
   end
 
