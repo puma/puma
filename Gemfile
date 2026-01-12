@@ -4,9 +4,9 @@ gemspec
 
 gem "rake-compiler"
 
-gem "json", "~> 2.3"
-gem "nio4r", "~> 2.0"
-gem "minitest", "~> 5.11"
+gem "json", "~> 2.18"
+gem "nio4r", "~> 2.7"
+gem "minitest", '>= 5.26.1', '< 6.0.0'
 gem "minitest-retry"
 gem "minitest-proveit"
 gem "minitest-stub-const"
@@ -31,12 +31,15 @@ unless ENV['PUMA_NO_RUBOCOP'] || RUBY_PLATFORM.include?('mswin')
   gem 'rubocop-performance', require: false
 end
 
-if RUBY_VERSION >= '3.5' && ::Gem.win_platform?
-  gem "fiddle"
+if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.2")
+  gem "minitest-mock"
 end
 
 if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.5")
   gem "logger"
+  if ::Gem.win_platform?
+    gem "fiddle"
+  end
 end
 
 gem 'm'
