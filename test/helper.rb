@@ -323,22 +323,12 @@ class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
   include TestSkips
   include TestTempFile
 
-  def teardown
-    clean_tmp_paths if respond_to? :clean_tmp_paths
-  end
+  prove_it!
 
   PROJECT_ROOT = File.dirname(__dir__)
 
-  if RUBY_VERSION < "3.2"
-    def self.run(reporter, options = {}) # :nodoc:
-      prove_it!
-      super
-    end
-  else
-    def self.run(klass, method_name, reporter) # :nodoc:
-      prove_it!
-      super
-    end
+  def teardown
+    clean_tmp_paths if respond_to? :clean_tmp_paths
   end
 
   def full_name
