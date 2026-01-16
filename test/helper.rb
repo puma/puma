@@ -10,16 +10,15 @@ end
 
 require "securerandom"
 
-# needs to be loaded before minitest for Ruby 2.7 and earlier
-require_relative "helpers/test_puma/assertions"
-
 require_relative "minitest/verbose"
 require "minitest/autorun"
 require "minitest/pride"
 require "minitest/proveit"
 require "minitest/stub_const"
+require "minitest/mock" unless defined?(::Minitest::Mock)
 require "net/http"
 require_relative "helpers/apps"
+require_relative "helpers/test_puma/assertions"
 
 Thread.abort_on_exception = true
 
@@ -96,12 +95,6 @@ module TimeoutPrepend
 end
 
 Minitest::Test.prepend TimeoutPrepend
-
-class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
-  def teardown
-    clean_tmp_paths if respond_to? :clean_tmp_paths
-  end
-end
 
 if ENV['CI']
   require 'minitest/retry'
@@ -212,22 +205,6 @@ module TestSkips
   end
 end
 
-Minitest::Test.include TestSkips
-
-class Minitest::Test
-
-  PROJECT_ROOT = File.dirname(__dir__)
-
-  def self.run(reporter, options = {}) # :nodoc:
-    prove_it!
-    super
-  end
-
-  def full_name
-    "#{self.class.name}##{name}"
-  end
-end
-
 Minitest.after_run do
   if ENV['PUMA_TEST_DEBUG']
     $debugging_info.sort!
@@ -309,7 +286,6 @@ module TestTempFile
     fio
   end
 end
-Minitest::Test.include TestTempFile
 
 # This module is modified based on https://github.com/rails/rails/blob/7-1-stable/activesupport/lib/active_support/testing/method_call_assertions.rb
 module MethodCallAssertions
@@ -340,4 +316,22 @@ module MethodCallAssertions
     assert_called_on_instance_of(klass, method_name, message, times: 0, &block)
   end
 end
-Minitest::Test.include MethodCallAssertions
+
+class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
+  include MethodCallAssertions
+  include TestPuma::Assertions
+  include TestSkips
+  include TestTempFile
+
+  prove_it!
+
+  PROJECT_ROOT = File.dirname(__dir__)
+
+  def teardown
+    clean_tmp_paths if respond_to? :clean_tmp_paths
+  end
+
+  def full_name
+    "#{self.class.name}##{name}"
+  end
+end

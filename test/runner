@@ -51,6 +51,8 @@ if show_warnings
   $VERBOSE = true
 end
 
+require 'minitest'
+
 if ARGV.empty? || ARGV.last.start_with?('-')
   Dir['test_*.rb', base: __dir__].sort.each { |tf| require_relative tf }
 else
@@ -78,5 +80,4 @@ if show_warnings
 end
 exit 1 if no_tests
 
-require 'minitest'
 STDOUT.write "Minitest version: #{Minitest::VERSION}\n\n"
