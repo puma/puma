@@ -31,7 +31,7 @@ Any questions about contributing may be asked in our [Discussions](https://githu
 
 Nate also [gave a 40 minute conference talk in 2022](https://www.youtube.com/watch?v=w4X_oBuPmTM) detailing how Puma works, a brief overview of its internals, and a quick guide on how to contribute.
 
-#### Clone the repo 
+#### Clone the repo
 
 Clone the Puma repository:
 ```sh
@@ -104,7 +104,7 @@ See the [Bundler docs](https://bundler.io/man/gemfile.5.html#PATH) for more deta
 To run rubocop + tests:
 
 ```sh
-bundle exec rake 
+bundle exec rake
 ```
 
 To run the test suite only:
@@ -233,6 +233,8 @@ As a contributor, you may make pull requests against `-stable` branches to backp
 ## Join the community
 
 If you're looking to contribute to Puma, please join us in [Discussions](https://github.com/puma/puma/discussions).
+
+We govern this project according to the process in [GOVERNANCE.md](./GOVERNANCE.md).
 
 ## Bibliography/Reading
 
