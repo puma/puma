@@ -44,12 +44,12 @@ WorkingDirectory=<YOUR_APP_PATH>
 # Environment=PUMA_DEBUG=1
 
 # SystemD will not run puma even if it is in your path. You must specify
-# an absolute URL to puma. For example /usr/local/bin/puma
+# an absolute URL to puma. For example /<FULLPATH>/exe/puma
 # Alternatively, create a binstub with `bundle binstubs puma --path ./sbin` in the WorkingDirectory
-ExecStart=/<FULLPATH>/bin/puma -C <YOUR_APP_PATH>/puma.rb
+ExecStart=/<FULLPATH>/exe/puma -C <YOUR_APP_PATH>/puma.rb
 
 # Variant: Rails start.
-# ExecStart=/<FULLPATH>/bin/puma -C <YOUR_APP_PATH>/config/puma.rb ../config.ru
+# ExecStart=/<FULLPATH>/exe/puma -C <YOUR_APP_PATH>/config/puma.rb ../config.ru
 
 # Variant: Use `bundle exec puma` instead of binstub
 # Variant: Specify directives inline.

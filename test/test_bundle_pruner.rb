@@ -47,7 +47,7 @@ class TestBundlePruner < PumaTest
     skip_if :no_bundler
     puma_wild_path = bundle_pruner.send(:puma_wild_path)
 
-    assert_match(%r{bin/puma-wild$}, puma_wild_path)
+    assert_match(%r{exe/puma-wild$}, puma_wild_path)
     # assert no "/../" in path
     refute_match(%r{/\.\./}, puma_wild_path)
   end
