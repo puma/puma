@@ -100,7 +100,7 @@ class TestPumaServerHijack < PumaTest
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
 
-    assert_includes response, 'connection: Upgrade'
+    assert_includes response.headers, 'connection: Upgrade'
     sock.wait_readable 0.2 # for TruffleRuby Errno::EAGAIN
     assert_equal echo_msg, sock.sysread(256)
   end
@@ -129,7 +129,7 @@ class TestPumaServerHijack < PumaTest
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
 
-    assert_includes response, 'connection: Upgrade'
+    assert_includes response.headers, 'connection: Upgrade'
     sock.wait_readable 0.2 # for TruffleRuby Errno::EAGAIN
     assert_equal echo_msg, sock.sysread(256)
   end
