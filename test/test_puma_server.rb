@@ -1630,7 +1630,7 @@ class TestPumaServer < PumaTest
 
     response = send_http_read_response "HEAD / HTTP/1.0\r\n\r\n"
 
-    refute_match(/[\r\n]Cookie: hack[\r\n]/, response)
+    refute_includes response.headers, 'Cookie: hack'
   end
 
   # HTTP Injection Tests
