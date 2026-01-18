@@ -28,7 +28,7 @@ module TestPuma
     end
 
     def status
-      headers
+      headers unless @status
       @status
     end
 
