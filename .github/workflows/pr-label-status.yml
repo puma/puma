@@ -57,21 +57,28 @@ jobs:
                 pull_number: pr.number
               });
 
-              // Get latest review from each reviewer
-              const latestReviews = new Map();
+              // Track the latest decision per reviewer.
+              // A later COMMENTED review should not override CHANGES_REQUESTED/APPROVED.
+              const latestDecisionByReviewer = new Map();
               for (const review of reviews.data) {
-                latestReviews.set(review.user.login, review);
+                const reviewer = review.user.login;
+
+                if (review.state === 'CHANGES_REQUESTED' || review.state === 'APPROVED') {
+                  latestDecisionByReviewer.set(reviewer, review.state);
+                } else if (review.state === 'DISMISSED') {
+                  latestDecisionByReviewer.delete(reviewer);
+                }
               }
 
               // Determine appropriate label
               let newLabel = LABELS.REVIEW;  // default
 
-              for (const [reviewer, review] of latestReviews) {
+              for (const [reviewer, state] of latestDecisionByReviewer) {
                 if (MAINTAINERS_LIST.includes(reviewer)) {
-                  if (review.state === 'CHANGES_REQUESTED') {
+                  if (state === 'CHANGES_REQUESTED') {
                     newLabel = LABELS.CHANGES;
                     break;
-                  } else if (review.state === 'APPROVED') {
+                  } else if (state === 'APPROVED') {
                     newLabel = LABELS.MERGE;
                     // Don't break here - keep checking in case there's a newer "changes requested"
                   }
