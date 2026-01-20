@@ -675,7 +675,10 @@ module Puma
     # The default is the value of the environment variable +WEB_CONCURRENCY+ if
     # set, otherwise 0. Passing +:auto+ will set the value to
     # +Concurrent.available_processor_count+ (requires the concurrent-ruby gem).
-    # If available processor count is a Float (cpu quotas), we will round down.
+    # On some platforms (e.g. under CPU quotas) this may be fractional, and Puma
+    # will round down. If it rounds down to 0, Puma will run in single mode and
+    # cluster-only hooks like +before_worker_boot+ will not execute.
+    # If you rely on cluster-only hooks, set an explicit worker count.
     #
     # A value of 0 or nil means run in single mode.
     #

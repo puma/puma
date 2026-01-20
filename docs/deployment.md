@@ -41,6 +41,8 @@ Set your config with the following process:
 
 For most deployments, adding `concurrent-ruby` and using `workers :auto` is the right starting point.
 
+See [`workers :auto` gotchas](../lib/puma/dsl.rb).
+
 ## Worker utilization
 
 **How do you know if you've got enough (or too many workers)?**

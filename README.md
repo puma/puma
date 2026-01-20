@@ -122,6 +122,8 @@ When using a config file, most applications can simply set `workers :auto` (requ
 workers :auto
 ```
 
+See [`workers :auto` gotchas](lib/puma/dsl.rb).
+
 Note that threads are still used in cluster mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will spawn 32 threads in total, with 16 in each worker process.
 
 If `workers` is set to `:auto`, or the `WEB_CONCURRENCY` environment variable is set to `"auto"`, and the `concurrent-ruby` gem is available in your application, Puma will set the worker process count to the result of [available processors](https://msp-greg.github.io/concurrent-ruby/Concurrent.html#available_processor_count-class_method).
