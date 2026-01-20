@@ -239,7 +239,7 @@ module Puma
       max = env['PUMA_MAX_THREADS'] || env['MAX_THREADS']
       persistent_timeout = env['PUMA_PERSISTENT_TIMEOUT']
       workers_env = env['WEB_CONCURRENCY']
-      workers = workers_env && workers_env != "" ? parse_workers(workers_env) : nil
+      workers = workers_env && workers_env.strip != "" ? parse_workers(workers_env.strip) : nil
 
       {
         min_threads: min && min != "" && Integer(min),
@@ -385,10 +385,10 @@ module Puma
     def parse_workers(value)
       if value == :auto || value == 'auto'
         require_processor_counter
-        return Integer(::Concurrent.available_processor_count)
+        Integer(::Concurrent.available_processor_count)
+      else
+        Integer(value)
       end
-
-      Integer(value)
     rescue ArgumentError, TypeError
       raise ArgumentError, "workers must be an Integer or :auto"
     end
