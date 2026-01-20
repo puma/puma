@@ -35,9 +35,13 @@ For the purposes of Puma provisioning, "CPU cores" means:
 
 Set your config with the following process:
 
-* Use cluster mode and set the number of workers to the same number of CPU cores on the machine (minimum 2, otherwise use single mode!)
+* Use cluster mode and set `workers :auto` (requires the `concurrent-ruby` gem) to match the number of CPU cores on the machine (minimum 2, otherwise use single mode!). If you can't add the gem, set the worker count manually to the available CPU cores.
 * Set the number of threads to desired concurrent requests/number of workers.
   Puma defaults to 5, and that's a decent number.
+
+For most deployments, adding `concurrent-ruby` and using `workers :auto` is the right starting point.
+
+See [`workers :auto` gotchas](../lib/puma/dsl.rb).
 
 ## Worker utilization
 
@@ -72,7 +76,7 @@ Should you run 2 pods with 50 workers each? 25 pods, each with 4 workers? 100 po
 * **Increasing thread counts will increase throughput, but also latency and memory use** Unless you have a very I/O-heavy application (50%+ time spent waiting on IO), use the default thread count (5 for MRI). Using higher numbers of threads with low I/O wait (<50% of wall clock time) will lead to additional request latency and additional memory usage.
 * **Increasing worker counts decreases memory per worker on average**. More processes per pod reduces memory usage per process, because of copy-on-write memory and because the cost of the single master process is "amortized" over more child processes.
 * **Low worker counts (<4) have exceptionally poor throughput**. Don't run less than 4 processes per pod if you can. Low numbers of processes per pod will lead to high request queueing (see discussion above), which means you will have to run more pods and resources.
-* **CPU-core-to-worker ratios should be around 1**. If running Puma with `threads > 1`, allocate 1 CPU core (see definition above!) per worker. If single threaded, allocate ~0.75 cpus per worker. Most web applications spend about 25% of their time in I/O - but when you're running multi-threaded, your Puma process will have higher CPU usage and should be able to fully saturate a CPU core.
+* **CPU-core-to-worker ratios should be around 1**. If running Puma with `threads > 1`, allocate 1 CPU core (see definition above!) per worker. If single threaded, allocate ~0.75 cpus per worker. Most web applications spend about 25% of their time in I/O - but when you're running multi-threaded, your Puma process will have higher CPU usage and should be able to fully saturate a CPU core. Using `workers :auto` will size workers to this guidance on most platforms.
 * **Don't set memory limits unless necessary**. Most Puma processes will use about ~512MB-1GB per worker, and about 1GB for the master process. However, you probably shouldn't bother with setting memory limits lower than around 2GB per process, because most places you are deploying will have 2GB of RAM per CPU. A sensible memory limit for a Puma configuration of 4 child workers might be something like 8 GB (1 GB for the master, 7GB for the 4 children).
 
 **Measuring utilization and queue time**

@@ -669,21 +669,27 @@ module Puma
       @options[:state_permission] = permission
     end
 
-    # How many worker processes to run.  Typically this is set to
-    # the number of available cores.
+    # How many worker processes to run. Typically this is set to the number of
+    # available cores.
     #
     # The default is the value of the environment variable +WEB_CONCURRENCY+ if
-    # set, otherwise 0.
+    # set, otherwise 0. Passing +:auto+ will set the value to
+    # +Concurrent.available_processor_count+ (requires the concurrent-ruby gem).
+    # On some platforms (e.g. under CPU quotas) this may be fractional, and Puma
+    # will round down. If it rounds down to 0, Puma will run in single mode and
+    # cluster-only hooks like +before_worker_boot+ will not execute.
+    # If you rely on cluster-only hooks, set an explicit worker count.
     #
-    # @note Cluster mode only.
+    # A value of 0 or nil means run in single mode.
     #
     # @example
     #   workers 2
+    #   workers :auto
     #
     # @see Puma::Cluster
     #
     def workers(count)
-      @options[:workers] = count.to_i
+      @options[:workers] = count.nil? ? 0 : @config.send(:parse_workers, count)
     end
 
     # Disable warning message when running in cluster mode with a single worker.
