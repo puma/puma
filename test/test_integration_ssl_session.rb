@@ -12,7 +12,7 @@ require_relative 'helpers/integration'
 # the server process isn't affected by whatever is loaded in the CI process.
 
 class TestIntegrationSSLSession < TestIntegration
-  parallelize_me! unless TRUFFLE
+  parallelize_me!
 
   require "openssl" unless defined?(::OpenSSL::SSL)
 

@@ -18,7 +18,7 @@ end
 # the server process isn't affected by whatever is loaded in the CI process.
 
 class TestIntegrationSSL < TestIntegration
-  parallelize_me! unless TRUFFLE
+  parallelize_me!
 
   LOCALHOST = ENV.fetch 'PUMA_CI_DFLT_HOST', 'localhost'
 

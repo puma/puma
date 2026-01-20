@@ -5,7 +5,7 @@ require_relative "helpers/integration"
 
 class TestIntegrationPumactl < TestIntegration
   include TmpPath
-  parallelize_me! unless TRUFFLE
+  parallelize_me!
 
   def workers ; 2 ; end
 
