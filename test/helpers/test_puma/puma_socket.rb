@@ -239,22 +239,14 @@ module TestPuma
             end
             if no_body && part.end_with?(RESP_SPLIT)
               response.times = times
-              if HAS_APPEND_AS_BYTES
-                return response.append_as_bytes(part)
-              else
-                return response << part.b
-              end
+              return response << part
             end
 
             unless content_length || chunked
               chunked ||= part.downcase.include? "\r\ntransfer-encoding: chunked\r\n"
               content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
             end
-            if HAS_APPEND_AS_BYTES
-              response.append_as_bytes part
-            else
-              response << part.b
-            end
+            response << part
             hdrs, body = response.split RESP_SPLIT, 2
             unless body.nil?
               # below could be simplified, but allows for debugging...
@@ -278,12 +270,9 @@ module TestPuma
             to = time_end - Process.clock_gettime(Process::CLOCK_MONOTONIC)
             self.to_io.wait_writable to
           when nil
-            if response.empty?
-              raise EOFError
-            else
-              response.times = times
-              return response
-            end
+            raise EOFError if response.empty?
+            response.times = times
+            return response
           end
           timeout = time_end - Process.clock_gettime(Process::CLOCK_MONOTONIC)
           if timeout <= 0
