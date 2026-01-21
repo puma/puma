@@ -1,3 +1,38 @@
+## 7.2.0 / 2026-01-20
+
+* Features
+  * Add workers `:auto` ([#3827])
+  * Make it possible to restrict control server commands to stats ([#3787])
+
+* Bugfixes
+  * Don't break if `WEB_CONCURRENCY` is set to a blank string ([#3837])
+  * Don't share server between worker 0 and descendants on refork ([#3602])
+  * Fix phase check race condition in `Puma::Cluster#check_workers` ([#3690])
+  * Fix advertising of CLI config before config files are loaded ([#3823])
+
+* Performance
+  * 17% faster HTTP parsing through pre-interning env keys ([#3825])
+  * Implement `dsize` and `dcompact` functions for `Puma::HttpParser`, which makes Puma's C-extension GC-compactible ([#3828])
+
+* Refactor
+  * Remove `NoMethodError` rescue in `Reactor#select_loop` ([#3831])
+  * Various cleanups in the C extension ([#3814])
+  * Monomorphize `handle_request` return ([#3802])
+
+* Docs
+  * Change link to `docs/deployment.md` in `README.md` ([#3848])
+  * Fix formatting for each signal description in signals.md ([#3813])
+  * Update deployment and Kubernetes docs with Puma configuration tips ([#3807])
+  * Rename master to main ([#3809], [#3808], [#3800])
+  * Fix some minor typos in the docs ([#3804])
+  * Add `GOVERNANCE.md`, `MAINTAINERS` ([#3826])
+  * Remove Code Climate badge ([#3820])
+  * Add @joshuay03 to the maintainer list
+
+* CI
+  * Use Minitest 6 where applicable ([#3859])
+  * Many test suite improvements and flake fixes ([#3861], [#3863], [#3860], [#3852], [#3857], [#3856], [#3845], [#3843], [#3842], [#3841], [#3822], [#3817], [#3764])
+
 ## 7.1.0 / 2025-10-16
 
 * Features
@@ -2258,6 +2293,42 @@ be added back in a future date when a java Puma::MiniSSL is added.
 
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
+
+[#3863]:https://github.com/puma/puma/pull/3863     "PR by Nate Berkopec, merged 2026-01-20"
+[#3861]:https://github.com/puma/puma/pull/3861     "PR by MSP-Greg, merged 2026-01-20"
+[#3860]:https://github.com/puma/puma/pull/3860     "PR by MSP-Greg, merged 2026-01-16"
+[#3859]:https://github.com/puma/puma/pull/3859     "PR by MSP-Greg, merged 2026-01-16"
+[#3857]:https://github.com/puma/puma/pull/3857     "PR by Aaron Patterson, merged 2026-01-12"
+[#3856]:https://github.com/puma/puma/pull/3856     "PR by MSP-Greg, merged 2026-01-12"
+[#3852]:https://github.com/puma/puma/pull/3852     "PR by Miłosz Bieniek, merged 2026-01-14"
+[#3848]:https://github.com/puma/puma/pull/3848     "PR by Miłosz Bieniek, merged 2025-12-27"
+[#3845]:https://github.com/puma/puma/pull/3845     "PR by MSP-Greg, merged 2025-12-19"
+[#3843]:https://github.com/puma/puma/pull/3843     "PR by MSP-Greg, merged 2025-12-18"
+[#3842]:https://github.com/puma/puma/pull/3842     "PR by MSP-Greg, merged 2025-12-18"
+[#3841]:https://github.com/puma/puma/pull/3841     "PR by MSP-Greg, merged 2025-12-18"
+[#3837]:https://github.com/puma/puma/pull/3837     "PR by John Bachir, merged 2026-01-09"
+[#3833]:https://github.com/puma/puma/pull/3833     "PR by Patrik Ragnarsson, merged 2025-11-25"
+[#3831]:https://github.com/puma/puma/pull/3831     "PR by Joshua Young, merged 2025-11-25"
+[#3828]:https://github.com/puma/puma/pull/3828     "PR by Jean Boussier, merged 2025-11-21"
+[#3827]:https://github.com/puma/puma/pull/3827     "PR by Nate Berkopec, merged 2026-01-20"
+[#3826]:https://github.com/puma/puma/pull/3826     "PR by Nate Berkopec, merged 2026-01-20"
+[#3825]:https://github.com/puma/puma/pull/3825     "PR by Jean Boussier, merged 2025-11-19"
+[#3823]:https://github.com/puma/puma/pull/3823     "PR by Joshua Young, merged 2025-11-18"
+[#3822]:https://github.com/puma/puma/pull/3822     "PR by Nate Berkopec, merged 2025-11-17"
+[#3820]:https://github.com/puma/puma/pull/3820     "PR by Nate Berkopec, merged 2025-11-19"
+[#3817]:https://github.com/puma/puma/pull/3817     "PR by Nate Berkopec, merged 2025-11-17"
+[#3814]:https://github.com/puma/puma/pull/3814     "PR by Jean Boussier, merged 2025-11-17"
+[#3813]:https://github.com/puma/puma/pull/3813     "PR by Masafumi Koba, merged 2025-11-17"
+[#3809]:https://github.com/puma/puma/pull/3809     "PR by Patrik Ragnarsson, merged 2025-10-26"
+[#3808]:https://github.com/puma/puma/pull/3808     "PR by Nymuxyzo, merged 2025-10-26"
+[#3807]:https://github.com/puma/puma/pull/3807     "PR by Nate Berkopec, merged 2025-10-28"
+[#3804]:https://github.com/puma/puma/pull/3804     "PR by Joe Rafaniello, merged 2025-10-21"
+[#3802]:https://github.com/puma/puma/pull/3802     "PR by Richard Schneeman, merged 2025-10-20"
+[#3800]:https://github.com/puma/puma/pull/3800     "PR by MSP-Greg, merged 2025-10-19"
+[#3787]:https://github.com/puma/puma/pull/3787     "PR by Stan Hu, merged 2025-10-17"
+[#3764]:https://github.com/puma/puma/pull/3764     "PR by MSP-Greg, merged 2025-10-17"
+[#3690]:https://github.com/puma/puma/pull/3690     "PR by Joshua Young, merged 2025-11-18"
+[#3602]:https://github.com/puma/puma/pull/3602     "PR by Joshua Young, merged 2025-11-28"
 
 [#3707]:https://github.com/puma/puma/pull/3707     "PR by @nerdrew, merged 2025-10-02"
 [#3794]:https://github.com/puma/puma/pull/3794     "PR by @schneems, merged 2025-10-16"
