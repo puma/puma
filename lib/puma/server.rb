@@ -11,7 +11,7 @@ require_relative 'reactor'
 require_relative 'client'
 require_relative 'binder'
 require_relative 'util'
-require_relative 'request'
+require_relative 'response'
 require_relative 'configuration'
 require_relative 'cluster_accept_loop_delay'
 
@@ -38,8 +38,8 @@ module Puma
       end
     end
 
-    include Puma::Const
-    include Request
+    include Const
+    include Response
 
     attr_reader :options
     attr_reader :thread

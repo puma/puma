@@ -12,7 +12,7 @@ module Puma
   # #handle_request, which is called in Server#process_client.
   # @version 5.0.3
   #
-  module Request # :nodoc:
+  module Response # :nodoc:
 
     # Single element array body: smaller bodies are written to io_buffer first,
     # then a single write from io_buffer. Larger sizes are written separately.
