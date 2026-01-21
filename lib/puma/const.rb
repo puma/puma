@@ -101,7 +101,7 @@ module Puma
   module Const
 
     PUMA_VERSION = VERSION = "7.2.0"
-    CODE_NAME = "Neon Witch"
+    CODE_NAME = "On The Corner"
 
     PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
 
