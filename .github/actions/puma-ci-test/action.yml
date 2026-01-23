@@ -1,0 +1,83 @@
+name: Puma CI Test
+description: Checkout Puma and run the standard test flow.
+inputs:
+  ruby-version:
+    required: true
+  checkout-ref:
+    required: true
+  checkout-repo:
+    required: true
+  cache-version:
+    default: tests
+  no-ssl:
+    default: 'false'
+  rack-v:
+    default: ''
+  yjit:
+    default: 'false'
+  matrix-os:
+    default: ''
+  set-werror:
+    default: 'true'
+  werror-skip-arm:
+    default: 'false'
+  test-timeout:
+    default: '10'
+runs:
+  using: composite
+  steps:
+    - name: repo checkout
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.checkout-ref }}
+        repository: ${{ inputs.checkout-repo }}
+
+    - name: Compile Puma without SSL support
+      if: ${{ inputs.no-ssl == 'true' }}
+      shell: bash
+      run: echo 'PUMA_DISABLE_SSL=true' >> $GITHUB_ENV
+
+    - name: Set Rack version, see Gemfile
+      shell: bash
+      run: echo 'PUMA_CI_RACK=${{ inputs.rack-v }}' >> $GITHUB_ENV
+
+    - name: load ruby
+      uses: ruby/setup-ruby-pkgs@v1
+      with:
+        ruby-version: ${{ inputs.ruby-version }}
+        apt-get: ragel
+        brew: ragel
+        rubygems: default
+        bundler: default
+        bundler-cache: true
+        cache-version: ${{ inputs.cache-version }}
+      timeout-minutes: 10
+
+    - name: Repo & Commit Info
+      shell: bash
+      run: ruby .github/workflows/github_actions_info.rb
+
+    - name: set WERRORFLAG
+      if: >-
+        ${{
+          inputs.set-werror == 'true' &&
+          (inputs.werror-skip-arm != 'true' || !(contains(inputs.matrix-os, 'ubuntu') && contains(inputs.matrix-os, 'arm')))
+        }}
+      shell: bash
+      run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
+
+    - name: compile
+      shell: bash
+      run: bundle exec rake compile
+
+    - name: Use yjit
+      if: ${{ inputs.yjit == 'true' }}
+      shell: bash
+      run: echo 'RUBYOPT=--yjit' >> $GITHUB_ENV
+
+    - name: test
+      shell: bash
+      timeout-minutes: ${{ inputs.test-timeout }}
+      run: test/runner --verbose
+      env:
+        MT_CPU: 2

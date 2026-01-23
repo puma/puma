@@ -1,12 +1,23 @@
 name: ragel
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read # to fetch code (actions/checkout)
+  pull-requests: read
 
 jobs:
+  gate:
+    uses: ./.github/workflows/ci_gate.yml
+
   skip_duplicate_runs:
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
     uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
     with:
       paths: '["ext/**", ".github/workflows/ragel.yml"]'
@@ -14,15 +25,16 @@ jobs:
   ragel:
     name: >-
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
-    needs: skip_duplicate_runs
+    needs: [gate, skip_duplicate_runs]
     env:
       PUMA_NO_RUBOCOP: true
       PUMA_TEST_DEBUG: true
 
     runs-on: ${{ matrix.os }}
     if: |
-      !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]'))
+      needs.gate.outputs.should_run == 'true' &&
+      needs.gate.outputs.run_full_matrix == 'true' &&
+      (needs.skip_duplicate_runs.outputs.should_skip != 'true')
     strategy:
       fail-fast: false
       matrix:
@@ -36,19 +48,18 @@ jobs:
     steps:
       # windows git will convert \n to \r\n
       - name: git config
-        if: |
-          startsWith(matrix.os, 'windows') &&
-          (needs.skip_duplicate_runs.outputs.should_skip != 'true')
+        if: startsWith(matrix.os, 'windows')
         run: |
           git config --global core.autocrlf false
           git config --global core.eol lf
 
       - name: repo checkout
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
+          repository: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
 
       - name: load ruby
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         uses: ruby/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -59,7 +70,6 @@ jobs:
         timeout-minutes: 10
 
       - name: check ragel generation
-        if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
         shell: pwsh
         run:  |
           ragel --version

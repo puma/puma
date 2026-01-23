@@ -1,0 +1,137 @@
+name: Tests (full)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gate:
+    uses: ./.github/workflows/ci_gate.yml
+
+  matrices:
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      mri: ${{ steps.load.outputs.mri }}
+      non_mri: ${{ steps.load.outputs.non_mri }}
+      head: ${{ steps.load.outputs.head }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: load
+        run: |
+          echo "mri=$(jq -c . .github/workflows/matrices/tests_full_mri.json)" >> $GITHUB_OUTPUT
+          echo "non_mri=$(jq -c . .github/workflows/matrices/tests_full_non_mri.json)" >> $GITHUB_OUTPUT
+          echo "head=$(jq -c . .github/workflows/matrices/tests_full_head.json)" >> $GITHUB_OUTPUT
+
+  skip_duplicate_runs:
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
+
+  rubocop:
+    name: RuboCop linting
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
+          repository: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+          bundler-cache: true
+      - run: bundle exec rake rubocop
+
+  test_mri:
+    name: >-
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}${{ matrix.rack-v }}
+    needs: [gate, rubocop, skip_duplicate_runs, matrices]
+    if: |
+      needs.gate.outputs.should_run == 'true' &&
+      needs.skip_duplicate_runs.outputs.should_skip != 'true'
+    env:
+      CI: true
+      PUMA_TEST_DEBUG: true
+      TESTOPTS: -v
+      PUMA_NO_RUBOCOP: true
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrices.outputs.mri) }}
+    steps:
+      - name: Run Puma tests
+        uses: ./.github/actions/puma-ci-test
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          checkout-ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
+          checkout-repo: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
+          no-ssl: ${{ matrix.no-ssl == ' no SSL' && 'true' || 'false' }}
+          rack-v: ${{ matrix.rack-v }}
+          yjit: ${{ matrix.yjit == ' yjit' && 'true' || 'false' }}
+          matrix-os: ${{ matrix.os }}
+          werror-skip-arm: 'true'
+
+  test_non_mri:
+    name: >-
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
+    needs: [gate, rubocop, skip_duplicate_runs, matrices]
+    if: |
+      needs.gate.outputs.should_run == 'true' &&
+      needs.skip_duplicate_runs.outputs.should_skip != 'true'
+    env:
+      CI: true
+      PUMA_TEST_DEBUG: true
+      TESTOPTS: -v
+      PUMA_NO_RUBOCOP: true
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrices.outputs.non_mri) }}
+    steps:
+      - name: Run Puma tests
+        uses: ./.github/actions/puma-ci-test
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          checkout-ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
+          checkout-repo: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
+          no-ssl: ${{ matrix.no-ssl == ' no SSL' && 'true' || 'false' }}
+          matrix-os: ${{ matrix.os }}
+          test-timeout: ${{ matrix.tto }}
+
+  test_head:
+    name: >-
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.yjit }} (HEAD)
+    needs: [gate, rubocop, skip_duplicate_runs, matrices]
+    if: |
+      needs.gate.outputs.should_run == 'true' &&
+      needs.skip_duplicate_runs.outputs.should_skip != 'true'
+    env:
+      CI: true
+      PUMA_TEST_DEBUG: true
+      TESTOPTS: -v
+      PUMA_NO_RUBOCOP: true
+    continue-on-error: true
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrices.outputs.head) }}
+    steps:
+      - name: Run Puma tests
+        uses: ./.github/actions/puma-ci-test
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          checkout-ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
+          checkout-repo: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
+          yjit: ${{ matrix.yjit == ' yjit' && 'true' || 'false' }}
+          matrix-os: ${{ matrix.os }}
+          werror-skip-arm: 'true'

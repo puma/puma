@@ -1,23 +1,34 @@
 name: rack-conform
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read # to fetch code (actions/checkout)
+  pull-requests: read
 
 jobs:
+  gate:
+    uses: ./.github/workflows/ci_gate.yml
+
   skip_duplicate_runs:
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
     uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
 
   rack-conform:
     name: >-
       ${{ matrix.os }} Ruby ${{ matrix.ruby }} rack-conform
-    needs: skip_duplicate_runs
+    needs: [gate, skip_duplicate_runs]
     runs-on: ${{ matrix.os }}
     if: |
-      !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]')
-        || (needs.skip_duplicate_runs.outputs.should_skip == 'true'))
+      needs.gate.outputs.should_run == 'true' &&
+      needs.gate.outputs.run_full_matrix == 'true' &&
+      (needs.skip_duplicate_runs.outputs.should_skip != 'true')
     strategy:
       fail-fast: false
       matrix:
@@ -42,7 +53,7 @@ jobs:
         run: |
           # use Puma from current repo (may be a fork) & sha
           SRC="gem ['\"]puma['\"].*"
-          DST="gem 'puma', git: 'https://github.com/$GITHUB_REPOSITORY.git', ref: '$GITHUB_SHA'"
+          DST="gem 'puma', git: 'https://github.com/${{ needs.gate.outputs.pr_head_repo || github.repository }}.git', ref: '${{ needs.gate.outputs.pr_head_sha || github.sha }}'"
           sed -i "s#$SRC#$DST#" gems/puma-head-rack-v3.rb
 
       - name: load ruby

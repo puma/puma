@@ -1,0 +1,11 @@
+{
+  "include": [
+    {"tto": 8, "os": "ubuntu-22.04", "ruby": "jruby"},
+    {"tto": 8, "os": "ubuntu-22.04", "ruby": "jruby", "no-ssl": " no SSL"},
+    {"tto": 8, "os": "ubuntu-22.04", "ruby": "truffleruby"},
+    {"tto": 8, "os": "ubuntu-24.04", "ruby": "truffleruby"},
+    {"tto": 8, "os": "macos-14", "ruby": "jruby"},
+    {"tto": 8, "os": "macos-15-intel", "ruby": "jruby"},
+    {"tto": 8, "os": "macos-15", "ruby": "truffleruby"}
+  ]
+}

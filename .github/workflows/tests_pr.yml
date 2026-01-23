@@ -1,0 +1,56 @@
+name: Tests (PR)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gate:
+    uses: ./.github/workflows/ci_gate.yml
+
+  skip_duplicate_runs:
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
+
+  rubocop:
+    name: RuboCop linting
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+          bundler-cache: true
+      - run: bundle exec rake rubocop
+
+  test_mri_minimal:
+    name: >-
+      ${{ matrix.os }} ${{ matrix.ruby }} (minimal)
+    needs: [gate, rubocop, skip_duplicate_runs]
+    if: |
+      needs.gate.outputs.should_run == 'true' &&
+      needs.skip_duplicate_runs.outputs.should_skip != 'true'
+    env:
+      CI: true
+      PUMA_TEST_DEBUG: true
+      TESTOPTS: -v
+      PUMA_NO_RUBOCOP: true
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+        ruby: ['4.0']
+    steps:
+      - name: Run Puma tests
+        uses: ./.github/actions/puma-ci-test
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          checkout-ref: ${{ github.sha }}
+          checkout-repo: ${{ github.repository }}

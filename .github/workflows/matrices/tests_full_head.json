@@ -1,0 +1,15 @@
+{
+  "include": [
+    {"os": "ubuntu-22.04", "ruby": "head"},
+    {"os": "ubuntu-24.04", "ruby": "head"},
+    {"os": "ubuntu-24.04-arm", "ruby": "head"},
+    {"os": "macos-14", "ruby": "head"},
+    {"os": "macos-26", "ruby": "head"},
+    {"os": "windows-2022", "ruby": "head"},
+    {"os": "windows-11-arm", "ruby": "head"},
+    {"os": "ubuntu-22.04", "ruby": "head", "yjit": " yjit"},
+    {"os": "ubuntu-22.04", "ruby": "jruby-head"},
+    {"os": "ubuntu-22.04", "ruby": "truffleruby-head"},
+    {"os": "ubuntu-24.04", "ruby": "truffleruby-head"}
+  ]
+}

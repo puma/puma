@@ -1,0 +1,82 @@
+name: CI Gate
+
+on:
+  workflow_call:
+    outputs:
+      run_full_matrix:
+        description: "Whether to run the full matrix"
+        value: ${{ jobs.ci_gate.outputs.run_full_matrix }}
+      pr_head_sha:
+        description: "PR head SHA when triggered via issue_comment"
+        value: ${{ jobs.ci_gate.outputs.pr_head_sha }}
+      pr_head_repo:
+        description: "PR head repo when triggered via issue_comment"
+        value: ${{ jobs.ci_gate.outputs.pr_head_repo }}
+      should_run:
+        description: "Whether downstream jobs should run"
+        value: ${{ jobs.ci_gate.outputs.should_run }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ci_gate:
+    name: Determine CI gate
+    runs-on: ubuntu-latest
+    outputs:
+      run_full_matrix: ${{ steps.check.outputs.run_full_matrix }}
+      pr_head_sha: ${{ steps.check.outputs.pr_head_sha }}
+      pr_head_repo: ${{ steps.check.outputs.pr_head_repo }}
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Determine matrix type
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const eventName = context.eventName;
+            const skipTokens = ['[ci skip]', '[skip ci]'];
+            const shouldSkip = title =>
+              !!title && skipTokens.some(token => title.toLowerCase().includes(token));
+
+            let runFullMatrix = false;
+            let shouldRun = false;
+            let prHeadSha = '';
+            let prHeadRepo = '';
+
+            if (eventName === 'push' && context.ref === 'refs/heads/main') {
+              runFullMatrix = true;
+              shouldRun = true;
+            } else if (eventName === 'workflow_dispatch') {
+              runFullMatrix = true;
+              shouldRun = true;
+            } else if (eventName === 'pull_request') {
+              const title = context.payload.pull_request?.title || '';
+              if (!shouldSkip(title)) {
+                shouldRun = true;
+              }
+            } else if (eventName === 'issue_comment') {
+              const isPr = !!context.payload.issue?.pull_request;
+              const isFull = context.payload.comment?.body === '/ci:full';
+              if (isPr && isFull) {
+                const prNumber = context.issue.number;
+                const { data: pr } = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber
+                });
+
+                if (!shouldSkip(pr.title)) {
+                  runFullMatrix = true;
+                  shouldRun = true;
+                  prHeadSha = pr.head.sha;
+                  prHeadRepo = pr.head.repo.full_name;
+                }
+              }
+            }
+
+            core.setOutput('run_full_matrix', runFullMatrix.toString());
+            core.setOutput('pr_head_sha', prHeadSha);
+            core.setOutput('pr_head_repo', prHeadRepo);
+            core.setOutput('should_run', shouldRun.toString());
