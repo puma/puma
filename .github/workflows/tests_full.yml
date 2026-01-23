@@ -69,12 +69,14 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.matrices.outputs.mri) }}
     steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
+          repository: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
       - name: Run Puma tests
         uses: ./.github/actions/puma-ci-test
         with:
           ruby-version: ${{ matrix.ruby }}
-          checkout-ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
-          checkout-repo: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
           no-ssl: ${{ matrix.no-ssl == ' no SSL' && 'true' || 'false' }}
           rack-v: ${{ matrix.rack-v }}
           yjit: ${{ matrix.yjit == ' yjit' && 'true' || 'false' }}
@@ -98,12 +100,14 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.matrices.outputs.non_mri) }}
     steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
+          repository: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
       - name: Run Puma tests
         uses: ./.github/actions/puma-ci-test
         with:
           ruby-version: ${{ matrix.ruby }}
-          checkout-ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
-          checkout-repo: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
           no-ssl: ${{ matrix.no-ssl == ' no SSL' && 'true' || 'false' }}
           matrix-os: ${{ matrix.os }}
           test-timeout: ${{ matrix.tto }}
@@ -126,12 +130,14 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.matrices.outputs.head) }}
     steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
+          repository: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
       - name: Run Puma tests
         uses: ./.github/actions/puma-ci-test
         with:
           ruby-version: ${{ matrix.ruby }}
-          checkout-ref: ${{ needs.gate.outputs.pr_head_sha || github.sha }}
-          checkout-repo: ${{ needs.gate.outputs.pr_head_repo || github.repository }}
           yjit: ${{ matrix.yjit == ' yjit' && 'true' || 'false' }}
           matrix-os: ${{ matrix.os }}
           werror-skip-arm: 'true'

@@ -3,10 +3,6 @@ description: Checkout Puma and run the standard test flow.
 inputs:
   ruby-version:
     required: true
-  checkout-ref:
-    required: true
-  checkout-repo:
-    required: true
   cache-version:
     default: tests
   no-ssl:
@@ -26,12 +22,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: repo checkout
-      uses: actions/checkout@v6
-      with:
-        ref: ${{ inputs.checkout-ref }}
-        repository: ${{ inputs.checkout-repo }}
-
     - name: Compile Puma without SSL support
       if: ${{ inputs.no-ssl == 'true' }}
       shell: bash

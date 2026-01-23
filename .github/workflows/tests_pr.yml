@@ -48,9 +48,8 @@ jobs:
         os: [ubuntu-24.04]
         ruby: ['4.0']
     steps:
+      - uses: actions/checkout@v6
       - name: Run Puma tests
         uses: ./.github/actions/puma-ci-test
         with:
           ruby-version: ${{ matrix.ruby }}
-          checkout-ref: ${{ github.sha }}
-          checkout-repo: ${{ github.repository }}
