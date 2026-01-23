@@ -20,13 +20,6 @@ module Puma
 
   IS_ARM = RUBY_PLATFORM.include? 'aarch64'
 
-  BACKTRACE_SIGNAL =
-    if Signal.list.key?("INFO")
-      "SIGINFO"
-    elsif Signal.list.key?("PWR")
-      "SIGPWR"
-    end
-
   # @version 5.2.0
   IS_MRI = RUBY_ENGINE == 'ruby'
 
