@@ -36,7 +36,7 @@ module Puma
   end
 
   BACKTRACE_SIGNAL =
-    if !jruby? && Signal.list.key?("INFO")
+    if Signal.list.key?("INFO")
       "SIGINFO"
     elsif Signal.list.key?("PWR")
       "SIGPWR"
