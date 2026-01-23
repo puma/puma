@@ -8,7 +8,7 @@ require "puma/configuration"
 require "time"
 
 class TestIntegrationCluster < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me!
 
   def workers ; 2 ; end
 
