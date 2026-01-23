@@ -39,7 +39,23 @@ file 'ext/puma_http11/org/jruby/puma/Http11Parser.java' => ['ext/puma_http11/htt
 end
 task :ragel => ['ext/puma_http11/org/jruby/puma/Http11Parser.java']
 
-if !Puma.jruby?
+if ENV["PUMA_PURE_RUBY_PARSER"]
+  task :compile => ['ext/puma_http11/puma_http11.rb'] do
+    src = 'ext/puma_http11/puma_http11.rb'
+    dest = 'lib/puma/puma_http11.rb'
+    if File.exist?(dest)
+      if File.symlink?(dest)
+        puts "Using ruby parser (already symlinked)"
+      else
+        puts "Refusing to symlink ruby parser. Did you forget to run `rake clean`?"
+      end
+    else
+      puts "Symlinking ruby parser"
+      FileUtils.symlink(src, dest, relative: true)
+    end
+  end
+  CLEAN.include "lib/puma/puma_http11.rb"
+elsif !Puma.jruby?
   # compile extensions using rake-compiler
   # C (MRI, Rubinius)
   Rake::ExtensionTask.new("puma_http11", gemspec) do |ext|

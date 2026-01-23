@@ -11,6 +11,7 @@ gem "minitest-retry"
 gem "minitest-proveit"
 gem "minitest-stub-const"
 gem "concurrent-ruby", "~> 1.3"
+gem "protocol-http1"
 
 if ENV['PUMA_CI_RACK']&.strip == 'rack2'
   gem "rack"  , "~> 2.2"
