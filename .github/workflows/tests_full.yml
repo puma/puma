@@ -110,7 +110,6 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           no-ssl: ${{ matrix.no-ssl == ' no SSL' && 'true' || 'false' }}
           matrix-os: ${{ matrix.os }}
-          test-timeout: ${{ matrix.tto }}
 
   test_head:
     name: >-

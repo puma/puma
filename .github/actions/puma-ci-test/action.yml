@@ -17,8 +17,6 @@ inputs:
     default: 'true'
   werror-skip-arm:
     default: 'false'
-  test-timeout:
-    default: '10'
 runs:
   using: composite
   steps:
@@ -41,7 +39,6 @@ runs:
         bundler: default
         bundler-cache: true
         cache-version: ${{ inputs.cache-version }}
-      timeout-minutes: 10
 
     - name: Repo & Commit Info
       shell: bash
@@ -67,7 +64,6 @@ runs:
 
     - name: test
       shell: bash
-      timeout-minutes: ${{ inputs.test-timeout }}
       run: test/runner --verbose
       env:
         MT_CPU: 2
