@@ -55,7 +55,7 @@ class TestIntegrationCluster < TestIntegration
   def test_pre_existing_unix
     skip_unless :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.binwrite bind_path, 'pre existing'
 
     cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix
 
@@ -72,7 +72,7 @@ class TestIntegrationCluster < TestIntegration
   def test_pre_existing_unix_stop_after_restart
     skip_unless :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.binwrite bind_path, 'pre existing'
 
     cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix, config: "preload_app! false"
     connection = connect(nil, unix: true)
