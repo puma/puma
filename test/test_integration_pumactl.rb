@@ -25,7 +25,6 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_stop_tcp
     skip_if :jruby, :truffleruby # Undiagnose thread race. TODO fix
-    @control_tcp_port = UniquePort.call
     cli_server "-q test/rackup/sleep.ru #{set_pumactl_args} -S #{@state_path}"
 
     cli_pumactl "stop"
@@ -175,7 +174,6 @@ class TestIntegrationPumactl < TestIntegration
     skip_if :jruby
     conf_path = tmp_path '.config.rb'
     @tcp_port = UniquePort.call
-    @control_tcp_port = UniquePort.call
 
     File.write conf_path , <<~CONF
       state_path "#{@state_path}"
@@ -186,7 +184,7 @@ class TestIntegrationPumactl < TestIntegration
       before_fork do
       end
 
-      activate_control_app "tcp://127.0.0.1:#{@control_tcp_port}", auth_token: "#{TOKEN}"
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, ["Hello World"]]
@@ -315,7 +313,6 @@ class TestIntegrationPumactl < TestIntegration
   end
 
   def test_control_gc_stats_tcp
-    @control_tcp_port = UniquePort.call
     control_gc_stats
   end
 

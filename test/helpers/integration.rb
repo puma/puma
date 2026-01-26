@@ -32,7 +32,7 @@ class TestIntegration < PumaTest
 
     @pid = nil
     @ios_to_close = []
-    @bind_path    = tmp_path('.sock')
+    @bind_path    = nil
     @control_path = nil
     @control_port = nil
   end
@@ -41,7 +41,6 @@ class TestIntegration < PumaTest
     if @server && !@server_stopped
       if @control_port && Puma::IS_WINDOWS || @control_path
         cli_pumactl 'halt'
-      elsif
       elsif @pid && !Puma::IS_WINDOWS
         stop_server signal: :INT
       elsif Puma::IS_WINDOWS
@@ -119,11 +118,12 @@ class TestIntegration < PumaTest
       if no_bind
         "#{BASE} #{puma_path} #{config} #{argv}"
       elsif unix
+        @bind_path = tmp_path('.sock')
         "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
       else
-        @tcp_port = UniquePort.call
-        @bind_port = @tcp_port
-        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+        @bind_port = UniquePort.call
+        @tcp_port  = @bind_port
+        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@bind_port} #{argv}"
       end
 
     env['PUMA_DEBUG'] = 'true' if puma_debug

@@ -35,8 +35,7 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_stats_from_status_server
-    @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = set_pumactl_args
     before_restart = ->() do
       cli_pumactl "stats"
     end
@@ -50,8 +49,7 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_gc_stats_from_status_server
-    @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = set_pumactl_args
     before_restart = ->() do
       cli_pumactl "gc-stats"
     end
@@ -65,8 +63,7 @@ class TestWorkerGemIndependence < TestIntegration
   end
 
   def test_changing_json_version_during_phased_restart_after_querying_thread_backtraces_from_status_server
-    @control_tcp_port = UniquePort.call
-    server_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+    server_opts = set_pumactl_args
     before_restart = ->() do
       cli_pumactl "thread-backtraces"
     end

@@ -26,26 +26,8 @@ class TestIntegrationSSLSession < TestIntegration
 
   CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 
-  def teardown
-    return if skipped?
-    # stop server
-    sock = TCPSocket.new HOST, control_tcp_port
-    @ios_to_close << sock
-    sock.syswrite "GET /stop?token=#{TOKEN} HTTP/1.1\r\n\r\n"
-    sock.read
-    assert_match 'Goodbye!', @server.read
-
-    @server.close unless @server&.closed?
-    @server = nil
-    super
-  end
-
   def bind_port
     @bind_port ||= UniquePort.call
-  end
-
-  def control_tcp_port
-    @control_tcp_port ||= UniquePort.call
   end
 
   def set_reuse(reuse)
@@ -62,7 +44,7 @@ class TestIntegrationSSLSession < TestIntegration
         reuse: #{reuse}
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -71,16 +53,7 @@ class TestIntegrationSSLSession < TestIntegration
   end
 
   def with_server(config)
-    config_file = Tempfile.new %w(config .rb)
-    config_file.write config
-    config_file.close
-    config_file.path
-
-    # start server
-    cmd = "#{BASE} bin/puma -C #{config_file.path}"
-    @server = IO.popen cmd, 'r'
-    wait_for_server_to_boot log: false
-    @pid = @server.pid
+    cli_server '-t1:1', config: config, no_bind: true
 
     yield
   end
