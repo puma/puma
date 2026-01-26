@@ -80,6 +80,14 @@ class TestIntegration < PumaTest
 
   private
 
+  def bind_path
+    @bind_path ||= tmp_path('.sock')
+  end
+
+  def bind_port
+    @bind_port ||= UniquePort.call
+  end
+
   def silent_and_checked_system_command(*args)
     assert(system(*args, out: File::NULL, err: File::NULL))
   end
@@ -119,10 +127,9 @@ class TestIntegration < PumaTest
         "#{BASE} #{puma_path} #{config} #{argv}"
       elsif unix
         @bind_path = tmp_path('.sock')
-        "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
+        "#{BASE} #{puma_path} #{config} -b unix://#{bind_path} #{argv}"
       else
-        @bind_port = UniquePort.call
-        @tcp_port  = @bind_port
+        @tcp_port  = bind_port
         "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@bind_port} #{argv}"
       end
 

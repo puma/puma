@@ -296,7 +296,7 @@ class TestIntegrationSingle < TestIntegration
   def test_pre_existing_unix_after_idle_timeout
     skip_unless :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.binwrite bind_path, 'pre existing'
 
     cli_server "-q test/rackup/hello.ru", unix: :unix, config: "idle_timeout 1"
 
