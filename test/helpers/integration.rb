@@ -33,16 +33,20 @@ class TestIntegration < PumaTest
     @pid = nil
     @ios_to_close = Queue.new
     @bind_path    = tmp_path('.sock')
-    @control_path     = nil
-    @control_tcp_port = nil
+    @control_path = nil
+    @control_port = nil
   end
 
   def teardown
-    if @server && @control_tcp_port && Puma.windows?
-      cli_pumactl 'stop'
-    # don't close if we've already done so
-    elsif @server && @pid && !@server_stopped && !Puma.windows?
-      stop_server @pid, signal: :INT
+    if @server && !@server_stopped
+      if @control_port && Puma::IS_WINDOWS || @control_path
+        cli_pumactl 'halt'
+      elsif
+      elsif @pid && !Puma::IS_WINDOWS
+        stop_server signal: :INT
+      elsif Puma::IS_WINDOWS
+        flunk 'Windows must use Puma::ControlCLI to shut down!'
+      end
     end
 
     close_ios if @ios_to_close
@@ -156,15 +160,17 @@ class TestIntegration < PumaTest
   # that is already stopped/killed, especially since Process.wait2 is
   # blocking
   def stop_server(pid = @pid, signal: :TERM)
-    @server_stopped = true
+    ret = nil
     begin
       Process.kill signal, pid
     rescue Errno::ESRCH
     end
     begin
-      Process.wait2 pid
+      ret = Process.wait2 pid
     rescue Errno::ECHILD
     end
+    @server_stopped = true
+    ret
   end
 
   # Most integration tests do not stop/shutdown the server, which is handled by
@@ -391,8 +397,18 @@ class TestIntegration < PumaTest
       @control_path = tmp_path('.cntl_sock')
       "--control-url unix://#{@control_path} --control-token #{TOKEN}"
     else
-      @control_tcp_port = UniquePort.call
-      "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+      @control_port = UniquePort.call
+      "--control-url tcp://#{HOST}:#{@control_port} --control-token #{TOKEN}"
+    end
+  end
+
+  def set_pumactl_config(unix: false)
+    if unix
+      @control_path = tmp_path('.cntl_sock')
+      "activate_control_app 'unix://#{@control_path}', { auth_token: '#{TOKEN}' }"
+    else
+      @control_port = UniquePort.call
+      "activate_control_app 'tcp://#{HOST}:#{@control_port}', { auth_token: '#{TOKEN}' }"
     end
   end
 
@@ -400,10 +416,10 @@ class TestIntegration < PumaTest
     arg =
       if no_bind
         argv.split(/ +/)
-      elsif @control_path && !@control_tcp_port
+      elsif @control_path && !@control_port
         %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      elsif @control_tcp_port && !@control_path
-        %W[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+      elsif @control_port && !@control_path
+        %W[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
       end
 
     r, w = IO.pipe
@@ -417,10 +433,10 @@ class TestIntegration < PumaTest
     arg =
       if no_bind
         argv
-      elsif @control_path && !@control_tcp_port
+      elsif @control_path && !@control_port
         %Q[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      elsif @control_tcp_port && !@control_path
-        %Q[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+      elsif @control_port && !@control_path
+        %Q[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
       end
 
     pumactl_path = File.expand_path '../../../bin/pumactl', __FILE__
