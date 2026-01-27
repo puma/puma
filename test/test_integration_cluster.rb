@@ -694,8 +694,6 @@ class TestIntegrationCluster < TestIntegration
     div   = 10
     start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-    refused = thread_run_refused unix: unix
-
     41.times.each do |i|
       if i == 10
         threads << Thread.new do
@@ -706,7 +704,7 @@ class TestIntegrationCluster < TestIntegration
         end
       else
         threads << Thread.new do
-          thread_run_step replies, start_time, i.to_f/div, 1, i, mutex, refused, unix: unix
+          thread_run_step replies, start_time, i.to_f / div, 1, i, mutex, unix: unix
         end
       end
     end
@@ -832,7 +830,8 @@ class TestIntegrationCluster < TestIntegration
   end
 
   # used in loop to create several 'requests'
-  def thread_run_step(replies, start_time, delay, sleep_time, step, mutex, refused, unix: false)
+  def thread_run_step(replies, start_time, delay, sleep_time, step, mutex, unix: false)
+    refused = thread_run_refused unix: unix
     begin
       sleep_until = start_time + delay
       sleep_time_left = sleep_until - Process.clock_gettime(Process::CLOCK_MONOTONIC)
