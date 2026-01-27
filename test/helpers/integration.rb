@@ -144,11 +144,9 @@ class TestIntegration < PumaTest
       if no_bind
         "#{BASE} #{puma_path} #{config} #{argv}"
       elsif unix
-        @bind_path = tmp_path('.sock')
         "#{BASE} #{puma_path} #{config} -b unix://#{bind_path} #{argv}"
       else
-        @tcp_port  = bind_port
-        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@bind_port} #{argv}"
+        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{bind_port} #{argv}"
       end
 
     env['PUMA_DEBUG'] = 'true' if puma_debug
@@ -429,6 +427,8 @@ class TestIntegration < PumaTest
         %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
       elsif @control_port && !@control_path
         %W[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
+      else
+        flunk 'Both @control_path and @control_port esist?'
       end
 
     r, w = IO.pipe
