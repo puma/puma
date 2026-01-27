@@ -15,7 +15,7 @@ class TestNormalize < PumaTest
       "HTTP_X_FORWARDED,FOR" => "2.2.2.2",
     }
 
-    req_env_post_parse env
+    Puma::Request.req_env_post_parse env
 
     expected = {
       "HTTP_X_FORWARDED_FOR" => "1.1.1.1",
@@ -30,7 +30,7 @@ class TestNormalize < PumaTest
       "HTTP_X_FORWARDED_FOR" => "1.1.1.1",
     }
 
-    req_env_post_parse env
+    Puma::Request.req_env_post_parse env
 
     expected = {
       "HTTP_X_FORWARDED_FOR" => "1.1.1.1",
@@ -45,7 +45,7 @@ class TestNormalize < PumaTest
       "HTTP_TRANSFER,ENCODING" => "chunky"
     }
 
-    req_env_post_parse env
+    Puma::Request.req_env_post_parse env
 
     expected = {
       "HTTP_CONTENT,LENGTH" => "100000",

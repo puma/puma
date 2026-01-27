@@ -39,7 +39,6 @@ module Puma
     end
 
     include Puma::Const
-    include Request
 
     attr_reader :options
     attr_reader :thread
@@ -53,8 +52,8 @@ module Puma
       :leak_stack_on_error,
       :persistent_timeout, :reaping_time
 
-    attr_accessor :app
     attr_accessor :binder
+    attr_accessor :app
 
     # Create a server for the rack app +app+.
     #
@@ -83,9 +82,6 @@ module Puma
       @thread = nil
       @thread_pool = nil
       @reactor = nil
-
-      @env_set_http_version = nil
-
       @options = if options.is_a?(UserFileDefaultOptions)
         options
       else
@@ -137,8 +133,6 @@ module Puma
 
       @mode = :http
 
-      @precheck_closing = true
-
       @requests_count = 0
 
       @idle_timeout_reached = false
@@ -152,75 +146,6 @@ module Puma
       # @!attribute [r] current
       def current
         Thread.current.puma_server
-      end
-
-      # :nodoc:
-      # @version 5.0.0
-      def tcp_cork_supported?
-        Socket.const_defined?(:TCP_CORK) && Socket.const_defined?(:IPPROTO_TCP)
-      end
-
-      # :nodoc:
-      # @version 5.0.0
-      def closed_socket_supported?
-        Socket.const_defined?(:TCP_INFO) && Socket.const_defined?(:IPPROTO_TCP)
-      end
-      private :tcp_cork_supported?
-      private :closed_socket_supported?
-    end
-
-    # On Linux, use TCP_CORK to better control how the TCP stack
-    # packetizes our stream. This improves both latency and throughput.
-    # socket parameter may be an MiniSSL::Socket, so use to_io
-    #
-    if tcp_cork_supported?
-      # 6 == Socket::IPPROTO_TCP
-      # 3 == TCP_CORK
-      # 1/0 == turn on/off
-      def cork_socket(socket)
-        skt = socket.to_io
-        begin
-          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1) if skt.kind_of? TCPSocket
-        rescue IOError, SystemCallError
-        end
-      end
-
-      def uncork_socket(socket)
-        skt = socket.to_io
-        begin
-          skt.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0) if skt.kind_of? TCPSocket
-        rescue IOError, SystemCallError
-        end
-      end
-    else
-      def cork_socket(socket)
-      end
-
-      def uncork_socket(socket)
-      end
-    end
-
-    if closed_socket_supported?
-      UNPACK_TCP_STATE_FROM_TCP_INFO = "C".freeze
-
-      def closed_socket?(socket)
-        skt = socket.to_io
-        return false unless skt.kind_of?(TCPSocket) && @precheck_closing
-
-        begin
-          tcp_info = skt.getsockopt(Socket::IPPROTO_TCP, Socket::TCP_INFO)
-        rescue IOError, SystemCallError
-          @precheck_closing = false
-          false
-        else
-          state = tcp_info.unpack(UNPACK_TCP_STATE_FROM_TCP_INFO)[0]
-          # TIME_WAIT: 6, CLOSE: 7, CLOSE_WAIT: 8, LAST_ACK: 9, CLOSING: 11
-          (state >= 6 && state <= 9) || state == 11
-        end
-      end
-    else
-      def closed_socket?(socket)
-        false
       end
     end
 
@@ -259,7 +184,19 @@ module Puma
 
       @status = :run
 
+
       @thread_pool = ThreadPool.new(thread_name, options, server: self) { |client| process_client client }
+
+      @handle_request = Request::HandleRequest.new(
+        max_keep_alive: @enable_keep_alives ? @max_keep_alive : 0,
+        queue_requests: @queue_requests,
+        env_set_http_version: Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
+          Gem::Version.new(::Rack.release) < Gem::Version.new('3.1.0'),
+        early_hints: @early_hints,
+        log_writer: @log_writer,
+        supported_http_methods: @supported_http_methods,
+        lowlevel_error_proc: method(:lowlevel_error)
+      )
 
       if @queue_requests
         @reactor = Reactor.new(@io_selector_backend) { |c|
@@ -333,9 +270,6 @@ module Puma
     end
 
     def handle_servers
-      @env_set_http_version = Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
-        Gem::Version.new(::Rack.release) < Gem::Version.new('3.1.0')
-
       begin
         check = @check
         sockets = [check] + @binder.ios
@@ -467,6 +401,22 @@ module Puma
       false
     end
 
+    # Handles a single request from the client.
+    # This method delegates to the HandleRequest instance.
+    # Can be overridden by FiberPerRequest module to wrap in a Fiber.
+    def handle_request(client, requests)
+      response = @handle_request.call(client, requests) do
+        @thread_pool.with_force_shutdown do
+          @app.call(client.env)
+        end
+      end
+      if shutting_down? && response == :keep_alive
+        :close
+      else
+        response
+      end
+    end
+
     # Given a connection on +client+, handle the incoming requests,
     # or queue the connection in the Reactor if no request is available.
     #
@@ -500,13 +450,12 @@ module Puma
         while can_loop
           can_loop = false
           @requests_count += 1
-          case handle_request(client, requests + 1)
+          requests += 1
+          case handle_request(client, requests)
           when :close
           when :async
             close_socket = false
           when :keep_alive
-            requests += 1
-
             client.reset
 
             # This indicates data exists in the client read buffer and there may be
@@ -611,7 +560,7 @@ module Puma
 
     def response_to_error(client, requests, err, status_code)
       status, headers, res_body = lowlevel_error(err, client.env, status_code)
-      prepare_response(status, headers, res_body, requests, client)
+      @handle_request.write_response(status, headers, res_body, requests, client)
     end
     private :response_to_error
 
