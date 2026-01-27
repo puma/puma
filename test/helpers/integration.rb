@@ -35,13 +35,14 @@ class TestIntegration < PumaTest
     @ios_to_close = Queue.new
     @ios_to_close = []
     @bind_path    = nil
+    @bind_port    = nil
     @control_path = nil
     @control_port = nil
   end
 
   def teardown
     if @server && !@server_stopped
-      if @control_port && Puma::IS_WINDOWS || @control_path
+      if @control_port && Puma::IS_WINDOWS
         cli_pumactl 'halt'
       elsif @pid && !Puma::IS_WINDOWS
         stop_server signal: :INT
@@ -51,11 +52,6 @@ class TestIntegration < PumaTest
     end
 
     close_ios if @ios_to_close
-
-    if @bind_path
-      refute File.exist?(@bind_path), "Bind path must be removed after stop"
-      File.unlink(@bind_path) rescue nil
-    end
 
     # wait until the end for OS buffering?
     if @server
@@ -67,8 +63,25 @@ class TestIntegration < PumaTest
       end
     end
 
+    if @bind_path
+      refute File.exist?(@bind_path), "Bind path must be removed after stop"
+      File.unlink(@bind_path) rescue nil
+      @bind_path = nil
+    end
+
+    if @control_path
+      refute File.exist?(@control_path), "Control path must be removed after stop"
+      File.unlink(@control_path) rescue nil
+      @control_path = nil
+    end
+
+    if @state_path
+      File.unlink(@state_path) rescue nil
+      @state_path = nil
+    end
+
     if @config_file
-      File.unlink(@config_file.path) rescue nil
+      File.unlink(@config_file) rescue nil
       @config_file = nil
     end
 
@@ -104,6 +117,14 @@ class TestIntegration < PumaTest
 
   def bind_port
     @bind_port ||= UniquePort.call
+  end
+
+  def control_path
+    @control_path ||= tmp_path('.cntl_sock')
+  end
+
+  def control_port
+    @control_port ||= UniquePort.call
   end
 
   def silent_and_checked_system_command(*args)
@@ -274,7 +295,7 @@ class TestIntegration < PumaTest
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
     retries = 0
     begin
-      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
     rescue Errno::EADDRNOTAVAIL => e
       raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
       retries += 1
@@ -401,21 +422,19 @@ class TestIntegration < PumaTest
 
   def set_pumactl_args(unix: false)
     if unix
-      @control_path = tmp_path('.cntl_sock')
-      "--control-url unix://#{@control_path} --control-token #{TOKEN}"
+      "--control-url unix://#{control_path} --control-token #{TOKEN}"
     else
-      @control_port = UniquePort.call
-      "--control-url tcp://#{HOST}:#{@control_port} --control-token #{TOKEN}"
+      "--control-url tcp://#{HOST}:#{control_port} --control-token #{TOKEN}"
     end
   end
 
   def set_pumactl_config(unix: false)
     if unix
       @control_path = tmp_path('.cntl_sock')
-      "activate_control_app 'unix://#{@control_path}', { auth_token: '#{TOKEN}' }"
+      "activate_control_app 'unix://#{control_path}', { auth_token: '#{TOKEN}' }"
     else
       @control_port = UniquePort.call
-      "activate_control_app 'tcp://#{HOST}:#{@control_port}', { auth_token: '#{TOKEN}' }"
+      "activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }"
     end
   end
 
