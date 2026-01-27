@@ -62,6 +62,17 @@ Restart=always
 WantedBy=multi-user.target
 ~~~~
 
+### Startup timeout extension
+
+If your app can take longer than `TimeoutStartSec` to boot, Puma can ask systemd
+for more time.
+
+Set `EXTEND_TIMEOUT_USEC` to the extension interval in microseconds. Puma sends
+an extension every half interval until it reports `READY=1`.
+
+Set `EXTEND_TIMEOUT_MAX_USEC` to cap the total extra time. If you omit it, Puma
+uses the same value as `EXTEND_TIMEOUT_USEC`.
+
 See
 [systemd.exec](https://www.freedesktop.org/software/systemd/man/systemd.exec.html)
 for additional details.

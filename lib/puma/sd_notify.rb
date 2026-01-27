@@ -91,6 +91,21 @@ module Puma
       notify("#{EXTEND_TIMEOUT_USEC}#{usec}", unset_env)
     end
 
+    def self.extend_timeout_usec
+      Integer(ENV["EXTEND_TIMEOUT_USEC"])
+    rescue
+      0
+    end
+
+    def self.extend_timeout_max_usec
+      max_usec = ENV["EXTEND_TIMEOUT_MAX_USEC"]
+      return extend_timeout_usec if max_usec.nil?
+
+      Integer(max_usec)
+    rescue
+      0
+    end
+
     # Notify systemd about extended timeout, via the notification socket, if applicable.
     # $EXTEND_TIMEOUT_USEC [Integer] The value specified represents the time in microseconds
     #   for extending the timeout, during which the service must send a new message.
@@ -100,14 +115,6 @@ module Puma
     # @note A service timeout occurs only if the service runtime exceeds the original maximum times specified
     #   by TimeoutStartSec=, RuntimeMaxSec=, and TimeoutStopSec=.
     def self.extend_timeout?
-      extend_timeout_usec = ENV["EXTEND_TIMEOUT_USEC"]
-
-      begin
-        extend_timeout_usec = Integer(extend_timeout_usec)
-      rescue
-        return false
-      end
-
       extend_timeout_usec.positive?
     end
 
