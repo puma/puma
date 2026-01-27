@@ -2,6 +2,7 @@
 
 require 'socket'
 require_relative '../test_puma'
+require_relative 'puma_socket_include'
 require_relative 'response'
 
 module TestPuma
@@ -44,17 +45,19 @@ module TestPuma
   #
   # #### Methods that process the response:
   # * `send_http_read_response` - sends a request and returns the whole response
-  # * `send_http_read_resp_body` - sends a request and returns the response body
-  # * `send_http_read_resp_headers` - sends a request and returns the response with the body removed as an array of lines
+  # * `send_http_read_body`/`send_http_read_resp_body` - sends a request and returns the response body
+  # * `send_http_read_headers`/`send_http_read_resp_headers` - sends a request and returns the response with the body
+  #    removed as an array of lines
   #
   # All methods that process the response have the following optional keyword parameters:
   # * `timeout:` - total socket read timeout, defaults to `RESP_READ_TIMEOUT` (`Float`)
   # * `len:` - the `read_nonblock` maxlen, defaults to `RESP_READ_LEN` (`Integer`)
   #
-  # #### Methods added to socket instances:
-  # * `read_response` - reads the response and returns it, uses `READ_RESPONSE`
-  # * `read_body` - reads the response and returns the body, uses `READ_BODY`
-  # * `<<` - overrides the standard method, writes to the socket with `syswrite`, returns the socket
+  # #### Methods available on socket instances:
+  # * `read_response` - reads the response and returns it
+  # * `read_body` - reads the response and returns the body
+  # * `read_all` - reads all available data on the socket
+  # * `send_http`/`<<`/`req_write` - writes to the socket with `syswrite`, returns the socket
   #
   module PumaSocket
     GET_10 = "GET / HTTP/1.0\r\n\r\n"
@@ -63,9 +66,9 @@ module TestPuma
     HELLO_11 = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\n" \
       "Content-Length: 11\r\n\r\nHello World"
 
-    RESP_READ_LEN = 65_536
-    RESP_READ_TIMEOUT = 10
-    NO_ENTITY_BODY = Puma::STATUS_WITH_NO_ENTITY_BODY
+    RESP_READ_LEN = PumaSocketInclude::RESP_READ_LEN
+    RESP_READ_TIMEOUT = PumaSocketInclude::RESP_READ_TIMEOUT
+    NO_ENTITY_BODY = PumaSocketInclude::NO_ENTITY_BODY
     EMPTY_200 = [200, {}, ['']]
 
     HAS_APPEND_AS_BYTES = ::String.new.respond_to? :append_as_bytes
@@ -75,11 +78,12 @@ module TestPuma
     SET_TCP_NODELAY = Socket.const_defined?(:IPPROTO_TCP) && ::Socket.const_defined?(:TCP_NODELAY)
 
     def before_setup
-      @ios_to_close ||= []
       @bind_port = nil
       @bind_path = nil
       @control_port = nil
       @control_path = nil
+      @ssl_socket_contexts = Queue.new
+      @ios_to_close ||= Queue.new
       super
     end
 
@@ -87,8 +91,18 @@ module TestPuma
     def after_teardown
       return if skipped?
       super
-      # Errno::EBADF raised on macOS
-      @ios_to_close.each do |io|
+      close_ios if @ios_to_close
+
+      return unless @ssl_socket_contexts
+
+      @ssl_socket_contexts.pop until @ssl_socket_contexts.empty?
+      @ssl_socket_contexts.close
+      @ssl_socket_contexts = nil
+    end
+
+    def close_ios
+      until @ios_to_close.empty?
+        io = @ios_to_close.pop
         begin
           if io.respond_to? :sysclose
             io.sync_close = true
@@ -104,8 +118,6 @@ module TestPuma
           io = nil
         end
       end
-      # not sure about below, may help with gc...
-      @ios_to_close.clear
       @ios_to_close = nil
     end
 
@@ -117,11 +129,17 @@ module TestPuma
     # @!macro skt
     # @!macro resp
     # @return [Array<String>] array of header lines in the response
+    def send_http_read_headers(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
+        session: nil, len: nil, timeout: nil)
+      send_http(req, host: host, port: port, path: path, ctx: ctx, session: session)
+        .read_response(timeout: timeout, len: len)
+        .split(RESP_SPLIT, 2).first.split "\r\n"
+    end
+
     def send_http_read_resp_headers(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
-      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
-      resp = skt.read_response timeout: timeout, len: len
-      resp.split(RESP_SPLIT, 2).first.split "\r\n"
+      send_http_read_headers(req, host: host, port: port, path: path, ctx: ctx, session: session,
+        len: len, timeout: timeout)
     end
 
     # Sends a request and returns the HTTP response body.
@@ -129,10 +147,16 @@ module TestPuma
     # @!macro skt
     # @!macro resp
     # @return [Response] the body portion of the HTTP response
+    def send_http_read_body(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
+        session: nil, len: nil, timeout: nil)
+      send_http(req, host: host, port: port, path: path, ctx: ctx, session: session)
+        .read_body(timeout: timeout, len: len)
+    end
+
     def send_http_read_resp_body(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
-      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
-      skt.read_body timeout: timeout, len: len
+      send_http_read_body(req, host: host, port: port, path: path, ctx: ctx, session: session,
+        len: len, timeout: timeout)
     end
 
     # Sends a request and returns whatever can be read.  Use when multiple
@@ -143,25 +167,8 @@ module TestPuma
     # @return [String] socket read string
     def send_http_read_all(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: RESP_READ_LEN, timeout: 15)
-      end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
-      read = String.new # rubocop: disable Performance/UnfreezeString
-      counter = 0
-      prev_size = 0
-      loop do
-        raise(Timeout::Error, 'Client Read Timeout') if Process.clock_gettime(Process::CLOCK_MONOTONIC) > end_time
-        if skt.wait_readable 1
-          read << skt.sysread(len)
-        end
-        ttl_read = read.bytesize
-        return read if prev_size == ttl_read && !ttl_read.zero?
-        prev_size = ttl_read
-        counter += 1
-      end
-    rescue EOFError
-      return read
-    rescue => e
-      raise e
+      send_http(req, host: host, port: port, path: path, ctx: ctx, session: session)
+        .read_all(timeout: timeout, len: len)
     end
 
     # Sends a request and returns the HTTP response.  Assumes one response is sent
@@ -171,23 +178,23 @@ module TestPuma
     # @return [Response] the HTTP response
     def send_http_read_response(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
         session: nil, len: nil, timeout: nil)
-      skt = send_http req, host: host, port: port, path: path, ctx: ctx, session: session
-      skt.read_response timeout: timeout, len: len
+      send_http(req, host: host, port: port, path: path, ctx: ctx, session: session)
+        .read_response(timeout: timeout, len: len)
     end
 
     # Sends a request and returns the socket
     # @param req [String, nil] The request stirng.
     # @!macro req
     # @!macro skt
-    # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
+    # @return [PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket] the created socket
     def send_http(req = GET_11, host: nil, port: nil, path: nil, ctx: nil, session: nil)
-      skt = new_socket host: host, port: port, path: path, ctx: ctx, session: session
-      skt << req
+      new_socket(host: host, port: port, path: path, ctx: ctx, session: session)
+        .send_http req
     end
 
     # Determines whether the socket has been closed by the server.  Only works when
     # `Socket::TCP_INFO is defined`, linux/Ubuntu
-    # @param socket [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket]
+    # @param socket [PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket]
     # @return [Boolean] true if closed by server, false is indeterminate, as
     #   it may not be writable
     #
@@ -206,90 +213,6 @@ module TestPuma
       end
     end
 
-    READ_BODY = -> (timeout: nil, len: nil) {
-      self.read_response(timeout: nil, len: nil)
-        .split(RESP_SPLIT, 2).last
-    }
-
-    READ_RESPONSE = -> (timeout: nil, len: nil) do
-      content_length = nil
-      chunked = nil
-      status = nil
-      no_body = nil
-      response = Response.new
-      read_len = len || RESP_READ_LEN
-
-      timeout  ||= RESP_READ_TIMEOUT
-      time_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      time_end   = time_start + timeout
-      times = []
-      time_read = nil
-
-      loop do
-        begin
-          self.to_io.wait_readable timeout
-          time_read ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          part = self.read_nonblock(read_len, exception: false)
-          case part
-          when String
-            times << (Process.clock_gettime(Process::CLOCK_MONOTONIC) - time_read).round(4)
-            status ||= part[/\AHTTP\/1\.[01] (\d{3})/, 1]
-            if status
-              no_body ||= NO_ENTITY_BODY.key?(status.to_i) || status.to_i < 200
-            end
-            if no_body && part.end_with?(RESP_SPLIT)
-              response.times = times
-              return response << part
-            end
-
-            unless content_length || chunked
-              chunked ||= part.downcase.include? "\r\ntransfer-encoding: chunked\r\n"
-              content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
-            end
-            response << part
-            hdrs, body = response.split RESP_SPLIT, 2
-            unless body.nil?
-              # below could be simplified, but allows for debugging...
-              finished =
-                if content_length
-                  body.bytesize == content_length
-                elsif chunked
-                  body.end_with? "0\r\n\r\n"
-                elsif !hdrs.empty? && !body.empty?
-                  true
-                else
-                  false
-                end
-              response.times = times
-              return response if finished
-            end
-            sleep 0.000_1
-          when :wait_readable
-            # continue loop
-          when :wait_writable # :wait_writable for ssl
-            to = time_end - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            self.to_io.wait_writable to
-          when nil
-            raise EOFError if response.empty?
-            response.times = times
-            return response
-          end
-          timeout = time_end - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          if timeout <= 0
-            raise Timeout::Error, 'Client Read Timeout'
-          end
-        end
-      end
-    end
-
-    # @todo verify whole string is written
-    REQ_WRITE = -> (str) do
-      sent = 0
-      size = str.bytesize
-      sent += self.syswrite(str.byteslice(sent, size - sent)) while sent < size
-      self
-    end
-
     # Helper for creating an `OpenSSL::SSL::SSLContext`.
     # @param &blk [Block] Passed the SSLContext.
     # @yield [OpenSSL::SSL::SSLContext]
@@ -306,7 +229,7 @@ module TestPuma
 
     # Creates a new client socket.  TCP, SSL, and UNIX are supported
     # @!macro req
-    # @return [OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket] the created socket
+    # @return [PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket] the created socket
     #
     def new_socket(host: nil, port: nil, path: nil, ctx: nil, session: nil)
       port  ||= @bind_port
@@ -315,12 +238,13 @@ module TestPuma
 
       skt =
         if path && !port && !ctx
-          UNIXSocket.new path.sub(/\A@/, "\0") # sub is for abstract
+          PumaUNIXSocket.new path.sub(/\A@/, "\0") # sub is for abstract
         elsif port # && !path
-          tcp = TCPSocket.new ip, port.to_i
+          tcp = PumaTCPSocket.new ip, port.to_i
           tcp.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1) if SET_TCP_NODELAY
           if ctx
-            ::OpenSSL::SSL::SSLSocket.new tcp, ctx
+            @ssl_socket_contexts << ctx if @ssl_socket_contexts
+            PumaSSLSocket.new tcp, ctx
           else
             tcp
           end
@@ -328,13 +252,8 @@ module TestPuma
           raise 'port or path must be set!'
         end
 
-      skt.define_singleton_method :read_response, READ_RESPONSE
-      skt.define_singleton_method :read_body, READ_BODY
-      skt.define_singleton_method :<<, REQ_WRITE
-      skt.define_singleton_method :req_write, REQ_WRITE # used for chaining
       @ios_to_close << skt
       if ctx
-        @ios_to_close << tcp
         skt.session = session if session
         skt.sync_close = true
         skt.connect
@@ -345,14 +264,14 @@ module TestPuma
     # Creates an array of sockets, sending a request on each
     # @param req [String] the request
     # @param len [Integer] the number of requests to send
-    # @return [Array<OpenSSL::SSL::SSLSocket, TCPSocket, UNIXSocket>]
+    # @return [Array<PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket>]
     #
     def send_http_array(req = GET_11, len, dly: 0.000_1, max_retries: 5)
       Array.new(len) {
         retries = 0
         begin
           skt = send_http req
-          sleep dly
+          sleep dly if dly
           skt
         rescue Errno::ECONNREFUSED
           retries += 1
