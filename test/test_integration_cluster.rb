@@ -61,7 +61,7 @@ class TestIntegrationCluster < TestIntegration
 
     stop_server
 
-    assert File.exist?(@bind_path)
+    assert File.exist?(@bind_path), 'Unix socket file should exist'
 
   ensure
     if UNIX_SKT_EXIST
@@ -286,12 +286,13 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def test_queue_results_disabled
+  def test_queue_requests_disabled
     cli_server "-w #{workers} test/rackup/hello.ru", config: "queue_requests false"
 
     get_worker_pids # wait for workers to boot
 
     fast_connect
+    assert true
   end
 
   def test_worker_index_is_with_in_options_limit

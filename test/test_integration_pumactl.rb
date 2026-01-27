@@ -173,11 +173,10 @@ class TestIntegrationPumactl < TestIntegration
   def test_require_dependencies
     skip_if :jruby
     conf_path = tmp_path '.config.rb'
-    @tcp_port = UniquePort.call
 
     File.write conf_path , <<~CONF
       state_path "#{@state_path}"
-      bind "tcp://127.0.0.1:#{@tcp_port}"
+      bind "tcp://127.0.0.1:#{bind_port}"
 
       workers 0
 
