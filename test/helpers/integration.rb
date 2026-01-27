@@ -241,8 +241,21 @@ class TestIntegration < PumaTest
     line
   end
 
+  def open_client_socket(unix: false, timeout: 3)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    retries = 0
+    begin
+      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    rescue Errno::EADDRNOTAVAIL => e
+      raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      retries += 1
+      sleep 0.01 * [retries, 10].min
+      retry
+    end
+  end
+
   def connect(path = nil, unix: false)
-    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    s = open_client_socket(unix: unix)
     @ios_to_close << s
     s << "GET /#{path} HTTP/1.1\r\n\r\n"
     s
@@ -251,7 +264,7 @@ class TestIntegration < PumaTest
   # use only if all socket writes are fast
   # does not wait for a read
   def fast_connect(path = nil, unix: false)
-    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    s = open_client_socket(unix: unix)
     @ios_to_close << s
     fast_write s, "GET /#{path} HTTP/1.1\r\n\r\n"
     s
@@ -352,8 +365,8 @@ class TestIntegration < PumaTest
     else
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
       # Errno::ECONNABORTED is thrown by Windows on read or write
-      DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
-               [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::ECONNABORTED]
+      DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
+               [IOError, Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::EPIPE, Errno::ECONNABORTED]
     end
   end
 
@@ -449,7 +462,7 @@ class TestIntegration < PumaTest
         num_requests.times do |req_num|
           begin
             begin
-              socket = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+              socket = open_client_socket(unix: unix)
               fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
             rescue => e
               replies[:write_error] += 1
