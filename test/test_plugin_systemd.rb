@@ -65,9 +65,14 @@ class TestPluginSystemd < TestIntegration
   end
 
   def test_systemd_extend_timeout_notify
-    notify_env = @env.merge({"EXTEND_TIMEOUT_USEC" => "1_000_001"})
-    cli_server "test/rackup/hello.ru", env: notify_env
-    assert_message "EXTEND_TIMEOUT_USEC=1000001"
+    notify_env = @env.merge({
+      "EXTEND_TIMEOUT_USEC" => "300_000",
+      "EXTEND_TIMEOUT_MAX_USEC" => "400_000"
+    })
+    cli_server "test/rackup/boot_delay.ru", env: notify_env
+    first_timeout = assert_extend_timeout_usec(read_message)
+    second_timeout = assert_extend_timeout_usec(read_message)
+    assert_operator second_timeout, :<, first_timeout
 
     assert_message "READY=1"
 
@@ -90,6 +95,11 @@ class TestPluginSystemd < TestIntegration
   end
 
   private
+
+  def read_message
+    @socket.wait_readable 1
+    @socket.sysread(512)
+  end
 
   def assert_restarts_with_systemd(signal, workers: 2)
     skip_unless(:fork) unless workers.zero?
