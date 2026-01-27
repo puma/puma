@@ -249,7 +249,7 @@ class TestIntegration < PumaTest
     rescue Errno::EADDRNOTAVAIL => e
       raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
       retries += 1
-      sleep 0.01 * [retries, 10].min
+      sleep 0.01 * retries.clamp(0, 10)
       retry
     end
   end
