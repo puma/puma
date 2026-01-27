@@ -35,6 +35,13 @@ module Puma
     IS_WINDOWS
   end
 
+  BACKTRACE_SIGNAL =
+    if Signal.list.key?("INFO")
+      "SIGINFO"
+    elsif Signal.list.key?("PWR")
+      "SIGPWR"
+    end
+
   # @version 5.0.0
   def self.mri?
     IS_MRI
@@ -43,5 +50,9 @@ module Puma
   # @version 5.0.0
   def self.forkable?
     HAS_FORK
+  end
+
+  def self.backtrace_signal
+    BACKTRACE_SIGNAL
   end
 end
