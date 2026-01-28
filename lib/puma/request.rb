@@ -652,7 +652,8 @@ module Puma
       headers.each do |k, vs|
         next if illegal_header_key?(k)
 
-        case k.downcase
+        key = k.downcase
+        case key
         when CONTENT_LENGTH2
           next if illegal_header_value?(vs)
           # nil.to_i is 0, nil&.to_i is nil
@@ -679,10 +680,10 @@ module Puma
         if ary
           ary.each do |v|
             next if illegal_header_value?(v)
-            io_buffer.append k.downcase, colon, v, line_ending
+            io_buffer.append key, colon, v, line_ending
           end
         else
-          io_buffer.append k.downcase, colon, line_ending
+          io_buffer.append key, colon, line_ending
         end
       end
 
