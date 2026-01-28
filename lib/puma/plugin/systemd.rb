@@ -25,8 +25,7 @@ Puma::Plugin.create do
       end
       launcher.log_writer.log "Extending the startup by up to #{Puma::SdNotify.extend_timeout_max_usec} usec"
 
-      Thread.new do
-        Puma.set_thread_name "systemd extend"
+      in_background do
         sleep_time = extend_timeout_sleep_time(extend_timeout_usec)
         launcher.log_writer.log "Extending systemd startup timeout every #{sleep_time.round(1)} sec"
         while @extend_timeout_deadline
