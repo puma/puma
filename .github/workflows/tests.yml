@@ -159,7 +159,7 @@ jobs:
           - { tto: 8 , os: ubuntu-24.04  , ruby: truffleruby, allow-failure: false } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
           - { tto: 8 , os: ubuntu-24.04  , ruby: truffleruby-head, allow-failure: false }
           - { tto: 8 , os: macos-14      , ruby: jruby }
-          - { tto: 8 , os: macos-15-intel, ruby: jruby }
+          - { tto: 12 , os: macos-15-intel, ruby: jruby }
           - { tto: 8 , os: macos-15      , ruby: truffleruby, allow-failure: false }
 
     steps:
