@@ -144,7 +144,7 @@ class TestPluginSystemd < TestIntegration
   end
 end
 
-class TestPluginSystemdUnit < Minitest::Test
+class TestPluginSystemdUnit < PumaTest
   def setup
     @plugin = Puma::Plugins.find("systemd").new
   end
@@ -160,7 +160,7 @@ class TestPluginSystemdUnit < Minitest::Test
   end
 end
 
-class TestSdNotify < Minitest::Test
+class TestSdNotify < PumaTest
   def test_extend_timeout_usec_defaults_to_zero
     with_env("EXTEND_TIMEOUT_USEC" => "100") do
       assert_equal 100, Puma::SdNotify.extend_timeout_usec
