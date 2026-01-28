@@ -94,7 +94,6 @@ class TestPreserveBundlerEnv < TestIntegration
 
   def start_phased_restart
     Process.kill :USR1, @pid
-
-    true while @server.gets !~ /booted in [.0-9]+s, phase: 1/
+    wait_for_server_to_match(/booted in [.0-9]+s, phase: 1/)
   end
 end
