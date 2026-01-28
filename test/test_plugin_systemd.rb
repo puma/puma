@@ -2,11 +2,9 @@
 
 require_relative "helper"
 require_relative "helpers/integration"
-require "puma/plugin/systemd"
 require "puma/sd_notify"
 
 class TestPluginSystemd < TestIntegration
-  parallelize_me! if ::Puma::IS_MRI
 
   THREAD_LOG = TRUFFLE ? "{ 0/16 threads, 16 available, 0 backlog }" :
     "{ 0/5 threads, 5 available, 0 backlog }"
@@ -146,7 +144,27 @@ end
 
 class TestPluginSystemdUnit < PumaTest
   def setup
+    @original_plugins = Puma::Plugins.instance_variable_get(:@plugins)
+    @original_background = Puma::Plugins.instance_variable_get(:@background)
+    @systemd_feature_loaded = $LOADED_FEATURES.any? do |path|
+      path.end_with?("puma/plugin/systemd.rb")
+    end
+
+    Puma::Plugins.instance_variable_set(:@plugins, @original_plugins.dup)
+    Puma::Plugins.instance_variable_set(:@background, @original_background.dup)
+
+    require "puma/plugin/systemd"
+
     @plugin = Puma::Plugins.find("systemd").new
+  end
+
+  def teardown
+    Puma::Plugins.instance_variable_set(:@plugins, @original_plugins)
+    Puma::Plugins.instance_variable_set(:@background, @original_background)
+    unless @systemd_feature_loaded
+      $LOADED_FEATURES.delete_if { |path| path.end_with?("puma/plugin/systemd.rb") }
+    end
+    super
   end
 
   def test_extend_timeout_sleep_time_subtracts_buffer
