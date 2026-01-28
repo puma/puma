@@ -150,6 +150,7 @@ module Puma
       max_keep_alive: 999,
       max_threads: Puma.mri? ? 5 : 16,
       min_threads: 0,
+      max_io_threads: 0,
       mode: :http,
       mutate_stdout_and_stderr_to_sync_on_write: true,
       out_of_band: [],

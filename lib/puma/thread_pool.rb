@@ -24,6 +24,51 @@ module Puma
     class ForceShutdown < RuntimeError
     end
 
+    class ProcessorThread
+      attr_accessor :thread
+      attr_writer :marked_as_io_thread
+
+      def initialize(pool)
+        @pool = pool
+        @thread = nil
+        @marked_as_io_thread = false
+      end
+
+      def mark_as_io_thread!
+        unless @marked_as_io_thread
+          @marked_as_io_thread = true
+
+          # Immediately signal the pool that it can spawn a new thread
+          # if there's some work in the queue.
+          @pool.spawn_thread_if_needed
+        end
+      end
+
+      def marked_as_io_thread?
+        @marked_as_io_thread
+      end
+
+      def alive?
+        @thread&.alive?
+      end
+
+      def join(...)
+        @thread.join(...)
+      end
+
+      def kill(...)
+        @thread.kill(...)
+      end
+
+      def [](key)
+        @thread[key]
+      end
+
+      def raise(...)
+        @thread.raise(...)
+      end
+    end
+
     # How long, after raising the ForceShutdown of a thread during
     # forced shutdown mode, to wait for the thread to try and finish
     # up its work before leaving the thread to die on the vine.
@@ -52,6 +97,8 @@ module Puma
       @name = name
       @min = Integer(options[:min_threads])
       @max = Integer(options[:max_threads])
+      @max_io_threads = Integer(options[:max_io_threads] || 0)
+
       # Not an 'exposed' option, options[:pool_shutdown_grace_time] is used in CI
       # to shorten @shutdown_grace_time from SHUTDOWN_GRACE_TIME. Parallel CI
       # makes stubbing constants difficult.
@@ -70,7 +117,7 @@ module Puma
       @trim_requested = 0
       @out_of_band_pending = false
 
-      @workers = []
+      @processors = []
 
       @auto_trim = nil
       @reaper = nil
@@ -98,6 +145,7 @@ module Puma
           running: @spawned,
           pool_capacity: @waiting + (@max - @spawned),
           busy_threads: @spawned - @waiting + @todo.size,
+          io_threads: @processors.count(&:marked_as_io_thread?),
           backlog_max: temp
         }
       end
@@ -138,7 +186,8 @@ module Puma
       @spawned += 1
 
       trigger_before_thread_start_hooks
-      th = Thread.new(@spawned) do |spawned|
+      processor = ProcessorThread.new(self)
+      processor.thread = Thread.new(processor, @spawned) do |processor, spawned|
         Puma.set_thread_name '%s tp %03i' % [@name, spawned]
         # Advertise server into the thread
         Thread.current.puma_server = @server
@@ -153,11 +202,23 @@ module Puma
           work = nil
 
           mutex.synchronize do
+            if processor.marked_as_io_thread?
+              if @processors.count { |t| !t.marked_as_io_thread? } < @max
+                # We're not at max processor threads, so the io thread can rejoin the normal population.
+                processor.marked_as_io_thread = false
+              else
+                # We're already at max threads, so we exit the extra io thread.
+                @processors.delete(processor)
+                trigger_before_thread_exit_hooks
+                Thread.exit
+              end
+            end
+
             while todo.empty?
               if @trim_requested > 0
                 @trim_requested -= 1
                 @spawned -= 1
-                @workers.delete th
+                @processors.delete(processor)
                 not_full.signal
                 trigger_before_thread_exit_hooks
                 Thread.exit
@@ -179,16 +240,16 @@ module Puma
           end
 
           begin
-            @out_of_band_pending = true if block.call(work)
+            @out_of_band_pending = true if block.call(processor, work)
           rescue Exception => e
             STDERR.puts "Error reached top of thread-pool: #{e.message} (#{e.class})"
           end
         end
       end
 
-      @workers << th
+      @processors << processor
 
-      th
+      processor
     end
 
     private :spawn_thread
@@ -257,6 +318,16 @@ module Puma
         @mutex.synchronize(&block)
     end
 
+    # :nodoc:
+    #
+    # Must be called with @mutex held!
+    #
+    def can_spawn_processor?
+      io_processors_count = @processors.count(&:marked_as_io_thread?)
+      extra_io_processors_count = io_processors_count > @max_io_threads ? io_processors_count - @max_io_threads : 0
+      (@spawned - io_processors_count) < (@max - extra_io_processors_count)
+    end
+
     # Add +work+ to the todo list for a Thread to pickup and process.
     def <<(work)
       with_mutex do
@@ -268,11 +339,20 @@ module Puma
         t = @todo.size
         @backlog_max = t if t > @backlog_max
 
-        if @waiting < @todo.size and @spawned < @max
+        if @waiting < @todo.size and can_spawn_processor?
           spawn_thread
         end
 
         @not_empty.signal
+      end
+      self
+    end
+
+    def spawn_thread_if_needed # :nodoc:
+      with_mutex do
+        if @waiting < @todo.size and can_spawn_processor?
+          spawn_thread
+        end
       end
     end
 
@@ -294,15 +374,11 @@ module Puma
     # spawned counter so that new healthy threads could be created again.
     def reap
       with_mutex do
-        dead_workers = @workers.reject(&:alive?)
+        @processors, dead_processors = @processors.partition(&:alive?)
 
-        dead_workers.each do |worker|
-          worker.kill
+        dead_processors.each do |processor|
+          processor.kill
           @spawned -= 1
-        end
-
-        @workers.delete_if do |w|
-          dead_workers.include?(w)
         end
       end
     end
@@ -371,8 +447,8 @@ module Puma
 
         @auto_trim&.stop
         @reaper&.stop
-        # dup workers so that we join them all safely
-        @workers.dup
+        # dup processors so that we join them all safely
+        @processors.dup
       end
 
       if timeout == -1
@@ -405,7 +481,7 @@ module Puma
       end
 
       @spawned = 0
-      @workers = []
+      @processors = []
     end
   end
 end
