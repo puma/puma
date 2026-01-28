@@ -64,9 +64,11 @@ module TestPuma
       end
     end
 
-    def assert_extend_timeout_usec(message, msg = nil)
+    def assert_extend_timeout_usec(message, expected = nil, msg = nil)
       assert_match(/\AEXTEND_TIMEOUT_USEC=\d+\z/, message, msg)
-      message.split("=", 2).last.to_i
+      value = message.split("=", 2).last.to_i
+      assert_equal expected, value, msg if expected
+      value
     end
   end
 end

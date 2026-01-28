@@ -9,6 +9,7 @@ require_relative '../plugin'
 #  4. periodically set the status
 Puma::Plugin.create do
   USEC_PER_SEC = 1_000_000.0
+  EXTEND_TIMEOUT_BUFFER_SEC = 5.0
 
   def start(launcher)
     require_relative '../sd_notify'
@@ -18,16 +19,22 @@ Puma::Plugin.create do
     # hook_events
     if Puma::SdNotify.extend_timeout? &&
         (@extend_timeout_deadline = extend_timeout_deadline(Puma::SdNotify.extend_timeout_max_usec))
+      extend_timeout_usec = Puma::SdNotify.extend_timeout_usec
+      if extend_timeout_usec < EXTEND_TIMEOUT_BUFFER_SEC * USEC_PER_SEC
+        launcher.log_writer.log "WARNING: EXTEND_TIMEOUT_USEC is less than #{EXTEND_TIMEOUT_BUFFER_SEC.to_i} seconds; extending at the configured interval"
+      end
       launcher.log_writer.log "Extending the startup by up to #{Puma::SdNotify.extend_timeout_max_usec} usec"
 
       in_background do
-        launcher.log_writer.log "Extending systemd startup timeout every #{extend_timeout_sleep_time(Puma::SdNotify.extend_timeout_usec).round(1)} sec"
+        sleep_time = extend_timeout_sleep_time(extend_timeout_usec)
+        launcher.log_writer.log "Extending systemd startup timeout every #{sleep_time.round(1)} sec"
         while @extend_timeout_deadline
           remaining_usec = remaining_extend_timeout_usec(@extend_timeout_deadline)
           break if remaining_usec <= 0
 
-          Puma::SdNotify.extend_timeout([Puma::SdNotify.extend_timeout_usec, remaining_usec].min)
-          sleep extend_timeout_sleep_time(Puma::SdNotify.extend_timeout_usec)
+          extension_usec = [extend_timeout_usec, remaining_usec].min
+          Puma::SdNotify.extend_timeout(extension_usec)
+          sleep sleep_time
         end
       end
     end
@@ -82,8 +89,9 @@ Puma::Plugin.create do
 
   def extend_timeout_sleep_time(usec)
     sec_f = usec / USEC_PER_SEC
-    # Send at half the interval to avoid lapsing the timeout.
-    sec_f / 2
+    return sec_f if sec_f <= EXTEND_TIMEOUT_BUFFER_SEC
+
+    sec_f - EXTEND_TIMEOUT_BUFFER_SEC
   end
 
   def extend_timeout_deadline(usec)
