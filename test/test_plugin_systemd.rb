@@ -2,6 +2,8 @@
 
 require_relative "helper"
 require_relative "helpers/integration"
+require "puma/plugin/systemd"
+require "puma/sd_notify"
 
 class TestPluginSystemd < TestIntegration
   parallelize_me! if ::Puma::IS_MRI
@@ -138,6 +140,88 @@ class TestPluginSystemd < TestIntegration
     else
       assert_equal msg, @message
       @message = +''
+    end
+  end
+end
+
+class TestPluginSystemdUnit < Minitest::Test
+  def setup
+    @plugin = Puma::Plugins.find("systemd").new
+  end
+
+  def test_extend_timeout_sleep_time_subtracts_buffer
+    sleep_time = @plugin.send(:extend_timeout_sleep_time, 10_000_000)
+    assert_equal 5.0, sleep_time
+  end
+
+  def test_extend_timeout_sleep_time_uses_interval_when_short
+    sleep_time = @plugin.send(:extend_timeout_sleep_time, 4_000_000)
+    assert_equal 4.0, sleep_time
+  end
+end
+
+class TestSdNotify < Minitest::Test
+  def test_extend_timeout_usec_defaults_to_zero
+    with_env("EXTEND_TIMEOUT_USEC" => "100") do
+      assert_equal 100, Puma::SdNotify.extend_timeout_usec
+    end
+
+    with_env("EXTEND_TIMEOUT_USEC" => nil) do
+      assert_equal 0, Puma::SdNotify.extend_timeout_usec
+    end
+  end
+
+  def test_extend_timeout_usec_invalid
+    with_env("EXTEND_TIMEOUT_USEC" => "nope") do
+      assert_equal 0, Puma::SdNotify.extend_timeout_usec
+    end
+  end
+
+  def test_extend_timeout_max_usec_defaults_to_extend_timeout_usec
+    with_env("EXTEND_TIMEOUT_USEC" => "120", "EXTEND_TIMEOUT_MAX_USEC" => nil) do
+      assert_equal 120, Puma::SdNotify.extend_timeout_max_usec
+    end
+  end
+
+  def test_extend_timeout_max_usec_invalid
+    with_env("EXTEND_TIMEOUT_USEC" => "120", "EXTEND_TIMEOUT_MAX_USEC" => "bad") do
+      assert_equal 0, Puma::SdNotify.extend_timeout_max_usec
+    end
+  end
+
+  def test_extend_timeout_predicate
+    with_env("EXTEND_TIMEOUT_USEC" => "90") do
+      assert Puma::SdNotify.extend_timeout?
+    end
+
+    with_env("EXTEND_TIMEOUT_USEC" => nil) do
+      refute Puma::SdNotify.extend_timeout?
+    end
+  end
+
+  private
+
+  def with_env(values)
+    original = {}
+
+    values.each do |key, value|
+      original[key] = ENV.key?(key) ? ENV[key] : :__undefined__
+
+      if value.nil?
+        ENV.delete(key)
+      else
+        ENV[key] = value
+      end
+    end
+
+    yield
+  ensure
+    original.each do |key, value|
+      if value == :__undefined__
+        ENV.delete(key)
+      else
+        ENV[key] = value
+      end
     end
   end
 end
