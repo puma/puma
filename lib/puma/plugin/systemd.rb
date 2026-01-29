@@ -8,9 +8,6 @@ require_relative '../plugin'
 #  3. periodically for a liveness check with a watchdog thread
 #  4. periodically set the status
 Puma::Plugin.create do
-  USEC_PER_SEC = 1_000_000.0
-  EXTEND_TIMEOUT_BUFFER_SEC = 5.0
-
   def start(launcher)
     require_relative '../sd_notify'
 
@@ -20,12 +17,13 @@ Puma::Plugin.create do
     if Puma::SdNotify.extend_timeout? &&
         (@extend_timeout_deadline = extend_timeout_deadline(Puma::SdNotify.extend_timeout_max_usec))
       extend_timeout_usec = Puma::SdNotify.extend_timeout_usec
-      if extend_timeout_usec < EXTEND_TIMEOUT_BUFFER_SEC * USEC_PER_SEC
-        launcher.log_writer.log "WARNING: EXTEND_TIMEOUT_USEC is less than #{EXTEND_TIMEOUT_BUFFER_SEC.to_i} seconds; extending at the configured interval"
+      if extend_timeout_usec < extend_timeout_buffer_sec * usec_per_sec
+        launcher.log_writer.log "WARNING: EXTEND_TIMEOUT_USEC is less than #{extend_timeout_buffer_sec.to_i} seconds; extending at the configured interval"
       end
       launcher.log_writer.log "Extending the startup by up to #{Puma::SdNotify.extend_timeout_max_usec} usec"
 
-      in_background do
+      Thread.new do
+        Puma.set_thread_name "systemd extend"
         sleep_time = extend_timeout_sleep_time(extend_timeout_usec)
         launcher.log_writer.log "Extending systemd startup timeout every #{sleep_time.round(1)} sec"
         while @extend_timeout_deadline
@@ -87,21 +85,29 @@ Puma::Plugin.create do
 
   private
 
-  def extend_timeout_sleep_time(usec)
-    sec_f = usec / USEC_PER_SEC
-    return sec_f if sec_f <= EXTEND_TIMEOUT_BUFFER_SEC
+  def usec_per_sec
+    1_000_000.0
+  end
 
-    sec_f - EXTEND_TIMEOUT_BUFFER_SEC
+  def extend_timeout_buffer_sec
+    5.0
+  end
+
+  def extend_timeout_sleep_time(usec)
+    sec_f = usec / usec_per_sec
+    return sec_f if sec_f <= extend_timeout_buffer_sec
+
+    sec_f - extend_timeout_buffer_sec
   end
 
   def extend_timeout_deadline(usec)
     return nil unless usec.positive?
 
-    monotonic_time + (usec / USEC_PER_SEC)
+    monotonic_time + (usec / usec_per_sec)
   end
 
   def remaining_extend_timeout_usec(deadline)
-    ((deadline - monotonic_time) * USEC_PER_SEC).to_i
+    ((deadline - monotonic_time) * usec_per_sec).to_i
   end
 
   def monotonic_time
@@ -111,7 +117,7 @@ Puma::Plugin.create do
   def watchdog_sleep_time
     usec = Integer(ENV["WATCHDOG_USEC"])
 
-    sec_f = usec / USEC_PER_SEC
+    sec_f = usec / usec_per_sec
     # "It is recommended that a daemon sends a keep-alive notification message
     # to the service manager every half of the time returned here."
     sec_f / 2
