@@ -230,6 +230,8 @@ CI runs against the latest patch release of each supported Ruby minor version. W
 
 Puma does not have a backport "policy" - maintainers will not consistently backport bugfixes to previous minor or major versions (we do treat security differently, see [`SECURITY.md`](SECURITY.md).
 
+For Ruby patch-level bugs, we may add targeted workarounds. When we do, we keep those workarounds in place for the lifetime of the affected Ruby minor series, even if a later patch release fixes the underlying issue.
+
 As a contributor, you may make pull requests against `-stable` branches to backport fixes, and maintainers will release them once they're merged. For example, if you'd like to make a backport for 4.3.x, you can make a pull request against `4-3-stable`. If there is no appropriate branch for the release you'd like to backport against, please just open an issue and we'll make one for you.
 
 ## Join the community
