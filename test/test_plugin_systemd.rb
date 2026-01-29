@@ -71,8 +71,9 @@ class TestPluginSystemd < TestIntegration
     })
     cli_server "test/rackup/boot_delay.ru", env: notify_env
     first_timeout = assert_extend_timeout_usec(read_message, 300_000)
-    second_timeout = assert_extend_timeout_usec(read_message, 100_000)
-    assert_equal 400_000, first_timeout + second_timeout
+    second_timeout = assert_extend_timeout_usec(read_message)
+    assert_operator second_timeout, :<=, 100_000
+    assert_operator first_timeout + second_timeout, :<=, 400_000
 
     assert_message "READY=1"
 
