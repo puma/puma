@@ -46,3 +46,4 @@ A clear and concise description of what you expected to happen.
 **Desktop (please complete the following information):**
  - OS: [e.g. Mac, Linux]
  - Puma Version [e.g. 4.1.1]
+ - Ruby Version (please reproduce on the latest patch for your Ruby minor; CI only tests the latest patch release)

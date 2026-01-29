@@ -224,6 +224,8 @@ There's no need to update the changelog ([`History.md`](History.md)); that is do
 
 Puma uses [GitHub Actions](https://docs.github.com/en/actions) for CI testing. Please consider running the workflows in your fork before creating a PR. It is possible to enable GitHub Actions on your fork in the repositories' `Actions` tab.
 
+CI runs against the latest patch release of each supported Ruby minor version. When reporting bugs or reproducing issues, please use the latest patch release for your Ruby minor version so your environment matches CI coverage.
+
 ## Backports
 
 Puma does not have a backport "policy" - maintainers will not consistently backport bugfixes to previous minor or major versions (we do treat security differently, see [`SECURITY.md`](SECURITY.md).
