@@ -462,8 +462,9 @@ class TestPumaServerSSLClient < PumaTest
   end if Puma.jruby?
 
   def test_allows_to_specify_cipher_suites_and_protocols
+    cipher_suite = ['TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256']
     ctx = CTX.dup
-    ctx.cipher_suites = [ 'TLS_RSA_WITH_AES_128_GCM_SHA256' ]
+    ctx.cipher_suites = cipher_suite
     ctx.protocols = 'TLSv1.2'
 
     assert_ssl_client_error_match(false, context: ctx) do |client_ctx|
@@ -475,7 +476,7 @@ class TestPumaServerSSLClient < PumaTest
       client_ctx.verify_mode = OpenSSL::SSL::VERIFY_PEER
 
       client_ctx.ssl_version = :TLSv1_2
-      client_ctx.ciphers = [ 'TLS_RSA_WITH_AES_128_GCM_SHA256' ]
+      client_ctx.ciphers = cipher_suite
     end
   end if Puma.jruby?
 
@@ -484,7 +485,9 @@ class TestPumaServerSSLClient < PumaTest
     ctx.cipher_suites = [ 'TLS_RSA_WITH_AES_128_GCM_SHA256' ]
     ctx.protocols = 'TLSv1.2'
 
-    assert_ssl_client_error_match(/no cipher suites in common/, context: ctx) do |client_ctx|
+    error_msg = /no cipher suites in common|cipher suites are inappropriate/
+
+    assert_ssl_client_error_match(error_msg, context: ctx) do |client_ctx|
       key = "#{CERT_PATH}/client.key"
       crt = "#{CERT_PATH}/client.crt"
       client_ctx.key = OpenSSL::PKey::RSA.new File.read(key)
