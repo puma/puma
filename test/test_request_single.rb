@@ -699,3 +699,53 @@ class TestTransferEncodingInvalid < TestRequestBase
       "Invalid Transfer-Encoding, single value must be chunked: 'gzip'"
   end
 end
+
+# Tests reset clears per-request error state
+class TestRequestReset < TestRequestBase
+
+  def test_reset_clears_error_status_code
+    setup_client
+    @client.http_content_length_limit = 10
+
+    first_request = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
+    second_request = "GET /next HTTP/1.1\r\n\r\n"
+
+    assert_raises(Puma::HttpParserError) do
+      write_request "#{first_request}#{second_request}"
+    end
+
+    @client.reset
+
+    assert @client.process_back_to_back_requests
+    assert_equal '/next', @client.env[REQUEST_PATH]
+  end
+
+  private
+
+  def setup_client
+    env = {}
+    if Puma::IS_WINDOWS
+      @rd, @wr = Socket.pair Socket::AF_INET, Socket::SOCK_STREAM, 0
+    elsif USE_IO_PIPE
+      @rd, @wr = IO.pipe
+    else
+      @rd, @wr = UNIXSocket.pair
+    end
+
+    @rd.define_singleton_method :peeraddr, PEER_ADDR
+
+    @client = Puma::Client.new @rd, env
+    @client.supported_http_methods = HTTP_METHODS
+  end
+
+  def write_request(request)
+    written = 0
+    i_limit = 64 * 1024
+    size = request.bytesize
+    while written < size
+      written += @wr.syswrite(request.byteslice(written, i_limit))
+      return if @client.try_to_finish
+    end
+    @client.try_to_finish
+  end
+end

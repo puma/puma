@@ -105,6 +105,7 @@ module Puma
 
       @http_content_length_limit = nil
       @http_content_length_limit_exceeded = false
+      @error_status_code = nil
 
       @peerip = nil
       @peer_family = nil
@@ -170,6 +171,7 @@ module Puma
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
       @http_content_length_limit_exceeded = false
+      @error_status_code = nil
     end
 
     # only used with back-to-back requests contained in the buffer
