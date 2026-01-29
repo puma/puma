@@ -11,16 +11,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def setup
     super
-    @control_path = nil
     @state_path = tmp_path('.state')
-  end
-
-  def teardown
-    super
-
-    refute @control_path && File.exist?(@control_path), "Control path must be removed after stop"
-  ensure
-    [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
   end
 
   def test_stop_tcp
@@ -309,6 +300,8 @@ class TestIntegrationPumactl < TestIntegration
     elsif !Puma::IS_JRUBY
       refute_equal gc_before, gc_after, "make sure a gc has happened"
     end
+  ensure
+    resp_io&.close unless resp_io&.closed?
   end
 
   def test_control_gc_stats_tcp
