@@ -50,17 +50,21 @@ jobs:
                 continue;
               }
 
-              // Get reviews for this PR
-              const reviews = await github.rest.pulls.listReviews({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number
-              });
+              // Get all reviews for this PR (with pagination)
+              const reviews = await github.paginate(
+                github.rest.pulls.listReviews,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  per_page: 100
+                }
+              );
 
               // Track the latest decision per reviewer.
               // A later COMMENTED review should not override CHANGES_REQUESTED/APPROVED.
               const latestDecisionByReviewer = new Map();
-              for (const review of reviews.data) {
+              for (const review of reviews) {
                 const reviewer = review.user.login;
 
                 if (review.state === 'CHANGES_REQUESTED' || review.state === 'APPROVED') {
