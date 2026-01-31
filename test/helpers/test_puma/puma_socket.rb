@@ -136,12 +136,6 @@ module TestPuma
         .split(RESP_SPLIT, 2).first.split "\r\n"
     end
 
-    def send_http_read_resp_headers(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
-        session: nil, len: nil, timeout: nil)
-      send_http_read_headers(req, host: host, port: port, path: path, ctx: ctx, session: session,
-        len: len, timeout: timeout)
-    end
-
     # Sends a request and returns the HTTP response body.
     # @!macro req
     # @!macro skt
@@ -153,11 +147,8 @@ module TestPuma
         .read_body(timeout: timeout, len: len)
     end
 
-    def send_http_read_resp_body(req = GET_11, host: nil, port: nil, path: nil, ctx: nil,
-        session: nil, len: nil, timeout: nil)
-      send_http_read_body(req, host: host, port: port, path: path, ctx: ctx, session: session,
-        len: len, timeout: timeout)
-    end
+    alias :send_http_read_resp_headers :send_http_read_headers
+    alias :send_http_read_resp_body    :send_http_read_body
 
     # Sends a request and returns whatever can be read.  Use when multiple
     # responses are sent by the server
@@ -171,7 +162,7 @@ module TestPuma
         .read_all(timeout: timeout, len: len)
     end
 
-    # Sends a request and returns the HTTP response.  Assumes one response is sent
+    # Sends a request and returns the HTTP response.  Assumes one response is sent.
     # @!macro req
     # @!macro skt
     # @!macro resp
