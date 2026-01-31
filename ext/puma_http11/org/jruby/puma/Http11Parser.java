@@ -4,6 +4,7 @@ package org.jruby.puma;
 
 import org.jruby.Ruby;
 import org.jruby.RubyHash;
+import org.jruby.RubyString;
 import org.jruby.util.ByteList;
 
 public class Http11Parser {
@@ -11,12 +12,12 @@ public class Http11Parser {
 /** Machine **/
 
 
-// line 58 "ext/puma_http11/http11_parser.java.rl"
+// line 59 "ext/puma_http11/http11_parser.java.rl"
 
 
 /** Data **/
 
-// line 20 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 21 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 private static byte[] init__puma_parser_actions_0()
 {
 	return new byte [] {
@@ -185,66 +186,51 @@ static final int puma_parser_first_final = 46;
 static final int puma_parser_error = 0;
 
 
-// line 62 "ext/puma_http11/http11_parser.java.rl"
+// line 63 "ext/puma_http11/http11_parser.java.rl"
 
-   public static interface ElementCB {
-     public void call(Ruby runtime, RubyHash data, ByteList buffer, int at, int length);
-   }
+   int cs;
+   int body_start;
+   int nread;
+   int mark;
+   int field_start;
+   int field_len;
+   int query_start;
 
-   public static interface FieldCB {
-     public void call(Ruby runtime, RubyHash data, ByteList buffer, int field, int flen, int value, int vlen);
-   }
+   RubyHash data;
+   byte[] buffer;
 
-   public static class HttpParser {
-      int cs;
-      int body_start;
-      int content_len;
-      int nread;
-      int mark;
-      int field_start;
-      int field_len;
-      int query_start;
+   public void init() {
 
-      RubyHash data;
-      ByteList buffer;
-
-      public void init() {
-          cs = 0;
-
-          
-// line 216 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+       
+// line 206 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	cs = puma_parser_start;
 	}
 
-// line 88 "ext/puma_http11/http11_parser.java.rl"
+// line 78 "ext/puma_http11/http11_parser.java.rl"
 
-          body_start = 0;
-          content_len = 0;
-          mark = 0;
-          nread = 0;
-          field_len = 0;
-          field_start = 0;
-      }
+       body_start = 0;
+       mark = 0;
+       nread = 0;
+       field_len = 0;
+       field_start = 0;
    }
-
-   public final HttpParser parser = new HttpParser();
 
    public int execute(Ruby runtime, Http11 http, ByteList buffer, int off) {
      int p, pe;
-     int cs = parser.cs;
+     int cs = this.cs;
      int len = buffer.length();
+     int beg = buffer.begin();
+     RubyString[] envStrings = http.envStrings;
      assert off<=len : "offset past end of buffer";
 
-     p = off;
-     pe = len;
-     // get a copy of the bytes, since it may not start at 0
-     // FIXME: figure out how to just use the bytes in-place
-     byte[] data = buffer.bytes();
-     parser.buffer = buffer;
+     p = beg + off;
+     pe = beg + len;
+     byte[] data = buffer.unsafeBytes();
+     this.buffer = data;
 
      
-// line 248 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 234 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 	{
 	int _klen;
 	int _trans = 0;
@@ -325,82 +311,82 @@ case 1:
 			switch ( _puma_parser_actions[_acts++] )
 			{
 	case 0:
-// line 15 "ext/puma_http11/http11_parser.java.rl"
-	{parser.mark = p; }
+// line 16 "ext/puma_http11/http11_parser.java.rl"
+	{this.mark = p; }
 	break;
 	case 1:
-// line 17 "ext/puma_http11/http11_parser.java.rl"
-	{ parser.field_start = p; }
+// line 18 "ext/puma_http11/http11_parser.java.rl"
+	{ this.field_start = p; }
 	break;
 	case 2:
-// line 18 "ext/puma_http11/http11_parser.java.rl"
-	{ /* FIXME stub */ }
+// line 19 "ext/puma_http11/http11_parser.java.rl"
+	{ /* done lazily as needed */ }
 	break;
 	case 3:
-// line 19 "ext/puma_http11/http11_parser.java.rl"
+// line 20 "ext/puma_http11/http11_parser.java.rl"
 	{ 
-    parser.field_len = p-parser.field_start;
+    this.field_len = p-this.field_start;
   }
 	break;
 	case 4:
-// line 23 "ext/puma_http11/http11_parser.java.rl"
-	{ parser.mark = p; }
+// line 24 "ext/puma_http11/http11_parser.java.rl"
+	{ this.mark = p; }
 	break;
 	case 5:
-// line 24 "ext/puma_http11/http11_parser.java.rl"
+// line 25 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.http_field(runtime, parser.data, parser.buffer, parser.field_start, parser.field_len, parser.mark, p-parser.mark);
+    Http11.http_field(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 6:
-// line 27 "ext/puma_http11/http11_parser.java.rl"
+// line 28 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.request_method(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
+    Http11.request_method(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 7:
-// line 30 "ext/puma_http11/http11_parser.java.rl"
+// line 31 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.request_uri(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
+    Http11.request_uri(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 8:
-// line 33 "ext/puma_http11/http11_parser.java.rl"
+// line 34 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.fragment(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
+    Http11.fragment(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 9:
-// line 37 "ext/puma_http11/http11_parser.java.rl"
-	{parser.query_start = p; }
+// line 38 "ext/puma_http11/http11_parser.java.rl"
+	{this.query_start = p; }
 	break;
 	case 10:
-// line 38 "ext/puma_http11/http11_parser.java.rl"
+// line 39 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.query_string(runtime, parser.data, parser.buffer, parser.query_start, p-parser.query_start);
+    Http11.query_string(runtime, envStrings, this, p-this.query_start);
   }
 	break;
 	case 11:
-// line 42 "ext/puma_http11/http11_parser.java.rl"
+// line 43 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.server_protocol(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
+    Http11.server_protocol(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 12:
-// line 46 "ext/puma_http11/http11_parser.java.rl"
+// line 47 "ext/puma_http11/http11_parser.java.rl"
 	{
-    Http11.request_path(runtime, parser.data, parser.buffer, parser.mark, p-parser.mark);
+    Http11.request_path(runtime, envStrings, this, p-this.mark);
   }
 	break;
 	case 13:
-// line 50 "ext/puma_http11/http11_parser.java.rl"
+// line 51 "ext/puma_http11/http11_parser.java.rl"
 	{ 
-    parser.body_start = p + 1;
-    http.header_done(runtime, parser.data, parser.buffer, p + 1, pe - p - 1);
+    this.body_start = p + 1;
+    http.header_done(runtime, this, p + 1, pe - p - 1);
     { p += 1; _goto_targ = 5; if (true)  continue _goto;}
   }
 	break;
-// line 404 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
+// line 390 "ext/puma_http11/org/jruby/puma/Http11Parser.java"
 			}
 		}
 	}
@@ -420,19 +406,19 @@ case 5:
 	break; }
 	}
 
-// line 114 "ext/puma_http11/http11_parser.java.rl"
+// line 100 "ext/puma_http11/http11_parser.java.rl"
 
-     parser.cs = cs;
-     parser.nread += (p - off);
+     this.cs = cs;
+     this.nread += (p - off);
      
      assert p <= pe                  : "buffer overflow after parsing execute";
-     assert parser.nread <= len      : "nread longer than length";
-     assert parser.body_start <= len : "body starts after buffer end";
-     assert parser.mark < len        : "mark is after buffer end";
-     assert parser.field_len <= len  : "field has length longer than whole buffer";
-     assert parser.field_start < len : "field starts after buffer end";
+     assert this.nread <= len      : "nread longer than length";
+     assert this.body_start <= len : "body starts after buffer end";
+     assert this.mark < len        : "mark is after buffer end";
+     assert this.field_len <= len  : "field has length longer than whole buffer";
+     assert this.field_start < len : "field starts after buffer end";
 
-     return parser.nread;
+     return this.nread;
    }
 
    public int finish() {
@@ -446,10 +432,10 @@ case 5:
   }
 
   public boolean has_error() {
-    return parser.cs == puma_parser_error;
+    return this.cs == puma_parser_error;
   }
 
   public boolean is_finished() {
-    return parser.cs == puma_parser_first_final;
+    return this.cs == puma_parser_first_final;
   }
 }
