@@ -55,13 +55,13 @@ class TestIntegrationCluster < TestIntegration
   def test_pre_existing_unix
     skip_unless :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.binwrite bind_path, 'pre existing'
 
     cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix
 
     stop_server
 
-    assert File.exist?(@bind_path)
+    assert File.exist?(@bind_path), 'Unix socket file should exist'
 
   ensure
     if UNIX_SKT_EXIST
@@ -72,7 +72,7 @@ class TestIntegrationCluster < TestIntegration
   def test_pre_existing_unix_stop_after_restart
     skip_unless :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.binwrite bind_path, 'pre existing'
 
     cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix, config: "preload_app! false"
     connection = connect(nil, unix: true)
@@ -232,10 +232,9 @@ class TestIntegrationCluster < TestIntegration
   def test_worker_check_interval
     # iso8601 2022-12-14T00:05:49Z
     re_8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/
-    @control_tcp_port = UniquePort.call
     worker_check_interval = 1
 
-    cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
+    cli_server "-w 1 -t 1:1 #{set_pumactl_args} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
 
     sleep worker_check_interval + 1
     checkin_1 = get_stats["worker_status"].first["last_checkin"]
@@ -287,12 +286,13 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def test_queue_results_disabled
+  def test_queue_requests_disabled
     cli_server "-w #{workers} test/rackup/hello.ru", config: "queue_requests false"
 
     get_worker_pids # wait for workers to boot
 
     fast_connect
+    assert true
   end
 
   def test_worker_index_is_with_in_options_limit
@@ -471,9 +471,7 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_nio4r_gem_not_required_in_master_process_when_using_control_server
-    @control_tcp_port = UniquePort.call
-    control_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
-    cli_server "-w #{workers} #{control_opts} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} #{set_pumactl_args} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
 
     assert wait_for_server_to_include('Starting control server')
 
