@@ -76,7 +76,7 @@ class TestErrorLogger < PumaTest
   end
 
   def test_debug_with_debug_mode
-    with_debug_mode do
+    with_temp_env({ "PUMA_DEBUG": "1" }) do
       _, err = capture_io do
         Puma::ErrorLogger.stdio.debug(text: 'non-blank')
       end
@@ -86,7 +86,7 @@ class TestErrorLogger < PumaTest
   end
 
   def test_debug_backtrace_logging
-    with_debug_mode do
+    with_temp_env({ "PUMA_DEBUG": "1" }) do
       def dummy_error
         raise StandardError.new('non-blank')
       rescue => e
@@ -111,14 +111,5 @@ class TestErrorLogger < PumaTest
 
       assert_includes err, include_str
     end
-  end
-
-  private
-
-  def with_debug_mode
-    original_debug, ENV["PUMA_DEBUG"] = ENV["PUMA_DEBUG"], "1"
-    yield
-  ensure
-    ENV["PUMA_DEBUG"] = original_debug
   end
 end

@@ -334,4 +334,23 @@ class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
   def full_name
     "#{self.class.name}##{name}"
   end
+
+
+  def with_temp_env(temp_env, del_env={}, &block)
+    original_env = {}
+
+    temp_env.transform_keys(&:to_s).each do |k, v|
+      original_env[k], ENV[k] = ENV[k], v
+    end
+
+    del_env.transform_keys(&:to_s).each { |k, v| ENV[k] = v }
+
+    yield
+  ensure
+    # Restore original values
+    original_env.each { |k, v| ENV[k] = v }
+
+    # Remove keys that were added via del_env
+    del_env.transform_keys(&:to_s).each { |k, _| ENV.delete(k) }
+  end
 end
