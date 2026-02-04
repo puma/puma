@@ -104,7 +104,8 @@ module Puma
       @hijacked = false
 
       @http_content_length_limit = nil
-      @http_content_length_limit_exceeded = false
+      @http_content_length_limit_exceeded = nil
+      @error_status_code = nil
 
       @peerip = nil
       @peer_family = nil
@@ -169,7 +170,8 @@ module Puma
       @body_remain = 0
       @peerip = nil if @remote_addr_header
       @in_last_chunk = false
-      @http_content_length_limit_exceeded = false
+      @http_content_length_limit_exceeded = nil
+      @error_status_code = nil
     end
 
     # only used with back-to-back requests contained in the buffer
@@ -322,10 +324,6 @@ module Puma
 
     # processes the `env` and the request body
     def process_env_body
-      if above_http_content_limit(@parser.body.bytesize)
-        @http_content_length_limit_exceeded = true
-        @error_status_code = 413
-      end
       temp = setup_body
       normalize_env
       req_env_post_parse
@@ -726,7 +724,7 @@ module Puma
     end
 
     def above_http_content_limit(value)
-      @http_content_length_limit&.< value
+      @http_content_length_limit_exceeded = (@http_content_length_limit&.< value)
     end
   end
 end
