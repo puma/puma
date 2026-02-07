@@ -59,18 +59,23 @@ jobs:
           - { os: ubuntu-24.04    , ruby: '3.0' }
           - { os: ubuntu-24.04-arm, ruby:  3.1  }
           - { os: ubuntu-24.04-arm, ruby:  3.3  }
-          - { os: macos-14        , ruby: '3.0' }
+          - { os: macos-14        , ruby:  3.1  }
           - { os: macos-14        , ruby:  3.2  }
-          - { os: macos-14        , ruby:  3.4  }
-          - { os: macos-15        , ruby:  3.1  }
-          - { os: macos-15        , ruby:  3.3  }
+          - { os: macos-14        , ruby:  3.3  }
+          - { os: macos-14        , ruby: '4.0' }
+          - { os: macos-14        , ruby:  head }
+          - { os: macos-15        , ruby: '3.0' }
+          - { os: macos-15        , ruby:  3.2  }
+          - { os: macos-15        , ruby:  3.4  }
           - { os: macos-15        , ruby:  head }
-          - { os: macos-15-intel  , ruby: '3.0' }
-          - { os: macos-15-intel  , ruby:  3.2  }
+          - { os: macos-15-intel  , ruby:  3.1  }
+          - { os: macos-15-intel  , ruby:  3.3  }
           - { os: macos-15-intel  , ruby:  3.4  }
+          - { os: macos-15-intel  , ruby: '4.0' }
+          - { os: macos-15-intel  , ruby:  head }
           - { os: macos-26        , ruby: '3.0' }
           - { os: macos-26        , ruby:  3.2  }
-          - { os: macos-26        , ruby:  head }
+          - { os: macos-26        , ruby:  3.3  }
           - { os: windows-2025    , ruby:  head }
 
     steps:
@@ -153,13 +158,13 @@ jobs:
           # tto - test timeout
           - { tto: 8 , os: ubuntu-22.04  , ruby: jruby }
           - { tto: 8 , os: ubuntu-22.04  , ruby: jruby, no-ssl: ' no SSL' }
-          - { tto: 8 , os: ubuntu-22.04  , ruby: jruby-head, allow-failure: false }
+          - { tto: 8 , os: ubuntu-24.04  , ruby: jruby-head, allow-failure: false }
           - { tto: 8 , os: ubuntu-22.04  , ruby: truffleruby, allow-failure: false } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
           - { tto: 8 , os: ubuntu-22.04  , ruby: truffleruby-head, allow-failure: false }
           - { tto: 8 , os: ubuntu-24.04  , ruby: truffleruby, allow-failure: false } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
           - { tto: 8 , os: ubuntu-24.04  , ruby: truffleruby-head, allow-failure: false }
           - { tto: 8 , os: macos-14      , ruby: jruby }
-          - { tto: 12 , os: macos-15-intel, ruby: jruby }
+          - { tto: 8 , os: macos-26      , ruby: jruby }
           - { tto: 8 , os: macos-15      , ruby: truffleruby, allow-failure: false }
 
     steps:
