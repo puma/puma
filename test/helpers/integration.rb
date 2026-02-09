@@ -492,10 +492,10 @@ class TestIntegration < PumaTest
       log: nil
     )
     skipped = true
-    skip_if :jruby, suffix: <<-MSG
- - file descriptors are not preserved on exec on JRuby; connection reset errors are expected during restarts
-    MSG
+    skip_if :jruby, suffix: ' - file descriptors are not preserved on exec on JRuby; ' \
+      'connection reset errors are expected during restarts'
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
+    skipped = nil
 
     clustered = (workers || 0) >= 2
 
@@ -506,7 +506,6 @@ class TestIntegration < PumaTest
       cli_server args, unix: unix, config: config, log: log
     end
 
-    skipped = false
     replies = Hash.new 0
     refused = thread_run_refused unix: false
     message = 'A' * 16_256  # 2^14 - 128
@@ -643,13 +642,14 @@ class TestIntegration < PumaTest
     end
 
   ensure
-    return if skipped
-    if passed?
-      msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
-      $debugging_info << "#{full_name}\n#{msg}\n"
-    else
-      client_threads.each { |thr| thr.kill if thr.is_a? Thread }
-      $debugging_info << "#{full_name}\n#{msg}\n"
+    unless skipped
+      if passed?
+        msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
+        $debugging_info << "#{full_name}\n#{msg}\n"
+      else
+        client_threads.each { |thr| thr.kill if thr.is_a? Thread }
+        $debugging_info << "#{full_name}\n#{msg}\n"
+      end
     end
   end
 end
