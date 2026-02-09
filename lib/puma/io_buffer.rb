@@ -34,13 +34,17 @@ module Puma
 
     alias_method :clear, :reset
 
-    # before Ruby 2.5, `write` would only take one argument
-    if RUBY_VERSION >= '2.5' && RUBY_ENGINE != 'truffleruby'
-      alias_method :append, :write
-    else
+    # Create an `IoBuffer#append` method that accepts multiple strings and writes them
+    if RUBY_ENGINE == 'truffleruby'
+      # truffleruby (24.2.1, like ruby 3.3.7)
+      #   StringIO.new.write("a", "b") # => `write': wrong number of arguments (given 2, expected 1) (ArgumentError)
       def append(*strs)
         strs.each { |str| write str }
       end
+    else
+      # Ruby 3+
+      #   StringIO.new.write("a", "b") # => 2
+      alias_method :append, :write
     end
   end
 end

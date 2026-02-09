@@ -57,7 +57,7 @@ class TestRackServer < PumaTest
 
   def setup
     @simple = lambda { |env| [200, { "x-header" => "Works" }, ["Hello"]] }
-    @server = Puma::Server.new @simple
+    @server = Puma::Server.new @simple, nil, log_writer: Puma::LogWriter.null
     @port = (@server.add_tcp_listener HOST, 0).addr[1]
     @tcp = "http://#{HOST}:#{@port}"
     @stopped = false
@@ -136,6 +136,24 @@ class TestRackServer < PumaTest
     assert_equal true, closed
   end
 
+  def test_after_reply_error_handling
+    called = []
+    @server.app = lambda do |env|
+      env['rack.after_reply'] << lambda { called << :before }
+      env['rack.after_reply'] << lambda { raise ArgumentError, "oops" }
+      env['rack.after_reply'] << lambda { called << :after }
+      @simple.call(env)
+    end
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal [:before, :after], called
+  end
+
   def test_after_reply_exception
     @server.app = lambda do |env|
       env['rack.after_reply'] << lambda { raise ArgumentError, "oops" }
@@ -151,7 +169,7 @@ class TestRackServer < PumaTest
 
     headers = header_hash socket
 
-    content_length = headers["Content-Length"].to_i
+    content_length = headers["content-length"].to_i
     real_response_body = socket.read(content_length)
 
     assert_equal "Hello", real_response_body
@@ -176,6 +194,58 @@ class TestRackServer < PumaTest
     socket.close
 
     stop
+  end
+
+  def test_rack_response_finished
+    calls = []
+
+    @server.app = lambda do |env|
+      env['rack.response_finished'] << lambda { |c_env, status, headers, error|
+        calls << 1
+        assert_same env, c_env
+        assert_equal 200, status
+        assert_instance_of Hash, headers
+        assert_nil error
+      }
+      env['rack.response_finished'] << lambda { |env, status, headers, error| calls << 2; raise "Oops" }
+      env['rack.response_finished'] << lambda { |env, status, headers, error| calls << 3 }
+      @simple.call(env)
+    end
+
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal [3, 2, 1], calls
+  end
+
+  def test_rack_response_finished_on_error
+    calls = []
+
+    @server.app = lambda do |env|
+      env['rack.response_finished'] << lambda { |c_env, status, headers, error|
+        begin
+          assert_same env, c_env
+          assert_equal 500, status
+          assert_instance_of Hash, headers
+          assert_instance_of RuntimeError, error
+          assert_equal "test_rack_response_finished_on_error", error.message
+          calls << 1
+        end
+      }
+      raise "test_rack_response_finished_on_error"
+    end
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    assert_equal [1], calls
   end
 
   def test_rack_body_proxy
@@ -215,9 +285,9 @@ class TestRackServer < PumaTest
     stop
 
     if Rack.release.start_with? '1.'
-      assert_equal "chunked", headers["Transfer-Encoding"]
+      assert_equal "chunked", headers["transfer-encoding"]
     else
-      assert_equal str_ary_bytes, headers["Content-Length"].to_i
+      assert_equal str_ary_bytes, headers["content-length"].to_i
     end
   end
 
@@ -269,5 +339,27 @@ class TestRackServer < PumaTest
     resp = Net::HTTP.get_response URI(@tcp)
     assert_equal 'chunked', resp['transfer-encoding']
     assert_equal STR_1KB * 10, resp.body.force_encoding(Encoding::UTF_8)
+  end
+
+  def test_version_header
+    @server.app = lambda do |env|
+      body = env['HTTP_VERSION']
+      [200, {}, [body]]
+    end
+    @server.run
+
+    socket = TCPSocket.open HOST, @port
+    socket.syswrite "GET / HTTP/1.1\r\nversion: version\r\n\r\n"
+
+    body = socket.sysread(256).split("\r\n\r\n").last
+
+    if Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
+      Gem::Version.new(Rack.release) < Gem::Version.new('3.1.0')
+      assert_equal "HTTP/1.1", body
+    else
+      assert_equal "version", body
+    end
+  ensure
+    socket&.close
   end
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module TestPuma
 
   # A subclass of String, allows processing the response returned by
@@ -26,7 +28,7 @@ module TestPuma
     end
 
     def status
-      headers
+      headers unless @status
       @status
     end
 

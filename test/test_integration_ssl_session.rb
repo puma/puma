@@ -12,7 +12,7 @@ require_relative 'helpers/integration'
 # the server process isn't affected by whatever is loaded in the CI process.
 
 class TestIntegrationSSLSession < TestIntegration
-  parallelize_me! if Puma::IS_MRI
+  parallelize_me!
 
   require "openssl" unless defined?(::OpenSSL::SSL)
 
@@ -22,7 +22,7 @@ class TestIntegrationSSLSession < TestIntegration
 
   GET = "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
 
-  RESP = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 5\r\n\r\nhttps"
+  RESP = "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhttps"
 
   CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
 

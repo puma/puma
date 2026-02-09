@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Nothing in this file runs if Puma isn't compiled with ssl support
 #
 # helper is required first since it loads Puma, which needs to be

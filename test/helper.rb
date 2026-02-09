@@ -2,15 +2,6 @@
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
-if RUBY_VERSION == '2.4.1'
-  begin
-    require 'stopgap_13632'
-  rescue LoadError
-    puts "For test stability, you must install the stopgap_13632 gem."
-    exit(1)
-  end
-end
-
 # WIth GitHub Actions, OS's `/tmp` folder may be on a HDD, while
 # ENV['RUNNER_TEMP'] is an SSD.  Faster.
 if ENV['GITHUB_ACTIONS'] == 'true'
@@ -19,16 +10,15 @@ end
 
 require "securerandom"
 
-# needs to be loaded before minitest for Ruby 2.7 and earlier
-require_relative "helpers/test_puma/assertions"
-
 require_relative "minitest/verbose"
 require "minitest/autorun"
 require "minitest/pride"
 require "minitest/proveit"
 require "minitest/stub_const"
+require "minitest/mock" unless defined?(::Minitest::Mock)
 require "net/http"
 require_relative "helpers/apps"
+require_relative "helpers/test_puma/assertions"
 
 Thread.abort_on_exception = true
 
@@ -46,10 +36,15 @@ end
 if Puma::HAS_SSL
   require 'puma/log_writer'
   class SSLLogWriterHelper < ::Puma::LogWriter
-    attr_accessor :addr, :cert, :error
+    attr_accessor :addr, :cert
+    attr_reader :errors
+
+    def error
+      @errors&.last
+    end
 
     def ssl_error(error, ssl_socket)
-      self.error = error
+      (@errors ||= []) << error
       self.addr = ssl_socket.peeraddr.last rescue "<unknown>"
       self.cert = ssl_socket.peercert
     end
@@ -101,22 +96,16 @@ end
 
 Minitest::Test.prepend TimeoutPrepend
 
-class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
-  def teardown
-    clean_tmp_paths if respond_to? :clean_tmp_paths
-  end
-end
-
 if ENV['CI']
   require 'minitest/retry'
 
-  SUMMARY_FILE = ENV['GITHUB_STEP_SUMMARY']
+  Minitest::Retry::GHA_STEP_SUMMARY_FILE = ENV['GITHUB_STEP_SUMMARY']
 
   Minitest::Retry.use!
 
-  if SUMMARY_FILE && ENV['GITHUB_ACTIONS'] == 'true'
+  if Minitest::Retry::GHA_STEP_SUMMARY_FILE && ENV['GITHUB_ACTIONS'] == 'true'
 
-    GITHUB_STEP_SUMMARY_MUTEX = Mutex.new
+    Minitest::Retry::GHA_STEP_SUMMARY_MUTEX = Mutex.new
 
     Minitest::Retry.on_failure do |klass, test_name, result|
       full_method = "#{klass}##{test_name}"
@@ -130,8 +119,17 @@ if ENV['CI']
       # remove indent
       result_str.gsub!(/^ +/, '')
       str = "\n**#{full_method}**\n**#{issue}**\n```\n#{result_str.strip}\n```\n"
-      GITHUB_STEP_SUMMARY_MUTEX.synchronize {
-        File.write SUMMARY_FILE, str, mode: 'a+'
+      Minitest::Retry::GHA_STEP_SUMMARY_MUTEX.synchronize {
+        retry_cntr = 0
+        begin
+          File.write Minitest::Retry::GHA_STEP_SUMMARY_FILE, str, mode: 'a+'
+        rescue IOError # can't write to file, retry once
+          if retry_cntr == 0
+            retry_cntr += 1
+            sleep 0.2
+            retry
+          end
+        end
       }
     end
   end
@@ -157,7 +155,7 @@ module TestSkips
 
   # usage: skip_unless_signal_exist? :USR2
   def skip_unless_signal_exist?(sig, bt: caller)
-    signal = sig.to_s.sub(/\ASIG/, '').to_sym
+    signal = sig.to_s.delete_prefix('SIG').to_sym
     unless SIGNAL_LIST.include? signal
       skip "Signal #{signal} isn't available on the #{RUBY_PLATFORM} platform", bt
     end
@@ -181,6 +179,7 @@ module TestSkips
         when :unix        then "Skipped if UNIXSocket exists"    if Puma::HAS_UNIX_SOCKET
         when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
         when :rack3       then "Skipped if Rack 3.x"             if Rack.release >= '3'
+        when :oldwindows  then "Skipped if old Windows"          if Puma::IS_WINDOWS && RUBY_VERSION < '2.6'
         else false
       end
       skip skip_msg, bt if skip_msg
@@ -203,22 +202,6 @@ module TestSkips
       else false
     end
     skip skip_msg, bt if skip_msg
-  end
-end
-
-Minitest::Test.include TestSkips
-
-class Minitest::Test
-
-  PROJECT_ROOT = File.dirname(__dir__)
-
-  def self.run(reporter, options = {}) # :nodoc:
-    prove_it!
-    super
-  end
-
-  def full_name
-    "#{self.class.name}##{name}"
   end
 end
 
@@ -303,7 +286,6 @@ module TestTempFile
     fio
   end
 end
-Minitest::Test.include TestTempFile
 
 # This module is modified based on https://github.com/rails/rails/blob/7-1-stable/activesupport/lib/active_support/testing/method_call_assertions.rb
 module MethodCallAssertions
@@ -334,4 +316,22 @@ module MethodCallAssertions
     assert_called_on_instance_of(klass, method_name, message, times: 0, &block)
   end
 end
-Minitest::Test.include MethodCallAssertions
+
+class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
+  include MethodCallAssertions
+  include TestPuma::Assertions
+  include TestSkips
+  include TestTempFile
+
+  prove_it!
+
+  PROJECT_ROOT = File.dirname(__dir__)
+
+  def teardown
+    clean_tmp_paths if respond_to? :clean_tmp_paths
+  end
+
+  def full_name
+    "#{self.class.name}##{name}"
+  end
+end

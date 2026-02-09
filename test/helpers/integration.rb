@@ -26,8 +26,10 @@ class TestIntegration < PumaTest
 
   def setup
     @server = nil
-    @config_file = nil
     @server_log = +''
+    @server_stopped = false
+    @config_file = nil
+
     @pid = nil
     @ios_to_close = []
     @bind_path    = tmp_path('.sock')
@@ -38,7 +40,8 @@ class TestIntegration < PumaTest
   def teardown
     if @server && @control_tcp_port && Puma.windows?
       cli_pumactl 'stop'
-    elsif @server && @pid && !Puma.windows?
+    # don't close if we've already done so
+    elsif @server && @pid && !@server_stopped && !Puma.windows?
       stop_server @pid, signal: :INT
     end
 
@@ -137,6 +140,7 @@ class TestIntegration < PumaTest
   # that is already stopped/killed, especially since Process.wait2 is
   # blocking
   def stop_server(pid = @pid, signal: :TERM)
+    @server_stopped = true
     begin
       Process.kill signal, pid
     rescue Errno::ESRCH
@@ -227,7 +231,7 @@ class TestIntegration < PumaTest
       end
     rescue StandardError => e
       error_retries += 1
-      raise(e, "Waiting for server to log #{match_obj.inspect}") if error_retries == LOG_ERROR_QTY
+      raise(Minitest::Assertion,  "Waiting for server to log #{match_obj.inspect} raised #{e.class}") if error_retries == LOG_ERROR_QTY
       sleep LOG_ERROR_SLEEP
       retry
     end
@@ -237,8 +241,21 @@ class TestIntegration < PumaTest
     line
   end
 
+  def open_client_socket(unix: false, timeout: 3)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    retries = 0
+    begin
+      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    rescue Errno::EADDRNOTAVAIL => e
+      raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      retries += 1
+      sleep 0.01 * retries.clamp(0, 10)
+      retry
+    end
+  end
+
   def connect(path = nil, unix: false)
-    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    s = open_client_socket(unix: unix)
     @ios_to_close << s
     s << "GET /#{path} HTTP/1.1\r\n\r\n"
     s
@@ -247,7 +264,7 @@ class TestIntegration < PumaTest
   # use only if all socket writes are fast
   # does not wait for a read
   def fast_connect(path = nil, unix: false)
-    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    s = open_client_socket(unix: unix)
     @ios_to_close << s
     fast_write s, "GET /#{path} HTTP/1.1\r\n\r\n"
     s
@@ -348,8 +365,8 @@ class TestIntegration < PumaTest
     else
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
       # Errno::ECONNABORTED is thrown by Windows on read or write
-      DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
-               [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::ECONNABORTED]
+      DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
+               [IOError, Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::EPIPE, Errno::ECONNABORTED]
     end
   end
 
@@ -445,7 +462,7 @@ class TestIntegration < PumaTest
         num_requests.times do |req_num|
           begin
             begin
-              socket = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+              socket = open_client_socket(unix: unix)
               fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
             rescue => e
               replies[:write_error] += 1
@@ -460,7 +477,7 @@ class TestIntegration < PumaTest
             else
               mutex.synchronize { replies[:unexpected_response] += 1 }
             end
-          rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN
+          rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN, Errno::ENOTSOCK
             # connection was accepted but then closed
             # client would see an empty response
             # Errno::EBADF Windows may not be able to make a connection
@@ -512,7 +529,7 @@ class TestIntegration < PumaTest
           begin
             get_worker_pids phase, log: log
             # Wait with an exponential backoff before signaling next restart
-            sleep 0.15 * (2 ** restart_count)
+            sleep 0.15 * restart_count
           rescue Minitest::Assertion # Timeout
             run = false
           rescue Errno::EBADF # bad restart?

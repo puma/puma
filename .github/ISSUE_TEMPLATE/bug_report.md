@@ -34,7 +34,7 @@ If you cannot reproduce with a hello world application or other simple applicati
 There is also a Dockerfile available for reproducing Linux-specific issues. To use:
 
 ```
-$ docker build -f tools/docker/Dockerfile -t puma .
+$ docker build -f tools/Dockerfile -t puma .
 $ docker run -p 9292:9292 -it puma
 ```
 
@@ -46,3 +46,4 @@ A clear and concise description of what you expected to happen.
 **Desktop (please complete the following information):**
  - OS: [e.g. Mac, Linux]
  - Puma Version [e.g. 4.1.1]
+ - Ruby Version (please reproduce on the latest patch for your Ruby minor; CI only tests the latest patch release)

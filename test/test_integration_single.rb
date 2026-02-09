@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationSingle < TestIntegration
-  parallelize_me! if ::Puma::IS_MRI
+  parallelize_me!
 
   def workers ; 0 ; end
 
@@ -51,19 +53,14 @@ class TestIntegrationSingle < TestIntegration
     assert_equal 15, status
   end
 
-  def test_on_booted_and_on_stopped
+  def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
 
-    cli_server "test/rackup/hello.ru", no_wait: true, config: <<~CONFIG
-      on_booted  { STDOUT.syswrite "on_booted called\n"  }
-      on_stopped { STDOUT.syswrite "on_stopped called\n" }
-    CONFIG
+    cli_server "-C test/config/event_after_booted_and_after_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru",
+      no_wait: true
 
-    assert wait_for_server_to_include('on_booted called')
-
-    Process.kill :TERM, @pid
-
-    assert wait_for_server_to_include('on_stopped called')
+    assert wait_for_server_to_include('after_booted called')
+    assert wait_for_server_to_include('after_stopped called')
 
     wait_server 15
   end
@@ -129,8 +126,12 @@ class TestIntegrationSingle < TestIntegration
     curl_wait_thread.join
     rejected_curl_wait_thread.join
 
+    re_curl_error = TRUFFLE ?
+      /Connection (refused|reset by peer)|(Couldn't|Could not) connect to server/ :
+      /Connection refused|(Couldn't|Could not) connect to server/
+
     assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|(Couldn't|Could not) connect to server/, rejected_curl_stderr.read)
+    assert_match(re_curl_error, rejected_curl_stderr.read)
 
     wait_server 15
   end
@@ -202,6 +203,26 @@ class TestIntegrationSingle < TestIntegration
     assert_equal("Puma is started\n", out)
   ensure
     File.unlink 't2-stdout' if File.file? 't2-stdout'
+  end
+
+  def test_puma_started_log_writing_with_custom_logging
+    skip_unless_signal_exist? :TERM
+
+    cli_server '-C test/config/t4_conf.rb test/rackup/hello.ru'
+
+    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
+
+    out=`#{BASE} bin/pumactl -F test/config/t4_conf.rb status`
+
+    stop_server
+
+    log = File.read('t4-stdout')
+
+    assert_match(%r!Custom logging: 127\.0\.0\.1.*GET / HTTP/1\.1!, log)
+    assert(!File.file?("t4-pid"))
+    assert_equal("Puma is started\n", out)
+  ensure
+    File.unlink 't4-stdout' if File.file? 't4-stdout'
   end
 
   def test_application_logs_are_flushed_on_write

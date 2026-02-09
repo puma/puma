@@ -142,7 +142,7 @@ class TestLogWriter < PumaTest
     assert_match %r!\("GET #{path}" - \(-\)\)!, log_writer.stderr.string
   ensure
     sock.close if sock && !sock.closed?
-    server.stop true
+    server&.stop(true)
   end
 
   # test_puma_server_ssl.rb checks that ssl errors are raised correctly,

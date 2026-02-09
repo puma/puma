@@ -172,7 +172,6 @@ module Puma
             end
           end
         rescue IOError, SystemCallError
-          Puma::Util.purge_interrupt_queue
           # nothing
         ensure
           @socket.close

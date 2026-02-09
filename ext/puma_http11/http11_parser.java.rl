@@ -2,6 +2,7 @@ package org.jruby.puma;
 
 import org.jruby.Ruby;
 import org.jruby.RubyHash;
+import org.jruby.RubyString;
 import org.jruby.util.ByteList;
 
 public class Http11Parser {
@@ -12,44 +13,44 @@ public class Http11Parser {
 
   machine puma_parser;
 
-  action mark {parser.mark = fpc; }
+  action mark {this.mark = fpc; }
 
-  action start_field { parser.field_start = fpc; }
-  action snake_upcase_field { /* FIXME stub */ }
+  action start_field { this.field_start = fpc; }
+  action snake_upcase_field { /* done lazily as needed */ }
   action write_field { 
-    parser.field_len = fpc-parser.field_start;
+    this.field_len = fpc-this.field_start;
   }
 
-  action start_value { parser.mark = fpc; }
+  action start_value { this.mark = fpc; }
   action write_value {
-    Http11.http_field(runtime, parser.data, parser.buffer, parser.field_start, parser.field_len, parser.mark, fpc-parser.mark);
+    Http11.http_field(runtime, envStrings, this, fpc-this.mark);
   }
   action request_method {
-    Http11.request_method(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+    Http11.request_method(runtime, envStrings, this, fpc-this.mark);
   }
   action request_uri {
-    Http11.request_uri(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+    Http11.request_uri(runtime, envStrings, this, fpc-this.mark);
   }
   action fragment {
-    Http11.fragment(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+    Http11.fragment(runtime, envStrings, this, fpc-this.mark);
   }
   
-  action start_query {parser.query_start = fpc; }
+  action start_query {this.query_start = fpc; }
   action query_string {
-    Http11.query_string(runtime, parser.data, parser.buffer, parser.query_start, fpc-parser.query_start);
+    Http11.query_string(runtime, envStrings, this, fpc-this.query_start);
   }
 
   action server_protocol {
-    Http11.server_protocol(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+    Http11.server_protocol(runtime, envStrings, this, fpc-this.mark);
   }
 
   action request_path {
-    Http11.request_path(runtime, parser.data, parser.buffer, parser.mark, fpc-parser.mark);
+    Http11.request_path(runtime, envStrings, this, fpc-this.mark);
   }
 
   action done { 
-    parser.body_start = fpc + 1;
-    http.header_done(runtime, parser.data, parser.buffer, fpc + 1, pe - fpc - 1);
+    this.body_start = fpc + 1;
+    http.header_done(runtime, this, fpc + 1, pe - fpc - 1);
     fbreak;
   }
 
@@ -60,69 +61,54 @@ public class Http11Parser {
 /** Data **/
 %% write data noentry;
 
-   public static interface ElementCB {
-     public void call(Ruby runtime, RubyHash data, ByteList buffer, int at, int length);
+   int cs;
+   int body_start;
+   int nread;
+   int mark;
+   int field_start;
+   int field_len;
+   int query_start;
+
+   RubyHash data;
+   byte[] buffer;
+
+   public void init() {
+
+       %% write init;
+
+       body_start = 0;
+       mark = 0;
+       nread = 0;
+       field_len = 0;
+       field_start = 0;
    }
-
-   public static interface FieldCB {
-     public void call(Ruby runtime, RubyHash data, ByteList buffer, int field, int flen, int value, int vlen);
-   }
-
-   public static class HttpParser {
-      int cs;
-      int body_start;
-      int content_len;
-      int nread;
-      int mark;
-      int field_start;
-      int field_len;
-      int query_start;
-
-      RubyHash data;
-      ByteList buffer;
-
-      public void init() {
-          cs = 0;
-
-          %% write init;
-
-          body_start = 0;
-          content_len = 0;
-          mark = 0;
-          nread = 0;
-          field_len = 0;
-          field_start = 0;
-      }
-   }
-
-   public final HttpParser parser = new HttpParser();
 
    public int execute(Ruby runtime, Http11 http, ByteList buffer, int off) {
      int p, pe;
-     int cs = parser.cs;
+     int cs = this.cs;
      int len = buffer.length();
+     int beg = buffer.begin();
+     RubyString[] envStrings = http.envStrings;
      assert off<=len : "offset past end of buffer";
 
-     p = off;
-     pe = len;
-     // get a copy of the bytes, since it may not start at 0
-     // FIXME: figure out how to just use the bytes in-place
-     byte[] data = buffer.bytes();
-     parser.buffer = buffer;
+     p = beg + off;
+     pe = beg + len;
+     byte[] data = buffer.unsafeBytes();
+     this.buffer = data;
 
      %% write exec;
 
-     parser.cs = cs;
-     parser.nread += (p - off);
+     this.cs = cs;
+     this.nread += (p - off);
      
      assert p <= pe                  : "buffer overflow after parsing execute";
-     assert parser.nread <= len      : "nread longer than length";
-     assert parser.body_start <= len : "body starts after buffer end";
-     assert parser.mark < len        : "mark is after buffer end";
-     assert parser.field_len <= len  : "field has length longer than whole buffer";
-     assert parser.field_start < len : "field starts after buffer end";
+     assert this.nread <= len      : "nread longer than length";
+     assert this.body_start <= len : "body starts after buffer end";
+     assert this.mark < len        : "mark is after buffer end";
+     assert this.field_len <= len  : "field has length longer than whole buffer";
+     assert this.field_start < len : "field starts after buffer end";
 
-     return parser.nread;
+     return this.nread;
    }
 
    public int finish() {
@@ -136,10 +122,10 @@ public class Http11Parser {
   }
 
   public boolean has_error() {
-    return parser.cs == puma_parser_error;
+    return this.cs == puma_parser_error;
   }
 
   public boolean is_finished() {
-    return parser.cs == puma_parser_first_final;
+    return this.cs == puma_parser_first_final;
   }
 }

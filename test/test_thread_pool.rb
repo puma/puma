@@ -1,27 +1,33 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 
 require "puma/thread_pool"
 
 class TestThreadPool < PumaTest
 
+  parallelize_me!
+
   def teardown
     @pool.shutdown(1) if defined?(@pool)
   end
 
-  def new_pool(min, max, &block)
+  def new_pool(min, max, pool_shutdown_grace_time: nil, &block)
     block = proc { } unless block
     options = {
       min_threads: min,
-      max_threads: max
+      max_threads: max,
+      pool_shutdown_grace_time: pool_shutdown_grace_time,
     }
     @pool = Puma::ThreadPool.new('tst', options, &block)
   end
 
-  def mutex_pool(min, max, &block)
+  def mutex_pool(min, max, pool_shutdown_grace_time: nil, &block)
     block = proc { } unless block
     options = {
       min_threads: min,
-      max_threads: max
+      max_threads: max,
+      pool_shutdown_grace_time: pool_shutdown_grace_time,
     }
     @pool = MutexPool.new('tst', options, &block)
   end
@@ -47,7 +53,17 @@ class TestThreadPool < PumaTest
     # If +wait+ is true, wait until the trim request is completed before returning.
     def trim(force=false, wait: true)
       super(force)
-      Thread.pass until @trim_requested == 0 if wait
+
+      return unless wait
+      loop do
+        # While we wait until @trim_requested is 0, the test might inspect other values
+        # such as @spawned which may be modified after this variable is modified in the loop
+        # Lock for race safety
+        with_mutex do
+          return if @trim_requested == 0
+        end
+        Thread.pass
+      end
     end
   end
 
@@ -123,9 +139,11 @@ class TestThreadPool < PumaTest
       min_threads: 0,
       max_threads: 1,
       before_thread_start: [
-        proc do
-          started << 1
-        end
+        {
+          id: nil,
+          block: proc { started << 1 },
+          cluster_only: false,
+        }
       ]
     }
     block = proc { }
@@ -137,6 +155,28 @@ class TestThreadPool < PumaTest
     assert_equal 1, started.length
   end
 
+  def test_out_of_band_hook
+    out_of_band_called = Queue.new
+    options = {
+      min_threads: 0,
+      max_threads: 1,
+      out_of_band: [
+        {
+          id: nil,
+          block: proc { out_of_band_called << 1 },
+          cluster_only: false,
+        }
+      ]
+    }
+    block = proc { true }
+    pool = MutexPool.new('tst', options, &block)
+
+    pool << 1
+
+    assert_equal 1, pool.spawned
+    assert_equal 1, out_of_band_called.length
+  end
+
   def test_trim
     pool = mutex_pool(0, 1)
 
@@ -144,7 +184,7 @@ class TestThreadPool < PumaTest
 
     assert_equal 1, pool.spawned
 
-    pool.trim
+    pool.trim(wait: true)
     assert_equal 0, pool.spawned
   end
 
@@ -155,10 +195,10 @@ class TestThreadPool < PumaTest
 
     assert_equal 2, pool.spawned
 
-    pool.trim
+    pool.trim(wait: true)
     assert_equal 1, pool.spawned
 
-    pool.trim
+    pool.trim(wait: true)
     assert_equal 1, pool.spawned
   end
 
@@ -192,7 +232,13 @@ class TestThreadPool < PumaTest
     options = {
       min_threads: 0,
       max_threads: 1,
-      before_thread_exit: [ -> { exited << 1 } ]
+      before_thread_exit: [
+        {
+          id: nil,
+          block: proc { exited << 1 },
+          cluster_only: false,
+        }
+      ]
     }
     block = proc { }
     pool = MutexPool.new('tst', options, &block)
@@ -225,24 +271,6 @@ class TestThreadPool < PumaTest
     Thread.pass until pool.spawned == 1 || Time.now - start > 1
 
     assert_equal 1, pool.spawned
-  end
-
-  def test_cleanliness
-    values = []
-    n = 100
-
-    pool = mutex_pool(1,1) {
-      values.push Thread.current[:foo]
-      Thread.current[:foo] = :hai
-    }
-
-    pool.instance_variable_set :@clean_thread_locals, true
-
-    pool << [1] * n
-
-    assert_equal n,  values.length
-
-    assert_equal [], values.compact
   end
 
   def test_reap_only_dead_threads
@@ -322,8 +350,9 @@ class TestThreadPool < PumaTest
     timeout = 0.01
     grace = 0.01
 
-    rescued = []
-    pool = mutex_pool(2, 2) do
+    # JRuby Array#<< is not thread-safe
+    rescued = Queue.new
+    pool = mutex_pool(2, 2, pool_shutdown_grace_time: grace) do
       begin
         pool.with_force_shutdown do
           pool.signal
@@ -338,12 +367,14 @@ class TestThreadPool < PumaTest
     pool << 1
     pool << 2
 
-    Puma::ThreadPool.stub_const(:SHUTDOWN_GRACE_TIME, grace) do
-      pool.shutdown(timeout)
-    end
+    pool.shutdown(timeout)
+
     assert_equal 0, pool.spawned
     assert_equal 2, rescued.length
-    refute rescued.compact.any?(&:alive?)
+    until rescued.empty?
+      thread = rescued.pop
+      refute thread.alive?
+    end
   end
 
   def test_correct_waiting_count_for_killed_threads

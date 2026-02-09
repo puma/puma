@@ -16,7 +16,7 @@ module Puma
     class Worker < Puma::Runner # :nodoc:
       attr_reader :index, :master
 
-      def initialize(index:, master:, launcher:, pipes:, server: nil)
+      def initialize(index:, master:, launcher:, pipes:, app: nil)
         super(launcher)
 
         @index = index
@@ -25,7 +25,8 @@ module Puma
         @worker_write = pipes[:worker_write]
         @fork_pipe = pipes[:fork_pipe]
         @wakeup = pipes[:wakeup]
-        @server = server
+        @app = app
+        @server = nil
         @hook_data = {}
         @mold = false
       end
@@ -58,7 +59,7 @@ module Puma
         @config.run_hooks(:before_worker_boot, index, @log_writer, @hook_data)
 
         begin
-        server = @server ||= start_server
+          @server = start_server
         rescue Exception => e
           log "! Unable to start worker"
           log e
@@ -86,7 +87,7 @@ module Puma
               if idx == -1 # stop server
                 if restart_server.length > 0
                   restart_server.clear
-                  server.begin_restart(true)
+                  @server.begin_restart(true)
                   @config.run_hooks(:before_refork, nil, @log_writer, @hook_data)
                 end
               elsif idx == -2 # refork cycle is done
@@ -106,33 +107,32 @@ module Puma
             @mold = true
             restart_server.clear
             restart_server << false
-            server.begin_restart(true)
+            @server.begin_restart(true)
           end
         end
 
         Signal.trap "SIGTERM" do
           @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
           restart_server.clear
-          server.stop
+          @server.stop
           restart_server << false
         end
 
         begin
           @worker_write << "#{PIPE_BOOT}#{Process.pid}:#{index}\n"
         rescue SystemCallError, IOError
-          Puma::Util.purge_interrupt_queue
           STDERR.puts "Master seems to have exited, exiting."
           return
         end
 
         while restart_server.pop
-          server_thread = server.run
+          server_thread = @server.run
 
           if @log_writer.debug? && index == 0
             debug_loaded_extensions "Loaded Extensions - worker 0:"
           end
 
-          make_sure_pinging(server)
+          make_sure_pinging(@server)
 
           server_thread.join
         end
@@ -154,7 +154,7 @@ module Puma
 
           @config.run_hooks(:on_mold_promotion, index, @log_writer, @hook_data)
 
-          make_sure_pinging(server)
+          make_sure_pinging(@server)
           wakeup!
 
           begin
@@ -204,7 +204,6 @@ module Puma
               payload = %Q!#{base_payload}{ "backlog":#{b}, "running":#{r}, "pool_capacity":#{t}, "max_threads":#{m}, "requests_count":#{rc}, "busy_threads":#{bt} }\n!
               io << payload
             rescue IOError
-              Puma::Util.purge_interrupt_queue
               break
             end
             sleep @options[:worker_check_interval]
@@ -237,7 +236,7 @@ module Puma
                                   master: master,
                                   launcher: @launcher,
                                   pipes: pipes,
-                                  server: @server
+                                  app: @app
           new_worker.run
         end
 

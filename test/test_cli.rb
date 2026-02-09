@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/ssl" if ::Puma::HAS_SSL
 require_relative "helpers/tmp_path"
@@ -26,7 +28,7 @@ class TestCLI < PumaTest
     @log_writer = Puma::LogWriter.strings
 
     @events = Puma::Events.new
-    @events.on_booted { @ready << "!" }
+    @events.after_booted { @ready << "!" }
 
     @puma_version_pattern = "\\d+.\\d+.\\d+(\\.[a-z\\d]+)?"
   end
@@ -332,8 +334,11 @@ class TestCLI < PumaTest
 
   def test_extra_runtime_dependencies
     cli = Puma::CLI.new ['--extra-runtime-dependencies', 'a,b']
-    extra_dependencies = cli.instance_variable_get(:@conf)
-                            .instance_variable_get(:@options)[:extra_runtime_dependencies]
+
+    conf = cli.instance_variable_get(:@conf)
+    conf.clamp
+
+    extra_dependencies = conf.options[:extra_runtime_dependencies]
 
     assert_equal %w[a b], extra_dependencies
   end
@@ -344,9 +349,11 @@ class TestCLI < PumaTest
     ENV['APP_ENV'] = 'test'
 
     cli = Puma::CLI.new []
-    cli.send(:setup_options)
 
-    assert_equal 'test', cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.clamp
+
+    assert_equal 'test', conf.environment
   ensure
     ENV.delete 'APP_ENV'
     ENV.delete 'RAILS_ENV'
@@ -356,9 +363,11 @@ class TestCLI < PumaTest
     ENV['RACK_ENV'] = @environment
 
     cli = Puma::CLI.new []
-    cli.send(:setup_options)
 
-    assert_equal @environment, cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.clamp
+
+    assert_equal @environment, conf.environment
   end
 
   def test_environment_rails_env
@@ -366,16 +375,17 @@ class TestCLI < PumaTest
     ENV['RAILS_ENV'] = @environment
 
     cli = Puma::CLI.new []
-    cli.send(:setup_options)
 
-    assert_equal @environment, cli.instance_variable_get(:@conf).environment
+    conf = cli.instance_variable_get(:@conf)
+    conf.clamp
+
+    assert_equal @environment, conf.environment
   ensure
     ENV.delete 'RAILS_ENV'
   end
 
   def test_silent
     cli = Puma::CLI.new ['--silent']
-    cli.send(:setup_options)
 
     log_writer = cli.instance_variable_get(:@log_writer)
 
@@ -387,10 +397,35 @@ class TestCLI < PumaTest
   def test_plugins
     assert_empty Puma::Plugins.instance_variable_get(:@plugins)
 
-    cli = Puma::CLI.new ['--plugin', 'tmp_restart', '--plugin', 'systemd']
-    cli.send(:setup_options)
+    Puma::CLI.new ['--plugin', 'tmp_restart', '--plugin', 'systemd']
 
     assert Puma::Plugins.find("tmp_restart")
     assert Puma::Plugins.find("systemd")
+  end
+
+  def test_config_does_not_preload_app_with_workers
+    skip_unless :fork
+
+    Puma::CLI.new ['-w 0']
+    config = Puma.cli_config
+
+    assert_equal false, config.options[:preload_app]
+  end
+
+  def test_config_preloads_app_with_workers
+    skip_unless :fork
+
+    Puma::CLI.new ['-w 2']
+    config = Puma.cli_config
+
+    assert_equal true, config.options[:preload_app]
+  end
+
+  def test_config_is_advertised_to_config_files
+    skip_unless :fork
+
+    Puma::CLI.new ['-w 2', '-C', File.expand_path('config/cli_config.rb', __dir__)]
+
+    assert_equal 4, Puma.cli_config._options[:workers]
   end
 end

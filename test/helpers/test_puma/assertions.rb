@@ -22,6 +22,22 @@ module TestPuma
       assert obj.end_with?(str), msg
     end
 
+    def refute_start_with(obj, str, msg = nil)
+      msg = message(msg) {
+        "Expected\n#{obj}\nto not start with #{str}"
+      }
+      assert_respond_to obj, :start_with?
+      refute obj.start_with?(str), msg
+    end
+
+    def refute_end_with(obj, str, msg = nil)
+      msg = message(msg) {
+        "Expected\n#{obj}\nto not end with #{str}"
+      }
+      assert_respond_to obj, :end_with?
+      refute obj.end_with?(str), msg
+    end
+
     # if obj is longer than 80 characters, show as string, not inspected
     def assert_match(matcher, obj, msg = nil)
       msg = if obj.length < 80

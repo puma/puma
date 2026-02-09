@@ -49,13 +49,16 @@ module Puma
 
       start_control
 
-      @server = server = start_server
-      server_thread = server.run
+      @server = start_server
+      server_thread = @server.run
 
       log "Use Ctrl-C to stop"
+
+      warn_ruby_mn_threads
+
       redirect_io
 
-      @events.fire_on_booted!
+      @events.fire_after_booted!
 
       debug_loaded_extensions("Loaded Extensions:") if @log_writer.debug?
 

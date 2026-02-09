@@ -16,7 +16,7 @@ module Puma
       'gc'       => nil,
       'gc-stats' => nil,
       'halt'              => 'SIGQUIT',
-      'info'              => 'SIGINFO',
+      'info'              => Puma.backtrace_signal,
       'phased-restart'    => 'SIGUSR1',
       'refork'            => 'SIGURG',
       'reload-worker-directory' => nil,
@@ -124,11 +124,15 @@ module Puma
         end
 
         if @config_file
+          # needed because neither `Puma::CLI` or `Puma::Server` are loaded
+          require_relative '../puma'
+
           require_relative 'configuration'
           require_relative 'log_writer'
 
           config = Puma::Configuration.new({ config_files: [@config_file] }, {} , env)
-          config.load
+          config.clamp
+
           @state              ||= config.options[:state]
           @control_url        ||= config.options[:control_url]
           @control_auth_token ||= config.options[:control_auth_token]
@@ -248,7 +252,7 @@ module Puma
           @stdout.flush unless @stdout.sync
           return
         elsif sig.start_with? 'SIG'
-          if Signal.list.key? sig.sub(/\ASIG/, '')
+          if Signal.list.key? sig.delete_prefix('SIG')
             Process.kill sig, @pid
           else
             raise "Signal '#{sig}' not available'"

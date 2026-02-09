@@ -100,12 +100,10 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "6.6.0"
-    CODE_NAME = "Return to Forever"
+    PUMA_VERSION = VERSION = "7.2.0"
+    CODE_NAME = "On The Corner"
 
     PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
-
-    FAST_TRACK_KA_TIMEOUT = 0.2
 
     # How long to wait when getting some write blocking on the socket when
     # sending data back
@@ -125,9 +123,9 @@ module Puma
       # Indicate that we couldn't parse the request
       400 => "HTTP/1.1 400 Bad Request\r\n\r\n",
       # The standard empty 404 response for bad requests.  Use Error4040Handler for custom stuff.
-      404 => "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n",
+      404 => "HTTP/1.1 404 Not Found\r\nconnection: close\r\n\r\n",
       # The standard empty 408 response for requests that timed out.
-      408 => "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\n\r\n",
+      408 => "HTTP/1.1 408 Request Timeout\r\nconnection: close\r\n\r\n",
       # Indicate that there was an internal error, obviously.
       500 => "HTTP/1.1 500 Internal Server Error\r\n\r\n",
       # Incorrect or invalid header value
@@ -230,6 +228,7 @@ module Puma
     RACK_INPUT = "rack.input"
     RACK_URL_SCHEME = "rack.url_scheme"
     RACK_AFTER_REPLY = "rack.after_reply"
+    RACK_RESPONSE_FINISHED = "rack.response_finished"
     PUMA_SOCKET = "puma.socket"
     PUMA_CONFIG = "puma.config"
     PUMA_PEERCERT = "puma.peercert"
@@ -252,14 +251,14 @@ module Puma
     KEEP_ALIVE = "keep-alive"
 
     CONTENT_LENGTH2 = "content-length"
-    CONTENT_LENGTH_S = "Content-Length: "
+    CONTENT_LENGTH_S = "content-length: "
     TRANSFER_ENCODING = "transfer-encoding"
     TRANSFER_ENCODING2 = "HTTP_TRANSFER_ENCODING"
 
-    CONNECTION_CLOSE = "Connection: close\r\n"
-    CONNECTION_KEEP_ALIVE = "Connection: Keep-Alive\r\n"
+    CONNECTION_CLOSE = "connection: close\r\n"
+    CONNECTION_KEEP_ALIVE = "connection: keep-alive\r\n"
 
-    TRANSFER_ENCODING_CHUNKED = "Transfer-Encoding: chunked\r\n"
+    TRANSFER_ENCODING_CHUNKED = "transfer-encoding: chunked\r\n"
     CLOSE_CHUNKED = "0\r\n\r\n"
 
     CHUNKED = "chunked"

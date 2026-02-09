@@ -4,8 +4,7 @@
 
 # Puma: A Ruby Web Server Built For Parallelism
 
-[![Actions](https://github.com/puma/puma/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/puma/puma/actions/workflows/tests.yml?query=branch%3Amaster)
-[![Code Climate](https://codeclimate.com/github/puma/puma.svg)](https://codeclimate.com/github/puma/puma)
+[![Actions](https://github.com/puma/puma/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/puma/puma/actions/workflows/tests.yml?query=branch%3Amain)
 [![StackOverflow](https://img.shields.io/badge/stackoverflow-Puma-blue.svg)]( https://stackoverflow.com/questions/tagged/puma )
 
 Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server for Ruby/Rack applications**.
@@ -82,10 +81,10 @@ $ bundle exec puma
 
 ## Configuration
 
-Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb).
+Puma provides numerous options. Consult `puma -h` (or `puma --help`) for a full list of CLI options, or see `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/main/lib/puma/dsl.rb).
 
 You can also find several configuration examples as part of the
-[test](https://github.com/puma/puma/tree/master/test/config) suite.
+[test](https://github.com/puma/puma/tree/main/test/config) suite.
 
 For debugging purposes, you can set the environment variable `PUMA_LOG_CONFIG` with a value
 and the loaded configuration will be printed as part of the boot process.
@@ -116,15 +115,24 @@ Or with the `WEB_CONCURRENCY` environment variable:
 $ WEB_CONCURRENCY=3 puma -t 8:32
 ```
 
+When using a config file, most applications can simply set `workers :auto` (requires the `concurrent-ruby` gem) to match the number of worker processes to the available processors:
+
+```ruby
+# config/puma.rb
+workers :auto
+```
+
+See [`workers :auto` gotchas](lib/puma/dsl.rb).
+
 Note that threads are still used in cluster mode, and the `-t` thread flag setting is per worker, so `-w 2 -t 16:16` will spawn 32 threads in total, with 16 in each worker process.
 
-If the `WEB_CONCURRENCY` environment variable is set to `"auto"` and the `concurrent-ruby` gem is available in your application, Puma will set the worker process count to the result of [available processors](https://ruby-concurrency.github.io/concurrent-ruby/master/Concurrent.html#available_processor_count-class_method).
+If `workers` is set to `:auto`, or the `WEB_CONCURRENCY` environment variable is set to `"auto"`, and the `concurrent-ruby` gem is available in your application, Puma will set the worker process count to the result of [available processors](https://msp-greg.github.io/concurrent-ruby/Concurrent.html#available_processor_count-class_method).
 
-For an in-depth discussion of the tradeoffs of thread and process count settings, [see our docs](https://github.com/puma/puma/blob/9282a8efa5a0c48e39c60d22ca70051a25df9f55/docs/kubernetes.md#workers-per-pod-and-other-config-issues).
+For an in-depth discussion of the tradeoffs of thread and process count settings, [see our docs](docs/deployment.md).
 
 In cluster mode, Puma can "preload" your application. This loads all the application code *prior* to forking. Preloading reduces total memory usage of your application via an operating system feature called [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
 
-If the `WEB_CONCURRENCY` environment variable is set to a value > 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
+If the number of workers is greater than 1 (and `--prune-bundler` has not been specified), preloading will be enabled by default. Otherwise, you can use the `--preload` flag from the command line:
 
 ```
 $ puma -w 3 --preload
@@ -142,8 +150,8 @@ Preloading can’t be used with phased restart, since phased restart kills and r
 
 #### Cluster mode hooks
 
-When using cluster mode, Puma's configuration DSL provides `before_fork` and `on_worker_boot`
-hooks to run code when the master process forks and child workers are booted respectively.
+When using clustered mode, Puma's configuration DSL provides `before_fork`, `before_worker_boot`, and `after_worker_shutdown`
+hooks to run code when the master process forks, the child workers are booted, and after each child worker exits respectively.
 
 It is recommended to use these hooks with `preload_app!`, otherwise constants loaded by your
 application (such as `Rails`) will not be available inside the hooks.
@@ -154,16 +162,21 @@ before_fork do
   # Add code to run inside the Puma master process before it forks a worker child.
 end
 
-on_worker_boot do
+before_worker_boot do
   # Add code to run inside the Puma worker process after forking.
+end
+
+after_worker_shutdown do |worker_handle|
+  # Add code to run inside the Puma master process after a worker exits. `worker.process_status` can be used to get the
+  # `Process::Status` of the exited worker.
 end
 ```
 
-In addition, there is an `on_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
+In addition, there is an `before_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
 when the worker 0 child process forks a grandchild worker:
 
 ```ruby
-on_refork do
+before_refork do
   # Used only when fork_worker mode is enabled. Add code to run inside the Puma worker 0
   # child process before it forks a grandchild worker.
 end
@@ -190,29 +203,29 @@ Therefore, we recommend the following:
 
 1. If possible, do not establish any socket connections (HTTP, database connections, etc.)
    inside Puma's master process when booting.
-2. If (1) is not possible, use `before_fork` and `on_refork` to disconnect the parent's socket
+2. If (1) is not possible, use `before_fork` and `before_refork` to disconnect the parent's socket
    connections when forking, so that they are not accidentally copied to the child process.
-3. Use `on_worker_boot` to restart any background threads on the forked child.
+3. Use `before_worker_boot` to restart any background threads on the forked child.
 4. Use `after_refork` to restart any background threads on the parent.
 
 #### Master process lifecycle hooks
 
-Puma's configuration DSL provides master process lifecycle hooks `on_booted`, `on_restart`, and `on_stopped`
+Puma's configuration DSL provides master process lifecycle hooks `after_booted`, `before_restart`, and `after_stopped`
 which may be used to specify code blocks to run on each event:
 
 ```ruby
 # config/puma.rb
-on_booted do
+after_booted do
   # Add code to run in the Puma master process after it boots,
   # and also after a phased restart completes.
 end
 
-on_restart do
+before_restart do
   # Add code to run in the Puma master process when it receives
   # a restart command but before it restarts.
 end
 
-on_stopped do
+after_stopped do
   # Add code to run in the Puma master process when it receives
   # a stop command but before it shuts down.
 end
@@ -221,7 +234,7 @@ end
 ### Error handling
 
 If Puma encounters an error outside of the context of your application, it will respond with a 400/500 and a simple
-textual error message (see `Puma::Server#lowlevel_error` or [server.rb](https://github.com/puma/puma/blob/master/lib/puma/server.rb)).
+textual error message (see `Puma::Server#lowlevel_error` or [server.rb](https://github.com/puma/puma/blob/main/lib/puma/server.rb)).
 You can specify custom behavior for this scenario. For example, you can report the error to your third-party
 error-tracking service (in this example, [rollbar](https://rollbar.com)):
 
@@ -380,7 +393,7 @@ Puma has a built-in status and control app that can be used to query and control
 $ puma --control-url tcp://127.0.0.1:9293 --control-token foo
 ```
 
-Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/master/lib/puma/app/status.rb) to see what the status app has available.
+Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/main/lib/puma/app/status.rb) to see what the status app has available.
 
 You can also interact with the control server via `pumactl`. This command will restart Puma:
 
@@ -412,7 +425,7 @@ $ puma -C "-"
 
 The other side-effects of setting the environment are whether to show stack traces (in `development` or `test`), and setting RACK_ENV may potentially affect middleware looking for this value to change their behavior. The default puma RACK_ENV value is `development`. You can see all config default values in `Puma::Configuration#puma_default_options` or [configuration.rb](https://github.com/puma/puma/blob/61c6213fbab/lib/puma/configuration.rb#L182-L204).
 
-Check out `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/master/lib/puma/dsl.rb) to see all available options.
+Check out `Puma::DSL` or [dsl.rb](https://github.com/puma/puma/blob/main/lib/puma/dsl.rb) to see all available options.
 
 ## Restart
 
@@ -431,19 +444,6 @@ Some platforms do not support all Puma features.
   * **JRuby**, **Windows**: server sockets are not seamless on restart, they must be closed and reopened. These platforms have no way to pass descriptors into a new process that is exposed to Ruby. Also, cluster mode is not supported due to a lack of fork(2).
   * **Windows**: Cluster mode is not supported due to a lack of fork(2).
   * **Kubernetes**: The way Kubernetes handles pod shutdowns interacts poorly with server processes implementing graceful shutdown, like Puma. See the [kubernetes section of the documentation](docs/kubernetes.md) for more details.
-
-## Known Bugs
-
-For MRI versions 2.2.7, 2.2.8, 2.2.9, 2.2.10, 2.3.4 and 2.4.1, you may see ```stream closed in another thread (IOError)```. It may be caused by a [Ruby bug](https://bugs.ruby-lang.org/issues/13632). It can be fixed with the gem https://rubygems.org/gems/stopgap_13632:
-
-```ruby
-if %w(2.2.7 2.2.8 2.2.9 2.2.10 2.3.4 2.4.1).include? RUBY_VERSION
-  begin
-    require 'stopgap_13632'
-  rescue LoadError
-  end
-end
-```
 
 ## Deployment
 
