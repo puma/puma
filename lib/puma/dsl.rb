@@ -595,6 +595,29 @@ module Puma
       @options[:max_threads] = max
     end
 
+    # Configure the max number of IO threads.
+    #
+    # When request handlers know the current requests will no longer use a significant amount
+    # of CPU, they can mark the current request as IO bound using <tt>env["puma.mark_as_io_bound"]</tt>.
+    #
+    # Threads marked as IO bound are allowed to go over the max thread limit.
+    #
+    # @example
+    #   threads 5
+    #   max_io_threads 5
+    #
+    # The above example allows for 5 regular threads and 5 IO threads to process requests concurrently.
+    # Any IO thread over the limit is counted as a regular thread, hence the above configuration also
+    # allows for 3 regular threads and 7 IO threads for example.
+    def max_io_threads(max)
+      max = Integer(max)
+      if max < 0
+        raise "The maximum number of IO threads (#{max}) must be a positive number"
+      end
+
+      @options[:max_io_threads] = max
+    end
+
     # Instead of using +bind+ and manually constructing a URI like:
     #
     #    bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'
