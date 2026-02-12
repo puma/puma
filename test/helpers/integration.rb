@@ -31,26 +31,27 @@ class TestIntegration < PumaTest
     @config_file = nil
 
     @pid = nil
+
     @ios_to_close = Queue.new
-    @bind_path    = tmp_path('.sock')
-    @control_path     = nil
-    @control_tcp_port = nil
+    @ios_to_close = []
+    @bind_path    = nil
+    @bind_port    = nil
+    @control_path = nil
+    @control_port = nil
   end
 
   def teardown
-    if @server && @control_tcp_port && Puma.windows?
-      cli_pumactl 'stop'
-    # don't close if we've already done so
-    elsif @server && @pid && !@server_stopped && !Puma.windows?
-      stop_server @pid, signal: :INT
+    if @server && !@server_stopped
+      if @control_port && Puma::IS_WINDOWS
+        cli_pumactl 'halt'
+      elsif @pid && !Puma::IS_WINDOWS
+        stop_server signal: :INT
+      elsif Puma::IS_WINDOWS
+        flunk 'Windows must use Puma::ControlCLI to shut down!'
+      end
     end
 
     close_ios if @ios_to_close
-
-    if @bind_path
-      refute File.exist?(@bind_path), "Bind path must be removed after stop"
-      File.unlink(@bind_path) rescue nil
-    end
 
     # wait until the end for OS buffering?
     if @server
@@ -62,8 +63,25 @@ class TestIntegration < PumaTest
       end
     end
 
+    if @bind_path
+      refute File.exist?(@bind_path), "Bind path must be removed after stop"
+      File.unlink(@bind_path) rescue nil
+      @bind_path = nil
+    end
+
+    if @control_path
+      refute File.exist?(@control_path), "Control path must be removed after stop"
+      File.unlink(@control_path) rescue nil
+      @control_path = nil
+    end
+
+    if @state_path
+      File.unlink(@state_path) rescue nil
+      @state_path = nil
+    end
+
     if @config_file
-      File.unlink(@config_file.path) rescue nil
+      File.unlink(@config_file) rescue nil
       @config_file = nil
     end
 
@@ -91,6 +109,22 @@ class TestIntegration < PumaTest
       end
     end
     @ios_to_close = nil
+  end
+
+  def bind_path
+    @bind_path ||= tmp_path('.sock')
+  end
+
+  def bind_port
+    @bind_port ||= UniquePort.call
+  end
+
+  def control_path
+    @control_path ||= tmp_path('.cntl_sock')
+  end
+
+  def control_port
+    @control_port ||= UniquePort.call
   end
 
   def silent_and_checked_system_command(*args)
@@ -131,11 +165,9 @@ class TestIntegration < PumaTest
       if no_bind
         "#{BASE} #{puma_path} #{config} #{argv}"
       elsif unix
-        "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
+        "#{BASE} #{puma_path} #{config} -b unix://#{bind_path} #{argv}"
       else
-        @tcp_port = UniquePort.call
-        @bind_port = @tcp_port
-        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{bind_port} #{argv}"
       end
 
     env['PUMA_DEBUG'] = 'true' if puma_debug
@@ -156,15 +188,17 @@ class TestIntegration < PumaTest
   # that is already stopped/killed, especially since Process.wait2 is
   # blocking
   def stop_server(pid = @pid, signal: :TERM)
-    @server_stopped = true
+    ret = nil
     begin
       Process.kill signal, pid
     rescue Errno::ESRCH
     end
     begin
-      Process.wait2 pid
+      ret = Process.wait2 pid
     rescue Errno::ECHILD
     end
+    @server_stopped = true
+    ret
   end
 
   # Most integration tests do not stop/shutdown the server, which is handled by
@@ -261,7 +295,7 @@ class TestIntegration < PumaTest
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
     retries = 0
     begin
-      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
     rescue Errno::EADDRNOTAVAIL => e
       raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
       retries += 1
@@ -388,11 +422,19 @@ class TestIntegration < PumaTest
 
   def set_pumactl_args(unix: false)
     if unix
-      @control_path = tmp_path('.cntl_sock')
-      "--control-url unix://#{@control_path} --control-token #{TOKEN}"
+      "--control-url unix://#{control_path} --control-token #{TOKEN}"
     else
-      @control_tcp_port = UniquePort.call
-      "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+      "--control-url tcp://#{HOST}:#{control_port} --control-token #{TOKEN}"
+    end
+  end
+
+  def set_pumactl_config(unix: false)
+    if unix
+      @control_path = tmp_path('.cntl_sock')
+      "activate_control_app 'unix://#{control_path}', { auth_token: '#{TOKEN}' }"
+    else
+      @control_port = UniquePort.call
+      "activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }"
     end
   end
 
@@ -400,10 +442,12 @@ class TestIntegration < PumaTest
     arg =
       if no_bind
         argv.split(/ +/)
-      elsif @control_path && !@control_tcp_port
+      elsif @control_path && !@control_port
         %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      elsif @control_tcp_port && !@control_path
-        %W[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+      elsif @control_port && !@control_path
+        %W[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
+      else
+        flunk 'Both @control_path and @control_port esist?'
       end
 
     r, w = IO.pipe
@@ -417,10 +461,10 @@ class TestIntegration < PumaTest
     arg =
       if no_bind
         argv
-      elsif @control_path && !@control_tcp_port
+      elsif @control_path && !@control_port
         %Q[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      elsif @control_tcp_port && !@control_path
-        %Q[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+      elsif @control_port && !@control_path
+        %Q[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
       end
 
     pumactl_path = File.expand_path '../../../bin/pumactl', __FILE__
@@ -448,10 +492,10 @@ class TestIntegration < PumaTest
       log: nil
     )
     skipped = true
-    skip_if :jruby, suffix: <<-MSG
- - file descriptors are not preserved on exec on JRuby; connection reset errors are expected during restarts
-    MSG
+    skip_if :jruby, suffix: ' - file descriptors are not preserved on exec on JRuby; ' \
+      'connection reset errors are expected during restarts'
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
+    skipped = nil
 
     clustered = (workers || 0) >= 2
 
@@ -462,7 +506,6 @@ class TestIntegration < PumaTest
       cli_server args, unix: unix, config: config, log: log
     end
 
-    skipped = false
     replies = Hash.new 0
     refused = thread_run_refused unix: false
     message = 'A' * 16_256  # 2^14 - 128
@@ -599,13 +642,14 @@ class TestIntegration < PumaTest
     end
 
   ensure
-    return if skipped
-    if passed?
-      msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
-      $debugging_info << "#{full_name}\n#{msg}\n"
-    else
-      client_threads.each { |thr| thr.kill if thr.is_a? Thread }
-      $debugging_info << "#{full_name}\n#{msg}\n"
+    unless skipped
+      if passed?
+        msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
+        $debugging_info << "#{full_name}\n#{msg}\n"
+      else
+        client_threads.each { |thr| thr.kill if thr.is_a? Thread }
+        $debugging_info << "#{full_name}\n#{msg}\n"
+      end
     end
   end
 end
