@@ -68,7 +68,10 @@ jobs:
                 const reviewer = review.user.login;
 
                 if (review.state === 'CHANGES_REQUESTED' || review.state === 'APPROVED') {
-                  latestDecisionByReviewer.set(reviewer, review.state);
+                  latestDecisionByReviewer.set(reviewer, {
+                    state: review.state,
+                    commitId: review.commit_id
+                  });
                 } else if (review.state === 'DISMISSED') {
                   latestDecisionByReviewer.delete(reviewer);
                 }
@@ -77,8 +80,17 @@ jobs:
               // Determine appropriate label
               let newLabel = LABELS.REVIEW;  // default
 
-              for (const [reviewer, state] of latestDecisionByReviewer) {
+              for (const [reviewer, decision] of latestDecisionByReviewer) {
                 if (MAINTAINERS_LIST.includes(reviewer)) {
+                  const state = decision.state;
+
+                  // A review decision on an older commit is stale once head moves.
+                  const staleDecision =
+                    decision.commitId && decision.commitId !== pr.head.sha;
+                  if (staleDecision) {
+                    continue;
+                  }
+
                   if (state === 'CHANGES_REQUESTED') {
                     newLabel = LABELS.CHANGES;
                     break;
