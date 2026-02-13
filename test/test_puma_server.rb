@@ -2261,4 +2261,66 @@ class TestPumaServer < PumaTest
   def test_stats_ok_before_run
     assert_equal({max_threads: @server.max_threads, requests_count: 0}, @server.stats)
   end
+
+  def test_update_thread_pool_min_max
+    # add a small delay so requests back up
+    @app = ->(env) do
+      sleep 0.001
+      [200, {}, [env['rack.url_scheme']]]
+    end
+
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    assert_equal 1, @server.stats[:running]
+
+    @server.update_thread_pool_min_max(min: 3, max: 3)
+
+    # By making multiple requests, we can ensure that the pool is filled up to the max.
+    req_ary = send_http_array 5
+    req_ary.map { |req| req.read_response }
+
+    assert_equal 3, @pool.max
+    assert_equal 3, @pool.min
+    assert_equal 3, @server.max_threads
+    assert_equal 3, @server.min_threads
+    assert_equal 3, @pool&.spawned
+  end
+
+  def test_update_thread_pool_min_max_warns_if_min_greater_than_max
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    @server.update_thread_pool_min_max(min: 5, max: 1)
+
+    assert_equal "`min' value cannot be greater than `max' value.\n", @log_writer.stdout.string
+    assert_equal 1, @pool.max
+    assert_equal 1, @pool.min
+    assert_equal 1, @server.max_threads
+    assert_equal 1, @server.min_threads
+    assert_equal 1, @pool&.spawned
+  end
+
+  def test_update_thread_pool_min_max_warns_if_min_less_than_zero
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    @server.update_thread_pool_min_max(min: -1, max: 5)
+
+    assert_equal "`min' value cannot be less than 0\n", @log_writer.stdout.string
+    assert_equal 1, @pool.max
+    assert_equal 1, @pool.min
+    assert_equal 1, @server.max_threads
+    assert_equal 1, @server.min_threads
+    assert_equal 1, @pool&.spawned
+  end
+
+  def test_update_thread_pool_min_max_allows_min_zero
+    server_run(min_threads: 1, max_threads: 5, auto_trim_time: 1)
+
+    @server.update_thread_pool_min_max(min: 0, max: 5)
+
+    assert_empty @log_writer.stdout.string
+    assert_equal 5, @pool.max
+    assert_equal 0, @pool.min
+    assert_equal 5, @server.max_threads
+    assert_equal 0, @server.min_threads
+  end
 end
