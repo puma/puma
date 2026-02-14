@@ -69,10 +69,19 @@ def hit(uris)
 end
 
 module UniquePort
+  # below is similar to `Addrinfo.bind`, but sets `REUSEADDR` off and
+  # comments out `sock.ipv6only!`
   def self.call(host = '127.0.0.1')
-    TCPServer.open(host, 0) do |server|
-      server.connect_address.ip_port
-    end
+    addr_info = Addrinfo.tcp host, 0
+    sock = Socket.new addr_info.pfamily, :STREAM
+    # sock.ipv6only! if addr_info.ipv6?
+    sock.setsockopt :SOCKET, :REUSEADDR, 0
+    sock.bind addr_info
+    sock.connect_address.ip_port
+  rescue Exception => e
+    raise e
+  ensure
+    sock&.close unless sock&.closed?
   end
 end
 
