@@ -155,6 +155,29 @@ class TestThreadPool < PumaTest
     assert_equal 1, started.length
   end
 
+  def test_thread_start_hook_with_server
+    dummy_server_obj = Struct.new(:thread_pool).new
+    started = Queue.new
+    options = {
+      min_threads: 0,
+      max_threads: 1,
+      before_thread_start: [
+        {
+          id: nil,
+          block: proc {|server| started << server },
+          cluster_only: false,
+        }
+      ]
+    }
+    block = proc { }
+    pool = MutexPool.new('tst', options, server: dummy_server_obj, &block)
+
+    pool << 1
+
+    assert_equal 1, pool.spawned
+    assert_respond_to started.pop, :update_thread_pool_min_max
+  end
+
   def test_out_of_band_hook
     out_of_band_called = Queue.new
     options = {
@@ -390,5 +413,26 @@ class TestThreadPool < PumaTest
     pool << 0
     sleep 1
     assert_equal 0, pool.backlog
+  end
+
+  def test_pool_capacity_never_negative
+    pool = mutex_pool(5,5) do
+      th = Thread.current
+      Thread.new {th.join; pool.signal}
+      th.kill
+    end
+
+    pool << 1
+    pool << 1
+    pool << 1
+    pool << 1
+    pool << 1
+
+    assert_equal 5, pool.spawned
+
+    pool.min = 1
+    pool.max = 1
+
+    assert_equal 0, pool.pool_capacity
   end
 end

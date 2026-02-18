@@ -730,6 +730,49 @@ module Puma
       @binder.add_unix_listener path, umask, mode, backlog
     end
 
+    # Updates the minimum and maximum number of threads in the thread pool.
+    #
+    # This method allows dynamic adjustment of the thread pool size while the server
+    # is running. It validates the provided values and updates both the thread pool
+    # and the server's thread configuration.
+    #
+    # @param min [Integer] The minimum number of threads to maintain in the pool.
+    #   Defaults to the current minimum if not specified. Must be greater than 0
+    #   and less than or equal to max.
+    # @param max [Integer] The maximum number of threads allowed in the pool.
+    #   Defaults to the current maximum if not specified. Must be greater than or
+    #   equal to min.
+    #
+    # @return [void]
+    #
+    # @note If validation fails, a warning message is logged and no changes are made.
+    #
+    # @example Update both min and max threads
+    #   server.update_thread_pool_min_max(min: 2, max: 8)
+    #
+    # @example Update only the minimum threads
+    #   server.update_thread_pool_min_max(min: 4)
+    #
+    # @example Update only the maximum threads
+    #   server.update_thread_pool_min_max(max: 16)
+    #
+    def update_thread_pool_min_max(min: @min_threads, max: @max_threads)
+      if min > max
+        @log_writer.log "`min' value cannot be greater than `max' value."
+        return
+      end
+
+      if min < 0
+        @log_writer.log "`min' value cannot be less than 0"
+        return
+      end
+
+      @thread_pool&.with_mutex do
+        @thread_pool.min, @thread_pool.max = min, max
+        @min_threads, @max_threads = min, max
+      end
+    end
+
     # @!attribute [r] connected_ports
     def connected_ports
       @binder.connected_ports
