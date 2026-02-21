@@ -165,6 +165,7 @@ module TestSkips
   # optional suffix kwarg is appended to the skip message
   # optional suffix bt should generally not used
   def skip_if(*engs, suffix: '', bt: caller)
+    skip_msg = nil
     engs.each do |eng|
       skip_msg = case eng
         when :linux       then "Skipped if Linux#{suffix}"       if Puma::IS_LINUX
@@ -180,9 +181,9 @@ module TestSkips
         when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
         when :rack3       then "Skipped if Rack 3.x"             if Rack.release >= '3'
         when :oldwindows  then "Skipped if old Windows"          if Puma::IS_WINDOWS && RUBY_VERSION < '2.6'
-        else false
+        else nil
       end
-      skip skip_msg, bt if skip_msg
+      skip(skip_msg, bt) if skip_msg
     end
   end
 

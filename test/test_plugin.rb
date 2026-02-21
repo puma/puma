@@ -5,11 +5,9 @@ require_relative "helpers/integration"
 
 class TestPlugin < TestIntegration
   def test_plugin
-    @control_tcp_port = UniquePort.call
-
     Dir.mkdir("tmp") unless Dir.exist?("tmp")
 
-    cli_server "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru",
+    cli_server "#{set_pumactl_args} test/rackup/hello.ru",
       config: "plugin 'tmp_restart'"
 
     File.open('tmp/restart.txt', mode: 'wb') { |f| f.puts "Restart #{Time.now}" }
