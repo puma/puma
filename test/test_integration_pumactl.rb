@@ -11,21 +11,11 @@ class TestIntegrationPumactl < TestIntegration
 
   def setup
     super
-    @control_path = nil
     @state_path = tmp_path('.state')
-  end
-
-  def teardown
-    super
-
-    refute @control_path && File.exist?(@control_path), "Control path must be removed after stop"
-  ensure
-    [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
   end
 
   def test_stop_tcp
     skip_if :jruby, :truffleruby # Undiagnose thread race. TODO fix
-    @control_tcp_port = UniquePort.call
     cli_server "-q test/rackup/sleep.ru #{set_pumactl_args} -S #{@state_path}"
 
     cli_pumactl "stop"
@@ -174,19 +164,17 @@ class TestIntegrationPumactl < TestIntegration
   def test_require_dependencies
     skip_if :jruby
     conf_path = tmp_path '.config.rb'
-    @tcp_port = UniquePort.call
-    @control_tcp_port = UniquePort.call
 
     File.write conf_path , <<~CONF
       state_path "#{@state_path}"
-      bind "tcp://127.0.0.1:#{@tcp_port}"
+      bind "tcp://127.0.0.1:#{bind_port}"
 
       workers 0
 
       before_fork do
       end
 
-      activate_control_app "tcp://127.0.0.1:#{@control_tcp_port}", auth_token: "#{TOKEN}"
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, ["Hello World"]]
@@ -312,10 +300,11 @@ class TestIntegrationPumactl < TestIntegration
     elsif !Puma::IS_JRUBY
       refute_equal gc_before, gc_after, "make sure a gc has happened"
     end
+  ensure
+    resp_io&.close unless resp_io&.closed?
   end
 
   def test_control_gc_stats_tcp
-    @control_tcp_port = UniquePort.call
     control_gc_stats
   end
 
