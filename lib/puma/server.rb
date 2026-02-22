@@ -11,7 +11,7 @@ require_relative 'reactor'
 require_relative 'client'
 require_relative 'binder'
 require_relative 'util'
-require_relative 'request'
+require_relative 'response'
 require_relative 'configuration'
 require_relative 'cluster_accept_loop_delay'
 
@@ -38,8 +38,8 @@ module Puma
       end
     end
 
-    include Puma::Const
-    include Request
+    include Const
+    include Response
 
     attr_reader :options
     attr_reader :thread
@@ -401,6 +401,7 @@ module Puma
                   next
                 end
                 drain += 1 if shutting_down?
+
                 client = new_client(io, sock)
                 client.send(addr_send_name, addr_value) if addr_value
                 pool << client
@@ -444,7 +445,9 @@ module Puma
     def new_client(io, sock)
       client = Client.new(io, @binder.env(sock))
       client.listener = sock
+      client.env_set_http_version = @env_set_http_version
       client.http_content_length_limit = @http_content_length_limit
+      client.supported_http_methods = @supported_http_methods
       client
     end
 
@@ -577,7 +580,7 @@ module Puma
         lowlevel_error(e, client.env)
         @log_writer.ssl_error e, client.io
       when HttpParserError
-        response_to_error(client, requests, e, 400)
+        response_to_error(client, requests, e, client.error_status_code || 400)
         @log_writer.parse_error e, client
       when HttpParserError501
         response_to_error(client, requests, e, 501)
@@ -610,7 +613,15 @@ module Puma
     end
 
     def response_to_error(client, requests, err, status_code)
-      status, headers, res_body = lowlevel_error(err, client.env, status_code)
+      # @todo remove sometime later
+      if status_code == 413
+        status = 413
+        res_body = ["Payload Too Large"]
+        headers = {}
+        headers[CONTENT_LENGTH2] = 17
+      else
+        status, headers, res_body = lowlevel_error(err, client.env, status_code)
+      end
       prepare_response(status, headers, res_body, requests, client)
     end
     private :response_to_error

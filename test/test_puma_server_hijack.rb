@@ -46,9 +46,16 @@ class TestPumaServerHijack < PumaTest
   def server_run(**options, &block)
     options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
+    options[:max_threads] ||= 1
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
+    min_threads = options[:min_threads]
+    # below may help with intermittent failures Aug-2025
+    until @server.running >= min_threads
+      Thread.pass
+      sleep 0.01
+    end unless Puma::IS_MRI
   end
 
   # Full hijack does not return headers
@@ -63,7 +70,7 @@ class TestPumaServerHijack < PumaTest
       [200, {}, body]
     end
 
-    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+    sock = send_http GET_11
 
     sock.wait_readable 2
     assert_equal "Server listening", sock.sysread(256)
@@ -95,7 +102,7 @@ class TestPumaServerHijack < PumaTest
       [101, headers, body]
     end
 
-    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+    sock = send_http GET_11
     response = sock.read_response
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
@@ -124,7 +131,7 @@ class TestPumaServerHijack < PumaTest
       [101, headers, []]
     end
 
-    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+    sock = send_http GET_11
     response = sock.read_response
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
@@ -187,13 +194,13 @@ class TestPumaServerHijack < PumaTest
       end
     end
 
-    sock1 = send_http "GET / HTTP/1.1\r\n\r\n"
+    sock1 = send_http GET_11
     sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.3 : 0.1)
     response1 = sock1.read_response
 
     sleep 0.01 # time for close block to be called ?
 
-    sock2 = send_http "GET / HTTP/1.1\r\n\r\n"
+    sock2 = send_http GET_11
     sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.3 : 0.1)
     response2 = sock2.read_response
 

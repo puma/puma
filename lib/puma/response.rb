@@ -12,7 +12,7 @@ module Puma
   # #handle_request, which is called in Server#process_client.
   # @version 5.0.3
   #
-  module Request # :nodoc:
+  module Response # :nodoc:
 
     # Single element array body: smaller bodies are written to io_buffer first,
     # then a single write from io_buffer. Larger sizes are written separately.
@@ -58,24 +58,6 @@ module Puma
 
       return :close if closed_socket?(socket)
 
-      if client.http_content_length_limit_exceeded
-        return prepare_response(413, {}, ["Payload Too Large"], requests, client)
-      end
-
-      normalize_env env, client
-
-      env[PUMA_SOCKET] = socket
-
-      if env[HTTPS_KEY] && socket.peercert
-        env[PUMA_PEERCERT] = socket.peercert
-      end
-
-      env[HIJACK_P] = true
-      env[HIJACK] = client.method :full_hijack
-
-      env[RACK_INPUT] = client.body
-      env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
-
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
           begin
@@ -89,22 +71,9 @@ module Puma
         }
       end
 
-      req_env_post_parse env
-
-      # A rack extension. If the app writes #call'ables to this
-      # array, we will invoke them when the request is done.
-      #
-      env[RACK_AFTER_REPLY] ||= []
-      env[RACK_RESPONSE_FINISHED] ||= []
-
       begin
-        if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
-          status, headers, app_body = @thread_pool.with_force_shutdown do
-            @app.call(env)
-          end
-        else
-          @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
-          status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
+        status, headers, app_body = @thread_pool.with_force_shutdown do
+          @app.call(env)
         end
 
         # app_body needs to always be closed, hold value in case lowlevel_error
@@ -136,7 +105,6 @@ module Puma
       prepare_response(status, headers, res_body, requests, client)
     ensure
       io_buffer.reset
-      uncork_socket client.io
       app_body.close if app_body.respond_to? :close
       client&.tempfile_close
       if after_reply = env[RACK_AFTER_REPLY]
@@ -245,7 +213,8 @@ module Puma
 
           io_buffer << LINE_END
           fast_write_str socket, io_buffer.read_and_reset
-          socket.flush
+
+          uncork_socket socket.flush
           return keep_alive ? :keep_alive : :close
         end
       else
@@ -264,32 +233,16 @@ module Puma
       # response_hijack.call
       if response_hijack
         fast_write_str socket, io_buffer.read_and_reset
-        uncork_socket socket
+        uncork_socket socket.flush
         response_hijack.call socket
         return :async
       end
 
       fast_write_response socket, body, io_buffer, chunked, content_length.to_i
       body.close if close_body
+
       # if we're shutting down, close keep_alive connections
       !shutting_down? && keep_alive ? :keep_alive : :close
-    end
-
-    HTTP_ON_VALUES = { "on" => true, HTTPS => true }
-    private_constant :HTTP_ON_VALUES
-
-    # @param env [Hash] see Puma::Client#env, from request
-    # @return [Puma::Const::PORT_443,Puma::Const::PORT_80]
-    #
-    def default_server_port(env)
-      if HTTP_ON_VALUES[env[HTTPS_KEY]] ||
-          env[HTTP_X_FORWARDED_PROTO]&.start_with?(HTTPS) ||
-          env[HTTP_X_FORWARDED_SCHEME] == HTTPS ||
-          env[HTTP_X_FORWARDED_SSL] == "on"
-        PORT_443
-      else
-        PORT_80
-      end
     end
 
     # Used to write 'early hints', 'no body' responses, 'hijacked' responses,
@@ -406,6 +359,7 @@ module Puma
         end
       end
       socket.flush
+      uncork_socket socket
     rescue Errno::EAGAIN, Errno::EWOULDBLOCK
       raise ConnectionError, SOCKET_WRITE_ERR_MSG
     rescue  Errno::EPIPE, SystemCallError, IOError
@@ -413,85 +367,6 @@ module Puma
     end
 
     private :fast_write_str, :fast_write_response
-
-    # Given a Hash +env+ for the request read from +client+, add
-    # and fixup keys to comply with Rack's env guidelines.
-    # @param env [Hash] see Puma::Client#env, from request
-    # @param client [Puma::Client] only needed for Client#peerip
-    #
-    def normalize_env(env, client)
-      if host = env[HTTP_HOST]
-        # host can be a hostname, ipv4 or bracketed ipv6. Followed by an optional port.
-        if colon = host.rindex("]:") # IPV6 with port
-          env[SERVER_NAME] = host[0, colon+1]
-          env[SERVER_PORT] = host[colon+2, host.bytesize]
-        elsif !host.start_with?("[") && colon = host.index(":") # not hostname or IPV4 with port
-          env[SERVER_NAME] = host[0, colon]
-          env[SERVER_PORT] = host[colon+1, host.bytesize]
-        else
-          env[SERVER_NAME] = host
-          env[SERVER_PORT] = default_server_port(env)
-        end
-      else
-        env[SERVER_NAME] = LOCALHOST
-        env[SERVER_PORT] = default_server_port(env)
-      end
-
-      unless env[REQUEST_PATH]
-        # it might be a dumbass full host request header
-        uri = begin
-          URI.parse(env[REQUEST_URI])
-        rescue URI::InvalidURIError
-          raise Puma::HttpParserError
-        end
-        env[REQUEST_PATH] = uri.path
-
-        # A nil env value will cause a LintError (and fatal errors elsewhere),
-        # so only set the env value if there actually is a value.
-        env[QUERY_STRING] = uri.query if uri.query
-      end
-
-      env[PATH_INFO] = env[REQUEST_PATH].to_s # #to_s in case it's nil
-
-      # From https://www.ietf.org/rfc/rfc3875 :
-      # "Script authors should be aware that the REMOTE_ADDR and
-      # REMOTE_HOST meta-variables (see sections 4.1.8 and 4.1.9)
-      # may not identify the ultimate source of the request.
-      # They identify the client for the immediate request to the
-      # server; that client may be a proxy, gateway, or other
-      # intermediary acting on behalf of the actual source client."
-      #
-
-      unless env.key?(REMOTE_ADDR)
-        begin
-          addr = client.peerip
-        rescue Errno::ENOTCONN
-          # Client disconnects can result in an inability to get the
-          # peeraddr from the socket; default to unspec.
-          if client.peer_family == Socket::AF_INET6
-            addr = UNSPECIFIED_IPV6
-          else
-            addr = UNSPECIFIED_IPV4
-          end
-        end
-
-        # Set unix socket addrs to localhost
-        if addr.empty?
-          if client.peer_family == Socket::AF_INET6
-            addr = LOCALHOST_IPV6
-          else
-            addr = LOCALHOST_IPV4
-          end
-        end
-
-        env[REMOTE_ADDR] = addr
-      end
-
-      # The legacy HTTP_VERSION header can be sent as a client header.
-      # Rack v4 may remove using HTTP_VERSION.  If so, remove this line.
-      env[HTTP_VERSION] = env[SERVER_PROTOCOL] if @env_set_http_version
-    end
-    private :normalize_env
 
     # @param header_key [#to_s]
     # @return [Boolean]
@@ -506,56 +381,6 @@ module Puma
     def illegal_header_value?(header_value)
       !!(ILLEGAL_HEADER_VALUE_REGEX =~ header_value.to_s)
     end
-    private :illegal_header_key?, :illegal_header_value?
-
-    # Fixup any headers with `,` in the name to have `_` now. We emit
-    # headers with `,` in them during the parse phase to avoid ambiguity
-    # with the `-` to `_` conversion for critical headers. But here for
-    # compatibility, we'll convert them back. This code is written to
-    # avoid allocation in the common case (ie there are no headers
-    # with `,` in their names), that's why it has the extra conditionals.
-    #
-    # @note If a normalized version of a `,` header already exists, we ignore
-    #       the `,` version. This prevents clobbering headers managed by proxies
-    #       but not by clients (Like X-Forwarded-For).
-    #
-    # @param env [Hash] see Puma::Client#env, from request, modifies in place
-    # @version 5.0.3
-    #
-    def req_env_post_parse(env)
-      to_delete = nil
-      to_add = nil
-
-      env.each do |k,v|
-        if k.start_with?("HTTP_") && k.include?(",") && !UNMASKABLE_HEADERS.key?(k)
-          if to_delete
-            to_delete << k
-          else
-            to_delete = [k]
-          end
-
-          new_k = k.tr(",", "_")
-          if env.key?(new_k)
-            next
-          end
-
-          unless to_add
-            to_add = {}
-          end
-
-          to_add[new_k] = v
-        end
-      end
-
-      if to_delete # rubocop:disable Style/SafeNavigation
-        to_delete.each { |k| env.delete(k) }
-      end
-
-      if to_add
-        env.merge! to_add
-      end
-    end
-    private :req_env_post_parse
 
     # Used in the lambda for env[ `Puma::Const::EARLY_HINTS` ]
     # @param headers [Hash] the headers returned by the Rack application
