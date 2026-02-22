@@ -344,19 +344,17 @@ class TestCLI < PumaTest
   end
 
   def test_environment_app_env
-    ENV['RACK_ENV'] = @environment
-    ENV['RAILS_ENV'] = @environment
-    ENV['APP_ENV'] = 'test'
+    with_temp_env(
+      { "RACK_ENV": @environment },
+      { "RAILS_ENV": @environment, "APP_ENV": "test"
+    }) do
+      cli = Puma::CLI.new []
 
-    cli = Puma::CLI.new []
+      conf = cli.instance_variable_get(:@conf)
+      conf.clamp
 
-    conf = cli.instance_variable_get(:@conf)
-    conf.clamp
-
-    assert_equal 'test', conf.environment
-  ensure
-    ENV.delete 'APP_ENV'
-    ENV.delete 'RAILS_ENV'
+      assert_equal 'test', conf.environment
+    end
   end
 
   def test_environment_rack_env
@@ -372,16 +370,15 @@ class TestCLI < PumaTest
 
   def test_environment_rails_env
     ENV.delete 'RACK_ENV'
-    ENV['RAILS_ENV'] = @environment
 
-    cli = Puma::CLI.new []
+    with_temp_env({}, { "RAILS_ENV": @environment }) do
+      cli = Puma::CLI.new []
 
-    conf = cli.instance_variable_get(:@conf)
-    conf.clamp
+      conf = cli.instance_variable_get(:@conf)
+      conf.clamp
 
-    assert_equal @environment, conf.environment
-  ensure
-    ENV.delete 'RAILS_ENV'
+      assert_equal @environment, conf.environment
+    end
   end
 
   def test_silent
