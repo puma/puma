@@ -109,7 +109,7 @@ module TestRackUp
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.clamp
 
-          assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+          assert_equal ["tcp://[::]:#{user_port}"], conf.options[:binds]
         end
       end
     end
@@ -193,7 +193,7 @@ module TestRackUp
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.clamp
 
-          assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
+          assert_equal ["tcp://[::]:#{file_port}"], conf.options[:binds]
         end
       end
     end
@@ -246,7 +246,7 @@ module TestRackUp
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.clamp
 
-      assert_equal ["tcp://0.0.0.0:9292"], conf.options[:binds]
+      assert_equal ["tcp://[::]:9292"], conf.options[:binds]
     end
 
     def test_config_wins_over_default
@@ -260,7 +260,7 @@ module TestRackUp
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.clamp
 
-          assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
+          assert_equal ["tcp://[::]:#{file_port}"], conf.options[:binds]
         end
       end
     end
@@ -272,7 +272,7 @@ module TestRackUp
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.clamp
 
-      assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+      assert_equal ["tcp://[::]:#{user_port}"], conf.options[:binds]
     end
 
     def test_user_port_wins_over_default
@@ -281,7 +281,7 @@ module TestRackUp
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.clamp
 
-      assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+      assert_equal ["tcp://[::]:#{user_port}"], conf.options[:binds]
     end
 
     def test_user_port_wins_over_config
@@ -297,7 +297,7 @@ module TestRackUp
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.clamp
 
-          assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+          assert_equal ["tcp://[::]:#{user_port}"], conf.options[:binds]
         end
       end
     end

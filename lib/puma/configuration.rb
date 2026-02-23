@@ -131,7 +131,7 @@ module Puma
 
     DEFAULTS = {
       auto_trim_time: 30,
-      binds: ['tcp://0.0.0.0:9292'.freeze],
+      binds: ['tcp://[::]:9292'.freeze],
       fiber_per_request: !!ENV.fetch("PUMA_FIBER_PER_REQUEST", false),
       debug: false,
       enable_keep_alives: true,
@@ -164,7 +164,7 @@ module Puma
       silence_single_worker_warning: false,
       silence_fork_callback_warning: false,
       tag: File.basename(Dir.getwd),
-      tcp_host: '0.0.0.0'.freeze,
+      tcp_host: '::'.freeze,
       tcp_port: 9292,
       wait_for_less_busy_worker: 0.005,
       worker_boot_timeout: 60,
