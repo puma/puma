@@ -87,7 +87,7 @@ module Puma
         end
 
         debug "Spawned worker: #{pid}"
-        @workers << WorkerHandle.new(idx, pid, @phase, @options)
+        @workers.insert(idx, WorkerHandle.new(idx, pid, @phase, @options))
       end
 
       if @options[:fork_worker] && all_workers_in_phase?

@@ -435,6 +435,50 @@ class TestIntegrationCluster < TestIntegration
     refute @server_log[/.*Terminating timed out worker.*/]
   end
 
+  # Tests that after worker 0 is killed and respawned, a subsequent phased
+  # restart still processes worker 0 first. This is critical for fork_worker
+  # mode because worker 0 acts as the mold process from which other workers
+  # are forked. If worker 0 were restarted last (as happened when using
+  # @workers << instead of @workers.insert), other workers would fork from
+  # the stale worker 0 and run old code.
+  def test_phased_restart_worker_order_with_fork_worker
+    worker_count = 3
+
+    cli_server "test/rackup/hello.ru", config: <<~CONFIG
+      fork_worker
+      worker_check_interval 1
+      worker_timeout 2
+      workers #{worker_count}
+      preload_app! false
+    CONFIG
+
+    # Wait for all workers to boot at phase 0
+    get_worker_pids 0, worker_count
+
+    # Find worker 0's PID and kill it to force a respawn
+    worker_0_pid = @server_log[/Worker 0 \(PID: (\d+)\) booted/, 1].to_i
+    Process.kill :TERM, worker_0_pid
+
+    # Wait for worker 0 to respawn at phase 0
+    wait_for_server_to_match(/Worker 0 \(PID: \d+\) booted in [.0-9]+s, phase: 0/)
+
+    # Trigger phased restart
+    Process.kill :USR1, @pid
+
+    # Wait for all workers to boot at phase 1
+    get_worker_pids 1, worker_count
+
+    # Verify worker 0 was the first to boot in phase 1.
+    # With insert(idx, ...), worker 0 maintains its position at the front
+    # of @workers, ensuring it is restarted first during phased restart.
+    phase_1_boots = @server_log.scan(/Worker (\d+) \(PID: \d+\) booted in [.0-9]+s, phase: 1/)
+                               .flatten.map(&:to_i)
+    assert_equal 0, phase_1_boots.first,
+      "Worker 0 should be first to boot in phase 1 to ensure fork_worker forks from updated code"
+
+    refute @server_log[/.*Terminating timed out worker.*/]
+  end
+
   def test_prune_bundler_with_multiple_workers
     cli_server "-C test/config/prune_bundler_with_multiple_workers.rb"
     reply = read_body(connect)
