@@ -69,10 +69,19 @@ def hit(uris)
 end
 
 module UniquePort
+  # below is similar to `Addrinfo.bind`, but sets `REUSEADDR` off and
+  # comments out `sock.ipv6only!`
   def self.call(host = '127.0.0.1')
-    TCPServer.open(host, 0) do |server|
-      server.connect_address.ip_port
-    end
+    addr_info = Addrinfo.tcp host, 0
+    sock = Socket.new addr_info.pfamily, :STREAM
+    # sock.ipv6only! if addr_info.ipv6?
+    sock.setsockopt :SOCKET, :REUSEADDR, 0
+    sock.bind addr_info
+    sock.connect_address.ip_port
+  rescue Exception => e
+    raise e
+  ensure
+    sock&.close unless sock&.closed?
   end
 end
 
@@ -165,6 +174,7 @@ module TestSkips
   # optional suffix kwarg is appended to the skip message
   # optional suffix bt should generally not used
   def skip_if(*engs, suffix: '', bt: caller)
+    skip_msg = nil
     engs.each do |eng|
       skip_msg = case eng
         when :linux       then "Skipped if Linux#{suffix}"       if Puma::IS_LINUX
@@ -180,9 +190,9 @@ module TestSkips
         when :aunix       then "Skipped if abstract UNIXSocket"  if Puma.abstract_unix_socket?
         when :rack3       then "Skipped if Rack 3.x"             if Rack.release >= '3'
         when :oldwindows  then "Skipped if old Windows"          if Puma::IS_WINDOWS && RUBY_VERSION < '2.6'
-        else false
+        else nil
       end
-      skip skip_msg, bt if skip_msg
+      skip(skip_msg, bt) if skip_msg
     end
   end
 
@@ -333,5 +343,24 @@ class PumaTest < Minitest::Test # rubocop:disable Puma/TestsMustUsePumaTest
 
   def full_name
     "#{self.class.name}##{name}"
+  end
+
+
+  def with_temp_env(temp_env, del_env={}, &block)
+    original_env = {}
+
+    temp_env.transform_keys(&:to_s).each do |k, v|
+      original_env[k], ENV[k] = ENV[k], v
+    end
+
+    del_env.transform_keys(&:to_s).each { |k, v| ENV[k] = v }
+
+    yield
+  ensure
+    # Restore original values
+    original_env.each { |k, v| ENV[k] = v }
+
+    # Remove keys that were added via del_env
+    del_env.transform_keys(&:to_s).each { |k, _| ENV.delete(k) }
   end
 end

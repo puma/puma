@@ -476,6 +476,117 @@ class TestConfigFile < PumaTest
     assert_equal conf.options[:raise_exception_on_sigterm], true
   end
 
+  def test_single_without_block_raises_error
+    conf = Puma::Configuration.new do |c|
+      assert_raises(ArgumentError, "`single` must be called with a block") do
+        c.single
+      end
+    end
+    conf.clamp
+  end
+
+  def test_cluster_without_block_raises_error
+    conf = Puma::Configuration.new do |c|
+      assert_raises(ArgumentError, "`cluster` must be called with a block") do
+        c.cluster
+      end
+    end
+    conf.clamp
+  end
+
+  def test_run_mode_hooks_with_unspecified_workers
+    evals = []
+    conf = Puma::Configuration.new do |c|
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+    end
+    conf.clamp
+    assert_equal [:single], evals
+  end
+
+  def test_run_mode_hooks_with_zero_workers
+    evals = []
+    conf = Puma::Configuration.new do |c|
+      c.workers 0
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+    end
+    conf.clamp
+    assert_equal [:single], evals
+  end
+
+  def test_run_mode_hooks_with_positive_workers
+    evals = []
+    conf = Puma::Configuration.new do |c|
+      c.workers 2
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+    end
+    conf.clamp
+    assert_equal [:cluster], evals
+  end
+
+  def test_run_mode_hooks_with_positive_workers_after_hooks
+    evals = []
+    conf = Puma::Configuration.new do |c|
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+      c.workers 2
+    end
+    conf.clamp
+    assert_equal [:cluster], evals
+  end
+
+  def test_run_mode_hooks_with_workers_overwritten
+    evals = []
+    conf = Puma::Configuration.new do |c|
+      c.workers 2
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+      c.workers 0
+    end
+    conf.clamp
+    assert_equal [:single], evals
+  end
+
+  def test_run_mode_hooks_with_workers_overwritten_in_hook
+    error = assert_raises RuntimeError do
+      conf = Puma::Configuration.new do |c|
+        c.workers 2
+        c.cluster { c.workers 0 }
+      end
+      conf.clamp
+    end
+    assert_equal "cannot change the number of workers inside a cluster configuration hook", error.message
+  end
+
+  def test_run_mode_hooks_with_workers_duplicated_in_hook
+    evals = []
+    conf = Puma::Configuration.new do |c|
+      c.workers 2
+      c.single { evals << :single }
+      c.cluster do
+        c.workers 2
+        evals << :cluster
+      end
+    end
+    conf.clamp
+    assert_equal [:cluster], evals
+  end
+
+  def test_run_mode_hooks_with_multiple_hooks
+    evals = []
+    conf = Puma::Configuration.new do |c|
+      c.workers 2
+      c.single { evals << :single_1 }
+      c.cluster { evals << :cluster_1 }
+      c.single { evals << :single_2 }
+      c.cluster { evals << :cluster_2 }
+    end
+    conf.clamp
+    assert_equal [:cluster_1, :cluster_2], evals
+  end
+
   def test_run_hooks_before_restart_hook
     assert_run_hooks :before_restart
     assert_run_hooks :before_restart, configured_with: :before_restart
@@ -896,6 +1007,110 @@ class TestConfigEnvVariables < PumaTest
     conf = Puma::Configuration.new({}, {}, env)
     conf.clamp
     assert_equal preload, conf.options.default_options[:preload_app]
+  end
+
+  def test_run_mode_hooks_with_unspecified_workers
+    evals = []
+    conf = Puma::Configuration.new do |c|
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+    end
+    conf.clamp
+    assert_equal [:single], evals
+  end
+
+  def test_run_mode_hooks_with_blank_workers
+    evals = []
+    env = { "WEB_CONCURRENCY" => "" }
+    conf = Puma::Configuration.new({}, {}, env) do |c|
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+    end
+    conf.clamp
+    assert_equal [:single], evals
+  end
+
+  def test_run_mode_hooks_with_zero_workers
+    evals = []
+    env = { "WEB_CONCURRENCY" => "0" }
+    conf = Puma::Configuration.new({}, {}, env) do |c|
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+    end
+    conf.clamp
+    assert_equal [:single], evals
+  end
+
+  def test_run_mode_hooks_with_positive_workers
+    evals = []
+    env = { "WEB_CONCURRENCY" => "2" }
+    conf = Puma::Configuration.new({}, {}, env) do |c|
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+    end
+    conf.clamp
+    assert_equal [:cluster], evals
+  end
+
+  def test_run_mode_hooks_with_positive_workers_after_hooks
+    evals = []
+    conf = Puma::Configuration.new do |c, _, d|
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+      d.workers 2
+    end
+    conf.clamp
+    assert_equal [:cluster], evals
+  end
+
+  def test_run_mode_hooks_with_workers_overwritten
+    evals = []
+    env = { "WEB_CONCURRENCY" => "2" }
+    conf = Puma::Configuration.new({}, {}, env) do |c, _, d|
+      c.single { evals << :single }
+      c.cluster { evals << :cluster }
+      d.workers 0
+    end
+    conf.clamp
+    assert_equal [:single], evals
+  end
+
+  def test_run_mode_hooks_with_workers_overwritten_in_hook
+    error = assert_raises RuntimeError do
+      env = { "WEB_CONCURRENCY" => "2" }
+      conf = Puma::Configuration.new({}, {}, env) do |c, _, d|
+        c.cluster { d.workers 0 }
+      end
+      conf.clamp
+    end
+    assert_equal "cannot change the number of workers inside a cluster configuration hook", error.message
+  end
+
+  def test_run_mode_hooks_with_workers_duplicated_in_hook
+    evals = []
+    env = { "WEB_CONCURRENCY" => "2" }
+    conf = Puma::Configuration.new({}, {}, env) do |c, _, d|
+      c.single { evals << :single }
+      c.cluster do
+        d.workers 2
+        evals << :cluster
+      end
+    end
+    conf.clamp
+    assert_equal [:cluster], evals
+  end
+
+  def test_run_mode_hooks_with_multiple_hooks
+    evals = []
+    env = { "WEB_CONCURRENCY" => "2" }
+    conf = Puma::Configuration.new({}, {}, env) do |c|
+      c.single { evals << :single_1 }
+      c.cluster { evals << :cluster_1 }
+      c.single { evals << :single_2 }
+      c.cluster { evals << :cluster_2 }
+    end
+    conf.clamp
+    assert_equal [:cluster_1, :cluster_2], evals
   end
 end
 

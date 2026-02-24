@@ -29,10 +29,6 @@ class TestIntegrationSSL < TestIntegration
     @tcp_port = @bind_port
   end
 
-  def control_tcp_port
-    @control_tcp_port ||= UniquePort.call
-  end
-
   def with_server(config)
     cli_server "-t1:1", config: config, no_bind: true
 
@@ -67,7 +63,7 @@ class TestIntegrationSSL < TestIntegration
         }
       end
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -189,7 +185,7 @@ class TestIntegrationSSL < TestIntegration
         verify_mode: 'none'
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -213,7 +209,7 @@ class TestIntegrationSSL < TestIntegration
       require 'localhost'
       ssl_bind '#{HOST}', '#{bind_port}'
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -248,7 +244,7 @@ class TestIntegrationSSL < TestIntegration
         key_password_command: key_command
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -283,7 +279,7 @@ class TestIntegrationSSL < TestIntegration
         key_password_command: key_command
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]

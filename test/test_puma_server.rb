@@ -33,7 +33,6 @@ class TestPumaServer < PumaTest
 
   def teardown
     @server.stop(true)
-    # Errno::EBADF raised on macOS
   end
 
   def server_run(**options, &block)
@@ -62,54 +61,6 @@ class TestPumaServer < PumaTest
     response = send_http_read_response GET_11
     assert_equal "HTTP/1.1 200 OK", response.status
     assert_equal "HTTP/1.1"       , response.body
-  end
-
-  def test_normalize_host_header_missing
-    server_run do |env|
-      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
-    end
-
-    body = send_http_read_resp_body GET_10
-    assert_equal "localhost\n80", body
-  end
-
-  def test_normalize_host_header_hostname
-    server_run do |env|
-      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
-    end
-
-    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: example.com:456\r\n\r\n"
-    assert_equal "example.com\n456", body
-
-    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n"
-    assert_equal "example.com\n80", body
-  end
-
-  def test_normalize_host_header_ipv4
-    server_run do |env|
-      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
-    end
-
-    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: 123.123.123.123:456\r\n\r\n"
-    assert_equal "123.123.123.123\n456", body
-
-    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: 123.123.123.123\r\n\r\n"
-    assert_equal "123.123.123.123\n80", body
-  end
-
-  def test_normalize_host_header_ipv6
-    server_run do |env|
-      [200, {}, [env["SERVER_NAME"], "\n", env["SERVER_PORT"]]]
-    end
-
-    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: [::ffff:127.0.0.1]:9292\r\n\r\n"
-    assert_equal "[::ffff:127.0.0.1]\n9292", body
-
-    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: [::1]:9292\r\n\r\n"
-    assert_equal "[::1]\n9292", body
-
-    body = send_http_read_resp_body "GET / HTTP/1.0\r\nHost: [::1]\r\n\r\n"
-    assert_equal "[::1]\n80", body
   end
 
   def test_streaming_body
@@ -298,54 +249,6 @@ class TestPumaServer < PumaTest
     assert_equal giant.bytesize, body.bytesize
   end
 
-  def test_respect_x_forwarded_proto
-    env = {}
-    env['HOST'] = "example.com"
-    env['HTTP_X_FORWARDED_PROTO'] = "https,http"
-
-    assert_equal "443", @server.default_server_port(env)
-  end
-
-  def test_respect_x_forwarded_ssl_on
-    env = {}
-    env['HOST'] = 'example.com'
-    env['HTTP_X_FORWARDED_SSL'] = 'on'
-
-    assert_equal "443", @server.default_server_port(env)
-  end
-
-  def test_respect_x_forwarded_scheme
-    env = {}
-    env['HOST'] = 'example.com'
-    env['HTTP_X_FORWARDED_SCHEME'] = 'https'
-
-    assert_equal '443', @server.default_server_port(env)
-  end
-
-  def test_default_server_port
-    server_run do |env|
-      [200, {}, [env['SERVER_PORT']]]
-    end
-
-    req = "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n"
-
-    body = send_http_read_resp_body req
-
-    assert_equal "80", body
-  end
-
-  def test_default_server_port_respects_x_forwarded_proto
-    server_run do |env|
-      [200, {}, [env['SERVER_PORT']]]
-    end
-
-    req = "GET / HTTP/1.0\r\nHost: example.com\r\nx-forwarded-proto: https,http\r\n\r\n"
-
-    body = send_http_read_resp_body req
-
-    assert_equal "443", body
-  end
-
   def test_HEAD_has_no_body
     server_run { [200, {"Foo" => "Bar"}, ["hello"]] }
 
@@ -501,7 +404,7 @@ class TestPumaServer < PumaTest
   end
 
   def test_http_11_keep_alive_with_large_payload
-    server_run(http_content_length_limit: 10) { [204, {}, []] }
+    server_run(http_content_length_limit: 10, environment: :production) { [204, {}, []] }
 
     socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 17\r\n\r\n"
     socket << "hello world foo bar"
@@ -510,7 +413,7 @@ class TestPumaServer < PumaTest
 
     # Content Too Large
     assert_equal "HTTP/1.1 413 #{STATUS_CODES[413]}", response.status
-    assert_equal ["content-length: 17"], response.headers
+    assert_equal ["connection: close", "content-length: 17"], response.headers
   end
 
   def test_GET_with_no_body_has_sane_chunking
@@ -2260,5 +2163,67 @@ class TestPumaServer < PumaTest
 
   def test_stats_ok_before_run
     assert_equal({max_threads: @server.max_threads, requests_count: 0}, @server.stats)
+  end
+
+  def test_update_thread_pool_min_max
+    # add a small delay so requests back up
+    @app = ->(env) do
+      sleep 0.001
+      [200, {}, [env['rack.url_scheme']]]
+    end
+
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    assert_equal 1, @server.stats[:running]
+
+    @server.update_thread_pool_min_max(min: 3, max: 3)
+
+    # By making multiple requests, we can ensure that the pool is filled up to the max.
+    req_ary = send_http_array 5
+    req_ary.map { |req| req.read_response }
+
+    assert_equal 3, @pool.max
+    assert_equal 3, @pool.min
+    assert_equal 3, @server.max_threads
+    assert_equal 3, @server.min_threads
+    assert_equal 3, @pool&.spawned
+  end
+
+  def test_update_thread_pool_min_max_warns_if_min_greater_than_max
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    @server.update_thread_pool_min_max(min: 5, max: 1)
+
+    assert_equal "`min' value cannot be greater than `max' value.\n", @log_writer.stdout.string
+    assert_equal 1, @pool.max
+    assert_equal 1, @pool.min
+    assert_equal 1, @server.max_threads
+    assert_equal 1, @server.min_threads
+    assert_equal 1, @pool&.spawned
+  end
+
+  def test_update_thread_pool_min_max_warns_if_min_less_than_zero
+    server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
+
+    @server.update_thread_pool_min_max(min: -1, max: 5)
+
+    assert_equal "`min' value cannot be less than 0\n", @log_writer.stdout.string
+    assert_equal 1, @pool.max
+    assert_equal 1, @pool.min
+    assert_equal 1, @server.max_threads
+    assert_equal 1, @server.min_threads
+    assert_equal 1, @pool&.spawned
+  end
+
+  def test_update_thread_pool_min_max_allows_min_zero
+    server_run(min_threads: 1, max_threads: 5, auto_trim_time: 1)
+
+    @server.update_thread_pool_min_max(min: 0, max: 5)
+
+    assert_empty @log_writer.stdout.string
+    assert_equal 5, @pool.max
+    assert_equal 0, @pool.min
+    assert_equal 5, @server.max_threads
+    assert_equal 0, @server.min_threads
   end
 end
