@@ -50,13 +50,25 @@ Where available from the OS (Linux ), if you are using `fork_worker` Puma will m
 
 ### Mold-Worker Important Differences
 
-- `mold_worker` is capable of reforking at multiple intervals; by default it will trigger one mold promotion and a phased refork at 1000 requests, but you can pass 1..n intervals instead and it will trigger a refork as it passes each
+- **Request-count thresholds are per-worker.** Each threshold is checked against the individual worker's `requests_count`, which counts requests served since that worker was booted (or re-forked). When any worker crosses the next threshold, it is promoted to a mold and a cluster-wide phased refork begins. Workers forked from the new mold start with a fresh `requests_count` of 0 -- they do *not* inherit the mold's count.
+- `mold_worker` is capable of reforking at multiple intervals; by default it will trigger one mold promotion and a phased refork at 1000 requests, but you can pass 1..n intervals instead and it will trigger a refork as it passes each (e.g., `mold_worker 1000, 5000, 25000`).
 - `mold_worker` will, at boot and during phased restart via USR1, fork all worker processes directly from the cluster parent; molds at this point are just a memory cost with no benefit.
 - Mold processes will _not_ become more efficient over time as they have stopped taking traffic; to see additional benefits, add an additional refork interval at the end to promote a new more complete mold, or use SIGURG to promote whatever worker has the highest request count to mold and replace all the other workers with reforks.
 
+### Mold-Worker Hook Mapping
+
+The table below maps `fork_worker` hooks to their `mold_worker` equivalents:
+
+| `fork_worker` hook | `mold_worker` equivalent | Notes |
+|---|---|---|
+| `before_refork` (`on_refork`) | `on_mold_promotion` | Resource cleanup before forking. In `fork_worker`, worker 0 briefly stops serving to refork; in `mold_worker`, the promoted worker permanently stops serving, so cleanup is final. |
+| `after_refork` | *(no equivalent)* | In `fork_worker`, worker 0 resumes serving after the refork cycle. Molds never resume, so there is nothing to re-establish. Use `before_worker_boot` (`on_worker_boot`) in the new workers instead if you need to set up connections. |
+| `before_worker_boot` (`on_worker_boot`) | `before_worker_boot` (`on_worker_boot`) | Unchanged -- runs in each newly-forked worker (whether forked from worker 0 or from a mold). |
+| `before_worker_shutdown` (`on_worker_shutdown`) | `before_worker_shutdown` (`on_worker_shutdown`) + `on_mold_shutdown` | `before_worker_shutdown` runs in regular workers when they exit. It does **not** run in molds. Use `on_mold_shutdown` for mold-specific teardown (e.g., resource cleanup when the mold is replaced by a newer mold or the cluster stops). |
+
 ### Mold-Worker Migration Guide (From Fork-Worker)
 
-- Any logic in your `on_refork` hook that shuts down worker resources should move to the `on_mold_promotion` hook; any other logic should either be discarded or refactored to run in a `on_worker_boot` hook
-- All logic in your `after_refork` hook should be discarded.
-- Any logic in `on_worker_shutdown` that has to do with finishing serving requests should be duplicated to `on_mold_promotion`; anything having to do with process termination should be duplicated to `on_mold_shutdown`
-- Replace `fork_worker` with `mold_worker` in either your CLI invocation or config file; consider adding extra intervals with some kind of exponential period to increase the efficiency of shared memory and warmed caches.
+1. Move any resource-cleanup logic from your `before_refork` (`on_refork`) hook to `on_mold_promotion`.
+2. Remove your `after_refork` hook (molds never resume serving). If it re-establishes connections, move that logic to `before_worker_boot` (`on_worker_boot`) so it runs in each newly-forked worker.
+3. Review your `before_worker_shutdown` (`on_worker_shutdown`) hook. Logic related to finishing in-flight requests stays there. Logic related to process teardown that should also apply to molds should be duplicated to `on_mold_shutdown`.
+4. Replace `fork_worker` with `mold_worker` in your CLI invocation or config file. Consider adding multiple thresholds with increasing intervals to improve shared-memory efficiency and cache warmth over time (e.g., `mold_worker 1000, 5000, 25000`).
