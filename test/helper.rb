@@ -8,6 +8,16 @@ if ENV['GITHUB_ACTIONS'] == 'true'
   ENV['TMPDIR'] = ENV['RUNNER_TEMP']
 end
 
+if Process.respond_to?(:getrlimit)
+  soft_limit, _ = Process.getrlimit(:NOFILE)
+
+  if soft_limit < 1024
+    warn "WARNING: File descriptor limit is #{soft_limit}, which may cause test failures."
+    warn "Run 'ulimit -n 4096' to increase the limit for the current terminal session. See CONTRIBUTING.md for details."
+    warn ""
+  end
+end
+
 require "securerandom"
 
 require_relative "minitest/verbose"
