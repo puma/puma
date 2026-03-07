@@ -12,7 +12,7 @@ class TestThreadPool < PumaTest
     @pool.shutdown(1) if defined?(@pool)
   end
 
-  def new_pool(min, max, pool_shutdown_grace_time: nil, max_io_threads: 0, &block)
+  def new_pool(min, max, max_io_threads: 0, pool_shutdown_grace_time: nil, &block)
     block = proc { } unless block
     options = {
       min_threads: min,
@@ -20,7 +20,7 @@ class TestThreadPool < PumaTest
       max_io_threads: max_io_threads,
       pool_shutdown_grace_time: pool_shutdown_grace_time,
     }
-    @pool = Puma::ThreadPool.new('tst', options, &block)
+    @pool = Puma::ThreadPool.new("tst", options, &block)
   end
 
   def mutex_pool(min, max, pool_shutdown_grace_time: nil, &block)
@@ -30,7 +30,7 @@ class TestThreadPool < PumaTest
       max_threads: max,
       pool_shutdown_grace_time: pool_shutdown_grace_time,
     }
-    @pool = MutexPool.new('tst', options, &block)
+    @pool = MutexPool.new("tst", options, &block)
   end
 
   # Wraps ThreadPool work in mutex for better concurrency control.
@@ -80,25 +80,25 @@ class TestThreadPool < PumaTest
   end
 
   def test_thread_name
-    skip 'Thread.name not supported' unless Thread.current.respond_to?(:name)
+    skip "Thread.name not supported" unless Thread.current.respond_to?(:name)
     thread_name = nil
     pool = mutex_pool(0, 1) {thread_name = Thread.current.name}
     pool << 1
-    assert_equal('puma tst tp 001', thread_name)
+    assert_equal("puma tst tp 001", thread_name)
   end
 
   def test_thread_name_linux
-    skip 'Thread.name not supported' unless Thread.current.respond_to?(:name)
+    skip "Thread.name not supported" unless Thread.current.respond_to?(:name)
 
-    task_dir = File.join('', 'proc', Process.pid.to_s, 'task')
-    skip 'This test only works under Linux and MRI Ruby with appropriate permissions' if !(File.directory?(task_dir) && File.readable?(task_dir) && Puma::IS_MRI)
+    task_dir = File.join("", "proc", Process.pid.to_s, "task")
+    skip "This test only works under Linux and MRI Ruby with appropriate permissions" if !(File.directory?(task_dir) && File.readable?(task_dir) && Puma::IS_MRI)
 
-    expected_thread_name = 'puma tst tp 001'
+    expected_thread_name = "puma tst tp 001"
     found_thread = false
     pool = mutex_pool(0, 1) do
       # Read every /proc/<pid>/task/<tid>/comm file to find the thread name
       Dir.entries(task_dir).select {|tid| File.directory?(File.join(task_dir, tid))}.each do |tid|
-        comm_file = File.join(task_dir, tid, 'comm')
+        comm_file = File.join(task_dir, tid, "comm")
         next unless File.file?(comm_file) && File.readable?(comm_file)
 
         if File.read(comm_file).strip == expected_thread_name
@@ -113,7 +113,7 @@ class TestThreadPool < PumaTest
   end
 
   def test_converts_pool_sizes
-    pool = new_pool('0', '1')
+    pool = new_pool("0", "1")
 
     assert_equal 0, pool.spawned
 
@@ -148,7 +148,7 @@ class TestThreadPool < PumaTest
       ]
     }
     block = proc { }
-    pool = MutexPool.new('tst', options, &block)
+    pool = MutexPool.new("tst", options, &block)
 
     pool << 1
 
@@ -171,7 +171,7 @@ class TestThreadPool < PumaTest
       ]
     }
     block = proc { }
-    pool = MutexPool.new('tst', options, server: dummy_server_obj, &block)
+    pool = MutexPool.new("tst", options, server: dummy_server_obj, &block)
 
     pool << 1
 
@@ -193,7 +193,7 @@ class TestThreadPool < PumaTest
       ]
     }
     block = proc { true }
-    pool = MutexPool.new('tst', options, &block)
+    pool = MutexPool.new("tst", options, &block)
 
     pool << 1
 
@@ -265,7 +265,7 @@ class TestThreadPool < PumaTest
       ]
     }
     block = proc { }
-    pool = MutexPool.new('tst', options, &block)
+    pool = MutexPool.new("tst", options, &block)
 
     pool << 1
 
