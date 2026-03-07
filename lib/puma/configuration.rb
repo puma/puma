@@ -132,13 +132,14 @@ module Puma
     DEFAULTS = {
       auto_trim_time: 30,
       binds: ['tcp://0.0.0.0:9292'.freeze],
-      fiber_per_request: !!ENV.fetch("PUMA_FIBER_PER_REQUEST", false),
       debug: false,
-      enable_keep_alives: true,
       early_hints: nil,
+      enable_keep_alives: true,
       environment: 'development'.freeze,
+      fiber_per_request: !!ENV.fetch("PUMA_FIBER_PER_REQUEST", false),
       # Number of seconds to wait until we get the first data for the request.
       first_data_timeout: 30,
+      http_content_length_limit: nil,
       # Number of seconds to wait until the next request before shutting down.
       idle_timeout: nil,
       io_selector_backend: :auto,
@@ -147,10 +148,10 @@ module Puma
       # Limits how many requests a keep alive connection can make.
       # The connection will be closed after it reaches `max_keep_alive`
       # requests.
+      max_io_threads: 0,
       max_keep_alive: 999,
       max_threads: Puma.mri? ? 5 : 16,
       min_threads: 0,
-      max_io_threads: 0,
       mode: :http,
       mutate_stdout_and_stderr_to_sync_on_write: true,
       out_of_band: [],
@@ -162,8 +163,8 @@ module Puma
       raise_exception_on_sigterm: true,
       reaping_time: 1,
       remote_address: :socket,
-      silence_single_worker_warning: false,
       silence_fork_callback_warning: false,
+      silence_single_worker_warning: false,
       tag: File.basename(Dir.getwd),
       tcp_host: '0.0.0.0'.freeze,
       tcp_port: 9292,
@@ -174,7 +175,6 @@ module Puma
       worker_shutdown_timeout: 30,
       worker_timeout: 60,
       workers: 0,
-      http_content_length_limit: nil
     }
 
     def initialize(user_options={}, default_options = {}, env = ENV, &block)
