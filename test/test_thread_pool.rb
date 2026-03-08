@@ -458,7 +458,7 @@ class TestThreadPool < PumaTest
     refute_predicate pool, :can_spawn_processor?
   ensure
     mutex.unlock
-    pool.shutdown
+    pool.shutdown(1)
   end
 
   def test_io_threads_over_the_limit_count_as_normal_threads
@@ -482,6 +482,6 @@ class TestThreadPool < PumaTest
     refute_predicate pool, :can_spawn_processor?
   ensure
     mutex.unlock
-    pool.shutdown
+    pool.shutdown(1)
   end
 end
