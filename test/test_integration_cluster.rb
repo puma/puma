@@ -408,7 +408,6 @@ class TestIntegrationCluster < TestIntegration
 
     get_worker_pids 1, worker_count
 
-    # below is so all of @server_log isn't simply output on failure
     refute @server_log[/.*Terminating timed out worker.*/]
   end
 
@@ -431,7 +430,37 @@ class TestIntegrationCluster < TestIntegration
 
     get_worker_pids 1, worker_count - 1
 
-    # below is so all of @server_log isn't simply output on failure
+    refute @server_log[/.*Terminating timed out worker.*/]
+  end
+
+  def test_phased_restart_with_fork_worker_worker_order
+    worker_count = 3
+
+    cli_server "test/rackup/hello.ru", config: <<~CONFIG
+      fork_worker
+      worker_check_interval 1
+      # lower worker timeout from default (60) to avoid test timeout
+      worker_timeout 2
+      # to simulate worker 0 timeout, total boot time for all workers
+      # needs to exceed single worker timeout
+      workers #{worker_count}
+      preload_app! false
+    CONFIG
+
+    get_worker_pids 0, worker_count
+
+    worker_0_pid = @server_log[/Worker 0 \(PID: (\d+)\) booted/, 1].to_i
+    Process.kill :TERM, worker_0_pid
+
+    assert wait_for_server_to_match(/Worker 0 \(PID: \d+\) booted in [.0-9]+s, phase: 0/)
+
+    Process.kill :USR1, @pid
+
+    get_worker_pids 1, worker_count
+
+    phase_1_indexes = @server_log.scan(/Worker (\d+) \(PID: \d+\) booted in [.0-9]+s, phase: 1/).flatten.map(&:to_i)
+    assert_equal 0, phase_1_indexes.first
+
     refute @server_log[/.*Terminating timed out worker.*/]
   end
 
