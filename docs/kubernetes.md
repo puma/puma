@@ -69,5 +69,7 @@ More discussions and links to relevant articles can be found in https://github.c
 
 ## Workers Per Pod, and Other Config Issues
 
+When running in Kubernetes, setting `workers :auto` (or `WEB_CONCURRENCY=auto`) is the recommended way to size your worker pool. Puma reads the container's cgroup CPU quota (`/sys/fs/cgroup/cpu.max` for cgroups v2, or `/sys/fs/cgroup/cpu/cpu.cfs_quota_us` for cgroups v1) and uses that to determine the worker count, rather than reporting the full node CPU count the way `Concurrent.available_processor_count` does. This means the worker count will correctly reflect the CPU limit set in your pod's `resources.limits.cpu`.
+
 See our [deployment docs](./deployment.md) for more information about how to correctly size your pods and choose the right number of workers and threads.
 

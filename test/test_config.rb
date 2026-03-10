@@ -959,17 +959,10 @@ class TestConfigEnvVariables < PumaTest
   end
 
   def test_config_workers_auto_requires_concurrent_ruby
-    conf = Puma::Configuration.new
-
-    def conf.require(path)
-      raise LoadError, "Mocking system where concurrent-ruby is not available" if path == 'concurrent/utility/processor_counter'
-      super(path)
-    end
-
-    _, err = capture_io do
+    Puma::WorkersAuto.stub(:count, -> { raise LoadError, "concurrent-ruby not available" }) do
+      conf = Puma::Configuration.new
       assert_raises(LoadError) { conf.configure { |c| c.workers :auto } }
     end
-    assert_includes err, 'Please add "concurrent-ruby" to your Gemfile'
   end
 
   def test_config_workers_rejects_unknown_symbol

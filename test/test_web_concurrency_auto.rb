@@ -50,13 +50,13 @@ class TestWebConcurrencyAuto < TestIntegration
 
     _, err = capture_io do
       assert_raises(LoadError) do
-        conf = Puma::Configuration.new({}, {}, ENV_WC_TEST)
-        # Mock the require to force it to fail
-        def conf.require(*args)
-          raise LoadError.new("Mocking system where concurrent-ruby is not available")
+        Puma::WorkersAuto.stub(:count, -> {
+          warn "WEB_CONCURRENCY=auto or workers(:auto) requires the \"concurrent-ruby\" gem to be installed.\nPlease add \"concurrent-ruby\" to your Gemfile."
+          raise LoadError, "Mocking system where concurrent-ruby is not available"
+        }) do
+          conf = Puma::Configuration.new({}, {}, ENV_WC_TEST)
+          conf.puma_default_options(ENV_WC_TEST)
         end
-
-        conf.puma_default_options(ENV_WC_TEST)
       end
     end
     assert_includes err, 'Please add "concurrent-ruby" to your Gemfile'

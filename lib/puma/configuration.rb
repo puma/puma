@@ -4,6 +4,7 @@ require_relative 'plugin'
 require_relative 'const'
 require_relative 'dsl'
 require_relative 'events'
+require_relative 'workers_auto'
 
 module Puma
   # A class used for storing "leveled" configuration options.
@@ -375,20 +376,9 @@ module Puma
 
     private
 
-    def require_processor_counter
-      require 'concurrent/utility/processor_counter'
-    rescue LoadError
-      warn <<~MESSAGE
-        WEB_CONCURRENCY=auto or workers(:auto) requires the "concurrent-ruby" gem to be installed.
-        Please add "concurrent-ruby" to your Gemfile.
-      MESSAGE
-      raise
-    end
-
     def parse_workers(value)
       if value == :auto || value == 'auto'
-        require_processor_counter
-        Integer(::Concurrent.available_processor_count)
+        WorkersAuto.count
       else
         Integer(value)
       end
