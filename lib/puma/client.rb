@@ -450,13 +450,7 @@ module Puma
 
       content_length = cl.to_i
 
-      if above_http_content_limit(content_length)
-        @buffer = nil
-        @body = EmptyBody
-        @error_status_code = 413
-        @env[HTTP_CONNECTION] = 'close'
-        raise HttpParserError, "Payload Too Large"
-      end
+      raise_above_http_content_limit if @http_content_length_limit&.< content_length
 
       remain = content_length - parser_body.bytesize
 
@@ -584,13 +578,10 @@ module Puma
 
     # @version 5.0.0
     def write_chunk(str)
-      if above_http_content_limit(@chunked_content_length + str.bytesize)
-        @buffer = nil
-        @body = EmptyBody
-        @error_status_code = 413
-        @env[HTTP_CONNECTION] = 'close'
-        raise HttpParserError, "Payload Too Large"
+      if @http_content_length_limit&.< @chunked_content_length + str.bytesize
+        raise_above_http_content_limit
       end
+
       @chunked_content_length += @body.write(str)
     end
 
@@ -723,8 +714,13 @@ module Puma
       @ready = true
     end
 
-    def above_http_content_limit(value)
-      @http_content_length_limit_exceeded = (@http_content_length_limit&.< value)
+    def raise_above_http_content_limit
+      @http_content_length_limit_exceeded = true
+      @buffer = nil
+      @body = EmptyBody
+      @error_status_code = 413
+      @env[HTTP_CONNECTION] = 'close'
+      raise HttpParserError, "Payload Too Large"
     end
   end
 end
