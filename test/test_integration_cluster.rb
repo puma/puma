@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
@@ -6,7 +8,7 @@ require "puma/configuration"
 require "time"
 
 class TestIntegrationCluster < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me!
 
   def workers ; 2 ; end
 
@@ -32,17 +34,17 @@ class TestIntegrationCluster < TestIntegration
 
   def test_phased_restart_does_not_drop_connections_threads
     restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1
+      signal: :USR1, config: "preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections
     restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR1
+      signal: :USR1, config: "preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections_threads_fork_worker
     restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1, config: 'fork_worker'
+      signal: :USR1, config: "fork_worker; preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections_threads_mold_worker
@@ -52,19 +54,19 @@ class TestIntegrationCluster < TestIntegration
 
   def test_phased_restart_does_not_drop_connections_unix
     restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR1, unix: true
+      signal: :USR1, unix: true, config: "preload_app! false"
   end
 
   def test_pre_existing_unix
     skip_unless :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.binwrite bind_path, 'pre existing'
 
     cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix
 
     stop_server
 
-    assert File.exist?(@bind_path)
+    assert File.exist?(@bind_path), 'Unix socket file should exist'
 
   ensure
     if UNIX_SKT_EXIST
@@ -75,9 +77,9 @@ class TestIntegrationCluster < TestIntegration
   def test_pre_existing_unix_stop_after_restart
     skip_unless :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.binwrite bind_path, 'pre existing'
 
-    cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix
+    cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix, config: "preload_app! false"
     connection = connect(nil, unix: true)
     restart_server connection
 
@@ -138,19 +140,19 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
-  def test_on_booted_and_on_stopped
-    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
-      on_booted  { STDOUT.syswrite "on_booted called\n"  }
-      on_stopped { STDOUT.syswrite "on_stopped called\n" }
-    CONFIG
+  def test_after_booted_and_after_stopped
+    skip_unless_signal_exist? :TERM
+    cli_server "-w #{workers} " \
+      "-C test/config/event_after_booted_and_after_stopped.rb " \
+      "-C test/config/event_after_booted_exit.rb " \
+      "test/rackup/hello.ru",
+      no_wait: true
 
-    assert wait_for_server_to_include('on_booted called')
-
-    Process.kill :TERM, @pid
-
+    # below is logged after workers boot
+    assert wait_for_server_to_include('after_booted called')
     assert wait_for_server_to_include('Goodbye!')
     # below logged after workers are stopped
-    assert wait_for_server_to_include('on_stopped called')
+    assert wait_for_server_to_include('after_stopped called')
     wait_server 15
   end
 
@@ -179,6 +181,7 @@ class TestIntegrationCluster < TestIntegration
 
     assert wait_for_server_to_include("on_booted called")
   end
+
 
   def test_term_worker_clean_exit
     cli_server "-w #{workers} test/rackup/hello.ru"
@@ -261,10 +264,9 @@ class TestIntegrationCluster < TestIntegration
   def test_worker_check_interval
     # iso8601 2022-12-14T00:05:49Z
     re_8601 = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/
-    @control_tcp_port = UniquePort.call
     worker_check_interval = 1
 
-    cli_server "-w 1 -t 1:1 --control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
+    cli_server "-w 1 -t 1:1 #{set_pumactl_args} test/rackup/hello.ru", config: "worker_check_interval #{worker_check_interval}"
 
     sleep worker_check_interval + 1
     checkin_1 = get_stats["worker_status"].first["last_checkin"]
@@ -280,7 +282,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_boot_timeout
     timeout = 1
-    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; on_worker_boot { sleep #{timeout + 1} }")
+    worker_timeout(timeout, 2, "failed to boot within \\\d+ seconds", "worker_boot_timeout #{timeout}; before_worker_boot { sleep #{timeout + 1} }")
   end
 
   def test_worker_timeout
@@ -288,7 +290,7 @@ class TestIntegrationCluster < TestIntegration
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     config = <<~CONFIG
       worker_timeout #{timeout}
-      on_worker_boot do
+      before_worker_boot do
         Thread.new do
           sleep 1
           Thread.list.find {|t| t.name == 'puma stat pld'}.kill
@@ -316,6 +318,15 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
+  def test_queue_requests_disabled
+    cli_server "-w #{workers} test/rackup/hello.ru", config: "queue_requests false"
+
+    get_worker_pids # wait for workers to boot
+
+    fast_connect
+    assert true
+  end
+
   def test_worker_index_is_with_in_options_limit
     cli_server "-C test/config/t3_conf.rb test/rackup/hello.ru"
 
@@ -340,12 +351,12 @@ class TestIntegrationCluster < TestIntegration
   end
 
   # use three workers to keep accepting clients
-  def test_fork_worker_on_refork
+  def test_fork_worker_before_refork
     refork = Tempfile.new 'refork'
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~CONFIG
       fork_worker 20
-      on_refork { File.write '#{refork.path}', 'Reforked' }
+      before_refork { File.write '#{refork.path}', 'Reforked' }
     CONFIG
 
     pids = get_worker_pids 0, wrkrs
@@ -398,7 +409,7 @@ class TestIntegrationCluster < TestIntegration
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello_with_delay.ru", config: <<~RUBY
       fork_worker 20
-      on_refork { File.write '#{refork.path}', 'Before refork', mode: 'a+' }
+      before_refork { File.write '#{refork.path}', 'Before refork', mode: 'a+' }
       after_refork { File.write '#{refork.path}', '-After refork', mode: 'a+' }
     RUBY
 
@@ -446,6 +457,7 @@ class TestIntegrationCluster < TestIntegration
       # to simulate worker 0 timeout, total boot time for all workers
       # needs to exceed single worker timeout
       workers #{worker_count}
+      preload_app! false
     CONFIG
 
     get_worker_pids 0, worker_count
@@ -485,7 +497,7 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-C test/config/prune_bundler_with_multiple_workers.rb"
     reply = read_body(connect)
 
-    assert reply, "embedded app"
+    assert_equal reply, "embedded app"
   end
 
   def test_load_path_includes_extra_deps
@@ -517,9 +529,7 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_nio4r_gem_not_required_in_master_process_when_using_control_server
-    @control_tcp_port = UniquePort.call
-    control_opts = "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
-    cli_server "-w #{workers} #{control_opts} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
+    cli_server "-w #{workers} #{set_pumactl_args} -C test/config/prune_bundler_print_nio_defined.rb test/rackup/hello.ru"
 
     assert wait_for_server_to_include('Starting control server')
 
@@ -530,8 +540,38 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-w #{workers} --preload test/rackup/write_to_stdout_on_boot.ru"
 
     get_worker_pids
-    loading_app_count = @server_log.scan('Loading app').length
+    loading_app_count = @server_log.scan("Loading app").length
     assert_equal 1, loading_app_count
+  end
+
+  def test_application_is_loaded_exactly_once_if_using_fork_worker
+    cli_server "-w #{workers} --fork-worker test/rackup/write_to_stdout_on_boot.ru"
+
+    get_worker_pids
+    loading_app_count = @server_log.scan("Loading app").length
+    assert_equal 1, loading_app_count # loaded in worker 0
+
+    @server_log.clear
+    Process.kill :SIGURG, @pid
+
+    get_worker_pids 1, workers - 1
+    loading_app_count = @server_log.scan("Loading app").length
+    assert_equal 0, loading_app_count
+  end
+
+  def test_application_is_loaded_exactly_once_if_using_preload_app_with_fork_worker
+    cli_server "-w #{workers} --preload --fork-worker test/rackup/write_to_stdout_on_boot.ru"
+
+    get_worker_pids
+    loading_app_count = @server_log.scan("Loading app").length
+    assert_equal 1, loading_app_count # loaded in master
+
+    @server_log.clear
+    Process.kill :SIGURG, @pid
+
+    get_worker_pids 1, workers - 1
+    loading_app_count = @server_log.scan("Loading app").length
+    assert_equal 0, loading_app_count
   end
 
   def test_warning_message_outputted_when_single_worker
@@ -539,6 +579,13 @@ class TestIntegrationCluster < TestIntegration
 
     assert wait_for_server_to_include('Worker 0 (PID')
     assert_match(/WARNING: Detected running cluster mode with 1 worker/, @server_log)
+  end
+
+  def test_warning_message_outputted_when_ruby_mn_threads_is_set
+    cli_server "-w 1 test/rackup/hello.ru", env: { 'RUBY_MN_THREADS' => '1' }
+
+    assert wait_for_server_to_include('Worker 0 (PID')
+    assert_match(/WARNING: Detected `RUBY_MN_THREADS/, @server_log)
   end
 
   def test_warning_message_not_outputted_when_single_worker_silenced
@@ -618,19 +665,32 @@ class TestIntegrationCluster < TestIntegration
       wait_for_server_to_match(/(index \d data \d)/, 1)
     end.sort
 
-    assert 'index 0 data 0', ary[0]
-    assert 'index 1 data 1', ary[1]
+    assert_equal 'index 0 data 0', ary[0]
+    assert_equal 'index 1 data 1', ary[1]
+  end
+
+  def test_after_worker_shutdown_hook
+    cli_server "-C test/config/after_shutdown_hook.rb test/rackup/hello.ru"
+    get_worker_pids 0, 2 # make sure workers are booted
+    stop_server
+
+    ary = Array.new(2) do |_index|
+      wait_for_server_to_match(/(after_worker_shutdown worker=\d status=\d+)/, 1)
+    end.sort
+
+    assert_equal 'after_worker_shutdown worker=0 status=0', ary[0]
+    assert_equal 'after_worker_shutdown worker=1 status=0', ary[1]
   end
 
   def test_worker_hook_warning_cli
     cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
-      on_worker_boot(:test) do |index, data|
+      before_worker_boot(:test) do |index, data|
         data[:test] = index
       end
     CONFIG
 
     get_worker_pids
-    line = @server_log[/^Warning.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+before_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
@@ -638,18 +698,18 @@ class TestIntegrationCluster < TestIntegration
     cli_server "test/rackup/hello.ru",
       env: { 'WEB_CONCURRENCY' => '2'},
       config: <<~CONFIG
-        on_worker_boot(:test) do |index, data|
+        before_worker_boot(:test) do |index, data|
           data[:test] = index
         end
       CONFIG
 
     get_worker_pids
-    line = @server_log[/^Warning.+.+on_worker_boot.+/]
+    line = @server_log[/^Warning.+.+before_worker_boot.+/]
     refute line, "Warning below should not be shown!\n#{line}"
   end
 
   def test_puma_debug_worker_hook
-    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true, config: "on_worker_boot {}"
+    cli_server "-w #{workers} test/rackup/hello.ru", puma_debug: true, config: "before_worker_boot {}"
 
     assert wait_for_server_to_include("Running before_worker_boot hooks")
   end
@@ -688,19 +748,19 @@ class TestIntegrationCluster < TestIntegration
     replies = []
     mutex = Mutex.new
     div   = 10
-
-    refused = thread_run_refused unix: unix
+    start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
     41.times.each do |i|
       if i == 10
         threads << Thread.new do
-          sleep i.to_f/div
+          delay = start_time + (i.to_f / div) - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          sleep delay if delay > 0
           Process.kill :TERM, @pid
           mutex.synchronize { replies[i] = :term_sent }
         end
       else
         threads << Thread.new do
-          thread_run_step replies, i.to_f/div, 1, i, mutex, refused, unix: unix
+          thread_run_step replies, start_time, i.to_f / div, 1, i, mutex, unix: unix
         end
       end
     end
@@ -746,7 +806,7 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def worker_respawn(phase = 1, size = workers, config = 'test/config/worker_shutdown_timeout_2.rb')
+  def worker_respawn(phase = 1, size = workers, config = 'test/config/worker_respawn.rb')
     threads = []
 
     cli_server "-w #{workers} -t 1:1 -C #{config} test/rackup/sleep_pid.ru"
@@ -826,9 +886,12 @@ class TestIntegrationCluster < TestIntegration
   end
 
   # used in loop to create several 'requests'
-  def thread_run_step(replies, delay, sleep_time, step, mutex, refused, unix: false)
+  def thread_run_step(replies, start_time, delay, sleep_time, step, mutex, unix: false)
+    refused = thread_run_refused unix: unix
     begin
-      sleep delay
+      sleep_until = start_time + delay
+      sleep_time_left = sleep_until - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      sleep sleep_time_left if sleep_time_left > 0
       s = connect "sleep#{sleep_time}-#{step}", unix: unix
       body = read_body(s, 20)
       if body[/\ASlept /]

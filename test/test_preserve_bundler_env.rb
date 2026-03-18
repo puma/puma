@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
@@ -35,7 +37,6 @@ class TestPreserveBundlerEnv < TestIntegration
   end
 
   def test_worker_forking_preserves_bundler_config_path
-    @tcp_port = UniquePort.call
     env = {
       # Disable the .bundle/config file in the bundle_app_config_test directory
       "BUNDLE_APP_CONFIG" => "/dev/null",
@@ -53,7 +54,6 @@ class TestPreserveBundlerEnv < TestIntegration
   end
 
   def test_phased_restart_preserves_unspecified_bundle_gemfile
-    @tcp_port = UniquePort.call
     env = {
       "BUNDLE_GEMFILE" => nil,
       "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil
@@ -92,7 +92,6 @@ class TestPreserveBundlerEnv < TestIntegration
 
   def start_phased_restart
     Process.kill :USR1, @pid
-
-    true while @server.gets !~ /booted in [.0-9]+s, phase: 1/
+    wait_for_server_to_match(/booted in [.0-9]+s, phase: 1/)
   end
 end

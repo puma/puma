@@ -2,7 +2,7 @@
 
 ## Systemd
 
-See [/docs/systemd](https://github.com/puma/puma/blob/master/docs/systemd.md).
+See [/docs/systemd](https://github.com/puma/puma/blob/main/docs/systemd.md).
 
 ## rc.d
 

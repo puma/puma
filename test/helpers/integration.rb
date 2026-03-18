@@ -26,35 +26,32 @@ class TestIntegration < PumaTest
 
   def setup
     @server = nil
-    @config_file = nil
     @server_log = +''
+    @server_stopped = false
+    @config_file = nil
+
     @pid = nil
+
+    @ios_to_close = Queue.new
     @ios_to_close = []
-    @bind_path    = tmp_path('.sock')
-    @control_path     = nil
-    @control_tcp_port = nil
+    @bind_path    = nil
+    @bind_port    = nil
+    @control_path = nil
+    @control_port = nil
   end
 
   def teardown
-    if @server && @control_tcp_port && Puma.windows?
-      cli_pumactl 'stop'
-    elsif @server && @pid && !Puma.windows?
-      stop_server @pid, signal: :INT
-    end
-
-    @ios_to_close&.each do |io|
-      begin
-        io.close if io.respond_to?(:close) && !io.closed?
-      rescue
-      ensure
-        io = nil
+    if @server && !@server_stopped
+      if @control_port && Puma::IS_WINDOWS
+        cli_pumactl 'halt'
+      elsif @pid && !Puma::IS_WINDOWS
+        stop_server signal: :INT
+      elsif Puma::IS_WINDOWS
+        flunk 'Windows must use Puma::ControlCLI to shut down!'
       end
     end
 
-    if @bind_path
-      refute File.exist?(@bind_path), "Bind path must be removed after stop"
-      File.unlink(@bind_path) rescue nil
-    end
+    close_ios if @ios_to_close
 
     # wait until the end for OS buffering?
     if @server
@@ -66,13 +63,69 @@ class TestIntegration < PumaTest
       end
     end
 
+    if @bind_path
+      refute File.exist?(@bind_path), "Bind path must be removed after stop"
+      File.unlink(@bind_path) rescue nil
+      @bind_path = nil
+    end
+
+    if @control_path
+      refute File.exist?(@control_path), "Control path must be removed after stop"
+      File.unlink(@control_path) rescue nil
+      @control_path = nil
+    end
+
+    if @state_path
+      File.unlink(@state_path) rescue nil
+      @state_path = nil
+    end
+
     if @config_file
-      File.unlink(@config_file.path) rescue nil
+      File.unlink(@config_file) rescue nil
       @config_file = nil
     end
+
+    [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
   end
 
   private
+
+  def close_ios
+    until @ios_to_close.empty?
+      io = @ios_to_close.pop
+      begin
+        if io.respond_to? :sysclose
+          io.sync_close = true
+          io.sysclose unless io.closed?
+        else
+          io.close if io.respond_to?(:close) && !io.closed?
+          if io.is_a?(File) && (path = io&.path) && File.exist?(path)
+            File.unlink path
+          end
+        end
+      rescue Errno::EBADF, Errno::ENOENT, IOError
+      ensure
+        io = nil
+      end
+    end
+    @ios_to_close = nil
+  end
+
+  def bind_path
+    @bind_path ||= tmp_path('.sock')
+  end
+
+  def bind_port
+    @bind_port ||= UniquePort.call
+  end
+
+  def control_path
+    @control_path ||= tmp_path('.cntl_sock')
+  end
+
+  def control_port
+    @control_port ||= UniquePort.call
+  end
 
   def silent_and_checked_system_command(*args)
     assert(system(*args, out: File::NULL, err: File::NULL))
@@ -112,11 +165,9 @@ class TestIntegration < PumaTest
       if no_bind
         "#{BASE} #{puma_path} #{config} #{argv}"
       elsif unix
-        "#{BASE} #{puma_path} #{config} -b unix://#{@bind_path} #{argv}"
+        "#{BASE} #{puma_path} #{config} -b unix://#{bind_path} #{argv}"
       else
-        @tcp_port = UniquePort.call
-        @bind_port = @tcp_port
-        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{@tcp_port} #{argv}"
+        "#{BASE} #{puma_path} #{config} -b tcp://#{HOST}:#{bind_port} #{argv}"
       end
 
     env['PUMA_DEBUG'] = 'true' if puma_debug
@@ -137,14 +188,17 @@ class TestIntegration < PumaTest
   # that is already stopped/killed, especially since Process.wait2 is
   # blocking
   def stop_server(pid = @pid, signal: :TERM)
+    ret = nil
     begin
       Process.kill signal, pid
     rescue Errno::ESRCH
     end
     begin
-      Process.wait2 pid
+      ret = Process.wait2 pid
     rescue Errno::ECHILD
     end
+    @server_stopped = true
+    ret
   end
 
   # Most integration tests do not stop/shutdown the server, which is handled by
@@ -227,7 +281,7 @@ class TestIntegration < PumaTest
       end
     rescue StandardError => e
       error_retries += 1
-      raise(e, "Waiting for server to log #{match_obj.inspect}") if error_retries == LOG_ERROR_QTY
+      raise(Minitest::Assertion,  "Waiting for server to log #{match_obj.inspect} raised #{e.class}") if error_retries == LOG_ERROR_QTY
       sleep LOG_ERROR_SLEEP
       retry
     end
@@ -237,8 +291,21 @@ class TestIntegration < PumaTest
     line
   end
 
+  def open_client_socket(unix: false, timeout: 3)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    retries = 0
+    begin
+      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
+    rescue Errno::EADDRNOTAVAIL => e
+      raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      retries += 1
+      sleep 0.01 * retries.clamp(0, 10)
+      retry
+    end
+  end
+
   def connect(path = nil, unix: false)
-    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    s = open_client_socket(unix: unix)
     @ios_to_close << s
     s << "GET /#{path} HTTP/1.1\r\n\r\n"
     s
@@ -247,7 +314,7 @@ class TestIntegration < PumaTest
   # use only if all socket writes are fast
   # does not wait for a read
   def fast_connect(path = nil, unix: false)
-    s = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+    s = open_client_socket(unix: unix)
     @ios_to_close << s
     fast_write s, "GET /#{path} HTTP/1.1\r\n\r\n"
     s
@@ -348,18 +415,26 @@ class TestIntegration < PumaTest
     else
       # Errno::ECONNABORTED is thrown intermittently on TCPSocket.new
       # Errno::ECONNABORTED is thrown by Windows on read or write
-      DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
-               [IOError, Errno::ECONNREFUSED, Errno::EPIPE, Errno::ECONNABORTED]
+      DARWIN ? [IOError, Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::EPIPE, Errno::EBADF, EOFError, Errno::ECONNABORTED] :
+               [IOError, Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, Errno::EPIPE, Errno::ECONNABORTED]
     end
   end
 
   def set_pumactl_args(unix: false)
     if unix
-      @control_path = tmp_path('.cntl_sock')
-      "--control-url unix://#{@control_path} --control-token #{TOKEN}"
+      "--control-url unix://#{control_path} --control-token #{TOKEN}"
     else
-      @control_tcp_port = UniquePort.call
-      "--control-url tcp://#{HOST}:#{@control_tcp_port} --control-token #{TOKEN}"
+      "--control-url tcp://#{HOST}:#{control_port} --control-token #{TOKEN}"
+    end
+  end
+
+  def set_pumactl_config(unix: false)
+    if unix
+      @control_path = tmp_path('.cntl_sock')
+      "activate_control_app 'unix://#{control_path}', { auth_token: '#{TOKEN}' }"
+    else
+      @control_port = UniquePort.call
+      "activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }"
     end
   end
 
@@ -367,10 +442,12 @@ class TestIntegration < PumaTest
     arg =
       if no_bind
         argv.split(/ +/)
-      elsif @control_path && !@control_tcp_port
+      elsif @control_path && !@control_port
         %W[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      elsif @control_tcp_port && !@control_path
-        %W[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+      elsif @control_port && !@control_path
+        %W[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
+      else
+        flunk 'Both @control_path and @control_port esist?'
       end
 
     r, w = IO.pipe
@@ -384,10 +461,10 @@ class TestIntegration < PumaTest
     arg =
       if no_bind
         argv
-      elsif @control_path && !@control_tcp_port
+      elsif @control_path && !@control_port
         %Q[-C unix://#{@control_path} -T #{TOKEN} #{argv}]
-      elsif @control_tcp_port && !@control_path
-        %Q[-C tcp://#{HOST}:#{@control_tcp_port} -T #{TOKEN} #{argv}]
+      elsif @control_port && !@control_path
+        %Q[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
       end
 
     pumactl_path = File.expand_path '../../../bin/pumactl', __FILE__
@@ -415,10 +492,10 @@ class TestIntegration < PumaTest
       log: nil
     )
     skipped = true
-    skip_if :jruby, suffix: <<-MSG
- - file descriptors are not preserved on exec on JRuby; connection reset errors are expected during restarts
-    MSG
+    skip_if :jruby, suffix: ' - file descriptors are not preserved on exec on JRuby; ' \
+      'connection reset errors are expected during restarts'
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
+    skipped = nil
 
     clustered = (workers || 0) >= 2
 
@@ -429,7 +506,6 @@ class TestIntegration < PumaTest
       cli_server args, unix: unix, config: config, log: log
     end
 
-    skipped = false
     replies = Hash.new 0
     refused = thread_run_refused unix: false
     message = 'A' * 16_256  # 2^14 - 128
@@ -445,7 +521,7 @@ class TestIntegration < PumaTest
         num_requests.times do |req_num|
           begin
             begin
-              socket = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, @tcp_port)
+              socket = open_client_socket(unix: unix)
               fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
             rescue => e
               replies[:write_error] += 1
@@ -460,7 +536,7 @@ class TestIntegration < PumaTest
             else
               mutex.synchronize { replies[:unexpected_response] += 1 }
             end
-          rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN
+          rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN, Errno::ENOTSOCK
             # connection was accepted but then closed
             # client would see an empty response
             # Errno::EBADF Windows may not be able to make a connection
@@ -512,7 +588,7 @@ class TestIntegration < PumaTest
           begin
             get_worker_pids phase, log: log
             # Wait with an exponential backoff before signaling next restart
-            sleep 0.15 * (2 ** restart_count)
+            sleep 0.15 * restart_count
           rescue Minitest::Assertion # Timeout
             run = false
           rescue Errno::EBADF # bad restart?
@@ -566,13 +642,14 @@ class TestIntegration < PumaTest
     end
 
   ensure
-    return if skipped
-    if passed?
-      msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
-      $debugging_info << "#{full_name}\n#{msg}\n"
-    else
-      client_threads.each { |thr| thr.kill if thr.is_a? Thread }
-      $debugging_info << "#{full_name}\n#{msg}\n"
+    unless skipped
+      if passed?
+        msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
+        $debugging_info << "#{full_name}\n#{msg}\n"
+      else
+        client_threads.each { |thr| thr.kill if thr.is_a? Thread }
+        $debugging_info << "#{full_name}\n#{msg}\n"
+      end
     end
   end
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
@@ -13,7 +15,7 @@ class TestURLMap < TestIntegration
     skip_if :jruby
     env = { "BUNDLE_GEMFILE" => "#{__dir__}/url_map_test/Gemfile" }
     Dir.chdir("#{__dir__}/url_map_test") do
-      cli_server set_pumactl_args, env: env
+      cli_server set_pumactl_args, env: env, log: true
     end
     connection = connect("/ok")
     # Puma 6.2.2 and below will time out here with Ruby v3.3

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # benchmarks/local/long_tail_hey.sh
 

@@ -12,7 +12,7 @@ module Puma
   # #handle_request, which is called in Server#process_client.
   # @version 5.0.3
   #
-  module Request # :nodoc:
+  module Response # :nodoc:
 
     # Single element array body: smaller bodies are written to io_buffer first,
     # then a single write from io_buffer. Larger sizes are written separately.
@@ -36,8 +36,11 @@ module Puma
     # Takes the request contained in +client+, invokes the Rack application to construct
     # the response and writes it back to +client.io+.
     #
-    # It'll return +false+ when the connection is closed, this doesn't mean
+    # It'll return +:close+ when the connection is closed, this doesn't mean
     # that the response wasn't successful.
+    #
+    # It'll return +:keep_alive+ if the connection is a pipeline or keep-alive connection.
+    # Which may contain additional requests.
     #
     # It'll return +:async+ if the connection remains open but will be handled
     # elsewhere, i.e. the connection has been hijacked by the Rack application.
@@ -45,33 +48,15 @@ module Puma
     # Finally, it'll return +true+ on keep-alive connections.
     # @param client [Puma::Client]
     # @param requests [Integer]
-    # @return [Boolean,:async]
-    #
+    # @return [:close, :keep_alive, :async]
     def handle_request(client, requests)
       env = client.env
       io_buffer = client.io_buffer
       socket  = client.io   # io may be a MiniSSL::Socket
       app_body = nil
+      error = nil
 
-      return false if closed_socket?(socket)
-
-      if client.http_content_length_limit_exceeded
-        return prepare_response(413, {}, ["Payload Too Large"], requests, client)
-      end
-
-      normalize_env env, client
-
-      env[PUMA_SOCKET] = socket
-
-      if env[HTTPS_KEY] && socket.peercert
-        env[PUMA_PEERCERT] = socket.peercert
-      end
-
-      env[HIJACK_P] = true
-      env[HIJACK] = client
-
-      env[RACK_INPUT] = client.body
-      env[RACK_URL_SCHEME] ||= default_server_port(env) == PORT_443 ? HTTPS : HTTP
+      return :close if closed_socket?(socket)
 
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
@@ -86,21 +71,9 @@ module Puma
         }
       end
 
-      req_env_post_parse env
-
-      # A rack extension. If the app writes #call'ables to this
-      # array, we will invoke them when the request is done.
-      #
-      env[RACK_AFTER_REPLY] ||= []
-
       begin
-        if @supported_http_methods == :any || @supported_http_methods.key?(env[REQUEST_METHOD])
-          status, headers, app_body = @thread_pool.with_force_shutdown do
-            @app.call(env)
-          end
-        else
-          @log_writer.log "Unsupported HTTP method used: #{env[REQUEST_METHOD]}"
-          status, headers, app_body = [501, {}, ["#{env[REQUEST_METHOD]} method is not supported"]]
+        status, headers, app_body = @thread_pool.with_force_shutdown do
+          @app.call(env)
         end
 
         # app_body needs to always be closed, hold value in case lowlevel_error
@@ -119,28 +92,40 @@ module Puma
 
           return :async
         end
-      rescue ThreadPool::ForceShutdown => e
-        @log_writer.unknown_error e, client, "Rack app"
+      rescue ThreadPool::ForceShutdown => error
+        @log_writer.unknown_error error, client, "Rack app"
         @log_writer.log "Detected force shutdown of a thread"
 
-        status, headers, res_body = lowlevel_error(e, env, 503)
-      rescue Exception => e
-        @log_writer.unknown_error e, client, "Rack app"
+        status, headers, res_body = lowlevel_error(error, env, 503)
+      rescue Exception => error
+        @log_writer.unknown_error error, client, "Rack app"
 
-        status, headers, res_body = lowlevel_error(e, env, 500)
+        status, headers, res_body = lowlevel_error(error, env, 500)
       end
       prepare_response(status, headers, res_body, requests, client)
     ensure
       io_buffer.reset
-      uncork_socket client.io
       app_body.close if app_body.respond_to? :close
       client&.tempfile_close
-      after_reply = env[RACK_AFTER_REPLY] || []
-      begin
-        after_reply.each { |o| o.call }
-      rescue StandardError => e
-        @log_writer.debug_error e
-      end unless after_reply.empty?
+      if after_reply = env[RACK_AFTER_REPLY]
+        after_reply.each do |o|
+          begin
+            o.call
+          rescue StandardError => e
+            @log_writer.debug_error e
+          end
+        end
+      end
+
+      if response_finished = env[RACK_RESPONSE_FINISHED]
+        response_finished.reverse_each do |o|
+          begin
+            o.call(env, status, headers, error)
+          rescue StandardError => e
+            @log_writer.debug_error e
+          end
+        end
+      end
     end
 
     # Assembles the headers and prepares the body for actually sending the
@@ -152,26 +137,16 @@ module Puma
     #   a call to `Server#lowlevel_error`
     # @param requests [Integer] number of inline requests handled
     # @param client [Puma::Client]
-    # @return [Boolean,:async] keep-alive status or `:async`
+    # @return [:close, :keep_alive, :async]
     def prepare_response(status, headers, res_body, requests, client)
       env = client.env
       socket = client.io
       io_buffer = client.io_buffer
 
-      return false if closed_socket?(socket)
+      return :close if closed_socket?(socket)
 
       # Close the connection after a reasonable number of inline requests
-      # if the server is at capacity and the listener has a new connection ready.
-      # This allows Puma to service connections fairly when the number
-      # of concurrent connections exceeds the size of the threadpool.
-      force_keep_alive = if @enable_keep_alives
-        requests < @max_fast_inline ||
-        @thread_pool.busy_threads < @max_threads ||
-        !client.listener.to_io.wait_readable(0)
-      else
-        # Always set force_keep_alive to false if the server has keep-alives not enabled.
-        false
-      end
+      force_keep_alive = @enable_keep_alives && client.requests_served < @max_keep_alive
 
       resp_info = str_headers(env, status, headers, res_body, io_buffer, force_keep_alive)
 
@@ -191,7 +166,8 @@ module Puma
           elsif res_body.is_a?(File) && res_body.respond_to?(:size)
             body = res_body
             content_length = body.size
-          elsif res_body.respond_to?(:to_path) && File.readable?(fn = res_body.to_path)
+          elsif res_body.respond_to?(:to_path) && (fn = res_body.to_path) &&
+              File.readable?(fn)
             body = File.open fn, 'rb'
             content_length = body.size
             close_body = true
@@ -199,7 +175,7 @@ module Puma
             body = res_body
           end
         elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) &&
-            File.readable?(fn = res_body.to_path)
+            (fn = res_body.to_path) && File.readable?(fn = res_body.to_path)
           body = File.open fn, 'rb'
           content_length = body.size
           close_body = true
@@ -237,8 +213,9 @@ module Puma
 
           io_buffer << LINE_END
           fast_write_str socket, io_buffer.read_and_reset
-          socket.flush
-          return keep_alive
+
+          uncork_socket socket.flush
+          return keep_alive ? :keep_alive : :close
         end
       else
         if content_length
@@ -256,25 +233,16 @@ module Puma
       # response_hijack.call
       if response_hijack
         fast_write_str socket, io_buffer.read_and_reset
-        uncork_socket socket
+        uncork_socket socket.flush
         response_hijack.call socket
         return :async
       end
 
       fast_write_response socket, body, io_buffer, chunked, content_length.to_i
       body.close if close_body
-      keep_alive
-    end
 
-    # @param env [Hash] see Puma::Client#env, from request
-    # @return [Puma::Const::PORT_443,Puma::Const::PORT_80]
-    #
-    def default_server_port(env)
-      if ['on', HTTPS].include?(env[HTTPS_KEY]) || env[HTTP_X_FORWARDED_PROTO].to_s[0...5] == HTTPS || env[HTTP_X_FORWARDED_SCHEME] == HTTPS || env[HTTP_X_FORWARDED_SSL] == "on"
-        PORT_443
-      else
-        PORT_80
-      end
+      # if we're shutting down, close keep_alive connections
+      !shutting_down? && keep_alive ? :keep_alive : :close
     end
 
     # Used to write 'early hints', 'no body' responses, 'hijacked' responses,
@@ -391,6 +359,7 @@ module Puma
         end
       end
       socket.flush
+      uncork_socket socket
     rescue Errno::EAGAIN, Errno::EWOULDBLOCK
       raise ConnectionError, SOCKET_WRITE_ERR_MSG
     rescue  Errno::EPIPE, SystemCallError, IOError
@@ -398,85 +367,6 @@ module Puma
     end
 
     private :fast_write_str, :fast_write_response
-
-    # Given a Hash +env+ for the request read from +client+, add
-    # and fixup keys to comply with Rack's env guidelines.
-    # @param env [Hash] see Puma::Client#env, from request
-    # @param client [Puma::Client] only needed for Client#peerip
-    #
-    def normalize_env(env, client)
-      if host = env[HTTP_HOST]
-        # host can be a hostname, ipv4 or bracketed ipv6. Followed by an optional port.
-        if colon = host.rindex("]:") # IPV6 with port
-          env[SERVER_NAME] = host[0, colon+1]
-          env[SERVER_PORT] = host[colon+2, host.bytesize]
-        elsif !host.start_with?("[") && colon = host.index(":") # not hostname or IPV4 with port
-          env[SERVER_NAME] = host[0, colon]
-          env[SERVER_PORT] = host[colon+1, host.bytesize]
-        else
-          env[SERVER_NAME] = host
-          env[SERVER_PORT] = default_server_port(env)
-        end
-      else
-        env[SERVER_NAME] = LOCALHOST
-        env[SERVER_PORT] = default_server_port(env)
-      end
-
-      unless env[REQUEST_PATH]
-        # it might be a dumbass full host request header
-        uri = begin
-          URI.parse(env[REQUEST_URI])
-        rescue URI::InvalidURIError
-          raise Puma::HttpParserError
-        end
-        env[REQUEST_PATH] = uri.path
-
-        # A nil env value will cause a LintError (and fatal errors elsewhere),
-        # so only set the env value if there actually is a value.
-        env[QUERY_STRING] = uri.query if uri.query
-      end
-
-      env[PATH_INFO] = env[REQUEST_PATH].to_s # #to_s in case it's nil
-
-      # From https://www.ietf.org/rfc/rfc3875 :
-      # "Script authors should be aware that the REMOTE_ADDR and
-      # REMOTE_HOST meta-variables (see sections 4.1.8 and 4.1.9)
-      # may not identify the ultimate source of the request.
-      # They identify the client for the immediate request to the
-      # server; that client may be a proxy, gateway, or other
-      # intermediary acting on behalf of the actual source client."
-      #
-
-      unless env.key?(REMOTE_ADDR)
-        begin
-          addr = client.peerip
-        rescue Errno::ENOTCONN
-          # Client disconnects can result in an inability to get the
-          # peeraddr from the socket; default to unspec.
-          if client.peer_family == Socket::AF_INET6
-            addr = UNSPECIFIED_IPV6
-          else
-            addr = UNSPECIFIED_IPV4
-          end
-        end
-
-        # Set unix socket addrs to localhost
-        if addr.empty?
-          if client.peer_family == Socket::AF_INET6
-            addr = LOCALHOST_IPV6
-          else
-            addr = LOCALHOST_IPV4
-          end
-        end
-
-        env[REMOTE_ADDR] = addr
-      end
-
-      # The legacy HTTP_VERSION header can be sent as a client header.
-      # Rack v4 may remove using HTTP_VERSION.  If so, remove this line.
-      env[HTTP_VERSION] = env[SERVER_PROTOCOL]
-    end
-    private :normalize_env
 
     # @param header_key [#to_s]
     # @return [Boolean]
@@ -491,56 +381,6 @@ module Puma
     def illegal_header_value?(header_value)
       !!(ILLEGAL_HEADER_VALUE_REGEX =~ header_value.to_s)
     end
-    private :illegal_header_key?, :illegal_header_value?
-
-    # Fixup any headers with `,` in the name to have `_` now. We emit
-    # headers with `,` in them during the parse phase to avoid ambiguity
-    # with the `-` to `_` conversion for critical headers. But here for
-    # compatibility, we'll convert them back. This code is written to
-    # avoid allocation in the common case (ie there are no headers
-    # with `,` in their names), that's why it has the extra conditionals.
-    #
-    # @note If a normalized version of a `,` header already exists, we ignore
-    #       the `,` version. This prevents clobbering headers managed by proxies
-    #       but not by clients (Like X-Forwarded-For).
-    #
-    # @param env [Hash] see Puma::Client#env, from request, modifies in place
-    # @version 5.0.3
-    #
-    def req_env_post_parse(env)
-      to_delete = nil
-      to_add = nil
-
-      env.each do |k,v|
-        if k.start_with?("HTTP_") && k.include?(",") && !UNMASKABLE_HEADERS.key?(k)
-          if to_delete
-            to_delete << k
-          else
-            to_delete = [k]
-          end
-
-          new_k = k.tr(",", "_")
-          if env.key?(new_k)
-            next
-          end
-
-          unless to_add
-            to_add = {}
-          end
-
-          to_add[new_k] = v
-        end
-      end
-
-      if to_delete # rubocop:disable Style/SafeNavigation
-        to_delete.each { |k| env.delete(k) }
-      end
-
-      if to_add
-        env.merge! to_add
-      end
-    end
-    private :req_env_post_parse
 
     # Used in the lambda for env[ `Puma::Const::EARLY_HINTS` ]
     # @param headers [Hash] the headers returned by the Rack application
@@ -581,7 +421,7 @@ module Puma
     #   response body
     # @param io_buffer [Puma::IOBuffer] modified inn place
     # @param force_keep_alive [Boolean] 'anded' with keep_alive, based on system
-    #   status and `@max_fast_inline`
+    #   status and `@max_keep_alive`
     # @return [Hash] resp_info
     # @version 5.0.3
     #
@@ -637,7 +477,8 @@ module Puma
       headers.each do |k, vs|
         next if illegal_header_key?(k)
 
-        case k.downcase
+        key = k.downcase
+        case key
         when CONTENT_LENGTH2
           next if illegal_header_value?(vs)
           # nil.to_i is 0, nil&.to_i is nil
@@ -664,10 +505,10 @@ module Puma
         if ary
           ary.each do |v|
             next if illegal_header_value?(v)
-            io_buffer.append k, colon, v, line_ending
+            io_buffer.append key, colon, v, line_ending
           end
         else
-          io_buffer.append k, colon, line_ending
+          io_buffer.append key, colon, line_ending
         end
       end
 

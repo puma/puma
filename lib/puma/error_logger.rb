@@ -78,10 +78,12 @@ module Puma
     def request_title(req)
       env = req.env
 
+      query_string = env[QUERY_STRING]
+
       REQUEST_FORMAT % [
         env[REQUEST_METHOD],
         env[REQUEST_PATH] || env[PATH_INFO],
-        env[QUERY_STRING] || "",
+        query_string.nil? || query_string.empty? ? "" : "?#{query_string}",
         env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR] || "-"
       ]
     end

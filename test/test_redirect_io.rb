@@ -4,7 +4,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestRedirectIO < TestIntegration
-  parallelize_me!
+  # takes longer (or same) when run parallel
 
   FILE_STR = 'puma startup'
 
@@ -80,23 +80,17 @@ class TestRedirectIO < TestIntegration
   end
 
   def assert_file_contents(path, include = FILE_STR)
-    retries = 0
     retries_max = 50 # 5 seconds
-    File.open(path) do |file|
-      begin
-        file.read_nonblock 1
-        file.seek 0
-        assert_includes file.read, include,
-          "File #{File.basename(path)} does not include #{include}"
-      rescue EOFError
+    content = nil
+    retries_max.times do
+      content = File.read(path)
+      if content.include?(include)
+        break
+      else
         sleep 0.1
-        retries += 1
-        if retries < retries_max
-          retry
-        else
-          flunk 'File read took too long'
-        end
       end
     end
+    assert_includes content, include,
+      "File #{File.basename(path)} does not include #{include}"
   end
 end

@@ -28,7 +28,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-22.04 , ruby: head }
-          - { os: macos-13     , ruby: head }
+          - { os: macos-15     , ruby: head }
           # Dec-2023 - incorrect line directives with Windows
           # occurs with both MSYS2 and MSFT/vpkg versions of ragel
           # - { os: windows-2022 , ruby: ucrt } 
@@ -45,7 +45,7 @@ jobs:
 
       - name: repo checkout
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: load ruby
         if: ${{ needs.skip_duplicate_runs.outputs.should_skip != 'true' }}
@@ -55,6 +55,7 @@ jobs:
           apt-get: ragel
           brew: ragel
           bundler-cache: true
+          cache-version: ragel
         timeout-minutes: 10
 
       - name: check ragel generation
@@ -78,7 +79,7 @@ jobs:
           }
 
       - name: save ragel generated files on fail
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ failure() }}
         with:
           name: ${{ matrix.os }}-ragel-generated-files

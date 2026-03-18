@@ -32,10 +32,11 @@ module Puma
             "#{k}: \"#{v}\"\n" : "#{k}: #{v}\n")
         end
       end
+
       if permission
-        File.write path, contents, mode: 'wb:UTF-8'
-      else
         File.write path, contents, mode: 'wb:UTF-8', perm: permission
+      else
+        File.write path, contents, mode: 'wb:UTF-8'
       end
     end
 

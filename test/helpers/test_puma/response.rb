@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 module TestPuma
 
   # A subclass of String, allows processing the response returned by
-  # `PumaSocket#send_http_read_response` and the `read_response` method added
-  # to native socket instances (created with `PumaSocket#new_socket` and
-  # `PumaSocket#send_http`.
+  # `PumaSocket#send_http_read_response` and the `PumaSocketInclude#read_response`
+  # method included in the socket classes (created with `PumaSocket#new_socket`,
+  # `PumaSocket#send_http`, and `PumaSocket#send_http_array`).
   #
   class Response < String
 
@@ -26,7 +28,7 @@ module TestPuma
     end
 
     def status
-      headers
+      headers unless @status
       @status
     end
 

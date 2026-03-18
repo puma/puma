@@ -62,14 +62,15 @@ When Puma runs in single mode, these stats are available at the top level. When 
   this is a "wholistic" stat reflecting the overall current state of work to be done and the capacity to do it.
 * pool_capacity: `how many threads are waiting to receive work` + `max_threads` - `running`. In a typical configuration where `min_threads`
   and `max_threads` are configured to the same number, this is simply `how many threads are waiting to receive work`. This number exists only as a stat
-  and is not used for any internal decisions, unlike `busy_theads`, which is usually a more useful stat.
+  and is not used for any internal decisions, unlike `busy_threads`, which is usually a more useful stat.
 * max_threads: the maximum number of threads Puma is configured to spool per worker
 * requests_count: the number of requests this worker has served since starting
-
+* reactor_max: the maximum observed number of requests held in Puma's "reactor" which is used for asyncronously buffering request bodies. This stat is reset on every call, so it's the maximum value observed since the last stat call.
+* backlog_max: the maximum number of requests that have been fully buffered by the reactor and placed in a ready queue, but have not yet been picked up by a server thread. This stat is reset on every call, so it's the maximum value observed since the last stat call.
 
 ### cluster mode
 
-* phase: which phase of restart the process is in, during [phased restart](https://github.com/puma/puma/blob/master/docs/restart.md)
+* phase: which phase of restart the process is in, during [phased restart](https://github.com/puma/puma/blob/main/docs/restart.md)
 * workers: ??
 * booted_workers: how many workers currently running?
 * old_workers: ??

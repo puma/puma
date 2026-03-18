@@ -90,7 +90,7 @@ module TestPuma
 
         if @config_file
           config = Puma::Configuration.new({ config_files: [@config_file] }, {})
-          config.load
+          config.clamp
           @state              ||= config.options[:state]
           @control_url        ||= config.options[:control_url]
           @control_auth_token ||= config.options[:control_auth_token]

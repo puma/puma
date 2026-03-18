@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationSingle < TestIntegration
-  parallelize_me! if ::Puma::IS_MRI
+  parallelize_me!
 
   def workers ; 0 ; end
 
@@ -51,19 +53,14 @@ class TestIntegrationSingle < TestIntegration
     assert_equal 15, status
   end
 
-  def test_on_booted_and_on_stopped
+  def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
 
-    cli_server "test/rackup/hello.ru", no_wait: true, config: <<~CONFIG
-      on_booted  { STDOUT.syswrite "on_booted called\n"  }
-      on_stopped { STDOUT.syswrite "on_stopped called\n" }
-    CONFIG
+    cli_server "-C test/config/event_after_booted_and_after_stopped.rb -C test/config/event_after_booted_exit.rb test/rackup/hello.ru",
+      no_wait: true
 
-    assert wait_for_server_to_include('on_booted called')
-
-    Process.kill :TERM, @pid
-
-    assert wait_for_server_to_include('on_stopped called')
+    assert wait_for_server_to_include('after_booted called')
+    assert wait_for_server_to_include('after_stopped called')
 
     wait_server 15
   end
@@ -114,23 +111,27 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server 'test/rackup/sleep.ru'
 
-    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3({ 'LC_ALL' => 'C' }, "curl http://#{HOST}:#{@tcp_port}/sleep10")
+    _stdin, curl_stdout, _stderr, curl_wait_thread = Open3.popen3({ 'LC_ALL' => 'C' }, "curl http://#{HOST}:#{@bind_port}/sleep10")
     sleep 1 # ensure curl send a request
 
     Process.kill :TERM, @pid
     assert wait_for_server_to_include('Gracefully stopping') # wait for server to begin graceful shutdown
 
     # Invoke a request which must be rejected
-    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@tcp_port}")
+    _stdin, _stdout, rejected_curl_stderr, rejected_curl_wait_thread = Open3.popen3("curl #{HOST}:#{@bind_port}")
 
-    assert nil != Process.getpgid(@server.pid) # ensure server is still running
-    assert nil != Process.getpgid(curl_wait_thread[:pid]) # ensure first curl invocation still in progress
+    refute_nil Process.getpgid(@server.pid) # ensure server is still running
+    refute_nil Process.getpgid(curl_wait_thread[:pid]) # ensure first curl invocation still in progress
 
     curl_wait_thread.join
     rejected_curl_wait_thread.join
 
+    re_curl_error = TRUFFLE ?
+      /Connection (refused|reset by peer)|(Couldn't|Could not) connect to server/ :
+      /Connection refused|(Couldn't|Could not) connect to server/
+
     assert_match(/Slept 10/, curl_stdout.read)
-    assert_match(/Connection refused|(Couldn't|Could not) connect to server/, rejected_curl_stderr.read)
+    assert_match(re_curl_error, rejected_curl_stderr.read)
 
     wait_server 15
   end
@@ -140,7 +141,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server 'test/rackup/hello.ru'
     begin
-      sock = TCPSocket.new(HOST, @tcp_port)
+      sock = TCPSocket.new(HOST, @bind_port)
       sock.close
     rescue => ex
       fail("Port didn't open properly: #{ex.message}")
@@ -149,7 +150,7 @@ class TestIntegrationSingle < TestIntegration
     Process.kill :INT, @pid
     wait_server
 
-    assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @tcp_port) }
+    assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @bind_port) }
   end
 
   def test_siginfo_thread_print
@@ -172,7 +173,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server '-C test/config/t1_conf.rb test/rackup/hello.ru'
 
-    system "curl http://localhost:#{@tcp_port}/ #{suppress_output}"
+    system "curl http://localhost:#{@bind_port}/ #{suppress_output}"
 
     stop_server
 
@@ -189,7 +190,7 @@ class TestIntegrationSingle < TestIntegration
 
     cli_server '-C test/config/t2_conf.rb test/rackup/hello.ru'
 
-    system "curl http://localhost:#{@tcp_port}/ > /dev/null 2>&1"
+    system "curl http://localhost:#{@bind_port}/ > /dev/null 2>&1"
 
     out=`#{BASE} bin/pumactl -F test/config/t2_conf.rb status`
 
@@ -202,6 +203,26 @@ class TestIntegrationSingle < TestIntegration
     assert_equal("Puma is started\n", out)
   ensure
     File.unlink 't2-stdout' if File.file? 't2-stdout'
+  end
+
+  def test_puma_started_log_writing_with_custom_logging
+    skip_unless_signal_exist? :TERM
+
+    cli_server '-C test/config/t4_conf.rb test/rackup/hello.ru'
+
+    system "curl http://localhost:#{@bind_port}/ > /dev/null 2>&1"
+
+    out=`#{BASE} bin/pumactl -F test/config/t4_conf.rb status`
+
+    stop_server
+
+    log = File.read('t4-stdout')
+
+    assert_match(%r!Custom logging: 127\.0\.0\.1.*GET / HTTP/1\.1!, log)
+    assert(!File.file?("t4-pid"))
+    assert_equal("Puma is started\n", out)
+  ensure
+    File.unlink 't4-stdout' if File.file? 't4-stdout'
   end
 
   def test_application_logs_are_flushed_on_write
@@ -258,7 +279,8 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_idle_timeout
-    cli_server "test/rackup/hello.ru", config: "idle_timeout 1"
+    cli_server "test/rackup/hello.ru", config: "idle_timeout 1\n" \
+      "#{set_pumactl_config}"
 
     connect
 
@@ -267,12 +289,14 @@ class TestIntegrationSingle < TestIntegration
     assert_raises Errno::ECONNREFUSED, "Connection refused" do
       connect
     end
+
+    wait_server
   end
 
   def test_pre_existing_unix_after_idle_timeout
     skip_unless :unix
 
-    File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
+    File.binwrite bind_path, 'pre existing'
 
     cli_server "-q test/rackup/hello.ru", unix: :unix, config: "idle_timeout 1"
 

@@ -4,7 +4,7 @@ require:
 
 AllCops:
   DisabledByDefault: true
-  TargetRubyVersion: 2.4
+  TargetRubyVersion: 3.0
   DisplayCopNames: true
   StyleGuideCopsOnly: false
   Exclude:

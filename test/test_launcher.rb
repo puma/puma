@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/tmp_path"
 
@@ -32,6 +34,9 @@ class TestLauncher < PumaTest
   end
 
   def test_state_permission_0640
+    state_path = nil
+    skip_if :windows # only 0644 ?
+
     state_path = tmp_path('.state')
     state_permission = 0640
 
@@ -42,9 +47,9 @@ class TestLauncher < PumaTest
 
     create_launcher(conf).write_state
 
-    assert File.stat(state_path).mode.to_s(8)[-4..-1], state_permission
+    assert_equal state_permission.to_s(8), File.stat(state_path).mode.to_s(8)[-3..-1]
   ensure
-    File.unlink state_path
+    File.unlink(state_path) if state_path
   end
 
   def test_state_permission_nil
@@ -81,7 +86,7 @@ class TestLauncher < PumaTest
       c.app -> {[200, {}, ['']]}
     end
     launcher = create_launcher(conf)
-    launcher.events.on_booted {
+    launcher.events.after_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
@@ -113,7 +118,7 @@ class TestLauncher < PumaTest
     refute_match(/Configuration:/, create_launcher.log_writer.stdout.string)
   end
 
-  def test_fire_on_stopped
+  def test_fire_after_stopped
     conf = Puma::Configuration.new do |c|
       c.app -> {[200, {}, ['']]}
     end
@@ -121,21 +126,23 @@ class TestLauncher < PumaTest
     is_stopped = nil
 
     launcher = create_launcher(conf)
-    launcher.events.on_booted {
+    launcher.events.after_booted {
       sleep 1.1 unless Puma.mri?
       launcher.stop
     }
-    launcher.events.on_stopped { is_stopped = true }
+    launcher.events.after_stopped { is_stopped = true }
 
     launcher.run
     sleep 0.2 unless Puma.mri?
-    assert is_stopped, "on_stopped not called"
+    assert is_stopped, "after_stopped not called"
   end
 
   private
 
   def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings, **kw)
-    config.options[:binds] = ["tcp://127.0.0.1:#{UniquePort.call}"]
+    config.configure do |c|
+      c.bind "tcp://127.0.0.1:#{UniquePort.call}"
+    end
     Puma::Launcher.new(config, log_writer: lw, **kw)
   end
 end

@@ -3,7 +3,7 @@
 module Puma
 
   # This is an event sink used by `Puma::Server` to handle
-  # lifecycle events such as :on_booted, :on_restart, and :on_stopped.
+  # lifecycle events such as :after_booted, :before_restart, and :after_stopped.
   # Using `Puma::DSL` it is possible to register callback hooks
   # for each event type.
   class Events
@@ -30,28 +30,43 @@ module Puma
       h
     end
 
+    def after_booted(&block)
+      register(:after_booted, &block)
+    end
+
+    def before_restart(&block)
+      register(:before_restart, &block)
+    end
+
+    def after_stopped(&block)
+      register(:after_stopped, &block)
+    end
+
     def on_booted(&block)
-      register(:on_booted, &block)
+      Puma.deprecate_method_change :on_booted, __callee__, :after_booted
+      after_booted(&block)
     end
 
     def on_restart(&block)
-      register(:on_restart, &block)
+      Puma.deprecate_method_change :on_restart, __callee__, :before_restart
+      before_restart(&block)
     end
 
     def on_stopped(&block)
-      register(:on_stopped, &block)
+      Puma.deprecate_method_change :on_stopped, __callee__, :after_stopped
+      after_stopped(&block)
     end
 
-    def fire_on_booted!
-      fire(:on_booted)
+    def fire_after_booted!
+      fire(:after_booted)
     end
 
-    def fire_on_restart!
-      fire(:on_restart)
+    def fire_before_restart!
+      fire(:before_restart)
     end
 
-    def fire_on_stopped!
-      fire(:on_stopped)
+    def fire_after_stopped!
+      fire(:after_stopped)
     end
   end
 end

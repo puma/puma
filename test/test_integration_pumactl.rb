@@ -1,29 +1,21 @@
+# frozen_string_literal: true
+
 require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationPumactl < TestIntegration
   include TmpPath
-  parallelize_me! if ::Puma.mri?
+  parallelize_me!
 
   def workers ; 2 ; end
 
   def setup
     super
-    @control_path = nil
     @state_path = tmp_path('.state')
-  end
-
-  def teardown
-    super
-
-    refute @control_path && File.exist?(@control_path), "Control path must be removed after stop"
-  ensure
-    [@state_path, @control_path].each { |p| File.unlink(p) rescue nil }
   end
 
   def test_stop_tcp
     skip_if :jruby, :truffleruby # Undiagnose thread race. TODO fix
-    @control_tcp_port = UniquePort.call
     cli_server "-q test/rackup/sleep.ru #{set_pumactl_args} -S #{@state_path}"
 
     cli_pumactl "stop"
@@ -56,7 +48,12 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_phased_restart_cluster
     skip_unless :fork
-    cli_server "-q -w #{workers} test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}", unix: true
+    cli_server "test/rackup/sleep.ru #{set_pumactl_args unix: true}", unix: true, config: <<~RUBY
+      quiet
+      workers #{workers}
+      preload_app! false
+      state_path "#{@state_path}"
+    RUBY
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
@@ -189,24 +186,28 @@ class TestIntegrationPumactl < TestIntegration
     assert_equal(1, e.status)
   end
 
+  def test_config_deprecated
+    conf_path = "test/config/config_with_deprecated.rb"
+    out = cli_pumactl_spawn "-F #{conf_path} halt", no_bind: true
+    refute_start_with out.read, 'undefined method'
+  end
+
   # calls pumactl with both a config file and a state file,  making sure that
   # puma files are required, see https://github.com/puma/puma/issues/3186
   def test_require_dependencies
     skip_if :jruby
     conf_path = tmp_path '.config.rb'
-    @tcp_port = UniquePort.call
-    @control_tcp_port = UniquePort.call
 
     File.write conf_path , <<~CONF
       state_path "#{@state_path}"
-      bind "tcp://127.0.0.1:#{@tcp_port}"
+      bind "tcp://127.0.0.1:#{bind_port}"
 
       workers 0
 
       before_fork do
       end
 
-      activate_control_app "tcp://127.0.0.1:#{@control_tcp_port}", auth_token: "#{TOKEN}"
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, ["Hello World"]]
@@ -273,9 +274,11 @@ class TestIntegrationPumactl < TestIntegration
       'backlog' => 0,
       'running' => min_threads,
       'pool_capacity'  => max_threads,
+      'busy_threads'   => 0,
+      'backlog_max' => 0,
       'max_threads'    => max_threads,
       'requests_count' => 0,
-      'busy_threads'   => 0
+      'reactor_max'    => 0,
     }
 
     pids = []
@@ -308,7 +311,7 @@ class TestIntegrationPumactl < TestIntegration
   def control_gc_stats(unix: false)
     cli_server "-t1:1 -q test/rackup/hello.ru #{set_pumactl_args unix: unix} -S #{@state_path}"
 
-    key = Puma::IS_MRI || TRUFFLE_HEAD ? "count" : "used"
+    key = Puma::IS_MRI ? "count" : "used"
 
     resp_io = cli_pumactl "gc-stats", unix: unix
     before = JSON.parse resp_io.read.split("\n", 2).last
@@ -330,10 +333,11 @@ class TestIntegrationPumactl < TestIntegration
     elsif !Puma::IS_JRUBY
       refute_equal gc_before, gc_after, "make sure a gc has happened"
     end
+  ensure
+    resp_io&.close unless resp_io&.closed?
   end
 
   def test_control_gc_stats_tcp
-    @control_tcp_port = UniquePort.call
     control_gc_stats
   end
 

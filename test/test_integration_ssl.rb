@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'helper'
 require_relative "helpers/integration"
 
@@ -16,7 +18,7 @@ end
 # the server process isn't affected by whatever is loaded in the CI process.
 
 class TestIntegrationSSL < TestIntegration
-  parallelize_me! if ::Puma.mri?
+  parallelize_me!
 
   LOCALHOST = ENV.fetch 'PUMA_CI_DFLT_HOST', 'localhost'
 
@@ -25,10 +27,6 @@ class TestIntegrationSSL < TestIntegration
   def bind_port
     @bind_port ||= UniquePort.call
     @tcp_port = @bind_port
-  end
-
-  def control_tcp_port
-    @control_tcp_port ||= UniquePort.call
   end
 
   def with_server(config)
@@ -65,7 +63,7 @@ class TestIntegrationSSL < TestIntegration
         }
       end
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -187,7 +185,7 @@ class TestIntegrationSSL < TestIntegration
         verify_mode: 'none'
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -211,7 +209,7 @@ class TestIntegrationSSL < TestIntegration
       require 'localhost'
       ssl_bind '#{HOST}', '#{bind_port}'
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -246,7 +244,7 @@ class TestIntegrationSSL < TestIntegration
         key_password_command: key_command
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
@@ -281,7 +279,7 @@ class TestIntegrationSSL < TestIntegration
         key_password_command: key_command
       }
 
-      activate_control_app 'tcp://#{HOST}:#{control_tcp_port}', { auth_token: '#{TOKEN}' }
+      #{set_pumactl_config}
 
       app do |env|
         [200, {}, [env['rack.url_scheme']]]

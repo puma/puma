@@ -1,4 +1,7 @@
+# frozen_string_literal: true
+
 require_relative "helper"
+require_relative "helpers/test_puma/puma_socket"
 require "puma/events"
 require "puma/server"
 require "net/http"
@@ -17,8 +20,13 @@ require "rack/body_proxy"
 class TestPumaServerHijack < PumaTest
   parallelize_me!
 
+  include TestPuma
+  include TestPuma::PumaSocket
+
+  HOST = HOST4
+
   def setup
-    @host = "127.0.0.1"
+    @host = HOST
 
     @ios = []
 
@@ -33,44 +41,21 @@ class TestPumaServerHijack < PumaTest
     @server.stop(true)
     assert_empty @log_writer.stdout.string
     assert_empty @log_writer.stderr.string
-
-    # Errno::EBADF raised on macOS
-    @ios.each do |io|
-      begin
-        io.close if io.respond_to?(:close) && !io.closed?
-        File.unlink io.path if io.is_a? File
-      rescue Errno::EBADF
-      ensure
-        io = nil
-      end
-    end
   end
 
   def server_run(**options, &block)
     options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
+    options[:max_threads] ||= 1
     @server = Puma::Server.new block || @app, @events, options
-    @port = (@server.add_tcp_listener @host, 0).addr[1]
+    @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
-  end
-
-  # only for shorter bodies!
-  def send_http_and_sysread(req)
-    send_http(req).sysread 2_048
-  end
-
-  def send_http_and_read(req)
-    send_http(req).read
-  end
-
-  def send_http(req)
-    t = new_connection
-    t.syswrite req
-    t
-  end
-
-  def new_connection
-    TCPSocket.new(@host, @port).tap {|sock| @ios << sock}
+    min_threads = options[:min_threads]
+    # below may help with intermittent failures Aug-2025
+    until @server.running >= min_threads
+      Thread.pass
+      sleep 0.01
+    end unless Puma::IS_MRI
   end
 
   # Full hijack does not return headers
@@ -85,7 +70,7 @@ class TestPumaServerHijack < PumaTest
       [200, {}, body]
     end
 
-    sock = send_http "GET / HTTP/1.1\r\n\r\n"
+    sock = send_http GET_11
 
     sock.wait_readable 2
     assert_equal "Server listening", sock.sysread(256)
@@ -117,12 +102,13 @@ class TestPumaServerHijack < PumaTest
       [101, headers, body]
     end
 
-    sock = send_http "GET / HTTP/1.1\r\n\r\n"
-    resp = sock.sysread 1_024
+    sock = send_http GET_11
+    response = sock.read_response
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
 
-    assert_includes resp, 'Connection: Upgrade'
+    assert_includes response.headers, 'connection: Upgrade'
+    sock.wait_readable 0.2 # for TruffleRuby Errno::EAGAIN
     assert_equal echo_msg, sock.sysread(256)
   end
 
@@ -145,12 +131,13 @@ class TestPumaServerHijack < PumaTest
       [101, headers, []]
     end
 
-    sock = send_http "GET / HTTP/1.1\r\n\r\n"
-    resp = sock.sysread 1_024
+    sock = send_http GET_11
+    response = sock.read_response
     echo_msg = "This should echo..."
     sock.syswrite echo_msg
 
-    assert_includes resp, 'Connection: Upgrade'
+    assert_includes response.headers, 'connection: Upgrade'
+    sock.wait_readable 0.2 # for TruffleRuby Errno::EAGAIN
     assert_equal echo_msg, sock.sysread(256)
   end
 
@@ -167,9 +154,9 @@ class TestPumaServerHijack < PumaTest
     end
 
     # using sysread may only receive part of the response
-    data = send_http_and_read "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+    response = send_http_read_response "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nabcde", data
+    assert_equal "HTTP/1.0 200 OK\r\ncontent-length: 5\r\n\r\nabcde", response
   end
 
   def test_partial_hijack_body_closes_body
@@ -207,17 +194,17 @@ class TestPumaServerHijack < PumaTest
       end
     end
 
-    sock1 = send_http "GET / HTTP/1.1\r\n\r\n"
+    sock1 = send_http GET_11
     sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.3 : 0.1)
-    resp1 = sock1.sysread 1_024
+    response1 = sock1.read_response
 
     sleep 0.01 # time for close block to be called ?
 
-    sock2 = send_http "GET / HTTP/1.1\r\n\r\n"
+    sock2 = send_http GET_11
     sleep (Puma::IS_WINDOWS || !Puma::IS_MRI ? 0.3 : 0.1)
-    resp2 = sock2.sysread 1_024
+    response2 = sock2.read_response
 
-    assert_operator resp1, :end_with?, 'hijacked'
-    assert_operator resp2, :end_with?, 'hijacked'
+    assert_operator response1, :end_with?, 'hijacked'
+    assert_operator response2, :end_with?, 'hijacked'
   end
 end

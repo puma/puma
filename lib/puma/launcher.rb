@@ -22,12 +22,15 @@ module Puma
     #
     # +conf+ A Puma::Configuration object indicating how to run the server.
     #
-    # +launcher_args+ A Hash that currently has one required key `:events`,
-    # this is expected to hold an object similar to an `Puma::LogWriter.stdio`,
-    # this object will be responsible for broadcasting Puma's internal state
-    # to a logging destination. An optional key `:argv` can be supplied,
-    # this should be an array of strings, these arguments are re-used when
-    # restarting the puma server.
+    # +launcher_args+ A Hash that has a few optional keys.
+    # - +:log_writer+:: Expected to hold an object similar to `Puma::LogWriter.stdio`.
+    #   This object will be responsible for broadcasting Puma's internal state
+    #   to a logging destination.
+    # - +:events+:: Expected to hold an object similar to `Puma::Events`.
+    # - +:argv+:: Expected to be an array of strings.
+    # - +:env+:: Expected to hold a hash of environment variables.
+    #
+    # These arguments are re-used when restarting the puma server.
     #
     # Examples:
     #
@@ -39,27 +42,44 @@ module Puma
     #   end
     #   Puma::Launcher.new(conf, log_writer: Puma::LogWriter.stdio).run
     def initialize(conf, launcher_args={})
-      @runner        = nil
-      @log_writer    = launcher_args[:log_writer] || LogWriter::DEFAULT
-      @events        = launcher_args[:events] || Events.new
-      @argv          = launcher_args[:argv] || []
+      ## Minimal initialization before potential early restart (e.g. from bundle pruning)
+
+      @config = conf
+      # Advertise the CLI Configuration before config files are loaded
+      Puma.cli_config = @config if defined?(Puma.cli_config)
+      @config.clamp
+
+      @options = @config.options
+
+      @log_writer = launcher_args[:log_writer] || LogWriter::DEFAULT
+      @log_writer.formatter = LogWriter::PidFormatter.new if clustered?
+      @log_writer.formatter = @options[:log_formatter] if @options[:log_formatter]
+      @log_writer.custom_logger = @options[:custom_logger] if @options[:custom_logger]
+      @options[:log_writer] = @log_writer
+      @options[:logger] = @log_writer if clustered?
+
+      @events = launcher_args[:events] || Events.new
+
+      @argv = launcher_args[:argv] || []
       @original_argv = @argv.dup
-      @config        = conf
+
+      ## End minimal initialization
+
+      generate_restart_data
+      Dir.chdir(@restart_dir)
+
+      prune_bundler!
 
       env = launcher_args.delete(:env) || ENV
 
-      @config.options[:log_writer] = @log_writer
+      # Log after prune_bundler! to avoid duplicate logging if a restart occurs
+      log_config if env['PUMA_LOG_CONFIG']
 
-      # Advertise the Configuration
-      Puma.cli_config = @config if defined?(Puma.cli_config)
+      @binder = Binder.new(@log_writer, @options)
+      @binder.create_inherited_fds(env).each { |k| env.delete k }
+      @binder.create_activated_fds(env).each { |k| env.delete k }
 
-      @config.load
-
-      @binder        = Binder.new(@log_writer, conf)
-      @binder.create_inherited_fds(ENV).each { |k| ENV.delete k }
-      @binder.create_activated_fds(ENV).each { |k| ENV.delete k }
-
-      @environment = conf.environment
+      @environment = @config.environment
 
       # Load the systemd integration if we detect systemd's NOTIFY_SOCKET.
       # Skip this on JRuby though, because it is incompatible with the systemd
@@ -68,37 +88,21 @@ module Puma
         @config.plugins.create('systemd')
       end
 
-      if @config.options[:bind_to_activated_sockets]
-        @config.options[:binds] = @binder.synthesize_binds_from_activated_fs(
-          @config.options[:binds],
-          @config.options[:bind_to_activated_sockets] == 'only'
+      if @options[:bind_to_activated_sockets]
+        @options[:binds] = @binder.synthesize_binds_from_activated_fs(
+          @options[:binds],
+          @options[:bind_to_activated_sockets] == 'only'
         )
       end
-
-      @options = @config.options
-      @config.clamp
-
-      @log_writer.formatter = LogWriter::PidFormatter.new if clustered?
-      @log_writer.formatter = options[:log_formatter] if @options[:log_formatter]
-
-      @log_writer.custom_logger = options[:custom_logger] if @options[:custom_logger]
-
-      generate_restart_data
 
       if clustered? && !Puma.forkable?
         unsupported "worker mode not supported on #{RUBY_ENGINE} on this platform"
       end
 
-      Dir.chdir(@restart_dir)
-
-      prune_bundler!
-
       @environment = @options[:environment] if @options[:environment]
       set_rack_environment
 
       if clustered?
-        @options[:logger] = @log_writer
-
         @runner = Cluster.new(self)
       else
         @runner = Single.new(self)
@@ -106,8 +110,6 @@ module Puma
       Puma.stats_object = @runner
 
       @status = :run
-
-      log_config if env['PUMA_LOG_CONFIG']
     end
 
     attr_reader :binder, :log_writer, :events, :config, :options, :restart_dir
@@ -140,7 +142,10 @@ module Puma
     # Delete the configured pidfile
     def delete_pidfile
       path = @options[:pidfile]
-      File.unlink(path) if path && File.exist?(path)
+      begin
+        File.unlink(path) if path
+      rescue Errno::ENOENT
+      end
     end
 
     # Begin async shutdown of the server
@@ -280,7 +285,7 @@ module Puma
     end
 
     def do_graceful_stop
-      @events.fire_on_stopped!
+      @events.fire_after_stopped!
       @runner.stop_blocked
     end
 
@@ -292,8 +297,8 @@ module Puma
     end
 
     def restart!
-      @events.fire_on_restart!
-      @config.run_hooks :on_restart, self, @log_writer
+      @events.fire_before_restart!
+      @config.run_hooks :before_restart, self, @log_writer
 
       if Puma.jruby?
         close_binder_listeners
@@ -385,9 +390,9 @@ module Puma
         # using it.
         @restart_dir = Dir.pwd
 
-        # Use the same trick as unicorn, namely favor PWD because
-        # it will contain an unresolved symlink, useful for when
-        # the pwd is /data/releases/current.
+      # Use the same trick as unicorn, namely favor PWD because
+      # it will contain an unresolved symlink, useful for when
+      # the pwd is /data/releases/current.
       elsif dir = ENV['PWD']
         s_env = File.stat(dir)
         s_pwd = File.stat(Dir.pwd)
@@ -474,8 +479,8 @@ module Puma
       end
 
       begin
-        unless Puma.jruby? # INFO in use by JVM already
-          Signal.trap "SIGINFO" do
+        if Puma.backtrace_signal
+          Signal.trap Puma.backtrace_signal do
             thread_status do |name, backtrace|
               @log_writer.log(name)
               @log_writer.log(backtrace.map { |bt| "  #{bt}" })
@@ -483,8 +488,7 @@ module Puma
           end
         end
       rescue Exception
-        # Not going to log this one, as SIGINFO is *BSD only and would be pretty annoying
-        # to see this constantly on Linux.
+        log "*** SIGINFO/SIGPWR not implemented, signal based backtrace unavailable!"
       end
     end
 

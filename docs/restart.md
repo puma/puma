@@ -29,7 +29,7 @@ Any of the following will cause a Puma server to perform a hot restart:
 
 * The newly started Puma process changes its current working directory to the directory specified by the `directory` option. If `directory` is set to symlink, this is automatically re-evaluated, so this mechanism can be used to upgrade the application.
 * Only one version of the application is running at a time.
-* `on_restart` is invoked just before the server shuts down. This can be used to clean up resources (like long-lived database connections) gracefully. Since Ruby 2.0, it is not typically necessary to explicitly close file descriptors on restart. This is because any file descriptor opened by Ruby will have the `FD_CLOEXEC` flag set, meaning that file descriptors are closed on `exec`. `on_restart` is useful, though, if your application needs to perform any more graceful protocol-specific shutdown procedures before closing connections.
+* `before_restart` is invoked just before the server shuts down. This can be used to clean up resources (like long-lived database connections) gracefully. Since Ruby 2.0, it is not typically necessary to explicitly close file descriptors on restart. This is because any file descriptor opened by Ruby will have the `FD_CLOEXEC` flag set, meaning that file descriptors are closed on `exec`. `before_restart` is useful, though, if your application needs to perform any more graceful protocol-specific shutdown procedures before closing connections.
 
 ## Phased restart
 
@@ -59,7 +59,7 @@ Any of the following will cause a Puma server to perform a phased restart:
 
 * When a phased restart begins, the Puma master process changes its current working directory to the directory specified by the `directory` option. If `directory` is set to symlink, this is automatically re-evaluated, so this mechanism can be used to upgrade the application.
 * On a single server, it's possible that two versions of the application are running concurrently during a phased restart.
-* `on_restart` is not invoked
+* `before_restart` is not invoked
 * Phased restarts can be slow for Puma clusters with many workers. Hot restarts often complete more quickly, but at the cost of increased latency during the restart.
 * Phased restarts cannot be used to upgrade any gems loaded by the Puma master process, including `puma` itself, anything in `extra_runtime_dependencies`, or dependencies thereof. Upgrading other gems is safe.
 * If you remove the gems from old releases as part of your deployment strategy, there are additional considerations. Do not put any gems into `extra_runtime_dependencies` that have native extensions or have dependencies that have native extensions (one common example is `puma_worker_killer` and its dependency on `ffi`). Workers will fail on boot during a phased restart. The underlying issue is recorded in [an issue on the rubygems project](https://github.com/rubygems/rubygems/issues/4004). Hot restarts are your only option here if you need these dependencies.

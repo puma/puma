@@ -33,7 +33,6 @@ module Puma
       @wakeup.write PIPE_WAKEUP unless @wakeup.closed?
 
     rescue SystemCallError, IOError
-      Puma::Util.purge_interrupt_queue
     end
 
     def development?
@@ -71,7 +70,7 @@ module Puma
         token = nil if token.empty? || token == 'none'
       end
 
-      app = Puma::App::Status.new @launcher, token
+      app = Puma::App::Status.new @launcher, token: token, data_only: @options[:control_data_only]
 
       # A Reactor is not created and nio4r is not loaded when 'queue_requests: false'
       # Use `nil` for events, no hooks in control server
@@ -93,22 +92,6 @@ module Puma
       @control.binder.close_listeners if @control
     end
 
-    # @!attribute [r] ruby_engine
-    # @deprecated Use `RUBY_DESCRIPTION` instead
-    def ruby_engine
-      warn "Puma::Runner#ruby_engine is deprecated; use RUBY_DESCRIPTION instead. It will be removed in puma v7."
-
-      if !defined?(RUBY_ENGINE) || RUBY_ENGINE == "ruby"
-        "ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
-      else
-        if defined?(RUBY_ENGINE_VERSION)
-          "#{RUBY_ENGINE} #{RUBY_ENGINE_VERSION} - ruby #{RUBY_VERSION}"
-        else
-          "#{RUBY_ENGINE} #{RUBY_VERSION}"
-        end
-      end
-    end
-
     def output_header(mode)
       min_t = @options[:min_threads]
       max_t = @options[:max_threads]
@@ -126,6 +109,14 @@ module Puma
       else
         log "*          PID: #{Process.pid}"
       end
+    end
+
+    def warn_ruby_mn_threads
+      return if !ENV.key?('RUBY_MN_THREADS')
+
+      log "! WARNING: Detected `RUBY_MN_THREADS=#{ENV['RUBY_MN_THREADS']}`"
+      log "! This setting is known to cause performance regressions with Puma."
+      log "! Consider disabling this environment variable: https://github.com/puma/puma/issues/3720"
     end
 
     def redirected_io?

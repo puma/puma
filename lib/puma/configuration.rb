@@ -3,6 +3,7 @@
 require_relative 'plugin'
 require_relative 'const'
 require_relative 'dsl'
+require_relative 'events'
 
 module Puma
   # A class used for storing "leveled" configuration options.
@@ -112,7 +113,7 @@ module Puma
   #     config = Configuration.new({}) do |user_config, file_config, default_config|
   #       user_config.port 3003
   #     end
-  #     config.load
+  #     config.clamp
   #     puts config.options[:port]
   #     # => 3003
   #
@@ -125,10 +126,13 @@ module Puma
   # is done because an environment variable may have been modified while loading
   # configuration files.
   class Configuration
+    class NotLoadedError < StandardError; end
+    class NotClampedError < StandardError; end
+
     DEFAULTS = {
       auto_trim_time: 30,
       binds: ['tcp://0.0.0.0:9292'.freeze],
-      clean_thread_locals: false,
+      fiber_per_request: !!ENV.fetch("PUMA_FIBER_PER_REQUEST", false),
       debug: false,
       enable_keep_alives: true,
       early_hints: nil,
@@ -140,19 +144,18 @@ module Puma
       io_selector_backend: :auto,
       log_requests: false,
       logger: STDOUT,
-      # How many requests to attempt inline before sending a client back to
-      # the reactor to be subject to normal ordering. The idea here is that
-      # we amortize the cost of going back to the reactor for a well behaved
-      # but very "greedy" client across 10 requests. This prevents a not
-      # well behaved client from monopolizing the thread forever.
-      max_fast_inline: 10,
+      # Limits how many requests a keep alive connection can make.
+      # The connection will be closed after it reaches `max_keep_alive`
+      # requests.
+      max_keep_alive: 999,
       max_threads: Puma.mri? ? 5 : 16,
       min_threads: 0,
       mode: :http,
       mutate_stdout_and_stderr_to_sync_on_write: true,
       out_of_band: [],
       # Number of seconds for another request within a persistent session.
-      persistent_timeout: 20,
+      persistent_timeout: 65, # PUMA_PERSISTENT_TIMEOUT
+      prune_bundler: false,
       queue_requests: true,
       rackup: 'config.ru'.freeze,
       raise_exception_on_sigterm: true,
@@ -174,26 +177,33 @@ module Puma
     }
 
     def initialize(user_options={}, default_options = {}, env = ENV, &block)
-      default_options = self.puma_default_options(env).merge(default_options)
+      default_options = self.puma_default_options(env).merge(events: Events.new).merge(default_options)
 
-      @options     = UserFileDefaultOptions.new(user_options, default_options)
+      @_options    = UserFileDefaultOptions.new(user_options, default_options)
       @plugins     = PluginLoader.new
-      @user_dsl    = DSL.new(@options.user_options, self)
-      @file_dsl    = DSL.new(@options.file_options, self)
-      @default_dsl = DSL.new(@options.default_options, self)
-
-      if !@options[:prune_bundler]
-        default_options[:preload_app] = (@options[:workers] > 1) && Puma.forkable?
-      end
+      @events      = @_options[:events] || Events.new
+      @hooks       = {}
+      @user_dsl    = DSL.new(@_options.user_options, self)
+      @file_dsl    = DSL.new(@_options.file_options, self)
+      @default_dsl = DSL.new(@_options.default_options, self)
 
       @puma_bundler_pruned = env.key? 'PUMA_BUNDLER_PRUNED'
 
       if block
         configure(&block)
       end
+
+      @loaded = false
+      @clamped = false
     end
 
-    attr_reader :options, :plugins
+    attr_reader :plugins, :events, :hooks, :_options
+
+    def options
+      raise NotClampedError, "ensure clamp is called before accessing options" unless @clamped
+
+      @_options
+    end
 
     def configure
       yield @user_dsl, @file_dsl, @default_dsl
@@ -206,7 +216,7 @@ module Puma
     def initialize_copy(other)
       @conf        = nil
       @cli_options = nil
-      @options     = @options.dup
+      @_options     = @_options.dup
     end
 
     def flatten
@@ -214,7 +224,7 @@ module Puma
     end
 
     def flatten!
-      @options = @options.flatten
+      @_options = @_options.flatten
       self
     end
 
@@ -227,34 +237,34 @@ module Puma
     def puma_options_from_env(env = ENV)
       min = env['PUMA_MIN_THREADS'] || env['MIN_THREADS']
       max = env['PUMA_MAX_THREADS'] || env['MAX_THREADS']
-      workers = if env['WEB_CONCURRENCY'] == 'auto'
-        require_processor_counter
-        ::Concurrent.available_processor_count
-      else
-        env['WEB_CONCURRENCY']
-      end
+      persistent_timeout = env['PUMA_PERSISTENT_TIMEOUT']
+      workers_env = env['WEB_CONCURRENCY']
+      workers = workers_env && workers_env.strip != "" ? parse_workers(workers_env.strip) : nil
 
       {
         min_threads: min && min != "" && Integer(min),
         max_threads: max && max != "" && Integer(max),
-        workers: workers && workers != "" && Integer(workers),
+        persistent_timeout: persistent_timeout && persistent_timeout != "" && Integer(persistent_timeout),
+        workers: workers,
         environment: env['APP_ENV'] || env['RACK_ENV'] || env['RAILS_ENV'],
       }
     end
 
     def load
+      @loaded = true
       config_files.each { |config_file| @file_dsl._load_from(config_file) }
-
-      @options
+      @_options
     end
 
     def config_files
-      files = @options.all_of(:config_files)
+      raise NotLoadedError, "ensure load is called before accessing config_files" unless @loaded
+
+      files = @_options.all_of(:config_files)
 
       return [] if files == ['-']
       return files if files.any?
 
-      first_default_file = %W(config/puma/#{@options[:environment]}.rb config/puma.rb).find do |f|
+      first_default_file = %W(config/puma/#{@_options[:environment]}.rb config/puma.rb).find do |f|
         File.exist?(f)
       end
 
@@ -262,9 +272,17 @@ module Puma
     end
 
     # Call once all configuration (included from rackup files)
-    # is loaded to flesh out any defaults
+    # is loaded to finalize defaults and lock in the configuration.
+    #
+    # This also calls load if it hasn't been called yet.
     def clamp
-      @options.finalize_values
+      load unless @loaded
+      run_mode_hooks
+      set_conditional_default_options
+      @_options.finalize_values
+      @clamped = true
+      warn_hooks
+      options
     end
 
     # Injects the Configuration object into the env
@@ -283,11 +301,11 @@ module Puma
     # Indicate if there is a properly configured app
     #
     def app_configured?
-      @options[:app] || File.exist?(rackup)
+      options[:app] || File.exist?(rackup)
     end
 
     def rackup
-      @options[:rackup]
+      options[:rackup]
     end
 
     # Load the specified rackup file, pull options from
@@ -296,9 +314,9 @@ module Puma
     def app
       found = options[:app] || load_rackup
 
-      if @options[:log_requests]
+      if options[:log_requests]
         require_relative 'commonlogger'
-        logger = @options[:logger]
+        logger = options[:custom_logger] ? options[:custom_logger] : options[:logger]
         found = CommonLogger.new(found, logger)
       end
 
@@ -307,7 +325,7 @@ module Puma
 
     # Return which environment we're running in
     def environment
-      @options[:environment]
+      options[:environment]
     end
 
     def load_plugin(name)
@@ -315,18 +333,19 @@ module Puma
     end
 
     # @param key [:Symbol] hook to run
-    # @param arg [Launcher, Int] `:on_restart` passes Launcher
+    # @param arg [Launcher, Int] `:before_restart` passes Launcher
     #
     def run_hooks(key, arg, log_writer, hook_data = nil)
       log_writer.debug "Running #{key} hooks"
 
-      @options.all_of(key).each do |b|
+      options.all_of(key).each do |hook_options|
         begin
-          if Array === b
-            hook_data[b[1]] ||= Hash.new
-            b[0].call arg, hook_data[b[1]]
+          block = hook_options[:block]
+          if id = hook_options[:id]
+            hook_data[id] ||= Hash.new
+            block.call arg, hook_data[id]
           else
-            b.call arg
+            block.call arg
           end
         rescue => e
           log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
@@ -336,7 +355,7 @@ module Puma
     end
 
     def final_options
-      @options.final_options
+      options.final_options
     end
 
     def self.temp_path
@@ -346,16 +365,33 @@ module Puma
       "#{Dir.tmpdir}/puma-status-#{t}-#{$$}"
     end
 
+    def self.random_token
+      require 'securerandom' unless defined?(SecureRandom)
+
+      SecureRandom.hex(16)
+    end
+
     private
 
     def require_processor_counter
       require 'concurrent/utility/processor_counter'
     rescue LoadError
       warn <<~MESSAGE
-        WEB_CONCURRENCY=auto requires the "concurrent-ruby" gem to be installed.
+        WEB_CONCURRENCY=auto or workers(:auto) requires the "concurrent-ruby" gem to be installed.
         Please add "concurrent-ruby" to your Gemfile.
       MESSAGE
       raise
+    end
+
+    def parse_workers(value)
+      if value == :auto || value == 'auto'
+        require_processor_counter
+        Integer(::Concurrent.available_processor_count)
+      else
+        Integer(value)
+      end
+    rescue ArgumentError, TypeError
+      raise ArgumentError, "workers must be an Integer or :auto"
     end
 
     # Load and use the normal Rack builder if we can, otherwise
@@ -386,22 +422,51 @@ module Puma
       rack_app, rack_options = rack_builder.parse_file(rackup)
       rack_options = rack_options || {}
 
-      @options.file_options.merge!(rack_options)
+      options.file_options.merge!(rack_options)
 
       config_ru_binds = []
       rack_options.each do |k, v|
         config_ru_binds << v if k.to_s.start_with?("bind")
       end
 
-      @options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
+      options.file_options[:binds] = config_ru_binds unless config_ru_binds.empty?
 
       rack_app
     end
 
-    def self.random_token
-      require 'securerandom' unless defined?(SecureRandom)
+    def run_mode_hooks
+      workers_before = @_options[:workers]
+      key = workers_before > 0 ? :cluster : :single
 
-      SecureRandom.hex(16)
+      @_options.all_of(key).each(&:call)
+
+      unless @_options[:workers] == workers_before
+        raise "cannot change the number of workers inside a #{key} configuration hook"
+      end
+    end
+
+    def set_conditional_default_options
+      @_options.default_options[:preload_app] = !@_options[:prune_bundler] &&
+        (@_options[:workers] > 1) && Puma.forkable?
+    end
+
+    def warn_hooks
+      return if options[:workers] > 0
+      return if options[:silence_fork_callback_warning]
+
+      log_writer = LogWriter.stdio
+      @hooks.each_key do |hook|
+        options.all_of(hook).each do |hook_options|
+          next unless hook_options[:cluster_only]
+
+          log_writer.log(<<~MSG.tr("\n", " "))
+            Warning: The code in the `#{hook}` block will not execute
+            in the current Puma configuration. The `#{hook}` block only
+            executes in Puma's cluster mode. To fix this, either remove the
+            `#{hook}` call or increase Puma's worker count above zero.
+          MSG
+        end
+      end
     end
   end
 end
