@@ -44,3 +44,8 @@ end
 
 gem 'm'
 gem "localhost", require: false
+
+if ENV['COVERAGE']
+  gem "simplecov", require: false
+  gem "simplecov-lcov", require: false
+end

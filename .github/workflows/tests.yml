@@ -130,12 +130,29 @@ jobs:
         shell: bash
         run: echo 'RUBYOPT=--yjit' >> $GITHUB_ENV
 
+      - name: Set coverage env
+        if: |
+          (matrix.os == 'ubuntu-22.04') && (matrix.ruby == '3.4') &&
+          (matrix.no-ssl == '') && (matrix.yjit == '') && (matrix.rack-v == '') &&
+          (needs.skip_duplicate_runs.outputs.should_skip != 'true')
+        run: echo 'COVERAGE=true' >> $GITHUB_ENV
+
       - name: test
         if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
         timeout-minutes: 10
         run: test/runner --verbose
         env:
           MT_CPU: 2
+
+      - name: Upload coverage to Qlty
+        if: |
+          (matrix.os == 'ubuntu-22.04') && (matrix.ruby == '3.4') &&
+          (matrix.no-ssl == '') && (matrix.yjit == '') && (matrix.rack-v == '') &&
+          (needs.skip_duplicate_runs.outputs.should_skip != 'true')
+        uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: coverage/lcov.info
 
   test_non_mri:
     name: >-

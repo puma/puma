@@ -1,4 +1,15 @@
 # frozen_string_literal: true
+
+if ENV['COVERAGE']
+  require 'simplecov'
+  require 'simplecov-lcov'
+  SimpleCov::Formatter::LcovFormatter.config.report_with_single_file = true
+  SimpleCov.formatter = SimpleCov::Formatter::LcovFormatter
+  SimpleCov.start do
+    add_filter '/test/'
+  end
+end
+
 # Copyright (c) 2011 Evan Phoenix
 # Copyright (c) 2005 Zed A. Shaw
 
