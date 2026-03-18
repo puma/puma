@@ -1394,6 +1394,82 @@ module Puma
       @options[:fork_worker] = Integer(after_requests)
     end
 
+    # When enabled, workers will be converted to a "mold" process as needed from which further workers
+    # are forked. This option is similar to fork_worker but the process that does the reforking does
+    # not take any further traffic. This allows the mold process to be optimized for copy-on-write
+    # performance and stability.
+    #
+    # This option also enables the `refork` command (SIGURG), which allows external processes to trigger
+    # promotion and reforking from a new mold process.
+    #
+    # Thresholds are checked against each worker's individual +requests_count+ since that worker
+    # was booted or re-forked. When any worker crosses the next threshold, it is promoted to a
+    # mold and a phased refork begins. Workers forked from the mold start with a fresh
+    # +requests_count+ of 0 -- they do not inherit the mold's count.
+    #
+    # Multiple thresholds can be specified as absolute request-count values to trigger successive
+    # promotions over the lifetime of the cluster (default: a single threshold at 1000 requests).
+    #
+    # @example Single threshold (refork once at 1000 requests)
+    #   mold_worker
+    # @example Multiple thresholds (refork at 1000, then again at 5000 and 25000)
+    #   mold_worker 1000, 5000, 25000
+    #
+    # @note This is experimental.
+    # @note Cluster mode only.
+    #
+    # @see #on_mold_promotion
+    # @see #on_mold_shutdown
+    #
+    def mold_worker(mold_at=1000, *additional_molds)
+      @options[:mold_worker] = [Integer(mold_at)] + additional_molds.map { |m| Integer(m) }
+    end
+
+    # Code to run in a worker when it is promoted to a mold process, before it begins
+    # forking new workers. The mold has already stopped serving requests at this point.
+    #
+    # Use this hook to close connections, release resources, or warm caches that will
+    # benefit copy-on-write sharing across the workers forked from this mold.
+    #
+    # This is the +mold_worker+ equivalent of +before_refork+ (+on_refork+) in +fork_worker+ mode.
+    # Any resource-cleanup logic from +before_refork+ should move here. Unlike +fork_worker+,
+    # there is no +after_refork+ equivalent because the mold never resumes serving requests.
+    # If you need to re-establish connections in the new workers, use +before_worker_boot+
+    # (+on_worker_boot+) instead.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @note Cluster mode with +mold_worker+ enabled only.
+    #
+    # @example
+    #   on_mold_promotion do
+    #     ActiveRecord::Base.connection_pool.disconnect!
+    #   end
+    #
+    def on_mold_promotion(key = nil, &block)
+      process_hook :on_mold_promotion, key, block, cluster_only: true
+    end
+
+    # Code to run immediately before a mold process shuts down (when it is replaced by a
+    # newer mold or when the cluster is stopping).
+    #
+    # Use this for final cleanup of resources held by the mold process itself.
+    # For request-serving shutdown logic, use +before_worker_shutdown+ (+on_worker_shutdown+)
+    # instead -- that hook runs in regular workers but not in molds.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @note Cluster mode with +mold_worker+ enabled only.
+    #
+    # @example
+    #   on_mold_shutdown do
+    #     puts "Mold shutting down"
+    #   end
+    #
+    def on_mold_shutdown(key = nil, &block)
+      process_hook :on_mold_shutdown, key, block, cluster_only: true
+    end
+
     # @deprecated Use {#max_keep_alive} instead.
     #
     def max_fast_inline(num_of_requests)

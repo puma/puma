@@ -25,6 +25,7 @@ module Puma
         @last_checkin = Time.now
         @last_status = {}
         @term = false
+        @mold = false
         @worker_max = Array.new WORKER_MAX_KEYS.length, 0
       end
 
@@ -53,6 +54,16 @@ module Puma
       def term?
         @term
       end
+
+      def mold?
+        @mold
+      end
+
+      def mold!
+        @mold = true
+        Process.kill("URG", @pid)
+      end
+
 
       def ping!(status)
         hsh = {}
