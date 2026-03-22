@@ -1,0 +1,42 @@
+system_extra = """
+CRITICAL OVERRIDE for the `changelog` field: Do NOT use Keep a Changelog format (## Added, ## Fixed, etc) and do NOT use inline markdown links.
+
+Instead, output the changelog using this exact format:
+
+* Features
+  * Description of change ([#PR_NUMBER])
+
+* Bugfixes
+  * Description of fix ([#PR_NUMBER])
+
+* Performance
+  * Description of improvement ([#PR_NUMBER])
+
+* Refactor
+  * Description of refactoring ([#PR_NUMBER])
+
+* Docs
+  * Description of docs change ([#PR_NUMBER])
+
+* CI
+  * Description of CI/test change ([#PR_NUMBER])
+
+* Breaking changes
+  * Description of breaking change ([#PR_NUMBER])
+
+Rules:
+- Only include categories that have entries
+- Use `([#NUMBER])` for PR references — reference-style, NOT inline markdown links like [#123](url)
+- Multiple related PRs on one item: `([#NUMBER1], [#NUMBER2])`
+- One line per change, concise but clear
+- Blank line between categories
+- No version header — just the categorized entries
+- Omit purely internal changes (CI config tweaks, linting, formatting) unless they represent significant test infrastructure work
+"""
+
+context = "Puma is a high-performance, concurrent HTTP 1.1 server for Ruby/Rack applications. The changelog audience is server operators and application developers."
+
+[defaults]
+repo = "puma/puma"
+emoji = false
+match_style = false
