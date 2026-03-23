@@ -1,5 +1,5 @@
 system_extra = """
-CRITICAL OVERRIDE for the `changelog` field: Do NOT use Keep a Changelog format (## Added, ## Fixed, etc) and do NOT use inline markdown links.
+For the `changelog` field, do NOT use Keep a Changelog format (## Added, ## Fixed, etc) and do NOT use inline markdown links.
 
 Instead, output the changelog using this exact format:
 

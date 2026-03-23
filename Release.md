@@ -1,25 +1,35 @@
 # How to Release Puma
 
-Release Puma requies accomplishing the following tasks:
+Release Puma requires accomplishing the following tasks:
 
 ## `tools/release_script.sh`
 
-`release_script.sh prepare` more or less does the following:
+`release_script.sh prepare` does the following:
 
-1. `git checkout` latest `main` locally and ensure all tests pass, ensure local `main` matches `origin/main`.
-1. Ensure current/latest `HEAD` is passing on CI.
-1. Generate a changelog with `communique`
-1. Figure out what the next version number should be, based on that changelog and following SemVer 2.0.
-1. If minor/major release: figure out who "earned" the codename change via git history scoreboard/check. This person is the Namer.
-1. Create a PR which bumps the version constant and updates the changelog.
-1. **STOP** for manual review. PR must be reviewed and checked by at least one human.
+1. Ensures local `main` is checked out, clean, and matches `origin/main`.
+1. Checks the CI status for the current `HEAD`.
+1. Generates a changelog with `communique`, validates that it matches Puma's required format, and retries if it doesn't.
+1. Figures out the next version number from the requested release type.
+1. For minor and major releases, figures out who "earned" the codename via `git shortlog`.
+1. Updates `History.md` and `lib/puma/const.rb`.
+1. Creates a release branch, commits the release changes, pushes the branch, and opens the release PR.
+1. Creates or updates a draft GitHub release for the upcoming tag using the new `History.md` section as the release notes.
+1. **STOP** for manual review. The PR must be reviewed and checked by at least one human.
 
-Once the PR is merged, we then `release_script.sh build` which does:
+Once the PR is merged, `release_script.sh build` does the following:
 
-1. Build .gem files (for CRuby and for JRuby)
-2. **STOP** for a human to manually `gem push` both artifacts to rubygems.org
+1. Ensures the release tag points at `HEAD` and pushes that tag to GitHub.
+1. Builds the CRuby gem with `bundle exec rake build`.
+1. **STOP** so a human can build the JRuby gem and manually `gem push` both artifacts to rubygems.org.
 
-Then once that's pushed to rubygems.org for both JRuby and CRuby, we `release_script.sh github` which generates and publishes a Github Release.
+Once both gems are pushed to rubygems.org, `release_script.sh github` does the following:
+
+1. Creates the GitHub release as a draft if it does not already exist.
+1. Compares the current release notes against the matching `History.md` section and updates the release notes if needed.
+1. Publishes the release if it is still a draft.
+1. Uploads the built gem artifacts:
+   - `pkg/puma-<version>.gem`
+   - `pkg/puma-<version>-java.gem`
 
 ## The "Namer"
 
