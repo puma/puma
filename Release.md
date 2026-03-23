@@ -1,34 +1,37 @@
-## Before Release
+# How to Release Puma
 
-- Make sure tests pass and your last local commit matches main.
-- Run tests with latest jruby
-- Update the version in `const.rb`.
-- On minor or major version updates i.e. from 3.10.x to 3.11.x update the "codename" in `const.rb`. We usually allow the leader of `git shortlog -s -n --no-merges <LAST_VERSION>..HEAD` name the version.
-- Create history entries with https://github.com/MSP-Greg/issue-pr-link
-  - Usually I run it from the puma repo:
+Releasing Puma requires the following steps:
 
-```
-$ ruby ../issue-pr-link/json_pr_issue_all.rb ../issue-pr-link/info.sample
-```
+1. Ensure your local `main` branch is checked out, clean, and matches `origin/main`.
+1. Check the CI status for the current `HEAD`. Stop unless everything is passing.
+1. Decide on the next version number based on [SemVer 2.0](https://semver.org/). Treat `breaking change` PR labels as strong evidence that a `major` bump is needed.
+1. For minor and major releases, determine who "earned" the codename via `git shortlog`. This person will be the "Namer."
+1. Update `History.md` in the existing format and update `lib/puma/const.rb`. If a codename change is required for a minor or major release, change the codename constant to "INSERT CODENAME HERE."
+1. Create a release branch, commit the release changes, and open a PR.
+1. Create or update a draft GitHub release for the upcoming tag using the new `History.md` section as the release notes.
+1. **STOP** for manual review. The PR must be reviewed and checked by at least one human.
 
-Then
+Once the PR is merged:
 
-```
-$ ruby ../issue-pr-link/history_new_release.rb ../issue-pr-link/info.sample <LAST_VERSION_TAG>
-```
+1. Ensure the release tag points at `HEAD`, then push that tag to GitHub.
+1. Build the CRuby gem with `bundle exec rake build`.
+1. If `mise` is installed, look up the latest JRuby version, run `mise exec jruby@<latest> -- rake java gem`, and build the JRuby gem. Otherwise, manage your environment yourself.
+1. `gem push` both artifacts to rubygems.org. This requires manual 2FA.
 
-That command will print output you're expected to use to modify `Histroy.md`. Once done you can update the links in the document by running:
+Once both gems have been pushed to rubygems.org:
 
-```
-$ ruby ../issue-pr-link/json_history_update.rb ../issue-pr-link/info.sample
-```
+1. Create or update the GitHub release based on the release tag on `main`.
+1. Publish the release if it is still a draft.
+1. Upload the built gem artifacts to the GitHub release:
+   - `pkg/puma-<version>.gem`
+   - `pkg/puma-<version>-java.gem`
 
-# Release process
+## The "Namer"
 
-Using "3.7.1" as a version example.
+We usually let the leader of `git shortlog -s -n --no-merges <LAST_VERSION>..HEAD` name the release.
 
-1. `bundle exec rake release`
-1. Switch to latest JRuby version
-1. `rake java gem`
-1. `gem push pkg/puma-VERSION-java.gem`
-1. Add release on Github at https://github.com/puma/puma/releases/new
+Tag this person on the new version PR and ask them to propose a codename.
+
+## The Changelog Format
+
+In the past, we've used [Greg's tool](https://github.com/MSP-Greg/issue-pr-link) to generate it, but anything that follows the existing format is fine.
