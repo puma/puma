@@ -8,8 +8,10 @@ Release Puma requires accomplishing the following tasks:
 
 1. Ensures local `main` is checked out, clean, and matches `origin/main`.
 1. Checks the CI status for the current `HEAD`.
+1. Asks `$AGENT_CMD` (default: `claude`) to recommend the semantic version bump from the commits since the last release.
+1. Treats `breaking change` PR labels as strong evidence for `major`; otherwise, if any commit looks like a feature or other user-facing addition, it recommends at least `minor`.
+1. Uses that recommendation to pick `patch`, `minor`, or `major`, and includes the agent's reasoning with commit links in the release PR body.
 1. Generates a changelog with `communique`, validates that it matches Puma's required format, and retries if it doesn't.
-1. Figures out the next version number from the requested release type.
 1. For minor and major releases, figures out who "earned" the codename via `git shortlog`.
 1. Updates `History.md` and `lib/puma/const.rb`.
 1. Creates a release branch, commits the release changes, pushes the branch, and opens the release PR.
@@ -20,7 +22,9 @@ Once the PR is merged, `release_script.sh build` does the following:
 
 1. Ensures the release tag points at `HEAD` and pushes that tag to GitHub.
 1. Builds the CRuby gem with `bundle exec rake build`.
-1. **STOP** so a human can build the JRuby gem and manually `gem push` both artifacts to rubygems.org.
+1. If `mise` is installed, looks up the latest JRuby version, runs `mise exec jruby@<latest> -- rake java gem`, and builds the JRuby gem automatically.
+1. If `mise` is not installed, stops after the CRuby gem and tells you to build the JRuby gem manually.
+1. **STOP** so a human can manually `gem push` both artifacts to rubygems.org.
 
 Once both gems are pushed to rubygems.org, `release_script.sh github` does the following:
 
