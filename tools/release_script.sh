@@ -15,10 +15,6 @@ warn()  { printf "${YELLOW}==>${NC} %s\n" "$*"; }
 error() { printf "${RED}==>${NC} %s\n" "$*" >&2; }
 die()   { error "$@"; exit 1; }
 
-CACHE_DIR=""
-cleanup() { [[ -n "$CACHE_DIR" ]] && rm -rf "$CACHE_DIR"; }
-trap cleanup EXIT
-
 check_deps() {
   local missing=()
   command -v communique >/dev/null 2>&1 || missing+=("communique")
@@ -83,19 +79,12 @@ check_ci() {
   esac
 }
 
-# Look up a GitHub user's display name, with file-based caching.
+# Look up a GitHub user's display name.
 get_user_name() {
   local login="$1"
-  local cache_file="$CACHE_DIR/$login"
-  if [[ -f "$cache_file" ]]; then
-    cat "$cache_file"
-    return
-  fi
   local name
   name=$(gh api "users/$login" --jq '.name // empty' 2>/dev/null) || true
-  name="${name:-$login}"
-  printf '%s' "$name" > "$cache_file"
-  echo "$name"
+  echo "${name:-$login}"
 }
 
 # Generate a single link reference line for a PR or issue.
@@ -129,7 +118,6 @@ generate_link_ref() {
 # that don't already exist in History.md.
 generate_all_link_refs() {
   local changelog="$1"
-  CACHE_DIR=$(mktemp -d)
 
   local numbers
   numbers=$(echo "$changelog" | grep -oE '\[#[0-9]+\]' | sed 's/\[#//;s/\]//' | sort -rn -u)
