@@ -1,6 +1,13 @@
 name: Tests
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+      - '*-stable'
+      - 'release-v*'
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read # to fetch code (actions/checkout)
