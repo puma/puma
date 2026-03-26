@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://puma.io/images/logos/puma-logo-large.png">
+  <img src="docs/images/standard-logo.svg" alt="Puma logo">
 </p>
 
 # Puma: A Ruby Web Server Built For Parallelism
