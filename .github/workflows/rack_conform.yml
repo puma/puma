@@ -6,25 +6,28 @@ on:
       - main
       - '*-stable'
       - 'release-v*'
+    paths-ignore:
+      - '**/*.md'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
-
   rack-conform:
     name: >-
       ${{ matrix.os }} Ruby ${{ matrix.ruby }} rack-conform
-    needs: skip_duplicate_runs
     runs-on: ${{ matrix.os }}
     if: |
       !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]')
-        || (needs.skip_duplicate_runs.outputs.should_skip == 'true'))
+        || contains(github.event.pull_request.title,  '[skip ci]'))
     strategy:
       fail-fast: false
       matrix:
