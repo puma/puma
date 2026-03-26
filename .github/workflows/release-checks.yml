@@ -1,0 +1,136 @@
+name: Release Checks
+
+# Runs only on release branches (release-v*), whether targeting main or a stable branch
+# (e.g. 7-2-stable). We don't filter by base branch here because the job condition
+# already limits execution to head branches matching release-v*.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  release-checks:
+    name: Pre-release sanity checks
+    runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'release-v')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── Parse the release version from the branch name ──────────────────────
+      - name: Parse version from branch name
+        id: rel
+        run: |
+          branch="${{ github.head_ref }}"
+          version="${branch#release-v}"
+          major="$(echo "$version" | cut -d. -f1)"
+          minor="$(echo "$version" | cut -d. -f2)"
+          patch="$(echo "$version" | cut -d. -f3)"
+
+          # Validate it looks like a semver
+          if ! echo "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Branch name '$branch' does not look like a release branch (expected release-vX.Y.Z)"
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "major=$major"     >> "$GITHUB_OUTPUT"
+          echo "minor=$minor"     >> "$GITHUB_OUTPUT"
+          echo "patch=$patch"     >> "$GITHUB_OUTPUT"
+          echo "Releasing version: $version"
+
+      # ── Check 1: VERSION in lib/puma/const.rb matches the branch ────────────
+      - name: VERSION matches branch
+        run: |
+          expected="${{ steps.rel.outputs.version }}"
+          actual="$(grep -oP 'PUMA_VERSION = VERSION = "\K[^"]+' lib/puma/const.rb)"
+          if [ -z "$actual" ]; then
+            echo "::error file=lib/puma/const.rb::Could not find VERSION in lib/puma/const.rb"
+            exit 1
+          fi
+          if [ "$actual" != "$expected" ]; then
+            echo "::error file=lib/puma/const.rb::VERSION is '$actual' but release branch says '$expected'"
+            exit 1
+          fi
+          echo "VERSION: $actual ✓"
+
+      # ── Check 2: CODE_NAME is set and not a placeholder ─────────────────────
+      - name: CODE_NAME is set and non-placeholder
+        run: |
+          name="$(grep -oP 'CODE_NAME = "\K[^"]+' lib/puma/const.rb)"
+          if [ -z "$name" ]; then
+            echo "::error file=lib/puma/const.rb::CODE_NAME is empty — a codename is required before merging"
+            exit 1
+          fi
+          # Reject obvious placeholder values
+          case "$name" in
+            TODO|TBD|FIXME|PLACEHOLDER|CODENAME|"???"|""|"To Be Named"|"INSERT CODENAME HERE")
+              echo "::error file=lib/puma/const.rb::CODE_NAME looks like a placeholder: '$name'"
+              exit 1
+              ;;
+          esac
+          echo "CODE_NAME: '$name' ✓"
+
+      # ── Check 3: History.md has an entry for this version ───────────────────
+      - name: History.md has entry for this version
+        run: |
+          version="${{ steps.rel.outputs.version }}"
+          if ! grep -q "^## $version /" History.md; then
+            echo "::error file=History.md::No changelog entry for $version found in History.md"
+            exit 1
+          fi
+          echo "History.md entry for $version ✓"
+
+      # ── Check 4: History.md entry has a properly-formatted date ─────────────
+      - name: History.md entry has a valid date
+        run: |
+          version="${{ steps.rel.outputs.version }}"
+          line="$(grep "^## $version /" History.md)"
+          if ! echo "$line" | grep -qE '^## [0-9]+\.[0-9]+\.[0-9]+ / [0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+            echo "::error file=History.md::Entry for $version has missing or malformed date: '$line'"
+            exit 1
+          fi
+          echo "History.md date: $line ✓"
+
+      # ── Check 5: Upgrade guide exists for major releases ────────────────────
+      - name: Upgrade guide exists (major releases only)
+        run: |
+          major="${{ steps.rel.outputs.major }}"
+          minor="${{ steps.rel.outputs.minor }}"
+          patch="${{ steps.rel.outputs.patch }}"
+          if [ "$minor" = "0" ] && [ "$patch" = "0" ]; then
+            guide="docs/${major}.0-Upgrade.md"
+            if [ ! -f "$guide" ]; then
+              echo "::error::Major release but $guide does not exist — create an upgrade guide before merging"
+              exit 1
+            fi
+            # Sanity-check that the guide is not empty
+            if [ ! -s "$guide" ]; then
+              echo "::error file=$guide::Upgrade guide $guide exists but is empty"
+              exit 1
+            fi
+            echo "$guide exists and is non-empty ✓"
+          else
+            echo "Minor/patch release — no upgrade guide required"
+          fi
+
+      # ── Check 6: SECURITY.md is updated for major releases ──────────────────
+      - name: SECURITY.md updated (major releases only)
+        run: |
+          minor="${{ steps.rel.outputs.minor }}"
+          patch="${{ steps.rel.outputs.patch }}"
+          if [ "$minor" = "0" ] && [ "$patch" = "0" ]; then
+            base="origin/${{ github.base_ref }}"
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            if ! git diff --name-only "$base...HEAD" | grep -qx "SECURITY.md"; then
+              echo "::error file=SECURITY.md::Major release requires updating SECURITY.md"
+              exit 1
+            fi
+            echo "SECURITY.md changed for major release ✓"
+          else
+            echo "Minor/patch release — no SECURITY.md update required"
+          fi
