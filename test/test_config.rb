@@ -20,7 +20,7 @@ class TestConfigFile < PumaTest
   def test_app_from_rackup
     if Rack.release >= '3'
       fn = "test/rackup/hello-bind_rack3.ru"
-      bind = "tcp://0.0.0.0:9292"
+      bind = Puma::Configuration.default_tcp_bind
     else
       fn = "test/rackup/hello-bind.ru"
       bind = "tcp://127.0.0.1:9292"
@@ -869,20 +869,64 @@ class TestConfigFileSingle < PumaTest
 
     assert_equal "Custom logging: test\n", out
   end
+
+  def test_defaults_to_ipv4_when_non_loopback_ipv6_is_unavailable
+    Socket.stub(:getifaddrs, []) do
+      conf = Puma::Configuration.new
+      conf.clamp
+
+      assert_equal '0.0.0.0', conf.options.default_options[:tcp_host]
+      assert_equal ['tcp://0.0.0.0:9292'], conf.options[:binds]
+    end
+  end
+
+  def test_defaults_to_ipv6_when_non_loopback_ipv6_is_available
+    ipv6_addr = Object.new
+    ipv6_addr.define_singleton_method(:ipv6?) { true }
+    ipv6_addr.define_singleton_method(:ipv6_loopback?) { false }
+
+    ifaddr = Struct.new(:addr).new(ipv6_addr)
+
+    Socket.stub(:getifaddrs, [ifaddr]) do
+      conf = Puma::Configuration.new
+      conf.clamp
+
+      assert_equal '::', conf.options.default_options[:tcp_host]
+      assert_equal ['tcp://[::]:9292'], conf.options[:binds]
+    end
+  end
+
+  def test_rewrites_unspecified_ipv6_bind_to_ipv4_and_logs_warning_when_ipv6_is_unavailable
+    Socket.stub(:getifaddrs, []) do
+      conf = Puma::Configuration.new do |config|
+        config.bind 'tcp://[::]:9292'
+      end
+
+      _out, err = capture_io do
+        conf.clamp
+      end
+
+      assert_equal ['tcp://0.0.0.0:9292'], conf.options[:binds]
+      assert_match(/WARNING: IPv6 bind requested/, err)
+    end
+  end
 end
 
 # Thread unsafe modification of ENV
 class TestEnvModifificationConfig < PumaTest
   def test_double_bind_port
     port = (rand(10_000) + 30_000).to_s
+    host = Puma::Configuration.default_tcp_host
+    host_uri = host.include?(':') ? "[#{host}]" : host
     env = { "PORT" => port }
-    conf = Puma::Configuration.new({}, {}, env)  do |user_config, file_config, default_config|
-      user_config.bind "tcp://#{Puma::Configuration::DEFAULTS[:tcp_host]}:#{port}"
+
+    conf = Puma::Configuration.new({}, {}, env) do |user_config, file_config, default_config|
+      user_config.bind "tcp://#{host_uri}:#{port}"
       file_config.load "test/config/app.rb"
     end
     conf.clamp
 
-    assert_equal ["tcp://0.0.0.0:#{port}"], conf.options[:binds]
+    assert_equal ["tcp://#{host_uri}:#{port}"], conf.options[:binds]
   end
 end
 

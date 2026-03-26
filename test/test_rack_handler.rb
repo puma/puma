@@ -8,6 +8,7 @@ module TestRackUp
   require "rack/handler/puma"
   require "puma/events"
 
+
   begin
     require 'rackup/version'
   rescue LoadError
@@ -109,7 +110,7 @@ module TestRackUp
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.clamp
 
-          assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+          assert_equal [Puma::Configuration.default_tcp_bind(user_port)], conf.options[:binds]
         end
       end
     end
@@ -193,7 +194,7 @@ module TestRackUp
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.clamp
 
-          assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
+          assert_equal [Puma::Configuration.default_tcp_bind(file_port)], conf.options[:binds]
         end
       end
     end
@@ -246,7 +247,7 @@ module TestRackUp
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.clamp
 
-      assert_equal ["tcp://0.0.0.0:9292"], conf.options[:binds]
+      assert_equal [Puma::Configuration.default_tcp_bind(9292)], conf.options[:binds]
     end
 
     def test_config_wins_over_default
@@ -260,7 +261,7 @@ module TestRackUp
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.clamp
 
-          assert_equal ["tcp://0.0.0.0:#{file_port}"], conf.options[:binds]
+          assert_equal [Puma::Configuration.default_tcp_bind(file_port)], conf.options[:binds]
         end
       end
     end
@@ -272,7 +273,7 @@ module TestRackUp
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.clamp
 
-      assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+      assert_equal [Puma::Configuration.default_tcp_bind(user_port)], conf.options[:binds]
     end
 
     def test_user_port_wins_over_default
@@ -281,7 +282,7 @@ module TestRackUp
       conf = ::Rack::Handler::Puma.config(->{}, @options)
       conf.clamp
 
-      assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+      assert_equal [Puma::Configuration.default_tcp_bind(user_port)], conf.options[:binds]
     end
 
     def test_user_port_wins_over_config
@@ -297,7 +298,7 @@ module TestRackUp
           conf = ::Rack::Handler::Puma.config(->{}, @options)
           conf.clamp
 
-          assert_equal ["tcp://0.0.0.0:#{user_port}"], conf.options[:binds]
+          assert_equal [Puma::Configuration.default_tcp_bind(user_port)], conf.options[:binds]
         end
       end
     end
