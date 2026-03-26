@@ -350,7 +350,7 @@ module Puma
 
     # Define how long persistent connections can be idle before Puma closes them.
     #
-    # The default is 20 seconds.
+    # The default is 65 seconds.
     #
     # @example
     #   persistent_timeout 30
@@ -1208,7 +1208,7 @@ module Puma
 
     # Change the default worker timeout for booting.
     #
-    # The default is the value of `worker_timeout`.
+    # The default is 60 seconds.
     #
     # @note Cluster mode only.
     #
