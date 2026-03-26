@@ -109,7 +109,7 @@ module Puma
         end
 
         if port
-          host ||= ::Puma::Configuration::DEFAULTS[:tcp_host]
+          host ||= ::Puma::Configuration.default_tcp_host
           config.port port, host
         end
       end

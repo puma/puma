@@ -155,7 +155,7 @@ module Puma
     end
 
     def default_host
-      @options[:default_host] || Configuration::DEFAULTS[:tcp_host]
+      @options[:default_host] || Configuration.default_tcp_host
     end
 
     def inject(&blk)
@@ -260,7 +260,8 @@ module Puma
     # accepted protocols. Multiple urls can be bound to, calling +bind+ does
     # not overwrite previous bindings.
     #
-    # The default is "tcp://[::]:9292".
+    # The default is "tcp://[::]:9292" when IPv6 interfaces are available,
+    # otherwise "tcp://0.0.0.0:9292".
     #
     # You can use query parameters within the url to specify options:
     #

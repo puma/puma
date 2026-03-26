@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'socket'
+require 'uri'
+
 require_relative 'plugin'
 require_relative 'const'
 require_relative 'dsl'
@@ -232,6 +235,8 @@ module Puma
 
     def puma_default_options(env = ENV)
       defaults = DEFAULTS.dup
+      defaults[:tcp_host] = self.class.default_tcp_host
+      defaults[:binds] = [self.class.default_tcp_bind]
       puma_options_from_env(env).each { |k,v| defaults[k] = v if v }
       defaults
     end
@@ -282,6 +287,7 @@ module Puma
       run_mode_hooks
       set_conditional_default_options
       @_options.finalize_values
+      rewrite_unavailable_ipv6_binds!
       @clamped = true
       warn_hooks
       options
@@ -360,6 +366,23 @@ module Puma
       options.final_options
     end
 
+    def self.default_tcp_host
+      ipv6_interface_available? ? Const::UNSPECIFIED_IPV6 : Const::UNSPECIFIED_IPV4
+    end
+
+    def self.default_tcp_bind(port = DEFAULTS[:tcp_port])
+      URI::Generic.build(scheme: 'tcp', host: default_tcp_host, port: Integer(port)).to_s
+    end
+
+    def self.ipv6_interface_available?
+      Socket.getifaddrs.any? do |ifaddr|
+        addr = ifaddr.addr
+        addr&.ipv6? && !addr&.ipv6_loopback?
+      end
+    rescue StandardError
+      false
+    end
+
     def self.temp_path
       require 'tmpdir'
 
@@ -374,6 +397,31 @@ module Puma
     end
 
     private
+
+    def rewrite_unavailable_ipv6_binds!
+      return if self.class.ipv6_interface_available?
+
+      tried_ipv6_bind = false
+      bind_schemes = ['tcp', 'ssl']
+
+      @_options[:binds] = Array(@_options[:binds]).map do |bind|
+        uri = URI.parse(bind)
+        next bind unless bind_schemes.include?(uri.scheme)
+
+        host = uri.host&.delete_prefix('[')&.delete_suffix(']')
+        next bind unless host&.include?(':')
+
+        tried_ipv6_bind = true
+        next bind unless host == Const::UNSPECIFIED_IPV6
+
+        uri.host = Const::UNSPECIFIED_IPV4
+        uri.to_s
+      rescue URI::InvalidURIError
+        bind
+      end
+
+      warn "WARNING: IPv6 bind requested but no non-loopback IPv6 interface was detected" if tried_ipv6_bind
+    end
 
     def require_processor_counter
       require 'concurrent/utility/processor_counter'
