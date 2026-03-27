@@ -10,4 +10,4 @@
 
 ## Reporting a Vulnerability
 
-Contact [Evan Phoenix.](https://github.com/evanphx)
+[Report on Github](https://github.com/puma/puma/security) or contact [Evan Phoenix.](https://github.com/evanphx)
