@@ -1,3 +1,32 @@
+## 8.0.0 / 2026-03-27
+
+* Features
+  * Add `env["puma.mark_as_io_bound"]` API and `max_io_threads` config to allow IO-bound requests to exceed the thread pool max, enabling better handling of mixed workloads ([#3816], [#3894])
+  * Add `single` and `cluster` DSL hooks for mode-specific configuration ([#3621])
+  * Add `on_force` option to `shutdown_debug` to only dump thread backtraces on forced (non-graceful) shutdown ([#3671])
+  * Add API to dynamically update min and max thread counts at runtime via `update_thread_pool_min_max` and `ServerPluginControl` ([#3658])
+  * Use SIGPWR for thread backtrace dumps on Linux/JRuby where SIGINFO is unavailable ([#3829])
+
+* Bugfixes
+  * Fix phased restart for `fork_worker` to avoid forking from stale worker 0 when it has been replaced ([#3853])
+
+* Performance
+  * JRuby HTTP parser improvements: pre-allocated header keys, perfect hash lookup, reduced memory copies ([#3838])
+  * Cache downcased header key in `str_headers` to avoid redundant `String#downcase` calls, reducing allocations by ~50% per response ([#3874])
+
+* Refactor
+  * Collect `env` processing into dedicated `client_env.rb` module ([#3582])
+  * Move event to default configuration ([#3872])
+
+* Docs
+  * Add gRPC guide for configuring gRPC lifecycle hooks in clustered mode ([#3885])
+  * Add 7.0 upgrade guide, move 5.0/6.0 upgrade guides to docs directory ([#3900])
+  * Correct default values for `persistent_timeout` and `worker_boot_timeout` in DSL docs ([#3912])
+  * Add file descriptor limit warning in test helper for contributors ([#3893])
+
+* Breaking changes
+  * Default production bind address changed from `0.0.0.0` to `::` (IPv6) when a non-loopback IPv6 interface is available; falls back to `0.0.0.0` if IPv6 is unavailable ([#3847])
+
 ## 7.2.0 / 2026-01-20
 
 * Features
@@ -2294,6 +2323,22 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3912]:https://github.com/puma/puma/pull/3912     "PR by Bengt-Ove Hollaender, merged 2026-03-26"
+[#3900]:https://github.com/puma/puma/pull/3900     "PR by Nate Berkopec, merged 2026-03-26"
+[#3894]:https://github.com/puma/puma/pull/3894     "PR by Joshua Young, merged 2026-03-07"
+[#3893]:https://github.com/puma/puma/pull/3893     "PR by Sasha Stadnyk, merged 2026-03-22"
+[#3885]:https://github.com/puma/puma/pull/3885     "PR by Joshua Young, merged 2026-02-18"
+[#3874]:https://github.com/puma/puma/pull/3874     "PR by Hadrien Blanc, merged 2026-01-28"
+[#3872]:https://github.com/puma/puma/pull/3872     "PR by Nate Berkopec, merged 2026-01-27"
+[#3853]:https://github.com/puma/puma/pull/3853     "PR by Krzysztof Jablonski, merged 2026-03-09"
+[#3847]:https://github.com/puma/puma/pull/3847     "PR by Richard Schneeman, merged 2026-03-26"
+[#3838]:https://github.com/puma/puma/pull/3838     "PR by Charles Oliver Nutter, merged 2026-01-31"
+[#3829]:https://github.com/puma/puma/pull/3829     "PR by Nate Berkopec, merged 2026-01-27"
+[#3816]:https://github.com/puma/puma/pull/3816     "PR by Jean Boussier, merged 2026-03-07"
+[#3671]:https://github.com/puma/puma/pull/3671     "PR by Joshua Young, merged 2026-03-08"
+[#3658]:https://github.com/puma/puma/pull/3658     "PR by Yuki Nishijima, merged 2026-02-18"
+[#3621]:https://github.com/puma/puma/pull/3621     "PR by Joshua Young, merged 2026-02-22"
+[#3582]:https://github.com/puma/puma/pull/3582     "PR by MSP-Greg, merged 2026-02-22"
 [#3863]:https://github.com/puma/puma/pull/3863     "PR by Nate Berkopec, merged 2026-01-20"
 [#3861]:https://github.com/puma/puma/pull/3861     "PR by MSP-Greg, merged 2026-01-20"
 [#3860]:https://github.com/puma/puma/pull/3860     "PR by MSP-Greg, merged 2026-01-16"
