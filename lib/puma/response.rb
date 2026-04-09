@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 # for demonstration purposes in this PR
+# this implementation can be hit with an attack that infinitely grows the hash, so would want
+# to use something with limited size
 $downcase_cache = {}
 def downcase_from_cache(s)
   return $downcase_cache[s] if $downcase_cache[s]
