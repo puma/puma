@@ -73,6 +73,13 @@ class TestLogWriter < PumaTest
     assert_empty out
   end
 
+  def test_debug_writes_to_stdout_with_block_if_env_is_present
+    with_temp_env({ "PUMA_DEBUG" => "1" }) do
+      out, _ = capture_io { Puma::LogWriter.stdio.debug { "ready" } }
+      assert_equal "% ready\n", out
+    end
+  end
+
   def test_error_writes_to_stderr_and_exits
     did_exit = false
 

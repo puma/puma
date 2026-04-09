@@ -90,7 +90,7 @@ module Puma
     # @version 5.0.0
     #
     def create_activated_fds(env_hash)
-      @log_writer.debug "ENV['LISTEN_FDS'] #{@env['LISTEN_FDS'].inspect}  env_hash['LISTEN_PID'] #{env_hash['LISTEN_PID'].inspect}"
+      @log_writer.debug { "ENV['LISTEN_FDS'] #{@env['LISTEN_FDS'].inspect}  env_hash['LISTEN_PID'] #{env_hash['LISTEN_PID'].inspect}" }
       return [] unless env_hash['LISTEN_FDS'] && env_hash['LISTEN_PID'].to_i == $$
       env_hash['LISTEN_FDS'].to_i.times do |index|
         sock = TCPServer.for_fd(socket_activation_fd(index))
@@ -102,7 +102,7 @@ module Puma
           [:tcp, addr, port]
         end
         @activated_sockets[key] = sock
-        @log_writer.debug "Registered #{key.join ':'} for activation from LISTEN_FDS"
+        @log_writer.debug { "Registered #{key.join ':'} for activation from LISTEN_FDS" }
       end
       ["LISTEN_FDS", "LISTEN_PID"] # Signal to remove these keys from ENV
     end

@@ -417,7 +417,7 @@ module Puma
           end
         end
 
-        @log_writer.debug "Drained #{drain} additional connections." if drain
+        @log_writer.debug { "Drained #{drain} additional connections." } if drain
         @events.fire :state, @status
 
         if queue_requests

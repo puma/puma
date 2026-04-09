@@ -90,8 +90,14 @@ module Puma
       @debug
     end
 
-    def debug(str)
-      log("% #{str}") if @debug
+    def debug(str=nil, &block)
+      if @debug
+        if block_given?
+          log("% #{yield}")
+        else
+          log("% #{str}")
+        end
+      end
     end
 
     # Write +str+ to +@stderr+
