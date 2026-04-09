@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
-module Puma
+# for demonstration purposes in this PR
+$downcase_cache = {}
+def downcase_from_cache(s)
+  return $downcase_cache[s] if $downcase_cache[s]
+  $downcase_cache[s] = s.downcase
+  $downcase_cache[s]
+end
+
+  module Puma
   #———————————————————————— DO NOT USE — this class is for internal use only ———
 
 
@@ -480,7 +488,7 @@ module Puma
       headers.each do |k, vs|
         next if illegal_header_key?(k)
 
-        key = k.downcase
+        key = downcase_from_cache(k)
         case key
         when CONTENT_LENGTH2
           next if illegal_header_value?(vs)
