@@ -15,7 +15,7 @@ To work correctly, gRPC needs these methods called at specific points in the pro
 - `GRPC.postfork_child`: Called in the child process after forking.
 - `GRPC.postfork_parent`: Called in the parent process after forking.
 
-Puma provides hooks such as `on_worker_fork`, `after_worker_fork`, and `on_worker_boot` to execute code during these lifecycle events. Understanding the behavior of these hooks is key to ensuring gRPC operates correctly in a clustered setup.
+Puma provides hooks such as `before_worker_fork`, `after_worker_fork`, and `before_worker_boot` to execute code during these lifecycle events. Understanding the behavior of these hooks is key to ensuring gRPC operates correctly in a clustered setup.
 
 ## The Solution
 
@@ -45,7 +45,7 @@ end
 
 Puma's hooks determine when to call gRPC's lifecycle methods. Each hook plays a specific role in managing the lifecycle during forking:
 
-- **`on_worker_fork`**:
+- **`before_worker_fork`**:
   - This hook runs before forking workers and is where you call `GRPC.prefork`.
   - In preloading setups (default in Puma v7), it runs in the **master process** before workers are forked, as the application is preloaded in the master process.
   - Without preloading, it still runs in the **master process** before forking workers, but the application is not preloaded.
@@ -55,7 +55,7 @@ Puma's hooks determine when to call gRPC's lifecycle methods. Each hook plays a 
   - This hook always runs in the **master process** after a worker is forked, regardless of whether preloading is enabled.
   - Call `GRPC.postfork_parent` here to finalize the master process's state after forking.
 
-- **`on_worker_boot`**:
+- **`before_worker_boot`**:
   - This hook always runs in the **worker process** after it is forked, regardless of whether preloading is enabled.
   - Call `GRPC.postfork_child` here to finalize the worker's state.
 
