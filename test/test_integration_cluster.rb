@@ -471,6 +471,13 @@ class TestIntegrationCluster < TestIntegration
     assert_equal reply, "embedded app"
   end
 
+  def test_prune_bundler_preserves_bundle_env_vars
+    cli_server "-w #{workers} --prune-bundler test/rackup/bundle_without.ru",
+      env: { 'BUNDLE_WITHOUT' => 'development:test' }
+
+    assert_equal 'development:test', read_body(connect)
+  end
+
   def test_load_path_includes_extra_deps
     cli_server "-w #{workers} -C test/config/prune_bundler_with_deps.rb test/rackup/hello.ru"
 
