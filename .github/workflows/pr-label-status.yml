@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Update PR Labels
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             // Configuration
