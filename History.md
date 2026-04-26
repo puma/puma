@@ -1,3 +1,15 @@
+## 8.0.1 / 2026-04-27
+
+* Bugfixes
+  * Fix `prune_bundler` stripping user-configured `BUNDLE_*` env vars (e.g. `BUNDLE_WITHOUT`) on re-exec, which caused workers to crash on boot ([#3929])
+
+* Performance
+  * Use blocks for debug logging to avoid creating log messages when debug is disabled ([#3920])
+
+* Docs
+  * Fix incorrect hook names in gRPC docs ([#3923])
+  * Reword v8 upgrade guide IPv6 bullet for clarity ([#3928])
+
 ## 8.0.0 / 2026-03-27
 
 * Features
@@ -2323,6 +2335,10 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3929]:https://github.com/puma/puma/pull/3929     "PR by Joshua Young, merged 2026-04-26"
+[#3928]:https://github.com/puma/puma/pull/3928     "PR by Nate Berkopec, merged 2026-04-16"
+[#3923]:https://github.com/puma/puma/pull/3923     "PR by Joshua Young, merged 2026-04-10"
+[#3920]:https://github.com/puma/puma/pull/3920     "PR by Petrik de Heus, merged 2026-04-10"
 [#3912]:https://github.com/puma/puma/pull/3912     "PR by Bengt-Ove Hollaender, merged 2026-03-26"
 [#3900]:https://github.com/puma/puma/pull/3900     "PR by Nate Berkopec, merged 2026-03-26"
 [#3894]:https://github.com/puma/puma/pull/3894     "PR by Joshua Young, merged 2026-03-07"
