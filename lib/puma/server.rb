@@ -639,7 +639,16 @@ module Puma
     end
 
     def notify_safely(message)
-      @notify << message
+      # Use syswrite (a single write(2) syscall) rather than `<<` to
+      # bypass MRI's buffered-IO write lock. That lock can deadlock with
+      # IO#close running in handle_servers' ensure block — the closer
+      # parks in sleep_forever while a buffered writer is mid-write,
+      # even though the writer is woken with IOError (puma#3677).
+      # syswrite is also async-signal-safe, so notify_safely remains
+      # callable from puma's signal handlers (TERM/USR2/INT/HUP) without
+      # raising "can't be called from trap context".
+      notify = @notify
+      notify.syswrite(message) if notify && !notify.closed?
     rescue IOError, NoMethodError, Errno::EPIPE, Errno::EBADF
       # The server, in another thread, is shutting down
     rescue RuntimeError => e
