@@ -557,7 +557,7 @@ class TestConfigFile < PumaTest
       end
       conf.clamp
     end
-    assert_equal "cannot change the number of workers inside a cluster configuration hook", error.message
+    assert_equal "Cannot change the number of workers inside a cluster configuration hook", error.message
   end
 
   def test_run_mode_hooks_with_workers_duplicated_in_hook
@@ -743,6 +743,12 @@ class TestConfigFile < PumaTest
     conf.clamp
 
     assert_kind_of Puma::UserFileDefaultOptions, conf.options
+  end
+
+  def test_clamp_raises_if_called_twice
+    conf = Puma::Configuration.new
+    conf.clamp
+    assert_raises(RuntimeError) { conf.clamp }
   end
 
   def test_config_files_raises_not_loaded_error_when_not_loaded
@@ -1127,7 +1133,7 @@ class TestConfigEnvVariables < PumaTest
       end
       conf.clamp
     end
-    assert_equal "cannot change the number of workers inside a cluster configuration hook", error.message
+    assert_equal "Cannot change the number of workers inside a cluster configuration hook", error.message
   end
 
   def test_run_mode_hooks_with_workers_duplicated_in_hook

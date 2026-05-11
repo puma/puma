@@ -283,6 +283,8 @@ module Puma
     #
     # This also calls load if it hasn't been called yet.
     def clamp
+      raise "Configuration already clamped" if @clamped
+
       load unless @loaded
       run_mode_hooks
       set_conditional_default_options
@@ -491,7 +493,7 @@ module Puma
       @_options.all_of(key).each(&:call)
 
       unless @_options[:workers] == workers_before
-        raise "cannot change the number of workers inside a #{key} configuration hook"
+        raise "Cannot change the number of workers inside a #{key} configuration hook"
       end
     end
 
