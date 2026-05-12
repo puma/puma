@@ -1477,8 +1477,8 @@ module Puma
     # If the payload size (CONTENT_LENGTH) is larger than http_content_length_limit,
     # HTTP 413 status code is returned.
     #
-    # When no Content-Length http header is present, it is compared against the
-    # size of the body of the request.
+    # This limit is only applicable when the client sends a Content-Length header,
+    # or Transfer-Encoding is `chunked`. Otherwise, there is no request body.
     #
     # The default is +nil+.
     #
