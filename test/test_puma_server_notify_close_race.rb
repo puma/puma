@@ -31,7 +31,7 @@ class TestPumaServerNotifyCloseRace < PumaTest
   # invoke it via Server#stop / #begin_restart. A regression that uses
   # Mutex#synchronize would raise ThreadError here.
   def test_notify_safely_callable_from_trap_context
-    skip_unless_signal_exist? USR_SIGNAL if respond_to?(:skip_unless_signal_exist?)
+    skip_unless_signal_exist? USR_SIGNAL
 
     server = make_server
     server.run
@@ -58,7 +58,7 @@ class TestPumaServerNotifyCloseRace < PumaTest
     assert_predicate server, :shutting_down?,
       "STOP_COMMAND was not delivered through @notify"
   ensure
-    Signal.trap(USR_SIGNAL, "DEFAULT")
+    Signal.trap(USR_SIGNAL, "DEFAULT") if Signal.list.key?(USR_SIGNAL)
     server&.stop(true)
   end
 
