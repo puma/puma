@@ -74,7 +74,7 @@ class TestPumaServerNotifyCloseRace < PumaTest
       server = make_server
       server.run
 
-      writers = 4.times.map do
+      writers = Array.new(4) do
         Thread.new do
           loop do
             server.send(:notify_safely, Puma::Const::STOP_COMMAND)
