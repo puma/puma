@@ -283,7 +283,10 @@ module Puma
     #
     # This also calls load if it hasn't been called yet.
     def clamp
-      raise "Configuration already clamped" if @clamped
+      if @clamped
+        warn "Configuration already clamped, calling clamp multiple times is deprecated and will raise in Puma v9"
+        return options
+      end
 
       load unless @loaded
       run_mode_hooks
