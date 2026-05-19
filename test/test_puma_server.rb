@@ -1660,6 +1660,40 @@ class TestPumaServer < PumaTest
     assert_equal body, response.body
   end
 
+  def test_proxy_protocol_only_parses_first_request_on_connection
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do |env|
+      [200, {}, [env["REMOTE_ADDR"]]]
+    end
+
+    socket = send_proxy_v1_http("GET /one HTTP/1.1\r\nHost: test.com\r\n\r\n", "1.2.3.4")
+
+    response = socket.read_response
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal "1.2.3.4", response.body
+
+    socket << "PROXY TCP4 127.0.0.1 127.0.0.1 10000 80\r\nGET /two HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_match %r{\AHTTP/1\.[01] 400 Bad Request\z}, socket.read_response.status
+  end
+
+  def test_proxy_protocol_allows_proxy_http_method_on_keep_alive
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1, supported_http_methods: :any) do |env|
+      [200, {}, [env["REMOTE_ADDR"]]]
+    end
+
+    socket = send_proxy_v1_http("GET /one HTTP/1.1\r\nHost: test.com\r\n\r\n", "1.2.3.4")
+
+    response = socket.read_response
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal "1.2.3.4", response.body
+
+    socket << "PROXY /two HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    response = socket.read_response
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal "1.2.3.4", response.body
+  end
+
   # To comply with the Rack spec, we have to split header field values
   # containing newlines into multiple headers.
   def assert_does_not_allow_http_injection(app, opts = {})
