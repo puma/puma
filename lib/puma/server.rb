@@ -107,7 +107,7 @@ module Puma
       @enable_keep_alives      &&= @queue_requests
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
-      @allow_underscore_headers  = @options[:allow_underscore_headers]
+      @allow_underscore_headers  = @options.fetch(:allow_underscore_headers, true)
       @cluster_accept_loop_delay = ClusterAcceptLoopDelay.new(
         workers: @options[:workers],
         max_delay: @options[:wait_for_less_busy_worker] || 0 # Real default is in Configuration::DEFAULTS, this is for unit testing

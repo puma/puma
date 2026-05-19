@@ -105,9 +105,10 @@ module Puma
     # avoid allocation in the common case (ie there are no headers
     # with `,` in their names), that's why it has the extra conditionals.
     #
-    # @note If a normalized version of a `,` header already exists, we ignore
-    #       the `,` version. This prevents clobbering headers managed by proxies
-    #       but not by clients (Like X-Forwarded-For).
+    # @note If underscore headers are disallowed, `,` headers are discarded.
+    #       Otherwise, if a normalized version of a `,` header already exists, we
+    #       ignore the `,` version. This prevents clobbering headers managed by
+    #       proxies but not by clients (Like X-Forwarded-For).
     #
     # @param env [Hash] see Puma::Client#env, from request, modifies in place
     # @version 5.0.3

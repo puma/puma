@@ -47,6 +47,17 @@ class TestPumaServer < PumaTest
     @pool = @server.instance_variable_get(:@thread_pool)
   end
 
+  def test_allow_underscore_headers_defaults_to_true_when_option_is_absent
+    defaults = Puma::Configuration::DEFAULTS.dup
+    defaults.delete(:allow_underscore_headers)
+    options = Puma::UserFileDefaultOptions.new({log_writer: @log_writer}, defaults)
+    server = Puma::Server.new @app, @events, options
+
+    assert_equal true, server.instance_variable_get(:@allow_underscore_headers)
+  ensure
+    server&.stop(true)
+  end
+
   def test_http10_req_to_http10_resp
     server_run do |env|
       [200, {}, [env["SERVER_PROTOCOL"]]]
