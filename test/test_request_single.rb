@@ -21,7 +21,7 @@ class TestRequestBase < PumaTest
 
   USE_IO_PIPE = Puma::IS_OSX && (RUBY_VERSION < '3.0' || !Puma::IS_MRI)
 
-  def create_client(request, &blk)
+  def create_client(request, peer_addr: PEER_ADDR, &blk)
     env = {}
     if Puma::IS_WINDOWS
       @rd, @wr = Socket.pair Socket::AF_INET, Socket::SOCK_STREAM, 0
@@ -31,7 +31,7 @@ class TestRequestBase < PumaTest
       @rd, @wr = UNIXSocket.pair
     end
 
-    @rd.define_singleton_method :peeraddr, PEER_ADDR
+    @rd.define_singleton_method :peeraddr, peer_addr
 
     @client = Puma::Client.new @rd, env
     @client.supported_http_methods = HTTP_METHODS
@@ -731,9 +731,7 @@ class TestRequestPeerip < TestRequestBase
 
   def test_peerip_unmaps_ipv4_mapped_ipv6
     peer_addr = -> () { ["AF_INET6", 80, "::ffff:127.0.0.1", "::ffff:127.0.0.1"] }
-    create_client("GET / HTTP/1.1\r\n\r\n") { |_client|
-      @rd.define_singleton_method(:peeraddr, peer_addr)
-    }
+    create_client("GET / HTTP/1.1\r\n\r\n", peer_addr: peer_addr)
 
     assert_equal "127.0.0.1", @client.peerip
     assert_equal "127.0.0.1", @client.env["REMOTE_ADDR"]
@@ -741,8 +739,7 @@ class TestRequestPeerip < TestRequestBase
 
   def test_remote_addr_header_fallback_unmaps_ipv4_mapped_ipv6
     peer_addr = -> () { ["AF_INET6", 80, "::ffff:10.1.2.3", "::ffff:10.1.2.3"] }
-    create_client("GET / HTTP/1.1\r\n\r\n") { |client|
-      @rd.define_singleton_method(:peeraddr, peer_addr)
+    create_client("GET / HTTP/1.1\r\n\r\n", peer_addr: peer_addr) { |client|
       client.remote_addr_header = "HTTP_X_REMOTE_IP"
     }
 
@@ -758,9 +755,7 @@ class TestRequestPeerip < TestRequestBase
 
   def test_peerip_preserves_native_ipv6
     peer_addr = -> () { ["AF_INET6", 80, "::1", "::1"] }
-    create_client("GET / HTTP/1.1\r\n\r\n") { |_client|
-      @rd.define_singleton_method(:peeraddr, peer_addr)
-    }
+    create_client("GET / HTTP/1.1\r\n\r\n", peer_addr: peer_addr)
 
     assert_equal "::1", @client.peerip
   end
