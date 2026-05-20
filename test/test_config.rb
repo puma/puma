@@ -1231,34 +1231,46 @@ class TestConfigFileWithFakeEnv < PumaTest
 
   def test_on_booted_deprecated_alias_works
     ran = false
-    conf = Puma::Configuration.new do |c|
-      c.on_booted { ran = true }
-    end
-    conf.clamp
+    err = capture_io do
+      conf = Puma::Configuration.new do |c|
+        c.on_booted { ran = true }
+      end
+      conf.clamp
 
-    conf.events.fire_after_booted!
+      conf.events.fire_after_booted!
+    end.last
+
+    assert_match(/Use 'after_booted', 'on_booted' is deprecated and will be removed in v8/, err)
     assert ran, "on_booted callback should have run"
   end
 
   def test_on_restart_deprecated_alias_works
     ran = false
-    conf = Puma::Configuration.new do |c|
-      c.on_restart { ran = true }
-    end
-    conf.clamp
+    err = capture_io do
+      conf = Puma::Configuration.new do |c|
+        c.on_restart { ran = true }
+      end
+      conf.clamp
 
-    conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
+      conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
+    end.last
+
+    assert_match(/Use 'before_restart', 'on_restart' is deprecated and will be removed in v8/, err)
     assert ran, "on_restart callback should have run"
   end
 
   def test_on_stopped_deprecated_alias_works
     ran = false
-    conf = Puma::Configuration.new do |c|
-      c.on_stopped { ran = true }
-    end
-    conf.clamp
+    err = capture_io do
+      conf = Puma::Configuration.new do |c|
+        c.on_stopped { ran = true }
+      end
+      conf.clamp
 
-    conf.events.fire_after_stopped!
+      conf.events.fire_after_stopped!
+    end.last
+
+    assert_match(/Use 'after_stopped', 'on_stopped' is deprecated and will be removed in v8/, err)
     assert ran, "on_stopped callback should have run"
   end
 end
