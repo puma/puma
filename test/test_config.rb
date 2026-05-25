@@ -557,7 +557,7 @@ class TestConfigFile < PumaTest
       end
       conf.clamp
     end
-    assert_equal "cannot change the number of workers inside a cluster configuration hook", error.message
+    assert_equal "Cannot change the number of workers inside a cluster configuration hook", error.message
   end
 
   def test_run_mode_hooks_with_workers_duplicated_in_hook
@@ -743,6 +743,18 @@ class TestConfigFile < PumaTest
     conf.clamp
 
     assert_kind_of Puma::UserFileDefaultOptions, conf.options
+  end
+
+  def test_clamp_warns_if_called_twice
+    conf = Puma::Configuration.new
+    conf.clamp
+    _, err = capture_io { conf.clamp }
+    assert_match(/calling clamp multiple times is deprecated and will raise in Puma v9/, err)
+  end
+
+  def test_double_clamp_is_removed_in_v9
+    refute_operator Gem::Version.new(Puma::Const::PUMA_VERSION), :>=, Gem::Version.new("9"),
+      "Replace the deprecation warning in Configuration#clamp with a raise"
   end
 
   def test_config_files_raises_not_loaded_error_when_not_loaded
@@ -1127,7 +1139,7 @@ class TestConfigEnvVariables < PumaTest
       end
       conf.clamp
     end
-    assert_equal "cannot change the number of workers inside a cluster configuration hook", error.message
+    assert_equal "Cannot change the number of workers inside a cluster configuration hook", error.message
   end
 
   def test_run_mode_hooks_with_workers_duplicated_in_hook

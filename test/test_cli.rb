@@ -336,7 +336,6 @@ class TestCLI < PumaTest
     cli = Puma::CLI.new ['--extra-runtime-dependencies', 'a,b']
 
     conf = cli.instance_variable_get(:@conf)
-    conf.clamp
 
     extra_dependencies = conf.options[:extra_runtime_dependencies]
 
@@ -351,7 +350,6 @@ class TestCLI < PumaTest
       cli = Puma::CLI.new []
 
       conf = cli.instance_variable_get(:@conf)
-      conf.clamp
 
       assert_equal 'test', conf.environment
     end
@@ -363,7 +361,6 @@ class TestCLI < PumaTest
     cli = Puma::CLI.new []
 
     conf = cli.instance_variable_get(:@conf)
-    conf.clamp
 
     assert_equal @environment, conf.environment
   end
@@ -375,7 +372,6 @@ class TestCLI < PumaTest
       cli = Puma::CLI.new []
 
       conf = cli.instance_variable_get(:@conf)
-      conf.clamp
 
       assert_equal @environment, conf.environment
     end
