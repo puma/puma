@@ -165,7 +165,7 @@ module Puma
       @parser.reset
       @io_buffer.reset
       @read_header = true
-      @read_proxy = !!@expect_proxy_proto
+      @read_proxy = !!@expect_proxy_proto && @requests_served.zero?
       @env = @proto_env.dup
       @parsed_bytes = 0
       @ready = false
