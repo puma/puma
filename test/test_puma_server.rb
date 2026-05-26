@@ -1528,6 +1528,43 @@ class TestPumaServer < PumaTest
     assert_equal 'fd00::1', remote_addr
   end
 
+  def test_proxy_protocol_rejects_line_without_crlf_at_max_length
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do
+      [200, {}, ["Hello"]]
+    end
+
+    socket = new_socket
+    socket << "PROXY #{'A' * (Puma::Const::PROXY_PROTOCOL_V1_MAX_LENGTH - "PROXY ".bytesize)}"
+
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      socket.read_response(timeout: 1)
+    end
+  end
+
+  def test_proxy_protocol_allows_non_proxy_requests_over_max_length
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do
+      [200, {}, ["Hello"]]
+    end
+
+    response = send_http_read_response "GET /#{'a' * Puma::Const::PROXY_PROTOCOL_V1_MAX_LENGTH} HTTP/1.0\r\n\r\n"
+
+    assert_equal "HTTP/1.0 200 OK", response.status
+    assert_equal "Hello", response.body
+  end
+
+  def test_proxy_protocol_ignores_embedded_proxy_line_in_http_body
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do |env|
+      body = env['rack.input'].read
+      [200, {'Content-Length' => body.bytesize.to_s}, [body]]
+    end
+
+    body = "prefix\nPROXY TCP4 1.1.1.1 2.2.2.2 3 4\r\nsuffix"
+    response = send_http_read_response "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{body.bytesize}\r\n\r\n#{body}"
+
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal body, response.body
+  end
+
   # To comply with the Rack spec, we have to split header field values
   # containing newlines into multiple headers.
   def assert_does_not_allow_http_injection(app, opts = {})
