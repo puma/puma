@@ -82,7 +82,7 @@ module Puma
   #
   def self.deprecate_method_change(method_old, method_caller, method_new)
     if method_old == method_caller
-      warn "Use '#{method_new}', '#{method_caller}' is deprecated and will be removed in v8"
+      warn "Use '#{method_new}', '#{method_caller}' is deprecated and will be removed in Puma v9"
     end
   end
 end
