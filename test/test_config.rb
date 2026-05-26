@@ -716,6 +716,20 @@ class TestConfigFile < PumaTest
     assert_equal true, conf.options[:silence_fork_callback_warning]
   end
 
+  def test_allow_underscore_headers
+    conf = Puma::Configuration.new
+    conf.clamp
+
+    assert_equal true, conf.options.default_options[:allow_underscore_headers]
+
+    conf = Puma::Configuration.new do |c|
+      c.allow_underscore_headers false
+    end
+    conf.clamp
+
+    assert_equal false, conf.final_options[:allow_underscore_headers]
+  end
+
   def test_http_content_length_limit
     conf = Puma::Configuration.new
     conf.clamp

@@ -232,6 +232,7 @@ module Puma
     PUMA_SOCKET = "puma.socket"
     PUMA_CONFIG = "puma.config"
     PUMA_PEERCERT = "puma.peercert"
+    PUMA_UNDERSCORE_HEADERS = "puma.underscore_headers"
 
     HTTP = "http"
     HTTPS = "https"

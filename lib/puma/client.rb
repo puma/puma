@@ -76,7 +76,8 @@ module Puma
                 :tempfile, :io_buffer, :http_content_length_limit_exceeded,
                 :requests_served, :error_status_code
 
-    attr_writer :peerip, :http_content_length_limit, :supported_http_methods
+    attr_writer :peerip, :http_content_length_limit, :supported_http_methods,
+                :allow_underscore_headers
 
     attr_accessor :remote_addr_header, :listener, :env_set_http_version
 
@@ -105,6 +106,7 @@ module Puma
 
       @http_content_length_limit = nil
       @http_content_length_limit_exceeded = nil
+      @allow_underscore_headers = true
       @error_status_code = nil
 
       @peerip = nil

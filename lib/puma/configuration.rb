@@ -133,6 +133,7 @@ module Puma
     class NotClampedError < StandardError; end
 
     DEFAULTS = {
+      allow_underscore_headers: true,
       auto_trim_time: 30,
       binds: ['tcp://[::]:9292'.freeze],
       debug: false,

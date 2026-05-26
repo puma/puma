@@ -321,6 +321,7 @@ class TestRequestHeadersValid < TestRequestBase
 
     assert_instance_of Float, @client.env['puma.request_body_wait']
     assert_equal '11', @client.env[CONTENT_LENGTH]
+    refute_operator @client.env, :key?, PUMA_UNDERSCORE_HEADERS
     assert_equal 'Hello World', @client.env['rack.input'].read
   end
 
@@ -356,6 +357,18 @@ class TestRequestHeadersValid < TestRequestBase
     create_client request
 
     assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+    assert_equal ["X_FORWARDED_FOR"], @client.env[PUMA_UNDERSCORE_HEADERS]
+  end
+
+  def test_underscore_single_disallowed
+    request = "GET / HTTP/1.1\r\n" \
+      "x_forwarded_for: 1.1.1.1\r\n" \
+      "Content-Length: 11\r\n\r\nHello World"
+
+    create_client(request) { |client| client.allow_underscore_headers = false }
+
+    refute_operator @client.env, :key?, 'HTTP_X_FORWARDED_FOR'
+    assert_equal ["X_FORWARDED_FOR"], @client.env[PUMA_UNDERSCORE_HEADERS]
   end
 
   def test_underscore_header_1
@@ -371,6 +384,24 @@ class TestRequestHeadersValid < TestRequestBase
     create_client request
 
     assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+    assert_equal ["X-FORWARDED_FOR"], @client.env[PUMA_UNDERSCORE_HEADERS]
+    assert_equal "Hello World", @client.body.string
+  end
+
+  def test_underscore_collision_disallowed
+    request = <<~REQ.gsub("\n", "\r\n").rstrip
+      GET / HTTP/1.1
+      x-forwarded-for: 1.1.1.1
+      x_forwarded_for: 2.2.2.2
+      Content-Length: 11
+
+      Hello World
+    REQ
+
+    create_client(request) { |client| client.allow_underscore_headers = false }
+
+    assert_equal "1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+    assert_equal ["X_FORWARDED_FOR"], @client.env[PUMA_UNDERSCORE_HEADERS]
     assert_equal "Hello World", @client.body.string
   end
 
@@ -385,6 +416,7 @@ class TestRequestHeadersValid < TestRequestBase
     create_client "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
 
     assert_equal "1.1.1.1, 2.2.2.2", @client.env['HTTP_X_FORWARDED_FOR']
+    assert_equal ["X_FORWARDED-FOR"], @client.env[PUMA_UNDERSCORE_HEADERS]
     assert_equal "Hello", @client.body.string
   end
 
@@ -399,6 +431,7 @@ class TestRequestHeadersValid < TestRequestBase
     create_client "#{GET_PREFIX}#{hdrs}\r\n\r\nHello\r\n\r\n"
 
     assert_equal "2.2.2.2, 1.1.1.1", @client.env['HTTP_X_FORWARDED_FOR']
+    assert_equal ["X_FORWARDED-FOR"], @client.env[PUMA_UNDERSCORE_HEADERS]
     assert_equal "Hello", @client.body.string
   end
 
