@@ -1,3 +1,9 @@
+## 8.0.2 / 2026-05-27
+
+* Bugfixes
+  * Anchor PROXY protocol v1 regex to string start and enforce max line length to prevent injection via crafted request bodies ([#3944])
+  * Parse PROXY protocol header only on the first request per connection to prevent spoofing on keep-alive connections ([#3944])
+
 ## 8.0.1 / 2026-04-27
 
 * Bugfixes
@@ -2335,6 +2341,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3944]:https://github.com/puma/puma/pull/3944     "PR by Nate Berkopec, merged 2026-05-26"
 [#3929]:https://github.com/puma/puma/pull/3929     "PR by Joshua Young, merged 2026-04-26"
 [#3928]:https://github.com/puma/puma/pull/3928     "PR by Nate Berkopec, merged 2026-04-16"
 [#3923]:https://github.com/puma/puma/pull/3923     "PR by Joshua Young, merged 2026-04-10"
