@@ -1266,7 +1266,7 @@ class TestConfigFileWithFakeEnv < PumaTest
       conf.events.fire_after_booted!
     end.last
 
-    assert_match(/Use 'after_booted', 'on_booted' is deprecated and will be removed in v8/, err)
+    assert_match(/Use 'after_booted', 'on_booted' is deprecated and will be removed in Puma v9/, err)
     assert ran, "on_booted callback should have run"
   end
 
@@ -1281,7 +1281,7 @@ class TestConfigFileWithFakeEnv < PumaTest
       conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
     end.last
 
-    assert_match(/Use 'before_restart', 'on_restart' is deprecated and will be removed in v8/, err)
+    assert_match(/Use 'before_restart', 'on_restart' is deprecated and will be removed in Puma v9/, err)
     assert ran, "on_restart callback should have run"
   end
 
@@ -1296,7 +1296,7 @@ class TestConfigFileWithFakeEnv < PumaTest
       conf.events.fire_after_stopped!
     end.last
 
-    assert_match(/Use 'after_stopped', 'on_stopped' is deprecated and will be removed in v8/, err)
+    assert_match(/Use 'after_stopped', 'on_stopped' is deprecated and will be removed in Puma v9/, err)
     assert ran, "on_stopped callback should have run"
   end
 end
