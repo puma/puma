@@ -45,6 +45,12 @@
 * Breaking changes
   * Default production bind address changed from `0.0.0.0` to `::` (IPv6) when a non-loopback IPv6 interface is available; falls back to `0.0.0.0` if IPv6 is unavailable ([#3847])
 
+## 7.2.1 / 2026-05-27
+
+* Bugfixes
+  * Limit and anchor PROXY protocol v1 parsing to prevent abuse via crafted inputs ([#3947])
+  * Parse PROXY protocol only once per connection to prevent injection on keep-alive requests ([#3947])
+
 ## 7.2.0 / 2026-01-20
 
 * Features
@@ -2341,6 +2347,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3947]:https://github.com/puma/puma/pull/3947     "PR by Nate Berkopec, merged 2026-05-26"
 [#3944]:https://github.com/puma/puma/pull/3944     "PR by Nate Berkopec, merged 2026-05-26"
 [#3929]:https://github.com/puma/puma/pull/3929     "PR by Joshua Young, merged 2026-04-26"
 [#3928]:https://github.com/puma/puma/pull/3928     "PR by Nate Berkopec, merged 2026-04-16"
