@@ -1,3 +1,9 @@
+## 7.2.1 / 2026-05-27
+
+* Bugfixes
+  * Limit and anchor PROXY protocol v1 parsing to prevent abuse via crafted inputs ([#3947])
+  * Parse PROXY protocol only once per connection to prevent injection on keep-alive requests ([#3947])
+
 ## 7.2.0 / 2026-01-20
 
 * Features
@@ -2294,6 +2300,7 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#3947]:https://github.com/puma/puma/pull/3947     "PR by Nate Berkopec, merged 2026-05-26"
 [#3863]:https://github.com/puma/puma/pull/3863     "PR by Nate Berkopec, merged 2026-01-20"
 [#3861]:https://github.com/puma/puma/pull/3861     "PR by MSP-Greg, merged 2026-01-20"
 [#3860]:https://github.com/puma/puma/pull/3860     "PR by MSP-Greg, merged 2026-01-16"
