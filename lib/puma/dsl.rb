@@ -1441,6 +1441,19 @@ module Puma
       @options[:enable_keep_alives] = enabled
     end
 
+    # When +false+, request headers with underscores in their names are discarded.
+    # When such headers are present, their names are exposed in
+    # +env["puma.underscore_headers"]+ for auditing. This value is client-triggerable;
+    # rate-limit or sample external reporting. The default is +true+, but will change
+    # to +false+ in a future major version, when this env metadata will be removed.
+    #
+    # @example
+    #   allow_underscore_headers false
+    #
+    def allow_underscore_headers(allowed=true)
+      @options[:allow_underscore_headers] = allowed
+    end
+
     # Specify the backend for the IO selector.
     #
     # Provided values will be passed directly to +NIO::Selector.new+, with the

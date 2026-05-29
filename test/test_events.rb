@@ -1,9 +1,15 @@
 # frozen_string_literal: true
 
 require 'puma/events'
+require 'puma/const'
 require_relative "helper"
 
 class TestEvents < PumaTest
+  def test_deprecated_event_methods_are_removed_in_v9
+    refute_operator Gem::Version.new(Puma::Const::PUMA_VERSION), :>=, Gem::Version.new("9"),
+      "Remove deprecated on_booted/on_restart/on_stopped from Puma::Events and their tests"
+  end
+
   def test_register_callback_with_block
     res = false
 
@@ -95,7 +101,7 @@ class TestEvents < PumaTest
     events.fire_after_booted!
 
     assert res
-    assert_match(/Use 'after_booted', 'on_booted' is deprecated and will be removed in v8/, err)
+    assert_match(/Use 'after_booted', 'on_booted' is deprecated and will be removed in Puma v9/, err)
   end
 
   def test_on_restart_deprecated_with_warning
@@ -109,7 +115,7 @@ class TestEvents < PumaTest
     events.fire_before_restart!
 
     assert res
-    assert_match(/Use 'before_restart', 'on_restart' is deprecated and will be removed in v8/, err)
+    assert_match(/Use 'before_restart', 'on_restart' is deprecated and will be removed in Puma v9/, err)
   end
 
   def test_on_stopped_deprecated_with_warning
@@ -123,6 +129,6 @@ class TestEvents < PumaTest
     events.fire_after_stopped!
 
     assert res
-    assert_match(/Use 'after_stopped', 'on_stopped' is deprecated and will be removed in v8/, err)
+    assert_match(/Use 'after_stopped', 'on_stopped' is deprecated and will be removed in Puma v9/, err)
   end
 end

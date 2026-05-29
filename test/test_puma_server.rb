@@ -47,6 +47,17 @@ class TestPumaServer < PumaTest
     @pool = @server.instance_variable_get(:@thread_pool)
   end
 
+  def test_allow_underscore_headers_defaults_to_true_when_option_is_absent
+    defaults = Puma::Configuration::DEFAULTS.dup
+    defaults.delete(:allow_underscore_headers)
+    options = Puma::UserFileDefaultOptions.new({log_writer: @log_writer}, defaults)
+    server = Puma::Server.new @app, @events, options
+
+    assert_equal true, server.instance_variable_get(:@allow_underscore_headers)
+  ensure
+    server&.stop(true)
+  end
+
   def test_http10_req_to_http10_resp
     server_run do |env|
       [200, {}, [env["SERVER_PROTOCOL"]]]
@@ -1526,6 +1537,77 @@ class TestPumaServer < PumaTest
 
     remote_addr = send_proxy_v1_http("GET / HTTP/1.0\r\n\r\n", "fd00::1", true).read_body
     assert_equal 'fd00::1', remote_addr
+  end
+
+  def test_proxy_protocol_rejects_line_without_crlf_at_max_length
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do
+      [200, {}, ["Hello"]]
+    end
+
+    socket = new_socket
+    socket << "PROXY #{'A' * (Puma::Const::PROXY_PROTOCOL_V1_MAX_LENGTH - "PROXY ".bytesize)}"
+
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      socket.read_response(timeout: 1)
+    end
+  end
+
+  def test_proxy_protocol_allows_non_proxy_requests_over_max_length
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do
+      [200, {}, ["Hello"]]
+    end
+
+    response = send_http_read_response "GET /#{'a' * Puma::Const::PROXY_PROTOCOL_V1_MAX_LENGTH} HTTP/1.0\r\n\r\n"
+
+    assert_equal "HTTP/1.0 200 OK", response.status
+    assert_equal "Hello", response.body
+  end
+
+  def test_proxy_protocol_ignores_embedded_proxy_line_in_http_body
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do |env|
+      body = env['rack.input'].read
+      [200, {'Content-Length' => body.bytesize.to_s}, [body]]
+    end
+
+    body = "prefix\nPROXY TCP4 1.1.1.1 2.2.2.2 3 4\r\nsuffix"
+    response = send_http_read_response "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{body.bytesize}\r\n\r\n#{body}"
+
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal body, response.body
+  end
+
+  def test_proxy_protocol_only_parses_first_request_on_connection
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do |env|
+      [200, {}, [env["REMOTE_ADDR"]]]
+    end
+
+    socket = send_proxy_v1_http("GET /one HTTP/1.1\r\nHost: test.com\r\n\r\n", "1.2.3.4")
+
+    response = socket.read_response
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal "1.2.3.4", response.body
+
+    socket << "PROXY TCP4 127.0.0.1 127.0.0.1 10000 80\r\nGET /two HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_match %r{\AHTTP/1\.[01] 400 Bad Request\z}, socket.read_response.status
+  end
+
+  def test_proxy_protocol_allows_proxy_http_method_on_keep_alive
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1, supported_http_methods: :any) do |env|
+      [200, {}, [env["REMOTE_ADDR"]]]
+    end
+
+    socket = send_proxy_v1_http("GET /one HTTP/1.1\r\nHost: test.com\r\n\r\n", "1.2.3.4")
+
+    response = socket.read_response
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal "1.2.3.4", response.body
+
+    socket << "PROXY /two HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    response = socket.read_response
+    assert_equal "HTTP/1.1 200 OK", response.status
+    assert_equal "1.2.3.4", response.body
   end
 
   # To comply with the Rack spec, we have to split header field values

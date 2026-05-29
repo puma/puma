@@ -557,7 +557,7 @@ class TestConfigFile < PumaTest
       end
       conf.clamp
     end
-    assert_equal "cannot change the number of workers inside a cluster configuration hook", error.message
+    assert_equal "Cannot change the number of workers inside a cluster configuration hook", error.message
   end
 
   def test_run_mode_hooks_with_workers_duplicated_in_hook
@@ -716,6 +716,20 @@ class TestConfigFile < PumaTest
     assert_equal true, conf.options[:silence_fork_callback_warning]
   end
 
+  def test_allow_underscore_headers
+    conf = Puma::Configuration.new
+    conf.clamp
+
+    assert_equal true, conf.options.default_options[:allow_underscore_headers]
+
+    conf = Puma::Configuration.new do |c|
+      c.allow_underscore_headers false
+    end
+    conf.clamp
+
+    assert_equal false, conf.final_options[:allow_underscore_headers]
+  end
+
   def test_http_content_length_limit
     conf = Puma::Configuration.new
     conf.clamp
@@ -743,6 +757,18 @@ class TestConfigFile < PumaTest
     conf.clamp
 
     assert_kind_of Puma::UserFileDefaultOptions, conf.options
+  end
+
+  def test_clamp_warns_if_called_twice
+    conf = Puma::Configuration.new
+    conf.clamp
+    _, err = capture_io { conf.clamp }
+    assert_match(/calling clamp multiple times is deprecated and will raise in Puma v9/, err)
+  end
+
+  def test_double_clamp_is_removed_in_v9
+    refute_operator Gem::Version.new(Puma::Const::PUMA_VERSION), :>=, Gem::Version.new("9"),
+      "Replace the deprecation warning in Configuration#clamp with a raise"
   end
 
   def test_config_files_raises_not_loaded_error_when_not_loaded
@@ -1127,7 +1153,7 @@ class TestConfigEnvVariables < PumaTest
       end
       conf.clamp
     end
-    assert_equal "cannot change the number of workers inside a cluster configuration hook", error.message
+    assert_equal "Cannot change the number of workers inside a cluster configuration hook", error.message
   end
 
   def test_run_mode_hooks_with_workers_duplicated_in_hook
@@ -1231,34 +1257,46 @@ class TestConfigFileWithFakeEnv < PumaTest
 
   def test_on_booted_deprecated_alias_works
     ran = false
-    conf = Puma::Configuration.new do |c|
-      c.on_booted { ran = true }
-    end
-    conf.clamp
+    err = capture_io do
+      conf = Puma::Configuration.new do |c|
+        c.on_booted { ran = true }
+      end
+      conf.clamp
 
-    conf.events.fire_after_booted!
+      conf.events.fire_after_booted!
+    end.last
+
+    assert_match(/Use 'after_booted', 'on_booted' is deprecated and will be removed in Puma v9/, err)
     assert ran, "on_booted callback should have run"
   end
 
   def test_on_restart_deprecated_alias_works
     ran = false
-    conf = Puma::Configuration.new do |c|
-      c.on_restart { ran = true }
-    end
-    conf.clamp
+    err = capture_io do
+      conf = Puma::Configuration.new do |c|
+        c.on_restart { ran = true }
+      end
+      conf.clamp
 
-    conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
+      conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
+    end.last
+
+    assert_match(/Use 'before_restart', 'on_restart' is deprecated and will be removed in Puma v9/, err)
     assert ran, "on_restart callback should have run"
   end
 
   def test_on_stopped_deprecated_alias_works
     ran = false
-    conf = Puma::Configuration.new do |c|
-      c.on_stopped { ran = true }
-    end
-    conf.clamp
+    err = capture_io do
+      conf = Puma::Configuration.new do |c|
+        c.on_stopped { ran = true }
+      end
+      conf.clamp
 
-    conf.events.fire_after_stopped!
+      conf.events.fire_after_stopped!
+    end.last
+
+    assert_match(/Use 'after_stopped', 'on_stopped' is deprecated and will be removed in Puma v9/, err)
     assert ran, "on_stopped callback should have run"
   end
 end

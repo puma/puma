@@ -99,7 +99,15 @@ Rake::TestTask.new(:test)
 if Puma.jruby?
   task :test => [:java]
 else
-  task :test => [:compile]
+  task :compile_for_test do
+    original_makeflags = ENV["MAKEFLAGS"]
+    ENV["MAKEFLAGS"] = [original_makeflags, "-s"].compact.join(" ")
+    Rake::Task[:compile].invoke
+  ensure
+    ENV["MAKEFLAGS"] = original_makeflags
+  end
+
+  task :test => [:compile_for_test]
 end
 
 task :default => [:rubocop, :test]

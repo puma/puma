@@ -76,7 +76,8 @@ module Puma
                 :tempfile, :io_buffer, :http_content_length_limit_exceeded,
                 :requests_served, :error_status_code
 
-    attr_writer :peerip, :http_content_length_limit, :supported_http_methods
+    attr_writer :peerip, :http_content_length_limit, :supported_http_methods,
+                :allow_underscore_headers
 
     attr_accessor :remote_addr_header, :listener, :env_set_http_version
 
@@ -105,6 +106,7 @@ module Puma
 
       @http_content_length_limit = nil
       @http_content_length_limit_exceeded = nil
+      @allow_underscore_headers = true
       @error_status_code = nil
 
       @peerip = nil
@@ -163,7 +165,7 @@ module Puma
       @parser.reset
       @io_buffer.reset
       @read_header = true
-      @read_proxy = !!@expect_proxy_proto
+      @read_proxy = !!@expect_proxy_proto && @requests_served.zero?
       @env = @proto_env.dup
       @parsed_bytes = 0
       @ready = false
@@ -213,20 +215,36 @@ module Puma
     def try_to_parse_proxy_protocol
       if @read_proxy
         if @expect_proxy_proto == :v1
-          if @buffer.include? "\r\n"
-            if md = PROXY_PROTOCOL_V1_REGEX.match(@buffer)
-              if md[1]
-                @peerip = md[1].split(" ")[0]
+          crlf_index = @buffer.index "\r\n"
+
+          unless crlf_index
+            if "PROXY ".start_with? @buffer
+              return false
+            elsif @buffer.start_with? "PROXY "
+              if @buffer.bytesize >= PROXY_PROTOCOL_V1_MAX_LENGTH
+                raise ConnectionError, "PROXY protocol v1 line is too long"
               end
-              @buffer = md.post_match
+              return false
             end
-            # if the buffer has a \r\n but doesn't have a PROXY protocol
-            # request, this is just HTTP from a non-PROXY client; move on
+
             @read_proxy = false
-            return @buffer.size > 0
-          else
-            return false
+            return true
           end
+
+          if @buffer.start_with?("PROXY ") && crlf_index + 2 > PROXY_PROTOCOL_V1_MAX_LENGTH
+            raise ConnectionError, "PROXY protocol v1 line is too long"
+          end
+
+          if md = PROXY_PROTOCOL_V1_REGEX.match(@buffer)
+            if md[1]
+              @peerip = md[1].split(" ")[0]
+            end
+            @buffer = md.post_match
+          end
+          # if the buffer has a \r\n but doesn't have a PROXY protocol
+          # request, this is just HTTP from a non-PROXY client; move on
+          @read_proxy = false
+          return @buffer.size > 0
         end
       end
       true

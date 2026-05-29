@@ -100,7 +100,7 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "8.0.1"
+    PUMA_VERSION = VERSION = "8.0.2"
     CODE_NAME = "Into the Arena"
 
     PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
@@ -232,6 +232,7 @@ module Puma
     PUMA_SOCKET = "puma.socket"
     PUMA_CONFIG = "puma.config"
     PUMA_PEERCERT = "puma.peercert"
+    PUMA_UNDERSCORE_HEADERS = "puma.underscore_headers"
 
     HTTP = "http"
     HTTPS = "https"
@@ -291,7 +292,8 @@ module Puma
     # Banned keys of response header
     BANNED_HEADER_KEY = /\A(rack\.|status\z)/.freeze
 
-    PROXY_PROTOCOL_V1_REGEX = /^PROXY (?:TCP4|TCP6|UNKNOWN) ([^\r]+)\r\n/.freeze
+    PROXY_PROTOCOL_V1_REGEX = /\APROXY (?:TCP4|TCP6|UNKNOWN) ([^\r]+)\r\n/.freeze
+    PROXY_PROTOCOL_V1_MAX_LENGTH = 107
 
     # All constants are prefixed with `PIPE_` to avoid name collisions.
     module PipeRequest

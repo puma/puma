@@ -197,8 +197,6 @@ module Puma
     def run
       previous_env = get_env
 
-      @config.clamp
-
       @config.plugins.fire_starts self
 
       setup_signals
