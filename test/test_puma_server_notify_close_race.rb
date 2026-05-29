@@ -94,6 +94,8 @@ class TestPumaServerNotifyCloseRace < PumaTest
       end
       writers.each(&:join)
     end
+    log = @log_writer.stderr.string
+    refute_includes log, 'notify_safely error:'
 
     pass
   end
